@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scoring Your Own Calls — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  .cb-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
+  .cb-table th,.cb-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace}
+  .cb-table th{color:var(--text3);font-weight:500;font-size:11px}
+  .cb-table td:first-child,.cb-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
+  .cb-mrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0}
+  .cb-mlbl{font-family:'DM Mono',monospace;font-weight:600;color:var(--amber);min-width:44px}
+  .cb-mout{font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);margin-left:auto}
+  .cb-svg{width:100%;height:auto;display:block}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Scoring Your Own Calls — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full decomposition, the calibration scorer with luck bands and a correction table, two real stories and a 6-question self-test?<a href="action-calibration-scoring.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">From Analysis to Action · 6 of 8</div>
+      <h1 class="sl-h1">Scoring <em>Your Own Calls</em></h1>
+      <p class="sl-lede">"I'm usually right" is a feeling. "My 70% calls come true 55% of the time" is a measurement you can size from. Here is how to turn a journal into a score.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A way to grade a call that said "70%"</h2>
+      <p class="sl-sub">Brier (1950); Murphy (1973); Tetlock's forecasting research (2005–2015).</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>A journal of reasons can't be graded: one outcome never proves a "probably" right or wrong. So traders graded by P&amp;L — or not at all.</p>
+        <p>Brier's 1950 score for weather forecasts fixed that, and Murphy split it into reliability, resolution and uncertainty. Tetlock's expert studies and the Good Judgment Project's tournament results, all Brier-scored, made "keep score in probabilities" standard for discretionary analysts; probability-output models are checked the same way.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage on">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Are the probabilities on my calls honest — and do they tell outcomes apart?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Grade the numbers, not the day</h2>
+      <p class="sl-p">One rainy day can't grade a "70% rain" forecast. Every day she said 70%, together, can: did it rain on about seven in ten?</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green"><span class="sl-ctag green">Calibrated</span><p>Her 70% days: rain on ~70% of them. Her 30% days: ~30%. Her numbers mean what they say.</p></div>
+        <div class="sl-ccard red"><span class="sl-ctag red">Calibrated but useless</span><p>She says "30%" every day in a town where it rains 30% of days. Perfect calibration, zero information.</p></div>
+      </div>
+      <div class="sl-quote">You need both: numbers that mean what they say, and numbers that move when the evidence does.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3 · Template</div>
+      <h2 class="sl-h2">Write calls that can be scored</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>A yes/no event</h4><p>"EUR/USD closes Friday above today's close." Not "bullish euro".</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>A deadline</h4><p>"By Friday's close." No deadline, no score.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>A probability, rounded</h4><p>50 / 60 / 70 / 80 / 90%, for the side you think likelier. Never 100%.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>A rule for "true"</h4><p>Marked by the rule at the deadline — not by whether the trade made money.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The Brier score</h2>
+      <div class="sl-row"><div class="sl-box">BS = average of (f − o)² · f = what you said · o = 1 if it happened</div></div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Price one call</div>
+        <div class="sl-sliderhead"><span>You say</span><span class="sl-live" id="one-f-val">70%</span></div>
+        <input type="range" class="sl-slider" id="one-f" min="50" max="99" step="1" value="70">
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Cost if it happens</div><div class="sl-calc-result-val" id="one-hit">0.090</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Cost if it doesn't</div><div class="sl-calc-result-val" id="one-miss">0.490</div></div>
+        </div>
+        <div class="sl-note">0 is perfect. Saying 50% on everything scores 0.25. Quoting your base rate ō on everything scores ō(1 − ō) — that's the bar to beat.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Honesty is the best policy — exactly</h2>
+      <p class="sl-sub">If your true hit rate is p and you write f, your expected score is p(1−f)² + (1−p)f². It's lowest at f = p. Shading your number costs exactly (f − p)² per call.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-sliderhead"><span>Your true hit rate p</span><span class="sl-live" id="pr-p-val">55%</span></div>
+        <input type="range" class="sl-slider" id="pr-p" min="50" max="99" step="1" value="55">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>What you write f</span><span class="sl-live" id="pr-f-val">70%</span></div>
+        <input type="range" class="sl-slider" id="pr-f" min="50" max="99" step="1" value="70">
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Expected score, writing f</div><div class="sl-calc-result-val" id="pr-ef">—</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">If honest (f = p)</div><div class="sl-calc-result-val" id="pr-ep">—</div></div>
+        </div>
+        <div class="sl-note" id="pr-note"></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6 · Worked example</div>
+      <h2 class="sl-h2">40 calls, one quarter</h2>
+      <table class="cb-table">
+        <tr><th>Said</th><th>Calls</th><th>True</th><th>Hit rate</th></tr>
+        <tr><td>50%</td><td>8</td><td>4</td><td>50%</td></tr>
+        <tr><td>60%</td><td>12</td><td>7</td><td>58%</td></tr>
+        <tr><td>70%</td><td>10</td><td>6</td><td>60%</td></tr>
+        <tr><td>80%</td><td>6</td><td>3</td><td>50%</td></tr>
+        <tr><td>90%</td><td>4</td><td>2</td><td>50%</td></tr>
+      </table>
+      <div class="sl-calc-steps">
+        <div>Brier <b>0.2775</b> vs quoting the 55% base rate <b>0.2475</b> → skill <b>−12.1%</b></div>
+        <div>= reliability <b>0.0321</b> − resolution <b>0.0021</b> + uncertainty <b>0.2475</b></div>
+        <div>70–90% calls: expected 15.4 hits, got 11 → z = <b>−2.38</b></div>
+        <div>Kelly at even odds: stated 66.5% → <b>33%</b>; record 55% → <b>10%</b></div>
+      </div>
+      <div class="sl-callout amber"><div class="sl-callout-label">The output</div><p>A correction table (80% → 53%, 90% → 54% after shrinking toward the base rate) and a rule: until 80–90% calls beat 60% calls, they get the same size.</p></div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Score yourself</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Log calls with ✓ (happened) or ✗ (didn't)</div>
+        <div id="ms-rows"></div>
+        <div class="sl-svgwrap">
+          <svg id="ms-svg" class="cb-svg" viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reliability diagram of your logged calls: hit rate against stated probability, with the diagonal for perfect calibration.">
+            <g id="ms-g"></g>
+          </svg>
+        </div>
+        <div class="sl-calc-steps" id="ms-out"></div>
+        <button type="button" class="sl-reset-btn" id="ms-example">Load the worked example</button>
+        <button type="button" class="sl-reset-btn" id="ms-clear">Clear</button>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">It takes many calls</h2>
+      <p class="sl-sub">If you really are calibrated at f, a bucket of n calls lands within f ± 1.96·√(f(1−f)/n) about 95% of the time.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>How wide is luck?</div>
+        <div class="sl-sliderhead"><span>Stated probability</span><span class="sl-live" id="lb-f-val">70%</span></div>
+        <input type="range" class="sl-slider" id="lb-f" min="50" max="95" step="5" value="70">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Calls in the bucket</span><span class="sl-live" id="lb-n-val">10</span></div>
+        <input type="range" class="sl-slider" id="lb-n" min="2" max="300" step="1" value="10">
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Calibrated hit rates could land anywhere in</div><div class="sl-calc-result-val" id="lb-out">42% – 98%</div></div>
+        </div>
+        <div class="sl-note">Ten calls at 70% tell you almost nothing. Pool buckets (sum of hits vs sum of stated probabilities) and wait for numbers.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where scoring sits</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>You write "70%" and size it as a 70% bet</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Memory</b>Hits feel like skill, misses like bad luck</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson · scoring</b>Brier and the reliability diagram show the 70% calls land 55–60%</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>The trader</b>Swaps felt confidence for the measured hit rate</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Size matches the edge that exists</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10 · It actually happened</div>
+      <h2 class="sl-h2">The people who keep score</h2>
+      <p class="sl-p"><strong>Weather forecasters.</strong> Murphy and Winkler found US National Weather Service precipitation forecasts remarkably well calibrated in the 1970s: many similar calls, fast outcomes, every one scored. Nate Silver later described a "wet bias" in some TV forecasts — rain chances overstated on purpose. Different incentive, worse calibration.</p>
+      <p class="sl-p"><strong>Tetlock's forecasters.</strong> Two decades of scored expert predictions (2005) found most experts barely beat simple rules. In the IARPA tournament from 2011, the Good Judgment Project's best "superforecasters", Brier-scored, kept outperforming year after year — skill, not luck. Their shared habit: precise probabilities and keeping score.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11 · The desk's verdict</div>
+      <h2 class="sl-h2">What was tested here</h2>
+      <div class="sl-stamp untested"><span class="sl-stamp-tag">Not tested here</span><span><strong>"The confidence on our calls matches our hit rate."</strong> The desk's ledger scores signals, not the probabilities written on calls. No Brier score for those yet.</span></div>
+      <div class="sl-stamp null" data-evidence="conviction-vote" data-evidence-date="2026-07-25"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>An unscored conviction score.</strong> A backtest system's conviction vote turned out <em>anti</em>-predictive; the system lost (−£38k) on a 30% win rate. Never scale size by a score that hasn't been scored.</span></div>
+      <div class="sl-stamp null" data-evidence="rates-pivot-lead" data-evidence-date="2026-09-25"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>54.1% against a 54.1% base rate.</strong> After confirmed rates lows the Nasdaq rose 54.1% of the time — exactly the base rate. Calibrated, zero resolution, zero skill.</span></div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Three calls at 80%: two happen, one doesn't. Brier score?</h4>
+        <button class="sl-quiz-opt">0.20</button>
+        <button class="sl-quiz-opt" data-correct="true">0.24</button>
+        <button class="sl-quiz-opt">0.33</button>
+        <div class="sl-quiz-explain">(0.04 + 0.04 + 0.64) / 3 = 0.24. Barely better than always saying 50% — and three calls say almost nothing.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>60% of your calls come true. What's the benchmark Brier to beat?</h4>
+        <button class="sl-quiz-opt">0.25 — always saying 50%</button>
+        <button class="sl-quiz-opt" data-correct="true">0.24 — quoting 60% every time</button>
+        <button class="sl-quiz-opt">0 — perfection</button>
+        <div class="sl-quiz-explain">0.6 × 0.4 = 0.24: what someone who knows the base rate but can't tell calls apart would score.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Reliability 0.001, resolution 0.000. Good forecaster?</h4>
+        <button class="sl-quiz-opt">Yes — nearly perfectly calibrated</button>
+        <button class="sl-quiz-opt" data-correct="true">No — her calls don't separate anything</button>
+        <button class="sl-quiz-opt">Can't say without the P&amp;L</button>
+        <div class="sl-quiz-explain">Calibrated but useless: zero resolution means her score is the base-rate score or worse. Resolution is what makes calls worth acting on.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Twenty calls at 90%, fifteen came true. Overconfident?</h4>
+        <button class="sl-quiz-opt">No — 75% is close to 90%</button>
+        <button class="sl-quiz-opt" data-correct="true">Yes — about 2.2 standard errors short</button>
+        <button class="sl-quiz-opt">Can't tell from twenty</button>
+        <div class="sl-quiz-explain">Expected 18, SE √(20·0.9·0.1) = 1.34, z = −3/1.34 = −2.24. Beyond what luck usually produces.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Write every call as an event, a deadline and a rounded probability.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Brier = reliability − resolution + uncertainty. Beat the base-rate score, not 0.25.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The score is proper: shading your number costs (f − p)².</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Size from the measured hit rate. Stated 66.5% vs real 55% is Kelly 33% vs 10%.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Desk tests: an unscored conviction vote was anti-predictive; a 54.1% hit rate matched its base rate. Score confidence before it sets size.</p></div>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Base Rates First</h3>
+        <p>Reference classes: start from how often it usually happens, then adjust — Bayes in words.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="action-base-rates-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="action-calibration-scoring.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="action-vol-to-size-micro.html">← Previous: From a Volatility Forecast to a Position Size</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  var SVGNS = 'http://www.w3.org/2000/svg', FONT = "'DM Mono',monospace";
+  function el(name, attrs, style, text){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (style) e.setAttribute('style', style);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function clear(g){ while (g.firstChild) g.removeChild(g.firstChild); }
+  function $(id){ return document.getElementById(id); }
+
+  // Slide 5 — one call.
+  (function(){
+    var fIn = $('one-f');
+    function render(){ var f = parseInt(fIn.value, 10) / 100; $('one-f-val').textContent = Math.round(f * 100) + '%'; $('one-hit').textContent = ((1 - f) * (1 - f)).toFixed(3); $('one-miss').textContent = (f * f).toFixed(3); }
+    fIn.addEventListener('input', render); render();
+  })();
+
+  // Slide 6 — propriety.
+  (function(){
+    var pIn = $('pr-p'), fIn = $('pr-f');
+    function E(p, f){ return p * (1 - f) * (1 - f) + (1 - p) * f * f; }
+    function render(){
+      var p = parseInt(pIn.value, 10) / 100, f = parseInt(fIn.value, 10) / 100;
+      $('pr-p-val').textContent = Math.round(p * 100) + '%'; $('pr-f-val').textContent = Math.round(f * 100) + '%';
+      $('pr-ef').textContent = E(p, f).toFixed(4); $('pr-ep').textContent = E(p, p).toFixed(4);
+      $('pr-note').textContent = 'Extra cost per call: ' + (E(p, f) - E(p, p)).toFixed(4) + ' = (f − p)² = ' + ((f - p) * (f - p)).toFixed(4) + '.';
+    }
+    [pIn, fIn].forEach(function(i){ i.addEventListener('input', render); }); render();
+  })();
+
+  // Slide 8 — mini scorer.
+  (function(){
+    var B = [0.5, 0.6, 0.7, 0.8, 0.9], EX = [[8, 4], [12, 7], [10, 6], [6, 3], [4, 2]];
+    var data = B.map(function(){ return { n: 0, h: 0 }; }), outs = [];
+    var wrap = $('ms-rows');
+    B.forEach(function(f, i){
+      var d = document.createElement('div'); d.className = 'cb-mrow';
+      d.innerHTML = '<span class="cb-mlbl">' + Math.round(f * 100) + '%</span><button type="button" class="sl-tab" aria-label="' + Math.round(f * 100) + '% call happened">✓</button><button type="button" class="sl-tab" aria-label="' + Math.round(f * 100) + '% call did not happen">✗</button><span class="cb-mout"></span>';
+      wrap.appendChild(d);
+      var b = d.querySelectorAll('button');
+      b[0].addEventListener('click', function(){ data[i].n++; data[i].h++; render(); });
+      b[1].addEventListener('click', function(){ data[i].n++; render(); });
+      outs.push(d.querySelector('.cb-mout'));
+    });
+    function render(){
+      var N = 0, H = 0, sse = 0;
+      data.forEach(function(d, i){ var f = B[i]; N += d.n; H += d.h; sse += d.h * (1 - f) * (1 - f) + (d.n - d.h) * f * f; outs[i].textContent = d.n ? d.h + '/' + d.n + ' = ' + Math.round(d.h / d.n * 100) + '%' : '—'; });
+      var g = $('ms-g'); clear(g);
+      var X0 = 56, X1 = 620, Y0 = 230, Y1 = 12;
+      function x(f){ return X0 + (X1 - X0) * (f - 0.4) / 0.6; }
+      function y(v){ return Y0 - (Y0 - Y1) * v; }
+      [0, 0.25, 0.5, 0.75, 1].forEach(function(v){ g.appendChild(el('line', { x1: X0, x2: X1, y1: y(v), y2: y(v) }, 'stroke:var(--border);stroke-width:1')); g.appendChild(el('text', { x: X0 - 6, y: y(v) + 4, 'text-anchor': 'end', 'font-size': 12, 'font-family': FONT }, 'fill:var(--text3)', Math.round(v * 100) + '%')); });
+      B.forEach(function(f){ g.appendChild(el('text', { x: x(f), y: Y0 + 18, 'text-anchor': 'middle', 'font-size': 12, 'font-family': FONT }, 'fill:var(--text3)', Math.round(f * 100) + '%')); });
+      g.appendChild(el('line', { x1: x(0.4), y1: y(0.4), x2: x(1), y2: y(1) }, 'stroke:var(--text3);stroke-width:1.2;stroke-dasharray:5,4'));
+      data.forEach(function(d, i){ if (d.n) g.appendChild(el('circle', { cx: x(B[i]), cy: y(d.h / d.n), r: Math.min(14, 4 + Math.sqrt(d.n) * 1.6) }, 'fill:var(--purple);opacity:0.9')); });
+      if (!N){ $('ms-out').innerHTML = '<div>No calls yet — tap ✓ or ✗, or load the example.</div>'; return; }
+      var ob = H / N, bs = sse / N, unc = ob * (1 - ob), bss = unc > 0 ? 1 - bs / unc : null;
+      if (unc > 0) g.appendChild(el('line', { x1: X0, x2: X1, y1: y(ob), y2: y(ob) }, 'stroke:var(--amber);stroke-width:1;stroke-dasharray:3,3'));
+      $('ms-out').innerHTML = '<div>' + N + ' calls · came true <b>' + Math.round(ob * 100) + '%</b></div><div>Brier <b>' + bs.toFixed(4) + '</b> vs base rate <b>' + unc.toFixed(4) + '</b></div><div>Skill <b>' + (bss === null ? '—' : (bss >= 0 ? '+' : '') + (bss * 100).toFixed(1) + '%') + '</b></div>';
+    }
+    $('ms-example').addEventListener('click', function(){ data = EX.map(function(e){ return { n: e[0], h: e[1] }; }); render(); });
+    $('ms-clear').addEventListener('click', function(){ data = B.map(function(){ return { n: 0, h: 0 }; }); render(); });
+    render();
+  })();
+
+  // Slide 9 — luck band.
+  (function(){
+    var fIn = $('lb-f'), nIn = $('lb-n');
+    function render(){
+      var f = parseInt(fIn.value, 10) / 100, n = parseInt(nIn.value, 10), hw = 1.96 * Math.sqrt(f * (1 - f) / n);
+      $('lb-f-val').textContent = Math.round(f * 100) + '%'; $('lb-n-val').textContent = n;
+      $('lb-out').textContent = Math.round(Math.max(0, f - hw) * 100) + '% – ' + Math.round(Math.min(1, f + hw) * 100) + '%';
+    }
+    [fIn, nIn].forEach(function(i){ i.addEventListener('input', render); }); render();
+  })();
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

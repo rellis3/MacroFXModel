@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>From a View to a Trade Plan — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  .tp-svg{width:100%;height:auto;display:block}
+  .tp-flag{margin-top:8px;font-size:13px;padding:6px 10px;border-radius:6px}
+  .tp-flag.bad{background:var(--red-bg);border:1px solid var(--red-bd);color:var(--red)}
+  .tp-flag.meh{background:var(--amber-bg);border:1px solid var(--amber-bd);color:var(--amber)}
+  .tp-flag.good{background:var(--green-bg);border:1px solid var(--green-bd);color:var(--green)}
+  .tp-steps{font-family:'DM Mono',monospace;font-size:13px;line-height:1.75;color:var(--text2)}
+  .tp-steps b{color:var(--text)}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">From a View to a Trade Plan — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Want the full derivations, an instrument-aware calculator that writes your plan card, and a 6-question self-test?<a href="action-trade-plan.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">From Analysis to Action · 1 of 8</div>
+      <h1 class="sl-h1">From a View <em>to a Trade Plan</em></h1>
+      <p class="sl-lede">"EUR/USD looks cheap" is a view. A trade is five numbers written before you click: entry, invalidation, stop, target, size. The most important one, invalidation, comes from your analysis, not from how much you can stand to lose.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Rules you can write down</h2>
+      <p class="sl-sub">Trading practice · the Turtle experiment (1983–84); R-multiples (Van Tharp, 1990s); triple-barrier labels (López de Prado, 2018)</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>In 1983 Richard Dennis and William Eckhardt trained novice "Turtles" on a fully written rule set: entry, a stop set as a multiple of an average true range, and a position size that risked a fixed slice of the account.</p>
+        <p>Van Tharp later made <em>R</em>, the amount risked, the unit of every result. López de Prado's triple-barrier labels use the same three exits: target, stop, time limit.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage on">Execute</span></div>
+        <p><strong>Its job:</strong> turn a direction and a reason into prices and a size you can execute and later score.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">What a view is missing</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Entry</h4><p>Where you get in.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Invalidation</h4><p>The price at which the <em>reason</em> is wrong.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Stop</h4><p>Invalidation plus a noise buffer.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>Target</h4><p>What the analysis says is reachable, plus a time limit.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">5</div><div><h4>Size</h4><p>Last of all, set by the stop distance.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Invalidation comes from the reason</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green"><span class="sl-ctag green">From the analysis</span><p>"The March low at 1.0780 held at the spread's widest point. A close below it means the market sees something my model doesn't."</p></div>
+        <div class="sl-ccard red"><span class="sl-ctag red">From pain</span><p>"I'll risk 20 pips because that's comfortable." The market doesn't know your comfort level. Nothing about the thesis changes at that price.</p></div>
+      </div>
+      <div class="sl-quote">Pain is a real input, but it belongs in the <strong>size</strong>. If the honest stop is far away, trade smaller. Don't move the stop closer.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The formulas</h2>
+      <div class="sl-row"><div class="sl-box">stop = invalidation ∓ buffer × ATR</div></div>
+      <div class="sl-row"><div class="sl-box">R = target distance ÷ stop distance · break-even = 1 ÷ (1 + R)</div></div>
+      <div class="sl-row"><div class="sl-box">lots = money at risk ÷ (stop pips × pip value)</div></div>
+      <p class="sl-p">Check the stop in ATRs. One ATR is an ordinary day's high-to-low. A stop well under half an ATR from entry gets hit by noise, so wait for a better entry rather than tightening it.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Build the plan</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it: EUR/USD long from 1.0850, $10 per pip per lot</div>
+        <div class="sl-sliderhead"><span>Invalidation below entry</span><span class="sl-live" id="m-inv-val">70 pips</span></div>
+        <input type="range" class="sl-slider" id="m-inv" min="5" max="200" step="1" value="70">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>ATR</span><span class="sl-live" id="m-atr-val">65 pips</span></div>
+        <input type="range" class="sl-slider" id="m-atr" min="20" max="200" step="1" value="65">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Buffer beyond invalidation</span><span class="sl-live" id="m-buf-val">0.25 ATR</span></div>
+        <input type="range" class="sl-slider" id="m-buf" min="0" max="1" step="0.05" value="0.25">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Target above entry</span><span class="sl-live" id="m-tgt-val">150 pips</span></div>
+        <input type="range" class="sl-slider" id="m-tgt" min="10" max="400" step="5" value="150">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Money at risk</span><span class="sl-live" id="m-risk-val">$500</span></div>
+        <input type="range" class="sl-slider" id="m-risk" min="100" max="2000" step="50" value="500">
+        <div class="sl-svgwrap">
+          <svg id="m-svg" class="tp-svg" viewBox="0 0 640 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Price ladder: stop and invalidation below entry, target above; the loss zone red, the profit zone green, and a grey band of half an ATR either side of entry.">
+            <g id="m-g"></g>
+          </svg>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Stop distance</div><div class="sl-calc-result-val" id="m-d">86 pips</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">R · break-even</div><div class="sl-calc-result-val" id="m-r">1.74R · 36.4%</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Size</div><div class="sl-calc-result-val" id="m-lots">0.58 lots</div></div>
+        </div>
+        <div class="tp-flag good" id="m-flag"></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6 · Worked example</div>
+      <h2 class="sl-h2">EUR/USD, view to plan</h2>
+      <div class="tp-steps">
+        <div>View: spread says EUR/USD cheap; aim <b>1.1000</b> within ~3 weeks. Price <b>1.0850</b>, ATR <b>65</b> pips.</div>
+        <div>Invalidation: March low <b>1.0780</b> (the reason fails below it).</div>
+        <div>Stop: buffer 0.25 × 65 ≈ 16 → <b>1.0764</b>; distance <b>86 pips = 1.32 ATR</b>.</div>
+        <div>Target: 150 pips → <b>R = 1.74</b>; break-even <b>36.4%</b>.</div>
+        <div>Size: $500 ÷ (86 × $10) = 0.581 → <b>0.58 lots</b> (risk $498.80; +$870 at target).</div>
+        <div>Time stop: <b>15 sessions</b>. Gap line: open at 1.0700 → loss <b>$870</b>.</div>
+      </div>
+      <div class="sl-callout amber"><div class="sl-callout-label">Same view, pain stop</div><p>A 20-pip stop at 1.0830 is 0.31 ATR, inside a quiet morning's wiggle. It shows 7.5R on paper, but the hit rate collapses because most "losses" are noise.</p></div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7 · It actually happened</div>
+      <h2 class="sl-h2">15 January 2015: the franc floor goes</h2>
+      <p class="sl-p">From 2011 the Swiss National Bank held EUR/CHF above 1.20. Traders went long near 1.20 with stops just below. On their analysis the floor could not break.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green"><span class="sl-ctag green">The invalidation</span><p>Correct. Below 1.20 the thesis was dead.</p></div>
+        <div class="sl-ccard red"><span class="sl-ctag red">The exit</span><p>The SNB dropped the floor without warning. EUR/CHF briefly traded well below parity, and stops filled far lower. Alpari UK went insolvent; FXCM needed a rescue loan.</p></div>
+      </div>
+      <div class="sl-callout amber"><div class="sl-callout-label">The lesson</div><p>A stop is an order, not a guarantee. Around pegs, events and weekends, add a gap line and size for it.</p></div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Where the plan sits</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>The view</b>"EUR/USD is cheap against the spread"</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson · the plan</b>Invalidation from the reason; stop past the noise; size from the stop</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Execution</b>Orders in before emotion; gap risk sized</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Review</b>The journal scores the plan</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Losses are the size you chose</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9 · The desk's verdict</div>
+      <h2 class="sl-h2">What was tested here</h2>
+      <div class="sl-stamp untested"><span class="sl-stamp-tag">Not tested here</span><span><strong>"Writing the plan first improves results."</strong> No plan-first vs plan-later sample. The desk does pre-register every test, writing the pass bar before the data are run. That is invalidation-before-entry for research.</span></div>
+      <div class="sl-stamp null" data-evidence="zone-engine" data-evidence-date="2026-09-01"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>Confluence zones as entries.</strong> M30 negative on 83k trades, both halves; H4 a coin flip. And "the 8-pip stop tripled stop-outs against a ~46-pip structure". A stop that ignores the structure measures noise.</span></div>
+      <div class="sl-stamp validated" data-evidence="band-reach-from-here" data-evidence-date="2026-09-18"><span class="sl-stamp-tag">Desk test: held up</span><span><strong>Targets from a measured range.</strong> Median band reached by 10:30 UK → 75th band before the close: EUR/USD 43% vs 18% ordinary, gold 50% vs 21%, NAS100 63% vs 23% (2.3–2.7×). A target guide, never an entry.</span></div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10 · Template</div>
+      <h2 class="sl-h2">The trade plan card</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Thesis</h4><p>One sentence: instrument, direction, reason, horizon.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Invalidation + why</h4><p>If the "why" is "it's what I can afford", start again.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Stop, in ATR</h4><p>Well under 0.5 ATR? Wait for a better entry.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>Target + time stop</h4><p>From the analysis, with an expiry date.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">5</div><div><h4>R and break-even</h4><p>1/(1+R), then costs on top.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">6</div><div><h4>Size + gap line</h4><p>Lots rounded down; the loss if price gaps past the stop. Timestamp it.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Your honest invalidation is 150 pips away and that scares you. What changes?</h4>
+        <button class="sl-quiz-opt">Move the stop to 50 pips</button>
+        <button class="sl-quiz-opt" data-correct="true">Trade fewer lots</button>
+        <button class="sl-quiz-opt">Drop the stop and watch closely</button>
+        <div class="sl-quiz-explain">Pain goes into size. A 50-pip stop exits while the thesis is still alive.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Stop 40 pips, target 60 pips. Break-even win rate before costs?</h4>
+        <button class="sl-quiz-opt">60%</button>
+        <button class="sl-quiz-opt" data-correct="true">40%</button>
+        <button class="sl-quiz-opt">33%</button>
+        <div class="sl-quiz-explain">R = 1.5, so 1/(1+1.5) = 40%. A 2-pip round-trip cost pushes it to 42%.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>$500 at risk, stop 100 pips, $10 per pip per lot. Size?</h4>
+        <button class="sl-quiz-opt">5 lots</button>
+        <button class="sl-quiz-opt">0.05 lots</button>
+        <button class="sl-quiz-opt" data-correct="true">0.5 lots</button>
+        <div class="sl-quiz-explain">500 ÷ (100 × 10) = 0.5 lots. A loss at the stop costs exactly $500.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why did EUR/CHF stops just under 1.20 fail in January 2015?</h4>
+        <button class="sl-quiz-opt">The invalidation level was wrong</button>
+        <button class="sl-quiz-opt" data-correct="true">Price gapped past them; a stop fills at the next real price</button>
+        <button class="sl-quiz-opt">Brokers ignored the orders</button>
+        <div class="sl-quiz-explain">The level was right. The exit assumption was wrong. Size for the gap when one is possible.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A plan is five numbers written first: entry, invalidation, stop, target, size. Add a time stop.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Invalidation comes from the reason. Pain goes into size, never into the stop.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Stop = invalidation + buffer. Check it in ATRs.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Lots = risk ÷ (stop pips × pip value), rounded down. Break-even = 1/(1+R).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A stop is an order, not a guarantee. Size for gaps. Desk test: the zone engine's 8-pip stop against ~46-pip structure tripled stop-outs.</p></div>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Thinking in Expected Value</h3>
+        <p>Win rate × payoff: why a 40% hit rate can beat 70%, and how to pull a probability out of an analysis that never states one.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="action-expected-value-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="action-trade-plan.html">Read the full lesson →</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function el(name, attrs, style, text){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (style) e.setAttribute('style', style);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function $(id){ return document.getElementById(id); }
+  var ids = ['m-inv', 'm-atr', 'm-buf', 'm-tgt', 'm-risk'];
+  function render(){
+    var inv = +$('m-inv').value, atr = +$('m-atr').value, buf = +$('m-buf').value, tgt = +$('m-tgt').value, risk = +$('m-risk').value;
+    $('m-inv-val').textContent = inv + ' pips';
+    $('m-atr-val').textContent = atr + ' pips';
+    $('m-buf-val').textContent = buf.toFixed(2) + ' ATR';
+    $('m-tgt-val').textContent = tgt + ' pips';
+    $('m-risk-val').textContent = '$' + risk.toLocaleString('en-US');
+    var bufP = Math.round(buf * atr), D = inv + bufP, R = tgt / D, be = 1 / (1 + R);
+    var lots = Math.floor(risk / (D * 10) * 100 + 1e-9) / 100, dATR = D / atr;
+    $('m-d').textContent = D + ' pips · ' + dATR.toFixed(2) + ' ATR';
+    $('m-r').textContent = R.toFixed(2) + 'R · ' + (be * 100).toFixed(1) + '%';
+    $('m-lots').textContent = lots.toFixed(2) + ' lots';
+    var f = $('m-flag');
+    if (dATR < 0.5) { f.className = 'tp-flag bad'; f.textContent = 'Stop is inside ordinary noise (under 0.5 ATR). Stop-outs will mostly be noise.'; }
+    else if (R < 1) { f.className = 'tp-flag meh'; f.textContent = 'Target under 1R: you need to win more than ' + (be * 100).toFixed(0) + '% of the time.'; }
+    else if (bufP === 0) { f.className = 'tp-flag meh'; f.textContent = 'No buffer: the stop sits on the level, where overshoots and other stops cluster.'; }
+    else { f.className = 'tp-flag good'; f.textContent = 'Outside the noise, beyond 1R, size from the stop. Loss at stop ≈ $' + (lots * D * 10).toFixed(2) + '.'; }
+    var g = $('m-g'); while (g.firstChild) g.removeChild(g.firstChild);
+    var lo = -Math.max(D, atr / 2) * 1.08, hi = Math.max(tgt, atr / 2) * 1.08, X0 = 20, X1 = 620, Y = 60;
+    function x(p){ return X0 + (X1 - X0) * (p - lo) / (hi - lo); }
+    g.appendChild(el('rect', { x: x(-atr / 2), y: Y - 22, width: x(atr / 2) - x(-atr / 2), height: 44 }, 'fill:var(--text3);opacity:0.2'));
+    g.appendChild(el('rect', { x: x(-D), y: Y - 8, width: x(0) - x(-D), height: 16 }, 'fill:var(--red);opacity:0.6'));
+    g.appendChild(el('rect', { x: x(0), y: Y - 8, width: x(tgt) - x(0), height: 16 }, 'fill:var(--green);opacity:0.6'));
+    [[0, 'var(--text)', 'entry', true], [tgt, 'var(--green)', 'target', true], [-inv, 'var(--amber)', 'invalid.', true], [-D, 'var(--red)', 'stop', false]].forEach(function(m, i){
+      var xx = x(m[0]);
+      g.appendChild(el('line', { x1: xx, x2: xx, y1: Y - 18, y2: Y + 18 }, 'stroke:' + m[1] + ';stroke-width:2.5'));
+      var anchor = xx < 90 ? 'start' : (xx > 550 ? 'end' : 'middle');
+      var crowded = Math.abs(x(m[0]) - x(0)) < 110 && i > 0;
+      var yT = m[3] ? (crowded ? Y - 44 : Y - 26) : Y + 40;
+      g.appendChild(el('text', { x: xx, y: yT, 'text-anchor': anchor, 'font-size': 18, 'font-family': "'DM Mono',monospace" }, 'fill:' + m[1], m[2]));
+    });
+  }
+  ids.forEach(function(id){ $(id).addEventListener('input', render); });
+  render();
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

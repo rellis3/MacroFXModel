@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>When an Edge Has Stopped Working — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  .ed-table{width:100%;border-collapse:collapse;font-size:12.5px;margin:10px 0}
+  .ed-table th,.ed-table td{border-bottom:1px solid var(--border);padding:6px 6px;text-align:right;font-family:'DM Mono',monospace}
+  .ed-table th{color:var(--text3);font-weight:500;font-size:10.5px}
+  .ed-table td:first-child,.ed-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
+  .ed-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .ed-v{margin-top:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);font-size:13.5px;color:var(--text2);line-height:1.5}
+  .ed-v strong{display:block;font-size:14.5px;margin-bottom:2px}
+  .ed-v.green{background:var(--green-bg);border-color:var(--green-bd)}
+  .ed-v.green strong{color:var(--green)}
+  .ed-v.amber{background:var(--amber-bg);border-color:var(--amber-bd)}
+  .ed-v.amber strong{color:var(--amber)}
+  .ed-v.red{background:var(--red-bg);border-color:var(--red-bd)}
+  .ed-v.red strong{color:var(--red)}
+  .ed-btnrow{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">When an Edge Has Stopped Working — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full decay simulator, the record checker with prior odds, the CUSUM maths and a 6-question self-test?<a href="action-edge-decay.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">From Analysis to Action · 8 of 8</div>
+      <h1 class="sl-h1">When an Edge <em>Has Stopped Working</em></h1>
+      <p class="sl-lede">Every edge has losing stretches, and some edges really do die. Tell the two apart with rules set in advance — streak odds, a record test, a CUSUM alarm, and an honest count of how many trades it takes.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Unlucky, or has the skill gone?</h2>
+      <p class="sl-sub">Page (1954) for CUSUM; Wald (1940s) for sequential testing; Philips, Yashchin &amp; Stein (2003) for monitoring managers.</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Allocators have always asked: a bad year — fire the manager or hold? A year is too short, and checking every month quietly raises the false-alarm rate.</p>
+        <p>The tools came from factory quality control: Page's CUSUM chart, built on Wald's sequential test. Philips, Yashchin and Stein set out a CUSUM for active managers in 2003. Any trading rule with a tested record can be watched the same way.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage on">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> decide, on a pre-set rule, whether the live record still fits the tested edge.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">A streak is not a verdict</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Exact streak odds (no simulation)</div>
+        <div class="sl-sliderhead"><span>Tested win rate</span><span class="sl-live" id="sk-p-val">55%</span></div>
+        <input type="range" class="sl-slider" id="sk-p" min="30" max="75" step="1" value="55">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Live trades so far</span><span class="sl-live" id="sk-n-val">180</span></div>
+        <input type="range" class="sl-slider" id="sk-n" min="20" max="1000" step="10" value="180">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Losing run of at least</span><span class="sl-live" id="sk-k-val">7</span></div>
+        <input type="range" class="sl-slider" id="sk-k" min="3" max="15" step="1" value="7">
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">From one given trade</div><div class="sl-calc-result-val" id="sk-one">1 in 268</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Somewhere in the record</div><div class="sl-calc-result-val" id="sk-any">30.6%</div></div>
+        </div>
+        <div class="sl-note">A system with no edge at all makes streaks of almost the same length. Streaks describe variance, not the edge.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3 · The tool</div>
+      <h2 class="sl-h2">Test the whole record</h2>
+      <div class="sl-row"><div class="sl-box">z = (W − n·p₀) ÷ √(n·p₀·q₀)</div></div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Record checker</div>
+        <div class="sl-sliderhead"><span>Tested win rate p₀</span><span class="sl-live" id="rc-p-val">55%</span></div>
+        <input type="range" class="sl-slider" id="rc-p" min="40" max="75" step="1" value="55">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Live trades n</span><span class="sl-live" id="rc-n-val">180</span></div>
+        <input type="range" class="sl-slider" id="rc-n" min="20" max="1000" step="10" value="180">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Live wins W</span><span class="sl-live" id="rc-w-val">88</span></div>
+        <input type="range" class="sl-slider" id="rc-w" min="0" max="180" step="1" value="88">
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">z vs tested</div><div class="sl-calc-result-val" id="rc-z">−1.65</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">LR: no edge vs tested</div><div class="sl-calc-result-val" id="rc-lr">3.69</div></div>
+        </div>
+        <div class="ed-v" id="rc-v"></div>
+        <div class="sl-note">Payoff 1 : 1 here, so "no edge" means 50%. Green above −1.28 · amber to −2.33 · red below.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">How many trades before you can tell?</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>5% false alarm, 80% power</div>
+        <div class="sl-sliderhead"><span>Tested win rate</span><span class="sl-live" id="nn-a-val">55%</span></div>
+        <input type="range" class="sl-slider" id="nn-a" min="45" max="75" step="1" value="55">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Decayed win rate</span><span class="sl-live" id="nn-b-val">50%</span></div>
+        <input type="range" class="sl-slider" id="nn-b" min="30" max="74" step="1" value="50">
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Live trades needed</div><div class="sl-calc-result-val" id="nn-out">615</div></div>
+        </div>
+      </div>
+      <div class="ed-scroll">
+      <table class="ed-table">
+        <tr><th>Tested → decayed</th><th>55→50</th><th>60→50</th><th>63→50</th><th>55→52</th></tr>
+        <tr><td>Trades needed</td><td>615</td><td>151</td><td>88</td><td>1,706</td></tr>
+      </table>
+      </div>
+      <p class="sl-p">Halve the decay and you need about four times the trades. A thin edge fading a little is invisible for a year or more.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">CUSUM: an alarm on every trade</h2>
+      <div class="sl-row"><div class="sl-box">S = max(0, S + score) · alarm at S ≥ h</div></div>
+      <p class="sl-sub">55% tested vs 50% break-even: a loss scores +0.105, a win −0.095. The floor at zero forgets old good runs, so it reacts to a recent change.</p>
+      <div class="ed-scroll">
+      <table class="ed-table">
+        <tr><th>Threshold h</th><th>2</th><th>3</th><th>4</th><th>5</th></tr>
+        <tr><td>False alarm in 300 (healthy)</td><td>21.1%</td><td>3.5%</td><td>0.5%</td><td>0.05%</td></tr>
+        <tr><td>Decay caught in 1,000</td><td>99.6%</td><td>95.4%</td><td>86.5%</td><td>73.6%</td></tr>
+        <tr><td>Median trades to alarm</td><td>194</td><td>339</td><td>475</td><td>589</td></tr>
+      </table>
+      </div>
+      <p class="sl-p">Simulated, 40,000 paths each. Faster and quieter cannot both improve — choose h for the false-alarm rate you can live with.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6 · Try it</div>
+      <h2 class="sl-h2">Decay simulator</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>600 trades · the change happens at trade 200</div>
+        <div class="sl-svgwrap">
+          <svg id="ds-svg" viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The CUSUM for one simulated live record with the alarm threshold as a dashed line, a dashed vertical line at trade 200 where the win rate changes, and a red dot where the alarm fires.">
+            <g id="ds-g"></g>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Tested win rate (payoff 1 : 1)</span><span class="sl-live" id="ds-p0-val">55%</span></div>
+        <input type="range" class="sl-slider" id="ds-p0" min="52" max="70" step="1" value="55">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Win rate after trade 200</span><span class="sl-live" id="ds-pa-val">50%</span></div>
+        <input type="range" class="sl-slider" id="ds-pa" min="35" max="70" step="1" value="50">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Alarm threshold h</span><span class="sl-live" id="ds-h-val">3.0</span></div>
+        <input type="range" class="sl-slider" id="ds-h" min="1" max="7" step="0.5" value="3">
+        <div class="ed-btnrow">
+          <button type="button" class="sl-tab" id="ds-reroll">🎲 Re-roll</button>
+          <button type="button" class="sl-tab" id="ds-reset">Seed 10</button>
+        </div>
+        <div class="sl-calc-steps" id="ds-out"></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7 · Worked example</div>
+      <h2 class="sl-h2">180 trades, 88 wins, seven losses in a row</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>EUR/USD system tested at 55%, payoff 1 : 1</div>
+        <div class="sl-calc-steps">
+          <div>Streak: run of 7+ in 180 trades = <b>30.6%</b> — not evidence</div>
+          <div>Record: expected 99 ± 6.67 → z = <b>−1.65</b> (p ≈ 0.05)</div>
+          <div>LR = (0.50/0.55)⁸⁸ (0.50/0.45)⁹² = <b>3.7</b></div>
+          <div>Prior 3 : 1 for the edge → chance it's gone ≈ <b>55%</b></div>
+          <div>Power at n = 180: only <b>38%</b>; 80% needs ~<b>615</b></div>
+          <div>CUSUM (h = 3): last 60 trades add <b>+2.11</b> — near, not over</div>
+        </div>
+        <div class="ed-v amber"><strong>Decay verdict: AMBER — review</strong>Halve size, look for a named cause, let the rule decide: red at CUSUM 3 or z −2.33; green again above z −1.28.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">How an edge dies</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Cause</b>Published, crowded, or its regime ends</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Live record</b>Gross edge shrinks; costs don't</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson · the decay test</b>Pre-set CUSUM and record test, known false-alarm rate</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Decision</b>Amber: half size, review. Red: stop, re-test</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Capital stops leaking — without quitting in an ordinary streak</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9 · It actually happened</div>
+      <h2 class="sl-h2">Slow decay, sudden shocks</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral"><span class="sl-ctag blue">August 2007 · quant quake</span><p>Many quant equity funds lost heavily in the same few days while the market barely moved; much of it reversed soon after. Khandani and Lo blamed crowded positions being unwound — and found the stand-in strategy's returns had been falling for years as capital piled in. Slow erosion was real decay; the week itself was a shock.</p></div>
+        <div class="sl-ccard neutral"><span class="sl-ctag blue">2016 · publication</span><p>McLean and Pontiff studied 97 published return predictors: returns were 26% lower out of sample and 58% lower after publication. Decay has a nameable cause — someone else found the edge — and is usually partial.</p></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10 · The desk's verdict</div>
+      <h2 class="sl-h2">What was tested here</h2>
+      <div class="sl-stamp untested"><span class="sl-stamp-tag">Not tested here</span><span><strong>"A losing streak means the edge has decayed."</strong> A streak can't settle it, and no desk strategy has run live long enough for a full decay test.</span></div>
+      <div class="sl-stamp validated" data-evidence="yield-spread-sleeve" data-evidence-date="2026-07-17"><span class="sl-stamp-tag">Desk test: held up</span><span><strong>The 2-year yield-spread FX sleeve</strong> (~109 out-of-sample trades, 63% win, PF 2.2; paper-traded since 2026-07). Seeing a fall to 50% would take ~88 live trades — years, at its pace. <em>Not forward-proven.</em></span></div>
+      <div class="sl-stamp context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10"><span class="sl-stamp-tag">Desk data: base rate</span><span><strong>Check the backtest first.</strong> A Fibonacci-level system: 85.7% backtest win rate vs 39.6% live. A gap like that from day one isn't decay — the backtest saw something live couldn't.</span></div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11 · Template</div>
+      <h2 class="sl-h2">The decay review</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Before launch</h4><p>Tested p₀, payoff, break-even, trades a year — and the trades needed to see a fall to break-even.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Set the alarm</h4><p>Pick h for a false-alarm rate you accept. Write down the streak you should expect.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Every trade, every month</h4><p>Update the CUSUM; record z and LR. Green / amber (half size) / red (stop).</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>Find a cause — never refit</h4><p>Costs, data, code, regime, crowding. A re-launch needs a fresh out-of-sample test.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Tested at 60%, live 105 wins of 200. Which band?</h4>
+        <button class="sl-quiz-opt">Green</button>
+        <button class="sl-quiz-opt" data-correct="true">Amber (z ≈ −2.17)</button>
+        <button class="sl-quiz-opt">Red</button>
+        <div class="sl-quiz-explain">Expected 120 ± 6.93 → z = −15/6.93 = −2.17. Between −1.28 and −2.33: half size, review.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Roughly how many trades to tell 55% from 50% (5% / 80%)?</h4>
+        <button class="sl-quiz-opt">About 60</button>
+        <button class="sl-quiz-opt">About 150</button>
+        <button class="sl-quiz-opt" data-correct="true">About 615</button>
+        <div class="sl-quiz-explain">A five-point fall is small against the noise of single trades. At 100 trades a year that's six years.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>You drop the CUSUM threshold from 4 to 2. What happens?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Faster detection, far more false alarms</button>
+        <button class="sl-quiz-opt">Faster detection, no cost</button>
+        <button class="sl-quiz-opt">Fewer false alarms</button>
+        <div class="sl-quiz-explain">False alarms in 300 healthy trades go from ~0.5% to ~21%; median time to catch a real decay falls from ~475 to ~194 trades.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Backtest 80% wins; live 42% from the first trade. Most likely?</h4>
+        <button class="sl-quiz-opt">The edge decayed overnight</button>
+        <button class="sl-quiz-opt" data-correct="true">The backtest saw something live can't</button>
+        <button class="sl-quiz-opt">An ordinary losing streak</button>
+        <div class="sl-quiz-explain">A gap that size from day one points at look-ahead, survivorship or impossible fills. Replay the live period through the backtest before any decay test.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Streaks are not verdicts: at 55%, 7 in a row appears in 180 trades about 31% of the time.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Test the whole record against the tested edge (z), and let LR move your odds — no more.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Know the trades needed before launch: 55→50 needs ~615, 63→50 ~88.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>CUSUM watches every trade with a known false-alarm rate. Choose h from the table, not your mood.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Amber halves size and looks for a cause; red stops and re-tests. Never refit on the losing stretch.</p></div>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">That completes the series</div>
+        <h3>From Analysis to Action</h3>
+        <p>Plan, expected value, combining signals, costs, sizing, scoring, base rates, decay — start again from the trade plan.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="action-trade-plan-micro.html">Back to lesson 1 →</a>
+          <a class="sl-btn ghost" href="action-edge-decay.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="action-base-rates-micro.html">← Previous: Base Rates First</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  var SVGNS = 'http://www.w3.org/2000/svg', FONT = "'DM Mono',monospace";
+  function el(name, attrs, style, text){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (style) e.setAttribute('style', style);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function clear(g){ while (g.firstChild) g.removeChild(g.firstChild); }
+  function $(id){ return document.getElementById(id); }
+  function fmt(x, d){ var s = Math.abs(x).toFixed(d); return (x < 0 && parseFloat(s) !== 0 ? '−' : '') + s; }
+  function pRun(n, k, q){
+    var st = new Float64Array(k), hit = 0; st[0] = 1;
+    for (var t = 0; t < n; t++){
+      var nx = new Float64Array(k);
+      for (var r = 0; r < k; r++){ var v = st[r]; if (!v) continue; nx[0] += v * (1 - q); if (r + 1 >= k) hit += v * q; else nx[r + 1] += v * q; }
+      st = nx;
+    }
+    return hit;
+  }
+  function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+  // Slide 3 — streak odds.
+  (function(){
+    var pI = $('sk-p'), nI = $('sk-n'), kI = $('sk-k');
+    function render(){
+      var p = parseFloat(pI.value) / 100, n = parseInt(nI.value, 10), k = parseInt(kI.value, 10), q = 1 - p;
+      $('sk-p-val').textContent = Math.round(p * 100) + '%';
+      $('sk-n-val').textContent = n;
+      $('sk-k-val').textContent = k;
+      $('sk-one').textContent = '1 in ' + Math.round(1 / Math.pow(q, k)).toLocaleString();
+      $('sk-any').textContent = (pRun(n, k, q) * 100).toFixed(1) + '%';
+    }
+    [pI, nI, kI].forEach(function(i){ i.addEventListener('input', render); });
+    render();
+  })();
+
+  // Slide 4 — record checker (payoff 1:1, so break-even 50%).
+  (function(){
+    var pI = $('rc-p'), nI = $('rc-n'), wI = $('rc-w');
+    function render(){
+      var p0 = parseFloat(pI.value) / 100, n = parseInt(nI.value, 10);
+      wI.max = n; if (parseInt(wI.value, 10) > n) wI.value = n;
+      var W = parseInt(wI.value, 10), q0 = 1 - p0;
+      $('rc-p-val').textContent = Math.round(p0 * 100) + '%';
+      $('rc-n-val').textContent = n;
+      $('rc-w-val').textContent = W + ' (' + (W / n * 100).toFixed(0) + '%)';
+      var z = (W - n * p0) / Math.sqrt(n * p0 * q0);
+      var lr = Math.exp(W * Math.log(0.5 / p0) + (n - W) * Math.log(0.5 / q0));
+      $('rc-z').textContent = fmt(z, 2);
+      $('rc-lr').textContent = lr >= 1000 ? lr.toExponential(1) : lr >= 10 ? lr.toFixed(0) : lr.toFixed(2);
+      var V = $('rc-v'), cls, head, body;
+      if (z <= -2.33){ cls = 'red'; head = 'RED — stop and re-test'; body = 'More than 2.33 SDs below the tested edge.'; }
+      else if (z <= -1.28){ cls = 'amber'; head = 'AMBER — review, half size'; body = 'Evidence building; look for a named cause.'; }
+      else { cls = 'green'; head = 'GREEN — no evidence of decay'; body = 'Consistent with the tested edge' + (p0 > 0.5 && n < Math.pow((1.6449 * Math.sqrt(p0 * q0) + 0.8416 * 0.5) / (p0 - 0.5), 2) ? ' — but too few trades for the test to be strong.' : '.'); }
+      V.className = 'ed-v ' + cls; V.innerHTML = '<strong>' + head + '</strong>' + body;
+    }
+    [pI, nI, wI].forEach(function(i){ i.addEventListener('input', render); });
+    render();
+  })();
+
+  // Slide 5 — trades needed.
+  (function(){
+    var aI = $('nn-a'), bI = $('nn-b');
+    function render(){
+      var a = parseFloat(aI.value) / 100, b = parseFloat(bI.value) / 100;
+      $('nn-a-val').textContent = Math.round(a * 100) + '%';
+      $('nn-b-val').textContent = Math.round(b * 100) + '%';
+      if (b >= a){ $('nn-out').textContent = 'set decayed < tested'; return; }
+      var n = Math.pow((1.6449 * Math.sqrt(a * (1 - a)) + 0.8416 * Math.sqrt(b * (1 - b))) / (a - b), 2);
+      $('nn-out').textContent = Math.ceil(n).toLocaleString();
+    }
+    [aI, bI].forEach(function(i){ i.addEventListener('input', render); });
+    render();
+  })();
+
+  // Slide 7 — CUSUM decay simulator (payoff 1:1, break-even 50%).
+  (function(){
+    var p0I = $('ds-p0'), paI = $('ds-pa'), hI = $('ds-h'), seed = 10, N = 600, TC = 200;
+    function run(p0, pa, h, rnd, keep){
+      var wi = Math.log(0.5 / p0), li = Math.log(0.5 / (1 - p0)), S = 0, alarm = 0, path = keep ? [0] : null;
+      for (var t = 1; t <= N; t++){
+        S = Math.max(0, S + (rnd() < (t > TC ? pa : p0) ? wi : li));
+        if (!alarm && S >= h) alarm = t;
+        if (keep) path.push(S);
+      }
+      return { alarm: alarm, path: path };
+    }
+    function render(){
+      var p0 = parseFloat(p0I.value) / 100, pa = parseFloat(paI.value) / 100, h = parseFloat(hI.value);
+      $('ds-p0-val').textContent = Math.round(p0 * 100) + '%';
+      $('ds-pa-val').textContent = Math.round(pa * 100) + '%';
+      $('ds-h-val').textContent = h.toFixed(1);
+      var r = run(p0, pa, h, mulberry32(seed), true), g = $('ds-g'); clear(g);
+      var X0 = 52, X1 = 624, Y0 = 190, Y1 = 12, cmax = Math.max(h * 1.25, Math.max.apply(null, r.path));
+      function px(t){ return X0 + (X1 - X0) * t / N; }
+      function py(v){ return Y0 - (Y0 - Y1) * v / cmax; }
+      g.appendChild(el('line', { x1: X0, x2: X1, y1: py(0), y2: py(0) }, 'stroke:var(--text3);stroke-width:1'));
+      g.appendChild(el('line', { x1: X0, x2: X1, y1: py(h), y2: py(h) }, 'stroke:var(--amber);stroke-width:1.5;stroke-dasharray:5,4'));
+      g.appendChild(el('text', { x: X0 - 6, y: py(h) + 4, 'text-anchor': 'end', 'font-size': 12, 'font-family': FONT }, 'fill:var(--amber)', 'h'));
+      g.appendChild(el('line', { x1: px(TC), x2: px(TC), y1: Y1, y2: Y0 }, 'stroke:var(--amber);stroke-width:1.5;stroke-dasharray:4,3'));
+      [0, 200, 400, 600].forEach(function(t){ g.appendChild(el('text', { x: px(t), y: Y0 + 16, 'text-anchor': 'middle', 'font-size': 12, 'font-family': FONT }, 'fill:var(--text3)', t)); });
+      var d = ''; for (var t = 0; t < r.path.length; t++) d += (t ? 'L' : 'M') + px(t).toFixed(1) + ',' + py(r.path[t]).toFixed(1);
+      g.appendChild(el('path', { d: d, fill: 'none' }, 'stroke:var(--purple);stroke-width:2'));
+      if (r.alarm) g.appendChild(el('circle', { cx: px(r.alarm), cy: py(r.path[r.alarm]), r: 6 }, 'fill:var(--red)'));
+      var rnd = mulberry32(seed * 7919 + 13), fa = 0, caught = 0, delays = [], changes = pa !== p0;
+      for (var s = 0; s < 500; s++){
+        var x = run(p0, pa, h, rnd, false);
+        if (x.alarm && (!changes || x.alarm <= TC)) fa++;
+        else if (x.alarm){ caught++; delays.push(x.alarm - TC); }
+      }
+      delays.sort(function(a, b){ return a - b; });
+      $('ds-out').innerHTML =
+        '<div>Seed <b>' + seed + '</b> · this path: ' + (r.alarm ? 'alarm at trade <b>' + r.alarm + '</b>' + (!changes || r.alarm <= TC ? ' — <b>false alarm</b>' : ' (' + (r.alarm - TC) + ' after the change)') : '<b>no alarm</b>') + '</div>' +
+        '<div>500 paths: false alarm <b>' + (fa / 5).toFixed(1) + '%</b>' + (changes ? ' · decay caught by 600 <b>' + (caught / 5).toFixed(1) + '%</b>' + (delays.length ? ', median <b>' + delays[delays.length >> 1] + '</b> trades after' : '') : '') + '</div>';
+    }
+    [p0I, paI, hI].forEach(function(i){ i.addEventListener('input', render); });
+    $('ds-reroll').addEventListener('click', function(){ seed = 1 + Math.floor(Math.random() * 99999); render(); });
+    $('ds-reset').addEventListener('click', function(){ seed = 10; render(); });
+    render();
+  })();
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

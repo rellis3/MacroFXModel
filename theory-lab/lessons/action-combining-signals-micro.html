@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Combining Signals That Disagree — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  .cs-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
+  .cs-table th,.cs-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace}
+  .cs-table th{color:var(--text3);font-weight:500;font-size:11px}
+  .cs-table td:first-child,.cs-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
+  .cs-verdict{display:inline-block;font-family:'DM Mono',monospace;font-weight:700;font-size:14px;padding:4px 12px;border-radius:20px;border:1px solid;margin-top:10px}
+  .cs-verdict.long{color:var(--green);background:var(--green-bg);border-color:var(--green-bd)}
+  .cs-verdict.short{color:var(--red);background:var(--red-bg);border-color:var(--red-bd)}
+  .cs-verdict.none{color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bd)}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Combining Signals That Disagree — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivation, the five-signal combiner with your own families and records, two real stories and a 6-question self-test?<a href="action-combining-signals.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">From Analysis to Action · 3 of 8</div>
+      <h1 class="sl-h1">Combining Signals <em>That Disagree</em></h1>
+      <p class="sl-lede">Three indicators say long, two say short. The vote says long. The honest answer may be "no view". Here is how to turn five readings into one number — without counting the same opinion three times.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">From "weigh it up in your head" to a formula</h2>
+      <p class="sl-sub">Grinold (1989); Grinold &amp; Kahn (1995).</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Grinold's fundamental law of active management (1989): a strategy's quality grows with each forecast's skill (IC) times the square root of the number of <strong>independent</strong> bets. Ten correlated signals are not ten bets.</p>
+        <p>Grinold and Kahn's <em>Active Portfolio Management</em> made it a recipe: score every signal, forecast = volatility × IC × score, combine with weights that respect correlation.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage on">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Several readings disagree — what one forecast do they add up to, and is it worth acting on?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Five friends, one newspaper</h2>
+      <p class="sl-p">Three friends say "rain" — but all three read the same paper. That's one opinion said three times. The friend with the barometer and the one who looked at the sky are each telling you something new.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red"><span class="sl-ctag red">Counting votes</span><p>Three trend indicators + two others. "3 to 2, go long." The trend idea gets counted three times.</p></div>
+        <div class="sl-ccard green"><span class="sl-ctag green">Counting opinions</span><p>Group near-copies into families, weight each family by its tested record, then see what's left.</p></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">How many opinions do you really have?</h2>
+      <div class="sl-row"><div class="sl-box">N_eff = N / (1 + (N − 1)·ρ)</div></div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-sliderhead"><span>Signals on your screen N</span><span class="sl-live" id="ne-n-val">3</span></div>
+        <input type="range" class="sl-slider" id="ne-n" min="1" max="20" step="1" value="3">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Average correlation ρ</span><span class="sl-live" id="ne-r-val">0.80</span></div>
+        <input type="range" class="sl-slider" id="ne-r" min="0" max="0.95" step="0.05" value="0.8">
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Worth this many independent signals</div><div class="sl-calc-result-val" id="ne-out">1.15</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Ceiling, however many you add</div><div class="sl-calc-result-val" id="ne-cap">1.25</div></div>
+        </div>
+        <div class="sl-note">Three trend indicators at 0.8 are worth 1.15 signals. Add two more and you reach 1.19. More of the same makes a screen look more convincing, not more informative.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Combine by regression, not by vote</h2>
+      <div class="sl-row"><div class="sl-box">weights w = R⁻¹ · IC · forecast F = Σ wᵢ·sᵢ</div></div>
+      <p class="sl-sub">sᵢ = each signal's score in its own standard deviations; IC = its correlation with the next return; R = how the signals correlate with each other. R⁻¹ is what stops near-copies being counted twice.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Two signals, each with the same IC</div>
+        <div class="sl-sliderhead"><span>IC of each</span><span class="sl-live" id="two-ic-val">0.05</span></div>
+        <input type="range" class="sl-slider" id="two-ic" min="0.01" max="0.15" step="0.01" value="0.05">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Correlation between them</span><span class="sl-live" id="two-r-val">0.80</span></div>
+        <input type="range" class="sl-slider" id="two-r" min="0" max="0.95" step="0.05" value="0.8">
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Combined IC = IC·√(2/(1+ρ))</div><div class="sl-calc-result-val" id="two-out">0.053</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">If they were independent</div><div class="sl-calc-result-val" id="two-ind">0.071</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Weight by track record — then shrink it</h2>
+      <div class="sl-row"><div class="sl-box">keep B = τ² / (τ² + 1/n) of the measured IC</div></div>
+      <p class="sl-sub">A correlation measured on n observations has a standard error of about 1/√n. With 100 trades that's 0.10 — bigger than a good signal's true IC. τ = 0.05 is how widely true ICs vary.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-sliderhead"><span>Measured IC</span><span class="sl-live" id="sh-ic-val">0.08</span></div>
+        <input type="range" class="sl-slider" id="sh-ic" min="0" max="0.2" step="0.01" value="0.08">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Observations n</span><span class="sl-live" id="sh-n-val">400</span></div>
+        <input type="range" class="sl-slider" id="sh-n" min="0" max="2000" step="10" value="400">
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Share kept B</div><div class="sl-calc-result-val" id="sh-b">50%</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">IC to use</div><div class="sl-calc-result-val" id="sh-out">0.040</div></div>
+        </div>
+        <div class="sl-note">50 observations keep 11%, 400 keep half, none keep nothing. An untested indicator gets zero weight, however good its chart looks.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6 · Worked example</div>
+      <h2 class="sl-h2">EUR/USD: three trend signals vs one rates signal</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Move today's scores — the records stay fixed</div>
+        <div id="mc-rows"></div>
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Correlation inside the trend family</span><span class="sl-live" id="mc-r-val">0.80</span></div>
+        <input type="range" class="sl-slider" id="mc-r" min="0" max="0.95" step="0.05" value="0.8">
+        <span class="cs-verdict none" id="mc-tag">NO VIEW</span>
+        <div class="sl-calc-steps" id="mc-out"></div>
+        <button type="button" class="sl-reset-btn" id="mc-reset">Reset to the example</button>
+        <div class="sl-note">Records: trend signals IC 0.04 on 400 obs each (shrunk to 0.020); rates IC 0.08 on 400 (0.040); positioning IC 0.06 on 50 (0.0067). σ = 2.0% a month.</div>
+      </div>
+      <table class="cs-table">
+        <tr><th>Method</th><th>Says</th></tr>
+        <tr><td>Count votes (3 v 2)</td><td>Long</td></tr>
+        <tr><td>Add scores (+2.2)</td><td>Long</td></tr>
+        <tr><td>Shrunk IC, ignore correlation (+0.031)</td><td>Long</td></tr>
+        <tr><td><strong>Shrink + correlation (z −0.32)</strong></td><td><strong>No view</strong></td></tr>
+      </table>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">"No view" is an output</h2>
+      <p class="sl-sub">z = F / IC_comb · expected move = σ·F · P(right) = Φ(|F| / √(1 − IC_comb²))</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>|z| under 1</h4><p>The signals cancel, or today's reading is ordinary for this set.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Move under 2× cost</h4><p>The edge doesn't survive trading it (<a href="action-edge-after-costs-micro.html">lesson 4</a>).</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Combined IC ≈ 0</h4><p>Nothing on the screen has a record. Loud is not the same as tested.</p></div></div>
+      </div>
+      <div class="sl-quote">Even an excellent combined IC of 0.10 at a two-standard-deviation reading gives a 58% chance of the right direction. Small edges are the normal case.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Where combining sits in the decision</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>Five indicators flash: three long, two short</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>The screen</b>Three trend readings look like three confirmations</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson · combining</b>Near-copies collapse to one; records shrunk; net weighed against a no-view rule</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>The decision</b>A small net view, or a written "no view"</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>No oversized trade on one idea counted three times</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9 · It actually happened</div>
+      <h2 class="sl-h2">August 2007: many signals, one position</h2>
+      <p class="sl-p">In the week of 6 August 2007, many quantitative equity funds — each running its own blend of value, momentum and quality signals — took unusually large losses in a few days, while the broad market moved comparatively little.</p>
+      <p class="sl-p">Khandani and Lo's study argued the funds held far more overlapping positions than anyone knew. A fast unwind by one or more large players pushed prices against everyone holding the same trades. A sharp partial rebound followed within days.</p>
+      <div class="sl-callout amber"><div class="sl-callout-label">Same pattern, 1998</div><p>LTCM's many "separate" relative-value trades all widened together after Russia's default. In September 1998 the New York Fed organised a recapitalisation of about $3.6 billion by a group of banks. Diversification that is counted, not measured, disappears when you need it.</p></div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10 · The desk's verdict</div>
+      <h2 class="sl-h2">What was tested here</h2>
+      <div class="sl-stamp null" data-evidence="macro-confluence-baa-credit" data-evidence-date="2026-10-03"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>"When three macro domains agree, direction follows."</strong> Liquidity, curve and credit all +1 or all −1, 39 and 38 episodes 2009–2026: no forward edge on EUR/USD, the S&amp;P 500 or gold. The one cell that looked real (EUR/USD −0.616% over 20 days) pointed the same way after <em>negative</em> confluence too — drift, not prediction.</span></div>
+      <div class="sl-stamp validated" data-evidence="multi-spread-sleeve" data-evidence-date="2026-09-20"><span class="sl-stamp-tag">Desk test: held up</span><span><strong>Two genuinely different signals, combined.</strong> 2-year and 10-year yield-spread legs: 15.7% trade overlap, 0.300 return correlation. Combined Sharpe 1.15 beat each leg (1.02, 0.81) — close to the formula's (S₁+S₂)/√(2(1+ρ)) ≈ 1.13. <em>Backtest evidence; not forward-proven.</em></span></div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11 · Template</div>
+      <h2 class="sl-h2">The signal-combination card</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>List and score</h4><p>Every signal as a score in its own standard deviations, + = long.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Group into families</h4><p>Same input = same family. Check with a correlation table, not by name.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Record and shrink</h4><p>Out-of-sample IC, n, shrunk IC. No record → zero weight.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>No-view rule, in advance</h4><p>|z| &lt; 1, move &lt; 2× cost, or combined IC tiny → no trade.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Four momentum indicators, average correlation 0.7. How many independent signals?</h4>
+        <button class="sl-quiz-opt">4</button>
+        <button class="sl-quiz-opt" data-correct="true">About 1.3</button>
+        <button class="sl-quiz-opt">About 2.8</button>
+        <div class="sl-quiz-explain">4 / (1 + 3 × 0.7) = 4 / 3.1 = 1.29. The ceiling for any number of them is 1/0.7 ≈ 1.43.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>A new indicator shows IC 0.12 over 100 trades (τ = 0.05). What IC do you use?</h4>
+        <button class="sl-quiz-opt">0.12 — that's what it measured</button>
+        <button class="sl-quiz-opt" data-correct="true">About 0.024</button>
+        <button class="sl-quiz-opt">0 — never trust a new signal</button>
+        <div class="sl-quiz-explain">B = 0.0025 / (0.0025 + 0.01) = 0.2, so 0.12 × 0.2 = 0.024. The noise in 100 trades (~0.10) is nearly as big as the measurement.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>In the EUR/USD example, why does ignoring correlation say "long"?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The trend idea is counted three times</button>
+        <button class="sl-quiz-opt">The rates signal has a short record</button>
+        <button class="sl-quiz-opt">Positioning is too heavily weighted</button>
+        <div class="sl-quiz-explain">Each trend signal keeps its full 0.020 weight, so the family adds 0.074 against the short side's 0.043. Corrected, the three share one signal's worth and the rates signal wins.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>The desk found three-domain macro agreement didn't predict direction. So…</h4>
+        <button class="sl-quiz-opt">Combining signals never helps</button>
+        <button class="sl-quiz-opt" data-correct="true">Agreement isn't evidence unless each signal has a record</button>
+        <button class="sl-quiz-opt">Macro data is useless</button>
+        <div class="sl-quiz-explain">The desk's test found no edge in that agreement. Its two yield-spread legs, each with a record and correlated only 0.30, did combine into a better book.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Correlated signals are one vote: N_eff = N/(1+(N−1)ρ). Count families, not indicators.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Combine by regression (w = R⁻¹·IC), not by vote.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Shrink every record by its length; untested means weight zero.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Write the no-view rule before you look. "No view" is an answer.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Desk test: macro agreement alone found nothing; two different, tested spread legs combined well.</p></div>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Does the Edge Survive Costs?</h3>
+        <p>Spread, slippage, turnover and the break-even cost per trade — statistically real versus economically tradeable.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="action-edge-after-costs-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="action-combining-signals.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="action-expected-value-micro.html">← Previous: Thinking in Expected Value</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function Phi(x){
+    var s = x < 0 ? -1 : 1, z = Math.abs(x) / Math.SQRT2, t = 1 / (1 + 0.3275911 * z);
+    var y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-z * z);
+    return 0.5 * (1 + s * y);
+  }
+
+  // Slide 4 — effective number of signals.
+  (function(){
+    var nIn = $('ne-n'), rIn = $('ne-r');
+    function render(){
+      var N = parseInt(nIn.value, 10), r = parseFloat(rIn.value);
+      $('ne-n-val').textContent = N; $('ne-r-val').textContent = r.toFixed(2);
+      $('ne-out').textContent = (N / (1 + (N - 1) * r)).toFixed(2);
+      $('ne-cap').textContent = r > 0 ? (1 / r).toFixed(2) : 'none';
+    }
+    [nIn, rIn].forEach(function(i){ i.addEventListener('input', render); }); render();
+  })();
+
+  // Slide 5 — two signals.
+  (function(){
+    var icIn = $('two-ic'), rIn = $('two-r');
+    function render(){
+      var ic = parseFloat(icIn.value), r = parseFloat(rIn.value);
+      $('two-ic-val').textContent = ic.toFixed(2); $('two-r-val').textContent = r.toFixed(2);
+      $('two-out').textContent = (ic * Math.sqrt(2 / (1 + r))).toFixed(3);
+      $('two-ind').textContent = (ic * Math.SQRT2).toFixed(3);
+    }
+    [icIn, rIn].forEach(function(i){ i.addEventListener('input', render); }); render();
+  })();
+
+  // Slide 6 — shrinkage, tau = 0.05.
+  (function(){
+    var icIn = $('sh-ic'), nIn = $('sh-n');
+    function render(){
+      var ic = parseFloat(icIn.value), n = parseInt(nIn.value, 10), b = n > 0 ? 0.0025 / (0.0025 + 1 / n) : 0;
+      $('sh-ic-val').textContent = ic.toFixed(2); $('sh-n-val').textContent = n === 0 ? '0 (untested)' : n;
+      $('sh-b').textContent = Math.round(b * 100) + '%';
+      $('sh-out').textContent = (ic * b).toFixed(3);
+    }
+    [icIn, nIn].forEach(function(i){ i.addEventListener('input', render); }); render();
+  })();
+
+  // Slide 7 — five-signal combiner with fixed records (shrunk ICs) and families.
+  (function(){
+    var SIG = [
+      { name: '20-day momentum', fam: 0, ic: 0.02, s: 1.2 },
+      { name: '50/200 average cross', fam: 0, ic: 0.02, s: 1.0 },
+      { name: '3-month breakout', fam: 0, ic: 0.02, s: 1.5 },
+      { name: '2-year yield spread z', fam: 1, ic: 0.04, s: -1.0 },
+      { name: 'Positioning', fam: 2, ic: 0.0025 / 0.0225 * 0.06, s: -0.5 }
+    ];
+    var wrap = $('mc-rows'), ins = [], lives = [];
+    SIG.forEach(function(g, i){
+      var d = document.createElement('div');
+      d.innerHTML = '<div class="sl-sliderhead"' + (i ? ' style="margin-top:8px"' : '') + '><span>' + g.name + '</span><span class="sl-live"></span></div><input type="range" class="sl-slider" min="-2.5" max="2.5" step="0.1" aria-label="' + g.name + ' score">';
+      wrap.appendChild(d);
+      ins.push(d.querySelector('input')); lives.push(d.querySelector('.sl-live'));
+    });
+    var rIn = $('mc-r');
+    function solve(A, b){
+      var n = b.length, M = A.map(function(row, i){ return row.slice().concat([b[i]]); });
+      for (var c = 0; c < n; c++){
+        var p = c; for (var r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+        var t = M[c]; M[c] = M[p]; M[p] = t;
+        for (var r2 = c + 1; r2 < n; r2++){ var f = M[r2][c] / M[c][c]; for (var k = c; k <= n; k++) M[r2][k] -= f * M[c][k]; }
+      }
+      var x = new Array(n);
+      for (var i = n - 1; i >= 0; i--){ var s = M[i][n]; for (var j = i + 1; j < n; j++) s -= M[i][j] * x[j]; x[i] = s / M[i][i]; }
+      return x;
+    }
+    function reset(){ SIG.forEach(function(g, i){ ins[i].value = g.s; }); rIn.value = 0.8; render(); }
+    function render(){
+      var rho = parseFloat(rIn.value); $('mc-r-val').textContent = rho.toFixed(2);
+      var S = ins.map(function(i){ return parseFloat(i.value); });
+      S.forEach(function(v, i){ lives[i].textContent = (v > 0 ? '+' : '') + v.toFixed(1); });
+      var R = SIG.map(function(a){ return SIG.map(function(b){ return a === b ? 1 : (a.fam === b.fam ? rho : 0); }); });
+      var IC = SIG.map(function(g){ return g.ic; }), w = solve(R, IC), F = 0, ic2 = 0;
+      for (var i = 0; i < S.length; i++){ F += w[i] * S[i]; ic2 += w[i] * IC[i]; }
+      var icc = Math.sqrt(ic2), z = F / icc, er = 0.02 * F, pr = Phi(Math.abs(F) / Math.sqrt(1 - ic2));
+      var tag = $('mc-tag');
+      if (Math.abs(z) < 1 || Math.abs(er) < 0.0004){ tag.className = 'cs-verdict none'; tag.textContent = 'NO VIEW'; }
+      else { tag.className = 'cs-verdict ' + (F > 0 ? 'long' : 'short'); tag.textContent = F > 0 ? 'LONG' : 'SHORT'; }
+      var votes = S.filter(function(v){ return v > 0; }).length + ' long, ' + S.filter(function(v){ return v < 0; }).length + ' short';
+      $('mc-out').innerHTML = '<div>Votes: <b>' + votes + '</b></div>' +
+        '<div>F = <b>' + (F >= 0 ? '+' : '') + F.toFixed(4) + '</b> · combined IC <b>' + icc.toFixed(3) + '</b> · z <b>' + z.toFixed(2) + '</b></div>' +
+        '<div>Expected move <b>' + (er >= 0 ? '+' : '') + (er * 100).toFixed(3) + '%</b> · P(direction right) <b>' + (pr * 100).toFixed(1) + '%</b></div>';
+    }
+    ins.forEach(function(i){ i.addEventListener('input', render); });
+    rIn.addEventListener('input', render);
+    $('mc-reset').addEventListener('click', reset);
+    reset();
+  })();
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

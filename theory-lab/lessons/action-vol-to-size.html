@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>From a Volatility Forecast to a Position Size — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .vs-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0 14px}
+  .vs-table th,.vs-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace}
+  .vs-table th{color:var(--text3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  .vs-table td:first-child,.vs-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
+  .vs-scroll{overflow-x:auto}
+  .vs-svg{width:100%;height:auto;display:block}
+  .vs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px 14px;margin:6px 0 12px}
+  .vs-field label{display:block;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+  .vs-in{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:15px;padding:8px 9px;min-height:40px}
+  .vs-in:focus{outline:none;border-color:var(--blue2)}
+  .vs-out{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:10px}
+  .vs-outcard{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'DM Mono',monospace;font-size:12.5px;line-height:1.7;color:var(--text2)}
+  .vs-outcard h4{font-family:'DM Sans',sans-serif;font-size:13px;margin-bottom:4px;color:var(--text)}
+  .vs-outcard b{color:var(--text)}
+  .vs-outcard .big{font-size:20px;color:var(--text);font-weight:600}
+  .vs-outcard.a{border-top:3px solid var(--blue)}
+  .vs-outcard.b{border-top:3px solid var(--purple)}
+  .vs-note{margin-top:8px;font-size:13px;padding:6px 10px;border-radius:6px;background:var(--amber-bg);border:1px solid var(--amber-bd);color:var(--amber)}
+  .vs-note:empty{display:none}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / From Analysis to Action / From a Volatility Forecast to a Position Size</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">From Analysis to Action · Lesson 5 of 8</div>
+  <h1 class="tl-title">From a Volatility Forecast to a Position Size</h1>
+  <p class="tl-dek">A GARCH model says tomorrow's EUR/USD volatility is 0.40%. So what? This lesson turns that number into pips, a stop distance and a lot size, and shows the two standard ways to do it: per-trade risk and volatility targeting. It also covers where both go wrong.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span>~22 min read</span>
+    <span>Prereqs: <a href="action-trade-plan.html">From a View to a Trade Plan</a>; <a href="garch-volatility.html">GARCH</a> helpful</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="action-vol-to-size-micro.html">Visual Guide</a>. It covers the same ground in short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Size should shrink when volatility rises.</strong> The same lots in a market twice as volatile is twice the risk. Dividing by a volatility forecast keeps the risk constant.</li>
+      <li><strong>Convert the forecast into price units first:</strong> σ in pips = σ% × price ÷ pip size. 0.40% on EUR/USD at 1.0850 is 43.4 pips. A random walk's expected daily high-to-low is about 1.6σ, roughly an ATR.</li>
+      <li><strong>Route A, per-trade risk:</strong> stop = k·σ, lots = money at risk ÷ (stop pips × pip value). At k = 2 and $500 risk: 87 pips → 0.57 lots. Volatility doubles: 174 pips → 0.28 lots, same $500.</li>
+      <li><strong>Route B, volatility targeting:</strong> notional = target vol × equity ÷ forecast annual vol. 5% target, 6.35% forecast, $100,000 → $78,743 → 0.72 lots.</li>
+      <li><strong>Pick one route.</strong> A k·σ stop <em>and</em> a risk budget cut by volatility shrinks size with σ², not σ. And always cap leverage: a calm forecast produces the biggest position just before the next shock (February 2018).</li>
+      <li><strong>The desk's verdicts:</strong> the pace of the tape persists (68 of 68 cells), so a volatility forecast is worth having. When implied sits far above realised, realised has caught up rather than calmed, so a forecast built only from trailing realised can understate. Whether volatility targeting itself adds return is <em>not tested here</em>.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Earlier lessons spend a lot of effort forecasting volatility: <a href="garch-volatility.html">GARCH</a>,
+    <a href="institutional-har-rv.html">HAR-RV</a>, range-based estimators like
+    <a href="institutional-garman-klass-yang-zhang.html">Garman-Klass and Yang-Zhang</a>. Each ends
+    with a number like "σ̂ = 0.62% tomorrow" or "realised variance 0.16". A forecast that never
+    changes what you do is wasted work. The place it pays is <strong>position size</strong>.
+  </p>
+  <p>
+    In <a href="action-trade-plan.html">lesson 1</a> the stop came from the analysis and the size came
+    from the stop. This lesson fills in the piece in between. It shows how a volatility forecast sets the
+    noise buffer and the stop distance, and how it can set the size directly when there's no
+    natural stop. It also links to <a href="kelly-criterion.html">Kelly</a>, which says how much risk
+    is worth taking, and to <a href="drawdowns-risk-of-ruin.html">risk of ruin</a>, which says what
+    happens if you take too much.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Carry less water on a bumpy road</h3>
+    <p>
+      You're carrying a full tray of glasses across a room. On a smooth floor you can carry a
+      lot. If the floor starts shaking, you carry fewer glasses, so that the number you're likely
+      to drop stays the same. Volatility is how much the floor shakes. A volatility forecast tells
+      you how bumpy the next stretch will be. Position size is how many glasses you pick up.
+    </p>
+    <p style="margin-bottom:0">
+      There are two ways to choose. You can decide how many glasses you could stand to drop on
+      the worst bump you'll accept (per-trade risk), or you can aim for a steady amount of wobble
+      overall and adjust the load as the shaking changes (volatility targeting).
+    </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>From the Turtles' "N" to volatility-targeted funds</h3>
+    <div class="tl-origin-who">Volatility-scaled sizing · Turtle rules (1983); RiskMetrics (J.P. Morgan, 1994); GARCH (Bollerslev, 1986) and HAR (Corsi, 2009) as forecasts; volatility targeting in managed futures and risk parity</div>
+    <p>
+      Futures traders were scaling size by volatility long before the models existed. The Turtle rules of
+      1983 defined N, a moving average of the daily true range. Each position "unit" was sized so
+      that a one-N move cost 1% of the account, and the stop sat at 2N. A quiet market meant more
+      contracts and a wild one meant fewer, with the same dollars at risk either way.
+    </p>
+    <p>
+      Banks needed the same number for risk limits. J.P. Morgan's RiskMetrics (1994) published a daily
+      exponentially weighted volatility (decay 0.94) for hundreds of instruments, and GARCH and later
+      HAR models made the forecast sharper. Managed-futures funds and risk-parity portfolios built whole
+      products on volatility targeting, running each position or the whole book at a fixed expected
+      volatility. Moreira and Muir (2017) gave the academic case that scaling exposure down when volatility
+      is high improved risk-adjusted returns for several equity factors. That result has since been
+      debated, as the verdicts below note.
+    </p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span>
+        <span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span>
+        <span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Turn "how much will this move?" into "how many lots?", so a bad day costs about what you planned.</dd>
+        <dt>Takes in</dt><dd>A volatility forecast (<a href="garch-volatility.html">GARCH</a>, <a href="institutional-har-rv.html">HAR-RV</a>, ATR, or implied vol) and the trade plan's stop logic (<a href="action-trade-plan.html">lesson 1</a>).</dd>
+        <dt>Hands on to</dt><dd>Execution, and the risk budget set by <a href="kelly-criterion.html">Kelly</a> and <a href="drawdowns-risk-of-ruin.html">risk of ruin</a>.</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The maths, step by step</h2>
+
+  <h3>1. Get the forecast into the right units</h3>
+  <p>
+    Volatility models usually forecast in <em>percentage returns</em>. GARCH gives a variance
+    \(\hat\sigma^2_{t+1}\) (often in %², so take the square root). HAR-RV gives a forecast of realised
+    variance, so take the square root of that too. Then convert to price, and to pips:
+  </p>
+  <div class="tl-math">
+    \[ \hat\sigma_{\text{price}} = \frac{\hat\sigma_{\%}}{100}\times P, \qquad \hat\sigma_{\text{pips}} = \frac{\hat\sigma_{\text{price}}}{\text{pip size}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>σ̂%</code><span>forecast daily volatility, in percent</span></div>
+    <div class="tl-eq-chip c2"><code>P</code><span>current price</span></div>
+    <div class="tl-eq-chip c3"><code>σ̂ price</code><span>one forecast standard deviation of the daily move, in price</span></div>
+    <div class="tl-eq-chip c4"><code>σ̂ pips</code><span>the same in pips, ready for a stop</span></div>
+  </div>
+  <p>
+    Example: a HAR model forecasts tomorrow's realised variance on EUR/USD at 0.16 (%²). So
+    \(\hat\sigma = \sqrt{0.16} = 0.40\%\), and at 1.0850 that's \(0.0040 \times 1.0850 = 0.004340\), or <strong>43.4 pips</strong>.
+  </p>
+
+  <h3>2. Sanity-check it against ATR</h3>
+  <p>
+    Traders often think in ATR. For a random walk with no drift, the expected high-to-low range over
+    a day is \(\sqrt{8/\pi}\,\sigma \approx 1.60\,\sigma\) (the relationship behind Parkinson's 1980 range
+    estimator). So a 43.4-pip σ implies a typical day of about \(1.596 \times 43.4 = 69\) pips. If the
+    pair's ATR is 65, the forecast is saying "slightly busier than recently". Real ATR includes gaps
+    and fat tails, so treat 1.6 as a rough bridge, not an identity. It is still good enough to catch a units mistake.
+  </p>
+  <div class="tl-math">
+    \[ \mathbb{E}[\text{high} - \text{low}] \approx 1.6\,\sigma_{\text{daily}} \quad\Longrightarrow\quad \text{ATR} \approx 1.6\,\sigma, \qquad 2\sigma \approx 1.25\ \text{ATR} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>1.6σ</code><span>expected daily range of a driftless random walk, √(8/π) ≈ 1.596</span></div>
+    <div class="tl-eq-chip c3"><code>ATR</code><span>average true range: the measured version, gaps included</span></div>
+  </div>
+
+  <h3>3. Match the forecast to the holding period</h3>
+  <p>
+    A one-day forecast fits a one-day trade. For a trade held \(h\) days, add up the daily
+    <em>variances</em>, not the volatilities. In GARCH(1,1) the forecast decays toward the long-run
+    level \(\bar\sigma^2\) at the rate of the persistence \(\phi = \alpha + \beta\):
+  </p>
+  <div class="tl-math">
+    \[ \hat\sigma^2_{t+i} = \bar\sigma^2 + \phi^{\,i-1}\left(\hat\sigma^2_{t+1} - \bar\sigma^2\right), \qquad \hat\sigma^2_{(h)} = \sum_{i=1}^{h} \hat\sigma^2_{t+i} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>σ̄²</code><span>long-run daily variance the model pulls back to</span></div>
+    <div class="tl-eq-chip c2"><code>φ = α + β</code><span>persistence: how slowly a shock fades (0.97 is typical for daily FX)</span></div>
+    <div class="tl-eq-chip c3"><code>σ̂²(h)</code><span>variance over the whole holding period</span></div>
+  </div>
+  <p>
+    With tomorrow's forecast at 0.80%, long-run 0.50% and \(\phi = 0.97\), the 10-day volatility
+    is \(\sqrt{10 \times 0.25 + 0.39 \times 8.753} = \sqrt{5.913} = 2.43\%\). The lazy
+    \(\sqrt{10} \times 0.80 = 2.53\%\) overstates it, because high volatility is expected to fade. Using the long-run
+    \(\sqrt{10}\times 0.50 = 1.58\%\) badly understates it. Here \(8.753 = (1 - 0.97^{10})/(1-0.97)\).
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>After a big storm the sea stays rough for a few days, then calms down. If you're sailing for ten days, you plan for "rough at first, calmer later". Planning for ten days as rough as today is too careful, and planning for ten calm days is foolish.</p>
+  </div>
+
+  <h3>4. Route A: per-trade risk, stop = k·σ</h3>
+  <p>
+    When the trade has a stop, use the forecast to set the stop's distance (or its noise buffer
+    beyond the invalidation level, as in lesson 1). Then size from the stop:
+  </p>
+  <div class="tl-math">
+    \[ D_{\text{pips}} = k\,\hat\sigma_{\text{pips},(h)}, \qquad \text{lots} = \frac{r\,E}{D_{\text{pips}}\times v_{\text{pip}}} = \frac{r\,E}{k\,\hat\sigma_{\text{pips},(h)}\, v_{\text{pip}}} \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">r · E</div><div class="tl-fp-name">Money at risk</div><div class="tl-fp-desc">Fixed by you: 0.5% of $100,000 = $500</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">k · σ̂</div><div class="tl-fp-name">Stop distance</div><div class="tl-fp-desc">k = 2 puts it about 1.25 ATR away; the Turtles used 2N ≈ 3.2σ</div></div>
+    <div class="tl-fp green"><div class="tl-fp-term">v_pip</div><div class="tl-fp-name">Pip value per lot</div><div class="tl-fp-desc">$10 for EUR/USD; 1,000/price for USD/JPY (USD account)</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">lots ∝ 1/σ̂</div><div class="tl-fp-name">The result</div><div class="tl-fp-desc">Volatility doubles → size halves, same dollars at risk</div></div>
+  </div>
+
+  <h3>5. Route B: volatility targeting</h3>
+  <p>
+    When there's no natural stop (a carry position, a macro sleeve held for weeks, a whole book),
+    pick the volatility you want the position to contribute and scale the notional to hit it:
+  </p>
+  <div class="tl-math">
+    \[ \hat\sigma_{\text{ann}} = \hat\sigma_{\text{daily}}\sqrt{252}, \qquad N = \frac{\sigma^{*}\,E}{\hat\sigma_{\text{ann}}}, \qquad \text{leverage} = \frac{N}{E} = \frac{\sigma^{*}}{\hat\sigma_{\text{ann}}} \le L_{\max} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>σ*</code><span>target annual volatility for this position, e.g. 5%</span></div>
+    <div class="tl-eq-chip c2"><code>√252</code><span>trading days in a year: volatility scales with the square root of time</span></div>
+    <div class="tl-eq-chip c3"><code>N</code><span>notional in account currency; divide by the notional of one lot</span></div>
+    <div class="tl-eq-chip c4"><code>L_max</code><span>a hard leverage cap: the forecast can be too low</span></div>
+  </div>
+  <p>
+    Route A asks "how much do I lose if the stop is hit?" Route B asks "how much does this
+    position typically swing per year?" Both give size proportional to \(1/\hat\sigma\). <strong>Use one, not
+    both.</strong> If you set the stop at \(k\hat\sigma\) <em>and</em> also cut the risk budget \(r\) when
+    volatility rises, size falls with \(\hat\sigma^2\). Volatility doubles and the position quarters. That is
+    usually an accident, not a decision.
+  </p>
+
+  <h3>6. Where Kelly fits</h3>
+  <p>
+    The continuous-time <a href="kelly-criterion.html">Kelly</a> leverage for an asset with expected excess
+    return \(\mu\) and volatility \(\sigma\) is \(f^{*} = \mu/\sigma^2\). Write \(\mu = S\sigma\), where \(S\) is the
+    Sharpe ratio, and the position's volatility at full Kelly is \(f^{*}\sigma = S\). In other words,
+    <strong>full Kelly is a volatility target equal to your Sharpe ratio</strong>. A strategy with an honest annual
+    Sharpe of 0.5 would run at 50% volatility at full Kelly, or 25% at half Kelly. A 5–10% target is a
+    small fraction of Kelly, and that is deliberate: your Sharpe is an estimate, and over-estimating it pushes
+    you past Kelly, where <a href="drawdowns-risk-of-ruin.html">ruin rises and growth falls</a>. If the Sharpe
+    really is constant, Kelly sizing also scales with \(1/\sigma\), which is one theoretical reason volatility
+    scaling is natural.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If the swings get twice as big, you hold half as much. Then the swings in <em>your</em> pocket stay the same size. That's all volatility sizing is.</p>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(\hat\sigma_{\%}\)</td><td>Forecast daily volatility in percent of price.</td></tr>
+    <tr><td>\(\hat\sigma^2_{t+i}\)</td><td>Forecast variance for day \(i\) ahead.</td></tr>
+    <tr><td>\(\bar\sigma^2\)</td><td>Long-run daily variance in the GARCH model.</td></tr>
+    <tr><td>\(\phi = \alpha+\beta\)</td><td>GARCH persistence: how slowly a volatility shock fades.</td></tr>
+    <tr><td>\(h\)</td><td>Holding period in trading days.</td></tr>
+    <tr><td>\(P\)</td><td>Current price.</td></tr>
+    <tr><td>\(k\)</td><td>Stop distance in forecast standard deviations.</td></tr>
+    <tr><td>\(D\)</td><td>Stop distance (pips).</td></tr>
+    <tr><td>\(r,\ E\)</td><td>Fraction of equity risked, and equity.</td></tr>
+    <tr><td>\(v_{\text{pip}}\)</td><td>Value of one pip for one standard lot.</td></tr>
+    <tr><td>\(\sigma^{*}\)</td><td>Target annual volatility.</td></tr>
+    <tr><td>\(N\)</td><td>Position notional in account currency.</td></tr>
+    <tr><td>\(L_{\max}\)</td><td>Leverage cap (notional ÷ equity).</td></tr>
+    <tr><td>\(\mu,\ S\)</td><td>Expected excess return and Sharpe ratio \(\mu/\sigma\).</td></tr>
+    <tr><td>\(f^{*}\)</td><td>Kelly leverage \(\mu/\sigma^2\).</td></tr>
+    <tr><td>ATR</td><td>Average true range, ≈ 1.6σ for a random walk.</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive" id="vs-tool">
+    <div class="tl-chart-label">The vol → lots sizer</div>
+    <div class="vs-grid">
+      <div class="vs-field"><label for="vs-inst">Instrument</label>
+        <select id="vs-inst" class="vs-in">
+          <option value="eurusd">EUR/USD</option>
+          <option value="usdjpy">USD/JPY</option>
+          <option value="xauusd">Gold (XAU/USD)</option>
+          <option value="custom">Custom</option>
+        </select></div>
+      <div class="vs-field"><label for="vs-price">Price</label><input id="vs-price" class="vs-in" type="number" step="any" inputmode="decimal" value="1.0850"></div>
+      <div class="vs-field"><label for="vs-pip">Pip size</label><input id="vs-pip" class="vs-in" type="number" step="any" inputmode="decimal" value="0.0001"></div>
+      <div class="vs-field"><label for="vs-pv">Pip value / lot ($)</label><input id="vs-pv" class="vs-in" type="number" step="any" inputmode="decimal" value="10"></div>
+      <div class="vs-field"><label for="vs-units">Units per lot</label><input id="vs-units" class="vs-in" type="number" step="any" inputmode="decimal" value="100000"></div>
+      <div class="vs-field"><label for="vs-eq">Equity ($)</label><input id="vs-eq" class="vs-in" type="number" step="any" inputmode="decimal" value="100000"></div>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Forecast daily vol, next day</span><span class="tl-live" id="vs-sd-val">0.40%</span></div>
+        <input type="range" id="vs-sd" min="0.05" max="3" step="0.01" value="0.40">
+        <div class="tl-hint">From GARCH, or √(HAR variance forecast). EUR/USD is often 0.3–0.7%, gold 0.7–1.5%.</div>
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Long-run daily vol</span><span class="tl-live" id="vs-lr-val">0.50%</span></div>
+        <input type="range" id="vs-lr" min="0.05" max="3" step="0.01" value="0.50">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Persistence φ = α + β</span><span class="tl-live" id="vs-phi-val">0.970</span></div>
+        <input type="range" id="vs-phi" min="0.8" max="0.999" step="0.001" value="0.97">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Holding period h</span><span class="tl-live" id="vs-h-val">1 day</span></div>
+        <input type="range" id="vs-h" min="1" max="60" step="1" value="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>A · stop multiple k</span><span class="tl-live" id="vs-k-val">2.0σ</span></div>
+        <input type="range" id="vs-k" min="0.5" max="4" step="0.1" value="2">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>A · risk per trade</span><span class="tl-live" id="vs-r-val">0.50%</span></div>
+        <input type="range" id="vs-r" min="0.1" max="3" step="0.05" value="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>B · target annual vol</span><span class="tl-live" id="vs-tv-val">5.0%</span></div>
+        <input type="range" id="vs-tv" min="1" max="30" step="0.5" value="5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>B · leverage cap</span><span class="tl-live" id="vs-cap-val">5×</span></div>
+        <input type="range" id="vs-cap" min="0.5" max="20" step="0.5" value="5">
+      </div>
+    </div>
+    <div class="tl-readout" id="vs-readout"></div>
+    <div class="vs-out">
+      <div class="vs-outcard a" id="vs-a"></div>
+      <div class="vs-outcard b" id="vs-b"></div>
+    </div>
+    <div class="vs-note" id="vs-note"></div>
+    <svg id="vs-svg" class="vs-svg" viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lots against forecast daily volatility for the two routes. Both curves fall as volatility rises, in proportion to one over volatility. The volatility-target curve is flattened at low volatility by the leverage cap. Markers show the current forecast.">
+      <g id="vs-g"></g>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>A · per-trade risk (stop = k·σ)</span>
+      <span><i style="background:var(--purple)"></i>B · volatility target (capped)</span>
+      <span><i style="background:var(--amber)"></i>your forecast</span>
+    </div>
+    <div class="tl-chart-caption">Horizon volatility uses the GARCH(1,1) decay in step 3, so at h = 1 it equals your next-day forecast. Route B annualises the <em>average</em> daily variance over the holding period. Lots are rounded down to 0.01. Units per lot is the base-currency amount in one lot (100,000 for FX, 100 oz for gold); notional per lot = units × price in the quote currency. For USD/JPY that's divided back to dollars. Slide the forecast to the far left and watch Route B hit the leverage cap. That cap is the only thing between a calm forecast and a very large position.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>EUR/USD: from a HAR forecast to 0.57 lots, and what a vol shock does</h3>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>The forecast</h4>
+        <p>HAR-RV forecasts tomorrow's realised variance at 0.16 (%²). \(\hat\sigma = \sqrt{0.16} = 0.40\%\). Price 1.0850, equity $100,000, risk 0.5% = $500, pip value $10 per lot.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>Into pips, and the ATR check</h4>
+        <p>\(0.0040 \times 1.0850 = 0.004340\) = 43.4 pips. Implied typical range \(1.596 \times 43.4 = 69\) pips, close to the 65-pip ATR. The units are right.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>Route A: stop and size</h4>
+        <p>Stop at 2σ: \(2 \times 43.4 = 86.8\), rounded to 87 pips. Lots \(= 500/(87 \times 10) = 0.575\), rounded down to <strong>0.57 lots</strong>, risking \(0.57 \times 87 \times 10 = \$495.90\). (Lesson 1's structure stop was 86 pips. A good invalidation level usually sits a couple of σ away.)</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>Volatility doubles</h4>
+        <p>After a shock the forecast is 0.80%: σ = 86.8 pips, stop \(2 \times 86.8 = 173.6\), rounded to 174 pips. Lots \(= 500/1{,}740 = 0.287\), rounded down to <strong>0.28 lots</strong>, risking $487.20. Same budget, half the size.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body">
+        <h4>Route B: a 5% volatility target instead</h4>
+        <p>\(\hat\sigma_{\text{ann}} = 0.40\% \times \sqrt{252} = 6.35\%\). Notional \(= 0.05 \times 100{,}000 / 0.0635 = \$78{,}743\). One lot is €100,000 = $108,500, so <strong>0.72 lots</strong> (0.7257, rounded down), leverage 0.79×. At 0.80% volatility: 12.70% annual, $39,371, 0.36 lots.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">6</div><div class="tl-step-body">
+        <h4>Why A and B differ</h4>
+        <p>They answer different questions. A caps the loss <em>if the stop is hit</em> at $500. B makes the position's <em>typical yearly swing</em> about $5,000 (5% of equity). Pick the one that matches the trade: a stop-and-target trade → A; a held exposure with no natural stop → B.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>The calm-market trap, in numbers</h3>
+    <p>
+      A sleeve runs a 10% volatility target on $1,000,000 in a stock index. In a calm year the
+      trailing forecast falls to 8% annual, so the sleeve holds \(0.10/0.08 = 1.25\times\), $1.25m. The forecast
+      keeps falling, to 5%, and the sleeve holds 2×, $2m. Then volatility jumps to 30% in a week.
+      The forecast catches up only after the move. The sleeve took the first leg of the shock at 2×
+      leverage, and only then cut to \(0.10/0.30 = 0.33\times\), selling into the fall.
+    </p>
+    <p style="margin-bottom:0">
+      Three fixes, all used in practice: a <strong>leverage cap</strong> (say 1.5×); a
+      <strong>floor on the forecast</strong> (never assume volatility below, say, half its long-run level); and a
+      <strong>check against implied volatility</strong>, which looks forward where trailing realised looks back. The
+      desk's own data on that last point are in Section 04.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: when calm was the risk</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>5 February 2018: "Volmageddon"</h3>
+    <p>
+      2017 was one of the calmest years for US stocks on record. The VIX spent much of the year at
+      historically low levels, and selling volatility looked like steady income. Exchange-traded
+      products that paid the inverse of short-term VIX futures had grown large, and many investors
+      and funds had positions sized from a long run of quiet, trailing volatility.
+    </p>
+    <p>
+      In late January and early February 2018 stocks fell. On Monday 5 February the VIX more than
+      doubled in a single session, its largest one-day percentage rise on record. The biggest inverse-VIX
+      note, Credit Suisse's XIV, lost almost all its value, much of it in trading after the close as the product
+      rebalanced. Credit Suisse then moved to terminate it. Many post-mortems also pointed to the selling
+      done by strategies that size by recent volatility, which had to cut exposure after the jump. How much
+      each group contributed is still debated.
+    </p>
+    <p style="margin-bottom:0">
+      For this lesson the mechanism is what matters. A position sized by trailing volatility is <em>largest</em>
+      when the recent past is calmest, and a forecast built only from the recent past learns about the
+      shock after it arrives. Volatility sizing is still right. What it needs is a cap on leverage, a floor
+      under the forecast, and a check against implied volatility.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>Volatility jumps: an inversion, a data surprise, a policy move</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The forecast</b>GARCH / HAR raise σ̂ for tomorrow and the holding period</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · σ̂ → lots</b>Stop = k·σ̂ in pips; lots = risk ÷ (stop × pip value), or target vol ÷ σ̂</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The position</b>Fewer lots, same dollars at risk; capped when σ̂ is low</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>A bad day costs roughly what was planned</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>What this desk found when it tested the claims</h2>
+
+  <div class="tl-verdict validated" data-evidence="tape-speed-persistence" data-evidence-date="2026-09-12">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>Pace persists, which is why a volatility forecast is worth having.</strong> Volatility sizing only helps if tomorrow's volatility looks like today's more than chance would allow. At the 15-minute-to-next-hour scale the desk found exactly that: a slow approach is followed by a slow hour, a fast one by a fast hour, with next-hour dwell "monotonic in 68 of 68 cells across 17 pairs". The effect was the same at random prices, so it's a property of the tape, not of any level. It says nothing about direction.</span>
+  </div>
+
+  <div class="tl-verdict validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>When implied sits far above realised, realised has caught up, not calmed down.</strong> With VIX ÷ 20-session realised SPX volatility in its top decile (88 first days, 2010→): NAS100 next-5 range +0.38 ATR [+0.11, +0.62], next-20 +0.56; SPX500 next-20 +0.67 [+0.13, +1.21] (next-5 +0.17, null). For sizing: a forecast built only from trailing realised volatility can understate what's coming when the options market disagrees. Check the implied-to-realised ratio before letting a calm trailing number set a large size.</span>
+  </div>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>"Volatility targeting improves risk-adjusted returns."</strong> Not tested here. The desk sizes by volatility for risk control, but hasn't tested whether scaling by a forecast <em>adds return</em> on its own instruments. The published evidence is mixed: Moreira and Muir (2017) found gains for several equity factors, and later work, such as Cederburg and co-authors (2020), found many of those gains hard to capture out of sample. The risk-control case (steadier dollar swings, smaller worst days) doesn't depend on that answer.</span>
+  </div>
+
+  <div class="tl-solid red">
+    <strong>The trap:</strong> the lower the forecast, the bigger the position, with no limit unless you
+    add one. A sizing rule without a leverage cap and a forecast floor is quietly a bet that the calm
+    will continue.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>Equal risk per position</h4>
+      <p>A book of FX, gold and index trades is sized so each one's expected daily swing is the same in dollars. Otherwise the gold trade quietly dominates (see <a href="risk-parity-erc.html">Risk Parity</a>).</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🎚️</div>
+      <h4>Target vol at book level</h4>
+      <p>Managed-futures and risk-parity funds commonly run the whole portfolio at a stated target, often around 10%, re-sizing as forecasts change, with leverage limits.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🔁</div>
+      <h4>Re-size on a schedule, with a band</h4>
+      <p>Re-sizing daily on every forecast twitch costs spread. Many re-size weekly, or only when the target size moves by more than, say, 10–20%.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">⚡</div>
+      <h4>A separate line for jumps</h4>
+      <p>σ-based stops describe ordinary movement. Around events, desks add a gap scenario (see <a href="institutional-bipower-variation.html">bipower variation</a> and <a href="institutional-jump-detection-tests.html">jump tests</a> for separating jumps from diffusion).</p>
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Template: copy this</div>
+    <h3>Before you size: eight checks</h3>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body"><h4>Which forecast, which horizon?</h4><p>GARCH, HAR, ATR or implied. Matched to the holding period: sum variances over \(h\) days, don't multiply today's σ by \(\sqrt{h}\) if a shock is fading.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body"><h4>Units</h4><p>Variance → square root. Percent → price (× P) → pips (÷ pip size). Daily → annual (× √252, never × 252).</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body"><h4>ATR cross-check</h4><p>1.6 × σ in pips should be near the ATR. If it's off by 10×, a unit is wrong.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body"><h4>One route only</h4><p>Per-trade risk (stop = k·σ) <em>or</em> volatility target. Not both, or size scales with 1/σ².</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body"><h4>Compute and round down</h4><p>Lots to the broker's increment, rounded down so actual risk ≤ planned.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">6</div><div class="tl-step-body"><h4>Floors and caps</h4><p>Forecast floor (e.g. ≥ half the long-run level), leverage cap, and the implied-vs-realised check.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">7</div><div class="tl-step-body"><h4>Gap line</h4><p>Loss if price jumps past the stop before the next event or weekend. Size down if it's unacceptable.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">8</div><div class="tl-step-body"><h4>Kelly ceiling</h4><p>The implied position volatility should be a small fraction of your honest Sharpe (full Kelly = Sharpe).</p></div></div>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where vol-based sizing goes wrong</h3>
+    <p><strong>Using variance as volatility.</strong> A HAR forecast of 0.25 (%²) is σ = 0.50%, not 0.25%. Read it as σ and the stop is half as wide and the size twice as big.</p>
+    <p><strong>Annualising with 252 instead of √252.</strong> 0.8% daily is 12.7% a year, not 202%.</p>
+    <p><strong>Double scaling.</strong> A k·σ stop plus a risk budget that also falls with σ gives size ∝ 1/σ², a much steeper rule than intended.</p>
+    <p><strong>No cap, no floor.</strong> A calm trailing forecast makes the largest position just before the shock (February 2018).</p>
+    <p><strong>Horizon mismatch.</strong> A one-day σ for a three-week trade puts the stop inside the noise of the holding period.</p>
+    <p style="margin-bottom:0"><strong>Wrong pip value.</strong> USD/JPY's pip value moves with the price and differs by account currency. Recompute it, don't remember it.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Units first:</strong> σ in pips = σ% × price ÷ pip size. 0.40% at 1.0850 = 43.4 pips; ATR ≈ 1.6σ.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Route A:</strong> stop = k·σ, lots = risk ÷ (stop × pip value). $500, 87 pips → 0.57 lots; volatility doubles → 0.28 lots.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Route B:</strong> notional = target vol × equity ÷ annual σ. 5% target at 6.35% → $78,743.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Multi-day: add variances, let shocks fade.</strong> 10 days from 0.80% decaying to 0.50% is 2.43%, not 2.53%.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Full Kelly = a volatility target equal to your Sharpe.</strong> Realistic targets are a small fraction of it.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Cap leverage, floor the forecast, check implied.</strong> Desk data: top-decile implied over realised was followed by wider, not calmer, index ranges.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Not tested here: whether volatility targeting adds return.</strong> The risk-control case stands on its own; the return case is debated in the literature.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. GARCH forecasts USD/JPY daily volatility at 0.60% with the price at 150.00. Equity $100,000, risk 0.5%, stop at 2σ, USD account. How many lots?</summary>
+    <div class="tl-answer">σ in price \(= 0.006 \times 150 = 0.90\) yen = 90 pips (pip 0.01). Stop \(2 \times 90 = 180\) pips. Pip value per 100,000-dollar lot \(= 1{,}000/150 = \$6.67\). Lots \(= 500/(180 \times 6.667) = 500/1{,}200 = 0.417\), rounded down to 0.41.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. A HAR model outputs 0.25 for tomorrow's realised variance (in %²). A colleague puts "0.25%" into the sizer as σ. What happens?</summary>
+    <div class="tl-answer">The true σ is \(\sqrt{0.25} = 0.50\%\). Using 0.25% halves the stop distance and doubles the size. The trade risks twice the plan, with a stop inside the noise.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Annualise a 0.80% daily volatility.</summary>
+    <div class="tl-answer">\(0.80\% \times \sqrt{252} = 0.80 \times 15.87 = 12.70\%\). Volatility scales with the square root of time because <em>variance</em> adds across independent days.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A 10% volatility target on $200,000 with an 8% annual forecast. What notional? What if the forecast falls to 2%?</summary>
+    <div class="tl-answer">\(0.10 \times 200{,}000 / 0.08 = \$250{,}000\) (1.25×). At 2%: \(\$1{,}000{,}000\) (5×). That's why the leverage cap and the forecast floor exist. A 2% forecast for an asset that usually runs at 8% is more likely an unusually calm stretch than a permanent change.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A trader sets the stop at 2σ and also halves risk per trade whenever volatility doubles. Volatility doubles. By how much does the position shrink?</summary>
+    <div class="tl-answer">The stop doubles (size halves) and the risk budget halves (size halves again): a quarter of the original size. Size ∝ 1/σ². Choose one adjustment deliberately.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Your strategy's honest annual Sharpe is 0.4. What volatility does full Kelly imply, and what fraction of Kelly is a 10% target?</summary>
+    <div class="tl-answer">Full-Kelly position volatility = Sharpe = 40%. A 10% target is a quarter Kelly. That's a sensible margin, given that a Sharpe estimated from a backtest is usually too high.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Tim Bollerslev, "Generalized Autoregressive Conditional Heteroskedasticity", <em>Journal of Econometrics</em>, 1986. The GARCH model and its multi-step forecast.</li>
+    <li>Fulvio Corsi, "A Simple Approximate Long-Memory Model of Realized Volatility", <em>Journal of Financial Econometrics</em>, 2009. The HAR-RV forecast.</li>
+    <li>J.P. Morgan / Reuters, <em>RiskMetrics — Technical Document</em>, 1996 (4th edition). The exponentially weighted daily volatility used for risk limits.</li>
+    <li>Michael Parkinson, "The Extreme Value Method for Estimating the Variance of the Rate of Return", <em>Journal of Business</em>, 1980. The high-low range and its link to σ.</li>
+    <li>Alan Moreira and Tyler Muir, "Volatility-Managed Portfolios", <em>Journal of Finance</em>, 2017. The case for scaling exposure by inverse variance.</li>
+    <li>Scott Cederburg, Michael S. O'Doherty, Feifei Wang and Xuemin (Sterling) Yan, "On the Performance of Volatility-Managed Portfolios", <em>Journal of Financial Economics</em>, 2020. Why the out-of-sample gains are harder to capture.</li>
+    <li>Campbell R. Harvey, Edward Hoyle, Russell Korgaonkar, Sandy Rattray, Matthew Sargaison and Otto Van Hemert, "The Impact of Volatility Targeting", <em>Journal of Portfolio Management</em>, 2018. Volatility targeting across asset classes and its effect on tails.</li>
+    <li>Curtis M. Faith, <em>Way of the Turtle</em>, McGraw-Hill, 2007. N-based unit sizing and 2N stops in practice.</li>
+    <li><a href="kelly-criterion.html">Kelly Criterion</a>, <a href="garch-volatility.html">GARCH</a>, <a href="institutional-har-rv.html">HAR-RV</a> and <a href="drawdowns-risk-of-ruin.html">Drawdowns and Risk of Ruin</a>: the forecasting and risk-budget lessons this one connects.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="action-edge-after-costs.html">← Does the Edge Survive Costs?</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="action-calibration-scoring.html">Scoring Your Own Calls →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var SVGNS = 'http://www.w3.org/2000/svg', FONT = "'DM Mono',monospace";
+  function el(name, attrs, style, text){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (style) e.setAttribute('style', style);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function $(id){ return document.getElementById(id); }
+  // quote: 'usd' = quote currency is the account currency (notional = units x price);
+  // 'base' = base currency is the account currency (notional = units).
+  var PRESETS = {
+    eurusd: { price: 1.0850, pip: 0.0001, pv: 10, units: 100000, quote: 'usd', sd: 0.40, lr: 0.50 },
+    usdjpy: { price: 150.00, pip: 0.01, pv: null, units: 100000, quote: 'base', sd: 0.60, lr: 0.60 },
+    xauusd: { price: 2400.0, pip: 0.1, pv: 10, units: 100, quote: 'usd', sd: 1.00, lr: 0.90 }
+  };
+  var mode = 'usd';
+  var inst = $('vs-inst');
+  function applyPreset(){
+    var p = PRESETS[inst.value]; if (!p) { mode = 'usd'; render(); return; }
+    mode = p.quote;
+    $('vs-price').value = p.price; $('vs-pip').value = p.pip; $('vs-units').value = p.units;
+    $('vs-pv').value = p.pv === null ? (p.units * p.pip / p.price).toFixed(2) : p.pv;
+    $('vs-sd').value = p.sd; $('vs-lr').value = p.lr;
+    render();
+  }
+  function n(id){ var v = parseFloat($(id).value); return isFinite(v) ? v : NaN; }
+  function money(x){ return '$' + Math.round(x).toLocaleString('en-US'); }
+  function horizonVar(sd, lr, phi, h){ // sum of daily variances, %^2
+    var s = 0, a = sd * sd, b = lr * lr;
+    for (var i = 1; i <= h; i++) s += b + Math.pow(phi, i - 1) * (a - b);
+    return s;
+  }
+  function sizes(sd, o){
+    var hv = horizonVar(sd, o.lr, o.phi, o.h);
+    var sigH = Math.sqrt(hv);                       // % over the holding period
+    var sigPips = sigH / 100 * o.price / o.pip;
+    var stop = Math.round(o.k * sigPips);
+    var lotsA = stop > 0 ? Math.floor(o.r * o.eq / (stop * o.pv) * 100 + 1e-9) / 100 : 0;
+    var annual = Math.sqrt(hv / o.h * 252);          // % per year
+    var notional = o.tv / annual * o.eq, capped = false;
+    if (notional > o.cap * o.eq) { notional = o.cap * o.eq; capped = true; }
+    var perLot = o.units * (mode === 'usd' ? o.price : 1);
+    var lotsB = Math.floor(notional / perLot * 100 + 1e-9) / 100;
+    return { sigH: sigH, sigPips: sigPips, stop: stop, lotsA: lotsA, annual: annual, notional: notional, capped: capped, lotsB: lotsB, perLot: perLot };
+  }
+  function render(){
+    var o = { price: n('vs-price'), pip: n('vs-pip'), pv: n('vs-pv'), units: n('vs-units'), eq: n('vs-eq'),
+      lr: +$('vs-lr').value, phi: +$('vs-phi').value, h: +$('vs-h').value, k: +$('vs-k').value,
+      r: +$('vs-r').value / 100, tv: +$('vs-tv').value, cap: +$('vs-cap').value };
+    var sd = +$('vs-sd').value;
+    $('vs-sd-val').textContent = sd.toFixed(2) + '%';
+    $('vs-lr-val').textContent = o.lr.toFixed(2) + '%';
+    $('vs-phi-val').textContent = o.phi.toFixed(3);
+    $('vs-h-val').textContent = o.h + (o.h === 1 ? ' day' : ' days');
+    $('vs-k-val').textContent = o.k.toFixed(1) + 'σ';
+    $('vs-r-val').textContent = (o.r * 100).toFixed(2) + '%';
+    $('vs-tv-val').textContent = o.tv.toFixed(1) + '%';
+    $('vs-cap-val').textContent = o.cap + '×';
+    var g = $('vs-g'); while (g.firstChild) g.removeChild(g.firstChild);
+    if (!(o.price > 0 && o.pip > 0 && o.pv > 0 && o.units > 0 && o.eq > 0)) {
+      $('vs-readout').textContent = 'Fill in price, pip size, pip value, units per lot and equity with positive numbers.';
+      $('vs-a').innerHTML = ''; $('vs-b').innerHTML = ''; $('vs-note').textContent = ''; return;
+    }
+    var s = sizes(sd, o);
+    var dayPips = sd / 100 * o.price / o.pip;
+    $('vs-readout').innerHTML = 'Next-day σ <b>' + dayPips.toFixed(1) + ' pips</b> (typical range ≈ 1.6σ = <b>' + (1.596 * dayPips).toFixed(0) + ' pips</b>, compare with your ATR) · ' +
+      o.h + '-day σ <b>' + s.sigH.toFixed(2) + '%</b> = <b>' + s.sigPips.toFixed(1) + ' pips</b>' + (o.h > 1 ? ' (naive √h × today: ' + (sd * Math.sqrt(o.h)).toFixed(2) + '%)' : '');
+    $('vs-a').innerHTML = '<h4>A · per-trade risk</h4>Stop <b>' + o.k.toFixed(1) + 'σ = ' + s.stop + ' pips</b><br>Lots = ' + money(o.r * o.eq) + ' ÷ (' + s.stop + ' × $' + o.pv.toFixed(2) + ')<br><span class="big">' + s.lotsA.toFixed(2) + ' lots</span><br>Loss at stop <b>$' + (s.lotsA * s.stop * o.pv).toFixed(2) + '</b>';
+    $('vs-b').innerHTML = '<h4>B · volatility target</h4>Annual σ̂ <b>' + s.annual.toFixed(2) + '%</b> · target ' + o.tv.toFixed(1) + '%<br>Notional <b>' + money(s.notional) + '</b> (' + (s.notional / o.eq).toFixed(2) + '×' + (s.capped ? ', CAPPED' : '') + ')<br><span class="big">' + s.lotsB.toFixed(2) + ' lots</span><br>One lot = ' + money(s.perLot) + ' notional';
+    var notes = [];
+    if (s.capped) notes.push('Route B hit the leverage cap: the forecast is low enough that uncapped sizing would run ' + (o.tv / s.annual).toFixed(1) + '× leverage.');
+    if (sd < 0.5 * o.lr) notes.push('Forecast is under half the long-run level. Consider flooring it there: calm stretches end without notice.');
+    if (s.lotsA < 0.01) notes.push('Route A rounds to zero lots at this risk budget.');
+    $('vs-note').textContent = notes.join(' ');
+
+    // chart: lots vs next-day sigma
+    var X0 = 56, X1 = 620, Y0 = 220, Y1 = 14, SMIN = 0.05, SMAX = 3;
+    var pts = [], ymax = 0;
+    for (var i = 0; i <= 120; i++) {
+      var v = SMIN + (SMAX - SMIN) * i / 120, q = sizes(v, o);
+      pts.push({ s: v, a: q.lotsA, b: q.lotsB });
+    }
+    ymax = Math.max(s.lotsA, s.lotsB, 0.01) * 3;
+    function x(v){ return X0 + (X1 - X0) * (v - SMIN) / (SMAX - SMIN); }
+    function y(v){ return Y0 - (Y0 - Y1) * Math.min(v, ymax) / ymax; }
+    var ticks = [0, 0.25, 0.5, 0.75, 1].map(function(f){ return f * ymax; });
+    ticks.forEach(function(t){
+      g.appendChild(el('line', { x1: X0, x2: X1, y1: y(t), y2: y(t) }, 'stroke:var(--border);stroke-width:1'));
+      g.appendChild(el('text', { x: X0 - 6, y: y(t) + 5, 'text-anchor': 'end', 'font-size': 13, 'font-family': FONT }, 'fill:var(--text3)', t < 10 ? t.toFixed(2) : t.toFixed(0)));
+    });
+    [0.5, 1, 1.5, 2, 2.5, 3].forEach(function(v){ g.appendChild(el('text', { x: x(v), y: Y0 + 18, 'text-anchor': 'middle', 'font-size': 13, 'font-family': FONT }, 'fill:var(--text3)', v + '%')); });
+    g.appendChild(el('text', { x: (X0 + X1) / 2, y: Y0 + 36, 'text-anchor': 'middle', 'font-size': 13, 'font-family': "'DM Sans',sans-serif" }, 'fill:var(--text2)', 'forecast daily volatility (next day) → lots'));
+    function path(key){ var d = ''; pts.forEach(function(p, i){ d += (i ? 'L' : 'M') + x(p.s).toFixed(1) + ',' + y(p[key]).toFixed(1); }); return d; }
+    g.appendChild(el('path', { d: path('a'), fill: 'none' }, 'stroke:var(--blue);stroke-width:2.5'));
+    g.appendChild(el('path', { d: path('b'), fill: 'none' }, 'stroke:var(--purple);stroke-width:2.5'));
+    g.appendChild(el('line', { x1: x(sd), x2: x(sd), y1: Y1, y2: Y0 }, 'stroke:var(--amber);stroke-width:1.5;stroke-dasharray:4,3'));
+    g.appendChild(el('circle', { cx: x(sd), cy: y(s.lotsA), r: 5 }, 'fill:var(--blue)'));
+    g.appendChild(el('circle', { cx: x(sd), cy: y(s.lotsB), r: 5 }, 'fill:var(--purple)'));
+  }
+  ['vs-price','vs-pip','vs-pv','vs-units','vs-eq','vs-sd','vs-lr','vs-phi','vs-h','vs-k','vs-r','vs-tv','vs-cap'].forEach(function(id){ $(id).addEventListener('input', render); });
+  inst.addEventListener('change', applyPreset);
+  render();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>
