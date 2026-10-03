@@ -250,10 +250,12 @@
         <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Trend over single reading</h4><p>One document's sentiment score is a noisy, high-variance read. Averaged across many documents about the same event, or tracked meeting-over-meeting, the per-document noise partially cancels.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Not a calibrated probability</h4><p>A FinBERT output like "0.72 hawkish" is a model's internal confidence, useful for ranking documents against each other — not a 72% real-world chance of anything.</p></div></div>
       </div>
+<!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Checked against this repo's actual code — the full lesson is stale here</div>
         <p>The full lesson states this repo has "no sentiment pipeline built or tested" anywhere. That's no longer accurate. <code>js/cbLexicon.js</code> is a live, unit-tested hawkish/dovish <strong>word-counting</strong> scorer for FOMC statements — the deliberately old-fashioned, context-blind approach shown two slides ago — and <code>server.js</code> also runs a separate LLM-based reader powering live pages (<code>fomc-sentiment.html</code>, <code>ecb-sentiment.html</code>, <code>boe-sentiment.html</code>, <code>boj-sentiment.html</code>). Neither is Word2Vec or FinBERT specifically — this repo has not built those. A pre-registered test of whether the lexicon score's changes predict price (<code>MD files/CB_SENTIMENT_PRICE_TEST.md</code>) came back a clean null at the first stage: the initial 30-minute reaction carried zero information about the next day's move, and the "sentiment momentum" framing was retired. So: a real text-sentiment pipeline exists and has been tested here — just not the embedding/transformer techniques this lesson teaches, and the one predictive claim tested so far didn't survive contact with data.</p>
       </div>
+<!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">
@@ -278,11 +280,13 @@
 
     <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 13</div>
-      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
+      <!-- DESK:START -->
       <div class="sl-stamp null" data-evidence="cb-tone-direction" data-evidence-date="2026-08-20">
-        <span class="sl-stamp-tag">Null</span>
+        <span class="sl-stamp-tag">Desk test: nothing found</span>
         <span><strong>cb-tone-direction: priced in half an hour, then gone.</strong> N=82 FOMC meetings. First-30-minute reaction vs next-day dollar: sign agreement <strong>46%, t = 0.32</strong>. Lexicon Δhawkishness vs next-day: t = −0.75, though it IS priced inside 30 minutes (t = 2.04). |Δhawkishness| vs next-day size: t = 0.54. Don't carry the tone forward as a lean.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>The pipeline assumes the score measures something stable and is tested on data nobody looked at while choosing the model. In the Twitter paper the moods, lags and network were all chosen with results in view, on a test window of weeks. And text that matters is read by many machines at once, so even a real effect is priced within minutes.</p>
@@ -350,7 +354,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>FinBERT is BERT, further trained on financial text — a sentiment score computed directly from raw text, context-aware in a way bag-of-words scoring structurally cannot be.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A text signal's timestamp is not automatically trustworthy — backfilled articles and to-the-second release times can leak post-decision information into a backtest that thinks it's using the claimed time.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Trust the trend across many documents, never a single reading — and remember a sentiment score is a model's internal confidence, not a calibrated real-world probability.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>"Twitter mood predicts the stock market" (2011) reported 87.6% on weeks of test data and did not replicate. On this desk, FOMC statement tone is priced inside 30 minutes and says nothing about the next day (cb-tone-direction, NULL).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>"Twitter mood predicts the stock market" (2011) reported 87.6% on weeks of test data and did not replicate.<!-- DESK:START --> On this desk, FOMC statement tone is priced inside 30 minutes and says nothing about the next day (cb-tone-direction, NULL).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do — and the end of the road</div>

@@ -17,7 +17,7 @@
   <h1 class="tl-title">Glosten-Milgrom: Sequential Bayesian Market Making</h1>
   <p class="tl-dek">A market maker facing one anonymous order at a time never learns who it came from — only whether it was a buy or a sell. That single bit of information is enough, applied through nothing but Bayes' rule, to derive a bid-ask spread from scratch, and to explain why quotes tighten as a session's trades accumulate and widen again right before the next scheduled surprise.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — confirmed absent from this codebase; a different Bayesian scoring method exists, but for signals, not quotes</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — confirmed absent from this codebase; a different Bayesian scoring method exists, but for signals, not quotes<!-- DESK:END --></span>
     <span>~19 min read</span>
     <span>Prereqs: <a href="market-microstructure.html">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a> (Kyle's Lambda), <a href="bayesian-inference.html">Bayesian Inference &amp; Updating</a></span>
   </div>
@@ -37,6 +37,7 @@
       <li>Zero-expected-profit pricing forces Ask \(=E[V\mid\text{buy}]\) above \(E[V]\) and Bid \(=E[V\mid\text{sell}]\) below it — the spread is the market maker's exact insurance premium against adverse selection, and it collapses to zero the moment \(\mu=0\): no informed traders, no adverse selection, no spread.</li>
       <li>Worked numbers used throughout (\(\delta_0=0.5\), \(\mu=0.3\), \(V_H=105\), \(V_L=95\)): the opening quote is Ask 101.50 / Bid 98.50 (spread 3.00); after a sequence of buy, buy, sell the quote tightens to 102.75/100.00/103.65/101.50 and back to 102.75/100.00 — spreads of 3.00 → 2.75 → 2.15 → 2.75, verified by hand and by the live calculator below.</li>
       <li>This produces a genuine, testable prediction: quoted spreads should widen ahead of scheduled high-information events (a central bank decision, a jobs report) and narrow afterward as the resulting trades reveal the news — a real, documented empirical pattern, not a theoretical curiosity.</li>
+      <li><strong>How it reached trading:</strong> Glosten &amp; Milgrom (1985), alongside Kyle (1985), made adverse selection a priced part of the spread, which is the logic behind how dealers price "toxic" flow and widen into announcements today.</li>
     </ul>
   </div>
 
@@ -139,6 +140,23 @@
       shifting after every trade — exactly how it should change, quote by
       quote, as the session goes on.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Why the dealer loses to the trader who knows more</h3>
+    <div class="tl-origin-who">Glosten–Milgrom model · Glosten &amp; Milgrom, 1985 (with Kyle, 1985) → dealer and specialist pricing</div>
+    <p>Before it, the bid-ask spread was explained as the price of immediacy (Demsetz, 1968) and the cost of carrying inventory (Stoll, 1978; Ho &amp; Stoll, 1981). Neither explained why a dealer with no inventory problem still quotes wide, or why spreads blow out before an earnings release. Bagehot's 1971 essay and Copeland &amp; Galai (1983) had pointed at the answer: some of the people you trade with know more than you do.</p>
+    <p>Lawrence Glosten and Paul Milgrom's 1985 Journal of Financial Economics paper made that a working model: the spread is the dealer's break-even charge for being picked off by informed traders. Kyle's continuous-auction model appeared the same year. Together they gave adverse selection its own line in every spread decomposition that followed, from Glosten &amp; Harris (1988) to Huang &amp; Stoll (1997).</p>
+    <p>On a desk it is the logic behind "toxic flow": dealers check how prices move after each client's trades (markouts), quote wider to flow that keeps being right, and widen into scheduled announcements.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage on">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How much of the spread pays for trading against people who know more than I do?</dd>
+        <dt>Takes in</dt><dd>The belief updating of <a href="bayesian-inference.html">Bayesian Inference</a> and the size-driven impact of <a href="market-microstructure.html">Kyle's Lambda</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="institutional-pin.html">PIN</a>, which estimates the informed share from data, and the inventory-driven quoting of <a href="institutional-avellaneda-stoikov.html">Avellaneda-Stoikov</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -617,6 +635,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The market maker requotes after every trade, using the previous quote's posterior as the new prior.</strong> Worked numbers: \(\delta_0{=}0.5,\mu{=}0.3,V_H{=}105,V_L{=}95\) gives an opening spread of 3.00, narrowing to 2.75 then 2.15 after two confirming buys, and widening back to 2.75 after one contrarian sell — verified independently in Node.js.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Narrowing is not a one-way ratchet.</strong> Spreads shrink as evidence accumulates consistently in one direction and widen back on new, conflicting evidence — the model predicts genuine oscillation, not monotonic tightening.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The testable, real-world prediction: spreads widen ahead of scheduled information events and compress after.</strong> Both because \(\mu\) is believed higher pre-event and because the resulting trades sharply resolve \(\delta\) post-event — a genuine, documented empirical pattern, not solely a theoretical artifact.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk this is the theory of toxic flow.</strong> Dealers measure post-trade markouts by client and quote wider to flow that keeps being right; the model says that is the break-even response to being picked off, not a punishment.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -716,8 +735,8 @@
     <li>Lawrence R. Glosten &amp; Paul R. Milgrom, "Bid, Ask and Transaction Prices in a Specialist Market with Heterogeneously Informed Traders," <em>Journal of Financial Economics</em>, 14(1), 1985 — the original derivation this lesson works through in full, including the sequential-updating extension.</li>
     <li>Albert S. "Pete" Kyle, "Continuous Auctions and Insider Trading," <em>Econometrica</em>, 1985 — the companion 1985 result covered in the prerequisite lesson, contrasted throughout this one.</li>
     <li>Maureen O'Hara, <em>Market Microstructure Theory</em>, Blackwell, 1995 — the standard textbook synthesis of both this model and the wider adverse-selection literature it founded.</li>
-    <li><code>theory-lab/lessons/bayesian-inference.html</code> in this repo — the Bayes'-rule machinery this lesson's derivation applies directly, notation and all.</li>
-    <li><code>theory-lab/lessons/market-microstructure.html</code> in this repo — the single-shot, fixed-prior version of this exact model, presented alongside Kyle's Lambda.</li>
+    <li><code>theory-lab/lessons/bayesian-inference.html</code><!-- DESK:START --> in this repo<!-- DESK:END --> — the Bayes'-rule machinery this lesson's derivation applies directly, notation and all.</li>
+    <li><code>theory-lab/lessons/market-microstructure.html</code><!-- DESK:START --> in this repo<!-- DESK:END --> — the single-shot, fixed-prior version of this exact model, presented alongside Kyle's Lambda.</li>
   </ul>
   </details>
 

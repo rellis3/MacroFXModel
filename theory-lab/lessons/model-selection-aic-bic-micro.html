@@ -209,10 +209,12 @@
       </div>
       <p class="sl-p">Read naively, "the 5-lag model explains the data better" sounds like a reason to prefer it. But the same arithmetic as the worked example applies: AIC ties the two models exactly at 104, and BIC prefers the 1-lag model by roughly 7.8 points. Both say the same thing — the extra four lags improved fit by <em>less</em> than the going rate for four more free parameters. Neither finds evidence that lags 2 through 5 pull their weight.</p>
       <div class="sl-quote">Those four extra lag coefficients were very likely fitting sampling noise in this particular 100-day window, not real, persistent mean-reversion structure. A model that spends its extra parameters on noise has no reason to keep fitting a <em>different</em> sample's noise out-of-sample — so the simpler model is the one more likely to still work on data the researcher hasn't seen yet.</div>
+      <!-- DESK:START -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where this stands in this repo, right now</div>
         <p>The full lesson states this repo "currently has no coded AIC/BIC step in any engine" — checking the actual code, that's very nearly true, with one nuance. <code>forge/residual.py</code>'s Augmented Dickey-Fuller stationarity test calls statsmodels with <code>autolag="AIC"</code>, so AIC is doing quiet work choosing a lag count inside that one diagnostic. But no engine in this repo runs AIC or BIC as an explicit, reported step for comparing candidate <em>trading</em> models against each other — the mean-reversion scenario above is illustrative of a decision this repo doesn't yet automate, not a description of an existing pipeline.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="12">

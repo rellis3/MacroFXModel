@@ -17,7 +17,7 @@
   <h1 class="tl-title">Lee-Mykland &amp; Boudt-Croux-Laurent: Testing for Jumps</h1>
   <p class="tl-dek">Bipower variation, the previous lesson's tool, tells you how much of a day's total variance came from jumps in aggregate. It cannot tell you which specific return was the jump. This lesson builds the test that can — and the correction that keeps that test honest across a trading day whose ordinary volatility is anything but flat.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — with a rare exception: this repo's own <code>jump_detect_lm.py</code> implements BOTH Lee-Mykland AND a Boudt-Croux-Laurent-style periodicity correction, live and consumed by two downstream modules — details in the repo callout below</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — with a rare exception: this repo's own <code>jump_detect_lm.py</code> implements BOTH Lee-Mykland AND a Boudt-Croux-Laurent-style periodicity correction, live and consumed by two downstream modules — details in the repo callout below<!-- DESK:END --></span>
     <span>~19 min read</span>
     <span>Prereqs: <a href="institutional-bipower-variation.html">Bipower Variation: Decomposing Continuous vs. Jump Variation</a></span>
   </div>
@@ -36,7 +36,10 @@
       <li>The day's <strong>maximum</strong> \(|L_i|\), under the null of no jumps, converges to a <strong>Gumbel</strong> (extreme-value) distribution as the number of tested returns grows — not a normal distribution — because it is the maximum of many approximately-Gaussian ratios, and maxima of Gaussians have their own, slower-growing limiting law. The critical threshold has to come from that theory, with sample-size-dependent normalizing constants, not from a flat "4-sigma" rule of thumb.</li>
       <li>Intraday volatility has a well-documented <strong>U-shape</strong> — busy at the open and close, quiet mid-session. A plain Lee-Mykland test, applied without adjustment, systematically over-flags ordinary open/close moves as jumps and under-flags genuine mid-session jumps, because its local-vol yardstick blends the whole day together.</li>
       <li><strong>Boudt-Croux-Laurent (2011)</strong> fixes this by estimating a per-time-of-day volatility factor and dividing every return by its own time-of-day's typical size <em>before</em> applying the Lee-Mykland statistic — de-seasonalizing volatility before testing for jumps.</li>
+      <!-- DESK:START -->
       <li>This repo's own detector implements both pieces, is consumed by two downstream modules, and its own unit test shows the periodicity correction collapsing a diurnal false-positive count from 1,020 to 3 on synthetic pure-diffusion data. The findings it produces are about volatility <em>regime</em>, not direction — see the repo callout for the honest specifics.</li>
+      <!-- DESK:END -->
+      <li><strong>How it reached trading:</strong> Lee &amp; Mykland (2008) moved jump testing from the day to the individual return, so jumps can be tied to announcements, stripped from vol inputs and counted for jump-diffusion models.</li>
     </ul>
   </div>
 
@@ -94,6 +97,23 @@
       yardstick that ignores it makes precisely that mistake, for precisely
       that reason.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Timestamping the jump, not just the day</h3>
+    <div class="tl-origin-who">Jump tests · Barndorff-Nielsen &amp; Shephard, 2006 → Lee &amp; Mykland, 2008</div>
+    <p>A day-level test (Barndorff-Nielsen &amp; Shephard, 2006, comparing realised and bipower variation) can say a session contained a jump, but not when. To link a jump to a data release, clean it out of a volatility estimate, or study how prices react, a trader needs the specific return.</p>
+    <p>Suzanne Lee and Per Mykland's "Jumps in Financial Markets: A New Nonparametric Test and Jump Dynamics" (<em>Review of Financial Studies</em>, 2008) tested each intraday return against a local, jump-robust volatility estimate, with critical values from the distribution of a maximum. Lee (2012) used such tests to tie jumps to scheduled macro announcements, and Boudt, Croux &amp; Laurent (2011) adjusted them for the intraday volatility U-shape.</p>
+    <p>On desks and in research these tests are used to tag announcement jumps in event studies, to strip jumps from realised-vol inputs, and to estimate how often and how large jumps are for jump-diffusion option models.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage on">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Which specific returns were jumps, and at what time?</dd>
+        <dt>Takes in</dt><dd>Intraday returns and a local, jump-robust volatility estimate from <a href="institutional-bipower-variation.html">bipower variation</a>.</dd>
+        <dt>Hands on to</dt><dd>Cleaner realised-vol inputs for <a href="institutional-har-rv.html">HAR-RV</a>, jump intensity and size for <a href="merton-jump-diffusion.html">Merton</a> and <a href="institutional-bates-model.html">Bates</a>, and outlier handling in <a href="data-cleaning-outliers-missing-data.html">data cleaning</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -162,7 +182,7 @@
     <div class="tl-fp blue">
       <div class="tl-fp-term">α</div>
       <div class="tl-fp-name">Per-day false-positive rate</div>
-      <div class="tl-fp-desc">Under pure diffusion with no jumps at all, a fraction α of days would still show at least one "jump" purely by chance. This repo's detector uses α=1%.</div>
+      <div class="tl-fp-desc">Under pure diffusion with no jumps at all, a fraction α of days would still show at least one "jump" purely by chance.<!-- DESK:START --> This repo's detector uses α=1%.<!-- DESK:END --></div>
     </div>
     <div class="tl-fp green">
       <div class="tl-fp-term">C_n, S_n</div>
@@ -172,7 +192,7 @@
     <div class="tl-fp amber">
       <div class="tl-fp-term">c = √(2/π)</div>
       <div class="tl-fp-name">A normalizing constant</div>
-      <div class="tl-fp-desc">The raw bipower average is a slightly biased variance estimator (E|Z|=√(2/π) for standard normal Z). Rather than rescale σ̂ᵢ itself, this constant is folded straight into Cₙ and Sₙ — exactly how this repo's own code does it too.</div>
+      <div class="tl-fp-desc">The raw bipower average is a slightly biased variance estimator (E|Z|=√(2/π) for standard normal Z). Rather than rescale σ̂ᵢ itself, this constant is folded straight into Cₙ and Sₙ<!-- DESK:START --> — exactly how this repo's own code does it too<!-- DESK:END -->.</div>
     </div>
   </div>
 
@@ -190,7 +210,7 @@
     <tr><td>\(n=10\)</td><td>critical value ≈ <strong>4.80</strong> (this lesson's toy 10-bar example, Section 05)</td></tr>
     <tr><td>\(n=78\)</td><td>critical value ≈ <strong>5.10</strong></td></tr>
     <tr><td>\(n=96\)</td><td>critical value ≈ <strong>5.14</strong></td></tr>
-    <tr><td>\(n=288\)</td><td>critical value ≈ <strong>5.40</strong> (a full session of continuous 5-minute bars — this repo's own default, and the value used by the calculator in Section 06)</td></tr>
+    <tr><td>\(n=288\)</td><td>critical value ≈ <strong>5.40</strong> (a full session of continuous 5-minute bars — <!-- DESK:START -->this repo's own default, and <!-- DESK:END -->the value used by the calculator in Section 06)</td></tr>
   </table></div>
 
   <div class="tl-eli5">
@@ -201,7 +221,7 @@
   <div class="tl-symbols"><table>
     <tr><td>\(r_i\)</td><td>The (possibly deseasonalized) log-return at point \(i\) in the day.</td></tr>
     <tr><td>\(\hat\sigma_i\)</td><td>Local volatility estimate at \(i\), built from bipower variation over the \(K\) returns before \(i\), excluding \(r_i\) itself.</td></tr>
-    <tr><td>\(K\)</td><td>The local window size. This repo uses \(K=270\) for 5-minute returns — Lee-Mykland's own recommendation at that sampling frequency.</td></tr>
+    <tr><td>\(K\)</td><td>The local window size. \(K=270\) for 5-minute returns is Lee-Mykland's own recommendation at that sampling frequency<!-- DESK:START --> — and what this repo uses<!-- DESK:END -->.</td></tr>
     <tr><td>\(L_i\)</td><td>The test statistic — return \(i\) standardized by its own local volatility.</td></tr>
     <tr><td>\(n\)</td><td>Number of returns tested (per day, or per continuous grid) — the critical value is a function of this.</td></tr>
     <tr><td>\(\alpha\)</td><td>The chosen per-day false-positive rate under the null of no jumps.</td></tr>
@@ -293,6 +313,7 @@
     the session-average typical size," a factor of 0.5 means half).
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🗂️</div>
     <div class="tl-box-label">Verified against this repo's actual code</div>
@@ -345,6 +366,7 @@
       backtest, no claim of edge anywhere in that work.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
@@ -415,15 +437,15 @@
     <div class="tl-box-label">Try it yourself</div>
     <h3>The same return size, judged plain vs. BCL-corrected, at three times of day</h3>
     <p>
-      A simplified but faithful version of the mechanism above: this repo's
-      detector effectively uses a session-average local vol of
+      A simplified but faithful version of the mechanism above: the
+      detector<!-- DESK:START --> in this repo<!-- DESK:END --> effectively uses a session-average local vol of
       \(\bar\sigma=10.2\)bp for the <strong>plain</strong> statistic
       (because its wide local-vol window blends the whole session together),
       while the <strong>BCL-corrected</strong> statistic works out to simply
       dividing the raw return by its own time-of-day's typical size directly
       — 18bp at the open or close, 4bp at midday. Pick a time of day and a
       return size; the critical value shown is 5.40 (\(n=288\), a full
-      5-minute-bar session, \(\alpha=1\%\) — this repo's own default).
+      5-minute-bar session, \(\alpha=1\%\)<!-- DESK:START --> — this repo's own default<!-- DESK:END -->).
     </p>
     <div class="tl-controls">
       <div class="tl-control">
@@ -458,11 +480,11 @@
     <p>
       <strong>The critical value doesn't transfer across sampling
       frequencies without recalibration.</strong> \(K\), \(n\), and the
-      resulting critical value are all tied to a specific bar size. This
-      repo's \(K=270\) is Lee-Mykland's own recommendation <em>at 5-minute
+      resulting critical value are all tied to a specific bar size. <!-- DESK:START -->This
+      repo's <!-- DESK:END -->\(K=270\) is Lee-Mykland's own recommendation <em>at 5-minute
       sampling</em>, chosen partly because 1-minute FX returns carry enough
-      microstructure noise (measured elsewhere in this repo at roughly 1.05×
-      to 1.19× the 5-minute realized variance) that an L-statistic built on
+      microstructure noise<!-- DESK:START --> (measured elsewhere in this repo at roughly 1.05×
+      to 1.19× the 5-minute realized variance)<!-- DESK:END --> that an L-statistic built on
       1-minute bars mistakes noise for jumps. Swapping to 1-minute or
       15-minute bars without recomputing \(K\), \(n\), and the Gumbel
       threshold for that new frequency will over- or under-flag jumps in a
@@ -473,13 +495,13 @@
       <em>why</em>.</strong> The test flags that a return was implausibly
       large relative to its local, deseasonalized baseline — full stop. It
       cannot distinguish a scheduled data release everyone was watching from
-      a thin-liquidity flash move nobody was positioned for. This repo's own
+      a thin-liquidity flash move nobody was positioned for. <!-- DESK:START -->This repo's own
       validation work (Section 04's callout) ties detected jumps to known
       calendar events only <em>statistically</em> — jump days run 1.15× to
       1.31× more likely on Major-event days, and roughly a quarter to a third
       of a day's first detected jump lands within ±5 minutes of a release —
       which still leaves a large share of detected jumps with no
-      calendar-event explanation at all. Attributing a specific flagged
+      calendar-event explanation at all. <!-- DESK:END -->Attributing a specific flagged
       return to a specific cause requires external context the statistic
       itself does not, and cannot, provide.
     </p>
@@ -517,8 +539,11 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The day's maximum \(|L_i|\) is Gumbel-distributed under the null, not normal</strong> — a flat "4-sigma" rule is a rough simplification of a real, sample-size-dependent critical value built from extreme-value theory.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A plain test, run against the intraday U-shape without adjustment, gets it wrong in both directions</strong> — false positives at the open/close, false negatives mid-session — because its local-vol window blends the whole day together.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Boudt-Croux-Laurent fixes this by deseasonalizing first:</strong> divide each return by its own time-of-day's typical size, then apply Lee-Mykland's machinery to the deseasonalized series.</span></div>
+    <!-- DESK:START -->
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo's own detector implements both pieces, honestly</strong> — a Tier-1 brick consumed by two downstream modules, with a self-test that shows the correction collapsing 1,020 diurnal false positives to 3.</span></div>
+    <!-- DESK:END -->
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Neither test explains WHY a flagged return jumped,</strong> and neither transfers across sampling frequencies without recalibrating K, n, and the critical value from scratch.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it timestamps jumps.</strong> Lee &amp; Mykland (2008) and the intraday-periodicity fix of Boudt, Croux &amp; Laurent (2011) let a desk tie jumps to announcements, clean them from vol estimates, and calibrate jump-diffusion option models.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 10</span></div>
@@ -582,7 +607,7 @@
       U-shape's systematic swing.
     </div>
   </details>
-  <details class="tl-quiz">
+  <!-- DESK:START --><details class="tl-quiz">
     <summary>Q6. This repo's jump_detect_lm.py flags a return as a jump with statistical confidence, on a day that also happens to carry a scheduled Major economic release. Does the statistic itself prove the release caused the jump?</summary>
     <div class="tl-answer">
       No. The Lee-Mykland/BCL statistic only establishes that the return was
@@ -594,7 +619,7 @@
       confirming any single flagged return's actual cause requires external
       context the test itself cannot supply.
     </div>
-  </details>
+  </details><!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>
@@ -693,7 +718,7 @@
 
   var SIGMA_BAR = 10.2;               // session-average local vol (bp) — the plain estimate
   var BASELINE = { open: 18, midday: 4, close: 18 };  // bp, this bucket's typical size
-  var CRIT = 5.395;                   // n=288, alpha=1% (this repo's own session default)
+  var CRIT = 5.395;                   // n=288, alpha=1% (a typical 5-minute session)
   var DEFAULTS = { r: 60, tod: 'open' };
 
   function setBlank(msg){

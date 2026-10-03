@@ -17,7 +17,7 @@
   <h1 class="tl-title">NLP for Trading Signals: Sentiment, Embeddings &amp; FinBERT</h1>
   <p class="tl-dek">Central bank statements, headlines, and earnings calls carry information in text, not just numbers — this lesson is the computational formalization of the hawkish/dovish reading a human analyst already does by eye.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: <a href="central-bank-policy.html">Central Bank Policy</a> for the qualitative hawkish/dovish vocabulary this lesson formalizes; <a href="taylor-rule.html">The Taylor Rule</a> helpful for the quantitative reaction-function view</span>
   </div>
@@ -35,9 +35,9 @@
       <li><strong>Word2Vec</strong> (Mikolov, Chen, Corrado &amp; Dean, 2013) represents words as dense vectors positioned so words used in similar contexts end up close together in vector space, trained via <strong>skip-gram</strong> (predict surrounding context words from a target word) or <strong>CBOW</strong> (predict a target word from its surrounding context).</li>
       <li><strong>BERT</strong> (Devlin, Chang, Lee &amp; Toutanova, 2019) reads a whole sentence bidirectionally at once via the transformer architecture, producing context-aware representations rather than one fixed vector per word regardless of context.</li>
       <li><strong>FinBERT</strong> (Araci, 2019) is BERT further trained on financial text specifically, producing a sentiment score (e.g. hawkish/dovish, or positive/negative/neutral) directly from raw text — the direct computational analogue of a human analyst's read.</li>
-      <li>A FinBERT-style sentiment score, tracked across successive central bank meetings, could serve as one additional input alongside the dot-plot reading in <a href="central-bank-policy.html">Central Bank Policy</a> and the Taylor Rule's formal reaction function in <a href="taylor-rule.html">The Taylor Rule</a> — a sketch, not a claim this has been built or validated here.</li>
-      <li><strong>Mandatory honest framing:</strong> sentiment scores are noisy, can misread sarcasm and hedged language, and are not calibrated probabilities of anything real-world. This is a widely-used real industry technique — explicitly not a claim it is validated for any specific use in this repo.</li>
-      <li><strong>Real-world episode:</strong> "Twitter mood predicts the stock market" (Bollen, Mao &amp; Zeng, 2011) reported 87.6% accuracy on the Dow's daily direction from one of six tweet "moods", tested on a few weeks of data. A fund launched on it closed within about a year, and a 2017 replication could not recover the result. A simple lexicon test of Fed statement tone on this desk is null for the next day (cb-tone-direction).</li>
+      <li>A FinBERT-style sentiment score, tracked across successive central bank meetings, could serve as one additional input alongside the dot-plot reading in <a href="central-bank-policy.html">Central Bank Policy</a> and the Taylor Rule's formal reaction function in <a href="taylor-rule.html">The Taylor Rule</a><!-- DESK:START --> — a sketch, not a claim this has been built or validated here<!-- DESK:END -->.</li>
+      <li><strong>Mandatory honest framing:</strong> sentiment scores are noisy, can misread sarcasm and hedged language, and are not calibrated probabilities of anything real-world. This is a widely-used real industry technique<!-- DESK:START --> — explicitly not a claim it is validated for any specific use in this repo<!-- DESK:END -->.</li>
+      <li><strong>Real-world episode:</strong> "Twitter mood predicts the stock market" (Bollen, Mao &amp; Zeng, 2011) reported 87.6% accuracy on the Dow's daily direction from one of six tweet "moods", tested on a few weeks of data. A fund launched on it closed within about a year, and a 2017 replication could not recover the result.<!-- DESK:START --> A simple lexicon test of Fed statement tone on this desk is null for the next day (cb-tone-direction).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -261,12 +261,14 @@
     (the "highly attentive to inflation risks" hedge above) can appear before it shows up in either the dots or
     the Taylor Rule gap.
     </p>
+<!-- DESK:START -->
     <p>
     What this scenario deliberately does <em>not</em> claim: that such a pipeline has been built, backtested,
     or shown to add predictive value over the dot plot and Taylor Rule inputs alone, anywhere in this repo.
     It is presented purely to illustrate where a text-derived score would slot into an existing, already-covered
     analytical picture — a sketch of the mechanism, not a validated addition to it.
     </p>
+<!-- DESK:END -->
   </div>
 
   <div class="tl-solid amber">
@@ -274,8 +276,8 @@
     phrase's real weight, or be thrown off by context the training data never covered — a "not unreasonable"
     can register very differently from a genuinely neutral statement depending on subtleties a model may or
     may not catch. A sentiment score is <strong>not</strong> a calibrated probability of anything real-world
-    happening next. This is a real, widely-used industry technique across trading desks and research shops —
-    that is explicitly not the same claim as it being validated for any specific use in this repo.
+    happening next. This is a real, widely-used industry technique across trading desks and research shops<!-- DESK:START --> —
+    that is explicitly not the same claim as it being validated for any specific use in this repo<!-- DESK:END -->.
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
@@ -338,17 +340,19 @@
     price is tested on data the researcher never looked at while choosing the model. Here the mood dimensions, the
     lags and the network were all choices made with the results in view, and the test window was a few weeks. Even
     a real effect would have a second problem: text that matters is read by many machines at once, so it gets priced
-    in minutes, which is what this desk found when it scored Fed statements.
+    in minutes<!-- DESK:START -->, which is what this desk found when it scored Fed statements<!-- DESK:END -->.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="cb-tone-direction" data-evidence-date="2026-08-20">
-    <span class="tl-verdict-tag">Null</span>
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>cb-tone-direction: the statement's tone is priced in half an hour, then it's gone.</strong> This
     lesson's most tempting use, a hawkish/dovish shift in the FOMC statement as a next-day dollar lean, was tested
     here on N=82 meetings. First-30-minute reaction vs next-day dollar: sign agreement 46%, t = 0.32. Lexicon
     Δhawkishness vs next-day: t = −0.75, though it IS priced inside 30 minutes (t = 2.04). |Δhawkishness| vs next-day
     size: t = 0.54. Do not carry the tone forward as a lean.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -403,7 +407,9 @@
       <li><strong>Missing sarcasm, negation, and hedged language.</strong> "Not unreasonable to expect inflation to moderate" and "reasonable to expect inflation to moderate" can be read very differently by a model than by a careful human reader — models can and do get subtle negation and hedging wrong.</li>
       <li><strong>Reading a sentiment score as a calibrated probability.</strong> A FinBERT output like "0.72 hawkish" is not a 72% chance that policy tightens — it is a model's internal confidence measure, useful for relative comparison across documents, not a real-world probability.</li>
       <li><strong>Applying a general-purpose sentiment model to finance-specific text.</strong> Without FinBERT-style fine-tuning, a general sentiment model can badly misread finance vocabulary — "aggressive growth," "bearish," and "beat expectations" carry meanings a general-English model was never specifically trained to weight correctly.</li>
+<!-- DESK:START -->
       <li><strong>Assuming the technique's popularity is evidence of validated edge here.</strong> NLP sentiment scoring is genuinely widely used across the industry — that fact says nothing about whether any specific pipeline built on it has been backtested or shown to add value in this repo.</li>
+<!-- DESK:END -->
     </ul>
   </div>
 
@@ -415,8 +421,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>BERT (Devlin et al., 2019) reads bidirectionally,</strong> giving the same word different representations depending on its actual sentence — a real advance over Word2Vec's one-fixed-vector-per-word limitation.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>FinBERT (Araci, 2019) is BERT further trained on financial text,</strong> producing a sentiment score directly from raw text — the direct computational analogue of an analyst's hawkish/dovish read.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A sentiment score is noisy and not a calibrated probability.</strong> Sarcasm, negation, and hedged language can all be misread; a single document's score should never be trusted in isolation.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A text score that fits the past is not a signal (Twitter mood, 2011; cb-tone-direction, NULL).</strong> 87.6% on weeks of test data did not replicate. On this desk, a lexicon read of FOMC tone is priced inside 30 minutes (t = 2.04) and says nothing about the next day (sign agreement 46%, t = 0.32).</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A text score that fits the past is not a signal (Twitter mood, 2011<!-- DESK:START -->; cb-tone-direction, NULL<!-- DESK:END -->).</strong> 87.6% on weeks of test data did not replicate.<!-- DESK:START --> On this desk, a lexicon read of FOMC tone is priced inside 30 minutes (t = 2.04) and says nothing about the next day (sign agreement 46%, t = 0.32).<!-- DESK:END --></span></div>
+<!-- DESK:START -->
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Widely-used in industry ≠ validated in this repo.</strong> This is real, real-world technique — explicitly not a claim that any sentiment pipeline built on it has been tested or shown to add value here.</span></div>
+<!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

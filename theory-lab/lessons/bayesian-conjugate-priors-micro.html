@@ -271,7 +271,7 @@
       <div class="sl-quote">That last row is the whole reason this is "Bayesian Extensions 1" and not the only lesson in the series. The instant a model needs a mixture of behaviors, a bounded-but-skewed variance, or any likelihood with no algebraic closed form, conjugacy is gone — which is exactly the gap that Markov Chain Monte Carlo, the next lesson in this trio, is built to fill: computing a posterior numerically when no formula for it exists.</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <!-- DESK:START --><section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where this already runs, live, in this repo</h2>
       <p class="sl-sub">This isn't only a textbook exercise — one of the two conjugate pairs above is running inside this repo's own regime-detection code.</p>
@@ -284,7 +284,7 @@
         <div class="sl-callout-label">Factual grounding — checked against the current code, not assumed</div>
         <p>The full written lesson this deck condenses labels itself <strong>"CONCEPT — explained here, not a claim this repo has built or validated it."</strong> That framing is now stale for the Normal-Normal half: <code>RegimeV2/bocpd.py</code> implements a <code>_GaussianUPM</code> class whose own docstring says "Uses conjugate Normal-Normal update" — an unknown-mean, known-variance Gaussian posterior, updated exactly as derived two slides ago, used to run Bayesian Online Change-Point Detection on each pair's regime-confidence stream. It's wired into <code>RegimeV2/regime_bot_v2.py</code> as a live exit-gate signal (<code>bocpd_thresh</code>, <code>use_bocpd</code>) and its output is parsed straight out of bot logs by <code>server.js</code>. No dedicated unit test for <code>bocpd.py</code> was found, so "tested" would overstate it — but "not built" is no longer accurate for this specific piece. The Beta-Binomial half of this lesson, meanwhile, still checks out as pure concept: no conjugate Beta-Binomial posterior calculation was found live anywhere else in the repo.</p>
       </div>
-    </section>
+    </section><!-- DESK:END -->
 
     <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 13</div>

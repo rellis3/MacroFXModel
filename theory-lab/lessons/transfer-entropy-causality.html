@@ -17,7 +17,7 @@
   <h1 class="tl-title">Transfer Entropy &amp; Information-Theoretic Causality</h1>
   <p class="tl-dek">Granger causality asks whether one series' past linearly improves a forecast of another. Transfer entropy asks the same directional question without assuming the relationship is linear at all — and comes with the same hard warning attached: it measures predictive information flow, never causation in the formal sense.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — background math, not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — background math, not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: Entropy, KL Divergence &amp; Mutual Information; ARIMA &amp; VAR (for the Granger causality bridge)</span>
   </div>
@@ -385,8 +385,8 @@
     would be a genuinely different and more informative finding than the linear result alone — though
     it would still need the same honest treatment: a real out-of-sample check, and the causal caveat
     above stated plainly, before it is treated as anything more than "the spread's history carries
-    predictive content for FX that a linear model missed." No such test has been run in this repo;
-    this is an illustration of what the tool is for, not a result.
+    predictive content for FX that a linear model missed."<!-- DESK:START --> No such test has been run in this repo;
+    this is an illustration of what the tool is for, not a result.<!-- DESK:END -->
     </p>
   </div>
 
@@ -431,7 +431,9 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The directional asymmetry is the whole point.</strong> \(TE_{X\to Y}\ne TE_{Y\to X}\) in general — the worked example proves it exactly: 0.531 bits one way, 0 bits the other, by construction.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Transfer entropy is not causation in the formal sense — full stop.</strong> It measures predictive information flow, never a Pearl-style interventionist causal claim. An unobserved common driver can produce a clean, asymmetric, nonzero result with zero direct causal link.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real-sample estimation is harder than this lesson's exact example.</strong> Binning/kernel choices for a finite sample introduce estimation bias — treat any reported transfer entropy number from real data with the same skepticism as an estimated mutual information.</span></div>
+    <!-- DESK:START -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing here has been fitted in this repo.</strong> The yield-spread/FX widening scenario above illustrates what the tool answers, not a result already produced — explaining the technique is not a claim it produces edge.</span></div>
+    <!-- DESK:END -->
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is a nonlinear lead-lag check.</strong> It asks Granger's question (does X's past predict Y?) without assuming linearity; for Gaussian data the two answers coincide, so it only earns its extra data cost when the link is nonlinear.</span></div>
   </div>
 

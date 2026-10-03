@@ -17,7 +17,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Bates Model: Stochastic Volatility + Jumps — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-bates-model.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -31,7 +31,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">A short-dated skew that diffusion alone can't build</h2>
+      <p class="sl-sub">Bates model · Bates, 1996 — Deutsche mark currency options</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Post-1987 surfaces had steep short-dated wings that Heston's diffusion couldn't build and persistent vol that Merton's jumps couldn't explain. Bates (1996) combined them and fitted the result to Deutsche mark currency options.</p>
+        <p>Bakshi, Cao &amp; Chen (1997) found SVJ priced S&amp;P 500 options best of the models they tested. It is now the benchmark for separating jump risk from volatility risk on index and FX surfaces.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> how much of this option surface is jump risk, and how much persistent volatility?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Why you need both pieces</h2>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Two models, two opposite gaps</div>
@@ -59,8 +72,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The model: two sibling lessons' equations, stapled together</h2>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Nothing re-derived — only combined</div>
@@ -85,8 +98,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Independence makes the characteristic function multiply</h2>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Why Bates stays tractable</div>
@@ -102,8 +115,8 @@
       <div class="sl-quote">This is exactly what makes Bates FFT-pricing-compatible: once φ_Bates(u) is known in closed form, the same Carr-Madan/FFT machinery from the sibling FFT Option Pricing lesson prices an entire strike strip in one call — it doesn't care which tractable characteristic function it's fed.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Drag the jump sliders — watch the three smiles diverge</h2>
       <p class="sl-sub">A stylized, illustrative one-week smile. Heston's curve (blue) stays fixed. Pure-jump (purple) and Bates (green) redraw as jump intensity and jump size change — and because cumulants add, Bates' wing steepness is always Heston's plus the jump's.</p>
       <div class="sl-card">
@@ -134,8 +147,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The precise mechanism: flat variance share, vanishing skew and kurtosis</h2>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Fixed jump parameters, four maturities</div>
@@ -147,8 +160,8 @@
       <p class="sl-p">Every compound-Poisson cumulant scales as λT — so variance's numerator and denominator both scale as T (ratio flat), but skewness divides by Var^1.5 (T^1.5) and kurtosis by Var² (T²), leaving T^−1/2 and T^−1 respectively. This is the same Central-Limit-Theorem logic behind any sum of independent shocks washing out toward normality as more of them pile up.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Compute it yourself — drag the horizon, watch skew and kurtosis collapse</h2>
       <p class="sl-sub">Starts on the full lesson's worked-example numbers. Change any jump parameter, then drag the horizon slider.</p>
       <div class="sl-card">
@@ -174,8 +187,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The calibration trade-off, stated honestly</h2>
       <div class="sl-compare">
         <div class="sl-ccard neutral">
@@ -193,8 +206,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Calibrate jointly, not slice by slice</h4><p>Fit all 8 parameters to the whole maturity ladder at once — short maturities help pin down jump params, long maturities help pin down Heston's five.</p></div></div>
@@ -204,8 +217,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where Bates-style thinking goes wrong</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🎭</div><div><h4>A good fit ≠ a correct parameter split</h4><p>Two calibrations that both fit today's surface equally well can disagree meaningfully about how much of tomorrow's risk is vega-hedgeable versus jump risk.</p></div></div>
@@ -215,8 +228,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -275,8 +288,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Bates = Heston's two SDEs + Merton's jump term, stapled onto the price process — neither piece re-derived, both reused verbatim.</p></div>
@@ -285,6 +298,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Jump variance share is flat across horizons; skew decays as 1/√T and excess kurtosis as 1/T — the precise reason jumps matter most at the short end.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Eight parameters buy flexibility at the cost of a real, honest identification problem — multiple combinations can fit similarly well.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Jump risk isn't perfectly hedgeable by continuous delta-hedging — an incomplete-markets subtlety worth carrying forward honestly.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>On a desk: Bates built it on Deutsche mark options (1996); SVJ is now the benchmark for separating priced jump risk from ordinary vol risk in the short-dated wing.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -334,7 +348,7 @@
     };
   }
 
-  // Slide 5 — jump intensity/size sliders redraw three smile curves.
+  // Slide 6 — jump intensity/size sliders redraw three smile curves.
   (function(){
     var lamSlider = document.getElementById('bm-lambda-slider');
     if (!lamSlider) return;
@@ -392,7 +406,7 @@
     update();
   })();
 
-  // Slide 7 — full calculator with a horizon slider (0-1000 mapped to a log-ish day scale).
+  // Slide 8 — full calculator with a horizon slider (0-1000 mapped to a log-ish day scale).
   (function(){
     var sigmaEl = document.getElementById('mc-sigma');
     if (!sigmaEl) return;

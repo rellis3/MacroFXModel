@@ -27,7 +27,7 @@
   <h1 class="tl-title">Limit Order Books &amp; Queue Dynamics</h1>
   <p class="tl-dek">Every quoted price hides a whole ladder of resting orders underneath it — how that ladder is organized, what happens when a market order tears through it, and why the order sitting first in line at a price gets treated completely differently from the order sitting last.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: <a href="market-microstructure.html">Market Microstructure</a></span>
   </div>
@@ -46,7 +46,7 @@
       <li>A limit order rests and waits, providing liquidity at a chosen price; a market order takes immediately, consuming whatever size is resting, walking through successively worse price levels if one level alone isn't enough to fill it.</li>
       <li>Queue position is not a detail — it is often the entire economics of a passive order. Two identical resting orders at the identical price can have completely different fill probabilities purely because of how many shares/contracts are queued ahead of one versus the other.</li>
       <li>Worked example: a 600-unit market buy order against a small three-level ask ladder walks through all of level 1, all of level 2, and part of level 3, landing at a volume-weighted average price about 0.8 pips worse than the best quoted ask — a concrete illustration of "walking the book."</li>
-      <li><strong>Real-world episode:</strong> the 15 October 2014 US Treasury "flash rally." The 10-year yield fell 16 basis points and came back within 12 minutes, with no clear news in that window. Volume was heavy but resting depth at the best prices was thin, so each order walked further through the ladder. Whether displayed depth tells you the depth you will actually get is <strong>untested</strong> on this desk, which has no order-book data.</li>
+      <li><strong>Real-world episode:</strong> the 15 October 2014 US Treasury "flash rally." The 10-year yield fell 16 basis points and came back within 12 minutes, with no clear news in that window. Volume was heavy but resting depth at the best prices was thin, so each order walked further through the ladder.<!-- DESK:START --> Whether displayed depth tells you the depth you will actually get is <strong>untested</strong> on this desk, which has no order-book data.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -569,8 +569,9 @@
     same thing across the whole market at once.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
-    <span class="tl-verdict-tag">Untested</span>
+    <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Untested here: "the depth you see is the depth you'll get," and its cousin, "book imbalance tells you
     where price goes next."</strong> This desk works from mid-price candles with no order-book depth, so neither claim has
     been tested. A fair test would need full depth-of-book data (every add, cancel and trade) for a liquid futures
@@ -578,6 +579,7 @@
     filled there, by volatility regime and against matched calm periods. It would also count how often a book imbalance
     reading is followed by a move its way, measured against the base rate. All of that would be fixed in advance.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -674,7 +676,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Queue position can dominate price for a passive order's real economics.</strong> Two identical resting orders at the identical price can have very different fill probabilities purely due to how much size queued up ahead of each one.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Depth and the spread are two different, complementary liquidity measures.</strong> A tight spread with thin depth can still be expensive to trade in any real size — always check both, not just the quoted spread.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A book snapshot is a photograph, not a guarantee.</strong> Resting size can be cancelled or replaced before an order actually reaches it — treating a stale snapshot as available liquidity overstates what a trade will really get filled against.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Volume is not depth, and depth leaves under stress.</strong> On 15 October 2014 the 10-year Treasury yield fell about 16bp and came back within 12 minutes, with no clear news, on heavy volume but thin resting size at the touch. Whether displayed depth predicts the fill you get is untested on this desk, which has no order-book data.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Volume is not depth, and depth leaves under stress.</strong> On 15 October 2014 the 10-year Treasury yield fell about 16bp and came back within 12 minutes, with no clear news, on heavy volume but thin resting size at the touch.<!-- DESK:START --> Whether displayed depth predicts the fill you get is untested on this desk, which has no order-book data.<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

@@ -92,7 +92,7 @@ window.TL_PATHS = {
       "lesson": "vega-volatility-surface"
      },
      {
-      "text": "Write the range expectation, and next to each sentence the desk verdict (validated, null, untested) behind it",
+      "text": "Write the range expectation, and next to each sentence say whether the claim behind it has been tested, and what was found",
       "lesson": "four-markets-four-questions"
      }
     ]

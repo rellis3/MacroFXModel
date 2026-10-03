@@ -17,7 +17,7 @@
   <h1 class="tl-title">Bipower Variation</h1>
   <p class="tl-dek">Realized variance can't tell a smooth, ordinary trading day from one violent NFP-print second — it just adds up every squared return and calls the total "volatility." Bipower variation is the trick that splits that number back into the part that was really diffusion and the part that was really a jump.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT, WITH A REAL MEASUREMENT IN THIS REPO — the estimator is built and validated on real market data (<code>volatilityExhaustion/vol_exhaustion_lib.py</code>); using the jump/continuous split to improve a live volatility forecast tested NULL</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START -->, WITH A REAL MEASUREMENT IN THIS REPO — the estimator is built and validated on real market data (<code>volatilityExhaustion/vol_exhaustion_lib.py</code>); using the jump/continuous split to improve a live volatility forecast tested NULL<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: <a href="institutional-har-rv.html">HAR-RV: Forecasting Realized Volatility</a>, <a href="merton-jump-diffusion.html">The Merton Jump-Diffusion Model</a></span>
   </div>
@@ -35,7 +35,10 @@
       <li><strong>Bipower variation (BV)</strong>, Barndorff-Nielsen &amp; Shephard (2004), replaces squares with a product of adjacent absolute returns: \(BV = \frac{\pi}{2}\sum |r_i||r_{i-1}|\). A genuine jump is large in one return but (under standard assumptions) doesn't drag its neighbor along with it — so it contributes \(r_i^2\) (large) to RV but only \(|r_i||r_{i-1}|\) (large times ordinary) to BV. BV is asymptotically robust to jumps; RV is not.</li>
       <li>The \(\pi/2\) is not decoration: for a standard normal \(Z\), \(E[|Z|]=\sqrt{2/\pi}\), so \(E[|Z|]^2 = 2/\pi\) — the \(\pi/2\) scaling is exactly the correction that makes BV a consistent estimator of the same continuous integrated variance RV would estimate if there were no jumps at all.</li>
       <li>The gap \(J = \max(RV - BV, 0)\) is the estimated jump contribution to that period's total variance — a single, aggregate, whole-session number. It says <em>how much</em> of the day was jump-driven, not <em>which</em> return was the jump; that finer question is the next lesson's job.</li>
+<!-- DESK:START -->
       <li>This exact math is already implemented and run on real FX/gold data in this repo (<code>bipower()</code>/<code>jump_fraction()</code> in <code>volatilityExhaustion/vol_exhaustion_lib.py</code>). The measurement itself checks out against known scheduled-news events. Using it to sharpen a live volatility <em>forecast</em>, however, was tested and came back null — a distinction this lesson keeps sharp throughout.</li>
+<!-- DESK:END -->
+      <li><strong>How it reached trading:</strong> Barndorff-Nielsen &amp; Shephard (2004) gave the jump-robust measure; Andersen, Bollerslev &amp; Diebold (2007) showed jumps are far less persistent, so desks split them out before forecasting vol.</li>
     </ul>
   </div>
 
@@ -102,6 +105,23 @@
       of the same numbers: does each large move drag its very next
       neighbor along with it, or does it stand alone?
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Was that a volatility regime, or one jump?</h3>
+    <div class="tl-origin-who">Bipower variation · Barndorff-Nielsen &amp; Shephard, 2004</div>
+    <p>Realised variance adds up every squared intraday return, so a day with one central-bank-headline jump and a day of steadily turbulent trading can show the same number. For a vol trader or risk manager that matters: diffusive volatility tends to persist, a one-off jump does not.</p>
+    <p>Ole Barndorff-Nielsen and Neil Shephard's "Power and Bipower Variation with Stochastic Volatility and Jumps" (<em>Journal of Financial Econometrics</em>, 2004) showed that products of adjacent absolute returns estimate only the continuous part, so RV minus BV isolates the jump part. Andersen, Bollerslev &amp; Diebold ("Roughing It Up", 2007) used the split in HAR forecasts and found the jump component far less persistent than the continuous one.</p>
+    <p>Today jump-robust measures such as bipower variation (and later MinRV/MedRV) are standard in realised-volatility research and forecasting, and are how a desk separates an event-driven spike from a genuine change in the volatility regime.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage on">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How much of today's realised variance was continuous volatility, and how much came from jumps?</dd>
+        <dt>Takes in</dt><dd>Intraday returns and the <a href="institutional-har-rv.html">realised variance</a> they build; the jump concept from <a href="merton-jump-diffusion.html">Merton jump-diffusion</a>.</dd>
+        <dt>Hands on to</dt><dd>The return-by-return <a href="institutional-jump-detection-tests.html">jump detection tests</a>, and HAR forecasts that treat the continuous and jump parts separately (<a href="institutional-har-rv.html">HAR-RV</a>).</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -433,11 +453,12 @@
     The two problems can coexist in the same dataset — a fast sampling
     frequency chosen to resolve jumps precisely can simultaneously pick up
     more microstructure noise — which is exactly why serious realized-vol
-    research usually reports results at more than one sampling frequency (as
+    research usually reports results at more than one sampling frequency<!-- DESK:START --> (as
     this repo's own bipower work does, comparing 1-minute and 5-minute bars
-    directly) rather than trusting a single frequency's number blindly.
+    directly)<!-- DESK:END --> rather than trusting a single frequency's number blindly.
   </p>
 
+<!-- DESK:START -->
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>How this repo actually uses it — measured, not just theorized</h2>
   <p>
@@ -512,6 +533,7 @@
     anything about. Per this repo's own pre-registered stop rule, none of
     this was wired into the live forecaster.
   </div>
+<!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Common pitfalls</h2>
@@ -567,8 +589,11 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bipower variation replaces squares with adjacent absolute-return products,</strong> \(BV=\frac{\pi}{2}\sum|r_i||r_{i-1}|\) — a jump inflates RV quadratically but BV only linearly, through its ordinary neighbor.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The π/2 constant is exact, not a fudge factor</strong> — it corrects for \(E[|Z|]^2=2/\pi\) so BV is unbiased for the same continuous variance RV would estimate with no jumps present.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>J = max(RV−BV, 0) is a whole-session, aggregate split</strong> — it says how much of the day's variance was jump-driven, not which specific return was the jump.</span></div>
+<!-- DESK:START -->
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This exact estimator is implemented and validated on real data in this repo</strong> — the jump/continuous split passes a genuine out-of-sample test against known scheduled news events.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Using the split to improve a live volatility forecast tested NULL here</strong> — a real, replicated economic effect (jump variance predicts lower future variance) that was still too small to clear this repo's own pre-registered forecast-improvement bar.</span></div>
+<!-- DESK:END -->
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it separates a news spike from a vol regime.</strong> Barndorff-Nielsen &amp; Shephard (2004) made the split possible; Andersen, Bollerslev &amp; Diebold (2007) showed the jump part fades fast, so it is removed or modelled separately in vol forecasts.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 09</span></div>
@@ -617,7 +642,7 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q4. A trading desk computes RV = 0.00004, BV = 0.000031 for one session. What is the estimated jump contribution, and what can — and can't — this desk conclude from that one number?</summary>
+    <summary>Q4. A trading desk computes RV = 0.00004, BV = 0.000031 for one session. What is the estimated jump contribution, and what can — and can't — that desk conclude from that one number?</summary>
     <div class="tl-answer">
       \(J = \max(RV-BV,0) = 0.000009\) — roughly 22.5% of the session's total
       realized variance is attributed to jump activity, with 77.5% coming
@@ -646,6 +671,7 @@
       in the same dataset simultaneously.
     </div>
   </details>
+<!-- DESK:START -->
   <details class="tl-quiz">
     <summary>Q6. This repo has actually implemented and run bipower variation on real FX and gold data. What did that measurement find, and did it end up improving the live volatility forecaster?</summary>
     <div class="tl-answer">
@@ -668,6 +694,7 @@
       reported both, rather than only the flattering half.
     </div>
   </details>
+<!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>
@@ -675,7 +702,7 @@
     <li>Ole E. Barndorff-Nielsen &amp; Neil Shephard, <em>"Power and Bipower Variation with Stochastic Volatility and Jumps,"</em> Journal of Financial Econometrics, 2(1), 2004 — the original paper deriving bipower variation and its jump-robustness properties, the foundation of this lesson.</li>
     <li>Ole E. Barndorff-Nielsen, Peter Reinhard Hansen, Asger Lunde &amp; Neil Shephard, <em>"Designing Realized Kernels to Measure the ex post Variation of Equity Prices in the Presence of Noise,"</em> Econometrica, 76(6), 2008 — the realized-kernel estimator mentioned in Section 05, addressing microstructure noise rather than jumps.</li>
     <li>Suzanne S. Lee &amp; Per A. Mykland, <em>"Jumps in Financial Markets: A New Nonparametric Test and Jump Dynamics,"</em> Review of Financial Studies, 21(6), 2008 — the per-return jump detector covered in the next lesson.</li>
-    <li>Torben G. Andersen, Tim Bollerslev &amp; Francis X. Diebold, <em>"Roughing It Up: Including Jump Components in the Measurement, Modeling, and Forecasting of Return Volatility,"</em> Review of Economics and Statistics, 89(4), 2007 — the continuous/jump-component forecasting regression referenced in Section 06.</li>
+    <li>Torben G. Andersen, Tim Bollerslev &amp; Francis X. Diebold, <em>"Roughing It Up: Including Jump Components in the Measurement, Modeling, and Forecasting of Return Volatility,"</em> Review of Economics and Statistics, 89(4), 2007 — the continuous/jump-component forecasting regression<!-- DESK:START --> referenced in Section 06<!-- DESK:END -->.</li>
   </ul>
   </details>
 

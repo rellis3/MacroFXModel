@@ -224,10 +224,10 @@
         <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>Checking which direction a PDE solver runs</h4><p>Before trusting a numerical PDE solver, ask whether it's set up forward (adjoint operator, initial condition) or backward (plain generator, terminal condition) — conflating the two gives a stable computation of the wrong quantity, not a crash.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🔬</div><div><h4>Closed forms are the exception</h4><p>GBM, Ornstein-Uhlenbeck, and CIR happen to have known closed-form densities. Most SDEs with more general coefficients don't — the equation is still well-posed, but solving it needs numerical PDE methods or simulation instead.</p></div></div>
       </div>
-      <div class="sl-callout purple">
+      <!-- DESK:START --><div class="sl-callout purple">
         <div class="sl-callout-label">Checked against this repo</div>
         <p>The full lesson notes that the Fokker-Planck equation is "rarely solved by hand" in practice and that a risk system typically stands in with Monte Carlo simulation instead. That claim was re-checked directly against this codebase for this deck: no Fokker-Planck, Kolmogorov-equation, or explicit density-evolution PDE solver exists anywhere in this repo's source outside these two lesson pages — so the claim holds, and nothing here needed correcting.</p>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="12">

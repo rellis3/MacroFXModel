@@ -231,10 +231,10 @@
         <div class="sl-callout-label">Common pitfalls</div>
         <p><strong>Theta is not linear</strong> — don't extrapolate today's rate across the whole month; the daily rate itself roughly doubles, then accelerates further, near expiry. <strong>The delta-hedged approximation drops a real term</strong> — extremely accurate when the financing term is small, but for a deep in-the-money option or a long time to expiry, that dropped term stops being negligible.</p>
       </div>
-      <div class="sl-callout amber">
+<!-- DESK:START -->      <div class="sl-callout amber">
         <div class="sl-callout-label">Fact-check against this repo's own code</div>
         <p>The full lesson's meta badge reads <strong>"CONCEPT — not built or tested in this repo."</strong> Checked directly: <code>js/gammaGreeks.js</code> exports <code>bsGamma</code>, <code>bsVanna</code>, and <code>bsCharm</code>, with a full test suite (<code>gammaGreeks.test.mjs</code>, <code>gammaFlow.test.mjs</code>, <code>fullBookGex.test.mjs</code>) — but no theta or time-decay function exists anywhere in that file, in <code>js/oi.js</code>, or across the rest of the codebase. Every other "theta" hit in the repo (<code>js/arma.js</code>, <code>js/arima-price.js</code>, <code>js/creditHmm.js</code>, <code>volatilityExhaustion/*.py</code>) is an unrelated statistical use of the same Greek letter — an ARMA/ARIMA MA(1) coefficient, an HMM persistence term, or a barrier half-width in volatility-exhaustion research, never an option's time decay. So unlike the gamma lesson's stale badge, <strong>this lesson's "not built or tested in this repo" claim is still accurate</strong> for theta specifically.</p>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="12">
@@ -260,16 +260,20 @@
 
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
-      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: when implied vol is far above realised, premium is rich, so sell it and collect the decay.</p>
+      <!-- DESK:START -->
       <div class="sl-stamp validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18">
-        <span class="sl-stamp-tag">Validated</span>
+        <span class="sl-stamp-tag">Desk test: held up</span>
         <span><strong>iv-over-rv-wider, the opposite of calm:</strong> top-decile VIX ÷ realised (88 first days, 2010→). NAS100 next-5 <strong>+0.38 ATR [+0.11, +0.62]</strong>; SPX500 next-20 <strong>+0.67 [+0.13, +1.21]</strong> (next-5 +0.17, null). Realised catches up to implied.</span>
       </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
-        <span class="sl-stamp-tag">Untested</span>
+        <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>Short-premium P&amp;L:</strong> the result is about range, not option P&amp;L. Testing the income claim needs historical option prices with bid/ask, a fixed rule, real margin, and 2018 and 2020 in the sample.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>Θ ≈ −½σ²S²Γ compares theta and gamma on a running basis: small moves, re-hedged continuously. A jump delivers months of variance in one session, and an unhedged, margined book is forced out before any reversal.</p>
@@ -337,7 +341,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Calendar spreads harvest that acceleration differential directly — selling the faster-decaying near leg against a longer-dated leg at the same strike is a structural theta trade.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Short gamma and long theta are the same fact: ThetaExp_k ≈ −50σ²×DealerGEX_k — the sign always flips, so "dealers usually short gamma" forces "dealers usually long theta" by the same PDE.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Weekend theta handling is a practitioner convention, not a universal rule — different desks smooth it differently around the two non-trading days.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>November 2018: short natural gas calls sold "for income" were wiped out by a one-day jump; theta comes in small steps, gamma is paid all at once. Desk verdict (iv-over-rv-wider, validated): rich implied-over-realised is followed by WIDER markets. Short-premium P&amp;L itself is untested.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>November 2018: short natural gas calls sold "for income" were wiped out by a one-day jump; theta comes in small steps, gamma is paid all at once.<!-- DESK:START --> Desk verdict (iv-over-rv-wider, validated): rich implied-over-realised is followed by WIDER markets. Short-premium P&amp;L itself is untested.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

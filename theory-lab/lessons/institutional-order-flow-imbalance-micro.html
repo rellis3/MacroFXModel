@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Order Flow Imbalance &amp; the Microprice — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-order-flow-imbalance.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Seeing the next tick in the queues</h2>
+      <p class="sl-sub">Order flow imbalance · Cont, Kukanov &amp; Stoikov, 2014; microprice, Stoikov, 2018 → HFT and execution algorithms</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Trade-based flow measures need classified trades and only update when someone crosses. Cont, Kukanov &amp; Stoikov (2014) showed short-horizon price moves are near-linear in the imbalance of best-quote events.</p>
+        <p>Stoikov's 2018 microprice turned queue imbalance into a fair value; both are now standard inputs for HFT market makers and execution algorithms.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage on">Execute</span></div>
+        <p><strong>Its job:</strong> which way is the next tick likely to go, from the top of the book now?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Watching the lines grow, not just who got served</h2>
       <p class="sl-sub">Trade classification watches a security-camera replay of who already traded. OFI watches the two lines themselves, live.</p>
       <div class="sl-compare">
@@ -42,8 +55,8 @@
       <div class="sl-quote">The <a href="limit-order-books-micro.html">Limit Order Books</a> lesson already gave this category its bid/ask price and size notation, P<sub>b</sub>, Q<sub>b</sub>, P<sub>a</sub>, Q<sub>a</sub>. Nothing here reintroduces that structure — this deck takes it as given and asks a narrower question: given how the book just changed, which way is pressure leaning, right now?</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Building OFI, one update at a time</h2>
       <p class="sl-sub">Each side of the book contributes a signed value at every update. Step through the three cases.</p>
       <div class="sl-card">
@@ -69,8 +82,8 @@
       <p class="sl-p">OFI<sub>n</sub> = e<sup>b</sup><sub>n</sub> − e<sup>a</sup><sub>n</sub>, summed over a short window. The subtraction is what makes the mirror logic work: whatever makes the ask side <em>less</em> of an obstacle to buyers reads as positive, exactly like the bid side building up directly.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The microprice: weight each price by the OTHER side's size</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>The naive midpoint ignores size entirely</h4><p>(P_b+P_a)/2 treats a book with 10 units on one side and 10,000 on the other exactly the same as a perfectly balanced book.</p></div></div>
@@ -81,8 +94,8 @@
       <div class="sl-quote">If ten people hold one end of a tug-of-war rope and two hold the other, you don't bet the rope stays in the middle — you bet it drifts toward the two-person end, where there's less resistance. The microprice is that bet, written as a formula.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">A lopsided book, drawn</h2>
       <p class="sl-sub">Heavy resting size on the bid, thin resting size on the ask — watch where the microprice sits relative to the naive midpoint.</p>
       <div class="sl-card">
@@ -106,8 +119,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Queue imbalance: the number underneath the microprice</h2>
       <p class="sl-sub">QI = (Q_b − Q_a) / (Q_b + Q_a). Ranges from −1 (all size on the ask) to +1 (all size on the bid).</p>
       <div class="sl-callout amber">
@@ -117,8 +130,8 @@
       <p class="sl-p">QI = 0 collapses the microprice straight back to the plain midpoint — no lopsidedness, no adjustment. QI = +1 pushes the microprice all the way to the ask price; QI = −1 pushes it all the way to the bid price. The microprice can never sit outside the [P_b, P_a] range, no matter how extreme the imbalance gets.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Drag the imbalance, watch the microprice slide</h2>
       <p class="sl-sub">Fixed book: bid 1.2000, ask 1.2002. The midpoint (dashed) never moves — only the microprice (amber dot) does, exactly along the line between the bid and ask.</p>
       <div class="sl-card">
@@ -144,8 +157,8 @@
       <p class="sl-p">Notice the microprice never overshoots past the bid or the ask, however extreme the imbalance — it is always a weighted point between the two touch prices, never beyond them.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Naive midpoint vs. microprice, same three books</h2>
       <p class="sl-sub">Same touch prices throughout (1.2000 / 1.2002) — only the resting sizes change.</p>
       <div class="sl-card">
@@ -171,8 +184,8 @@
       <p class="sl-p">The midpoint is blind to every one of these three very different books. The microprice tells them apart immediately — that gap is the entire practical case for using it.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">A book that tilts, then actually moves that way</h2>
       <p class="sl-sub">Four snapshots. Two updates of pure lopsidedness, then a real price move — in the predicted direction.</p>
       <div class="sl-card">
@@ -191,8 +204,8 @@
       <p class="sl-p">Every number here is the direct output of the formulas from Sections 2–5, cross-checked to six decimal places — a small hand-built illustration of the mechanism, not a live market run.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Compute it yourself</h2>
       <p class="sl-sub">Edit any bid/ask price or size. Includes a zero-total-size guard and a crossed-book guard.</p>
       <div class="sl-card">
@@ -217,8 +230,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Skewing quotes before a trade ever tells anyone anything</h2>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Real-world trading scenario</div>
@@ -227,8 +240,8 @@
       <p class="sl-p">This is the single most common practical pairing of the two signals: OFI as the early-warning pressure gauge, the microprice as the actual reference price a desk re-centers its quoting around, tick by tick.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where both signals quietly mislead</h2>
       <div class="sl-compare">
         <div class="sl-ccard red">
@@ -252,8 +265,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Closing the arc: five lessons, one desk's actual workflow</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Trade Classification</h4><p>Signs historical trades as buyer- or seller-initiated when true intent was never recorded.</p></div></div>
@@ -262,14 +275,14 @@
         <div class="sl-icard"><div class="sl-icard-badge">5</div><div><h4>OFI &amp; Microprice</h4><p>The live, tick-by-tick signals a desk actually watches — closing the gap between historical theory and real-time practice.</p></div></div>
       </div>
       <div class="sl-quote">Neither end of this arc replaces the other. A desk that only watches OFI without knowing why spreads and informed trading exist is operating on unexplained intuition; a researcher who only studies PIN without knowing what a live desk actually watches is missing where the theory gets used.</div>
-      <div class="sl-callout amber">
+      <!-- DESK:START --><div class="sl-callout amber">
         <div class="sl-callout-label">Verified against this repo's actual code</div>
         <p>A repo-wide search of every <code>.py</code>/<code>.js</code> file for "microprice," "queue imbalance," "order flow imbalance," and the bare string "OFI" turns up nothing genuinely matching — the only "imbalance" hits found are unrelated fair-value-gap price imbalances (<code>forge/levels.py</code>, several confluence bots) and an ML class-imbalance comment. The closest real artifact is <code>oi_recon/databento_orderbook_cost_estimate.py</code>, a never-executed pricing-only cost query for full order-book depth data — its own comments confirm this repo's primary FX venue, OANDA spot, <strong>has no order book at all</strong> to compute either signal from. A specific, honest reason both signals stay conceptual here.</p>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -319,8 +332,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
-      <div class="sl-kicker">Section 14</div>
+    <section class="sl-slide" data-slide="16">
+      <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>OFI is built from bid/ask price and size changes between consecutive book updates, not from trade signs — it can flag pressure building before any trade happens.</p></div>
@@ -329,6 +342,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Queue imbalance and the microprice are the same idea, algebraically: P_micro = M + (S/2)·QI — the midpoint, nudged by half the spread toward whichever side is lopsided.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Both signals are short-horizon and built on displayed size that can vanish an instant later — genuinely useful, but not a multi-minute forecast and not immune to spoofing.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This closes the category's arc: trade classification, Roll, Glosten-Milgrom and PIN explain and estimate spreads and informed trading from history; OFI and the microprice are what a live desk actually watches, tick by tick.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: OFI (2014) and the microprice (2018) are standard short-horizon inputs for HFT market makers and execution algorithms.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -361,7 +375,7 @@
   function fmt6(n){ return n.toFixed(6); }
   function fmt3(n){ return n.toFixed(3); }
 
-  // Section 6 — QI slider driving the microprice dot along the bid-ask axis.
+  // Section 7 — QI slider driving the microprice dot along the bid-ask axis.
   (function(){
     var slider = document.getElementById('qi-slider');
     if (!slider) return;
@@ -386,7 +400,7 @@
     update();
   })();
 
-  // Section 9 — calculator: midpoint, microprice, QI from Pb/Qb/Pa/Qa.
+  // Section 10 — calculator: midpoint, microprice, QI from Pb/Qb/Pa/Qa.
   (function(){
     var pbEl = document.getElementById('mc-pb');
     if (!pbEl) return;

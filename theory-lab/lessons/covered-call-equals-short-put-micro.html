@@ -178,7 +178,7 @@
 
     <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 8</div>
-      <h2 class="sl-h2">The chain, and what the desk found</h2>
+      <h2 class="sl-h2">The chain<!-- DESK:START -->, and what the desk found<!-- DESK:END --></h2>
       <div class="sl-chain">
         <div class="sl-chain-link shock"><b>Fund</b>Writes calls on a schedule: income mandate, not a view</div>
         <div class="sl-chain-arrow">→</div>
@@ -188,32 +188,46 @@
         <div class="sl-chain-arrow">→</div>
         <div class="sl-chain-link end"><b>Outcome</b>Hedging leans against moves: the story says damped</div>
       </div>
+      <!-- DESK:START -->
       <div class="sl-stamp validated" data-evidence="gex-range" data-evidence-date="2026-09-24">
-        <span class="sl-stamp-tag">Range only</span>
+        <span class="sl-stamp-tag">Desk test: held up (range only)</span>
         <span><strong>gex-range:</strong> the range half is real <strong>on the Nasdaq only</strong>. 793 days of NQ, +0.176 next-day range on short-gamma days (p 0.0008), +0.315 vol-matched. Long gamma is the quiet state (~0.85 vs ~1.02). Does not carry to FX.</span>
       </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp null">
-        <span class="sl-stamp-tag">Falsified</span>
+        <span class="sl-stamp-tag">Desk test: no direction found</span>
         <span><strong>Direction:</strong> no directional content; wall-magnet direction scored 48.8% out-of-sample vs a 49.9% placebo.</span>
       </div>
+      <!-- DESK:END -->
     </section>
 
+    <!-- DESK:START -->
     <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The desk's record on the rest</h2>
+    <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
-        <span class="sl-stamp-tag">Untested</span>
+        <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>Covered calls themselves:</strong> no ledger entry on overwriting flow, and nothing in the live code models it.</span>
       </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp context">
-        <span class="sl-stamp-tag">Context</span>
+        <span class="sl-stamp-tag">Desk data: base rate</span>
         <span><strong>Put/call tilt:</strong> reported as positioning only; the desk declines to infer a direction, because open interest doesn't record who opened the contract. Never scored.</span>
       </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp null">
-        <span class="sl-stamp-tag">Null</span>
+        <span class="sl-stamp-tag">Desk test: nothing found</span>
         <span><strong>Max-pain pinning (oi-max-pain):</strong> tested 2026-09-10, null. Weakness: no sample size or interval recorded, so it's the weakest null in the ledger: "not shown", not "proven false". A level to know, not a magnet.</span>
       </div>
+      <!-- DESK:END -->
+    <!-- DESK:START -->
     </section>
+    <!-- DESK:END -->
 
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
@@ -247,6 +261,7 @@
         <div class="sl-quiz-explain">Open interest counts contracts, not who initiated them. The overwriter is neutral to mildly bullish with the upside sold.</div>
       </div>
 
+      <!-- DESK:START -->
       <div class="sl-quiz-q" data-q="4">
         <div class="sl-quiz-num">Question 4</div>
         <h4>What did the desk find about dealer gamma?</h4>
@@ -255,6 +270,7 @@
         <button class="sl-quiz-opt">Nothing at all, anywhere</button>
         <div class="sl-quiz-explain">Long gamma is quieter than a vol-matched baseline on NQ; it does not carry to FX, and wall-magnet direction scored 48.8% vs a 49.9% placebo.</div>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="12">
@@ -264,8 +280,10 @@
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Long stock + short call ≡ cash + short put: S − C = Ke<sup>−rT</sup> − P, both paying min(S<sub>T</sub>, K).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>You sell the upside above K and keep the whole downside, less one premium.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Open interest never records who opened the contract. A sold put is bullish; a sold call against stock is capped.</p></div>
+        <!-- DESK:START -->
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Gamma's range effect is real on the Nasdaq only; its direction is falsified. Covered calls themselves are untested here.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Max-pain pinning came back null, a weak null with no sample size recorded.</p></div>
+        <!-- DESK:END -->
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

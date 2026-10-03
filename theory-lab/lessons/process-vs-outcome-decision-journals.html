@@ -39,7 +39,7 @@
   <h1 class="tl-title">Judge the Decision, Not the Result</h1>
   <p class="tl-dek">A good trade can lose and a reckless one can win. If you grade yourself on results, luck writes your rulebook. This lesson is about the habits that stop it: separating decision from outcome, catching hindsight in the act, and writing your reasoning down <em>before</em> the market answers.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->; desk verdicts quoted where tested<!-- DESK:END --></span>
     <span>~20 min read</span>
     <span>Prereqs: <a href="drawdowns-risk-of-ruin.html">Drawdowns and Risk of Ruin</a> (lesson 5); <a href="bayesian-inference.html">Bayesian Inference</a> (helpful)</span>
   </div>
@@ -56,7 +56,7 @@
       <li><strong>Hindsight bias</strong>: once you know the outcome, it feels as though you always knew. Fischhoff (1975) showed that knowing an outcome raises how predictable people think it was — and they don't notice the shift.</li>
       <li><strong>One result says almost nothing.</strong> A 55% edge loses 45% of the time; a single win moves a fair 50/50 prior only to 55%. It takes on the order of 150 trades to be 95% sure which kind of trader you are.</li>
       <li><strong>The cure is to write first.</strong> A decision journal records what you expect, why, how confident, the base rate, and what would change your mind — <em>before</em> the outcome. A pre-mortem (Gary Klein) asks "it failed — why?" before you commit.</li>
-      <li><strong>The desk's verdict:</strong> its own pre-registered prior lost — it expected a drawn funding backstop to warn of wider markets, and found the opposite — and a 54.1% "hit rate" turned out to be exactly the 54.1% base rate. Both are nulls, reported as measured. Whether journals make traders better is <em>untested</em> here.</li>
+      <!-- DESK:START --><li><strong>The desk's verdict:</strong> its own pre-registered prior lost — it expected a drawn funding backstop to warn of wider markets, and found the opposite — and a 54.1% "hit rate" turned out to be exactly the 54.1% base rate. Both are nulls, reported as measured. Whether journals make traders better is <em>untested</em> here.</li><!-- DESK:END -->
     </ul>
   </div>
 
@@ -217,8 +217,8 @@
     "This setup is right 54% of the time" sounds like an edge. Whether it is depends entirely on how
     often the market does that thing <em>anyway</em>. If the Nasdaq rises in 54% of hours regardless,
     a signal that is right 54% of the time knows nothing. Writing the base rate down next to every
-    claimed hit rate is the simplest guard against fooling yourself — and, as Section 05 shows, it is
-    the exact trap the desk measured in one of its own tests.
+    claimed hit rate is the simplest guard against fooling yourself<!-- DESK:START --> — and, as Section 05 shows, it is
+    the exact trap the desk measured in one of its own tests<!-- DESK:END -->.
   </p>
 
   <h3>5. The decision journal and the pre-mortem</h3>
@@ -347,6 +347,7 @@
     </p>
   </div>
 
+  <!-- DESK:START -->
   <div class="tl-story" id="story-2">
     <div class="tl-story-label">It actually happened — on this desk</div>
     <h3>October 2026: a prior written down, and beaten</h3>
@@ -371,6 +372,7 @@
       is hindsight bias defeated by a dated piece of paper.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -400,34 +402,44 @@
     </div>
   </div>
 
+  <!-- DESK:START -->
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>What this desk found when it tested the claims</h2>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="funding-stress" data-evidence-date="2026-10-02">
-    <span class="tl-verdict-tag">Null</span>
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>A pre-registered prior that lost: "a drawn backstop warns of a wider tape".</strong> Expected in writing, before the run, to be the strongest result. Over 21 episodes the S&amp;P 500's next-5-session range was −0.561 ATR [−0.984, −0.181] versus control — <em>calmer</em>, not wider — and negative in both halves. The facility is drawn on 667 of 2,123 sessions (31%): routine plumbing, not stress. The other setup left just 15 episodes, below a floor of 20 set in advance, and was declared untestable rather than quoted. Reported against the desk's own expectation.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="rates-pivot-lead" data-evidence-date="2026-09-25">
-    <span class="tl-verdict-tag">Null</span>
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>The base-rate trap: "a confirmed turn in short-term rates leads the Nasdaq".</strong> 2,010 de-clustered events: signed Nasdaq return at one hour −0.005% versus control [−0.021, +0.012], null at 1h, 2h and 4h, both directions, both halves — and well powered. The telling number: a confirmed rates low is followed by an up-move <strong>54.1%</strong> of the time, and the base rate is <strong>54.1%</strong>. A hit rate quoted without its base rate looked like an edge and was exactly nothing.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10">
-    <span class="tl-verdict-tag">Context</span>
+    <span class="tl-verdict-tag">Desk data: base rate</span>
     <span><strong>Hindsight in machines: "a backtest that looks too good has a bug".</strong> A backtest is a decision journal written by a program — and it can cheat the same way a memory does, by seeing the outcome. On this desk: one system's whole edge came from stops that were not live for the first hour; a Fibonacci-level system showed an 85.7% backtest win rate against 39.6% live; a volatility tool scored 95% of its "wins" before entry. Audit what the engine could see at decision time.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
-    <span class="tl-verdict-tag">Untested</span>
+    <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>"Keeping a decision journal makes you a better trader."</strong> Not tested here, and the outside evidence is mostly indirect: forecasting research shows that scoring and precise probabilities help forecasters, but there is little rigorous evidence on journals and trading P&amp;L specifically. The case for a journal in this lesson rests on what it prevents — hindsight and resulting — not on a measured return.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-solid green">
     <strong>The habit that works:</strong> write the expectation, the confidence and the base rate down
-    <em>before</em> the answer exists, and publish the answer whichever way it goes. Every verdict in
+    <em>before</em> the answer exists, and publish the answer whichever way it goes.<!-- DESK:START --> Every verdict in
     this series — including the ones that embarrassed the desk's own priors — exists because of that
-    habit.
+    habit.<!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -455,6 +467,7 @@
     </div>
   </div>
 
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
@@ -467,6 +480,7 @@
       journal on this page is not connected to either — it stays in your browser.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -486,9 +500,9 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Hindsight edits memory.</strong> Fischhoff (1975): knowing the outcome makes it seem predictable, without people noticing. Only a record written before beats it.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>One result is weak evidence.</strong> At 55% vs 45%, one win moves 50% to 55%; ~150 trades on average to reach 95%.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Journal before, pre-mortem before, score after.</strong> Expectation, reasons, base rate, confidence, what would change your mind; then a Brier score.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The desk's own prior lost:</strong> a drawn funding backstop was expected to precede a wider week; the S&amp;P 500 range came back −0.561 ATR [−0.984, −0.181] — calmer. Reported as a null against expectation.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Tested null: rates turns lead the Nasdaq.</strong> A 54.1% hit rate against a 54.1% base rate — exactly nothing.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Untested here: that journals improve trading results.</strong> The case rests on the biases they prevent, not on a measured return.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The desk's own prior lost:</strong> a drawn funding backstop was expected to precede a wider week; the S&amp;P 500 range came back −0.561 ATR [−0.984, −0.181] — calmer. Reported as a null against expectation.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Tested null: rates turns lead the Nasdaq.</strong> A 54.1% hit rate against a 54.1% base rate — exactly nothing.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Untested here: that journals improve trading results.</strong> The case rests on the biases they prevent, not on a measured return.</span></div><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>
@@ -507,7 +521,7 @@
   </details>
   <details class="tl-quiz">
     <summary>Q4. A signal "is right 54% of the time". What single extra number do you need before calling it an edge?</summary>
-    <div class="tl-answer">The base rate — how often the outcome happens without the signal. In the desk's rates-pivot test the hit rate was 54.1% and the base rate was 54.1%: zero edge.</div>
+    <div class="tl-answer">The base rate — how often the outcome happens without the signal.<!-- DESK:START --> In the desk's rates-pivot test the hit rate was 54.1% and the base rate was 54.1%: zero edge.<!-- DESK:END --></div>
   </details>
   <details class="tl-quiz">
     <summary>Q5. You state 80% confidence on five entries; three come true. What is your Brier score?</summary>
@@ -515,7 +529,7 @@
   </details>
   <details class="tl-quiz">
     <summary>Q6. Why does pre-registering a test — writing the expectation down and committing it before the data is run — protect against hindsight bias?</summary>
-    <div class="tl-answer">Because the expectation is fixed, dated and uneditable before the result exists. When the result arrives, there is no room to remember having expected it. The desk's funding-stress test is the example: its written prior said "the strongest cell", the result went the other way, and the record shows that plainly instead of a revised story.</div>
+    <div class="tl-answer">Because the expectation is fixed, dated and uneditable before the result exists. When the result arrives, there is no room to remember having expected it.<!-- DESK:START --> The desk's funding-stress test is the example: its written prior said "the strongest cell", the result went the other way, and the record shows that plainly instead of a revised story.<!-- DESK:END --></div>
   </details>
 
   <details class="tl-section-collapse">

@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">White's Reality Check &amp; SPA — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-reality-check-spa.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Is the best backtest just the luckiest?</h2>
+      <p class="sl-sub">Data-snooping tests · White, 2000; Hansen, 2005 → trading-rule research</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Test hundreds of trading rules and the best always looks good. White's Reality Check (2000) bootstraps every rule tried; Sullivan, Timmermann &amp; White (1999) used it on about 7,800 technical rules, and the best rule's edge did not hold up in later data.</p>
+        <p>Hansen's SPA test (2005) sharpened it. Research teams use both, with deflated Sharpe ratios, to decide whether a best backtest is worth capital.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage on">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> after trying many strategies, does the winner really beat the benchmark, or is it just the luckiest draw?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Same question, a completely different tool</h2>
       <p class="sl-sub">Both fixes target the exact same danger: the best of many tries looks good even with zero real edge anywhere.</p>
       <div class="sl-icard-grid">
@@ -36,8 +49,8 @@
       <div class="sl-quote">Same disease, two honest treatments. This deck covers the bootstrap-the-whole-panel branch — reusing the block bootstrap this curriculum's own Bootstrapping &amp; Monte Carlo lesson already built, now pointed at a <em>maximum across many candidates</em> instead of one series alone.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The setup: many candidates, one shared clock</h2>
       <p class="sl-sub">N candidate strategies, T shared time periods, one fixed benchmark.</p>
       <div class="sl-card">
@@ -55,8 +68,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">One shared resample, applied to every candidate at once</h2>
       <p class="sl-sub">The key trick: draw ONE random block-index path, and reuse it across all N candidates in the same replicate.</p>
       <div class="sl-card">
@@ -112,8 +125,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">WRC's weak spot: junk candidates widen the null</h2>
       <p class="sl-sub">Demeaning EVERY candidate at zero gives even the obviously-bad ones an equal shot at "winning" the replay.</p>
       <div class="sl-compare">
@@ -138,8 +151,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Hansen's fix: studentize, and bench the clear losers</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Studentize before the max</h4><p>Divide each candidate's mean by its own bootstrap-estimated spread before comparing — puts a jumpy, high-vol candidate and a smooth, low-vol one on equal footing, the same idea a Sharpe ratio applies to a single strategy.</p></div></div>
@@ -148,8 +161,8 @@
       <div class="sl-quote">Judging a footrace where three runners visibly tripped: pretending, in an imagined rerun, that they "might have won" is silly once you've already seen them fall. SPA stops giving obviously-last-place candidates that benefit of the doubt, and puts every remaining runner's time in context of how consistent that runner normally is.</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">WRC versus SPA, side by side</h2>
       <p class="sl-sub">Same bootstrap engine, same null hypothesis — SPA is the field's preferred modern successor, not a rival idea.</p>
       <div class="sl-card">
@@ -174,8 +187,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">A toy panel: one real edge, one deceptive Sharpe</h2>
       <p class="sl-sub">Five candidates, 16 periods each, benchmark = 0. Watch what raw Sharpe alone would have you believe.</p>
       <div class="sl-icard-grid">
@@ -189,8 +202,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Run the real bootstrap yourself</h2>
       <p class="sl-sub">Genuinely computed in your browser, fresh random draws every click — this is the actual test, not an animation.</p>
       <div class="sl-card">
@@ -221,8 +234,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The bootstrap p-value, arithmetically</h2>
       <p class="sl-sub">Once you have a tally, the p-value itself is one small formula. Try your own counts.</p>
       <div class="sl-card">
@@ -238,12 +251,12 @@
           </div>
         </div>
         <button type="button" class="sl-reset-btn" id="pv-reset">Reset to 14 of 5,000</button>
-        <div class="sl-note">p = (1 + count≥observed) / (1 + total) — the Davison–Hinkley "+1" correction, so a p-value is never reported as exactly zero no matter how few (or zero) replicates matched or beat the real statistic. This repo's own block-bootstrap brick (<code>statsCore.js</code>) uses the identical correction.</div>
+        <div class="sl-note">p = (1 + count≥observed) / (1 + total) — the Davison–Hinkley "+1" correction, so a p-value is never reported as exactly zero no matter how few (or zero) replicates matched or beat the real statistic.<!-- DESK:START --> This repo's own block-bootstrap brick (<code>statsCore.js</code>) uses the identical correction.<!-- DESK:END --></div>
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">The test is only as honest as the candidate set</h2>
       <div class="sl-compare">
         <div class="sl-ccard red">
@@ -268,17 +281,19 @@
       <div class="sl-quote">No formula can detect a cherry-picked candidate set from the outside — it will happily return a small, confident p-value on the wrong question. This is a discipline problem, identical in spirit to the Deflated Sharpe lesson's warning about undercounting N.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <!-- DESK:START -->
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What this repo actually has — and doesn't</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Verified against this repo's actual code</div>
         <p>This repo's <code>statsCore.js</code> ships a real, working stationary (Politis–Romano) block bootstrap, reused across <code>backtestStats.js</code>, <code>scripts/freeze_expectation.mjs</code>, <code>js/volReversionCore.js</code>, and <code>analysis/cot_factor/factor_test.py</code>. Every single one of those points the bootstrap at <strong>ONE</strong> series or statistic at a time. The one place this repo corrects for testing several things at once (<code>volReversionCore.js</code>'s best-of-4-horizons check) uses a parametric Bonferroni adjustment, not a bootstrap of a max statistic. And this repo's own honest self-assessment names the sharper version of this exact problem — "best-of-N ranked on the same data... best of ~600 random configs per pair" — as its single biggest unaddressed risk, proposing purged cross-validation plus a deflated-Sharpe adjustment as the fix. No genuine WRC/SPA-style bootstrap of a full candidate panel exists anywhere in this codebase — the building block (the bootstrap itself) is already here; assembling it into this specific test has not been done.</p>
       </div>
     </section>
+    <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -328,8 +343,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>WRC and SPA test the full candidate panel's actual return histories directly — a genuine bootstrap in place of the Deflated Sharpe Ratio's estimated trial count and extreme-value-theory formula.</p></div>
@@ -337,6 +352,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>WRC is honest but conservative once junk candidates are included; Hansen's SPA studentizes and stops clearly-inferior candidates from padding the null, recovering real power on the same data.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>An impressive raw Sharpe is not the same claim as a statistically real edge — this deck's own toy panel showed a noise strategy's Sharpe nearly matching a real edge's while its mean failed the bootstrap outright.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Both tests are worthless on a dishonestly curated candidate set — the honesty of the candidate list is a discipline problem no formula can rescue after the fact.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>On a desk this is the gate against data-snooping: the best of many backtests must beat a bootstrap of all the rules tried before it gets capital.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

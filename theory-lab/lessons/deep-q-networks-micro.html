@@ -300,10 +300,10 @@
         <p>Swapping a Q-table for a neural function approximator adds real complexity — millions of weights instead of a handful of table entries — and removes interpretability: a table cell's stored number can be inspected directly; a trained network's generalization behavior on an unseen state usually can't be, short of extensive separate testing. That makes a poorly specified reward or an unrealistic simulated environment an <em>easier</em> way to "solve" a backtest and still fail live, not a harder one.</p>
       </div>
       <div class="sl-quote">DQN and its descendants are genuinely impressive on well-defined games with a clear, dense reward — that's a fact about Atari, not a fact transferable to markets by default. Reinforcement learning is a general-purpose optimizer, not a trading strategy; it will faithfully optimize whatever reward and simulated environment it's handed.</div>
-      <div class="sl-callout purple">
+      <!-- DESK:START --><div class="sl-callout purple">
         <div class="sl-callout-label">Where this lesson stands in this repo</div>
         <p>This deck, like the full lesson it summarizes, is explanatory — DQN, experience replay, and target networks are concepts covered here, not code built or tested anywhere in this repository. A repo-wide check for any deep-RL, DQN, or neural-network-based trading implementation (grep across every .py file for replay buffers, Q-networks, PyTorch/TensorFlow usage) turned up nothing beyond the theory-lab lessons themselves — so that "concept, not implementation" framing is confirmed still accurate, not stale.</p>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">

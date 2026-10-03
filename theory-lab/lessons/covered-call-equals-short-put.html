@@ -17,7 +17,7 @@
   <h1 class="tl-title">The Covered Call Is a Short Put</h1>
   <p class="tl-dek">Owning a stock and selling a call against it is sold as the "conservative" income strategy; selling a naked put is sold as the risky one. At expiry they are the same position, to the cent — and once you see that, call open interest stops looking like a crowd of bulls.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->; desk verdicts quoted where tested<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: The Four Option Positions, Same Greeks, Different Risk, Black-Scholes-Merton</span>
   </div>
@@ -35,7 +35,7 @@
       <li>What you <strong>give up</strong>: everything above the strike. What you <strong>keep</strong>: the whole downside, cushioned only by the premium. "Conservative" means "slightly less bad than owning the stock outright", by the size of the premium.</li>
       <li>The interactive chart overlays the two P&amp;L lines: drag strike and premium and they never separate.</li>
       <li><strong>The open-interest angle:</strong> covered-call overwriting is one of the largest systematic option flows, and it lands in <em>call</em> open interest from a <em>seller</em> with capped upside. Open interest never records who opened a contract, so call-heavy OI is not evidence of bulls, and put-heavy OI is not evidence of bears (a sold put is bullish).</li>
-      <li>The textbook chain says the fund's sold calls leave dealers long gamma near the strike, and that their hedging damps moves. The desk tested the gamma part: the <strong>range</strong> half is real on the Nasdaq only; the <strong>direction</strong> half is falsified. Max-pain pinning came back <strong>null</strong>, and the desk keeps no entry on covered calls themselves.</li>
+      <li>The textbook chain says the fund's sold calls leave dealers long gamma near the strike, and that their hedging damps moves.<!-- DESK:START --> The desk tested the gamma part: the <strong>range</strong> half is real on the Nasdaq only; the <strong>direction</strong> half is falsified. Max-pain pinning came back <strong>null</strong>, and the desk keeps no entry on covered calls themselves.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -350,17 +350,21 @@
   <p>
     The first three links are mechanics: if a dealer is long the calls and
     hedges, it trades against the move. Whether that hedging is big enough to
-    change how far the index travels is an empirical question, and this desk
-    has tested the gamma part of it.
+    change how far the index travels is an empirical question<!-- DESK:START -->, and this desk
+    has tested the gamma part of it<!-- DESK:END -->.
   </p>
+  <!-- DESK:START -->
   <div class="tl-verdict validated" data-evidence="gex-range" data-evidence-date="2026-09-24">
-    <span class="tl-verdict-tag">Range only</span>
+    <span class="tl-verdict-tag">Desk test: held up (range only)</span>
     <span><strong>Tested here (gex-range):</strong> the <strong>range</strong> half is real <strong>on the Nasdaq only</strong>. 793 days of NQ: next-day realised range against a same-trailing-vol Brownian baseline is +0.176 higher on short-gamma days (p 0.0008), +0.315 matched on trailing vol; positive in 4 of 4 specifications and 6 of 6 usable years. The reliable state is "long gamma is quiet" (range ratio ~0.85 versus ~1.02 on short-gamma days). It does <strong>not</strong> generalise to FX.</span>
   </div>
+  <!-- DESK:END -->
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="oi-max-pain" data-evidence-date="2026-09-10">
-    <span class="tl-verdict-tag">Falsified</span>
+    <span class="tl-verdict-tag">Desk test: no direction found</span>
     <span><strong>Direction:</strong> the gamma sign carries no directional content, and the adjacent "walls pull price toward them" direction was falsified at 48.8% out-of-sample against a 49.9% placebo. Long gamma near a big call strike can mean a quieter tape; it does not tell you which way.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-story" id="story-1">
     <div class="tl-story-label">It actually happened</div>
@@ -393,19 +397,27 @@
     </p>
   </div>
 
+  <!-- DESK:START -->
   <h3>What the desk's own record says</h3>
+  <!-- DESK:END -->
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
-    <span class="tl-verdict-tag">Untested</span>
+    <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Covered calls themselves:</strong> the desk's evidence ledger holds no entry on overwriting flow, and nothing in the live code models it. Whether call overwriting measurably damps the index is not tested here.</span>
   </div>
+  <!-- DESK:END -->
+  <!-- DESK:START -->
   <div class="tl-verdict context">
-    <span class="tl-verdict-tag">Context</span>
+    <span class="tl-verdict-tag">Desk data: base rate</span>
     <span><strong>Put/call tilt:</strong> the desk reports whether open interest is put-heavy or call-heavy as a positioning tilt only, and explicitly declines to infer a direction from it, because open interest does not record who opened the contract (a sold put is bullish, a sold call is not). That inference has never been scored.</span>
   </div>
+  <!-- DESK:END -->
+  <!-- DESK:START -->
   <div class="tl-verdict null">
-    <span class="tl-verdict-tag">Null</span>
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>Pinning to max pain (oi-max-pain):</strong> "price pins to options max pain into expiry" was tested on 2026-09-10 and came back null; the publish-lag timing risk, DTE, gamma, sign convention and spot basis were all checked. The honest weakness: the entry records <strong>no sample size and no interval</strong>, which makes it the weakest null in the ledger. Read it as "not shown", not "proven false". Max pain is a level to know about, not a magnet.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -432,6 +444,7 @@
     </div>
   </div>
 
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
@@ -446,6 +459,7 @@
       <code>oi-max-pain</code>).
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -481,9 +495,11 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>You sell the upside and keep the downside.</strong> Profit caps at \(K - S + C\); losses run to zero less the premium.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Open interest never records who opened the contract.</strong> A sold put is bullish; a sold call against stock is capped. Call-heavy open interest is not a crowd of bulls.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The equivalence is exact only at expiry, same strike, European, no dividends.</strong> Dividends, financing, taxes and early assignment separate them a little in practice.</span></div>
+    <!-- DESK:START -->
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">◆</span><span><strong>Gamma's range effect is real on the Nasdaq only.</strong> Long gamma is the quiet state (range ratio ~0.85); it does not carry to FX. Overwriting itself is untested here.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Gamma direction is falsified.</strong> Wall-magnet direction scored 48.8% out-of-sample against a 49.9% placebo. Never read a call wall or a gamma sign as a direction.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Max-pain pinning: null.</strong> Tested 2026-09-10, no effect found, though the entry records no sample size, so it is a weak null. Max pain is a level to know, not a magnet.</span></div>
+    <!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -529,6 +545,7 @@
       which.
     </div>
   </details>
+  <!-- DESK:START -->
   <details class="tl-quiz">
     <summary>Q5. Walk the chain from "a fund writes calls" to "moves are damped". Which part did the desk find real, and which part failed?</summary>
     <div class="tl-answer">
@@ -542,6 +559,7 @@
       one index; "pinned toward the strike" or any direction is not.
     </div>
   </details>
+  <!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>

@@ -37,8 +37,8 @@
     <li><strong>Absolute PPP</strong> (\(S = P_{\text{domestic}}/P_{\text{foreign}}\)) is the strict, rarely-true version; <strong>relative PPP</strong> (\(\%\Delta S \approx \pi_{\text{domestic}} - \pi_{\text{foreign}}\)) — the currency should depreciate by roughly the inflation gap — is the weaker, more empirically useful version.</li>
     <li>The <strong>real exchange rate</strong> (\(S \times P_{\text{foreign}}/P_{\text{domestic}}\)) is the practical "cheap or expensive" gauge: if PPP held exactly it would be constant, but in practice it wanders for years above or below its own average.</li>
     <li>PPP deviations are real but close so slowly — Rogoff's "PPP puzzle" finds half-lives of roughly three to five years — that it is a hopeless short-run timing signal; a "20% undervalued" reading can widen for years before it narrows.</li>
-    <li>This repo has no PPP-based signal or CPI/price-level data pipeline today — it's a stated gap, not a built brick.</li>
-    <li><strong>Real-world episode:</strong> in 2022–24 the yen was deeply cheap on PPP, with Japanese inflation below US inflation, and it kept falling: USD/JPY passed 160 in 2024 as the Fed–BoJ rate gap overpowered the price gap. The desk's nearest test of "far from fair value reverts" is <code>residual-reversion-fx</code>, NULL.</li>
+    <!-- DESK:START --><li>This repo has no PPP-based signal or CPI/price-level data pipeline today — it's a stated gap, not a built brick.</li><!-- DESK:END -->
+    <li><strong>Real-world episode:</strong> in 2022–24 the yen was deeply cheap on PPP, with Japanese inflation below US inflation, and it kept falling: USD/JPY passed 160 in 2024 as the Fed–BoJ rate gap overpowered the price gap.<!-- DESK:START --> The desk's nearest test of "far from fair value reverts" is <code>residual-reversion-fx</code>, NULL.<!-- DESK:END --></li>
   </ul>
 </div>
 
@@ -460,26 +460,30 @@
 
   <p>
     The tempting trading claim in this lesson is <em>a currency far from fair value will revert, so trade the
-    gap.</em> This desk has not built a PPP model, because there is no CPI pipeline. It has tested the same claim with
-    a different fair value, and tested reversion bands on crosses that ought to revert.
+    gap.</em><!-- DESK:START --> This desk has not built a PPP model, because there is no CPI pipeline. It has tested the same claim with
+    a different fair value, and tested reversion bands on crosses that ought to revert.<!-- DESK:END -->
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="residual-reversion-fx" data-evidence-date="2026-09-20">
-    <span class="tl-verdict-tag">Null</span>
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>residual-reversion-fx: price minus a macro fair value does not revert tradeably.</strong> The fair
     value here is an OLS macro model, not PPP; the claim has the same shape. Across 6 instruments only
     <strong>1/6 (EURUSD)</strong> cleared both a real icEdge and an above-coin-flip hit rate, which the pool reads as
     chance level (mean icEdge <strong>−0.030</strong>, mean hit rate <strong>0.485</strong>). USDJPY showed a positive
     icEdge but a below-50% hit rate, which is internally inconsistent rather than evidence.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict underpowered" data-evidence="ou-bands-fx-crosses" data-evidence-date="2026-09-27">
-    <span class="tl-verdict-tag">Underpowered</span>
+    <span class="tl-verdict-tag">Desk test: too small to tell</span>
     <span><strong>ou-bands-fx-crosses: reversion that starts but rarely finishes.</strong> On four G10 crosses, only
     22 out-of-sample trades, against a floor of 30. Of <strong>68</strong> closed trades, <strong>46 (68%)</strong>
     ended on the 3-half-life time stop and only <strong>4 (6%)</strong> reached the target. They mostly drift part of
     the way back, which is PPP's slow clock in miniature.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
@@ -495,8 +499,8 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>PPP closes glacially.</strong> Rogoff's "PPP puzzle" finds half-lives of three to five years — real, but a hopeless short-run timing signal.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A PPP deviation can widen before it narrows.</strong> There's no mechanism that stops an undervalued currency from becoming more undervalued next month or next year.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>PPP's usefulness is horizon-conditional.</strong> Nearly useless for a trading-horizon decision; a genuinely relevant input for a multi-year strategic hedge or allocation decision.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo has no PPP module today.</strong> No CPI data pipeline, no real-exchange-rate computation — a stated gap, not a built brick.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"Cheap" kept getting cheaper, and fair-value reversion is null on this desk's data.</strong> The yen sank to a multi-decade real low in 2022–24 while relative PPP pointed the other way. residual-reversion-fx (NULL): only 1/6 instruments cleared both bars, mean hit rate 0.485. PPP itself is untested here.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo has no PPP module today.</strong> No CPI data pipeline, no real-exchange-rate computation — a stated gap, not a built brick.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"Cheap" kept getting cheaper<!-- DESK:START -->, and fair-value reversion is null on this desk's data<!-- DESK:END -->.</strong> The yen sank to a multi-decade real low in 2022–24 while relative PPP pointed the other way.<!-- DESK:START --> residual-reversion-fx (NULL): only 1/6 instruments cleared both bars, mean hit rate 0.485. PPP itself is untested here.<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -563,6 +567,7 @@
     slow reversion tendency is exactly the kind of information that decision needs.
     </div>
   </details>
+  <!-- DESK:START -->
   <details class="tl-quiz">
     <summary>Q6. Does MacroFXModel currently have a working PPP-based fair-value signal? What would it take to build one honestly?</summary>
     <div class="tl-answer">
@@ -576,6 +581,7 @@
     is a real scope constraint most fast-cadence backtests in this repo aren't built to accommodate.
     </div>
   </details>
+  <!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>

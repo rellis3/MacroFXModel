@@ -235,12 +235,13 @@
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
-      <h2 class="sl-h2">Where this stands in this repo, right now</h2>
-      <p class="sl-p">The full lesson is tagged "concept — background math, not built or tested anywhere in this repo." Checking the actual source code for this deck: no file anywhere in this repository implements a two-part code, a description-length calculation, or normalized maximum likelihood (NML) under any name — an MDL-specific search turns up nothing but an unrelated variable literally named <code>mdl</code> as shorthand for "model" in <code>volatilityExhaustion/daytype_classifier.py</code>, not this lesson's Minimum Description Length.</p>
+      <h2 class="sl-h2">Where this stands<!-- DESK:START --> in this repo, right now<!-- DESK:END --></h2>
+      <!-- DESK:START --><p class="sl-p">The full lesson is tagged "concept — background math, not built or tested anywhere in this repo." Checking the actual source code for this deck: no file anywhere in this repository implements a two-part code, a description-length calculation, or normalized maximum likelihood (NML) under any name — an MDL-specific search turns up nothing but an unrelated variable literally named <code>mdl</code> as shorthand for "model" in <code>volatilityExhaustion/daytype_classifier.py</code>, not this lesson's Minimum Description Length.</p>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Fact-check, stated transparently</div>
         <p>The one nuance carried over from the AIC &amp; BIC lesson's own check still holds: <code>forge/residual.py</code>'s Augmented Dickey-Fuller stationarity test calls statsmodels with <code>autolag="AIC"</code>, so plain AIC does quiet work choosing a lag count inside that one diagnostic. That is AIC, not MDL, and it is not an explicit, reported model-comparison step — nothing in this repo computes a two-part MDL code length, BIC, or NML anywhere. The full lesson's "concept only" framing is, on inspection, still accurate for MDL specifically; nothing new to correct here.</p>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where this needs qualifying</div>
         <p>The classical two-part code's L(M) term depends somewhat on the encoding scheme chosen — NML exists specifically to remove that arbitrariness, so treat the simple two-part number as a useful approximation, not a unique canonical constant. The (k/2)log₂(n)-per-parameter formula is also asymptotic, valid under the same large-n regime BIC's own derivation assumes. And the exact bridge proved above is specific to BIC — it does not extend to AIC, which targets a different quantity (expected out-of-sample KL divergence) entirely.</p>

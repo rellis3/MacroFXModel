@@ -34,7 +34,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">↓</div><div><h4>Sortino — downside wobble only</h4><p>Divides by downside deviation — a standard deviation computed only over the periods that lost money. Good surprises stop counting against the strategy.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">▽</div><div><h4>Calmar — the single worst stretch</h4><p>Not a dispersion statistic at all: annualized return divided by the single worst peak-to-trough drawdown the equity curve actually lived through.</p></div></div>
       </div>
-      <div class="sl-quote">None of the three is "the" right metric. The honest move is naming which question is being asked before quoting a number — the same "name the benchmark before claiming improvement" discipline this repo already asks for everywhere else.</div>
+      <div class="sl-quote">None of the three is "the" right metric. The honest move is naming which question is being asked before quoting a number<!-- DESK:START --> — the same "name the benchmark before claiming improvement" discipline this repo already asks for everywhere else<!-- DESK:END -->.</div>
     </section>
 
     <section class="sl-slide" data-slide="3">
@@ -60,7 +60,7 @@
           <div class="sl-row"><div class="sl-box green">SR</div><div class="sl-arrow">×</div><div class="sl-box green">√k</div><div class="sl-arrow">=</div><div class="sl-box green">SR_annual</div></div>
           <div class="sl-verdict">0.0667 × √252 (≈15.87) ≈ <strong>1.06</strong> — the number that lets strategies sampled at different frequencies (daily, weekly, per-trade) be compared on common footing.</div>
         </div>
-        <div class="sl-note">This is the exact same square-root-of-time scaling this repo's own volatility math depends on throughout — applied here to a ratio instead of to σ alone.</div>
+        <!-- DESK:START --><div class="sl-note">This is the exact same square-root-of-time scaling this repo's own volatility math depends on throughout — applied here to a ratio instead of to σ alone.</div><!-- DESK:END -->
       </div>
     </section>
 
@@ -238,7 +238,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+<!-- DESK:START -->    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">This repo's own discipline — and a claim worth double-checking</h2>
       <p class="sl-p">This repo's own validation rule already covers half of this problem: a strategy only "wins" if it beats the incumbent on out-of-sample Sharpe with a non-trivial trade count. The full lesson this deck summarizes states that nothing yet tracks how many variations produced a reported Sharpe, and that a Deflated Sharpe Ratio "isn't built" in this project's own metrics stack.</p>
@@ -247,7 +247,7 @@
         <p>That claim is stale. <code>js/backtestStats.js</code> already exports a working <code>deflatedSharpe(daily, trialSRs)</code> function implementing exactly the SR₀/DSR machinery on this slide — and it isn't sitting unused. It's imported by <code>strategyLabEngine.js</code>, <code>trendFollowEngine.js</code>, <code>forecastAnalyserStore.js</code> and <code>mve/validateInstrument.js</code>, which filters which instruments count as "tradeable" using a minimum-DSR bar. A dated project note (2026-08-29) records a real finding from it: a headline vote-margin config's own Sharpe did <strong>not</strong> clear its chance-expected ceiling across a 104-trial grid — <code>dsr: 0</code> — exactly the honest, unflattering answer this correction exists to give.</p>
       </div>
       <p class="sl-p">What's still true from the lesson: undercounting N remains the real risk. That same 2026-08-29 note flags that the vote rule's original search was larger and partly unlogged — 104 trials is only the grid that could be reconstructed, not necessarily the full search that ever ran. DSR being built and wired in doesn't mean every reported Sharpe in this repo has actually been run through it yet.</p>
-    </section>
+    </section><!-- DESK:END -->
 
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12 · It actually happened</div>
@@ -271,15 +271,17 @@
 
     <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 13</div>
-      <h2 class="sl-h2">This desk's Sharpe of 18.4</h2>
-      <p class="sl-sub">Fibonacci-level system backtest: 10,190 trades, Sharpe <strong>18.4</strong>, <strong>85.7%</strong> wins at one-to-one. The paper bot on the same game: <strong>39.6%</strong> of 101 trades, −$13,696 (paper) in 90 days. The arithmetic was right; the fills were not.</p>
+      <!-- DESK:START --><h2 class="sl-h2">This desk's Sharpe of 18.4</h2>
+      <p class="sl-sub">Fibonacci-level system backtest: 10,190 trades, Sharpe <strong>18.4</strong>, <strong>85.7%</strong> wins at one-to-one. The paper bot on the same game: <strong>39.6%</strong> of 101 trades, −$13,696 (paper) in 90 days. The arithmetic was right; the fills were not.</p><!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10">
-        <span class="sl-stamp-tag">Context</span>
+        <span class="sl-stamp-tag">Desk data: base rate</span>
         <span><strong>backtest-artifacts:</strong> a backtest that looks too good has a bug, usually in what it was allowed to see. The Fibonacci-level system 85.7% vs 39.6% live; a mean-reversion system's edge was stops not live for the first hour; a voting system's honest edge 0.23× cost; a volatility tool scored 95% of "wins" before entry.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook breaks</div>
-        <p>Every ratio assumes the sample is a fair draw of the risks to come. LTCM's calm years held no flight to quality, and DSR's skew/kurtosis terms only correct for tails the sample already contains. The Fibonacci-level system breaks the other assumption: that the returns are ones a live account could earn. DSR deflates for the search, not for a fill model.</p>
+        <p>Every ratio assumes the sample is a fair draw of the risks to come. LTCM's calm years held no flight to quality, and DSR's skew/kurtosis terms only correct for tails the sample already contains.<!-- DESK:START --> The Fibonacci-level system breaks the other assumption: that the returns are ones a live account could earn. DSR deflates for the search, not for a fill model.<!-- DESK:END --></p>
       </div>
     </section>
 
@@ -324,14 +326,14 @@
         <div class="sl-quiz-explain">Both terms in the SR₀ approximation increase with N. More variations tried means more chances for one to land far above the pack purely by chance, so the bar a reported Sharpe must clear keeps rising.</div>
       </div>
 
-      <div class="sl-quiz-q" data-q="5">
+<!-- DESK:START -->      <div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
         <h4>Does this repo currently have a working Deflated Sharpe Ratio function wired into real strategy validation?</h4>
         <button class="sl-quiz-opt" data-correct="true">Yes — deflatedSharpe() in js/backtestStats.js, used by several engines and a "tradeable" filter</button>
         <button class="sl-quiz-opt">No — it's a planned feature not yet started</button>
         <button class="sl-quiz-opt">Only as an external MathJax-rendered formula, not runnable code</button>
         <div class="sl-quiz-explain">deflatedSharpe(daily, trialSRs) already exists in js/backtestStats.js and is imported by strategyLabEngine.js, trendFollowEngine.js, forecastAnalyserStore.js and mve/validateInstrument.js — the full lesson's "not built yet" framing is stale.</div>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="16">
@@ -343,8 +345,8 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>A reported Sharpe carries no visible record of how many variations produced it — a 1.8 that's the only thing ever tested and a 1.8 that's the best of 50 look identical on the page.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The Deflated Sharpe Ratio benchmarks a reported Sharpe against SR₀ — the chance-expected ceiling for a best-of-N search — instead of against zero.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Undercounting N silently inflates DSR — informal reruns and "nudge it by feel" iterations count as trials too, the same failure mode the Multiple Testing lesson flags for unlogged slice-testing.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo's deflatedSharpe() is real, wired in, and has already produced an honest negative finding — checking a repo claim against the actual code is worth doing before repeating it.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened: LTCM's calm 1995–97 ratios held no flight to quality, and 1998 cost about $4.6bn; this desk's Fibonacci-level system backtest showed Sharpe 18.4 and 85.7% wins against 39.6% live. A very high Sharpe is a reason to audit the engine.</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo's deflatedSharpe() is real, wired in, and has already produced an honest negative finding — checking a repo claim against the actual code is worth doing before repeating it.</p></div><!-- DESK:END -->
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened: LTCM's calm 1995–97 ratios held no flight to quality, and 1998 cost about $4.6bn<!-- DESK:START -->; this desk's Fibonacci-level system backtest showed Sharpe 18.4 and 85.7% wins against 39.6% live<!-- DESK:END -->. A very high Sharpe is a reason to audit the engine.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

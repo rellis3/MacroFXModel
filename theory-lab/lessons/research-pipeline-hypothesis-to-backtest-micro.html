@@ -171,10 +171,12 @@
         <div class="sl-icard"><div class="sl-icard-badge">🧂</div><div><h4>Every parameter is a purchase</h4><p>It buys the chance of a genuinely better fit, and in the same transaction, a fresh chance that fit is noise rather than signal. Neither is free.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📋</div><div><h4>Log every trial, kept or discarded</h4><p>The parameters you tried and threw out still count — leaving them out understates N for the correction the next stage needs.</p></div></div>
       </div>
+      <!-- DESK:START -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">This isn't just theory — it's this repo's own house rule</div>
         <p>This project's own working agreement (<code>CLAUDE.md</code>) says it almost word for word: <em>"Start with the minimal-DOF version of the signal… Get that number honestly first; only add tunable parameters after, knowing each one you add is overfit risk you're buying."</em> Stages 2–3 of this lesson are that rule, generalized.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="7">
@@ -272,7 +274,7 @@
             <li>Before Stage 4 runs: "OOS Sharpe above 0.30 with ≥30 trades = supported"</li>
             <li>The bar is fixed, in writing, before the number exists</li>
             <li>A result below the bar is allowed to just mean "no"</li>
-            <li>This project's own working agreement states the same rule: pre-register both outcomes before running a test</li>
+            <!-- DESK:START --><li>This project's own working agreement states the same rule: pre-register both outcomes before running a test</li><!-- DESK:END -->
           </ul>
         </div>
       </div>
@@ -300,8 +302,9 @@
       <h2 class="sl-h2">A prior written down, and beaten</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">It actually happened</div>
-        <p><strong>Medicine:</strong> large NHLBI-funded trials reporting a benefit fell from <strong>17 of 30 (57%)</strong> before 2000 to <strong>2 of 25 (8%)</strong> after, once primary outcomes were registered in advance (Kaplan &amp; Irvin, 2015). <strong>This desk, Oct 2026:</strong> the funding-stress pre-registration, committed before the harness existed, expected a drawn Standing Repo Facility to be "real, and the strongest cell": a wider week. 21 episodes later the S&amp;P 500 range was <strong>−0.561 ATR</strong>: calmer.</p>
+        <p><strong>Medicine:</strong> large NHLBI-funded trials reporting a benefit fell from <strong>17 of 30 (57%)</strong> before 2000 to <strong>2 of 25 (8%)</strong> after, once primary outcomes were registered in advance (Kaplan &amp; Irvin, 2015).<!-- DESK:START --> <strong>This desk, Oct 2026:</strong> the funding-stress pre-registration, committed before the harness existed, expected a drawn Standing Repo Facility to be "real, and the strongest cell": a wider week. 21 episodes later the S&amp;P 500 range was <strong>−0.561 ATR</strong>: calmer.<!-- DESK:END --></p>
       </div>
+      <!-- DESK:START -->
       <div class="sl-chain">
         <div class="sl-chain-link shock"><b>Folk claim</b>A drawn SRF warns of a rougher market</div>
         <div class="sl-chain-arrow">→</div>
@@ -313,20 +316,27 @@
         <div class="sl-chain-arrow">→</div>
         <div class="sl-chain-link end"><b>Outcome</b>Calmer, not wider: a null against the prior</div>
       </div>
+      <!-- DESK:END -->
     </section>
 
+    <!-- DESK:START -->
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">The verdict, and what Stage 5 doesn't cover</h2>
+    <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp null" data-evidence="funding-stress" data-evidence-date="2026-10-02">
-        <span class="sl-stamp-tag">Null</span>
+        <span class="sl-stamp-tag">Desk test: nothing found</span>
         <span><strong>funding-stress:</strong> SRF drawn, 21 episodes: SPX500 <strong>−0.561 ATR [−0.984, −0.181]</strong>, negative in both halves; EUR/USD and USD/JPY null. SOFR over the floor ex month-end: 15 episodes, untestable (12 on the 14th–18th). The SRF is drawn on 667 of 2,123 sessions (31%).</span>
       </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook breaks</div>
         <p>Stage 5 guards against a null being re-narrated into "promising". Here the result was clean but on the side nobody predicted, and "a drawn SRF means a calmer week" would make a tempting new signal. A significant surprise is a new hypothesis, not a finding: the calm is reported as measured, not as proof the backstop works (the sample has no crisis), and trading it would need its own pre-registration.</p>
       </div>
     </section>
+      <!-- DESK:END -->
 
     <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 13</div>
@@ -389,7 +399,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Out-of-sample validation needs real costs and a genuinely leak-free split — a clean chronological date isn't automatically enough (see Walk-Forward &amp; Purged Cross-Validation).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Pre-register what "worked" and "didn't work" mean before the test runs — otherwise a null quietly gets re-narrated into "promising."</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Trying many variations until one backtests well is the Multiple Testing lesson's math in different clothes — a survivor has to clear the chance-expected ceiling, not just beat zero.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened: registered trials reporting a benefit fell from 57% to 8%, and this desk's funding-stress prior (a drawn SRF means a wider week) lost to −0.561 ATR, a calmer one. Write the prior down so it can lose, and treat a surprise as a new hypothesis.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened: registered trials reporting a benefit fell from 57% to 8%<!-- DESK:START -->, and this desk's funding-stress prior (a drawn SRF means a wider week) lost to −0.561 ATR, a calmer one<!-- DESK:END -->. Write the prior down so it can lose, and treat a surprise as a new hypothesis.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

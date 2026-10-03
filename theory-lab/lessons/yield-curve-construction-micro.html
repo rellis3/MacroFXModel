@@ -235,7 +235,7 @@
         <p><strong>Using a bond's own YTM to discount an unrelated cash flow</strong> — the exact mistake bootstrapping exists to prevent. <strong>Treating a forward rate as a forecast</strong> — it's a no-arbitrage identity, not a probability-weighted prediction of the future spot rate. <strong>Mixing compounding conventions</strong> across input instruments silently corrupts every zero rate solved downstream. <strong>Trusting a thin, illiquid short end</strong> — since the algorithm is sequential, a bad short-maturity input degrades every longer maturity too, not just the short end.</p>
       </div>
       <p class="sl-p">This lesson uses simple annual compounding throughout for clarity, exactly like the bond-math lessons before it — real curve construction has to be scrupulous about day-count and compounding conventions across every input instrument, since a mismatch there corrupts everything solved after it, the same way a bad short-end price does.</p>
-      <div class="sl-note">Verified against this repo's current source (Sept 2026): a yield-curve <em>slope</em> engine exists in production (comparing published 2yr/10yr par yields as a macro signal) — but no bootstrapping routine or bootstrapped zero/discount curve exists anywhere in this codebase. This lesson's algorithm remains conceptual here, not implemented in production.</div>
+      <!-- DESK:START --><div class="sl-note">Verified against this repo's current source (Sept 2026): a yield-curve <em>slope</em> engine exists in production (comparing published 2yr/10yr par yields as a macro signal) — but no bootstrapping routine or bootstrapped zero/discount curve exists anywhere in this codebase. This lesson's algorithm remains conceptual here, not implemented in production.</div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">
@@ -259,13 +259,15 @@
     </section>
 
     <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13 · Tested here</div>
-      <h2 class="sl-h2">The verdict, and where the textbook breaks</h2>
+      <div class="sl-kicker">Section 13<!-- DESK:START --> · Tested here<!-- DESK:END --></div>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and the verdict<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: an inverted curve warns of recession, so expect weaker risk assets.</p>
+      <!-- DESK:START -->
       <div class="sl-stamp null" data-evidence="curve-inversion" data-evidence-date="2026-10-01">
-        <span class="sl-stamp-tag">Null</span>
+        <span class="sl-stamp-tag">Desk test: nothing found</span>
         <span><strong>curve-inversion:</strong> ten inversion episodes since 1976. Recession within 24 months after <strong>6 of 10 (60%, CI [31%, 83%])</strong>. Nasdaq +12m: +10.5% vs +13.0% control (p=0.33); steepenings did worse (−1.1%). <strong>2019-08: right about the recession, and +48.5% on the Nasdaq.</strong></span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-quote">The bootstrap assumes the law of one price: two bonds with the same cash flows are worth the same. Arbitrage enforces that, and arbitrage needs balance sheet. In March 2020 dealers had none to spare, so "the" zero curve stopped being unique.</div>
     </section>
 
@@ -329,7 +331,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>It's called "bootstrapping" because every step lifts itself using only the market price at that maturity plus rates the algorithm already solved for itself.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Forward rates fall straight out of a no-arbitrage identity between two zero rates — they are not a probability-weighted forecast of the future.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A stale or illiquid price at the short end corrupts every zero rate solved after it — the whole curve, not just the short maturities.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Real-world episode: March 2020. Off-the-runs cheapened as dealer balance sheets filled, so the inputs stopped sitting on one curve. Desk verdict, NULL: an inversion is not a tradeable signal (6 of 10 followed by recession, CI 31–83%; 2019-08 then +48.5% on the Nasdaq).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Real-world episode: March 2020. Off-the-runs cheapened as dealer balance sheets filled, so the inputs stopped sitting on one curve.<!-- DESK:START --> Desk verdict, NULL: an inversion is not a tradeable signal (6 of 10 followed by recession, CI 31–83%; 2019-08 then +48.5% on the Nasdaq).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

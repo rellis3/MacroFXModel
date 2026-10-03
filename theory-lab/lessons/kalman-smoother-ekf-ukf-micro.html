@@ -243,10 +243,12 @@
         <div class="sl-icard"><div class="sl-icard-badge">🚀</div><div><h4>EKF flew to the moon</h4><p>Part of the Apollo program's guidance computer in the 1960s. Still the default nonlinear Kalman extension across robotics and aerospace today.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">97</div><div><h4>UKF — Julier &amp; Uhlmann, 1997</h4><p>Reached for once the EKF's linearization visibly degrades performance, or when a Jacobian isn't convenient to derive in closed form.</p></div></div>
       </div>
+      <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Verified against this repo's current code</div>
         <p>The full lesson labels this material "CONCEPT — not built or tested anywhere in this repo." Checking that claim against the actual codebase: <code>bot/modules/beta_estimator.py</code>'s <code>KalmanBeta</code> class is a scalar, linear, forward-only Kalman filter — predict, then update, once per step, nothing more. No RTS smoother, no EKF, and no UKF exist anywhere in this repository as of this reading. The scope label holds up: everything on this page is a concept walkthrough, not a description of code actually running here.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">

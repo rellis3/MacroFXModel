@@ -34,10 +34,12 @@
         <div class="sl-icard"><div class="sl-icard-badge">🧲</div><div><h4>Max pain is a different kind of landmark</h4><p>Not the biggest single pile of OI — the one settlement price that would leave option <em>writers</em>, summed across the entire chain, paying out the least.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🗺️</div><div><h4>The map redraws itself constantly</h4><p>Open interest opens and closes every session. A wall or a max-pain strike is a snapshot of right now, not a fixed structural level.</p></div></div>
       </div>
+      <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Correction to the full lesson's status line</div>
         <p>The full lesson tags this topic "CONCEPT — not built or tested in this repo." Checked against the current codebase, that line is stale. This repo's <strong>js/oi.js</strong> implements the exact whole-chain <strong>oiCalcMaxPain()</strong> formula used later on this deck, wired live into <strong>oi-dashboard.html</strong>; wall detection uses the same "3×+ vs. neighbors" rule cited below; and a trading bot enforces it directly — <strong>bot/modules/oi_walls.py</strong> blocks entries into a nearby wall, and <strong>oi_bot/engine.py</strong> has a dedicated "maxpain" trade mode. All of it is covered by test files (<strong>js/oiMatrix.test.mjs</strong>, <strong>js/oiPasteContract.test.mjs</strong>, and others). The math on this page isn't hypothetical here — it's shipped, tested code.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="3">
@@ -339,16 +341,20 @@
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
-      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <p class="sl-sub">The folk claim: price gravitates to max pain into expiry, and walls fence the range.</p>
+      <!-- DESK:START -->
       <div class="sl-stamp null" data-evidence="oi-max-pain" data-evidence-date="2026-09-10">
-        <span class="sl-stamp-tag">Null</span>
+        <span class="sl-stamp-tag">Desk test: nothing found</span>
         <span><strong>oi-max-pain:</strong> tested properly for the first time 2026-09-10: <strong>null</strong>. The OI publish-lag timing risk was tested directly and survives; DTE, gamma, sign convention and spot basis all verified. A level to know about, not a magnet.</span>
       </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
-        <span class="sl-stamp-tag">Untested</span>
+        <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>Walls as range fences:</strong> queued, not yet tested. A fair test: point-in-time walls from that morning's OI vs random bands of the same width, matched volatility, rule fixed in advance.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>Walls and max pain treat the chain as a fixed snapshot held by continuous hedgers, on a stock anyone can trade. In January 2021 open interest was rebuilt higher daily, short interest exceeded the float, and buying was partly switched off. One morning's chain described a market gone by the afternoon.</p>
@@ -416,7 +422,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A squeeze is a role reversal, not new information — hedging flow that was dampening a move near a wall can flip to accelerating it once the wall breaks.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The evidence that max pain itself moves price is thin and contested — treat it as a description of writer incentives, not a forecast.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Walls and max pain are live snapshots — open interest closes out every session, so re-check rather than assume persistence.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>GameStop, January 2021: call walls overrun and rebuilt higher within days; the "gamma squeeze" share of it is contested. Desk verdict: max pain is NOT a magnet (oi-max-pain, null); walls as range fences remain untested.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>GameStop, January 2021: call walls overrun and rebuilt higher within days; the "gamma squeeze" share of it is contested.<!-- DESK:START --> Desk verdict: max pain is NOT a magnet (oi-max-pain, null); walls as range fences remain untested.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

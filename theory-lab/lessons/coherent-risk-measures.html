@@ -17,7 +17,7 @@
   <h1 class="tl-title">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</h1>
   <p class="tl-dek">Value-at-Risk answers "where's the cutoff?" Expected Shortfall answers "and how bad does it get past there?" — a difference that sounds academic until you combine two portfolios and VaR tells you diversification made things worse.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explains the theory behind risk-measure choice; not a built or backtested module in this repo</span>
+    <span class="tl-status concept">CONCEPT — explains the theory behind risk-measure choice<!-- DESK:START -->; not a built or backtested module in this repo<!-- DESK:END --></span>
     <span>~14 min read</span>
     <span>Prereqs: none required, though familiarity with a normal/loss distribution helps</span>
   </div>
@@ -439,8 +439,9 @@
     sits upstream of any choice between VaR and CVaR.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
-    <span class="tl-verdict-tag">Untested</span>
+    <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: "size and limit on Expected Shortfall rather than VaR, and the tail is under
     control."</strong> This desk has no record of limits or sizing set on either measure, so there is no
     realised P&amp;L to grade them against. A fair test would forecast daily \(\text{VaR}_{0.95}\) and
@@ -448,6 +449,7 @@
     against the expected 5% (a Kupiec-style test) and backtest ES with a test built for it. It would also
     re-run the same count after any change to the model, because a model change is where 2012 went wrong.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -529,8 +531,8 @@
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>VaR fails sub-additivity.</strong> Two individually "safe" defaultable positions can combine into a portfolio whose VaR exceeds the sum of the individual VaRs — the worked example shows $0+$0 → $100. This is not a hypothetical edge case; it's the textbook counterexample for exactly this reason.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CVaR is coherent — it satisfies all four axioms.</strong> The same worked example shows CVaR holding sub-additivity exactly ($200 ≤ $200), which is why bank regulation moved toward Expected Shortfall after 2008.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Coherence is about aggregation behavior, not estimation quality.</strong> A coherent measure can still be a badly estimated one if the underlying tail data is thin — coherence and estimation accuracy are separate concerns.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A limit is only as honest as the model under it.</strong> In 2012 a VaR model change roughly halved the London Whale book's reported risk with no position cut, and losses passed $6 billion. Coherence would not have caught it, and "ES beats VaR" is untested on this desk.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This lesson is conceptual.</strong> It explains the theory behind why risk-measure choice matters; it is not a claim that any specific VaR/CVaR implementation is built or validated anywhere in this project.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A limit is only as honest as the model under it.</strong> In 2012 a VaR model change roughly halved the London Whale book's reported risk with no position cut, and losses passed $6 billion. Coherence would not have caught it<!-- DESK:START -->, and "ES beats VaR" is untested on this desk<!-- DESK:END -->.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This lesson is conceptual.</strong> It explains the theory behind why risk-measure choice matters<!-- DESK:START -->; it is not a claim that any specific VaR/CVaR implementation is built or validated anywhere in this project<!-- DESK:END -->.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

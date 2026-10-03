@@ -232,11 +232,13 @@
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this plugs into the rest of the curriculum</h2>
       <p class="sl-p">This lesson builds directly on <a href="pca-factors-micro.html" style="color:var(--blue)">PCA &amp; Factor Models</a>: same N instruments, same T observations, same correlation matrix, same ranked eigenvalues λ₁ ≥ λ₂ ≥ … ≥ λ_N. PCA tells you how to rank them and read off a candidate factor; the Marchenko-Pastur band is the missing step that tells you which of those candidates have actually earned the name "factor," versus which ones are exactly what an unlucky sample window would produce anyway.</p>
+      <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Verified against this repo's current code</div>
         <p><code>js/diversificationCore.js</code> already computes a correlation matrix's eigenvalues (<code>symmetricEigenvalues</code>) and feeds them into three effective-number-of-bets metrics — <code>effectiveBetsPCA</code>, <code>effectiveBetsEntropy</code>, <code>effectiveBetsWeighted</code>. As of this lesson, none of them compares a single eigenvalue against a Marchenko-Pastur λ_min/λ_max band — there is no noise-band check anywhere in that file, or elsewhere in the codebase, against the spectrum it already produces. The full lesson's claim that this check "is not currently run in this repo" still holds; nothing here is stale.</p>
       </div>
-      <p class="sl-p">Practically: a basket's effective-bets score can look reassuringly close to N while partly resting on eigenvalues that are noise-band artifacts, not real diversification. Flagging which eigenvalues clear the band would add an honest caveat to that number without changing the formula itself — a concrete, unbuilt guardrail, not a claim about what the repo currently does.</p>
+      <!-- DESK:END -->
+      <p class="sl-p">Practically: a basket's effective-bets score can look reassuringly close to N while partly resting on eigenvalues that are noise-band artifacts, not real diversification. Flagging which eigenvalues clear the band would add an honest caveat to that number without changing the formula itself<!-- DESK:START --> — a concrete, unbuilt guardrail, not a claim about what the repo currently does<!-- DESK:END -->.</p>
     </section>
 
     <section class="sl-slide" data-slide="12">
@@ -311,7 +313,9 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Only the ratio q matters, not N or T alone — more history per instrument narrows the band; more instruments relative to history widens it.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The decision rule: an eigenvalue inside the band is suspect; one sitting several multiples above λ_max is a strong factor candidate.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>"Inside the band" is a power limit, not proof of zero structure — and edge effects mean a value just above λ_max is a weaker signal than one far above it.</p></div>
+        <!-- DESK:START -->
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo's diversificationCore.js already has the eigenvalues this check would need — running it is a concrete, unbuilt guardrail on the effective-bets metric, not something it currently does.</p></div>
+        <!-- DESK:END -->
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>RMT reached markets in 1999 (Laloux et al.; Plerou et al.): most eigenvalues of a stock correlation matrix are noise, so a cleaned matrix, not the raw one, goes into the optimiser.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">

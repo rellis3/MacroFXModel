@@ -5,6 +5,7 @@ import { gammaFlip, distanceToFlip } from './gammaFlow.js';
 import { charmVannaExposure, gexFlipPrice, gexFlipCrossings } from './gammaGreeks.js';
 import { fullBookGex } from './fullBookGex.js';
 import { expectedMove, expectedMoveFromStraddle, ivTermStructure, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
+import { lessonLinkHTML } from './lessonLinks.js';
 
 // ── Storage ──────────────────────────────────────────────────────────────────
 
@@ -2814,7 +2815,7 @@ function _oiIVReads(inst, pair) {
   const em = inst.expectedMove;
   if (em && em.move != null) rows.push(`<b>Expected move</b> ±${(+em.move).toLocaleString()} (${em.pct}%)${em.dte != null ? ` to ${em.dte}DTE` : ''} · range ${(+em.lower).toLocaleString()}–${(+em.upper).toLocaleString()}`);
   const its = inst.ivTermStructure;
-  if (its) rows.push(`<b>IV term</b> ${its.front.dte}D ${its.front.iv}% → ${its.back.dte}D ${its.back.iv}% (${its.shape === 'inverted' ? 'inverted — near-term stress priced' : its.shape === 'upward' ? 'upward — normal' : 'flat'})`);
+  if (its) rows.push(`<b>IV term</b> ${its.front.dte}D ${its.front.iv}% → ${its.back.dte}D ${its.back.iv}% (${its.shape === 'inverted' ? 'inverted — near-term stress priced' : its.shape === 'upward' ? 'upward — normal' : 'flat'})${its.shape === 'inverted' ? ' ' + lessonLinkHTML('ivTermInverted') : ''}`);
   const g = inst.greeksFlow;
   if (g) {
     // Abbreviate: raw CEX/VEX reach 1e10 (the magnitude is flat-sigma "indicative only" —
@@ -2982,7 +2983,7 @@ export function renderOICard(inst) {
     <div class="oi-stat" title="Aggregate gamma exposure (dealer convention): positive = dealers long gamma, hedging dampens moves (pin); negative = short gamma, hedging amplifies moves (breakout). Magnitude is indicative only — flat-sigma / 14-DTE assumption; read relative bar widths in the gamma chart, not absolute $. The per-strike MAG/REP labels below are a separate lens (put- vs call-dominant), not the same as this aggregate sign.">
       <div class="oi-stat-lbl">GEX ⓘ</div>
       <div class="oi-stat-val ${gexClass}">${gexSign}$${gexFmt}</div>
-      <div class="oi-stat-sub">${gex>0?'Dampening':'Amplifying'}</div>
+      <div class="oi-stat-sub">${gex>0?'Dampening':'Amplifying'}${gex<0 ? ' ' + lessonLinkHTML('gexNegative') : ''}</div>
     </div>
     <div class="oi-stat">
       <div class="oi-stat-lbl">Call Wall</div>

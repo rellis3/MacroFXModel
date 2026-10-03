@@ -189,7 +189,7 @@
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">A p-value of 0.01 that isn't what it looks like</h2>
       <p class="sl-sub">A researcher regresses next-day FX returns on a yield-spread signal. Two years of daily data. p = 0.01.</p>
-      <div class="sl-quote">Before trusting it, the researcher checks residual diagnostics, as the house rule requires. Durbin-Watson comes back at DW = 0.6 — squarely in strongly-positive-autocorrelation territory, because a yield-spread signal changes slowly day to day, so a persistent pricing error against it is exactly the kind of slow-moving mis-specification this test is built to catch.</div>
+      <div class="sl-quote">Before trusting it, the researcher checks residual diagnostics<!-- DESK:START -->, as the house rule requires<!-- DESK:END -->. Durbin-Watson comes back at DW = 0.6 — squarely in strongly-positive-autocorrelation territory, because a yield-spread signal changes slowly day to day, so a persistent pricing error against it is exactly the kind of slow-moving mis-specification this test is built to catch.</div>
       <p class="sl-p">Using the calculator from Section 4: DW = 0.6 implies ρ̂ ≈ 0.7, and with roughly 500 trading days that shrinks the effective sample size to n_eff ≈ 88. The regression's classical standard error was computed as though it had 500 independent observations backing it; the honest number is closer to what 88 would support. Recomputing with Newey-West (HAC) standard errors — which correct for exactly this — the p-value is nowhere near 0.01 once corrected; it's plausibly back in "not distinguishable from noise" territory.</p>
       <div class="sl-callout amber">
         <div class="sl-callout-label">What did NOT happen here</div>
@@ -238,6 +238,7 @@
       </div>
     </section>
 
+    <!-- DESK:START -->
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this stands in this repo, right now</h2>
@@ -249,6 +250,7 @@
         <p>Both claims above were verified directly against the repo rather than assumed: the discipline quote still appears verbatim in the project's build-rules notes, and the skewness/excess-kurtosis functions exist and are actively used elsewhere — the ingredients this lesson describes are real, present-tense facts about this codebase, not aspirational ones.</p>
       </div>
     </section>
+    <!-- DESK:END -->
 
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>

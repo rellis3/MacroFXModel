@@ -17,7 +17,7 @@
   <h1 class="tl-title">The Merton Jump-Diffusion Model</h1>
   <p class="tl-dek">Black-Scholes assumes price paths never tear — Merton's 1976 fix bolts a random-jump process onto ordinary diffusion so a model can finally admit that FX gaps on NFP day.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not yet built in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not yet built in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Black-Scholes-Merton Option Pricing, Extreme Value Theory helpful</span>
   </div>
@@ -36,8 +36,10 @@
     <li>Merton (1976) bolts a Poisson-driven jump term \(dJ_t\) onto ordinary geometric Brownian motion, so a price process can admit genuine discontinuities (like an NFP gap) instead of only continuous wiggling.</li>
     <li>Three parameters drive the jump: \(\lambda\) (jump intensity — how often jumps arrive), and \(\mu_J,\sigma_J\) (the mean and standard deviation of the lognormal jump size once one occurs).</li>
     <li>Mixing rare, wider jump outcomes into ordinary diffusion produces a taller, narrower center plus fatter tails than a single normal distribution — that's excess kurtosis (leptokurtosis) — and is one of the two classical explanations for the volatility smile in option markets.</li>
+<!-- DESK:START -->
     <li>This repo doesn't fit a jump-diffusion model anywhere, but this project's own Tier-1 primitives for skewness, excess kurtosis, and historical VaR/CVaR already catch the same fat-tail symptom empirically in a trade-return series, without ever estimating \(\lambda, \mu_J, \sigma_J\).</li>
-    <li><strong>Real-world episode:</strong> on 15 January 2015 the Swiss National Bank dropped its 1.20 floor under EUR/CHF without warning. The rate fell below 0.90 within minutes, with almost nothing trading in between, before ending the day near parity. Three years of tiny diffusion \(\sigma\) had hidden one large jump. The desk's own decomposition finds jumps are real and identifiable, but with a null forward payoff (<code>jump-diffusion</code>, CONTEXT).</li>
+<!-- DESK:END -->
+    <li><strong>Real-world episode:</strong> on 15 January 2015 the Swiss National Bank dropped its 1.20 floor under EUR/CHF without warning. The rate fell below 0.90 within minutes, with almost nothing trading in between, before ending the day near parity. Three years of tiny diffusion \(\sigma\) had hidden one large jump.<!-- DESK:START --> The desk's own decomposition finds jumps are real and identifiable, but with a null forward payoff (<code>jump-diffusion</code>, CONTEXT).<!-- DESK:END --></li>
   </ul>
 </div>
 
@@ -168,10 +170,10 @@
       model would predict. Out in both wings, the jump-diffusion curve sits
       visibly <strong>above</strong> the normal curve — small bumps built from
       the rare days a jump actually lands. High center, fat tails: that
-      combination is <strong>excess kurtosis</strong> (leptokurtosis), the
+      combination is <strong>excess kurtosis</strong> (leptokurtosis)<!-- DESK:START -->, the
       same signature this project's own skewness/excess-kurtosis primitives
       already catch empirically in a real return
-      series without ever fitting \(\lambda, \mu_J, \sigma_J\).
+      series without ever fitting \(\lambda, \mu_J, \sigma_J\)<!-- DESK:END -->.
     </div>
   </div>
 
@@ -237,7 +239,7 @@
     <tr><td>\(S_t\)</td><td>The underlying's price at time \(t\).</td></tr>
     <tr><td>\(S_{t^-}\)</td><td>The price the instant <em>just before</em> \(t\) — written this way (rather than plain \(S_t\)) specifically because at a jump instant, the price right before and right after are different by construction; the return is measured relative to the pre-jump level.</td></tr>
     <tr><td>\(\mu\)</td><td>(mu) The ordinary continuous drift rate — the deterministic "average direction" of the diffusion part alone, same role as in plain Black-Scholes.</td></tr>
-    <tr><td>\(\sigma\)</td><td>(sigma) The diffusion volatility — how large the continuous, everyday random wiggles are, same role as in plain Black-Scholes and the same conceptual quantity computed throughout this repo's vol math.</td></tr>
+    <tr><td>\(\sigma\)</td><td>(sigma) The diffusion volatility — how large the continuous, everyday random wiggles are, same role as in plain Black-Scholes<!-- DESK:START --> and the same conceptual quantity computed throughout this repo's vol math<!-- DESK:END -->.</td></tr>
     <tr><td>\(dW_t\)</td><td>The infinitesimal increment of a Wiener process (standard Brownian motion) — pure continuous random noise, mean zero, variance \(dt\). Covered in the OU lesson.</td></tr>
     <tr><td>\(N_t\)</td><td>A <strong>Poisson process</strong>: a counting process that ticks up by exactly 1 at each random jump arrival. \(N_t\) counts "how many jumps have happened by time \(t\)."</td></tr>
     <tr><td>\(\lambda\)</td><td>(lambda) The <strong>jump intensity</strong> — the average <em>rate</em> of jump arrivals per unit time (e.g. "0.05 jumps per trading day" on an average day). This is the single parameter of the Poisson process: over a short interval of length \(dt\), the probability of exactly one jump occurring is \(\lambda\,dt\), and the probability of more than one is negligible for small \(dt\). A bigger \(\lambda\) means jumps are more frequent.</td></tr>
@@ -487,13 +489,15 @@
     Black-Scholes assumption this lesson exists to drop.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict context" data-evidence="jump-diffusion" data-evidence-date="2026-09-13">
-    <span class="tl-verdict-tag">Context</span>
+    <span class="tl-verdict-tag">Desk data: base rate</span>
     <span><strong>jump-diffusion: the decomposition describes, it does not forecast.</strong> The tempting claim is that
     splitting moves into jumps and diffusion predicts what comes next. Tested on this desk's data: <strong>the measurement
     validates (jumps are real and identifiable); the forward payoff is null.</strong> Use it to say what kind of move just
     happened, not to call the next one. A floor like 1.20 tells you a jump is <em>possible</em>; nothing here dates it.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
@@ -613,12 +617,12 @@
     <p>
       <strong>Fat tails in a trade-return series are not proof a jump-diffusion
       model would improve pricing or sizing.</strong> Seeing high
-      excess kurtosis or a large historical CVaR in this
-      repo's metrics confirms the empirical symptom jump risk would predict; it
+      excess kurtosis or a large historical CVaR<!-- DESK:START --> in this
+      repo's metrics<!-- DESK:END --> confirms the empirical symptom jump risk would predict; it
       is not, by itself, evidence that building a parametric jump model and
-      layering it into a strategy would improve anything OOS. Per the Lego
+      layering it into a strategy would improve anything OOS.<!-- DESK:START --> Per the Lego
       Principle and this repo's validation discipline, that would need to be
-      tested, not assumed from the theory being a good story.
+      tested, not assumed from the theory being a good story.<!-- DESK:END -->
     </p>
   </div>
 
@@ -629,10 +633,12 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Three parameters drive the jump.</strong> \(\lambda\) is jump intensity (how often), \(\mu_J\) and \(\sigma_J\) are the mean and spread of the lognormal jump size (how big, once one happens).</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Mixing jumps into diffusion produces excess kurtosis.</strong> A taller, narrower center (most days have no jump) plus fatter tails (the rare days that do) — leptokurtosis, not just a wider normal curve.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Jump risk is one of the two classical explanations for the volatility smile.</strong> A flat-\(\sigma\) Black-Scholes model underprices deep out-of-the-money strikes that only pay off on a genuine jump; the market corrects with higher implied vol at the wings.</span></div>
+<!-- DESK:START -->
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo already catches the empirical symptom.</strong> This project's own skewness, excess-kurtosis, and historical VaR/CVaR primitives measure fat tails in a real trade-return series without ever fitting a parametric jump model.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo does not fit a jump-diffusion model or price options anywhere.</strong> This lesson is concept-only — a theory background page, not a description of existing code.</span></div>
+<!-- DESK:END -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Fat tails alone are not proof a jump model would help.</strong> High excess kurtosis in a trade-return series confirms the symptom jump risk predicts; it is not, by itself, evidence that building a parametric jump model would improve anything OOS.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A floored or pegged rate's calm is hidden jump risk, not low risk.</strong> EUR/CHF's 1.20 floor gave three years of tiny \(\sigma\), then a jump to below 0.90 on 15 January 2015 that stop-losses could not catch. On this desk's data, jumps are identifiable but the decomposition carries no forward payoff (<code>jump-diffusion</code>, CONTEXT).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A floored or pegged rate's calm is hidden jump risk, not low risk.</strong> EUR/CHF's 1.20 floor gave three years of tiny \(\sigma\), then a jump to below 0.90 on 15 January 2015 that stop-losses could not catch.<!-- DESK:START --> On this desk's data, jumps are identifiable but the decomposition carries no forward payoff (<code>jump-diffusion</code>, CONTEXT).<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -715,12 +721,13 @@
       can skip straight over a resting order's price without ever trading there,
       the same way Merton's \(dJ_t\) term lets the underlying skip over
       intermediate price levels a continuous path would have been forced to
-      cross. This repo's own anti-pattern warning against assuming intrabar TP
+      cross.<!-- DESK:START --> This repo's own anti-pattern warning against assuming intrabar TP
       fills on a daily bar, and the fill-realism findings on the Per-Line
       Volatility tearsheet's zero-duration trades, are a concrete, practical
-      instance of ignoring exactly this risk.
+      instance of ignoring exactly this risk.<!-- DESK:END -->
     </div>
   </details>
+<!-- DESK:START -->
   <details class="tl-quiz">
     <summary>Q6. Does this repo currently fit a jump-diffusion model or price options with one? If not, what does it have instead, and why does that still count as respecting jump/gap risk?</summary>
     <div class="tl-answer">
@@ -738,6 +745,7 @@
       model anywhere in the code.
     </div>
   </details>
+<!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>

@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Garman-Klass &amp; Yang-Zhang — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a live candlestick chart, and a 6-question self-test?<a href="institutional-garman-klass-yang-zhang.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">More volatility out of the same daily bar</h2>
+      <p class="sl-sub">Range-based volatility · Parkinson; Garman &amp; Klass, 1980 → Yang &amp; Zhang, 2000</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Close-to-close vol uses one of a daily bar's four prices. Parkinson (1980) showed the high–low range is several times more efficient; Garman &amp; Klass (1980) added the open and close.</p>
+        <p>Rogers &amp; Satchell (1991) removed drift bias and Yang &amp; Zhang (2000) added the overnight gap. They are now standard wherever a desk sizes or checks vol from bars rather than ticks.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage on">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> how volatile is this market now, as precisely as daily bars allow?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">One number a day is a wasteful way to measure a day</h2>
       <p class="sl-sub">Two very different days can produce an identical closing price.</p>
       <div class="sl-icard-grid">
@@ -38,8 +51,8 @@
       <div class="sl-quote">Think of a closing price as a single 6pm photo of someone's day. It can't tell you if that day was chaotic or calm — only how things happened to settle by evening. The high and low are the missing record of how much actually happened in between.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Parkinson (1980) — just the range</h2>
       <p class="sl-sub">The simplest range-based estimator: look only at how wide the day swung.</p>
       <div class="sl-card">
@@ -56,8 +69,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Garman-Klass (1980) — range plus open-close</h2>
       <p class="sl-sub">Adds back exactly the information Parkinson throws away: where the bar started and ended.</p>
       <div class="sl-icard-grid">
@@ -71,8 +84,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Three estimators, side by side</h2>
       <p class="sl-sub">What each one uses, what each one assumes, and where each one breaks.</p>
       <div class="sl-card">
@@ -95,8 +108,8 @@
       <p class="sl-p">Each estimator in this progression fixes exactly one limitation of the one before it — the range term, then the open-close correction, then (next) drift-independence, then the overnight gap.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Rogers-Satchell — fixing the zero-drift assumption</h2>
       <p class="sl-sub">Parkinson and Garman-Klass both quietly assume the price never trends. A steadily trending day fools both of them a little.</p>
       <div class="sl-compare">
@@ -120,8 +133,8 @@
       <div class="sl-quote">Rogers-Satchell is the ingredient, not usually the finished dish. What it fixes is exactly the property Yang-Zhang needs from its own intraday-range term.</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Yang-Zhang (2000) — the complete combination</h2>
       <p class="sl-sub">Three variance sources, weighted to minimize the total.</p>
       <div class="sl-row">
@@ -140,8 +153,8 @@
       <div class="sl-quote">Overnight fixes Garman-Klass's blind spot. Rogers-Satchell fixes the zero-drift assumption. k blends them at the mathematically optimal weight. That's the whole design in one sentence.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">How much data does each one actually need?</h2>
       <p class="sl-sub">Drag the slider. Shorter bars mean less sampling noise for the same window length — watch how much faster the range-based estimators shrink.</p>
       <div class="sl-card">
@@ -160,8 +173,8 @@
       <p class="sl-p">Flip it around: close-to-close needed roughly 25 trading days to reach the same ~15% noise level Parkinson, Garman-Klass, and Yang-Zhang all reached with just 5 days — verified by simulation, not assumed from the textbook multiplier alone.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">All four, on the same eight days</h2>
       <p class="sl-sub">A synthetic EURUSD-style week, with one 38-pip weekend-style gap on day 5.</p>
       <div class="sl-card">
@@ -177,8 +190,8 @@
       <p class="sl-p">Every number above was actually computed from an eight-bar OHLC table, not written to look plausible — the same table and the same live-recalculating candlestick chart are in the full lesson.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Compute Garman-Klass yourself</h2>
       <p class="sl-sub">Enter one day's O/H/L/C. Invalid combinations are caught, not silently turned into NaN.</p>
       <div class="sl-card">
@@ -211,25 +224,25 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">A quiet week, then a weekend gap</h2>
       <div class="sl-quote">A desk sizes stops off a 30-day Garman-Klass figure all week — fine, because nothing gapped. Then a Friday-evening headline moves rates expectations, and price gaps meaningfully over the weekend rollover. Garman-Klass's rolling estimate barely reacts: the gap happened entirely between two bars, in the exact blind spot its no-gap assumption creates. Yang-Zhang's estimate jumps immediately, because its overnight term is built specifically to measure a move like this one.</div>
       <p class="sl-p">A desk sizing risk off Garman-Klass alone that week would be working from a volatility figure that quietly understated exactly the kind of move that just happened — the dollars-and-stops version of "GK assumes no gap," not just an abstract limitation.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <!-- DESK:START --><section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Genuinely built here — verified, not assumed</h2>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">Verified against this repo's actual code</div>
         <p>This is not a "concept — not built here" lesson. <strong>Yang-Zhang</strong> is the live production volatility input in <code>js/volForecast.js</code>'s <code>computeForecast()</code> for both FX and gold, walk-forward validated independently in <code>forge/vol.py</code> / <code>forge/run_vol.py</code>, with dedicated tests in <code>forge/vol_test.py</code>. <strong>Garman-Klass</strong> is the realized-variance "ground truth" a separate forecast benchmark (<code>js/volForecastBench.js</code>) scores every candidate estimator against. <strong>Parkinson</strong> drives a live trending/choppy regime classifier (<code>js/volStateEngine.js</code>'s <code>rangeEfficiencyRatio()</code>). <strong>Rogers-Satchell</strong> is gold's dedicated shadow estimator, mirrored into the live MT5 bot in <code>DynAnchorBot/dyn_anchor_mt5_bot.py</code>.</p>
       </div>
       <p class="sl-p">Every formula in this deck was checked line-by-line against the actual implementation — not assumed from the estimator's name.</p>
-    </section>
+    </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -269,29 +282,30 @@
         <div class="sl-quiz-explain">Var[ln(Oₜ/Cₜ₋₁)] is a dedicated term measuring exactly the overnight gap Garman-Klass has no way to see — Rogers-Satchell (already inside Yang-Zhang) is what fixes the drift assumption.</div>
       </div>
 
-      <div class="sl-quiz-q" data-q="5">
+      <!-- DESK:START --><div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
         <h4>Is Yang-Zhang actually used in this repo's production code, or just explained here?</h4>
         <button class="sl-quiz-opt" data-correct="true">It's the live primary volatility input in js/volForecast.js's computeForecast()</button>
         <button class="sl-quiz-opt">It's a pure concept, not built anywhere in this repo</button>
         <button class="sl-quiz-opt">It only appears in a research notebook, never in production</button>
         <div class="sl-quiz-explain">js/volForecast.js's computeForecast() calls yangZhangVolSeries() as its primary σ input for FX and gold; a second, independent Python implementation in forge/vol.py is walk-forward validated and tested.</div>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Close-to-close volatility uses one price a day. Range-based (OHLC) estimators use all four a daily bar already provides.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Parkinson (range only) → Garman-Klass (+ open-close) → Rogers-Satchell (drift-independent) → Yang-Zhang (+ overnight gap) is a ladder of increasingly complete assumptions.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Garman-Klass's real limitation is the no-gap assumption — a genuine issue for FX around weekend rollovers, fixed specifically by Yang-Zhang's overnight term.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>This deck's own Monte Carlo check recovered ≈5x (Parkinson) and ≈7.8x (Garman-Klass) efficiency gains over close-close vol — matching the textbook figures, not just citing them.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>All four estimators are genuinely implemented in this repo — Yang-Zhang is the live production estimator, not a concept sitting unused.</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">05</div><p>All four estimators are genuinely implemented in this repo — Yang-Zhang is the live production estimator, not a concept sitting unused.</p></div><!-- DESK:END -->
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>On a desk: Parkinson → Garman-Klass (1980) → Yang-Zhang (2000) are the standard bar-based vol inputs for sizing, stops and realised-vs-implied checks.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
-        <p>Recognize when a close-only volatility figure is quietly throwing away real information, and reach for an OHLC estimator instead. Know exactly which failure mode each estimator fixes — drift, the open/close, or the overnight gap — instead of treating "range-based" as one interchangeable idea. Read this repo's own volatility code with the actual formulas in hand, not just the estimator names.</p>
+        <p>Recognize when a close-only volatility figure is quietly throwing away real information, and reach for an OHLC estimator instead. Know exactly which failure mode each estimator fixes — drift, the open/close, or the overnight gap — instead of treating "range-based" as one interchangeable idea.<!-- DESK:START --> Read this repo's own volatility code with the actual formulas in hand, not just the estimator names.<!-- DESK:END --></p>
       </div>
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>

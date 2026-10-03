@@ -17,7 +17,7 @@
   <h1 class="tl-title">Quantile Regression</h1>
   <p class="tl-dek">OLS answers "what's the average outcome given these conditions?" Risk questions ask "what's the bad outcome given these conditions?" — a different question that needs a different loss function, not just a different confidence level.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explains a conditional-quantile estimation technique; not built or used anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — explains a conditional-quantile estimation technique; not built or used anywhere in this repo<!-- DESK:END --></span>
     <span>~14 min read</span>
     <span>Prereqs: <a href="regression-diagnostics.html">Regression Diagnostics</a> (OLS mechanics assumed) and <a href="cornish-fisher-expansion.html">Cornish-Fisher Expansion</a> (the contrasting static approach to the same question)</span>
   </div>
@@ -464,8 +464,9 @@
     in its starkest form. And the predictor is only as early as the financial stress it measures.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict validated" data-evidence="vix-inversion" data-evidence-date="2026-09-17">
-    <span class="tl-verdict-tag">Validated</span>
+    <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>The nearest claim this desk has tested: today's conditions change the <em>width</em> of what comes
     next.</strong> Not a quantile regression, but the same conditional-spread idea. On the first day of a VIX
     inversion (near-term fear priced above the 3-month), the next five sessions' range against matched controls was
@@ -473,6 +474,7 @@
     Inversions are brief (median 1 session). Like "Vulnerable Growth", it moves the spread, not the middle: a range
     statement, never a direction.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -552,8 +554,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Cornish-Fisher is static; quantile regression is conditional.</strong> This is the lesson's central contrast — a CF adjustment is fixed from unconditional S and K, while a quantile-regression quantile moves with live predictors like today's realized volatility.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The toy example shows it concretely.</strong> The τ=0.1–τ=0.9 band width grew roughly sixfold from x=1 to x=10 — information a single OLS mean line structurally cannot carry.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Quantile crossing is a real limitation, not an edge case.</strong> Separately-fit quantile lines aren't guaranteed to stay correctly ordered at every predictor value — the direct structural cousin of Cornish-Fisher's own non-monotonicity problem.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Conditions move the tail more than the middle, and the tail is thinly sampled.</strong> In "Vulnerable Growth" tighter financial conditions dropped the 5th percentile of future growth while the median barely moved, but rare recessions anchor that fit and out-of-sample tests found the signal weaker. This desk's nearest test (vix-inversion, validated) also moves the range, not the direction.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This lesson is conceptual.</strong> It explains the technique and its worked toy example precisely; it is not a claim that quantile regression is fitted or used anywhere in this project.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Conditions move the tail more than the middle, and the tail is thinly sampled.</strong> In "Vulnerable Growth" tighter financial conditions dropped the 5th percentile of future growth while the median barely moved, but rare recessions anchor that fit and out-of-sample tests found the signal weaker.<!-- DESK:START --> This desk's nearest test (vix-inversion, validated) also moves the range, not the direction.<!-- DESK:END --></span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This lesson is conceptual.</strong> It explains the technique and its worked toy example precisely<!-- DESK:START -->; it is not a claim that quantile regression is fitted or used anywhere in this project<!-- DESK:END -->.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

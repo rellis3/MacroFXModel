@@ -17,7 +17,7 @@
   <h1 class="tl-title">Fama-French &amp; Carhart: Beyond the Single Factor</h1>
   <p class="tl-dek">CAPM's single market beta leaves two stubborn, replicated anomalies unexplained: small stocks outperform what their beta predicts, and so do cheap ("value") stocks. Fama and French's fix wasn't a better beta — it was two more zero-cost long-short portfolios added as regressors, and Carhart later bolted on a third for momentum.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — no literal SMB/HML/UMD factor exists anywhere in this repo; the closest real analog, forge/xsect.py's cross-sectional FX momentum/reversion basket, is genuinely built and walk-forward tested, and its honest result is a null</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — no literal SMB/HML/UMD factor exists anywhere in this repo; the closest real analog, forge/xsect.py's cross-sectional FX momentum/reversion basket, is genuinely built and walk-forward tested, and its honest result is a null<!-- DESK:END --></span>
     <span>~19 min read</span>
     <span>Prereqs: <a href="institutional-capm.html">CAPM: The Single-Factor Baseline</a>, <a href="interest-rate-parity.html">Interest Rate Parity — Covered vs. Uncovered</a></span>
   </div>
@@ -36,7 +36,8 @@
       <li>Carhart (1997) adds a fourth factor, <strong>UMD/MOM</strong> — past-12-month winners minus losers, skipping the most recent month — because momentum is a genuinely different, persistent continuation anomaly that value and size don't capture, and is empirically <em>negatively</em> correlated with HML, making it a diversifying addition rather than a redundant one.</li>
       <li>Fama &amp; French (2015) extend to five factors, adding <strong>RMW</strong> (profitability) and <strong>CMA</strong> (investment), motivated by a dividend-discount-model argument tying expected profitability and investment directly to expected returns. It's the modern academic standard, though 3- and 4-factor versions still get quoted constantly in practice.</li>
       <li><strong>The FX carry trade, covered in this curriculum's own Interest Rate Parity lesson, is this same story wearing a currency-market costume</strong>: a systematic long-short bet (high-yield currencies vs. low-yield funding currencies) that has paid a persistent average premium, is compensated for a well-documented crash risk, and has direct, published academic analogs to HML, UMD, and even MKT itself in currency markets.</li>
-      <li>This repo has no literal Fama-French implementation — but <code>forge/xsect.py</code> builds and walk-forward tests a genuine cross-sectional long-short FX momentum/reversion basket. Its honest result: a null, OOS t = 0.44, that doesn't even clear its own shuffled-score noise floor.</li>
+      <!-- DESK:START --><li>This repo has no literal Fama-French implementation — but <code>forge/xsect.py</code> builds and walk-forward tests a genuine cross-sectional long-short FX momentum/reversion basket. Its honest result: a null, OOS t = 0.44, that doesn't even clear its own shuffled-score noise floor.</li><!-- DESK:END -->
+      <li><strong>How it reached trading:</strong> Fama-French (1992–93) and Carhart (1997) turned size, value and momentum into tradable factors, and regressing returns on them is now the standard test of whether a manager or strategy has alpha.</li>
     </ul>
   </div>
 
@@ -106,6 +107,23 @@
       is "build a portfolio that isolates one specific pattern, then ask
       every other asset how much of that pattern it secretly contains."
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Was it skill, or just small caps and value?</h3>
+    <div class="tl-origin-who">Factor attribution · Fama &amp; French 1992–93, Carhart 1997 → the standard performance yardstick</div>
+    <p>Under CAPM, a fund that loaded up on small or cheap stocks showed a positive alpha and looked skilled, because beta alone missed the size and value premia. Investors had no agreed way to separate genuine stock-picking from simply holding a known style.</p>
+    <p>Fama &amp; French's 1992 paper showed beta explained little of the cross-section once size and book-to-market were included; their 1993 paper turned those into tradable long-short factors, SMB and HML. Carhart (1997) added momentum and found that most apparent persistence in mutual-fund performance came from the factors and costs, not skill. Dimensional Fund Advisors, which worked with Fama and French, built its funds around these premia, and Kenneth French publishes the factor returns free online.</p>
+    <p>Today regressing a fund or strategy on the three or four factors is the standard first check in manager selection and performance attribution, and the same factors are packaged as "smart beta" and factor ETFs.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How much of this strategy's return is just known factor premia, and what alpha is left?</dd>
+        <dt>Takes in</dt><dd>Market beta from <a href="institutional-capm.html">CAPM</a> and clean, point-in-time stock data (<a href="point-in-time-data-survivorship-bias.html">Point-in-Time Data &amp; Survivorship Bias</a>).</dd>
+        <dt>Hands on to</dt><dd>Risk-premium estimation in <a href="institutional-fama-macbeth.html">Fama-MacBeth</a> and the beta/alpha split in <a href="alpha-beta-separation.html">Alpha-Beta Separation</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -484,7 +502,7 @@
     <p>Stock-market researchers noticed that "buy cheap stocks, short expensive ones" made steady extra money that a simple model couldn't explain, so they named that strategy HML and started tracking it like its own asset. Currency researchers noticed the exact same thing happening with interest rates: "buy high-interest currencies, short low-interest currencies" made steady extra money a simple model (UIP) said shouldn't exist. Different market, same discovery, same fix: give the strategy a name, track its own return, and admit it's a real, separate ingredient in what drives returns — one that gets paid, in both cases, for a real risk that occasionally bites hard.</p>
   </div>
 
-  <div class="tl-box pitfall">
+  <!-- DESK:START --><div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">What this repo's own factor construction actually shows</div>
     <h3>A real, walk-forward-tested FX cross-sectional factor attempt — and its honest null result</h3>
@@ -520,7 +538,7 @@
       from a specific signal, built and tested on this repo's own data,
       clearing an honest out-of-sample bar. Here, it didn't.
     </p>
-  </div>
+  </div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Worked example — the extra factors move the prediction</h2>
@@ -696,20 +714,20 @@
       market couldn't actually have known yet at formation time isn't
       measuring a tradeable strategy at all — it's measuring an
       unachievable, leakage-inflated one. The same discipline applies
-      identically to any FX cross-sectional signal, this repo's own
-      <code>forge/xsect.py</code> included.
+      identically to any FX cross-sectional signal<!-- DESK:START -->, this repo's own
+      <code>forge/xsect.py</code> included<!-- DESK:END -->.
     </p>
     <p>
-      <strong>Treating a documented academic factor as validated on this
-      repo's own data.</strong> The FX carry and momentum factors are
+      <strong>Treating a documented academic factor as validated on your
+      own data.</strong> The FX carry and momentum factors are
       real, published, extensively replicated findings in the academic
       literature (Lustig &amp; Verdelhan, 2007; Menkhoff, Sarno,
       Schmeling &amp; Schrimpf, 2012). That is a categorically different
-      claim from "a specific factor construction, tested on this repo's
+      claim from "a specific factor construction, tested on your
       own data with its own costs and its own walk-forward split, clears
-      an honest out-of-sample bar" — <code>forge/xsect.py</code>'s own
+      an honest out-of-sample bar"<!-- DESK:START --> — <code>forge/xsect.py</code>'s own
       null result above is the concrete, honest illustration of exactly
-      that gap.
+      that gap<!-- DESK:END -->.
     </p>
   </div>
 
@@ -733,7 +751,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Carhart (1997) adds UMD/MOM as a genuinely distinct fourth factor</strong> — a persistent continuation effect, empirically diversifying against (sometimes negatively correlated with) HML, not a redundant restatement of value or size.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Fama-French (2015) adds RMW and CMA</strong> via a dividend-discount-model argument; it's the modern academic standard, but 3- and 4-factor versions remain in routine practical use.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The FX carry trade is this same methodological move, in a currency-market costume</strong> — a systematic long-short spread compensated for real, debated risk, with direct published analogs for MKT (the dollar factor), HML (carry), UMD (FX momentum — Menkhoff et al. 2012), and a documented FX value factor too.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>None of this is a claim that a factor-based signal has validated edge on this repo's own data.</strong> This repo's own genuine attempt at an FX cross-sectional momentum/reversion basket (<code>forge/xsect.py</code>) came back a clean null — OOS t=0.44, inside its own shuffled-score noise floor.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>None of this is a claim that a factor-based signal has validated edge on this repo's own data.</strong> This repo's own genuine attempt at an FX cross-sectional momentum/reversion basket (<code>forge/xsect.py</code>) came back a clean null — OOS t=0.44, inside its own shuffled-score noise floor.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is the performance yardstick.</strong> Since Carhart (1997), alpha means return left over after market, size, value and momentum, so a strategy that only earns known factor premia does not count as skill.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 10</span></div>
@@ -808,7 +827,7 @@
       momentum, Menkhoff et al. 2012) specifically.
     </div>
   </details>
-  <details class="tl-quiz">
+  <!-- DESK:START --><details class="tl-quiz">
     <summary>Q6. Does this repo contain a literal Fama-French or Carhart factor implementation? What is the closest real analog, and what did it honestly find?</summary>
     <div class="tl-answer">
       No — a repo-wide search finds no SMB, HML, UMD, or Fama/Carhart
@@ -827,7 +846,7 @@
       genuine rate-differential-based FX cross-sectional basket but is
       written and untested, currently blocked on FRED API access.
     </div>
-  </details>
+  </details><!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>

@@ -17,7 +17,7 @@
   <h1 class="tl-title">Kyle-Obizhaeva: Market Microstructure Invariance</h1>
   <p class="tl-dek">A $2 billion mega-cap and a $200 million micro-cap trade at utterly different costs, in utterly different sizes, on utterly different clocks. Invariance is the claim that this apparent chaos is an illusion of the wrong ruler — that once "bet size" is measured in units of risk transferred rather than shares or dollars, the same statistical law governs every stock, every currency pair, and every era.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — confirmed absent from this codebase; a targeted grep for invariance-, bet-size-, and Kyle-related logic across every <code>.js</code>/<code>.py</code> file found no market-microstructure-invariance or bet-size code anywhere — only unrelated software-testing uses of the word "invariance" (prefix/truncation invariance checks in <code>forge/</code>, <code>vumanchuLab/</code>, and <code>vmcResearch/</code>, guarding that a computation gives the same answer on a data prefix as on the full history) and zero matches on "Kyle" in any <code>.js</code>/<code>.py</code> file</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — confirmed absent from this codebase; a targeted grep for invariance-, bet-size-, and Kyle-related logic across every <code>.js</code>/<code>.py</code> file found no market-microstructure-invariance or bet-size code anywhere — only unrelated software-testing uses of the word "invariance" (prefix/truncation invariance checks in <code>forge/</code>, <code>vumanchuLab/</code>, and <code>vmcResearch/</code>, guarding that a computation gives the same answer on a data prefix as on the full history) and zero matches on "Kyle" in any <code>.js</code>/<code>.py</code> file<!-- DESK:END --></span>
     <span>~20 min read</span>
     <span>Prereqs: <a href="market-microstructure.html">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a> (Kyle's Lambda), <a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a> (the square-root law)</span>
   </div>
@@ -38,6 +38,7 @@
       <li>This extends, rather than replaces, Kyle's (1985) single-asset Lambda — already covered in the <a href="market-microstructure.html">Market Microstructure</a> lesson. Kyle prices one asset's impact given that asset's own exogenous \(\sigma_v,\sigma_u\); invariance is the cross-sectional theory of how those parameters, and the bet sizes they imply, should systematically differ from one asset to the next.</li>
       <li>Practical payoff: because the standardized distribution is shared across assets, a desk that has calibrated it on data-rich, liquid names can predict expected costs and sensible order-slicing sizes for a new or illiquid instrument — an FX cross, a thin small-cap — from nothing but that instrument's own price, volume, and volatility, with no separate history-hungry calibration required.</li>
       <li>Invariance is an empirical regularity with real scatter around it, not an exact physical law, and it is explicitly silent on short-run <em>transient</em> price-impact dynamics — the subject of the next lesson in this category, <a href="institutional-obizhaeva-wang-impact.html">Obizhaeva-Wang Transient Price Impact</a>.</li>
+      <li><strong>How it reached trading:</strong> Kyle &amp; Obizhaeva (2016), tested on US equity portfolio-transition orders, gave desks a way to scale bet sizes and pre-trade cost estimates from liquid names to thin ones using price, volume and volatility.</li>
     </ul>
   </div>
 
@@ -59,7 +60,7 @@
     dollars — when the right unit was sitting there all along?
   </p>
   <p>
-    This repo's own <a href="market-microstructure.html">Market
+    The <a href="market-microstructure.html">Market
     Microstructure</a> lesson already covers the classical answer to "why
     does size cost money at all": Kyle's (1985) linear price-impact model,
     \(\Delta p = \lambda Q\) with \(\lambda = \sigma_v/(2\sigma_u)\). That
@@ -127,6 +128,23 @@
       expressed in that shared currency, the invariance hypothesis says the
       bowling ball and the pebble stop looking so different after all.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Pricing a big order in a name with little history</h3>
+    <div class="tl-origin-who">Market microstructure invariance · Kyle &amp; Obizhaeva, 2016 → pre-trade cost and bet-size scaling across assets</div>
+    <p>Pre-trade cost models such as the square-root law of impact had to be calibrated asset by asset, and calibration needs a history of large orders that thin names, new listings and unfamiliar markets do not have. There was no principled way to carry a cost estimate from liquid names to illiquid ones.</p>
+    <p>Albert Kyle and Anna Obizhaeva's <em>Market Microstructure Invariance: Empirical Hypotheses</em> (Econometrica, 2016) proposed scaling by trading activity, price × volume × volatility. They tested it on a large dataset of US equity portfolio-transition orders, where order sizes and implied costs lined up across stocks once rescaled. Andersen, Bondarenko, Kyle &amp; Obizhaeva later found the same scaling intraday in E-mini S&amp;P 500 futures, and Kyle &amp; Obizhaeva used it to gauge how large the sales behind historical crashes were relative to normal bets.</p>
+    <p>Today it serves as a scaling template in pre-trade cost estimation and for judging how big an order is relative to a market's normal bet, which matters most when sizing an entry or exit in a thin instrument.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage on">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How large is this order relative to the market's normal bet, and what should it cost?</dd>
+        <dt>Takes in</dt><dd>Price, volume and volatility, with the impact laws of <a href="market-microstructure.html">Kyle's Lambda</a> and <a href="market-impact-almgren-chriss.html">Almgren-Chriss</a>.</dd>
+        <dt>Hands on to</dt><dd>The slicing schedule in <a href="execution-algorithms.html">Execution Algorithms</a> and the decay dynamics of <a href="institutional-obizhaeva-wang-impact.html">Obizhaeva-Wang</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-eli5">
@@ -608,6 +626,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The full hypothesis is stronger than the scaling law alone:</strong> the entire distribution of standardized bet size \(z=L/W^{2/3}\) — not just its center — is claimed to be approximately shared across assets, venues, and eras.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This extends Kyle's (1985) single-asset Lambda into a cross-sectional theory.</strong> Kyle takes \(\sigma_v,\sigma_u\) as exogenous per asset; invariance is a specific, falsifiable prediction for how those quantities compare across a whole universe of assets.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>It is an empirical regularity with real scatter, not an exact law, and it is silent on short-run transient impact dynamics</strong> — the next lesson in this category, Obizhaeva-Wang Transient Price Impact, is exactly the piece invariance leaves out.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Its desk use is carrying a cost estimate to a thin market.</strong> Scaling by price × volume × volatility lets a pre-trade model calibrated on liquid names size an order, and price it, in an instrument with little execution history of its own.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

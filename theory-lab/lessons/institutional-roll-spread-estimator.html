@@ -17,7 +17,7 @@
   <h1 class="tl-title">Roll's Implicit Spread Estimator</h1>
   <p class="tl-dek">No quotes, no order book, no depth data — just a raw series of trade prices. Roll's 1984 insight is that the bid-ask spread leaves a fingerprint even there: it forces consecutive price changes to bounce against each other, and that bounce alone is enough to back the spread out.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — a classical price-only estimator, verified nowhere in this repo: no file computes a serial covariance of price changes for spread estimation, and this repo's own Market Microstructure lesson never mentions Roll's estimator (it derives Glosten-Milgrom and Kyle's Lambda, both of which assume quotes are visible)</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — a classical price-only estimator, verified nowhere in this repo: no file computes a serial covariance of price changes for spread estimation, and this repo's own Market Microstructure lesson never mentions Roll's estimator (it derives Glosten-Milgrom and Kyle's Lambda, both of which assume quotes are visible)<!-- DESK:END --></span>
     <span>~14 min read</span>
     <span>Prereqs: <a href="institutional-trade-classification.html">Trade Classification: Lee-Ready &amp; Bulk Volume</a>, <a href="market-microstructure.html">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a></span>
   </div>
@@ -36,6 +36,7 @@
       <li><strong>The critical catch:</strong> that square root only exists when the empirical covariance actually comes out negative, as the theory predicts. In short, noisy, or strongly trending samples it very often comes out positive instead — and the estimator is then simply undefined, not just imprecise.</li>
       <li>This lesson's own 14-print worked example, built from a spread of exactly \(s=0.10\), recovers a Roll estimate of \(0.0986\) — within about 1.4% — while a second, purely trending series with no bounce at all produces a <em>positive</em> covariance and no estimate at all.</li>
       <li>Corwin &amp; Schultz (2012) is the modern successor most worth knowing by name: it estimates the effective spread from daily high/low ranges instead of transaction-price serial covariance, and is considerably more robust in exactly the short-sample, trending conditions that break Roll's estimator.</li>
+      <li><strong>How it reached trading:</strong> Roll (1984) backed the spread out of trade prices alone, and with Hasbrouck's 2009 Bayesian refinement and Corwin &amp; Schultz's 2012 alternative it is how researchers and quants put a cost on long histories and quote-less markets.</li>
     </ul>
   </div>
 
@@ -49,9 +50,9 @@
     against adverse selection. That derivation — and Kyle's Lambda alongside
     it — takes for granted that you can actually <em>see</em> the bid and the
     ask being quoted. Checked against that lesson directly: it never mentions
-    Roll's estimator, and neither does anywhere else in this repository — a
+    Roll's estimator<!-- DESK:START -->, and neither does anywhere else in this repository — a
     repo-wide search for a serial-covariance computation on price changes,
-    specifically for the purpose of backing out a spread, turns up nothing.
+    specifically for the purpose of backing out a spread, turns up nothing<!-- DESK:END -->.
     This lesson is new ground, not a restatement of anything already here.
   </p>
   <p>
@@ -100,6 +101,23 @@
       from that signature, using nothing but the printed prices, is the whole
       of what follows.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>A spread from a tape with no quotes</h3>
+    <div class="tl-origin-who">Roll measure · Roll, 1984 → cost estimates for long histories and quote-less markets</div>
+    <p>For most of market history there are trade prices but no quotes: decades of daily closing prices exist, while intraday quote data for US stocks (TAQ) begins only in 1993, and many OTC markets never published quotes at all. Anyone testing a strategy over a long sample, or in a market without a quote feed, had no direct way to know what crossing the spread cost.</p>
+    <p>Richard Roll's 1984 Journal of Finance paper, <em>A Simple Implicit Measure of the Effective Bid-Ask Spread in an Efficient Market</em>, backed the spread out of the negative autocovariance of price changes. Hasbrouck (2009) made it far more usable with a Bayesian Gibbs-sampler version on daily data; Bao, Pan &amp; Wang (2011) used the same autocovariance as a corporate-bond illiquidity measure; Corwin &amp; Schultz (2012) offered a high-low alternative.</p>
+    <p>Today it is a first-pass transaction-cost and liquidity estimate for long backtests, for instruments without clean quote history, and a standard liquidity control in empirical research.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage on">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>What did it cost to cross the spread, when the only data is trade prices?</dd>
+        <dt>Takes in</dt><dd>A trade-price series and the lag-1 autocovariance of its changes, from <a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a>.</dd>
+        <dt>Hands on to</dt><dd>The transaction-cost assumption in a backtest (<a href="research-pipeline-hypothesis-to-backtest.html">The Research Pipeline</a>), and the adverse-selection reading of the spread in <a href="institutional-glosten-milgrom.html">Glosten-Milgrom</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -535,6 +553,7 @@
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The estimator, \(s=2\sqrt{-\mathrm{Cov}(\Delta P_t,\Delta P_{t-1})}\), is undefined whenever the empirical covariance is non-negative</strong> — a routine, expected outcome in short or trending samples, not a rare failure. Any real application needs a plan for windows that return no answer at all.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked 14-print example recovers 0.0986 against a true spread of 0.10</strong> — about 1.4% off, and only because a genuine drift in the true price contributes nothing to the lag-1 covariance, leaving the bounce term to do all the work.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Corwin &amp; Schultz (2012) is the more robust modern successor,</strong> estimating the effective spread from daily high-low ranges instead — worth knowing by name even without deriving it, specifically because it doesn't share Roll's undefined-result failure mode.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Its desk use is costing a backtest when there are no quotes.</strong> For long daily samples, corporate bonds or other OTC instruments, a Roll-type estimate (or Hasbrouck's 2009 Bayesian version) supplies the spread a backtest must charge.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -627,8 +646,8 @@
   <ul class="tl-refs">
     <li>Richard Roll, <em>"A Simple Implicit Measure of the Effective Bid-Ask Spread in an Efficient Market,"</em> Journal of Finance, 39(4), 1984 — the original derivation covered in full above.</li>
     <li>Shane A. Corwin &amp; Paul Schultz, <em>"A Simple Way to Estimate Bid-Ask Spreads from Daily High and Low Prices,"</em> Journal of Finance, 67(2), 2012 — the high-low range estimator named as Roll's modern, more robust successor.</li>
-    <li><code>theory-lab/lessons/market-microstructure.html</code> in this repo — the Glosten-Milgrom and Kyle's Lambda derivations this lesson's spread notation and adverse-selection framing build on.</li>
-    <li><code>theory-lab/lessons/stationarity-acf-pacf.html</code> in this repo — the autocovariance and lag notation, \(\gamma(k)\), this lesson's \(\mathrm{Cov}(\Delta P_t,\Delta P_{t-1})\) is a direct application of.</li>
+    <li><code>theory-lab/lessons/market-microstructure.html</code><!-- DESK:START --> in this repo<!-- DESK:END --> — the Glosten-Milgrom and Kyle's Lambda derivations this lesson's spread notation and adverse-selection framing build on.</li>
+    <li><code>theory-lab/lessons/stationarity-acf-pacf.html</code><!-- DESK:START --> in this repo<!-- DESK:END --> — the autocovariance and lag notation, \(\gamma(k)\), this lesson's \(\mathrm{Cov}(\Delta P_t,\Delta P_{t-1})\) is a direct application of.</li>
   </ul>
   </details>
 

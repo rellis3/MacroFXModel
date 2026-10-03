@@ -283,17 +283,19 @@
 
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
-      <h2 class="sl-h2">Where this shows up — and what's actually running here</h2>
+      <h2 class="sl-h2">Where this shows up<!-- DESK:START --> — and what's actually running here<!-- DESK:END --></h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🤖</div><div><h4>Robot localization</h4><p>A robot with a rough map and noisy sensors, genuinely uncertain which of several matching corridors it's in — "Monte Carlo Localization" is a direct particle-filter application.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📡</div><div><h4>Radar/sonar tracking</h4><p>A maneuvering target whose motion isn't well described by a straight line — the same nonlinear-dynamics problem this lesson generalizes the Kalman filter to handle.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🎥</div><div><h4>Video object tracking</h4><p>A target temporarily occluded and later reappearing is a genuinely multimodal situation — exactly the shape a single Gaussian estimate handles poorly.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Stochastic volatility, jump-diffusion</h4><p>Estimating a latent, continuously evolving volatility path, or fitting a model where price paths jump discontinuously — both genuinely nonlinear or non-Gaussian state-space problems.</p></div></div>
       </div>
+      <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Factual grounding — the full lesson's status line is now out of date</div>
         <p>The full <em>particle-filter.html</em> lesson labels this a "CONCEPT — not built or tested anywhere in this repo," and its takeaways state plainly: "Not built, not prototyped, not validated in this repo." That was true when written, but it no longer is: <code>js/particleFilter.js</code> now implements a real bootstrap particle filter — 200 particles, systematic resampling, resampling triggered when N_eff falls below N/2 — used for live 5-minute regime classification (BULL/BEAR/RANGE/CHOP) across instruments, gated by <code>FEATURE_FLAGS.PARTICLE_FILTER</code> in <code>js/config.js</code>, which is currently set to <strong>true</strong>, and wired into <code>js/main.js</code>'s live dashboard output. That is a genuinely different problem from the continuous hedge-ratio-tracking scenario this lesson illustrates — it tracks a discrete 4-state Markov regime, not a continuous nonlinear state — so the specific hedge-ratio scenario above remains hypothetical. But the core algorithm this lesson teaches — predict, weight, systematically resample, gated on N_eff — is not merely a concept in this repo; it is live, enabled-by-default code.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="14">

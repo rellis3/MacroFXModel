@@ -272,11 +272,13 @@
 
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
-      <h2 class="sl-h2">What this desk can say, and where the textbook breaks</h2>
+      <!-- DESK:START --><h2 class="sl-h2">What this desk can say, and where the textbook breaks</h2><!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
-        <span class="sl-stamp-tag">Untested</span>
+        <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>"HRP gives a steadier out-of-sample book than inverse-vol, ERC or min-variance on this desk's FX universe"</strong> is not tested: no clustering allocator has been run here. A fair test would re-estimate every method on a rolling window, freeze the linkage method first, and compare out-of-sample realised vol, turnover and worst drawdown, with 2008 and March 2020 reported separately. Realised vol, not Sharpe: a handful of crosses is too few to separate Sharpe ratios.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>HRP avoids the inversion, not the estimation. Its tree and every split's variance come from a matrix estimated on past data, and in 2008 that matrix changed within weeks. A calm-year tree would have weighted the high-yield bloc on calm variances, making the bloc about to fall look cheap in risk terms.</p>
@@ -334,6 +336,7 @@
       </div>
     </section>
 
+    <!-- DESK:START -->
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Not built here — worth being explicit about</h2>
@@ -343,6 +346,7 @@
       </div>
       <p class="sl-p">Every strategy actually running in this codebase is single-instrument. A clustering-based allocator like HRP would be genuinely new infrastructure — worth understanding conceptually now, since it addresses a real and well-documented weakness of both Markowitz and plain risk-parity approaches, but not something to assume is available today.</p>
     </section>
+    <!-- DESK:END -->
 
     <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 13</div>
@@ -353,8 +357,8 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Three stages: tree clustering (dᵢⱼ = √(½(1−ρᵢⱼ)) feeds agglomerative clustering), quasi-diagonalization (reorder by leaf order, no values change), recursive bisection (split weight in half at each branch, inversely by variance).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The lower-variance side of every split always gets the larger share — the same risk-parity intuition from the previous lesson, applied one binary split at a time.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The dendrogram borrows its distance metric directly from the correlation-networks/MST lesson, but uses it to build an allocation tree rather than a pruned network.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Not a free lunch: linkage choice changes the tree, correlation estimates are still noisy, and expected returns still play no role — and this is unbuilt, unvalidated theory in this repo today.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Autumn 2008: the carry unwind made high-yielding currencies move almost as one, so Σ went near-singular just as allocation mattered (Markowitz's curse). HRP avoids the inversion but still reads its tree from past data. Untested on this desk's FX universe.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Not a free lunch: linkage choice changes the tree, correlation estimates are still noisy, and expected returns still play no role<!-- DESK:START --> — and this is unbuilt, unvalidated theory in this repo today<!-- DESK:END -->.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Autumn 2008: the carry unwind made high-yielding currencies move almost as one, so Σ went near-singular just as allocation mattered (Markowitz's curse). HRP avoids the inversion but still reads its tree from past data.<!-- DESK:START --> Untested on this desk's FX universe.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

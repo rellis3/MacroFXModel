@@ -274,10 +274,12 @@
           </ul>
         </div>
       </div>
+      <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Fact-check against this repo's actual code</div>
         <p>The full lesson states flatly: "no factor loadings are estimated, and no factor-tilted portfolio has been backtested, here." That's now partly stale. <code>js/mve/factorModel.js</code> does fit real loadings — OLS-regressing each instrument's return against a small set of macro factors (real-rate, DXY, risk-appetite, inflation-expectations, liquidity) — and <code>bot/modules/portfolio_beta.py</code> aggregates a live book's exposure to those same factors, weighted by each open position's size and direction. But neither one builds a portfolio: <code>factorModel.js</code> is documented in its own header as "read-only / diagnostic by design — it does not size trades on its own," and <code>portfolio_beta.py</code> only totals up whatever exposure the existing positions already happen to carry. The actual construction step this lesson teaches — solving Bᵀw = q for the weights that <em>deliver</em> a target exposure — is not implemented anywhere in the repo. So: loadings are estimated and portfolio-level exposure is measured, but deliberate factor-based construction remains unbuilt.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="11">
@@ -302,15 +304,19 @@
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
-      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <!-- DESK:START --><h2 class="sl-h2">What this desk found, and where the textbook breaks</h2><!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp underpowered" data-evidence="fx-factor-book-v2" data-evidence-date="2026-09-27">
-        <span class="sl-stamp-tag">Underpowered</span>
+        <span class="sl-stamp-tag">Desk test: too small to tell</span>
         <span><strong>The desk's own carry and trend baskets can't be shown to earn a premium.</strong> Trend −0.16 out of sample; carry +0.61, which is 1.5 SE, in the 2021-26 rate-divergence era (in-sample −0.12). Sharpe SE 0.41 on 7 USD crosses over 5.7 years. Value is untested here.</span>
       </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp null" data-evidence="trend-following-fx" data-evidence-date="2026-07-20">
-        <span class="sl-stamp-tag">Null</span>
+        <span class="sl-stamp-tag">Desk test: nothing found</span>
         <span><strong>FX trend following:</strong> FX-only basket null, verified not-a-bug with an independent rebuild; broad multi-asset modest (~0.3 OOS), barely beating buy-and-hold.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>The model treats f<sub>k</sub> as having a stable positive mean. Value's was negative for longer than most investors' patience or most out-of-sample windows, and outflows from the factor's own holders deepened the fall.</p>
@@ -369,7 +375,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Construction flips that equation around: state the exposure profile you want, then solve (or optimize) for the weights that deliver it — instead of picking assets and hoping the aggregate works out.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>N=K gives one exact solution; the realistic N&gt;K case is underdetermined, so a secondary objective (minimize idiosyncratic risk, cap positions) picks one portfolio out of an entire family that all hit the target equally well.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>It's a simplification, not a free lunch — idiosyncratic risk and factor-timing risk sit outside the exposures themselves, and which factors make the list is a real modeling choice, not a neutral default.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>The value winter (2018–2020): books held exactly the tilt they solved for and earned the factor's record drawdown, and many cut before the November 2020 rebound. Exposure is not premium. Here, carry and trend baskets are underpowered and FX trend tested null.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>The value winter (2018–2020): books held exactly the tilt they solved for and earned the factor's record drawdown, and many cut before the November 2020 rebound. Exposure is not premium.<!-- DESK:START --> Here, carry and trend baskets are underpowered and FX trend tested null.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

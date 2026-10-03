@@ -283,10 +283,12 @@
         <div class="sl-callout-label">A real tradeoff, not an obsolete method</div>
         <p>That's a genuine, current tradeoff — not a claim that LSTMs are obsolete. For shorter sequences, streaming or online settings that must process one step at a time as it arrives, and lower-compute environments where a transformer's data and compute appetite isn't affordable, a well-tuned LSTM or GRU remains a genuinely reasonable, still-current choice. A rolling 20-bar EUR/USD return window feeding a small LSTM forecaster, for instance, processes returns in order and can in principle learn to hold onto a large early move rather than treating it as one interchangeable column among twenty — whether that structural edge beats a well-tuned feedforward or gradient-boosted model on the same lagged features is a separate, empirical question.</p>
       </div>
+      <!-- DESK:START -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where this needs qualifying — checked against this repo's actual code</div>
         <p>The full lesson labels this topic "CONCEPT — explained here, not built or tested anywhere in this repo." That claim was checked directly against the current codebase for this visual guide: across all ~435 Python files, every JS trading bot, and every dependency manifest, there is no PyTorch, TensorFlow, or Keras usage and no real LSTM/GRU/RNN implementation anywhere. The handful of surface matches on a raw text search turn out to be false positives — variable names like <code>rnOnPips</code> and <code>_pendingRun</code>, or citations to external LSTM research in a planning document — not actual recurrent-network code. The claim still holds: this remains a concept lesson, not a description of anything running in production here.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">

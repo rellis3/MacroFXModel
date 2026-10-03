@@ -359,7 +359,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">⚙️</div><div><h4>Hedging engine</h4><p>The Greeks tell a market maker exactly how much underlying to buy or sell to stay delta-neutral, and how fast that hedge will need revisiting.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📚</div><div><h4>Common language</h4><p>Every more sophisticated model is built as a correction to Black-Scholes' logic, which is why its vocabulary — delta, gamma, vega — never goes away.</p></div></div>
       </div>
-      <p class="sl-p">This repo's own theory-lab lessons on <strong>open-interest walls &amp; max pain</strong> and <strong>gamma exposure &amp; dealer hedging</strong> build directly on the delta and gamma introduced here — they aren't independent trading folklore, they're literally this formula's first and second derivatives with respect to price. And the stress-testing tooling elsewhere in this repo asks whether a portfolio's claimed diversification survives a liquidity contraction — a question that, for any book holding options, is inseparable from how those options' hedge ratios shift as markets move.</p>
+      <p class="sl-p">The lessons on <strong>open-interest walls &amp; max pain</strong> and <strong>gamma exposure &amp; dealer hedging</strong> build directly on the delta and gamma introduced here — they aren't independent trading folklore, they're literally this formula's first and second derivatives with respect to price.<!-- DESK:START --> And the stress-testing tooling elsewhere in this repo asks whether a portfolio's claimed diversification survives a liquidity contraction — a question that, for any book holding options, is inseparable from how those options' hedge ratios shift as markets move.<!-- DESK:END --></p>
     </section>
 
     <section class="sl-slide" data-slide="16">
@@ -385,12 +385,16 @@
 
     <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 16</div>
+      <!-- DESK:START -->
       <h2 class="sl-h2">What the desk found, and where the textbook breaks</h2>
       <p class="sl-sub">The tempting claim: implied σ far above realised means the market is over-insured and will calm down.</p>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18">
-        <span class="sl-stamp-tag">Validated</span>
+        <span class="sl-stamp-tag">Desk test: held up</span>
         <span><strong>iv-over-rv-wider: the opposite.</strong> VIX ÷ 20-session realised SPX vol in the top decile (88 first days, 2010→): NAS100 next-5 range <strong>+0.38 ATR [+0.11, +0.62]</strong>, SPX500 next-20 <strong>+0.67 [+0.13, +1.21]</strong>. Realised catches up to implied. Range, not direction.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>Replication assumes continuous prices and a hedger who can trade at the model price without moving it. In 1987 prices gapped and the hedgers were big enough that their hedging <em>was</em> the price move. Constant σ failed too: the skew on index options since then is the market pricing the crash the model ruled out.</p>
@@ -459,7 +463,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Constant volatility is the model's biggest simplification — the smile/skew is the market visibly correcting for it, and it's exactly what the next lesson's jump-diffusion extension formalizes.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Delta N(d₁) is a hedge ratio, not the probability of finishing in the money — that's N(d₂), always smaller, by a gap that grows with σ√T.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Premium = intrinsic (what exercising now is worth) + extrinsic (time value — set by σ and T, eaten by theta, zero at expiry).</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">08</div><p>1987: portfolio insurers replicating puts were forced to sell into the fall; prices gapped and the hedge failed at model prices. Desk test: implied far above realised was followed by wider ranges, not calm (iv-over-rv-wider, VALIDATED).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">08</div><p>1987: portfolio insurers replicating puts were forced to sell into the fall; prices gapped and the hedge failed at model prices.<!-- DESK:START --> Desk test: implied far above realised was followed by wider ranges, not calm (iv-over-rv-wider, VALIDATED).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

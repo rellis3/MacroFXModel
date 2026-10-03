@@ -259,10 +259,12 @@
         <div class="sl-callout-label">State this every time, not just once</div>
         <p>Reinforcement learning is a method for solving a decision problem you've already specified correctly. It cannot supply the missing edge, the missing risk penalty, or the missing realism in the environment it was handed — and "we trained a policy that maximizes reward in our simulator" is evidence the method works as an optimizer, never evidence the underlying strategy has real edge.</p>
       </div>
+      <!-- DESK:START -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Checked against this repo's actual code</div>
         <p>Position sizing across this repo's live bots (see <code>pylego/sizing.py</code>: risk% × balance ÷ (stop-distance × pip value), discounted by a decay score, clamped to a max lot) is a fixed formula — not a learned policy. There is no policy-gradient, actor-critic, or other RL-trained code anywhere in this codebase. The full lesson's status line — "concept, not built or tested anywhere in this repo" — still holds exactly as written.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="12">

@@ -17,7 +17,7 @@
   <h1 class="tl-title">Arbitrage Pricing Theory</h1>
   <p class="tl-dek">CAPM derives its one factor from an equation about how <em>every</em> investor behaves. Fama-French hand-picks specific factors because they empirically work. APT does neither: one much weaker assumption — no arbitrage — is enough to force expected returns into an approximately linear function of exposures to some small number of pervasive risk factors, without ever saying which factors, or how many.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — this repo builds real macro-surprise indices and a real multi-factor regression engine, but never joins them the way Chen-Roll-Ross does</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — this repo builds real macro-surprise indices and a real multi-factor regression engine, but never joins them the way Chen-Roll-Ross does<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: <a href="institutional-fama-macbeth.html">Fama-MacBeth</a> · <a href="taylor-rule.html">The Taylor Rule</a> · <a href="central-bank-policy.html">Central Bank Policy</a> (for the macro-surprise framing)</span>
   </div>
@@ -37,6 +37,7 @@
       <li>Chen, Roll & Ross (1986) gave APT its most useful concrete form: observable macroeconomic <strong>surprises</strong> — unexpected industrial production growth, unexpected inflation, unexpected changes in the term spread and the default spread, and a market-return residual — as the priced factors. Only the surprise carries a risk premium; the anticipated component is already in the price, exactly the logic this curriculum's Central Bank Policy lesson uses for rate decisions.</li>
       <li>Worked example below: a 2-factor toy model (an industrial-production-surprise factor and an inflation-surprise factor) prices three toy assets at 6.75%, 5.85%, and 7.50% — arithmetic you can rerun by hand or in the live calculator.</li>
       <li>APT's generality is also its weakness: because it doesn't specify the factors, there is no single, universally agreed "the APT model" the way there is a specific, standard Fama-French three-factor model.</li>
+      <li><strong>How it reached trading:</strong> Ross's 1976 no-arbitrage theory reached money management through Chen-Roll-Ross's 1986 macro factors and Roll &amp; Ross's own macro-factor risk models, and it is the logic behind every multi-factor risk model a desk runs today.</li>
     </ul>
   </div>
 
@@ -139,6 +140,23 @@
       money. That is not a state of the world competitive markets tolerate for long, and the
       trading that closes the gap is the entire mechanism behind the APT pricing equation.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Which macro shocks is this book really exposed to?</h3>
+    <div class="tl-origin-who">Arbitrage Pricing Theory · Ross, 1976 → Roll &amp; Ross's macro-factor models in the 1980s</div>
+    <p>Before it, the only theory of expected return a portfolio manager had was CAPM: one market beta, and nothing to say about why two stocks with the same beta reacted so differently to an inflation print or a jump in credit spreads. Stephen Ross's 1976 paper replaced that equilibrium story with a no-arbitrage argument that allowed several priced risk factors, without naming them.</p>
+    <p>Chen, Roll &amp; Ross (1986) gave the theory its practical form: surprises in industrial production, inflation, the term spread and the default spread. Roll and Ross took it into money management through their own firm, Roll &amp; Ross Asset Management, and macroeconomic factor risk models of this kind were offered to institutional investors; a 1994 practitioner's guide by Burmeister, Roll &amp; Ross set out the approach for investment professionals.</p>
+    <p>Today APT is mainly a way of thinking rather than one product: it is the justification for every multi-factor risk model, and the reason a desk asks how a book would move on a growth, inflation or credit-spread surprise rather than on the level of those variables.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Which systematic shocks does this book carry, and what premium should each one earn?</dd>
+        <dt>Takes in</dt><dd>Factor surprises (the "surprise, not level" logic of <a href="central-bank-policy.html">Central Bank Policy</a>) and the risk-premium estimates from <a href="institutional-fama-macbeth.html">Fama-MacBeth</a>.</dd>
+        <dt>Hands on to</dt><dd>The many-factor risk models in <a href="institutional-barra-risk-models.html">Barra-Style Risk Models</a> and the factor tilts of <a href="factor-based-portfolio-construction.html">Factor-Based Portfolio Construction</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -483,11 +501,11 @@
     <strong>The word "jointly" is doing real work in that sentence.</strong> A genuine
     multi-factor APT regression estimates every \(\beta_{ik}\) at the same time, in a single
     regression with several factor columns side by side — not one factor's loading estimated
-    in isolation, and not a sequence of separate univariate checks run one factor at a time.
+    in isolation, and not a sequence of separate univariate checks run one factor at a time.<!-- DESK:START -->
     Isolating that distinction is exactly what the honest read of this repo's own code below
-    turns on.
+    turns on.<!-- DESK:END -->
   </div>
-  <div class="tl-box scenario">
+  <!-- DESK:START --><div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Verified against this repo's actual code</div>
     <h3>Real macro-surprise machinery and a real multi-factor regression engine — never joined the way this lesson describes</h3>
@@ -532,7 +550,7 @@
       the lesson describes — a joint multi-factor regression of returns on macro surprises — is
       a real but genuinely different thing this codebase has not built.
     </p>
-  </div>
+  </div><!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -578,6 +596,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Chen-Roll-Ross (1986) gave APT a genuinely useful macro face:</strong> unexpected industrial production, unexpected inflation, term-spread and default-spread surprises, and a market residual.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Only the surprise carries a risk premium — never the level.</strong> An anticipated change is already priced in; the same logic this curriculum's Central Bank Policy and Taylor Rule lessons use for rate decisions.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>There is no single, standard "the APT model."</strong> Because the theory never specifies the factors, different researchers routinely get different answers — treat any specific APT specification as one modeling choice among many, not a settled consensus.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is the case for multi-factor risk.</strong> APT is why a book is judged by its exposure to growth, inflation and credit-spread <em>surprises</em> rather than to one market beta; Roll &amp; Ross took the macro-factor version into institutional money management in the 1980s.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>
@@ -634,7 +653,7 @@
       priced, not the absolute stance, that actually moves markets.
     </div>
   </details>
-  <details class="tl-quiz">
+  <!-- DESK:START --><details class="tl-quiz">
     <summary>Q6. Why is it misleading to say "this repo runs a Chen-Roll-Ross-style APT regression" just because it has both a macro-surprise index and a multi-factor OLS engine?</summary>
     <div class="tl-answer">
       Because the two pieces are real but never joined the way a genuine macro-factor APT test
@@ -648,7 +667,7 @@
       decomposition. Having both ingredients separately is not the same claim as having built
       the specific joint regression this lesson describes.
     </div>
-  </details>
+  </details><!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>

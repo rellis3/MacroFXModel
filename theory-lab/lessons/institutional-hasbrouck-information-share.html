@@ -17,7 +17,7 @@
   <h1 class="tl-title">Hasbrouck Information Share &amp; Price Discovery</h1>
   <p class="tl-dek">A VECM tells you which of two prices does more of the correcting when they drift apart. Hasbrouck's Information Share asks the sharper question underneath that: when brand-new information hits, how much of the resulting price-variance actually showed up first in venue A versus venue B? The answer turns out to depend, uncomfortably, on a modeling choice nobody's economics forces you to make.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — no Hasbrouck Information Share, variance decomposition, or Cholesky-orthogonalization code exists anywhere in this repo, verified by grepping <code>Hasbrouck</code>, <code>information.share</code>, <code>price.discovery</code>, and <code>Cholesky</code> across every <code>.js</code> and <code>.py</code> file (zero hits). This lesson builds conceptually on the sibling <a href="institutional-vecm.html">VECM</a> lesson's genuinely live, single-equation <code>js/arma.js</code> <code>fitVECM</code> — but nothing here is wired into that code, and no two-equation VECM or IS decomposition runs anywhere in this repo today.</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — no Hasbrouck Information Share, variance decomposition, or Cholesky-orthogonalization code exists anywhere in this repo, verified by grepping <code>Hasbrouck</code>, <code>information.share</code>, <code>price.discovery</code>, and <code>Cholesky</code> across every <code>.js</code> and <code>.py</code> file (zero hits). This lesson builds conceptually on the sibling <a href="institutional-vecm.html">VECM</a> lesson's genuinely live, single-equation <code>js/arma.js</code> <code>fitVECM</code> — but nothing here is wired into that code, and no two-equation VECM or IS decomposition runs anywhere in this repo today.<!-- DESK:END --></span>
     <span>~19 min read</span>
     <span>Prereqs: <a href="institutional-vecm.html">Vector Error Correction Models (VECM)</a>, <a href="institutional-granger-causality.html">Granger Causality &amp; Lead-Lag Analysis</a></span>
   </div>
@@ -38,6 +38,7 @@
       <li>Hasbrouck's actual trick: the two venues' shocks are correlated, so their contribution to the common factor's variance can't just be split additively. Cholesky-decompose the residual covariance matrix \(\Omega\) to manufacture orthogonal shocks, then attribute variance venue by venue. The venue ordered <strong>first</strong> in the Cholesky decomposition claims the entire shared, correlated portion of the variance for itself; the venue ordered <strong>second</strong> only gets what's left over.</li>
       <li>That ordering is arbitrary — nothing in the economics says which venue goes first — and the split can swing dramatically depending on it. This lesson's own worked numeric example: the same fitted system gives venue Y a 57.1% information share when Y is ordered first, and only 10.7% when X is ordered first instead. This is <em>the</em> standard critique of Hasbrouck IS.</li>
       <li>Two standard responses exist: Hasbrouck's own suggested fix — compute IS both ways and report the midpoint or the range — and alternative measures, Gonzalo &amp; Granger's (1995) Component Share and Putniņš' (2013) Information Leadership Share, that don't hinge on an arbitrary ordering the same way. All three are covered below, with a live calculator that computes both Cholesky orderings from any inputs you enter.</li>
+      <li><strong>How it reached trading:</strong> Hasbrouck (1995) gave a way to measure where price discovery happens, and it became the standard tool for asking whether futures lead cash, CDS lead bonds, or one venue leads another.</li>
     </ul>
   </div>
 
@@ -99,6 +100,23 @@
       clock everyone else is chasing, whether or not it's the one doing more
       of the eventual self-correcting.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Which market moves first?</h3>
+    <div class="tl-origin-who">Information share · Hasbrouck, 1995 → futures vs cash, venue vs venue</div>
+    <p>Once the same asset traded in several places (the NYSE and regional exchanges, the cash index and its futures, bonds and credit default swaps) traders and regulators wanted to know where prices are actually formed. Correlations and simple lead-lag regressions could not answer that cleanly when the prices are cointegrated and react within seconds of each other.</p>
+    <p>Joel Hasbrouck's 1995 Journal of Finance paper, <em>One Security, Many Markets: Determining the Contributions to Price Discovery</em>, split the variance of the common efficient price by venue and found the NYSE dominated price discovery for the Dow stocks it studied. His 2003 study of US index markets found the E-mini futures led the S&amp;P 500, and Blanco, Brennan &amp; Marsh (2005) used it to show credit default swaps tend to lead corporate bonds.</p>
+    <p>Today it is the standard tool in price-discovery studies of fragmented markets, from equity venues to FX and crypto exchanges, and it guides which market a desk watches as the leading signal and where it chooses to trade.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Which venue's price absorbs new information first, and so which one should I watch?</dd>
+        <dt>Takes in</dt><dd>A cointegrated pair fitted as a <a href="institutional-vecm.html">Vector Error Correction Model</a>, with lead-lag context from <a href="institutional-granger-causality.html">Granger Causality &amp; Lead-Lag Analysis</a>.</dd>
+        <dt>Hands on to</dt><dd>Lead-lag and relative-value trades that read the leading market for the lagging one (<a href="cointegration.html">Cointegration &amp; Statistical Arbitrage</a>), and venue choice in <a href="execution-algorithms.html">Execution Algorithms</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-eli5">
@@ -483,8 +501,8 @@
     <p>
       Nothing above should be read as an actual historical finding for any
       specific FX pair or contract — it's illustrative of how a desk would
-      use the number, not a claim this repo has run this analysis on real
-      data. What genuinely matters here is that the VECM lesson's own
+      use the number<!-- DESK:START -->, not a claim this repo has run this analysis on real
+      data<!-- DESK:END -->. What genuinely matters here is that the VECM lesson's own
       informal \(\alpha_Y\)-vs-\(\alpha_X\) comparison and this lesson's
       Information Share can point in compatible directions (as in this
       example) but are answering different questions, and a desk relying on
@@ -524,11 +542,11 @@
       <h4>A rigorous upgrade path from the VECM's own α comparison</h4>
       <p>Where the VECM lesson's informal α_Y-vs-α_X comparison is a cheap first pass, IS is the version an academic paper or a serious internal research note would actually cite — same underlying VECM, formalized variance attribution.</p>
     </div>
-    <div class="tl-icard">
+    <!-- DESK:START --><div class="tl-icard">
       <div class="tl-icon-badge amber">🛠️</div>
       <h4>Not built anywhere in this repo</h4>
       <p>Unlike the VECM lesson's genuine <code>js/arma.js</code> <code>fitVECM</code>, no Information Share, variance-decomposition, or Cholesky-orthogonalization code exists in this codebase today — this lesson is conceptual throughout.</p>
-    </div>
+    </div><!-- DESK:END -->
   </div>
 
   <div class="tl-box pitfall">
@@ -573,7 +591,7 @@
       question.</strong> A high IS says a venue's price moves first when new
       information arrives — it does not say that venue is more liquid, has
       tighter spreads, or is cheaper to trade in. Those are related but
-      genuinely distinct questions, addressed by this repo's own existing
+      genuinely distinct questions, addressed by the existing
       microstructure lessons — <a href="institutional-glosten-milgrom.html">Glosten-Milgrom</a>,
       <a href="institutional-pin.html">PIN</a>, and
       <a href="institutional-roll-spread-estimator.html">Roll's Spread Estimator</a> —
@@ -592,7 +610,8 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Cholesky ordering is arbitrary and the split can swing hard.</strong> This lesson's own worked example: 57.1% vs. 10.7% for the same venue, same fitted VECM, only the ordering changed. This is the standard, most-cited critique of Hasbrouck IS.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Two standard responses exist.</strong> Hasbrouck's own fix — report both orderings or their midpoint — and alternative measures, Gonzalo &amp; Granger's (1995) Component Share and Putniņš' (2013) Information Leadership Share, that avoid the same ordering dependence.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Requires genuine cointegration and matters at what frequency you measure it.</strong> The whole framework is invalid for non-cointegrated series, and conclusions about which venue leads can flip between tick-level and lower-frequency data.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A high Information Share is not the same claim as "more liquid."</strong> It answers where variance is attributed, not where it's cheaper or easier to trade — a related but distinct question, covered by this repo's existing Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons instead.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A high Information Share is not the same claim as "more liquid."</strong> It answers where variance is attributed, not where it's cheaper or easier to trade — a related but distinct question, covered by the existing Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons instead.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it says which market to watch.</strong> Information share studies found E-mini futures leading the S&amp;P 500 (Hasbrouck, 2003) and CDS leading bonds (Blanco, Brennan &amp; Marsh, 2005); the leading market is the signal, the lagging one is where the trade happens.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -668,7 +687,7 @@
       No. A high Information Share means new information tends to show up in
       that venue's price first — a statement about variance attribution in
       price discovery. It says nothing directly about bid-ask spreads,
-      depth, or execution cost, which are the domain of this repo's own
+      depth, or execution cost, which are the domain of the
       Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons. A venue can
       lead price discovery and still be the more expensive, less liquid
       venue to actually trade in — the two questions are related in

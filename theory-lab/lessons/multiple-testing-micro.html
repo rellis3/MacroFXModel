@@ -96,7 +96,7 @@
 
     <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 4</div>
-      <h2 class="sl-h2">Seventy slices isn't a hypothetical — it's how this repo's backtests are built</h2>
+      <h2 class="sl-h2">Seventy slices isn't a hypothetical<!-- DESK:START --> — it's how this repo's backtests are built<!-- DESK:END --></h2>
       <p class="sl-sub">7 pairs × 5 regimes × 2 holding periods is 70 tests before anyone runs a single day-of-week or session cut.</p>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">💱</div><div><h4>One test per pair</h4><p>EURUSD, GBPUSD, AUDUSD, USDJPY — each currency pair checked separately is one more roll of the dice.</p></div></div>
@@ -172,6 +172,7 @@
       </div>
     </section>
 
+<!-- DESK:START -->
     <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">This is why the repo has a house rule about it</h2>
@@ -183,6 +184,7 @@
       </div>
       <p class="sl-p">The correction doesn't manufacture evidence a real effect would produce on fresh data — it manages the false-positive rate of the search you already ran. That's necessary before trusting a slice, not sufficient on its own.</p>
     </section>
+<!-- DESK:END -->
 
     <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
@@ -222,17 +224,23 @@
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
+<!-- DESK:START -->
       <h2 class="sl-h2">This desk's own version: 54.1% against 54.1%</h2>
       <p class="sl-sub">The claim: confirm a turn in short-term rates, then pre-position in the Nasdaq. Pre-registered with the expectation written as null; 360 days of 15-minute bars.</p>
+<!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp null" data-evidence="rates-pivot-lead" data-evidence-date="2026-09-25">
-        <span class="sl-stamp-tag">Null</span>
+        <span class="sl-stamp-tag">Desk test: nothing found</span>
         <span><strong>rates-pivot-lead:</strong> 2,430 confirmed pivots; at 1h, −0.005% vs control [−0.021, +0.012]. Null on every cell, and well powered (±0.12 ATR). Up-move after a confirmed low: <strong>54.1%</strong>. Base rate: <strong>54.1%</strong>.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook breaks</div>
         <p>Bonferroni and BH both need m. In published research m is unknowable: the failed tests belong to other people and ran on the same shared history, so they are neither counted nor independent. A correction is only as honest as the count fed into it.</p>
       </div>
+<!-- DESK:START -->
       <div class="sl-quote">15 cells scored. If all were noise you'd expect 15 × 0.05 = 0.75 false passes, with slightly better than even odds of at least one. None passed, and the pre-registered gate (both directions, both halves) meant a lone lucky cell could never have been reported as a finding.</div>
+<!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">
@@ -282,7 +290,7 @@
         <button class="sl-quiz-opt" data-correct="true">In-sample consistency and a genuine out-of-sample check with real costs</button>
         <button class="sl-quiz-opt">Nothing — FDR survival is sufficient on its own</button>
         <button class="sl-quiz-opt">A larger α threshold</button>
-        <div class="sl-quiz-explain">Surviving a multiple-testing correction only means the result is unlikely to be pure search noise. It says nothing about whether the effect is IS-consistent, survives realistic costs, or holds up on fresh data — Lego Principle 5's own bar.</div>
+        <div class="sl-quiz-explain">Surviving a multiple-testing correction only means the result is unlikely to be pure search noise. It says nothing about whether the effect is IS-consistent, survives realistic costs, or holds up on fresh data<!-- DESK:START --> — Lego Principle 5's own bar<!-- DESK:END -->.</div>
       </div>
     </section>
 
@@ -296,7 +304,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Benjamini-Hochberg (FDR) controls the expected proportion of false discoveries with a rank-dependent staircase, p₍k₎ ≤ (k/m)q — usually the more practical tool for exploratory FX slicing.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The best of many is expected to look good, by construction — rank #1 of 70 alone is close to uninformative.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Surviving a correction is necessary, not sufficient — IS consistency and genuine OOS confirmation still decide whether it's tradeable.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened: the factor zoo (316 published factors, hurdle raised to t ≈ 3), and this desk's rates-pivot null, where a 54.1% hit rate matched a 54.1% base rate. Never quote a hit rate without its base rate.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened: the factor zoo (316 published factors, hurdle raised to t ≈ 3)<!-- DESK:START -->, and this desk's rates-pivot null, where a 54.1% hit rate matched a 54.1% base rate<!-- DESK:END -->. Never quote a hit rate without its base rate.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

@@ -163,6 +163,7 @@ import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageW
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt, evidenceBrief as _evidenceBrief, lessonSafe as _lessonSafe } from './js/deskEvidence.js';
+import { stripDesk as _stripDesk } from './js/deskStrip.js';
 import { buildEodReviewPrompt } from './js/eodReview.js';
 import { scoreRelease as _scoreRelease, claimTally as _claimTally, HEADLINE_INSTRUMENT as _NEWS_HEADLINE } from './js/newsOutcome.js';
 // the equity half of the board, summarised server-side for today.html (see /api/wider-market)
@@ -636,10 +637,13 @@ const MICRO_CALLOUT_RE = /<div class="tl-callout">\s*<strong>Prefer pictures to 
 const MICRO_MODE_TOGGLE_RE = /<div class="tl-mode-toggle"[\s\S]*?<\/div>\n?/;
 const MICRO_CARD_BADGE_RE = /<span class="tl-card-micro-badge"[\s\S]*?<\/span>/g;
 const MICRO_MODE_SCRIPT_RE = /try\s*\{\s*mode\s*=\s*localStorage\.getItem\(KEY\)\s*\|\|\s*'full';\s*\}\s*catch\s*\(e\)\s*\{\}/;
-const MICRO_LESSON_PAGE_RE = /^\/theory-lab\/(?:hub\.html|lessons\/(?!.*-micro\.html$)[^/]+\.html)$/;
+const MICRO_LESSON_PAGE_RE = /^\/theory-lab\/(?:hub\.html|start\.html|lessons\/(?!.*-micro\.html$)[^/]+\.html)$/;
+// Prose that only makes sense when visual guides are on (start.html's reading-mode
+// explainer) sits between these markers and goes with the rest of the micro UI.
+const MICRO_PROSE_RE = /<!-- MICRO:START -->[\s\S]*?<!-- MICRO:END -->\n?/g;
 
 function stripMicroEducationUI(html, isHub) {
-  html = html.replace(MICRO_CALLOUT_RE, '');
+  html = html.replace(MICRO_CALLOUT_RE, '').replace(MICRO_PROSE_RE, '');
   if (isHub) {
     html = html.replace(MICRO_MODE_TOGGLE_RE, '');
     html = html.replace(MICRO_CARD_BADGE_RE, '');
@@ -673,6 +677,20 @@ function stripMicroEducationUI(html, isHub) {
 // daily reading runs off those and must keep working when this page is down.
 const HIDE_DRILL_PRACTICE = (process.env.HIDE_DRILL_PRACTICE ?? process.env.DRILL_HIDE ?? '0') !== '0';
 const DRILL_PRACTICE_PAGE_RE = /^\/theory-lab\/market-reading\.html$/;
+
+// ── Desk material in the Theory Lab (admin-only) ─────────────────────────────
+// The Theory Lab is shared with other people; the owner's own desk material — its
+// tested verdicts, its own record and systems, its live board data — is wrapped in
+// <!-- DESK:START/END --> in the pages (js/deskStrip.js) and stripped for every
+// education session that is not role=admin. The owner, signed in with
+// EDUCATION_ADMIN_PASSWORD, sees the full curriculum at the same address. The
+// desk-data routes (/theory-lab/desk-verdicts.json, /theory-lab/capstone-board.json)
+// and the drill (Reading the Tape, built from the desk's board) are admin-only too.
+// Not gated on AUTH_ENABLED, like the drill switch: with no passwords configured
+// nobody is admin, so local runs show the shareable version; set
+// HIDE_DESK_EDUCATION=0 to see everything without logging in.
+const HIDE_DESK_EDUCATION = (process.env.HIDE_DESK_EDUCATION ?? '1') !== '0';
+const EDU_HTML_PAGE_RE = /^\/theory-lab\/(?:[^/]+|lessons\/[^/]+)\.html$/;
 const DRILL_HUB_BLOCK_RE = /<!-- DRILL:START -->[\s\S]*?<!-- DRILL:END -->\n?/g;
 
 // ── Institutional Methods (admin-only category set) ─────────────────────────
@@ -34507,6 +34525,60 @@ app.use(requireAuth);
 const HUB_CRUMB_RE = /<div class="tl-crumb">Theory Lab<\/div>/;
 const HUB_CRUMB_WITH_LOGOUT = '<div class="tl-crumb" style="display:flex;justify-content:space-between;align-items:center">Theory Lab<a href="/logout?zone=education" style="color:var(--text3);text-decoration:none;border-bottom:1px dashed var(--border2)">Log out</a></div>';
 
+// The per-request rewrites of a Theory Lab page, in one place so the desk strip below
+// and the micro/institutional/drill handler apply exactly the same ones.
+function educationPageTransforms(req, html, isHub) {
+  const isAdmin = isEducationAdmin(req);
+  const isLessonOrHub = MICRO_LESSON_PAGE_RE.test(req.path);
+
+  if (HIDE_MICRO_EDUCATION && !isAdmin && isLessonOrHub) html = stripMicroEducationUI(html, isHub);
+
+  if (isHub && AUTH_ENABLED && HIDE_INSTITUTIONAL_METHODS && !isAdmin) {
+    html = html.replace(INSTITUTIONAL_HUB_BLOCK_RE, '');
+  }
+
+  // Not gated on AUTH_ENABLED: with no passwords configured isEducationAdmin is
+  // false anyway, so the switch still works locally instead of silently no-opping.
+  // The drill is built from the desk's own board, so the desk switch hides it too.
+  if (isHub && (HIDE_DRILL_PRACTICE || HIDE_DESK_EDUCATION) && !isAdmin) {
+    html = html.replace(DRILL_HUB_BLOCK_RE, '');
+  }
+
+  if (HIDE_DESK_EDUCATION && !isAdmin) html = _stripDesk(html);
+
+  if (isHub && AUTH_ENABLED) {
+    html = html.replace(HUB_CRUMB_RE, HUB_CRUMB_WITH_LOGOUT);
+  }
+  return html;
+}
+
+// Every Theory Lab page for a non-admin reader goes through the same rewrites, so no
+// desk block survives on any page (lessons, visual guides, hub, stories, paths,
+// capstones). Admins fall through to the handlers below / static files unchanged.
+if (HIDE_DESK_EDUCATION) {
+  app.get(EDU_HTML_PAGE_RE, (req, res, next) => {
+    if (isEducationAdmin(req)) return next();
+    // Pages that are desk material through and through: the drill (the desk's board
+    // history) and the capstone workbenches (the desk's live numbers and verdicts).
+    if (/^\/theory-lab\/(?:market-reading|capstone-vol|capstone-macro)\.html$/.test(req.path)) {
+      return res.status(404).type('html').send('<!doctype html><title>Not Found</title><p>Not found.</p>');
+    }
+    const file = path.join(__dirname, req.path);
+    if (!file.startsWith(path.join(__dirname, 'theory-lab') + path.sep)) return next();
+    fs.readFile(file, 'utf8', (err, html) => {
+      if (err) return next();
+      res.type('html').send(educationPageTransforms(req, html, req.path === '/theory-lab/hub.html'));
+    });
+  });
+  // The folder's README is developer notes about this repo, not a page for readers;
+  // /education/ is the owner's raw study notes, backtests and transcripts. Both sit
+  // in the education zone, so the shared password alone would otherwise open them.
+  app.get(/^\/(?:theory-lab\/.*\.md$|education(?:\/|$))/i, (req, res, next) => {
+    if (isEducationAdmin(req)) return next();
+    res.status(404).type('html').send('<!doctype html><title>Not Found</title><p>Not found.</p>');
+  });
+}
+
 if (HIDE_MICRO_EDUCATION || HIDE_DRILL_PRACTICE || AUTH_ENABLED) {
   app.get(MICRO_LESSON_PAGE_RE, (req, res, next) => {
     const isHub = req.path === '/theory-lab/hub.html';
@@ -34517,25 +34589,7 @@ if (HIDE_MICRO_EDUCATION || HIDE_DRILL_PRACTICE || AUTH_ENABLED) {
     fs.readFile(path.join(__dirname, req.path), 'utf8', (err, html) => {
       if (err) return next();
 
-      const isAdmin = isEducationAdmin(req);
-
-      if (HIDE_MICRO_EDUCATION && !isAdmin) html = stripMicroEducationUI(html, isHub);
-
-      if (isHub && AUTH_ENABLED && HIDE_INSTITUTIONAL_METHODS && !isAdmin) {
-        html = html.replace(INSTITUTIONAL_HUB_BLOCK_RE, '');
-      }
-
-      // Not gated on AUTH_ENABLED: with no passwords configured isEducationAdmin is
-      // false anyway, so the switch still works locally instead of silently no-opping.
-      if (isHub && HIDE_DRILL_PRACTICE && !isAdmin) {
-        html = html.replace(DRILL_HUB_BLOCK_RE, '');
-      }
-
-      if (isHub && AUTH_ENABLED) {
-        html = html.replace(HUB_CRUMB_RE, HUB_CRUMB_WITH_LOGOUT);
-      }
-
-      res.type('html').send(html);
+      res.type('html').send(educationPageTransforms(req, html, isHub));
     });
   });
 }
@@ -34569,12 +34623,146 @@ if (HIDE_DRILL_PRACTICE) {
 // main-zone; only the requested ids and only the public fields go out -- never
 // the ledger's `doc` paths or its prompt-facing `use` directives.
 app.get('/theory-lab/desk-verdicts.json', (req, res) => {
+  if (HIDE_DESK_EDUCATION && !isEducationAdmin(req)) return res.status(404).json({ error: 'not found' });
   const ids = String(req.query.ids || '').split(',').filter(id => /^[a-z0-9-]{1,64}$/.test(id)).slice(0, 60);
   const entries = {};
   for (const e of _DESK_EVIDENCE) {
     if (ids.includes(e.id)) entries[e.id] = { verdict: e.verdict, date: e.date, claim: _lessonSafe(e.claim), result: _lessonSafe(e.result) };
   }
   res.set('Cache-Control', 'no-cache').json({ entries });
+});
+
+// Theory Lab progress sync (theory-lab/assets/sync.js). The education login is one
+// SHARED password, so there is no user to sync "per login"; a reader instead gets a
+// random 10-char code and types it on another device. The code is the only handle.
+// Stored as tl_sync_<CODE> (durable CF KV, routed in kv.js isCfKey) with a ~400-day
+// TTL refreshed on every write, so abandoned codes clean themselves up. Writes are
+// kept rare: unchanged pushes are not written, one write per code per 10s, a few
+// codes per IP per hour, and a daily ceiling well inside the CF KV write quota.
+// Validation lives in js/progressSync.js (tested by js/progressSync.test.mjs).
+const _PS = await import('./js/progressSync.js');
+const _psState = { day: '', writes: 0, lastWrite: new Map(), creates: new Map() };
+const _PS_TTL = 400 * 86_400, _PS_DAILY_WRITES = 500, _PS_CREATES_PER_HOUR = 20;
+function _psCanWrite(res) {
+  const day = new Date().toISOString().slice(0, 10);
+  if (_psState.day !== day) { _psState.day = day; _psState.writes = 0; _psState.lastWrite.clear(); _psState.creates.clear(); }
+  if (_psState.writes >= _PS_DAILY_WRITES) { res.status(503).json({ error: 'sync is busy today, try again tomorrow' }); return false; }
+  return true;
+}
+function _psBody(req, res) {
+  if (+req.get('content-length') > _PS.SYNC_MAX_BYTES) { res.status(413).json({ error: 'payload too large' }); return null; }
+  const v = _PS.validateSyncBody(req.body);
+  if (!v.ok) { res.status(400).json({ error: v.error }); return null; }
+  return v.value;
+}
+async function _psRead(code) {
+  const raw = await kv.getStrict(_PS.SYNC_KV_PREFIX + code);
+  if (!raw) return null;
+  const v = _PS.validateSyncBody((() => { try { const p = JSON.parse(raw); return { progress: p.progress, path: p.path, checks: p.checks }; } catch { return null; } })());
+  return v.ok ? v.value : null;
+}
+async function _psWrite(code, value) {
+  _psState.writes++;
+  await kv.put(_PS.SYNC_KV_PREFIX + code, JSON.stringify({ v: 1, ...value, updatedAt: new Date().toISOString() }), { expirationTtl: _PS_TTL });
+}
+app.post('/theory-lab/progress-sync', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const value = _psBody(req, res); if (!value) return;
+  if (!_psCanWrite(res)) return;
+  const ip = String(req.get('x-forwarded-for') || req.ip || '').split(',')[0].trim();
+  const hr = Math.floor(Date.now() / 3_600_000), c = _psState.creates.get(ip);
+  const n = c && c.hr === hr ? c.n : 0;
+  if (n >= _PS_CREATES_PER_HOUR) return res.status(429).json({ error: 'too many new codes, try again later' });
+  _psState.creates.set(ip, { hr, n: n + 1 });
+  try {
+    let code = _PS.newSyncCode();
+    for (let i = 0; i < 3 && await kv.get(_PS.SYNC_KV_PREFIX + code); i++) code = _PS.newSyncCode();
+    await _psWrite(code, value);
+    res.status(201).json({ code, data: value });
+  } catch (e) { console.error('[progress-sync] create failed:', e.message); res.status(500).json({ error: 'could not save' }); }
+});
+app.get('/theory-lab/progress-sync/:code', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const code = _PS.normalizeSyncCode(req.params.code);
+  if (!code) return res.status(400).json({ error: 'bad code' });
+  try {
+    const data = await _psRead(code);
+    if (!data) return res.status(404).json({ error: 'code not found' });
+    res.json({ code, data });
+  } catch (e) { console.error('[progress-sync] read failed:', e.message); res.status(502).json({ error: 'store unavailable' }); }
+});
+app.put('/theory-lab/progress-sync/:code', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const code = _PS.normalizeSyncCode(req.params.code);
+  if (!code) return res.status(400).json({ error: 'bad code' });
+  const value = _psBody(req, res); if (!value) return;
+  try {
+    const stored = await _psRead(code);   // getStrict: a store failure throws instead of reading as "empty" and overwriting
+    if (!stored) return res.status(404).json({ error: 'code not found' });
+    // Merge rather than overwrite, so two devices pushing close together both keep their progress.
+    const merged = _PS.validateSyncBody(_PS.mergeSyncPayload(value, stored)).value;
+    if (!merged) return res.status(400).json({ error: 'merged payload too large' });
+    if (_PS.syncFingerprint(merged) === _PS.syncFingerprint(stored)) return res.json({ code, data: stored, unchanged: true });
+    if (Date.now() - (_psState.lastWrite.get(code) || 0) < 10_000) return res.status(429).json({ error: 'syncing too often, try again shortly' });
+    if (!_psCanWrite(res)) return;
+    _psState.lastWrite.set(code, Date.now());   // the gap is between UPDATES; creating a code and joining it right away is fine
+    await _psWrite(code, merged);
+    res.json({ code, data: merged });
+  } catch (e) { console.error('[progress-sync] update failed:', e.message); res.status(502).json({ error: 'store unavailable' }); }
+});
+
+// Today's numbers for the two "read the market" capstone workbenches
+// (theory-lab/capstone-vol.html, capstone-macro.html). Education zone for the same
+// reason as desk-verdicts.json above: the /api/* feeds are main-zone. Reads ONLY what
+// is already cached in memory (the daily drill bundle, the rates cache, the non-US
+// 10Y yields, the Nasdaq options book) and never fetches upstream, so a learner
+// reloading cannot cost anything. Every value carries its own date and the value
+// five observations earlier; anything not cached yet is null and the page falls back
+// to a fill-in template. No series ids, keys or store names go out.
+app.get('/theory-lab/capstone-board.json', async (req, res) => {
+  if (HIDE_DESK_EDUCATION && !isEducationAdmin(req)) return res.status(404).json({ error: 'not found' });
+  const last = (arr, back = 0) => {               // arr: [{date, value}] oldest first
+    let seen = 0;
+    for (let i = (arr?.length ?? 0) - 1; i >= 0; i--) {
+      const o = arr[i];
+      if (o && o.date && Number.isFinite(o.value) && seen++ === back) return o;
+    }
+    return null;
+  };
+  const pt = (arr, dp = 2) => {
+    const a = last(arr), b = last(arr, 5);
+    return a ? { date: a.date, value: +a.value.toFixed(dp), prevDate: b?.date ?? null, prev: b ? +b.value.toFixed(dp) : null } : null;
+  };
+  const B = _drillBundle.data, R = _rates.series, I = _intlYields.series;
+  const bs = k => (B?.series?.[k] ? B.series[k].map((value, i) => ({ date: B.dates[i], value })) : null);
+  const rs = k => R?.[k] ?? null;
+  const rv20 = (() => {                            // 20-session realised vol, annualised %, from exchange-day closes
+    const a = (bs('spy') || bs('spx') || []).filter(o => Number.isFinite(o.value) && o.value > 0).slice(-21);
+    if (a.length < 21) return null;
+    const r = a.slice(1).map((o, i) => Math.log(o.value / a[i].value));
+    const m = r.reduce((s, x) => s + x, 0) / r.length;
+    const sd = Math.sqrt(r.reduce((s, x) => s + (x - m) ** 2, 0) / (r.length - 1));
+    return { date: a[a.length - 1].date, from: a[0].date, value: +(sd * Math.sqrt(252) * 100).toFixed(2), n: r.length };
+  })();
+  let gamma = null;
+  try {
+    const o = await _cogOiFor('NAS100_USD');
+    const g = o?.exposures?.gex;
+    if (Number.isFinite(g) && g !== 0 && Number.isFinite(o.savedAtMs)) gamma = { date: new Date(o.savedAtMs).toISOString().slice(0, 10), sign: g > 0 ? 'long' : 'short' };
+  } catch { /* no options book: the page leaves the gamma line blank */ }
+  res.set('Cache-Control', 'no-cache').json({
+    vol: { vix: pt(bs('vix')), vix9d: pt(bs('vix9d')), vix3m: pt(bs('vix3m')), skew: pt(bs('skew')), spx: pt(bs('spx'), 1), rv20, nqGamma: gamma },
+    macro: {
+      spx: pt(bs('spx'), 1), vix: pt(bs('vix')),
+      us2y: pt(rs('us2y') || bs('us2y')), us10y: pt(rs('us10y') || bs('us10y')),
+      real10y: pt(rs('real') || bs('tips')), bei10y: pt(rs('bei') || bs('bei')),
+      policyTop: pt(rs('policy')), iorb: pt(rs('iorb')), sofr: pt(rs('sofr')), sofr99: pt(rs('sofr99')), effr: pt(rs('effr')),
+      srfBn: pt(rs('srf'), 3), usdBroad: pt(bs('dxy')),
+      eurusd: pt(bs('eurusd'), 4), usdjpy: pt(bs('usdjpy'), 2), gbpusd: pt(bs('gbpusd'), 4),
+      de10y: pt(I?.de10y), jp10y: pt(I?.jp10y), gb10y: pt(I?.gb10y),
+    },
+    at: new Date().toISOString(),
+  });
 });
 
 // Dashboard static assets — served from project root.

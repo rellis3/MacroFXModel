@@ -34,7 +34,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">⚙</div><div><h4>Sensor 2 — output vs. potential</h4><p>Even before the room feels hot, a system already straining above capacity is a warning sign worth leaning against pre-emptively.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🎚</div><div><h4>One lever — the policy rate</h4><p>Both sensors feed the same single dial. The Taylor Rule is just that thermostat's control law, written down as an equation.</p></div></div>
       </div>
-      <div class="sl-quote">This project's own prior research notes on the Transatlantic Yield Spread treat a central bank's rate path as an observed input — something you read off a screen and trade the lead-lag relationship of. They never ask what actually generates that rate path in the first place. The Taylor Rule is the textbook answer to that prior question — the mechanism underneath the mechanism.</div>
+      <!-- DESK:START --><div class="sl-quote">This project's own prior research notes on the Transatlantic Yield Spread treat a central bank's rate path as an observed input — something you read off a screen and trade the lead-lag relationship of. They never ask what actually generates that rate path in the first place. The Taylor Rule is the textbook answer to that prior question — the mechanism underneath the mechanism.</div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="3">
@@ -222,7 +222,7 @@
         <div class="sl-callout-label">A benchmark, not a binding rule</div>
         <p>Real committees weigh dual mandates, financial stability, forward-guidance credibility, and the effective lower bound — none of which the formula knows about. Actual policy rates routinely sit away from whatever a plugged-in Taylor Rule spits out for years at a time before correcting. A wide gap says pressure is building; it isn't a dated forecast of the next decision.</p>
       </div>
-      <p class="sl-p">A checked claim, for this repo specifically: as of this lesson, MacroFXModel has no standalone Taylor Rule calculator wired into any trading system, bot, or backtest — a search of the codebase outside Theory Lab turns up nothing. This visual guide's own calculator, like the full lesson's, is a teaching tool, not a shipped signal.</p>
+      <!-- DESK:START --><p class="sl-p">A checked claim, for this repo specifically: as of this lesson, MacroFXModel has no standalone Taylor Rule calculator wired into any trading system, bot, or backtest — a search of the codebase outside Theory Lab turns up nothing. This visual guide's own calculator, like the full lesson's, is a teaching tool, not a shipped signal.</p><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="11">
@@ -247,16 +247,20 @@
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
-      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: a wide Taylor gap means hawkish repricing, so lean long the currency.</p>
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
-        <span class="sl-stamp-tag">Untested</span>
+        <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>The Taylor gap as an FX signal is untested here.</strong> A fair test needs real-time data vintages, a rule fixed in advance, the gap for both economies, a months-long horizon, and a comparison against the plain 2-year spread.</span>
       </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp null" data-evidence="yields-to-fx-direction" data-evidence-date="2026-08-23">
-        <span class="sl-stamp-tag">Null</span>
+        <span class="sl-stamp-tag">Desk test: nothing found</span>
         <span><strong>yields-to-fx-direction:</strong> forward coupling null; the relationship is real only in the same bar. The "front end reprices, so lean long the currency" step has no lead on this desk's data.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>The rule reacts mechanically to today's inflation and output gap. The Fed reacted to its forecast that inflation would fade, was bound by its own guidance on sequencing, and faced an unusually uncertain r* and output gap. The rule got the direction right and said nothing about timing.</p>
@@ -324,7 +328,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>What moves markets is the gap — i_implied − i_actual — not the rule's raw level. Behind the curve signals unfinished tightening; ahead of the curve signals cut risk.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>r*, the output gap, and even the coefficients a and b are estimates and choices, not universal constants — state them before quoting a number.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A wide Taylor gap is a measure of unresolved pressure, not a dated forecast of the next policy meeting — real deviations can persist for years.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened, 2021–22: the Taylor gap sat several points wide for a year while the Fed called inflation transitory, then closed with 75bp hikes. Direction right, timing silent. The Taylor gap is untested here; yields-to-fx-direction is NULL.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened, 2021–22: the Taylor gap sat several points wide for a year while the Fed called inflation transitory, then closed with 75bp hikes. Direction right, timing silent.<!-- DESK:START --> The Taylor gap is untested here; yields-to-fx-direction is NULL.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

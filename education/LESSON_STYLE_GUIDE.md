@@ -391,6 +391,14 @@ Mark the one link that is the lesson's own concept with `.concept` (purple, 2px)
 "★ This lesson · …" label: `<div class="tl-chain-link concept"><b>★ This lesson · VaR</b>…</div>`
 (slides: `.sl-chain-link.concept`). No inline styles on chain links.
 
+**Framing (non-negotiable).** A verdict is about *this desk's test of a trading
+claim*, never about the theory the lesson teaches. Tag text says what was tested:
+"Desk test: held up", "Desk test: nothing found", "Desk data: base rate",
+"Desk test: too small to tell", "Not tested here". Every "nothing found" / "too small"
+box carries the scope line (added by `verdicts.js`): one desk's test, on its own data,
+instruments and period; not a verdict on the theory; the test itself may be what is off.
+Write takeaways the same way ("the desk's test found nothing"), never "the theory is wrong".
+
 `.tl-verdict` variants match `js/deskEvidence.js`: `validated` (green), `null`
 (red), `context` (blue), `underpowered` / `untested` (amber). Quote the ledger
 entry's own numbers; never round a null up. Slide decks use `.sl-chain` /
@@ -444,6 +452,36 @@ one clause on a non-finance origin, and only when it genuinely helps.
 </div>
 ```
 Slides: `.sl-origin` + `.sl-origin-label`, with `.sl-role-stages` / `.sl-role-stage(.on)`.
+
+### 5.18 Desk-only material — `<!-- DESK:START -->` / `<!-- DESK:END -->`
+
+The Theory Lab is shared with other readers, so anything about the owner's
+own desk or codebase (verdict boxes, "checked against this repo" callouts,
+status-badge tails, house rules) is wrapped in a marker pair. One source
+serves both audiences: the server strips every marked span for any reader
+who is not logged in with the education **admin** password
+(`HIDE_DESK_EDUCATION`, on by default; `0` turns stripping off).
+
+```html
+<!-- DESK:START -->
+<div class="tl-verdict validated" data-evidence="…">…</div>
+<!-- DESK:END -->
+
+…a worked numeric example<!-- DESK:START -->, then how it maps to the build<!-- DESK:END -->.
+```
+
+Rules:
+- Pairs never nest. Wrap a whole element, or a clause inside one sentence
+  that still reads correctly without it.
+- Don't hand-fix numbering: the strip renumbers section marks, "Section N"
+  kickers, `Q#` summaries, quiz numbers and recap rows itself.
+- Client-side desk extras check `window.TL_DESK`, which is set by a
+  `<script>window.TL_DESK = 1;</script>` placed inside a marker pair.
+- `market-reading.html` and the two capstone workbenches are admin-only
+  pages (404 for everyone else).
+- `node js/deskStrip.test.mjs` fails on any desk or repo mention left
+  outside markers, on unpaired markers, and on a page whose tags no longer
+  balance once stripped.
 
 ---
 
@@ -514,6 +552,8 @@ def check_tags(path):
 **Internal links** — confirm every relative `href` actually resolves
 (`os.path.normpath(os.path.join(os.path.dirname(file), href))` should be a
 real file).
+
+**Shared view** — `node js/deskStrip.test.mjs` (see §5.18).
 
 **Class-usage cross-check** — every `tl-*` class used in the file should
 resolve to something defined in `theory-lab/assets/theory.css` (or, rarely, a

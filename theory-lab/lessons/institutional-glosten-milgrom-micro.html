@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Glosten-Milgrom — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-glosten-milgrom.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Why the dealer loses to the trader who knows more</h2>
+      <p class="sl-sub">Glosten–Milgrom model · Glosten &amp; Milgrom, 1985 (with Kyle, 1985) → dealer and specialist pricing</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Before 1985 the spread was the cost of immediacy and inventory. Glosten &amp; Milgrom (and Kyle, the same year) added the piece that explains wide quotes before news: some counterparties know more.</p>
+        <p>It became the adverse-selection line in every spread decomposition since, and the logic behind dealers quoting "toxic" client flow wider.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage on">Execute</span></div>
+        <p><strong>Its job:</strong> how much of the spread pays for trading against better-informed counterparties?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Two 1985 models that get confused for each other</h2>
       <p class="sl-sub">Same year, same "adverse selection" family, completely different machinery. Pick one.</p>
       <div class="sl-card">
@@ -47,8 +60,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Who's arriving? Two kinds of trader, one at a time</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Informed trader — probability μ</h4><p>Knows the true value V exactly. Buys with certainty if V is really high (V_H), sells with certainty if V is really low (V_L). Never trades the "wrong" way.</p></div></div>
@@ -59,8 +72,8 @@
       <div class="sl-quote">Because informed traders always push in the direction that's true and noise traders push randomly, <strong>any given buy or sell is slightly more likely to have come from an informed trader pointed the "right" way</strong> — which is exactly why watching nothing but the direction of each trade is enough to learn something.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">A trade is a clue — exactly the way this curriculum already defines a clue</h2>
       <p class="sl-sub">Same Bayes' rule as the Bayesian Inference lesson: P(H|E) = P(E|H)P(H) / P(E). Here H = "V is high," E = "a buy just arrived."</p>
       <div class="sl-card">
@@ -75,8 +88,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">From belief to price: Ask above, Bid below</h2>
       <p class="sl-sub">Zero-expected-profit pricing pins the ask to E[V | buy] and the bid to E[V | sell] — never the other way round.</p>
       <div class="sl-card">
@@ -109,8 +122,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The edge case that proves the point</h2>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Set μ = 0</div>
@@ -120,8 +133,8 @@
       <div class="sl-quote">If literally nobody you trade against ever knows more than you do, one flat price is fine. The instant even a few of them might, quoting one price becomes a losing bet — and the gap you need widens exactly with how many of them you think there are.</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The worked numbers</h2>
       <p class="sl-sub">δ₀ = 0.50, μ = 0.30, V_H = 105, V_L = 95. Two buys, then a sell.</p>
       <div class="sl-card">
@@ -137,8 +150,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Simulate it yourself — click a trade, watch the requote</h2>
       <p class="sl-sub">Same parameters as the worked example. Click as many times as you like, in any order.</p>
       <div class="sl-card">
@@ -172,8 +185,8 @@
       <p class="sl-p">Notice the spread (the gap between the blue and amber lines) shrinks as consecutive buys or consecutive sells push &delta; toward certainty — and widens back up the moment a contrarian trade arrives.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Compute a quote yourself</h2>
       <p class="sl-sub">Ask = E[V | buy], Bid = E[V | sell], computed live from Bayes' rule. Change any input.</p>
       <div class="sl-card">
@@ -198,8 +211,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">A genuine, testable prediction</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">📅</div><div><h4>Wider spreads before scheduled events</h4><p>Ahead of a central bank decision or a jobs report, more of the flow is believed to be trading on a private read of the outcome — a spike in perceived μ, which this model says should widen quotes mechanically.</p></div></div>
@@ -209,8 +222,8 @@
       <div class="sl-quote">See <strong>Central Bank Policy</strong>, elsewhere in this Theory Lab, for what actually drives the outcome uncertainty behind a rate decision — this model is the formal reason that uncertainty shows up in the spread at all.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this gets misread</h2>
       <div class="sl-compare">
         <div class="sl-ccard red">
@@ -234,8 +247,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -285,8 +298,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Glosten-Milgrom is discrete and sequential — traders arrive one at a time, and the market maker requotes bid/ask via Bayes' rule after every one, no order-size dimension at all.</p></div>
@@ -294,6 +307,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Ask = E[V | buy], Bid = E[V | sell] — zero-expected-profit pricing, with the spread collapsing to exactly zero when μ = 0. Pure adverse selection is enough to create a spread on its own.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Sequential updating means quotes move: consistent evidence in one direction narrows the spread, and a single contrarian trade widens it back — narrowing is not a one-way ratchet.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The testable, real-world prediction: spreads widen ahead of scheduled information events and compress fast afterward — a genuine empirical pattern, not just a theoretical artifact.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>How it reached trading: Glosten &amp; Milgrom (1985) made adverse selection part of the spread; dealers apply the same logic when they price "toxic" flow wider.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -339,7 +353,7 @@
     return { ask: ask, bid: bid, spread: ask - bid, postBuy: postBuy, postSell: postSell, pBuy: pBuy, pSell: pSell };
   }
 
-  // Slide 8 — click-to-simulate widget with a live-redrawing SVG readout.
+  // Slide 9 — click-to-simulate widget with a live-redrawing SVG readout.
   (function(){
     var buyBtn = document.getElementById('gm-live-buy');
     if (!buyBtn) return;
@@ -395,7 +409,7 @@
     render();
   })();
 
-  // Slide 9 — sl-calc-row: general Ask/Bid/Spread calculator with guards.
+  // Slide 10 — sl-calc-row: general Ask/Bid/Spread calculator with guards.
   (function(){
     var dIn = document.getElementById('gm-calc-delta');
     if (!dIn) return;

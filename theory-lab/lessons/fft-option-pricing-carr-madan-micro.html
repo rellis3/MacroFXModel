@@ -293,10 +293,10 @@
         <div class="sl-callout-label">Where this needs qualifying</div>
         <p>The damping factor α and the FFT's strike/frequency grid spacing (η, λ) are not free choices — they trade off against each other (a discrete-FFT uncertainty-principle-style constraint), a real tuning step in any implementation. And a fast calibration loop is still curve-fitting: speed says nothing about whether the fitted parameters generalize out-of-sample, the same caveat the Heston lesson raises about a good smile fit.</p>
       </div>
-      <div class="sl-callout amber">
+      <!-- DESK:START --><div class="sl-callout amber">
         <div class="sl-callout-label">Status check — verified against this repo's current source</div>
         <p>This lesson is conceptual, and that status still holds: this repository has no characteristic-function option pricer, no Heston or SABR calibration routine, and no FFT-based option pricing anywhere in its actual source code (checked directly — every "fft" hit outside Theory Lab was a substring inside an unrelated word or ID, not an FFT call). Nothing here has changed since the Heston and SABR lessons made the same finding.</p>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">

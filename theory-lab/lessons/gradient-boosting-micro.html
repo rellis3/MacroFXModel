@@ -222,7 +222,7 @@
       <div class="sl-quote">All three sit on top of the exact same two ideas from this lesson — a corrective step fit to the leftover error, and a shrinkage rate — without changing that core mechanism. The engineering is about training efficiently and handling messy real tabular data well, not a different underlying algorithm.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <!-- DESK:START --><section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Not just a concept in this repo — checked directly</h2>
       <div class="sl-callout amber">
@@ -230,7 +230,7 @@
         <p>The full lesson this deck condenses labels gradient boosting a "CONCEPT — explained here, not built or tested anywhere in this repo." Checking each file directly shows that framing is <strong>stale</strong>. Gradient-boosted trees genuinely run here, in three roles: <code>bot/scripts/train_gold_model.py</code> trains XGBoost and LightGBM classifiers on gold macro features; <code>bot/modules/ml_confidence.py</code> loads those two trained models and averages their win-probability to scale live position size; <code>AnalogML/ml_walkforward.py</code> walk-forward tests XGBoost and LightGBM classifiers (plus an XGBRegressor/LGBMRegressor blended into a Ridge meta-learner) against a triple-barrier trading label. Two more files use it in a narrower, secondary role: <code>SessionResearch/forecast.py</code> fits scikit-learn's HistGradientBoosting pair alongside its primary Ridge/Logistic models purely as a "does nonlinearity actually help" check, and <code>volatilityExhaustion/daytype_classifier.py</code> flags a shallow HistGradientBoosting model as a higher-flexibility comparison against its primary, harder-to-overfit logistic regression. Genuine production use in three files, a deliberate ablation/comparison role in two more — not a pure textbook concept.</p>
       </div>
       <p class="sl-p">Worth naming the boundary precisely: the previous lesson's forest and plain decision-tree classes still don't appear anywhere in this codebase — that finding stands. It's specifically <em>gradient-boosted</em> trees, this lesson's subject, that turn out to already be live.</p>
-    </section>
+    </section><!-- DESK:END -->
 
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>

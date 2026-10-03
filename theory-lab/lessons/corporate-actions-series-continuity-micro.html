@@ -192,6 +192,7 @@
       <div class="sl-quote">A trend-following backtest built on a naively-spliced, unadjusted series can show a suspiciously reliable "breakout" clustering right on every quarterly roll date — the strategy isn't detecting momentum, it's detecting its own data pipeline's roll jump. Re-run it on a properly adjusted series and the pattern vanishes.</div>
     </section>
 
+    <!-- DESK:START -->
     <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Checked against this repo's actual code</h2>
@@ -201,6 +202,7 @@
       </div>
       <p class="sl-p">That comment is a good instinct in miniature: rather than build a fragile continuous-futures splice and risk exactly the negative-price / distorted-level trap above, the engine sidesteps the whole problem by choosing an instrument that doesn't need rolling at all.</p>
     </section>
+    <!-- DESK:END -->
 
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10 · It actually happened</div>
@@ -224,11 +226,15 @@
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
+      <!-- DESK:START -->
       <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
-        <span class="sl-stamp-tag">Untested</span>
+        <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>Not tested here:</strong> that a breakout or trend signal on a continuous futures series reflects the market, not the roll. A fair test rebuilds the signal on back-adjusted, ratio-adjusted and per-contract data, checks the trades agree, and counts signals near roll dates against the base rate.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>Both fixes assume positive prices and a small gap at the roll. Ratio-adjustment multiplies history by old ÷ new; with the old price at −$37.63 that flips the sign of everything before it. A % return from $18 to −$37.63 is near −300%, while the dollar loss per barrel was real. A negative level stopped being proof of an artifact.</p>
@@ -295,8 +301,8 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Futures rolls have two named fixes — back-adjustment ("Panama," additive, preserves $ differences) and ratio-adjustment (multiplicative, preserves % returns).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Neither fix is free — a back-adjusted series can drift to unusual or negative levels far in the past, which breaks any calculation that needs a real price level, not just a real price difference.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Choose the method per calculation, not once as an infrastructure default: dollar P&amp;L wants back-adjustment, percentage-return statistics want ratio-adjustment.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo currently sidesteps the whole problem for its gold pair by trading spot instead of an unadjusted continuous future — a legitimate third option, not just theory.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>A negative print can be real: on 20 April 2020 May WTI settled at −$37.63 while June sat near $20, so the roll rule decides which "oil price" a series shows. Ratio-adjustment breaks across a negative price. Whether this desk's signals survive a change of roll method is untested.</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo currently sidesteps the whole problem for its gold pair by trading spot instead of an unadjusted continuous future — a legitimate third option, not just theory.</p></div><!-- DESK:END -->
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>A negative print can be real: on 20 April 2020 May WTI settled at −$37.63 while June sat near $20, so the roll rule decides which "oil price" a series shows. Ratio-adjustment breaks across a negative price.<!-- DESK:START --> Whether this desk's signals survive a change of roll method is untested.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

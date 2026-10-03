@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Hasbrouck Information Share — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-hasbrouck-information-share.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Which market moves first?</h2>
+      <p class="sl-sub">Information share · Hasbrouck, 1995 → futures vs cash, venue vs venue</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>When one asset trades in several places, where is the price formed? Hasbrouck (1995) split price-discovery variance by venue, finding the NYSE dominant for Dow stocks.</p>
+        <p>It showed E-mini futures leading the S&amp;P 500 (2003) and CDS leading bonds (Blanco, Brennan &amp; Marsh, 2005), and is the standard price-discovery tool for fragmented markets.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> which venue absorbs new information first, so which should I watch?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Adjustment speed vs. information leadership</h2>
       <p class="sl-sub">Two different questions that a VECM's own numbers can't fully separate on their own.</p>
       <div class="sl-icard-grid">
@@ -38,8 +51,8 @@
       <div class="sl-quote">A price can be a lazy, slow self-corrector and still be the one that always reacts to news first. Being quick to react and being quick to self-correct afterward are not automatically the same trait — Information Share is built to measure the first one.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Four steps from VECM to a number</h2>
       <p class="sl-sub">Only step 3 needs the VECM's own α; step 4 is Hasbrouck's actual contribution.</p>
       <div class="sl-card">
@@ -58,8 +71,8 @@
       <p class="sl-p">Every stationary system has a Wold representation: express Δp_t purely as a weighted sum of current and past shocks, no lagged levels needed. The long-run sum of those weights, Ψ(1), is what step 3 uses.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">One shared row: the common-factor loadings ψ</h2>
       <p class="sl-sub">Because both venues track one true price, Ψ(1)'s two rows come out identical.</p>
       <div class="sl-card">
@@ -79,8 +92,8 @@
       <p class="sl-p">The less a venue reacts to disequilibrium, the more it looks like the fixed reference the other venue is chasing — and the more weight ψ hands it. This is the Gonzalo-Granger (1995) permanent-transitory decomposition, worked out for the two-venue case.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Hasbrouck's trick: orthogonalize, then attribute</h2>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>The problem it solves</div>
@@ -90,8 +103,8 @@
       <p class="sl-p">Whichever venue is listed first in the Cholesky decomposition wins the tie-break on jointly-owned variance. Nothing in the economics says which venue that should be.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The ordering problem — the standard critique</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Same VECM, same Ω, different answer</div>
@@ -100,8 +113,8 @@
       <p class="sl-p">Next slide shows exactly how large that swing can get, using one fitted example: α_Y = −0.40, α_X = 0.10, and a residual covariance matrix with a 0.5 correlation between the two venues' shocks.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Same fitted system, two orderings</h2>
       <p class="sl-sub">α_Y = −0.40, α_X = 0.10, σ_Y² = 4, σ_X² = 1, σ_YX = 1. Only the ordering changes below.</p>
       <div class="sl-card">
@@ -128,8 +141,8 @@
       <p class="sl-p">Y's own information share swings from 57.1% down to 10.7% purely from the ordering choice — nothing about the fitted model changed between the two tabs.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Drag the correlation, watch the gap open up</h2>
       <p class="sl-sub">α_Y, α_X, σ_Y², σ_X² fixed. Only σ_YX (the shocks' covariance) changes below.</p>
       <div class="sl-card">
@@ -151,8 +164,8 @@
       <p class="sl-p">Near σ_YX = 0 the two bars line up almost exactly — no shared variance means nothing to fight over. Drag σ_YX toward its valid extreme (±2 here, where the implied correlation hits ±1) and the two orderings pull apart hard.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Compute it yourself, from any inputs</h2>
       <p class="sl-sub">Change α_Y, α_X, or any entry of Ω — every downstream number recomputes live.</p>
       <div class="sl-card">
@@ -181,8 +194,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Two ways the literature responds</h2>
       <div class="sl-compare">
         <div class="sl-ccard green">
@@ -205,19 +218,19 @@
       <p class="sl-p">Neither response is "the" correct fix — a wide gap between the two Cholesky orderings is itself a meaningful diagnostic, not a nuisance to average away and forget.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this quietly goes wrong</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🔀</div><div><h4>Reporting only one ordering</h4><p>Always compute both, or explicitly justify the ordering choice — usually neither venue's ordering is more defensible than the other.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>No genuine cointegration</h4><p>The whole common-factor framework needs a real, tested price-parity relationship — not just any two correlated series.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⏱️</div><div><h4>Sampling-frequency sensitivity</h4><p>Tick-level vs. one-minute vs. daily data can flip which venue appears to lead — microstructure noise and averaging both distort the answer differently.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">💧</div><div><h4>IS ≠ liquidity</h4><p>A high information share means news shows up there first — not that the venue is cheaper or more liquid to trade in. See this repo's Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons for that separate question.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💧</div><div><h4>IS ≠ liquidity</h4><p>A high information share means news shows up there first — not that the venue is cheaper or more liquid to trade in. See the Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons for that separate question.</p></div></div>
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -272,19 +285,20 @@
         <button class="sl-quiz-opt" data-correct="true">No — IS measures where news shows up first, not spreads, depth, or execution cost</button>
         <button class="sl-quiz-opt">Yes, by definition</button>
         <button class="sl-quiz-opt">Only if α_Y = α_X</button>
-        <div class="sl-quiz-explain">Liquidity is a related but distinct question, covered by this repo's Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons — not by Information Share.</div>
+        <div class="sl-quiz-explain">Liquidity is a related but distinct question, covered by the Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons — not by Information Share.</div>
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Hasbrouck's Information Share decomposes the variance of the common efficient price's innovation, attributing a share to each venue — a sharper question than the VECM lesson's α_Y-vs-α_X adjustment-speed comparison.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The common-factor loading vector ψ derives directly from the VECM's own α: ψ_Y = α_X/(α_X−α_Y), ψ_X = −α_Y/(α_X−α_Y) — the less a venue adjusts, the more common-factor weight it carries.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Cholesky-orthogonalizing the residual covariance matrix requires an arbitrary ordering choice, and the IS split can swing hard depending on it — 57.1% vs. 10.7% in this deck's own worked example, same fitted VECM throughout.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Two standard responses exist: Hasbrouck's own midpoint/range fix, and alternative measures — Gonzalo-Granger's (1995) Component Share and Putniņš' (2013) Information Leadership Share — that don't depend on the same arbitrary ordering.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Information Share needs genuine cointegration, is sensitive to sampling frequency, and answers a variance-attribution question — not a liquidity question, which belongs to this repo's Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons instead.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Information Share needs genuine cointegration, is sensitive to sampling frequency, and answers a variance-attribution question — not a liquidity question, which belongs to the Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons instead.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>How it reached trading: Hasbrouck's information share (1995) is the standard test of where price discovery happens: futures vs cash, CDS vs bonds, venue vs venue.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -314,7 +328,7 @@
 <script src="../assets/deck.js"></script>
 <script>
 (function(){
-  // Slide 8 — drag covariance σ_YX, watch both orderings' bars redraw live.
+  // Slide 9 — drag covariance σ_YX, watch both orderings' bars redraw live.
   (function(){
     var slider = document.getElementById('cslide-slider');
     if (!slider) return;
@@ -357,7 +371,7 @@
     update();
   })();
 
-  // Slide 9 — full IS calculator, both orderings + midpoint.
+  // Slide 10 — full IS calculator, both orderings + midpoint.
   (function(){
     var aY = document.getElementById('hc-aY');
     if (!aY) return;

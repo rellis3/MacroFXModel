@@ -674,7 +674,9 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example: α≈9.98% reproduces a 10% ATM quote</strong>, then reads off 9.92%/10.09% at 200-pip strikes either side — one algebraic evaluation each, no repricing loop.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The formula is an approximation, not exact.</strong> It can misbehave — even imply arbitrage — at extreme strikes/maturities or high ν, which "Arbitrage-Free SABR" (2014) patches numerically.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A good same-day fit isn't the same as a correct smile-dynamics model.</strong> SABR's backbone prediction for how the whole smile should move doesn't always match how real markets shift as the underlying moves.</span></div>
+    <!-- DESK:START -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo has no options-pricing or smile-calibration module today.</strong> This lesson and the Heston lesson are pure theory background, not a description of anything built or validated here.</span></div>
+    <!-- DESK:END -->
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>SABR was built by practitioners to hedge, and became the rates-smile standard.</strong> Local vol's smile moves the wrong way when spot moves (2002); SABR gets the dynamics roughly right with a closed-form smile, and swaption vol cubes are commonly stored as its parameters.</span></div>
   </div>
 
@@ -803,9 +805,11 @@
     <li>Patrick S. Hagan, Deep Kumar, Andrew S. Lesniewski &amp; Diana E. Woodward, "Managing Smile Risk," <em>Wilmott Magazine</em>, 2002 — the original paper: the SABR SDEs, the singular-perturbation derivation, and the closed-form implied-volatility approximation this lesson is built around.</li>
     <li>Patrick S. Hagan, Deep Kumar, Andrew S. Lesniewski &amp; Diana E. Woodward, "Arbitrage-Free SABR," <em>Wilmott Magazine</em>, 2014 — the follow-up addressing the original formula's known arbitrage failure modes at extreme strikes/maturities, via a numerical PDE approach.</li>
     <li>Fabrice Douglas Rouah &amp; Gregory Vainberg, <em>Option Pricing Models and Volatility Using Excel-VBA</em>, Wiley, 2007 — a practitioner-oriented treatment covering both Heston and SABR side by side, including calibration mechanics, which is a useful direct comparison of the two models' practical workflows.</li>
-    <li>Standard FX options market-making literature and desk convention — SABR's role as the industry-standard smile-interpolation tool for FX and interest-rate (swaption, cap/floor) options is documented throughout practitioner-facing derivatives-pricing references and reflects genuinely near-universal adoption across those markets, not this repo's own assessment.</li>
+    <li>Standard FX options market-making literature and desk convention — SABR's role as the industry-standard smile-interpolation tool for FX and interest-rate (swaption, cap/floor) options is documented throughout practitioner-facing derivatives-pricing references and reflects genuinely near-universal adoption across those markets<!-- DESK:START -->, not this repo's own assessment<!-- DESK:END -->.</li>
     <li>This Theory Lab's own <a href="heston-model.html">Heston Model</a> lesson — read first; SABR is presented throughout this lesson as the practical, calibration-friendly counterpart to the genuine stochastic-volatility dynamics Heston introduces.</li>
+    <!-- DESK:START -->
     <li>This project's own prior research notes on options market microstructure — the applied gamma/dealer-hedging framework that a real, per-strike volatility smile (built the way this lesson describes) ultimately feeds into at a real dealer.</li>
+    <!-- DESK:END -->
   </ul>
   </details>
 

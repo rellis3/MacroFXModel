@@ -27,7 +27,7 @@
   <h1 class="tl-title">Market Impact Models &amp; Almgren-Chriss</h1>
   <p class="tl-dek">Trade a large order fast and you pay for the impact of demanding immediacy; trade it slow and you pay in exposure to whatever the market does while you wait — Almgren-Chriss turns that trade-off into a single dial and a precise, closed-form execution schedule.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a></span>
   </div>
@@ -47,7 +47,7 @@
       <li>Solving that trade-off (via the Euler-Lagrange equation, derived below) gives a closed form: the optimal remaining-inventory trajectory is \(x(t) = X\,\sinh(\kappa(T-t))/\sinh(\kappa T)\), with \(\kappa=\sqrt{\lambda\sigma^2/\eta}\) folding risk aversion \(\lambda\), volatility \(\sigma\), and the temporary-impact coefficient \(\eta\) into one shape parameter.</li>
       <li>At \(\kappa\to0\) (no risk aversion) the trajectory collapses to a straight line — constant-rate, TWAP-like trading. As \(\kappa\) grows, the trajectory becomes increasingly front-loaded: fast early, nearly flat later — a risk-averse trader accepts more impact cost to cut timing-risk exposure.</li>
       <li>Worked example: with \(\sigma^2=0.0004\), \(\eta=0.0012\), a risk-neutral trader (\(\lambda=0\)) trades in a straight line; a moderately risk-averse trader (\(\lambda=27\), giving \(\kappa=3\)) has only about 21% of the order left at the halfway point, versus 50% for the straight-line trader.</li>
-      <li><strong>Real-world episode:</strong> Archegos, March 2021. Several prime brokers had to sell the same concentrated stocks at once. Those who sold early and in size reported no material loss. The slowest lost most: Credit Suisse about $5.5 billion, Nomura about $2.9 billion. With rival sellers, timing risk is not random noise but other people's permanent impact, and the patient schedule is the worst one. Whether slower execution lowers cost is <strong>untested</strong> on this desk, which never slices orders.</li>
+      <li><strong>Real-world episode:</strong> Archegos, March 2021. Several prime brokers had to sell the same concentrated stocks at once. Those who sold early and in size reported no material loss. The slowest lost most: Credit Suisse about $5.5 billion, Nomura about $2.9 billion. With rival sellers, timing risk is not random noise but other people's permanent impact, and the patient schedule is the worst one.<!-- DESK:START --> Whether slower execution lowers cost is <strong>untested</strong> on this desk, which never slices orders.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -636,8 +636,9 @@
     to the exit is the rational outcome. Brunnermeier and Pedersen's 2005 paper on predatory trading models a close cousin of this: when other traders know you must sell, they sell first.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
-    <span class="tl-verdict-tag">Untested</span>
+    <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Untested here: "trading slower lowers your total execution cost."</strong> This is the trade-off the whole
     model rests on. This desk sends single small orders at a flat modeled cost and has never sliced an order or
     measured impact, so it has no evidence either way. A fair test would need execution records for sliced parent
@@ -646,6 +647,7 @@
     it would flag days when other large sellers were active in the same name. All of that would be set before looking
     at results.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -743,7 +745,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Permanent impact doesn't change the optimal shape, but it still costs real money.</strong> It's trajectory-independent (a sunk cost on the fixed total size), which is why it drops out of the optimization — not because it's negligible.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Higher risk aversion is not free — it's a deliberate trade of more expected cost for less variance.</strong> A front-loaded schedule pays more impact on average; it's only the right choice when that trade genuinely matches the trader's risk tolerance or situation.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The closed-form trajectory assumes constant volatility and a constant linear impact coefficient.</strong> Real desks adapt the schedule as conditions change; treating the formula as a fixed, one-time plan ignores real intraday variation in both inputs.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The model assumes you are the only seller.</strong> At Archegos in March 2021, several banks had to sell the same stocks. The early block sellers reported no material loss; the slowest lost billions (Credit Suisse about $5.5bn). When rivals are liquidating too, timing risk is their permanent impact on your inventory, and the patient schedule loses. Untested on this desk.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The model assumes you are the only seller.</strong> At Archegos in March 2021, several banks had to sell the same stocks. The early block sellers reported no material loss; the slowest lost billions (Credit Suisse about $5.5bn). When rivals are liquidating too, timing risk is their permanent impact on your inventory, and the patient schedule loses.<!-- DESK:START --> Untested on this desk.<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
