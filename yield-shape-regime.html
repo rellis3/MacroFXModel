@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yield-Shape Regime — paper forward test</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; --blue:#58a6ff; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:20px 16px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:14px; margin:0 0 8px }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:14px; max-width:1000px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace }
+  th,td { padding:4px 8px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) } .blue { color:var(--blue) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  button.sec { background:#21262d; border:1px solid var(--border) }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:14px; overflow-x:auto }
+  .big { font-size:24px; font-weight:700; font-variant-numeric:tabular-nums } .lbl { color:var(--text3); font-size:10px; text-transform:uppercase; letter-spacing:.05em }
+  .row { display:flex; gap:24px; flex-wrap:wrap; align-items:flex-end }
+  .pill { display:inline-block; padding:1px 7px; border-radius:10px; font-size:10px; font-weight:600 }
+  .pill.hit { background:rgba(63,185,80,.18); color:var(--pos) } .pill.miss { background:rgba(248,81,73,.15); color:var(--neg) } .pill.pending { background:#21262d; color:var(--text3) }
+  a { color:var(--blue) }
+</style>
+</head>
+<body>
+  <h1>Yield-Shape Regime <span class="muted" style="font-size:12px">paper forward test, no orders</span></h1>
+  <div class="sub">
+    Day-clustered result (analysis/yield_shape_regime_dayclustered.py, pre-registered 2026-10-02): when a pair is currently
+    <b>tracking yesterday's UST10Y (^TNX) intraday shape closely</b> (|rolling 2h correlation| above its threshold), a known
+    upcoming turn in that shape — already visible in yesterday's complete data — is followed by a real price turn more often
+    than the unconditional base rate. Backtest (day-pair placebo, ~60-day Yahoo intraday window): GBPUSD 15m/corr&gt;0.5
+    57.7% vs 47.6% null (39 days) · EURUSD 15m/corr&gt;0.7 52.5% vs 39.3% (29d) · NZDUSD 30m/corr&gt;0.5 56.6% vs 48.0% (36d) ·
+    USDCHF 60m/corr&gt;0.5 57.6% vs 47.4% (38d). This is a <b>confidence layer, not a standalone rule</b> — it predicts
+    <i>whether</i> price turns, not which way; <code>predictedDir</code> below is an unvalidated extra, tracked separately.
+    Sample sizes above are thin (23-39 day-pairs); this page exists to build real forward evidence before it feeds anything else.
+  </div>
+  <button onclick="tick()">▶ Run a check now</button>
+  <button class="sec" onclick="load()">↻ Reload</button>
+  <span class="muted" id="status" style="margin-left:10px"></span>
+  <div id="out" style="margin-top:14px"></div>
+
+<script>
+const el = id => document.getElementById(id);
+const pct = v => v == null ? '—' : (v * 100).toFixed(1) + '%';
+const cls = v => v == null ? 'muted' : v > 0.5 ? 'pos' : v < 0.5 ? 'neg' : 'muted';
+const ago = iso => { if (!iso) return '—'; const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 90 ? m + ' min ago' : Math.round(m / 60) + ' h ago'; };
+const BACKTEST = { eurusd: { hit: 0.525, null: 0.393, days: 29 }, gbpusd: { hit: 0.577, null: 0.476, days: 39 }, nzdusd: { hit: 0.566, null: 0.480, days: 36 }, usdchf: { hit: 0.576, null: 0.474, days: 38 } };
+let S = null;
+
+async function load() {
+  el('status').textContent = 'Loading…';
+  try { S = await (await fetch('/api/yield-shape-regime')).json(); }
+  catch (e) { el('status').innerHTML = '<span class="neg">Could not load: ' + e.message + '. Check the server is up, then reload.</span>'; return; }
+  if (S.error) { el('status').innerHTML = '<span class="neg">' + S.error + '</span>'; return; }
+  el('status').textContent = 'Updated ' + ago(S.updatedAt);
+  render();
+}
+async function tick() {
+  el('status').textContent = 'Running a check…';
+  try { const r = await (await fetch('/api/yield-shape-regime/tick', { method: 'POST' })).json(); el('status').innerHTML = r.ok ? '<span class="pos">Check done</span>' : '<span class="neg">Check failed: ' + (r.error || r.skipped) + '</span>'; }
+  catch (e) { el('status').innerHTML = '<span class="neg">Check failed: ' + e.message + '</span>'; }
+  load();
+}
+
+function render() {
+  const insts = (S.rule?.instruments ?? []);
+  let h = '<div class="card"><div class="row">';
+  for (const inst of insts) {
+    const live = S.stats?.[inst.key] ?? { resolved: 0, hits: 0, hitRate: null };
+    const bt = BACKTEST[inst.key];
+    h += `<div><div class="lbl">${inst.key.toUpperCase()} (${inst.windowMin}m, |corr|&gt;${inst.thr})</div>
+      <div class="big ${cls(live.hitRate)}">${pct(live.hitRate)}<span class="muted" style="font-size:12px"> live (${live.resolved} resolved)</span></div>
+      <div class="muted">backtest ${pct(bt.hit)} vs ${pct(bt.null)} null · ${bt.days} days in sample</div></div>`;
+  }
+  h += `</div></div>`;
+
+  const days = Object.entries(S.days ?? {}).sort((a, b) => b[0].localeCompare(a[0]));
+  const all = days.flatMap(([d, x]) => (x.signals ?? []).map(s => ({ ...s, date: d, templateDate: x.templateDate })));
+  h += `<div class="card"><h2>Signals</h2>`;
+  if (!all.length) h += `<div class="muted">No signals logged yet. A signal fires when a tracked pair's rolling correlation to yesterday's yield shape crosses its threshold at the same moment yesterday's shape shows a known turn ahead.</div>`;
+  else {
+    all.sort((a, b) => (b.date + b.tod).localeCompare(a.date + a.tod));
+    h += `<table><tr><th>date</th><th>template day</th><th>pair</th><th>time (UTC)</th><th>corr</th><th>window</th><th>predicted dir*</th><th>actual dir</th><th>status</th></tr>`;
+    for (const s of all.slice(0, 300)) {
+      const pill = s.status === 'hit' ? '<span class="pill hit">HIT</span>' : s.status === 'miss' ? '<span class="pill miss">miss</span>' : '<span class="pill pending">pending</span>';
+      h += `<tr><td>${s.date}</td><td class="muted">${s.templateDate ?? '—'}</td><td>${s.inst.toUpperCase()}</td><td>${s.tod}</td><td>${s.corr}</td><td>${s.windowMin}m</td>
+        <td class="muted">${s.predictedDir > 0 ? 'up' : s.predictedDir < 0 ? 'down' : '—'}</td><td class="muted">${s.actualDir > 0 ? 'up' : s.actualDir < 0 ? 'down' : '—'}</td><td>${pill}</td></tr>`;
+    }
+    h += `</table><div class="muted" style="margin-top:6px">* predicted direction is unvalidated — only the HIT/miss (did price turn at all) column was tested.</div>`;
+  }
+  h += `</div>`;
+
+  const lt = S.lastTick;
+  h += `<div class="card"><h2>Health</h2><div class="muted">Last check: ${lt ? `${ago(lt.at)} (${lt.reason}) — ${lt.ok ? '<span class="pos">ok</span>' : '<span class="neg">' + lt.error + '</span>'}` : 'none since the last server restart'}.
+        Saved ${ago(S.updatedAt)}. The job runs every 5 minutes on Railway; the yield template refetches from Yahoo ^TNX once a day.</div>`;
+  if ((S.log ?? []).length) h += `<div style="margin-top:8px;font:11px/1.5 'DM Mono',monospace">${S.log.slice(0, 25).map(l => `<div><span class="muted">${l.at.slice(0, 16).replace('T', ' ')}</span> ${l.msg}</div>`).join('')}</div>`;
+  h += `</div>`;
+  el('out').innerHTML = h;
+}
+load(); setInterval(load, 60_000);
+</script>
+</body>
+</html>

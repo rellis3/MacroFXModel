@@ -84,6 +84,7 @@ import { mountSessionHandoffRoutes, startRunJob as _startSessionHandoffRunJob } 
 import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob, asiaLivePlanZones, asiaAllLines, liveCache as _faAsiaLiveCache, liveWarming as _faAsiaLiveWarming, saveAllLiveSnapshots as _faAsiaSaveAllLiveSnapshots } from './js/asiaFibAtlasRoutes.js';
 import { mountBotAuditRoutes } from './js/botAuditRoutes.js';
 import { createPaperRecord } from './js/paperRecordRoutes.js';
+import { createYieldShapeRegime } from './js/yieldShapeRegimeRoutes.js';
 import { createVixCapture } from './js/vixCaptureRoutes.js';
 import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones, mondayAllLines, liveCache as _faMondayLiveCache, liveWarming as _faMondayLiveWarming, saveAllLiveSnapshots as _faMondaySaveAllLiveSnapshots } from './js/mondayFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
@@ -25945,6 +25946,15 @@ const paperRecord = createPaperRecord({
 });
 paperRecord.mount(app);
 svcInterval('paperRecord', () => svcRun('paperRecord', () => paperRecord.tick('scheduled')), 5 * 60_000);
+
+// ── Yield-shape regime signal (yield-shape-regime.html) ───────────────────────
+// Forward test of the day-clustered in-sync/turn result (analysis/yield_shape_regime_dayclustered.py, 2026-10-02):
+// when EUR/GBP/NZD/CHF-USD is currently tracking yesterday's UST10Y intraday shape closely, a known upcoming turn
+// in that shape is followed by a real price turn more often than the unconditional base rate. No orders, no bots,
+// no alerts, and direction is not validated — see js/yieldShapeRegimeCore.js header.
+const yieldShapeRegime = createYieldShapeRegime({ kv, getFastLive: _laGetFastLive, liveCache: _laLiveCache });
+yieldShapeRegime.mount(app);
+svcInterval('yieldShapeRegime', () => svcRun('yieldShapeRegime', () => yieldShapeRegime.tick('scheduled')), 5 * 60_000);
 
 // 1-minute VIX / VXN recorder: Yahoo keeps only 7 days of 1-minute bars, so pull every 6 hours into R2 (vix_m1/...) to build
 // the minute-level history for testing the VIX-vs-Nasdaq divergence idea later. Status: /api/vix-capture.
