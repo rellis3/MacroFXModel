@@ -1032,3 +1032,63 @@ curve data to ten episodes.
 gaps found by checking the repo rather than trusting the catalogue, and **one pre-registerable
 study on a claim that is repeated everywhere, has the data mostly in hand, and has never been
 scored among the ledger's 81 entries.**
+
+---
+
+## 2026-10-02 — Moon Dev, "The Karpathy loop on liquidation data" (live stream)
+
+> *"It loops and finds new profitable trading bots for me 24/7... 87,000% return. It's
+> actually rejected, but we kept this one, 81,000% return... maybe a little overfit."*
+
+**1. The claim, stated plainly.** Two pieces:
+- **(a) A process claim.** An AI agent can run an unattended loop: edit one strategy file,
+  run one backtest through a frozen harness, keep the change if the score beats the
+  incumbent, repeat all night. "Karpathy's loop" is the autoresearch pattern: a frozen
+  harness, one editable file, a rules file, and keep-if-better.
+- **(b) A data claim.** Two years of self-collected crypto liquidation prints is an
+  edge, because few others hold the data.
+
+**2. What's already on this desk.** The process is already here, and in a stricter form.
+- `RegimeOptimizer/` is the same keep-if-better search (Optuna TPE, 1,000 trials) with
+  a train/validate/**blind test** split. The test split is used only for the final top-20.
+- `forge/` is the same idea at scale: about 32,000 hypotheses per fold, six expanding
+  walk-forward folds, and a **randomised-level null** that the real search has to beat.
+  Its headline result shows what the clip leaves out. Every null run beat the real
+  search (`p_vs_null = 1.00`), and the one surviving lead is "found by the same search
+  it needs to be judged against", so it is reported as a lead, not a result.
+- The pre-registration files (`forge/*_PREREG.md`, `oi_research_book/*_PREREG.md`,
+  `MARKET_SENSE_TESTS.md`) are the control the loop doesn't have: you state the rule
+  before you run it.
+- Liquidation data: none, and none is possible for spot FX or gold, because nothing
+  publishes a liquidation tape. The nearest thing here is the positioning stack:
+  `oi_bot`, OI/GEX, and COT extremes.
+
+**3. Trading or understanding.** Process. The clip never states an entry rule, so
+nothing can be tested.
+
+**4. Nugget.** Most of what the clip shows is a warning. The most useful thing in it is
+something the presenter says on air: the seed strategy was **+19% in-sample and about
+−4% out-of-sample**. The loop then starts from that seed and optimises in-sample. Three
+failure modes show up live, and each is one this desk has already written down:
+- **The score is the target.** A sign bug made losing strategies score high ("two
+  negatives multiply to a positive"). That was caught only because a person was
+  watching. An unattended loop climbs whatever the scorer rewards.
+- **Look-ahead in the harness.** The full-sample threshold was look-ahead. In
+  keep-if-better, a leak like that doesn't stay small: the loop selects for it.
+- **No trial count.** 81,000% "kept" after a few hundred tries, with no deflation for
+  the number of attempts and no null. `forge` exists because this exact setup produces
+  beautiful fakes.
+
+The good parts are worth keeping: the **frozen harness / one editable file / rules
+file** split, the **one change per iteration with a one-line log**, and the **2× fees**
+habit. The desk already has these in substance, but not as an agent-driven loop.
+
+**5. Verdict and action.** Not worth adopting as shown. If the desk ever wants an
+agent-driven loop, the safe version is `forge` with an agent writing hypotheses instead
+of a grid. It would have to:
+- keep the walk-forward folds and the random-level null as the frozen harness;
+- log every attempt, so the trial count is known and can be deflated;
+- never let the loop see the final holdout;
+- send any keeper through a pre-registration before it counts.
+
+Nothing built. Noted as a design option, not a candidate.
