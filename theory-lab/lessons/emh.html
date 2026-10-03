@@ -37,8 +37,8 @@
     <li>Fama's three nested forms each rule out a different strategy: <strong>weak</strong> (past price/volume history) rules out technical analysis, <strong>semi-strong</strong> (all public info) rules out fundamental analysis on public data, <strong>strong</strong> (public + private info) would rule out even insider trading — and is essentially never taken as literally true.</li>
     <li>The <strong>joint-hypothesis problem</strong>: you can never test market efficiency in isolation, only "efficiency + the assumed pricing model" together — so a single anomalous backtest can't tell you whether the market is inefficient or your pricing model just missed a risk factor.</li>
     <li>This lesson's own worked example: with \(n=500\) daily returns, the noise-level standard error of \(\hat\rho_1\) is \(\approx 1/\sqrt{500} \approx 0.045\); \(\hat\rho_1=0.03\) is unremarkable noise, but \(\hat\rho_1=0.15\) clears ~3 standard errors — a real statistical signal, though still only the <em>start</em> of a research question, not proof of a tradeable edge (no OOS, cost, or mechanism check yet).</li>
-    <li>EMH doesn't forbid all profit — only riskless, cost-free profit — which is exactly why this repo bakes in an OOS split with a ≥30-trade gate, a named no-skill benchmark, and costs-on-by-default: they're EMH's joint-hypothesis and free-lunch logic turned into engineering rules.</li>
-    <li><strong>Real-world episode:</strong> McLean &amp; Pontiff (2016) found 97 published stock-return predictors earned about 58% less after publication (26% less in the gap before it), as investors traded them; and this desk's own "priced in" tests, where conditioning on what yields did into a release scored 49.3% against a shuffled placebo's 51.5%.</li>
+    <li>EMH doesn't forbid all profit — only riskless, cost-free profit<!-- DESK:START --> — which is exactly why this repo bakes in an OOS split with a ≥30-trade gate, a named no-skill benchmark, and costs-on-by-default: they're EMH's joint-hypothesis and free-lunch logic turned into engineering rules<!-- DESK:END -->.</li>
+    <li><strong>Real-world episode:</strong> McLean &amp; Pontiff (2016) found 97 published stock-return predictors earned about 58% less after publication (26% less in the gap before it), as investors traded them<!-- DESK:START -->; and this desk's own "priced in" tests, where conditioning on what yields did into a release scored 49.3% against a shuffled placebo's 51.5%<!-- DESK:END -->.</li>
   </ul>
 </div>
 
@@ -53,8 +53,8 @@
   already incorporates all relevant, available information, so there is no free, riskless way to
   profit from information you already have access to. Nobody in quantitative finance treats EMH as
   literally, perfectly true. But almost everyone treats it as the thing you have to argue your way
-  past, with evidence, before you trust a new strategy. That's the posture this entire repo is built
-  around, and this lesson is where that posture comes from.
+  past, with evidence, before you trust a new strategy.<!-- DESK:START --> That's the posture this entire repo is built
+  around, and this lesson is where that posture comes from.<!-- DESK:END -->
   </p>
 
   <div class="tl-box intuition">
@@ -236,9 +236,9 @@
   martingale is a slightly weaker and more general statement than "pure random walk with i.i.d.
   shocks" — it only pins down the <em>conditional mean</em>, and says nothing about the variance of
   \(\epsilon_t\) needing to be constant over time (in real markets it isn't: this is exactly what
-  volatility clustering and GARCH-type models capture, and it's why this repo's own volatility
+  volatility clustering and GARCH-type models capture<!-- DESK:START -->, and it's why this repo's own volatility
   research exists as a separate, honest piece of machinery from any
-  directional signal). A martingale in price is the object EMH actually predicts; "random walk" is
+  directional signal<!-- DESK:END -->). A martingale in price is the object EMH actually predicts; "random walk" is
   the popular, slightly stronger shorthand for it.
   </p>
 
@@ -367,7 +367,7 @@
     inefficiency or just compensation for a risk factor your simple model of "normal" didn't include.
     A statistically significant autocorrelation is the <em>start</em> of a research question, not the
     end of one. This is exactly the gap between "found a pattern in historical data" and "found an
-    edge" that the rest of this Theory Lab, and this repo's backtest discipline, exists to close.
+    edge" that the rest of this Theory Lab<!-- DESK:START -->, and this repo's backtest discipline,<!-- DESK:END --> exists to close.
     </p>
   </div>
 
@@ -405,8 +405,8 @@
   <h2>It actually happened: published, then priced</h2>
   <p>
   The $20-bill box in Section 01 says a costless edge in plain sight should not survive. Here is what that looks like when
-  someone prints the map to the bill, and what happened when this desk tested the trader's everyday version of efficiency,
-  "it's priced in".
+  someone prints the map to the bill<!-- DESK:START -->, and what happened when this desk tested the trader's everyday version of efficiency,
+  "it's priced in"<!-- DESK:END -->.
   </p>
 
   <div class="tl-story" id="story-1">
@@ -446,6 +446,7 @@
     <div class="tl-chain-link end"><b>Outcome</b>About 58% lower returns after publication; strongest where trading is costly</div>
   </div>
 
+  <!-- DESK:START -->
   <div class="tl-story" id="story-2">
     <div class="tl-story-label">It actually happened here</div>
     <h3>This desk: "it's priced in", tested two ways</h3>
@@ -466,10 +467,11 @@
       repricing did not make the day smaller, and it did not say which way the day would go.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
-    <p>Once someone posts a map to the $20 bill online, lots of people go and look, and soon it's gone. That's what happened to published stock tricks: after the papers came out, they paid a lot less. And knowing that "everyone already expected this" didn't help the desk guess which way prices would jump. A shuffled, random version of the guess did slightly better.</p>
+    <p>Once someone posts a map to the $20 bill online, lots of people go and look, and soon it's gone. That's what happened to published stock tricks: after the papers came out, they paid a lot less.<!-- DESK:START --> And knowing that "everyone already expected this" didn't help the desk guess which way prices would jump. A shuffled, random version of the guess did slightly better.<!-- DESK:END --></p>
   </div>
 
   <h3>Where the textbook version breaks</h3>
@@ -481,6 +483,7 @@
   <em>before</em> publication was never an inefficiency at all, only the original search's luck.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="priced-in-direction" data-evidence-date="2026-09-17">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>priced-in-direction: what yields did into a release does not change what the outcome does to price.</strong>
@@ -489,7 +492,9 @@
     placebo with the state shuffled scored 51.5%. Conditioning on the pre-event state made the predictor worse than ignoring
     it.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="priced-in" data-evidence-date="2026-09-17">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>priced-in: a decision the front end has already repriced does not move markets less on the day.</strong>
@@ -497,6 +502,7 @@
     20-session |Δ2Y| was in the bottom tercile (&lt;5bp) or the top (&gt;16bp). Differences −0.11 to +0.07, every interval
     across zero.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -595,9 +601,9 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The joint-hypothesis problem is unavoidable.</strong> You can never test market efficiency in isolation — only "efficiency + the assumed pricing model" together.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A statistically significant autocorrelation is a start, not an edge.</strong> Clearing ~3 standard errors (like \(\hat\rho_1=0.15\) on 500 observations) says nothing yet about OOS survival, costs, or mechanism.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>EMH forbids the free lunch, not all profit.</strong> Genuine risk premia — carry, illiquidity, tail risk — are entirely compatible with efficient markets.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo's validation discipline is EMH turned into engineering.</strong> The OOS split, the ≥30-trade gate, a named no-skill benchmark, and costs-on-by-default are the joint-hypothesis and free-lunch logic made into hard rules.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo's validation discipline is EMH turned into engineering.</strong> The OOS split, the ≥30-trade gate, a named no-skill benchmark, and costs-on-by-default are the joint-hypothesis and free-lunch logic made into hard rules.</span></div><!-- DESK:END -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Adaptive Markets reframes efficiency as variable, not fixed.</strong> Inefficiencies can appear, get arbitraged away, and reappear as the competitive landscape shifts — don't treat EMH as a single permanent verdict.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"Priced in" is not a trade (priced-in-direction and priced-in, both NULL).</strong> Conditioning on what yields did into a release scored 49.3% against a shuffled placebo's 51.5%, and FOMC days ran ≈1.3 ATR however much had been repriced beforehand. Published edges decay too: about 58% lower after publication (McLean &amp; Pontiff).</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"Priced in" is not a trade (priced-in-direction and priced-in, both NULL).</strong> Conditioning on what yields did into a release scored 49.3% against a shuffled placebo's 51.5%, and FOMC days ran ≈1.3 ATR however much had been repriced beforehand. Published edges decay too: about 58% lower after publication (McLean &amp; Pontiff).</span></div><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

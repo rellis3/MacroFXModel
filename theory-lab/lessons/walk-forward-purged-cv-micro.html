@@ -22,7 +22,7 @@
     <section class="sl-slide active" data-slide="1">
       <div class="sl-kicker">Lesson 24 · Applied Statistics &amp; Validation</div>
       <h1 class="sl-h1">A Clean Split Date Isn't the Same as <em>No Lookahead</em></h1>
-      <p class="sl-lede">Random k-fold cross-validation is a dependable workhorse for most machine learning — and it is flatly wrong for time series, including every price series this repo trades. This guide works through why shuffling breaks a sequence that was never independent to begin with, what walk-forward validation fixes about it, and why a clean chronological split still isn't the whole fix — the quieter leak that purging and embargoing exist to close.</p>
+      <p class="sl-lede">Random k-fold cross-validation is a dependable workhorse for most machine learning — and it is flatly wrong for time series, including every price series<!-- DESK:START --> this repo trades<!-- DESK:END -->. This guide works through why shuffling breaks a sequence that was never independent to begin with, what walk-forward validation fixes about it, and why a clean chronological split still isn't the whole fix — the quieter leak that purging and embargoing exist to close.</p>
     </section>
 
     <section class="sl-slide" data-slide="2">
@@ -35,10 +35,10 @@
         <div class="sl-icard"><div class="sl-icard-badge">w</div><div><h4>Rolling-window features</h4><p>Most features here — HV20, a rolling z-score, a rolling percentile — are built from many neighboring rows, not one. Shuffle the rows and you shuffle a feature that was never independent of its neighbors.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">→|</div><div><h4>Literal lookahead</h4><p>Random assignment can place day i+1 in training while day i sits in test. A model graded on day i was fit, in part, using a day that hadn't happened yet.</p></div></div>
       </div>
-      <div class="sl-callout amber">
+<!-- DESK:START -->      <div class="sl-callout amber">
         <div class="sl-callout-label">Why this matters here</div>
         <p>This project's own checklist already states the rule for a single feature: "σ/regime/score for window i use data &lt; i only." Random k-fold CV breaks that exact rule by construction — not as a rare edge case, but on roughly half the boundary rows of every fold.</p>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="3">
@@ -145,7 +145,7 @@
           <p>Training simply grows to absorb each fold's test period once it has been used, never discarding history. The more common choice in practice, and the one this guide's diagrams use.</p>
         </div>
       </div>
-      <p class="sl-p">This is the exact discipline this project's own house rule already states for a single feature — "use data before i only" — applied to the entire train-and-evaluate cycle instead of just one calculation. The model never gets access to a boundary it hasn't crossed yet.</p>
+      <p class="sl-p">This is the exact discipline<!-- DESK:START --> this project's own house rule already states for a single feature<!-- DESK:END --> — "use data before i only" — applied to the entire train-and-evaluate cycle instead of just one calculation. The model never gets access to a boundary it hasn't crossed yet.</p>
     </section>
 
     <section class="sl-slide" data-slide="5">
@@ -252,7 +252,7 @@
       <div class="sl-quote">Both traditions land on the same checklist: never shuffle time-ordered data; know every feature and label window's length; compute — don't eyeball — which rows near a boundary must be purged; add an embargo rather than trust the purge formula's completeness; and judge a rule by its behavior across many rolled folds, not one good-looking split.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+<!-- DESK:START -->    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Does this repo actually do this?</h2>
       <p class="sl-sub">Checked against the actual validation scripts, not just what a comment claims.</p>
@@ -265,9 +265,9 @@
         <div class="sl-callout-label">Where this needs qualifying</div>
         <p>Even that walk-forward script has no purge or embargo gap at any fold boundary — training stops exactly at the cutoff date and testing starts on the very next one. Some of the trade records it validates already trail rolling-window mechanics upstream (a chandelier stop trailing a rolling ATR, for one), so the boundary-window leak this lesson describes is a live, checkable question here, not a hypothetical one — a worthwhile next refinement, not evidence anything reported so far is wrong.</p>
       </div>
-    </section>
+    </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="11">
+<!-- DESK:START -->    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">Four of this desk's backtests, four leaks</h2>
       <div class="sl-callout amber">
@@ -285,18 +285,20 @@
         <div class="sl-chain-arrow">→</div>
         <div class="sl-chain-link end"><b>Outcome</b>A curve live trading can't reproduce</div>
       </div>
-    </section>
+    </section><!-- DESK:END -->
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
-      <h2 class="sl-h2">The verdict, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and the verdict<!-- DESK:END --></h2>
+      <!-- DESK:START -->
       <div class="sl-stamp context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10">
         <span class="sl-stamp-tag">Desk data: base rate</span>
         <span><strong>backtest-artifacts:</strong> a backtest that looks too good has a bug, usually in what it was allowed to see. A mean-reversion system, a voting system (0.23× cost), the Fibonacci-level system (85.7% vs 39.6% live), a volatility tool (95% of wins before entry). Audit what the engine could see at decision time before believing a curve.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook breaks</div>
-        <p>Purging assumes a row is knowable at its own index. Live, it often isn't: a pivot confirms three bars later, SOFR prints the next morning, an order fills after the bar closes. Purge from the knowable-at time, not the index. And fill and cost gaps, like the Fibonacci-level system's, leak no information at all, so no purge or embargo can catch them.</p>
+        <p>Purging assumes a row is knowable at its own index. Live, it often isn't: a pivot confirms three bars later, SOFR prints the next morning, an order fills after the bar closes. Purge from the knowable-at time, not the index.<!-- DESK:START --> And fill and cost gaps, like the Fibonacci-level system's, leak no information at all, so no purge or embargo can catch them.<!-- DESK:END --></p>
       </div>
     </section>
 
@@ -360,12 +362,12 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>A clean split date is necessary but not sufficient — rolling feature windows and forward-looking labels can straddle the boundary and leak test-period information into training anyway.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Purging removes every training row whose combined feature-and-label window overlaps the test interval — a computable rule, not a judgment call.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Embargo adds a further, deliberately conservative buffer after the test window, for serial correlation no fixed window length fully captures.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Passing a purged, embargoed OOS test doesn't prove edge — it only makes the OOS number honest. This repo's own scripts still run every fold without a purge or embargo gap, which is a checkable next step, not a disqualifying flaw.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened: four of this desk's backtests leaked (95% of wins scored before entry, stops not live for an hour, a hidden look-ahead worth 0.23× cost, 85.7% vs 39.6% live). Draw the boundary at the bar the information was knowable.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Passing a purged, embargoed OOS test doesn't prove edge — it only makes the OOS number honest.<!-- DESK:START --> This repo's own scripts still run every fold without a purge or embargo gap, which is a checkable next step, not a disqualifying flaw.<!-- DESK:END --></p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened: four of this desk's backtests leaked (95% of wins scored before entry, stops not live for an hour, a hidden look-ahead worth 0.23× cost, 85.7% vs 39.6% live). Draw the boundary at the bar the information was knowable.</p></div><!-- DESK:END -->
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>
-        <p>Read any OOS or backtest split — in this repo or anywhere else — and ask the two questions that actually matter: is the split chronological, and do any feature or label windows straddle the boundary? Compute exactly which training rows a given w, H, and boundary date require purging, and size an embargo deliberately instead of skipping it.</p>
+        <p>Read any OOS or backtest split<!-- DESK:START --> — in this repo or anywhere else —<!-- DESK:END --> and ask the two questions that actually matter: is the split chronological, and do any feature or label windows straddle the boundary? Compute exactly which training rows a given w, H, and boundary date require purging, and size an embargo deliberately instead of skipping it.</p>
       </div>
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>

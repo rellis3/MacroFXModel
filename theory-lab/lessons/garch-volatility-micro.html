@@ -22,7 +22,7 @@
     <section class="sl-slide active" data-slide="1">
       <div class="sl-kicker">Lesson 6 · Time Series &amp; Regimes</div>
       <h1 class="sl-h1">GARCH &amp; <em>Volatility Clustering</em></h1>
-      <p class="sl-lede">The direction of tomorrow's move is close to unpredictable. The <em>size</em> of tomorrow's move is not — big days follow big days, calm follows calm, and that regularity is stable enough to build a one-day-ahead forecast on. GARCH is the model that turns "volatility has memory" into a number, and it's one of three sigma estimators this project actually runs.</p>
+      <p class="sl-lede">The direction of tomorrow's move is close to unpredictable. The <em>size</em> of tomorrow's move is not — big days follow big days, calm follows calm, and that regularity is stable enough to build a one-day-ahead forecast on. GARCH is the model that turns "volatility has memory" into a number<!-- DESK:START -->, and it's one of three sigma estimators this project actually runs<!-- DESK:END -->.</p>
     </section>
 
     <section class="sl-slide" data-slide="2">
@@ -132,7 +132,7 @@
         <div class="sl-arrow">+</div>
         <div class="sl-box purple">β · σ²ₜ₋₁</div>
       </div>
-      <p class="sl-sub" style="margin-top:18px">This is <strong>GARCH(1,1)</strong> — one lag of the squared shock, one lag of the variance itself. It's the version this repo implements.</p>
+      <p class="sl-sub" style="margin-top:18px">This is <strong>GARCH(1,1)</strong> — one lag of the squared shock, one lag of the variance itself.<!-- DESK:START --> It's the version this repo implements.<!-- DESK:END --></p>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">⏚</div><div><h4>ω — the floor</h4><p>Baseline variance. Anchors the long-run level the forecast reverts to.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>α — the reaction</h4><p>Weight on yesterday's fresh squared shock. Larger α means the model reacts more sharply to a single big news day. Typical fitted values: roughly 0.03–0.12.</p></div></div>
@@ -242,6 +242,7 @@
       </div>
     </section>
 
+    <!-- DESK:START -->
     <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this connects to MacroFXModel</h2>
@@ -255,6 +256,7 @@
         <p>This is not a claim that GARCH beats the alternatives out-of-sample — it's one of three estimators compared under the same harness, and which one wins is an empirical question the source lesson leaves open, not something assumed from the math.</p>
       </div>
     </section>
+    <!-- DESK:END -->
 
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
@@ -262,8 +264,8 @@
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Vol targeting</h4><p>Scale position size inversely to expected volatility, so a fixed-dollar-risk position shrinks automatically when the market gets choppier.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🛑</div><div><h4>Stops &amp; option fair value</h4><p>Set stop distances and compare against option-implied volatility using the same forecast.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Probabilistic price bands</h4><p>Set the width of a forecast band around a level — the use case most directly relevant to this repo.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Basic GARCH(1,1) is symmetric</h4><p>It responds identically to a same-sized up shock and down shock, missing the empirical "leverage effect" (bad news spooks markets more). EGARCH/GJR-GARCH exist to fix this — this repo uses plain GARCH(1,1).</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Probabilistic price bands</h4><p>Set the width of a forecast band around a level<!-- DESK:START --> — the use case most directly relevant to this repo<!-- DESK:END -->.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Basic GARCH(1,1) is symmetric</h4><p>It responds identically to a same-sized up shock and down shock, missing the empirical "leverage effect" (bad news spooks markets more). EGARCH/GJR-GARCH exist to fix this<!-- DESK:START --> — this repo uses plain GARCH(1,1)<!-- DESK:END -->.</p></div></div>
       </div>
       <div class="sl-quote">A single large σₜ jump after a shock is the model doing exactly what it's supposed to — it doesn't mean the market permanently repriced. Check the persistence to see how fast the spike is expected to fade before treating it as a structural shift.</div>
     </section>
@@ -291,12 +293,14 @@
 
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
-      <h2 class="sl-h2">What the desk found, and where the textbook breaks</h2>
+      <!-- DESK:START --><h2 class="sl-h2">What the desk found, and where the textbook breaks</h2><!-- DESK:END -->
       <p class="sl-sub">The claim: the pace of the market persists. A fast stretch is followed by more fast stretches.</p>
+      <!-- DESK:START -->
       <div class="sl-stamp validated" data-evidence="tape-speed-persistence" data-evidence-date="2026-09-12">
         <span class="sl-stamp-tag">Desk test: held up</span>
         <span><strong>tape-speed-persistence:</strong> a slow 15-minute approach is followed by a slow hour, a fast one by a fast hour. Next-hour dwell monotonic in <strong>68 of 68 cells across 17 pairs</strong>, the same at random prices. A property of the tape. Pace, never direction.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>GARCH learns only from past returns, so it can't see the first shock coming: February's calm gave a calm forecast. And plain GARCH(1,1) with normal shocks is symmetric and thin-tailed. March's days were too big for normal draws even around a raised σ, which is why desks use Student-t or asymmetric variants.</p>
@@ -344,6 +348,7 @@
         <div class="sl-quiz-explain">The α·ε²ₜ₋₁ term puts the entire new shock into tomorrow's forecast immediately. HV20 spreads it thin across 20 equally-weighted days, then drops it off a cliff 20 days later.</div>
       </div>
 
+      <!-- DESK:START -->
       <div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
         <h4>Which asset class does this repo's actual GARCH(1,1) estimator apply to, per the source lesson?</h4>
@@ -352,6 +357,7 @@
         <button class="sl-quiz-opt">Commodity</button>
         <div class="sl-quiz-explain">Index uses GARCH(1,1) (α=0.06, β=0.91); commodity uses HV20; FX uses Yang-Zhang(30) — three estimators run under the same harness.</div>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="15">
@@ -362,8 +368,8 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>GARCH(1,1) has three additive pieces: a floor ω, a reaction to yesterday's squared shock α·ε²ₜ₋₁, and inertia from yesterday's own variance β·σ²ₜ₋₁.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>α+β is the persistence — the day-over-day decay rate of a shock's excess over normal — and it must stay under 1 or the model isn't valid.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The long-run variance is ω/(1−α−β); the half-life of a shock is ln(0.5)/ln(α+β).</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This project already runs GARCH(1,1) in production — α=0.06, β=0.91 — as one of three sigma estimators, applied to the index asset class alongside HV20 (commodity) and Yang-Zhang (FX).</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>March 2020: a calm February, then ±9–12% S&amp;P days back to back and a record VIX of 82.69. GARCH tracks a storm once it starts; it can't see one coming. Desk test: the pace of the tape persists intraday (tape-speed-persistence, VALIDATED).</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This project already runs GARCH(1,1) in production — α=0.06, β=0.91 — as one of three sigma estimators, applied to the index asset class alongside HV20 (commodity) and Yang-Zhang (FX).</p></div><!-- DESK:END -->
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>March 2020: a calm February, then ±9–12% S&amp;P days back to back and a record VIX of 82.69. GARCH tracks a storm once it starts; it can't see one coming.<!-- DESK:START --> Desk test: the pace of the tape persists intraday (tape-speed-persistence, VALIDATED).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

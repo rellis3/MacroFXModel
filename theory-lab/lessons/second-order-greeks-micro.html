@@ -309,7 +309,7 @@
       <p class="sl-p">All three are genuinely valid, correctly derivable Greeks — not wrong or made up. The honest distinction: most trading desks and retail options-flow tools don't quote or monitor them day to day, unlike Vanna and Charm, which show up regularly in real dealer-flow commentary.</p>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+<!-- DESK:START -->    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Checking the lesson's own claim against this repo</h2>
       <div class="sl-callout amber">
@@ -321,7 +321,7 @@
         <div class="sl-callout-label">Standing pitfall</div>
         <p>Every one of these dollar figures is a description of mechanical hedging pressure, not a forecast of direction. "Large positive dealer Vanna exposure" says a vol move at that strike will force a large hedging flow — it says nothing about which way the market expects price to go. Confusing the two is the exact same category error the dealer-GEX lesson flags for Gamma.</p>
       </div>
-    </section>
+    </section><!-- DESK:END -->
 
     <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 13 · It actually happened</div>
@@ -346,17 +346,19 @@
 
     <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 14</div>
-      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: vanna and charm flows push index prices in a predictable direction into monthly expiry.</p>
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
         <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>Vanna/charm flows into expiry:</strong> not tested here. A fair test needs point-in-time dealer Vanna/Charm exposure from each morning's OI, a pre-registered direction and window, matched non-expiry weeks with the same vol, and a held-out period.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>Second-order Greeks are Taylor coefficients for <strong>small, simultaneous, continuous</strong> moves. A peg removal moves spot by a quarter and vol by multiples at once: third-order terms (Speed, Zomma) aren't small, and nothing can be re-hedged in between.</p>
       </div>
-      <div class="sl-quote">Nearest measured result: in the desk's gamma study, expiry and other event days added nothing to the <em>gamma</em> range effect (+0.306 vs +0.306). That says nothing about a charm-driven <strong>direction</strong>, and shouldn't be quoted as if it did.</div>
+<!-- DESK:START -->      <div class="sl-quote">Nearest measured result: in the desk's gamma study, expiry and other event days added nothing to the <em>gamma</em> range effect (+0.306 vs +0.306). That says nothing about a charm-driven <strong>direction</strong>, and shouldn't be quoted as if it did.</div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="16">
@@ -418,9 +420,9 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Vanna and Charm are the two that matter most — a vol-triggered flow and a pure-time-triggered flow, each real and mechanically distinct from price-triggered gamma hedging.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Vanna's two definitions are the same mixed partial, guaranteed equal by Clairaut's/Schwarz's theorem — not a coincidence, a theorem.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Dollar Vanna exposure scales with S; dollar Gamma exposure scales with S² — the mechanical reason vanna flows run roughly four orders of magnitude (about 28,000×) smaller than gamma flows in the lesson's own toy comparison.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Speed, Color, and Zomma are genuinely niche — real and correctly derived, but rarely tracked day to day, and (unlike Vanna/Charm) still unimplemented anywhere in this repo.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Speed, Color, and Zomma are genuinely niche — real and correctly derived, but rarely tracked day to day<!-- DESK:START -->, and (unlike Vanna/Charm) still unimplemented anywhere in this repo<!-- DESK:END -->.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Every one of these flows is a mechanical hedging description, never a directional signal — confusing the two repeats the same mistake the dealer-GEX lesson already warns against.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>15 January 2015: EUR/CHF gapped close to 30% as vol jumped, so Vanna and Vomma, the "small" cross terms, became the P&amp;L, and then the expansion itself failed. Vanna/charm flows into expiry are untested on this desk.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>15 January 2015: EUR/CHF gapped close to 30% as vol jumped, so Vanna and Vomma, the "small" cross terms, became the P&amp;L, and then the expansion itself failed.<!-- DESK:START --> Vanna/charm flows into expiry are untested on this desk.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>

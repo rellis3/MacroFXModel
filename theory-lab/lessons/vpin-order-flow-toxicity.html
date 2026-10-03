@@ -17,7 +17,7 @@
   <h1 class="tl-title">Order Flow Toxicity &amp; VPIN</h1>
   <p class="tl-dek">A metric built to answer one question in real time — "is the flow hitting this book right now unusually informed?" — by watching volume instead of the clock, and a famous, still-contested claim that it flashed a warning before the market fell apart in minutes.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: market-microstructure.html (Kyle's Lambda &amp; Glosten-Milgrom)</span>
   </div>
@@ -37,7 +37,7 @@
       <li>VPIN is the rolling average, over the last \(n\) buckets, of each bucket's absolute order imbalance \(|V_\text{buy}-V_\text{sell}|\), normalized by bucket volume — a number between 0 and 1 that rises when volume is one-sided.</li>
       <li>VPIN is famous for allegedly spiking before the May 6, 2010 "Flash Crash" — but that claim is genuinely disputed in the academic literature, not a settled predictive triumph, and this lesson covers the critique as seriously as the original claim.</li>
       <li>The worked example below runs 5 hypothetical buckets through the full calculation by hand and lands on VPIN ≈ 0.58 — a high, "one-sided-flow" reading, and shows exactly what number is actually being averaged.</li>
-      <li><strong>Real-world episode:</strong> what the order flow on 6 May 2010 actually was, per the SEC/CFTC staff report. The big seller was hedging, not informed. Much of the volume was intermediaries passing the same contracts back and forth: more than 27,000 contracts in 14 seconds for a net change of about 200. Both push VPIN up mechanically, so a high reading that day doesn't settle the dispute either way. Whether a high VPIN warns of a rougher tape ahead is <strong>untested</strong> on this desk.</li>
+      <li><strong>Real-world episode:</strong> what the order flow on 6 May 2010 actually was, per the SEC/CFTC staff report. The big seller was hedging, not informed. Much of the volume was intermediaries passing the same contracts back and forth: more than 27,000 contracts in 14 seconds for a net change of about 200. Both push VPIN up mechanically, so a high reading that day doesn't settle the dispute either way.<!-- DESK:START --> Whether a high VPIN warns of a rougher tape ahead is <strong>untested</strong> on this desk.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -591,6 +591,7 @@
     the Andersen &amp; Bondarenko critique points at.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Untested here: "a high VPIN reading warns of a rougher tape ahead."</strong> This desk has no trade-level
@@ -600,6 +601,7 @@
     just before, because VPIN mechanically rises with volatility. It would report the false-alarm rate next to the hit
     rate, and require the effect to hold in both halves of the sample.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -672,8 +674,8 @@
       <strong>Using VPIN as a look-ahead-biased backtest input.</strong> Like
       any rolling statistic, VPIN computed with a window that includes data
       from after the decision point it's supposedly informing is not a live,
-      tradeable signal — a subtle version of the exact lookahead-bias trap
-      this project's own house rules warn about for any rolling series.
+      tradeable signal — a subtle version of the exact lookahead-bias trap<!-- DESK:START -->
+      this project's own house rules warn about<!-- DESK:END --> for any rolling series.
     </p>
   </div>
 
@@ -685,8 +687,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>VPIN is a rolling, normalized average of order imbalance.</strong> \(\text{VPIN}=\frac{1}{nV}\sum|V_\text{buy,τ}-V_\text{sell,τ}|\), bounded between 0 (balanced flow) and 1 (fully one-sided flow) over the window.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The Flash Crash "early warning" claim is genuinely disputed, not settled.</strong> Andersen &amp; Bondarenko's critique — sensitivity to the BVC method and to the \(V\)/\(n\) parameters, and comparable VPIN elevations at other times without a crash following — is a serious, unresolved challenge to the original claim, not a footnote to dismiss.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>BVC classifies a bucket, not a trade.</strong> It infers direction purely from an aggregate price move, standardized by volatility — a statistical proxy for order flow, not a verified per-trade buyer/seller tag the way a genuine tick-rule classifier is.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"VPIN predicted the Flash Crash" is not a fact to repeat as settled.</strong> It is one side of an active academic argument — treat it, and this whole metric's forecasting track record, with the same "built ≠ works ≠ has edge" discipline this project applies to every other signal.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Toxic is not the same as informed.</strong> On 6 May 2010 the big seller was hedging, and intermediaries traded more than 27,000 contracts in 14 seconds for a net change of about 200. One-sided, recycled volume pushes VPIN up whether or not anyone knows anything. Whether VPIN warns of a rougher tape is untested on this desk.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"VPIN predicted the Flash Crash" is not a fact to repeat as settled.</strong> It is one side of an active academic argument — treat it, and this whole metric's forecasting track record, with the same "built ≠ works ≠ has edge" discipline<!-- DESK:START --> this project applies to every other signal<!-- DESK:END -->.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Toxic is not the same as informed.</strong> On 6 May 2010 the big seller was hedging, and intermediaries traded more than 27,000 contracts in 14 seconds for a net change of about 200. One-sided, recycled volume pushes VPIN up whether or not anyone knows anything.<!-- DESK:START --> Whether VPIN warns of a rougher tape is untested on this desk.<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

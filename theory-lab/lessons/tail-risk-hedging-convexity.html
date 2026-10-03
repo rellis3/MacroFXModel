@@ -17,7 +17,7 @@
   <h1 class="tl-title">Tail Risk Hedging &amp; Portfolio Convexity</h1>
   <p class="tl-dek">The shape of a portfolio's payoff curve — not just its expected return — decides whether it bleeds slowly and blows up occasionally, or pays a small constant premium for a large payoff exactly when it's needed.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explains a hedging framework; no tail-hedge overlay is built or backtested in this repo</span>
+    <span class="tl-status concept">CONCEPT — explains a hedging framework<!-- DESK:START -->; no tail-hedge overlay is built or backtested in this repo<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: none required; option-Greeks familiarity helps but every term is defined here</span>
   </div>
@@ -37,7 +37,7 @@
       <li>Common structures: far out-of-the-money puts (pure convexity, but expensive due to the volatility skew), put spreads/collars (cheaper, but capped), and volatility-linked hedges (pay off from a rise in volatility itself, not just price direction).</li>
       <li>The honest tradeoff is cost-of-carry: a tail hedge is designed to lose money in calm years, by construction — that "bleed" is the premium for the protection, not a flaw to be optimized away.</li>
       <li>Whether a specific tail-hedge program's payoff justifies its cost, over a specific real history, is an empirical question this lesson does not answer — it explains the mechanism, not a validated edge.</li>
-      <li><strong>Real-world episode:</strong> March 2020. After years in which standing put protection mostly expired worthless, the S&amp;P 500 fell about 34% in five weeks and the VIX closed at a record 82.69. Long far out-of-the-money puts paid on both price and volatility, while gold and even Treasuries sold off for a time in the dash for cash. On this desk's data, gold is not a fear hedge (<code>fear-gold</code>, NULL).</li>
+      <li><strong>Real-world episode:</strong> March 2020. After years in which standing put protection mostly expired worthless, the S&amp;P 500 fell about 34% in five weeks and the VIX closed at a record 82.69. Long far out-of-the-money puts paid on both price and volatility, while gold and even Treasuries sold off for a time in the dash for cash.<!-- DESK:START --> On this desk's data, gold is not a fear hedge (<code>fear-gold</code>, NULL).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -391,6 +391,7 @@
     does not depend on correlation holding, which is the whole case for paying for convexity rather than hoping for it.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="fear-gold" data-evidence-date="2026-09-21">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>fear-gold: gold is not a fear hedge on this desk's data.</strong> The tempting cheap alternative to
@@ -399,6 +400,7 @@
     vs +1.20%, excess <strong>-1.19% [-2.30, -0.48]</strong>. No fear bid on average, and a month after a fear spike gold
     has lagged its ordinary drift. Holding gold carries no option-like convexity.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
@@ -496,8 +498,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Long convexity / tail hedges: small constant cost, large payoff exactly when needed.</strong> The worked example's calm-year drag (−1.5%/yr) versus crash-year payoff (+40%) shows the mechanism concretely.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The cost is real and by design — not a bug to eliminate.</strong> A tail hedge that never costs anything in calm markets isn't providing real protection; the premium bleed is the whole mechanism.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The multi-year compounding illustration is stylized, not empirical.</strong> Whether a specific hedge program's payoff justifies its cost over a specific real history depends entirely on the actual frequency and severity of crashes in that history — an empirical question this lesson does not claim to have answered.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Nothing here is built or backtested in this repo.</strong> This lesson explains the mechanism and the honest tradeoff; it is not a validated tail-hedge overlay or a claim that any such overlay has edge.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Gold is not a substitute for convexity (<code>fear-gold</code>, NULL).</strong> 58 VIX spikes: no fear bid at five sessions (+0.07% [-0.42, +0.30]), and gold lagged by −1.19% at twenty. In March 2020 gold and even Treasuries fell for a time in the dash for cash, while long puts paid on both price and volatility.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Nothing here is built or backtested in this repo.</strong> This lesson explains the mechanism and the honest tradeoff; it is not a validated tail-hedge overlay or a claim that any such overlay has edge.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Gold is not a substitute for convexity<!-- DESK:START --> (<code>fear-gold</code>, NULL)<!-- DESK:END -->.</strong><!-- DESK:START --> 58 VIX spikes: no fear bid at five sessions (+0.07% [-0.42, +0.30]), and gold lagged by −1.19% at twenty.<!-- DESK:END --> In March 2020 gold and even Treasuries fell for a time in the dash for cash, while long puts paid on both price and volatility.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

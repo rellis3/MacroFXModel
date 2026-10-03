@@ -17,7 +17,7 @@
   <h1 class="tl-title">Trend/Cycle Filters: Hodrick-Prescott, Butterworth &amp; Baxter-King</h1>
   <p class="tl-dek">Splitting a series into "the slow-moving trend" and "the cycle riding on top of it" is one of the most-used, and most-criticized, moves in applied macroeconomics — the Hodrick-Prescott filter is everywhere, has a documented, load-bearing flaw, and the band-pass alternatives exist specifically because of it.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — classical macro/signal-processing filters, explained here as background knowledge, not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT — classical macro/signal-processing filters, explained here as background knowledge<!-- DESK:START -->, not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: <a href="fourier-analysis-frequency-domain.html">Fourier Analysis &amp; the Frequency Domain</a></span>
   </div>
@@ -435,6 +435,7 @@
     can correct, so the real-time gap mixes a genuine cycle with a trend error of unknown size.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: "the output gap (or any trend/cycle reading) tells you where rates or currencies
@@ -444,6 +445,7 @@
     followed in 2-year yields and the currency, against a no-change benchmark, and report how often the real-time sign
     was later revised away.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -497,7 +499,7 @@
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Hamilton (2018): the HP filter has real, documented flaws.</strong> End-of-sample bias hits the most recent (most decision-relevant) observations hardest, and the filter can manufacture spurious cyclicality even from a pure random walk.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Butterworth and Baxter-King isolate an explicit cycle-length band instead.</strong> Baxter-King's classic 6-32 quarter "business cycle" band trades HP's end-point bias for a stated, cleaner data-loss tradeoff (losing K observations at each end).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The "business cycle band" is a convention, not a law.</strong> 6-32 quarters is Baxter &amp; King's chosen default, not a universal constant true of every series or every economy.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The newest gap estimate is the one that misleads (1970s).</strong> Real-time output gaps showed slack that revised data later erased; Orphanides &amp; van Norden (2002) traced most of the revision to the end of the sample, not to revised GDP. Whether a gap reading predicts rates or FX is untested here.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The newest gap estimate is the one that misleads (1970s).</strong> Real-time output gaps showed slack that revised data later erased; Orphanides &amp; van Norden (2002) traced most of the revision to the end of the sample, not to revised GDP.<!-- DESK:START --> Whether a gap reading predicts rates or FX is untested here.<!-- DESK:END --></span></div>
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>This lesson explains modeling tools, not a claim of edge.</strong> A trend/cycle split is descriptive; turning it into a trading rule still needs the same honest out-of-sample bar as anything else in this curriculum.</span></div>
   </div>
 

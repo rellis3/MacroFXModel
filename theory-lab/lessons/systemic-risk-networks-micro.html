@@ -251,7 +251,7 @@
       </div>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Said plainly</div>
-        <p>DebtRank and the network-contagion framing here are a financial-stability and market-structure research tool — the kind of analysis central banks and regulators run on interbank exposure data to stress-test the system. It is not, and is not presented here as, a component of any trading strategy in this repo. A repo-wide check for DebtRank, exposure-network, or contagion-modeling code found none — confirming this is still accurately described as theory, not built infrastructure.</p>
+        <p>DebtRank and the network-contagion framing here are a financial-stability and market-structure research tool — the kind of analysis central banks and regulators run on interbank exposure data to stress-test the system. It is not, and is not presented here as, a component of any trading strategy<!-- DESK:START --> in this repo<!-- DESK:END -->.<!-- DESK:START --> A repo-wide check for DebtRank, exposure-network, or contagion-modeling code found none — confirming this is still accurately described as theory, not built infrastructure.<!-- DESK:END --></p>
       </div>
     </section>
 
@@ -291,11 +291,13 @@
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
-      <h2 class="sl-h2">What this desk can say, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk can say<!-- DESK:END --></h2>
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
         <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>"Stress at a highly connected institution warns of a wider tape"</strong> is not tested here. The desk has no exposure-network data. A fair test would pre-register a public proxy, such as CDS jumps at the most connected banks, against a volatility-matched control on next-week range. It would test the proxy, not the network.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>DebtRank runs on a fixed W matrix, and distress travels when capital is lost. AIG's edges were contingent: collateral owed jumped with every fall in value and with its own downgrade, so the weights grew as distress rose, and cash drained out before any default. The swap exposures were private, so nobody could run the cascade in advance. The rescue stopped it, so AIG's DebtRank was never observed.</p>
@@ -363,7 +365,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Cascades can amplify, not just redistribute — the worked example's total settled distress (≈1.04) exceeded the size of the initiating shock (1.00).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>DebtRank is eigenvector centrality's dynamic cousin — same recursive shape, but simulating a real shock forward through time instead of describing a fixed structural score.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Real bilateral exposure data is confidential and regulator-held — this machinery is genuinely used at central banks, but only because they have reporting data nobody else can access.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>AIG, 2008: protection sold to many banks made one node's failure everyone's. Its edges were contingent (collateral jumped with each downgrade), so cash moved before default. Contagion stress as a trading signal is untested here.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>AIG, 2008: protection sold to many banks made one node's failure everyone's. Its edges were contingent (collateral jumped with each downgrade), so cash moved before default.<!-- DESK:START --> Contagion stress as a trading signal is untested here.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

@@ -77,7 +77,7 @@
         </svg>
       </div>
       <p class="sl-p">A backtest that grabs today's fully-revised 1.4% and treats it as what a trader saw on April 28th has handed itself information from the future — relative to that date. It's an easy leak to miss precisely because the revised number doesn't look like a leak; it looks like an ordinary historical data point.</p>
-      <p class="sl-p"><a href="feature-engineering-leakage-reproducibility-micro.html">Feature Engineering, Leakage &amp; Reproducibility</a> already flags this from one level up — a feature has to be computable from only what was genuinely knowable on its date. This deck goes one level deeper: what the data store itself has to do, mechanically, for that to even be possible. One real piece of that already exists in this repo: <code>js/laborMarketEngine.js</code>'s <code>revisionScore()</code> fetches both the current, fully-revised payrolls series and BLS's original first-published vintage, and scores the gap between them — a genuine, working revision-vintage check, not a hypothetical.</p>
+      <p class="sl-p"><a href="feature-engineering-leakage-reproducibility-micro.html">Feature Engineering, Leakage &amp; Reproducibility</a> already flags this from one level up — a feature has to be computable from only what was genuinely knowable on its date. This deck goes one level deeper: what the data store itself has to do, mechanically, for that to even be possible.<!-- DESK:START --> One real piece of that already exists in this repo: <code>js/laborMarketEngine.js</code>'s <code>revisionScore()</code> fetches both the current, fully-revised payrolls series and BLS's original first-published vintage, and scores the gap between them — a genuine, working revision-vintage check, not a hypothetical.<!-- DESK:END --></p>
     </section>
 
     <section class="sl-slide" data-slide="4">
@@ -235,6 +235,7 @@
       </div>
     </section>
 
+    <!-- DESK:START -->
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">What's actually built here, checked against the current code</h2>
@@ -248,6 +249,7 @@
         <p>The full lesson is explicitly marked as a concept lesson — it explains real industry and academic practice, not a claim about this repo's own pipeline, and it doesn't assert either system exists here. Re-checking the source confirms both halves still hold: <code>revisionScore()</code> is real, working code, and no broader point-in-time/survivorship-bias-free universe exists in this codebase as of this check — matching what <a href="feature-engineering-leakage-reproducibility-micro.html">Feature Engineering, Leakage &amp; Reproducibility</a> already found on the data-vintage side. (A related but distinct case: <code>RegimeV2/macro_overlay.py</code> notes that three legacy FX-vol tickers were delisted from Yahoo Finance and swapped for a FRED replacement — a real instance of an instrument disappearing, but a live-feed substitution, not a historical point-in-time universe.)</p>
       </div>
     </section>
+    <!-- DESK:END -->
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11 · It actually happened</div>
@@ -271,11 +273,13 @@
 
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
-      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
+      <!-- DESK:START -->
       <div class="sl-stamp null" data-evidence="level-touch" data-evidence-date="2026-09-10">
         <span class="sl-stamp-tag">Desk test: nothing found</span>
         <span><strong>level-touch, the desk's own survivorship episode:</strong> the original <strong>Sharpe 5.36</strong> came from a survivorship filter (only touches that later "held" were counted). Barrier-free re-test with paired controls at random non-level prices: the level increment over a random price is zero or negative.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>The usual telling treats survivorship as an optimistic shift in an average, fixed by adding the failures back. But survival depends on cumulative results, so the filter also builds a fake link between past and future performance. Persistence, momentum and "levels that hold" tests on a filtered sample inherit it.</p>
@@ -343,7 +347,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Survivorship bias silently excludes failures from a "what exists today" universe, and it's always optimistic — never a random, harmless omission.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Elton, Gruber &amp; Blake (1996) made this a measured fact, not an argument — a survivors-only mutual fund database meaningfully overstated true average performance.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A point-in-time universe fixes it, but it's genuinely harder and costlier to build than a "current universe, backfilled" database — it has to track membership as of each historical date.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Survivorship can invent a pattern, not just lift an average: a survivors-only fund database shows "hot hands" with no skill in it (1992). Desk verdict, NULL: a Sharpe 5.36 level strategy was a survivorship filter; honestly re-tested, the level adds zero or less over a random price.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Survivorship can invent a pattern, not just lift an average: a survivors-only fund database shows "hot hands" with no skill in it (1992).<!-- DESK:START --> Desk verdict, NULL: a Sharpe 5.36 level strategy was a survivorship filter; honestly re-tested, the level adds zero or less over a random price.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

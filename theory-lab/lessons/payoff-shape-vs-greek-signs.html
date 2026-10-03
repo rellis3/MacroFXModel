@@ -27,7 +27,7 @@
   <h1 class="tl-title">Same Greeks, Different Risk</h1>
   <p class="tl-dek">A short put and a short call carry the same signs on gamma, theta and vega — yet one can lose at most the strike and the other can lose without limit. The Greeks are local slopes; the payoff is the whole road, cliff included.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->; desk verdicts quoted where tested<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: <a href="options-four-positions.html">The Four Option Positions</a>, <a href="theta-decay.html">Theta Decay</a>, <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure</a></span>
   </div>
@@ -45,7 +45,7 @@
       <li>The reason is put-call parity: <strong>short call = short put + short forward.</strong> The forward has no gamma, no vega and almost no theta, so the Greeks can't see it — but it is a straight line with no floor, and it carries the whole unlimited tail.</li>
       <li>Greeks are a Taylor expansion around today's price. For a ±50 move on a 30-day ATM option, the Greek estimate says −113 and −111; the true losses are −47.8 and −47.6. Local slopes are not a map of the tails.</li>
       <li>Far in the money the short call's gamma and vega go to <em>zero</em> — the Greeks fall silent exactly where the loss is largest.</li>
-      <li><strong>Desk verdict on the dealer-level version ("short gamma amplifies"):</strong> range-only, Nasdaq-only, and the reliable state is long gamma being <em>quiet</em>. Direction from gamma is falsified, and it does not carry to FX.</li>
+      <!-- DESK:START --><li><strong>Desk verdict on the dealer-level version ("short gamma amplifies"):</strong> range-only, Nasdaq-only, and the reliable state is long gamma being <em>quiet</em>. Direction from gamma is falsified, and it does not carry to FX.</li><!-- DESK:END -->
     </ul>
   </div>
 
@@ -64,8 +64,8 @@
     — the aggregated version of this lesson, and the mechanism behind every GEX number on a
     screen (see <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging
     Flows</a>). "Short gamma" is a statement about the local slope of the book. It says nothing
-    about whether the book's tail is bounded, and as Section 04 shows, the desk's own test of
-    what dealer gamma predicts lands much more narrowly than the folk version.
+    about whether the book's tail is bounded<!-- DESK:START -->, and as Section 04 shows, the desk's own test of
+    what dealer gamma predicts lands much more narrowly than the folk version<!-- DESK:END -->.
   </p>
 
   <div class="tl-box intuition">
@@ -340,19 +340,23 @@
     that step: gamma is a <em>local</em> slope. It speaks to how much hedging flow a move of a
     given size triggers, not to which way the next move goes.
   </p>
-  <p>That is exactly where the desk's own test landed:</p>
+  <!-- DESK:START --><p>That is exactly where the desk's own test landed:</p><!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict validated" data-evidence="gex-range" data-evidence-date="2026-09-24">
     <span class="tl-verdict-tag">Desk test: held up (range only)</span>
     <span><strong>Tested here (pre-registered, 793 days of Nasdaq futures):</strong> next-day realised range against a same-trailing-vol Brownian baseline is <strong>+0.176 higher on short-gamma days (p 0.0008)</strong>, rising to <strong>+0.315</strong> when matched on trailing vol. Positive in 4 of 4 specifications and 6 of 6 usable years; FOMC/CPI/NFP/opex days contribute nothing extra (+0.306 vs +0.306). <strong>The asymmetry runs the other way from the folk version:</strong> short-gamma days sit at a range ratio of about 1.02 — essentially ordinary — while long-gamma days sit near 0.85. The reliable state is "long gamma is quiet", not "short gamma is wild".</span>
   </div>
+  <!-- DESK:END -->
+  <!-- DESK:START -->
   <div class="tl-verdict null">
     <span class="tl-verdict-tag">Desk test: no direction found</span>
     <span><strong>Gamma carries no directional content.</strong> The adjacent wall-magnet direction claim was falsified separately at 48.8% out-of-sample against a 49.9% placebo. And the range effect <strong>does not generalise to FX</strong> — it was tested there and does not carry.</span>
   </div>
+  <!-- DESK:END -->
   <p>
-    Read alongside this lesson, that result is close to what the mathematics would lead you to
-    expect. Gamma measures how sharply hedging needs change as price moves, so it is plausible it
+    <!-- DESK:START -->Read alongside this lesson, that result is close to what the mathematics would lead you to
+    expect. <!-- DESK:END -->Gamma measures how sharply hedging needs change as price moves, so it is plausible it
     says something about <em>how far</em> price travels. It has no term for <em>which way</em>
     — exactly as a short put and a short call share a gamma figure while pointing in opposite
     directions.
@@ -376,13 +380,16 @@
       <h4>Higher-order Greeks for the bend</h4>
       <p>Speed, vanna and volga track how gamma and vega themselves move — the next layer of the Taylor expansion (see <a href="second-order-greeks.html">Second-Order Greeks</a>). They improve the local picture; they still don't replace a full reprice.</p>
     </div>
+    <!-- DESK:START -->
     <div class="tl-icard">
       <div class="tl-icon-badge amber">📊</div>
       <h4>GEX as a range read</h4>
       <p>On this desk's evidence, dealer gamma belongs in a statement about expected range on the Nasdaq — "quieter than a vol-matched baseline" when long — and never in a statement about direction.</p>
     </div>
+    <!-- DESK:END -->
   </div>
 
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
@@ -394,6 +401,7 @@
       has not been re-scored against this result — the open item.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -403,7 +411,7 @@
     <p><strong>"Gamma near zero means the position is safe."</strong> A deep in-the-money short call has gamma and vega near zero and is losing one-for-one with every rally. Low gamma means <em>linear</em>, not <em>small</em>.</p>
     <p><strong>"The Taylor estimate is conservative."</strong> In the worked example it overstated a 50-point loss by more than double; in other configurations (a jump through a strike from just outside it) it understates. It is not reliably either.</p>
     <p><strong>"Bounded means small."</strong> The short put's loss is bounded at 97.80 for 2.20 collected — about 44 times the premium. Bounded is a property of the shape, not a statement about comfort.</p>
-    <p style="margin-bottom:0"><strong>"Short gamma means a breakout is coming."</strong> The desk's test found short-gamma days are essentially ordinary in range, long-gamma days are the quiet ones, and gamma carries no direction. On FX it carries nothing.</p>
+    <!-- DESK:START --><p style="margin-bottom:0"><strong>"Short gamma means a breakout is coming."</strong> The desk's test found short-gamma days are essentially ordinary in range, long-gamma days are the quiet ones, and gamma carries no direction. On FX it carries nothing.</p><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -412,10 +420,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Same signs, even same numbers.</strong> Short put and short call at one strike share gamma and vega exactly; theta differs by \(rKe^{-r\tau}\); delta by exactly 1.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Short call = short put + short forward.</strong> The forward is a straight line — invisible to gamma and vega — and it carries the entire unbounded tail.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Greeks are local; payoffs are global.</strong> Size shorts by stressed loss, not by Greek columns.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Validated on the Nasdaq: dealer gamma says something about range.</strong> +0.176 (p 0.0008) wider on short-gamma days vs a Brownian baseline, +0.315 vol-matched, 793 days — with long gamma (≈0.85) the informative, quiet state.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Validated on the Nasdaq: dealer gamma says something about range.</strong> +0.176 (p 0.0008) wider on short-gamma days vs a Brownian baseline, +0.315 vol-matched, 793 days — with long gamma (≈0.85) the informative, quiet state.</span></div><!-- DESK:END -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Low gamma is not low risk.</strong> Deep in the money, the short call's Greeks go quiet while its loss runs one-for-one.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Falsified: gamma as a direction signal.</strong> The adjacent wall-magnet direction test scored 48.8% out-of-sample against a 49.9% placebo.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Does not carry to FX.</strong> The range result is Nasdaq-only; on FX, say nothing from GEX.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Falsified: gamma as a direction signal.</strong> The adjacent wall-magnet direction test scored 48.8% out-of-sample against a 49.9% placebo.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Does not carry to FX.</strong> The range result is Nasdaq-only; on FX, say nothing from GEX.</span></div><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>
@@ -436,10 +444,12 @@
     <summary>Q4. Why did the Taylor estimate say −113 for a +50 move on the short call, when the true loss was −47.8?</summary>
     <div class="tl-answer">The estimate \(\Delta\delta S + \tfrac12\Gamma\delta S^2\) assumes gamma stays at its at-the-money value (0.0695) across the whole move. In reality gamma collapses as the call goes deep in the money and delta saturates at −1, so the true loss is roughly linear past the strike. The Greeks are a local expansion; a 50-point move on a 30-day option is not local.</div>
   </details>
+  <!-- DESK:START -->
   <details class="tl-quiz">
     <summary>Q5. What did the desk find when it tested "dealer short gamma amplifies moves"?</summary>
     <div class="tl-answer">On 793 days of Nasdaq futures, short-gamma days had +0.176 wider next-day range than a Brownian baseline (p 0.0008), +0.315 vol-matched — a real range effect. But short-gamma days are essentially ordinary (≈1.02); the informative state is long gamma being quiet (≈0.85). Gamma carries no direction (the wall-magnet direction test: 48.8% vs a 49.9% placebo), and the effect does not carry to FX.</div>
   </details>
+  <!-- DESK:END -->
   <details class="tl-quiz">
     <summary>Q6. In the VW squeeze, which of the four option positions was exposed in the same way as the short sellers, and why?</summary>
     <div class="tl-answer">The short call. Deep in the money, a short call's delta approaches −1 and it behaves like short stock: every euro of rally is a euro of loss, with no contractual cap. Short put holders, by contrast, would have been exposed only to a fall, which is bounded at zero.</div>

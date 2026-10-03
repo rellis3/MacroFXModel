@@ -27,7 +27,7 @@
   <h1 class="tl-title">Four Markets, Four Questions</h1>
   <p class="tl-dek">Stocks, Treasuries, options and currencies aren't four opinions on the same question — each answers a different one. Ask each market its own question, read the answers side by side, and the interesting days are the ones where they disagree.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->; desk verdicts quoted where tested<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: lessons 1–4 of this sequence</span>
   </div>
@@ -43,8 +43,8 @@
       <li><strong>Equities</strong> answer "how do investors feel about growth and earnings?" — mood. <strong>Treasuries</strong> answer "how much do people want safety, and what rate path is expected?" <strong>Options (the VIX)</strong> answer "how uncertain is everyone?" — size, not sign. <strong>FX</strong> answers "whose money do people want?" — relative rates and flows.</li>
       <li>A yield rise is ambiguous until you split it: <strong>nominal = real + breakeven inflation</strong>. Which leg moved tells you whether it's a growth/policy story or an inflation story.</li>
       <li>On most days the four answers agree. The days worth studying are the disagreements — stocks and bonds falling together, or the "safe" Treasury being sold in a crash.</li>
-      <li><strong>Read them in the same moment, not in sequence.</strong> This desk tested the "one market leads the other" claims and they came back null: <code>rates-pivot-lead</code>, <code>front-end-shock</code>, <code>curve-inversion</code>.</li>
-      <li>What did survive testing is <em>range</em>, read inside a market: <code>vix-inversion</code> and <code>breadth-all-down</code> are validated, and neither says which way.</li>
+      <li><strong>Read them in the same moment, not in sequence.</strong><!-- DESK:START --> This desk tested the "one market leads the other" claims and they came back null: <code>rates-pivot-lead</code>, <code>front-end-shock</code>, <code>curve-inversion</code>.<!-- DESK:END --></li>
+      <!-- DESK:START --><li>What did survive testing is <em>range</em>, read inside a market: <code>vix-inversion</code> and <code>breadth-all-down</code> are validated, and neither says which way.</li><!-- DESK:END -->
     </ul>
   </div>
 
@@ -110,12 +110,12 @@
   </div>
   <p>
     Two more witnesses are worth knowing. <strong>Gold</strong> answers more
-    than one question at once, which is exactly why it's hard to read — this
+    than one question at once, which is exactly why it's hard to read<!-- DESK:START --> — this
     desk's own breakdown found gold is driven by real rates in some periods,
     the dollar in others, and by neither almost half the time (see Section
-    06). <strong>Credit spreads</strong> — what companies pay over Treasuries
-    — answer "how worried are lenders about getting paid back?"; this desk
-    has a first, marginal reading on them but nothing to act on yet. And
+    06)<!-- DESK:END -->. <strong>Credit spreads</strong> — what companies pay over Treasuries
+    — answer "how worried are lenders about getting paid back?"<!-- DESK:START -->; this desk
+    has a first, marginal reading on them but nothing to act on yet<!-- DESK:END -->. And
     there's a fifth kind of market people sometimes add: <strong>prediction
     markets</strong>, which quote explicit probabilities. The idea is
     appealing, but the macro contracts there are thin — a "probability" from
@@ -173,8 +173,8 @@
     The Treasury market's two questions live at different ends. The front end
     answers "what will the central bank do?"; the long end mixes that with
     growth, inflation and the demand for safety. Lesson 4 covers the curve
-    in depth — including the desk's verdict that the inversion's famous
-    equity signal doesn't survive a control.
+    in depth<!-- DESK:START --> — including the desk's verdict that the inversion's famous
+    equity signal doesn't survive a control<!-- DESK:END -->.
   </p>
 
   <h3>3. Options: turning uncertainty into a size</h3>
@@ -206,7 +206,7 @@
     <tr><td>bp</td><td>Basis point: 0.01 percentage point.</td></tr>
     <tr><td>VIX, VIX3M</td><td>30-day and 3-month implied volatility of the S&amp;P 500.</td></tr>
     <tr><td>\(\sigma_{\text{1m}},\ \sigma_{\text{1d}}\)</td><td>One-month and one-day one-standard-deviation move.</td></tr>
-    <tr><td>ATR</td><td>Average True Range — the desk's yardstick for range.</td></tr>
+    <tr><td>ATR</td><td>Average True Range — a common yardstick for range.</td></tr>
   </table></div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -238,7 +238,7 @@
       <span><i style="background:var(--blue)"></i>neutral / mixed</span>
     </div>
     <div class="tl-chart-caption">
-      These are the conventional textbook answers, used here to teach what each question sounds like. They are <strong>same-moment descriptions</strong>, not predictions: this desk tested several "one market leads the next" links and found them null (Section 06). Real days are messier, and the markets don't always pick a scenario cleanly.
+      These are the conventional textbook answers, used here to teach what each question sounds like. They are <strong>same-moment descriptions</strong>, not predictions<!-- DESK:START -->: this desk tested several "one market leads the next" links and found them null (Section 06)<!-- DESK:END -->. Real days are messier, and the markets don't always pick a scenario cleanly.
     </div>
   </div>
 
@@ -271,7 +271,7 @@
       </div></div>
       <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body">
         <h4>Put it together — and stop there</h4>
-        <p>Four answers, one story: a hawkish rates shock, not a panic. What you should <em>not</em> do is forecast from it: this desk found a 2-year shock is not followed by a volatile FX week (if anything, calmer), and yield moves don't predict the next move in FX or indices.</p>
+        <p>Four answers, one story: a hawkish rates shock, not a panic. What you should <em>not</em> do is forecast from it<!-- DESK:START -->: this desk found a 2-year shock is not followed by a volatile FX week (if anything, calmer), and yield moves don't predict the next move in FX or indices<!-- DESK:END -->.</p>
       </div></div>
     </div>
   </div>
@@ -339,46 +339,59 @@
       heading?" — with "lower". It was right that a recession followed: the
       NBER later dated a peak to February 2020, though the cause was a
       pandemic no yield curve could have forecast. The equity market was
-      answering a different question — "what are future earnings worth?" —
+      answering a different question — "what are future earnings worth?"<!-- DESK:START --> —
       and on this desk's own count the Nasdaq rose 48.5% over the following
-      year. Both markets were right about their own question. Anyone who
+      year<!-- DESK:END -->. Both markets were right about their own question. Anyone who
       treated the curve's answer as an answer to the stock market's question
       was badly wrong.
     </p>
   </div>
 
+  <!-- DESK:START -->
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>What this desk found when it tested the links</h2>
   <p>
     Five verdicts used across this sequence bear directly on how the four
     markets relate. Read them together and a pattern jumps out.
   </p>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="curve-inversion" data-evidence-date="2026-10-01">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>Treasuries → equities: the inverted curve</strong> (<code>curve-inversion</code>). 12,581 daily observations 1976–2026 collapse to TEN inversion episodes. Recession within 24 months followed 6 of 10 — 60%, 95% CI [31%, 83%], an interval that contains a coin flip; within 12 months only 3 of 10. Forward Nasdaq against a month-matched control: +12m +10.5% vs +13.0% (p=0.33). The mirror killed it: steepening episodes returned −1.1% at +12m on n=6, worse than inversions. 2019-08: right about the recession, and +48.5% on the Nasdaq over the following year.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="front-end-shock" data-evidence-date="2026-09-17">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>Treasuries → equities, intraday: "confirm the rates pivot, then pre-position"</strong> (<code>rates-pivot-lead</code>). 2,430 confirmed 2-year pivots, 2,010 de-clustered events at 1h: signed Nasdaq return −0.005% vs control [−0.021, +0.012]. Null at 1h, 2h and 4h, in both directions and both halves, and well powered. A confirmed rates low is followed by an up-move 54.1% of the time — and the base rate is 54.1%. Rates and equities move in the same bar, not in sequence.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>Treasuries → FX: "a front-end shock means a volatile FX week"</strong> (<code>front-end-shock</code>). Null on EUR/USD, USD/JPY and GBP/USD (~211 shocks each). After a 2Y UP shock EUR/USD and GBP/USD ran <em>calmer</em> (−0.34 and −0.28 ATR, CIs clear of zero); after a 2Y DOWN shock USD/JPY was marginally wider (+0.33).</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict validated" data-evidence="breadth-all-down" data-evidence-date="2026-09-18">
     <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>Options, read inside its own market: VIX above VIX3M → a wider week</strong> (<code>vix-inversion</code>). First day of inversion → next-5-session range vs matched controls: SPX500 +0.76 ATR, NAS100 +0.82, USD/JPY +0.44, XAU/USD +0.43 (86 entries since 2008, all CIs clear of zero). Range, not direction.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict validated">
     <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>Equities, read inside its own market: every index down → a wider week</strong> (<code>breadth-all-down</code>). All six indices down on one session (n=1,002 since 2008): next-5 range SPX500 +0.31 ATR [+0.17, +0.45], NAS100 +0.26 [+0.15, +0.38]. Two in a row (n=243): +0.55 and +0.35. Direction five sessions later 58–61% up, the ordinary drift. A range fact, not a bounce call.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <p>
     Two more entries round out the picture: stocks and bonds falling together
     is recorded only as <strong>context</strong> (<code>stock-bond-flip</code>:
@@ -417,6 +430,7 @@
   <div class="tl-solid blue">
     <strong>The capstone finding:</strong> markets talk to each other <em>at the same moment</em>, not in a queue. Read all four answers together to understand today. Don't use one market's answer to forecast another's next move — every time this desk tested that, it came back null. What does carry forward is <em>range</em>, read inside a market, and it never says which way.
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>How practitioners actually use this</h2>
@@ -439,10 +453,11 @@
     <div class="tl-icard">
       <div class="tl-icon-badge green">📏</div>
       <h4>Use range, not direction</h4>
-      <p>The tested, carry-forward signals here are range signals — a first-day VIX inversion, a breadth wipe-out. Size positions for a wider week; don't turn them into a call on which way.</p>
+      <p><!-- DESK:START -->The tested, carry-forward signals here are range signals — a first-day VIX inversion, a breadth wipe-out. <!-- DESK:END -->Size positions for a wider week; don't turn them into a call on which way.</p>
     </div>
   </div>
 
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
@@ -450,6 +465,7 @@
       Every verdict quoted here is an entry in <code>js/deskEvidence.js</code>. The real/breakeven split is already computed on the rates page, which names the dominant leg and refuses to compare legs that printed on different days. Labelling each market on the board with the question it answers is an open presentation idea, not yet built. Prediction markets are not wired in at all.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -457,7 +473,7 @@
     <ul>
       <li><strong>Asking a market the wrong question.</strong> The VIX can't tell you direction; the curve can't tell you what stocks will do next year.</li>
       <li><strong>Reading a yield move without the split.</strong> "Yields up" is a growth story or an inflation story, and they mean different things for every other market.</li>
-      <li><strong>Treating one market as a leading indicator of another.</strong> Tested here three ways for rates → equities and rates → FX; null each time. They move together in the same bar.</li>
+      <li><strong>Treating one market as a leading indicator of another.</strong><!-- DESK:START --> Tested here three ways for rates → equities and rates → FX; null each time.<!-- DESK:END --> They move together in the same bar.</li>
       <li><strong>Assuming Treasuries always rally in a crash.</strong> In a scramble for cash, the safest asset is sold too — March 2020.</li>
       <li><strong>Quoting a thin market's "probability".</strong> A price from a handful of trades isn't a consensus.</li>
     </ul>
@@ -469,9 +485,9 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Each market answers its own question.</strong> Equities: mood. Treasuries: safety demand and the rate path. Options: uncertainty (size). FX: whose money people want.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Split the yield: nominal ≈ real + breakeven.</strong> Whichever leg moved more is the driver.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Disagreement is the signal.</strong> Treasuries sold in a crash means a scramble for cash, not ordinary risk-off.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Range read inside a market is validated.</strong> First-day VIX inversion: SPX500 +0.76 ATR next week. Every index down: +0.31 [+0.17, +0.45]. Neither says which way.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The inverted curve's equity signal is null.</strong> 6 of 10 inversions followed by recession within 24 months, CI [31%, 83%]; forward Nasdaq no different from a matched control.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Rates don't lead equities or FX.</strong> rates-pivot-lead: 54.1% hit rate against a 54.1% base rate. front-end-shock: FX was calmer, not wilder, after a hawkish 2Y shock.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Range read inside a market is validated.</strong> First-day VIX inversion: SPX500 +0.76 ATR next week. Every index down: +0.31 [+0.17, +0.45]. Neither says which way.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The inverted curve's equity signal is null.</strong> 6 of 10 inversions followed by recession within 24 months, CI [31%, 83%]; forward Nasdaq no different from a matched control.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Rates don't lead equities or FX.</strong> rates-pivot-lead: 54.1% hit rate against a 54.1% base rate. front-end-shock: FX was calmer, not wilder, after a hawkish 2Y shock.</span></div><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 09</span></div>
@@ -488,18 +504,22 @@
     <summary>Q3. Stocks are down 4% and the 10-year yield is up. Why is that unusual, and what might it mean?</summary>
     <div class="tl-answer">In ordinary risk-off, Treasuries are bought as a haven and yields fall. Yields rising in a crash means Treasuries are being sold too — either an inflation/rates scare (check the split) or, in an extreme, a scramble for cash where even the safest asset is sold, as in March 2020.</div>
   </details>
+  <!-- DESK:START -->
   <details class="tl-quiz">
     <summary>Q4. A trader says: "The 2-year just put in a confirmed low — Nasdaq will rally next, get in now." What did this desk find?</summary>
     <div class="tl-answer">Null. Across 2,010 de-clustered events the signed Nasdaq return at 1h was −0.005% vs control [−0.021, +0.012]; a confirmed rates low was followed by an up-move 54.1% of the time, exactly the 54.1% base rate. Rates and equities move in the same bar, not in sequence.</div>
   </details>
+  <!-- DESK:END -->
   <details class="tl-quiz">
     <summary>Q5. In August 2019 the curve inverted and the Nasdaq then rose 48.5% over the year. Was the bond market "wrong"?</summary>
-    <div class="tl-answer">No — it answered a different question. The curve priced a lower future policy rate, and a recession did follow (driven by the pandemic). It never answered "what will stocks do?". Over fifty years the desk found inversions' forward equity returns don't separate from a matched control.</div>
+    <div class="tl-answer">No — it answered a different question. The curve priced a lower future policy rate, and a recession did follow (driven by the pandemic). It never answered "what will stocks do?".<!-- DESK:START --> Over fifty years the desk found inversions' forward equity returns don't separate from a matched control.<!-- DESK:END --></div>
   </details>
+  <!-- DESK:START -->
   <details class="tl-quiz">
     <summary>Q6. Which of this desk's cross-market findings survived testing, and what do they have in common?</summary>
     <div class="tl-answer">The validated ones — vix-inversion, mv-vixterm-range, iv-over-rv-wider, breadth-all-down — are all <em>range</em> findings read inside a market, and none says which way. The nulls — curve-inversion, rates-pivot-lead, front-end-shock, yields-to-fx-direction, fear-gold — are all one market forecasting another's direction or behaviour.</div>
   </details>
+  <!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>
@@ -545,14 +565,14 @@
       ust: ['off','▼','Safety demand: high','Treasuries bought, yields fall','The haven is acting like a haven'],
       vix: ['off','▲','Uncertainty: rising','VIX up','Watch for VIX above VIX3M'],
       fx:  ['off','▲','Havens wanted','USD, JPY, CHF up','AUD down'],
-      note:'<b>Usually none.</b> If gold is up too, don’t call it fear: "fear buys gold" was tested here and is null — look for the rates or dollar leg instead.'
+      note:'<b>Usually none.</b> If gold is up too, don’t assume fear is the reason — look for the rates or dollar leg first.'
     },
     inflation: {
       eq:  ['off','▼','Mood: worried','Higher rates hit valuations',''],
       ust: ['odd','▲','Bonds ARE the problem','Yields up, breakevens lead','|ΔBEI| > |Δreal|'],
       vix: ['off','▲','Uncertainty: up','VIX higher',''],
       fx:  ['mix','◆','Relative rates','USD tends to firm if the Fed','is expected to stay hawkish'],
-      note:'<b>Stocks and bonds fall together</b> — the usual hedge fails. The desk records this only as context (stock-bond-flip: median 5 sessions; too few clean flips to test what follows).'
+      note:'<b>Stocks and bonds fall together</b> — the usual hedge fails.'
     },
     growth: {
       eq:  ['off','▼','Mood: earnings fear','Cyclicals lead lower',''],

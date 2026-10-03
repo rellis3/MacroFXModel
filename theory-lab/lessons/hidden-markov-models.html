@@ -17,7 +17,7 @@
   <h1 class="tl-title">Hidden Markov Models &amp; Regime Detection</h1>
   <p class="tl-dek">Markets don't announce whether they're trending or chopping — an HMM is a formal way to guess the unobserved state from what you can actually see, and to be honest about how confident that guess is.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not yet built in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not yet built in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: GARCH &amp; Volatility Clustering, Bayesian Inference</span>
   </div>
@@ -37,20 +37,20 @@
       <li>Every row of the \(N \times N\) transition matrix \(A\) sums to 1; the diagonal entries \(A_{ii}\) capture regime persistence, and expected regime duration is \(1/(1-A_{ii})\).</li>
       <li>The worked example uses \(A_{11}=0.70\) (stay trending) and \(A_{22}=0.85\) (stay choppy), implying trending stretches last about 3.3 days on average and choppy stretches about 6.7 days — choppy is both stickier and, at a long-run share of ~66.7% vs. ~33.3%, more common.</li>
       <li>All practical HMM use reduces to three problems: evaluation (forward algorithm — how likely is this data under the model), decoding (Viterbi — the single most likely hidden state path), and learning (Baum-Welch, an EM variant — estimate \(A\) and the emission parameters from data).</li>
-      <li>This is a concept lesson only — nothing here is built in this repo; it's an illustrative alternative to the existing hand-set <code>classifyRegime</code> and <code>dayTypeScore</code> classifiers, not a validated improvement over either.</li>
-      <li><strong>Real-world episode:</strong> 2022, when stocks and bonds fell together (S&amp;P 500 about −18%, the broad US bond index about −13%) after twenty years in which bonds had hedged stocks. A model whose states were learned on 2000–2021 had no state for it. This desk's spells of stocks and bonds falling together are mostly short (<code>stock-bond-flip</code>: median 5 sessions), and regime labels did not set up FX trades (<code>regime-divergence-fx</code>, null).</li>
+      <!-- DESK:START --><li>This is a concept lesson only — nothing here is built in this repo; it's an illustrative alternative to the existing hand-set <code>classifyRegime</code> and <code>dayTypeScore</code> classifiers, not a validated improvement over either.</li><!-- DESK:END -->
+      <li><strong>Real-world episode:</strong> 2022, when stocks and bonds fell together (S&amp;P 500 about −18%, the broad US bond index about −13%) after twenty years in which bonds had hedged stocks. A model whose states were learned on 2000–2021 had no state for it.<!-- DESK:START --> This desk's spells of stocks and bonds falling together are mostly short (<code>stock-bond-flip</code>: median 5 sessions), and regime labels did not set up FX trades (<code>regime-divergence-fx</code>, null).<!-- DESK:END --></li>
     </ul>
   </div>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
-  A huge amount of trading logic — in this repo and everywhere else — is secretly a <em>regime</em>
+  A huge amount of trading logic<!-- DESK:START --> — in this repo and everywhere else —<!-- DESK:END --> is secretly a <em>regime</em>
   bet. A trend-following rule only makes sense while the market is trending; the same rule bleeds
   money in a choppy, mean-reverting stretch. A mean-reversion rule is the mirror image. The GARCH
   lesson established that volatility itself clusters — calm periods and turbulent periods each
-  persist for a while before switching — and this repo's <code>classifyRegime</code> and
-  <code>dayTypeScore</code> already act on that idea with hand-set thresholds. This lesson introduces
+  persist for a while before switching<!-- DESK:START --> — and this repo's <code>classifyRegime</code> and
+  <code>dayTypeScore</code> already act on that idea with hand-set thresholds<!-- DESK:END -->. This lesson introduces
   a different, more general tool for the same underlying problem: the <strong>Hidden Markov Model</strong>
   (HMM). An HMM treats "which regime are we in" as an <em>unobserved</em> variable that has to be
   <em>inferred</em> from data, rather than read directly off a rule like "if realized vol crossed
@@ -609,11 +609,12 @@
   </div>
 
   <p>
-    The tempting trading claim: <em>work out which regime we're in, and that tells you what to do.</em> This desk
+    The tempting trading claim: <em>work out which regime we're in, and that tells you what to do.</em><!-- DESK:START --> This desk
     has measured how long stock-bond "falling together" spells last, and tested whether regime labels set up FX
-    trades.
+    trades.<!-- DESK:END -->
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict context" data-evidence="stock-bond-flip" data-evidence-date="2026-09-17">
     <span class="tl-verdict-tag">Desk data: base rate</span>
     <span><strong>stock-bond-flip: how long "stocks and bonds falling together" lasts.</strong> Negative 20-day
@@ -622,7 +623,9 @@
     (not a test): if a constant stay-probability gave a median of 5 sessions, it would put the 75th percentile
     near 10, not 17. The real spells have a longer tail than a fixed transition matrix produces.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="regime-divergence-fx" data-evidence-date="2026-09-20">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>regime-divergence-fx: regime labels as an FX setup.</strong> Per-currency growth/inflation regime
@@ -630,6 +633,7 @@
     GBP/USD −0.33pp [−0.86, +0.23]</strong>, USD/CAD −0.09pp, EUR/GBP −0.11pp; return differences all through zero.
     Knowing the regimes described the backdrop; it did not set up a trade.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -657,7 +661,7 @@
     <div class="tl-icard">
       <div class="tl-icon-badge amber">🧭</div>
       <h4>One voice among several</h4>
-      <p>Practitioners rarely bet size purely on an HMM's call — it's blended with other regime signals, mirroring this repo's own scores/selectors philosophy.</p>
+      <p>Practitioners rarely bet size purely on an HMM's call — it's blended with other regime signals<!-- DESK:START -->, mirroring this repo's own scores/selectors philosophy<!-- DESK:END -->.</p>
     </div>
   </div>
 
@@ -687,7 +691,7 @@
       <strong>Overfitting the number of states.</strong> Adding more hidden states will essentially
       always increase the fitted likelihood (more free parameters, more flexibility) — that alone is
       not evidence a richer state structure is real. Model-selection criteria that penalize parameter
-      count (AIC/BIC), and — more importantly per this repo's own standard — genuine out-of-sample
+      count (AIC/BIC), and <!-- DESK:START -->— more importantly per this repo's own standard — <!-- DESK:END -->genuine out-of-sample
       validation, are needed before trusting a bigger model over a simpler one.
       </li>
       <li>
@@ -719,8 +723,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Baum-Welch is Expectation-Maximization</strong>: guess the state probabilities (E-step), refit the parameters as if the guess were truth (M-step), repeat until convergence to at least a local optimum.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Smoothed/Viterbi labels use future data — never use them live.</strong> A live signal needs the filtered probability \(P(S_t\mid O_{1:t})\), computed with only data up to now.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>More states always raise the likelihood — that's not evidence they're real.</strong> Use AIC/BIC and, above all, genuine OOS validation before trusting a richer state structure.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This is a concept lesson only.</strong> Nothing here is built in this repo — it's an illustrative alternative to <code>classifyRegime</code>/<code>dayTypeScore</code>, not a validated improvement over either.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>An HMM cannot infer a state its history never showed it.</strong> In 2022 stocks and bonds fell together after two decades in which bonds had hedged stocks, so a model trained on those years had the wrong "stress" state. On this desk, regime labels did not set up FX trades (regime-divergence-fx, NULL: EUR/USD +0.03pp [−0.48, +0.52]).</span></div>
+    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This is a concept lesson only.</strong> Nothing here is built in this repo — it's an illustrative alternative to <code>classifyRegime</code>/<code>dayTypeScore</code>, not a validated improvement over either.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>An HMM cannot infer a state its history never showed it.</strong> In 2022 stocks and bonds fell together after two decades in which bonds had hedged stocks, so a model trained on those years had the wrong "stress" state.<!-- DESK:START --> On this desk, regime labels did not set up FX trades (regime-divergence-fx, NULL: EUR/USD +0.03pp [−0.48, +0.52]).<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

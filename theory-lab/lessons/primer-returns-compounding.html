@@ -48,13 +48,13 @@
       trade.</li>
       <li>Volatility scales with the square root of time (\(\sigma_T =
       \sigma\sqrt{T}\)), not time itself, because variances of independent
-      periods add while standard deviations don't — the exact reason this
+      periods add while standard deviations don't<!-- DESK:START --> — the exact reason this
       repo's engines scale daily σ by √5 for weekly and √20 for 20-day
-      horizons instead of re-estimating from scratch.</li>
+      horizons instead of re-estimating from scratch<!-- DESK:END -->.</li>
       <li>The page's interactive chart lets you drag an annualized-volatility
       slider and watch the compounded-value line pull away from the fixed
       arithmetic-mean projection as σ²/2 drag grows quadratically with σ.</li>
-      <li><strong>Real-world episode:</strong> daily-reset leveraged and inverse ETFs compound \(\prod(1+kR_t)\), so their drag grows like \(k^2\sigma^2/2\); in a 2009 regulators' example an index rose 2% while its 2× fund fell 6%. On 5 February 2018 the VIX more than doubled and the XIV inverse-VIX note lost over 90% in an evening and was wound up. Whether short-vol carry pays on this desk is untested.</li>
+      <li><strong>Real-world episode:</strong> daily-reset leveraged and inverse ETFs compound \(\prod(1+kR_t)\), so their drag grows like \(k^2\sigma^2/2\); in a 2009 regulators' example an index rose 2% while its 2× fund fell 6%. On 5 February 2018 the VIX more than doubled and the XIV inverse-VIX note lost over 90% in an evening and was wound up.<!-- DESK:START --> Whether short-vol carry pays on this desk is untested.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -71,9 +71,9 @@
     exactly for small moves and diverge in ways that matter for large ones,
     and the gap between them is not a technicality — it is the reason a
     volatile strategy compounds slower than its own average return suggests,
-    the reason option pricing models assume prices are lognormal rather than
-    normal, and the reason this repo's forecast engine scales its volatility
-    bands by the square root of the horizon instead of the horizon itself.
+    and the reason option pricing models assume prices are lognormal rather than
+    normal<!-- DESK:START -->, as well as the reason this repo's forecast engine scales its volatility
+    bands by the square root of the horizon instead of the horizon itself<!-- DESK:END -->.
   </p>
   <p>
     This is the fourth and final math primer, and it closes the loop the
@@ -329,8 +329,8 @@
 
   <p>
     <strong>Why volatility scales with the square root of time.</strong> Log
-    returns being additive across time buys one more result, and it's the
-    one this repo's engines lean on daily (literally). Suppose one-period log
+    returns being additive across time buys one more result<!-- DESK:START -->, and it's the
+    one this repo's engines lean on daily (literally)<!-- DESK:END -->. Suppose one-period log
     returns \(r_1, \ldots, r_T\) are approximately independent of each other
     — a reasonable assumption for returns measured over non-overlapping
     windows with no strong serial correlation, and the same independence
@@ -541,6 +541,7 @@
     evenly across the years.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: that selling volatility, or holding an inverse-volatility product, earns a
@@ -548,6 +549,7 @@
     compounded (geometric) return rather than the average daily return, on a sample that includes jump sessions such
     as 5 February 2018 and March 2020, with each product's daily reset and early-redemption terms applied.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -668,7 +670,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Log returns add across time; simple returns don't.</strong> \(\ln(P_2/P_0)=\ln(P_1/P_0)+\ln(P_2/P_1)\) is exact for any size of move, while chaining simple returns picks up a cross term.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Arithmetic mean ≠ geometric mean.</strong> They coincide only at zero variance; the gap between them, \(g\approx\bar{R}-\sigma^2/2\), is volatility drag, and it grows with variance, not with the mean.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>+50% then −50% is a real 25% loss, not a wash.</strong> A 0% arithmetic average return can still lose real money once you're compounding — the whole primer in one trade.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Volatility scales with √T, not T.</strong> \(\sigma_T=\sigma\sqrt{T}\) falls directly out of variances adding for independent periods — the exact reason this repo scales daily σ by ×1/×√5/×√20 for daily/weekly/20-day horizons.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Volatility scales with √T, not T.</strong> \(\sigma_T=\sigma\sqrt{T}\) falls directly out of variances adding for independent periods<!-- DESK:START --> — the exact reason this repo scales daily σ by ×1/×√5/×√20 for daily/weekly/20-day horizons<!-- DESK:END -->.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Drag grows quadratically with σ.</strong> Doubling volatility quadruples the drag (σ², not σ) — which is why two strategies with identical average returns can compound to very different real outcomes.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>√T scaling assumes independence.</strong> Volatility clustering violates it in real markets, and under positive serial correlation, naive √T scaling understates true multi-period risk.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An unlabeled "average return" is ambiguous.</strong> A headline figure that doesn't say arithmetic or geometric should be treated as potentially the more flattering of the two numbers.</span></div>
@@ -713,9 +715,9 @@
       approximately independent periods add (\(\text{Var}(r_{0\to T}) =
       T\sigma^2\)) and standard deviation is the square root of variance.
       Going from 1 day to 16 days multiplies the horizon by 16, so volatility
-      scales by \(\sqrt{16}=4\) — quadruples — not by 16. This is exactly the
+      scales by \(\sqrt{16}=4\) — quadruples — not by 16.<!-- DESK:START --> This is exactly the
       ×1 / ×√5 / ×√20 scaling this project uses for its daily / weekly /
-      20-day horizons.
+      20-day horizons.<!-- DESK:END -->
     </div>
   </details>
   <details class="tl-quiz">

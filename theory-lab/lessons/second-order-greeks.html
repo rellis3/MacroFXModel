@@ -17,7 +17,7 @@
   <h1 class="tl-title">Second-Order Greeks: Vanna, Charm, Vomma &amp; More</h1>
   <p class="tl-dek">Gamma already asks how Delta responds to price. Six more named Greeks ask the same question for every other pair of inputs — and two of them generalize the dealer-hedging mechanism from a price-driven flow into a volatility-driven and a pure-time-driven one.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here, not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->, not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~20 min read</span>
     <span>Prereqs: Black-Scholes-Merton Option Pricing, Gamma Exposure &amp; Dealer Hedging Flows</span>
   </div>
@@ -37,7 +37,7 @@
       <li><strong>Speed, Color, and Zomma</strong> are gamma's sensitivities to price, time, and vol respectively — genuinely niche in daily practice, but real for very large books or fast-moving vol regimes.</li>
       <li>Vanna and vega are literally the same mixed partial derivative computed two different ways — \(\partial^2C/\partial S\partial\sigma = \partial^2C/\partial\sigma\partial S\) — a non-trivial, testable symmetry (Clairaut's/Schwarz's theorem), not a coincidence of notation.</li>
       <li>Aggregated across open interest, Vanna and Charm exposure generalize dealer-GEX into "vanna flows" and "charm flows" — real, mechanically sound, and typically <em>smaller in dollar magnitude</em> than gamma flows, not a claim that they're separately tradeable on their own.</li>
-      <li><strong>Real-world episode:</strong> on 15 January 2015 the Swiss franc floor went and EUR/CHF gapped by close to 30% in minutes while implied vol jumped from very low levels. Price and vol moved hugely <em>together</em>, so the Vanna and Vomma terms a risk report treats as rounding errors became the P&amp;L, and then the expansion itself stopped meaning anything. The popular claim that vanna/charm flows push prices around options expiry is <strong>untested</strong> here.</li>
+      <li><strong>Real-world episode:</strong> on 15 January 2015 the Swiss franc floor went and EUR/CHF gapped by close to 30% in minutes while implied vol jumped from very low levels. Price and vol moved hugely <em>together</em>, so the Vanna and Vomma terms a risk report treats as rounding errors became the P&amp;L, and then the expansion itself stopped meaning anything.<!-- DESK:START --> The popular claim that vanna/charm flows push prices around options expiry is <strong>untested</strong> here.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -617,6 +617,7 @@
     re-hedged in between.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Vanna and charm flows into options expiry: untested here.</strong> The tempting claim is that dealers'
@@ -625,12 +626,13 @@
     interest, a pre-registered direction and window (for example, the five sessions into monthly expiry), matched
     non-expiry weeks with the same volatility as controls, and a held-out period. None of that has been run.</span>
   </div>
-  <p>
+  <!-- DESK:END -->
+<!-- DESK:START -->  <p>
     The nearest thing the desk has measured is a gamma result, not a vanna or charm one. In its dealer-gamma study
     (<code>gex-range</code>) the vol-matched range effect was +0.306 on non-event days and +0.306 on event days, with
     options expiry among the event days, so expiry added nothing to the <em>gamma</em> range effect. That neither supports
     nor rules out a charm-driven <em>direction</em> into expiry, and it should not be quoted as if it did.
-  </p>
+  </p><!-- DESK:END -->
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
@@ -709,7 +711,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Speed, Color, and Zomma are genuinely niche.</strong> Real, correctly derived, and rarely tracked by real desks day to day — don't overstate their practical relevance relative to Vanna and Charm.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Vanna/charm flows are a second-order effect on top of gamma exposure, not a comparably sized force.</strong> The toy example showed roughly four orders of magnitude (about 28,000×) smaller in dollar terms — this lesson explains the mechanism, it is not a claim of a specific tradeable edge.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Every dollar exposure figure here still inherits the dealer-sign assumption from the GEX lesson.</strong> Whether dealers are actually net long or short any given strike remains unverifiable from open interest alone.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Second-order terms matter most exactly when price and vol jump together, and then the expansion fails.</strong> On 15 January 2015 EUR/CHF fell close to 30% in minutes as vol jumped; a delta- and vega-flat short-put book was unhedged against Vanna and Vomma, and then against the gap itself. "Vanna/charm flows into expiry" is untested on this desk.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Second-order terms matter most exactly when price and vol jump together, and then the expansion fails.</strong> On 15 January 2015 EUR/CHF fell close to 30% in minutes as vol jumped; a delta- and vega-flat short-put book was unhedged against Vanna and Vomma, and then against the gap itself.<!-- DESK:START --> "Vanna/charm flows into expiry" is untested on this desk.<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>

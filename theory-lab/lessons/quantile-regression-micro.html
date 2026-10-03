@@ -255,6 +255,7 @@
       </div>
     </section>
 
+    <!-- DESK:START -->
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Checked against this repo's actual code</h2>
@@ -267,6 +268,7 @@
       </div>
       <p class="sl-p">Both things can be true at once: the general technique this lesson teaches is still conceptual here, but the loss function underneath it is already load-bearing in production calibration code. Neither the original claim nor the correction is dropped — both are on this slide.</p>
     </section>
+    <!-- DESK:END -->
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11 · It actually happened</div>
@@ -290,11 +292,13 @@
 
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
-      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
+      <!-- DESK:START -->
       <div class="sl-stamp validated" data-evidence="vix-inversion" data-evidence-date="2026-09-17">
         <span class="sl-stamp-tag">Desk test: held up</span>
         <span><strong>vix-inversion, the nearest tested claim: conditions change the width of what comes next.</strong> First day of a VIX inversion, next-5-session range vs matched controls: SPX500 <strong>+0.76 ATR</strong>, NAS100 +0.82, USD/JPY +0.44, XAU/USD +0.43 (86 entries since 2008, all CIs clear of zero). Inversions are brief (median 1 session). Not a quantile regression, and a range statement, never a direction.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>The fit assumes a stable predictor-to-quantile relationship and enough tail data to pin a low-τ line down. Severe recessions are rare, so a τ=0.05 fit on postwar data rests on a handful of episodes. And the predictor is only as early as the stress it measures: the conditions index tightens as a crisis unfolds, not years before.</p>
@@ -362,7 +366,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>On heteroskedastic data, the fitted quantile lines fan out as the predictor grows — a single OLS mean line structurally cannot show that the spread itself is changing.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Quantile regression is conditional, unlike Cornish-Fisher's static moment-based adjustment — the fitted tail moves automatically as live predictors like realized volatility move.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Quantile crossing is a real, documented limitation — separately-fit τ lines aren't guaranteed to stay correctly ordered everywhere.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>"Vulnerable Growth": tighter financial conditions dropped the fitted 5th percentile of future growth while the median barely moved; the IMF built Growth-at-Risk on it. The desk's nearest test (vix-inversion, validated) likewise moves the range, not the direction.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>"Vulnerable Growth": tighter financial conditions dropped the fitted 5th percentile of future growth while the median barely moved; the IMF built Growth-at-Risk on it.<!-- DESK:START --> The desk's nearest test (vix-inversion, validated) likewise moves the range, not the direction.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

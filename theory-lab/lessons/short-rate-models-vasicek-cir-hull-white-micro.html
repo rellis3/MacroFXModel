@@ -213,17 +213,17 @@
 
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
-      <h2 class="sl-h2">Where this fits — in theory, and in this repo</h2>
+      <h2 class="sl-h2">Where this fits — in theory<!-- DESK:START -->, and in this repo<!-- DESK:END --></h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Vasicek / CIR — intuition and stress-testing</h4><p>Rarely used directly for pricing exotic rate derivatives today, but still the standard teaching baseline for choosing between Gaussian and positivity-preserving assumptions.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Hull-White — actual derivatives pricing</h4><p>Its exact fit to today's curve is what makes it (and its extensions) genuinely usable — a model that disagrees with the market on plain-vanilla instruments can't be trusted on anything exotic built on top of it.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🧮</div><div><h4>Feller as a fitted-parameter check</h4><p>Whenever CIR-type variance processes (including Heston's) are calibrated to data, checking 2ab≥σ² against the fit is standard due diligence — a mild violation doesn't invalidate the model, it just means zero-touching needs explicit handling.</p></div></div>
       </div>
       <p class="sl-p">This lesson leans on three earlier ones directly: <code>ou-mean-reversion.html</code> supplies Vasicek's entire derivation unchanged, <code>sde-existence-uniqueness.html</code>'s Lipschitz caveat is exactly what CIR's √rₜ term triggers, and <code>bond-pricing-ytm.html</code> / <code>yield-curve-construction.html</code> supply the observed curve Hull-White's θ(t) is calibrated to match.</p>
-      <div class="sl-callout amber">
+<!-- DESK:START -->      <div class="sl-callout amber">
         <div class="sl-callout-label">Checked against this repo's actual code</div>
         <p>None of Vasicek, CIR, or Hull-White exist anywhere in this repo's trading code — verified directly across every .js and .html file. This is an FX/macro trading system, not a rates desk, so that's expected. The one OU-style mean-reversion code that <em>does</em> exist, <code>js/rangeBiasCore.js</code>, is a genuinely different application: ADX- and Hurst-based range-bias scoring for FX entry signals, not a model of an interest rate's own dynamics — it contains no drift/diffusion SDE, no θ or half-life, nothing resembling rₜ. Nothing here is stale or contradicted; this confirms the full lesson's implicit assumption rather than correcting it.</p>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="12">
@@ -247,13 +247,15 @@
     </section>
 
     <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12 · Tested here</div>
-      <h2 class="sl-h2">The verdict, and where the textbook breaks</h2>
+      <div class="sl-kicker">Section 12<!-- DESK:START --> · Tested here<!-- DESK:END --></div>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and the verdict<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: the short rate mean-reverts to b, so fade it when it's far away.</p>
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
         <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>Not tested on this desk.</strong> A fair test: rolling estimates of a and b, 12-month-ahead forecasts scored out of sample against no-change and the forward curve, across regimes including 2014–2022. Policy rates move in a few long regimes, so expect it to be underpowered.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-quote">CIR puts a hard wall at zero; Vasicek puts no wall anywhere. The data had a <strong>soft floor below zero</strong>, set by the cost of holding cash, and a rate that sat pinned for eight years and then rose 4.5 points in fourteen months. Neither boundary, and no constant b, fits that.</div>
     </section>
 
@@ -317,8 +319,8 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>CIR's σ√rₜ diffusion shrinks toward zero as rₜ→0, keeping the process positive under the Feller condition 2ab≥σ².</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>That same σ√rₜ term fails the Lipschitz condition from <code>sde-existence-uniqueness.html</code> — CIR needs the separate Yamada-Watanabe conditions instead.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Hull-White's time-dependent θ(t) is the standard fix for fitting today's entire observed yield curve exactly — one substitution over Vasicek, the rest unchanged.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>None of these three run in this repo's actual trading code — they're rates-desk theory, distinct from the FX price range-bias features in <code>js/rangeBiasCore.js</code>.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Real-world episode: 2014–2022 below zero. Desks moved to normal vol and shifted models, but rates found a soft floor near −0.75% that neither CIR (wall at zero) nor Vasicek (no wall) has. Mean reversion of the short rate as a trade is untested here.</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">06</div><p>None of these three run in this repo's actual trading code — they're rates-desk theory, distinct from the FX price range-bias features in <code>js/rangeBiasCore.js</code>.</p></div><!-- DESK:END -->
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Real-world episode: 2014–2022 below zero. Desks moved to normal vol and shifted models, but rates found a soft floor near −0.75% that neither CIR (wall at zero) nor Vasicek (no wall) has.<!-- DESK:START --> Mean reversion of the short rate as a trade is untested here.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

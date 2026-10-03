@@ -17,7 +17,7 @@
   <h1 class="tl-title">The Ornstein-Uhlenbeck Process &amp; Mean Reversion</h1>
   <p class="tl-dek">A price that "wants" to go somewhere and a price that just wanders are different mathematical objects — the OU process is the equation that tells them apart, and gives mean reversion an actual speed.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not yet fit/tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not yet fit/tested in this repo<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: none required, EMH lesson helpful for framing</span>
   </div>
@@ -37,7 +37,7 @@
       <li>Half-life of mean reversion is \(t_{1/2} = \ln(2)/\theta\), derived by solving the drift-only decay \(\mathbb{E}[X_t-\mu] = (X_0-\mu)e^{-\theta t}\) for the time the expected deviation shrinks by half.</li>
       <li>To fit this to daily data you regress an AR(1), \(X_t = \mu(1-\phi) + \phi X_{t-1} + \epsilon_t\), then convert \(\phi \to \theta\) via \(\theta = -\ln(\phi)/\Delta t\); the worked example uses \(\phi = 0.90 \Rightarrow \theta \approx 0.105\)/day \(\Rightarrow\) half-life \(\approx 6.58\) days (and contrasts \(\phi=0.98 \Rightarrow \approx 34.3\) days).</li>
       <li>The interactive slider defaults to \(\theta = 0.15\), showing a half-life of \(\approx 4.6\) days for the simulated mean-reverting path.</li>
-      <li><strong>Real-world episode:</strong> the August 2007 "quant quake". Crowded mean-reversion books lost heavily on 7–9 August as forced selling pushed prices further from fair value, then the reversion arrived on 10 August, too late for funds already forced out. This desk's OU-band test was underpowered (<code>ou-bands-fx-crosses</code>: only 4 of 68 trades reached the target) and its daily band fade was null (<code>daily-band-fade</code>).</li>
+      <li><strong>Real-world episode:</strong> the August 2007 "quant quake". Crowded mean-reversion books lost heavily on 7–9 August as forced selling pushed prices further from fair value, then the reversion arrived on 10 August, too late for funds already forced out.<!-- DESK:START --> This desk's OU-band test was underpowered (<code>ou-bands-fx-crosses</code>: only 4 of 68 trades reached the target) and its daily band fade was null (<code>daily-band-fade</code>).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -47,21 +47,21 @@
     Half of trading-strategy design boils down to one question asked over and over
     at different timescales: <em>if price is away from "normal," does it tend to come
     back, and if so how fast?</em> "Fade the move" and "follow the move" are opposite
-    bets on the answer. Right now in this codebase that question is answered by a
+    bets on the answer. <!-- DESK:START -->Right now in this codebase that question is answered by a
     same-day heuristic — this project's own trend-day-ness score
     <code>T</code> = drift ÷ diffusion, blended from several rolling-window
     estimators (efficiency ratio, variance ratio, Hurst exponent, and friends).
     Those are all reasonable proxies, but none of them produce a number you can
     say out loud to a non-quant: "this pair tends to revert halfway back to its
-    mean every <em>N</em> days."
+    mean every <em>N</em> days."<!-- DESK:END -->
   </p>
   <p>
-    The Ornstein-Uhlenbeck (OU) process is the textbook model that <em>does</em>
-    produce that number. It is not a trading strategy by itself — it is a precise
+    The Ornstein-Uhlenbeck (OU) process is the textbook model that answers it with
+    one number you can say out loud: how many days price takes to get halfway back to its mean. It is not a trading strategy by itself — it is a precise
     mathematical description of "mean reversion" that lets you (a) test whether a
     series reverts at all, (b) measure how fast, in real time units, and (c)
     compute a half-life you can compare across instruments and horizons. It shows
-    up constantly in the literature this repo already leans on for regime and
+    up constantly in the literature<!-- DESK:START --> this repo already leans on<!-- DESK:END --> for regime and
     reversion-vs-continuation logic, so it is worth having the actual equation in
     your head rather than just the word "mean-reverting" as a vibe.
   </p>
@@ -85,8 +85,8 @@
       That is an OU process. The "post" is the long-run mean \(\mu\) (mu). The
       "stiffness of the rubber band" is the mean-reversion speed \(\theta\) (theta)
       — a bigger \(\theta\) means a stiffer band, meaning the price snaps back
-      faster. The "random jostling" is Brownian noise scaled by \(\sigma\) (sigma),
-      the same volatility concept used everywhere else in this repo. A plain random
+      faster. The "random jostling" is Brownian noise scaled by \(\sigma\) (sigma)<!-- DESK:START -->,
+      the same volatility concept used everywhere else in this repo<!-- DESK:END -->. A plain random
       walk (ordinary Brownian motion, the model behind "prices don't have memory")
       is the special case where you cut the rubber band entirely: \(\theta = 0\),
       nothing pulls the ball back, and it really can wander off forever.
@@ -187,7 +187,7 @@
     <div class="tl-fp purple">
       <div class="tl-fp-term">σ dWₜ</div>
       <div class="tl-fp-name">The diffusion</div>
-      <div class="tl-fp-desc">The random, unpredictable jostle — same σ as everywhere else in this repo's vol math</div>
+      <div class="tl-fp-desc">The random, unpredictable jostle<!-- DESK:START --> — same σ as everywhere else in this repo's vol math<!-- DESK:END --></div>
     </div>
     <div class="tl-fp blue">
       <div class="tl-fp-term">dXₜ</div>
@@ -209,7 +209,7 @@
     <tr><td>\(\theta\)</td><td>(theta) The mean-reversion speed, a positive number. Larger \(\theta\) = stiffer pull back to \(\mu\) = faster reversion. \(\theta = 0\) means no pull at all — see the random-walk comparison below. \(\theta\) has units of "1 / time" (e.g. "per day"), which is exactly why it converts cleanly into a half-life measured in days.</td></tr>
     <tr><td>\((\mu - X_t)\)</td><td>The current deviation from the mean, with its sign. If price is above \(\mu\), this term is negative, pulling \(X\) down; if below \(\mu\), it's positive, pulling \(X\) up. This is the "restoring force," structurally identical to Hooke's law for a spring — the further you are from equilibrium, the harder you're pulled back, and the pull is always toward equilibrium, never away.</td></tr>
     <tr><td>\(\theta(\mu - X_t)\,dt\)</td><td>The <strong>drift term</strong>: the deterministic, predictable part of the next instant's move — restoring speed \(\times\) current deviation \(\times\) the length of the instant.</td></tr>
-    <tr><td>\(\sigma\)</td><td>(sigma) The volatility (diffusion) coefficient — how large the random shocks are. This is the same conceptual quantity as the \(\sigma\) used throughout this repo's vol math, just in continuous-time SDE units rather than daily-bar HV/GARCH units.</td></tr>
+    <tr><td>\(\sigma\)</td><td>(sigma) The volatility (diffusion) coefficient — how large the random shocks are.<!-- DESK:START --> This is the same conceptual quantity as the \(\sigma\) used throughout this repo's vol math, just in continuous-time SDE units rather than daily-bar HV/GARCH units.<!-- DESK:END --></td></tr>
     <tr><td>\(W_t\)</td><td>A Wiener process (standard Brownian motion) — the formal name for "pure random-walk noise with independent, normally distributed increments and no memory." \(dW_t\) is its infinitesimal increment: mean zero, variance \(dt\), unpredictable direction.</td></tr>
     <tr><td>\(\sigma\,dW_t\)</td><td>The <strong>diffusion term</strong>: the random, unpredictable part of the next instant's move, scaled by how volatile the process is.</td></tr>
   </table></div>
@@ -365,9 +365,9 @@
     "regress today's value on yesterday's value" coefficient you'd get from a
     linear regression of \(X_t\) on \(X_{t-1}\) — and \(\epsilon_t\) is the
     regression's noise term (the discrete-time stand-in for \(\sigma\,dW_t\)).
-    This equation should look familiar: it's exactly the AR(1) form behind
+    This equation should look familiar: it's exactly the AR(1) form<!-- DESK:START --> behind
     this project's own framing of drift versus
-    diffusion, just written out with the mean term made explicit. The relationship
+    diffusion<!-- DESK:END -->, just written out with the mean term made explicit. The relationship
     \(\phi = e^{-\theta \Delta t}\) is the bridge between "a regression
     coefficient you can estimate from data" and "a mean-reversion speed with
     physical time units," and inverting it gives you \(\theta\) from a fitted
@@ -554,10 +554,11 @@
 
   <p>
     The tempting trading claim is the one this lesson invites: <em>fit θ, put bands around μ, and fade price
-    when it is stretched, holding for about a half-life.</em> This desk has tested both a literal OU-band version
-    and a plainer band fade.
+    when it is stretched, holding for about a half-life.</em><!-- DESK:START --> This desk has tested both a literal OU-band version
+    and a plainer band fade.<!-- DESK:END -->
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict underpowered" data-evidence="ou-bands-fx-crosses" data-evidence-date="2026-09-27">
     <span class="tl-verdict-tag">Desk test: too small to tell</span>
     <span><strong>ou-bands-fx-crosses: OU-optimal entry/exit bands vs fixed ±2σ bands</strong> on AUD/NZD, EUR/CHF,
@@ -567,7 +568,9 @@
     and only 4 (6%) reached the OU target.</strong> These crosses mostly drifted part of the way back and rarely
     finished the reversion.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="daily-band-fade" data-evidence-date="2026-09-23">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>daily-band-fade: a daily close outside a volatility band, faded toward the EMA20.</strong>
@@ -576,6 +579,7 @@
     made Sharpe 0.14 ± 0.30, the 82nd percentile of a random-entry control whose 95th is 0.40. Price outside the
     band was no more likely to come back than shuffled prices were.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -611,10 +615,10 @@
     biased toward 1 in finite samples (this is a known small-sample bias in
     AR(1)/unit-root estimation). A single point estimate of \(\theta\) or a
     half-life should come with a confidence interval or a bootstrap, not be
-    treated as a fixed physical constant — and per this repo's validation
+    treated as a fixed physical constant<!-- DESK:START --> — and per this repo's validation
     discipline, any resulting trading rule needs the same in-sample/out-of-sample
     split and minimum trade count as everything else here, not just a good-looking
-    in-sample fit.
+    in-sample fit<!-- DESK:END -->.
   </p>
 
   <div class="tl-box pitfall">
@@ -653,8 +657,8 @@
       changes across regimes — a spread might revert briskly in calm markets and
       barely at all in a trending or crisis regime. A single full-sample \(\theta\)
       averages across regimes and can be a poor guide to what's happening right
-      now, echoing this repo's general caution about pooled-sample nulls hiding
-      subset behavior.
+      now<!-- DESK:START -->, echoing this repo's general caution about pooled-sample nulls hiding
+      subset behavior<!-- DESK:END -->.
     </p>
     <p>
       <strong>Half-life is an expectation about the mean path, not a promise
@@ -677,8 +681,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fit it via AR(1), not the raw SDE.</strong> Regress \(X_t\) on \(X_{t-1}\) to get \(\phi\), then convert with \(\theta=-\ln(\phi)/\Delta t\) — the worked example's \(\phi=0.90\) implies a ≈6.6-day half-life.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>φ ≥ 1 means the model doesn't apply, not "very slow reversion."</strong> The half-life formula breaks down (undefined or negative θ) — that's the algebra telling you to stop, not to force a number.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>θ, μ and σ are all assumed constant — real markets don't cooperate.</strong> A drifting "true" mean, small-sample bias toward φ≈1, and regime-dependent reversion speed can all distort a single full-sample fit.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing here is built or validated in this repo.</strong> This is a research candidate, not a described feature — it would need synthetic-data unit tests and a real OOS trade count before touching real prices.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A crowded rubber band can run backwards.</strong> In August 2007 forced selling pushed quant books' stocks away from fair value for three days before the reversion came. On this desk, OU bands on FX crosses were untestable (22 OOS trades; only 4 of 68 trades, 6%, reached the OU target) and a daily band fade was null (t 0.85).</span></div>
+    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing here is built or validated in this repo.</strong> This is a research candidate, not a described feature — it would need synthetic-data unit tests and a real OOS trade count before touching real prices.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A crowded rubber band can run backwards.</strong> In August 2007 forced selling pushed quant books' stocks away from fair value for three days before the reversion came.<!-- DESK:START --> On this desk, OU bands on FX crosses were untestable (22 OOS trades; only 4 of 68 trades, 6%, reached the OU target) and a daily band fade was null (t 0.85).<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -764,8 +768,8 @@
       driving the mean reversion (e.g. a hedge ratio, a cointegration link, a
       macro relationship) weakens or breaks, and is estimated with small-sample
       noise and bias in any given fit. A single \(\theta\) from one sample window
-      is a snapshot, not a law — this repo's discipline around disaggregating
-      pooled nulls and re-validating out-of-sample applies directly here: a fit
+      is a snapshot, not a law<!-- DESK:START --> — this repo's discipline around disaggregating
+      pooled nulls and re-validating out-of-sample applies directly here<!-- DESK:END -->: a fit
       that looked stable in one period needs to be checked again in fresh data,
       not assumed to persist.
     </div>

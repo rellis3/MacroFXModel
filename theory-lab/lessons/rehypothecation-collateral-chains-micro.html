@@ -224,10 +224,12 @@
         <div class="sl-icard"><div class="sl-icard-badge">⇆</div><div><h4>A default in the middle hits both directions</h4><p>If C defaults, it's simultaneously unable to return what it owes upward to B <em>and</em> unable to honor the pledge it made downward to D — a shock propagating both ways along one chain, at once.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Longer chains amplify, they don't just redistribute</h4><p>The same amplification the four-bank DebtRank example showed — total settled distress exceeding the initiating shock — applies here: more links means more parties whose own weakening feeds forward again.</p></div></div>
       </div>
+      <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Verified against this repo's actual code</div>
         <p>Both this lesson and the systemic-risk lesson before it are careful to say this is institutional theory, not built infrastructure. A fresh repo-wide search (rehypothecation, collateral chain, DebtRank, exposure network) turned up nothing beyond this Theory Lab content itself — the earlier lesson's own "no such code exists" finding still holds, and this lesson's is consistent with it. This remains institutional market-structure and regulatory knowledge, not a claim about anything built or traded in this repo.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="9">
@@ -267,7 +269,7 @@
       </div>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Said plainly</div>
-        <p>This is institutional market-structure and regulatory knowledge — useful for understanding counterparty risk, custody risk, and systemic interconnectedness. It is not a trading signal, and it does not describe anything built, tested, or traded in this repo.</p>
+        <p>This is institutional market-structure and regulatory knowledge — useful for understanding counterparty risk, custody risk, and systemic interconnectedness. It is not a trading signal<!-- DESK:START -->, and it does not describe anything built, tested, or traded in this repo<!-- DESK:END -->.</p>
       </div>
     </section>
 
@@ -293,11 +295,13 @@
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
-      <h2 class="sl-h2">What this desk can say, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk can say<!-- DESK:END --></h2>
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
         <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>"A broker in trouble shows up in prices before it fails, so counterparty stress can be traded around"</strong> is not tested here: the desk's funding tests use system-wide overnight rates, and none of its data samples a broker failure. A fair test needs failures and near-failures dated in advance, each firm's stock and CDS prices beforehand, and matched survivors. With so few failures it would be underpowered from the start.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>Segregation and re-use assume the rules are followed and the records are right, so every claim can be traced to an asset. In a run a firm has every incentive to treat the nearest cash as its own, and the books get reconciled afterwards. The re-use multiplier is measured in calm conditions; in a run, every link asks for its collateral back on the same day.</p>
@@ -365,7 +369,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The US and UK genuinely differed on how much could be rehypothecated — SEC Rule 15c3-3's roughly 140%-of-debit-balance cap versus a UK-law regime with no equivalent statutory ceiling at the time.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A longer chain means more parties exposed to one asset's failure — and a default in the middle of a chain propagates in both directions at once, to whoever it owed and whoever relied on its pledge.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A real collateral chain is a literal exposure network — the same directed, capital-weighted structure the systemic-risk lesson's DebtRank algorithm is built to propagate distress through.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>MF Global, 2011: segregated customer accounts came up roughly $1.6 billion short when the firm failed. "My collateral" is a legal claim on paper; in a run the firm needs cash first. Whether that stress can be traded around is untested here.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>MF Global, 2011: segregated customer accounts came up roughly $1.6 billion short when the firm failed. "My collateral" is a legal claim on paper; in a run the firm needs cash first.<!-- DESK:START --> Whether that stress can be traded around is untested here.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

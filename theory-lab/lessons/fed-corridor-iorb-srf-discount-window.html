@@ -24,7 +24,7 @@
   <h1 class="tl-title">The Fed's Corridor: IORB, the SRF and the Discount Window</h1>
   <p class="tl-dek">Every night trillions of dollars of cash are lent against Treasuries. The Fed doesn't set that price directly. It builds a floor under it and a ceiling over it, then lets the market find its level in between. This lesson covers the corridor: what each wall is, who leans on it, and what happened the two times it was tested.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->; desk verdicts quoted where tested<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: <a href="collateral-margin-repo-markets.html">Collateral, Margin &amp; Repo Markets</a></span>
   </div>
@@ -43,7 +43,7 @@
       <li><strong>The ceiling:</strong> the <strong>Standing Repo Facility (SRF)</strong>, made permanent in July 2021, lends cash against Treasuries at a fixed minimum rate. Nobody eligible should pay much more than that in the market. The <strong>discount window</strong> lends to banks at the same top-of-range rate, but borrowing there carries a stigma.</li>
       <li><strong>The mid-month chain:</strong> on tax dates, cash leaves money market funds, funds pull cash out of repo, cash gets scarcer, and SOFR rises. It's a calendar effect, not a crisis.</li>
       <li><strong>Two real tests:</strong> in September 2019 there was no standing ceiling, and SOFR spiked far above the target range until the Fed restarted repo operations. In March 2023, after SVB failed, discount-window borrowing hit a record and the Fed launched a new facility, the BTFP.</li>
-      <li><strong>The desk's verdict:</strong> SOFR above the floor and SRF usage are <strong>not stress signals</strong> (<code>funding-stress</code>, NULL). A drawn SRF was followed by a <em>calmer</em> tape, −0.561 ATR. That was the opposite of the desk's own written prior, and it matches the "arbitrage, not collapse" reading.</li>
+      <!-- DESK:START --><li><strong>The desk's verdict:</strong> SOFR above the floor and SRF usage are <strong>not stress signals</strong> (<code>funding-stress</code>, NULL). A drawn SRF was followed by a <em>calmer</em> tape, −0.561 ATR. That was the opposite of the desk's own written prior, and it matches the "arbitrage, not collapse" reading.</li><!-- DESK:END -->
     </ul>
   </div>
 
@@ -61,8 +61,8 @@
     It matters for reading a macro board because SOFR, the facility take-up numbers and the discount-window balance
     all get printed as if they were stress gauges. Most of the time they aren't. They move with the calendar: month-end
     balance-sheet dressing, mid-month tax dates, Treasury settlement days. Knowing which wall a rate is pressing against,
-    and why, separates "the plumbing is doing its job" from "something is breaking." This desk tested that
-    distinction on its own data, and the result went against its own prior.
+    and why, separates "the plumbing is doing its job" from "something is breaking."<!-- DESK:START --> This desk tested that
+    distinction on its own data, and the result went against its own prior.<!-- DESK:END -->
   </p>
 
   <div class="tl-box intuition">
@@ -387,8 +387,8 @@
     <p style="margin-bottom:0">
       The honest read is "calendar tightness, ceiling working," not a risk-off signal. What <em>would</em> change the
       read: the rate staying elevated for days after the tax date; SOFR blowing well past the SRF rate; or large and
-      rising discount-window borrowing outside a quarter-end. Even then, this desk's own tests (Section 06) say to be
-      careful about acting on it.
+      rising discount-window borrowing outside a quarter-end.<!-- DESK:START --> Even then, this desk's own tests (Section 06) say to be
+      careful about acting on it.<!-- DESK:END -->
     </p>
   </div>
 
@@ -448,6 +448,7 @@
     <p>In 2019 there was no "always-open" borrowing door, so when cash ran short on tax day, the price of borrowing shot up until the Fed rushed to open one. In 2023 a bank got into real trouble because people pulled their money out all at once, and the Fed opened a special door so banks wouldn't have to sell their bonds at a loss. The first was a traffic jam; the second was a real accident.</p>
   </div>
 
+  <!-- DESK:START -->
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>What this desk found when it tested the claim</h2>
   <p>
@@ -455,7 +456,9 @@
     warning, so expect wider, rougher markets next.</em> This desk pre-registered that test and ran it on its own data
     (2,123 SOFR sessions, 2018-04 to 2026-09, next-five-session range against an ATR-quintile-matched control).
   </p>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="funding-stress" data-evidence-date="2026-10-02">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>funding-stress: SOFR above the floor is the calendar, not stress.</strong> With month-end excluded,
@@ -464,7 +467,9 @@
     above. Removing month-end didn't remove the calendar; it revealed a different one. Direction was null on all three
     instruments.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>funding-stress: a drawn SRF was followed by a CALMER tape, not a wider one.</strong> 21 episodes. SPX500
@@ -473,7 +478,9 @@
     <strong>667 of 2,123 sessions (31%)</strong>, which makes "the backstop was used" routine plumbing rather than a stress
     marker.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict context" data-evidence="repo-stress-range" data-evidence-date="2026-09-20">
     <span class="tl-verdict-tag">Desk data: base rate</span>
     <span><strong>repo-stress-range: the 99th-percentile SOFR spike is month-end plumbing.</strong> 26 episodes 2018–2026.
@@ -481,7 +488,9 @@
     [−0.76, +0.93], and the dollar moved <em>less</em> than usual (0.45% vs 0.59%). The setup fires on a quarter of all
     sessions since 2024. Read it as month-end tightness unless the backstops are in use.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-solid amber">
     <strong>The framing beat the desk's own prior.</strong> The pre-registered expectation was that a drawn SRF
     precedes <em>wider</em> ranges: the instinctive "the backstop was used, so something is wrong" reading. The data
@@ -496,6 +505,7 @@
     stress matters when the facility is <em>not</em> there to cap it, which is September 2019's world, not today's. And
     these are range findings: they say nothing about which way markets move.
   </p>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>How practitioners actually use this</h2>
@@ -522,6 +532,7 @@
     </div>
   </div>
 
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
@@ -534,13 +545,14 @@
       a used/not-used flag.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <h3>Where the corridor gets misread</h3>
     <ul>
-      <li><strong>Reading SRF usage as an alarm.</strong> It is drawn on about a third of sessions. On most of those days it's simply the cheapest cash. The desk's test found calmer, not rougher, markets afterwards.</li>
+      <li><strong>Reading SRF usage as an alarm.</strong> It is drawn on about a third of sessions. On most of those days it's simply the cheapest cash.<!-- DESK:START --> The desk's test found calmer, not rougher, markets afterwards.<!-- DESK:END --></li>
       <li><strong>Forgetting the calendar.</strong> A SOFR jump on the 15th or the last business day of a quarter is almost always tax, settlement or balance-sheet dressing.</li>
       <li><strong>Treating the ceiling as hard.</strong> SOFR can print a few basis points above the SRF rate because not every borrower has access, and some avoid any Fed facility. "Capped near" is more accurate than "capped at."</li>
       <li><strong>Lumping the two doors together.</strong> The SRF and the discount window may charge the same rate, but they serve different users, take different collateral and carry very different signalling weight.</li>
@@ -555,9 +567,9 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Each wall is an arbitrage.</strong> No one lends below what the Fed pays them; no one with access borrows above what the Fed charges.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The mid-month chain is calendar, not crisis.</strong> Tax date → money fund withdrawals → funds pull cash from repo → cash scarcer → SOFR lifts.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Two doors, two meanings.</strong> The SRF is the routine price cap; the discount window is the stigmatised emergency door, used in size in March 2023 alongside the new BTFP.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>SOFR above the floor is not a stress signal on this desk's data (funding-stress, NULL).</strong> 12 of 15 non-month-end episodes land on the 14th–18th of a month.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A drawn SRF did not precede a wider tape; the desk's prior lost.</strong> SPX500 −0.561 ATR [−0.984, −0.181] (calmer), with the SRF drawn on 667 of 2,123 sessions (31%). Reported as measured, not as proof the backstop works.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The ceiling is soft, and the sample has no crisis.</strong> September 2019's spike happened without a standing ceiling. Whether stress matters when no facility caps it is still untested here.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>SOFR above the floor is not a stress signal on this desk's data (funding-stress, NULL).</strong> 12 of 15 non-month-end episodes land on the 14th–18th of a month.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A drawn SRF did not precede a wider tape; the desk's prior lost.</strong> SPX500 −0.561 ATR [−0.984, −0.181] (calmer), with the SRF drawn on 667 of 2,123 sessions (31%). Reported as measured, not as proof the backstop works.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The ceiling is soft, and the sample has no crisis.</strong> September 2019's spike happened without a standing ceiling.<!-- DESK:START --> Whether stress matters when no facility caps it is still untested here.<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 09</span></div>
@@ -578,10 +590,12 @@
     <summary>Q4. What was different about September 2019 compared with a tight day today?</summary>
     <div class="tl-answer">In 2019 there was no standing ceiling. When tax payments and Treasury settlement drained cash on the same day, nothing capped the overnight rate, and SOFR printed 5.25% against a 2.00–2.25% target range until the New York Fed restarted repo operations. Today the Standing Repo Facility is always available at the top of the range, so on a similar day dealers would borrow there instead and the market rate would be capped near the SRF rate.</div>
   </details>
+  <!-- DESK:START -->
   <details class="tl-quiz">
     <summary>Q5. The desk found SPX500 ranges were narrower (−0.561 ATR) after SRF draws. Why can't you conclude "the backstop works"?</summary>
     <div class="tl-answer">Because the SRF is drawn on 31% of sessions, so SRF days are mostly ordinary days, and the 2018–2026 sample contains no crisis. The comparison can't show what would have happened without the facility. The result does refute the original prior (that SRF use warns of wider markets), and it fits the "arbitrage, not collapse" reading. But it is a range finding with no counterfactual, not proof the backstop prevents stress.</div>
   </details>
+  <!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>

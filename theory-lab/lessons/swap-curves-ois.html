@@ -17,7 +17,7 @@
   <h1 class="tl-title">Swap Curves &amp; OIS Discounting</h1>
   <p class="tl-dek">Government bond yields carry the idiosyncratic scars of whoever happens to be issuing and repo-ing that specific bond. A swap is a pure, unbundled bet on interest rates — which is exactly why swap curves, and increasingly OIS curves, replaced government bond curves as the market's working definition of "risk-free," and why the 2008 crisis forced the industry to split one curve into two.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Curve Fitting: Nelson-Siegel &amp; Svensson</span>
   </div>
@@ -37,7 +37,7 @@
       <li>Post-2008, the industry moved from LIBOR discounting to <strong>OIS discounting</strong> for collateralized derivatives because LIBOR (an unsecured interbank lending rate) embeds bank credit risk, while OIS/SOFR (secured, overnight, nearly risk-free) essentially doesn't — the gap between the two blew out from a few basis points to well over 100bp during the crisis.</li>
       <li>The <strong>multi-curve framework</strong> formalizes the split: one curve (OIS) discounts cashflows to present value, a separate curve (a SOFR-derived forward curve) forecasts the floating leg's future resets — pre-2008 these were, in practice, the same curve; post-2008 they structurally are not.</li>
       <li>The worked example prices a 2-year annual-pay swap off a flat 3% OIS curve: the par rate comes out to ≈3.00%, and marking an off-market swap actually trading at a fixed rate of 3.2% gives a value to the fixed-rate payer of about <strong>−$38,269</strong> on a $10,000,000 notional — close to zero at the fair rate, meaningfully negative when locked into paying above it.</li>
-      <li><strong>Real-world episode:</strong> LIBOR in the crisis and after. In 2007–08 some panel banks submitted artificially low rates to look healthy, and traders had long asked for favourable fixes; Barclays (about $450m, June 2012) and UBS (about $1.5bn) settled, and a transaction-based SOFR replaced the survey. The SOFR-era version of "the funding spread is a stress gauge" tested <strong>NULL</strong> here (<code>funding-stress</code>).</li>
+      <li><strong>Real-world episode:</strong> LIBOR in the crisis and after. In 2007–08 some panel banks submitted artificially low rates to look healthy, and traders had long asked for favourable fixes; Barclays (about $450m, June 2012) and UBS (about $1.5bn) settled, and a transaction-based SOFR replaced the survey.<!-- DESK:START --> The SOFR-era version of "the funding spread is a stress gauge" tested <strong>NULL</strong> here (<code>funding-stress</code>).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -602,9 +602,10 @@
   <p>
     The tempting claim this lesson leaves behind is in Section 02: the funding spread is a real-time stress
     gauge. LIBOR-OIS no longer exists, so the SOFR-era version is the one a trader would reach for: SOFR trading
-    above the Fed's floor, or the Standing Repo Facility being drawn. This desk pre-registered that test.
+    above the Fed's floor, or the Standing Repo Facility being drawn.<!-- DESK:START --> This desk pre-registered that test.<!-- DESK:END -->
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="funding-stress" data-evidence-date="2026-10-02">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>funding-stress: SOFR above the floor is the calendar, and a drawn SRF preceded a calmer
@@ -614,11 +615,12 @@
     <strong>−0.561 ATR [−0.984, −0.181]</strong> versus control, and the SRF is drawn on <strong>667 of 2,123
     sessions (31%)</strong>.</span>
   </div>
-  <p>
+  <!-- DESK:END -->
+<!-- DESK:START -->  <p>
     What this does not test: a credit spread like LIBOR-OIS, which measured whether banks trusted each other.
     That gauge went with LIBOR, and the desk's sample starts in 2018 and contains no banking crisis of the 2008
     kind.
-  </p>
+  </p><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -705,7 +707,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The multi-curve framework splits discounting from forecasting</strong> — one curve (OIS) discounts, a separate curve (a SOFR-derived forward curve) forecasts floating resets; pre-2008 these were, in effect, one curve.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>"Risk-free" is a practical approximation, not a literal one.</strong> Swap and OIS curves still carry their own collateral-currency and cross-currency basis effects.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The worked example is a deliberate simplification.</strong> A flat curve, single currency, and single CSA/collateral type — real desks maintain separate discount and forecast curves per collateral currency, not one flat number.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The SOFR-era stress gauge is null on this desk (funding-stress, NULL).</strong> SOFR above the floor is mostly mid-month tax and settlement dates (12 of 15 episodes), and a drawn SRF preceded a calmer tape (−0.561 ATR). LIBOR itself was a survey that was lowballed in the crisis, which is why it was replaced; a 2008-style credit spread is not what was tested.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The SOFR-era stress gauge is null on this desk (funding-stress, NULL).</strong> SOFR above the floor is mostly mid-month tax and settlement dates (12 of 15 episodes), and a drawn SRF preceded a calmer tape (−0.561 ATR). LIBOR itself was a survey that was lowballed in the crisis, which is why it was replaced; a 2008-style credit spread is not what was tested.</span></div><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

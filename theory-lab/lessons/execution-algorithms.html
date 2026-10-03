@@ -17,7 +17,7 @@
   <h1 class="tl-title">Execution Algorithms: TWAP, VWAP, POV, IS</h1>
   <p class="tl-dek">Once you accept that a big order moves the price against you the more of it you dump at once, "how do I actually place it" stops being an afterthought and becomes its own decision — four standard schedules, and the honest cost accounting (Perold's Implementation Shortfall) that tells you which one you actually needed.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: market-impact-almgren-chriss.html (Market Impact Models &amp; Almgren-Chriss)</span>
   </div>
@@ -37,7 +37,7 @@
       <li>Implementation Shortfall (Perold, 1988) is the honest scorecard: the gap between the "paper" decision price and what you actually paid, split into delay cost (drift before you started), market impact cost (the Almgren-Chriss-style concession from your own trading), and opportunity cost (the price of leaving part of the order unfilled).</li>
       <li>Algorithm choice is a real tradeoff, not a preference: urgency (fear of the price drifting away before you're done) pulls toward TWAP/POV/aggressive execution; impact concern (fear of moving the price yourself) pulls toward a slower VWAP-style schedule — the same risk-aversion tradeoff the Almgren-Chriss lesson formalizes with a single parameter \(\lambda\).</li>
       <li>The worked example computes a 4-bucket VWAP-matching share schedule for a 40,000-share order, then separately walks a small trade through all three Implementation Shortfall components in dollars: \$450 delay + \$750 impact + \$300 opportunity = \$1,500 total, on a \$500,000 order.</li>
-      <li><strong>Real-world episode:</strong> the 6 May 2010 Flash Crash began with a POV algorithm. It sold 75,000 E-mini contracts at 9% of the previous minute's volume, with no price or time limit. Intermediaries passing contracts back and forth inflated the volume, so the algorithm sold faster, and an order that had taken more than five hours before was done in about 20 minutes. On this desk, the cost no schedule can remove, the spread, is <strong>Validated</strong> as decisive (<code>execution-gate</code>): above spread/ATR 0.15, zero of 30 strategy × timeframe cells were profitable.</li>
+      <li><strong>Real-world episode:</strong> the 6 May 2010 Flash Crash began with a POV algorithm. It sold 75,000 E-mini contracts at 9% of the previous minute's volume, with no price or time limit. Intermediaries passing contracts back and forth inflated the volume, so the algorithm sold faster, and an order that had taken more than five hours before was done in about 20 minutes.<!-- DESK:START --> On this desk, the cost no schedule can remove, the spread, is <strong>Validated</strong> as decisive (<code>execution-gate</code>): above spread/ATR 0.15, zero of 30 strategy × timeframe cells were profitable.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -487,7 +487,7 @@
             On a \(10{,}000\)-share order at a \$50.00 decision price
             (\$500,000 of notional), \$1,500 of total shortfall is 30 basis
             points — and the breakdown says exactly where it came from: half
-            of it (\$750) is genuine market impact from the desk's own
+            of it (\$750) is genuine market impact from the order's own
             trading, \$450 is drift that happened before a single share
             traded, and \$300 is the price of never finishing the order at
             all. A single "\$1,500, or 30bps" headline number would hide all
@@ -624,6 +624,7 @@
     while volume soared. This is why practitioners attach a price limit, and often a cap on participation, to a POV order.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict validated" data-evidence="execution-gate" data-evidence-date="2026-09-02">
     <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>execution-gate: the cost a schedule can't remove decides whether a short-horizon idea lives.</strong>
@@ -633,6 +634,7 @@
     timeframe cells were profitable</strong>. Cost outruns edge as the timeframe speeds up, and the crossover is the same
     across strategies. Check spread/ATR before any new intraday idea. Above 0.15, no execution schedule will save it.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -730,7 +732,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Implementation Shortfall is the honest, all-in scorecard.</strong> It splits the gap between decision price and actual cost into delay, market impact, and opportunity cost — three different root causes, not one opaque number.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Algorithm choice is a real tradeoff, not a habit.</strong> Urgency (fear of drift) pulls toward faster, more aggressive execution; impact concern (fear of your own footprint) pulls toward a slower, VWAP-style schedule — the same risk-aversion axis Almgren-Chriss formalizes mathematically.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Matching the VWAP benchmark is not the same as a good price.</strong> A perfectly on-schedule VWAP execution still pays in full for any adverse trend that ran through the whole session — the benchmark measures participation quality, not price quality.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Volume is not liquidity, and POV can feed on itself.</strong> On 6 May 2010 a POV algorithm sold 75,000 E-mini contracts at 9% of volume with no price or time limit. Intermediaries recycling contracts inflated the volume, so it sold faster: about 20 minutes, against more than five hours for a similar order before. And no schedule removes the spread: above spread/ATR 0.15, 0 of 30 cells were profitable here (<code>execution-gate</code>, Validated).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Volume is not liquidity, and POV can feed on itself.</strong> On 6 May 2010 a POV algorithm sold 75,000 E-mini contracts at 9% of volume with no price or time limit. Intermediaries recycling contracts inflated the volume, so it sold faster: about 20 minutes, against more than five hours for a similar order before.<!-- DESK:START --> And no schedule removes the spread: above spread/ATR 0.15, 0 of 30 cells were profitable here (<code>execution-gate</code>, Validated).<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

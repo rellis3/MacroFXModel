@@ -17,7 +17,7 @@
   <h1 class="tl-title">Systemic Risk &amp; Financial Contagion Networks</h1>
   <p class="tl-dek">One institution's failure isn't a single event — it's a shock that propagates through a web of exposures, and DebtRank is the algorithm central banks use to measure exactly how far that propagation reaches before it stops.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — regulatory/systemic-risk research tool, not a component of this repo's trading strategies</span>
+    <span class="tl-status concept">CONCEPT — regulatory/systemic-risk research tool<!-- DESK:START -->, not a component of this repo's trading strategies<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Graph Theory Fundamentals &amp; Centrality Measures</span>
   </div>
@@ -35,7 +35,7 @@
       <li>DebtRank (Battiston et al., 2012) measures exactly this: it propagates a "distress level" iteratively through the exposure network, capital-weighted, and sums the total distress induced across the whole system relative to its size.</li>
       <li>DebtRank is conceptually related to eigenvector centrality — both are recursive, iterative computations over a network — but propagates a one-time shock forward through time rather than describing a fixed, static importance.</li>
       <li>A worked 4-institution example shows one default (Bank C) propagating through capital-weighted exposures to leave the other three banks at roughly 24%, 48%, and 32% distress after the cascade settles — and the total induced distress (≈1.04) slightly exceeds the size of the initiating shock (1.00), the amplification effect DebtRank is built to capture.</li>
-      <li>This is stated plainly: DebtRank and tools like it are used by central banks, the Federal Reserve, and regulators for financial-stability stress testing — it is a market-structure research tool, not a component of any trading strategy in this repo.</li>
+      <li>This is stated plainly: DebtRank and tools like it are used by central banks, the Federal Reserve, and regulators for financial-stability stress testing — it is a market-structure research tool, not a component of any trading strategy<!-- DESK:START --> in this repo<!-- DESK:END -->.</li>
       <li><strong>Real-world episode:</strong> AIG in September 2008 had sold credit protection to many banks at once. A downgrade triggered collateral calls it could not meet, and the Fed lent up to $85 billion because the failure would have spread down every edge together: too interconnected to fail.</li>
     </ul>
   </div>
@@ -392,8 +392,8 @@
       exposure data reported to them — a genuine, real-world use of this
       exact machinery, in a domain (financial-stability regulation) that is
       deliberately separate from position-taking or trading. Nothing about
-      this scenario, or DebtRank generally, is a component of any strategy
-      in this repo — it's presented here purely as background theory on how
+      this scenario, or DebtRank generally, is a component of any strategy<!-- DESK:START -->
+      in this repo<!-- DESK:END --> — it's presented here purely as background theory on how
       regulators reason about network contagion.
     </p>
   </div>
@@ -456,6 +456,7 @@
     never observed.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: "stress at a highly connected institution warns that markets will run wider
@@ -464,6 +465,7 @@
     in their CDS spreads, and measure the next week's index and FX range against a volatility-matched control. Even
     then it would test the proxy, not the network.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How this is actually used — and how it isn't</h2>
@@ -489,7 +491,7 @@
     research tool — the kind of analysis central banks and regulators run
     on interbank exposure networks to stress-test the financial system.
     It is not, and is not presented here as, a component of any trading
-    strategy in this repo. Explaining how the technique works is background
+    strategy<!-- DESK:START --> in this repo<!-- DESK:END -->. Explaining how the technique works is background
     knowledge, not a claim that it produces trading edge.
   </div>
 
@@ -550,8 +552,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example showed real amplification:</strong> one bank's full default (h=1.00) settled into a total induced distress of ≈1.04 across the other three banks — network propagation adding to the damage, not just redistributing an equal amount.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>DebtRank is conceptually a cousin of eigenvector centrality</strong> — both are recursive, iterative computations over a network's structure — but DebtRank propagates a real shock forward in simulated time rather than describing a fixed importance score.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real bilateral exposure data is the hard, usually-confidential part.</strong> This machinery is genuinely used by central banks and regulators — but only because they have access to reporting data that isn't publicly available.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real edges are contingent, not fixed.</strong> AIG's collateral obligations jumped with every fall in value and with its own downgrade, so the edge weights rose exactly as distress did. The first thing to travel was cash, before any default. Using contagion stress as a trading signal is untested here.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This is not, and is not presented as, part of any trading strategy in this repo.</strong> DebtRank and contagion-network analysis are financial-stability/regulatory research tools — stated plainly, not softened, so it's never mistaken for a built or validated component of this project.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real edges are contingent, not fixed.</strong> AIG's collateral obligations jumped with every fall in value and with its own downgrade, so the edge weights rose exactly as distress did. The first thing to travel was cash, before any default.<!-- DESK:START --> Using contagion stress as a trading signal is untested here.<!-- DESK:END --></span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This is not, and is not presented as, part of any trading strategy<!-- DESK:START --> in this repo<!-- DESK:END -->.</strong> DebtRank and contagion-network analysis are financial-stability/regulatory research tools — stated plainly, not softened, so it's never mistaken for a built or validated component<!-- DESK:START --> of this project<!-- DESK:END -->.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -619,7 +621,7 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q5. Why does this lesson state so explicitly that DebtRank is not a component of any trading strategy in this repo — what's the risk of not saying that plainly?</summary>
+    <summary>Q5. Why does this lesson state so explicitly that DebtRank is not a component of any trading strategy<!-- DESK:START --> in this repo<!-- DESK:END --> — what's the risk of not saying that plainly?</summary>
     <div class="tl-answer">
       Explaining a technique thoroughly and with genuine appreciation for
       its elegance (which this lesson does) can easily be read, if not

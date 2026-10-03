@@ -17,7 +17,7 @@
   <h1 class="tl-title">Point-in-Time Data &amp; Survivorship Bias</h1>
   <p class="tl-dek">What "point-in-time" actually requires operationally, why revised data is a real and easy-to-miss lookahead bug, and the classic 1996 study that first quantified how badly survivorship bias distorts a database that only remembers the winners.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explains real industry practice, not a claim about this repo's own data pipeline</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — explains real industry practice, not a claim about this repo's own data pipeline<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: <a href="data-pipeline-raw-to-trading-ready.html">The Data Pipeline: Raw Feeds to Trading-Ready Data</a>, <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a></span>
   </div>
@@ -37,7 +37,7 @@
       <li><strong>Survivorship bias</strong>, precisely defined: a database that only contains entities that still exist today silently excludes the failures, biasing any backtest run on it optimistically. Quantified for mutual funds by Elton, Gruber &amp; Blake (1996).</li>
       <li>This lesson is the <strong>fuller, operational treatment</strong> — <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> introduces point-in-time computability briefly, from the angle of what one feature needs; this lesson covers what the underlying data infrastructure itself has to guarantee for that to even be possible.</li>
       <li>Point-in-time datasets are an established, real industry and academic practice — not an exotic or hypothetical concern.</li>
-      <li><strong>Real-world episode:</strong> in 1992 Brown, Goetzmann, Ibbotson &amp; Ross showed that a survivors-only fund database can manufacture apparent "hot hands" persistence among managers with no skill at all. On this desk, a level-touch study's Sharpe 5.36 turned out to be the same kind of filter, and the honest re-test was null (<code>level-touch</code>).</li>
+      <li><strong>Real-world episode:</strong> in 1992 Brown, Goetzmann, Ibbotson &amp; Ross showed that a survivors-only fund database can manufacture apparent "hot hands" persistence among managers with no skill at all.<!-- DESK:START --> On this desk, a level-touch study's Sharpe 5.36 turned out to be the same kind of filter, and the honest re-test was null (<code>level-touch</code>).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -327,6 +327,7 @@
     inherits that link, even when the average looks reasonable.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="level-touch" data-evidence-date="2026-09-10">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>level-touch: the desk's own survivorship episode.</strong> The claim was that price reacts at
@@ -335,6 +336,7 @@
     controls at random non-level prices found the level increment over a random price was zero or negative. Same
     mechanism as 1992: the sample was chosen by the outcome it was meant to predict.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>How practitioners actually use this</h2>
@@ -396,7 +398,7 @@
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Survivorship bias is not a random omission — it's a systematic, quantified overstatement.</strong> Elton, Gruber &amp; Blake (1996) measured this directly for mutual funds: a survivors-only database overstates true average historical performance.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Point-in-time datasets are established, real infrastructure.</strong> Academic and institutional finance research commonly relies on vendor databases built specifically to preserve historical vintages and publication dates.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This lesson is the fuller treatment of a topic <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> only introduces briefly.</strong> That lesson covers what a feature needs; this one covers what the data layer underneath has to guarantee.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Survivorship can manufacture a pattern, not just inflate an average (level-touch, NULL).</strong> A survivors-only sample can show persistence where there is no skill (Brown, Goetzmann, Ibbotson &amp; Ross, 1992). On this desk, a Sharpe 5.36 level strategy counted only touches that later "held"; the barrier-free re-test found the level adds zero or less over a random price.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Survivorship can manufacture a pattern, not just inflate an average<!-- DESK:START --> (level-touch, NULL)<!-- DESK:END -->.</strong> A survivors-only sample can show persistence where there is no skill (Brown, Goetzmann, Ibbotson &amp; Ross, 1992).<!-- DESK:START --> On this desk, a Sharpe 5.36 level strategy counted only touches that later "held"; the barrier-free re-test found the level adds zero or less over a random price.<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>

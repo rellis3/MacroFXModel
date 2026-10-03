@@ -315,11 +315,13 @@
 
     <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 13</div>
-      <h2 class="sl-h2">What this desk can say, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk can say<!-- DESK:END --></h2>
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
         <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>"The output gap tells you where rates or currencies go next"</strong> is not tested here: the desk has no real-time gap series. A fair test would rebuild the gap each quarter from the data vintages available then (one-sided filter or Hamilton's regression), score its sign against what followed in 2-year yields and the currency versus a no-change benchmark, and report how often that sign was later revised away.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>The HP objective treats every τ_t alike, but the newest one has data on one side only, and it is the one decisions use. The textbook also assumes a smooth trend separable from the cycle. A trend slowdown (the 1970s) or a collapse (2020) gets split between the two in a way only later data can fix, so the real-time gap mixes a real cycle with a trend error of unknown size.</p>
@@ -386,8 +388,8 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Hamilton (2018): HP has two real, documented flaws — end-of-sample bias hitting the newest, most decision-relevant data hardest, and spurious cyclicality manufactured even from a pure random walk.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Butterworth borrows an explicit order + frequency cutoff from electrical engineering, trading HP's implicit smoothness dial for a stated frequency boundary.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Baxter-King is a finite band-pass moving average targeting the classic 6–32 quarter cycle band, at the cost of losing K observations at each end of the sample.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>None of these three filters is built or tested anywhere in this repo's trading code today — verified while building this lesson; all three remain concept-only tools explained here as modeling background, not a claim of edge.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>The 1970s: real-time output gaps showed slack that revised estimates later erased, and most of the revision came from the end of the sample, not from revised GDP (Orphanides &amp; van Norden, 2002). Whether a gap reading predicts rates or FX is untested here.</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">06</div><p>None of these three filters is built or tested anywhere in this repo's trading code today — verified while building this lesson; all three remain concept-only tools explained here as modeling background, not a claim of edge.</p></div><!-- DESK:END -->
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>The 1970s: real-time output gaps showed slack that revised estimates later erased, and most of the revision came from the end of the sample, not from revised GDP (Orphanides &amp; van Norden, 2002).<!-- DESK:START --> Whether a gap reading predicts rates or FX is untested here.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

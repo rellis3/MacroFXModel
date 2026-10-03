@@ -37,7 +37,7 @@
       <li><strong>Feature-computation-stage contamination</strong>: z-scoring or normalizing using full-sample statistics instead of only-past statistics — a narrower, easier-to-miss cousin of the split-boundary leaks covered in <a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a>.</li>
       <li><strong>Survivorship bias</strong> in the instrument universe: testing only on assets that still exist today silently removes exactly the failure cases a strategy most needs to be tested against.</li>
       <li>Reproducibility is a practical, non-mathematical discipline: version data, code, and parameters together, and keep point-in-time data snapshots — a feature computed "as of December" must be reproducible from exactly what was known then, not a since-revised data vintage.</li>
-      <li><strong>Real-world episode:</strong> Reinhart and Rogoff's 2010 finding of −0.1% average growth above 90% debt became about 2.2% when a graduate student rebuilt it from their spreadsheet in 2013 (five countries left out of an average, plus exclusion and weighting choices). On this desk, a volatility tool's "wins" were 95% scored before entry (<code>backtest-artifacts</code>, context).</li>
+      <li><strong>Real-world episode:</strong> Reinhart and Rogoff's 2010 finding of −0.1% average growth above 90% debt became about 2.2% when a graduate student rebuilt it from their spreadsheet in 2013 (five countries left out of an average, plus exclusion and weighting choices).<!-- DESK:START --> On this desk, a volatility tool's "wins" were 95% scored before entry (<code>backtest-artifacts</code>, context).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -468,6 +468,7 @@
     not the result but the full pipeline, published or handed over, so a second person can disagree with it.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10">
     <span class="tl-verdict-tag">Desk data: base rate</span>
     <span><strong>backtest-artifacts: a backtest that looks too good has a bug, and the bug is usually in what it was
@@ -476,6 +477,7 @@
     the first hour after entry. Faults like these surface only when someone re-runs the engine against what it could
     actually see at the time, the same move that found the five missing rows.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>How practitioners actually use this</h2>
@@ -565,7 +567,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Survivorship bias leaks through the universe, not the time series.</strong> Testing only on instruments that still exist today silently excludes the worst historical cases — a leak in which rows are present, not in what any one row contains.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>"The data hasn't changed" is usually false for macro/fundamental series.</strong> Silent revisions are the norm — reproducibility requires point-in-time snapshots, not just the current data vintage.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Version data, code, and parameters as one unit.</strong> A result is only truly reproducible if all three are pinned together, not tracked separately and assumed to still match.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Reproducible is not the same as right.</strong> Reinhart and Rogoff's −0.1% re-ran perfectly and became about 2.2% only when an outsider rebuilt it. On this desk a volatility tool scored 95% of its "wins" before entry, and a survivorship fix sat on a deeper look-ahead (backtest-artifacts). Hand the whole pipeline to someone who can disagree with it.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Reproducible is not the same as right.</strong> Reinhart and Rogoff's −0.1% re-ran perfectly and became about 2.2% only when an outsider rebuilt it.<!-- DESK:START --> On this desk a volatility tool scored 95% of its "wins" before entry, and a survivorship fix sat on a deeper look-ahead (backtest-artifacts).<!-- DESK:END --> Hand the whole pipeline to someone who can disagree with it.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 09</span></div>

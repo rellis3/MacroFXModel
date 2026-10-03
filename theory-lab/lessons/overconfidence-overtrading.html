@@ -30,7 +30,7 @@
   <h1 class="tl-title">Overconfidence and the Cost of Trading Too Much</h1>
   <p class="tl-dek">Most people believe they are better-than-average drivers, and most traders believe their next trade is better than average too. The data on tens of thousands of real brokerage accounts shows what that belief costs, and the bill arrives as turnover.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->; desk verdicts quoted where tested<!-- DESK:END --></span>
     <span>~20 min read</span>
     <span>Prereqs: <a href="primer-returns-compounding.html">Returns &amp; Compounding</a>, <a href="primer-probability.html">Probability</a></span>
   </div>
@@ -49,7 +49,7 @@
       <li><strong>Men traded 45% more than women</strong> in the same kind of data, and trading cut their net returns by 2.65 points a year against 1.72 for women (Barber &amp; Odean, 2001).</li>
       <li><strong>The arithmetic is plain:</strong> annual cost drag ≈ turnover × round-trip cost. It compounds. A 2.5-point drag on a 10% return gives up about 43% of the gain over 20 years.</li>
       <li><strong>Two quieter biases feed it:</strong> the illusion of control (acting makes you feel you've improved the odds) and hindsight bias (the past looks predictable, so the future feels predictable too).</li>
-      <li><strong>Desk verdicts:</strong> trading costs are a hard wall (execution-gate, validated: above a spread of 0.15 of the daily range, zero of 30 strategy cells made money). And a confidence score is not an edge: one of the desk's own systems was scored and its conviction vote was <em>anti</em>-predictive (conviction-vote, null).</li>
+      <!-- DESK:START --><li><strong>Desk verdicts:</strong> trading costs are a hard wall (execution-gate, validated: above a spread of 0.15 of the daily range, zero of 30 strategy cells made money). And a confidence score is not an edge: one of the desk's own systems was scored and its conviction vote was <em>anti</em>-predictive (conviction-vote, null).</li><!-- DESK:END -->
     </ul>
   </div>
 
@@ -318,7 +318,7 @@
     <p style="margin-bottom:0">
       This is how overconfidence and cost drag compound each other. The confident trader drops to faster timeframes
       ("more opportunities"). That raises the cost as a share of each move at exactly the point where their real edge,
-      if they have one, is weakest. The desk tested this crossover directly. The result is below.
+      if they have one, is weakest.<!-- DESK:START --> The desk tested this crossover directly. The result is below.<!-- DESK:END -->
     </p>
   </div>
 
@@ -414,13 +414,16 @@
   </div>
   <p style="font-size:13px;color:var(--text3);margin-top:-6px">★ marks this lesson's concept: too-narrow error bars are what turn a winning streak into turnover.</p>
 
+  <!-- DESK:START -->
   <h3>What the desk found</h3>
   <p>
     The folk claim this lesson is about is "if I'm confident, acting on it more often makes money." The desk hasn't
     studied retail accounts. It has tested two pieces of that claim on its own systems: what costs do to short-horizon
     edges, and whether a confidence score predicts which trades win.
   </p>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict validated" data-evidence="execution-gate" data-evidence-date="2026-09-02">
     <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>execution-gate: when the spread is a large fraction of the day's range, no short-horizon edge survives it.</strong>
@@ -429,7 +432,9 @@
     lesson's terms: moving to faster charts to "find more trades" buys you more trades, and each one costs more as a
     share of the move.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="conviction-vote" data-evidence-date="2026-07-25">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>conviction-vote: a higher conviction score on an entry does not mean a better trade.</strong>
@@ -438,7 +443,9 @@
     <strong>30% win rate</strong>, not because of a few deep losses. Confidence that has never been scored is a
     feeling, not a measurement. That applies to a model as much as to a person.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Retail turnover and returns on this desk's markets.</strong> The household figures above are Barber
@@ -446,10 +453,11 @@
     commissions. Lower commissions shrink \(k\) but not the spread. Cheaper trades also invite more of them, so
     \(T\) tends to rise.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
-    <p>The grown-ups who swapped their toys most ended up with the fewest sweets. The boys swapped more than the girls and lost more sweets. And when the desk let a robot say how sure it was about each swap, its "really sure" swaps turned out worse, not better.</p>
+    <p>The grown-ups who swapped their toys most ended up with the fewest sweets. The boys swapped more than the girls and lost more sweets.<!-- DESK:START --> And when the desk let a robot say how sure it was about each swap, its "really sure" swaps turned out worse, not better.<!-- DESK:END --></p>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -503,6 +511,7 @@
     </ul>
   </div>
 
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
@@ -514,6 +523,7 @@
       desk measures a human trader's calibration or turnover. That would be a journal, and Lesson 6 covers it.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -534,9 +544,9 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Overconfidence is a measurable miscalibration.</strong> People's 90% ranges catch the truth far less than 90% of the time. CFOs' 80% stock-market ranges caught it 36% of the time.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>It costs money through turnover.</strong> The most active fifth of 66,465 households earned 11.4% net against the market's 17.9% (Barber &amp; Odean, 2000). Men traded 45% more than women and lost more to it (2001).</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Drag ≈ turnover × round-trip cost, and it compounds.</strong> 250% turnover at 1% costs 2.5 points a year, about 43% of a 20-year gain at 10%.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Cost against the move is a hard wall (execution-gate, validated).</strong> Above a spread of 0.15 of ATR, zero of 30 strategy cells made money. Faster charts mean more trades, each costing more as a share of the move.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Cost against the move is a hard wall (execution-gate, validated).</strong> Above a spread of 0.15 of ATR, zero of 30 strategy cells made money. Faster charts mean more trades, each costing more as a share of the move.</span></div><!-- DESK:END -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Illusion of control and hindsight bias feed the loop.</strong> Acting feels like improving the odds, and the past always looks predictable from the right-hand edge of the chart.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Confidence is not edge (conviction-vote, null).</strong> One of the desk's own systems scored its conviction on every entry. The score was anti-predictive, and the system lost money on a 30% win rate. Score your A/B/C tags before you size on them.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Confidence is not edge (conviction-vote, null).</strong> One of the desk's own systems scored its conviction on every entry. The score was anti-predictive, and the system lost money on a 30% win rate. Score your A/B/C tags before you size on them.</span></div><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>
@@ -558,12 +568,12 @@
     <div class="tl-answer">Psychology research had found men to be more overconfident than women in areas like finance. Overconfidence predicts that men will trade more <em>and</em> lose more from that trading. Both things happened: 45% more trading, and 2.65 vs 1.72 points of annual return lost. That makes the gender split a test of the prediction, not just a description of who trades.</div>
   </details>
   <details class="tl-quiz">
-    <summary>Q5. A trader moves from the daily chart to the 5-minute chart "to get more opportunities". Using the execution-gate result, what happens to their costs?</summary>
-    <div class="tl-answer">The cost of one round trip stays about the same in pips, but the move each trade aims for shrinks a lot. Cost as a share of the move (spread ÷ ATR on that timeframe) rises sharply. The desk found that above 0.15, zero of 30 strategy × timeframe cells were profitable. More opportunities, each with a worse cost-to-move ratio.</div>
+    <summary>Q5. A trader moves from the daily chart to the 5-minute chart "to get more opportunities". What happens to their costs<!-- DESK:START -->, using the execution-gate result<!-- DESK:END -->?</summary>
+    <div class="tl-answer">The cost of one round trip stays about the same in pips, but the move each trade aims for shrinks a lot. Cost as a share of the move (spread ÷ ATR on that timeframe) rises sharply.<!-- DESK:START --> The desk found that above 0.15, zero of 30 strategy × timeframe cells were profitable.<!-- DESK:END --> More opportunities, each with a worse cost-to-move ratio.</div>
   </details>
   <details class="tl-quiz">
     <summary>Q6. You tag your trades A, B or C by conviction. What would tell you the tags are worth sizing on?</summary>
-    <div class="tl-answer">A scored record: after a decent sample (dozens of trades per tag, not five), A trades should do clearly better than C trades after costs. If they don't, the tag measures how you feel, not what happens next, and sizing on it adds risk without adding return. The desk's conviction-vote null is exactly this check, and it failed.</div>
+    <div class="tl-answer">A scored record: after a decent sample (dozens of trades per tag, not five), A trades should do clearly better than C trades after costs. If they don't, the tag measures how you feel, not what happens next, and sizing on it adds risk without adding return.<!-- DESK:START --> The desk's conviction-vote null is exactly this check, and it failed.<!-- DESK:END --></div>
   </details>
 
   <details class="tl-section-collapse">

@@ -242,17 +242,17 @@
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
-      <h2 class="sl-h2">How this actually gets used — and a grounding check</h2>
+      <h2 class="sl-h2">How this actually gets used<!-- DESK:START --> — and a grounding check<!-- DESK:END --></h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🏛</div><div><h4>Regulators require all three</h4><p>Post-2008 frameworks (Basel's stress-testing principles, the US CCAR program) require historical and hypothetical scenario testing; the UK's FSA made reverse stress testing a formal requirement in 2009, specifically because forward-only testing had repeatedly missed the channel that actually broke firms.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⚖️</div><div><h4>Neither forward method is trusted alone</h4><p>Only running historical replays bets the next crisis resembles a past one; only running Monte Carlo bets the assumed stress distribution is realistic. Serious teams report both and treat a large gap between them as itself informative.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Reverse results feed risk limits directly</h4><p>Once a reverse stress test names the specific factor combination that produces an unacceptable loss, the natural response is a concentration limit targeted at exactly that factor — more surgical than an across-the-board size cut.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🏢</div><div><h4>Run at the whole-business level too</h4><p>A firm-wide reverse stress test asks what combination of events would make the entire business model unviable — surfacing risks like funding withdrawal that a single trading book's stress test would never capture.</p></div></div>
       </div>
-      <div class="sl-callout amber">
+<!-- DESK:START -->      <div class="sl-callout amber">
         <div class="sl-callout-label">Checked against this repo's actual code</div>
         <p>The full lesson states plainly that no stress-testing pipeline is built in this repo — it's explained as a concept, not a claim that historical replay, Monte Carlo stress, or reverse stress testing has been implemented here. That check was repeated for this deck: the repo does have real backtesting infrastructure (e.g. <code>backtestSystem/</code>) and an actual "Credit-Stress Index" risk overlay (<code>js/creditStressCore.js</code>) that gates exposure using rolling z-scores of credit spreads and VIX — but that overlay is a continuous, ongoing risk gate, not a historical-crisis replay, a Monte Carlo stress simulator, or a reverse-stress solver in the sense this lesson defines those terms. The lesson's "concept only, nothing like this is built here" framing still holds.</p>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">
@@ -277,11 +277,13 @@
 
     <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 13</div>
-      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
+      <!-- DESK:START -->
       <div class="sl-stamp null" data-evidence="analogue-weeks" data-evidence-date="2026-09-20">
         <span class="sl-stamp-tag">Desk test: nothing found</span>
         <span><strong>analogue-weeks:</strong> reading history forward ("trade what followed the weeks most like this one") failed. Over 400 walk-forward weeks the analogues were <strong>right 75% of the time on the S&amp;P against an unconditional 76%</strong>; EUR/USD 53% vs 54%; gold 61% vs 69%. Replay sizes a loss. It does not forecast one.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>Replay holds today's weights fixed and treats the shock as coming from outside. In 2022 the funds' own forced selling was part of the yield move, so Loss(s) steepened as s grew, and the shock size anchored to the worst past moves was exceeded. A reverse test, "what move exhausts the buffer, and who sells alongside us?", returns a move outside history. That answer is the one that must not be waved away as implausible.</p>
@@ -349,7 +351,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Reverse stress testing solves backward from an unacceptable loss to the scenario that causes it — routinely surfacing hidden concentration forward tests never think to check for.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The worked example: two "diversified" strategies shared one latent risk-off factor — a moderate shock, not an exotic one, took out half the book.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>What matters from a reverse stress test is the WHICH — the specific factor combination — not just the HOW BIG of the shock size alone.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>UK LDI, September 2022: buffers sized to past gilt moves met a bigger one, and forced selling made it feed on itself. Reading history forward as a forecast tested null here (analogue weeks 75% right on the S&amp;P vs a 76% base rate).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>UK LDI, September 2022: buffers sized to past gilt moves met a bigger one, and forced selling made it feed on itself.<!-- DESK:START --> Reading history forward as a forecast tested null here (analogue weeks 75% right on the S&amp;P vs a 76% base rate).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

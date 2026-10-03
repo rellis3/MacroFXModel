@@ -24,7 +24,7 @@
   <h1 class="tl-title">Drawdowns, Risk of Ruin, and Why Good Systems Get Abandoned</h1>
   <p class="tl-dek">A system with a real edge still loses eight times in a row, still sits underwater for months, and still makes you doubt it at exactly the wrong moment. This lesson does the arithmetic of the bad stretch — so you can tell "normal" from "broken" before you are inside one.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->; desk verdicts quoted where tested<!-- DESK:END --></span>
     <span>~20 min read</span>
     <span>Prereqs: <a href="kelly-criterion.html">Kelly Criterion</a> (helpful); <a href="bootstrapping-monte-carlo.html">Monte Carlo</a> (helpful)</span>
   </div>
@@ -42,7 +42,7 @@
       <li><strong>The worst drawdown keeps growing with time and with volatility</strong>, even for a system that makes money. The longer you trade, the deeper the deepest hole you will have sat in.</li>
       <li><strong>Bet size, not win rate, decides ruin.</strong> The same 55% coin-flip edge is comfortable at 1–2% risk per trade and close to a coin toss for halving your account at full Kelly (10%).</li>
       <li><strong>The human failure is timing:</strong> people judge a system by its recent results, so they abandon it near the bottom of its drawdown — and money tends to arrive after good runs and leave after bad ones.</li>
-      <li><strong>The desk's verdict:</strong> "a deep drawdown means the edge is gone" is <em>untested</em> here; the desk's one validated sleeve (63% win, ~109 trades) should expect a run of 4–5 losses; and the honest flip side, FX trend following, tested <em>null</em> — some drawdowns are no edge at all, and only an out-of-sample test can tell you which.</li>
+      <!-- DESK:START --><li><strong>The desk's verdict:</strong> "a deep drawdown means the edge is gone" is <em>untested</em> here; the desk's one validated sleeve (63% win, ~109 trades) should expect a run of 4–5 losses; and the honest flip side, FX trend following, tested <em>null</em> — some drawdowns are no edge at all, and only an out-of-sample test can tell you which.</li><!-- DESK:END -->
     </ul>
   </div>
 
@@ -510,23 +510,31 @@
     </div>
   </div>
 
+  <!-- DESK:START -->
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>What this desk found when it tested the claims</h2>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>"A deep drawdown means the edge is gone."</strong> Not tested here, and not testable from a drawdown alone: the simulator shows that a system with no edge and a system with a real one produce drawdowns that look the same for hundreds of trades. What can be tested is the live record against the tested record — win rate and expectancy with an interval — and that is the rule the exercise above asks you to write.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict validated" data-evidence="yield-spread-sleeve" data-evidence-date="2026-07-17">
     <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>The desk's one fully-audited strategy, and the streaks it should expect.</strong> A slow FX strategy built on the US-versus-foreign 2-year yield spread: out of sample 2015–2025 with honest publication lags, ~109 trades, 63% win, profit factor 2.2, every out-of-sample year 2022–2026 positive. Apply this lesson's recursion to it: over 109 trades at 63%, a run of 4 losses has a 73.5% chance and a run of 5 a 37.7% chance; the expected longest run is about 4.3. A validated edge with a 63% win rate should still be expected to lose four or five in a row. <em>Backtest evidence, paper-traded since 2026-07 — not forward-proven.</em></span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="trend-following-fx" data-evidence-date="2026-07-20">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>The honest flip side: "trend following works on FX".</strong> On an FX-only basket the desk found nothing — verified not to be a bug with an independent rebuild; a broad multi-asset version was modest (about 0.3 out of sample), barely beating buy-and-hold. Some long drawdowns are not a premium waiting to pay; they are no edge at all. The desk concluded that from a test, not from how the drawdown felt.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-solid red">
     <strong>The trap:</strong> "stick with it through the drawdown" is only good advice for a system
@@ -561,6 +569,7 @@
     </div>
   </div>
 
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
@@ -572,6 +581,7 @@
       for this lesson, from the ledger's own win rate and trade count, assuming independent trades.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -591,8 +601,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Streaks are normal — compute them.</strong> At 55%, a run of 8 is 1 in 595 from any one trade, 24% in 300 trades and more likely than not by ~750. A run of 6 is more likely than not by 152.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Max drawdown only grows with time,</strong> and scales with volatility relative to edge. Expect live drawdowns to exceed the backtest's.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bet size decides ruin.</strong> Same 55% edge: touching −50% in 300 trades is ~0% at 2% risk, ~9% at half Kelly and ~42% at full Kelly.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Untested here: "a deep drawdown means the edge is gone".</strong> A drawdown cannot tell you; a pre-stated test of the live record can.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Tested null: trend following on FX.</strong> Some drawdowns are no edge at all — "hold through it" is only right for an edge established out of sample.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Untested here: "a deep drawdown means the edge is gone".</strong> A drawdown cannot tell you; a pre-stated test of the live record can.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Tested null: trend following on FX.</strong> Some drawdowns are no edge at all — "hold through it" is only right for an edge established out of sample.</span></div><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>
@@ -619,7 +629,7 @@
   </details>
   <details class="tl-quiz">
     <summary>Q6. Value investing had a historic drawdown from about 2007 to 2020 and then rebounded sharply. What can — and can't — you conclude?</summary>
-    <div class="tl-answer">You can conclude that a long, deep drawdown is compatible with a real premium, and that leaving near the bottom locked in the loss. You cannot conclude that every drawdown recovers: the desk's FX trend-following test is the counter-example, a strategy whose weak results reflected no edge. The difference is evidence established before the drawdown, not the drawdown itself.</div>
+    <div class="tl-answer">You can conclude that a long, deep drawdown is compatible with a real premium, and that leaving near the bottom locked in the loss. You cannot conclude that every drawdown recovers<!-- DESK:START -->: the desk's FX trend-following test is the counter-example, a strategy whose weak results reflected no edge<!-- DESK:END -->. The difference is evidence established before the drawdown, not the drawdown itself.</div>
   </details>
 
   <details class="tl-section-collapse">
