@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Tail Risk Hedging &amp; Portfolio Convexity — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, the complete worked-example scratchpad, and a 6-question self-test?<a href="tail-risk-hedging-convexity.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -240,7 +240,42 @@
     </section>
 
     <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+      <div class="sl-kicker">Section 11 · It actually happened</div>
+      <h2 class="sl-h2">March 2020: convexity paid, "safe" assets didn't</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>After years in which standing put protection mostly expired worthless, the S&amp;P 500 fell about <strong>34%</strong> from 19 February to 23 March 2020, and on 16 March the VIX closed at a record <strong>82.69</strong>. Far out-of-the-money puts paid twice, going deep into the money as implied vol exploded. In the mid-March dash for cash, <strong>gold</strong> and even <strong>Treasuries</strong> fell for a time alongside stocks, until the Fed stepped in.</p>
+      </div>
+      <p class="sl-p">The starred link is this lesson's concept: a payoff that accelerates as the fall deepens.</p>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>Pandemic; S&amp;P −34% in five weeks</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Leveraged investors</b>Forced to sell what's liquid</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Linear hedges</b>Correlation fails; gold and Treasuries fall too</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>★ Long puts Γ&gt;0</b>Deep ITM + vol spike: payoff accelerates</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Hedged books cushioned; the bleed was the price</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What the desk found, and where the textbook breaks</h2>
+      <p class="sl-sub">The tempting cheap alternative to buying puts: "fear buys gold".</p>
+      <div class="sl-stamp null" data-evidence="fear-gold" data-evidence-date="2026-09-21">
+        <span class="sl-stamp-tag">Null</span>
+        <span><strong>fear-gold:</strong> 58 VIX spikes, 2010-2026. Five sessions on, excess <strong>+0.07% [-0.42, +0.30]</strong>; twenty sessions on, excess <strong>-1.19% [-2.30, -0.48]</strong>. No fear bid, and gold lags a month later.</span>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>The calm-year and crash-year table fixes the hedge payoff to the index move; in 2020 much of it came from implied vol jumping (vega). Linear hedges assume their correlation with stocks holds in a crisis, and under forced selling it didn't. An option's payoff is set by contract, so it doesn't need correlation to hold.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -290,8 +325,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Expected return and VaR/CVaR describe the middle and the size of the tail — convexity describes its <em>shape</em>: whether losses accelerate, decelerate, or stay proportional as a move gets larger.</p></div>
@@ -300,6 +335,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Tail hedging is a deliberate trade: giving up some expected return (an ongoing premium, paid mostly in calm years) to buy positive convexity — crash protection — on purpose.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The breakeven math is scale-free: how rare a crash needs to be for a hedge to pay off on average depends on the payout multiple, not the absolute size of the premium.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The hardest part is organizational, not mathematical — a hedge that "isn't working" for years is often working exactly as designed, and cutting it right before the tail event is the most common way these programs fail.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>March 2020: years of put premium bleed, then a 34% fall and a record VIX of 82.69 in which long puts paid on price and vol, while gold and Treasuries fell for a time. Gold is not a fear hedge here (fear-gold, NULL).</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -433,5 +469,6 @@
   })();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

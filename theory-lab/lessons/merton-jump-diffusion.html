@@ -37,6 +37,7 @@
     <li>Three parameters drive the jump: \(\lambda\) (jump intensity — how often jumps arrive), and \(\mu_J,\sigma_J\) (the mean and standard deviation of the lognormal jump size once one occurs).</li>
     <li>Mixing rare, wider jump outcomes into ordinary diffusion produces a taller, narrower center plus fatter tails than a single normal distribution — that's excess kurtosis (leptokurtosis) — and is one of the two classical explanations for the volatility smile in option markets.</li>
     <li>This repo doesn't fit a jump-diffusion model anywhere, but this project's own Tier-1 primitives for skewness, excess kurtosis, and historical VaR/CVaR already catch the same fat-tail symptom empirically in a trade-return series, without ever estimating \(\lambda, \mu_J, \sigma_J\).</li>
+    <li><strong>Real-world episode:</strong> on 15 January 2015 the Swiss National Bank dropped its 1.20 floor under EUR/CHF without warning. The rate fell below 0.90 within minutes, with almost nothing trading in between, before ending the day near parity. Three years of tiny diffusion \(\sigma\) had hidden one large jump. The desk's own decomposition finds jumps are real and identifiable, but with a null forward payoff (<code>jump-diffusion</code>, CONTEXT).</li>
   </ul>
 </div>
 
@@ -428,6 +429,78 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: 15 January 2015, the Swiss franc floor breaks</h2>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Three calm years, then one jump no diffusion could produce</h3>
+    <p>
+      In September 2011, with money pouring into the Swiss franc as a safe haven during the euro-area debt crisis,
+      the Swiss National Bank (SNB) set a <strong>minimum exchange rate of 1.20 francs per euro</strong> and said it
+      would buy foreign currency in unlimited quantities to defend it. The floor held for more than three years.
+      EUR/CHF sat just above 1.20, its day-to-day volatility shrank to almost nothing, and many traders came to treat
+      the floor as close to a guarantee, running leveraged long EUR/CHF positions with stop-losses just under 1.20. SNB officials had publicly reaffirmed the floor shortly
+      before it went.
+    </p>
+    <p>
+      On the morning of Thursday <strong>15 January 2015</strong>, the SNB announced it was discontinuing the floor,
+      and at the same time cut its deposit rate to −0.75%. Within minutes EUR/CHF fell from 1.20 to below 0.90, before
+      recovering to around parity by the end of the day. Very little traded on the way down. Quotes vanished, and
+      stop-loss orders placed just under 1.20 were filled far below their levels, because there was no price in
+      between to fill them at.
+    </p>
+    <p style="margin-bottom:0">
+      The losses landed on whoever was positioned for the floor. Many retail clients lost more than their account
+      balance, leaving brokers to absorb the negative balances. FXCM, a large US retail FX broker, needed an emergency
+      $300 million loan to keep operating, and Alpari UK went into insolvency. Some hedge funds took heavy losses, and
+      at least one closed.
+    </p>
+  </div>
+
+  <p>The causal chain, link by link. The starred link is this lesson's concept.</p>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>The SNB abandons the 1.20 floor without warning and cuts its deposit rate to −0.75%</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Liquidity providers</b>Pull their quotes; for minutes there are almost no bids below 1.20</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>★ The jump term \(dJ_t\)</b>Stops just under 1.20 are filled far below; price moves without passing through the levels in between</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Leveraged accounts</b>Lose more than their deposits; brokers are left holding the negative balances</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>FXCM needs a rescue loan, Alpari UK fails; EUR/CHF ends the day near parity</div>
+  </div>
+
+  <p>
+    Read through this lesson's notation, the floor years had a tiny diffusion \(\sigma\) because the SNB was
+    suppressing it. Nearly all the risk sat in \(\lambda\) and \(\mu_J\): a rare jump of enormous size in a
+    direction everyone could name. A jump-diffusion fitted to the 2012–2014 path alone would estimate both near zero,
+    because no jump happened in the sample (the identifiability pitfall below). On a pegged or floored rate,
+    unusually calm volatility is evidence <em>of</em> jump risk, not evidence against it.
+  </p>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    Even Merton's model assumes jumps arrive at a constant intensity \(\lambda\), independent of everything else,
+    with a lognormal size, and that jump risk is idiosyncratic enough to diversify away. Here \(\lambda\) was a
+    policy decision, the jump size was set by wherever liquidity reappeared, and the loss hit everyone positioned for
+    the floor at once. The stop-loss orders assumed something stronger still: a continuous path, which is the
+    Black-Scholes assumption this lesson exists to drop.
+  </p>
+
+  <div class="tl-verdict context" data-evidence="jump-diffusion" data-evidence-date="2026-09-13">
+    <span class="tl-verdict-tag">Context</span>
+    <span><strong>jump-diffusion: the decomposition describes, it does not forecast.</strong> The tempting claim is that
+    splitting moves into jumps and diffusion predicts what comes next. Tested on this desk's data: <strong>the measurement
+    validates (jumps are real and identifiable); the forward payoff is null.</strong> Use it to say what kind of move just
+    happened, not to call the next one. A floor like 1.20 tells you a jump is <em>possible</em>; nothing here dates it.</span>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>For three years a big bank promised one euro would always cost at least 1.20 francs, so the price hardly wiggled. People thought that meant it was safe. Then one morning the bank stopped promising, and the price fell off a cliff in minutes. The quiet years weren't proof of safety. They were what it looks like when someone is holding a door shut.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Full closed-form Merton jump-diffusion pricing shows up less often in modern
@@ -549,7 +622,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Merton bolts a jump onto GBM.</strong> A Poisson-driven jump term \(dJ_t\) is added to ordinary geometric Brownian motion so the model can finally admit real discontinuities — like an NFP gap — that a continuous-path process assigns near-zero probability.</span></div>
@@ -559,9 +632,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo already catches the empirical symptom.</strong> This project's own skewness, excess-kurtosis, and historical VaR/CVaR primitives measure fat tails in a real trade-return series without ever fitting a parametric jump model.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo does not fit a jump-diffusion model or price options anywhere.</strong> This lesson is concept-only — a theory background page, not a description of existing code.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Fat tails alone are not proof a jump model would help.</strong> High excess kurtosis in a trade-return series confirms the symptom jump risk predicts; it is not, by itself, evidence that building a parametric jump model would improve anything OOS.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A floored or pegged rate's calm is hidden jump risk, not low risk.</strong> EUR/CHF's 1.20 floor gave three years of tiny \(\sigma\), then a jump to below 0.90 on 15 January 2015 that stop-losses could not catch. On this desk's data, jumps are identifiable but the decomposition carries no forward payoff (<code>jump-diffusion</code>, CONTEXT).</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does a pure Black-Scholes model systematically underprice deep out-of-the-money options relative to a market that has genuine jump risk?</summary>
@@ -770,5 +844,6 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

@@ -39,6 +39,7 @@
     <li>The worked example (\(S_0=K=100\), \(r=2\%\), \(\sigma=20\%\), \(T=1\) year) prices the at-the-money call at roughly <strong>$8.92</strong>, all of it time value since intrinsic value is zero.</li>
     <li>Two distinctions people blur: delta \(N(d_1)\) is a hedge ratio, not the probability of finishing in the money (that is \(N(d_2)\), and always smaller); and every premium splits into intrinsic value plus extrinsic (time) value.</li>
     <li>The page's interactive chart loads with sliders at \(\sigma=20\%\) and \(T=1.00\)y by default — the same inputs as the worked example — so it starts by reproducing that same $8.92 price before you drag either slider.</li>
+    <li><strong>Real-world episode:</strong> on 19 October 1987 "portfolio insurers", running this lesson's replication argument to manufacture puts, were forced by their own deltas to sell index futures into a falling market. Prices gapped, the hedge could not be done at the model's prices, and index options have carried a skew ever since. The desk's test of "implied far above realised means calm ahead" found the opposite: realised caught up (<code>iv-over-rv-wider</code>, VALIDATED).</li>
   </ul>
 </div>
 
@@ -690,6 +691,79 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: 19 October 1987 and portfolio insurance</h2>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>The replicating portfolio, run in size, on the worst day on record</h3>
+    <p>
+      In the mid-1980s a product called <strong>portfolio insurance</strong> became popular with US pension
+      funds and other large institutions. It was the replication argument from this lesson put to work. Instead
+      of buying a put on the index, the insurer <em>manufactured</em> one: hold stocks and cash, and keep
+      adjusting the mix to match the put's delta. In practice the adjusting was done by selling S&amp;P 500
+      index futures as the market fell and buying them back as it rose. To clone a <em>long</em> put, you have
+      to trade exactly like a hedger who is <em>short</em> gamma: sell into declines, buy into rallies.
+    </p>
+    <p>
+      The market was already sliding in the week before; on Friday 16 October the Dow Jones Industrial Average
+      fell about 4.6%. On Monday 19 October the Dow fell <strong>22.6%</strong>, still its largest one-day
+      percentage fall of the modern era, and the S&amp;P 500 fell about 20%. The presidential task force that studied the crash
+      (the Brady Commission) found that portfolio insurers' futures selling, together with other mechanical
+      selling, was a significant source of the day's pressure. Futures traded far below the stocks they were
+      supposed to track, and the stock exchange's order handling was overwhelmed, with many stocks opening late.
+    </p>
+    <p>
+      The model said the hedge could be adjusted a little at a time, at prices close to the last one. On the
+      day, the deltas told the insurers to sell more as prices fell, the selling pushed prices further, and the
+      fills came in far below the prices the model had assumed. The puts they had manufactured cost much more to
+      deliver than the formula said they would, and clients got less protection than they had been promised.
+    </p>
+    <p style="margin-bottom:0">
+      The aftermath is the smile flagged in the pitfalls below. Before 1987, implied volatility on US index options
+      was close to flat across strikes. Since then, out-of-the-money index puts have traded at persistently higher
+      implied volatility than at-the-money options, a pattern documented in the academic literature that followed
+      (Rubinstein's 1994 work on implied trees is the standard reference). The market started charging for a crash
+      that a constant-\(\sigma\), continuous-path model says can essentially never happen.
+    </p>
+  </div>
+
+  <p>The causal chain, link by link. The starred link is this lesson's concept.</p>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>The market is already falling: Dow down about 4.6% on Friday 16 October</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>★ Portfolio insurers · replication</b>Synthetic-put deltas rise as prices fall, so their rules force them to sell more futures</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Futures market</b>Absorbs the selling; futures trade far below the stocks they track</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Stock exchange</b>Arbitrage and other sellers carry the pressure across; order handling is overwhelmed, many stocks open late</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Dow −22.6% in one session; index options carry a skew ever after</div>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The replication argument assumes prices move continuously and that the hedger is a price-taker, able to
+    trade at the model price without moving it. In October 1987 prices gapped, and the hedgers were big enough
+    that their hedging <em>was</em> the price move: a feedback loop the formula has no term for. The constant-\(\sigma\)
+    assumption failed too, visibly and permanently, in the skew that has been on index options ever since.
+  </p>
+
+  <div class="tl-verdict validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18">
+    <span class="tl-verdict-tag">Validated</span>
+    <span><strong>iv-over-rv-wider: implied far above realised was followed by wider markets, not calm ones.</strong>
+    The tempting claim, once you know implied \(\sigma\) is just an input someone chose, is that when it sits far above
+    realised the market is over-insured and will calm down. Tested here, the opposite: VIX ÷ 20-session realised SPX vol
+    in the top decile (88 first days, 2010→) was followed by NAS100 next-5 range <strong>+0.38 ATR [+0.11, +0.62]</strong>,
+    next-20 +0.56, and SPX500 next-20 <strong>+0.67 [+0.13, +1.21]</strong> (next-5 +0.17, null). Realised catches up to
+    implied. A range result, not a direction, and not a test of whether the options themselves were mispriced.</span>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Some big investors bought a "safety plan" that said: every time prices drop a little, sell a little. That works if prices drop slowly. In 1987 everyone with the plan started selling at once, which made prices drop faster, which made the plan say "sell more." The safety plan turned into a push down the hill. Ever since, people pay extra for crash protection, because they learned the hill can be steeper than the maths said.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Almost nobody at a real options desk uses the raw Black-Scholes formula
@@ -789,7 +863,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A replication argument prices the option, no forecast needed.</strong> A continuously rebalanced stock/bond portfolio that clones the option's payoff pins down its price using no-arbitrage logic alone.</span></div>
@@ -801,9 +875,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Premium = intrinsic + extrinsic.</strong> Intrinsic is what exercising now is worth (never negative); extrinsic is time value — the part σ and T set, theta eats, and expiry erases.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Delta is not the probability of finishing in the money.</strong> Δ = N(d₁) always exceeds the risk-neutral P(ITM) = N(d₂), by a gap that grows with σ√T — at σ=40%, T=1y, ATM: delta 0.60 vs. probability 0.44.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Continuous, frictionless rebalancing is an idealization.</strong> Real dealers rehedge in discrete steps and pay costs — the gap between the model and real rehedging is itself a source of the walls and squeezes the OI course studies.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Replication fails when the hedgers are the market.</strong> In October 1987 portfolio insurers' delta-driven futures selling fed the fall it was hedging; prices gapped and the hedge could not be done at model prices. The index skew has been there ever since. On this desk's data, implied far above realised was followed by wider ranges, not calm (<code>iv-over-rv-wider</code>, VALIDATED).</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why doesn't the underlying's real-world expected return \(\mu\) appear anywhere in the Black-Scholes formula, even though it's part of the assumed GBM model of the underlying?</summary>
@@ -1110,5 +1185,6 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

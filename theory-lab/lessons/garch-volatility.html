@@ -37,6 +37,7 @@
       <li>GARCH(1,1) forecasts tomorrow's variance as \(\sigma_t^2 = \omega + \alpha\epsilon_{t-1}^2 + \beta\sigma_{t-1}^2\): a floor, a reaction to yesterday's squared shock, and inertia from yesterday's own variance level.</li>
       <li>\(\alpha+\beta\) is the persistence — how slowly a spike decays. This lesson's worked example uses \(\alpha=0.08,\ \beta=0.90\) (persistence 0.98, half-life ≈ 34 days); this project's actual estimator uses \(\alpha=0.06,\ \beta=0.91\) (persistence 0.97, half-life ≈ 23 days).</li>
       <li>GARCH is one of three sigma estimators this project runs (alongside HV20 and Yang-Zhang), currently applied to the index asset class (NQ) — it isn't a claim that GARCH beats the others OOS, just the estimator this project runs there.</li>
+      <li><strong>Real-world episode:</strong> March 2020. A record-high, low-VIX February gave way to a cluster of huge days of both signs: S&amp;P 500 −9.5% on 12 March, +9.3% on 13 March, −12% on 16 March, and a record VIX close of 82.69. GARCH reacts once the storm starts, but cannot see it coming from returns alone. On this desk's data the pace of the tape persists hour to hour, the same clustering at intraday scale (<code>tape-speed-persistence</code>, VALIDATED).</li>
     </ul>
   </div>
 
@@ -616,6 +617,69 @@
 </script>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: March 2020, clustering at full strength</h2>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>From a record-high February to a cluster of ±10% days</h3>
+    <p>
+      On 19 February 2020 the S&amp;P 500 closed at a record high and the VIX was in the mid-teens. Any GARCH
+      model fitted to the preceding months would have forecast a quiet March: small recent shocks, low
+      \(\sigma_{t-1}^2\), nothing for \(\alpha\epsilon_{t-1}^2\) to react to. Within days, news of the coronavirus
+      spreading outside China set off a sell-off, and by 23 March the index was about 34% below its peak.
+    </p>
+    <p>
+      How it fell is this lesson's stylized fact at full strength. Big days came in clumps, and in
+      <strong>both</strong> directions. The S&amp;P 500 fell about 7.6% on 9 March, 9.5% on 12 March, rose 9.3% on
+      13 March, fell about 12% on 16 March, and rose more than 9% on 24 March. US market-wide circuit breakers, which
+      halt trading after a 7% fall, were triggered on four days in two weeks (9, 12, 16 and 18 March). On 16 March the
+      VIX closed at <strong>82.69</strong>, above its 2008 closing high.
+    </p>
+    <p style="margin-bottom:0">
+      Then came the slow part. After large Federal Reserve interventions in mid and late March the worst of it passed,
+      but volatility did not snap back to February's level. It stayed elevated for months, the slowly fading tail that a
+      persistence \(\alpha+\beta\) close to 1 describes. Note what the up-days did: a +9.3% day enters the recursion as
+      \(\epsilon^2\), exactly like a −9.3% day, and pushes the next forecast up just as hard.
+    </p>
+  </div>
+
+  <p>The causal chain, link by link. The starred link is this lesson's concept.</p>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>The virus spreads outside China; growth is repriced in days</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Volatility-targeting funds</b>Realised \(\sigma\) jumps, so their rules force them to cut exposure, selling into the fall</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Dealers</b>Quote wider and smaller; each order moves the price further</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>★ Volatility clustering</b>Yesterday's big move, of either sign, raises today's \(\sigma_t^2\) through \(\alpha\epsilon_{t-1}^2 + \beta\sigma_{t-1}^2\)</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Four circuit-breaker days in two weeks; VIX record close of 82.69</div>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    GARCH learns only from past returns, so it cannot anticipate the first shock. The move from calm to storm in late
+    February came from news outside the price series, and the model only caught up once the big days had already
+    printed. Plain GARCH(1,1) is also symmetric and usually paired with normal shocks: the March days were too large
+    to be normal draws even around an already-raised \(\sigma\), which is why practitioners fit fat-tailed shocks
+    (Student-t) or asymmetric variants (GJR, EGARCH). The model describes how a storm persists, not when one starts.
+  </p>
+
+  <div class="tl-verdict validated" data-evidence="tape-speed-persistence" data-evidence-date="2026-09-12">
+    <span class="tl-verdict-tag">Validated</span>
+    <span><strong>tape-speed-persistence: the pace of the market persists, on this desk's data, intraday.</strong> The
+    claim that volatility clusters was tested at the 15-minute-to-next-hour scale: a slow approach is followed by a slow
+    hour, a fast one by a fast hour. Next-hour dwell was <strong>monotonic in 68 of 68 cells across 17 pairs</strong>, and
+    the effect is the same at random non-level prices, so it is a property of the tape, not of levels. That is GARCH's
+    idea at a shorter clock. It says how fast the next hour runs, never which way.</span>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>In February 2020 the market was like a calm lake. Then a storm hit, and for a few weeks there were giant waves almost every day, some up and some down. The weather model in this lesson is good at saying "there were big waves yesterday, so expect big waves today." It is not good at saying "a storm is coming tomorrow" when the lake is still flat.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     GARCH(1,1) and its many variants are estimated in practice by maximum likelihood — choosing
@@ -694,7 +758,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Volatility clusters.</strong> Big moves of either sign follow big moves, and calm follows calm — even though the direction of the next move stays close to unpredictable.</span></div>
@@ -704,9 +768,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This project already runs GARCH(1,1) in production.</strong> It uses \(\alpha=0.06\), \(\beta=0.91\) (persistence 0.97, half-life ≈ 23 days) as one of three sigma estimators, applied to the index asset class.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Plain GARCH(1,1) is symmetric.</strong> It can't capture the leverage effect (down moves raising volatility more than equal-sized up moves) — EGARCH/GJR-GARCH exist specifically to address that.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This isn't a claim GARCH beats the alternatives OOS.</strong> It's one of three estimators (alongside HV20 and Yang-Zhang) compared under the same walk-forward harness — which wins is an empirical question, not assumed from the math.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>GARCH sees a storm only once it has started.</strong> March 2020 showed clustering at full strength, with ±9–12% S&amp;P days back to back, but a model fitted to February's calm forecast a quiet March. On this desk's data the pace of the tape persists intraday, 68 of 68 cells (<code>tape-speed-persistence</code>, VALIDATED), as a statement about pace, not direction.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does ARCH square the shock, \(\epsilon_{t-1}^2\), instead of just using \(\epsilon_{t-1}\) directly?</summary>
@@ -813,5 +878,6 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Black-Scholes — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">19</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the PDE, and a 7-question self-test?<a href="black-scholes.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -363,7 +363,42 @@
     </section>
 
     <section class="sl-slide" data-slide="16">
-      <div class="sl-kicker">Section 15</div>
+      <div class="sl-kicker">Section 15 · It actually happened</div>
+      <h2 class="sl-h2">19 October 1987: replication meets a gap</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>In the mid-1980s US pension funds bought <strong>portfolio insurance</strong>: a put manufactured by replication, adjusting stock-and-cash exposure with the put's delta, in practice by selling S&amp;P 500 futures as the market fell. On Monday 19 October 1987 the Dow fell <strong>22.6%</strong>, its largest one-day percentage fall of the modern era; the S&amp;P 500 fell about 20%. The Brady Commission found the insurers' futures selling was a significant source of the pressure. Futures traded far below the stocks, and many stocks opened late.</p>
+      </div>
+      <p class="sl-p">The starred link is this lesson's concept: to clone a long put you must trade like a short-gamma hedger, selling into the decline.</p>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>Market already sliding; Dow about −4.6% on Friday 16th</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>★ Insurers · replication</b>Deltas say sell more futures as prices fall</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Futures</b>Trade far below the stocks they track</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Exchange</b>Pressure passes to stocks; order handling overwhelmed</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Dow −22.6%; index options carry a skew ever after</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="17">
+      <div class="sl-kicker">Section 16</div>
+      <h2 class="sl-h2">What the desk found, and where the textbook breaks</h2>
+      <p class="sl-sub">The tempting claim: implied σ far above realised means the market is over-insured and will calm down.</p>
+      <div class="sl-stamp validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18">
+        <span class="sl-stamp-tag">Validated</span>
+        <span><strong>iv-over-rv-wider: the opposite.</strong> VIX ÷ 20-session realised SPX vol in the top decile (88 first days, 2010→): NAS100 next-5 range <strong>+0.38 ATR [+0.11, +0.62]</strong>, SPX500 next-20 <strong>+0.67 [+0.13, +1.21]</strong>. Realised catches up to implied. Range, not direction.</span>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>Replication assumes continuous prices and a hedger who can trade at the model price without moving it. In 1987 prices gapped and the hedgers were big enough that their hedging <em>was</em> the price move. Constant σ failed too: the skew on index options since then is the market pricing the crash the model ruled out.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="18">
+      <div class="sl-kicker">Section 17</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -413,8 +448,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="17">
-      <div class="sl-kicker">Section 16</div>
+    <section class="sl-slide" data-slide="19">
+      <div class="sl-kicker">Section 18</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Replication, not forecasting — a continuously rebalanced stock-and-bond portfolio that clones the option's payoff pins down its price using no-arbitrage logic alone.</p></div>
@@ -424,6 +459,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Constant volatility is the model's biggest simplification — the smile/skew is the market visibly correcting for it, and it's exactly what the next lesson's jump-diffusion extension formalizes.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Delta N(d₁) is a hedge ratio, not the probability of finishing in the money — that's N(d₂), always smaller, by a gap that grows with σ√T.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Premium = intrinsic (what exercising now is worth) + extrinsic (time value — set by σ and T, eaten by theta, zero at expiry).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">08</div><p>1987: portfolio insurers replicating puts were forced to sell into the fall; prices gapped and the hedge failed at model prices. Desk test: implied far above realised was followed by wider ranges, not calm (iv-over-rv-wider, VALIDATED).</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -567,5 +603,6 @@
   })();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>
