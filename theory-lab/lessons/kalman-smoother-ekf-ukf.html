@@ -36,6 +36,7 @@
       <li>The <strong>Unscented Kalman Filter (UKF)</strong> instead picks a small, deterministic set of representative points (<strong>sigma points</strong>), pushes each one through the <em>true</em> nonlinear function with no approximation, and reconstructs the mean and covariance from where those points land — generally more accurate than the EKF for strongly nonlinear systems, and it never requires computing a Jacobian.</li>
       <li>The worked example smooths a two-day hedge-ratio track from the Kalman filter lesson, and separately runs EKF and UKF against the same nonlinear observation function — the two land within about 0.003 of each other here, because the nonlinearity is mild relative to the uncertainty band in play; the gap widens as nonlinearity or uncertainty grows.</li>
       <li>Honest scope note: EKF and UKF matter for genuinely nonlinear systems. The plain linear Kalman filter already suffices for this curriculum's existing linear-Gaussian applications (e.g. tracking a hedge ratio) — reaching for either extension without a real nonlinearity in hand adds complexity for no benefit.</li>
+      <li><strong>Where it came from:</strong> the EKF grew out of Stanley Schmidt's NASA Ames work relinearizing Kálmán's filter for Apollo-era orbital navigation; the RTS smoother (1965) answered the post-flight "where were we really?" question; the UKF (Julier &amp; Uhlmann, 1990s) swapped the tangent line for sample points — its name, by Uhlmann's account, borrowed from a deodorant.</li>
     </ul>
   </div>
 
@@ -95,6 +96,16 @@
       ended up to reconstruct the answer — trading one convenient approximation for a few honest, exact
       evaluations of the real function.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>Bending a straight-line filter around a curved orbit</h3>
+    <div class="tl-origin-who">Stanley F. Schmidt · early 1960s · NASA Ames — then Rauch, Tung &amp; Striebel (1965) and Julier &amp; Uhlmann (1990s)</div>
+    <p>Kálmán's 1960 filter assumed everything was linear. The problem on Stanley Schmidt's desk at NASA Ames was not: a spacecraft coasting between the Earth and the Moon moves under gravity, and both its motion and what its instruments measure (angles to stars and landmarks) are curved functions of where it is. The pragmatic fix his group arrived at was to linearize the equations around the filter's <em>own current best estimate</em>, redoing that linearization at every step — in essence the extended Kalman filter this lesson covers, and the reason the EKF ended up in Apollo's navigation alongside the linear filter (Section 03).</p>
+    <p>The smoother came out of the same aerospace world a few years later. Rauch, Tung and Striebel's 1965 paper answered an after-the-fact question: once the whole trajectory's data are in, what is the best estimate of where the vehicle actually was at each moment? Their answer is the backward pass derived here — which is also why the smoother belongs in research and post-mortems, not in a live signal.</p>
+    <p>The unscented filter arrived three decades later. Simon Julier and Jeffrey Uhlmann, working on vehicle navigation in the mid-1990s, were unhappy with how badly the EKF's tangent-line approximation could behave, and proposed pushing a small set of carefully chosen sample points through the true nonlinear function instead. By Uhlmann's own later account, the odd name was borrowed, half as a joke, from a stick of unscented deodorant he noticed on a colleague's desk.</p>
+    <p>The lineage matters for markets because financial models are rarely linear either — option values, volatility and regime probabilities are curved functions of a hidden state — so these are the tools you reach for once the plain filter's straight-line assumption stops holding.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -575,6 +586,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example's EKF and UKF landed within about 0.003 of each other</strong> — close, because a mild curvature over a narrow uncertainty band is still well approximated by a tangent line; the two diverge more as either grows.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A smoothed estimate has lookahead baked in — never valid as a live signal.</strong> The same trap the Hidden Markov Model lesson flags for Viterbi labels applies here identically.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Concept lesson only, and only needed for genuine nonlinearity.</strong> This repo's existing linear-Gaussian applications (hedge-ratio tracking) are already fully served by the plain Kalman filter — nothing here is built, tested, or validated, and explaining the extensions is not a claim either produces edge.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Each extension answered a concrete engineering complaint.</strong> Curved orbits → EKF; post-flight reconstruction → RTS smoother; EKF linearization failures → UKF. Ask which of those complaints your own problem actually has before reaching for the fancier tool.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

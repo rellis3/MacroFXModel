@@ -42,6 +42,7 @@
       <li>Power-law decay (long memory) vs. exponential decay (short memory, e.g. AR(1)) is a categorical difference, not a matter of degree: \(H<0.5\) is anti-persistent but technically short memory, not "long memory with a minus sign."</li>
       <li>ARFIMA is the discrete-time econometric tool that fits this behavior to real data, via the fractional differencing order \(d = H - 0.5\), so \(d\in(0,0.5)\) corresponds to genuine long memory.</li>
       <li>A good ARFIMA/FIGARCH in-sample fit is a methodological upgrade over misspecified GARCH, not by itself evidence of tradeable edge — that still needs a costed, out-of-sample test.</li>
+      <li><strong>Where it came from:</strong> the "Hurst phenomenon" — Hurst's 1951 river records scaling like roughly \(n^{0.7}\) when Feller had just proved independence implies \(n^{0.5}\) — resolved by Mandelbrot &amp; Van Ness's 1968 fractional Brownian motion (anticipated by Kolmogorov in 1940).</li>
     </ul>
   </div>
 
@@ -83,6 +84,15 @@
       0 and 1 — is built directly into the process's covariance function, which is the entire mathematical content of
       this lesson.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>A reservoir puzzle that needed a new kind of randomness</h3>
+    <div class="tl-origin-who">Andrey Kolmogorov (1940) · Harold Edwin Hurst (1951) · Benoit Mandelbrot &amp; John Van Ness (1968, IBM Research)</div>
+    <p>The Hurst lesson told the Nile half of this story; the other half is a puzzle. Hurst's 1951 paper on reservoir storage reported that, across many kinds of natural records — river flows, rainfall, tree rings — the rescaled range grew roughly like \(n^{0.7}\) on average, not the \(n^{0.5}\) a random walk predicts. That same year William Feller proved that for independent increments the exponent really should be one half. Either Hurst's data were strange, or the standard models of randomness were missing something. Hydrologists called it the "Hurst phenomenon."</p>
+    <p>The object that resolves it had, it turned out, already been written down: Andrey Kolmogorov described such self-similar Gaussian processes in 1940, in a short paper about curves in Hilbert space — with no rivers in sight. Mandelbrot, then at IBM Research, and the statistician John Van Ness gave the process its name and its modern definition in their 1968 <em>SIAM Review</em> paper, showing that long-range correlated increments produce Hurst-like exponents naturally. Mandelbrot named the parameter \(H\) in Hurst's honor.</p>
+    <p>Whether market returns themselves have long memory proved contentious: Andrew Lo's 1991 modified rescaled-range test found much weaker evidence in stock returns once ordinary short-term dependence was accounted for. That is why this lesson treats fBm as a model to test against data, not an assumption.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -491,6 +501,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo's <code>computeHurst</code> is the descriptive statistic, not the generative model.</strong> fBm/ARFIMA is background theory here — not yet fit or wired into any live forecaster.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Anti-persistence (H&lt;0.5) is short memory, not "long memory with a minus sign."</strong> And structural breaks/regime switching can produce an ACF that looks identical to true long memory — check for regime instability first.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A good ARFIMA/FIGARCH in-sample fit is a methodological upgrade, not evidence of edge.</strong> It's a better-specified model of volatility's dependence structure — trading on it still needs a real, costed, out-of-sample test.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>fBm was invented to explain a measurement, not a market.</strong> It resolved why Hurst's river data broke the \(\sqrt{n}\) rule; whether returns break it too is an empirical question (Lo, 1991, found much weaker evidence) — test it, don't assume it.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Kalman Filter &amp; Adaptive Relationships — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the Bayesian-updating link, and a 6-question self-test?<a href="kalman-filter.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,6 +27,17 @@
 
     <section class="sl-slide" data-slide="2">
       <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A navigation problem on the way to the Moon</h2>
+      <p class="sl-sub">Rudolf E. Kálmán · 1960 · RIAS, Baltimore → NASA Ames / Apollo</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">Where this came from</div>
+        <p>Kálmán, a Hungarian-born engineer at RIAS in Baltimore, wanted a better version of Norbert Wiener's wartime anti-aircraft filter — one that didn't assume the world was stationary and didn't need recomputing from scratch. His 1960 answer was recursive: carry only the current estimate and its uncertainty, fold in each new reading, forget the raw history.</p>
+        <p>Later in 1960 he described it to Stanley F. Schmidt at NASA Ames, who was working on navigation to the Moon. A method that never stores a growing history was exactly what a tiny on-board computer needed — and a version flew in Apollo's guidance software. Finance borrowed it decades later to track drifting betas and hedge ratios.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Why a "fixed" relationship is quietly wrong</h2>
       <p class="sl-sub">A rolling-window regression has a built-in artifact that has nothing to do with the market.</p>
       <div class="sl-icard-grid">
@@ -38,8 +49,8 @@
       <div class="sl-quote">The Kalman filter reframes the problem entirely: stop assuming the ratio is a constant to be estimated, and instead treat it as a hidden, slowly-drifting quantity you can never observe directly — updated by every new noisy reading, with no window to choose and nothing to re-fit from scratch.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Track a belief, not just a number</h2>
       <p class="sl-sub">A GPS for a quantity you can't see directly.</p>
       <div class="sl-card">
@@ -53,8 +64,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Predict: carry the estimate forward, admit it's gone stale</h2>
       <p class="sl-sub">Before looking at today's data at all, project yesterday's belief forward.</p>
       <div class="sl-card">
@@ -69,8 +80,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Update: blend the prediction with what you just saw</h2>
       <p class="sl-sub">The new observation arrives. First measure the surprise.</p>
       <div class="sl-card">
@@ -81,8 +92,8 @@
       <p class="sl-p">Notice what's doing the work: the update never throws away the prediction and never ignores the new reading either. It pulls the estimate <em>part of the way</em> from where it was toward what the new data implies — and exactly how far that pull goes is the single most important number in the whole method.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The Kalman gain: how much to trust the new reading</h2>
       <p class="sl-sub">Kₜ = Pₜ|ₜ₋₁ / (Pₜ|ₜ₋₁ + R) — a ratio between 0 and 1. Pick a regime.</p>
       <div class="sl-card">
@@ -111,8 +122,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Worked example: tracking a hedge ratio through two days</h2>
       <p class="sl-sub">Start: x̂ = 1.20, P = 0.0400, Q = 0.0009, R = 0.0100, H = 1.</p>
       <div class="sl-card">
@@ -133,8 +144,8 @@
       <p class="sl-p">Keep this recursion running and the gain keeps settling toward a <strong>steady-state value</strong> set entirely by the ratio Q/R (here 0.09 — small, so the steady-state gain settles low). Nobody set an N-day lookback anywhere; the filter's effective memory fell straight out of two variance inputs.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Run the gain yourself</h2>
       <p class="sl-sub">Kₜ = prior variance ÷ (prior variance + measurement variance). Change any field — starts on Day 1 above.</p>
       <div class="sl-card">
@@ -155,8 +166,8 @@
       <p class="sl-p">Push R up and watch the gain fall toward zero — a shakier sensor gets discounted. Push P up (a less confident prior) and watch the gain climb toward one. This is the entire method, in one formula and four numbers.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The trade-off, live: smooth vs. reactive</h2>
       <p class="sl-sub">Grey dots are noisy daily observations of a hedge ratio. Drag the slider to shift how much the filtered line trusts each new one.</p>
       <div class="sl-card">
@@ -204,8 +215,8 @@
       <p class="sl-p">Watch the shaded band as you drag: it narrows toward the low end (a confident, well-averaged estimate) and widens toward the high end (a jagged line that's really just re-drawing the noise). This is the same trade-off Q and R control directly in the real filter — a modeling choice, not something the data decides for you.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The trading case: drift smoothly, don't refit and jump</h2>
       <p class="sl-sub">Same underlying data, two ways of tracking the relationship between two correlated instruments.</p>
       <div class="sl-compare">
@@ -231,8 +242,8 @@
       <div class="sl-quote">This is the standard alternative to rolling-window OLS in statistical arbitrage and pairs trading: track the hedge ratio between two cointegrated instruments with a Kalman filter instead of a rolling regression, so it reacts smoothly to genuine drift instead of exhibiting the equal-weight-in, zero-weight-out discontinuity a fixed window always has. The same idea extends to a time-varying market beta or factor loading — any coefficient conventionally estimated by static OLS.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this is used, and where "adaptive" stops meaning "principled"</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🚀</div><div><h4>Born tracking a spacecraft</h4><p>Kálmán published the recursion in 1960; its first famous use was fusing noisy inertial-sensor readings for the Apollo guidance computer. GPS, robotics, and self-driving localization all use the same core idea.</p></div></div>
@@ -246,8 +257,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -297,8 +308,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A relationship estimated once — like a hedge ratio from a rolling regression — is rarely a true constant, and a fixed window has a built-in jump artifact that has nothing to do with the market.</p></div>
@@ -307,6 +318,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Update blends in the new observation by the Kalman gain K = P/(P+R), then shrinks P — the gain is derived, not a fixed smoothing constant like an EMA's.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The gain settles toward a steady state set by Q/R — the filter's own, self-chosen "effective window length," with no N to pick.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Q and R are still chosen inputs — grid-searching them against a backtest is the same overfitting risk as tuning a window length, just harder to spot.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>The filter's origin explains its shape: Kálmán (1960) made estimation recursive so it could run with almost no memory — the property that got it onto Apollo and makes it cheap on a daily feed.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

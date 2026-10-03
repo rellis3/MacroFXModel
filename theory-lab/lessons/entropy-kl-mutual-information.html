@@ -36,6 +36,7 @@
       <li>The worked example below computes both directions on a concrete biased-coin-vs-model pair: 0.919 bits one way, 2.329 bits the other — a 2.5× gap from swapping which distribution is "truth" and which is "model."</li>
       <li>Mutual information \(I(X;Y) = D_{\text{KL}}\big(P(X,Y)\,\|\,P(X)P(Y)\big) = H(X) - H(X|Y)\) measures how much knowing \(Y\) shrinks your uncertainty about \(X\) — a <em>nonlinear</em> generalization of correlation that catches relationships correlation is structurally blind to.</li>
       <li>The \(Y=X^2\) worked example makes this concrete and exact: linear correlation between \(X\) and \(Y\) is precisely zero, while mutual information comes out to 1.522 bits — clear, computable evidence that "uncorrelated" and "independent" are not the same claim.</li>
+      <li><strong>Where it came from:</strong> Claude Shannon's 1948 Bell Labs theory of communication (how much can a noisy wire carry?) and Kullback &amp; Leibler's 1951 "information for discrimination," written by two NSA mathematicians. The story that von Neumann suggested the word "entropy" is an often-told anecdote, not firm record.</li>
     </ul>
   </div>
 
@@ -90,6 +91,16 @@
     doesn't care whether the relationship is a straight line, a curve, a threshold, or something with
     no simple shape at all.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>Measuring information to send it down a wire</h3>
+    <div class="tl-origin-who">Claude E. Shannon · 1948 · Bell Labs — then Solomon Kullback &amp; Richard Leibler · 1951</div>
+    <p>Shannon was a Bell Labs engineer, and his problem was the telephone company's: how much can you push through a noisy channel, and how compactly can a message be encoded? His 1948 paper, "A Mathematical Theory of Communication," answered by deliberately ignoring what messages <em>mean</em> and measuring only how unpredictable they are — the entropy formula on this page. The paper also put the word "bit" into print, which Shannon credited to his Bell Labs colleague John Tukey. He had spent the war years working on cryptography, and the two problems fed each other.</p>
+    <p>Why "entropy"? An often-told anecdote has John von Neumann advising Shannon to use the word — partly because the formula has the same form as entropy in statistical mechanics, and partly because nobody really understands entropy, so he would always have the advantage in an argument. The story comes from a recollection relayed decades later and has probably been polished in the retelling; treat it as lore, not record.</p>
+    <p>Kullback and Leibler were mathematicians at the US National Security Agency; Kullback had been one of William Friedman's original Army codebreakers in the 1930s. Their 1951 paper "On Information and Sufficiency" asked a statistician's version of a cryptanalyst's question — how much evidence does each observation give for telling one distribution apart from another? — and the quantity they called the mean information for discrimination is what is now called KL divergence.</p>
+    <p>The route into this lab is direct: <code>entropyCore.js</code> uses these exact quantities inside the analytics desk's regime-shift detector — telephone-network mathematics, repurposed for noticing when market behavior has shifted.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -529,6 +540,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Mutual information is a symmetric, nonlinear generalization of correlation.</strong> \(I(X;Y)=H(X)-H(X|Y)=I(Y;X)\ge0\), zero exactly when independent — a strictly more general question than "is there a straight-line relationship."</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The \(Y=X^2\) example proves the gap concretely.</strong> Correlation exactly 0; mutual information exactly 1.522 bits, cross-checked two independent ways. Uncorrelated does not mean unrelated.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Detecting dependence is not the same as finding a tradeable edge.</strong> A nonzero mutual information says two variables aren't independent — nothing more. This lesson explains a measurement tool, not a signal.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>These measures were built for messages, not markets.</strong> Shannon measured unpredictability to size telephone channels; Kullback and Leibler measured how well data tell two hypotheses apart. Both questions translate cleanly to "has the return distribution changed?" — which is how they reach this lab.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

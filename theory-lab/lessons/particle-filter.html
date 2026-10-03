@@ -37,6 +37,7 @@
       <li>The effective-sample-size diagnostic \(N_{\text{eff}} = 1/\sum_i w_i^2\) measures how lopsided the weights are — it drops toward 1 as one particle absorbs nearly all the credibility (particle degeneracy) and stays near \(N\) when weight is spread evenly; resampling is triggered when it falls below a threshold, commonly \(N/2\).</li>
       <li>The worked example tracks a state whose process noise is a fat-tailed mixture (mostly calm, occasionally a large jump) — exactly the kind of non-Gaussian shock a linear Kalman filter's single Gaussian \(Q\) cannot represent honestly.</li>
       <li>This is a concept lesson only: explaining Sequential Monte Carlo is not a claim it produces edge in this repo. Nothing here is built, prototyped, or validated.</li>
+      <li><strong>Where it came from:</strong> Gordon, Salmond &amp; Smith's 1993 "bootstrap filter," built at the UK Defence Research Agency and Imperial College for tracking targets the Kalman filter couldn't handle — Monte Carlo sampling (Los Alamos, 1940s) plus the resampling step that fixed decades of weight collapse.</li>
     </ul>
   </div>
 
@@ -99,6 +100,16 @@
       play, not ones that have already been ruled out. That's a particle filter: a crowd of guesses,
       re-scored every step, periodically refreshed so the crowd doesn't waste itself on a few dead ends.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>Tracking a target when the maths won't close</h3>
+    <div class="tl-origin-who">Neil Gordon, David Salmond &amp; Adrian Smith · 1993 · UK Defence Research Agency &amp; Imperial College London</div>
+    <p>The core trick — represent a distribution by a cloud of random samples — is older than the filter. Monte Carlo methods were developed at Los Alamos in the late 1940s; Stanislaw Ulam later recalled that the idea came to him while playing solitaire during an illness, wondering whether it was easier to estimate his chances of winning by simply playing many games than by working out the combinatorics. Engineers tried sample-based filtering as early as the late 1960s, but the samples kept collapsing: after a few steps almost all the weight sat on one or two of them — the degeneracy problem this lesson diagnoses with \(N_{\text{eff}}\).</p>
+    <p>Gordon and Salmond, at the UK's Defence Research Agency, needed to track targets whose posterior was badly non-Gaussian — the textbook case being "bearings-only" tracking, where you know the angle to an object but not its range, exactly the situation where the Kalman filter and EKF break down. With the Bayesian statistician Adrian Smith at Imperial College London they published the "bootstrap filter" in 1993. The decisive ingredient was <strong>resampling</strong>: periodically clone the heavily weighted particles and drop the weightless ones, so the swarm keeps following the target instead of starving.</p>
+    <p>Timing mattered as much as the idea: by the early 1990s ordinary computers could afford thousands of particles per step. Closely related methods appeared independently around the same time — Genshiro Kitagawa's "Monte Carlo filter" in statistics, and Michael Isard and Andrew Blake's CONDENSATION algorithm for tracking objects in video. Adrian Smith later became President of the Royal Society.</p>
+    <p>In finance, the same machinery is what makes stochastic-volatility and jump models filterable: a hidden volatility that isn't Gaussian and doesn't move linearly is just another awkward target to track.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -470,6 +481,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example's swarm stayed healthy</strong> (\(N_{\text{eff}}\approx 4.83\) of 5) against an ordinary observation, but a genuine fat-tail jump would collapse it toward 1 — exactly the case a resample step exists to catch.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Resampling fixes degeneracy but costs diversity (particle impoverishment)</strong> — it is a real trade-off, not a free correction, which is why it should trigger on \(N_{\text{eff}}\), not run unconditionally every step.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Not built, not prototyped, not validated in this repo.</strong> Explaining Sequential Monte Carlo is not a claim it produces edge here — any real use would need to beat the incumbent on true out-of-sample performance first, per this project's Lego Principle.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Resampling was the breakthrough, not the sampling.</strong> Sample-based filters existed from the late 1960s but degenerated; the 1993 contribution was the clone-and-discard step — which is why \(N_{\text{eff}}\) and when to resample get so much attention in this lesson.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

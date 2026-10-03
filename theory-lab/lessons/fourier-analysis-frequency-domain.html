@@ -36,6 +36,7 @@
       <li>A worked example below builds a synthetic 10-point series with a known, deterministic period-5 (weekly) cycle and recovers that exact cycle from its periodogram using nothing but Euler's identity and a geometric-sum argument — no fitting, no guessing.</li>
       <li>Honestly: raw FX (or equity) return series tend to produce a periodogram that is close to flat across most frequencies — consistent with near-random-walk behavior, the same story this Theory Lab's ACF/PACF and Hurst/variance-ratio lessons already tell from different angles. This tool earns its keep on volume, volatility, and seasonality series far more reliably than on raw price returns.</li>
       <li>Explaining how the Fourier transform works is not a claim that spectral analysis produces trading edge here — it's background knowledge for reading a periodogram correctly, and for understanding exactly what the next lesson's wavelets fix about it.</li>
+      <li><strong>Where it came from:</strong> Joseph Fourier's study of heat flow (1807 memoir, 1822 book), doubted by Lagrange because it claimed any function could be built from sines; made computationally cheap by Cooley &amp; Tukey's 1965 FFT — a trick Gauss had found around 1805 and left unpublished.</li>
     </ul>
   </div>
 
@@ -73,6 +74,16 @@
       the Fourier transform is the mathematical version of the ear that pulls those individual "notes" back out of the
       mixed signal.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>A theory of heat that its referees didn't trust</h3>
+    <div class="tl-origin-who">Joseph Fourier · 1807 memoir, 1822 book · Grenoble &amp; Paris</div>
+    <p>Fourier was trying to predict how heat spreads through a solid — a bar, a ring, the Earth's crust. He did much of the work in Grenoble, where Napoleon had made him prefect of the Isère department after he served on the French expedition to Egypt. His key move was to split an arbitrary starting temperature profile into a sum of sine waves, because each individual sine wave decays in a simple, solvable way; add the decayed waves back up and you have the answer.</p>
+    <p>His 1807 memoir to the Paris Institute met resistance. Lagrange in particular objected to the claim that an arbitrary function — even one with a jump in it — could be written as a sum of smooth sines. A revised version won the Institute's prize in 1811, but with reservations about its rigor, and Fourier only set the theory out in full in his 1822 book <em>Théorie analytique de la chaleur</em>. Pinning down exactly when his claim holds kept mathematicians busy for much of the following century.</p>
+    <p>The computational leap came in 1965, when James Cooley and John Tukey published the fast Fourier transform; part of the motivation was analyzing seismometer records to detect Soviet nuclear tests. It later emerged that Gauss had worked out essentially the same trick around 1805 for computing asteroid orbits, in notes he never published.</p>
+    <p>Spectral analysis reached markets in the 1960s (the Granger &amp; Morgenstern work in Section 03), and the periodogram this lesson builds is a direct descendant of Fourier's heat equation.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -390,6 +401,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Raw FX/equity return periodograms tend to be close to flat.</strong> Consistent with near-random-walk behavior — the same conclusion this Theory Lab's ACF/PACF and Hurst/variance-ratio lessons reach from other angles. This tool is better suited to volume, volatility, or seasonality series.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Only stationary series have a stable, interpretable spectrum.</strong> Run this on returns (or another properly stationary series), not raw trending price levels.</span></div>
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>This lesson explains a technique, not a claim of edge.</strong> Nothing here is a trading signal — it's the background needed to read a periodogram, and to understand what the next lesson's wavelets add on top.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>A tool invented for heat, sped up for seismology.</strong> Fourier's decomposition (1807) and the 1965 FFT were both built for physical signals with genuine cycles; a market series is not guaranteed to have any, which is why a flat periodogram is a legitimate, common answer.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

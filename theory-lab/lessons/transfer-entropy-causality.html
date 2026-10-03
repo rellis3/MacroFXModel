@@ -36,6 +36,7 @@
       <li>Transfer entropy is directional and generally asymmetric: \(TE_{X\to Y} \ne TE_{Y\to X}\) — that asymmetry is exactly what gives it a causality-<em>like</em> signal, the same way Granger causality's directionality does.</li>
       <li>The worked example below constructs an exact, fully-derived case — \(X\) is pure noise driving \(Y\) through a noisy one-step channel — where \(TE_{X\to Y}\approx 0.531\) bits while \(TE_{Y\to X}=0\) bits <em>exactly</em>, real numbers from a real (if synthetic) process, not fitted or estimated from a sample.</li>
       <li><strong>Mandatory caveat:</strong> transfer entropy detects predictive information flow — it is not causation in the formal, interventionist (Pearl do-calculus) sense. An unobserved common driver can produce a nonzero, asymmetric transfer entropy with no direct causal link at all, exactly as with Granger causality.</li>
+      <li><strong>Where it came from:</strong> Thomas Schreiber's 2000 physics paper "Measuring Information Transfer," which gave Wiener's and Granger's directional-prediction idea a nonlinear, model-free form — first demonstrated on chaotic maps and heart-rate/breathing recordings, not prices.</li>
     </ul>
   </div>
 
@@ -84,6 +85,15 @@
     versus how much moves the other way, computed as two separate numbers that are allowed to (and
     usually do) disagree.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>Which way does the information flow?</h3>
+    <div class="tl-origin-who">Thomas Schreiber · 2000 · building on Norbert Wiener (1956) and Clive Granger (1969)</div>
+    <p>The directional question is older than the tool. Norbert Wiener suggested in the 1950s that one series could be called causal for another if its past improved predictions of the other; Clive Granger turned that into a practical regression test in a 1969 <em>Econometrica</em> paper, and "Granger causality" became standard econometric vocabulary. Granger shared the 2003 Nobel memorial prize in economics with Robert Engle — awarded chiefly for cointegration, though the causality test is the work of his that most people meet first.</p>
+    <p>Schreiber came at the question from physics. He worked on nonlinear and chaotic time series — he co-wrote a standard textbook, <em>Nonlinear Time Series Analysis</em>, with Holger Kantz — where a linear regression misses most of the structure. Mutual information could detect nonlinear dependence, but it is symmetric: it cannot say which way the influence runs. His short 2000 <em>Physical Review Letters</em> paper, "Measuring Information Transfer," fixed that by conditioning on the target's own past, and illustrated it on coupled chaotic maps and on physiological recordings of heart rate and breathing — not on prices.</p>
+    <p>The tidy ending came nine years later, when (as Section 03 covers) Barnett, Barrett &amp; Seth showed the physicist's measure and the economist's test coincide for Gaussian variables: two fields had been asking the same question in different notation. That is the role it plays in this lab — a nonlinear cross-check on the Granger tests built in the ARIMA &amp; VAR lesson.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -414,6 +424,7 @@
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Transfer entropy is not causation in the formal sense — full stop.</strong> It measures predictive information flow, never a Pearl-style interventionist causal claim. An unobserved common driver can produce a clean, asymmetric, nonzero result with zero direct causal link.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real-sample estimation is harder than this lesson's exact example.</strong> Binning/kernel choices for a finite sample introduce estimation bias — treat any reported transfer entropy number from real data with the same skepticism as an estimated mutual information.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing here has been fitted in this repo.</strong> The yield-spread/FX widening scenario above illustrates what the tool answers, not a result already produced — explaining the technique is not a claim it produces edge.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Two fields, one question.</strong> Economists (Granger, 1969) and physicists (Schreiber, 2000) independently asked "does X's past add information about Y's future?" — one with regressions, one with probabilities. For Gaussian data the answers coincide; transfer entropy only earns its extra data cost when the link is nonlinear.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
