@@ -94,7 +94,7 @@
         <div class="sl-sliderhead" style="margin-top:8px"><span>Money at risk</span><span class="sl-live" id="m-risk-val">$500</span></div>
         <input type="range" class="sl-slider" id="m-risk" min="100" max="2000" step="50" value="500">
         <div class="sl-svgwrap">
-          <svg id="m-svg" class="tp-svg" viewBox="0 0 640 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Price ladder: stop and invalidation below entry, target above; the loss zone red, the profit zone green, and a grey band of half an ATR either side of entry.">
+          <svg id="m-svg" class="tp-svg" viewBox="0 0 400 110" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Price ladder: stop and invalidation below entry, target above; the loss zone red, the profit zone green, and a grey band of half an ATR either side of entry.">
             <g id="m-g"></g>
           </svg>
         </div>
@@ -268,7 +268,7 @@
     else if (bufP === 0) { f.className = 'tp-flag meh'; f.textContent = 'No buffer: the stop sits on the level, where overshoots and other stops cluster.'; }
     else { f.className = 'tp-flag good'; f.textContent = 'Outside the noise, beyond 1R, size from the stop. Loss at stop ≈ $' + (lots * D * 10).toFixed(2) + '.'; }
     var g = $('m-g'); while (g.firstChild) g.removeChild(g.firstChild);
-    var lo = -Math.max(D, atr / 2) * 1.08, hi = Math.max(tgt, atr / 2) * 1.08, X0 = 20, X1 = 620, Y = 60;
+    var lo = -Math.max(D, atr / 2) * 1.08, hi = Math.max(tgt, atr / 2) * 1.08, X0 = 14, X1 = 386, Y = 60;
     function x(p){ return X0 + (X1 - X0) * (p - lo) / (hi - lo); }
     g.appendChild(el('rect', { x: x(-atr / 2), y: Y - 22, width: x(atr / 2) - x(-atr / 2), height: 44 }, 'fill:var(--text3);opacity:0.2'));
     g.appendChild(el('rect', { x: x(-D), y: Y - 8, width: x(0) - x(-D), height: 16 }, 'fill:var(--red);opacity:0.6'));
@@ -276,10 +276,10 @@
     [[0, 'var(--text)', 'entry', true], [tgt, 'var(--green)', 'target', true], [-inv, 'var(--amber)', 'invalid.', true], [-D, 'var(--red)', 'stop', false]].forEach(function(m, i){
       var xx = x(m[0]);
       g.appendChild(el('line', { x1: xx, x2: xx, y1: Y - 18, y2: Y + 18 }, 'stroke:' + m[1] + ';stroke-width:2.5'));
-      var anchor = xx < 90 ? 'start' : (xx > 550 ? 'end' : 'middle');
-      var crowded = Math.abs(x(m[0]) - x(0)) < 110 && i > 0;
+      var anchor = xx < 60 ? "start" : (xx > 340 ? "end" : "middle");
+      var crowded = Math.abs(x(m[0]) - x(0)) < 70 && i > 0;
       var yT = m[3] ? (crowded ? Y - 44 : Y - 26) : Y + 40;
-      g.appendChild(el('text', { x: xx, y: yT, 'text-anchor': anchor, 'font-size': 18, 'font-family': "'DM Mono',monospace" }, 'fill:' + m[1], m[2]));
+      g.appendChild(el('text', { x: xx, y: yT, 'text-anchor': anchor, 'font-size': 15, 'font-family': "'DM Mono',monospace" }, 'fill:' + m[1], m[2]));
     });
   }
   ids.forEach(function(id){ $(id).addEventListener('input', render); });

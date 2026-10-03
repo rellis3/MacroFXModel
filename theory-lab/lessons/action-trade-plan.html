@@ -14,7 +14,7 @@
   .tp-table th{color:var(--text3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
   .tp-table td:first-child,.tp-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
   .tp-svg{width:100%;height:auto;display:block}
-  .tp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 14px;margin:6px 0 12px}
+  .tp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px 14px;margin:6px 0 12px}
   .tp-field label{display:block;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
   .tp-in{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:15px;padding:8px 9px;min-height:40px}
   .tp-in:focus{outline:none;border-color:var(--blue2)}
@@ -310,7 +310,7 @@
         <input type="range" id="tp-risk" min="0.1" max="3" step="0.05" value="0.5">
       </div>
     </div>
-    <svg id="tp-svg" class="tp-svg" viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A horizontal price ladder showing the stop, invalidation level, entry and target. The loss zone between stop and entry is shaded red, the profit zone between entry and target green, and a grey band around entry shows half an ATR either side as ordinary noise.">
+    <svg id="tp-svg" class="tp-svg" viewBox="0 0 400 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A horizontal price ladder showing the stop, invalidation level, entry and target. The loss zone between stop and entry is shaded red, the profit zone between entry and target green, and a grey band around entry shows half an ATR either side as ordinary noise.">
       <g id="tp-g"></g>
     </svg>
     <div class="tl-legend">
@@ -630,7 +630,7 @@
     msgs.forEach(function(m){ var d = document.createElement('div'); d.className = m[0]; d.textContent = m[1]; warn.appendChild(d); });
 
     // price ladder
-    var X0 = 30, X1 = 610, lo = Math.min(stop, entry, tgt, inv, entry - 0.5 * atr * pip), hi = Math.max(stop, entry, tgt, inv, entry + 0.5 * atr * pip);
+    var X0 = 16, X1 = 384, lo = Math.min(stop, entry, tgt, inv, entry - 0.5 * atr * pip), hi = Math.max(stop, entry, tgt, inv, entry + 0.5 * atr * pip);
     var pad = (hi - lo) * 0.06; lo -= pad; hi += pad;
     function x(p){ return X0 + (X1 - X0) * (p - lo) / (hi - lo); }
     var Y = 90;
@@ -642,12 +642,12 @@
     function mark(p, color, label, up, row){
       var xx = x(p), yT = up ? Y - 34 - row * 22 : Y + 46 + row * 22;
       g.appendChild(el('line', { x1: xx, x2: xx, y1: Y - 20, y2: Y + 20 }, 'stroke:' + color + ';stroke-width:2.5'));
-      var anchor = xx < 110 ? 'start' : (xx > 530 ? 'end' : 'middle');
+      var anchor = xx < 70 ? "start" : (xx > 330 ? "end" : "middle");
       g.appendChild(el('text', { x: xx, y: yT, 'text-anchor': anchor, 'font-size': 15, 'font-family': "'DM Mono',monospace" }, 'fill:' + color, label + ' ' + p.toFixed(dec)));
     }
-    var invClose = Math.abs(x(inv) - x(entry)) < 170;
+    var invClose = Math.abs(x(inv) - x(entry)) < 110;
     mark(entry, 'var(--text)', 'entry', true, 0);
-    mark(tgt, 'var(--green)', 'target', true, Math.abs(x(tgt) - x(entry)) < 170 ? 1 : 0);
+    mark(tgt, 'var(--green)', 'target', true, Math.abs(x(tgt) - x(entry)) < 110 ? 1 : 0);
     mark(inv, 'var(--amber)', 'invalid.', true, invClose ? 1 : 0);
     mark(stop, 'var(--red)', 'stop', false, 0);
 
