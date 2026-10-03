@@ -34581,9 +34581,10 @@ if (HIDE_DESK_EDUCATION) {
     });
   });
   // The folder's README is developer notes about this repo, not a page for readers;
-  // /education/ is the owner's raw study notes, backtests and transcripts. Both sit
-  // in the education zone, so the shared password alone would otherwise open them.
-  app.get(/^\/(?:theory-lab\/.*\.md$|education(?:\/|$))/i, (req, res, next) => {
+  // /education/ is the owner's raw study notes, backtests and transcripts; paths-admin.js
+  // names the admin-only lessons on the learning paths. All of these
+  // sit in the education zone, so the shared password alone would otherwise open them.
+  app.get(/^\/(?:theory-lab\/.*\.md$|theory-lab\/assets\/paths-admin\.js$|education(?:\/|$))/i, (req, res, next) => {
     if (isEducationAdmin(req)) return next();
     res.status(404).type('html').send('<!doctype html><title>Not Found</title><p>Not found.</p>');
   });
