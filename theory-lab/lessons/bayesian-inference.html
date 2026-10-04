@@ -292,7 +292,7 @@
     still (correctly) land on different posteriors. A rough, widely used
     convention (Harold Jeffreys, 1961) for interpreting <code>K</code>:
     1–3 is "barely worth mentioning," 3–10 is "substantial" evidence, 10–30 is
-    "strong," and above 100 is "decisive." A Bayes factor of 3 means the data
+    "strong," 30–100 is "very strong," and above 100 is "decisive." A Bayes factor of 3 means the data
     is 3× more consistent with \(H_1\) than \(H_2\) — worth noting, not worth
     betting the account on. A Bayes factor of 30 is a different order of
     claim entirely.
@@ -632,7 +632,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A piece of evidence is not the same as the probability it implies.</strong> How much it should move your belief depends on the prior — how rare the thing was to begin with.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The base-rate fallacy is the single most common failure.</strong> An "80% accurate" classifier flagging a rare (20%) event gives only a 50% posterior — not 80% — because false alarms from the much larger opposite population catch up to true alarms.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Sequential updating is just re-using yesterday's posterior as today's prior.</strong> Multiply by the new likelihood ratio — nothing is thrown out and re-derived from scratch.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A Bayes factor isolates what the evidence itself is worth,</strong> separate from the prior — 1–3 is barely worth mentioning, 3–10 "substantial," 10–30 "strong," 100+ "decisive" (Jeffreys' scale).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A Bayes factor isolates what the evidence itself is worth,</strong> separate from the prior — 1–3 is barely worth mentioning, 3–10 "substantial," 10–30 "strong," 30–100 "very strong," 100+ "decisive" (Jeffreys' scale).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Bayesian and frequentist statistics disagree on what "probability" even means,</strong> not just on formulas — degree of belief about a single case, versus long-run frequency over repeated trials.</span></div>
     <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A Bayesian confluence score is a hypothesis, not a result.</strong> It isn't built or validated in this repo — and it must beat the incumbent additive score OOS, not just sound more principled, before it would replace anything live.</span></div><!-- DESK:END -->
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>How it reached trading: blending views with the market.</strong> Raw expected returns are too noisy for an optimiser; Black–Litterman (1990–92) treated the market as the prior and views as evidence — the template for every belief update on a desk.</span></div>

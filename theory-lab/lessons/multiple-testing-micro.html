@@ -78,8 +78,8 @@
           <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Curve of the probability of at least one false positive rising from near zero toward one as the number of tests increases, with a marker dot showing the current slider position">
             <line x1="55" y1="20" x2="55" y2="180" style="stroke:var(--border2);stroke-width:1"/>
             <line x1="55" y1="180" x2="615" y2="180" style="stroke:var(--border2);stroke-width:1"/>
-            <line x1="55" y1="152" x2="615" y2="152" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
-            <text x="620" y="156" style="fill:var(--text3);font-size:10px">5%</text>
+            <line x1="55" y1="172" x2="615" y2="172" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="620" y="176" style="fill:var(--text3);font-size:10px">5%</text>
             <path id="fwer-curve" d="" style="fill:none;stroke:var(--purple);stroke-width:2.5"/>
             <circle id="fwer-dot" cx="55" cy="180" r="6" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
             <text x="55" y="196" style="fill:var(--text3);font-size:10px">N=1</text>
@@ -105,7 +105,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">📅</div><div><h4>Session and day-of-week cuts</h4><p>Slice by London vs. NY session, or by day-of-week, and the count of "looks at the data" keeps climbing — with no new data collected.</p></div></div>
       </div>
       <p class="sl-p">Assume, for the calculation, that <strong>none</strong> of the 70 slices has any real edge — every one is pure noise around zero. Using the formula from the last slide with m = 70:</p>
-      <div class="sl-row"><div class="sl-box">1 − (0.95)^70</div><div class="sl-arrow">≈</div><div class="sl-box">1 − 0.0275</div></div>
+      <div class="sl-row"><div class="sl-box">1 − (0.95)^70</div><div class="sl-arrow">≈</div><div class="sl-box">1 − 0.0276</div></div>
       <div class="sl-row" style="margin-top:8px"><div class="sl-box green">FWER</div><div class="sl-arrow">≈</div><div class="sl-box green">97.2%</div></div>
       <p class="sl-p">A <strong>97.2% chance</strong> at least one of the 70 slices "clears" the 5% bar from noise alone. The expected count is 70 × 0.05 = <strong>3.5</strong> false positives. So "3 out of 70 slices look significant" isn't a finding — it's almost exactly what you'd see with zero edge anywhere in the data.</p>
     </section>
@@ -118,7 +118,7 @@
       <p class="sl-p" style="margin-top:14px">At m = 70, α_Bonf = 0.05 / 70 ≈ 0.000714 — a raw p-value would need to land below roughly 0.07% (about 70× stricter than the uncorrected 5%) to count. This is derived from the union bound (Boole's inequality): FWER ≤ m · α_Bonf = α, a guarantee that holds <strong>no matter how correlated the tests are</strong> — which is Bonferroni's real virtue, and also the seed of its main flaw.</p>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where this needs qualifying</div>
-        <p>Bonferroni's worst-case guarantee assumes m fully independent tests. Seventy pair/regime slices are not that: EURUSD, GBPUSD and AUDUSD all move partly off a shared USD factor, so a single macro surprise can light up several "independent-looking" slices together. That shared variation means 70 correlated slices carry less independent information than m implies — dividing by the full m ends up needlessly punishing real, shared effects, not just noise.</p>
+        <p>Bonferroni's guarantee makes no use of how the tests depend on each other — it divides by the full m regardless. Seventy pair/regime slices are not that: EURUSD, GBPUSD and AUDUSD all move partly off a shared USD factor, so a single macro surprise can light up several "independent-looking" slices together. That shared variation means 70 correlated slices carry less independent information than m implies — dividing by the full m ends up needlessly punishing real, shared effects, not just noise.</p>
       </div>
     </section>
 
@@ -272,7 +272,7 @@
         <button class="sl-quiz-opt" data-correct="true">The slices are correlated (shared USD factor), so they carry less independent information than m implies</button>
         <button class="sl-quiz-opt">Bonferroni only works when α is larger than 0.05</button>
         <button class="sl-quiz-opt">Bonferroni requires knowing the true effect size in advance</button>
-        <div class="sl-quiz-explain">Bonferroni's α/m threshold is derived for the worst case — full independence. Correlated slices (EURUSD, GBPUSD, AUDUSD sharing USD exposure) mean the true amount of independent information is less than m, so the flat α/m bar over-punishes real, shared effects.</div>
+        <div class="sl-quiz-explain">Bonferroni's α/m threshold is derived for the worst case and takes no credit for overlap between tests. Correlated slices (EURUSD, GBPUSD, AUDUSD sharing USD exposure) mean the true amount of independent information is less than m, so the flat α/m bar over-punishes real, shared effects.</div>
       </div>
 
       <div class="sl-quiz-q" data-q="4">
