@@ -13,6 +13,10 @@
 .wb-start:hover{border-color:var(--amber)}
 .wb-cap{padding:14px 16px;min-height:3.4em;font-size:15px;line-height:1.55;color:var(--text);border-top:1px solid var(--border)}
 .wb-n{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-right:4px}
+.wb-istroke{stroke-width:3.4;vector-effect:non-scaling-stroke}
+.wb-ifill{fill:currentColor;fill-opacity:.18;stroke:none}
+.wb-isym{font-weight:700}
+.wb-ilabel{font-weight:700;paint-order:stroke;stroke:#11141c;stroke-width:5px;stroke-linejoin:round}
 .wb-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid var(--border);background:var(--s2,var(--panel2))}
 .wb-btn{min-width:44px;min-height:44px;border-radius:10px;border:1px solid var(--border2);background:var(--s1,var(--panel));color:var(--text);font-size:15px;cursor:pointer}
 .wb-btn:hover{border-color:var(--blue)}

@@ -501,8 +501,15 @@ read aloud) say what just happened. Load `assets/whiteboard.css` in the head and
 ```
 
 In a visual guide, give the board its own slide right after the slide it
-illustrates (kicker `▶ Watch it`); `education/tools/build_whiteboards.py` builds both
-placements from one scene definition and renumbers the deck's `data-slide`s.
+illustrates (kicker `▶ Watch it`). Each board is one scene file in
+`education/tools/whiteboards/<name>.py` (helpers in `_wb.py`) defining `BOARD`;
+`python3 education/tools/build_whiteboards.py [name]` inserts it into the full lesson
+and the deck and renumbers the deck's `data-slide`s.
+
+Draw the *thing*, not a label for it: the `icon` op has ~30 hand-drawn doodles (bank
+with ¥/$, cash stack, house, factory, ship, barrel, gold, bond scroll, piggy-bank
+pension fund, person, crowd, bolt, rocket, fire, shield, ice cube, clock, …) that
+can move — money flowing from a bank to a trader beats a box saying "borrow".
 
 Ops: `box`, `chip` + `move`, `arrow` (`label`, `bend`, `dash`), `note`, `line`,
 `count`, `sub`, `pulse`, `dim`, `hide`, `cross`, plus mini charts — `chart` (a
