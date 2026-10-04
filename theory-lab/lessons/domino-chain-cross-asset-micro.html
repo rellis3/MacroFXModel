@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Domino Effect — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <style>
   /* Local: an amber tag variant for "untested here" (deck.css has red/green/blue only). */
@@ -38,7 +39,7 @@
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Change a shared input…</h4><p>…and every price built on it must be redone at once. Not copying — arithmetic.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🔎</div><div><h4>So the chain is a diagnostic</h4><p>If the 2-year jumped, the dollar firmed and gold slipped in the same minute, the shared input was the expected policy rate.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">⏱</div><div><h4>…and only weakly a forecast</h4><p>Whether the dominoes fall <em>in sequence</em> — so you could trade the later ones — is a separate claim. Hold that thought for slide 9.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏱</div><div><h4>…and only weakly a forecast</h4><p>Whether the dominoes fall <em>in sequence</em> — so you could trade the later ones — is a separate claim. Hold that thought for the verdict slide near the end.</p></div></div>
       </div>
     </section>
 
@@ -151,7 +152,19 @@
     </section>
 
     <!-- DESK:START -->
+    <!-- WB:yen-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">The yen carry unwind, drawn step by step</h2>
+      <!-- WB:yen:START -->
+      <div class="wb" data-title="The yen carry unwind, drawn step by step">
+        <script type="application/json">{"w":600,"h":440,"intro":"August 2024: how a rate decision in Tokyo became the worst day for Japanese stocks since 1987. Press play, or step through.","steps":[{"cap":"End of July 2024: the Bank of Japan raises interest rates.","do":[{"box":"boj","x":15,"y":20,"w":160,"h":66,"text":"BoJ hikes","tone":"amber","sub":"31 July"}]},{"cap":"Days later, on 2 August, a weak US jobs report makes US rate cuts look closer.","do":[{"box":"us","x":15,"y":112,"w":160,"h":66,"text":"Weak US jobs","tone":"amber","sub":"2 August"}]},{"cap":"The gap between US and Japanese rates is the whole reason to borrow in yen and invest elsewhere. Now it is expected to narrow from both ends at once.","do":[{"box":"gap","x":205,"y":58,"w":140,"h":82,"text":"US–Japan\nrate gap","tone":"blue","sub":"narrowing"},{"arrow":["boj","gap"]},{"arrow":["us","gap"]}]},{"cap":"The yen strengthens sharply. USD/JPY, near 162 in early July, is down to about 142 by 5 August.","do":[{"box":"jpy","x":400,"y":58,"w":170,"h":82,"text":"USD/JPY","tone":"blue","sub":"161.9"},{"arrow":["gap","jpy"]},{"count":"jpy","from":161.9,"to":141.7,"dp":1,"ms":1600}]},{"cap":"Anyone who borrowed yen to buy higher-yielding assets now owes more, in their own currency, than they borrowed. They are losing money on the currency alone.","do":[{"box":"carry","x":400,"y":190,"w":170,"h":76,"text":"Yen-funded\ncarry trades","tone":"red","sub":"losing"},{"arrow":["jpy","carry"]}]},{"cap":"Closing those trades means buying yen back to repay the loans, which pushes the yen up again. The chain has become a loop.","do":[{"arrow":["carry","jpy"],"label":"buy yen back","tone":"red","bend":-32,"id":"loop1","size":17},{"pulse":"jpy"}]},{"cap":"Holders cut risk everywhere at once, and they sell what they can sell quickly: what is liquid, not what is bad.","do":[{"box":"sell","x":220,"y":190,"w":130,"h":76,"text":"Forced\nselling","tone":"red"},{"arrow":["carry","sell"]}]},{"cap":"Monday 5 August: the Nikkei 225 falls more than 12% in a single session, its worst day since 1987.","do":[{"box":"nik","x":10,"y":205,"w":160,"h":76,"text":"Nikkei 225","tone":"red","sub":"−12% in a day"},{"arrow":["sell","nik"]}]},{"cap":"Everyone reaches for protection at once. The VIX, Wall Street's volatility gauge, briefly trades above 60 intraday.","do":[{"box":"vix","x":15,"y":320,"w":160,"h":76,"text":"VIX","tone":"purple","sub":"above 60"},{"arrow":["nik","vix"],"label":"hedges bid"}]},{"cap":"Funds that size their positions by recent volatility must cut exposure when volatility jumps. That is more selling: a second loop.","do":[{"box":"vt","x":210,"y":320,"w":170,"h":76,"text":"Vol-target funds\ncut exposure","tone":"purple","size":20},{"arrow":["vix","vt"]},{"arrow":["vt","sell"],"label":"more selling","tone":"red","id":"loop2"}]},{"cap":"Then the forced sellers ran out. Much of the move reversed within days, and the Nikkei rebounded sharply the very next session. Leverage turns a chain into a loop, but only until the forced selling is done.","do":[{"note":"end","x":300,"y":425,"text":"Forced sellers done → much of it reversed within days","size":21,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:yen:END -->
+    </section>
+    <!-- WB:yen-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8 · The desk's verdict</div>
       <h2 class="sl-h2">The mechanism holds. The timing claims failed here.</h2>
       <!-- DESK:END -->
@@ -171,7 +184,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">So what is the chain for?</h2>
       <div class="sl-compare">
@@ -181,7 +194,7 @@
       <div class="sl-quote">The dominoes fall <strong>together</strong>, in the same bar, because every market reprices off the same input at once. The chain explains the five minutes; it does not hand you the next five days.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -221,7 +234,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -460,5 +473,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

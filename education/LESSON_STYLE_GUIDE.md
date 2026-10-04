@@ -500,6 +500,10 @@ read aloud) say what just happened. Load `assets/whiteboard.css` in the head and
 </div>
 ```
 
+In a visual guide, give the board its own slide right after the slide it
+illustrates (kicker `▶ Watch it`); `education/tools/build_whiteboards.py` builds both
+placements from one scene definition and renumbers the deck's `data-slide`s.
+
 Ops: `box`, `chip` + `move`, `arrow` (`label`, `bend`, `dash`), `note`, `line`,
 `count`, `sub`, `pulse`, `dim`, `hide`, `cross` — documented at the top of
 `whiteboard.js`. Rules: design at viewBox width 600 with text ≥ 17 (it shrinks to

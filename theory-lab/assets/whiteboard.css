@@ -1,5 +1,5 @@
 /* Theory Lab — "Watch it" whiteboard player (assets/whiteboard.js). */
-.wb{margin:26px 0;border:1.5px solid var(--border2);border-radius:14px;background:var(--s1);overflow:hidden}
+.wb{margin:26px 0;border:1.5px solid var(--border2);border-radius:14px;background:var(--s1,var(--panel));overflow:hidden}
 .wb:not(.wb-ready){min-height:120px}
 .wb-head{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border)}
 .wb-badge{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:20px;padding:3px 10px;white-space:nowrap}
@@ -13,8 +13,8 @@
 .wb-start:hover{border-color:var(--amber)}
 .wb-cap{padding:14px 16px;min-height:3.4em;font-size:15px;line-height:1.55;color:var(--text);border-top:1px solid var(--border)}
 .wb-n{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-right:4px}
-.wb-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid var(--border);background:var(--s2)}
-.wb-btn{min-width:44px;min-height:44px;border-radius:10px;border:1px solid var(--border2);background:var(--s1);color:var(--text);font-size:15px;cursor:pointer}
+.wb-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid var(--border);background:var(--s2,var(--panel2))}
+.wb-btn{min-width:44px;min-height:44px;border-radius:10px;border:1px solid var(--border2);background:var(--s1,var(--panel));color:var(--text);font-size:15px;cursor:pointer}
 .wb-btn:hover{border-color:var(--blue)}
 .wb-play{color:var(--amber);border-color:var(--amber-bd)}
 .wb-voice{margin-left:auto}
