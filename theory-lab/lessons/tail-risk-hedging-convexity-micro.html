@@ -173,13 +173,13 @@
     <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">How rare does the crash need to be?</h2>
-      <p class="sl-sub">Given an ongoing hedge cost and what it pays out in a crash, how often does a crash need to happen for the hedge to break even on average?</p>
+      <p class="sl-sub">Given an ongoing hedge cost and what it pays out in a crash, how often does a crash need to happen for the hedge to break even on average? The premium is paid every year, crash years included, and the payout is gross: received on top of that year's premium.</p>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it — change either input, live</div>
         <div class="sl-calc-row">
           <div class="sl-calc-field"><label>Hedge cost (% of notional, per year)</label><input type="number" class="sl-input" id="th-cost" value="1.5" step="0.1" min="0"></div>
           <div class="sl-calc-op">×</div>
-          <div class="sl-calc-field"><label>Crash payout multiple (× that year's cost)</label><input type="number" class="sl-input" id="th-mult" value="25" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Crash payout multiple (gross, × that year's cost)</label><input type="number" class="sl-input" id="th-mult" value="25" step="1" min="0"></div>
           <div class="sl-calc-op">→</div>
           <div class="sl-calc-result">
             <div class="sl-calc-result-label">Breakeven crash probability / year</div>
@@ -188,7 +188,7 @@
         </div>
         <div class="sl-calc-steps">
           <div>Implied payout in the crash year: cost × multiple = <b id="th-payout">37.50%</b></div>
-          <div>Breakeven probability: 1 ÷ multiple = <b id="th-prob2">4.00%</b></div>
+          <div>Breakeven probability: 1 ÷ multiple = <b id="th-prob2">4.00%</b> (if the multiple were quoted net of that year's premium, it would be 1 ÷ (multiple + 1))</div>
           <div>Equivalent to roughly: <b id="th-years">1 crash every 25.0 years</b></div>
         </div>
         <div class="sl-note" id="th-note"></div>
@@ -310,11 +310,11 @@
 
       <div class="sl-quiz-q" data-q="4">
         <div class="sl-quiz-num">Question 4</div>
-        <h4>A hedge costs 1.5%/year and, in a crash, pays out 40× that year's cost. Roughly what annual crash probability makes it breakeven on average?</h4>
+        <h4>A hedge costs 1.5%/year and, in a crash, pays out 40× that year's cost (gross — the 1.5% premium is still paid that year). Roughly what annual crash probability makes it breakeven on average?</h4>
         <button class="sl-quiz-opt" data-correct="true">About 2.5% (1 ÷ 40)</button>
         <button class="sl-quiz-opt">About 15%</button>
         <button class="sl-quiz-opt">About 60%</button>
-        <div class="sl-quiz-explain">Breakeven probability = 1 ÷ payout multiple = 1/40 = 2.5% per year — roughly a 1-in-40-year event. The absolute cost (1.5%) cancels out of this ratio.</div>
+        <div class="sl-quiz-explain">Expected payout p × 40 × 1.5% must equal the 1.5% premium paid every year, so p = 1 ÷ 40 = 2.5% per year — roughly a 1-in-40-year event. The absolute cost cancels out. (Quoted net of that year's premium, 40× would give 1/41 ≈ 2.4%.)</div>
       </div>
 
       <div class="sl-quiz-q" data-q="5">

@@ -206,13 +206,13 @@
       <p class="sl-sub">The full lesson makes a specific claim about this codebase. It's worth checking against the code itself rather than taking it on faith — same as any other number in this curriculum.</p>
       <div class="sl-callout purple">
         <div class="sl-callout-label">The lesson's claim</div>
-        <p>"This project's own empirical risk statistics already ship the honest half...; the GPD/POT layer is deliberately not built here because most strategies' trade counts are far too small to fit ξ reliably."</p>
+        <p>"This project's own empirical risk statistics ship the honest half (historical VaR/CVaR, skew/kurtosis), and a peaks-over-threshold GPD fit also runs on daily-return series ... fit to daily P&amp;L, not trade logs."</p>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What's actually in the codebase today</div>
-        <p>That's stale. <code>js/extremesCore.js</code> and <code>js/evtTail.js</code> both implement a full peaks-over-threshold / GPD fit (Hosking–Wallis probability-weighted moments) — and it's wired into real pages, not left as unused math. <code>level-atlas-vote-portfolio.html</code> reports an "EVT VaR 99.5% / CVaR 99.5%" per portfolio straight from a strategy's own daily-return tail; <code>analytics-desk.html</code> and <code>forecast-coverage.html</code> use the same fit to diagnose how fat-tailed price-band breaks are.</p>
+        <p>Confirmed. <code>js/evtTail.js</code> and <code>js/extremesCore.js</code> both implement a peaks-over-threshold / GPD fit (Hosking–Wallis probability-weighted moments), wired into real pages. <code>level-atlas-vote-portfolio.html</code> reports an "EVT VaR 99.5% / CVaR 99.5%" per portfolio from a strategy's own daily-return tail (evtTail); the analytics desk reads the daily-loss tail (99% VaR/ES) and <code>forecast-coverage.html</code> fits a GPD to how far price-band breaks overshoot (extremesCore).</p>
       </div>
-      <p class="sl-p">The trade-count caution in the lesson is still fair, narrowly read: the built fit needs roughly 30+ tail-crossing <em>days</em> of daily returns — gated at that minimum right in the code — not 1,000+ individual trades, because it's fit on a strategy's daily P&amp;L series, not its trade log. The GPD layer exists; it's just built on a different unit of data than "trade count" implies.</p>
+      <p class="sl-p">The trade-count caution in the lesson is still fair, narrowly read: the built fits are gated in code at small minimums — evtTail needs 30+ days and 8+ exceedances above the 90th loss percentile, extremesCore 40+ observations and 10+ exceedances above the 95th — not 1,000+ individual trades, because it's fit on a strategy's daily P&amp;L series, not its trade log. The GPD layer exists; it's just built on a different unit of data than "trade count" implies.</p>
     </section><!-- DESK:END -->
 
     <section class="sl-slide" data-slide="12">
