@@ -38,7 +38,7 @@
       <li>A clean chronological split alone still leaks: a training row just before the boundary can have a forward-looking label that reaches into the test window, and a training row just after the test period can have a rolling feature window that reaches back into it.</li>
       <li>The worked example (\(n=1{,}000\), \(w=20\), \(H=5\), test = days 500–599) shows this concretely: days 495–499 are purged for a label leak, days 600–618 for a feature leak, and a further 10-day embargo (days 619–628) buffers residual serial correlation the mechanical purge formula doesn't capture — training only resumes at day 629.</li>
       <!-- DESK:START --><li>This project's own split/metrics reporting does a single clean chronological split with no purge/embargo — an honest gap, not a bug, but a checkable refinement worth applying to strategies whose features (HV20, rolling z-scores/percentiles, day-type estimators) lean on multi-day rolling windows near the split date.</li><!-- DESK:END -->
-      <!-- DESK:START --><li><strong>Real-world episode:</strong> four of this desk's own backtests leaked. One scored 95% of its "wins" before entry, one's whole edge was stops that were not live for the first hour, one hid a look-ahead under a survivorship fix (honest edge 0.23× cost), and one showed 85.7% wins against 39.6% live.</li><!-- DESK:END -->
+      <!-- DESK:START --><li><strong>Real-world episode:</strong> four of this desk's own backtests went wrong, three of them by leaking. One scored 95% of its "wins" before entry, one's whole edge was stops that were not live for the first hour, one hid a look-ahead under a survivorship fix (honest edge 0.23× cost), and one showed 85.7% wins against 39.6% live.</li><!-- DESK:END -->
     </ul>
   </div>
 
@@ -350,19 +350,20 @@
   financial series carry serial correlation that runs beyond the exact length of any one feature
   window or label horizon — volatility clustering, regime persistence, slow-moving order-flow
   effects that a hard cutoff at \(w\) or \(H\) days doesn't fully capture. <strong>Embargoing</strong>
-  adds a further, deliberately conservative buffer of length \(e\) immediately after the test window,
+  adds a further, deliberately conservative buffer of length \(e\) after the test window and its forward
+  purge (López de Prado places it directly after the test window; here it follows the forward purge, as in the worked example below),
   during which no row — even one whose mechanical window no longer technically overlaps — is allowed
   back into training:
   </p>
-  <div class="tl-math">\[ \text{Embargo}_k = \big[\, T_k + h,\; T_k + h + e \,\big) \]</div>
+  <div class="tl-math">\[ \text{Embargo}_k = \big[\, T_k + h + w - 1,\; T_k + h + w - 1 + e \,\big) \]</div>
   <div class="tl-eq-break">
     <div class="tl-eq-chip c3"><code>e</code><span>embargo length — a deliberate, conservative buffer</span></div>
     <div class="tl-eq-chip c4"><code>Embargo_k</code><span>the extra window held back after test, beyond the mechanical purge</span></div>
   </div>
   <p>
   Training on the next fold only resumes strictly after this embargo period ends. López de Prado's
-  own guidance sizes \(e\) as a small fraction of the total sample (on the order of 1% of \(n\)) or
-  ties it to the label horizon \(H\) directly; the exact size is a judgment call, but the principle
+  own guidance sizes \(e\) as a small fraction of the total sample (on the order of 1% of \(n\), which he
+  notes often suffices); the exact size is a judgment call, but the principle
   is not — it is an explicit acknowledgment that the mechanical purge formula above is a
   <em>lower bound</em> on how much needs to be removed, not a provably complete one, given that real
   return series are correlated in ways a fixed window length only approximately describes.
@@ -403,9 +404,9 @@
     conservative scheme adds an embargo of, say, \(e=10\) days beyond that mechanical cutoff — days
     <strong>619&ndash;628</strong> — as a buffer against serial correlation the window-length
     formula doesn't explicitly model. Training on the next fold only resumes at day <strong>629</strong>,
-    not day 600 and not day 619. Out of the roughly 129 days between the test set's start and where
-    training safely resumes (500 through 628), 24 of them (5 backward-purged + 19 forward-purged) are
-    removed by a mechanical, computable rule, and a further 10 are removed by a deliberate safety
+    not day 600 and not day 619. Around this one test window (days 495 through 628), besides the 100 test
+    days themselves, 24 training rows (5 backward-purged + 19 forward-purged) are removed by a mechanical,
+    computable rule, and a further 10 are removed by a deliberate safety
     margin — none of this is visible if you only look at the split date itself.
     </p>
   </div>
@@ -486,7 +487,7 @@
   </div>
 
 <!-- DESK:START -->  <div class="tl-section-mark"><span>Section 03</span></div>
-  <h2>It actually happened: four backtests, four leaks</h2>
+  <h2>It actually happened: four backtests, three leaks and a fill gap</h2>
   <p>
   The trading scenario above is a hypothetical. This desk has real ones, logged together in its evidence ledger under one
   heading: a backtest that looks too good has a bug, and the bug is usually in what it was allowed to see.
@@ -574,7 +575,7 @@
       train/test boundary forward repeatedly across a price history and comparing in-sample
       performance to out-of-sample performance on each roll. A commonly cited diagnostic is the
       <strong>walk-forward efficiency</strong> — roughly, OOS performance divided by IS performance
-      on the same fold — with a ratio well below 1 flagging a parameter set that was overfit to its
+      on the same fold — with a low ratio (Pardo treats roughly 50% or more as acceptable) flagging a parameter set that was overfit to its
       training window rather than genuinely robust. This tradition emphasizes rolling repeatedly
       (many folds, not one lucky split) over any one fold's result in isolation, for the same reason
       the multiple-testing lesson warns against trusting a single best-of-many slice: one good fold
@@ -632,7 +633,8 @@
     <ul>
       <li>
       <strong>Using scikit-learn's default <code>KFold</code> (or any shuffled split) on time-ordered
-      data.</strong> The default shuffles rows before splitting unless you explicitly disable it —
+      data.</strong> <code>KFold</code> does not shuffle by default, but it still trains on the folds that
+      come <em>after</em> each test fold and applies no purge — and turning on <code>shuffle=True</code> makes it worse —
       quietly reintroducing the exact lookahead this lesson opens with, even when the researcher
       believes they're doing "cross-validation" correctly because the tool is standard and
       well-tested elsewhere.
@@ -771,7 +773,7 @@
     <li>Marcos López de Prado, <em>Advances in Financial Machine Learning</em> (Wiley, 2018) — Chapter 7, "Cross-Validation in Finance," is the original formal treatment of purged and embargoed k-fold CV used throughout this lesson; the same author's Deflated Sharpe Ratio / Probability of Backtest Overfitting work is covered in the Multiple Testing lesson.</li>
     <li>Robert Pardo, <em>The Evaluation and Optimization of Trading Strategies</em> (Wiley, 2nd ed., 2008) — the standard algorithmic-trading-literature treatment of walk-forward optimization and walk-forward efficiency as an overfitting diagnostic.</li>
     <li>Marcos López de Prado, "The 10 Reasons Most Machine Learning Funds Fail," <em>Journal of Portfolio Management</em> (2018) — a practitioner-facing summary that includes leakage from non-purged cross-validation among the recurring, avoidable failure modes.</li>
-    <li>Campbell R. Harvey &amp; Yan Liu, "Backtesting," <em>Journal of Portfolio Management</em> (2015) — broader context on why walk-forward and out-of-sample discipline specifically (not just in-sample fit quality) is what separates a real backtest from a curve-fitting exercise.</li>
+    <li>Campbell R. Harvey &amp; Yan Liu, "Backtesting," <em>Journal of Portfolio Management</em> (2015) — on haircutting a backtested Sharpe ratio for the number of strategies tried (multiple testing), the complement to the window-level discipline in this lesson.</li>
   </ul>
   </details>
 

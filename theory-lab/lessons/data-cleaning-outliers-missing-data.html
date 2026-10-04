@@ -205,7 +205,9 @@
       <p>
       Draw a line (linear or otherwise) between the last known good value before the gap and the first
       known good value after it, filling the gap with points along that line. This avoids the artificial
-      flat-line problem and can be reasonable for a very short, clearly spurious single-tick gap. The
+      flat-line problem and can be reasonable for a very short, clearly spurious single-tick gap — but
+      note it uses the first value <em>after</em> the gap, which a live system would not yet have had, so
+      in a backtest it is itself a small lookahead unless the fill is delayed until that value arrives. The
       failure case: interpolating across a longer or more consequential gap invents data that never
       existed — the interpolated path implies a smooth, gradual price move that may bear no resemblance
       to what actually happened during a halt, which in reality often resumes at a sharp, discontinuous
@@ -301,7 +303,7 @@
     <h3>Catching a fat-finger tick with rolling MAD, on six numbers</h3>
     <p>
     Take a short tick sequence for a spread: \(x = [1.02, 1.01, 1.03, 1.02, 4.50, 1.03]\) — position 5 is
-    a spurious print (say, a decimal-point entry error that should have read 1.045, not 4.50). Checking
+    a spurious print (say, a keying error: 4.50 typed where 1.045 was meant). Checking
     position 5 using only positions 1-4:
     </p>
     <p>
@@ -423,7 +425,7 @@
   <h2>How practitioners actually use this</h2>
   <p>
   Production data-cleaning pipelines run these checks as streaming, one-tick-at-a-time computations —
-  never as a single batch pass over a completed historical file — specifically so the exact same logic
+  or as batch code that replays exactly that only-past logic, never a whole-file pass that peeks ahead — so the exact same logic
   that cleans a live feed in real time is what generates the historical, "already cleaned" dataset used
   for research. Rolling-window outlier detectors, per-instrument plausible-return bounds, and explicit
   gap/halt flags are standard, well-understood tools; the real engineering discipline is less about

@@ -222,7 +222,7 @@
       <text x="85" y="163" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">serving → Lesson 4</text>
       <text x="85" y="177" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">this category</text>
 
-      <text x="320" y="240" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10.5px;font-style:italic">Bar construction (Section 03 below) is a choice made inside Stage 1, before validation ever runs.</text>
+      <text x="320" y="240" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10.5px;font-style:italic">Bar construction (Section 03 below) is chosen at Stage 1; the bars are built from cleaned ticks.</text>
       <text x="320" y="270" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10.5px;font-style:italic">Only trading-ready data — having passed all six stages — is fit to build a feature on.</text>
     </svg>
     <div class="tl-chart-caption">
@@ -235,7 +235,8 @@
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Bar construction: how raw ticks become the bars a strategy sees</h2>
   <p>
-  Before validation or cleaning ever runs, ingestion has to make one foundational choice: how are
+  Alongside ingestion sits one foundational choice (the bars themselves are best built from ticks that have
+  already been validated and cleaned, so a bad print never lands in a bar's high or low): how are
   individual ticks grouped into the discrete "bars" (open/high/low/close observations) that everything
   downstream — a chart, a feature, a backtest — actually operates on? Marcos López de Prado's
   <em>Advances in Financial Machine Learning</em> (Wiley, 2018), Chapter 2, lays out four standard
@@ -280,8 +281,8 @@
   a time bar during a burst of activity is built from a huge number of ticks compressed into the same
   fixed window (undersampling a period where a great deal actually happened). Volume bars and dollar bars
   sample by activity itself rather than by the clock, so each bar represents a comparable amount of
-  genuine information turnover — which is why López de Prado's Chapter 2 shows returns built from
-  volume/dollar bars sitting closer to independent and identically distributed (IID) and closer to
+  genuine information turnover — which is why López de Prado's Chapter 2 argues, citing earlier empirical work such as Ané &amp; Geman (2000), that returns built from
+  volume/dollar bars sit closer to independent and identically distributed (IID) and closer to
   Gaussian than returns built from time bars sampled at a comparable average frequency. This matters
   directly for anything built downstream: many statistical tools (a lot of the parametric machinery
   covered elsewhere in this Theory Lab) assume something close to IID, roughly-normal returns, and
@@ -332,7 +333,7 @@
     <p>
     <strong>Volume bars, sized to produce roughly 60 bars/hour on average.</strong> Using a threshold
     tuned so a typical hour produces about 60 bars, the pre-release lull (200 ticks in 15 minutes) might
-    only close 2-3 bars, while the release burst (4,000 ticks in 5 minutes) closes roughly 40-45 bars —
+    only close 2-3 bars, while the release burst (4,000 ticks in 5 minutes) closes roughly 50-55 bars (assuming volume roughly tracks tick count) —
     the sampling clock speeds up exactly when genuine activity speeds up, so each bar keeps representing
     a comparable slice of actual information turnover instead of a comparable slice of the clock.
     </p>

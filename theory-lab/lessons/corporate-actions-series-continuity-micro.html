@@ -50,7 +50,7 @@
         </div>
         <div class="sl-verdict">That $0.50 gap is <strong>cost-of-carry and curve shape</strong> — a real, expected feature of futures pricing, not an error. A trader who rolled a continuous position captured roughly that spread; they did not experience a discontinuous $0.50 gain overnight.</div>
       </div>
-      <p class="sl-p">Splice the two contracts' raw prices directly at the roll date, though, and the series shows exactly that: a $0.50 jump that looks, to any naive return calculation, like a real one-day move. Multiply this by every quarterly roll across a multi-year history and the fake jumps stack up fast.</p>
+      <p class="sl-p">Splice the two contracts' raw prices directly at the roll date, though, and the series shows exactly that: a $0.50 jump that looks, to any naive return calculation, like a real one-day move. Multiply this by every roll (monthly, for crude) across a multi-year history and the fake jumps stack up fast.</p>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Why this isn't a Data Cleaning problem</div>
         <p>Nothing here is an outlier or a bad tick — both $78.40 and $78.90 are genuine, correctly-recorded closing prices. The problem is structural: two different instruments were glued together at the seam, not a single instrument misreported.</p>
@@ -131,7 +131,7 @@
     <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Drag far enough back, and the price goes negative</h2>
-      <p class="sl-sub">One real historical print — $20.00, quoted 12 years ago — run through an increasing number of accumulated roll offsets. The raw print never changes. Watch the adjusted price.</p>
+      <p class="sl-sub">One illustrative historical print — $20.00, quoted years ago — run through an increasing number of accumulated roll offsets. The raw print never changes. Watch the adjusted price.</p>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it</div>
         <div class="sl-svgwrap">
@@ -150,7 +150,7 @@
         <div class="sl-sliderhead"><span>Rolls back-adjusted through</span><span class="sl-live" id="roll-kval">0 rolls</span></div>
         <input type="range" class="sl-slider" id="roll-slider" min="0" max="8" step="1" value="0">
       </div>
-      <p class="sl-p">Each roll's offset is genuine and small on its own — but they compound going backward in time. Eight rolls into this contract's history, the same $20.00 print that actually traded now reads as a negative price back-adjustment produced, not a price anyone ever quoted.</p>
+      <p class="sl-p">Each roll's offset is genuine on its own — here every roll is downward (new contract below the expiring one), so the offsets accumulate going backward in time. Eight rolls into this contract's history, the same $20.00 print that actually traded now reads as a negative price back-adjustment produced, not a price anyone ever quoted.</p>
     </section>
 
     <section class="sl-slide" data-slide="8">
@@ -237,7 +237,7 @@
       <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
-        <p>Both fixes assume positive prices and a small gap at the roll. Ratio-adjustment multiplies history by old ÷ new; with the old price at −$37.63 that flips the sign of everything before it. A % return from $18 to −$37.63 is near −300%, while the dollar loss per barrel was real. A negative level stopped being proof of an artifact.</p>
+        <p>Both fixes assume positive prices and a small gap at the roll. Ratio-adjustment multiplies history by new ÷ old; with the old price at −$37.63 that flips the sign of everything before it. A % return from $18 to −$37.63 is near −300%, while the dollar loss per barrel was real. A negative level stopped being proof of an artifact.</p>
       </div>
     </section>
 
@@ -311,7 +311,7 @@
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>
         <h3>Point-in-Time Data &amp; Survivorship Bias</h3>
-        <p>What point-in-time data actually requires operationally, and the classic study that first quantified survivorship bias in a real database.</p>
+        <p>What point-in-time data actually requires operationally, and the classic study that quantified survivorship bias in a real database.</p>
         <div class="sl-teaser-btns">
           <a class="sl-btn" href="point-in-time-data-survivorship-bias-micro.html">Next lesson →</a>
           <a class="sl-btn ghost" href="corporate-actions-series-continuity.html">Read the full lesson →</a>

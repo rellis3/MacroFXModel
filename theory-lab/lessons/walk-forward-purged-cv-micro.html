@@ -174,7 +174,7 @@
       <p class="sl-sub">Two separate fixes for two separate failure modes.</p>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">✂</div><div><h4>Purging</h4><p>Any training row i whose combined feature-and-label window [i−w+1, i+H] overlaps the test interval [T_k, T_k+h) gets dropped. A mechanical, computable rule — not a judgment call.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">⏳</div><div><h4>Embargo</h4><p>A further buffer of length e, immediately after the test window, during which no row re-enters training — even one whose window no longer technically overlaps. It exists because real serial correlation runs beyond any window length a formula fully captures.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏳</div><div><h4>Embargo</h4><p>A further buffer of length e, after the test window and its forward purge, during which no row re-enters training — even one whose window no longer technically overlaps. It exists because real serial correlation runs beyond any window length a formula fully captures.</p></div></div>
       </div>
       <div class="sl-svgwrap">
         <svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One fold's timeline: a blue train segment, a thin red purge gap, a green test segment, a thin amber embargo gap, then gray unused data.">
@@ -203,7 +203,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">→</div><div><h4>Forward purge (feature leak) — 19 rows</h4><p>Training days 600-618 are purged: day i's 20-day HV20 window still reaches back into the test period, which only stops overlapping once i ≥ 619.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⏳</div><div><h4>Embargo — a further 10 days</h4><p>Days 619-628 are held back purely as a conservative buffer, on top of the mechanical cutoff. Training only resumes on day 629 — not day 600, and not day 619.</p></div></div>
       </div>
-      <p class="sl-p">Out of the roughly 129 days between the test set's start and where training safely resumes, 24 of them are removed by a computable rule and a further 10 by a deliberate safety margin — none of it visible if you only look at the split date.</p>
+      <p class="sl-p">Around this one test window (days 495–628), besides the 100 test days, 24 training rows are removed by a computable rule and a further 10 by a deliberate safety margin — none of it visible if you only look at the split date.</p>
     </section>
 
     <section class="sl-slide" data-slide="8">
@@ -242,7 +242,7 @@
       <div class="sl-compare">
         <div class="sl-ccard neutral">
           <span class="sl-ctag blue">Trading — "walk-forward optimization"</span>
-          <p>Robert Pardo's treatment rolls the train/test boundary forward repeatedly and tracks <strong>walk-forward efficiency</strong> — roughly, OOS performance divided by IS performance on the same fold. A ratio well below 1 flags a parameter set overfit to its training window. The emphasis is on rolling many folds, not trusting any one favorable split.</p>
+          <p>Robert Pardo's treatment rolls the train/test boundary forward repeatedly and tracks <strong>walk-forward efficiency</strong> — roughly, OOS performance divided by IS performance on the same fold. A low ratio (Pardo treats roughly 50% or more as acceptable) flags a parameter set overfit to its training window. The emphasis is on rolling many folds, not trusting any one favorable split.</p>
         </div>
         <div class="sl-ccard neutral">
           <span class="sl-ctag blue">ML-in-finance — "purged k-fold CV"</span>
@@ -269,7 +269,7 @@
 
 <!-- DESK:START -->    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10 · It actually happened</div>
-      <h2 class="sl-h2">Four of this desk's backtests, four leaks</h2>
+      <h2 class="sl-h2">Four of this desk's backtests, three leaks and a fill gap</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">It actually happened here</div>
         <p><strong>A volatility tool:</strong> 95% of "wins" scored before entry. <strong>A voting system:</strong> a survivorship fix sat on a deeper look-ahead; honest edge 0.23× cost. <strong>A mean-reversion system:</strong> the whole edge was stops not live for the first hour. <strong>The Fibonacci-level system:</strong> 85.7% backtest wins vs 39.6% live. And a swing pivot at bar i is really a window [i−3, i+3]: it can't be known until bar i+3, so every measurement here now starts at the confirmation bar.</p>
@@ -363,7 +363,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Purging removes every training row whose combined feature-and-label window overlaps the test interval — a computable rule, not a judgment call.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Embargo adds a further, deliberately conservative buffer after the test window, for serial correlation no fixed window length fully captures.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Passing a purged, embargoed OOS test doesn't prove edge — it only makes the OOS number honest.<!-- DESK:START --> This repo's own scripts still run every fold without a purge or embargo gap, which is a checkable next step, not a disqualifying flaw.<!-- DESK:END --></p></div>
-        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened: four of this desk's backtests leaked (95% of wins scored before entry, stops not live for an hour, a hidden look-ahead worth 0.23× cost, 85.7% vs 39.6% live). Draw the boundary at the bar the information was knowable.</p></div><!-- DESK:END -->
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened: four of this desk's backtests went wrong, three by leaking (95% of wins scored before entry, stops not live for an hour, a hidden look-ahead worth 0.23× cost, 85.7% vs 39.6% live). Draw the boundary at the bar the information was knowable.</p></div><!-- DESK:END -->
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

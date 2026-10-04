@@ -90,7 +90,7 @@
   <h2>Point-in-time computability — the foundational requirement</h2>
   <p>
   A feature \(F(i)\) computed for time index \(i\) is <strong>point-in-time computable</strong> if
-  every input it depends on was genuinely available — published, observable, and final — at or before
+  every input it depends on was genuinely available — published and observable — at or before
   time \(i\), using only the vintage of data that actually existed then. Write this as a simple
   constraint:
   </p>
@@ -314,9 +314,9 @@
     </p>
     <p>
     <strong>Contaminated version (full-sample statistics).</strong> Using all six values,
-    \(\mu_{full} \approx 1.567\) and \(\sigma_{full} \approx 1.045\) (population std. dev.), giving:
+    \(\mu_{full} \approx 1.567\) and \(\sigma_{full} \approx 1.011\) (population std. dev.), giving:
     </p>
-    <div class="tl-math">\[ z_3^{contaminated} = \frac{0.9 - 1.567}{1.045} \approx -0.638 \]</div>
+    <div class="tl-math">\[ z_3^{contaminated} = \frac{0.9 - 1.567}{1.011} \approx -0.659 \]</div>
     <p>
     This number is quietly using day 5's future spike to widen the denominator — day 3's z-score is
     smaller in magnitude than it should be, specifically <em>because</em> a value that hadn't happened
@@ -324,13 +324,14 @@
     </p>
     <p>
     <strong>Point-in-time version (only-past statistics).</strong> Using only days 1&ndash;3,
-    \(\mu_{<3} \approx 1.033\) and \(\sigma_{<3} \approx 0.125\) (population std. dev. over days 1-3):
+    \(\mu_{\le 3} \approx 1.033\) and \(\sigma_{\le 3} \approx 0.125\) (population std. dev. over days 1-3 — a window
+    ending at day 3 itself, so nothing after day 3 is used; the stricter \(\mu_{<i}\) variant would also drop day 3):
     </p>
-    <div class="tl-math">\[ z_3^{point\text{-}in\text{-}time} = \frac{0.9 - 1.033}{0.125} \approx -1.06 \]</div>
+    <div class="tl-math">\[ z_3^{point\text{-}in\text{-}time} = \frac{0.9 - 1.033}{0.125} \approx -1.07 \]</div>
     <p>
     The honest, point-in-time version says day 3's reading is meaningfully unusual relative to what had
     actually been observed by day 3 — a materially different, and materially more correct, signal than
-    the contaminated version's muted -0.64. A model trained on the contaminated feature across the whole
+    the contaminated version's muted -0.66. A model trained on the contaminated feature across the whole
     history is being fed a systematically different, future-informed notion of "how unusual" every single
     day was, one that a live system computing the same feature in real time could never have produced.
     </p>
@@ -502,7 +503,7 @@
     <div class="tl-icard">
       <div class="tl-icon-badge green">📏</div>
       <h4>Only-past statistics</h4>
-      <p>Any normalization, z-score, or rank must be computed from an expanding/rolling window of strictly prior data.</p>
+      <p>Any normalization, z-score, or rank must be computed from an expanding/rolling window of data up to that point, never later.</p>
     </div>
     <div class="tl-icard">
       <div class="tl-icon-badge purple">🗂️</div>
@@ -575,8 +576,8 @@
   <details class="tl-quiz">
     <summary>Q1. What makes a feature "point-in-time computable," and what's the most common real-world way this gets violated by accident?</summary>
     <div class="tl-answer">
-    A feature is point-in-time computable if every input it depends on was genuinely observable and
-    final at or before the moment the feature is dated — no later revision, no later publication. The
+    A feature is point-in-time computable if every input it depends on was genuinely observable (in the
+    vintage that existed then) at or before the moment the feature is dated — no later revision, no later publication. The
     most common accidental violation is joining data by calendar period rather than by true
     availability/publication date: a macro release "for March" is dated to March in most datasets but
     is typically not actually published until weeks into April, so joining it to "March 31st" silently
@@ -655,8 +656,8 @@
   <ul class="tl-refs">
     <li>Marcos López de Prado, <em>Advances in Financial Machine Learning</em> (Wiley, 2018) — Chapter 5, "Fractionally Differentiated Features," discusses converting non-stationary raw series into stationary features without discarding all memory of the level; Chapter 11 covers backtesting pitfalls including leakage more broadly.</li>
     <li>Elroy Dimson, Paul Marsh &amp; Mike Staunton, <em>Triumph of the Optimists: 101 Years of Global Investment Returns</em> (Princeton University Press, 2002) — the standard reference for how survivorship bias distorts long-run return studies when failed markets/instruments are excluded from the dataset.</li>
-    <li>Stephen Kinsella &amp; contributors, on macro data vintages and "ALFRED"-style point-in-time archives (Federal Reserve Bank of St. Louis) — the standard practitioner tool for retrieving a macro series exactly as it was published on a given historical date, rather than its current, revised value.</li>
-    <li>Sam Savage, <em>The Flaw of Averages</em> (Wiley, 2009) — an accessible, non-mathematical treatment of why using summary statistics computed over data a decision-maker didn't actually have yet produces systematically overconfident conclusions, a theme directly relevant to the full-sample-statistics contamination pattern in this lesson.</li>
+    <li>Federal Reserve Bank of St. Louis, ALFRED (ArchivaL Federal Reserve Economic Data) — the standard practitioner tool for retrieving a macro series exactly as it was published on a given historical date, rather than its current, revised value.</li>
+    <li>Sam Savage, <em>The Flaw of Averages</em> (Wiley, 2009) — an accessible, non-mathematical treatment of how plans built on single average values go systematically wrong; a looser cousin of this lesson's summary-statistic traps, not a treatment of lookahead itself.</li>
   </ul>
   </details>
 

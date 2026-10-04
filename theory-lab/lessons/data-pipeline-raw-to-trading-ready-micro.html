@@ -100,7 +100,7 @@
             <text x="580" y="89" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:8.5px">versioned,</text>
             <text x="580" y="101" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:8.5px">queryable</text>
 
-            <text x="320" y="155" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px;font-style:italic">Bar construction happens inside ingestion, before validation ever runs — it just gets its own box here.</text>
+            <text x="320" y="155" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px;font-style:italic">Bar construction is chosen at ingestion but built from cleaned ticks — so it gets its own box here.</text>
             <text x="320" y="175" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px;font-style:italic">Point-in-time serving (Stage 6) isn't shown — it's a later lesson, out of scope for this diagram.</text>
           </svg>
         </div>
@@ -118,7 +118,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">📦</div><div><h4>Volume bars</h4><p>Close a bar once a fixed number of shares/contracts/units has traded, so every bar represents a constant amount of activity.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">💵</div><div><h4>Dollar bars</h4><p>Close a bar once a fixed notional value (price × volume) has traded — stays comparable even as an instrument's price level drifts over years.</p></div></div>
       </div>
-      <p class="sl-p">These four standard sampling clocks come from Marcos López de Prado's <em>Advances in Financial Machine Learning</em> (Wiley, 2018), Chapter 2. Bar construction is a choice made inside ingestion, before validation or cleaning ever touches the data — and it's the choice this deck spends the rest of its time on.</p>
+      <p class="sl-p">These four standard sampling clocks come from Marcos López de Prado's <em>Advances in Financial Machine Learning</em> (Wiley, 2018), Chapter 2. Bar construction is a choice made at ingestion — though the bars themselves are best built from ticks that have already been validated and cleaned — and it's the choice this deck spends the rest of its time on.</p>
     </section>
 
     <section class="sl-slide" data-slide="6">
@@ -191,15 +191,15 @@
               <circle cx="441" cy="100" r="4" style="fill:var(--blue)"/>
               <circle cx="507" cy="100" r="4" style="fill:var(--blue)"/>
               <circle cx="581" cy="100" r="4" style="fill:var(--blue)"/>
-              <text x="178" y="45" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:10px">Bar 1 — 270s</text>
+              <text x="178" y="45" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:10px">Bar 1 — ~300s</text>
               <path d="M310,68 Q343,54 375,68" style="fill:none;stroke:var(--green);stroke-width:1.2"/>
-              <text x="343" y="46" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">bars 2–4 in ~40s</text>
-              <text x="440" y="140" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:10px">Bar 5 — 145s</text>
+              <text x="343" y="46" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">bars 2–4 in ~55s</text>
+              <text x="440" y="140" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:10px">Bar 5 — ~155s</text>
               <text x="556" y="45" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px;font-style:italic">forming…</text>
               <text x="320" y="160" text-anchor="middle" style="fill:var(--text3);font-family:'DM Sans',sans-serif;font-size:9.5px">Same fixed volume per bar throughout — the clock speeds up automatically during the burst</text>
             </svg>
           </div>
-          <div class="sl-verdict"><strong>Fixed activity, uneven clock — on purpose.</strong> Bar 1 needed 270 seconds of quiet trading to fill its quota. Bars 2, 3 and 4 fill the exact same quota in about 40 seconds combined, because that's how long the burst takes to move the same amount of volume. Every completed bar represents a comparable slice of real turnover.</div>
+          <div class="sl-verdict"><strong>Fixed activity, uneven clock — on purpose.</strong> Bar 1 needed about 300 seconds of quiet trading to fill its quota. Bars 2, 3 and 4 fill the exact same quota in about 55 seconds combined, because that's how long the burst takes to move the same amount of volume. Every completed bar represents a comparable slice of real turnover.</div>
         </div>
 
         <div class="sl-panel" id="bar-dollar">
@@ -287,7 +287,7 @@
         </div>
         <div class="sl-ccard green">
           <span class="sl-ctag green">Volume bars — sized for ~60 bars/hour</span>
-          <p>The pre-release lull (200 ticks/15min) closes only 2–3 bars. The release burst (4,000 ticks/5min) closes roughly 40–45 bars on its own — the sampling clock speeds up exactly when genuine activity speeds up, so each bar keeps representing a comparable slice of real information turnover.</p>
+          <p>The pre-release lull (200 ticks/15min) closes only 2–3 bars. The release burst (4,000 ticks/5min) closes roughly 50–55 bars on its own (assuming volume roughly tracks tick count) — the sampling clock speeds up exactly when genuine activity speeds up, so each bar keeps representing a comparable slice of real information turnover.</p>
         </div>
       </div>
       <div class="sl-quote">The time-bar version has quietly under-represented the single most informative five minutes of the hour, and over-represented the quiet stretches either side of it — the same oversampling/undersampling pattern from Section 6, made concrete with actual tick counts.</div>
