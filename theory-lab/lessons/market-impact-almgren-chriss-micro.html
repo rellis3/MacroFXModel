@@ -109,7 +109,7 @@
         </svg></div>
         <div class="sl-note">Both curves are pinned to agree at 0 and at 0.5 ADV by construction. In between, the concave square-root curve bows above the straight chord — at a quarter of ADV it implies ~100bps versus ~71bps for a naive linear model.</div>
       </div>
-      <p class="sl-p">Because √x is <strong>concave</strong>, quadrupling order size only roughly doubles the cost (√4Q = 2√Q) — very large orders are cheaper <em>per share</em> than a linear model would suggest. But the same curve cuts the other way for smaller orders: they already cost <strong>more</strong> per share than a linear model calibrated off a bigger reference size would predict.</p>
+      <p class="sl-p">Because √x is <strong>concave</strong>, quadrupling order size only roughly doubles the impact, i.e. the cost per unit (√4Q = 2√Q; total cost, size × impact, rises about 8×) — very large orders are cheaper <em>per share</em> than a linear model would suggest. But the same curve cuts the other way for smaller orders: they already cost <strong>more</strong> per share than a linear model calibrated off a bigger reference size would predict.</p>
     </section>
 
     <section class="sl-slide" data-slide="5">
@@ -199,7 +199,7 @@
             <path id="mac-traj" style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M60,30 L600,250"/>
           </svg>
         </div>
-        <div class="sl-sliderhead"><span>Risk aversion κ</span><span class="sl-live" id="mac-kappa-val">κ = 3.00</span></div>
+        <div class="sl-sliderhead"><span>Urgency κ (rises with risk aversion λ)</span><span class="sl-live" id="mac-kappa-val">κ = 3.00</span></div>
         <input type="range" class="sl-slider" id="mac-kappa-slider" min="0" max="80" step="1" value="30">
         <div class="sl-note">Drag right to increase risk aversion. At κ = 0 the optimal trajectory is the dashed straight line (constant trading rate). As κ rises, the curve front-loads: more of the order executes early, trading off more impact cost for less timing-risk exposure.</div>
       </div>

@@ -42,7 +42,7 @@
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
       <li><strong>Temporary impact</strong> is the price concession needed to trade right now — it reverts once you stop trading. <strong>Permanent impact</strong> is the lasting price move your own trading causes, because it reveals information — it does not revert.</li>
-      <li>The empirically observed <strong>square-root law</strong> says impact scales roughly with \(\sqrt{Q/\text{ADV}}\), not linearly with size — a 4× larger order costs roughly 2× more to execute, not 4× more, which also means impact grows unexpectedly fast for even modest-sized orders.</li>
+      <li>The empirically observed <strong>square-root law</strong> says impact scales roughly with \(\sqrt{Q/\text{ADV}}\), not linearly with size — a 4× larger order moves the price roughly 2× as much, not 4× (so its cost per unit roughly doubles, and its total cost, size times impact, rises about 8×), which also means impact grows unexpectedly fast for even modest-sized orders.</li>
       <li><strong>Almgren-Chriss</strong> frames execution as minimizing expected cost (impact) plus a risk-aversion-weighted penalty on the variance of that cost (timing risk) — trading fast lowers timing risk but raises impact cost; trading slow does the reverse.</li>
       <li>Solving that trade-off (via the Euler-Lagrange equation, derived below) gives a closed form: the optimal remaining-inventory trajectory is \(x(t) = X\,\sinh(\kappa(T-t))/\sinh(\kappa T)\), with \(\kappa=\sqrt{\lambda\sigma^2/\eta}\) folding risk aversion \(\lambda\), volatility \(\sigma\), and the temporary-impact coefficient \(\eta\) into one shape parameter.</li>
       <li>At \(\kappa\to0\) (no risk aversion) the trajectory collapses to a straight line — constant-rate, TWAP-like trading. As \(\kappa\) grows, the trajectory becomes increasingly front-loaded: fast early, nearly flat later — a risk-averse trader accepts more impact cost to cut timing-risk exposure.</li>
@@ -206,8 +206,9 @@
     The headline, non-obvious consequence: because \(\sqrt{x}\) is a <strong>concave</strong>
     function, impact grows fast for small orders and progressively more slowly for
     large ones, relative to any straight-line ("linear-in-size") extrapolation.
-    Concretely — doubling order size does not double the cost; quadrupling order
-    size roughly doubles the cost (since \(\sqrt{4Q}=2\sqrt{Q}\)). This has two
+    Concretely — doubling order size does not double the impact (the cost per unit);
+    quadrupling order size roughly doubles it (since \(\sqrt{4Q}=2\sqrt{Q}\)); total cost, size times
+    impact, then grows about \(4\times2=8\) times. This has two
     practical readings that both matter and point in different directions: (1) very
     large orders are, per share, cheaper to execute than a naive linear model would
     suggest — there is real economy of scale in impact once you're already trading
@@ -300,7 +301,9 @@
   </div>
   <p>
     The trader's objective is to choose the whole trajectory \(x(t)\) to minimize the
-    <em>total</em> of both costs together:
+    <em>total</em> of both costs together (Almgren &amp; Chriss write it as expected cost plus
+    \(\lambda\times\) variance, \(\eta\int\dot x^2dt+\lambda\sigma^2\int x^2dt\); the common factor of ½
+    used here changes neither the optimal path nor \(\kappa\)):
   </p>
   <div class="tl-math">
     \[ \min_{x(t)}\ \int_0^T \left[\tfrac{1}{2}\eta\,\dot x(t)^2 + \tfrac{1}{2}\lambda\sigma^2\,x(t)^2\right] dt \qquad \text{s.t. } x(0)=X,\ x(T)=0 \]
@@ -342,10 +345,10 @@
   <p>
     This differential equation's general solution is any combination of
     \(\sinh(\kappa t)\) and \(\cosh(\kappa t)\) (or equivalently \(e^{\kappa t}\) and
-    \(e^{-\kappa t}\) — the same family used for the mean-reverting solutions in
-    the Ornstein-Uhlenbeck lesson elsewhere in this series, just with the sign on the
-    \(x\) term flipped, which turns exponential decay into this hyperbolic form
-    instead). Apply the two boundary conditions — \(x(0)=X\) and \(x(T)=0\) — to pin
+    \(e^{-\kappa t}\); the decaying \(e^{-\kappa t}\) piece is the same exponential decay as the
+    mean-reverting solutions in the Ornstein-Uhlenbeck lesson elsewhere in this series, and
+    because this equation is second-order with a condition at each end, the growing
+    \(e^{\kappa t}\) piece is mixed in too, which is what gives the hyperbolic form). Apply the two boundary conditions — \(x(0)=X\) and \(x(T)=0\) — to pin
     down the constants, and the result simplifies to a single clean closed form:
   </p>
   <div class="tl-math">
@@ -522,7 +525,7 @@
   </div>
 
   <div class="tl-chart interactive">
-    <div class="tl-chart-label">The Almgren-Chriss optimal execution trajectory — drag risk aversion κ</div>
+    <div class="tl-chart-label">The Almgren-Chriss optimal execution trajectory — drag the urgency parameter κ</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart with x-axis time elapsed from 0 to 1 and y-axis fraction of order remaining from 0 to 1. A curve starts at the top left at 1.0 and ends at the bottom right at 0.0. At low risk aversion the curve is a straight line. As risk aversion increases via the slider, the curve becomes increasingly front-loaded, dropping steeply at the start and flattening out near zero for the remainder of the time window.">
       <line x1="60" y1="250" x2="600" y2="250" style="stroke:var(--text3);stroke-width:1"/>
       <line x1="60" y1="250" x2="60" y2="30" style="stroke:var(--text3);stroke-width:1"/>
@@ -539,7 +542,7 @@
     </svg>
     <div class="tl-controls">
       <div class="tl-control">
-        <div class="tl-control-head"><span>Risk aversion κ (combines λ, σ², η into one shape parameter)</span><span class="tl-live" id="ac-kappa-val">κ = 0.00</span></div>
+        <div class="tl-control-head"><span>Urgency κ (rises with risk aversion λ; combines λ, σ², η into one shape parameter)</span><span class="tl-live" id="ac-kappa-val">κ = 0.00</span></div>
         <input type="range" id="ac-kappa-slider" min="0" max="80" step="1" value="0">
         <div class="tl-hint">Drag right to increase risk aversion. At κ = 0 the optimal trajectory is a straight line (TWAP — constant trading rate). As κ rises, the curve front-loads: most of the order executes early, trading off more impact cost for less timing-risk exposure.</div>
       </div>
@@ -730,8 +733,9 @@
       for smaller orders relative to depth; the square-root law is the better
       empirical fit specifically documented at larger sizes relative to average
       daily volume. Using the linear form far outside the size range it was
-      calibrated for will misestimate cost, typically understating it for large
-      orders.
+      calibrated for will misestimate cost: a line calibrated on small orders
+      overstates impact for large ones, and a line calibrated on large orders
+      understates it for small ones.
     </p>
   </div>
 
@@ -739,7 +743,7 @@
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Temporary impact reverts; permanent impact doesn't.</strong> One is the price of demanding immediacy right now; the other is a lasting, information-driven repricing that your own trading itself causes.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Impact scales roughly with the square root of relative order size, not linearly.</strong> A 4× larger order costs about 2× more, not 4× more — and smaller orders already cost more per share than a naive linear model would predict.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Impact scales roughly with the square root of relative order size, not linearly.</strong> A 4× larger order has about 2× the impact per unit, not 4× — and smaller orders already cost more per share than a naive linear model would predict.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Almgren-Chriss frames execution as one explicit trade-off: impact cost vs. timing risk.</strong> A single risk-aversion parameter \(\lambda\) sets how heavily variance (timing risk) is weighted against expected impact cost.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The optimal trajectory has a clean closed form.</strong> \(x(t)=X\sinh(\kappa(T-t))/\sinh(\kappa T)\), with \(\kappa=\sqrt{\lambda\sigma^2/\eta}\): a straight line (TWAP) at \(\kappa=0\), increasingly front-loaded as \(\kappa\) rises.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Permanent impact doesn't change the optimal shape, but it still costs real money.</strong> It's trajectory-independent (a sunk cost on the fixed total size), which is why it drops out of the optimization — not because it's negligible.</span></div>
@@ -766,7 +770,7 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q2. Why does the square-root law imply that quadrupling an order's size only roughly doubles its impact cost, and what does that same math imply about small orders relative to a naive linear model?</summary>
+    <summary>Q2. Why does the square-root law imply that quadrupling an order's size only roughly doubles its impact (cost per unit), and what does that same math imply about small orders relative to a naive linear model?</summary>
     <div class="tl-answer">
       Because impact is proportional to \(\sqrt{Q/\text{ADV}}\), and
       \(\sqrt{4Q}=2\sqrt{Q}\) — quadrupling the input to a square root only doubles
@@ -831,7 +835,7 @@
   <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Robert Almgren &amp; Neil Chriss, "Optimal Execution of Portfolio Transactions," <em>Journal of Risk</em>, 3(2), 2000/2001 — the original paper deriving the impact-cost-versus-timing-risk trade-off and the closed-form sinh/cosh optimal trajectory covered in this lesson.</li>
-    <li>Robert Almgren, Chee Thum, Emmanuel Hauptmann &amp; Hong Li, "Direct Estimation of Equity Market Impact," <em>Risk</em>, 2005 — a widely cited empirical paper estimating and validating the square-root law of market impact across a large real dataset.</li>
+    <li>Robert Almgren, Chee Thum, Emmanuel Hauptmann &amp; Hong Li, "Direct Estimation of Equity Market Impact," <em>Risk</em>, 2005 — a widely cited empirical paper fitting temporary impact on a large set of US equity orders and finding it grows with roughly the 0.6 power of relative size, close to the square-root law.</li>
     <li>Jean-Philippe Bouchaud, Julius Bonart, Jonathan Donier &amp; Martin Gould, <em>Trades, Quotes and Prices: Financial Markets Under the Microscope</em>, Cambridge University Press, 2018 — a modern, comprehensive treatment connecting the square-root law, temporary/permanent impact, and optimal execution theory in one place.</li>
   </ul>
   </details>

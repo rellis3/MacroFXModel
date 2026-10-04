@@ -53,7 +53,7 @@
     dependent</strong> on all the ones before it: tree 2 is built to fix
     what tree 1 got wrong, tree 3 fixes what trees 1 and 2 together still get
     wrong, and so on. Where a forest reduces variance by averaging away
-    independent noise, boosting reduces both bias and variance by
+    independent noise, boosting mainly reduces bias by
     directly, iteratively chasing down the ensemble's remaining error —
     a different mechanism aimed at the same underlying goal of a model that
     predicts well on data it hasn't seen.
@@ -137,8 +137,8 @@
   <h2>The math, step by step</h2>
   <p>
     <strong>The general algorithm (Friedman, 2001).</strong> Gradient boosting
-    builds an additive model \(F_M(x) = \sum_{m=0}^{M} \nu\, h_m(x)\)
-    (with \(h_0\) initialized to a constant) by fitting each new piece
+    builds an additive model \(F_M(x) = F_0(x) + \sum_{m=1}^{M} \nu\, h_m(x)\)
+    (with \(F_0\) a constant starting value) by fitting each new piece
     \(h_m\) sequentially, in the direction that most reduces a chosen loss
     function \(L(y, F(x))\):
   </p>
@@ -217,7 +217,9 @@
     machinery extends cleanly to other losses (log-loss for classification,
     Huber loss for robustness to outliers, quantile loss for predicting a
     specific percentile) — each just swaps in a different derivative for
-    step 2, with steps 1, 3, and 4 completely unchanged.
+    step 2, with the same four-step loop (Friedman's own version also re-sets each new
+    leaf's value to whatever minimizes the actual loss in that leaf, which for squared
+    error is just the leaf mean of the residuals, as here).
   </p>
 
   <div class="tl-eli5">
@@ -522,8 +524,8 @@
     <h3>Where gradient boosting quietly goes wrong</h3>
     <p>
       <strong>Too many rounds with too little shrinkage overfits, just like
-      an unconstrained single tree.</strong> Because each round strictly
-      reduces training loss, boosting for enough rounds \(M\) with a large
+      an unconstrained single tree.</strong> Because each round reduces
+      (never increases) training loss, boosting for enough rounds \(M\) with a large
       enough \(\nu\) can drive training error toward zero exactly the same
       way a single unconstrained tree can — early stopping on a genuine
       validation set (not the training loss curve) is standard practice, not

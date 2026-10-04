@@ -526,7 +526,7 @@
     <div class="tl-icard">
       <div class="tl-icon-badge purple">🧱</div>
       <h4>Block bootstrapping in econometrics</h4>
-      <p>The standard fix wherever a time series' own serial correlation would otherwise be silently discarded — GARCH/ARIMA coefficient standard errors, for instance.</p>
+      <p>The standard fix wherever a time series' own serial correlation would otherwise be silently discarded — standard errors for autocorrelations, or for regressions on overlapping returns, for instance.</p>
     </div>
     <div class="tl-icard">
       <div class="tl-icon-badge amber">🏖️</div>
@@ -551,9 +551,11 @@
     scenarios across a book's risk factors rather than relying on a single
     closed-form formula. <strong>Block bootstrapping in econometrics</strong>
     is the standard fix wherever a time series' own serial correlation would
-    otherwise be silently discarded — bootstrapping the standard errors of a
-    fitted GARCH or ARIMA coefficient, for instance, needs the block variant
-    for exactly the reason described above. <strong>Sequence-of-returns /
+    otherwise be silently discarded — bootstrapping the standard error of a
+    sample autocorrelation, or of a regression on overlapping returns, for instance,
+    needs the block variant for exactly the reason described above (a fully specified
+    model such as GARCH or ARIMA is more often bootstrapped by resampling its
+    standardized residuals and rebuilding the series through the fitted model). <strong>Sequence-of-returns /
     retirement planning</strong> is a widely visible use of Monte Carlo
     outside trading proper: simulating thousands of possible future market
     paths to show a saver the range of retirement-portfolio outcomes
