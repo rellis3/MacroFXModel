@@ -813,7 +813,7 @@ typical player still lose money over many rounds?
 - Romano and Wolf (2005). Stepwise Multiple Testing as Formalized Data Snooping, Econometrica 73(4).
 - Harvey, Liu and Zhu (2016). … and the Cross-Section of Expected Returns, Review of Financial Studies 29(1).
 - Bailey and López de Prado (2014). The Deflated Sharpe Ratio, Journal of Portfolio Management 40(5).
-- Bailey, Borwein, López de Prado and Zhu (2017). The Probability of Backtest Overfitting, Journal of Computational Finance 20(4).
+- Bailey, Borwein, López de Prado and Zhu (2017). The Probability of Overfitting in Historical Strategy Evaluation, Journal of Computational Finance 20(4).
 - López de Prado (2018). Advances in Financial Machine Learning, Wiley.
 
 *Educational content only. Not financial advice.*
