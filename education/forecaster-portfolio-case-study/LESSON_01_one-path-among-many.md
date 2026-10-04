@@ -6,8 +6,10 @@
 > Portfolio". Module 01 · Foundations. Case Study · Lesson 01 of 17 (CS · 01).
 >
 > **Transcription note:** copied from phone screenshots of the lesson, taken
-> 2026-10-04. Nothing has been added or inferred. Charts are described only by
-> the labels and values shown on them. Where something was cut off between
+> 2026-10-04. Nothing has been added or inferred. The original screenshots are
+> kept in `screenshots/lesson-01/` (01–19, in page order), and each figure
+> below names the screenshot it appears in. Each figure is also described in
+> words, using only its axes, lines, colours, labels and caption as shown. Where something was cut off between
 > screenshots it is marked **[not captured]**. Checkpoint answers are listed as
 > shown; the lesson did not mark a correct answer in the screenshots.
 
@@ -115,7 +117,12 @@ of the record the interval spans +383% to +595%, close to the interval the
 bootstrap of §02 recovers from the returns themselves. Two independent methods,
 one parametric and one resampled, describe the same dispersion.
 
-**FIGURE 1.1 — Drift against dispersion**
+**FIGURE 1.1 — Drift against dispersion** *(screenshots 02–03)*
+
+- **What it shows:** a straight dark line rising from 0% at year 0 (the
+  expected path) inside a green band that starts at a point at zero and fans
+  out wider over time (the 90% interval). The band ends at about 4.7 years;
+  the space between the line and the lower edge of the band is shaded grey.
 
 - Chart: cumulative return (y-axis, 0% to +600%) against years (x-axis, 0 to 5).
 - Legend: "Expected path at the record mean" (dark line); "90% interval from
@@ -135,7 +142,11 @@ estimate carries a sampling distribution describing how far it could have
 landed from the value the process implies. The rest of this lesson follows that
 chain link by link.
 
-**FIGURE 1.2 — What an estimate inherits**
+**FIGURE 1.2 — What an estimate inherits** *(screenshot 03)*
+
+- **What it shows:** four boxes joined left to right by arrows. "One path" has
+  a dark border, and "Sampling distributions" is outlined and labelled in
+  green.
 
 Diagram (left to right):
 **The process** (rules and markets) → **One path** (the record) →
@@ -174,7 +185,15 @@ could plausibly have produced had markets unfolded differently. Two hundred
 such paths, each the length of the record, map the spread around the path that
 was realised.
 
-**FIGURE 2.1 — The realised path among two hundred possible paths**
+**FIGURE 2.1 — The realised path among two hundred possible paths** *(screenshot 04)*
+
+- **What it shows:** a fan of 200 thin grey lines, all starting at 0% and
+  spreading out as they rise to roughly +370% to +600% by the end (about 4.7
+  years). The central 90% of the fan is tinted green. A dashed green line runs
+  straight through the middle of the fan, and the thick navy realised path
+  wiggles along close to it, finishing near the middle of the fan. A narrow
+  panel on the right, headed "Final return", holds the distribution of final
+  returns.
 
 - Chart: cumulative return (0% to +600%) against time (0 to 4+ years), 200 grey
   resampled paths, central 90% shaded, a dashed green line, the realised path
@@ -226,7 +245,12 @@ Sharpe ratio of 3.51, it predicts how often each horizon should show a loss.
   years. The model misses in both directions.*
 - Source tag: HISTORICAL TRACK RECORD · SUMMARY STATISTICS
 
-**FIGURE 2.2 — How often the record lost, against the normal model**
+**FIGURE 2.2 — How often the record lost, against the normal model** *(screenshot 05)*
+
+- **What it shows:** pairs of bars for each horizon, grey for the normal
+  model and navy for the record. At Day and Week the navy bar is taller than
+  the grey one; at Month, Quarter and Year it is shorter. Quarter and Year show
+  no navy bar at all (0.0%). Both bars shrink as the horizon lengthens.
 
 - Grouped bar chart of Table 2.1 (Normal model at a Sharpe of 3.51 vs The
   record): Day 41.3% / 50.0%; Week 31.1% / 34.7%; Month 15.6% / 12.7%;
@@ -304,7 +328,12 @@ estimates more common. For the Forecaster Portfolio the net effect of its
 positive skewness is to narrow the standard error from 0.47 under normality to
 0.419. Figure 3.1 shows the resulting sampling distribution.
 
-**FIGURE 3.1 — The sampling distribution of the Sharpe ratio**
+**FIGURE 3.1 — The sampling distribution of the Sharpe ratio** *(screenshot 06)*
+
+- **What it shows:** a symmetric bell curve centred on 3.51, with the middle
+  section between the two green markers (2.69 and 4.33) shaded green-grey. The
+  tails outside the markers are unshaded and fall to zero by about 2.0 and
+  5.0.
 
 - Density curve over annualised Sharpe ratio (x-axis 2.0 to 5.0), peak at
   **3.51**, 95% interval shaded between **2.69** and **4.33**; right-tail end
@@ -335,7 +364,11 @@ the information of about n(1 − ρ)/(1 + ρ) independent ones. The record's
 lag-one autocorrelation is +0.023, so its 1,181 days carry the information of
 about 1,128, very nearly its full length.
 
-**FIGURE 3.2 — Precision grows with the square root of time**
+**FIGURE 3.2 — Precision grows with the square root of time** *(screenshot 07)*
+
+- **What it shows:** a curve that falls steeply over the first year or so,
+  then flattens out as the record lengthens to 10 years, with the area under
+  it shaded grey. The record's own point (about 4.7 years) is a green dot.
 
 - Curve of the 95% interval half-width (y-axis, 0 to ±2.0+) against length of
   record (x-axis, 0 to 10 years).
@@ -411,7 +444,14 @@ read its distribution from the results.
 | 02 · The bootstrap | **Resamples the record itself** | Observed returns are drawn with replacement. No distributional assumption, but independence between days is imposed. |
 | 03 · The block bootstrap | **Resamples runs of days** | Contiguous blocks are drawn, preserving volatility clustering and short-run dependence. The standard choice for daily strategy returns. |
 
-**FIGURE 4.1 — How a block bootstrap resamples**
+**FIGURE 4.1 — How a block bootstrap resamples** *(screenshot 09)*
+
+- **What it shows:** two rows of small coloured squares, each square one day.
+  In the top row, runs of consecutive days share a colour (navy, slate, green,
+  bright green, blue, grey, light grey), so each colour run is one block of
+  the record in its original order. The bottom row is made of the same
+  coloured runs rearranged; some runs repeat (block 6 appears three times) and
+  some are missing.
 
 - Top row: "The record, in blocks of consecutive days" (coloured blocks in
   sequence).
@@ -471,7 +511,12 @@ hundred paths, 0.067 at a thousand and 0.030 at five thousand. Figure 4.2 shows
 the trade-off, and it explains why the illustrative fan of §02 uses two hundred
 paths while the risk estimates of Lesson 15 use more.
 
-**FIGURE 4.2 — Simulation error falls slowly**
+**FIGURE 4.2 — Simulation error falls slowly** *(screenshot 10)*
+
+- **What it shows:** a curve falling from about 0.30 at 50 paths and
+  flattening towards zero by 10,000 paths, with the area under it shaded
+  grey. The 200-path point is a green dot; the 1,000 and 5,000 points are
+  grey dots.
 
 - Curve of standard error, in standard deviations (y-axis 0 to 0.30), against
   simulated paths (logarithmic x-axis, 50 to 10,000).
@@ -509,7 +554,11 @@ Forecaster Portfolio, from the ideas behind it to the validation of its record.
 It follows the sequence in which systematic research proceeds, and each stage
 applies the distributional view developed in this lesson.
 
-**FIGURE 5.1 — The research walkthrough**
+**FIGURE 5.1 — The research walkthrough** *(screenshot 11)*
+
+- **What it shows:** nine boxes in three columns of three, with a downward
+  arrow between the boxes in each column. Read down each column, then left to
+  right. Boxes 05 and 06 have green borders; the others are dark.
 
 | Column 1 | Column 2 | Column 3 |
 |---|---|---|
@@ -551,6 +600,9 @@ Forecaster Portfolio's own record, and each card names the lesson that takes
 its check to full depth.
 
 #### The institutional validation process
+
+*(Shown as a grid of 12 cards, three per row, each headed with its number and
+lesson(s); screenshots 11–12.)*
 
 | # | Lesson(s) | Check | Description |
 |---|---|---|---|
@@ -600,7 +652,13 @@ conviction accumulates across them.
 > *Conviction accumulates across independent tests, each examining a different
 > aspect of the process.*
 
-**FIGURE 5.2 — Conviction from agreement**
+**FIGURE 5.2 — Conviction from agreement** *(screenshot 13)*
+
+- **What it shows:** three rising lines that all start at 4% at zero tests.
+  The green line (likelihood ratio 16) shoots up and is near 100% by 3 tests.
+  The navy line (ratio 4) rises in an S-shape and approaches 100% by 5 tests.
+  The grey line (ratio 2) rises slowly, reaching only just under 60% by 5
+  tests. The area under the green line is shaded.
 
 - Lines of probability of a real edge (y-axis 0% to 100%) against independent
   tests passed (x-axis 0 to 5), for likelihood ratios 16, 4 and 2, all from a
@@ -658,7 +716,14 @@ about 7.0 times its starting value, while the median player holds about 0.12 of
 theirs, and about 79% of players have lost money. The average is carried by a
 vanishing minority of very fortunate paths.
 
-**FIGURE 6.1 — The average and the typical path** (animated, stepped)
+**FIGURE 6.1 — The average and the typical path** (animated, stepped) *(screenshots 14–15)*
+
+- **What it shows:** a diamond-shaped lattice of thin zig-zag lines, each
+  zig-zag one player's wealth moving up 50% or down 40% each round, fanning
+  out from 1× on a log scale. In step 4, the green average line rises above
+  the starting-wealth line while the red typical-player line falls below it.
+  The histogram on the right shows final wealth: grey-blue bars above 1× and
+  larger pink-red bars below 1×.
 
 - Chart: wealth as a multiple of the start (logarithmic y-axis, 0.01× to 100×)
   against rounds played (0 to 40), with a lattice of possible paths and a
@@ -700,7 +765,12 @@ with far smaller swings. Institutions size below Kelly for this reason: the
 growth given up is small, and the reduction in drawdowns and in sensitivity to
 estimation error is large.
 
-**FIGURE 6.2 — Volatility drag**
+**FIGURE 6.2 — Volatility drag** *(screenshots 15–16)*
+
+- **What it shows:** a curve that starts at +10% growth at 0% volatility
+  (touching the dashed 10% expected-return line) and bends ever more steeply
+  downwards as volatility rises. It crosses the 0% line at 44.7% (red dot)
+  and ends below zero at 60%.
 
 - Curve of growth rate along a path (y-axis −10% to +10%) against volatility
   (x-axis 0% to 60%), dashed line "Expected return, 10%".
@@ -729,7 +799,14 @@ layered structure of the Forecaster Portfolio described in Lesson 3. Figure 6.3
 shows the whole trade-off at once, as a surface that can be turned and
 inspected.
 
-**FIGURE 6.3 — The growth surface** (interactive 3D)
+**FIGURE 6.3 — The growth surface** (interactive 3D) *(screenshot 16)*
+
+- **What it shows:** a tilted 3D surface coloured from yellow (high growth)
+  through green and teal to dark navy (strongly negative growth). Growth is
+  highest (yellow) at low volatility and high exposure, and turns dark navy at
+  high volatility and high exposure. Three curves cross the surface: half
+  Kelly (dashed white), Kelly (solid white) and zero growth at 2μ/σ² (coral).
+  A colour bar on the left runs from −30 to +25 (% a year).
 
 - Header: "Beyond the coral line, twice Kelly, growth is negative although the
   expected return is positive"
