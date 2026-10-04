@@ -22,6 +22,8 @@
 .wb-btn:hover{border-color:var(--blue)}
 .wb-play{color:var(--amber);border-color:var(--amber-bd)}
 .wb-voice{margin-left:auto}
+.wb-speed{margin-left:auto;font-family:'DM Mono',ui-monospace,monospace;font-weight:600;font-size:14px;color:var(--amber,#fbbf24)}
+.wb-speed + .wb-voice{margin-left:0}
 .wb-voice[aria-pressed="true"]{border-color:var(--green-bd);background:var(--green-bg)}
 .wb-dots{display:flex;gap:2px;flex-wrap:wrap;align-items:center}
 .wb-dot{width:22px;height:30px;border:0;background:transparent;cursor:pointer;position:relative;padding:0}
@@ -58,4 +60,4 @@
 .wb-flash{animation:wb-flash .9s ease}
 @keyframes wb-flash{0%{filter:none}30%{filter:drop-shadow(0 0 7px currentColor) brightness(1.4)}100%{filter:none}}
 @media (prefers-reduced-motion:reduce){.wb-flash{animation:none}.wb-dim{transition:none}}
-@media (max-width:520px){.wb-cap{font-size:14px}.wb-btn{min-width:42px}.wb-voice{margin-left:0}}
+@media (max-width:520px){.wb-cap{font-size:14px}.wb-btn{min-width:42px}.wb-voice,.wb-speed{margin-left:0}}

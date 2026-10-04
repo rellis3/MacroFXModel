@@ -92,14 +92,30 @@
     return e;
   }
   function tone(t) { return 'wb-t-' + (t || 'chalk'); }
+
+  // Playback speed: one setting for every board on the page, remembered across pages.
+  // Every animation time below goes through T(), so 2× halves draws, moves and pauses alike.
+  var SPEEDS = [1, 1.5, 2, 3], SPEED = 1;
+  try { var sv = parseFloat(localStorage.getItem('theoryLabWBSpeed')); if (SPEEDS.indexOf(sv) >= 0) SPEED = sv; } catch (e) {}
+  function T(ms) { return ms / SPEED; }
+  function speedLabel() { return SPEED + '×'; }
+  function setSpeed(v) {
+    SPEED = v;
+    try { localStorage.setItem('theoryLabWBSpeed', String(v)); } catch (e) {}
+    Array.prototype.forEach.call(document.querySelectorAll('.wb-speed'), function (btn) {
+      btn.textContent = speedLabel(); btn.setAttribute('aria-label', 'Playback speed ' + speedLabel() + ' (tap to change)');
+    });
+  }
+
   function wait(ms, token, b) {
-    return new Promise(function (res) { setTimeout(function () { res(token === b.token); }, ms); });
+    return new Promise(function (res) { setTimeout(function () { res(token === b.token); }, T(ms)); });
   }
 
   function drawOn(path, ms, anim) {
     var len = 0;
     try { len = path.getTotalLength(); } catch (e) { len = 0; }
     if (!len || !anim) return;
+    ms = T(ms);
     path.style.strokeDasharray = len + ' ' + len;
     path.style.strokeDashoffset = len;
     path.getBoundingClientRect();
@@ -109,6 +125,7 @@
   }
   function fadeIn(node, ms, anim) {
     if (!anim) return;
+    ms = T(ms);
     node.style.opacity = '0';
     node.getBoundingClientRect();
     node.style.transition = 'opacity ' + ms + 'ms ease';
@@ -174,6 +191,7 @@
       '<button type="button" class="wb-btn wb-play" data-a="play" aria-label="Play">▶</button>' +
       '<button type="button" class="wb-btn" data-a="next" aria-label="Next step">▶|</button>' +
       '<div class="wb-dots" role="group" aria-label="Jump to step"></div>' +
+      '<button type="button" class="wb-btn wb-speed" data-a="speed" aria-label="Playback speed ' + speedLabel() + ' (tap to change)">' + speedLabel() + '</button>' +
       '<button type="button" class="wb-btn wb-voice" data-a="voice" aria-pressed="false" aria-label="Read captions aloud">🔈</button>';
     root.appendChild(bar);
     this.playBtn = bar.querySelector('.wb-play');
@@ -189,6 +207,7 @@
     bar.addEventListener('click', function (e) {
       var a = e.target.closest('[data-a]'); if (!a) return;
       var act = a.getAttribute('data-a');
+      if (act === 'speed') { setSpeed(SPEEDS[(SPEEDS.indexOf(SPEED) + 1) % SPEEDS.length]); return; }
       b.startBtn.hidden = true;
       if (act === 'play') b.playing ? b.stop() : b.play();
       else if (act === 'next') { b.stop(); if (b.idx < b.steps.length - 1) b.go(b.idx + 1, true); }
@@ -267,7 +286,8 @@
       var s = window.speechSynthesis; s.cancel();
       var u = new SpeechSynthesisUtterance(text);
       var rate = parseFloat(localStorage.getItem('theoryLabTTSRate') || '1');
-      if (rate > 0.4 && rate < 3) u.rate = rate;
+      if (!(rate > 0.4 && rate < 3)) rate = 1;
+      u.rate = Math.min(2, rate * Math.min(SPEED, 1.6));   // faster boards talk a bit faster, still clearly
       s.speak(u);
     } catch (e) {}
   };
@@ -277,7 +297,7 @@
       var t0 = Date.now();
       (function check() {
         var talking = b.speak && window.speechSynthesis && (window.speechSynthesis.speaking || window.speechSynthesis.pending);
-        if (Date.now() - t0 >= (b.speak ? 600 : minMs) && !talking) return res();
+        if (Date.now() - t0 >= T(b.speak ? 600 : minMs) && !talking) return res();
         setTimeout(check, 150);
       })();
     });
@@ -311,7 +331,7 @@
       paths.forEach(function (pth, i) {
         if (!anim) return;
         pth.style.opacity = '0';
-        setTimeout(function () { if (tok !== b.token) return; pth.style.opacity = ''; drawOn(pth, per + 120, true); }, i * per);
+        setTimeout(function () { if (tok !== b.token) return; pth.style.opacity = ''; drawOn(pth, per + 120, true); }, T(i * per));
       });
       var sym = op.sym && spec.sym;
       if (sym) {
@@ -350,7 +370,7 @@
       var dur = op.ms || 900, t0 = performance.now();
       (function frame(now) {
         if (tok !== b.token) return;
-        var p = Math.min(1, (now - t0) / dur), e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+        var p = Math.min(1, (now - t0) / T(dur)), e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
         place(ox + (op.x - ox) * e, oy + (op.y - oy) * e);
         if (p < 1) requestAnimationFrame(frame);
       })(t0);
@@ -386,7 +406,7 @@
       }
       it[op.id || (op.arrow[0] + '>' + op.arrow[1])] = { kind: 'arrow', g: ag, x: 0, y: 0, w: 0, h: 0 };
       if (anim && !op.dash) drawOn(path, 700, true); else fadeIn(path, 500, anim);
-      if (anim) { head.style.opacity = '0'; setTimeout(function () { if (tok === b.token) fadeIn(head, 200, true); head.style.opacity = ''; }, 650); }
+      if (anim) { head.style.opacity = '0'; setTimeout(function () { if (tok === b.token) fadeIn(head, 200, true); head.style.opacity = ''; }, T(650)); }
       if (lab) fadeIn(lab, 500, anim);
       return 800;
     }
@@ -483,7 +503,7 @@
         var t0 = performance.now();
         (function grow(now) {
           if (tok !== b.token) return;
-          var p = Math.min(1, (now - t0) / bdur), e = 1 - Math.pow(1 - p, 3), cur = hh * e;
+          var p = Math.min(1, (now - t0) / T(bdur)), e = 1 - Math.pow(1 - p, 3), cur = hh * e;
           r.setAttribute('height', cur); r.setAttribute('y', neg ? base : base - cur);
           if (p < 1) requestAnimationFrame(grow); else fadeIn(lab2, 300, true), lab2.style.opacity = '';
         })(t0);
@@ -498,7 +518,7 @@
       var cdur = op.ms || 1200, c0 = performance.now();
       (function tick(now) {
         if (tok !== b.token) return;
-        var p = Math.min(1, (now - c0) / cdur);
+        var p = Math.min(1, (now - c0) / T(cdur));
         cb.sub.textContent = fmt(op.from + (op.to - op.from) * (1 - Math.pow(1 - p, 3)));
         if (p < 1) requestAnimationFrame(tick);
       })(c0);
