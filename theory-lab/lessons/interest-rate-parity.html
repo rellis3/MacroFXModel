@@ -37,7 +37,7 @@
     <li>Uncovered interest rate parity (UIP) makes the same-looking claim without the forward hedge — that the market's expected future spot rate equals the forward rate, \(E_t[S_{t+T}] = F\) — which implies the higher-yielding currency should be expected to depreciate by roughly its rate advantage. Unlike CIP, nothing forces this to be true.</li>
     <li>The worked example prices a 1-year USD/EUR forward at \(S=1.10\), \(r_d=5\%\), \(r_f=3\%\) as \(F^\ast \approx 1.1214\), then shows a hypothetical mispriced forward of 1.15 yielding a riskless $26,818.18 arbitrage on $1,000,000 — the exact trade that keeps CIP pinned in practice.</li>
     <li>Fama (1984) tested UIP's one-for-one prediction and found the regression coefficient is typically negative (Froot &amp; Thaler's 1990 survey reports an average of about −0.88, not +1) — the forward premium puzzle: high-yielding currencies have tended to appreciate or hold flat rather than depreciate as UIP predicts, which is the empirical basis of the FX carry trade.</li>
-    <li>The JPY/AUD carry-trade scenario shows both sides at once: the interest differential (~4.2pp) was pocketed largely intact through calm 2023–mid-2024 markets, then AUD/JPY fell 10%+ in about two weeks after the BoJ's 31 July 2024 hike — the carry trade is short a fat left tail, not free money.</li>
+    <li>The JPY/AUD carry-trade scenario shows both sides at once: the interest differential (~4.2pp) was pocketed largely intact through calm 2023–mid-2024 markets, then AUD/JPY fell about 17% from its 11 July peak to its 5 August low (roughly 3½ weeks), much of it in the days after the BoJ's 31 July 2024 hike — the carry trade is short a fat left tail, not free money.</li>
     <li><strong>Real-world episode:</strong> in autumn 2008 even covered parity broke. After Lehman, non-US banks scrambled for dollars through FX swaps, nobody had the balance sheet to arbitrage the gap, and it narrowed only once the Fed's swap lines went unlimited in mid-October. The yen carry trade crashed in the same weeks.<!-- DESK:START --> The desk's own carry test is <code>fx-factor-book-v2</code>, UNDERPOWERED: +0.61 out of sample is 1.5 SE, so it is not an edge.<!-- DESK:END --></li>
   </ul>
 </div>
@@ -491,12 +491,12 @@
       the same time. The result was a violent, fast unwind of yen-funded
       carry positioning across the board: the yen appreciated sharply and
       abruptly against nearly everything, AUD/JPY (one of the most heavily
-      carry-traded crosses) fell on the order of 10%+ peak-to-trough in
-      roughly two weeks, and volatility spiked across global markets (the
+      carry-traded crosses) fell about 17% peak-to-trough, from its 11 July
+      high to its 5 August low, roughly three and a half weeks, much of it in the sessions after the hike, and volatility spiked across global markets (the
       episode is widely referenced as contributing to the early-August 2024
       global equity selloff). A position that had been quietly earning
       something like 4.2% a year in carry gave back several years' worth of
-      that accumulated edge in about ten trading days. Nothing about the
+      that accumulated edge in a few weeks. Nothing about the
       interest-rate differential changed on the day of the crash — what
       changed was the market's tolerance for holding the funding-currency
       short, all at once.
@@ -504,7 +504,7 @@
 
     <div class="tl-eli5">
       <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
-      <p>Picture picking up spare change off the sidewalk every single day for two years, then one day stepping in front of a bus. The carry trade often looks exactly like that: small, steady gains that quietly add up for a long time, funded by taking on the risk of one sudden, sharp loss that can erase years of those small gains in about ten trading days. The daily interest pickup wasn't the whole story — it was the reward for being willing to stand in the road.</p>
+      <p>Picture picking up spare change off the sidewalk every single day for two years, then one day stepping in front of a bus. The carry trade often looks exactly like that: small, steady gains that quietly add up for a long time, funded by taking on the risk of one sudden, sharp loss that can erase years of those small gains in a few weeks. The daily interest pickup wasn't the whole story — it was the reward for being willing to stand in the road.</p>
     </div>
     <div class="tl-solid amber">
       <strong>The trap:</strong> reading the calm-market carry pickup as free money.
@@ -744,7 +744,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>UIP makes the same-looking claim without the hedge</strong> — \(E_t[S_{t+T}]=F\) — and nothing forces it to be true. Unlike CIP it's a behavioral hypothesis, testable against data.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fama (1984) found the wrong sign.</strong> The forward-premium regression coefficient is typically negative (about −0.88 on average in Froot &amp; Thaler's survey, not +1) — high-yielding currencies have tended to appreciate or hold flat, not depreciate as UIP predicts. This is the empirical basis of the FX carry trade.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The higher-yielding currency trades forward at a discount, mechanically.</strong> This falls straight out of the no-arbitrage derivation and says nothing yet about where spot actually ends up.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The carry trade is short a fat left tail, not free money.</strong> The AUD/JPY unwind after the BoJ's 31 July 2024 hike erased years of accumulated carry in about two weeks.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The carry trade is short a fat left tail, not free money.</strong> The AUD/JPY unwind after the BoJ's 31 July 2024 hike erased years of accumulated carry in a few weeks (about 17% peak to trough).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A UIP "failure" is not an arbitrage opportunity.</strong> CIP is enforced by riskless arbitrage; a UIP deviation is a risk-bearing bet with a real downside, not a free lunch — and a "peso problem" can make a historical average look cleaner than the true underlying odds.</span></div>
 <!-- DESK:START -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing in this repo computes CIP or UIP, and its one carry test is underpowered.</strong> The forward premium puzzle is well-replicated in the broader literature — that is a different claim from a validated OOS edge on this repo's own data.</span></div>
@@ -838,8 +838,7 @@
       Because "documented in the broader literature, on other datasets and
       time periods" is a different claim from "tested, with this repo's
       actual data and honest harness discipline, and found to hold
-      out-of-sample here." Per Lego Principle 5 and the working agreement
-      above, any signal — however well-supported elsewhere — only counts as
+      out-of-sample here." Per Lego Principle 5, this repo's validation rule, any signal — however well-supported elsewhere — only counts as
       validated once it clears realistic fills, real costs, a true
       in-sample/out-of-sample split, and a non-trivial OOS trade count (≥30)
       on this repo's own data. The one such test run here (fx-factor-book-v2) came back UNDERPOWERED; this

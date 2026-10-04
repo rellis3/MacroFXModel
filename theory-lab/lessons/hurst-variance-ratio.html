@@ -267,12 +267,12 @@
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Log-log plot of log(n) versus log(R/S) showing three straight reference lines from a common origin at different slopes: a steep red line for H greater than 0.5, a slider-driven amber line whose slope tracks the chosen H, and a shallow blue line for H less than 0.5">
       <line x1="60" y1="20" x2="60" y2="250" style="stroke:var(--border)" />
       <line x1="60" y1="250" x2="610" y2="250" style="stroke:var(--border)" />
-      <line x1="100" y1="240" x2="220" y2="40" style="stroke:var(--red);stroke-width:2" />
+      <line x1="100" y1="240" x2="211" y2="40" style="stroke:var(--red);stroke-width:2" />
       <line id="hurst-active-line" x1="100" y1="240" x2="300" y2="40" style="stroke:var(--amber);stroke-width:2.5" />
-      <line x1="100" y1="240" x2="580" y2="40" style="stroke:var(--blue);stroke-width:2" />
-      <text x="214" y="34" font-size="12" text-anchor="end" fill="var(--red)">H &gt; 0.5 (trending)</text>
+      <line x1="100" y1="240" x2="600" y2="140" style="stroke:var(--blue);stroke-width:2" />
+      <text x="205" y="34" font-size="12" text-anchor="end" fill="var(--red)">H &gt; 0.5 (trending)</text>
       <text id="hurst-active-label" x="306" y="58" font-size="12" fill="var(--amber)">H = 0.50 (random walk)</text>
-      <text x="430" y="95" font-size="12" fill="var(--blue)">H &lt; 0.5 (mean-reverting)</text>
+      <text x="430" y="160" font-size="12" fill="var(--blue)">H &lt; 0.5 (mean-reverting)</text>
       <text x="560" y="272" font-size="12" fill="var(--text3)">log(n)</text>
       <text x="20" y="140" font-size="12" fill="var(--text3)" transform="rotate(-90 20 140)">log(R/S)</text>
     </svg>
@@ -287,8 +287,8 @@
       Because \((R/S)_n \approx c \cdot n^H\), taking logs of both sides turns the power law into a straight line —
       and the <strong>slope</strong> of that line is the Hurst exponent \(H\) itself, which is exactly why the
       log-log regression is how \(H\) gets estimated in practice. A steeper slope means a stronger trending
-      tendency, a shallower slope means stronger mean reversion, and a slope of exactly 0.5 (45° here) is
-      statistically indistinguishable from a random walk. This is a schematic of the three regimes, not a fit to
+      tendency, a shallower slope means stronger mean reversion, and a slope of exactly 0.5 (45° here, because the vertical axis is drawn at twice the horizontal scale, so every
+      drawn slope is proportional to \(H\)) is the random-walk value. The axes carry no data values: this is a schematic of the three regimes, not a fit to
       real data.
     </div>
   </div>
@@ -665,21 +665,16 @@
   var label = document.getElementById('hurst-active-label');
   if (!slider || !readout || !line || !label) return;
 
-  var originX = 100, originY = 240, topY = 40;
-  // dx (screen x-delta from the shared origin) at the three anchor points —
-  // dxBlue/dxRed match the two static reference lines' endpoints exactly, and
-  // dxMid reproduces the original 45-degree "random walk" line at H = 0.5.
-  var dxBlue = 580 - originX; // 480 — H=0.1 anchor, matches the shallow blue H<0.5 line
-  var dxMid  = 300 - originX; // 200 — H=0.5 anchor, the classic 45-degree position
-  var dxRed  = 220 - originX; // 120 — H=0.9 anchor, matches the steep red H>0.5 line
-
-  function dxForH(h) {
-    if (h <= 0.5) {
-      var t = (h - 0.1) / 0.4; // 0 at H=0.1 .. 1 at H=0.5
-      return dxBlue + (dxMid - dxBlue) * t;
-    }
-    var t2 = (h - 0.5) / 0.4; // 0 at H=0.5 .. 1 at H=0.9
-    return dxMid + (dxRed - dxMid) * t2;
+  var originX = 100, originY = 240, topY = 40, rightX = 600;
+  // Screen slope is proportional to H (2 px up per px across per unit H), so
+  // H = 0.5 is the 45-degree line and the two static reference lines are
+  // exactly H = 0.9 (red) and H = 0.1 (blue). The line stops at whichever
+  // edge of the plot it reaches first.
+  var K = 2;
+  function endForH(h) {
+    var slope = K * Math.max(h, 0.01);
+    var dx = Math.min((originY - topY) / slope, rightX - originX);
+    return { x: originX + dx, y: originY - slope * dx };
   }
 
   function regimeWord(h) {
@@ -690,12 +685,15 @@
 
   function update() {
     var h = parseInt(slider.value, 10) / 100;
-    var x2 = originX + dxForH(h);
-    var y2 = topY;
+    var end = endForH(h);
+    var x2 = end.x;
+    var y2 = end.y;
     line.setAttribute('x2', x2);
     line.setAttribute('y2', y2);
-    label.setAttribute('x', x2 + 6);
-    label.setAttribute('y', y2 + 18);
+    var nearRight = x2 > 450;
+    label.setAttribute('text-anchor', nearRight ? 'end' : 'start');
+    label.setAttribute('x', nearRight ? x2 : x2 + 6);
+    label.setAttribute('y', nearRight ? y2 - 8 : y2 + 18);
     label.textContent = 'H = ' + h.toFixed(2) + ' (' + regimeWord(h) + ')';
     readout.textContent = 'H = ' + h.toFixed(2);
   }

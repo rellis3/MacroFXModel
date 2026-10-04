@@ -17,7 +17,7 @@
   <h1 class="tl-title">Cointegration &amp; Statistical Arbitrage</h1>
   <p class="tl-dek">Two series can drift together for years with a 95% correlation and still have no stable relationship at all — cointegration is the specific, testable condition that tells you whether a spread has a home to come back to, or is just two random walks that happened to lean the same way.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not yet tested in this repo<!-- DESK:END --></span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — an Engle-Granger screen exists in this repo; no result scored yet<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Ornstein-Uhlenbeck &amp; Mean Reversion</span>
   </div>
@@ -65,7 +65,7 @@
     equilibrium relationship that reasserts itself." It is the mathematical
     backbone of pairs trading<!-- DESK:START --> and, more broadly, of every claim in this repo's
     own notes that a cross-asset spread is tradeable as mean reversion rather
-    than just narratively appealing<!-- DESK:END -->. The previous lesson on
+    than just narratively appealing<!-- DESK:END -->. The lesson on
     Ornstein-Uhlenbeck mean reversion described how to model and trade a
     single stationary, mean-reverting series once you have one. This lesson
     is about the step before that: how do you know two non-stationary price
@@ -190,7 +190,7 @@
     \(X_t = \phi X_{t-1} + \epsilon_t\). If \(|\phi| < 1\), shocks decay away
     over time and the series is stationary — it has a fixed mean it keeps
     returning to (this is the AR(1) case underlying the Ornstein-Uhlenbeck
-    process from the previous lesson). If \(\phi = 1\) exactly, you get the
+    process from the Ornstein-Uhlenbeck lesson). If \(\phi = 1\) exactly, you get the
     random walk above: shocks never decay, they accumulate forever. The name
     <strong>"unit root"</strong> comes from writing the model as
     \((1 - \phi L)X_t = \epsilon_t\) (where \(L\) is the lag operator,
@@ -384,7 +384,7 @@
     negative enough to reject \(H_0\)), you have real evidence that
     \(X_t\) and \(Y_t\) are cointegrated: the spread \(\hat\epsilon_t\) is
     stationary, has a genuine long-run mean, and behaves like the
-    OU-process-like mean-reverting object covered in the previous lesson —
+    OU-process-like mean-reverting object covered in the Ornstein-Uhlenbeck lesson —
     something you can z-score, put bands around, and trade with an actual
     statistical basis for expecting reversion, rather than a chart that
     happens to look mean-reverting over one convenient window.
@@ -469,7 +469,7 @@
       the unit-root null. Now the spread is a legitimate stationary,
       mean-reverting object — you could take its rolling mean and standard
       deviation, form a z-score, and treat it with exactly the OU-process
-      toolkit from the previous lesson: enter when \(|z|\) exceeds some
+      toolkit from the Ornstein-Uhlenbeck lesson: enter when \(|z|\) exceeds some
       threshold betting on reversion toward zero, set the expected holding
       period from the spread's estimated half-life, exit near the mean.
     </p>
