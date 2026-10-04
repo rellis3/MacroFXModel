@@ -87,3 +87,15 @@ ways:
 ## Multiple-testing ledger
 
 This adds 4 primary tests: H11, H12, H13-G1 and H13-G2.
+
+## Amendment 2026-10-04, before any H11-H13 result was computed (implementation details)
+
+1. **H13 trigger when the level steps past price.** The schedule steps closer through the day, so at the start of an
+   hour the running extreme can already be beyond the new hour's level while price has pulled back. In that case the
+   trigger is that hour's first M1 bar, entry is at its **open** (the level is no longer available), and the stop is
+   0.25σ beyond the entry. Otherwise the entry is at the level on the first bar whose running extreme reaches it.
+2. **The H13 shuffled benchmark** is each day's schedule **circularly shifted by a random 1–23 hours** (500 draws). This
+   uses real schedule values at the wrong time of day, which isolates whether the *timing* in the schedule matters.
+3. **Stage 1** (`scripts/rangebook/exhaustion_build.mjs`) records D_h and "final" per day × side × hour. One sanity
+   check was looked at before writing this amendment: EURUSD's unconditional P(final) by hour (7% at 00:00 rising to
+   96% by 21:00). It contains no schedule, test or trade result.

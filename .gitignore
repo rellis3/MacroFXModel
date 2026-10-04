@@ -544,3 +544,4 @@ analysis/.cache/
 
 # DIRECTIONAL-RESCORE touch tables (regenerate: node scripts/rangebook/directional_build.mjs)
 analysis/surfaces/directional/
+analysis/surfaces/exhaustion/
