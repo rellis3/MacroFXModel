@@ -239,7 +239,7 @@
     average" carries forward into tomorrow (proof of that exact statement is the persistence derivation two
     paragraphs down). If \(\alpha+\beta \ge 1\), that fraction never shrinks — a variance shock either persists
     forever (the borderline \(\alpha+\beta=1\) case, called <strong>IGARCH</strong>, integrated GARCH) or compounds
-    explosively (\(\alpha+\beta>1\), which is not a valid model — variance forecasts blow up). Any legitimate
+    explosively (\(\alpha+\beta>1\), which is not covariance-stationary: there is no finite long-run variance and variance forecasts blow up). Any legitimate
     GARCH(1,1) fit on real return data needs \(\alpha+\beta<1\), and it's a sanity check worth running on any fitted
     or hand-set parameters before trusting them.
   </p>
@@ -326,10 +326,10 @@
     <div class="tl-math">\[ \sigma_t^2 = 0.000001 + 0.00005 + 0.000045 = 0.000096 \quad\Rightarrow\quad \sigma_t \approx 0.0098 \approx 0.98\% \]</div>
     <p>
       One 2.5% shock day pushed the next-day forecast from 0.71% up to 0.98% — roughly 38% higher than the
-      long-run level. A flat HV20 estimate, by contrast, would barely move: adding a single 2.5% day into a
-      20-day equal-weighted average nudges the mean up only modestly, and it would keep contributing that same
+      long-run level. A flat HV20 estimate, by contrast, moves less: one 2.5% day in a 20-day equal-weighted
+      window whose other days sit at the long-run level lifts it only to about 0.89%, and it would keep contributing that same
       fixed weight for the next twenty days regardless of what happens next, then vanish abruptly on day 21. GARCH
-      reacted to the shock immediately and in full on day one.
+      reacted more on day one (weight \(\alpha=0.08\) against HV20's 1/20) and then lets the shock fade smoothly.
     </p>
     <p>
       Now trace the decay. With no further shocks, the excess over the long-run variance
@@ -464,7 +464,7 @@
       panel, then decays gradually — not instantly — back toward the dashed long-run level rather than
       snapping back the moment the market goes quiet. That gradual, slower-than-a-cliff decay <em>is</em> the
       persistence (\(\alpha+\beta\) close to 1) the math above describes, and it's exactly the shape a flat
-      trailing HV20 average can't replicate: HV20 would barely move on the shock day and then only fully
+      trailing HV20 average can't replicate: HV20 moves less on the shock day (whenever \(\alpha\) exceeds 1/20) and then only fully
       "forget" it once the shock rolls off the window 20 days later, not smoothly in between. Drag the sliders
       above to see how α and β each reshape the post-shock curve.
     </div>
@@ -766,7 +766,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Volatility clusters.</strong> Big moves of either sign follow big moves, and calm follows calm — even though the direction of the next move stays close to unpredictable.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>GARCH(1,1) has three additive pieces.</strong> A floor (ω), a reaction to yesterday's squared shock (α), and inertia from yesterday's own variance level (β).</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>α+β is the persistence.</strong> It's the day-over-day decay rate of a volatility shock's excess over normal, and the half-life falls straight out of it: \(n_{1/2}=\ln(0.5)/\ln(\alpha+\beta)\).</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Stationarity requires α+β &lt; 1.</strong> At exactly 1 (IGARCH) a shock never decays; above 1 the model isn't valid at all — always sanity-check this on any parameter set.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Stationarity requires α+β &lt; 1.</strong> At exactly 1 (IGARCH) a shock never decays; above 1 it isn't covariance-stationary (no finite long-run variance) — always sanity-check this on any parameter set.</span></div>
     <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This project already runs GARCH(1,1) in production.</strong> It uses \(\alpha=0.06\), \(\beta=0.91\) (persistence 0.97, half-life ≈ 23 days) as one of three sigma estimators, applied to the index asset class.</span></div><!-- DESK:END -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Plain GARCH(1,1) is symmetric.</strong> It can't capture the leverage effect (down moves raising volatility more than equal-sized up moves) — EGARCH/GJR-GARCH exist specifically to address that.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This isn't a claim GARCH beats the alternatives OOS.</strong> It's one of three estimators (alongside HV20 and Yang-Zhang) compared under the same walk-forward harness — which wins is an empirical question, not assumed from the math.</span></div>
@@ -798,11 +798,12 @@
   <details class="tl-quiz">
     <summary>Q3. Why can a GARCH forecast for tomorrow diverge sharply from a simple trailing HV20 average right after a big news day?</summary>
     <div class="tl-answer">
-      GARCH reacts to yesterday's shock immediately — the \(\alpha\epsilon_{t-1}^2\) term injects the full new
-      squared shock into the very next forecast. HV20 gives that same shock only 1/20th of the weight in an
-      equal-weighted average, so the visible move in the trailing average is much smaller on day one, then that
+      GARCH reacts to yesterday's shock immediately — the \(\alpha\epsilon_{t-1}^2\) term injects the new
+      squared shock, weighted by \(\alpha\), into the very next forecast. HV20 gives that same shock a fixed
+      1/20th of the weight in an equal-weighted average, so with a typical \(\alpha\) above 0.05 the visible
+      move in the trailing average is smaller on day one, then that
       1/20th weight sits unchanged for 20 days before disappearing abruptly (the "ghosting" effect) regardless of
-      what the market does next. Right after a shock, GARCH has already moved a lot; HV20 has barely moved and
+      what the market does next. Right after a shock, GARCH has usually moved more; HV20 has moved less and
       won't fully reflect that day's impact (or stop reflecting it) until its rolling window catches up.
     </div>
   </details>

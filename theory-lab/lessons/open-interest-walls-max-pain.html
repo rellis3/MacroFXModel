@@ -31,7 +31,7 @@
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
-      <li>A call wall or put wall is simply a strike whose open interest is an outlier relative to its neighbors — the previous lesson's mechanism is what turns that outlier into observed support or resistance.</li>
+      <li>A call wall or put wall is simply a strike whose open interest is an outlier relative to its neighbors — the previous lesson's dealer-hedging mechanism is the usual explanation for why that outlier is read as support or resistance.</li>
       <li><strong>Max pain</strong> is the candidate settlement price that minimizes the total payout option writers owe, summed across <em>every</em> in-the-money option in the whole chain — not a single strike's own OI compared to today's price.</li>
       <li>The economic logic: at expiry, writers (collectively short every outstanding option) must pay exactly the aggregate intrinsic value of every option that finished in the money. The strike minimizing that aggregate payout is the strike where sellers collectively lose the least — the origin of "price gravitates toward max pain," alongside the separate, mechanical dealer-hedging channel from the previous lesson.</li>
       <li>The worked example computes total pain by hand at four candidate strikes on a small seven-strike chain and finds the minimum away from both the call wall and the put wall — the max-pain strike is rarely one of the outlier walls themselves.</li>
@@ -207,8 +207,8 @@
     <tr><td>\(\text{OI}_k^{\text{call}}\), \(\text{OI}_k^{\text{put}}\)</td><td>Open interest (contracts outstanding) in calls / puts at strike \(k\).</td></tr>
     <tr><td>\(\text{CallPain}(S)\), \(\text{PutPain}(S)\)</td><td>Aggregate intrinsic-value payout writers owe on calls / puts, across the whole chain, if the underlying settles at \(S\).</td></tr>
     <tr><td>\(\text{TotalPain}(S)\)</td><td>The sum of both — max pain is the \(S\) that minimizes this.</td></tr>
-    <tr><td>Call wall</td><td>The strike with an outlier concentration of call OI relative to its neighbors — typically above the current price, acting as resistance per the previous lesson's mechanism.</td></tr>
-    <tr><td>Put wall</td><td>The mirror image — an outlier concentration of put OI, typically below current price, acting as support.</td></tr>
+    <tr><td>Call wall</td><td>The strike with an outlier concentration of call OI relative to its neighbors — typically above the current price, usually read as resistance via the previous lesson's mechanism.</td></tr>
+    <tr><td>Put wall</td><td>The mirror image — an outlier concentration of put OI, typically below current price, usually read as support.</td></tr>
     <tr><td>P/C ratio</td><td>Total put OI ÷ total call OI across the whole chain.</td></tr>
   </table></div>
 
@@ -288,7 +288,7 @@
     <div class="tl-chart-caption">
       Entirely illustrative numbers for a generic instrument — invented for
       this lesson, not pulled from any live feed. The 260 strike (7,800
-      calls, roughly 3.5× the next-largest call strike) is the call wall;
+      calls, roughly 3.5× its 255 neighbour and 3.25× the next-largest call strike) is the call wall;
       the 240 strike (6,500 puts, roughly 2.5× the next-largest put strike)
       is the put wall. With the instrument currently near 255, max pain
       computes (worked out in full below) to 250 — below spot, and notably
@@ -432,8 +432,8 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
     <p>
       Day one: the 240 put wall from the table above sits at 6,500
       contracts. Price sells off toward it intraday, dealer hedging
-      (selling into the decline per the previous lesson, then running out
-      of selling pressure right at the strike) produces a clean bounce —
+      around the strike (in the bounce-at-the-wall telling, dealers long
+      gamma there, so their hedging buys into the decline) produces a clean bounce —
       textbook wall behavior, and it looks, from the outside, like reliable
       support.
     </p>
@@ -568,7 +568,7 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
     <div class="tl-icard">
       <div class="tl-icon-badge red">🚀</div>
       <h4>Wall-break momentum read</h4>
-      <p>Treat a decisive break of a major wall as the trigger for the opposite trade — per the squeeze mechanism from the previous lesson, the same open interest that built resistance or support becomes forced hedging flow in the breakout's direction once it's breached.</p>
+      <p>Treat a decisive break of a major wall as the trigger for the opposite trade — per the squeeze mechanism from the previous lesson, the same open interest that was read as resistance or support becomes forced hedging flow in the breakout's direction once it's breached.</p>
     </div>
     <div class="tl-icard">
       <div class="tl-icon-badge purple">📅</div>

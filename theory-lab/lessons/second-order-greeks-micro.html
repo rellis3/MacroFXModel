@@ -121,7 +121,7 @@
           <div class="sl-verdict">Also equals ∂²C/∂S∂σ = ∂²C/∂σ∂S — Delta's vol-sensitivity and Vega's price-sensitivity are the exact same number, computed two different ways. A delta hedge can drift out of true purely from a vol move, with the underlying not having moved at all.</div>
         </div>
         <div class="sl-panel" id="vc-p2">
-          <div class="sl-row"><div class="sl-box">Charm = −φ(d₁)·[(2rt − d₂σ√τ) / (2τσ√τ)]</div></div>
+          <div class="sl-row"><div class="sl-box">Charm = −φ(d₁)·[(2rτ − d₂σ√τ) / (2τσ√τ)]</div></div>
           <div class="sl-verdict">How much Delta drifts from one day passing, all else fixed. Mirrors Gamma's own late-life acceleration — especially large in the final days before expiry, since both are driven by T shrinking toward zero.</div>
         </div>
         <div class="sl-panel" id="vc-p3">
@@ -219,8 +219,8 @@
       </div>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>A vanna-flow scenario</div>
-        <div class="sl-row"><div class="sl-box amber">IV climbs into a macro event<br><small>spot drifts in a tight range</small></div><div class="sl-arrow">→</div><div class="sl-box red">Dealer's long-delta grows<br><small>desk sells to stay flat</small></div></div>
-        <div class="sl-verdict">Reading that sell flow as "someone thinks price is topping" would be wrong — it's a vanna flow, mechanically triggered by vol repricing, not a directional call. After the event, vol crush runs the same mechanism in reverse.</div>
+        <div class="sl-row"><div class="sl-box amber">IV climbs into a macro event<br><small>spot drifts in a tight range</small></div><div class="sl-arrow">→</div><div class="sl-box red">Short calls' delta grows<br><small>desk buys to stay flat</small></div></div>
+        <div class="sl-verdict">Reading that buy flow as "someone thinks price is breaking out" would be wrong — it's a vanna flow, mechanically triggered by vol repricing, not a directional call. After the event, vol crush runs the same mechanism in reverse.</div>
       </div>
     </section>
 
@@ -237,7 +237,7 @@
         <div class="sl-ccard neutral">
           <span class="sl-ctag blue">Dollar Charm exposure</span>
           <p>CharmExp<sub>k</sub> = Charm<sub>k</sub> × OI<sub>k</sub> × 100</p>
-          <p>Dollar delta-shift per day — no ×S needed, since this is a pure time effect, not a price-scaled one. Charm's raw output is annualized; ÷365 converts to "per calendar day."</p>
+          <p>Delta-shift per day in shares of the underlying (×S for dollars, as with VannaExp). Charm's raw output is annualized; ÷365 converts to "per calendar day."</p>
         </div>
       </div>
       <p class="sl-p">Under the standard "dealer short the OI they wrote" assumption, positive Vanna at a strike means a vol rise alone grows the dealer's required hedge — genuine buying with no price move behind it. Charm's mechanism is identical in spirit, driven by the calendar instead.</p>
@@ -246,7 +246,7 @@
     <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">A toy three-strike dollar Vanna book</h2>
-      <p class="sl-sub">S=100 (so S×0.01=1), dealer net short every strike (standard assumption). Edit any OI or Vanna.</p>
+      <p class="sl-sub">S=100 (so S×0.01=1), dealer net short every strike (standard assumption). The 95 and 100 Vannas are made-up round figures for the arithmetic; true Black-Scholes Vanna there is about −0.375 and +0.05 (it changes sign through the money). Edit any OI or Vanna.</p>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it</div>
         <div class="sl-calc-row">
@@ -283,18 +283,18 @@
       <h2 class="sl-h2">A genuinely smaller flow, and why</h2>
       <p class="sl-sub">Set the toy book above against the dealer-GEX lesson's own three-strike toy example.</p>
       <div class="sl-svgwrap">
-        <svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two horizontal bars, illustrative not to scale. A thin bar for roughly 661 thousand dollars of vanna exposure and a full-width bar for roughly 18.5 billion dollars of gamma exposure">
+        <svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two horizontal bars, roughly to scale. A thin bar for roughly 661 thousand dollars of vanna exposure and a full-width bar for roughly 18.5 million dollars of gamma exposure">
           <text x="10" y="20" font-size="12" font-family="'DM Mono',monospace" fill="var(--blue)">Vanna flow (toy book)</text>
-          <rect x="10" y="28" width="6" height="22" rx="3" style="fill:var(--blue-bg);stroke:var(--blue-bd);stroke-width:1.5"/>
-          <text x="24" y="44" font-size="13" font-weight="700" font-family="'DM Mono',monospace" fill="var(--blue)">≈ $661,000</text>
+          <rect x="10" y="28" width="22" height="22" rx="3" style="fill:var(--blue-bg);stroke:var(--blue-bd);stroke-width:1.5"/>
+          <text x="40" y="44" font-size="13" font-weight="700" font-family="'DM Mono',monospace" fill="var(--blue)">≈ $661,000</text>
           <text x="10" y="90" font-size="12" font-family="'DM Mono',monospace" fill="var(--green)">Gamma flow (dealer-GEX lesson's toy book)</text>
           <rect x="10" y="98" width="610" height="22" rx="3" style="fill:var(--green-bg);stroke:var(--green-bd);stroke-width:1.5"/>
-          <text x="320" y="114" text-anchor="middle" font-size="13" font-weight="700" font-family="'DM Mono',monospace" fill="var(--green)">≈ $18.5 billion</text>
+          <text x="320" y="114" text-anchor="middle" font-size="13" font-weight="700" font-family="'DM Mono',monospace" fill="var(--green)">≈ $18.5 million</text>
         </svg>
       </div>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Read this plainly, not as a trading claim</div>
-        <p>Vanna and Charm flows are directionally real and mechanically sound — same aggregation logic as dealer-GEX, over the same open interest, under the same dealer-sign assumption. But dollar Vanna exposure scales with S, while dollar Gamma exposure (GEX) scales with S² — one fewer power of S is a mechanical reason vanna flows run structurally smaller in typical dollar magnitude, not merely an assertion. This lesson explains the mechanism, not a specific tradeable edge.</p>
+        <p>Vanna and Charm flows are directionally real and mechanically sound — same aggregation logic as dealer-GEX, over the same open interest, under the same dealer-sign assumption. But dollar Vanna exposure scales with S, while dollar Gamma exposure (GEX) scales with S² — one fewer power of S is one mechanical reason vanna flows run smaller in typical dollar magnitude (how much smaller also depends on comparing a 1-vol-point shock with a 1% move). This lesson explains the mechanism, not a specific tradeable edge.</p>
       </div>
     </section>
 
@@ -419,7 +419,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Second-order Greeks ask how a first-order Greek itself responds to price, vol, or time — Gamma already did this for Delta-vs-price; these six extend it to every other pair.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Vanna and Charm are the two that matter most — a vol-triggered flow and a pure-time-triggered flow, each real and mechanically distinct from price-triggered gamma hedging.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Vanna's two definitions are the same mixed partial, guaranteed equal by Clairaut's/Schwarz's theorem — not a coincidence, a theorem.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Dollar Vanna exposure scales with S; dollar Gamma exposure scales with S² — the mechanical reason vanna flows run roughly four orders of magnitude (about 28,000×) smaller than gamma flows in the lesson's own toy comparison.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Dollar Vanna exposure scales with S; dollar Gamma exposure scales with S² — one mechanical reason vanna flows run smaller than gamma flows — about 28× in the lesson's own toy comparison.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Speed, Color, and Zomma are genuinely niche — real and correctly derived, but rarely tracked day to day<!-- DESK:START -->, and (unlike Vanna/Charm) still unimplemented anywhere in this repo<!-- DESK:END -->.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Every one of these flows is a mechanical hedging description, never a directional signal — confusing the two repeats the same mistake the dealer-GEX lesson already warns against.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>15 January 2015: EUR/CHF gapped close to 30% as vol jumped, so Vanna and Vomma, the "small" cross terms, became the P&amp;L, and then the expansion itself failed.<!-- DESK:START --> Vanna/charm flows into expiry are untested on this desk.<!-- DESK:END --></p></div>

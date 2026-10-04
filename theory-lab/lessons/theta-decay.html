@@ -197,7 +197,7 @@
   </div>
   <div class="tl-eq-break">
     <div class="tl-eq-chip c1"><code>−Sφ(d₁)σ / (2√τ)</code><span>the convexity/diffusion term — always negative for a long call</span></div>
-    <div class="tl-eq-chip c2"><code>−rKe⁻ʳᵀN(d₂)</code><span>the financing term — pulling in the direction of −rC + rSΔ combined</span></div>
+    <div class="tl-eq-chip c2"><code>−rKe⁻ʳᵀN(d₂)</code><span>the financing term — exactly rC − rSΔ combined, for a call</span></div>
     <div class="tl-eq-chip c4"><code>φ(d₁)</code><span>standard normal PDF at d₁, same as the Black-Scholes lesson's gamma formula uses</span></div>
   </div>
   <div class="tl-symbols"><table>
@@ -222,11 +222,12 @@
 
   <div class="tl-solid amber">
     <strong>The key insight — theta pays for gamma:</strong> strip the
-    formula down to a delta-hedged position (the \(rS\Delta\) financing term
-    is removed by construction, since a delta-hedged book has no net delta
-    to finance; the \(rC\) term is a small financing cost on the option's
-    own value, conventionally set aside for intuition since it's second-order
-    next to the convexity term for a reasonably-dated option). What's left is:
+    formula down to a delta-hedged position (long the option, short
+    \(\Delta\) shares): the two financing terms combine into
+    \(rC - rS\Delta = r(C - \Delta S)\), the interest on the hedged book's
+    net value — for a call exactly \(-rKe^{-r\tau}N(d_2)\). For short-dated
+    options at modest rates it is second-order next to the convexity term, so
+    it is conventionally set aside for intuition. What's left is:
   </div>
   <div class="tl-math">
     \[ \Theta \approx -\tfrac{1}{2}\sigma^2S^2\Gamma \]
@@ -326,8 +327,8 @@
     A calendar spread (also called a horizontal spread) is built specifically
     to harvest the \(1/\sqrt{\tau}\) acceleration shown above: sell a
     near-dated option and buy a longer-dated option at the <em>same</em>
-    strike. Both legs have similar delta and similar gamma if the strike is
-    close to at-the-money, but their thetas differ sharply, precisely because
+    strike. Both legs have similar delta if the strike is close to
+    at-the-money, but their thetas (and gammas) differ sharply, precisely because
     the near leg's \(\tau\) is smaller and \(1/\sqrt{\tau}\) is larger there.
     The near (short) leg decays faster in dollar terms than the far (long)
     leg loses value from the same passage of time, so as long as the
@@ -335,9 +336,9 @@
     theta is positive — the spread collects the differential between how
     fast the two legs are decaying, not a directional bet on the underlying
     at all. The position's main risk is the mirror image of the same
-    coin: a big enough move away from the strike hurts the near leg's
-    relative gamma disadvantage far more than the collected theta compensates
-    for, which is exactly the same gamma-theta tradeoff from the key insight
+    coin: the spread is net short gamma (the short near leg carries more
+    gamma than the long far leg), so a big enough move away from the strike
+    costs more than the collected theta compensates for, which is exactly the same gamma-theta tradeoff from the key insight
     above, just expressed as a spread between two expiries instead of a
     single delta-hedged option.
   </p>
@@ -373,7 +374,7 @@
         <div class="tl-hint">S = K = 100, r = 2%, σ = 20% held fixed (the Black-Scholes lesson's own worked-example inputs) — only time to expiry changes. Drag right to see the daily decay rate shrink as expiry moves further away, or left to see it accelerate as expiry approaches.</div>
       </div>
     </div>
-    <div class="tl-readout">τ = <b id="theta-t-val">0.0027</b>y · ATM Θ ≈ $<b id="theta-theta-val">-0.2116</b> per day</div>
+    <div class="tl-readout">τ = <b id="theta-t-val">0.0027</b>y · ATM Θ ≈ $<b id="theta-theta-val">-0.2115</b> per day</div>
     <div class="tl-chart-caption">
       Computed live from the exact closed-form \(\Theta = -S\varphi(d_1)\sigma/(2\sqrt{\tau}) - rKe^{-r\tau}N(d_2)\), converted from a per-year to a per-day rate. The curve is the same \(1/\sqrt{\tau}\) acceleration shown for gamma in the previous lesson — theta's daily bleed roughly doubles from 30 to 7 days, then jumps again into the final day, not a smooth, linear decline.
     </div>
@@ -421,10 +422,10 @@
         <div class="tl-step-body">
           <h4>1 day to expiry</h4>
           <div class="tl-math">
-            \[ \Theta \approx -76.22 - 1.00 = -77.22 \text{ /year} \]
+            \[ \Theta \approx -76.21 - 1.00 = -77.21 \text{ /year} \]
           </div>
           <p>
-            ≈ <strong>−$0.2116 per day</strong> — another roughly
+            ≈ <strong>−$0.2115 per day</strong> — another roughly
             <strong>2.6×</strong> jump from the 7-day rate, and about
             <strong>5.2×</strong> the 30-day rate. Same accelerating,
             non-linear shape the Gamma Exposure lesson found for gamma
@@ -450,17 +451,19 @@
             <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">DTE   Γ(from gamma lesson)   −200×Γ    Full closed-form Θ   Residual (the financing term)
 30    0.0696                 −13.92     −14.89               ≈ −1.0 (≈ rC − rSΔ, set aside above)
 7     0.1440                 −28.80     −29.80               ≈ −1.0
-1     0.3811                 −76.22     −77.22                ≈ −1.0</pre>
+1     0.3811                 −76.22     −77.21                ≈ −1.0</pre>
           </div>
           <p style="margin-bottom:0">
             The delta-hedged approximation \(-\tfrac{1}{2}\sigma^2S^2\Gamma\)
             reproduces the full closed-form theta almost exactly at every
             expiry, with a near-constant residual of about −$1.00/year —
-            precisely the small financing term (\(rC-rS\Delta\), dominated
-            here by \(rC\) since the position is delta-hedged) that the key
-            insight above set aside for intuition. This is not a
-            coincidence baked into the round numbers; it's the PDE identity
-            doing exactly what it says.
+            precisely the small financing term (\(rC-rS\Delta\), which for a
+            call is exactly \(-rKe^{-r\tau}N(d_2) \approx -0.02\times100\times0.5\)
+            here) that the key insight above set aside for intuition. The
+            convexity column matching is not a coincidence baked into the round
+            numbers — \(\tfrac12\sigma^2S^2\Gamma\) equals the closed form's first
+            term identically; only the residual's constancy comes from the round
+            numbers (see Q3).
           </p>
         </div>
       </div>
@@ -612,15 +615,15 @@
   <p>
     Applying this to the toy three-strike book from the previous lesson's
     worked example (\(\sigma=20\%\), \(\text{TotalDealerGEX}\approx
-    -\$18.51\text{B}\) at the one-week-to-expiry snapshot):
+    -\$18.51\text{M}\) at the one-week-to-expiry snapshot):
   </p>
   <div class="tl-math">
-    \[ \text{TotalThetaExp} \approx -50(0.20)^2 \times (-\$18.51\text{B}) = -2 \times (-\$18.51\text{B}) = +\$37.02\text{B (per year, illustrative)} \]
+    \[ \text{TotalThetaExp} \approx -50(0.20)^2 \times (-\$18.51\text{M}) = -2 \times (-\$18.51\text{M}) = +\$37.02\text{M (per year, illustrative)} \]
   </div>
   <p style="margin-bottom:0">
     Under the same assumptions and the same delta-hedged approximation that
     produced the gamma number, the dealer book that is short roughly
-    $18.51B of GEX is, at the same instant, long roughly $37.02B of
+    $18.51M of GEX is, at the same instant, long roughly $37.02M of
     aggregate theta exposure — collecting time decay at that implied rate,
     for as long as the position and the σ assumption used to build it hold.
     This is an illustrative extension of the gamma lesson's own toy example,
@@ -756,7 +759,7 @@
       the financing term is small relative to the convexity term (as in the
       worked example above, where it was a near-constant ≈$1/year residual),
       but it is still an approximation — for a deep in-the-money option with
-      a large \(rC\) or a long time to expiry, that dropped term stops being
+      a large financing term \(rKe^{-r\tau}N(d_2)\) or a long time to expiry, that dropped term stops being
       negligible, and the exact closed-form should be used instead.
     </p>
     <p style="margin-bottom:0">
@@ -819,8 +822,9 @@
     <summary>Q3. In the worked example, why did the delta-hedged approximation −½σ²S²Γ leave almost exactly the same residual (≈−$1/year) at all three expiries (30, 7, and 1 day), rather than the residual shrinking along with everything else?</summary>
     <div class="tl-answer">
       The residual is the dropped financing term, \(rC - rS\Delta\), which
-      for a delta-hedged position is dominated by \(rC\): the risk-free rate
-      times the option's own value. In this worked example's round numbers
+      for a call equals exactly \(-rKe^{-r\tau}N(d_2)\): the interest on the
+      cash borrowed to hold the \(\Delta\)-share hedge, net of the option's
+      own value. In this worked example's round numbers
       (\(r=\sigma^2/2\)), \(d_2=0\) exactly at every \(\tau\), which keeps
       \(N(d_2)=0.5\) fixed and makes the financing term's shape relatively
       stable across these particular expiries even as the convexity term
@@ -838,8 +842,8 @@
       the delta-hedged identity \(\Theta\approx-\tfrac12\sigma^2S^2\Gamma\)
       forces theta to inherit whatever shape gamma has, since gamma is the
       only variable quantity on the right-hand side (\(\sigma\) and \(S\)
-      are held fixed). Because \(\Gamma\propto1/\sqrt{\tau}\), and that
-      relationship blows up faster than linearly as \(\tau\to0\), the same
+      are held fixed). Because \(\Gamma\propto1/\sqrt{\tau}\) at the money, which
+      grows without bound as \(\tau\to0\), the same
       number of remaining days matters far more in the final week than three
       weeks out — exactly the shape shown numerically in the worked example
       (roughly 2.0× then 2.6× stepwise increases going 30→7→1 DTE).

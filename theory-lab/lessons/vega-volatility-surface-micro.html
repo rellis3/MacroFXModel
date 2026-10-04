@@ -38,7 +38,7 @@
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">S</div><div><h4>Underlying price</h4><p>Scales vega up in dollar terms — a $1,000 underlying's options carry more vega per point than a $10 underlying's.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">φ</div><div><h4>φ(d₁) — the moneyness weight</h4><p>The standard normal <em>density</em> at d₁ (not the cumulative N(d₁) used in the price formula) — largest when d₁≈0, shrinks toward zero the further away d₁ moves.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">√T</div><div><h4>Time scaling</h4><p>Grows monotonically — never decays — with time to expiry. Longer-dated options always carry more vega, all else equal.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">√T</div><div><h4>Time scaling</h4><p>Grows with time to expiry. Over normal horizons, longer-dated near-the-money options carry more vega.</p></div></div>
       </div>
       <p class="sl-p">φ(0) ≈ 0.3989 is φ's maximum value — the same constant the Gamma Exposure lesson used for its own at-the-money approximation. d₁ here is exactly the Black-Scholes d₁, reused unchanged: d₁ = [ln(S/K) + (r+σ²/2)T] / (σ√T).</p>
     </section>
@@ -57,7 +57,7 @@
 
     <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 3</div>
-      <h2 class="sl-h2">Vega grows with √T — and never decays</h2>
+      <h2 class="sl-h2">Vega grows with √T</h2>
       <p class="sl-sub">Fixed at-the-money strike (S=K=100), r=2%, σ=20%. Drag the slider — φ(d₁) barely moves near the money, so the curve's whole shape comes from √T alone.</p>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it</div>
@@ -148,7 +148,7 @@
         </div>
         <div class="sl-ccard neutral">
           <span class="sl-ctag blue">Axis 2 — term structure</span>
-          <p>Across expiries, fixed moneyness. A <strong>variance-averaging / dilution effect</strong> around event risk — near-dated vol spikes ahead of a known event, longer-dated vol stays comparatively smooth.</p>
+          <p>Across expiries, fixed moneyness. A shaped by <strong>variance averaging / dilution</strong> of event risk (and by vol mean-reverting to a long-run level) — near-dated vol spikes ahead of a known event, longer-dated vol stays comparatively smooth.</p>
         </div>
       </div>
       <p class="sl-p">Neither axis is reproducible from a single constant σ — a one-parameter model has one degree of freedom, and the surface needs one per strike <em>and</em> a separate one per expiry. That's exactly why stochastic-volatility models (Heston, SABR) exist.</p>
@@ -195,12 +195,12 @@
 
     <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 8</div>
-      <h2 class="sl-h2">The term structure: an averaging effect, not a fear premium</h2>
+      <h2 class="sl-h2">The term structure: event spikes as an averaging effect</h2>
       <p class="sl-sub">Treat variance as roughly additive across trading days. An FOMC decision carries far more expected variance than an ordinary day.</p>
       <div class="sl-compare">
         <div class="sl-ccard neutral">
           <span class="sl-ctag blue">Near-dated: 5 trading days remain</span>
-          <p>If the event day is expected to contribute variance equivalent to three ordinary days, that one day accounts for roughly <strong>60%</strong> of the whole period's expected variance. Near-dated implied vol reflects it directly.</p>
+          <p>If the event day is expected to contribute variance equivalent to three ordinary days, that one day accounts for roughly <strong>43%</strong> (3 of 7 day-equivalents) of the whole period's expected variance. Near-dated implied vol reflects it directly.</p>
         </div>
         <div class="sl-ccard neutral">
           <span class="sl-ctag blue">Far-dated: 60 trading days out</span>
@@ -225,7 +225,7 @@
         </div>
       </div>
       <div class="sl-quote">Owning a plain share is like owning a plain photograph — it has no opinion about how shaky the camera was, only about where the picture ended up. An option is a bet on how shaky the camera will be. No amount of trading plain photographs hedges a bet about shakiness.</div>
-      <p class="sl-p">This is why a vega-exposed desk reaches for a completely different toolkit than a delta-exposed one: calendar spreads, strangles, straddles — combinations designed to isolate vega — because the underlying structurally can't do the job. Vega's own second-order sensitivities (Vanna, Charm) get the full treatment next lesson.</p>
+      <p class="sl-p">This is why a vega-exposed desk reaches for a completely different toolkit than a delta-exposed one: calendar spreads, strangles, straddles — combinations designed to isolate vega — because the underlying structurally can't do the job. The cross-Greeks (Vanna, and Charm for delta's time decay) get the full treatment next lesson.</p>
     </section>
 
     <section class="sl-slide" data-slide="11">
@@ -236,16 +236,16 @@
         <div class="sl-card-label"><i></i>Try it</div>
         <div class="sl-tabs" id="vgxform-tabs">
           <button class="sl-tab active" data-panel="vgxform-1">Step 1 — per vol point</button>
-          <button class="sl-tab" data-panel="vgxform-2">Step 2 — multiplier cancels</button>
+          <button class="sl-tab" data-panel="vgxform-2">Step 2 — multiplier undoes it</button>
           <button class="sl-tab" data-panel="vgxform-3">Step 3 — aggregate over OI</button>
         </div>
         <div class="sl-panel active" id="vgxform-1">
-          <div class="sl-row"><div class="sl-box">νₖ / 100</div></div>
-          <div class="sl-verdict">Raw vega ν = Sφ(d₁)√T is a dollar figure <strong>per 1.00 change in σ</strong> (100 percentage points). Implied vol moves in <strong>vol points</strong> (1 percentage point), so divide by 100 to rescale.</div>
+          <div class="sl-row"><div class="sl-box">νₖ = ν / 100</div></div>
+          <div class="sl-verdict">Raw vega ν = Sφ(d₁)√T is a dollar figure <strong>per 1.00 change in σ</strong> (100 percentage points). Implied vol moves in <strong>vol points</strong> (1 percentage point), so divide by 100 to rescale: νₖ is vega per vol point, per share (the "per vol pt" figure used in the table).</div>
         </div>
         <div class="sl-panel" id="vgxform-2">
-          <div class="sl-row"><div class="sl-box amber">(νₖ/100) × 100</div></div>
-          <div class="sl-verdict">Multiply by the standard 100-share contract multiplier and it exactly cancels the /100 rescale, leaving plain νₖ. Vega is already denominated in dollars — unlike gamma, which starts as a unit-less "per $1 move" number, so there's no S² rescale needed here at all.</div>
+          <div class="sl-row"><div class="sl-box amber">νₖ × 100 = ν</div></div>
+          <div class="sl-verdict">Multiply by the standard 100-share contract multiplier and it numerically undoes the /100 rescale: per contract, per vol point, the exposure is just the raw ν. Vega is already denominated in dollars — unlike gamma, which starts as a unit-less "per $1 move" number, so there's no S² rescale needed here at all.</div>
         </div>
         <div class="sl-panel" id="vgxform-3">
           <div class="sl-row"><div class="sl-box green">νₖ × OIₖ × 100</div></div>
@@ -286,7 +286,7 @@
           <div>Total VegaExposure, per 1 vol point: <b id="vgx-total">$266,265</b></div>
         </div>
         <button type="button" class="sl-reset-btn" id="vgx-reset">Reset to worked-example numbers</button>
-        <div class="sl-note">Blank or negative a field and that strike's contribution — and the total — read "—" rather than breaking. The 100 strike dominates because vega itself, not just OI, is nearly double what it is at the neighboring strikes — the same reason the at-the-money strike dominated the toy dealer-GEX table.</div>
+        <div class="sl-note">Blank or negative a field and that strike's contribution — and the total — read "—" rather than breaking. The 100 strike dominates because vega itself, not just OI, is roughly 1.4–2× what it is at the neighboring strikes — the same reason the at-the-money strike dominated the toy dealer-GEX table.</div>
       </div>
     </section>
 
@@ -378,7 +378,7 @@
       <div class="sl-quiz-q" data-q="4">
         <div class="sl-quiz-num">Question 4</div>
         <h4>What's the fundamental difference between the volatility surface's skew axis and its term-structure axis?</h4>
-        <button class="sl-quiz-opt" data-correct="true">Skew is an empirical, post-1987 market fact; term structure is a mechanical variance-averaging/dilution effect</button>
+        <button class="sl-quiz-opt" data-correct="true">Skew is an empirical, post-1987 market fact; term structure is largely shaped by mechanical variance averaging/dilution around events</button>
         <button class="sl-quiz-opt">They're the same phenomenon, just plotted on different axes</button>
         <button class="sl-quiz-opt">Skew comes from Black-Scholes directly; term structure doesn't</button>
         <div class="sl-quiz-explain">The strike-wise smirk has to be taken as observed market data — Black-Scholes' constant σ can't produce it. The expiry-wise term structure has a cleaner mechanical story: one high-variance event day is a large share of a short expiry's total expected variance and a small share of a long expiry's.</div>
@@ -399,8 +399,8 @@
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Vega is ν = Sφ(d₁)√T — identical for a call and a put, since put-call parity's right side has no σ term at all.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Vega grows with √T and never decays, and peaks exactly at the money — both fall straight out of the closed form.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The volatility surface has two distinct axes: strike-wise skew (an empirical, post-1987 market fact) and expiry-wise term structure (a variance-dilution effect around event risk).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Vega grows with √T over normal horizons, and peaks near the money — both fall straight out of the closed form.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The volatility surface has two distinct axes: strike-wise skew (an empirical, post-1987 market fact) and expiry-wise term structure (shaped largely by event variance being averaged in or diluted).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The underlying has exactly zero vega — the single most important practical fact here. Vega can only be hedged with other options, never with the underlying.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Dollar VegaExposure, νₖ×OIₖ×100, concentrates the same way GEX does — heavy OI at a high-vega strike dominates a book's vega risk, but the fix is other options, not the underlying.</p></div>
         <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo's own code has real implied-vol/skew data (CME CVOL, tested via fxVolCarryEngine) but no vega Greek or dollar-vega-exposure function — the badge is half-stale, not fully stale.</p></div><!-- DESK:END -->

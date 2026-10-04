@@ -84,14 +84,14 @@
           <ul>
             <li>Every one of the last 20 days gets equal weight — day t−1 counts exactly as much as day t−20</li>
             <li>No concept of "conditional on what just happened"</li>
-            <li>A shock barely moves the average on day one</li>
+            <li>A shock gets only a fixed 1/20 weight on day one</li>
             <li>Then the same shock vanishes off a cliff exactly 20 days later — the "ghosting" effect</li>
           </ul>
         </div>
         <div class="sl-ccard green">
           <span class="sl-ctag green">A model that reacts + decays</span>
           <ul>
-            <li>Reacts to a fresh shock immediately, in full, the very next day</li>
+            <li>Reacts to a fresh shock immediately, with weight α, the very next day</li>
             <li>Fades that shock's influence smoothly afterward, not abruptly</li>
             <li>Carries a sense of "how nervous the market already was"</li>
             <li>This is exactly the gap GARCH exists to close</li>
@@ -179,7 +179,7 @@
         </div>
         <div class="sl-ccard red">
           <span class="sl-ctag red">α+β ≥ 1</span>
-          <p>At exactly 1 (IGARCH), a shock never decays — it permanently shifts the variance level. Above 1, the recursion isn't mean-reverting at all; forecasts can grow without bound. This is not a valid model.</p>
+          <p>At exactly 1 (IGARCH), a shock never decays — it permanently shifts the variance level. Above 1, the recursion isn't mean-reverting at all; forecasts can grow without bound. It is not covariance-stationary: there is no finite long-run variance.</p>
         </div>
       </div>
       <p class="sl-p">The long-run variance the model reverts to on a quiet day works out to <strong>σ̄² = ω / (1 − α − β)</strong> — which is only a sane, positive number when α+β &lt; 1. And from a decay rate of α+β per day, the half-life of a shock's excess variance falls straight out: <strong>n½ = ln(0.5) / ln(α+β)</strong>.</p>
@@ -206,7 +206,7 @@
         <div class="sl-arrow">=</div>
         <div class="sl-box green">0.000096 → σₜ ≈ 0.98%</div>
       </div>
-      <p class="sl-p">One 2.5% shock day pushed the next-day forecast from 0.71% to 0.98% — roughly 38% higher — <strong>immediately, in full, the very next day</strong>. A flat HV20 estimate would barely move: adding one 2.5% day into a 20-day equal-weighted average nudges the mean only modestly, and it keeps that fixed weight for the next twenty days before vanishing abruptly. Ten trading days later, with no further shocks, this GARCH forecast is still at roughly 0.94% — the half-life here is about 34 trading days.</p>
+      <p class="sl-p">One 2.5% shock day pushed the next-day forecast from 0.71% to 0.98% — roughly 38% higher — <strong>immediately, the very next day</strong>. A flat HV20 estimate moves less: one 2.5% day in a 20-day equal-weighted window otherwise at the long-run level lifts it only to about 0.89%, and it keeps that fixed weight for the next twenty days before vanishing abruptly. Ten trading days later, with no further shocks, this GARCH forecast is still at roughly 0.94% — the half-life here is about 34 trading days.</p>
     </section>
 
     <section class="sl-slide" data-slide="9">
@@ -342,10 +342,10 @@
       <div class="sl-quiz-q" data-q="4">
         <div class="sl-quiz-num">Question 4</div>
         <h4>Why does GARCH react to a shock faster than a flat HV20 average?</h4>
-        <button class="sl-quiz-opt" data-correct="true">GARCH injects the full new squared shock into the very next forecast; HV20 gives it only 1/20th weight</button>
+        <button class="sl-quiz-opt" data-correct="true">GARCH weights the new squared shock by α (0.08 here, above HV20's 1/20) and decays it smoothly; HV20 holds a fixed 1/20 for 20 days</button>
         <button class="sl-quiz-opt">GARCH uses more historical data than HV20</button>
         <button class="sl-quiz-opt">HV20 doesn't use squared returns at all</button>
-        <div class="sl-quiz-explain">The α·ε²ₜ₋₁ term puts the entire new shock into tomorrow's forecast immediately. HV20 spreads it thin across 20 equally-weighted days, then drops it off a cliff 20 days later.</div>
+        <div class="sl-quiz-explain">The α·ε²ₜ₋₁ term puts the new shock into tomorrow's forecast immediately, with weight α. HV20 gives it a fixed 1/20 across 20 equally-weighted days, then drops it off a cliff 20 days later.</div>
       </div>
 
       <!-- DESK:START -->
@@ -366,7 +366,7 @@
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Volatility clusters — big moves of either sign follow big moves, calm follows calm — even though the direction of the next move stays close to unpredictable.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>GARCH(1,1) has three additive pieces: a floor ω, a reaction to yesterday's squared shock α·ε²ₜ₋₁, and inertia from yesterday's own variance β·σ²ₜ₋₁.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>α+β is the persistence — the day-over-day decay rate of a shock's excess over normal — and it must stay under 1 or the model isn't valid.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>α+β is the persistence — the day-over-day decay rate of a shock's excess over normal — and it must stay under 1 or the model isn't covariance-stationary.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The long-run variance is ω/(1−α−β); the half-life of a shock is ln(0.5)/ln(α+β).</p></div>
         <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This project already runs GARCH(1,1) in production — α=0.06, β=0.91 — as one of three sigma estimators, applied to the index asset class alongside HV20 (commodity) and Yang-Zhang (FX).</p></div><!-- DESK:END -->
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>March 2020: a calm February, then ±9–12% S&amp;P days back to back and a record VIX of 82.69. GARCH tracks a storm once it starts; it can't see one coming.<!-- DESK:START --> Desk test: the pace of the tape persists intraday (tape-speed-persistence, VALIDATED).<!-- DESK:END --></p></div>

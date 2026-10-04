@@ -158,7 +158,7 @@
               <text x="315" y="10" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--amber)">short OI, right next to price</text>
             </svg>
           </div>
-          <div class="sl-verdict">One strike — usually a put wall a single strike from spot — holds an outsized share of the chain's OI, much of it written by dealers running a continuous short-gamma hedge. Breach that level and the same flow that was dampening moves near it can flip to <strong>accelerating</strong> them, because dealers must trade to stay hedged either way.</div>
+          <div class="sl-verdict">One strike — usually a put wall a single strike from spot — holds an outsized share of the chain's OI, much of it written by dealers running a continuous short-gamma hedge. Short gamma means that hedging trades <em>with</em> the move, and it is most intense right around the strike, so a push through the level can <strong>accelerate</strong> sharply.</div>
         </div>
       </div>
     </section>
@@ -168,11 +168,11 @@
       <h2 class="sl-h2">What actually happens when a wall breaks</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Heavy short OI sits near spot</h4><p>A large chunk of the wall's open interest is held by dealers who are net short those contracts and delta-hedge continuously.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>While it holds, hedging dampens the move</h4><p>As price approaches, dealer rebalancing trades against the move — the previous lesson's mechanism, working as designed and producing the "wall" behavior.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Once it's decisively broken, the same flow reverses role</h4><p>The dealers unwinding or re-hedging that position must now trade <em>with</em> the move to stay hedged — buying into a rally, selling into a decline — instead of fading it.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>A wall that holds needs long gamma</h4><p>Dealer rebalancing only trades <em>against</em> the move (the "wall" behavior) where dealers are long gamma. Where they are short the OI, it trades with the move from the start.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Near and through the strike, short-gamma hedging peaks</h4><p>For dealers short that OI, gamma is largest around the strike, so their hedging trades <em>with</em> the move — buying into a rally, selling into a decline — hardest exactly as the level is crossed.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>That reversal is the "squeeze"</h4><p>Not a short-stock squeeze in the classic sense — a short-<em>gamma</em> squeeze, where forced hedging flow, not new information, is what accelerates the move past the old wall.</p></div></div>
       </div>
-      <div class="sl-quote">The strike that was resistance on the way up can become fuel on the way through it — same open interest, same hedging mechanism, opposite effect, purely because the direction dealers must trade to stay hedged flips once the level gives way.</div>
+      <div class="sl-quote">The strike that was read as resistance on the way up can become fuel on the way through it — same open interest, same hedging mechanism, with the forced trading heaviest right where the level gives way.</div>
       <div class="sl-callout amber">
         <div class="sl-callout-label">The load-bearing assumption</div>
         <p>This entire mechanism only runs on the fraction of that OI actually held by delta-hedging market makers. Some of the same headline number belongs to directional traders, covered-call writers, or unrelated hedges — none of whom rebalance this way. The split isn't observable from the OI figure alone, so a big wall is an upper bound on squeeze potential, not a guarantee of it.</p>
@@ -387,10 +387,10 @@
       <div class="sl-quiz-q" data-q="3">
         <div class="sl-quiz-num">Question 3</div>
         <h4>A heavily-shorted OI wall right next to spot breaks decisively. What tends to happen to dealer hedging flow there?</h4>
-        <button class="sl-quiz-opt" data-correct="true">It can flip from dampening the move to accelerating it</button>
+        <button class="sl-quiz-opt" data-correct="true">Hedging that trades with the move peaks around the strike, so it can accelerate the break</button>
         <button class="sl-quiz-opt">It stops entirely, since the wall no longer exists</button>
         <button class="sl-quiz-opt">It has no effect either way — hedging only matters before expiry</button>
-        <div class="sl-quiz-explain">Dealers who were fading the move to stay hedged now have to trade with it instead — the "squeeze" is that reversal, not new information hitting the tape.</div>
+        <div class="sl-quiz-explain">Dealers short that OI must trade with the move to stay hedged, and gamma is largest right around the strike — the "squeeze" is that forced flow, not new information hitting the tape.</div>
       </div>
 
       <div class="sl-quiz-q" data-q="4">
@@ -419,7 +419,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A wall is a strike whose OI is an outlier next to its neighbors (roughly 3×+) — a local property, not a chain-wide maximum.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Max pain minimizes aggregate writer payout across the <em>entire</em> chain — evaluate every candidate S, sum CallPain(S) + PutPain(S) over every strike, then take the minimum.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Dealer hedging and max pain are two distinct mechanisms that can reinforce each other — one is continuous and mechanical, the other is a one-instant payout incentive.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A squeeze is a role reversal, not new information — hedging flow that was dampening a move near a wall can flip to accelerating it once the wall breaks.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A squeeze is forced hedging, not new information — short-gamma hedging trades with the move and peaks around the strike, so a broken wall can accelerate.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The evidence that max pain itself moves price is thin and contested — treat it as a description of writer incentives, not a forecast.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Walls and max pain are live snapshots — open interest closes out every session, so re-check rather than assume persistence.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>GameStop, January 2021: call walls overrun and rebuilt higher within days; the "gamma squeeze" share of it is contested.<!-- DESK:START --> Desk verdict: max pain is NOT a magnet (oi-max-pain, null); walls as range fences remain untested.<!-- DESK:END --></p></div>

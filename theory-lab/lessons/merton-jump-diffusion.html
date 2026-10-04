@@ -344,24 +344,27 @@
     expiry, each computed at its own adjusted volatility:
   </p>
   <div class="tl-math">
-    \[ C_{\text{Merton}} = \sum_{n=0}^{\infty} \frac{e^{-\lambda' T}(\lambda' T)^n}{n!} \; C_{\text{BS}}\!\left(S, K, T, r, \sigma_n\right) \]
+    \[ C_{\text{Merton}} = \sum_{n=0}^{\infty} \frac{e^{-\lambda' T}(\lambda' T)^n}{n!} \; C_{\text{BS}}\!\left(S, K, T, r_n, \sigma_n\right), \quad \sigma_n^2 = \sigma^2 + \frac{n\sigma_J^2}{T}, \quad r_n = r - \lambda k + \frac{n\ln(1+k)}{T} \]
   </div>
   <div class="tl-eq-break">
     <div class="tl-eq-chip c1"><code>e^{-λ'T}(λ'T)^n/n!</code><span>Poisson probability of exactly n jumps before expiry</span></div>
-    <div class="tl-eq-chip c2"><code>C_BS(·,σ_n)</code><span>the ordinary Black-Scholes price, at a volatility bumped up for n jumps</span></div>
-    <div class="tl-eq-chip c3"><code>λ'</code><span>λ adjusted for the jump-risk premium in Merton's derivation</span></div>
+    <div class="tl-eq-chip c2"><code>C_BS(·,σ_n)</code><span>the ordinary Black-Scholes price, at a volatility bumped up (and a rate adjusted) for n jumps</span></div>
+    <div class="tl-eq-chip c3"><code>λ'</code><span>λ(1+k), where k = e^{μ_J+σ_J²/2} − 1 is the mean percentage jump</span></div>
     <div class="tl-eq-chip c4"><code>Σ over n</code><span>a probability-weighted average across every possible jump count</span></div>
   </div>
   <p>
     Reading this without grinding through the derivation: the term
     \(\frac{e^{-\lambda' T}(\lambda' T)^n}{n!}\) is just the ordinary Poisson
     probability of exactly \(n\) jumps occurring over the option's remaining life
-    \(T\) (\(\lambda'\) is \(\lambda\) adjusted for the jump-risk premium — a
-    detail of Merton's original derivation, not something to re-derive here).
+    \(T\) (\(\lambda' = \lambda(1+k)\), with \(k = e^{\mu_J+\sigma_J^2/2}-1\) the
+    mean percentage jump — a detail of Merton's original derivation, as
+    presented in Hull, not something to re-derive here; no jump-risk premium
+    enters, because Merton assumes jump risk is diversifiable).
     For each possible jump count \(n\), \(C_{\text{BS}}(\cdot,\sigma_n)\) is just
     the plain, familiar Black-Scholes call price, but computed at a volatility
     \(\sigma_n\) that has been bumped up to also account for the extra variance
-    those \(n\) jumps would have contributed. The Merton price is the
+    those \(n\) jumps would have contributed (and at a rate \(r_n\) that keeps
+    the drift consistent with \(n\) jumps having occurred). The Merton price is the
     <em>probability-weighted average</em> of "what would Black-Scholes say if
     exactly \(n\) jumps happen" over every possible \(n\), weighted by how likely
     that many jumps actually is. The practical takeaway, without the algebra: a
@@ -411,8 +414,8 @@
       whole day; it would want \(\lambda\) to spike sharply for the few minutes
       around the release and sit near zero the rest of the time — an intensity
       that is itself a (deterministic, calendar-driven) function of time rather
-      than a flat constant, sometimes called a time-inhomogeneous or
-      "self-exciting near known events" extension of the base model.
+      than a flat constant, a time-inhomogeneous (non-homogeneous Poisson)
+      extension of the base model.
     </p>
     <p>
       This is exactly the intuition behind why option desks price
@@ -511,8 +514,8 @@
     practice than the underlying idea it stands for. In production option
     desks, the two much more common tools that carry the same insight forward
     are: (1) <strong>local/stochastic volatility models</strong> and
-    <strong>Lévy-process models</strong> (of which Merton's is the earliest and
-    simplest example — a jump-diffusion process is a specific member of the
+    <strong>Lévy-process models</strong> (of which Merton's is one of the earliest and
+    simplest examples — a jump-diffusion process is a specific member of the
     broader family of Lévy processes, which allow both continuous and jump
     components) that are calibrated directly to the observed volatility
     smile/skew rather than assumed from theory, and (2) simply
@@ -528,7 +531,7 @@
     <div class="tl-icard">
       <div class="tl-icon-badge blue">📐</div>
       <h4>Local / stochastic-vol &amp; Lévy models</h4>
-      <p>Calibrated directly to the observed smile/skew rather than assumed from theory — Merton's is the earliest, simplest member of the broader Lévy-process family that mixes continuous and jump components.</p>
+      <p>Calibrated directly to the observed smile/skew rather than assumed from theory — Merton's is one of the earliest, simplest members of the broader Lévy-process family that mixes continuous and jump components.</p>
     </div>
     <div class="tl-icard">
       <div class="tl-icon-badge green">🗣️</div>

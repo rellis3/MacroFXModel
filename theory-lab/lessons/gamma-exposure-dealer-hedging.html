@@ -36,7 +36,7 @@
       <li>The standard simplifying assumption — dealers are net short most of the OI they wrote to a public that's net long options — makes dealer GEX negative at most strikes; that sign is an assumption baked into the convention, not something directly observable from open interest alone.</li>
       <li>Short dealer gamma means hedging flow has the <strong>same</strong> sign as the price move (buy as it rises, sell as it falls) — destabilizing. Long dealer gamma means hedging flow has the <strong>opposite</strong> sign — stabilizing, mean-reverting.</li>
       <li>The worked example shows ATM gamma roughly doubling from 30 to 7 days to expiry, then more than doubling again into the final day — the numeric substance behind "gamma effects intensify near expiry."</li>
-      <li>A "wall" isn't sellers pushing back — it's the point where the hedging <em>demand</em> that was fuelling a move disappears because the hedge is already complete. When a wall breaks instead, that same mechanism reverses into a squeeze.</li>
+      <li>A "wall" isn't sellers pushing back — it's the point where the hedging <em>demand</em> that was fuelling a move disappears because the hedge is already complete (for dealers short the calls that happens only well past the strike, where delta nears 1; a stall right at the strike needs dealers long gamma there). When a wall breaks instead, that same mechanism reverses into a squeeze.</li>
       <li><strong>Real-world episode:</strong> on 5 February 2018 inverse-VIX products, short gamma by their own daily rebalancing rule, had to buy VIX futures into a VIX jump of about 115%. XIV lost more than 90% and was terminated.<!-- DESK:START --> Tested here (<code>gex-range</code>, validated on the Nasdaq only): short-gamma days are only ordinary (~1.02× a Brownian baseline), long-gamma days are quiet (~0.85×). Range only, no direction, nothing on FX.<!-- DESK:END --></li>
     </ul>
   </div>
@@ -95,8 +95,10 @@
       behind it.
     </p>
     <p style="margin-bottom:0">
-      Then price actually reaches the strike. The calls are now deep enough
-      in the money that their delta has saturated near 1.0 — they behave
+      Then price carries on well past the strike. (At the strike itself
+      delta is only about 0.5 and gamma, the buying rate, is at its peak; the
+      fuel runs out only once the calls are deep in the money.) Their delta
+      has now saturated near 1.0 — they behave
       almost exactly like the stock itself, and there's no more "coming due"
       delta left to hedge. The dealer's hedge is <em>complete</em>. The
       buying that was propping up the rally simply stops — not because
@@ -104,7 +106,10 @@
       been pushing price higher has nothing left to do. Price stalls with no
       obvious trigger, which is exactly why it's so often misread as
       "sellers defending a level" when the real mechanism is an absence of
-      further buying, not the appearance of selling.
+      further buying, not the appearance of selling. (A stall right
+      <em>at</em> the strike is the long-gamma case: if customers had sold
+      those calls and dealers held them, dealer hedging would sell into the
+      rally there.)
     </p>
   </div>
 
@@ -486,20 +491,20 @@
           </p>
           <div class="tl-math">
             <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">Strike   Γ       Combined OI   DealerGEX = −Γ·OI·100·S²·0.01
-95       0.050   4,000         −0.050×4,000×10,000  = −$2.00B
-100      0.144   9,800         −0.144×9,800×10,000  = −$14.11B
-105      0.040   6,000         −0.040×6,000×10,000  = −$2.40B
-                                Total Dealer GEX     ≈ −$18.51B</pre>
+95       0.050   4,000         −0.050×4,000×10,000  = −$2.00M
+100      0.144   9,800         −0.144×9,800×10,000  = −$14.11M
+105      0.040   6,000         −0.040×6,000×10,000  = −$2.40M
+                                Total Dealer GEX     ≈ −$18.51M</pre>
           </div>
           <p style="margin-bottom:0">
             (With \(S=100\), the factor \(100\times S^2\times0.01 =
             100\times10{,}000\times0.01 = 10{,}000\) simplifies the
-            arithmetic — real GEX figures for a broad index really do run
-            into the billions, which is why they're normally quoted that
-            way, not as a small per-share number.) Notice the 100-strike
-            dominates the total even though its OI (9,800) isn't the
-            largest single-side figure in the book — it wins because gamma
-            itself is nearly 3× higher there than at 95 or 105, which is
+            arithmetic. This toy book lands in the millions; real GEX
+            figures for a broad index run into the billions because OI there
+            is in the hundreds of thousands of contracts per strike.) Notice
+            the 100-strike dominates the total far more than its OI share
+            would suggest — it wins because gamma itself is about 3–3.6×
+            higher there than at 95 or 105, which is
             exactly the mathematical reason near-the-money open interest
             matters disproportionately more than far-dated or far-OTM open
             interest of similar size. All three strikes land negative here
@@ -564,21 +569,24 @@
       steadily, and per the hedge-flow-rate formula above, dealers must keep
       buying futures to stay hedged — buying that itself nudges price
       higher, exactly the self-reinforcing loop from the intuition box.
-      Ordinarily this would stall right at 4,500: delta saturates near 1.0,
-      the hedge completes, buying demand evaporates, and the move loses its
-      fuel — the textbook "wall holds" outcome.
+      The popular "wall holds" story says the move stalls at 4,500. For
+      dealers short these calls the arithmetic says otherwise: at 4,500 the
+      calls' delta is only about 0.5 and gamma, the buying rate, is at its
+      peak, so the buying is strongest there and fades only once the calls
+      are deep in the money. A stall right at 4,500 needs dealers to be long
+      gamma at that strike (customers having sold the calls).
     </p>
     <p style="margin-bottom:0">
-      Instead, a stronger-than-expected data release hits mid-session and
+      Then a stronger-than-expected data release hits mid-session and
       price rips straight through 4,500 with real momentum. The calls that
       were sitting comfortably at-the-money are now suddenly in-the-money
       and gaining delta <em>faster</em> than the dealers' existing hedge
       accounted for — gamma near that strike was near its local peak, so
-      the delta jump per additional point of price is large. Dealers who
-      thought their hedge was nearly complete now need meaningfully more
+      the delta jump per additional point of price is large. Dealers whose
+      hedge was already lagging the move now need meaningfully more
       long exposure, immediately, and the resulting catch-up buying
       accelerates the move well past 4,500 before it finds the next level
-      of resistance. The exact same open interest that created resistance
+      of resistance. The exact same open interest that was read as resistance
       on the way up becomes the fuel for the breakout once it's breached —
       a gamma squeeze.
     </p>
@@ -838,15 +846,15 @@
     <div class="tl-answer">
       Approaching the wall, dealers (short those calls) are buying to keep
       up with rising delta, which is what pushed price toward the strike in
-      the first place. Ordinarily that buying would evaporate right at the
-      strike once delta saturates near 1.0 and the hedge is complete — the
-      "wall holds" case. But because gamma is near its local peak right
+      the first place. The "wall holds" story says that buying evaporates at the
+      strike, but delta only saturates near 1.0 well past it — at the strike
+      delta is about 0.5. And because gamma is near its local peak right
       around that strike, a strong enough move can carry price through it
       fast enough that delta jumps by more than the dealers' existing hedge
       already accounted for. Instead of the hedge completing gently, the
       dealers suddenly need <em>more</em> long exposure than they have,
       forcing urgent catch-up buying — the same mechanical demand that
-      built resistance on the way up becomes forced buying on the way
+      was read as resistance on the way up becomes forced buying on the way
       through, which is why a broken wall so often accelerates rather than
       reverses.
     </div>
