@@ -35,8 +35,8 @@
     <ul>
       <li>Volatility clusters — big moves (of either sign) follow big moves, and calm follows calm — even though the direction of the next move stays close to unpredictable.</li>
       <li>GARCH(1,1) forecasts tomorrow's variance as \(\sigma_t^2 = \omega + \alpha\epsilon_{t-1}^2 + \beta\sigma_{t-1}^2\): a floor, a reaction to yesterday's squared shock, and inertia from yesterday's own variance level.</li>
-      <li>\(\alpha+\beta\) is the persistence — how slowly a spike decays. This lesson's worked example uses \(\alpha=0.08,\ \beta=0.90\) (persistence 0.98, half-life ≈ 34 days)<!-- DESK:START -->; this project's actual estimator uses \(\alpha=0.06,\ \beta=0.91\) (persistence 0.97, half-life ≈ 23 days)<!-- DESK:END -->.</li>
-      <!-- DESK:START --><li>GARCH is one of three sigma estimators this project runs (alongside HV20 and Yang-Zhang), currently applied to the index asset class (NQ) — it isn't a claim that GARCH beats the others OOS, just the estimator this project runs there.</li><!-- DESK:END -->
+      <li>\(\alpha+\beta\) is the persistence — how slowly a spike decays. This lesson's worked example uses \(\alpha=0.08,\ \beta=0.90\) (persistence 0.98, half-life ≈ 34 days)<!-- DESK:START -->; this project's live index forecaster (<code>js/volForecast.js</code>) uses \(\alpha=0.06\) with an interim \(\beta=0.87\) since 2026-06-19 (persistence 0.93, half-life ≈ 9.5 days), keeping \(\beta=0.91\) (persistence 0.97, half-life ≈ 23 days) as a legacy comparison column<!-- DESK:END -->.</li>
+      <!-- DESK:START --><li>GARCH is one of the sigma estimators this project runs: the index asset class (NQ) uses it, while commodity (gold, switched from HV20 on 2026-06-30) and FX use Yang-Zhang — it isn't a claim that GARCH beats the others OOS, just the estimator this project runs there.</li><!-- DESK:END -->
       <li><strong>Real-world episode:</strong> March 2020. A record-high, low-VIX February gave way to a cluster of huge days of both signs: S&amp;P 500 −9.5% on 12 March, +9.3% on 13 March, −12% on 16 March, and a record VIX close of 82.69. GARCH reacts once the storm starts, but cannot see it coming from returns alone.<!-- DESK:START --> On this desk's data the pace of the tape persists hour to hour, the same clustering at intraday scale (<code>tape-speed-persistence</code>, VALIDATED).<!-- DESK:END --></li>
     </ul>
   </div>
@@ -239,7 +239,7 @@
     average" carries forward into tomorrow (proof of that exact statement is the persistence derivation two
     paragraphs down). If \(\alpha+\beta \ge 1\), that fraction never shrinks — a variance shock either persists
     forever (the borderline \(\alpha+\beta=1\) case, called <strong>IGARCH</strong>, integrated GARCH) or compounds
-    explosively (\(\alpha+\beta>1\), which is not a valid model — variance forecasts blow up). Any legitimate
+    explosively (\(\alpha+\beta>1\), which is not covariance-stationary: there is no finite long-run variance and variance forecasts blow up). Any legitimate
     GARCH(1,1) fit on real return data needs \(\alpha+\beta<1\), and it's a sanity check worth running on any fitted
     or hand-set parameters before trusting them.
   </p>
@@ -326,10 +326,10 @@
     <div class="tl-math">\[ \sigma_t^2 = 0.000001 + 0.00005 + 0.000045 = 0.000096 \quad\Rightarrow\quad \sigma_t \approx 0.0098 \approx 0.98\% \]</div>
     <p>
       One 2.5% shock day pushed the next-day forecast from 0.71% up to 0.98% — roughly 38% higher than the
-      long-run level. A flat HV20 estimate, by contrast, would barely move: adding a single 2.5% day into a
-      20-day equal-weighted average nudges the mean up only modestly, and it would keep contributing that same
+      long-run level. A flat HV20 estimate, by contrast, moves less: one 2.5% day in a 20-day equal-weighted
+      window whose other days sit at the long-run level lifts it only to about 0.89%, and it would keep contributing that same
       fixed weight for the next twenty days regardless of what happens next, then vanish abruptly on day 21. GARCH
-      reacted to the shock immediately and in full on day one.
+      reacted more on day one (weight \(\alpha=0.08\) against HV20's 1/20) and then lets the shock fade smoothly.
     </p>
     <p>
       Now trace the decay. With no further shocks, the excess over the long-run variance
@@ -464,7 +464,7 @@
       panel, then decays gradually — not instantly — back toward the dashed long-run level rather than
       snapping back the moment the market goes quiet. That gradual, slower-than-a-cliff decay <em>is</em> the
       persistence (\(\alpha+\beta\) close to 1) the math above describes, and it's exactly the shape a flat
-      trailing HV20 average can't replicate: HV20 would barely move on the shock day and then only fully
+      trailing HV20 average can't replicate: HV20 moves less on the shock day (whenever \(\alpha\) exceeds 1/20) and then only fully
       "forget" it once the shock rolls off the window 20 days later, not smoothly in between. Drag the sliders
       above to see how α and β each reshape the post-shock curve.
     </div>
@@ -766,10 +766,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Volatility clusters.</strong> Big moves of either sign follow big moves, and calm follows calm — even though the direction of the next move stays close to unpredictable.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>GARCH(1,1) has three additive pieces.</strong> A floor (ω), a reaction to yesterday's squared shock (α), and inertia from yesterday's own variance level (β).</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>α+β is the persistence.</strong> It's the day-over-day decay rate of a volatility shock's excess over normal, and the half-life falls straight out of it: \(n_{1/2}=\ln(0.5)/\ln(\alpha+\beta)\).</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Stationarity requires α+β &lt; 1.</strong> At exactly 1 (IGARCH) a shock never decays; above 1 the model isn't valid at all — always sanity-check this on any parameter set.</span></div>
-    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This project already runs GARCH(1,1) in production.</strong> It uses \(\alpha=0.06\), \(\beta=0.91\) (persistence 0.97, half-life ≈ 23 days) as one of three sigma estimators, applied to the index asset class.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Stationarity requires α+β &lt; 1.</strong> At exactly 1 (IGARCH) a shock never decays; above 1 it isn't covariance-stationary (no finite long-run variance) — always sanity-check this on any parameter set.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This project already runs GARCH(1,1) in production.</strong> For the index asset class it uses \(\alpha=0.06\) with an interim \(\beta=0.87\) since 2026-06-19 (persistence 0.93, half-life ≈ 9.5 days); \(\beta=0.91\) (half-life ≈ 23 days) is kept as a legacy comparison column. Commodity and FX use Yang-Zhang.</span></div><!-- DESK:END -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Plain GARCH(1,1) is symmetric.</strong> It can't capture the leverage effect (down moves raising volatility more than equal-sized up moves) — EGARCH/GJR-GARCH exist specifically to address that.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This isn't a claim GARCH beats the alternatives OOS.</strong> It's one of three estimators (alongside HV20 and Yang-Zhang) compared under the same walk-forward harness — which wins is an empirical question, not assumed from the math.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This isn't a claim GARCH beats the alternatives OOS.</strong> It's one of the estimators (alongside HV20 and Yang-Zhang) compared under the same walk-forward harness — which wins is an empirical question, not assumed from the math.</span></div><!-- DESK:END -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>GARCH sees a storm only once it has started.</strong> March 2020 showed clustering at full strength, with ±9–12% S&amp;P days back to back, but a model fitted to February's calm forecast a quiet March.<!-- DESK:START --> On this desk's data the pace of the tape persists intraday, 68 of 68 cells (<code>tape-speed-persistence</code>, VALIDATED), as a statement about pace, not direction.<!-- DESK:END --></span></div>
   </div>
 
@@ -798,11 +798,12 @@
   <details class="tl-quiz">
     <summary>Q3. Why can a GARCH forecast for tomorrow diverge sharply from a simple trailing HV20 average right after a big news day?</summary>
     <div class="tl-answer">
-      GARCH reacts to yesterday's shock immediately — the \(\alpha\epsilon_{t-1}^2\) term injects the full new
-      squared shock into the very next forecast. HV20 gives that same shock only 1/20th of the weight in an
-      equal-weighted average, so the visible move in the trailing average is much smaller on day one, then that
+      GARCH reacts to yesterday's shock immediately — the \(\alpha\epsilon_{t-1}^2\) term injects the new
+      squared shock, weighted by \(\alpha\), into the very next forecast. HV20 gives that same shock a fixed
+      1/20th of the weight in an equal-weighted average, so with a typical \(\alpha\) above 0.05 the visible
+      move in the trailing average is smaller on day one, then that
       1/20th weight sits unchanged for 20 days before disappearing abruptly (the "ghosting" effect) regardless of
-      what the market does next. Right after a shock, GARCH has already moved a lot; HV20 has barely moved and
+      what the market does next. Right after a shock, GARCH has usually moved more; HV20 has moved less and
       won't fully reflect that day's impact (or stop reflecting it) until its rolling window catches up.
     </div>
   </details>
@@ -845,7 +846,7 @@
     <li>Robert F. Engle, "Autoregressive Conditional Heteroskedasticity with Estimates of the Variance of United Kingdom Inflation," <em>Econometrica</em>, 1982 — the original ARCH paper; part of the body of work cited in Engle's 2003 Nobel Memorial Prize in Economic Sciences.</li>
     <li>Tim Bollerslev, "Generalized Autoregressive Conditional Heteroskedasticity," <em>Journal of Econometrics</em>, 1986 — introduces the GARCH generalization (the \(\beta\sigma_{t-1}^2\) term) used throughout this lesson.</li>
     <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em> — the chapter on estimating volatility (EWMA and GARCH(1,1)) is a standard, widely-used practitioner-level treatment with worked numerical examples similar in spirit to the one above.</li>
-    <li>Dan Yang &amp; Qiang Zhang, "Drift-Independent Volatility Estimation Based on High, Low, Open, and Close Prices," <em>Journal of Business</em>, 2000 — <!-- DESK:START -->the range-based estimator this repo runs as its third sigma series (Yang-Zhang), <!-- DESK:END -->an OHLC-range alternative to close-to-close GARCH/HV.</li>
+    <li>Dan Yang &amp; Qiang Zhang, "Drift-Independent Volatility Estimation Based on High, Low, Open, and Close Prices," <em>Journal of Business</em>, 2000 — <!-- DESK:START -->the range-based estimator this repo runs for commodity and FX (Yang-Zhang), <!-- DESK:END -->an OHLC-range alternative to close-to-close GARCH/HV.</li>
   </ul>
   </details>
 

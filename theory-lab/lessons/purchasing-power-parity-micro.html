@@ -100,13 +100,13 @@
           <div class="sl-calc-op">=</div>
           <div class="sl-calc-result">
             <div class="sl-calc-result-label">Relative-PPP-implied rate at year N</div>
-            <div class="sl-calc-result-val" id="ppp-result">$0.8850</div>
+            <div class="sl-calc-result-val" id="ppp-result">0.9768</div>
           </div>
         </div>
         <div class="sl-calc-steps">
           <div>Annual inflation gap: π_d − π_f = <b id="ppp-step1">6.00</b>%</div>
           <div>Implied annual depreciation of the domestic currency ≈ <b id="ppp-step2">6.00</b>%/yr</div>
-          <div>Compounded over N years: S₀ × (1 + π_f)ᴺ ÷ (1 + π_d)ᴺ = <b id="ppp-step3">0.8850</b></div>
+          <div>Compounded over N years: S₀ × (1 + π_f)ᴺ ÷ (1 + π_d)ᴺ = <b id="ppp-step3">0.9768</b></div>
         </div>
         <button type="button" class="sl-reset-btn" id="ppp-reset">Reset to 8% vs 2%, 5 years</button>
         <div class="sl-note">This is a mechanical projection of the relative-PPP relationship, not a forecast — real currencies wander for years before (if ever) tracking it.</div>
@@ -128,14 +128,14 @@
           <line x1="45" y1="130" x2="610" y2="130" style="stroke:var(--border2);stroke-dasharray:3,3" stroke-width="1.5"/>
           <text x="480" y="122" font-size="11" fill="var(--border2)">PPP fair value</text>
           <polyline points="45,130 68,126 91,118 114,108 137,98 160,92 183,88 206,92 229,102 252,116 275,132 298,148 321,160 344,166 367,162 390,150 413,132 436,112 459,94 482,80 505,72 528,76 551,90 574,108 597,124" style="fill:none;stroke:var(--blue);stroke-width:2.4;opacity:.95"/>
-          <text x="50" y="70" fill="var(--green)" font-size="11">"undervalued" leg — ~8 yrs</text>
-          <text x="330" y="205" fill="var(--red)" font-size="11">"overvalued" leg — ~7 yrs</text>
+          <text x="50" y="70" fill="var(--green)" font-size="11">"undervalued" leg — ~10 yrs</text>
+          <text x="330" y="205" fill="var(--red)" font-size="11">"overvalued" leg — ~6 yrs</text>
           <text x="45" y="248" fill="var(--border2)" font-size="10">yr 0</text>
           <text x="290" y="248" fill="var(--border2)" font-size="10">yr 12</text>
           <text x="580" y="248" fill="var(--border2)" font-size="10">yr 24</text>
         </svg>
       </div>
-      <p class="sl-p"><strong>Overvalued</strong> means the real rate is unusually high relative to its own history (domestic goods look expensive to foreigners on a PPP basis); <strong>undervalued</strong> means the opposite. Notice the shape: a handful of long, slow cycles across 24 years — not fast, jittery oscillation.</p>
+      <p class="sl-p">With S quoted as domestic currency per foreign unit (as this formula needs; the Section 5 calculator used the inverse quote), <strong>overvalued</strong> means the real rate is unusually low relative to its own history (domestic goods look expensive to foreigners on a PPP basis); <strong>undervalued</strong> means unusually high, as on the chart. Notice the shape: a handful of long, slow cycles across 24 years — not fast, jittery oscillation.</p>
     </section>
 
     <section class="sl-slide" data-slide="8">
@@ -382,7 +382,7 @@
       step1.textContent = gap.toFixed(2);
       step2.textContent = gap.toFixed(2);
       step3.textContent = sN.toFixed(4);
-      result.textContent = '$' + sN.toFixed(4);
+      result.textContent = sN.toFixed(4);
     }
 
     [spot, pid, pif, years].forEach(function(el){ el.addEventListener('input', recompute); });

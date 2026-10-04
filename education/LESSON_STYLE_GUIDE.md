@@ -483,6 +483,34 @@ Rules:
   outside markers, on unpaired markers, and on a page whose tags no longer
   balance once stripped.
 
+### 5.19 "Watch it" whiteboard animations — `.wb`
+
+A step-through, hand-drawn animation for explanations where one thing drives
+another: boxes and arrows draw themselves on, numbers count, captions (optionally
+read aloud) say what just happened. Load `assets/whiteboard.css` in the head and
+`assets/whiteboard.js` (defer) before `</body>`, then:
+
+```html
+<div class="wb" data-title="The yen carry unwind, drawn step by step">
+  <script type="application/json">{ "w": 600, "h": 440, "intro": "…", "steps": [
+    { "cap": "End of July 2024: the Bank of Japan raises rates.",
+      "do": [ { "box": "boj", "x": 15, "y": 20, "w": 160, "h": 66, "text": "BoJ hikes", "sub": "31 July", "tone": "amber" } ] },
+    { "cap": "…", "do": [ { "arrow": ["boj", "gap"] }, { "count": "jpy", "from": 161.9, "to": 141.7, "dp": 1 } ] }
+  ] }</script>
+</div>
+```
+
+In a visual guide, give the board its own slide right after the slide it
+illustrates (kicker `▶ Watch it`); `education/tools/build_whiteboards.py` builds both
+placements from one scene definition and renumbers the deck's `data-slide`s.
+
+Ops: `box`, `chip` + `move`, `arrow` (`label`, `bend`, `dash`), `note`, `line`,
+`count`, `sub`, `pulse`, `dim`, `hide`, `cross` — documented at the top of
+`whiteboard.js`. Rules: design at viewBox width 600 with text ≥ 17 (it shrinks to
+~0.6× on a phone); leave ≥ 40 units between boxes an arrow joins; one idea per
+step; every caption must be as accurate as the lesson text (it is the transcript
+too). Best for causal chains, flows and mechanisms — not for derivations.
+
 ---
 
 ## 6. Color system — what each color means

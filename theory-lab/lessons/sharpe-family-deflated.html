@@ -36,8 +36,8 @@
       <li>Sharpe = mean excess return ÷ its std. dev., annualized by \(\sqrt{k}\) (not \(k\)) because variance, not std. dev., is what adds linearly across independent periods<!-- DESK:START --> — this is exactly how this project's own Sharpe calculation works<!-- DESK:END -->.</li>
       <li>Sortino swaps in downside deviation (std. dev. computed only over below-MAR periods) so upside wobble stops counting against a strategy<!-- DESK:START --> — matches this project's own Sortino calculation's exact convention (divide by the downside count \(n_d\), not total \(n\))<!-- DESK:END -->.</li>
       <li>Calmar = CAGR ÷ worst peak-to-trough drawdown, a single realized event rather than an average dispersion statistic<!-- DESK:START --> — this project's own Calmar calculation takes both as caller-supplied inputs rather than assuming one definition<!-- DESK:END -->.</li>
-      <li>The Deflated Sharpe Ratio corrects a reported Sharpe for how many variations were tried before it was picked: in the lesson's worked example (\(N=50\) trials, \(\sigma_{SR}=0.66\)), pure luck alone is expected to produce a best-of-50 Sharpe of \(SR_0\approx1.50\), so a reported 1.80 only clears that bar by 0.30 — working out to \(DSR\approx0.81\), not the near-100% a naive zero-benchmark test would claim.</li>
-      <!-- DESK:START --><li>This project's own performance-metrics module already ships the Sharpe-honesty pair (a Sharpe standard-error function and a minimum-track-record-length function) that DSR's non-normality correction reuses, but nothing today tracks the trial count \(N\) behind a reported Sharpe — DSR itself isn't built yet.</li><!-- DESK:END -->
+      <li>The Deflated Sharpe Ratio corrects a reported Sharpe for how many variations were tried before it was picked: in the lesson's worked example (\(N=50\) trials, \(\sigma_{SR}=0.66\)), pure luck alone is expected to produce a best-of-50 Sharpe of \(SR_0\approx1.50\), so a reported 1.80 only clears that bar by 0.30 — working out to \(DSR\approx0.82\), not the near-100% a naive zero-benchmark test would claim.</li>
+      <!-- DESK:START --><li>This project's own performance-metrics module already ships the Sharpe-honesty pair (a Sharpe standard-error function and a minimum-track-record-length function) that DSR's non-normality correction reuses, and <code>js/backtestStats.js</code> also exports a working <code>deflatedSharpe()</code>, used by several engines and a tradeable-instrument filter; the open risk is the trial count \(N\) fed into it, which is only as honest as the logged search.</li><!-- DESK:END -->
       <li><strong>Real-world episode:</strong> LTCM's smooth, high-return 1995–97 record came from a leveraged short-liquidity book that lost about $4.6 billion in 1998<!-- DESK:START -->; and this desk's own Fibonacci-level system backtest reported a Sharpe of 18.4 and 85.7% wins against 39.6% live, a ratio computed correctly from fills that could not happen<!-- DESK:END -->.</li>
     </ul>
   </div>
@@ -173,10 +173,10 @@
     this project's own vol math (its
     horizon-scaled \(\sigma\)) depends on throughout<!-- DESK:END -->. It also carries the same
     caveat forward: the derivation assumes the per-period returns are close to
-    independent. A strategy whose returns are meaningfully autocorrelated
-    (trending equity curves, overlapping holding periods) violates that
+    independent. A strategy whose returns are meaningfully <em>positively</em> autocorrelated
+    (overlapping holding periods, smoothed or stale marks) violates that
     assumption, and naive \(\sqrt{k}\) annualization then <em>overstates</em>
-    the true annualized Sharpe — a point Lo (2002) makes formally and one
+    the true annualized Sharpe (negative autocorrelation does the reverse) — a point Lo (2002) makes formally and one
     worth remembering any time an annualized Sharpe looks unusually clean.
   </p>
 
@@ -211,9 +211,9 @@
     matches this project's own Sortino calculation exactly
     — it<!-- DESK:END --> accumulates squared deviations only over \(r &lt; 0\) periods,
     divides by the count of those periods, and annualizes by the same
-    \(\sqrt{k}\) as Sharpe (some textbook treatments divide by the
-    <em>total</em> period count \(n\) instead of just the downside count
-    \(n_d\)<!-- DESK:START -->; this project's implementation follows the semi-deviation-of-losses
+    \(\sqrt{k}\) as Sharpe (the more common textbook definition, Sortino &amp; Price's
+    target downside deviation, divides by the <em>total</em> period count \(n\) instead of just the downside count
+    \(n_d\), which gives a smaller DD and a higher Sortino)<!-- DESK:START -->; this project's implementation follows the semi-deviation-of-losses
     convention above, which is one standard variant among a few in the
     literature<!-- DESK:END -->). The intuitive payoff: a strategy whose variance is
     disproportionately made of favorable big wins gets a Sortino
@@ -382,7 +382,7 @@
   <div class="tl-math">\[ DSR(\widehat{SR}) \;=\; \Phi\!\left(\frac{(\widehat{SR}-SR_0)\sqrt{T-1}}{\sqrt{1-\gamma_3\widehat{SR}+\frac{\gamma_4-1}{4}\widehat{SR}^2}}\right) \]</div>
   <div class="tl-eq-break">
     <div class="tl-eq-chip c1"><code>ŜR − SR₀</code><span>the gap the reported Sharpe clears above the chance ceiling</span></div>
-    <div class="tl-eq-chip c2"><code>T</code><span>number of return observations in the track record</span></div>
+    <div class="tl-eq-chip c2"><code>T</code><span>number of return observations in the track record; ŜR and SR₀ must be per-observation (not annualized) Sharpes at that same frequency</span></div>
     <div class="tl-eq-chip c3"><code>γ₃, γ₄</code><span>skew and kurtosis — widen the standard error for fat tails</span></div>
     <div class="tl-eq-chip c4"><code>DSR</code><span>probability the true Sharpe exceeds zero, after both corrections</span></div>
   </div>
@@ -543,8 +543,8 @@
       A researcher builds a mean-reversion signal and, in the course of
       development, backtests 50 variations of it — different lookback
       windows, different z-score entry thresholds, a couple of different exit
-      rules. The best of the 50 posts an annualized Sharpe ratio of 1.8 on 60
-      closed trades, and that's the number that goes in the writeup: "the
+      rules. The best of the 50 posts an annualized Sharpe ratio of 1.8 over ten
+      years of daily returns, and that's the number that goes in the writeup: "the
       strategy achieves a Sharpe of 1.8." <!-- DESK:START -->This is exactly the scenario
       this project's own house rule is written to catch: "finding a few
       'winners' among 70 slices is what noise does. Survivors must beat
@@ -556,7 +556,7 @@
       Applying the DSR machinery above, with the trial dispersion, track
       length, and non-normality inputs a real sweep like this would plausibly
       show — \(N=50\) trials with a standard deviation of \(\sigma_{SR}=0.66\)
-      across their Sharpe ratios, \(T=60\) trades, and a return distribution
+      across their annualized Sharpe ratios, \(T=2{,}520\) daily returns, and a return distribution
       with skew \(\gamma_3=-0.4\) and kurtosis \(\gamma_4=7\) (moderately
       fat-tailed and left-skewed, unremarkable for a stop-driven FX
       mean-reversion book that occasionally gets caught in a breakout):
@@ -569,20 +569,22 @@
       The reported 1.80 clears that ceiling by only 0.30 — not by the full
       1.80 it appears to clear if you compare it to zero. Running that gap
       through the full DSR formula, with the track record's own skew and
-      kurtosis widening the standard error:
+      kurtosis widening the standard error, needs both Sharpes back in
+      per-day units to match \(T\) (divide by \(\sqrt{252}\): \(\widehat{SR}=0.1134\),
+      \(SR_0=0.0946\)), exactly as Bailey &amp; López de Prado do in their own example:
     </p>
-    <div class="tl-math">\[ DSR \approx \Phi\!\left(\frac{(1.80-1.50)\sqrt{59}}{\sqrt{1-(-0.4)(1.8)+\frac{7-1}{4}(1.8)^2}}\right) = \Phi\!\left(\frac{0.30\times7.68}{2.57}\right) \approx \Phi(0.89) \approx 0.81 \]</div>
+    <div class="tl-math">\[ DSR \approx \Phi\!\left(\frac{(0.1134-0.0946)\sqrt{2519}}{\sqrt{1-(-0.4)(0.1134)+\frac{7-1}{4}(0.1134)^2}}\right) = \Phi\!\left(\frac{0.0188\times50.19}{1.032}\right) \approx \Phi(0.91) \approx 0.82 \]</div>
     <p>
-      An 81% probability that the true Sharpe ratio is above zero — elevated,
+      An 82% probability that the true Sharpe ratio is above zero — elevated,
       genuinely more than a coin flip, but a long way from the near-certainty
       a raw 1.80 suggests when judged in isolation. Contrast that with what a
       naive test would say if it ignored the 50 trials entirely and simply
       asked "is 1.8 significantly above zero": the same track record's own
-      standard error gives a z-score of \(1.8\sqrt{59}/2.57\approx5.4\), a
+      standard error gives a z-score of \(0.1134\sqrt{2519}/1.032\approx5.5\), a
       probability effectively indistinguishable from 100%. That gap — near
-      certainty on a naive read, 81% once the search itself is priced in —
+      certainty on a naive read, 82% once the search itself is priced in —
       <em>is</em> the multiple-testing correction, made concrete for a single
-      Sharpe ratio instead of a table of p-values. And 81% is still not the
+      Sharpe ratio instead of a table of p-values. And 82% is still not the
       end of the story: it corrects for the search, it does not replace<!-- DESK:START --> this
       repo's own<!-- DESK:END --> OOS discipline<!-- DESK:START --> (Lego Principle 5)<!-- DESK:END --> — a signal still needs to
       clear a true out-of-sample split with a non-trivial trade count on data
@@ -738,9 +740,9 @@
     <p>
       <strong>Reporting a Sharpe ratio annualized by \(\sqrt{k}\) on
       autocorrelated returns.</strong> The \(\sqrt{k}\) derivation above
-      assumes roughly independent per-period returns. Trend-following
-      strategies, overlapping-window backtests, and anything with genuine
-      serial correlation in its returns will show a naively annualized
+      assumes roughly independent per-period returns. Overlapping-window
+      backtests, smoothed or illiquid marks, and anything with genuine
+      positive serial correlation in its returns will show a naively annualized
       Sharpe that overstates the true one — a subtle inflation that has
       nothing to do with edge and everything to do with the annualization
       formula's own assumption being violated.
@@ -816,7 +818,7 @@
       net \(\sqrt{k}\) — the same square-root-of-time volatility scaling
       derived in the Returns &amp; Compounding primer, applied here to a
       ratio. It also means the scaling is only valid when returns are close
-      to independent period to period; meaningful autocorrelation makes naive
+      to independent period to period; meaningful positive autocorrelation makes naive
       \(\sqrt{k}\) annualization overstate the true Sharpe.
     </div>
   </details>

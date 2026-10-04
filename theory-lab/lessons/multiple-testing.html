@@ -35,7 +35,7 @@
   <ul>
     <li>Running \(m\) independent tests at \(\alpha=0.05\) each, the family-wise error rate (chance of at least one false positive) is \(\text{FWER}=1-(1-\alpha)^m\) — it climbs toward 1 fast, not linearly.</li>
     <li>At \(m=70\) (the interactive slider's default), FWER ≈ 97.2% and the expected number of false positives among pure-noise slices is \(70 \times 0.05 = 3.5\) — "3 out of 70 slices look significant" is what noise does, not a discovery.</li>
-    <li>Bonferroni fixes this by shrinking the per-test bar to \(\alpha/m\) (a strict, correlation-agnostic worst case); Benjamini-Hochberg (FDR) uses a rank-dependent staircase, \(p_{(k)} \le \frac{k}{m}q\), that's more forgiving and better suited to correlated FX slices.</li>
+    <li>Bonferroni fixes this by shrinking the per-test bar to \(\alpha/m\) (a strict, correlation-agnostic worst case); Benjamini-Hochberg (FDR) uses a rank-dependent staircase, \(p_{(k)} \le \frac{k}{m}q\), that's more forgiving; its guarantee holds for independent or positively correlated tests (the usual case for FX slices sharing a USD factor), while arbitrary dependence needs the stricter Benjamini–Yekutieli version.</li>
 <!-- DESK:START -->
     <li>This is the mechanical basis for this repo's own house rule: "finding a few 'winners' among 70 slices is what noise does" — survivors must beat the chance-baseline and be IS-consistent, per Lego Principle 5.</li>
 <!-- DESK:END -->
@@ -199,7 +199,7 @@
   independent draws: EURUSD, GBPUSD and AUDUSD all move partly off a shared USD factor, so a
   macro surprise that moves the dollar can make several "slices" light up together. That shared
   variation means the tests carry less independent information than \(m\) implies, so Bonferroni's
-  worst-case correction (built for the independent case) ends up over-punishing real, correlated
+  worst-case correction (which takes no credit for that overlap) ends up over-punishing real, correlated
   effects — treating seventy correlated looks as if they were seventy independent ones.
   </p>
 
@@ -261,7 +261,7 @@
     truth <em>none</em> of the 70 slices has any real edge — every one of them is pure noise
     around zero. Using the FWER formula from above with \(m=70\):
     </p>
-    <div class="tl-math">\[ \text{FWER} = 1-(1-0.05)^{70} = 1 - (0.95)^{70} \approx 1 - 0.0275 \approx 0.972 \]</div>
+    <div class="tl-math">\[ \text{FWER} = 1-(1-0.05)^{70} = 1 - (0.95)^{70} \approx 1 - 0.0276 \approx 0.972 \]</div>
     <p>
     That is a <strong>97.2% chance</strong> that at least one of the 70 slices comes back
     "statistically significant" at the 5% level, purely from noise, even though nothing real is
@@ -326,22 +326,22 @@
       <text x="92" y="16" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px">&#945;=0.05</text>
       <rect x="62" y="104" width="24" height="96" style="fill:var(--red)"/>
       <rect x="90" y="72" width="24" height="128" style="fill:var(--blue)"/>
-      <rect x="118" y="40" width="24" height="160" style="fill:var(--blue)"/>
+      <rect x="118" y="72" width="24" height="128" style="fill:var(--blue)"/>
       <rect x="146" y="104" width="24" height="96" style="fill:var(--blue)"/>
-      <rect x="174" y="72" width="24" height="128" style="fill:var(--blue)"/>
+      <rect x="174" y="104" width="24" height="96" style="fill:var(--blue)"/>
       <rect x="202" y="104" width="24" height="96" style="fill:var(--blue)"/>
-      <rect x="230" y="40" width="24" height="160" style="fill:var(--blue)"/>
+      <rect x="230" y="72" width="24" height="128" style="fill:var(--blue)"/>
       <rect x="258" y="72" width="24" height="128" style="fill:var(--blue)"/>
       <rect x="286" y="104" width="24" height="96" style="fill:var(--blue)"/>
       <rect x="314" y="72" width="24" height="128" style="fill:var(--blue)"/>
       <rect x="342" y="72" width="24" height="128" style="fill:var(--blue)"/>
       <rect x="370" y="104" width="24" height="96" style="fill:var(--blue)"/>
-      <rect x="398" y="40" width="24" height="160" style="fill:var(--blue)"/>
+      <rect x="398" y="72" width="24" height="128" style="fill:var(--blue)"/>
       <rect x="426" y="72" width="24" height="128" style="fill:var(--blue)"/>
       <rect x="454" y="104" width="24" height="96" style="fill:var(--blue)"/>
-      <rect x="482" y="72" width="24" height="128" style="fill:var(--blue)"/>
+      <rect x="482" y="104" width="24" height="96" style="fill:var(--blue)"/>
       <rect x="510" y="104" width="24" height="96" style="fill:var(--blue)"/>
-      <rect x="538" y="40" width="24" height="160" style="fill:var(--blue)"/>
+      <rect x="538" y="72" width="24" height="128" style="fill:var(--blue)"/>
       <rect x="566" y="72" width="24" height="128" style="fill:var(--blue)"/>
       <rect x="594" y="104" width="24" height="96" style="fill:var(--blue)"/>
       <text x="52" y="203" text-anchor="end" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">0</text>
@@ -593,7 +593,7 @@
     </div>
     <p>
     <strong>Applying Bonferroni honestly to correlated tests and getting nothing.</strong>
-    Bonferroni assumes worst-case independence; FX slices sharing USD, EUR, risk-sentiment or a
+    Bonferroni takes no account of how the tests depend on each other; FX slices sharing USD, EUR, risk-sentiment or a
     volatility regime are far from independent. Applying Bonferroni naively to 70 heavily
     correlated slices can suppress real effects along with the noise — it is a safe but blunt
     instrument, not the uniquely correct answer. This is precisely why BH/FDR, or slice-count
@@ -622,7 +622,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Running more tests makes a false "significant" result likely, not surprising.</strong> \(\text{FWER}=1-(1-\alpha)^m\) climbs toward 1 fast — at \(m=70\) it's already ≈97.2%, even when nothing real is happening.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>"3 out of 70 slices look significant" is what noise does.</strong> The expected number of false positives among 70 pure-noise slices at \(\alpha=0.05\) is \(70\times0.05=3.5\) — matching that count is not a discovery.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bonferroni (\(\alpha/m\)) is the strict, correlation-agnostic fix.</strong> It guarantees FWER ≤ α even in the worst case, at the cost of being needlessly harsh on correlated tests (like FX pairs sharing a USD factor).</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Benjamini-Hochberg (FDR) is the more forgiving alternative.</strong> Its rank-dependent staircase, \(p_{(k)}\le\frac{k}{m}q\), controls the expected proportion of false discoveries rather than banning any false positive outright — usually more useful for correlated, exploratory FX slicing.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Benjamini-Hochberg (FDR) is the more forgiving alternative.</strong> Its rank-dependent staircase, \(p_{(k)}\le\frac{k}{m}q\), controls the expected proportion of false discoveries rather than banning any false positive outright — usually more useful for exploratory FX slicing. The guarantee holds for independent or positively correlated tests; arbitrary dependence needs the stricter Benjamini–Yekutieli version.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The best of many is expected to look good, by construction.</strong> Being rank #1 of 70 tells you almost nothing on its own — someone has to be the minimum of 70 noise draws.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Surviving a correction is necessary, not sufficient.</strong> A statistically valid discovery still has to hold up in-sample consistently and on a genuine out-of-sample split with real costs before it's a tradeable edge<!-- DESK:START --> (Lego Principle 5)<!-- DESK:END -->.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A hit rate without its base rate is a winning ticket shown alone<!-- DESK:START --> (rates-pivot-lead, NULL)<!-- DESK:END -->.</strong><!-- DESK:START --> Up 54.1% of the time after a confirmed rates low, against a 54.1% base rate; 0 of 15 cells real.<!-- DESK:END --> And when \(m\) is hidden, as in the 316-factor zoo, the honest bar rises to t ≈ 3.</span></div>
@@ -637,7 +637,7 @@
     <div class="tl-answer">For independent tests, the probability that all \(m\) tests avoid a false positive is the product of each one avoiding it: \((1-\alpha)^m\), since each test's outcome doesn't affect the others. FWER is "at least one false positive," which is the complement of "zero false positives," so \(\text{FWER} = 1-(1-\alpha)^m\). The simpler \(m\alpha\) is actually the Bonferroni union-bound approximation — it's an upper bound on the true FWER (via \(P(A \cup B) \le P(A)+P(B)\)) that holds even when tests are correlated, and it's close to \(1-(1-\alpha)^m\) when \(\alpha\) is small and \(m\) isn't huge, but they are not the same quantity and \(m\alpha\) can exceed 1 while a true probability cannot.</div>
   </details>
   <details class="tl-quiz"><summary>Q3. Why is Bonferroni often too strict when your 70 tests are correlated — for instance, when all your slices are FX pairs that share USD exposure?</summary>
-    <div class="tl-answer">Bonferroni's \(\alpha/m\) threshold is derived to guarantee FWER \(\le \alpha\) in the <em>worst case</em>, which is when all \(m\) tests are independent and therefore each one carries the maximum possible amount of unique information. When tests are correlated — as EURUSD, GBPUSD and AUDUSD are, sharing a common USD factor — a single macro shock can move several "independent-looking" slices together, so the effective number of independent pieces of information is less than \(m\). Bonferroni still divides by the full \(m\), producing a stricter (smaller) threshold than the correlation structure actually requires, which can bury a real, shared effect along with the noise.</div>
+    <div class="tl-answer">Bonferroni's \(\alpha/m\) threshold is derived to guarantee FWER \(\le \alpha\) in the <em>worst case</em>: it makes no use of the dependence between tests and treats each of the \(m\) as carrying its own separate chance of a false alarm. When tests are correlated — as EURUSD, GBPUSD and AUDUSD are, sharing a common USD factor — a single macro shock can move several "independent-looking" slices together, so the effective number of independent pieces of information is less than \(m\). Bonferroni still divides by the full \(m\), producing a stricter (smaller) threshold than the correlation structure actually requires, which can bury a real, shared effect along with the noise.</div>
   </details>
   <details class="tl-quiz"><summary>Q4. What does controlling the False Discovery Rate at \(q=0.10\) actually guarantee — and what does it NOT guarantee?</summary>
     <div class="tl-answer">It guarantees that, on average, no more than about 10% of the tests you flag as "significant" (your discoveries) are expected to be false positives — a bound on the expected <em>proportion</em> of false discoveries among your discoveries. It does NOT guarantee that any specific flagged slice is real, does not bound the absolute number of false positives (a large batch can still produce several false discoveries even at 10%), and does not say anything about tests you didn't flag. It's a rate guarantee over the discovered set, not a certificate on any individual result.</div>

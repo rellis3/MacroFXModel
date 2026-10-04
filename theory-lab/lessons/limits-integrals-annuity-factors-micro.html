@@ -31,7 +31,7 @@
       <div class="sl-origin">
         <div class="sl-origin-label">How it reached trading</div>
         <p><strong>Johan de Witt · 1671 · the swap market · 1980s</strong></p>
-        <p>In 1671 de Witt valued Dutch government annuities as sums of discounted payments, weighted by survival odds: the first annuity factor.</p>
+        <p>In 1671 de Witt valued Dutch government annuities as sums of discounted payments, weighted by survival odds: an early annuity factor.</p>
         <p>On rates desks the same sum sets the par swap rate, a swap's PV01 and swaption prices; a level mortgage payment is principal ÷ annuity factor.</p>
         <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
         <p><strong>Its job:</strong> Collapse a stream of fixed payments into one factor, turning a rate into a value and back.</p>
@@ -203,7 +203,7 @@
         </div>
         <div class="sl-ccard green">
           <span class="sl-ctag green">m → ∞ within a period — continuous compounding</span>
-          <p>Compounding m times within a period sends each discrete discount factor (1+y)⁻ᵗ to e⁻ʸᵗ. The annuity sum becomes the continuous-time integral ∫₀ⁿ e⁻ʸᵗ dt = [1 − e⁻ʸⁿ] / y — the same shape, (1+y)⁻ⁿ simply replaced by e⁻ʸⁿ.</p>
+          <p>Compounding m times within a period sends each discrete discount factor (1+y)⁻ᵗ to e⁻ʸᵗ, giving Σ e⁻ʸᵗ. Spread the $1 per period continuously through each period as well, and the sum becomes the continuous-time integral ∫₀ⁿ e⁻ʸᵗ dt = [1 − e⁻ʸⁿ] / y — the same shape, (1+y)⁻ⁿ simply replaced by e⁻ʸⁿ.</p>
         </div>
       </div>
       <div class="sl-svgwrap">

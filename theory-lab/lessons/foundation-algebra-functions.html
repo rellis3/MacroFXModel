@@ -13,7 +13,7 @@
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Foundation Mathematics / Algebra &amp; Functions Refresher</div>
   <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
-  <div class="tl-kicker">Foundation Mathematics · Lesson 1 of 6</div>
+  <div class="tl-kicker">Foundation Mathematics · Lesson 1 of 5</div>
   <h1 class="tl-title">Algebra &amp; Functions Refresher</h1>
   <p class="tl-dek">Rearranging equations, and what a "function" actually is — the two habits of mind every later formula in this curriculum quietly assumes you already have.</p>
   <div class="tl-meta">
@@ -397,11 +397,11 @@
       <line x1="320" y1="20" x2="320" y2="220" style="stroke:var(--border);stroke-width:1"/>
       <text x="596" y="234" text-anchor="end" style="fill:var(--text3);font-size:11px">x</text>
       <text x="332" y="30" text-anchor="start" style="fill:var(--text3);font-size:11px">y</text>
-      <path id="fa-parabola" style="fill:none;stroke:var(--purple);stroke-width:2" d="M120,200 L160,150 L200,108 L240,74 L280,48 L320,30 L360,48 L400,74 L440,108 L480,150 L520,200"/>
-      <text x="500" y="60" text-anchor="middle" style="fill:var(--purple);font-size:11px">y = x²/40 (convex — curves up)</text>
+      <path id="fa-parabola" style="fill:none;stroke:var(--purple);stroke-width:2" d="M140,58 L160,92 L180,122 L200,148 L220,170 L240,188 L260,202 L280,212 L300,218 L320,220 L340,218 L360,212 L380,202 L400,188 L420,170 L440,148 L460,122 L480,92 L500,58"/>
+      <text x="420" y="44" text-anchor="middle" style="fill:var(--purple);font-size:11px">y = x²/5 (convex — curves up)</text>
       <line id="fa-line" x1="80" y1="180" x2="560" y2="180" style="stroke:var(--blue);stroke-width:2.5"/>
       <circle id="fa-dot" cx="320" cy="180" r="5" style="fill:var(--blue);stroke:var(--s1);stroke-width:1.5"/>
-      <text x="565" y="176" text-anchor="start" style="fill:var(--blue);font-size:11px" id="fa-line-label">y = 0.00x + 0</text>
+      <text x="565" y="176" text-anchor="start" style="fill:var(--blue);font-size:11px" id="fa-line-label">y = 0.00x + 1</text>
     </svg>
     <div class="tl-controls">
       <div class="tl-control">
@@ -410,7 +410,7 @@
         <div class="tl-hint">Drag to change the straight line's slope. Notice the purple parabola's slope is different at every point along it — that's the difference between a constant slope (linear) and a slope that itself changes (curved).</div>
       </div>
     </div>
-    <div class="tl-chart-caption">The blue line always has one fixed slope \(m\) — turning the dial just rotates it evenly. The purple curve \(y=x^2/40\) is convex: it bends upward, meaning its own slope keeps increasing as \(x\) grows — flat near the bottom, steep further out. That changing-slope behavior is exactly what "curving" means, and exactly what a straight line, by definition, never does.</div>
+    <div class="tl-chart-caption">The blue line always has one fixed slope \(m\) — turning the dial just rotates it evenly. The purple curve \(y=x^2/5\) is convex: it bends upward, meaning its own slope keeps increasing as \(x\) grows — flat near the bottom, steep further out. That changing-slope behavior is exactly what "curving" means, and exactly what a straight line, by definition, never does.</div>
   </div>
 
   <div class="tl-box example">
@@ -708,7 +708,7 @@
     line.setAttribute('y2', yRightPix);
     dot.setAttribute('cy', Y0);
 
-    var cVal = 0;
+    var cVal = (220 - Y0) / PX_PER_UNIT; // x-axis sits at pixel 220, so the line's intercept is 1
     label.textContent = 'y = ' + m.toFixed(2) + 'x + ' + cVal;
     var midY = Y0 - m * 0 * PX_PER_UNIT;
     label.setAttribute('y', (midY - 4) < 24 ? 24 : (midY - 4) > 236 ? 236 : (midY - 4));

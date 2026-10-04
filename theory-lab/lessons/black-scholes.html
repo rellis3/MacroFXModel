@@ -144,7 +144,7 @@
     <tr><td>\(S_t\)</td><td>The underlying's price at time \(t\) — the spot FX rate, the stock price, the index level. This is the quantity the whole model is built around.</td></tr>
     <tr><td>\(dS_t\)</td><td>The infinitesimal change in \(S_t\) over the next tiny instant of time — "how much the price moves in the next tick."</td></tr>
     <tr><td>\(\mu\)</td><td>(mu) The underlying's expected (real-world) rate of return per unit time — e.g. "8% per year." This is exactly the quantity everyone argues about when they forecast a market. Keep an eye on it: it appears here, in the assumed model of the world, but — remarkably — it is about to disappear from the pricing formula entirely.</td></tr>
-    <tr><td>\(\sigma\)</td><td>(sigma) The underlying's volatility — the standard deviation of its returns per unit time (annualized, e.g. "20% per year"). <!-- DESK:START -->This is the same conceptual quantity as the \(\sigma\) used throughout this repo's own volatility research, just expressed in continuous-time SDE units. <!-- DESK:END -->GBM assumes \(\sigma\) is <strong>constant</strong> — flat across time and across strike. That is the model's single biggest simplifying assumption, and it is false in every real options market (implied volatility famously varies by strike — the "volatility smile/skew" — and by time). It's flagged here because the next lesson's jump-diffusion extension exists specifically to relax it.</td></tr>
+    <tr><td>\(\sigma\)</td><td>(sigma) The underlying's volatility — the standard deviation of its returns per unit time (annualized, e.g. "20% per year"). <!-- DESK:START -->This is the same conceptual quantity as the \(\sigma\) used throughout this repo's own volatility research, just expressed in continuous-time SDE units. <!-- DESK:END -->GBM assumes \(\sigma\) is <strong>constant</strong> — flat across time and across strike. That is the model's single biggest simplifying assumption, and it is false in every real options market (implied volatility famously varies by strike — the "volatility smile/skew" — and by time). It's flagged here because the smile is what later models try to explain; the next lesson's jump-diffusion extension keeps \(\sigma\) constant but adds jumps, which is one way to bend the smile.</td></tr>
     <tr><td>\(dW_t\)</td><td>The infinitesimal increment of a Wiener process (standard Brownian motion) — pure random-walk noise: mean zero, variance \(dt\), no memory of the past, normally distributed. Same object introduced in the Ornstein-Uhlenbeck lesson.</td></tr>
     <tr><td>\(\mu S_t\,dt\)</td><td>The <strong>drift term</strong>: the predictable part of the next instant's price change — the expected return rate times the current price times the length of the instant. Proportional to \(S_t\) itself, which is what makes this "geometric" rather than "arithmetic" Brownian motion — a $1 move means something different at $10 than at $1000, exactly like compounding percentage returns.</td></tr>
     <tr><td>\(\sigma S_t\,dW_t\)</td><td>The <strong>diffusion term</strong>: the random shock, also scaled by the current price, so volatility is expressed as a <em>percentage</em> of price rather than a fixed dollar amount.</td></tr>
@@ -155,7 +155,7 @@
     <em>log</em> of the price — is normally distributed. Equivalently,
     \(S_t\) itself is <strong>lognormally</strong> distributed: it can never
     go negative (a crucial, realistic property for a stock or FX price),
-    its percentage returns are normally distributed, and large percentage
+    its log returns are normally distributed, and large percentage
     moves compound multiplicatively rather than adding linearly. This is the
     concrete content of "GBM": constant percentage volatility, a
     log-normal price distribution, no jumps, no fat tails beyond what a
@@ -206,7 +206,7 @@
   <div class="tl-eq-break">
     <div class="tl-eq-chip c1"><code>∂V/∂S</code><span>delta — named directly in this PDE's terms</span></div>
     <div class="tl-eq-chip c2"><code>∂²V/∂S²</code><span>gamma — the curvature term</span></div>
-    <div class="tl-eq-chip c4"><code>∂V/∂t</code><span>(minus) theta — time decay</span></div>
+    <div class="tl-eq-chip c4"><code>∂V/∂t</code><span>theta — time decay</span></div>
   </div>
   <div class="tl-solid blue">
     <strong>The single most important fact:</strong> \(\mu\), the underlying's
@@ -220,7 +220,7 @@
     "no free lunch given continuous rebalancing," and because its terms are
     literally named after the Greeks introduced below (\(\partial V/\partial
     S\) is delta, \(\partial^2 V/\partial S^2\) is gamma, \(\partial V/
-    \partial t\) is (minus) theta). The single most important fact to take
+    \partial t\) is theta). The single most important fact to take
     from it: <strong>\(\mu\), the underlying's real-world expected return,
     does not appear anywhere in this equation.</strong> It canceled out
     during the hedging step, because the replicating portfolio's return
@@ -856,8 +856,8 @@
     <p>
       <strong>American vs. European exercise.</strong> The closed-form
       formula above prices a <em>European</em> option — exercisable only at
-      expiry. Most retail-traded equity and index options are
-      <em>American</em> — exercisable any time up to expiry — which can be
+      expiry. Most US single-stock and ETF options are
+      <em>American</em> — exercisable any time up to expiry (cash-settled index options such as SPX are European) — which can be
       worth more (an early-exercise premium exists, particularly for puts, or
       for calls on dividend-paying stocks around ex-dividend dates) and
       generally has no simple closed-form solution; American options are
@@ -874,7 +874,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Only volatility σ matters — the expected return μ cancels out entirely.</strong> Pricing an option requires an estimate of how much the underlying moves, never a directional forecast of where it's going.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Greeks are just this formula's partial derivatives.</strong> Delta = N(d₁) is the hedge ratio, gamma is how fast that hedge goes stale, theta is time decay, vega is sensitivity to σ.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Gamma is why dealer hedging creates market structure.</strong> Rebalancing a short-gamma book means buying into rallies and selling into declines — a mechanical, price-agnostic flow, not a directional bet.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Constant volatility is the model's biggest simplification — and it's false in every real market.</strong> The volatility smile/skew is direct evidence, which is exactly why the next lesson's jump-diffusion extension exists.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Constant volatility is the model's biggest simplification — and it's false in every real market.</strong> The volatility smile/skew is direct evidence; the next lesson's jump-diffusion extension (jumps on top of a constant \(\sigma\)) is one way to reproduce it.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>N(d₂) is a risk-neutral probability, not a real-world one.</strong> It's computed as if every asset drifted at the risk-free rate — conflating the two is a classic source of "mispriced option" claims that are really just this confusion.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Premium = intrinsic + extrinsic.</strong> Intrinsic is what exercising now is worth (never negative); extrinsic is time value — the part σ and T set, theta eats, and expiry erases.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Delta is not the probability of finishing in the money.</strong> Δ = N(d₁) always exceeds the risk-neutral P(ITM) = N(d₂), by a gap that grows with σ√T — at σ=40%, T=1y, ATM: delta 0.60 vs. probability 0.44.</span></div>

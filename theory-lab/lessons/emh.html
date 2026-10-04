@@ -176,7 +176,7 @@
   <p>
   EMH itself is a qualitative claim about information, but it has a precise, testable mathematical
   consequence: if a market is efficient, prices should behave like a <strong>random walk</strong>
-  (or more generally, a <strong>martingale</strong>). Let's build that up term by term.
+  (or more generally, a <strong>martingale</strong>) — strictly, after allowing for whatever normal expected return the pricing model permits, which is where the joint-hypothesis problem below comes from. Let's build that up term by term.
   </p>
 
   <p>
@@ -196,15 +196,15 @@
       <tr><td>\(P_{t-1}\)</td><td>The price one period earlier — e.g. yesterday's close.</td></tr>
       <tr><td>\(\epsilon_t\)</td><td>The price <em>innovation</em> (or "shock") realized during period \(t\) — the part of today's price change that was genuinely unknown as of yesterday's close. Read the Greek letter as "epsilon."</td></tr>
       <tr><td>\(E[\cdot]\)</td><td>The <em>expectation</em> ("mean" or "average") operator. \(E[X]\) means "the average value of \(X\), weighted by how likely each outcome is." It's a prediction made before you know the outcome.</td></tr>
-      <tr><td>\(E[\epsilon_t]=0\)</td><td>The average value of the shock, before it happens, is zero — you have no way to predict its <em>sign</em> or <em>size</em> in advance using currently available information.</td></tr>
+      <tr><td>\(E[\epsilon_t]=0\)</td><td>The average value of the shock, before it happens, is zero — you have no way to predict its <em>direction</em> in advance using currently available information (its typical size, the volatility, can still be forecast).</td></tr>
       <tr><td>\(\mathcal{F}_{t-1}\)</td><td>The <em>information set</em> — everything that is knowable and public as of time \(t-1\): past prices, news, filings, macro data, order flow, all of it. Read as "the filtration" or just "everything known so far."</td></tr>
     </table>
   </div>
 
   <p>
   Read the equation in words: tomorrow's price equals today's price, plus a surprise. That's it. The
-  entire content of the model is in what we assume about \(\epsilon_t\). Specifically, EMH's weak
-  form requires:
+  entire content of the model is in what we assume about \(\epsilon_t\). Specifically, EMH requires
+  (the weak form takes \(\mathcal{F}_{t-1}\) to be past prices only; the semi-strong form, all public information):
   </p>
 
   <div class="tl-math">\[ E[\epsilon_t \mid \mathcal{F}_{t-1}] = 0 \]</div>
@@ -296,7 +296,7 @@
     <div class="tl-icard">
       <div class="tl-icon-badge purple">🔒</div>
       <h4>Strong form</h4>
-      <p>Current prices reflect <em>all</em> information, public <em>and private</em>. If true, even corporate insiders trading on undisclosed information could not systematically outperform. Essentially never taken as literally true — well-documented profitable insider trading shows private information has value the market hasn't priced in. Included mainly as the logical extreme, and the reason insider-trading law exists at all.</p>
+      <p>Current prices reflect <em>all</em> information, public <em>and private</em>. If true, even corporate insiders trading on undisclosed information could not systematically outperform. Essentially never taken as literally true — well-documented profitable insider trading shows private information has value the market hasn't priced in. Included mainly as the logical extreme; that private information pays is exactly what insider-trading law targets.</p>
     </div>
   </div>
 
@@ -480,7 +480,7 @@
   McLean–Pontiff evidence is a dial. Publication roughly halved the returns rather than erasing them, over years rather than
   instantly, and what remained sat where arbitrage is costly: the limits-to-arbitrage and Adaptive Markets reading from the
   pitfalls box below, not the frictionless one. It is also the joint-hypothesis problem in the wild: the 26% that vanished
-  <em>before</em> publication was never an inefficiency at all, only the original search's luck.
+  <em>before</em> publication is, at most, the original search's luck rather than an inefficiency (McLean and Pontiff treat it as an upper bound on data mining).
   </p>
 
   <!-- DESK:START -->

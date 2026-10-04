@@ -77,9 +77,9 @@
     <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">One shortcut undoes all five stages</h2>
-      <p class="sl-sub">The dashed red loop is the failure mode: a disappointing result at Stage 3 or 4 quietly sends you back to try a new variant on the same data.</p>
+      <p class="sl-sub">The dashed red loop is the failure mode: a disappointing verdict quietly sends you back to try a new variant on the same data.</p>
       <div class="sl-svgwrap">
-        <svg viewBox="0 0 640 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flow diagram of five sequential boxes: Hypothesis, Minimal test, Add complexity, Out-of-sample, and Pre-registered verdict, connected by arrows in order. A dashed red arrow loops from Add complexity back to Hypothesis, labeled: skipping the order reintroduces curve-fitting.">
+        <svg viewBox="0 0 640 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flow diagram of five sequential boxes: Hypothesis, Minimal test, Add complexity, Out-of-sample, and Pre-registered verdict, connected by arrows in order. A dashed red arrow loops from the Pre-registered verdict back to Hypothesis, labeled: a disappointing verdict sends you back to try a new hypothesis on the same data.">
           <defs>
             <marker id="rp2-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
               <path d="M 0 0 L 10 5 L 0 10 z" style="fill:var(--text3)"/>
@@ -122,9 +122,9 @@
           <text x="457" y="158" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">"worked" / "didn't work" defined before Stage 4 ran</text>
           <text x="457" y="171" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">— no re-narrating a null into a maybe</text>
 
-          <path d="M 322,150 C 250,220 110,220 74,148 C 56,110 60,95 72,82" style="fill:none;stroke:var(--red)" stroke-width="1.6" stroke-dasharray="4,3" marker-end="url(#rp2-arrow-red)"/>
+          <path d="M 290,150 C 250,220 110,220 74,148 C 56,110 60,95 72,82" style="fill:none;stroke:var(--red)" stroke-width="1.6" stroke-dasharray="4,3" marker-end="url(#rp2-arrow-red)"/>
           <rect x="16" y="200" width="440" height="54" rx="6" style="fill:var(--red);opacity:.12;stroke:var(--red);stroke-dasharray:3,3"/>
-          <text x="236" y="220" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:700">the shortcut: a disappointing Stage 3/4 result quietly sends you</text>
+          <text x="236" y="220" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:700">the shortcut: a disappointing verdict quietly sends you</text>
           <text x="236" y="236" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:700">back to try a new "hypothesis" on the same dataset —</text>
           <text x="236" y="250" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:700">that's an undisclosed search, not a second attempt</text>
 
@@ -216,8 +216,8 @@
           <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Curve of the probability that at least one of many parameter variations looks good by pure chance, rising from near zero toward one as the number of variations tried increases, with a marker dot showing the current slider position">
             <line x1="55" y1="20" x2="55" y2="180" style="stroke:var(--border2);stroke-width:1"/>
             <line x1="55" y1="180" x2="615" y2="180" style="stroke:var(--border2);stroke-width:1"/>
-            <line x1="55" y1="152" x2="615" y2="152" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
-            <text x="620" y="156" style="fill:var(--text3);font-size:10px">5%</text>
+            <line x1="55" y1="172" x2="615" y2="172" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="620" y="176" style="fill:var(--text3);font-size:10px">5%</text>
             <path id="rp-curve" d="" style="fill:none;stroke:var(--purple);stroke-width:2.5"/>
             <circle id="rp-dot" cx="55" cy="180" r="6" style="fill:var(--amber);stroke:var(--bg);stroke-width:2"/>
             <text x="55" y="196" style="fill:var(--text3);font-size:10px">N=1</text>

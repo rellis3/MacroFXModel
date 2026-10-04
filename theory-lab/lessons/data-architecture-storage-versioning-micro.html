@@ -172,11 +172,11 @@
         </div>
         <div class="sl-panel" id="diag-2">
           <div class="sl-row"><div class="sl-box">Strategy v1 (unchanged)</div><div class="sl-arrow">×</div><div class="sl-box amber">Data snapshot 2026-Q2</div><div class="sl-arrow">=</div><div class="sl-box amber">Sharpe 0.3</div></div>
-          <div class="sl-verdict">Only the data snapshot changed. Performance collapsed — and tracing lineage shows a cleaning threshold was silently loosened in this pipeline run. <strong>The strategy didn't get worse; the data feeding it did.</strong> This is a pipeline bug, not decay.</div>
+          <div class="sl-verdict">The strategy code is unchanged; the data snapshot changed. Performance collapsed — and tracing lineage shows a cleaning threshold was silently loosened in this pipeline run. But the date range changed too, so this run alone can't say how much is the bug and how much is the market. <strong>Fix the pipeline and re-run before blaming either.</strong></div>
         </div>
         <div class="sl-panel" id="diag-3">
           <div class="sl-row"><div class="sl-box">Strategy v1 (unchanged)</div><div class="sl-arrow">×</div><div class="sl-box">Data snapshot 2026-Q2 (bug fixed, re-verified)</div><div class="sl-arrow">=</div><div class="sl-box amber">Sharpe 0.4</div></div>
-          <div class="sl-verdict">Same strategy, same clean and re-verified pipeline, just a later date range. Performance is <strong>still poor</strong>. With the pipeline ruled out by lineage, this decline is genuine — the market structure the strategy exploited has changed. That's real alpha decay.</div>
+          <div class="sl-verdict">Same strategy, same later date range, now on a clean, re-verified pipeline. Performance is <strong>still poor</strong> (0.4 against 0.3 with the bug), so the bug cost little. With the pipeline ruled out by lineage, most of this decline is genuine — the market structure the strategy exploited has changed. That's real alpha decay.</div>
         </div>
         <div class="sl-note">Without versioned lineage, none of these three re-runs is even possible — "the data hasn't changed since I ran this" is a claim you can only test if an old vintage still exists to test it against.</div>
       </div>
@@ -211,7 +211,7 @@
           <div>Cleaning code: <b id="lineage-cleaning">v3.2.1</b></div>
           <div>Adjustment code: <b id="lineage-adjustment">v1.3.0</b></div>
         </div>
-        <div class="sl-note">Notice the adjustment code changes again between 2025 H2 and 2026 H1, while the data snapshot doesn't. Any comparison spanning that boundary needs lineage to check whether that change — not the market — explains a difference.</div>
+        <div class="sl-note">Notice the adjustment code changes between 2024 H2–25 H1 and 2025 H2, while the data snapshot doesn't. Any comparison spanning that boundary needs lineage to check whether that change — not the market — explains a difference.</div>
       </div>
     </section>
 

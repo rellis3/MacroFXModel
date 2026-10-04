@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gamma Exposure &amp; Dealer Hedging Flows — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -33,10 +34,10 @@
     <ul>
       <li>Dealer gamma exposure (GEX) at a strike is \(\Gamma \times \text{OI} \times 100 \times S^2 \times 0.01\) — gamma converted from "delta change per $1 move" into "dollar delta change per 1% move," scaled up by the contract multiplier and the open interest sitting at that strike.</li>
       <li>A call and a put at the same strike and expiry have <em>identical</em> gamma (a direct consequence of put-call parity) — so it's the <strong>dealer's own long/short sign</strong>, not whether the option is a call or a put, that decides whether hedging flow amplifies or dampens a price move.</li>
-      <li>The standard simplifying assumption — dealers are net short most of the OI they wrote to a public that's net long options — makes dealer GEX negative at most strikes; that sign is an assumption baked into the convention, not something directly observable from open interest alone.</li>
+      <li>The standard convention in options-flow analytics — customers net <em>buy</em> puts (protection) and net <em>sell</em> calls (covered-call overwriting), so dealers are short the put OI and long the call OI — makes dealer GEX negative at put-heavy strikes and positive at call-heavy ones (a cruder simplification treats dealers as short everything); that sign is an assumption baked into the convention, not something directly observable from open interest alone.</li>
       <li>Short dealer gamma means hedging flow has the <strong>same</strong> sign as the price move (buy as it rises, sell as it falls) — destabilizing. Long dealer gamma means hedging flow has the <strong>opposite</strong> sign — stabilizing, mean-reverting.</li>
       <li>The worked example shows ATM gamma roughly doubling from 30 to 7 days to expiry, then more than doubling again into the final day — the numeric substance behind "gamma effects intensify near expiry."</li>
-      <li>A "wall" isn't sellers pushing back — it's the point where the hedging <em>demand</em> that was fuelling a move disappears because the hedge is already complete. When a wall breaks instead, that same mechanism reverses into a squeeze.</li>
+      <li>A call "wall" holds when dealers are long gamma there (the standard convention: customers overwrote the calls), because their hedging sells into the rally hardest right around the strike. Where customers <em>bought</em> the calls and dealers are short them, the same strike's hedging buys hardest around the strike instead — fuel for a squeeze.</li>
       <li><strong>Real-world episode:</strong> on 5 February 2018 inverse-VIX products, short gamma by their own daily rebalancing rule, had to buy VIX futures into a VIX jump of about 115%. XIV lost more than 90% and was terminated.<!-- DESK:START --> Tested here (<code>gex-range</code>, validated on the Nasdaq only): short-gamma days are only ordinary (~1.02× a Brownian baseline), long-gamma days are quiet (~0.85×). Range only, no direction, nothing on FX.<!-- DESK:END --></li>
     </ul>
   </div>
@@ -74,37 +75,33 @@
   <div class="tl-box intuition">
     <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Plain-English intuition</div>
-    <h3>Walls don't push back — they run out of fuel</h3>
+    <h3>Whether a wall pushes back depends on who owns the options</h3>
     <p>
-      The single most counterintuitive fact in this whole subject: a "wall"
-      is not a wall of sellers lying in wait, ready to slam price back down
-      the moment it arrives. If that were true, you'd expect to see visible
-      selling pressure building as price approaches the level. What actually
-      happens is closer to the opposite — dealer hedging <em>fuels</em> the
-      move on the way in, and then that fuel simply runs out.
+      A "wall" is a strike with an outsized concentration of open interest.
+      Whether dealer hedging there leans <em>against</em> a move or
+      <em>feeds</em> it depends on one thing open interest can't show you:
+      which side of those contracts the dealers are on.
     </p>
     <p>
       Picture a large concentration of call open interest sitting above the
-      current price. As price grinds up toward that strike, the calls'
-      delta rises — they behave more and more like owning the stock outright
-      — and the dealers who sold those calls have to keep buying the
-      underlying to stay hedged. That buying itself adds upward pressure,
-      which pushes price further toward the strike, which raises delta
-      further, which forces more buying. It's a self-reinforcing loop, and
-      from the outside it looks exactly like a rally with real conviction
-      behind it.
+      current price. The standard convention in options-flow analytics is
+      that customers mostly <em>sold</em> those calls (covered-call
+      overwriting) and dealers bought them, so dealers are long gamma there.
+      As price grinds up toward the strike, the calls' delta rises, the
+      dealers' position gets longer, and to stay hedged they sell the
+      underlying — selling that is heaviest right around the strike, where
+      gamma peaks. The hedging leans against the rally, and price tends to
+      stall or pin near the strike: the classic call wall.
     </p>
     <p style="margin-bottom:0">
-      Then price actually reaches the strike. The calls are now deep enough
-      in the money that their delta has saturated near 1.0 — they behave
-      almost exactly like the stock itself, and there's no more "coming due"
-      delta left to hedge. The dealer's hedge is <em>complete</em>. The
-      buying that was propping up the rally simply stops — not because
-      anyone stepped in to sell, but because the mechanical demand that had
-      been pushing price higher has nothing left to do. Price stalls with no
-      obvious trigger, which is exactly why it's so often misread as
-      "sellers defending a level" when the real mechanism is an absence of
-      further buying, not the appearance of selling.
+      Now flip who owns the calls. If customers <em>bought</em> them in a
+      speculative wave, dealers are short gamma, and the same rise forces
+      them to <em>buy</em> the underlying, again hardest around the strike
+      (where delta is only about 0.5 and still climbing). That buying feeds
+      the rally and fades only once the calls are deep in the money, with
+      delta saturated near 1.0. The same strike that walls off a move under
+      one ownership pattern fuels a squeeze under the other — and the raw
+      open-interest number looks identical in both cases.
     </p>
   </div>
 
@@ -223,22 +220,22 @@
     <em>wrote</em> (sold) an option to a customer holds the opposite
     position — short the option — and a short option position has
     <strong>negative</strong> gamma, since shorting simply flips the sign of
-    every Greek. The standard simplifying assumption used across
-    options-flow analytics is that dealers exist primarily to accommodate
-    customer demand, and in aggregate, retail and institutional customers
-    are net <em>buyers</em> of both calls and puts — buying calls for
-    upside speculation, buying puts for downside protection or speculation.
-    Under that assumption, dealers are net <em>sellers</em> (writers) at
-    most strikes, which makes dealer gamma negative for both the call side
-    and the put side of the book — not because calls and puts behave
+    every Greek. The standard convention used across options-flow
+    analytics is that dealers exist primarily to accommodate customer
+    demand, and that customers in aggregate are net <em>buyers</em> of puts
+    (downside protection) but net <em>sellers</em> of calls (covered-call
+    overwriting and yield products). Under that convention dealers are
+    short the put open interest (negative gamma) and long the call open
+    interest (positive gamma) — not because calls and puts behave
     differently (they don't; their gamma is identical), but because the
-    dealer is short both.
+    dealer is on opposite sides of the two. A cruder simplification, also
+    seen, treats dealers as net short both.
   </p>
   <div class="tl-solid amber">
     <strong>State this plainly:</strong> open interest tells you how many
     contracts are outstanding at a strike. It does <em>not</em> tell you who
-    holds the long side and who holds the short side. "Dealers are net
-    short this strike" is a standard, usually-reasonable, but genuinely
+    holds the long side and who holds the short side. "Dealers own the
+    calls and wrote the puts" is a standard, usually-reasonable, but genuinely
     <em>unverifiable</em> assumption layered on top of the raw OI number —
     not a fact read directly off the data. Every GEX estimate inherits this
     assumption, and different data providers who assume differently will
@@ -248,33 +245,36 @@
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
-    <p>Knowing how many raincoats were sold in a town tells you nothing about who's wearing them versus who's giving them away as gifts. Open interest is the same: it counts contracts outstanding, not who's on the buying end and who's on the selling end. "Dealers are net short" is everyone's best guess about who's on which side, not something you can actually read off the raw count.</p>
+    <p>Knowing how many raincoats were sold in a town tells you nothing about who's wearing them versus who's giving them away as gifts. Open interest is the same: it counts contracts outstanding, not who's on the buying end and who's on the selling end. "Dealers own the calls and wrote the puts" is everyone's best guess about who's on which side, not something you can actually read off the raw count.</p>
   </div>
 
   <p>
     Writing the sign explicitly, let \(s_k \in \{-1, +1\}\) denote the
-    assumed sign of the dealer's net position at strike \(k\) (\(-1\) for
-    the standard "dealer net short" case, \(+1\) for the less common case
-    where dealers are assumed net long, e.g. specific strikes where a
-    dealer's own hedging created a long position). The signed dealer GEX at
+    assumed sign of the dealer's net position at strike \(k\) (\(-1\)
+    where the dealer is assumed short — put OI under the standard convention
+    — and \(+1\) where assumed long — call OI under the standard
+    convention). The signed dealer GEX at
     strike \(k\) is:
   </p>
   <div class="tl-math">
     \[ \text{DealerGEX}_k = s_k \times \Gamma_k \times \text{OI}_k \times 100 \times S^2 \times 0.01 \]
   </div>
   <div class="tl-eq-break">
-    <div class="tl-eq-chip c4"><code>sₖ = −1</code><span>the typical case — dealer wrote the options, is net short</span></div>
-    <div class="tl-eq-chip c2"><code>sₖ = +1</code><span>the atypical case — dealer ended up net long that strike</span></div>
+    <div class="tl-eq-chip c4"><code>sₖ = −1</code><span>put OI (standard convention) — customers bought protection, dealer is short</span></div>
+    <div class="tl-eq-chip c2"><code>sₖ = +1</code><span>call OI (standard convention) — customers overwrote, dealer is long</span></div>
   </div>
   <p>
     A total, book-wide dealer GEX simply sums this signed quantity across
-    every strike (and both option types, since \(\Gamma_{\text{call}} =
-    \Gamma_{\text{put}}\) makes it natural to combine call and put OI at a
-    strike into one term): \(\text{TotalDealerGEX} = \sum_k
-    \text{DealerGEX}_k\). Under the standard assumption (\(s_k = -1\)
-    everywhere), this total is negative — dealers are net short gamma
-    across the board — which is the commonly cited "dealers are usually
-    short gamma" claim, restated precisely rather than asserted.
+    every strike and both option types. Since \(\Gamma_{\text{call}} =
+    \Gamma_{\text{put}}\), the standard convention nets a strike's call
+    and put OI into one term,
+    \((\text{OI}_k^{\text{call}}-\text{OI}_k^{\text{put}})\,\Gamma_k\,100\,S^2\,0.01\),
+    and \(\text{TotalDealerGEX} = \sum_k \text{DealerGEX}_k\). Its sign is
+    not fixed: put-heavy strikes (typically below spot in equity indices)
+    pull it negative, call-heavy ones pull it positive. Only under the
+    cruder "dealers short everything" simplification is it always negative,
+    which is where the often-repeated "dealers are usually short gamma"
+    line comes from.
   </p>
 
   <h3>The delta-hedging flow rate</h3>
@@ -283,8 +283,8 @@
     directly gives the <em>rate</em> at which a dealer's required hedge
     position changes as price moves, which is the real mechanical content
     behind "gamma tells you how powerful the hedging flow is." Consider the
-    open interest at one strike, all assumed held short by the dealer (the
-    standard case). Each contract's delta is \(\Delta\) (identical in
+    open interest at one strike, all assumed held short by the dealer (as
+    with put OI under the standard convention). Each contract's delta is \(\Delta\) (identical in
     magnitude for the corresponding long position, whether that's a call or
     a put), so the customers collectively hold \(\Delta \times \text{OI}
     \times 100\) shares' worth of delta, and the dealer — the opposite side
@@ -312,7 +312,8 @@
   <h3>Long vs. short gamma — deriving the regime table</h3>
   <p>
     Put the sign logic together. If the dealer is <strong>short</strong> the
-    OI at a strike (the standard case, \(s_k=-1\)), the dealer's own gamma
+    OI at a strike (e.g. put OI under the standard convention,
+    \(s_k=-1\)), the dealer's own gamma
     is negative, and — as just derived — the dealer must <em>buy</em> as
     price rises and (by the mirror-image argument, selling as delta falls)
     <em>sell</em> as price falls. That hedging flow has the <strong>same
@@ -322,7 +323,8 @@
     trend-amplifying flow.
   </p>
   <p>
-    If the dealer is instead <strong>long</strong> that OI (\(s_k=+1\)), the
+    If the dealer is instead <strong>long</strong> that OI (e.g. call OI
+    under the standard convention, \(s_k=+1\)), the
     dealer's own gamma is positive, and the required hedge trade flips: as
     price rises the dealer's own delta grows on its own, so the dealer needs
     to <em>sell</em> stock to stay flat; as price falls, the dealer needs to
@@ -338,12 +340,12 @@
 
   <div class="tl-compare">
     <div class="tl-compare-card amber">
-      <h4>Short dealer gamma (Γ_dealer &lt; 0) — the typical case</h4>
+      <h4>Short dealer gamma (Γ_dealer &lt; 0) — e.g. put-heavy strikes</h4>
       <p>Price rises → dealer buys. Price falls → dealer sells. Hedging flow has the <strong>same sign</strong> as the move.</p>
       <p style="margin-top:8px"><strong>Market effect: amplifying / destabilizing.</strong> Moves tend to accelerate once they start.</p>
     </div>
     <div class="tl-compare-card blue">
-      <h4>Long dealer gamma (Γ_dealer &gt; 0)</h4>
+      <h4>Long dealer gamma (Γ_dealer &gt; 0) — e.g. call-heavy strikes</h4>
       <p>Price rises → dealer sells. Price falls → dealer buys. Hedging flow has the <strong>opposite sign</strong> to the move.</p>
       <p style="margin-top:8px"><strong>Market effect: dampening / stabilizing.</strong> Moves tend to get faded back toward where they started.</p>
     </div>
@@ -374,7 +376,7 @@
     one closes) or every time the front-month expiry rolls. Second, it
     inherits the same unverifiable-sign problem as any single strike's
     dealer GEX: if the true (unobservable) mix of who's long and who's short
-    differs from the standard assumption, the true flip level differs from
+    differs from the standard convention, the true flip level differs from
     the estimated one too.
   </p>
 
@@ -479,35 +481,37 @@
           <p>
             Take the 1-week-to-expiry snapshot (\(\Gamma_{\text{ATM}}\approx
             0.1440\) at the strike closest to spot) and build a tiny
-            three-strike book, \(S=100\), assuming the standard case
-            everywhere (\(s_k=-1\), dealer net short). Combined call+put OI
-            per strike (valid since \(\Gamma_{\text{call}}=\Gamma_{\text{put}}\)
-            lets the two sides share one \(\Gamma\)):
+            three-strike book, \(S=100\), using the standard convention
+            (dealers long call OI, short put OI). Black-Scholes gamma at
+            7 DTE, \(\sigma=20\%\), is 0.025 at the 95 strike and 0.031 at
+            105 (and \(\Gamma_{\text{call}}=\Gamma_{\text{put}}\) lets the
+            two sides share one \(\Gamma\)):
           </p>
           <div class="tl-math">
-            <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">Strike   Γ       Combined OI   DealerGEX = −Γ·OI·100·S²·0.01
-95       0.050   4,000         −0.050×4,000×10,000  = −$2.00B
-100      0.144   9,800         −0.144×9,800×10,000  = −$14.11B
-105      0.040   6,000         −0.040×6,000×10,000  = −$2.40B
-                                Total Dealer GEX     ≈ −$18.51B</pre>
+            <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">Strike   Γ       Call OI   Put OI   DealerGEX = (Call−Put)·Γ·100·S²·0.01
+95       0.025     800     3,200    −2,400×0.025×10,000  = −$0.60M
+100      0.144   4,400     5,400    −1,000×0.144×10,000  = −$1.44M
+105      0.031   4,800     1,200    +3,600×0.031×10,000  = +$1.12M
+                                    Total Dealer GEX     ≈ −$0.92M</pre>
           </div>
           <p style="margin-bottom:0">
             (With \(S=100\), the factor \(100\times S^2\times0.01 =
             100\times10{,}000\times0.01 = 10{,}000\) simplifies the
-            arithmetic — real GEX figures for a broad index really do run
-            into the billions, which is why they're normally quoted that
-            way, not as a small per-share number.) Notice the 100-strike
-            dominates the total even though its OI (9,800) isn't the
-            largest single-side figure in the book — it wins because gamma
-            itself is nearly 3× higher there than at 95 or 105, which is
+            arithmetic. This toy book lands in the millions; real GEX
+            figures for a broad index run into the billions because OI there
+            is in the hundreds of thousands of contracts per strike.) Notice
+            the 100-strike carries the largest exposure even though its net
+            OI (−1,000) is the smallest of the three — it wins because gamma
+            itself is about 4.6–5.8× higher there than at 95 or 105, which is
             exactly the mathematical reason near-the-money open interest
             matters disproportionately more than far-dated or far-OTM open
-            interest of similar size. All three strikes land negative here
-            because this toy example applies the standard "dealer net
-            short everywhere" assumption uniformly — a real gamma-flip
-            crossing needs either a wider strike ladder, a mix of assumed
-            signs across strikes, or spot moving far enough that some
-            strikes' contributions decay while others' grow.
+            interest of similar size. The signs split: the put-heavy 95 and
+            100 strikes are negative, the call-heavy 105 strike positive, so
+            this small book already has a gamma flip between 100 and 105.
+            Under the cruder "dealers short everything" simplification, the
+            same OI (4,000, 9,800 and 6,000 combined) would give
+            \(-(100+1{,}411.2+186)\times10{,}000 \approx -\$16.97\text{M}\),
+            every strike negative — a very different read of the same chain.
           </p>
         </div>
       </div>
@@ -556,33 +560,50 @@
       quiet session. The nearest-expiry options chain shows a large call
       open-interest concentration at the 4,500 strike — several multiples
       the size of neighboring strikes, the kind of outlier that gets flagged
-      as a "call wall." Dealers are assumed net short that OI (the standard
-      case).
+      as a "call wall." Here the OI was built by customers buying calls into
+      the rally, so dealers are short it — the opposite of the standard
+      convention, and the case that turns a wall into fuel.
     </p>
     <p>
       As price grinds from 4,480 toward 4,500, those calls' delta rises
       steadily, and per the hedge-flow-rate formula above, dealers must keep
       buying futures to stay hedged — buying that itself nudges price
       higher, exactly the self-reinforcing loop from the intuition box.
-      Ordinarily this would stall right at 4,500: delta saturates near 1.0,
-      the hedge completes, buying demand evaporates, and the move loses its
-      fuel — the textbook "wall holds" outcome.
+      Had dealers owned these calls (the standard convention), their
+      hedging would sell into the rally and the move would tend to stall
+      around 4,500. Short them, the arithmetic says otherwise: at 4,500 the
+      calls' delta is only about 0.5 and gamma, the buying rate, is at its
+      peak, so the buying is strongest there and fades only once the calls
+      are deep in the money.
     </p>
     <p style="margin-bottom:0">
-      Instead, a stronger-than-expected data release hits mid-session and
+      Then a stronger-than-expected data release hits mid-session and
       price rips straight through 4,500 with real momentum. The calls that
       were sitting comfortably at-the-money are now suddenly in-the-money
       and gaining delta <em>faster</em> than the dealers' existing hedge
       accounted for — gamma near that strike was near its local peak, so
-      the delta jump per additional point of price is large. Dealers who
-      thought their hedge was nearly complete now need meaningfully more
+      the delta jump per additional point of price is large. Dealers whose
+      hedge was already lagging the move now need meaningfully more
       long exposure, immediately, and the resulting catch-up buying
       accelerates the move well past 4,500 before it finds the next level
-      of resistance. The exact same open interest that created resistance
+      of resistance. The exact same open interest that was read as resistance
       on the way up becomes the fuel for the breakout once it's breached —
       a gamma squeeze.
     </p>
   </div>
+
+
+
+
+
+
+
+
+  <!-- WB:squeeze:START -->
+  <div class="wb" data-title="A gamma squeeze, drawn step by step">
+    <script type="application/json">{"w":600,"h":520,"intro":"A stylised index-futures squeeze: the same open interest that looked like a wall becomes the fuel. Press play, or step through.","steps":[{"cap":"A big pile of 4,500 calls has built up. Here, customers bought them, so the dealers who sold them are short the calls. That is the opposite of the usual case.","do":[{"box":"cust","x":20,"y":14,"w":240,"h":66,"text":"Customers BUY\n4,500 calls","tone":"blue"},{"box":"deal","x":340,"y":14,"w":240,"h":66,"text":"Dealers SELL them\n→ short gamma","tone":"red"},{"arrow":["cust","deal"]}]},{"cap":"Price grinds up from 4,480 toward the 4,500 strike in a quiet session.","do":[{"line":"axis","points":[[30,100],[30,255],[575,255]],"tone":"chalk","width":2,"ms":500},{"line":"strike","points":[[30,190],[575,190]],"tone":"amber","width":2,"ms":600},{"note":"sk","x":470,"y":206,"text":"4,500 strike","size":18,"anchor":"middle","tone":"amber"},{"line":"p1","points":[[40,230],[90,224],[140,218],[190,210],[240,202],[270,196]],"tone":"blue","width":3.5,"ms":1400}]},{"cap":"As price rises, each short call's delta rises, from say 0.40 toward 0.50. A short-call position must be hedged with long futures equal to delta, so the dealers' hedge has to grow.","do":[{"box":"up","x":20,"y":290,"w":165,"h":66,"text":"Price rises","tone":"blue"},{"box":"dl","x":218,"y":290,"w":165,"h":66,"text":"Calls' delta","tone":"amber","sub":"0.40"},{"arrow":["up","dl"]},{"count":"dl","from":0.4,"to":0.5,"dp":2,"ms":1300}]},{"cap":"So the dealers must buy futures. On 1,000 short calls with a 100 multiplier, each 0.10 rise in delta means buying the equivalent of 10,000 more units of the index.","do":[{"box":"buy","x":415,"y":290,"w":165,"h":66,"text":"Dealers BUY\nfutures","tone":"red"},{"arrow":["dl","buy"]}]},{"cap":"That buying nudges price higher, which raises delta again and forces more buying. At the strike, delta is about 0.5 and gamma is at its peak, so this loop runs fastest right here.","do":[{"arrow":["buy","up"],"label":"their buying lifts price","tone":"red","bend":-48,"id":"loop"},{"pulse":"buy"}]},{"cap":"Then a strong data release hits mid-session, and price rips straight through 4,500.","do":[{"line":"p2","points":[[270,196],[290,186],[305,166],[325,150]],"tone":"red","width":3.5,"ms":700}]},{"cap":"The calls are now in the money and gaining delta faster than the dealers' hedge assumed. The catch-up buying accelerates the move well past the strike.","do":[{"count":"dl","from":0.5,"to":0.8,"dp":2,"ms":1200},{"line":"p3","points":[[325,150],[355,132],[385,120]],"tone":"red","width":3.5,"ms":800},{"pulse":"loop"}]},{"cap":"Once the calls are deep in the money, delta approaches 1 and gamma fades. The forced buying dies out, and price finds the next level.","do":[{"line":"p4","points":[[385,120],[430,116],[480,118],[540,114]],"tone":"chalk","width":3,"ms":1000}]},{"cap":"Contrast the usual case: if dealers had owned these calls (customers overwriting them), their hedging would sell into the rally hardest right around 4,500, and the move would tend to stall there. Same open interest, opposite flow. Who owns it decides.","do":[{"box":"std","x":20,"y":440,"w":560,"h":68,"text":"If dealers OWNED the calls (the usual case):\nthey sell into the rally → it stalls near 4,500","tone":"green","size":20}]}]}</script>
+  </div>
+  <!-- WB:squeeze:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: 5 February 2018, "Volmageddon"</h2>
@@ -775,11 +796,12 @@
     <div class="tl-answer">
       Open interest only reports how many contracts are outstanding at a
       strike — it says nothing about which counterparty (customer or
-      dealer) holds the long side versus the short side. The claim that
-      dealers are net short most strikes rests on a separate, standard but
-      unverifiable assumption: that customers, in aggregate, are net buyers
-      of both calls and puts, making dealers the net writers who absorb that
-      demand. That assumption is usually reasonable but is not something
+      dealer) holds the long side versus the short side. Any claim about
+      the dealer's side rests on a separate, standard but unverifiable
+      assumption: in the usual convention, that customers in aggregate buy
+      puts and sell (overwrite) calls, leaving dealers short the puts and
+      long the calls; in the cruder version, that customers buy both,
+      leaving dealers short everything. That assumption is usually reasonable but is not something
       directly observable in the OI data itself, which is exactly why
       different data providers can disagree about specific strikes' signs.
     </div>
@@ -838,15 +860,15 @@
     <div class="tl-answer">
       Approaching the wall, dealers (short those calls) are buying to keep
       up with rising delta, which is what pushed price toward the strike in
-      the first place. Ordinarily that buying would evaporate right at the
-      strike once delta saturates near 1.0 and the hedge is complete — the
-      "wall holds" case. But because gamma is near its local peak right
+      the first place. The "wall holds" story says that buying evaporates at the
+      strike, but delta only saturates near 1.0 well past it — at the strike
+      delta is about 0.5. And because gamma is near its local peak right
       around that strike, a strong enough move can carry price through it
       fast enough that delta jumps by more than the dealers' existing hedge
       already accounted for. Instead of the hedge completing gently, the
       dealers suddenly need <em>more</em> long exposure than they have,
       forcing urgent catch-up buying — the same mechanical demand that
-      built resistance on the way up becomes forced buying on the way
+      was read as resistance on the way up becomes forced buying on the way
       through, which is why a broken wall so often accelerates rather than
       reverses.
     </div>
@@ -1023,5 +1045,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

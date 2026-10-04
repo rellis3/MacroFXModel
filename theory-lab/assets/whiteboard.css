@@ -1,0 +1,48 @@
+/* Theory Lab — "Watch it" whiteboard player (assets/whiteboard.js). */
+.wb{margin:26px 0;border:1.5px solid var(--border2);border-radius:14px;background:var(--s1,var(--panel));overflow:hidden}
+.wb:not(.wb-ready){min-height:120px}
+.wb-head{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border)}
+.wb-badge{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:20px;padding:3px 10px;white-space:nowrap}
+.wb-title{font-weight:600;font-size:15px;color:var(--text)}
+.wb-stage{position:relative;background:#11141c;background-image:radial-gradient(rgba(255,255,255,.045) 1px,transparent 1px);background-size:22px 22px}
+.wb-stage svg{display:block;width:100%;height:auto}
+.wb-stage svg text{font-family:'Kalam','Segoe Print','Comic Sans MS',cursive;fill:currentColor}
+.wb-start{position:absolute;inset:0;margin:auto;width:max-content;height:max-content;display:flex;align-items:center;gap:10px;padding:14px 22px;border-radius:30px;border:1.5px solid var(--amber-bd);background:var(--amber-bg);color:var(--amber);font:600 15px 'DM Sans',sans-serif;cursor:pointer;min-height:48px}
+.wb-start[hidden]{display:none}
+.wb-start span{font-size:18px}
+.wb-start:hover{border-color:var(--amber)}
+.wb-cap{padding:14px 16px;min-height:3.4em;font-size:15px;line-height:1.55;color:var(--text);border-top:1px solid var(--border)}
+.wb-n{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-right:4px}
+.wb-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid var(--border);background:var(--s2,var(--panel2))}
+.wb-btn{min-width:44px;min-height:44px;border-radius:10px;border:1px solid var(--border2);background:var(--s1,var(--panel));color:var(--text);font-size:15px;cursor:pointer}
+.wb-btn:hover{border-color:var(--blue)}
+.wb-play{color:var(--amber);border-color:var(--amber-bd)}
+.wb-voice{margin-left:auto}
+.wb-voice[aria-pressed="true"]{border-color:var(--green-bd);background:var(--green-bg)}
+.wb-dots{display:flex;gap:2px;flex-wrap:wrap;align-items:center}
+.wb-dot{width:22px;height:30px;border:0;background:transparent;cursor:pointer;position:relative;padding:0}
+.wb-dot::after{content:'';position:absolute;left:6px;top:11px;width:10px;height:10px;border-radius:50%;background:var(--border2)}
+.wb-dot.on::after{background:var(--amber-bd)}
+.wb-dot.cur::after{background:var(--amber);box-shadow:0 0 0 3px var(--amber-bg)}
+.wb-transcript{padding:8px 16px 12px;border-top:1px solid var(--border);font-size:14px;color:var(--text2)}
+.wb-transcript summary{cursor:pointer;color:var(--text2);font-size:13px;padding:4px 0}
+.wb-transcript ol{margin:8px 0 0 18px;padding:0}
+.wb-transcript li{margin:4px 0}
+/* drawing */
+.wb-stroke{fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.wb-box rect{fill:rgba(255,255,255,.025)}
+.wb-arrow .wb-tip{stroke-width:2.6}
+.wb-label{font-weight:700}
+.wb-sub{font-weight:700;opacity:.92}
+.wb-alabel{font-weight:600;paint-order:stroke;stroke:#11141c;stroke-width:6px;stroke-linejoin:round}
+.wb-free{font-weight:600}
+.wb-chip-bg{fill:#11141c;stroke:currentColor;stroke-width:2}
+.wb-chip-t{font-weight:700}
+.wb-cross{stroke-width:3.5}
+.wb-dim{opacity:.32;transition:opacity .35s}
+.wb-gone{opacity:0;transition:opacity .3s}
+.wb-t-chalk{color:#e8eaf2}.wb-t-blue{color:var(--blue)}.wb-t-green{color:var(--green)}.wb-t-red{color:var(--red)}.wb-t-amber{color:var(--amber)}.wb-t-purple{color:var(--purple)}
+.wb-flash{animation:wb-flash .9s ease}
+@keyframes wb-flash{0%{filter:none}30%{filter:drop-shadow(0 0 7px currentColor) brightness(1.4)}100%{filter:none}}
+@media (prefers-reduced-motion:reduce){.wb-flash{animation:none}.wb-dim{transition:none}}
+@media (max-width:520px){.wb-cap{font-size:14px}.wb-btn{min-width:42px}.wb-voice{margin-left:0}}

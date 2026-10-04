@@ -13,7 +13,7 @@
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Foundation Mathematics / Complex Numbers</div>
   <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
-  <div class="tl-kicker">Foundation Mathematics · Lesson 3 of 6</div>
+  <div class="tl-kicker">Foundation Mathematics · Lesson 3 of 5</div>
   <h1 class="tl-title">Complex Numbers</h1>
   <p class="tl-dek">\(i=\sqrt{-1}\), the complex plane, and Euler's formula — the number system that quietly powers Fourier analysis and characteristic-function option pricing later in this curriculum.</p>
   <div class="tl-meta">
@@ -258,8 +258,8 @@
       lesson (Deeper Foundations), but the shape of the argument is worth previewing now. \(e^x\),
       \(\cos\theta\), and \(\sin\theta\) can each be written as an infinite sum
       of powers of their input (a <strong>Taylor series</strong> — a way of
-      building any sufficiently smooth function out of nothing but additions,
-      multiplications, and powers):
+      building an analytic function, such as \(e^x\), \(\sin\) or \(\cos\),
+      out of nothing but additions, multiplications, and powers):
     </p>
     <div class="tl-math">
       \[ e^x = 1 + x + \frac{x^2}{2!} + \frac{x^3}{3!} + \frac{x^4}{4!} + \cdots \]
@@ -334,12 +334,12 @@
       <text x="452" y="205" text-anchor="end" style="fill:var(--text3);font-size:11px">Re</text>
       <text x="260" y="30" text-anchor="start" style="fill:var(--text3);font-size:11px">Im</text>
       <circle cx="250" cy="190" r="120" style="fill:none;stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
-      <line id="cn-modulus-line" x1="250" y1="190" x2="350" y2="190" style="stroke:var(--blue);stroke-width:2"/>
-      <line id="cn-real-line" x1="250" y1="190" x2="350" y2="190" style="stroke:var(--purple);stroke-width:2;stroke-dasharray:4,3"/>
-      <line id="cn-imag-line" x1="350" y1="190" x2="350" y2="190" style="stroke:var(--amber);stroke-width:2;stroke-dasharray:4,3"/>
+      <line id="cn-modulus-line" x1="250" y1="190" x2="370" y2="190" style="stroke:var(--blue);stroke-width:2"/>
+      <line id="cn-real-line" x1="250" y1="190" x2="370" y2="190" style="stroke:var(--purple);stroke-width:2;stroke-dasharray:4,3"/>
+      <line id="cn-imag-line" x1="370" y1="190" x2="370" y2="190" style="stroke:var(--amber);stroke-width:2;stroke-dasharray:4,3"/>
       <path id="cn-arc" style="fill:none;stroke:var(--green);stroke-width:2" d="M 285 190 A 35 35 0 0 0 285 190"/>
-      <circle id="cn-point" cx="350" cy="190" r="6" style="fill:var(--blue);stroke:var(--s1);stroke-width:1.5"/>
-      <text id="cn-label" x="358" y="180" text-anchor="start" style="fill:var(--text);font-size:12px;font-weight:600">z = 100 + 0i</text>
+      <circle id="cn-point" cx="370" cy="190" r="6" style="fill:var(--blue);stroke:var(--s1);stroke-width:1.5"/>
+      <text id="cn-label" x="378" y="180" text-anchor="start" style="fill:var(--text);font-size:12px;font-weight:600">z = 1.20 + 0.00i</text>
     </svg>
     <div class="tl-controls">
       <div class="tl-control">
@@ -569,7 +569,7 @@
   <ul class="tl-refs">
     <li>Paul J. Nahin, <em>An Imaginary Tale: The Story of \(\sqrt{-1}\)</em>, Princeton University Press, 1998 — a well-regarded, historically grounded account of how complex numbers came to be accepted, aimed at readers who want the "why" behind the notation, not just the mechanics.</li>
     <li>Tristan Needham, <em>Visual Complex Analysis</em>, Oxford University Press, 1997 — builds complex numbers and Euler's formula geometrically, with an emphasis on seeing rotation and the complex plane rather than only manipulating symbols; widely cited as the standard "intuition-first" complex analysis reference.</li>
-    <li>Richard Feynman, <em>The Feynman Lectures on Physics</em>, Vol. I, Chapter 22 ("Algebra"), Caltech, 1964 — Feynman's own well-known walkthrough of Euler's formula and identity, praised for its plain-language motivation of exactly the Taylor-series argument previewed on this page.</li>
+    <li>Richard Feynman, <em>The Feynman Lectures on Physics</em>, Vol. I, Chapter 22 ("Algebra"), Addison-Wesley, 1963 — Feynman's own well-known walkthrough of Euler's formula and identity, praised for its plain-language motivation of exactly the Taylor-series argument previewed on this page.</li>
   </ul>
   </details>
 
@@ -592,11 +592,11 @@
   var polarVal = document.getElementById('cn-polar-val');
   if (!slider) return;
 
-  var CX = 250, CY = 190, R = 100, ARC_R = 35;
+  var CX = 250, CY = 190, R = 120, ARC_R = 35; // 100px per unit, so |z| = 1.2 sits on the r=120 circle
 
   function update(){
-    var thetaDeg = parseInt(slider.value, 10) / 10;
-    var theta = thetaDeg * Math.PI / 180;
+    var theta = parseInt(slider.value, 10) / 100; // slider 0..628 = 0..2π radians
+    var thetaDeg = theta * 180 / Math.PI;
     var modulus = 1.2; // fixed illustrative modulus
 
     thetaVal.textContent = 'θ = ' + theta.toFixed(2) + ' rad (' + thetaDeg.toFixed(0) + '°)';

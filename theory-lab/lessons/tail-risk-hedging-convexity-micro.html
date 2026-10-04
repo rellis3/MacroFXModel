@@ -173,13 +173,13 @@
     <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">How rare does the crash need to be?</h2>
-      <p class="sl-sub">Given an ongoing hedge cost and what it pays out in a crash, how often does a crash need to happen for the hedge to break even on average?</p>
+      <p class="sl-sub">Given an ongoing hedge cost and what it pays out in a crash, how often does a crash need to happen for the hedge to break even on average? The premium is paid every year, crash years included, and the payout is gross: received on top of that year's premium.</p>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it — change either input, live</div>
         <div class="sl-calc-row">
           <div class="sl-calc-field"><label>Hedge cost (% of notional, per year)</label><input type="number" class="sl-input" id="th-cost" value="1.5" step="0.1" min="0"></div>
           <div class="sl-calc-op">×</div>
-          <div class="sl-calc-field"><label>Crash payout multiple (× that year's cost)</label><input type="number" class="sl-input" id="th-mult" value="25" step="1" min="0"></div>
+          <div class="sl-calc-field"><label>Crash payout multiple (gross, × that year's cost)</label><input type="number" class="sl-input" id="th-mult" value="25" step="1" min="0"></div>
           <div class="sl-calc-op">→</div>
           <div class="sl-calc-result">
             <div class="sl-calc-result-label">Breakeven crash probability / year</div>
@@ -188,7 +188,7 @@
         </div>
         <div class="sl-calc-steps">
           <div>Implied payout in the crash year: cost × multiple = <b id="th-payout">37.50%</b></div>
-          <div>Breakeven probability: 1 ÷ multiple = <b id="th-prob2">4.00%</b></div>
+          <div>Breakeven probability: 1 ÷ multiple = <b id="th-prob2">4.00%</b> (if the multiple were quoted net of that year's premium, it would be 1 ÷ (multiple + 1))</div>
           <div>Equivalent to roughly: <b id="th-years">1 crash every 25.0 years</b></div>
         </div>
         <div class="sl-note" id="th-note"></div>
@@ -233,7 +233,7 @@
       <h2 class="sl-h2">Ways this gets misapplied</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Judging the hedge by its calm-period Sharpe</h4><p>A hedge designed to lose money most of the time will, almost by definition, show a poor standalone Sharpe over any sample that hasn't included the crash it exists for. That's the intended cost, not a failure.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">✂</div><div><h4>Cutting the budget after a long calm stretch</h4><p>The single most common failure mode — abandoning the hedge exactly because several quiet years made it look wasted, which is the point in the cycle it's statistically closer to being needed, though never predictably timed.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✂</div><div><h4>Cutting the budget after a long calm stretch</h4><p>The single most common failure mode — abandoning the hedge exactly because several quiet years made it look wasted, even though calm years don't make the next crash any less likely, and its timing is never predictable.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">≠</div><div><h4>Confusing "short vol" with "bad"</h4><p>Short-convexity strategies aren't inherently wrong — many are run responsibly with proper sizing and capital buffers. The point is understanding and sizing the true risk honestly, not discovering it for the first time in the one quarter it matters.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">💸</div><div><h4>Comparing hedge cost to a normal-distribution "fair value"</h4><p>The skew makes far-OTM puts look overpriced against a Black-Scholes-normal benchmark by construction — the market is pricing fatter tails than normal. The honest comparison is against the real, fat-tailed distribution, not a normal one.</p></div></div>
       </div>
@@ -310,11 +310,11 @@
 
       <div class="sl-quiz-q" data-q="4">
         <div class="sl-quiz-num">Question 4</div>
-        <h4>A hedge costs 1.5%/year and, in a crash, pays out 40× that year's cost. Roughly what annual crash probability makes it breakeven on average?</h4>
+        <h4>A hedge costs 1.5%/year and, in a crash, pays out 40× that year's cost (gross — the 1.5% premium is still paid that year). Roughly what annual crash probability makes it breakeven on average?</h4>
         <button class="sl-quiz-opt" data-correct="true">About 2.5% (1 ÷ 40)</button>
         <button class="sl-quiz-opt">About 15%</button>
         <button class="sl-quiz-opt">About 60%</button>
-        <div class="sl-quiz-explain">Breakeven probability = 1 ÷ payout multiple = 1/40 = 2.5% per year — roughly a 1-in-40-year event. The absolute cost (1.5%) cancels out of this ratio.</div>
+        <div class="sl-quiz-explain">Expected payout p × 40 × 1.5% must equal the 1.5% premium paid every year, so p = 1 ÷ 40 = 2.5% per year — roughly a 1-in-40-year event. The absolute cost cancels out. (Quoted net of that year's premium, 40× would give 1/41 ≈ 2.4%.)</div>
       </div>
 
       <div class="sl-quiz-q" data-q="5">
@@ -323,7 +323,7 @@
         <button class="sl-quiz-opt" data-correct="true">Cutting or shrinking the hedge budget after a long stretch of calm markets</button>
         <button class="sl-quiz-opt">The hedge structure being mathematically impossible to price</button>
         <button class="sl-quiz-opt">Regulators banning the use of out-of-the-money options</button>
-        <div class="sl-quiz-explain">Abandoning the hedge precisely because several calm years made it look like a wasted expense removes the protection right as the cycle statistically moves closer to needing it.</div>
+        <div class="sl-quiz-explain">Abandoning the hedge precisely because several calm years made it look like a wasted expense removes the protection for no reason other than its recent cost — calm years don't make the next crash any less likely.</div>
       </div>
     </section>
 

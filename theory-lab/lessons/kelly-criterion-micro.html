@@ -86,9 +86,9 @@
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">μ</div><div><h4>The edge</h4><p>Expected excess return (drift) — the numerator. Bigger edge, bigger optimal size, linearly.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">σ²</div><div><h4>The risk</h4><p>Variance of the return stream — the denominator, penalizing size for risk. This is variance, not volatility — it enters squared.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">f*</div><div><h4>The result</h4><p>f* = μ / σ² — optimal fraction of capital to allocate. Edge divided by variance, exactly the same shape as p − q divided by odds.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">f*</div><div><h4>The result</h4><p>f* = μ / σ² — optimal fraction of capital to allocate. Edge divided by variance, the same shape as the coin's edge (bp − q) divided by its odds b.</p></div></div>
       </div>
-      <p class="sl-p">Substitute the Sharpe ratio S = μ/σ (μ = Sσ) and the formula rearranges to <strong>f* = S/σ</strong>: Kelly-optimal leverage is Sharpe ratio divided by volatility. A higher Sharpe justifies more leverage; a higher-volatility instrument, at the <em>same</em> Sharpe, justifies less — because doubling volatility while holding the edge fixed cuts the optimal size by a factor of <strong>four</strong>, not two, since variance sits in the denominator squared relative to μ's linear term.</p>
+      <p class="sl-p">Substitute the Sharpe ratio S = μ/σ (μ = Sσ) and the formula rearranges to <strong>f* = S/σ</strong>: Kelly-optimal leverage is Sharpe ratio divided by volatility. A higher Sharpe justifies more leverage; a higher-volatility instrument, at the <em>same</em> Sharpe, justifies less (doubling volatility at a fixed Sharpe halves f*). Hold the edge μ fixed instead and doubling volatility cuts the optimal size by a factor of <strong>four</strong>, not two, since variance sits in the denominator squared relative to μ's linear term.</p>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Where this needs qualifying</div>
         <p>This continuous form comes from a second-order (Taylor) approximation of the log around the mean — reasonable for a diversified, roughly-Gaussian return stream, but it quietly assumes away fat tails. Real FX and macro returns have fatter tails than a Gaussian, which is exactly why sizing meaningfully below whatever this formula outputs, not just trusting the point estimate, matters in practice.</p>
@@ -118,7 +118,7 @@
         </div>
         <div class="sl-sliderhead"><span>Bet size (multiple of Kelly f*)</span><span class="sl-live" id="kc-mult-val">1.00× Kelly</span></div>
         <input type="range" class="sl-slider" id="kc-mult-slider" min="0" max="220" step="5" value="100">
-        <div class="sl-verdict" id="kc-mult-verdict">Exactly full Kelly — the single largest bet size for which the growth rate is still maximal.</div>
+        <div class="sl-verdict" id="kc-mult-verdict">Exactly full Kelly — the bet size at which the growth rate is maximal.</div>
       </div>
       <p class="sl-p">Position size scales drift μ linearly (bet twice as big, drift roughly doubles) but scales variance σ² quadratically (bet twice as big, variance roughly quadruples). The growth-rate curve g(f) ≈ fμ − f²σ²/2 is an inverted parabola: it rises, peaks exactly at f* = μ/σ², then <em>falls back down</em>, crossing zero again at <strong>2f*</strong> and going negative beyond that — even though the underlying bet's edge never changed, only the size did.</p>
     </section>
@@ -141,7 +141,7 @@
           <span class="sl-ctag green">Half-Kelly (c = 0.5)</span>
           <ul>
             <li>Captures roughly 75% of full Kelly's growth rate — the curve is nearly flat near the peak, so this costs little</li>
-            <li>Cuts bet-to-bet variance, and typical drawdown depth, by roughly half or more</li>
+            <li>Halves bet-to-bet volatility (variance falls to a quarter) and cuts typical drawdown depth by roughly half or more</li>
             <li>Trades a modest, controlled haircut on best-case growth for real protection against a wrong edge estimate</li>
             <li>The standard practitioner default in the Kelly literature (Thorp's writing is the canonical source) — not a compromise nobody actually uses</li>
           </ul>
@@ -269,7 +269,7 @@
         <button class="sl-quiz-opt" data-correct="true">The growth curve is flat near its peak, so half the size gives up little growth but cuts risk a lot</button>
         <button class="sl-quiz-opt">Half-Kelly grows the bankroll faster than full Kelly</button>
         <button class="sl-quiz-opt">Full Kelly is illegal at most brokerages</button>
-        <div class="sl-quiz-explain">Half-Kelly captures roughly 75% of full Kelly's growth rate while cutting variance and typical drawdown by half or more — a favorable trade, especially given that real edges are estimated, not known exactly.</div>
+        <div class="sl-quiz-explain">Half-Kelly captures roughly 75% of full Kelly's growth rate while halving bet-to-bet volatility and cutting typical drawdown by half or more — a favorable trade, especially given that real edges are estimated, not known exactly.</div>
       </div>
 
       <div class="sl-quiz-q" data-q="4">
@@ -375,7 +375,7 @@
       } else if (mult < 0.98) {
         text = 'Below full Kelly — leaving some growth on the table, but on the flat, low-risk part of the curve.';
       } else if (mult <= 1.02) {
-        text = 'Exactly full Kelly — the single largest bet size for which the growth rate is still maximal.';
+        text = 'Exactly full Kelly — the bet size at which the growth rate is maximal.';
       } else if (mult < 1.98) {
         text = 'Past full Kelly — growth is already falling even though the edge hasn’t changed, only the size did.';
       } else if (mult <= 2.02) {

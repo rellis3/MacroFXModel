@@ -15,7 +15,7 @@
   <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Institutional Data Engineering 4 of 5</div>
   <h1 class="tl-title">Point-in-Time Data &amp; Survivorship Bias</h1>
-  <p class="tl-dek">What "point-in-time" actually requires operationally, why revised data is a real and easy-to-miss lookahead bug, and the classic 1996 study that first quantified how badly survivorship bias distorts a database that only remembers the winners.</p>
+  <p class="tl-dek">What "point-in-time" actually requires operationally, why revised data is a real and easy-to-miss lookahead bug, and the classic 1996 study that quantified how badly survivorship bias distorts a database that only remembers the winners.</p>
   <div class="tl-meta">
     <span class="tl-status concept">CONCEPT<!-- DESK:START --> — explains real industry practice, not a claim about this repo's own data pipeline<!-- DESK:END --></span>
     <span>~16 min read</span>
@@ -133,7 +133,7 @@
 
   <div class="tl-chart">
     <div class="tl-chart-label">A macro release's timeline: reference period, publication dates, and revisions, all distinct</div>
-    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Timeline diagram showing a March GDP figure. The reference period (March) ends on March 31. A preliminary estimate is published on April 28, nearly a month later. A first revision is published May 26 with a different value. A final revision is published June 25 with yet another value. A backtest querying data as of April 15 must return no value at all, since nothing had been published yet at that date.">
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Timeline diagram showing a March GDP figure. The reference period (March) ends on March 31. A preliminary estimate is published on April 28, nearly a month later. A first revision is published May 26 with a different value. A second revision is published June 25 with yet another value. A backtest querying data as of April 15 must return no value at all, since nothing had been published yet at that date.">
       <line x1="30" y1="130" x2="610" y2="130" style="stroke:var(--border)" stroke-width="2"/>
 
       <circle cx="90" cy="130" r="5" style="fill:var(--text3)"/>
@@ -152,7 +152,7 @@
 
       <circle cx="510" cy="130" r="6" style="fill:var(--green)"/>
       <text x="510" y="90" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">Jun 25</text>
-      <text x="510" y="103" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">final revision: 1.4%</text>
+      <text x="510" y="103" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">2nd revision: 1.4%</text>
       <line x1="510" y1="112" x2="510" y2="124" style="stroke:var(--green)" stroke-width="1.4"/>
 
       <line x1="160" y1="200" x2="160" y2="136" style="stroke:var(--red)" stroke-width="1.4" stroke-dasharray="3,3"/>
@@ -165,7 +165,7 @@
     The same underlying "March GDP" fact is published, then revised twice, at three different dates with
     three different values. A point-in-time-correct query as of April 15th must return nothing at all
     (the reference period hadn't even been published yet), and a query as of, say, May 30th must return
-    the May 26th first-revision value of 1.6% — never the eventual final 1.4%, which wasn't known until
+    the May 26th first-revision value of 1.6% — never the later second-revision 1.4%, which wasn't known until
     June 25th.
     </div>
   </div>

@@ -13,7 +13,7 @@
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Foundation Mathematics / Trigonometry, Logarithms &amp; Exponentials</div>
   <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
-  <div class="tl-kicker">Foundation Mathematics · Lesson 2 of 6</div>
+  <div class="tl-kicker">Foundation Mathematics · Lesson 2 of 5</div>
   <h1 class="tl-title">Trigonometry, Logarithms &amp; Exponentials</h1>
   <p class="tl-dek">Sine, cosine, \(e^x\) and \(\ln x\) — the three functions behind cycles, continuous growth, and why log-returns are the honest way to add up performance over time.</p>
   <div class="tl-meta">
@@ -385,7 +385,7 @@
       <text x="600" y="234" text-anchor="end" style="fill:var(--text3);font-size:11px">years →</text>
       <text x="54" y="30" text-anchor="start" style="fill:var(--text3);font-size:11px">value</text>
       <path style="fill:none;stroke:var(--text3);stroke-width:2;stroke-dasharray:4,3" d="M50,220 L600,50" id="fa2-cont-curve"/>
-      <text x="605" y="46" text-anchor="start" style="fill:var(--text3);font-size:10px">e^(rt), continuous</text>
+      <text x="596" y="16" text-anchor="end" style="fill:var(--text3);font-size:10px">e^(rt), continuous</text>
       <path id="fa2-freq-curve" style="fill:none;stroke:var(--blue);stroke-width:2.5" d="M50,220 L600,58"/>
       <circle id="fa2-dot" cx="600" cy="58" r="5" style="fill:var(--blue);stroke:var(--s1);stroke-width:1.5"/>
     </svg>
@@ -428,19 +428,18 @@
     Suppose a price series over 4 days is: \(P_0=100\), \(P_1=102\),
     \(P_2=101\), \(P_3=104\), \(P_4=103\). Compute each day's log-return:</p>
     <div class="tl-math">
-      \[ r_1=\ln\!\frac{102}{100}=0.019803,\quad r_2=\ln\!\frac{101}{102}=-0.009852,\quad r_3=\ln\!\frac{104}{101}=0.029266,\quad r_4=\ln\!\frac{103}{104}=-0.009662 \]
+      \[ r_1=\ln\!\frac{102}{100}=0.019803,\quad r_2=\ln\!\frac{101}{102}=-0.009852,\quad r_3=\ln\!\frac{104}{101}=0.029270,\quad r_4=\ln\!\frac{103}{104}=-0.009662 \]
     </div>
     <p>Sum the four daily log-returns:</p>
     <div class="tl-math">
-      \[ r_1+r_2+r_3+r_4 = 0.019803 - 0.009852 + 0.029266 - 0.009662 = 0.029555 \]
+      \[ r_1+r_2+r_3+r_4 = 0.019803 - 0.009852 + 0.029270 - 0.009662 = 0.029559 \]
     </div>
     <p>Now compute the total log-return directly from the start and end prices:</p>
     <div class="tl-math">
       \[ \ln\!\left(\frac{P_4}{P_0}\right) = \ln\!\left(\frac{103}{100}\right) = \ln(1.03) \approx 0.029559 \]
     </div>
     <p>
-      The two match (0.029555 vs. 0.029559 — the tiny gap is only rounding in
-      the intermediate steps). Summing four daily log-returns gives exactly
+      The two match (0.029559 vs. 0.029559, identical to six decimal places). Summing four daily log-returns gives exactly
       the whole period's log-return, with no separate compounding calculation
       needed — precisely the additivity property derived above.
     </p>
@@ -638,7 +637,7 @@
   <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Gilbert Strang, <em>Calculus</em>, Wellesley-Cambridge Press (open-access edition via MIT OpenCourseWare) — a widely used text with a clean, geometric build-up of the unit circle, \(e^x\), and \(\ln x\) from first principles.</li>
-    <li>Steven Strogatz, "Change We Can Believe In," <em>The New York Times</em> (Opinionator series on mathematics), 2010 — an accessible, well-known essay on \(e\) and continuous growth, aimed at exactly the intuition this lesson tries to build.</li>
+    <li>Steven Strogatz, "Power Tools," <em>The New York Times</em> (Opinionator series on mathematics), 2010 — an accessible, well-known essay on exponentials and logarithms, aimed at exactly the intuition this lesson tries to build.</li>
     <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson (any recent edition) — the standard quantitative-finance reference for continuous compounding and log-return conventions as used in pricing models.</li>
   </ul>
   </details>
@@ -693,6 +692,9 @@
     dot.setAttribute('cy', result.endY);
     valLabel.textContent = '$' + result.endVal.toFixed(2);
   }
+
+  var contCurve = document.getElementById('fa2-cont-curve');
+  if (contCurve) contCurve.setAttribute('d', buildPath(Infinity).d);
 
   slider.addEventListener('input', update);
   update();

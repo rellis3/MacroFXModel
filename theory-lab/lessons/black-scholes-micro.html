@@ -216,7 +216,7 @@
         <button type="button" class="sl-reset-btn" id="bsc-reset">Reset to worked-example numbers</button>
         <div class="sl-note" id="bsc-note"></div>
       </div>
-      <p class="sl-p">Try pushing σ up while holding everything else fixed — the price rises even though, as the next slide shows, N(d₂) can actually fall. The call's value depends on the whole probability-weighted payoff, not the bare odds of finishing above the strike.</p>
+      <p class="sl-p">Try pushing σ up while holding everything else fixed — the price rises even though, as the delta-vs-probability slide shows, N(d₂) can actually fall. The call's value depends on the whole probability-weighted payoff, not the bare odds of finishing above the strike.</p>
     </section>
 
     <section class="sl-slide" data-slide="9">
@@ -340,7 +340,7 @@
             <li>Implied vol varies by strike and expiry — the smile/skew</li>
             <li>Earnings, central-bank surprises, and flash crashes gap prices</li>
             <li>Dealers rehedge in discrete steps and pay spread each time</li>
-            <li>Most retail equity/index options are American — exercisable early</li>
+            <li>Most US single-stock/ETF options are American — exercisable early (SPX index options are European)</li>
           </ul>
         </div>
       </div>
@@ -460,7 +460,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Only volatility σ enters the price — the underlying's expected return μ cancels out of the replication argument entirely.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The Greeks are this formula's own partial derivatives — delta is the hedge ratio, gamma is how fast that hedge goes stale, theta is time decay, vega is sensitivity to σ.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>N(d₂) is a risk-neutral probability, not a real-world one — don't read a Black-Scholes price as a directional forecast.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Constant volatility is the model's biggest simplification — the smile/skew is the market visibly correcting for it, and it's exactly what the next lesson's jump-diffusion extension formalizes.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Constant volatility is the model's biggest simplification — the smile/skew is the market visibly correcting for it, and the next lesson's jump-diffusion extension (jumps on top of a constant σ) is one way to reproduce it.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Delta N(d₁) is a hedge ratio, not the probability of finishing in the money — that's N(d₂), always smaller, by a gap that grows with σ√T.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Premium = intrinsic (what exercising now is worth) + extrinsic (time value — set by σ and T, eaten by theta, zero at expiry).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">08</div><p>1987: portfolio insurers replicating puts were forced to sell into the fall; prices gapped and the hedge failed at model prices.<!-- DESK:START --> Desk test: implied far above realised was followed by wider ranges, not calm (iv-over-rv-wider, VALIDATED).<!-- DESK:END --></p></div>

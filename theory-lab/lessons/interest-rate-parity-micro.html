@@ -66,7 +66,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">r_d</div><div><h4>Domestic rate</h4><p>The domestic risk-free rate for the period T — e.g. the USD money-market rate.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">r_f</div><div><h4>Foreign rate</h4><p>The foreign risk-free rate for the same period T — e.g. the EUR money-market rate.</p></div></div>
       </div>
-      <p class="sl-p">Under continuous compounding the same identity is usually written F = S·e^((r_d−r_f)T), which converges to the same relationship as T shrinks. Either form says the same thing: the forward is the spot, adjusted for the fact that money rents at different prices in the two currencies.</p>
+      <p class="sl-p">With continuously compounded annual rates the same identity is written exactly as F = S·e^((r_d−r_f)T). Either form says the same thing: the forward is the spot, adjusted for the fact that money rents at different prices in the two currencies.</p>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Not a forecast</div>
         <p>F is completely determined today by S, r_d, and r_f — three quantities you can look up right now. It says nothing about what anyone expects the spot rate to actually be at T. That's a different question (uncovered interest rate parity), covered in the full lesson, and it is nowhere near as reliable as this identity.</p>
@@ -84,8 +84,8 @@
             <line x1="40" y1="80" x2="600" y2="80" style="stroke:var(--border2);stroke-width:2"/>
             <line x1="320" y1="55" x2="320" y2="105" style="stroke:var(--border2);stroke-width:2"/>
             <text x="320" y="35" text-anchor="middle" style="fill:var(--text3);font-size:11px;font-weight:600">F = S (flat, r_d = r_f)</text>
-            <text x="60" y="130" text-anchor="start" style="fill:var(--red);font-size:11px;font-weight:700">← domestic at forward DISCOUNT</text>
-            <text x="580" y="130" text-anchor="end" style="fill:var(--green);font-size:11px;font-weight:700">domestic at forward PREMIUM →</text>
+            <text x="60" y="130" text-anchor="start" style="fill:var(--green);font-size:11px;font-weight:700">← domestic at forward PREMIUM</text>
+            <text x="580" y="130" text-anchor="end" style="fill:var(--red);font-size:11px;font-weight:700">domestic at forward DISCOUNT →</text>
             <circle id="fp-dot" cx="320" cy="80" r="8" style="fill:var(--blue);stroke:var(--bg);stroke-width:2"/>
           </svg>
         </div>
@@ -159,27 +159,27 @@
           </div>
         </div>
         <button type="button" class="sl-reset-btn" id="cip-reset">Reset to worked-example numbers</button>
-        <div class="sl-note">Simple-interest form: F* = S × (1 + r_d·T) / (1 + r_f·T). Try setting r_f above r_d — the readout flips to a discount on the foreign currency, exactly per Section 4's slider. A non-positive spot or a negative time is rejected rather than silently producing a number.</div>
+        <div class="sl-note">Simple-interest form: F* = S × (1 + r_d·T) / (1 + r_f·T). Try setting r_f above r_d — the readout flips to a discount on the foreign currency, exactly per Section 3's slider. A non-positive spot or a negative time is rejected rather than silently producing a number.</div>
       </div>
     </section>
 
     <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">When the identity doesn't hold exactly</h2>
-      <p class="sl-sub">In liquid G10 pairs under normal conditions, CIP holds to within a sliver of a basis point — but "almost exactly" isn't "always exactly."</p>
+      <p class="sl-sub">Before 2008, in liquid G10 pairs under normal conditions, CIP held to within transaction costs (a few basis points) — but "almost exactly" isn't "always exactly."</p>
       <div class="sl-svgwrap">
         <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of the cross-currency basis over time, near zero before 2008, then widening sharply during the financial crisis, and settling at a small but persistent negative level afterward">
           <line x1="50" y1="180" x2="600" y2="180" style="stroke:var(--border2);stroke-width:1"/>
           <line x1="50" y1="80" x2="600" y2="80" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:4,4"/>
           <text x="605" y="84" style="fill:var(--text3);font-size:10px">0 bps (CIP holds exactly)</text>
-          <path d="M50,82 L150,80 L210,78 L250,60 L280,20 L310,35 L340,70 L380,120 L420,110 L460,118 L500,116 L560,112 L600,114" style="fill:none;stroke:var(--purple);stroke-width:2.5"/>
-          <text x="240" y="15" text-anchor="middle" style="fill:var(--red);font-size:11px;font-weight:700">2008 crisis — basis blows out</text>
-          <text x="500" y="135" text-anchor="middle" style="fill:var(--text3);font-size:11px">small, persistent negative basis since</text>
+          <path d="M50,82 L150,80 L210,82 L250,110 L280,170 L310,160 L340,135 L380,120 L420,110 L460,118 L500,116 L560,112 L600,114" style="fill:none;stroke:var(--purple);stroke-width:2.5"/>
+          <text x="280" y="60" text-anchor="middle" style="fill:var(--red);font-size:11px;font-weight:700">2008 crisis — basis blows out (negative)</text>
+          <text x="500" y="135" text-anchor="middle" style="fill:var(--text3);font-size:11px">persistent negative basis since</text>
           <text x="60" y="200" style="fill:var(--text3);font-size:10px">2005</text>
           <text x="590" y="200" text-anchor="end" style="fill:var(--text3);font-size:10px">today</text>
         </svg>
       </div>
-      <p class="sl-p">Du, Tepper &amp; Verdelhan (2018) documented small, persistent CIP deviations across major currencies after 2008 — the <strong>cross-currency basis</strong>. The textbook arbitrage above assumes unlimited, cost-free balance sheet to execute the round trip; post-crisis capital and leverage-ratio rules made that balance sheet measurably more expensive for banks to supply, so a sliver of the identity's gap survives, bounded by that funding cost rather than by a genuine unexploited free lunch.</p>
+      <p class="sl-p">Du, Tepper &amp; Verdelhan (2018) documented persistent CIP deviations, often tens of basis points, across major currencies after 2008 — the <strong>cross-currency basis</strong>. The textbook arbitrage above assumes unlimited, cost-free balance sheet to execute the round trip; post-crisis capital and leverage-ratio rules made that balance sheet measurably more expensive for banks to supply, so a persistent gap survives, bounded by that funding cost rather than by a genuine unexploited free lunch.</p>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Why anyone watches this</div>
         <p>The basis is a live read on funding stress and dollar-funding scarcity in the banking system — it widens when banks' balance sheets get tighter or more expensive to deploy, which is exactly why desks and macro watchers track it as a signal in its own right, not merely as a rounding error in an otherwise-perfect formula.</p>
@@ -190,7 +190,7 @@
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">How this actually gets used</h2>
       <div class="sl-icard-grid">
-        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Covered interest arbitrage</h4><p>Bank trading desks and cross-currency basis swap markets trade the tiny, real deviations from CIP directly — closer to relative value on regulatory funding costs than a directional currency bet.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Covered interest arbitrage</h4><p>Bank trading desks and cross-currency basis swap markets trade the small but real deviations from CIP directly — closer to relative value on regulatory funding costs than a directional currency bet.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Forward points, quoted daily</h4><p>FX desks quote forwards as "points" added to spot rather than an outright rate — the market's day-to-day expression of exactly this identity, updated as rates and spot move.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>Rate-differential reasoning</h4><p>"The dollar is strong because the Fed is hiking" is the same interest-differential intuition CIP formalizes, whether or not the speaker ever writes the equation down.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Not the same as the carry trade</h4><p>The FX carry trade removes the forward hedge entirely and bets on where spot actually lands — a genuinely different, risk-bearing claim (uncovered interest rate parity) covered in the full lesson.</p></div></div>
@@ -198,7 +198,7 @@
 <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Reality check on this repo</div>
-        <p>The full lesson's key-takeaways section states "nothing in this repo computes CIP, UIP, or a carry signal yet." That's now stale: <code>js/carryEngine.js</code> is a real, unit-tested FX carry factor — inverse-vol-sized, rebalanced, costed, with its own IS/OOS split — wired to a live <code>/api/fx-carry</code> endpoint in <code>server.js</code> and used as a leg in the multi-factor blend. What still isn't built here is a standalone CIP forward-pricing tool or a cross-currency-basis monitor — this deck's calculator, not repo code, is what prices the identity itself. So: a carry <em>signal</em> exists and is tested; a CIP/basis <em>tool</em> does not.</p>
+        <p>The repo does have a carry signal: <code>js/carryEngine.js</code> is a real, unit-tested FX carry factor — inverse-vol-sized, rebalanced, costed, with its own IS/OOS split — wired to a live <code>/api/fx-carry</code> endpoint in <code>server.js</code> and used as a leg in the multi-factor blend. What still isn't built here is a standalone CIP forward-pricing tool or a cross-currency-basis monitor — this deck's calculator, not repo code, is what prices the identity itself. So: a carry <em>signal</em> exists and is tested; a CIP/basis <em>tool</em> does not.</p>
       </div>
 <!-- DESK:END -->
     </section>
@@ -279,7 +279,7 @@
 
       <div class="sl-quiz-q" data-q="4">
         <div class="sl-quiz-num">Question 4</div>
-        <h4>Why doesn't a small, persistent cross-currency basis mean the no-arbitrage logic is wrong?</h4>
+        <h4>Why doesn't a persistent cross-currency basis mean the no-arbitrage logic is wrong?</h4>
         <button class="sl-quiz-opt" data-correct="true">The arbitrage assumes unlimited, cost-free balance sheet — post-2008 rules made that balance sheet genuinely more expensive to supply</button>
         <button class="sl-quiz-opt">It means forward markets are inefficient and rarely used by professionals</button>
         <button class="sl-quiz-opt">It means interest rates are no longer observable in real time</button>
@@ -304,7 +304,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>It's enforced by two routes forced to pay the same — stay domestic, or convert-invest-and-sell-forward — and any real gap between them is free, riskless money that trading closes fast.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The higher-yielding currency trades at a forward discount, mechanically — the opposite of the intuitive first guess, and a direct, unavoidable consequence of the arbitrage argument.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Forward points are the market's day-to-day quote of this exact identity — the same F − S gap this deck's calculator computes, updated live as spot and rates move.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Real CIP deviations are small, persistent, and about funding cost, not free lunches — the cross-currency basis reflects post-2008 balance-sheet constraints, and it's watched as a funding-stress signal in its own right.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Real CIP deviations are persistent, and about funding cost, not free lunches — the cross-currency basis reflects post-2008 balance-sheet constraints, and it's watched as a funding-stress signal in its own right.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Covered arbitrage and the carry trade are not the same claim — one is riskless and identity-enforced; the other drops the hedge and bears real, sometimes brutal, currency risk (the full lesson's subject).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened, autumn 2008: after Lehman, dollar funding vanished, nobody could arbitrage the gap, and CIP broke until the Fed's uncapped swap lines arrived. Carry crashed in the same weeks.<!-- DESK:START --> The desk's carry test is UNDERPOWERED (+0.61 OOS, 1.5 SE): not an edge.<!-- DESK:END --></p></div>
       </div>
@@ -354,7 +354,7 @@
       } else if (diffPP > 0) {
         verdict.textContent = 'r_d > r_f: the foreign currency is priced forward at a PREMIUM, and the higher-yielding domestic currency is at a DISCOUNT.';
       } else {
-        verdict.textContent = 'r_d < r_f: the foreign currency is priced forward at a DISCOUNT, and the higher-yielding foreign currency is at a PREMIUM.';
+        verdict.textContent = 'r_d < r_f: the foreign currency is priced forward at a DISCOUNT, and the lower-yielding domestic currency is at a PREMIUM.';
       }
     }
     slider.addEventListener('input', update);

@@ -35,7 +35,7 @@
       <li>VWAP instead matches the order's schedule to the historical intraday <em>volume</em> profile, trading more during the heavy open/close and less during the thin midday lull, so the order participates roughly in proportion to how much everyone else is trading.</li>
       <li>POV (Percentage of Volume) drops the pre-set schedule entirely and instead trades at a fixed percentage of <em>real-time observed</em> volume, so it naturally speeds up when the market gets busy and slows down when it goes quiet.</li>
       <li>Implementation Shortfall (Perold, 1988) is the honest scorecard: the gap between the "paper" decision price and what you actually paid, split into delay cost (drift before you started), market impact cost (the Almgren-Chriss-style concession from your own trading), and opportunity cost (the price of leaving part of the order unfilled).</li>
-      <li>Algorithm choice is a real tradeoff, not a preference: urgency (fear of the price drifting away before you're done) pulls toward TWAP/POV/aggressive execution; impact concern (fear of moving the price yourself) pulls toward a slower VWAP-style schedule — the same risk-aversion tradeoff the Almgren-Chriss lesson formalizes with a single parameter \(\lambda\).</li>
+      <li>Algorithm choice is a real tradeoff, not a preference: urgency (fear of the price drifting away before you're done) pulls toward POV/aggressive execution; impact concern (fear of moving the price yourself) pulls toward a slower VWAP-style schedule — the same risk-aversion tradeoff the Almgren-Chriss lesson formalizes with a single parameter \(\lambda\).</li>
       <li>The worked example computes a 4-bucket VWAP-matching share schedule for a 40,000-share order, then separately walks a small trade through all three Implementation Shortfall components in dollars: \$450 delay + \$750 impact + \$300 opportunity = \$1,500 total, on a \$500,000 order.</li>
       <li><strong>Real-world episode:</strong> the 6 May 2010 Flash Crash began with a POV algorithm. It sold 75,000 E-mini contracts at 9% of the previous minute's volume, with no price or time limit. Intermediaries passing contracts back and forth inflated the volume, so the algorithm sold faster, and an order that had taken more than five hours before was done in about 20 minutes.<!-- DESK:START --> On this desk, the cost no schedule can remove, the spread, is <strong>Validated</strong> as decisive (<code>execution-gate</code>): above spread/ATR 0.15, zero of 30 strategy × timeframe cells were profitable.<!-- DESK:END --></li>
     </ul>
@@ -288,8 +288,9 @@
     shares you never got at all, valued at whatever the price was by the time
     you gave up on them. This one number is the honest, all-in cost of the
     entire decision-to-execution process — but a single total dollar figure
-    doesn't say <em>why</em> it was expensive. Perold's framework's real
-    value is splitting that total into causally distinct pieces:
+    doesn't say <em>why</em> it was expensive. The framework's real value, in
+    Perold's paper and the practitioner versions built on it (the separate delay-cost term
+    was added later, notably by Wayne Wagner), is splitting that total into causally distinct pieces:
   </p>
 
   <div class="tl-steps">
@@ -562,7 +563,7 @@
       <text x="475" y="195" text-anchor="middle" font-size="14" font-family="'DM Mono',monospace" font-weight="600" fill="var(--red)">Aggressive IS</text>
       <text x="475" y="215" text-anchor="middle" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text3)">finish fast, pay the impact</text>
     </svg>
-    <div class="tl-chart-caption">Illustrative positioning, not a precise optimization. High urgency (fear the price runs away before you finish) with low impact concern favors trading fast and aggressive, closer to Almgren-Chriss's low-risk-aversion end. High impact concern with low urgency favors a patient, footprint-minimizing VWAP-style schedule, closer to Almgren-Chriss's high-risk-aversion end. POV sits in between as a genuinely adaptive middle path, and plain TWAP is the simple default when neither concern is pressing enough to justify anything more sophisticated.</div>
+    <div class="tl-chart-caption">Illustrative positioning, not a precise optimization. High urgency (fear the price runs away before you finish) with low impact concern favors trading fast and aggressive, closer to Almgren-Chriss's high-risk-aversion (front-loaded) end. High impact concern with low urgency favors a patient, footprint-minimizing VWAP-style schedule, closer to Almgren-Chriss's low-risk-aversion (near-even) end. POV sits in between as a genuinely adaptive middle path, and plain TWAP is the simple default when neither concern is pressing enough to justify anything more sophisticated.</div>
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
@@ -831,7 +832,7 @@
     <li>André F. Perold, "The Implementation Shortfall: Paper Versus Reality," <em>Journal of Portfolio Management</em>, 1988 — the original paper defining Implementation Shortfall as the gap between paper and real portfolios.</li>
     <li>Robert Kissell, <em>The Science of Algorithmic Trading and Portfolio Management</em>, Academic Press, 2013 — a standard practitioner-level reference covering TWAP, VWAP, POV, and Implementation Shortfall cost decomposition in depth.</li>
     <li>Robert Almgren &amp; Neil Chriss, "Optimal Execution of Portfolio Transactions," <em>Journal of Risk</em>, 2001 — the optimal-execution model this lesson's market-impact cost term connects directly back to; covered in the prior lesson in this series.</li>
-    <li>Ian Domowitz &amp; Henry Yegerman, "The Cost of Algorithmic Trading: A First Look at Comparative Performance," <em>Journal of Trading</em>, 2005 — an empirical comparison of algorithmic execution styles and their realized transaction costs.</li>
+    <li>Ian Domowitz &amp; Henry Yegerman, "The Cost of Algorithmic Trading: A First Look at Comparative Performance," <em>Journal of Trading</em>, 2006 — an empirical comparison of algorithmic execution styles and their realized transaction costs.</li>
   </ul>
   </details>
 

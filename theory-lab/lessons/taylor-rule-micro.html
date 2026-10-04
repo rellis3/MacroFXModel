@@ -133,7 +133,7 @@
         <input type="range" class="sl-slider" id="tg-inf-slider" min="-3" max="3" step="0.25" value="1">
         <div class="sl-sliderhead" style="margin-top:10px"><span>Output gap (y − y*)</span><span class="sl-live" id="tg-out-val">+1.00pp</span></div>
         <input type="range" class="sl-slider" id="tg-out-slider" min="-2" max="2" step="0.25" value="1">
-        <div class="sl-note">a = b = 0.5 throughout, so each gap moves the implied rate by half of itself: i = 4 + 1.5×(inflation gap) + 0.5×(output gap).</div>
+        <div class="sl-note">a = b = 0.5 throughout, so the output gap moves the implied rate by half of itself, while the inflation gap moves it by one and a half times itself (once through π in the baseline, half again through a): i = 4 + 1.5×(inflation gap) + 0.5×(output gap).</div>
       </div>
     </section>
 
@@ -201,7 +201,7 @@
       <p class="sl-sub">There is no single "correct" Taylor Rule — the Fed itself publishes several side by side.</p>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Classic rule</h4><p>Taylor's original 1993 specification — a = b = 0.5, the version used throughout this deck.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">🐢</div><div><h4>Inertial rule</h4><p>Partially anchors on the previous policy rate to avoid abrupt jumps meeting to meeting.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🐢</div><div><h4>First-difference / inertial rules</h4><p>Anchor on the previous policy rate (moving it by a rule-set step, or only part of the way) to avoid abrupt jumps meeting to meeting.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>Balanced-approach rule</h4><p>Doubles the output-gap coefficient (b = 1), leaning more heavily on labor-market slack.</p></div></div>
       </div>
       <p class="sl-p">On a desk, the rule's real use is comparative: computing a Taylor-implied rate for two economies at once — say the US and the euro area — turns directly into an expected relative rate-path story, the theoretical engine behind rate-differential and yield-spread trades. A widening gap between one country's implied-minus-actual rate and another's is a candidate <em>leading</em> explanation for why a yield spread might be about to move, before the spread itself has visibly shifted.</p>

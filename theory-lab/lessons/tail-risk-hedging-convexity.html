@@ -134,7 +134,7 @@
   near the center are capped near the small premium paid — the defining shape of a tail hedge. This is
   the same curvature concept covered from the option-Greeks side in
   <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a> and paired
-  with its cost — <a href="theta-decay.html">Theta Decay</a> — the constant time-value bleed a long-gamma
+  with its cost — <a href="theta-decay.html">Theta Decay</a> — the ongoing time-value bleed a long-gamma
   position pays in exchange for that curvature, which is exactly the "premium" this lesson keeps
   returning to.
   </p>
@@ -142,8 +142,8 @@
   <h3>Why short convexity looks good on every ordinary day</h3>
   <p>
   A short-convexity strategy (selling options, running a short-volatility carry trade, or any structure
-  that collects a steady premium in exchange for a capped, accelerating downside) has a return profile
-  that is, by construction, positively skewed toward "small win" outcomes and only rarely realizes its
+  that collects a steady, capped premium in exchange for an accelerating downside) has a return profile
+  that is, by construction, negatively skewed: most outcomes are small wins, and it only rarely realizes its
   large-loss outcome. Over any sample period that happens not to contain that rare event, the strategy's
   realized track record looks like a high-Sharpe, low-volatility, reliably profitable program — because
   the sample simply hasn't yet drawn the tail event that defines its true risk. This is not a data problem
@@ -466,9 +466,9 @@
       <li>
       <strong>Cutting the hedge budget after a long calm stretch.</strong> As the scenario box above
       illustrates, the single most common failure mode is abandoning or shrinking the hedge precisely
-      because several consecutive calm years made it look like a wasted expense — which is exactly the
-      point in the cycle where the hedge is statistically closer to being needed, not further from it,
-      though of course the exact timing of any crash is never knowable in advance.
+      because several consecutive calm years made it look like a wasted expense — but a run of calm
+      years does not make the next crash any less likely, so the protection is removed for no reason
+      other than its recent cost, and the exact timing of any crash is never knowable in advance.
       </li>
       <li>
       <strong>Confusing "short volatility" with "bad" and "long volatility" with "good."</strong>
@@ -562,9 +562,9 @@
     <summary>Q6. What is the single most common real-world failure mode for a tail-hedge program, according to this lesson?</summary>
     <div class="tl-answer">
     Cutting or shrinking the hedge budget after a long stretch of calm markets, precisely because the
-    hedge has looked like a wasted, underperforming expense during that stretch — which is exactly the
-    behavior that removes the protection right as the cycle statistically moves closer to (though never
-    predictably timed to) the kind of event the hedge exists for.
+    hedge has looked like a wasted, underperforming expense during that stretch — even though calm years
+    do not make the next crash any less likely. That removes the protection for no reason other than its
+    recent cost, at a time no one can know is safe, before the kind of event the hedge exists for.
     </div>
   </details>
 

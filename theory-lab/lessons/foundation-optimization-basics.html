@@ -205,7 +205,10 @@
     direction curves downward (a genuine maximum); a mix of positive and
     negative eigenvalues means the function curves upward in some directions
     and downward in others — a <strong>saddle point</strong>, which the
-    first-order condition alone cannot distinguish from a true optimum. This
+    first-order condition alone cannot distinguish from a true optimum. If
+    any eigenvalue is exactly zero (and none has the opposite sign), the
+    second-order test is inconclusive, just like \(f''(x^*)=0\) in one
+    variable. This
     Hessian-eigenvalue check is precisely what a later Numerical Methods
     lesson's "convex optimization" material formalizes and builds algorithms
     around — a function whose Hessian has all-positive eigenvalues
@@ -336,24 +339,24 @@
 
   <div class="tl-chart">
     <div class="tl-chart-label">Unconstrained optimum vs. the best point along a constraint</div>
-    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Contour-style rings representing an objective function's level curves around an unconstrained peak, with a straight diagonal line representing a constraint. The best point along the constraint line is marked where the constraint line is tangent to one of the contour rings, and arrows show the objective's gradient and the constraint's gradient pointing along the exact same direction at that point.">
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Contour-style rings representing an objective function's level curves around an unconstrained peak, with a straight diagonal line representing a constraint. The best point along the constraint line is marked where the constraint line is tangent to one of the contour rings, and arrows show the objective's gradient and the constraint's gradient lying along the same line, perpendicular to the constraint, at that point.">
       <ellipse cx="320" cy="150" rx="220" ry="120" style="fill:none;stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
       <ellipse cx="320" cy="150" rx="170" ry="92" style="fill:none;stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
       <ellipse cx="320" cy="150" rx="120" ry="65" style="fill:none;stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
       <ellipse cx="320" cy="150" rx="70" ry="38" style="fill:none;stroke:var(--blue);stroke-width:2"/>
       <circle cx="320" cy="150" r="4" style="fill:var(--blue)"/>
       <text x="320" y="130" text-anchor="middle" style="fill:var(--blue);font-size:11px;font-weight:600">unconstrained peak of f</text>
-      <line x1="120" y1="270" x2="560" y2="40" style="stroke:var(--amber);stroke-width:2.5"/>
-      <text x="565" y="38" style="fill:var(--amber);font-size:11px;font-weight:600">constraint g(x) = k</text>
-      <ellipse cx="320" cy="150" rx="205" ry="111" transform="rotate(0 320 150)" style="fill:none;stroke:var(--green);stroke-width:2"/>
-      <circle cx="447" cy="88" r="5" style="fill:var(--green)"/>
-      <text x="452" y="80" style="fill:var(--green);font-size:11px;font-weight:600">best feasible point x*</text>
-      <line x1="447" y1="88" x2="447" y2="48" style="stroke:var(--red);stroke-width:2"/>
-      <polygon points="447,48 442,58 452,58" style="fill:var(--red)"/>
-      <text x="452" y="46" style="fill:var(--red);font-size:10px">∇f</text>
-      <line x1="447" y1="88" x2="480" y2="61" style="stroke:var(--purple);stroke-width:2;stroke-dasharray:2,2"/>
-      <polygon points="480,61 470,64 474,54" style="fill:var(--purple)"/>
-      <text x="484" y="58" style="fill:var(--purple);font-size:10px">∇g</text>
+      <line x1="262" y1="3.7" x2="600" y2="109.4" style="stroke:var(--amber);stroke-width:2.5"/>
+      <text x="600" y="126" text-anchor="end" style="fill:var(--amber);font-size:11px;font-weight:600">constraint g(x) = k</text>
+      <ellipse cx="320" cy="150" rx="205" ry="111" style="fill:none;stroke:var(--green);stroke-width:2"/>
+      <circle cx="422.5" cy="53.9" r="5" style="fill:var(--green)"/>
+      <text x="414" y="40" text-anchor="end" style="fill:var(--green);font-size:11px;font-weight:600">best feasible point x*</text>
+      <line x1="422.5" y1="53.9" x2="410.6" y2="92.0" style="stroke:var(--red);stroke-width:2"/>
+      <polygon points="410.6,92.0 409.1,83.2 416.8,85.6" style="fill:var(--red)"/>
+      <text x="404" y="100" text-anchor="end" style="fill:var(--red);font-size:10px">∇f</text>
+      <line x1="422.5" y1="53.9" x2="433.2" y2="19.5" style="stroke:var(--purple);stroke-width:2;stroke-dasharray:2,2"/>
+      <polygon points="433.2,19.5 434.7,28.3 427.0,26.0" style="fill:var(--purple)"/>
+      <text x="438" y="18" style="fill:var(--purple);font-size:10px">∇g</text>
     </svg>
     <div class="tl-chart-caption">The dashed rings are the objective \(f\)'s level curves (points of equal value), rising toward the blue unconstrained peak. The amber line is the constraint \(g(x)=k\) — only points on this line are allowed. The best <em>feasible</em> point, \(x^*\), is where the constraint line is exactly tangent to one of \(f\)'s level curves (the green ring) — at that single point, the objective's gradient (red) and the constraint's gradient (purple) point along the same line, exactly the Lagrange condition \(f'(x^*) = \lambda g'(x^*)\) derived above. Anywhere else on the amber line, the two gradients would diverge and sliding along the constraint would still improve \(f\).</div>
   </div>
@@ -487,12 +490,15 @@
       measures, at the margin, how much extra portfolio variance must be
       accepted to push the target return up by one more unit — literally the
       "price," in variance terms, of demanding a higher return. This is not
-      an abstract mathematical side effect; it's exactly the slope of the
-      efficient frontier (the curve of best possible risk-return trade-offs)
-      at the specific target return being solved for, and it's precisely
-      why the efficient frontier gets flatter (each extra unit of return
-      costs more variance) as the target return is pushed higher and
-      higher above the minimum-variance portfolio's own return.
+      an abstract mathematical side effect: if the efficient frontier (the
+      curve of best possible risk-return trade-offs) is drawn as minimum
+      variance against target return, \(\lambda\) is exactly its slope,
+      \(d\sigma_p^2/d(\text{target})\), at the target being solved for.
+      That slope rises as the target is pushed higher above the
+      minimum-variance portfolio's own return, so each extra unit of return
+      costs more variance. In the usual picture, with risk on the horizontal
+      axis and return on the vertical, the same fact shows up the other way
+      round: the frontier gets flatter as you move up it.
     </p>
   </div>
 
@@ -661,7 +667,8 @@
       small amount — in other words, it is exactly the marginal "cost," in
       variance terms, of demanding one more unit of expected return. That is
       precisely the slope of the efficient frontier at the target return
-      being solved for, which is a real, economically meaningful quantity a
+      being solved for, when the frontier is drawn as minimum variance
+      against target return, which is a real, economically meaningful quantity a
       portfolio manager cares about directly (how much more risk must be
       accepted to chase a higher return target), not an artifact of the
       algebra used to solve the constrained problem.
@@ -679,9 +686,8 @@
   </details>
 
   <div class="tl-footer-nav">
-    <a href="../hub.html">← Theory Lab hub</a>
     <a href="foundation-multivariable-calculus.html">← Partial Derivatives &amp; Multivariable Calculus</a>
-    <a href="../hub.html">Theory Lab hub →</a>
+    <a href="primer-stats-normal.html">Next: Descriptive Statistics &amp; the Normal Distribution →</a>
   </div>
 </div>
 <script>
