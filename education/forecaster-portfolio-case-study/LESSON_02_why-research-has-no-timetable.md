@@ -16,6 +16,11 @@
 > answers are listed as shown; the lesson did not mark a correct answer in the
 > screenshots.
 
+>
+> **Gaps filled from the live page (2026-10-04):** the parts the screenshots
+> missed were later read from the decrypted lesson page itself. Each such part
+> is marked *(from page)*. Only text shown on the page was used.
+
 *Systematic research is a search whose duration is a random variable. The
 mathematics of that search explains why it resists scheduling, and how its
 breadth enters the evidence it produces.*
@@ -700,7 +705,8 @@ is one the forward record can eventually draw, a subject of Lesson 16.
 - **State 2 (repost 12):** "After a second independent test: 64 real and 6
   without an edge · 91.4% real". The same grid now shows mostly green cells,
   with only a handful of red ones left.
-- Any other frames of the animation were **[not captured]**.
+- *(from page)* The animation has three frames in all; the first, not in the
+  screenshots, is "2,500 directions, 100 with a real edge (4%)".
 - **Caption:** *A programme of 2,500 directions, 4% with a real edge, tested
   at a 5% size with 80% power. Red cells are accepted directions without an
   edge.*
@@ -759,12 +765,10 @@ the research itself.
 
 **07 · CHANGING RATES — A search with a declining discovery rate**
 
-    [Pr](T > t) = exp( −∫₀ᵗ λ(s) ds ),      λ(s) = λ₀ e^(−δs)   ⇒   Pr(T = ∞) = e^(−λ₀/δ)
+    Pr(T > t) = exp( −∫₀ᵗ λ(s) ds ),      λ(s) = λ₀ e^(−δs)   ⇒   Pr(T = ∞) = e^(−λ₀/δ)
 
-*(The box runs off both screen edges in the screenshots; the formula comes from
-text copied off the lesson page. Both the screenshots and the copied text
-start at "(T > t)": the leading "[Pr]" is in brackets because it is
-**[not captured]** in either source.)*
+*(The box runs off both screen edges in the screenshots. The full formula,
+including the leading "Pr", is from the page.)*
 
 *Takeaway:* When the discovery rate declines through time, the probability of
 no discovery by time t is the exponential of minus the integrated rate. If the

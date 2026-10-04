@@ -13,6 +13,11 @@
 > screenshots it is marked **[not captured]**. Checkpoint answers are listed as
 > shown; the lesson did not mark a correct answer in the screenshots.
 
+>
+> **Gaps filled from the live page (2026-10-04):** the parts the screenshots
+> missed were later read from the decrypted lesson page itself. Each such part
+> is marked *(from page)*. Only text shown on the page was used.
+
 *A track record is a single realisation of a random process. This lesson sets
 out the statistical view on which the series rests: the distribution of paths
 behind any record, and the methods used to map it.*
@@ -736,7 +741,11 @@ vanishing minority of very fortunate paths.
   right-hand histogram "Final wealth, exact" with "79% below 1×".
 - Stats strip: **AVERAGE AFTER 40 ROUNDS** 7.0× · **TYPICAL PLAYER** 0.12× ·
   **PLAYERS BELOW THEIR START** 79%
-- (Steps 1 and 3 were **[not captured]**.)
+- *(from page)* All four step titles:
+  1. "Sixty players, each facing +50% or −40% on a coin flip every round"
+  2. "The average across players grows by 5% a round"
+  3. "The typical player shrinks by about 5% a round"
+  4. "After 40 rounds, 79% of players are below their start"
 - Caption: *A gamble that gains 50% or loses 40% with equal probability. The
   average across players grows; the typical player declines.*
 - Source tag: ANALYTIC · MODEL CALCULATION
@@ -808,14 +817,27 @@ inspected.
   Kelly (dashed white), Kelly (solid white) and zero growth at 2μ/σ² (coral).
   A colour bar on the left runs from −30 to +25 (% a year).
 
-- Header: "Beyond the coral line, twice Kelly, growth is negative although the
-  expected return is positive"
+- *(from page)* The figure steps through three headers; the screenshot shows
+  the third:
+  1. "Growth along a path, by exposure and volatility, for an expected return
+     of 10%"
+  2. "The white ridge is the Kelly exposure, μ/σ²; the dashed line is half
+     Kelly"
+  3. "Beyond the coral line, twice Kelly, growth is negative although the
+     expected return is positive"
 - Axes: volatility (10% to 50%), exposure (× capital, 0× to 3×), growth (% a
   year, colour scale −30 to +25).
 - Lines on the surface: "half Kelly" (dashed white), "Kelly μ/σ²" (white),
   "zero growth 2μ/σ²" (coral).
-- Caption and any text between the figure and the next paragraph:
-  **[not captured]**
+- *(from page)* On-chart hints: "Hover the surface to read exposure, volatility
+  and growth" · "Drag to rotate · scroll to zoom"
+- *(from page)* **Caption:** *Growth along a single compounding path against
+  exposure and volatility, for an expected return of 10%. The green ridge is
+  the Kelly exposure, μ/σ²; the red line is the zero-growth boundary at twice
+  Kelly, beyond which growth is negative although the expected return is
+  positive. Values below −30% a year are drawn at the floor.*
+- *(from page)* Source tag: ANALYTIC · INTERACTIVE · RENDERED ON THE GPU
+- *(from page)* Nothing else sits between the figure and the next paragraph.
 
 These ideas account for several choices elsewhere in the series. Lesson 8
 reports the Forecaster Portfolio's returns on a simple, non-compounded basis,

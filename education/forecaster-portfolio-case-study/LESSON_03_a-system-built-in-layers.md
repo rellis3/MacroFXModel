@@ -15,6 +15,11 @@
 > **[not captured]**. Checkpoint answers are listed as shown; the lesson did
 > not mark a correct answer in the screenshots.
 
+>
+> **Gaps filled from the live page (2026-10-04):** the parts the screenshots
+> missed were later read from the decrypted lesson page itself. Each such part
+> is marked *(from page)*. Only text shown on the page was used.
+
 *Systematic strategies separate what can be forecast from how to act on it. The
 theory of that separation explains why volatility, not direction, is the
 natural object of forecasting, and how a forecast becomes a decision.*
@@ -101,7 +106,7 @@ architecture is used.
 - **Caption:** *The Forecaster Portfolio's seven layers. The third is
   volatility forecasting and meta-labelling is another; the rest are
   proprietary, and nothing further about any layer is described.*
-- Source tag: **[not captured]**
+- *(from page)* Source tag: DIAGRAM
 
 The mathematical case for layers comes from the fundamental law of active
 management, due to Grinold. It states that the information ratio of an active
@@ -150,7 +155,8 @@ animated, stepped)*
   implementation costs skill":** adds a red curve below the navy one, marked
   at 100 bets "Transfer coefficient 0.6 · information ratio 0.30". The gap
   between the navy and red curves is shaded pink.
-- Step 1 was **[not captured]**.
+- *(from page)* Step 1: "Skill of 0.05 per bet: the information ratio grows
+  with the square root of breadth".
 - **Caption:** *The information ratio against breadth for three degrees of
   skill, then scaled down by a transfer coefficient of 0.6. The shaded gap is
   the cost of implementation.*
@@ -238,7 +244,7 @@ the regimes visible.
   ones":** adds two labels, "A calm stretch" pointing to a narrow part of the
   envelope around year 2.5, and "A turbulent cluster" (green) pointing to the
   wide, spiky end near year 10.
-- Step 1 was **[not captured]**.
+- *(from page)* Step 1: "Ten years of simulated daily returns".
 - **Caption:** *Ten years of simulated daily returns from a GARCH(1,1)
   process, with twice the conditional volatility shaded either side of zero.*
 - Source tag: SIMULATION · GARCH(1,1), FIXED SEED
@@ -368,10 +374,15 @@ variance, which rises to 15.6% a year.
   shaded areas between them. Both rise to around +10–20% in the first years,
   move sideways to about year 6, then fall sharply near year 6 and keep
   declining to about −40% by year 10.
-- **Step 2 — "2 · The same shocks, plus jumps at five a year: the paths
-  separate abruptly".** The legend saying which colour is the jump path was
-  not visible in the screenshot.
-- Step 1 (and any later step) was **[not captured]**.
+- *(from page)* **Navy is the pure diffusion; red is the same shocks plus
+  jumps.** All three steps:
+  1. "A pure diffusion: continuous shocks at 12% annual volatility" (navy
+     path only)
+  2. "The same shocks, plus jumps at five a year: the paths separate
+     abruptly" (adds the red path; this is the step in the screenshot)
+  3. "44 jumps in ten years carry 41% of total variance". Adds two red labels
+     on the jump path: "A jump of −10.0%" at about year 3.4, and "A jump of
+     −7.5%" at about year 8.3.
 - **Caption:** *The same continuous shocks with and without jumps, over ten
   simulated years.*
 - Source tag: SIMULATION · MERTON JUMP DIFFUSION, FIXED SEED
@@ -433,8 +444,9 @@ horizon lengthens?
 
 *(Note: the introduction mentions how a forecast of risk becomes a decision
 about exposure and how a layered design turns validation into a sequence of
-separate tests. No sections on those topics appear in the screenshots: §03
-leads straight into the checkpoint and the "Next" card.)*
+separate tests. Checked against the page: its section menu lists only
+Architecture, Predictability, Jumps and Glossary, so nothing was missed. The
+lesson as published ends after §03.)*
 
 ---
 
