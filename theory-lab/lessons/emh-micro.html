@@ -109,7 +109,7 @@
             <rect x="340" y="28" width="270" height="34" rx="6" style="fill:var(--green-bg,rgba(34,197,94,.12));stroke:var(--green);stroke-width:1.5"/>
             <text x="475" y="49" text-anchor="middle" style="fill:var(--green);font-size:12px;font-weight:600">already reflected in today's price</text>
           </svg></div>
-          <div class="sl-verdict"><strong>Rules out:</strong> even insider trading. Essentially never taken as literally true — well-documented profitable insider trading shows private information has value the market hasn't priced in. Included mainly as the logical extreme, and the reason insider-trading law exists at all.</div>
+          <div class="sl-verdict"><strong>Rules out:</strong> even insider trading. Essentially never taken as literally true — well-documented profitable insider trading shows private information has value the market hasn't priced in. Included mainly as the logical extreme; that private information pays is exactly what insider-trading law targets.</div>
         </div>
       </div>
       <p class="sl-p">Think of it as three levels of a game being "unbeatable." Weak form says you can't win using only the scoreboard from past games. Semi-strong says you can't win even reading every public report on the players. Strong form says you couldn't win even with secret information nobody else has — which is basically nobody's serious claim.</p>
@@ -188,7 +188,7 @@
           <div id="mt-sentence">Testing 100 strategies at α = 0.05 means about 5 of them would look "statistically significant" by pure chance alone — even if every single one had zero real skill.</div>
         </div>
         <button type="button" class="sl-reset-btn" id="mt-reset">Reset to 100 strategies, α = 0.05</button>
-        <div class="sl-note">This is the multiple-testing problem, and it's the joint-hypothesis problem's close cousin: a backtest scan across hundreds of parameter combinations is, statistically, exactly like running hundreds of independent significance tests. Some will clear the bar on chance alone — the next lesson in this series builds the correction for it.</div>
+        <div class="sl-note">This is the multiple-testing problem, and it's the joint-hypothesis problem's close cousin: a backtest scan across hundreds of parameter combinations is, statistically, much like running hundreds of significance tests (correlated ones, since neighbouring parameter settings overlap). Some will clear the bar on chance alone — the Multiple Testing &amp; Look-Elsewhere lesson builds the correction for it.</div>
       </div>
       <p class="sl-p">This is why a "found in a backtest" result gets far more skepticism the more variations were tried to find it. A single pre-registered test clearing α = 0.05 is meaningful; the best of 100 tried variations clearing it is close to guaranteed, regardless of whether any of them has real skill.</p>
     </section>
@@ -302,7 +302,7 @@
       <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook breaks</div>
-        <p>Textbook EMH is a switch: in the price or not, instantly. The evidence is a dial: publication roughly halved returns, over years, and what remained sat where arbitrage costs money. And the 26% lost before publication was never an inefficiency at all: the joint-hypothesis problem in the wild.</p>
+        <p>Textbook EMH is a switch: in the price or not, instantly. The evidence is a dial: publication roughly halved returns, over years, and what remained sat where arbitrage costs money. And the 26% lost before publication was at most data-mining luck, not an inefficiency: the joint-hypothesis problem in the wild.</p>
       </div>
     </section>
 

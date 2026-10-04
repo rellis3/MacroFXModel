@@ -15,7 +15,7 @@
   <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Macro &amp; FX Theory · Lesson 1 of 3</div>
   <h1 class="tl-title">Interest Rate Parity — Covered vs. Uncovered</h1>
-  <p class="tl-dek">One of these two theories is an accounting identity enforced by riskless arbitrage and holds to within a fraction of a basis point. The other one is a genuine economic hypothesis about what markets expect — and it has failed, on average, in almost every dataset anyone has tested it on for forty years. That failure is not a footnote; it is the empirical basis of the entire FX carry trade.</p>
+  <p class="tl-dek">One of these two theories is an accounting identity enforced by riskless arbitrage, and before 2008 it held to within transaction costs (a few basis points). The other one is a genuine economic hypothesis about what markets expect — and at short horizons it has failed, on average, in most major-currency datasets tested over forty years. That failure is not a footnote; it is the empirical basis of the entire FX carry trade.</p>
   <div class="tl-meta">
     <span class="tl-status concept">CONCEPT — the foundational FX theory<!-- DESK:START --> this repo hasn't formalized yet<!-- DESK:END --></span>
     <span>~17 min read</span>
@@ -33,10 +33,10 @@
 <div class="tl-tldr">
   <div class="tl-tldr-label">TL;DR</div>
   <ul>
-    <li>Covered interest rate parity (CIP) is a no-arbitrage identity, not a forecast: \(F = S\cdot(1+r_d)/(1+r_f)\) is pinned down today by the spot rate and the two interest rates, and it holds in liquid G10 pairs to within a sliver of a basis point.</li>
+    <li>Covered interest rate parity (CIP) is a no-arbitrage identity, not a forecast: \(F = S\cdot(1+r_d)/(1+r_f)\) is pinned down today by the spot rate and the two interest rates, and in liquid G10 pairs it held to within transaction costs before 2008 (the post-2008 gaps are about who can fund the arbitrage).</li>
     <li>Uncovered interest rate parity (UIP) makes the same-looking claim without the forward hedge — that the market's expected future spot rate equals the forward rate, \(E_t[S_{t+T}] = F\) — which implies the higher-yielding currency should be expected to depreciate by roughly its rate advantage. Unlike CIP, nothing forces this to be true.</li>
     <li>The worked example prices a 1-year USD/EUR forward at \(S=1.10\), \(r_d=5\%\), \(r_f=3\%\) as \(F^\ast \approx 1.1214\), then shows a hypothetical mispriced forward of 1.15 yielding a riskless $26,818.18 arbitrage on $1,000,000 — the exact trade that keeps CIP pinned in practice.</li>
-    <li>Fama (1984) tested UIP's one-for-one prediction and found the regression coefficient is typically negative (Froot &amp; Thaler's 1990 survey reports roughly −0.8, not +1) — the forward premium puzzle: high-yielding currencies have tended to appreciate or hold flat rather than depreciate as UIP predicts, which is the empirical basis of the FX carry trade.</li>
+    <li>Fama (1984) tested UIP's one-for-one prediction and found the regression coefficient is typically negative (Froot &amp; Thaler's 1990 survey reports an average of about −0.88, not +1) — the forward premium puzzle: high-yielding currencies have tended to appreciate or hold flat rather than depreciate as UIP predicts, which is the empirical basis of the FX carry trade.</li>
     <li>The JPY/AUD carry-trade scenario shows both sides at once: the interest differential (~4.2pp) was pocketed largely intact through calm 2023–mid-2024 markets, then AUD/JPY fell 10%+ in about two weeks after the BoJ's 31 July 2024 hike — the carry trade is short a fat left tail, not free money.</li>
     <li><strong>Real-world episode:</strong> in autumn 2008 even covered parity broke. After Lehman, non-US banks scrambled for dollars through FX swaps, nobody had the balance sheet to arbitrage the gap, and it narrowed only once the Fed's swap lines went unlimited in mid-October. The yen carry trade crashed in the same weeks.<!-- DESK:START --> The desk's own carry test is <code>fx-factor-book-v2</code>, UNDERPOWERED: +0.61 out of sample is 1.5 SE, so it is not an edge.<!-- DESK:END --></li>
   </ul>
@@ -188,8 +188,8 @@
 
   <p>
     Rearranged, \(F = S\cdot\dfrac{1+r_d}{1+r_f}\). Under continuous
-    compounding this is usually written in its more compact exponential
-    form, which converges to the same relationship as \(T\) shrinks:
+    compounding — with \(r_d\), \(r_f\) quoted as continuously compounded annual rates — the same identity
+    is written exactly in its more compact exponential form:
   </p>
   <div class="tl-math">\[ F = S\,e^{(r_d - r_f)T} \]</div>
   <div class="tl-eq-break">
@@ -218,13 +218,13 @@
   </div>
 
   <p>
-    In practice, CIP holds to within a sliver of a basis point in liquid G10
-    pairs during normal market conditions — deviations are bounded almost
+    In practice, before 2008 CIP held to within a few basis points in liquid G10
+    pairs during normal market conditions — deviations were bounded almost
     entirely by transaction costs (bid-ask spreads, funding costs, margin) so
     thin that only the largest bank trading desks can act on them at all,
     and even then only fleetingly. It is worth being precise, though, that
     "holds almost exactly" is not quite "holds with zero exception": Du,
-    Tepper &amp; Verdelhan (2018) documented small, persistent CIP deviations
+    Tepper &amp; Verdelhan (2018) documented persistent CIP deviations, often tens of basis points,
     across major currencies after the 2008 financial crisis, driven by
     post-crisis bank balance-sheet and leverage-ratio regulatory constraints
     rather than a genuinely unexploited free-lunch — the arbitrage in the
@@ -345,10 +345,10 @@
       </div>
     </div>
     <div class="tl-readout tl-scratch-readout">
-      (1+r&#8320;)/(1+r&#7623;) = <b id="irp-scratch-ratio">1.019417</b>&emsp;forward premium = <b id="irp-scratch-premium">1.94%</b>
+      (1+r<sub>d</sub>)/(1+r<sub>f</sub>) = <b id="irp-scratch-ratio">1.019417</b>&emsp;forward premium = <b id="irp-scratch-premium">1.94%</b>
     </div>
     <div class="tl-readout">
-      F&#42; = S &times; (1+r&#8320;)/(1+r&#7623;) &asymp; <b id="irp-scratch-F">1.1214</b> USD/EUR
+      F&#42; = S &times; (1+r<sub>d</sub>)/(1+r<sub>f</sub>) &asymp; <b id="irp-scratch-F">1.1214</b> USD/EUR
       <span id="irp-scratch-note" class="tl-scratch-note"></span>
     </div>
     <button type="button" id="irp-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
@@ -366,12 +366,12 @@
   forward premium should predict subsequent depreciation one-for-one, no more
   and no less. Fama, and a large replicating literature since (surveyed by
   Froot &amp; Thaler, 1990, who report an average estimated coefficient across
-  published studies of roughly \(-0.8\) rather than \(+1\)), found instead
+  published studies of about \(-0.88\) rather than \(+1\)), found instead
   that the coefficient is typically <strong>negative</strong>. In plain
   terms: <strong>high-interest-rate currencies have tended, on average, to
   appreciate or stay roughly flat rather than depreciate the way UIP
   predicts</strong> — the exact opposite sign from the theory's prediction,
-  and remarkably consistent across currency pairs, decades, and studies. This
+  and remarkably consistent across major currency pairs, decades, and studies (it is weaker at multi-year horizons and for emerging-market currencies). This
   is precisely the empirical basis of the FX carry trade: borrow the
   low-yielding currency, hold the high-yielding one unhedged, and — on
   average, historically, outside the episodes covered in the scenario box
@@ -452,9 +452,9 @@
     <h3>The JPY/AUD carry trade — and the day it stopped working</h3>
     <p>
       A textbook carry trade: borrow Japanese yen, where policy rates sat at
-      roughly 0.0%–0.1% through most of 2023 and into mid-2024, and use the
-      proceeds to buy Australian dollars, where the RBA cash rate stood at
-      4.35% through the same period. Hold the AUD in short-dated bank bills
+      roughly −0.1% to 0.1% through 2023 and into mid-2024, and use the
+      proceeds to buy Australian dollars, where the RBA cash rate rose to
+      4.35% in November 2023 and held there. Hold the AUD in short-dated bank bills
       or simply carry the position via the FX forward/swap points, which (per
       the CIP identity above) embed that roughly 4.2-percentage-point rate
       gap as a daily credit. On a notional \$10,000,000 position, unchanged
@@ -553,7 +553,7 @@
       In the textbook, an arbitrage desk takes the other side the moment the forward drifts from \(F^\ast\). In
       2008 the desks that would normally do that were the same banks short of dollars and short of balance sheet.
       So the dollar interest rate implied by FX swaps rose well above the cash dollar rate. Covered parity, the
-      relationship this lesson says holds to a sliver of a basis point, opened gaps many times wider than any normal
+      relationship this lesson says held to within a few basis points before the crisis, opened gaps many times wider than any normal
       transaction-cost band in EUR/USD and USD/JPY. Baba &amp; Packer (2009) at the BIS documented the deviations and
       tied them to dollar funding stress at non-US banks.
     </p>
@@ -671,7 +671,7 @@
   <p>
     <strong>Covered interest rate arbitrage</strong> is the domain of bank
     trading desks and cross-currency basis swap markets, where the actual
-    (tiny) deviations from CIP documented by Du, Tepper &amp; Verdelhan (2018)
+    persistent deviations from CIP documented by Du, Tepper &amp; Verdelhan (2018)
     are traded as a distinct, much lower-risk strategy — closer to relative
     value on regulatory funding costs than a directional currency bet, and
     entirely separate from the carry trade's risk-bearing UIP violation.
@@ -740,14 +740,14 @@
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CIP is a no-arbitrage identity, not a forecast.</strong> \(F=S\cdot(1+r_d)/(1+r_f)\) is pinned down today by observable prices and holds to within a sliver of a basis point in liquid G10 pairs.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CIP is a no-arbitrage identity, not a forecast.</strong> \(F=S\cdot(1+r_d)/(1+r_f)\) is pinned down today by observable prices; in liquid G10 pairs it held to within transaction costs before 2008, and post-2008 gaps reflect the cost of balance sheet.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>UIP makes the same-looking claim without the hedge</strong> — \(E_t[S_{t+T}]=F\) — and nothing forces it to be true. Unlike CIP it's a behavioral hypothesis, testable against data.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fama (1984) found the wrong sign.</strong> The forward-premium regression coefficient is typically negative (roughly −0.8, not +1) — high-yielding currencies have tended to appreciate or hold flat, not depreciate as UIP predicts. This is the empirical basis of the FX carry trade.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fama (1984) found the wrong sign.</strong> The forward-premium regression coefficient is typically negative (about −0.88 on average in Froot &amp; Thaler's survey, not +1) — high-yielding currencies have tended to appreciate or hold flat, not depreciate as UIP predicts. This is the empirical basis of the FX carry trade.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The higher-yielding currency trades forward at a discount, mechanically.</strong> This falls straight out of the no-arbitrage derivation and says nothing yet about where spot actually ends up.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The carry trade is short a fat left tail, not free money.</strong> The AUD/JPY unwind after the BoJ's 31 July 2024 hike erased years of accumulated carry in about two weeks.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A UIP "failure" is not an arbitrage opportunity.</strong> CIP is enforced by riskless arbitrage; a UIP deviation is a risk-bearing bet with a real downside, not a free lunch — and a "peso problem" can make a historical average look cleaner than the true underlying odds.</span></div>
 <!-- DESK:START -->
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing in this repo computes CIP, UIP, or a carry signal yet.</strong> The forward premium puzzle is well-replicated in the broader literature — that is a different claim from a validated OOS edge on this repo's own data.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing in this repo computes CIP or UIP, and its one carry test is underpowered.</strong> The forward premium puzzle is well-replicated in the broader literature — that is a different claim from a validated OOS edge on this repo's own data.</span></div>
 <!-- DESK:END -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Even the identity needs someone to fund it<!-- DESK:START -->, and carry is not an edge on this desk's data<!-- DESK:END -->.</strong> In autumn 2008 CIP broke until the Fed's swap lines supplied the dollars arbitrageurs lacked.<!-- DESK:START --> This desk's carry basket (fx-factor-book-v2, UNDERPOWERED) made +0.61 out of sample, 1.5 SE, with an in-sample of −0.12.<!-- DESK:END --></span></div>
   </div>
@@ -808,7 +808,7 @@
       predict subsequent depreciation one-for-one. Fama found the estimated
       coefficient was instead typically negative, a result replicated widely
       since (Froot &amp; Thaler's 1990 survey reports an average across
-      published studies of roughly −0.8). In plain terms: high-interest-rate
+      published studies of about −0.88). In plain terms: high-interest-rate
       currencies have tended, on average, to appreciate or stay flat rather
       than depreciate the way UIP predicts — the wrong sign from the theory's
       point of view, and the empirical basis of the FX carry trade.
@@ -842,7 +842,7 @@
       above, any signal — however well-supported elsewhere — only counts as
       validated once it clears realistic fills, real costs, a true
       in-sample/out-of-sample split, and a non-trivial OOS trade count (≥30)
-      on this repo's own data. No such test has been run here yet; this
+      on this repo's own data. The one such test run here (fx-factor-book-v2) came back UNDERPOWERED; this
       lesson lays out the theory and the honest empirical backdrop, not a
       claim that a carry signal built in MacroFXModel would show an edge.
     </div>
@@ -856,7 +856,7 @@
     <li>Kenneth A. Froot and Richard H. Thaler, <em>"Anomalies: Foreign Exchange,"</em> Journal of Economic Perspectives, 1990 — the widely cited survey of the accumulated evidence against UIP across studies.</li>
     <li>Markus K. Brunnermeier, Stefan Nagel, and Lasse H. Pedersen, <em>"Carry Trades and Currency Crashes,"</em> NBER Macroeconomics Annual, 2008 — the empirical and theoretical treatment of carry trades' crash-risk exposure, directly relevant to the scenario above.</li>
     <li>Craig Burnside, Martin Eichenbaum, Isaac Kleshchelski, and Sergio Rebelo, <em>"Do Peso Problems Explain the Returns to the Carry Trade?"</em> Review of Financial Studies, 2011 — a direct empirical treatment of the peso-problem confound described in the pitfalls above.</li>
-    <li>Wenxin Du, Alexander Tepper, and Adrien Verdelhan, <em>"Deviations from Covered Interest Rate Parity,"</em> Journal of Finance, 2018 — documents the small, persistent post-2008 CIP deviations tied to bank balance-sheet costs, referenced in the CIP section above.</li>
+    <li>Wenxin Du, Alexander Tepper, and Adrien Verdelhan, <em>"Deviations from Covered Interest Rate Parity,"</em> Journal of Finance, 2018 — documents the persistent post-2008 CIP deviations tied to bank balance-sheet costs, referenced in the CIP section above.</li>
     <li>Paul R. Krugman, Maurice Obstfeld, and Marc J. Melitz, <em>"International Economics: Theory and Policy,"</em> Pearson — the standard textbook treatment of covered and uncovered interest rate parity.</li>
   </ul>
   </details>

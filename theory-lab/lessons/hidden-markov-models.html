@@ -336,8 +336,8 @@
     <p>
     For trending: \(1/(1-0.70) = 1/0.30 \approx 3.33\) periods. For choppy: \(1/(1-0.85) = 1/0.15
     \approx 6.67\) periods. If each period is one trading day, this transition matrix implies trending
-    stretches typically last about 3–4 days before breaking, while choppy stretches typically run
-    6–7 days — the model's own numbers are already telling you something concrete and checkable about
+    stretches last about 3–4 days on average before breaking, while choppy stretches run about
+    6–7 days on average — the model's own numbers are already telling you something concrete and checkable about
     regime persistence, before you've looked at a single emission distribution.
     </p>
     <p>
@@ -646,7 +646,7 @@
     <div class="tl-icard">
       <div class="tl-icon-badge blue">📊</div>
       <h4>Regime-conditional sizing/selection</h4>
-      <p>Fit an HMM to identify high-vol vs. low-vol or trending vs. mean-reverting regimes, and switch strategy or size based on the <em>current smoothed state probability</em>, not a hard Viterbi label.</p>
+      <p>Fit an HMM to identify high-vol vs. low-vol or trending vs. mean-reverting regimes, and switch strategy or size based on the <em>current filtered state probability</em>, not a hard Viterbi label.</p>
     </div>
     <div class="tl-icard">
       <div class="tl-icon-badge red">🔍</div>

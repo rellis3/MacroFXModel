@@ -34,7 +34,7 @@
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
       <li>Each step is just two equations: <strong>predict</strong> (carry the estimate forward unchanged, but inflate its uncertainty \(P\) by the process variance \(Q\)) then <strong>update</strong> (blend in the new observation by the Kalman gain \(K_t\), then shrink \(P\)).</li>
-      <li>The gain \(K_t = P_{t\mid t-1}H_t / (H_t^2 P_{t\mid t-1} + R)\) is derived, not chosen — it's the ratio of prediction uncertainty to total (prediction + observation) uncertainty, so it moves toward 1 when the observation is trustworthy and toward 0 when it's noisy.</li>
+      <li>The gain \(K_t = P_{t\mid t-1}H_t / (H_t^2 P_{t\mid t-1} + R)\) is derived, not chosen — it's the ratio of prediction uncertainty to total (prediction + observation) uncertainty, so (with \(H_t=1\)) it moves toward 1 when the observation is trustworthy and toward 0 when it's noisy.</li>
       <li>The update step is exact Bayesian updating: the predicted distribution is the prior, the observation model is the likelihood, and — because both are Gaussian and linearly related (conjugacy) — the posterior comes out Gaussian too, with the closed-form mean/variance shown here instead of a numerical integral.</li>
       <li>The worked example tracks a hedge ratio starting at \(\hat{x}=1.20\): Day 1's gain is 0.804 (estimate moves to 1.321), Day 2's gain drops to 0.471 with no parameter changed (estimate moves to 1.311) — the gain keeps settling toward a steady state set purely by \(Q/R\).</li>
       <!-- DESK:START --><li>This is presented as a genuine candidate for tracking a drifting hedge ratio or lead-lag coefficient in this repo — explicitly <strong>not built, not prototyped, not validated</strong>, and any use would need to beat the incumbent on true OOS performance first.</li><!-- DESK:END -->
@@ -230,7 +230,7 @@
       <tr><td>\(P_{t\mid t-1}\)</td><td>The <strong>a priori error variance</strong> — how uncertain that predicted estimate is.</td></tr>
       <tr><td>\(e_t\)</td><td>The <strong>innovation</strong> (prediction error / residual) — the gap between what was actually observed and what the predicted state said should be observed: \(e_t = y_t - H_t\hat{x}_{t\mid t-1}\). This is literally "the surprise."</td></tr>
       <tr><td>\(S_t\)</td><td>The <strong>innovation variance</strong> — the total uncertainty in that surprise, combining prediction uncertainty and observation noise.</td></tr>
-      <tr><td>\(K_t\)</td><td>The <strong>Kalman gain</strong> — the weight (between 0 and 1, in this scalar case) given to the new observation's surprise when updating the estimate.</td></tr>
+      <tr><td>\(K_t\)</td><td>The <strong>Kalman gain</strong> — the weight (between 0 and 1 when \(H_t=1\); in general \(K_tH_t\) is) given to the new observation's surprise when updating the estimate.</td></tr>
       <tr><td>\(\hat{x}_{t\mid t}\)</td><td>The <strong>a posteriori (updated) state estimate</strong> — the best guess of \(x_t\) after folding in \(y_t\). This is the answer you actually use, e.g. as today's hedge ratio.</td></tr>
       <tr><td>\(P_{t\mid t}\)</td><td>The <strong>a posteriori error variance</strong> — the updated uncertainty, after the observation has (typically) sharpened it.</td></tr>
     </table>
@@ -295,7 +295,7 @@
     <div class="tl-fp purple">
       <div class="tl-fp-term">K_t</div>
       <div class="tl-fp-name">The result</div>
-      <div class="tl-fp-desc">A ratio between 0 and 1 — how much of the surprise to actually believe</div>
+      <div class="tl-fp-desc">A ratio between 0 and 1 when \(H_t=1\) — how much of the surprise to actually believe</div>
     </div>
   </div>
 
@@ -530,7 +530,7 @@
     </svg>
     <div class="tl-controls">
       <div class="tl-control">
-        <div class="tl-control-head"><span>Trust in new data (R⁻¹ relative to Q)</span><span class="tl-live" id="kf-gain-val">K ≈ 0.50</span></div>
+        <div class="tl-control-head"><span>Trust in new data (Q relative to R)</span><span class="tl-live" id="kf-gain-val">K ≈ 0.50</span></div>
         <input type="range" id="kf-gain-slider" min="1" max="99" step="1" value="50">
         <div class="tl-hint">Low = smoother but slower to react. High = reacts fast but tracks noise.</div>
       </div>
@@ -676,7 +676,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The update step is exact Bayesian updating.</strong> Predicted state = prior, observation model = likelihood, updated state = posterior — and because both are Gaussian and linearly related (conjugacy), the posterior comes out Gaussian too, with a closed form instead of a numerical integral.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The gain settles toward a \(Q/R\) steady state.</strong> The worked example's gain fell from 0.804 (Day 1) to 0.471 (Day 2) with no parameter touched — purely because \(P\) shrank. Keep iterating and it approaches a steady state set entirely by \(Q/R\), which is the filter's self-chosen "effective window length."</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Grid-searching \(Q\) and \(R\) against backtest performance is overfitting in disguise.</strong> It relocates the same window-length-tuning risk into a less legible, more sophisticated-looking parameterization — it does not remove it.</span></div>
-    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Not built, not prototyped, not validated in this repo.</strong> The credit-leadlag / yield-spread lead-lag application described above is a genuine candidate, not a claim of improvement — any real use needs to beat the incumbent on true OOS performance first (Lego Principle 5).</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Not built for hedge ratios, not validated in this repo.</strong> Tracking a drifting hedge ratio or lead-lag coefficient is a genuine candidate (the repo's only Kalman code is a 5-minute price filter in the macro compass, a different use), not a claim of improvement — any real use needs to beat the incumbent on true OOS performance first (Lego Principle 5).</span></div><!-- DESK:END -->
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it replaces the rolling-window hedge ratio.</strong> Pairs and relative-value traders use it to track a drifting beta with a stated uncertainty; rates desks use the same recursion to read level, slope and curvature off noisy yields (Diebold, Rudebusch &amp; Aruoba, 2006).</span></div>
   </div>
 

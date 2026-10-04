@@ -103,7 +103,7 @@
         <div class="sl-tabs" id="gain-tabs">
           <button class="sl-tab active" data-panel="gain-1">Noisy sensor (R ≫ Q)</button>
           <button class="sl-tab" data-panel="gain-2">Fast-moving state (Q ≫ R)</button>
-          <button class="sl-tab" data-panel="gain-3">Balanced (Q ≈ R)</button>
+          <button class="sl-tab" data-panel="gain-3">Balanced (P ≈ R)</button>
         </div>
         <div class="sl-panel active" id="gain-1">
           <div class="sl-row"><div class="sl-box">prediction uncertainty small</div><div class="sl-arrow">vs</div><div class="sl-box amber">R huge</div></div>
@@ -255,7 +255,7 @@
       </div>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where this needs qualifying</div>
-        <p>Real return series routinely show fat left tails. A standard Kalman filter run on such data is still a reasonable linear estimator, but it's no longer provably optimal, and its uncertainty estimate P can understate real tail risk.<!-- DESK:START --> And nothing here is built, prototyped, or validated in this repo — any real use needs to beat the incumbent on true out-of-sample performance first.<!-- DESK:END --></p>
+        <p>Real return series routinely show fat left tails. A standard Kalman filter run on such data is still a reasonable linear estimator, but it's no longer provably optimal, and its uncertainty estimate P can understate real tail risk.<!-- DESK:START --> And nothing here is built for hedge ratios or validated in this repo — any real use needs to beat the incumbent on true out-of-sample performance first.<!-- DESK:END --></p>
       </div>
     </section>
 

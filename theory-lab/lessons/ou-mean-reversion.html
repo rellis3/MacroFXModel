@@ -17,7 +17,7 @@
   <h1 class="tl-title">The Ornstein-Uhlenbeck Process &amp; Mean Reversion</h1>
   <p class="tl-dek">A price that "wants" to go somewhere and a price that just wanders are different mathematical objects — the OU process is the equation that tells them apart, and gives mean reversion an actual speed.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not yet fit/tested in this repo<!-- DESK:END --></span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not yet validated in this repo<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: none required, EMH lesson helpful for framing</span>
   </div>
@@ -244,8 +244,9 @@
     With no drift term, there is nothing in the equation that "knows" where \(\mu\)
     is or pulls back toward it. A random walk can wander arbitrarily far from any
     starting point — its variance grows without bound as \(t \to \infty\). This is
-    precisely the mathematical content of the weak-form Efficient Market
-    Hypothesis: prices, if efficient, should behave like this term alone, with no
+    the standard stylized model behind the weak-form Efficient Market
+    Hypothesis (strictly, the EMH requires only that price changes be
+    unpredictable — a martingale): prices, if efficient, should behave like this term alone, with no
     exploitable pull back to a mean. Whether real FX prices behave more like the
     full OU equation (some \(\theta > 0\)) or the pure random walk (\(\theta = 0\))
     at a given horizon is exactly the empirical question mean-reversion strategies
@@ -612,8 +613,8 @@
   <p>
     A standard caveat practitioners build in from day one: real \(\phi\)
     estimates from short, noisy financial samples are themselves noisy and
-    biased toward 1 in finite samples (this is a known small-sample bias in
-    AR(1)/unit-root estimation). A single point estimate of \(\theta\) or a
+    biased downward, away from 1, in finite samples (the known Hurwicz/Kendall
+    small-sample bias in AR(1) estimation), which makes reversion look faster than it is. A single point estimate of \(\theta\) or a
     half-life should come with a confidence interval or a bootstrap, not be
     treated as a fixed physical constant<!-- DESK:START --> — and per this repo's validation
     discipline, any resulting trading rule needs the same in-sample/out-of-sample
@@ -637,9 +638,9 @@
     </p>
     <p>
       <strong>Small-sample bias in \(\phi\).</strong> OLS estimates of AR(1)
-      coefficients on short, noisy samples are biased toward 1 (toward "looks
-      more like a random walk than it is"), which pushes the implied half-life
-      artificially high. This gets worse the more autocorrelated and the shorter
+      coefficients on short, noisy samples are biased downward, away from 1 (toward "looks
+      more mean-reverting than it is"), which pushes the implied half-life
+      artificially low. This gets worse the more autocorrelated and the shorter
       the sample. Don't trust a single-sample point estimate; check stability
       across sub-periods or use a bias-corrected estimator.
     </p>
@@ -680,8 +681,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Half-life turns θ into a number you can say out loud.</strong> \(t_{1/2}=\ln(2)/\theta\) — the time for an expected deviation to shrink by half, comparable across instruments and horizons.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fit it via AR(1), not the raw SDE.</strong> Regress \(X_t\) on \(X_{t-1}\) to get \(\phi\), then convert with \(\theta=-\ln(\phi)/\Delta t\) — the worked example's \(\phi=0.90\) implies a ≈6.6-day half-life.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>φ ≥ 1 means the model doesn't apply, not "very slow reversion."</strong> The half-life formula breaks down (undefined or negative θ) — that's the algebra telling you to stop, not to force a number.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>θ, μ and σ are all assumed constant — real markets don't cooperate.</strong> A drifting "true" mean, small-sample bias toward φ≈1, and regime-dependent reversion speed can all distort a single full-sample fit.</span></div>
-    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing here is built or validated in this repo.</strong> This is a research candidate, not a described feature — it would need synthetic-data unit tests and a real OOS trade count before touching real prices.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>θ, μ and σ are all assumed constant — real markets don't cooperate.</strong> A drifting "true" mean, small-sample bias in φ (downward, so reversion looks faster), and regime-dependent reversion speed can all distort a single full-sample fit.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing here is validated in this repo.</strong> The one OU-band test on real prices (ou-bands-fx-crosses) was underpowered — this is a research candidate, not a validated feature.</span></div><!-- DESK:END -->
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A crowded rubber band can run backwards.</strong> In August 2007 forced selling pushed quant books' stocks away from fair value for three days before the reversion came.<!-- DESK:START --> On this desk, OU bands on FX crosses were untestable (22 OOS trades; only 4 of 68 trades, 6%, reached the OU target) and a daily band fade was null (t 0.85).<!-- DESK:END --></span></div>
   </div>
 
@@ -778,7 +779,7 @@
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
-    <li>L. S. Ornstein &amp; G. E. Uhlenbeck, "On the Theory of the Brownian Motion," <em>Physical Review</em>, 1930 — the original paper defining the process (in a physics context, not finance).</li>
+    <li>G. E. Uhlenbeck &amp; L. S. Ornstein, "On the Theory of the Brownian Motion," <em>Physical Review</em>, 1930 — the original paper defining the process (in a physics context, not finance).</li>
     <li>James D. Hamilton, <em>Time Series Analysis</em>, Princeton University Press, 1994 — the standard graduate econometrics reference covering AR(1) estimation, unit roots, and the discrete/continuous-time mapping used in this lesson.</li>
     <li>Evan Gatev, William N. Goetzmann &amp; K. Geert Rouwenhorst, "Pairs Trading: Performance of a Relative-Value Arbitrage Rule," <em>Review of Financial Studies</em>, 2006 — the widely-cited empirical study of distance-based pairs trading that the OU-based approach is often contrasted with.</li>
     <li>Marco Avellaneda &amp; Jeong-Hyun Lee, "Statistical Arbitrage in the U.S. Equities Market," <em>Quantitative Finance</em>, 2010 — explicitly fits an OU process to cointegration-residual spreads and uses the half-life as a trading-horizon filter; the direct template for the "fit OU, use the half-life" workflow described above.</li>
