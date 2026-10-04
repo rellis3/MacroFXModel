@@ -1,4 +1,4 @@
-# The Forecaster Portfolio lessons, applied to our own book
+# Our volatility forecast / exhaustion system vs the Forecaster Portfolio
 
 *Written 2026-10-04. Sources: `education/forecaster-portfolio-case-study/` Lessons 01–03,
 the Level-Atlas vote portfolio v2 record (`vp2.json`, 2022-04-14 → 2026-09-18, 1,132
@@ -19,6 +19,47 @@ python3 analysis/forecaster_lessons/live_parity.py              vp2.json v2_deci
 
 The one check that does need R2 M1 bars is fill realism: whether a touch becomes a fill,
 and the real spread and slippage per pair (§2.1). It is listed as step 1 of §4.
+
+
+## 0. The question: how far is what we built from what the course describes?
+
+*What we built:*
+- the volatility forecaster v3 (the ladder behind the export button);
+- the exhaustion surface and the Surface Lab;
+- the fade/continuation research;
+- the Vote Atlas book that trades the ladder's rungs.
+
+*What the course describes:* the Forecaster Portfolio, a seven-layer system. Lessons
+01–03 reveal only two layers:
+- **Layer 3, volatility forecasting**;
+- **meta-labelling**.
+
+The other five are proprietary. So the comparison covers those two layers, Lesson 03's
+design principles, and the research and validation process of Lessons 01–02. Their
+contents beyond that can't be compared.
+
+| What the course describes | What we built | Distance |
+|---|---|---|
+| **A dedicated volatility-forecasting layer**: GARCH, clustering, shock half-life (L03 §02) | Forecaster v3: Yang-Zhang σ (FX, gold), GARCH (indices), HAR shadow, an implied-vol ladder that beat realised vol OOS, quantile widths fitted per pair and pinned to p50/75/90 exceedance targets OOS | **Level or ahead.** The lesson stops at textbook GARCH. Gap: index GARCH α/β are hand-set ("interim" β 0.87), not estimated |
+| **Jumps separate from diffusion** (L03 §03) | Event multipliers (FOMC/NFP/CPI/holiday); jump-diffusion research page | **Close.** The multipliers are a crude jump term, used in band width only, not in risk or sizing |
+| (not covered in L01–03) | **Exhaustion**: IV/σ predicts p75 breaches OOS (13 / 22 / 35% vs 25%); Surface Lab | **Beyond what the course has shown** |
+| **Volatility decides *how much*, not *which way*** (L03 §02: "structure … bears on how much to hold rather than on which way to bet") | The forecast places **levels**; the vote then bets **direction** at them (fade/follow); size is a flat 0.5% risk. Partial exception: stops scale with σ, so each trade is vol-normalised | **The biggest design difference.** Our own record agrees with the course: pure direction bets at the lines failed 11 times (§3.7) |
+| **Meta-labelling**: a second model decides whether and how much to act (L03 §01) | Not built; vote margin is the only filter | **Missing.** Offline walk-forward test: helps, mostly under worse costs (§3, E1/E5) |
+| **Separate layers, each tested against its own standard** (L03 §01) | Forecast layer: its own tests (exceedance, pinball), done properly. Decision layer (vote) is only tested together with the overlays. Management layer (risk guard, ccy gate) runs uncalibrated inherited defaults | **Medium.** The bottom layer is clean; the upper layers are tested together |
+| **Fundamental law IR ≈ TC·IC·√BR** (L03 §01) | Huge breadth (about 5,000 trades/yr, 17 instruments), small IC per trade: the shape the law favours. TC leaks: live took only 48% of the backtest's trades (§3.9) | **Right shape, leaky implementation** |
+| **Research as a managed search** (L02): log every attempt, stopping rules, tests fixed in advance | Many directions; nulls banked and dead ideas killed. No configuration ledger; no pre-set stopping rules | **Medium** |
+| **Validation stack** (L01 §05: 12 checks) | Bricks exist in code but are not applied to this system's headline (§3.8) | **Furthest away**, but it's process, not research |
+
+**In one paragraph.** The forecasting layer, the only one the course actually shows, is
+already as good as theirs and better in places (calibrated quantiles, implied vol,
+exhaustion). The real gap is **what the forecast is used for**: theirs drives exposure,
+ours drives directional bets at levels. Around that we are missing the meta-label
+layer, the decision and management layers aren't separated and tested on their own,
+and the validation discipline is only partly applied. None of this needs a restart.
+`VOTE_ATLAS_V4_PLAN.md` turns it into a build plan.
+
+The rest of this file is the **supporting evidence**: the lessons' checks run on the
+Vote Atlas record, layer experiments, live parity, and the code audit.
 
 ---
 
@@ -45,7 +86,7 @@ and the real spread and slippage per pair (§2.1). It is listed as step 1 of §4
   - Meta-labelling is a secondary model that learns *when* the primary model is
     right.
 
-## 2. Our book through that lens
+## 2. Supporting evidence: the Vote Atlas record through the lessons' checks
 
 | Check (L01 §05 card) | Result | Verdict |
 |---|---|---|
@@ -365,7 +406,7 @@ non-normal Sharpe variance (and the matching (γ₄−1)/4 term in the MinTRL/DS
 denominators). The audit caught it, it is fixed, and the numbers above are recomputed:
 SE 0.419 → 0.427, MinTRL up 1–9 days. No conclusion changes.
 
-## 4. The system: a Forecaster-style layered book
+## 4. The system: a Forecaster-style layered book (superseded by `VOTE_ATLAS_V4_PLAN.md`)
 
 Each layer has one job, one test, and a pass bar written down *before* the test is run.
 
