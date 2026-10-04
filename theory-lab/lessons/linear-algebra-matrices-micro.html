@@ -251,7 +251,7 @@
       <h2 class="sl-h2">The same machinery, two more names</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>Kalman Filter</h4><p>A state vector is repeatedly multiplied through a transition matrix and an observation matrix, and a covariance matrix is propagated through matrix multiplication at every update step — nothing but Av and AB, chained, in a load-bearing order.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">🔀</div><div><h4>Hidden Markov Models</h4><p>Every row of a transition matrix is a probability distribution that sums to 1 — which guarantees the matrix always has an eigenvalue of exactly 1. Its eigenvector, normalized, is the "stationary distribution": Av = 1·v, nothing more exotic.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔀</div><div><h4>Hidden Markov Models</h4><p>Every row of a transition matrix is a probability distribution that sums to 1 — which guarantees the matrix always has an eigenvalue of exactly 1. The matching eigenvector of its transpose, normalized, is the "stationary distribution": Aᵀπ = 1·π, nothing more exotic.</p></div></div>
       </div>
       <div class="sl-quote">Nobody on a desk solves a characteristic equation by hand day to day — software does the arithmetic. The intuition that survives is: an eigenvector of a covariance matrix is a portfolio, and its eigenvalue is how much of the book's total variance that portfolio accounts for. Rank them by eigenvalue, and you've answered "in the fewest independent moves, what is this basket's risk actually made of?"</div>
     </section>
@@ -303,7 +303,7 @@
         <button class="sl-quiz-opt" data-correct="true">1</button>
         <button class="sl-quiz-opt">0</button>
         <button class="sl-quiz-opt">Whichever eigenvalue is largest</button>
-        <div class="sl-quiz-explain">Every row of a transition matrix sums to 1, which guarantees an eigenvalue of exactly 1 — its eigenvector, normalized, is the long-run stationary distribution.</div>
+        <div class="sl-quiz-explain">Every row of a transition matrix sums to 1, which guarantees an eigenvalue of exactly 1 — the matching eigenvector of the transposed matrix, normalized, is the long-run stationary distribution.</div>
       </div>
     </section>
 
@@ -453,7 +453,11 @@
       var s = Math.sqrt(disc);
       var l1 = (trace + s) / 2, l2 = (trace - s) / 2;
       if (Math.abs(l1 - l2) < 1e-9) {
-        resultEl.textContent = 'λ₁ = λ₂ = ' + fmt(l1) + ' — every direction is stretched equally (any nonzero vector is an eigenvector).';
+        if (Math.abs(b) < 1e-9 && Math.abs(c) < 1e-9) {
+          resultEl.textContent = 'λ₁ = λ₂ = ' + fmt(l1) + ' — every direction is stretched equally (any nonzero vector is an eigenvector).';
+        } else {
+          resultEl.textContent = 'λ₁ = λ₂ = ' + fmt(l1) + ', but only one eigenvector direction, v ≈ ' + eigenvectorFor(l1, a, b, c, d) + ' — a repeated eigenvalue on a matrix that is not a multiple of the identity (a shear).';
+        }
         return;
       }
       var v1 = eigenvectorFor(l1, a, b, c, d), v2 = eigenvectorFor(l2, a, b, c, d);

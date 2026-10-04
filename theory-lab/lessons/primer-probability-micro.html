@@ -217,7 +217,7 @@
           <div class="sl-verdict"><strong>Var ≈ 2.92 / 30 ≈ 0.097.</strong> Tall, narrow, unmistakably bell-shaped — exactly as the CLT predicts for any distribution with finite mean and variance, not just ones that already look normal.</div>
         </div>
       </div>
-      <p class="sl-p">This is the surprising part: the individual die roll is flat, skewed, bounded, discrete — shaped nothing like a bell curve. The <em>average</em> of many independent copies of it converges toward one anyway. That's the Central Limit Theorem: N independent copies of almost any random variable, averaged, approach a normal distribution centered at E[X] with variance Var(X)/N as N grows.</p>
+      <p class="sl-p">This is the surprising part: the individual die roll is flat, bounded, discrete — shaped nothing like a bell curve. The <em>average</em> of many independent copies of it converges toward one anyway. That's the Central Limit Theorem: N independent copies of almost any random variable, averaged, approach a normal distribution centered at E[X] with variance Var(X)/N as N grows.</p>
     </section>
 
     <section class="sl-slide" data-slide="9">
@@ -257,7 +257,7 @@
         <button type="button" class="sl-reset-btn" id="pnl-reset">Reset to worked-example numbers</button>
         <div class="sl-note">Notice σ(day) doesn't grow proportionally with N — quadrupling the trade count only doubles the day's standard deviation, because √N grows far slower than N. That's the same square-root scaling behind the "average" side of this formula, just applied to a sum instead.</div>
       </div>
-      <p class="sl-p">This is a direct application of the variance-of-a-sum rule from Section 6: with per-trade σ = $50 and 25 independent trades, Var(day) = 25 × 50² = 62,500, so σ(day) = √62,500 = 25 × ... more precisely 50 × √25 = 50 × 5 = <strong>$250</strong>. The independence assumption is doing real work here — it's exactly what licenses adding the variances in the first place.</p>
+      <p class="sl-p">This is a direct application of the variance-of-a-sum rule from Section 6: with per-trade σ = $50 and 25 independent trades, Var(day) = 25 × 50² = 62,500, so σ(day) = √62,500 = 50 × √25 = 50 × 5 = <strong>$250</strong>. The independence assumption is doing real work here — it's exactly what licenses adding the variances in the first place.</p>
     </section>
 
     <section class="sl-slide" data-slide="11">

@@ -92,7 +92,7 @@
       <strong>mean</strong> answers "where is the center of these numbers, on
       average?" But two very different weeks can have the exact same mean — a
       week of five calm +0.1% days averages the same as a week of +5%, -4%,
-      +3%, -3%, +0.1% days if you pick the numbers right, even though the
+      +3%, -3%, -0.5% days if you pick the numbers right, even though the
       second week was obviously wilder. The mean alone throws away that
       difference entirely.
     </p>
@@ -141,11 +141,11 @@
       <path style="fill:none;stroke:var(--amber);stroke-width:2" d="M370,150 L390,145 L410,132 L430,110 L450,90 L470,72 L480,65 L490,72 L510,90 L530,110 L550,132 L570,145 L590,150"/>
       <line x1="350" y1="150" x2="620" y2="150" style="stroke:var(--border);stroke-width:1"/>
       <text x="160" y="180" text-anchor="middle" style="fill:var(--text3);font-size:11px">five +0.1%-ish days</text>
-      <text x="480" y="180" text-anchor="middle" style="fill:var(--text3);font-size:11px">+5%, -4%, +3%, -3%, +0.1%</text>
+      <text x="480" y="180" text-anchor="middle" style="fill:var(--text3);font-size:11px">+5%, -4%, +3%, -3%, -0.5%</text>
     </svg>
     <div style="display:flex;gap:12px;justify-content:center;margin-top:8px">
       <span class="tl-pill blue">σ ≈ 0.08%</span>
-      <span class="tl-pill amber">σ ≈ 3.7%</span>
+      <span class="tl-pill amber">σ ≈ 3.8%</span>
     </div>
     <div class="tl-chart-caption">Both weeks can share the exact same mean (≈0.1%) — the mean alone can't tell them apart. Only σ, the width of the curve, captures the difference between a calm week and a wild one.</div>
   </div>
@@ -860,7 +860,7 @@
       reference mean. If the underlying data is approximately normally
       distributed, that puts it beyond the \(\pm2\sigma\) band (which covers
       about 95% of outcomes) but inside the \(\pm3\sigma\) band (about 99.7%)
-      — a genuinely unusual, moderately-rare value, roughly in the outer 1-2%
+      — a genuinely unusual, moderately-rare value, roughly in the outer 0.6%
       of the distribution on that side. It does not, by itself, guarantee the
       observation is a "true" outlier in the real-world data-generating
       process — real financial return distributions are fatter-tailed than
@@ -901,7 +901,7 @@
   <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>David Freedman, Robert Pisani &amp; Roger Purves, <em>Statistics</em>, 4th ed., W. W. Norton, 2007 — a widely used, notably careful and non-mathematical introductory statistics textbook; its treatment of the standard deviation and the normal approximation is the standard "start from zero" reference this primer follows in spirit.</li>
-    <li>Abraham de Moivre, <em>The Doctrine of Chances</em>, 1733 supplement — the earliest known derivation of the normal curve, as an approximation to the binomial distribution for large numbers of coin flips, predating Gauss by roughly three-quarters of a century.</li>
+    <li>Abraham de Moivre, <em>Approximatio ad Summam Terminorum Binomii (a+b)<sup>n</sup> in Seriem Expansi</em>, 1733 (in English in <em>The Doctrine of Chances</em>, 2nd ed., 1738) — the earliest known derivation of the normal curve, as an approximation to the binomial distribution for large numbers of coin flips, predating Gauss by roughly three-quarters of a century.</li>
     <li>Carl Friedrich Gauss, <em>Theoria Motus Corporum Coelestium</em>, 1809 — Gauss's development of the normal distribution as the error law of astronomical measurement, in service of predicting orbits from imprecise observations; the distribution bears his name from this work, though de Moivre's result came first in a different context.</li>
   </ul>
   </details>
