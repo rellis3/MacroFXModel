@@ -15,11 +15,17 @@
  *   {"chip":"id","x":,"y":,"text":"$100bn bond","tone":"amber"}      small pill, movable
  *   {"move":"id","x":,"y":}                                            slide a chip / box
  *   {"arrow":["from","to"],"label":"…","tone":"red","bend":40,"dash":true,"id":"opt"}
- *   {"note":"id","x":,"y":,"text":"…","tone":"…","size":22,"anchor":"middle"}   free text
+ *   {"note":"id","x":,"y":,"text":"…","tone":"…","size":22,"anchor":"middle"}   free text (or "chart":"cid","at":[t,v],"dx":,"dy":)
  *   {"line":"id","points":[[x,y],…],"tone":"…","width":3}             draw-on polyline
  *   {"count":"boxId","from":161.9,"to":141.7,"dp":1,"pre":"","suf":""} tween a box's sub line
  *   {"sub":"boxId","text":"…"}                                         replace a box's sub line
  *   {"pulse":"id"}   flash      {"dim":"id"}   fade back      {"hide":"id"}   remove      {"cross":"id"}   strike through
+ * Mini charts (data coordinates; xd/yd are the axis ranges):
+ *   {"chart":"id","x":,"y":,"w":,"h":,"title":"…","xd":[x0,x1],"yd":[y0,y1],"yt":[[v,"label"]],"xt":[[t,"label"]],"zero":true}
+ *   {"series":"id","chart":"cid","pts":[[t,v],…],"tone":"…","dash":true,"label":"US","lat":[t,v]}
+ *   {"gap":"id","chart":"cid","top":[[t,v]…],"bot":[[t,v]…],"tone":"red","op":0.22}   shaded band between two lines
+ *   {"dot":"id","chart":"cid","at":[t,v],"text":"…","dx":,"dy":,"anchor":"start"}
+ *   {"bars":"id","chart":"cid","data":[[t,value,"label",tone?],…],"bw":22}             grow from zero
  * Tones: blue, green, red, amber, purple (default: plain chalk).
  *
  * Rendering is replayed from step 0 whenever you jump, so any frame can be reached
@@ -315,6 +321,7 @@
     }
     if (op.note) {
       var fsz = op.size || 20;
+      if (op.chart && op.at && it[op.chart]) { op = Object.assign({}, op, { x: it[op.chart].px(op.at[0]) + (op.dx || 0), y: it[op.chart].py(op.at[1]) + (op.dy || 0) }); }
       var tt = el('text', { x: op.x, y: op.y, 'text-anchor': op.anchor || 'middle', 'dominant-baseline': 'middle', 'font-size': fsz, class: 'wb-free ' + tone(op.tone) }, b.marks);
       String(op.text || '').split('\n').forEach(function (ln, i) { var ts = el('tspan', { x: op.x, dy: i ? fsz * 1.15 : 0 }, tt); ts.textContent = ln; });
       it[op.note] = { kind: 'text', g: tt, x: op.x, y: op.y, w: 0, h: 0 };
@@ -326,6 +333,91 @@
       it[op.line] = { kind: 'line', g: pl };
       drawOn(pl, op.ms || 1100, anim);
       return op.ms || 1100;
+    }
+    // ── Mini charts: a hand-drawn frame with data-space mapping, then series,
+    //    shaded gaps, labelled dots and bars drawn into it. ─────────────────────
+    if (op.chart && op.xd) {   // (series, gap, dot and bars also carry 'chart')
+      var C = { kind: 'box', x: op.x, y: op.y, w: op.w, h: op.h, xd: op.xd, yd: op.yd,
+                pl: op.pl || 40, pr: op.pr || 12, pt: op.pt || 34, pb: op.pb || 26 };
+      C.px = function (t) { return C.x + C.pl + (t - C.xd[0]) / (C.xd[1] - C.xd[0]) * (C.w - C.pl - C.pr); };
+      C.py = function (v) { return C.y + C.h - C.pb - (v - C.yd[0]) / (C.yd[1] - C.yd[0]) * (C.h - C.pt - C.pb); };
+      var cg2 = el('g', { class: 'wb-chart ' + tone(op.tone) }, b.nodes);
+      C.g = cg2;
+      var frame = el('rect', { x: op.x, y: op.y, width: op.w, height: op.h, rx: 10, class: 'wb-stroke wb-frame', filter: rough }, cg2);
+      var ax = el('path', { d: 'M' + C.px(C.xd[0]) + ',' + (C.y + C.pt - 4) + ' L' + C.px(C.xd[0]) + ',' + C.py(C.yd[0]) + ' L' + C.px(C.xd[1]) + ',' + C.py(C.yd[0]), class: 'wb-stroke wb-axis', filter: rough }, cg2);
+      var tt2 = el('text', { x: op.x + 12, y: op.y + 18, 'font-size': op.size || 19, class: 'wb-ctitle', 'dominant-baseline': 'middle' }, cg2);
+      tt2.textContent = op.title || '';
+      (op.yt || []).forEach(function (yt) {
+        var yl = el('text', { x: C.px(C.xd[0]) - 5, y: C.py(yt[0]), 'text-anchor': 'end', 'dominant-baseline': 'middle', 'font-size': 16, class: 'wb-tick' }, cg2);
+        yl.textContent = yt[1];
+      });
+      (op.xt || []).forEach(function (xt) {
+        var xl = el('text', { x: C.px(xt[0]), y: C.py(C.yd[0]) + 13, 'text-anchor': 'middle', 'dominant-baseline': 'middle', 'font-size': 16, class: 'wb-tick' }, cg2);
+        xl.textContent = xt[1];
+      });
+      if (op.zero) el('path', { d: 'M' + C.px(C.xd[0]) + ',' + C.py(0) + ' L' + C.px(C.xd[1]) + ',' + C.py(0), class: 'wb-stroke wb-zero' }, cg2);
+      it[op.chart] = C;
+      drawOn(frame, 600, anim); drawOn(ax, 500, anim); fadeIn(tt2, 400, anim);
+      return 650;
+    }
+    if (op.series) {
+      var SC = it[op.chart]; if (!SC) return 0;
+      var spts = op.pts.map(function (q) { return [SC.px(q[0]), SC.py(q[1])]; });
+      var sp = el('path', { d: 'M' + spts.map(function (q) { return q.join(','); }).join(' L'), class: 'wb-stroke wb-series ' + tone(op.tone), filter: op.dash ? null : rough, 'stroke-width': op.width || 3.2, 'stroke-dasharray': op.dash ? '8 6' : null }, b.edges);
+      it[op.series] = { kind: 'line', g: sp };
+      if (op.label) {
+        var lp = op.lat ? [SC.px(op.lat[0]), SC.py(op.lat[1])] : spts[spts.length - 1];
+        var sl = el('text', { x: lp[0] + (op.ldx || 0), y: lp[1] + (op.ldy || -12), 'text-anchor': op.lanchor || 'middle', 'dominant-baseline': 'middle', 'font-size': op.lsize || 17, class: 'wb-slabel ' + tone(op.tone) }, b.marks);
+        sl.textContent = op.label; fadeIn(sl, 400, anim);
+      }
+      if (op.dash) fadeIn(sp, op.ms || 700, anim); else drawOn(sp, op.ms || 1100, anim);
+      return op.ms || 1100;
+    }
+    if (op.gap) {
+      var GC = it[op.chart]; if (!GC) return 0;
+      var poly = op.top.map(function (q) { return GC.px(q[0]) + ',' + GC.py(q[1]); })
+        .concat(op.bot.slice().reverse().map(function (q) { return GC.px(q[0]) + ',' + GC.py(q[1]); }));
+      var gp = el('polygon', { points: poly.join(' '), class: 'wb-gap ' + tone(op.tone), 'fill-opacity': op.op || 0.22 }, b.edges);
+      b.edges.insertBefore(gp, b.edges.firstChild);
+      it[op.gap] = { kind: 'area', g: gp };
+      fadeIn(gp, 700, anim);
+      return 750;
+    }
+    if (op.dot) {
+      var DC = it[op.chart]; if (!DC) return 0;
+      var dx0 = DC.px(op.at[0]), dy0 = DC.py(op.at[1]);
+      var dg = el('g', { class: 'wb-dotg ' + tone(op.tone) }, b.marks);
+      el('circle', { cx: dx0, cy: dy0, r: op.r || 5.5, class: 'wb-dot-c' }, dg);
+      if (op.text) {
+        var dl = el('text', { x: dx0 + (op.dx || 0), y: dy0 + (op.dy === undefined ? -14 : op.dy), 'text-anchor': op.anchor || 'middle', 'dominant-baseline': 'middle', 'font-size': op.size || 17, class: 'wb-dlabel' }, dg);
+        String(op.text).split('\n').forEach(function (ln, i) { var ts = el('tspan', { x: dx0 + (op.dx || 0), dy: i ? (op.size || 17) * 1.1 : 0 }, dl); ts.textContent = ln; });
+      }
+      it[op.dot] = { kind: 'mark', g: dg, x: dx0, y: dy0, w: 0, h: 0 };
+      fadeIn(dg, 400, anim); b.flash(it[op.dot], anim);
+      return 500;
+    }
+    if (op.bars) {
+      var BC = it[op.chart]; if (!BC) return 0;
+      var bw = op.bw || 22, base = BC.py(0), bdur = op.ms || 900;
+      var bg = el('g', { class: 'wb-bars' }, b.edges);
+      op.data.forEach(function (d) {
+        var cx = BC.px(d[0]), top = BC.py(d[1]), neg = d[1] < 0;
+        var r = el('rect', { x: cx - bw / 2, width: bw, y: base, height: 0, rx: 3, class: 'wb-bar ' + (d[3] ? tone(d[3]) : (neg ? 'wb-t-red' : 'wb-t-green')), filter: rough }, bg);
+        var lab2 = el('text', { x: cx, y: neg ? top + 14 : top - 12, 'text-anchor': 'middle', 'dominant-baseline': 'middle', 'font-size': op.size || 17, class: 'wb-dlabel ' + (d[3] ? tone(d[3]) : (neg ? 'wb-t-red' : 'wb-t-green')) }, bg);
+        lab2.textContent = d[2] || '';
+        var y0 = Math.min(base, top), hh = Math.abs(top - base);
+        if (!anim) { r.setAttribute('y', y0); r.setAttribute('height', hh); return; }
+        lab2.style.opacity = '0';
+        var t0 = performance.now();
+        (function grow(now) {
+          if (tok !== b.token) return;
+          var p = Math.min(1, (now - t0) / bdur), e = 1 - Math.pow(1 - p, 3), cur = hh * e;
+          r.setAttribute('height', cur); r.setAttribute('y', neg ? base : base - cur);
+          if (p < 1) requestAnimationFrame(grow); else fadeIn(lab2, 300, true), lab2.style.opacity = '';
+        })(t0);
+      });
+      it[op.bars] = { kind: 'bars', g: bg };
+      return bdur + 150;
     }
     if (op.count) {
       var cb = it[op.count]; if (!cb || !cb.sub) return 0;

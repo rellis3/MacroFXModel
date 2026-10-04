@@ -39,6 +39,15 @@
 .wb-chip-bg{fill:#11141c;stroke:currentColor;stroke-width:2}
 .wb-chip-t{font-weight:700}
 .wb-cross{stroke-width:3.5}
+.wb-chart .wb-frame{fill:rgba(255,255,255,.02);stroke-width:2}
+.wb-axis{stroke:#9ba3bf;stroke-width:1.8}
+.wb-zero{stroke:#5a6380;stroke-width:1.4;stroke-dasharray:4 5}
+.wb-ctitle{font-weight:700}
+.wb-tick{fill:#9ba3bf !important;font-weight:400}
+.wb-slabel,.wb-dlabel{font-weight:700;paint-order:stroke;stroke:#11141c;stroke-width:5px;stroke-linejoin:round}
+.wb-gap{fill:currentColor;stroke:none}
+.wb-dot-c{fill:currentColor;stroke:#11141c;stroke-width:2}
+.wb-bar{fill:currentColor;fill-opacity:.85;stroke:currentColor;stroke-width:1.5}
 .wb-dim{opacity:.32;transition:opacity .35s}
 .wb-gone{opacity:0;transition:opacity .3s}
 .wb-t-chalk{color:#e8eaf2}.wb-t-blue{color:var(--blue)}.wb-t-green{color:var(--green)}.wb-t-red{color:var(--red)}.wb-t-amber{color:var(--amber)}.wb-t-purple{color:var(--purple)}

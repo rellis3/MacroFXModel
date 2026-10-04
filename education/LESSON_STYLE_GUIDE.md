@@ -505,8 +505,12 @@ illustrates (kicker `▶ Watch it`); `education/tools/build_whiteboards.py` buil
 placements from one scene definition and renumbers the deck's `data-slide`s.
 
 Ops: `box`, `chip` + `move`, `arrow` (`label`, `bend`, `dash`), `note`, `line`,
-`count`, `sub`, `pulse`, `dim`, `hide`, `cross` — documented at the top of
-`whiteboard.js`. Rules: design at viewBox width 600 with text ≥ 17 (it shrinks to
+`count`, `sub`, `pulse`, `dim`, `hide`, `cross`, plus mini charts — `chart` (a
+frame with data axes), `series` (draw-on line, solid or dashed), `gap` (shaded band
+between two lines), `dot` (labelled point) and `bars` (grow from zero) — documented
+at the top of `whiteboard.js`. Prefer drawing the actual move (a gap pinching, a
+price falling, a bar dropping) to a box that names it; real numbers only, marked
+"approx." where a path is interpolated. Rules: design at viewBox width 600 with text ≥ 17 (it shrinks to
 ~0.6× on a phone); leave ≥ 40 units between boxes an arrow joins; one idea per
 step; every caption must be as accurate as the lesson text (it is the transcript
 too). Best for causal chains, flows and mechanisms — not for derivations.

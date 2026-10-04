@@ -26,38 +26,62 @@ def note(id, x, y, text, tone=None, size=20, anchor='middle'):
 def step(cap, *ops): return dict(cap=cap, do=list(ops))
 
 # ── 1. Yen carry unwind (domino-chain-cross-asset) ────────────────────────────
-YEN = dict(w=600, h=440, intro='August 2024: how a rate decision in Tokyo became the worst day for Japanese stocks since 1987. Press play, or step through.', steps=[
-    step('End of July 2024: the Bank of Japan raises interest rates.',
-         box('boj', 15, 20, 160, 66, 'BoJ hikes', 'amber', sub='31 July')),
-    step('Days later, on 2 August, a weak US jobs report makes US rate cuts look closer.',
-         box('us', 15, 112, 160, 66, 'Weak US jobs', 'amber', sub='2 August')),
-    step('The gap between US and Japanese rates is the whole reason to borrow in yen and invest elsewhere. Now it is expected to narrow from both ends at once.',
-         box('gap', 205, 58, 140, 82, 'US–Japan\nrate gap', 'blue', sub='narrowing'),
-         arrow('boj', 'gap'), arrow('us', 'gap')),
-    step('The yen strengthens sharply. USD/JPY, near 162 in early July, is down to about 142 by 5 August.',
-         box('jpy', 400, 58, 170, 82, 'USD/JPY', 'blue', sub='161.9'),
-         arrow('gap', 'jpy'),
-         dict(count='jpy', **{'from': 161.9, 'to': 141.7, 'dp': 1, 'ms': 1600})),
-    step('Anyone who borrowed yen to buy higher-yielding assets now owes more, in their own currency, than they borrowed. They are losing money on the currency alone.',
-         box('carry', 400, 190, 170, 76, 'Yen-funded\ncarry trades', 'red', sub='losing'),
-         arrow('jpy', 'carry')),
-    step('Closing those trades means buying yen back to repay the loans, which pushes the yen up again. The chain has become a loop.',
-         arrow('carry', 'jpy', 'buy yen back', 'red', bend=-32, id='loop1', size=17),
-         dict(pulse='jpy')),
-    step('Holders cut risk everywhere at once, and they sell what they can sell quickly: what is liquid, not what is bad.',
-         box('sell', 220, 190, 130, 76, 'Forced\nselling', 'red'),
-         arrow('carry', 'sell')),
-    step('Monday 5 August: the Nikkei 225 falls more than 12% in a single session, its worst day since 1987.',
-         box('nik', 10, 205, 160, 76, 'Nikkei 225', 'red', sub='−12% in a day'),
-         arrow('sell', 'nik')),
-    step('Everyone reaches for protection at once. The VIX, Wall Street\'s volatility gauge, briefly trades above 60 intraday.',
-         box('vix', 15, 320, 160, 76, 'VIX', 'purple', sub='above 60'),
-         arrow('nik', 'vix', 'hedges bid')),
-    step('Funds that size their positions by recent volatility must cut exposure when volatility jumps. That is more selling: a second loop.',
-         box('vt', 210, 320, 170, 76, 'Vol-target funds\ncut exposure', 'purple', size=20),
-         arrow('vix', 'vt'), arrow('vt', 'sell', 'more selling', 'red', id='loop2')),
-    step('Then the forced sellers ran out. Much of the move reversed within days, and the Nikkei rebounded sharply the very next session. Leverage turns a chain into a loop, but only until the forced selling is done.',
-         note('end', 300, 425, 'Forced sellers done → much of it reversed within days', 'green', 21)),
+A, B, C, D = (10, 40, 262, 175), (328, 40, 262, 175), (10, 300, 262, 175), (328, 300, 262, 175)
+def chart(id, r, title, xd, yd, yt, xt, tone=None, **kw):
+    d = dict(chart=id, x=r[0], y=r[1], w=r[2], h=r[3], title=title, xd=xd, yd=yd, yt=yt, xt=xt, **kw)
+    if tone: d['tone'] = tone
+    return d
+def series(id, ch, pts, tone, **kw): return dict(series=id, chart=ch, pts=pts, tone=tone, **kw)
+def dot(id, ch, at, text, tone, **kw): return dict(dot=id, chart=ch, at=at, text=text, tone=tone, **kw)
+# Policy rates, 2024 (months: Jan = 0). Fed upper bound 5.50% all year until the 18 Sept cut;
+# BoJ: -0.1% until 19 Mar, 0-0.1% (plotted 0.05) until 31 Jul, then 0.25%.
+US_ACT = [[0, 5.5], [7, 5.5]]
+JP_ACT = [[0, -0.1], [2.6, -0.1], [2.6, 0.05], [7, 0.05], [7, 0.25]]
+US_EXP = [[7, 5.5], [11.5, 4.5]]          # about 1 point of US cuts priced for the rest of 2024
+JP_EXP = [[7, 0.25], [11.5, 0.4]]
+def cnote(id, ch, at, text, tone, size=17, anchor='middle', dx=0, dy=0):
+    return dict(note=id, chart=ch, at=at, text=text, tone=tone, size=size, anchor=anchor, dx=dx, dy=dy)
+YEN = dict(w=600, h=580, intro='August 2024, drawn as the charts actually moved: a narrowing rate gap, a soaring yen, a stock crash and a volatility spike. Press play, or step through.', steps=[
+    step('Start with what powered the trade. All year the Fed held rates at 5.25–5.50%; Japan only left negative rates in March, to 0–0.1%.',
+         chart('rates', A, 'Policy rates, 2024', [0, 11.5], [-1.4, 7], [[0, '0%'], [5, '5%']], [[0, 'Jan'], [3, 'Apr'], [7, 'Aug'], [11, 'Dec']], pt=38),
+         series('us', 'rates', US_ACT, 'blue', label='US', lat=[1, 5.5], ldy=-13),
+         series('jp', 'rates', JP_ACT, 'amber', label='Japan', lat=[1.3, -0.1], ldy=15, ms=1300)),
+    step('That gap of more than 5 percentage points is the carry trade: borrow yen almost free, put the money into dollars and higher-yielding assets.',
+         dict(gap='g1', chart='rates', top=US_ACT, bot=[[0, -0.1], [2.6, -0.1], [2.6, 0.05], [7, 0.05]], tone='red', op=0.2),
+         cnote('gl', 'rates', [3.5, 2.7], 'the gap\n= the trade', 'red', 18)),
+    step('31 July: the Bank of Japan raises its rate to 0.25%. Then on 2 August a weak US jobs report has markets pricing about a percentage point of US cuts by year-end.',
+         dot('boj', 'rates', [7, 0.25], 'BoJ hike', 'amber', dx=8, dy=13, anchor='start'),
+         series('usx', 'rates', US_EXP, 'blue', dash=True, ms=900),
+         series('jpx', 'rates', JP_EXP, 'amber', dash=True, ms=600),
+         dot('jobs', 'rates', [7, 5.5], 'weak jobs', 'blue', dy=-14)),
+    step('Now the gap is expected to narrow from both ends at once. Watch the shaded band pinch.',
+         dict(gap='g2', chart='rates', top=US_EXP, bot=JP_EXP, tone='red', op=0.34),
+         cnote('pinch', 'rates', [9.3, 2.4], 'narrowing', 'red', 18), dict(pulse='g2')),
+    step('The yen surges. USD/JPY, near 162 in early July, is down to about 142 by 5 August — a huge move for a major currency.',
+         chart('fx', B, 'USD/JPY (approx.)', [0, 35], [139, 168], [[140, '140'], [150, '150'], [160, '160']], [[0, '3 Jul'], [17, 'mid-Jul'], [33, '5 Aug']]),
+         arrow('rates', 'fx'),
+         series('jpy', 'fx', [[0, 161.9], [8, 159], [14, 156], [22, 152.5], [28, 150], [30, 146.5], [33, 141.7]], 'red', ms=1600),
+         dot('j0', 'fx', [0, 161.9], '161.9', 'red', dx=8, dy=17, anchor='start'),
+         dot('j1', 'fx', [33, 141.7], '141.7', 'red', dx=-10, dy=10, anchor='end')),
+    step('Everyone who borrowed yen now owes more than they borrowed. Closing those trades means buying yen back — which pushes the yen up again. The chain has become a loop.',
+         cnote('loop', 'fx', [33, 165], 'unwinding = buying yen\n→ yen up again ↺', 'red', 17, anchor='end')),
+    step('To raise cash they sell what they can sell fast. The Nikkei 225 falls about 6% on Friday 2 August, then about 12% on Monday 5 August — its worst day since 1987.',
+         chart('nik', C, 'Nikkei 225, daily move', [0, 4], [-21, 14], [[-10, '−10%'], [0, '0'], [10, '+10%']], [[1, '2 Aug'], [2, '5 Aug'], [3, '6 Aug']], zero=True, pl=50, pt=38),
+         arrow('fx', 'nik', 'sell stocks'),
+         dict(bars='nb', chart='nik', data=[[1, -5.8, '−5.8%'], [2, -12.4, '−12.4%']], bw=34, ms=1100)),
+    step("Everyone reaches for protection at once. The VIX, Wall Street's volatility gauge, closes at 16 on 31 July and 23 on 2 August, then trades as high as about 65 on the morning of 5 August.",
+         chart('vix', D, 'VIX', [0, 3.4], [0, 75], [[20, '20'], [40, '40'], [60, '60']], [[0, '31 Jul'], [1, '2 Aug'], [2, '5 Aug'], [3, '6 Aug']]),
+         arrow('nik', 'vix'),
+         series('vx', 'vix', [[0, 16.4], [1, 23.4], [2, 38.6]], 'purple', ms=900),
+         series('vrange', 'vix', [[2, 38.6], [2, 65.7]], 'purple', dash=True, ms=500),
+         dot('vhi', 'vix', [2, 65.7], 'intraday ≈65', 'purple', dx=-10, dy=0, anchor='end'),
+         dot('vcl', 'vix', [2, 38.6], 'close ≈39', 'purple', dx=-10, dy=-16, anchor='end')),
+    step('Funds that size positions by recent volatility must cut exposure when it jumps: more selling, a second loop.',
+         arrow('vix', 'nik', 'vol-target funds sell', 'purple', bend=-55, id='loop2', size=17)),
+    step('Then the forced sellers ran out. On 6 August the Nikkei jumped about 10% and the VIX fell back. Leverage turns a chain into a loop — but only until the forced selling is done.',
+         dict(bars='nb2', chart='nik', data=[[3, 10.2, '+10.2%']], bw=34, ms=900),
+         series('vx2', 'vix', [[2, 38.6], [3, 27.7]], 'green', ms=600),
+         note('end', 300, 560, 'Forced sellers done → much of it reversed within days', 'green', 21)),
 ])
 
 # ── 2. Gamma squeeze (gamma-exposure-dealer-hedging) ─────────────────────────
