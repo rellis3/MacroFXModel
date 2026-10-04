@@ -350,9 +350,9 @@
       (0.20 × 0.80 = 0.16) is exactly as large as the pool of true positives
       from the small trend-day population (0.80 × 0.20 = 0.16). The flag alone
       can't distinguish which pool you're in. Note what drove the answer:
-      when \(P(E\mid H)\) and \(P(E\mid\lnot H)\) happen to be complements of
-      each other (0.80 and 0.20) the posterior collapses to exactly
-      \(P(H\mid E)=P(H)/[P(H)+P(\lnot H)P(E\mid\lnot H)/P(E\mid H)]\) — plug in
+      Bayes' theorem can always be rewritten as
+      \(P(H\mid E)=P(H)/[P(H)+P(\lnot H)P(E\mid\lnot H)/P(E\mid H)]\), for any
+      inputs, not just these — plug in
       the numbers and see for yourself that a rarer prior always pulls the
       posterior further from the quoted accuracy. If trend days were 50% of
       days instead of 20%, the same 80%-accurate classifier would yield a

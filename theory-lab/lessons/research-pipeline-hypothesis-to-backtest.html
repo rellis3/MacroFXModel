@@ -215,7 +215,7 @@
 
   <div class="tl-chart">
     <div class="tl-chart-label">The five-stage research pipeline, and the specific failure each stage exists to close</div>
-    <svg viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flow diagram of five sequential boxes: Hypothesis (mechanism-first), Minimal test (zero parameters), Add complexity (one parameter at a time, cost tracked), Out-of-sample validation (realistic costs, purge/embargo), and Pre-registered verdict (worked or didn't, decided before the test ran). Arrows connect each stage to the next in order, with a red warning arrow looping from Add complexity back to Hypothesis labeled skipping the order reintroduces curve fitting.">
+    <svg viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flow diagram of five sequential boxes: Hypothesis (mechanism-first), Minimal test (zero parameters), Add complexity (one parameter at a time, cost tracked), Out-of-sample validation (realistic costs, purge/embargo), and Pre-registered verdict (worked or didn't, decided before the test ran). Arrows connect each stage to the next in order, with a red warning arrow looping from the Pre-registered verdict back to Hypothesis labeled: going back to try new hypotheses on the same data reintroduces curve fitting.">
       <defs>
         <marker id="rp-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M 0 0 L 10 5 L 0 10 z" style="fill:var(--text3)"/>
@@ -258,8 +258,8 @@
       <text x="460" y="160" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">"worked" / "didn't work" defined before Stage 4 ran</text>
       <text x="460" y="174" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9.5px">— no re-narrating a null into a maybe</text>
 
-      <path d="M 330,152 C 260,220 120,220 80,148 C 60,110 65,95 78,84" style="fill:none;stroke:var(--red)" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#rp-arrow-red)"/>
-      <text x="185" y="248" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">the failure mode: skipping straight from "add complexity" back</text>
+      <path d="M 300,152 C 260,220 120,220 80,148 C 60,110 65,95 78,84" style="fill:none;stroke:var(--red)" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#rp-arrow-red)"/>
+      <text x="185" y="248" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">the failure mode: going straight from a disappointing verdict back</text>
       <text x="185" y="262" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">to trying new hypotheses on the same data reintroduces the</text>
       <text x="185" y="276" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">exact search-and-report problem Stage 1's mechanism-first rule exists to prevent</text>
 
@@ -267,7 +267,7 @@
     </svg>
     <div class="tl-chart-caption">
     The five stages run in order, left to right, top to bottom. The dashed red arrow marks the
-    dangerous shortcut: reaching a disappointing result at Stage 3 or 4 and, instead of recording it
+    dangerous shortcut: reaching a disappointing verdict and, instead of recording it
     honestly, quietly going back to try a new variant or a new "hypothesis" on the same dataset. That
     loop is not wrong because looking for a better idea is wrong — it's wrong because it turns an
     apparently disciplined pipeline back into an undisclosed search, the exact thing Stage 1's
@@ -641,7 +641,7 @@
   <ul class="tl-refs">
     <li>Marcos López de Prado, <em>Advances in Financial Machine Learning</em> (Wiley, 2018) — Chapter 8, "Feature Importance," and Chapter 11, "The Dangers of Backtesting," lay out the broader research-process discipline this lesson's stage ordering is distilled from.</li>
     <li>David H. Bailey, Jonathan M. Borwein, Marcos López de Prado &amp; Qiji Jim Zhu, <em>"Pseudo-Mathematics and Financial Charlatanism: The Effects of Backtest Overfitting on Out-of-Sample Performance"</em>, Notices of the AMS, 2014 — the case for treating backtest overfitting as a research-process failure, not just a statistical footnote.</li>
-    <li>Campbell R. Harvey &amp; Yan Liu, "Backtesting," <em>Journal of Portfolio Management</em>, 2015 — argues for pre-specifying a significance hurdle before running a backtest, the direct ancestor of this lesson's pre-registration stage.</li>
+    <li>Campbell R. Harvey &amp; Yan Liu, "Backtesting," <em>Journal of Portfolio Management</em>, 2015 — shows how to haircut a backtested Sharpe ratio for the number of strategies tried (a multiple-testing adjustment), the formal version of this lesson's "count every trial" rule.</li>
     <li>Robert Pardo, <em>The Evaluation and Optimization of Trading Strategies</em> (Wiley, 2nd ed., 2008) — the walk-forward-optimization tradition this lesson's Stage 4 draws on, including the discipline of comparing in-sample to out-of-sample performance fold by fold rather than trusting one split.</li>
     <li>Robert M. Kaplan &amp; Veronica L. Irvin, "Likelihood of Null Effects of Large NHLBI Clinical Trials Has Increased over Time," <em>PLOS ONE</em>, 2015 — the before-and-after picture of what prospective registration does to reported success rates.</li>
   </ul>
