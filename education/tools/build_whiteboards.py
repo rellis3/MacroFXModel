@@ -164,3 +164,35 @@ for fn, name, title, cfg, before in BOARDS:
         s = s.replace('</body>', '<script src="../assets/whiteboard.js" defer></script>\n</body>', 1)
     open(p, 'w').write(s)
     print('ok', fn, len(cfg['steps']), 'steps')
+
+# ── The same boards as a "Watch it" slide in each visual guide (slide deck) ──
+DECKS = [  # (deck file, board name, insert after data-slide N)
+    ('domino-chain-cross-asset-micro.html', 'yen', 8),
+    ('gamma-exposure-dealer-hedging-micro.html', 'squeeze', 7),
+    ('qe-qt-balance-sheet-micro.html', 'qe', 6),
+]
+BY_NAME = {name: (title, cfg) for _, name, title, cfg, _ in BOARDS}
+
+for fn, name, after in DECKS:
+    p = L + fn; s = open(p).read()
+    s = re.sub(rf'    <!-- WB:{name}-deck:START -->[\s\S]*?<!-- WB:{name}-deck:END -->\n\n', '', s)
+    # Restore sequential numbering before locating the insertion point.
+    n = [0]
+    s = re.sub(r'(<section class="sl-slide(?: active)?" data-slide=")\d+(")', lambda m: m.group(1) + str(n.__setitem__(0, n[0] + 1) or n[0]) + m.group(2), s)
+    title, cfg = BY_NAME[name]
+    slide = (f'    <!-- WB:{name}-deck:START -->\n    <section class="sl-slide" data-slide="0">\n'
+             f'      <div class="sl-kicker">▶ Watch it</div>\n      <h2 class="sl-h2">{title}</h2>\n'
+             + block(name, title, cfg).replace('\n  ', '\n      ').replace('  <!--', '      <!--', 1)
+             + f'    </section>\n    <!-- WB:{name}-deck:END -->\n\n')
+    m = re.search(rf'<section class="sl-slide(?: active)?" data-slide="{after + 1}">', s)
+    assert m, (fn, after)
+    line_start = s.rfind('\n', 0, m.start()) + 1
+    s = s[:line_start] + slide + s[line_start:]
+    n = [0]
+    s = re.sub(r'(<section class="sl-slide(?: active)?" data-slide=")\d+(")', lambda m: m.group(1) + str(n.__setitem__(0, n[0] + 1) or n[0]) + m.group(2), s)
+    if 'assets/whiteboard.css' not in s:
+        s = s.replace('<link rel="stylesheet" href="../assets/deck.css', '<link rel="stylesheet" href="../assets/whiteboard.css">\n<link rel="stylesheet" href="../assets/deck.css', 1)
+    if 'assets/whiteboard.js' not in s:
+        s = s.replace('</body>', '<script src="../assets/whiteboard.js" defer></script>\n</body>', 1)
+    open(p, 'w').write(s)
+    print('ok', fn, 'slides', n[0])
