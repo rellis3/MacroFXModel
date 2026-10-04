@@ -11,6 +11,7 @@
           --pick:#f0b44c; --warm:#e57a3a; --cool:#4a8ee8; --mid:#3a414c; --pos:#3fb950; --neg:#f85149;
           --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace; }
   * { box-sizing:border-box; }
+  [hidden] { display:none !important; }   /* .row's display:flex would otherwise override the hidden attribute */
   body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   .wrap { max-width:1440px; margin:0 auto; padding:16px 16px 48px; display:grid; gap:14px; }
   .strip { display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px 16px; font:11px var(--mono); color:var(--text3); border-bottom:1px solid var(--border); padding-bottom:8px; }
@@ -268,13 +269,44 @@ function fRates() {
     'Green: both halves agree in sign with at least 15 weeks each. Grey: split or too few. Overlapping 4-week windows make neighbouring weeks dependent, so the real sample is smaller than n.');
 }
 
+// ── field: vol term structure ─────────────────────────────────────────────────────────────────────
+function fTerm() {
+  const T = D.volTerm; if (!T) return empty('vol term structure', D.errors?.volTerm);
+  const j = S.pick.date ?? T.dates.length - 1, k = S.pick.tenor ?? 2, yearAgo = Math.max(0, j - 252);
+  Plotly.react('surf', [
+    { type:'surface', x:T.dates, y:T.tenors, z:T.z, colorscale:SEQ, showscale:true, connectgaps:false, colorbar:{ title:{ text:'implied vol', side:'right', font:{ color:C.muted, size:10 } }, tickfont:{ color:C.muted, size:10 }, thickness:10, len:0.6 },
+      hovertemplate:'%{x}<br>%{y}: %{z:.1f}<extra></extra>' },
+    { type:'scatter3d', mode:'lines', x:T.tenors.map(() => T.dates[j]), y:T.tenors, z:T.z.map(r => r[j]), line:{ color:C.pick, width:6 }, hoverinfo:'skip' },
+    { type:'scatter3d', mode:'lines', x:T.dates, y:T.dates.map(() => T.tenors[k]), z:T.z[k], line:{ color:C.text, width:5 }, hoverinfo:'skip' },
+  ], layout3({ xaxis:ax3('date', { nticks:6 }), yaxis:ax3('option horizon'), zaxis:ax3('implied vol'), aspectmode:'manual', aspectratio:{ x:1.7, y:1, z:0.6 } }), cfg);
+  head('vol term structure · S&P 500 options, 1 day to 6 months', `pick: ${T.dates[j]} · ${T.tenors[k]} = ${T.z[k][j] ?? '–'}`,
+    'Each ridge is one option horizon (VIX1D, VIX9D, VIX, VIX3M, VIX6M). Normally the curve slopes up, with longer horizons dearer. When the front lifts above the back, the market is pricing something soon. VIX1D starts in 2022.');
+  const l1 = base2(); l1.xaxis.type = 'category';
+  Plotly.react('c1', [{ x:T.tenors, y:T.z.map(r => r[yearAgo]), mode:'lines', line:{ color:C.muted, dash:'dot', width:1 }, hovertemplate:'a year before: %{y:.1f}<extra></extra>' },
+    { x:T.tenors, y:T.z.map(r => r[j]), mode:'lines+markers', line:{ color:C.pick, width:2 }, hovertemplate:'%{x}: %{y:.1f}<extra></extra>' }], l1, cfg);
+  card(1, `1) the curve on ${T.dates[j]}`, `Dotted is a year before. Front (VIX9D ÷ VIX) ${T.front[j] ?? '–'} · back (VIX ÷ VIX3M) ${T.back[j] ?? '–'}.`);
+  const l2 = base2(); l2.showlegend = true; l2.legend = { orientation:'h', y:-0.2, font:{ size:9, color:C.muted } };
+  l2.shapes = [0.8858, 0.9669].map(y => ({ type:'line', xref:'paper', x0:0, x1:1, y0:y, y1:y, line:{ color:C.pick, width:1, dash:'dot' } }))
+    .concat([{ type:'line', xref:'paper', x0:0, x1:1, y0:1, y1:1, line:{ color:C.muted, width:1 } }, { type:'line', x0:T.dates[j], x1:T.dates[j], yref:'paper', y0:0, y1:1, line:{ color:C.pick, width:1 } }]);
+  Plotly.react('c2', [{ x:T.dates, y:T.front, name:'front: VIX9D ÷ VIX', mode:'lines', line:{ color:C.warm, width:1.5 } }, { x:T.dates, y:T.back, name:'back: VIX ÷ VIX3M', mode:'lines', line:{ color:C.cool, width:1.5 } }], l2, cfg);
+  card(2, '2) the curve\'s shape through time', 'Above 1 = that end of the curve is inverted. The amber dotted lines are the front ratio\'s calm / stressed cut-offs (fitted 2016–2020).');
+  const n = T.now, pc = x => x == null ? '–' : Math.round(x * 100) + '%';
+  box('concept', `<p><b>The volatility term structure</b> is what options charge for protection over different horizons: 1 day, 9 days, 30 days, 3 and 6 months. Normally it slopes up, because more time means more can happen.</p><p>When the <b>front</b> lifts (VIX9D above VIX), the market is paying up for the next week or so: an event, or stress arriving. When the whole curve <b>inverts</b> (VIX above VIX3M), that is backwardation, the classic stress state. The shape says <i>when</i> the market expects movement, which the vol level alone cannot.</p>`);
+  box('systems', `<div class="now">Now (${esc(n.date)}): front ${n.front} (<b>${esc(n.frontState)}</b>) · back ${n.back} (${esc(n.backState)}) · curve 1D→6M: ${n.curve.map(v => v == null ? '–' : v.toFixed(1)).join(' / ')}</div>
+    <ul><li><b>NQ / SPX lines (Vol Forecast, Daily Read):</b> on days with this front state, the index range passed its p75 line on <b>${pc(n.p75Front)}</b> of days in the unseen 2021–26 data (design 25%). A dear front means the lines are likely too tight, and a calm front means they are likely too wide.</li>
+    <li><b>Combine with the line tag:</b> the front still separated days within each vol-level third. In the middle third, from 15% (calm front) to 48% (dear front). A CONTINUE tag with a dear front is the strongest "lines too tight" setup for indices; EXHAUST with a calm front is the strongest "lines too wide" one.</li>
+    <li><b>Rich-Vol Break Record (indices):</b> it flags rich days from the 30-day level only. The front ratio is the candidate extra input, logged for the forward test, not added to the rule.</li></ul>`);
+  box('test', `<p>analysis/surfaces/VOL_TERM_CHECK.md: descriptive, not pre-registered. NQ + SPX, 2016–2026, cut-offs fitted 2016–20 and read on 2021–26: days past p75 by front third 20.7% / 28.7% / 35.2%; by back third 23.6% / 26.7% / 34.3%. Caveat: a dear front often means a scheduled event (CPI, FOMC) is close, and this σ has no event multiplier. Part of the effect may already be in the production lines' event widening. Pre-registering it against the production lines is the next step.</p>`);
+  extra(null);
+}
+
 function head(name, pick, note) { $('surfName').textContent = name; $('pickLab').textContent = pick; $('surfNote').textContent = note + ' Drag to rotate.'; }
 function card(i, t, n) { $(`c${i}t`).textContent = t; $(`c${i}n`).textContent = n; }
 function box(id, html) { $(id).innerHTML = html; }
 function extra(t, s, html, n) { $('extraPane').hidden = !t; if (!t) return; $('extraT').textContent = t; $('extraS').textContent = s; $('extra').innerHTML = html; $('extraN').textContent = n; }
 function empty(what, why) { $('surf').innerHTML = `<div class="empty">No ${esc(what)} build yet${why ? ': ' + esc(why) : ''}. It rebuilds every night, or press Rebuild now.</div>`; ['c1', 'c2'].forEach(id => $(id).innerHTML = ''); }
 
-const FIELDS = { absorption:['absorption (FX as one trade)', fAbsorption], persistence:['persistence by horizon', fPersistence], volTime:['vol time', fVolTime], rates:['rates curve + regime', fRates] };
+const FIELDS = { absorption:['absorption (FX as one trade)', fAbsorption], persistence:['persistence by horizon', fPersistence], volTime:['vol time', fVolTime], rates:['rates curve + regime', fRates], volTerm:['vol term structure', fTerm] };
 // Each field is fetched on first use (?field=…), so the page never downloads the whole ~2 MB build.
 const need = () => S.field === 'absorption' ? (S.amode === 'cross' ? 'crossAsset' : 'absorption') : S.field;
 async function ensure(f) {
@@ -304,6 +336,7 @@ function wire() {
     if (S.field === 'persistence') { const X = D.persistence.byInst[S.inst], t = X.dates.indexOf(p.x), h = D.persistence.qs.map(HZ).indexOf(p.y); if (t >= 0) S.pick.date = t; if (h >= 0) S.pick.h = h; }
     if (S.field === 'volTime') { const V = D.volTime.byInst[S.inst], w = V.weeks.indexOf(p.x), sl = [...Array(96).keys()].map(slotLab).indexOf(p.y); if (w >= 0) S.pick.week = w; if (sl >= 0) S.pick.slot = sl; }
     if (S.field === 'rates') { const w = D.rates.weeks.indexOf(p.x), t = D.rates.tenors.indexOf(p.y); if (w >= 0) S.pick.week = w; if (t >= 0) S.pick.tenor = t; }
+    if (S.field === 'volTerm') { const w = D.volTerm.dates.indexOf(p.x), t = D.volTerm.tenors.indexOf(p.y); if (w >= 0) S.pick.date = w; if (t >= 0) S.pick.tenor = t; }
     render();
   });
 }

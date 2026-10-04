@@ -4117,6 +4117,8 @@ function renderDrawerLineState(r) {
   const rows = [];
   if (t) rows.push(`<div class="ccy-explain"><b>Today's lines:</b> <span class="chip ${t.tag === 'continue' ? 'warn' : t.tag === 'exhaust' ? 'range' : 'neu'}">${_LS_WORD[t.tag]}</span> implied vol ÷ the lines' σ = <b>${t.ratio}</b>${t.provisional ? ' <span class="muted">(provisional cut-offs)</span>' : ''}: ${_LS_MEAN[t.tag]}</div>`);
   if (P?.byHorizon) rows.push(`<div class="ccy-explain"><b>Moves lately:</b> ${Object.entries(P.byHorizon).map(([h, o]) => `<span class="chip ${o.state === 'extending' ? 'warn' : o.state === 'giving back' ? 'range' : 'dim'}" title="variance ratio ${o.vr} over the last 20 London days, against this market's own last year">${h} ${o.state}</span>`).join(' ')}<br><span class="muted">Weak context only: the pre-registered test (2026-10-03) found it adds little once the line tag is known. The tag is what moves the odds. EXHAUST + extending was the closest fade setup yet (positive in both halves) but not significant.</span></div>`);
+  const vt = _lsReads?.global?.volTerm, isIdx = ['NQ', 'SPX', 'DOW', 'US2000'].includes(k);
+  if (isIdx && vt) rows.push(`<div class="ccy-explain"><b>S&P vol curve:</b> front ${vt.front} (${vt.frontState}) · back ${vt.back} (${vt.backState}). ${vt.frontState === 'stressed' ? 'The next 9 days are priced dear: index lines have run too tight on such days' : vt.frontState === 'calm' ? 'The front is calm: index lines have run wide on such days' : 'Normal front'} (p75 passed ~${Math.round((vt.p75Front ?? 0) * 100)}% of days vs 25% design). <span class="muted">Descriptive, not pre-registered.</span></div>`);
   if (clk?.pace != null) rows.push(`<div class="ccy-explain"><b>Market clock:</b> about <b>${Math.round(clk.tau * 100)}%</b> of a typical day's movement is normally done by now. Range so far ${clk.rangeSoFarPct}% vs ~${clk.expectedSoFarPct}% expected by now: <b>${clk.read}</b> (${clk.pace}×). <span class="muted">Closed-form √time reference, not backtested.</span></div>`);
   if (cf?.dollarShare != null) rows.push(`<div class="ccy-explain"><b>Dollar trade:</b> over 60 days, <b>${Math.round(cf.dollarShare * 100)}%</b> of ${cf.pair}'s movement was the dollar and ${Math.round(cf.ownShare * 100)}% was ${ccy}'s own story${load != null ? ` · loading on today's one-trade factor ${load}` : ''}. <span class="muted">A break here is ${cf.dollarShare >= 0.6 ? 'mostly a dollar bet' : cf.dollarShare <= 0.4 ? `mostly a ${ccy} bet` : 'a mix of both'}.</span></div>`);
   if (!rows.length) { sec.style.display = 'none'; return; }
@@ -4147,6 +4149,12 @@ function lsHedgeHtml() {
   return `<div class="side-card"><h3 class="help" title="Cross-asset absorption ratio: PCA across FX majors, gold, silver, oil, US/EU indices, the Nikkei and US 10Y bonds over 60 days, signed so the Nasdaq loads positive. PC1 share = how much of everything is one risk trade. A market on the risk-off side moves against equities today; one on the risk-on side does not hedge them.">What is hedging what</h3>
     <div class="ccy-explain">One trade drives <b>${Math.round(c.pc1 * 100)}%</b> of cross-asset movement (${c.pctile}th pct of the year).${fails.length ? ` <b class="neg">Not hedging equities today: ${fails.map(nice).join(', ')}</b>, which sit on the same side as the Nasdaq.` : ' Gold, bonds and the yen are on the risk-off side: the usual hedges are working.'}</div>
     <div class="muted" style="font-size:11px;line-height:1.5">With equities: ${on.map(nice).join(', ')}<br>Against: ${off.map(nice).join(', ') || '–'}${fx ? `<br>FX alone: one dollar trade = ${Math.round(fx.pc1 * 100)}% of FX movement (${fx.pctile}th pct).` : ''} <a href="surface-lab.html" target="_blank">Surface Lab ↗</a></div></div>`;
+}
+function lsVolTermLine() {
+  const t = _lsReads?.global?.volTerm;
+  if (!t) return '';
+  const pc = x => x == null ? '–' : Math.round(x * 100) + '%';
+  return `<div class="ccy-explain" style="margin-bottom:6px" title="S&P implied-vol curve shape (CBOE). Front = VIX9D ÷ VIX: above its stressed cut-off the next 9 days are priced dear. Back = VIX ÷ VIX3M: above 1 is backwardation. Descriptive research (analysis/surfaces/VOL_TERM_CHECK.md): NQ/SPX days past their p75 line, 2021-26, by front third 21% / 29% / 35%.">Vol curve front <b>${t.front}</b> (${esc0(t.frontState ?? '–')}) · back ${t.back} (${esc0(t.backState ?? '–')}) → index lines ${t.frontState === 'stressed' ? '<b>likely too tight</b>' : t.frontState === 'calm' ? '<b>likely too wide</b>' : 'about fair'} (p75 passed ~${pc(t.p75Front)} of such days)</div>`;
 }
 function lsRatesLine() {
   const q = _lsReads?.global?.rates;
@@ -8686,7 +8694,7 @@ function renderSidebar() {
 
     <div class="side-card"><h3>Risk State</h3><div id="riskList"><div class="muted">Loading…</div></div></div>
 
-    <div class="side-card"><h3>Volatility Outlook</h3>
+    <div class="side-card"><h3>Volatility Outlook</h3>${lsVolTermLine()}
       <div class="volout-row"><span>VIX</span><b>${risk.vix != null ? fmtN(risk.vix, 1) : '–'}${risk.vix != null ? (risk.vix > 20 ? ' (jittery)' : ' (calm)') : ''}</b></div>
       ${risk.vix != null && risk.vix3m != null ? `<div class="volout-row"><span>Term structure</span><b>${risk.vix > risk.vix3m ? 'Backwardated' : 'Contango'}</b></div>` : ''}
       <div class="volout-row"><span>σ building</span><b>${rs.filter(r => r.d.cone_5d != null && r.d.vol_pct != null && (r.d.cone_5d - r.d.vol_pct) >= 15).length} pairs</b></div>

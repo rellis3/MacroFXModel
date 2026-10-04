@@ -220,3 +220,26 @@ export function volClock(profile, slot, rangeSoFarPct, medianRangePct) {
   return { tau: r(tau, 3), expectedSoFarPct: r(expected, 3), rangeSoFarPct: r(rangeSoFarPct, 3), pace: r(pace, 2),
     read: pace == null ? null : pace >= 1.25 ? 'running ahead' : pace <= 0.8 ? 'running behind' : 'on schedule' };
 }
+
+// ── vol term structure (S&P, CBOE) ─────────────────────────────────────────────────────────────────
+// The S&P implied-vol curve from 1 day to 6 months (VIX1D, VIX9D, VIX, VIX3M, VIX6M), plus two shape ratios:
+//   front = VIX9D / VIX  (> 1: the next 9 days priced dearer than the next 30, a near-term event or stress)
+//   back  = VIX / VIX3M  (> 1: backwardation, the classic stress signal)
+// analysis/surfaces/VOL_TERM_CHECK.md (descriptive, not pre-registered): NQ+SPX days past their p75 range line, unseen
+// 2021-26, by front tercile 20.7% / 28.7% / 35.2% (design 25%); within the middle vol-level tercile 15% -> 48%.
+export const TERM_TENORS = [['VIX1D', '1D', 1], ['VIX9D', '9D', 9], ['VIX', '30D', 30], ['VIX3M', '3M', 91], ['VIX6M', '6M', 182]];
+export const TERM_EDGES = { front: [0.8858, 0.9669], back: [0.8376, 0.9157] };      // terciles fitted 2016-2020
+export const TERM_P75 = { front: [0.207, 0.287, 0.352], back: [0.236, 0.267, 0.343] }; // unseen 2021-26 rates by tercile
+export function volTerm(series, { keepDays = 780 } = {}) {
+  const dates = [...new Set(Object.values(series).flatMap(m => [...m.keys()]))].sort().filter(d => series.VIX?.has(d)).slice(-keepDays);
+  const z = TERM_TENORS.map(([id]) => dates.map(d => { const v = series[id]?.get(d); return Number.isFinite(v) ? v : null; }));
+  const ratio = (a, b) => dates.map(d => { const x = series[a]?.get(d), y = series[b]?.get(d); return x > 0 && y > 0 ? r(x / y, 4) : null; });
+  const front = ratio('VIX9D', 'VIX'), back = ratio('VIX', 'VIX3M');
+  const state = (v, e) => v == null ? null : v < e[0] ? 'calm' : v >= e[1] ? 'stressed' : 'normal';
+  const t = (v, e) => v == null ? null : v < e[0] ? 0 : v >= e[1] ? 2 : 1;
+  const j = dates.length - 1, fn = front[j], bk = back[j];
+  return { dates, tenors: TERM_TENORS.map(x => x[1]), days: TERM_TENORS.map(x => x[2]), z, front, back,
+    vxn: dates.map(d => series.VXN?.get(d) ?? null),
+    now: { date: dates[j], curve: z.map(row => row[j]), front: fn, back: bk, frontState: state(fn, TERM_EDGES.front), backState: state(bk, TERM_EDGES.back),
+      p75Front: t(fn, TERM_EDGES.front) == null ? null : TERM_P75.front[t(fn, TERM_EDGES.front)], p75Back: t(bk, TERM_EDGES.back) == null ? null : TERM_P75.back[t(bk, TERM_EDGES.back)] } };
+}

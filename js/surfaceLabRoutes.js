@@ -5,7 +5,7 @@
 // Data: OANDA daily candles (27 FX pairs, gold, NAS100), OANDA 15-minute candles (8 instruments, ~300 days),
 // FRED constant-maturity Treasury yields (11 tenors) and the broad dollar index. KV `surface_lab_v1`.
 // Re-derivable from source, but kept as a permanent key so a deploy or a failed fetch still shows the last build.
-import { absorption, persistence, volTime, windowShare, rates, regimeOutcomes, currencyFactors, volClock, CCYS, TENORS, PERSIST_Q } from './surfaceLabCore.js';
+import { absorption, persistence, volTime, windowShare, rates, regimeOutcomes, currencyFactors, volClock, volTerm, CCYS, TENORS, PERSIST_Q, TERM_TENORS } from './surfaceLabCore.js';
 import { DAILY_READ_KV } from './dailyReadCore.js';
 
 export const SURFACE_KV = 'surface_lab_v1';
@@ -27,7 +27,20 @@ const pctRank = (arr, x) => { const a = arr.filter(Number.isFinite); return a.le
 const friday = d => { const dt = new Date(d + 'T12:00:00Z'); dt.setUTCDate(dt.getUTCDate() + ((5 - dt.getUTCDay() + 7) % 7)); return dt.toISOString().slice(0, 10); };
 const weeklyLast = m => { const out = new Map(); for (const d of [...m.keys()].sort()) out.set(friday(d), m.get(d)); return out; };
 
-export function createSurfaceLab({ kv, fetchCandles, fetchFred, getSession = async () => null, log = console }) {
+const CBOE_CSV = s => `https://cdn.cboe.com/api/global/us_indices/daily_prices/${s}_History.csv`;
+async function cboeSeries(sym, fetchImpl) {
+  const r = await fetchImpl(CBOE_CSV(sym), { signal: AbortSignal.timeout(25_000) });
+  if (!r.ok) throw new Error(`CBOE ${sym} HTTP ${r.status}`);
+  const m = new Map();
+  for (const line of (await r.text()).split(/\r?\n/).slice(1)) {
+    const [d, , , , c] = line.split(','); if (!d || !c) continue;
+    const [mm, dd, yy] = d.split('/'); const v = parseFloat(c);
+    if (yy && Number.isFinite(v)) m.set(`${yy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`, v);
+  }
+  return m;
+}
+
+export function createSurfaceLab({ kv, fetchCandles, fetchFred, getSession = async () => null, fetchImpl = fetch, log = console }) {
   let running = false, last = null, memo = null;      // memo: parsed build, so field and summary reads don't re-parse ~2 MB
 
   async function load() {
@@ -48,6 +61,7 @@ export function createSurfaceLab({ kv, fetchCandles, fetchFred, getSession = asy
   async function buildCross() {
     const closes = {}, skipped = [];
     for (const [inst, sym] of CROSS) { try { closes[sym] = await dailyCloses(inst, 470); } catch (e) { skipped.push(sym); } }
+    if (Object.keys(closes).length < 5) throw new Error(`only ${Object.keys(closes).length} markets loaded (skipped: ${skipped.join(', ')})`);
     const a = absorption(closes, { window: 60, keep: 260, comps: 8, anchor: 'NQ' });
     return { ...a, skipped, now: summarise(a) };
   }
@@ -93,6 +107,12 @@ export function createSurfaceLab({ kv, fetchCandles, fetchFred, getSession = asy
     return { ...R, outcomes, now: { week: R.weeks.at(-1), regime: R.regime.at(-1), factors: R.factors.at(-1), lastRegimes: R.regime.slice(-8) } };
   }
 
+  async function buildVolTerm() {
+    const series = {};
+    for (const s of [...TERM_TENORS.map(t => t[0]), 'VXN']) { try { series[s] = await cboeSeries(s, fetchImpl); } catch (e) { if (s === 'VIX') throw e; } }
+    return volTerm(series, { keepDays: 780 });
+  }
+
   async function tick(reason = 'scheduled', force = false) {
     if (running) return { skipped: 'already running' };
     running = true;
@@ -105,6 +125,7 @@ export function createSurfaceLab({ kv, fetchCandles, fetchFred, getSession = asy
       try { out.crossAsset = await buildCross(); } catch (e) { out.errors.crossAsset = String(e.message || e); }
       try { Object.assign(out, await buildIntraday()); } catch (e) { out.errors.intraday = String(e.message || e); }
       try { out.rates = await buildRates(); } catch (e) { out.errors.rates = String(e.message || e); }
+      try { out.volTerm = await buildVolTerm(); } catch (e) { out.errors.volTerm = String(e.message || e); }
       out.builtAt = new Date().toISOString(); out.buildMs = Date.now() - t0;
       await kv.put(SURFACE_KV, JSON.stringify(out)); memo = out;
       last = { at: out.builtAt, reason, ok: true, errors: out.errors };
@@ -148,6 +169,7 @@ export function createSurfaceLab({ kv, fetchCandles, fetchFred, getSession = asy
         fxConcentration: fx?.now ?? null,
         crossAsset: cr ? { ...cr.now, sides: Object.fromEntries((cr.pairs ?? []).map(p => [p, side(p)])) } : null,
         rates: ra ? { regime: ra.regime, factors: ra.factors, lastRegimes: ra.lastRegimes, week: ra.week } : null,
+        volTerm: s.volTerm?.now ?? null,
         tags: { today: tagDay, next: nextDay, counts: Object.values(tagsOf(nextDay ?? tagDay)).reduce((a, x) => (x.tag && (a[x.tag] = (a[x.tag] ?? 0) + 1), a), {}) },
       },
       currency: { factors: fx?.currencies ?? null, persistence: ccyPersist },
@@ -164,7 +186,7 @@ export function createSurfaceLab({ kv, fetchCandles, fetchFred, getSession = asy
         if (!s) return res.json({ ok: false, running, lastTick: last, error: 'No build yet — the first build runs within 30 minutes of a deploy.' });
         const f = req.query.field, meta = { ok: true, builtAt: s.builtAt, buildMs: s.buildMs, errors: s.errors, running, lastTick: last };
         if (!f) return res.json({ ...meta, ...s });
-        if (!['absorption', 'crossAsset', 'persistence', 'volTime', 'rates'].includes(f)) return res.status(400).json({ ok: false, error: `unknown field ${f}` });
+        if (!['absorption', 'crossAsset', 'persistence', 'volTime', 'rates', 'volTerm'].includes(f)) return res.status(400).json({ ok: false, error: `unknown field ${f}` });
         res.json({ ...meta, [f]: s[f] ?? null });
       } catch (e) { res.status(503).json({ ok: false, error: `KV unavailable: ${e.message}` }); }
     });
