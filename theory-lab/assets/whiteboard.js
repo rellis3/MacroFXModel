@@ -493,7 +493,7 @@
     }
     if (op.count) {
       var cb = it[op.count]; if (!cb || !cb.sub) return 0;
-      var fmt = function (v) { return (op.pre || '') + v.toFixed(op.dp || 0) + (op.suf || ''); };
+      var fmt = function (v) { return (op.pre || '') + v.toLocaleString('en-US', { minimumFractionDigits: op.dp || 0, maximumFractionDigits: op.dp || 0 }) + (op.suf || ''); };
       if (!anim) { cb.sub.textContent = fmt(op.to); return 0; }
       var cdur = op.ms || 1200, c0 = performance.now();
       (function tick(now) {
