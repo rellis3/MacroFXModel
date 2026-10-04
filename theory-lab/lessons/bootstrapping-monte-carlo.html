@@ -17,7 +17,7 @@
   <h1 class="tl-title">Bootstrapping &amp; Monte Carlo Simulation</h1>
   <p class="tl-dek">Two ways to manufacture "many possible outcomes" out of a single dataset — and the one, easy-to-miss reason neither one tells you whether a signal will work on data it has never seen.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — formalizes a validation discipline used throughout this project<!-- DESK:END --></span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — formalizes a validation discipline used throughout this project; the bootstrap and block bootstrap already run in js/backtestStats.js and js/statsCore.js<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: Probability &amp; Random Variables primer</span>
   </div>
@@ -70,10 +70,11 @@
     it's correct — what the bootstrap and Monte Carlo simulation each
     mechanically do, what question each one actually answers, and why that
     question is a different question from "does this signal have real,
-    generalizable edge."<!-- DESK:START --> Status badge above is set to CONCEPT rather than
-    ALREADY IN USE for a specific reason: this lesson formalizes a rule the
-    repo already follows in prose (the quoted paragraph above), rather than
-    describing a new brick or module.<!-- DESK:END -->
+    generalizable edge."<!-- DESK:START --> The repo also already runs the mechanics: js/backtestStats.js
+    reports a bootstrap confidence interval on Sharpe and total return and a trade-order
+    Monte Carlo drawdown distribution, and js/statsCore.js provides a stationary
+    (Politis–Romano) block bootstrap. This lesson explains what those numbers can and
+    cannot tell you.<!-- DESK:END -->
   </p>
 
   <div class="tl-box intuition">
