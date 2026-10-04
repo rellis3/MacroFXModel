@@ -14,6 +14,7 @@ python3 analysis/forecaster_lessons/event_days.py               vp2.json calenda
 python3 analysis/forecaster_lessons/overfitting_and_selection.py --json overfitting_and_selection.out.json
 python3 analysis/forecaster_lessons/monitoring_and_tails.py     vp2.json --json monitoring_and_tails.out.json
 python3 analysis/forecaster_lessons/research_programme.py
+python3 analysis/forecaster_lessons/live_parity.py              vp2.json v2_decision_log.json --from 2026-09-03 --to 2026-09-18 --split 2026-09-15
 ```
 
 The one check that does need R2 M1 bars is fill realism: whether a touch becomes a fill,
@@ -81,12 +82,12 @@ Per instrument, the extra cost each one can absorb before mean R reaches zero:
 | EURUSD | 1.6 pips |
 | USDJPY | 6.1 pips |
 
-The sibling Fib Atlas went from backtest Sharpe 18 to **−$13.7k on 101 live paper
-trades** (`MD files/FIB_ATLAS_BACKTEST_VS_LIVE.md`): win rate 85.7% → 39.6%, median
-win 8.2 → 3.5 pips. Its causes are spread, touch ≠ fill, and same-bar barrier
-ambiguity. All three apply to this book. In fundamental-law terms, **our IC and
-breadth are fine and our TC is unmeasured.** L03 says that is where a layered
-system loses its information ratio.
+*Scope note:* the Fib Atlas (Asia-range fib ladder) is a **different system**. Its live
+paper loss (`MD files/FIB_ATLAS_BACKTEST_VS_LIVE.md`) shows what spread, touch ≠ fill and
+same-bar ambiguity *can* do, but it is not evidence about this book. The Vote Atlas has
+its own live evidence: see §3.9. In fundamental-law terms, **our IC and breadth look
+fine; our TC (does live do what the backtest does, at what cost?) is the open question.**
+L03 says that is where a layered system loses its information ratio.
 
 ## 3. Experiments: one layer at a time, walk-forward
 
@@ -274,7 +275,7 @@ book). None is live-confirmed in R.
 - At a conventional 5% test size, about **44% of accepted edges would be false
   discoveries** (L02 §05).
 - One independent confirmation, a lockbox or a live record, lifts P(real) to about 95%.
-- The Fib Atlas's live paper loss is consistent with that FDR.
+- (The Fib Atlas's live paper loss is consistent with that FDR. It is one of the four accepted edges.)
 
 The **fade-at-the-lines family is at its L02 kill threshold**:
 - 11 recorded failures and no success.
@@ -283,6 +284,44 @@ The **fade-at-the-lines family is at its L02 kill threshold**:
 - The family should stop unless a success is worth more than about 50× the cost of an
   attempt.
 - Each failure *raises* the expected remaining search (the Lindy effect, L02 §03).
+
+### 3.9 Live ↔ backtest parity of the Vote Atlas (L03 transfer coefficient): `live_parity.py`
+
+The live bot's decision log (`v2_decision_log.json`, 2–22 Sep) can be matched trade by
+trade against the backtest (`vp2.json`). A match means same pair, side, rung and
+follow/fade, entered within 60 minutes.
+
+| Period | Backtest trades | Live entries | Live took (recall) | Live entries not in backtest |
+|---|---|---|---|---|
+| 3–18 Sep | 316 | 236 | **48%** | **36%** |
+| 3–14 Sep | 212 | 134 | 43% | 32% |
+| 15–18 Sep | 104 | 102 | 59% | 40% |
+
+- **The misses are not random.** The backtest trades live missed averaged **+0.221R**;
+  the ones it took averaged **+0.051R** (t = 1.74). The live bot traded the weaker half.
+- **Why missed:** for 116 of the 164 misses, the live bot logged *no event at all*.
+  The signal never fired live, so this is not blocking.
+  - 27 were the same pair taken with a different side, rung or follow/fade.
+  - Fewer than 20 were blocks: spread, stack guard, currency gate, cooldown, broker
+    rejects.
+  - Where live and backtest both saw the same touch, 11% had the opposite follow/fade.
+- **This matches the team's own 17–18 Sep finding** (`local_decision_engine/parity_test.mjs`
+  header): a fresh OANDA re-fetch of the same window does *not* reproduce the archive's
+  vote/margin, so live levels and votes differ from the backtest's.
+  - The local decision engine and its corrected sync path went in on 18 Sep.
+  - The v3 log overlaps the backtest on only one day (18 Sep), so it is too short to show
+    whether the fix worked.
+- Also on 18 Sep (v3): USDCHF was rejected with `spread 1.4p > max 0.0p`. A per-pair
+  spread cap of 0.0 silently blocks the pair. **Check the live bot-config entry for
+  USDCHF.** `pylego/costs.max_spread` uses a per-pair value as-is, so a blank field saved
+  as 0 would do this. Left unchanged because it is a live setting.
+
+**Why this matters more than P&L.** Until live takes the backtest's trades, no live P&L
+says anything about the backtest's edge. Parity is not a statistical test: a correct
+engine reproduces the trade list, so it needs **days of logs, not months**, and no
+manual effort.
+- Pass bar: **recall and precision ≥ 90%**.
+- Then, and only then, compare cost per trade.
 
 ### 3.8 Lessons vs what is built: the code audit
 
@@ -338,16 +377,25 @@ Each layer has one job, one test, and a pass bar written down *before* the test 
 | **L4 Primary signal** | follow / fade at a rung | level-atlas vote (`levelAtlasVoteReview.js`) | DSR with the *full* trial count from the ledger; OOS not contaminated by the hold-gate | ⚠ PBO 0.000 and a margin plateau within the 180-config family (§3.5), but: trial count never logged; holdsOOS uses the scored labels; ≈1.2 Sharpe of the headline is hindsight pair choice |
 | **L5 Meta-label** | *whether* to take the trade | `layer_experiments.py` E1 → port to JS | walk-forward OOS: Sharpe@10% ≥ base and better at +1 pip slippage | candidate: 4.07 vs 3.92; 2.14 vs 1.65 at +1 pip |
 | **L6 Sizing** | how much | fixed 0.5% risk; margin sizing (E2) | Kelly on the **shrunk, cost-stressed** edge; never above ½-Kelly | E2 candidate. Don't raise risk until L7 has data |
-| **L7 Implementation (TC)** | fills, costs | bots + MT5 | live trades stored **in R** with their stop (`LIVE_BACKTEST_ALIGNMENT.md` §2.2); live slippage per pair measured; live R inside the frozen bootstrap band | ❌ **the gap**: no live trade can be expressed in R today |
+| **L7 Implementation (TC)** | fills, costs | bots + MT5 | live trades stored **in R** with their stop (`LIVE_BACKTEST_ALIGNMENT.md` §2.2); live slippage per pair measured; live R inside the frozen bootstrap band | ❌ **the gap**: live took only 48% of the backtest's trades, 3–18 Sep (§3.9); no live trade can be expressed in R today |
 | **Risk management** | path / drawdown | graded DD throttle | bootstrap path-robustness (E6) | ✅ keep: cuts DD on 100% of paths. Book vol half-life about 206 days, so the risk is regime-level, not daily (§3.6) |
 | **Monitoring** | is the edge still there? | none today (§3.8) | SPRT on per-trade R vs the frozen mean 0.071 (§3.6): kill at LLR ≥ 2.77, about 80 days if the edge is gone | ❌ build it on the frozen expectation of step 2 |
 
 ### Order of work (each step ends with a written pass/fail before the next starts)
 
-1. **Close the TC gap (L7).**
-   - Store `sl`/`tp` at entry in `pylego/broker/mt5.py` so every live trade becomes an R record.
-   - Then measure realised slippage per pair against the backtest's touch price.
-   - This single number decides whether the book is a 4-Sharpe system or a 0-Sharpe one (§2.1).
+1. **Close the TC gap (L7). Weeks, automated, no paper-trading marathon.**
+   - **(a) Parity**, days: run `live_parity.py` on the v3 decision log after the 18 Sep
+     engine fix. Pass at ≥ 90% recall and precision. If it fails, fix the live data/σ path
+     (§3.2 item 2, the 18 Sep sync finding) before anything else.
+   - **(b) Fill realism**, days, laptop with R2 M1: replay the book with spread at the
+     time, a trade-through rule (not touch) and worst-case same-bar handling. If the edge
+     dies here, stop.
+   - **(c) Real cost**, 2–4 weeks of the bot running unattended at minimum size: store
+     `sl`/`tp` at entry (`pylego/broker/mt5.py`) so every trade is in R, and measure
+     slippage per pair. Costs vary far less than P&L, so a few hundred trades pin them
+     down. Drop pairs whose cost is above their headroom (§2.1).
+   - Then trade small and scale in steps, with the SPRT kill rule (§3.6) on automatically.
+     The forward record builds itself; nobody watches it daily.
 2. **Freeze and lock.**
    - Write today's config, trade list and bootstrap band to a frozen expectation file (`scripts/freeze_expectation.mjs` exists).
    - Treat everything after the freeze as the L01 card 03 lockbox. Look at it at fixed checkpoints only (L01 card 10, L02 §06).
