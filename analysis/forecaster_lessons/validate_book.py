@@ -52,7 +52,7 @@ S = sharpe(r)
 Sd = S / math.sqrt(ANN)                                       # per-day Sharpe
 g3 = stats.skew(r); g4 = stats.kurtosis(r)                    # excess kurtosis
 se_norm_d = math.sqrt((1 + 0.5 * Sd ** 2) / T)
-se_nn_d = math.sqrt((1 - g3 * Sd + (g4) / 4 * Sd ** 2) / T)   # Mertens / Opdyke
+se_nn_d = math.sqrt((1 + 0.5 * Sd ** 2 - g3 * Sd + g4 / 4 * Sd ** 2) / T)   # Mertens / Opdyke (g4 = excess kurtosis)
 se_norm, se_nn = se_norm_d * math.sqrt(ANN), se_nn_d * math.sqrt(ANN)
 rho = [float(np.corrcoef(r[:-k], r[k:])[0, 1]) for k in range(1, 21)]
 

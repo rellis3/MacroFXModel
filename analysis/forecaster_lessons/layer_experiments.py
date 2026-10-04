@@ -249,3 +249,15 @@ E6 = dict(paths=1000, throttle_better_dd_share=float((rows[:, 3] > rows[:, 2]).m
 print("E6 throttle on 1000 bootstrap paths (equal 10% vol):", {k: round(v, 3) for k, v in E6.items()})
 R['E5_slippage'] = E5; R['E6_throttle_bootstrap'] = E6
 if OUT: json.dump(R, open(OUT, 'w'), indent=1, default=float)
+
+# ── E3b slow vol-target: the book's GARCH half-life is ~200 days (monitoring_and_tails.py),
+#    so a fast EWMA(0.94) tracks noise. Test slower memories, at equal 10% vol.
+E3b = []
+for lam in (0.94, 0.97, 0.99, 0.995):
+    v = vol_target(r_all, lam=lam, warm=60)
+    E3b.append(dict(lam=lam, alone=metrics(at_vol(v), f'vt λ={lam}'), with_throttle=metrics(at_vol(dd_throttle(v)), f'vt λ={lam} + DD')))
+_m0 = metrics(at_vol(r_all)); print(f"E3b slow vol-target at 10% vol (no overlay: Sharpe {_m0['sharpe']:.2f}, DD {_m0['maxdd']:.1f}%)")
+for e in E3b:
+    print(f"  λ={e['lam']}: alone Sharpe {e['alone']['sharpe']:.2f} DD {e['alone']['maxdd']:.1f}% | +DD throttle Sharpe {e['with_throttle']['sharpe']:.2f} DD {e['with_throttle']['maxdd']:.1f}%")
+R['E3b_slow_vol_target'] = E3b
+if OUT: json.dump(R, open(OUT, 'w'), indent=1, default=float)

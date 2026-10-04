@@ -4,13 +4,20 @@
 the Level-Atlas vote portfolio v2 record (`vp2.json`, 2022-04-14 → 2026-09-18, 1,132
 days, 23,619 trades), the forecast research (`vfr.json`, `MD files/VOL_LADDER_NOTES.md`),
 and the fade / continuation / surface research docs. Every number below comes from
-the three scripts in this folder, and each one re-runs in a few seconds.*
+the scripts in this folder. None of them needs the R2 price data, and they re-run in
+seconds (`overfitting_and_selection.py` takes about a minute).*
 
 ```
-python3 analysis/forecaster_lessons/validate_book.py     vp2.json --json validate_book.out.json
-python3 analysis/forecaster_lessons/layer_experiments.py vp2.json --json layer_experiments.out.json
-python3 analysis/forecaster_lessons/event_days.py        vp2.json calendar_events.csv --json event_days.out.json
+python3 analysis/forecaster_lessons/validate_book.py            vp2.json --json validate_book.out.json
+python3 analysis/forecaster_lessons/layer_experiments.py        vp2.json --json layer_experiments.out.json
+python3 analysis/forecaster_lessons/event_days.py               vp2.json calendar_events.csv --json event_days.out.json
+python3 analysis/forecaster_lessons/overfitting_and_selection.py --json overfitting_and_selection.out.json
+python3 analysis/forecaster_lessons/monitoring_and_tails.py     vp2.json --json monitoring_and_tails.out.json
+python3 analysis/forecaster_lessons/research_programme.py
 ```
+
+The one check that does need R2 M1 bars is fill realism: whether a touch becomes a fill,
+and the real spread and slippage per pair (§2.1). It is listed as step 1 of §4.
 
 ---
 
@@ -41,10 +48,10 @@ python3 analysis/forecaster_lessons/event_days.py        vp2.json calendar_event
 
 | Check (L01 §05 card) | Result | Verdict |
 |---|---|---|
-| Sharpe ± SE (non-normal, Opdyke) | **3.95 ± 0.42**, 95% CI 3.13–4.77, PSR ≈ 1 | strong *as a backtest* |
+| Sharpe ± SE (non-normal, Opdyke) | **3.95 ± 0.43**, 95% CI 3.11–4.79, PSR ≈ 1 | strong *as a backtest* |
 | Lo η(q), 1 / 5 / 10 / 20 lags | 3.61 / 3.17 / 2.99 / 2.86 | the √252 rule overstates it. ACF1 = +0.098, so n_eff ≈ 930 of 1,132 |
-| Bayesian shrinkage (prior 1.0, τ 1.0 / 0.5) | 3.51 / **2.73** | plan on about 2.7, not 4 |
-| Deflated Sharpe | ≥ 0.95 even at N = 1,000 trials (trial-Sharpe SD 1.0) | survives search breadth *if* the costs hold |
+| Bayesian shrinkage (prior 1.0, τ 1.0 / 0.5) | 3.50 / **2.71** | plan on about 2.7, not 4 |
+| Deflated Sharpe | ≥ 0.95 even at N = 1,000 trials at an *assumed* trial-Sharpe SD of 1.0. Measured on the real trial family (§3.5): SD 1.83, effective N 5.6 → DSR 1.00 | survives search breadth *if* the costs hold |
 | Bootstrap, 2,000 paths, mean block 10 d | max DD realised −14.1% vs median −16.0%, 5th pct −23.7%, 1st pct −28.5%; P(DD < −20%) = 16% (resampled from the throttled record, so the throttle isn't re-applied along each path) | the realised DD was a *lucky* path. Budget for about −24% |
 | Loss frequency vs Φ(−S√h) | record loses **more** often than the normal model at every horizon (day 43.1 vs 40.2%, month 15.4 vs 12.7%, quarter 6.2 vs 2.4%) | regime variation (2022H2 Sharpe 1.57), not skew |
 | Decay (L02 §06) | edge *rising*: 1st half Sharpe 2.72 vs 2nd half 4.97, trend p = 0.009 | **a warning, not good news** (§3.4) |
@@ -192,6 +199,133 @@ Two forecasting-layer issues remain:
 - The cure is L01 card 03: a holdout or lockbox **after** the freeze date, examined
   once.
 
+### 3.5 Search breadth and selection (L01 cards 05/07, L02 §05): `overfitting_and_selection.py`
+
+Universe: 32 instruments from `analysis/output/level-atlas-vote-trades/*-votetrades.json`,
+over the common window 2022-10-13 → 2026-06-04 (944 days). Every trial is a daily
+equal-risk book with no overlays, so this isolates the **signal layer**.
+
+| Check | Result | Reading |
+|---|---|---|
+| Trial family | 180 configs (4 universes × minMargin 1–5 × rung × decision); Sharpe median 3.63, sd 1.83, best 7.68 | edge is present almost everywhere in the family |
+| Effective trials (eigen participation) | **5.6** of 180 | configurations are highly correlated, as L02 §05 predicts |
+| DSR of the best trial | 1.00 at N = 180 (benchmark 4.99) and at N_eff = 5.6 (benchmark 2.31) | the search does not explain the edge |
+| CSCV, S = 16 (12,870 splits) | **PBO 0.000**; IS-best 7.75 → OOS 7.46 | choosing among these configs is not overfitting |
+| minMargin plateau (book-17) | m1 4.0 · m2 5.3 · **m3 6.8 · m4 7.7 · m5 7.6 · m6 7.4** · m7 5.2 | a plateau, not a spike: structure (L01 card 07) |
+| Pair selection, 2023 → 2026-06 | all 32: **5.32** · book-17 picked with hindsight: **6.87** · the 15 excluded: 2.05 · picked walk-forward (trailing t > 0): **5.69** | about **1.2 Sharpe of the book's headline is hindsight pair choice**; an honest selection rule earns +0.4 |
+
+What this cannot see:
+- The vote dimensions themselves were chosen by `annotateHolds`, using the same
+  out-of-sample labels these trades are scored on (`LEGO_MODULES.md` ≈ line 2730).
+- Every trial here inherits that.
+- CSCV measures overfitting *within* the family, not the contamination of the family.
+- Only a lockbox after the freeze date answers that (§4 step 2).
+
+### 3.6 Forward monitoring and tails (L01 cards 06/10, §02, §04; L03 §02–§03): `monitoring_and_tails.py`
+
+**How long must the live record run?** Minimum track record length at 95%, on the
+unthrottled book:
+
+| edge assumed | to confirm Sharpe > 0 | to confirm Sharpe > 1 |
+|---|---|---|
+| backtest, 4.17 | 34 days | 58 days |
+| shrunk, 2.71 | 82 days | 203 days |
+| +0.5 pip slippage, 2.81 | 77 days | 185 days |
+| +1 pip slippage, 1.65 | 233 days | **1,495 days** |
+
+**Detecting decay.** Mean R is 0.071 with sd 0.804, at 20.9 trades a day. Trades on
+the same day are correlated, with a design effect of 2.35, so an effective trade is
+worth less than a raw one.
+- To detect a 50% fall in mean R at 5% size and 80% power takes **about 7,500 trades,
+  or about 360 trading days**.
+- A Wald SPRT on per-trade R gets there faster: H0 = the frozen 0.071, H1 = 0, α 5%,
+  β 20%, kill at a log-likelihood ratio of 2.77.
+  - If the edge is gone, it kills after about **1,680 trades, about 80 days**.
+  - If the edge is intact, it clears after about 940 trades.
+- **This is the monitoring rule** for the live book (formula in the script output JSON).
+
+**Tails** (unthrottled, % of equity per day):
+
+| | normal | Cornish-Fisher | empirical | CVaR |
+|---|---|---|---|---|
+| VaR 95% | −3.89 | −3.13 | −3.29 | −4.26 |
+| VaR 99% | −5.80 | −4.37 | −4.88 | −5.65 |
+
+- GPD on losses beyond the 95th percentile gives ξ = −0.20, a bounded tail.
+  - That puts the 1-in-1000-day loss at 6.5%, against a worst day of 6.8%.
+  - The positive skew (0.80) makes normal VaR **over**state the risk.
+  - Daily excess kurtosis matches the i.i.d. 1/h law at 5 days (0.31 vs 0.28).
+  - It does **not** match at 21 days (0.61 vs 0.07). Month-scale returns are
+    fatter-tailed than independent days allow, which points to slow regime shifts.
+    It also matches the excess monthly and quarterly loss frequency in §2.
+- GARCH(1,1) on the book: α 0.044, β 0.952, **persistence 0.997, half-life about 206 days**.
+  - The book's volatility moves slowly, at regime scale, and clusters little day to day.
+  - That is why vol targeting did nothing (E3). A slow target (λ 0.97 / 0.99 / 0.995)
+    adds at most +0.04 Sharpe (E3b), which is noise, so it is rejected.
+  - The risk to size for is **regime-level**: what the DD throttle and the L01 card 09
+    regime split address, not daily vol.
+
+### 3.7 The research programme itself (L02): `research_programme.py`
+
+From the verdict register in `august analysis.md`: **38 directions decided, 4 accepted**,
+a 10.5% pass rate (Range-Line/Fib Atlas, yield-spread z-reversion, touch motifs, this
+book). None is live-confirmed in R.
+- The implied base rate is about 7–12%.
+- At a conventional 5% test size, about **44% of accepted edges would be false
+  discoveries** (L02 §05).
+- One independent confirmation, a lockbox or a live record, lifts P(real) to about 95%.
+- The Fib Atlas's live paper loss is consistent with that FDR.
+
+The **fade-at-the-lines family is at its L02 kill threshold**:
+- 11 recorded failures and no success.
+- Under the lesson's own prior, Beta(1.2, 10.8), the posterior success rate is 5.2%,
+  and about 110 more attempts would be expected before a success.
+- The family should stop unless a success is worth more than about 50× the cost of an
+  attempt.
+- Each failure *raises* the expected remaining search (the Lindy effect, L02 §03).
+
+### 3.8 Lessons vs what is built: the code audit
+
+Which of the lessons' methods exist in code, and whether they are applied to the books
+we actually trade.
+
+| Lesson method | In the repo | Applied to the live/headline books? | Gap |
+|---|---|---|---|
+| Sharpe SE, non-normal (L01 §03) | `js/metricsCore.js:108`, i.i.d.-normal only | pages show i.i.d. SE | no skew/kurtosis/autocorrelation on any page |
+| PSR / MinTRL (L01 card 06) | `js/backtestStats.js:85`, `js/metricsCore.js:220` (correct) | yes | n = days with no autocorrelation adjustment; most callers use Gaussian defaults |
+| Lo η(q) / HAC (L01 §03) | Newey-West Sharpe `metricsCore.js:146`; Lo η only offline (here) | side field only | HAC not fed into PSR/DSR/MinTRL |
+| Deflated Sharpe (L01 card 05, L02 §05) | `js/backtestStats.js:110` (correct formula) | Fib Atlas: **N = 6 one-lever flips, per-trade series** (`fibAtlasVotePortfolio.js:660`); Range-line "DSR 100%": about 13 OAT neighbours | **N is never the real search size**; the day-pooled 124-trial audit exists but isn't wired in |
+| Trial ledger (L02 §05 practice 02) | **absent**; only PREREG markdown | — | the reason DSR's N is always guessed |
+| White RC / SPA / Romano-Wolf / BH (L01 card 05) | BH/Holm exist (`js/preregStats.js`, forge); RC/SPA/R-W **absent** | not on any config search | — |
+| Purged CV / CSCV-PBO (L01 card 04) | embargo-only walk-forward in `js/mve/validation.js` (parked model); PBO **absent** until `overfitting_and_selection.py` here | — | — |
+| Block bootstrap (L01 §04) | `js/statsCore.js:192` (stationary) | Fib Atlas calls `portfolioStats` with **`mc:false`** | no Politis-White block length anywhere |
+| Holdout / lockbox / frozen expectation (L01 card 03) | `scripts/freeze_expectation.mjs`, holdout scripts | **no bot has an `expect_<bot>` artifact** (`js/botAuditEngine.js:390`); freeze refuses Fib Atlas (Sharpe 18 trips its plausibility guard) | no clean lockbox for any live book |
+| Forward monitoring, power (L01 card 10) | live-in-cone percentile `botAuditEngine.js:428` | bot-audit page | **CUSUM / SPRT / power absent** until §3.6 here |
+| Costs, capacity, fills (L01 card 11) | cost multiples, `js/fillRealismEngine.js:93`, Fib Atlas cost-torture scripts | partly | **market impact absent**; "capacity" chart is cost × multiple |
+| Kelly / vol target / throttle (L01 §06) | throttle `fibAtlasVotePortfolio.js:514`, `pylego/drawdown_throttle.py`; `portfolioStats` volTarget | throttle **defaults off** on the headline page; volTarget scales by **full-sample** vol (look-ahead, display only) | — |
+| GARCH / half-life (L03 §02) | `js/volForecast.js:49-50` **fixed, hand-set** α/β; grid MLE in `nasdaqTransforms.js:317` | forecaster | production GARCH not estimated |
+| Jumps / EVT / Cornish-Fisher (L01 §04, L03 §03) | bipower jumps (`volatilityExhaustion/`), GPD `js/evtTail.js` (correct) | EVT tile on the atlas pages | Cornish-Fisher absent from code; EVT fitted on in-sample inflated books |
+| Fundamental law (L03 §01) | offline only (here) | — | IC never measured on a book; `statsCore.js:157` rank-IC used only for macro |
+| Meta-labelling (L03 §01) | offline E1 here; `bot/modules/ml_confidence.py` (gold, advisory) | not on any atlas/range-line book | — |
+| Stress, correlation in stress (L01 card 09) | `js/bookStress.js:106` | runs on **market sleeves**, not strategy returns | — |
+
+**The pattern.** The repo *has* most of the lessons' machinery as bricks, and most of
+the formulas are right. They are applied loosely to the books that matter:
+- trial counts are guessed;
+- autocorrelation is ignored on the pages;
+- the headline book's bootstrap is switched off;
+- no live bot has a frozen expectation to be ranked against;
+- nothing monitors for decay.
+
+The rigorous versions exist only as offline scripts (this folder included). L03's own
+point applies to the research platform too: **the layer that's missing is the
+implementation layer (TC), not the forecasting skill (IC).**
+
+*Correction logged:* the first version of `validate_book.py` dropped the ½SR² term from the
+non-normal Sharpe variance (and the matching (γ₄−1)/4 term in the MinTRL/DSR
+denominators). The audit caught it, it is fixed, and the numbers above are recomputed:
+SE 0.419 → 0.427, MinTRL up 1–9 days. No conclusion changes.
+
 ## 4. The system: a Forecaster-style layered book
 
 Each layer has one job, one test, and a pass bar written down *before* the test is run.
@@ -201,11 +335,12 @@ Each layer has one job, one test, and a pass bar written down *before* the test 
 | **L1 Data** | point-in-time inputs | M1 parquet, D1 bars, calendar | +1-day input lag doesn't change the result (L01 card 01); σ series = fit series | partial: σ-series mismatch open |
 | **L2 Range forecast** | size of the day, p50/p75/p90 | forecast ladder (`forecastLadder.js`, `forge/vol.py`) | exceedance within ±2pp of 50/25/10 OOS and live; beat climatology on pinball loss | ✅ OOS. Add IV/σ (surface H5) as a width input next |
 | **L3 Event / jump** | scheduled-jump adjustment | ladder event multipliers | null tag = ×1.0 (fixed); event-day split of book R pre-registered | ✅ bug fixed. Tier-1 fade dip (t −1.5) pre-registered |
-| **L4 Primary signal** | follow / fade at a rung | level-atlas vote (`levelAtlasVoteReview.js`) | DSR with the *full* trial count from the ledger; OOS not contaminated by the hold-gate | ⚠ trial count never logged; holdsOOS uses the scored labels |
+| **L4 Primary signal** | follow / fade at a rung | level-atlas vote (`levelAtlasVoteReview.js`) | DSR with the *full* trial count from the ledger; OOS not contaminated by the hold-gate | ⚠ PBO 0.000 and a margin plateau within the 180-config family (§3.5), but: trial count never logged; holdsOOS uses the scored labels; ≈1.2 Sharpe of the headline is hindsight pair choice |
 | **L5 Meta-label** | *whether* to take the trade | `layer_experiments.py` E1 → port to JS | walk-forward OOS: Sharpe@10% ≥ base and better at +1 pip slippage | candidate: 4.07 vs 3.92; 2.14 vs 1.65 at +1 pip |
 | **L6 Sizing** | how much | fixed 0.5% risk; margin sizing (E2) | Kelly on the **shrunk, cost-stressed** edge; never above ½-Kelly | E2 candidate. Don't raise risk until L7 has data |
 | **L7 Implementation (TC)** | fills, costs | bots + MT5 | live trades stored **in R** with their stop (`LIVE_BACKTEST_ALIGNMENT.md` §2.2); live slippage per pair measured; live R inside the frozen bootstrap band | ❌ **the gap**: no live trade can be expressed in R today |
-| **Risk management** | path / drawdown | graded DD throttle | bootstrap path-robustness (E6) | ✅ keep: cuts DD on 100% of paths |
+| **Risk management** | path / drawdown | graded DD throttle | bootstrap path-robustness (E6) | ✅ keep: cuts DD on 100% of paths. Book vol half-life about 206 days, so the risk is regime-level, not daily (§3.6) |
+| **Monitoring** | is the edge still there? | none today (§3.8) | SPRT on per-trade R vs the frozen mean 0.071 (§3.6): kill at LLR ≥ 2.77, about 80 days if the edge is gone | ❌ build it on the frozen expectation of step 2 |
 
 ### Order of work (each step ends with a written pass/fail before the next starts)
 
@@ -223,12 +358,17 @@ Each layer has one job, one test, and a pass bar written down *before* the test 
    - Log what they *would* have done next to live.
    - Promote only if the shadow record beats base at the measured slippage.
 5. **Pre-register the tier-1 fade hypothesis.** Fades on FOMC/NFP/CPI days earn less. Test it once on the lockbox.
-6. **Re-run the fade/touch studies built on `/api/vol-forecast/backtest-range`.** Their bands were 2–8% too narrow before this fix.
-7. **Forecasting-layer upgrade.**
+6. **Pair selection by rule, not by eye.**
+   - Replace the hand-curated 17 with the walk-forward rule from §3.5: keep a pair while its trailing t > 0.
+   - Quote the book's Sharpe on that rule (5.69 on the uncapped family), not the hindsight 6.87.
+7. **Stop the fade-at-the-lines family** (§3.7): 11 failures, posterior success rate 5.2%. Spend that effort on steps 1–3.
+8. **Wire the SPRT monitor** (§3.6) into `bot-audit` against the frozen expectation.
+9. **Re-run the fade/touch studies built on `/api/vol-forecast/backtest-range`.** Their bands were 2–8% too narrow before this fix.
+10. **Forecasting-layer upgrade.**
    - Add IV/σ as a ladder-width input.
    - Fit on the same σ series the live path uses.
    - Pass bar: pinball loss and exceedance, OOS.
-8. **Sizing, last.**
+11. **Sizing, last.**
    - Full Kelly on the raw record is about 11.6× today's 0.5% risk (8× shrunk), and that headroom is real *only if* step 1 confirms costs.
    - At +1 pip slippage, Sharpe roughly halves. Kelly leverage (μ/σ² = S/σ) halves with it, and growth at a given leverage falls further.
    - Size at ≤ ½ Kelly on the slippage-adjusted, shrunk edge.

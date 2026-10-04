@@ -1,0 +1,102 @@
+{
+ "min_trl": [
+  {
+   "edge": "backtest",
+   "sharpe": 4.17,
+   "days_vs0": 34.21818055477365,
+   "days_vs1": 58.48167658638293
+  },
+  {
+   "edge": "shrunk (prior 1, \u03c4 .5)",
+   "sharpe": 2.73,
+   "days_vs0": 82.11785904769101,
+   "days_vs1": 202.99916191537852
+  },
+  {
+   "edge": "+0.5 pip slippage",
+   "sharpe": 2.81,
+   "days_vs0": 77.34360910561752,
+   "days_vs1": 185.0043868803963
+  },
+  {
+   "edge": "+1 pip slippage",
+   "sharpe": 1.65,
+   "days_vs0": 232.7800051524297,
+   "days_vs1": 1494.5409799467216
+  }
+ ],
+ "monitoring": {
+  "mean_R": 0.070779880604598,
+  "sd_R": 0.8037301963315702,
+  "trades_per_day": 20.864840989399294,
+  "design_effect": 2.3472065567574765,
+  "trades_to_detect_half_decay": 7484.802845951384,
+  "days_to_detect_half_decay": 358.7280080281539,
+  "sprt": {
+   "H0_mean": 0.070779880604598,
+   "H1_mean": 0.0,
+   "alpha": 0.05,
+   "beta": 0.2,
+   "upper_kill": 2.772588722239781,
+   "lower_accept": -1.5581446180465497,
+   "exp_trades_if_gone": 1678.292588331892,
+   "exp_trades_if_intact": 943.1700212299272,
+   "rule": "cumsum over trades of ((mu1-mu0)*R - (mu1^2-mu0^2)/2)/(sd^2*deff); kill when >= upper_kill, reset to 0 when <= lower_accept"
+  }
+ },
+ "tails": {
+  "skew": 0.804812850858081,
+  "exkurt": 1.3984368324541103,
+  "var_pct": {
+   "95": {
+    "normal": -3.887435946192902,
+    "cornish_fisher": -3.1304701615086867,
+    "empirical": -3.2894,
+    "cvar_empirical": -4.262885964912281
+   },
+   "99": {
+    "normal": -5.804010324739921,
+    "cornish_fisher": -4.3736204830954,
+    "empirical": -4.8808549999999995,
+    "cvar_empirical": -5.650375000000001
+   }
+  },
+  "gpd": {
+   "threshold_loss_pct": 3.2894,
+   "xi": -0.19708426717019586,
+   "beta_pct": 1.1691398621727012,
+   "loss_1in250_pct": 5.620541842463836,
+   "loss_1in1000_pct": 6.481450601194048,
+   "worst_observed_pct": 6.794999999999998
+  },
+  "kurtosis_by_horizon": {
+   "1": {
+    "observed": 1.3984368324541103,
+    "iid_prediction": 1.3984368324541103,
+    "n": 1132
+   },
+   "5": {
+    "observed": 0.3061229836402415,
+    "iid_prediction": 0.27968736649082204,
+    "n": 226
+   },
+   "21": {
+    "observed": 0.6116376029041573,
+    "iid_prediction": 0.0665922301168624,
+    "n": 53
+   }
+  }
+ },
+ "garch": {
+  "omega": 4.724046039911501e-06,
+  "alpha": 0.044341087702985615,
+  "beta": 0.9522932451025931,
+  "persistence": 0.9966343328055787,
+  "half_life_days": 205.59967275602602,
+  "abs_ret_acf": {
+   "1": 0.12113993339727558,
+   "5": 0.05502765712702257,
+   "20": 0.1005460905531226
+  }
+ }
+}
