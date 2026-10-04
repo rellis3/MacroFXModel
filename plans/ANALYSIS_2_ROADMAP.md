@@ -4,10 +4,15 @@ Written 2026-10-04 at the end of the session that built the Daily Read and the S
 pieces of work:
 
 - **Session A** (the current one) **finishes the exhaustion schedule** (section 4).
-- **Session B, "Analysis 2.0"**, picks up the idea bank (section 5). Claude leads it, because it goes beyond what the
+- **Session B, "Analysis 2.0"**, runs the programme in section 5. Claude leads it, because it goes beyond what the
   owner already knows.
 
 Read section 1 first. It is the standing brief.
+
+**What Analysis 2.0 is (the owner's framing).** It takes the foundations already built and lifts each one to the next
+level, as the Surface Lab did for the descriptive reads. Then it re-analyses everything we have together, so the site
+gives **one better read with a stated, higher confidence**. It is not a hunt for unrelated new ideas. New data sources
+(section 5, Track 2) come in only where they add information the foundations cannot.
 
 ---
 
@@ -135,75 +140,108 @@ only if (b) passes; otherwise stand aside.
 
 ---
 
-## 5. Session B: the Analysis 2.0 idea bank (Claude leads)
+## 5. Session B: Analysis 2.0, from foundations to one high-confidence read (Claude leads)
 
-Each idea lists: the concept to teach, the data, the test, and which existing system it improves. They are ranked by
-expected value for the end goal.
+**The goal in one line.** Each night, for every forecast instrument, publish one read: how far today is likely to go,
+which way a touch at each export line tends to resolve, and when the day is probably done. Each part carries a
+**confidence grade earned from evidence**, not from how the chart looks. The automatic system (brief item 6) uses this
+read directly.
 
-### Tier 1: most likely to add real information
+**Why this route.** Section 3 shows that no single read is an edge on its own. What we have is several honest,
+partly-tested reads: the tag, the curve front, persistence, vol time, absorption, rates and the exhaustion schedule.
+Confidence goes up when we:
 
-1. **Real order flow at the levels.**
-   - **Concept:** order-flow imbalance (Cont–Kukanov–Stoikov 2014), aggressor delta, absorption, and book depth at
-     levels (Kavajecz & Odders-White 2004).
-   - **Why it matters:** it is the only direct measurement of "a level is being defended". Everything so far used
-     broker tick counts.
-   - **Data:** Databento CME GLBX.MDP3 trades + MBP-1 (6E, 6B, 6J, GC, NQ), about $0.50/GB with $125 free credit.
-     Price it first.
-   - **Test:** at export-level touches, does aligned OFI or depth depletion mean continue, and does absorption (high
-     volume, opposite OFI, stalled price) mean fade? Net of futures costs.
-   - **Improves:** the fade/continue decision itself, and every bot entry at the lines.
-2. **Lower-cost execution / venue.**
-   - **Concept:** the edges at the lines are 0.02–0.05 R gross, and retail cost is about 0.05 R.
-   - **Test:** compute the break-even cost per instrument for CONTINUE-day follows, p90 follows and the rich-vol break,
-     then compare with futures / ECN costs.
-   - **Improves:** whether any continuation rule is tradeable at all. It is cheap to do; do it early.
-3. **Selling the range with options (the variance risk premium).**
-   - **Concept:** calibrated ranges are monetised by selling options beyond p90. On rich-option days the range was about
-     0.82 of what options implied (Bollerslev–Tauchen–Zhou 2009).
-   - **Test:** historical short-strangle or iron-condor at the export p90 vs the options' premium, with tail sizing.
-   - **Improves:** it is the most direct use of what the forecast does well. It needs an options account.
-4. **Recalibrate the lines with information they lack.**
-   - **Indices:** fit a "front multiplier" in the production NQ/SPX σ beside the event multiplier (fit 2016–20, check the
-     2021–26 calibration hits 25%).
-   - **FX/gold:** an IV-blended σ (HAR + IV, Busch–Christensen–Nielsen 2011).
-   - **Test:** calibration, plus showing that the rich-vol edge disappears against the blended lines (which proves the
-     mechanism).
-   - **Improves:** every bot and page that uses the lines, at once.
+- measure how well each read is calibrated;
+- strip out what it double-counts with the others;
+- combine what is left;
+- keep scoring the result in the open.
 
-### Tier 2: new analysis worth teaching, with honest priors
+Each step below teaches a method the owner has not used yet, applied to data the site already has.
 
-5. **News-surprise fade.**
-   - The best near-miss in the old book: +0.049 R, halves −0.031 / +0.093.
-   - Pre-register it with release-time-safe timing (Savor 2012: moves with information drift, moves without it revert).
-6. **Fix-flow timing.**
-   - Krohn–Mueller–Whelan 2024: the USD rises into the Tokyo / ECB / London fixes, then reverses. Month-end continued
-     +6.6pp in the book.
-   - Re-score it on directional share, then test fix windows as time-defined fade or continue points.
-7. **Same-day option expiries at the 10:00 NY cut.**
-   - Pin vs repel at big-OI strikes expiring today. Only 54 touches were ever tested.
-   - The data is in the nightly options capture (`oi_store`).
-8. **Index break-shape rule.**
-   - A 0.2σ stop with a 5R target was positive in most front states in VOL-CURVE-FRONT (an index-wide lead).
-   - Pre-register it alone, with the tag/front as its on/off gate. It must hold on shorts.
-9. **Lead–lag and transfer entropy (information flow).**
-   - A surface of which market leads which right now (rates → dollar → gold → NQ), and how that changes.
-   - Teaches Granger causality vs transfer entropy.
-   - **Improves:** which chart to watch first; whether a break was "led" or isolated.
-10. **Conditional outcome surfaces.**
-    - The full distribution of what happened next for the current state (quantiles, tails), not an average.
-    - Teaches distributional forecasting.
-11. **Forecast scoring like a meteorologist.**
-    - PIT histograms, reliability diagrams, CRPS for the daily ladder, scored nightly.
-    - The calibration loop is the owner's north star.
+### Track 1: upgrade the foundations (do these in order)
 
-### Tier 3: lower priority or already answered
+Each step is pre-registered, follows the section 6 rules, and ends as a live Surface Lab field or Daily Read element
+that refreshes itself.
 
-- **Breeden–Litzenberger "options' lines":** skipped. Their width equals the tag, and skew / tails tested null at the
-  touch.
-- **USD-factor sizing:** use the absorption PC1 to count same-direction USD breaks as one position. A risk tool; simple
-  to add to the paper record.
+1. **Score the ladder like a weather forecaster.** This is the base of every confidence claim.
+   - **Today:** the lines' calibration is checked in one-off studies.
+   - **Next level:** score every finished day nightly with PIT histograms, a reliability diagram per line (p25…p90) and
+     CRPS. Do it per instrument, per tag / front state, and over a rolling window.
+   - **Teach:** proper scoring rules; why a forecast can be sharp but uncalibrated.
+   - **Improves:** Daily Read (a "how trustworthy are today's lines" badge), Vol Forecast (a calibration tab), and the
+     evidence that decides every later step.
+2. **Recalibrate the lines with what they leave out.**
+   - **Today:** the tag and the front are read beside the lines. They show the lines are too tight or too wide by state.
+   - **Next level:**
+     - indices: a front multiplier in the NQ/SPX σ;
+     - FX/gold: an IV-blended σ (HAR + IV, Busch–Christensen–Nielsen 2011).
+   - **Test:** step 1's scores improve out of sample (fit 2016–20, check 2021–26). The rich-vol edge should fade
+     against the blended lines, which proves the mechanism.
+   - **Improves:** every bot, page and Export forecast at once. This is the biggest single lift in confidence.
+3. **Turn the tag from three buckets into a calibrated probability.**
+   - **Today:** CONTINUE / FAIR / EXHAUST from IV ÷ σ cut-offs. Gold and indices are provisional.
+   - **Next level:** a continuous curve, IV ÷ σ → P(day passes p75 / p90), fitted per instrument with **partial
+     pooling**. Thin instruments borrow strength from the group, and a credible interval comes with it.
+   - **Teach:** empirical Bayes and hierarchical shrinkage; isotonic calibration.
+   - **Improves:** Daily Read (a probability with an interval instead of a word), today.html chips, and the refit
+     from section 7.
+4. **The exhaustion schedule as a probability surface** (Session A's output, made part of the read).
+   - **Next level:** P(the running extreme is final | distance used, vol time elapsed, state), with intervals. It is
+     scored by step 1's method on the live tally.
+   - **Improves:** take-profit and stand-aside timing for every continuation trade.
+5. **Test the descriptive reads for incremental information.**
+   - **Today:** persistence, vol time, absorption and rates are first looks. They are descriptive and not pre-registered.
+   - **Next level:** for each one, ask whether it adds anything to steps 2–4, given those, out of sample. Keep only what
+     does. Expect most to set **how far** (range and timing), not **which way** (principle 3).
+   - **Teach:** incremental R² and log-score gain; why correlated signals must not be counted twice.
+   - **Improves:** fewer, stronger elements on today.html. Fields that add nothing stay descriptive and are labelled so.
+6. **Combine into one read with a confidence grade.**
+   - **Method:** stack the surviving reads (logistic stacking or Bayesian model averaging). Wrap each output in a
+     **conformal prediction interval**, which has guaranteed coverage with no distribution assumption.
+   - **Grade:** derived from interval width, the agreement between reads, sample size, and evidence status (validated /
+     candidate / descriptive in `js/deskEvidence.js`). The rule is written down before it is used.
+   - **Teach:** stacking; conformal prediction; how evidence status should change trust.
+   - **Improves:** this becomes **Daily Read 2.0** and the input the automatic system trades from.
+7. **Forward-test it in the open.**
+   - The paper-record `ctx` already logs each read at every break. Score the combined read on it each night.
+   - Use **sequential testing** (an e-value / SPRT style rule) so we know when the live sample is enough to promote or
+     drop a rule, without peeking bias.
+   - **Teach:** anytime-valid inference.
+   - **Improves:** the paper record becomes the promotion gate for the automatic system.
+8. **Cost gate.** Compute the break-even cost per instrument for every rule that reaches step 7, and compare it with
+   retail, ECN and futures costs. It is cheap; run it alongside step 2. A read can be right and still not be tradeable.
+
+**What the owner sees at the end:** one Surface Lab field showing calibration through time (step 1), and a Daily Read
+2.0 card per instrument with:
+
+- the expected range with its interval;
+- P(continue) at each line;
+- the exhaustion time;
+- a confidence grade, with a click-through to the evidence behind it.
+
+### Track 2: new information (only after Track 1, and only where step 5 shows a gap)
+
+These bring in data the foundations do not contain (principle 2). Each one must show it adds to the Track 1 read, not
+merely that it works alone.
+
+1. **Real order flow at the levels.** OFI (Cont–Kukanov–Stoikov 2014), aggressor delta, depth depletion. Databento CME
+   trades + MBP-1 for 6E/6B/6J/GC/NQ; price it first. This is the only direct measurement of a level being defended.
+2. **Selling the range with options** (the variance risk premium; Bollerslev–Tauchen–Zhou 2009). Short strangle / condor
+   at the export p90. It needs an options account.
+3. **Event and flow windows:**
+   - news-surprise fade (+0.049 R near-miss; Savor 2012);
+   - fix-window timing (Krohn–Mueller–Whelan 2024);
+   - same-day 10:00 NY expiries (`oi_store`).
+4. **Index break-shape rule.** 0.2σ stop, 5R target, gated by the front. It must hold on shorts.
+5. **Lead–lag and transfer entropy.** Which market leads now. It goes in step 5 as a candidate if cheap enough.
+
+### Already answered or parked
+
+- **Breeden–Litzenberger "options' lines":** their width equals the tag, and skew / tails tested null at the touch.
 - **Persistence-based fades:** weak once the tag is known.
-- **Retail OANDA order / position book:** null for continuation at p75.
+- **The retail OANDA order book:** null at p75.
+- **USD-factor sizing** (absorption PC1, which counts same-direction USD breaks as one position): a risk tool. Add it to
+  the paper record when convenient.
 
 ---
 
