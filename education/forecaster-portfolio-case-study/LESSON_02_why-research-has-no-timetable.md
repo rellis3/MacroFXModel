@@ -359,10 +359,10 @@ number of attempts to a first success follows a beta-geometric distribution.
 
 **03 · PARAMETER UNCERTAINTY — The beta-geometric tail**
 
-    Pr(N > n) = B(α, β + n) / B(α, β) ∝ n^(−α),      E[N] = (α + β − 1) / (α − 1)   (α > 1
+    Pr(N > n) = B(α, β + n) / B(α, β) ∝ n^(−α),      E[N] = (α + β − 1) / (α − 1)   (α > 1)
 
-*(The box was clipped at both screen edges in both screenshot sets: the
-leading "P" of "Pr" and whatever followed "(α > 1" are cut off.)*
+*(The box runs off both screen edges in the screenshots; the full formula
+comes from text copied off the lesson page.)*
 
 *Takeaway:* When the success rate is uncertain, the probability of a long
 search decays as a power of n rather than exponentially. The mean is finite
@@ -759,11 +759,12 @@ the research itself.
 
 **07 · CHANGING RATES — A search with a declining discovery rate**
 
-    Pr(T > t) = exp( −∫₀ᵗ λ(s) ds ),      λ(s) = λ₀ e^(−δs)   ⇒   Pr(T = ∞) = e…
+    [Pr](T > t) = exp( −∫₀ᵗ λ(s) ds ),      λ(s) = λ₀ e^(−δs)   ⇒   Pr(T = ∞) = e^(−λ₀/δ)
 
-*(The box was clipped at both screen edges in both screenshot sets: the
-start, "Pr(T", is cut off on the left, and the right-hand side of Pr(T = ∞) after "e" is
-**[not captured]**.)*
+*(The box runs off both screen edges in the screenshots; the formula comes from
+text copied off the lesson page. Both the screenshots and the copied text
+start at "(T > t)": the leading "[Pr]" is in brackets because it is
+**[not captured]** in either source.)*
 
 *Takeaway:* When the discovery rate declines through time, the probability of
 no discovery by time t is the exponential of minus the integrated rate. If the
