@@ -504,7 +504,9 @@ In a visual guide, give the board its own slide right after the slide it
 illustrates (kicker `▶ Watch it`). Each board is one scene file in
 `education/tools/whiteboards/<name>.py` (helpers in `_wb.py`) defining `BOARD`;
 `python3 education/tools/build_whiteboards.py [name]` inserts it into the full lesson
-and the deck and renumbers the deck's `data-slide`s.
+and the deck and renumbers the deck's `data-slide`ss. Every run also rewrites `theory-lab/watch.html`
+(the index of all boards, linking to `lesson.html#wb-<name>`) and the ▶ badge on
+each hub card whose lesson has a board, so a new board shows up there by itself.
 
 Draw the *thing*, not a label for it: the `icon` op has ~30 hand-drawn doodles (bank
 with ¥/$, cash stack, house, factory, ship, barrel, gold, bond scroll, piggy-bank
