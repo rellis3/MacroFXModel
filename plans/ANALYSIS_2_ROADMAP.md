@@ -106,6 +106,15 @@ Descriptive first looks (`analysis/surfaces/*.md`, not pre-registered):
 
 ## 4. Session A: finish the exhaustion schedule (in progress)
 
+> **Status 2026-10-04: tested, NULL** (ledger `exhaustion-schedule`, `analysis/surfaces/EXHAUSTION_SCHEDULE_RESULTS.md`).
+> - The level-based schedule was degenerate.
+> - Post-hoc, in both halves: the chance that a NEW high or low is the day's final one depends on London **time**
+>   (about 15% at 07–11, 31% at 14–17, 35% at 17–20 and 64% at 20–24). It is **flat across distance**, from 0.5σ to
+>   2.5σ from the open.
+> - So there is no price-only distance exhaustion level. Exhaustion is a clock effect.
+> - The only route left to a real exhaustion level is information outside price (Tier 1: order flow and absorption).
+> - The plan below is kept as a record.
+
 **Idea.** Replace "fade at a fixed distance" with **"is the day already done?"**. This is a probability surface:
 
 - **across:** how far price has gone (share of the expected range used, in σ from the open);
