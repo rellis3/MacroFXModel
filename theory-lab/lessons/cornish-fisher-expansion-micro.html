@@ -57,14 +57,14 @@
         </div>
         <div class="sl-panel active" id="shape-1">
           <div class="sl-row"><div class="sl-box amber">S &lt; 0</div><div class="sl-arrow">→</div><div class="sl-box">longer left tail</div></div>
-          <div class="sl-verdict"><strong>Skewness</strong> is the third standardized moment. S = 0 is symmetric, like a normal distribution. S &lt; 0 — the common case for equity and FX returns — means a longer, fatter <em>loss</em> tail than gain tail: crashes run further than rallies do.</div>
+          <div class="sl-verdict"><strong>Skewness</strong> is the third standardized moment. S = 0 is symmetric, like a normal distribution. S &lt; 0 — the common case for equity-index and many carry-currency returns — means a longer, fatter <em>loss</em> tail than gain tail: crashes run further than rallies do.</div>
         </div>
         <div class="sl-panel" id="shape-2">
           <div class="sl-row"><div class="sl-box amber">K &gt; 0</div><div class="sl-arrow">→</div><div class="sl-box">fatter tails, both sides</div></div>
           <div class="sl-verdict"><strong>Excess kurtosis</strong> is the fourth standardized moment minus 3 (a normal distribution's own kurtosis), so K = 0 means normal-tailed. K &gt; 0 ("leptokurtic") means more extreme observations than a bell curve predicts, in <em>both</em> directions — the textbook "fat tails" of financial returns.</div>
         </div>
       </div>
-      <p class="sl-p">Daily FX, equity, and rates returns are typically both: negatively skewed <em>and</em> fat-tailed. Plugging only μ and σ into the Gaussian formula assumes S = 0 and K = 0 by default — silently discarding exactly the shape information that would tell you the tail is worse than "average-shape" implies.</p>
+      <p class="sl-p">Daily financial returns are typically fat-tailed, and equity-index and many carry-currency returns are negatively skewed too. Plugging only μ and σ into the Gaussian formula assumes S = 0 and K = 0 by default — silently discarding exactly the shape information that would tell you the tail is worse than "average-shape" implies.</p>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Why this matters, not just aesthetically</div>
         <p>A VaR number computed as if returns were symmetric and normal-tailed understates the loss threshold precisely where it matters most — the tail, which is the whole reason VaR gets computed in the first place.</p>
@@ -109,7 +109,7 @@
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">z_α</div><div><h4>The baseline</h4><p>What you'd use if returns really were normal. Set S = 0 and K = 0 and every term below vanishes — z_CF collapses back to plain z_α.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">S</div><div><h4>Skew correction</h4><p>(z_α²−1)S/6 minus (2z_α³−5z_α)S²/36. Pushes the quantile further into the tail when losses run more extreme than gains.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">K</div><div><h4>Kurtosis correction</h4><p>(z_α³−3z_α)K/24. Pushes the quantile further out when the distribution has fatter tails than normal.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">K</div><div><h4>Kurtosis correction</h4><p>(z_α³−3z_α)K/24. Pushes the quantile further out when the distribution has fatter tails than normal — but only beyond |z_α| &gt; √3 (about 95.8% confidence); at 95% it pulls the quantile slightly in.</p></div></div>
       </div>
       <div class="sl-quote">Think of a tailor who marks a hem 1.645 inches up from the floor because that's correct for a perfectly average, symmetric build. Cornish-Fisher is the tailor learning to nudge that mark using two measurements of <em>this specific</em> customer — how lopsided they are, and how much more extreme their proportions run — instead of assuming everyone is exactly average. Same tape measure, same formula; only the one number being fed into it moves.</div>
     </section>

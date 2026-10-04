@@ -73,7 +73,7 @@
           <div>≈ one such observation every <b id="exc-oneinN">100</b> days at this confidence level.</div>
         </div>
         <button type="button" class="sl-reset-btn" id="exc-reset">Reset to n=500, p=0.99</button>
-        <div class="sl-note">Push p to 0.995 (a "1-in-200-day" event) and you're down to 2.5 observations — the estimate is interpolated between your single worst and second-worst day. Push to 0.9995 and you're at a quarter of an observation: the quantile formula is asking for a data point past the edge of what you have.</div>
+        <div class="sl-note">Push p to 0.995 (a "1-in-200-day" event) and you're down to 2.5 observations — the estimate is interpolated between your second-worst and third-worst day. Push to 0.9995 and you're at a quarter of an observation: the quantile formula is asking for a data point past the edge of what you have.</div>
       </div>
     </section>
 
@@ -163,7 +163,7 @@
         <div class="sl-ccard red">
           <span class="sl-ctag red">Plain historical method</span>
           <ul>
-            <li>99.5% VaR sits at the 500 × 0.005 = 2.5th-worst day — interpolated between your single worst and second-worst observation</li>
+            <li>99.5% VaR sits at the 500 × 0.005 = 2.5th-worst day — interpolated between your second-worst and third-worst observation</li>
             <li>Re-run on a slightly different two-year window and this number can swing enormously</li>
             <li>The 1-in-2,000-day quantile is entirely out of reach — you'd need roughly 4 separate two-year samples just to expect to see one such event</li>
             <li>Not really "estimating" anything at that depth — it's naming your worst day and calling it a statistic</li>
@@ -189,7 +189,7 @@
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
-        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Regulatory tail-capital</h4><p>Insurers and banks use POT/GPD fits to set reserves against extreme losses, because regulators require an answer at confidence levels (99.5%+, sometimes 99.9%+) raw historical data can't support directly.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Regulatory tail-capital</h4><p>Insurers and banks use POT/GPD fits to set reserves against extreme losses, because regulators require an answer at confidence levels (99.5% for Solvency II insurers, 99.9% for bank credit capital) raw historical data can't support directly.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⚖️</div><div><h4>Threshold choice is a live judgment call</h4><p>Too low and the theorem's premise is violated; too high and there's not enough data to fit reliably. Practitioners look for a "plateau" where ξ and β stay stable across a range of thresholds.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🧪</div><div><h4>Complements — never replaces — history</h4><p>EVT-fitted tails generate "1-in-N-year" scenarios that are triangulated against actual historical stress events (2008, 2020), not swapped in for them.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Never a single point estimate</h4><p>Serious use reports confidence intervals around ξ and the resulting VaR/CVaR, and checks sensitivity to threshold and estimation window — not one clean-looking number.</p></div></div>
@@ -268,7 +268,7 @@
         <button class="sl-quiz-opt" data-correct="true">You'd need roughly 8 years of data just to expect one such event — the estimate would really just be naming your worst day</button>
         <button class="sl-quiz-opt">The formula for empirical VaR only works below the 95th percentile</button>
         <button class="sl-quiz-opt">Historical data is always normally distributed, so extreme quantiles don't apply</button>
-        <div class="sl-quiz-explain">A 1-in-2,000-day event happens on average once every ~8 years. In a 500-day sample the empirical quantile is being read off an interpolation between your single worst and second-worst day — a number driven by one or two data points, not a stable pattern.</div>
+        <div class="sl-quiz-explain">A 1-in-2,000-day event happens on average once every ~8 years. A 500-day sample probably doesn't contain one, so the empirical quantile can do no better than name your single worst day — a number driven by one data point, not a stable pattern.</div>
       </div>
 
       <div class="sl-quiz-q" data-q="2">

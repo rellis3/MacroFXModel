@@ -109,15 +109,17 @@
     <p>VaR is like a weather forecast that only tells you "there's a 5% chance it rains harder than this." It draws one line and says "most days you'll be fine relative to this line." It never tells you whether, on that unlucky 5% day, you get a light drizzle past the line or a full-blown flood — it's completely silent about everything past the cutoff it names.</p>
   </div>
 
-  <div class="tl-math">\[ \text{CVaR}_p(L) = E[\, L \mid L > \text{VaR}_p(L) \,] \]</div>
+  <div class="tl-math">\[ \text{CVaR}_p(L) = \frac{1}{1-p}\int_p^1 \text{VaR}_u(L)\,du \;=\; E[\, L \mid L > \text{VaR}_p(L) \,] \text{ for continuous } L \]</div>
   <div class="tl-eq-break">
     <div class="tl-eq-chip c2"><code>E[·]</code><span>the average, not just a single cutoff</span></div>
     <div class="tl-eq-chip c3"><code>L &gt; VaR_p(L)</code><span>conditioning on already being in the bad tail</span></div>
   </div>
   <p>
-  Read this as: the <em>average</em> loss, given that you're already in the tail beyond VaR. This is
-  also called <strong>Expected Shortfall (ES)</strong> — the two names refer to the same quantity in the
-  continuous-distribution case this lesson uses throughout.
+  Read this as: the <em>average</em> loss over the worst \((1-p)\) share of outcomes — for a continuous
+  loss distribution, simply the average loss given that you're already in the tail beyond VaR. This is
+  also called <strong>Expected Shortfall (ES)</strong>. The integral form is the one that stays coherent
+  when losses are discrete (like the defaultable bonds below): there, the plain conditional average
+  \(E[L \mid L > \text{VaR}_p]\) can fail sub-additivity too (Acerbi &amp; Tasche, 2002).
   </p>
 
   <div class="tl-eli5">
@@ -192,8 +194,8 @@
       <tr><td>\(\rho(\cdot)\)</td><td>A generic risk measure — a function that takes a loss distribution and returns a single number, e.g. VaR or CVaR.</td></tr>
       <tr><td>\(p\)</td><td>The confidence level, e.g. 0.95 or 0.99 — how much of the distribution you want "covered" before the tail begins.</td></tr>
       <tr><td>\(1-p\)</td><td>The tail probability — the chance of exceeding the risk measure's threshold.</td></tr>
-      <tr><td>\(\text{VaR}_p(L)\)</td><td>The \(p\)-confidence loss threshold — the \((1-p)\) quantile of the loss distribution.</td></tr>
-      <tr><td>\(\text{CVaR}_p(L)\)</td><td>Also called Expected Shortfall (ES) — the average loss conditional on being past \(\text{VaR}_p(L)\).</td></tr>
+      <tr><td>\(\text{VaR}_p(L)\)</td><td>The \(p\)-confidence loss threshold — the \(p\) quantile of the loss distribution (a fraction \(1-p\) of outcomes lie beyond it).</td></tr>
+      <tr><td>\(\text{CVaR}_p(L)\)</td><td>Also called Expected Shortfall (ES) — the average loss over the worst \(1-p\) of outcomes; for a continuous \(L\), the average loss conditional on being past \(\text{VaR}_p(L)\).</td></tr>
       <tr><td>\(\lambda\)</td><td>A non-negative scaling factor applied to a position's size.</td></tr>
       <tr><td>\(c\)</td><td>A deterministic (certain, non-random) amount added to a loss — e.g. a fixed cash charge.</td></tr>
       <tr><td>\(\inf\{\cdot\}\)</td><td>"Infimum" — the smallest value in a set satisfying a condition; here, the smallest loss threshold that satisfies the VaR definition.</td></tr>
@@ -266,16 +268,15 @@
     where none existed before.
     </div>
     <p>
-    <strong>Now CVaR, same setup.</strong> For bond A, \(\text{CVaR}_{0.95}(L_A) = E[L_A \mid L_A > 0] =
-    \$100\) (the only outcome with positive loss is the $100 default). Same for B:
-    \(\text{CVaR}_{0.95}(L_B) = \$100\). Summed: \(\$200\). For the combined portfolio,
-    \(\text{VaR}_{0.95}(L_A+L_B)=\$100\), so \(\text{CVaR}_{0.95}(L_A+L_B) = E[L_A+L_B \mid L_A+L_B > 100]\)
-    — the only outcome exceeding $100 is "both default," which costs exactly $200, so
-    \(\text{CVaR}_{0.95}(L_A+L_B) = \$200\).
+    <strong>Now CVaR, same setup.</strong> CVaR averages the worst 5% of outcomes. For bond A, that 5%
+    is the 4% default ($100) plus 1% of "no default" ($0): \(\text{CVaR}_{0.95}(L_A) = (0.04 \times 100 +
+    0.01 \times 0)/0.05 = \$80\). Same for B: \(\text{CVaR}_{0.95}(L_B) = \$80\). Summed: \(\$160\). For the
+    combined portfolio, the worst 5% is the 0.16% "both default" ($200) plus 4.84% of "one default"
+    ($100): \(\text{CVaR}_{0.95}(L_A+L_B) = (0.0016 \times 200 + 0.0484 \times 100)/0.05 = \$103.20\).
     </p>
     <div class="tl-solid green">
-    <strong>\(\text{CVaR}_{0.95}(L_A+L_B) = \$200 \le \text{CVaR}_{0.95}(L_A) + \text{CVaR}_{0.95}(L_B) =
-    \$200\).</strong> Sub-additivity holds (with equality at this particular boundary case) — CVaR never
+    <strong>\(\text{CVaR}_{0.95}(L_A+L_B) = \$103.20 \le \text{CVaR}_{0.95}(L_A) + \text{CVaR}_{0.95}(L_B) =
+    \$160\).</strong> Sub-additivity holds, and combining actually lowers measured risk — CVaR never
     reports the combined risk as worse than the sum of the parts.
     </div>
   </div>
@@ -311,10 +312,10 @@
       <span id="crm-scratch-varnote" class="tl-scratch-note"></span>
     </div>
     <div class="tl-readout tl-scratch-readout">
-      CVaR(A) = CVaR(B) = $<b id="crm-scratch-cvar1">100</b>&emsp;CVaR(A)+CVaR(B) = $<b id="crm-scratch-cvarsum">200</b>
+      CVaR(A) = CVaR(B) = $<b id="crm-scratch-cvar1">80</b>&emsp;CVaR(A)+CVaR(B) = $<b id="crm-scratch-cvarsum">160</b>
     </div>
     <div class="tl-readout">
-      CVaR(A+B) = $<b id="crm-scratch-cvarcomb">200</b>
+      CVaR(A+B) = $<b id="crm-scratch-cvarcomb">103.20</b>
       <span id="crm-scratch-cvarnote" class="tl-scratch-note"></span>
     </div>
     <button type="button" id="crm-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
@@ -322,7 +323,7 @@
 
   <div class="tl-chart">
     <div class="tl-chart-label">VaR vs. CVaR: individual sum vs. combined portfolio, from the worked example above</div>
-    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart showing VaR of the summed individual bonds at zero dollars, VaR of the combined portfolio at one hundred dollars (a violation of sub-additivity), and CVaR of both the summed individual bonds and the combined portfolio equal at two hundred dollars (coherent)">
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart showing VaR of the summed individual bonds at zero dollars, VaR of the combined portfolio at one hundred dollars (a violation of sub-additivity), CVaR of the summed individual bonds at one hundred sixty dollars and of the combined portfolio at one hundred three dollars twenty (coherent)">
       <line x1="30" y1="260" x2="610" y2="260" style="stroke:var(--border);stroke-width:1"></line>
       <line x1="250" y1="40" x2="250" y2="260" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"></line>
       <text x="140" y="30" text-anchor="middle" style="font:600 12px 'DM Sans',sans-serif;fill:var(--red)">VaR — NOT coherent</text>
@@ -335,19 +336,19 @@
       <text x="195" y="278" text-anchor="middle" style="font:10px 'DM Sans',sans-serif;fill:var(--text3)">VaR(A+B)</text>
       <line x1="130" y1="257" x2="160" y2="170" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:2,2"></line>
       <text x="150" y="140" text-anchor="middle" style="font:600 10px 'DM Sans',sans-serif;fill:var(--red)">jumps up ⚠</text>
-      <rect x="340" y="80" width="70" height="180" style="fill:var(--green);opacity:0.85"></rect>
-      <text x="375" y="73" text-anchor="middle" style="font:600 11px 'DM Mono',monospace;fill:var(--green)">$200</text>
+      <rect x="340" y="116" width="70" height="144" style="fill:var(--green);opacity:0.85"></rect>
+      <text x="375" y="109" text-anchor="middle" style="font:600 11px 'DM Mono',monospace;fill:var(--green)">$160</text>
       <text x="375" y="278" text-anchor="middle" style="font:10px 'DM Sans',sans-serif;fill:var(--text3)">CVaR(A)+CVaR(B)</text>
-      <rect x="440" y="80" width="70" height="180" style="fill:var(--green);opacity:0.85"></rect>
-      <text x="475" y="73" text-anchor="middle" style="font:600 11px 'DM Mono',monospace;fill:var(--green)">$200</text>
+      <rect x="440" y="167" width="70" height="93" style="fill:var(--green);opacity:0.85"></rect>
+      <text x="475" y="160" text-anchor="middle" style="font:600 11px 'DM Mono',monospace;fill:var(--green)">$103.20</text>
       <text x="475" y="278" text-anchor="middle" style="font:10px 'DM Sans',sans-serif;fill:var(--text3)">CVaR(A+B)</text>
-      <line x1="410" y1="80" x2="440" y2="80" style="stroke:var(--green);stroke-width:1.5;stroke-dasharray:2,2"></line>
-      <text x="425" y="63" text-anchor="middle" style="font:600 10px 'DM Sans',sans-serif;fill:var(--green)">stays level ✓</text>
+      <line x1="410" y1="116" x2="440" y2="167" style="stroke:var(--green);stroke-width:1.5;stroke-dasharray:2,2"></line>
+      <text x="425" y="99" text-anchor="middle" style="font:600 10px 'DM Sans',sans-serif;fill:var(--green)">drops ✓</text>
     </svg>
     <div class="tl-chart-caption">
     Left pair: VaR of the combined portfolio ($100) exceeds the sum of the individual VaRs ($0) — a
-    concrete sub-additivity violation. Right pair: CVaR of the combined portfolio ($200) exactly equals
-    the sum of the individual CVaRs ($200) — the axiom holds, illustrating why CVaR is coherent and VaR
+    concrete sub-additivity violation. Right pair: CVaR of the combined portfolio ($103.20) sits below
+    the sum of the individual CVaRs ($160) — the axiom holds, illustrating why CVaR is coherent and VaR
     is not.
     </div>
   </div>
@@ -529,7 +530,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>VaR marks a threshold; CVaR averages the tail beyond it.</strong> That structural difference is the source of everything else in this lesson.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Coherence is four precise axioms.</strong> Monotonicity, sub-additivity, positive homogeneity, and translation invariance — Artzner, Delbaen, Eber &amp; Heath (1999).</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>VaR fails sub-additivity.</strong> Two individually "safe" defaultable positions can combine into a portfolio whose VaR exceeds the sum of the individual VaRs — the worked example shows $0+$0 → $100. This is not a hypothetical edge case; it's the textbook counterexample for exactly this reason.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CVaR is coherent — it satisfies all four axioms.</strong> The same worked example shows CVaR holding sub-additivity exactly ($200 ≤ $200), which is why bank regulation moved toward Expected Shortfall after 2008.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CVaR is coherent — it satisfies all four axioms.</strong> The same worked example shows CVaR holding sub-additivity ($103.20 ≤ $160), which is why bank regulation moved toward Expected Shortfall after 2008.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Coherence is about aggregation behavior, not estimation quality.</strong> A coherent measure can still be a badly estimated one if the underlying tail data is thin — coherence and estimation accuracy are separate concerns.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A limit is only as honest as the model under it.</strong> In 2012 a VaR model change roughly halved the London Whale book's reported risk with no position cut, and losses passed $6 billion. Coherence would not have caught it<!-- DESK:START -->, and "ES beats VaR" is untested on this desk<!-- DESK:END -->.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This lesson is conceptual.</strong> It explains the theory behind why risk-measure choice matters<!-- DESK:START -->; it is not a claim that any specific VaR/CVaR implementation is built or validated anywhere in this project<!-- DESK:END -->.</span></div>
@@ -572,9 +573,8 @@
     <div class="tl-answer">
     CVaR is an average over the entire tail region, not a single quantile point, so it doesn't depend on
     exactly where the quantile boundary happens to fall. In the example, \(\text{CVaR}_{0.95}\) of the
-    combined portfolio conditions on the single worst outcome (both bonds default, $200) and simply
-    reports that $200 — which is exactly equal to, never more than, the sum of the two individual
-    CVaRs ($100 + $100). Averaging over the tail, rather than reading off one boundary point, is what
+    combined portfolio averages its worst 5% of outcomes (0.16% at $200, 4.84% at $100) to get $103.20 —
+    below the sum of the two individual CVaRs ($80 + $80 = $160). Averaging over the tail, rather than reading off one boundary point, is what
     prevents the artifact that hit VaR.
     </div>
   </details>
@@ -658,14 +658,21 @@
     else if (p2 <= alpha) VaR_comb = F;
     else VaR_comb = 2 * F;
 
-    var CVaR_single = q > 0 ? F : 0;
+    // CVaR / Expected Shortfall = average of the worst alpha share of outcomes
+    // (the definition that stays coherent for discrete losses like these).
+    function es(outcomes, a){
+      var sorted = outcomes.slice().sort(function(x, y){ return y[0] - x[0]; });
+      var mass = 0, sum = 0;
+      for (var i = 0; i < sorted.length && mass < a; i++){
+        var take = Math.min(sorted[i][1], a - mass);
+        sum += take * sorted[i][0]; mass += take;
+      }
+      return sum / a;
+    }
+    var CVaR_single = es([[F, q], [0, 1 - q]], alpha);
     var sumVaR = 2 * VaR_single;
     var sumCVaR = 2 * CVaR_single;
-
-    var CVaR_comb;
-    if (q === 0) CVaR_comb = 0;
-    else if (VaR_comb === 0) CVaR_comb = 2 * F / (2 - q);
-    else CVaR_comb = 2 * F; // both the "only both-default exceeds VaR" case and the degenerate max-loss case
+    var CVaR_comb = es([[2 * F, q * q], [F, 2 * q * (1 - q)], [0, (1 - q) * (1 - q)]], alpha);
 
     var1Out.textContent = money(VaR_single);
     varSumOut.textContent = money(sumVaR);

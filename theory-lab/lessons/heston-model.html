@@ -32,7 +32,7 @@
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
       <li>Heston (1993) replaces Black-Scholes' one constant \(\sigma\) with a second stochastic process \(v_t\) for the instantaneous variance, mean-reverting toward a long-run level \(\theta\) at speed \(\kappa\) with its own noise \(\xi\sqrt{v_t}\,dW_t^2\) — a CIR-type process.</li>
-      <li>The two Brownian motions driving price and variance are allowed to correlate (\(\rho\)); empirically \(\rho\) is usually negative, the "leverage effect" where volatility spikes when price falls.</li>
+      <li>The two Brownian motions driving price and variance are allowed to correlate (\(\rho\)); empirically \(\rho\) is usually negative in equities, the "leverage effect" where volatility spikes when price falls (in FX its sign depends on the pair and which way it is quoted).</li>
       <li>That negative \(\rho\) is exactly what generates a realistic volatility smile/skew — it makes large down-moves disproportionately likely to coincide with a vol spike, so low-strike puts price with higher implied vol than at-the-money, something flat-\(\sigma\) Black-Scholes structurally cannot produce.</li>
       <li>The variance SDE is the same OU "rubber band" mean-reversion this Theory Lab already covers, just pointed at variance instead of price — informally the continuous-time cousin of GARCH(1,1)'s discrete-time "variance depends on yesterday's shock and yesterday's forecast" recursion<!-- DESK:START -->, already running in this project's own volatility research<!-- DESK:END -->.</li>
       <li>Prices come from a semi-closed-form solution via the model's characteristic function, not a simple algebraic formula<!-- DESK:START --> — this repo has no options-pricing module of any kind, so this lesson is pure theory background<!-- DESK:END -->.</li>
@@ -114,7 +114,7 @@
     <h3>After the 1987 crash, a skew that would not go away</h3>
     <div class="tl-origin-who">Stochastic volatility · Heston, 1993; jumps for FX options, Bates, 1996</div>
     <p>Before October 1987, implied volatility on index options was fairly flat across strikes; afterwards out-of-the-money puts stayed richer, and the skew became permanent. Black-Scholes, with one constant \(\sigma\), cannot produce it, and earlier stochastic-volatility models (Hull &amp; White, 1987; Stein &amp; Stein, 1991) lacked either price–volatility correlation or fast pricing.</p>
-    <p>Steven Heston (1993) took the square-root process Cox, Ingersoll &amp; Ross had used for interest rates, correlated it with the price, and priced options through a characteristic function and one numerical integral. His title names bond and currency options, and Bates (1996) added jumps to fit Deutsche mark options, so FX was part of the model's story from the start.</p>
+    <p>Steven Heston (1993) took the square-root process Cox, Ingersoll &amp; Ross had used for interest rates, correlated it with the price, and priced options through a characteristic function and numerical integration. His title names bond and currency options, and Bates (1996) added jumps to fit Deutsche mark options, so FX was part of the model's story from the start.</p>
     <p>On desks it became the reference stochastic-volatility model: a base for the local-stochastic-volatility models used on FX and equity exotics, a benchmark for model risk, and the standard test case for Fourier pricing methods such as Carr–Madan.</p>
     <div class="tl-role">
       <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
@@ -183,7 +183,7 @@
     \[ \mathrm{Corr}(dW_t^{1}, dW_t^{2}) = \rho \]
   </div>
   <div class="tl-eq-break">
-    <div class="tl-eq-chip c4"><code>ρ</code><span>the leverage-effect parameter — usually negative in FX/equities</span></div>
+    <div class="tl-eq-chip c4"><code>ρ</code><span>the leverage-effect parameter — usually negative in equities; in FX the sign depends on the pair and quote direction</span></div>
   </div>
   <p>
     Every symbol, spelled out:
@@ -253,10 +253,11 @@
     <p>Picture a rubber band tied between "today's variance" and "the long-run average variance" — stretch it far in either direction (a calm spell, a turbulent spell) and it keeps tugging back toward the middle, harder the further it's stretched. That's mean reversion, and it's the exact same rubber-band idea this Theory Lab already uses for mean-reverting spreads, just now tied to volatility instead of price. The one new wrinkle: the band is built so it can never pull variance below zero, since "negative jumpiness" doesn't mean anything.</p>
   </div>
 
-  <h3>Why the correlation \(\rho\) is the whole story behind the smile</h3>
+  <h3>Why the correlation \(\rho\) is the whole story behind the skew</h3>
   <p>
-    In equity and FX markets, empirically estimated \(\rho\) is very often
-    <strong>negative</strong>. This has a well-known name: the
+    In equity markets, and in many FX pairs, empirically estimated \(\rho\) is very often
+    <strong>negative</strong> (in FX the sign depends on the pair and which
+    currency is the base: inverting the quote flips it). This has a well-known name: the
     <strong>leverage effect</strong> — the tendency for volatility to rise
     precisely when prices fall (originally explained, for equities, by a
     falling stock price mechanically raising a firm's leverage ratio and
@@ -295,9 +296,9 @@
     model specification, with no jump term anywhere in the equations. Set
     \(\rho = 0\) and \(\xi \to 0\) (no correlation, no vol-of-vol) and the model
     collapses back toward flat Black-Scholes, with no smile at all — the smile
-    is not free, it is earned specifically by \(\xi \neq 0\) (variance actually
-    moves) combined with \(\rho \neq 0\) (that movement is linked to price
-    direction).
+    is not free: \(\xi \neq 0\) (variance actually moves) is what curves it
+    into a symmetric smile, and \(\rho \neq 0\) (that movement is linked to
+    price direction) is what tilts it into a skew.
   </p>
 
   <div class="tl-eli5">
@@ -380,8 +381,9 @@
     <h3>Why out-of-the-money puts are structurally more expensive than a flat-σ model says they should be</h3>
     <p>
       An options desk pulls up an implied-volatility curve for a given expiry
-      and notices what shows up on almost every equity index and most major FX
-      pairs, almost all of the time: out-of-the-money puts (low strikes) are
+      and notices what shows up on almost every equity index, almost all of
+      the time (FX smiles are skewed too, but toward whichever side of the pair
+      the market fears): out-of-the-money puts (low strikes) are
       trading at a meaningfully <em>higher</em> implied volatility than
       at-the-money options. A trader reasoning purely from flat-\(\sigma\)
       Black-Scholes has no way to make sense of this at all — that model has
@@ -462,7 +464,10 @@
     <p>
       <strong>Treating calibrated parameters as physically meaningful,
       time-invariant constants.</strong> \((\kappa,\theta,\xi,\rho)\) fitted to
-      today's option surface are a snapshot, not physical laws — refitting the
+      today's option surface are a snapshot, and risk-neutral (\(\mathbb{Q}\))
+      values at that: Heston's market price of volatility risk shifts \(\kappa\)
+      and \(\theta\) away from the real-world (\(\mathbb{P}\)) dynamics — not
+      physical laws; refitting the
       same model a week later, especially after a regime shift, routinely
       produces materially different parameter values. Don't treat one
       calibration as a permanent description of "how this underlying's
@@ -513,8 +518,8 @@
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Heston replaces one constant σ with a second random process \(v_t\).</strong> Instantaneous variance mean-reverts toward θ at speed κ, with its own noise \(\xi\sqrt{v_t}\,dW_t^2\) — a CIR-type process.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The variance SDE is OU mean-reversion, just pointed at variance.</strong> Same "rubber band" drift as the Ornstein-Uhlenbeck lesson, with one tweak (√v_t scaling) that keeps variance non-negative.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The correlation ρ is the whole story behind the smile.</strong> A negative ρ (the leverage effect) makes down-moves disproportionately likely to coincide with a vol spike, fattening the left tail and pricing OTM puts higher than at-the-money.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Set ρ=0 and ξ→0 and Heston collapses back to flat Black-Scholes.</strong> The smile is earned specifically by ξ≠0 (variance actually moves) combined with ρ≠0 (that movement is linked to price direction).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The correlation ρ is the whole story behind the skew.</strong> A negative ρ (the leverage effect) makes down-moves disproportionately likely to coincide with a vol spike, fattening the left tail and pricing OTM puts higher than at-the-money.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Set ρ=0 and ξ→0 and Heston collapses back to flat Black-Scholes.</strong> ξ≠0 (variance actually moves) curves the smile; ρ≠0 (that movement is linked to price direction) tilts it into a skew.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Prices need a semi-closed-form numerical step, not simple algebra.</strong> Naive characteristic-function implementations are known to hit branch-cut discontinuities that silently misprice for some parameter combinations.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A good smile fit is curve-fitting by construction, not a validated edge.</strong> Calibrating Heston to today's option prices says nothing, by itself, about whether a strategy built on it would show real edge out-of-sample.</span></div>
     <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo has no options-pricing module at all.</strong> This lesson is pure theory background — a continuous-time cousin of the GARCH sigma already running in this project's own volatility research, not a description of existing code.</span></div><!-- DESK:END -->
