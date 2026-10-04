@@ -641,15 +641,19 @@
       formula rather than the Taylor-approximated shortcut.
     </p>
     <p>
-      <strong>Applying square-root-of-time scaling when returns aren't
-      independent.</strong> The entire derivation above rests on periods
-      being approximately independent, so their variances add cleanly. Real
-      markets violate this routinely — volatility clustering (calm periods
-      followed by calm periods, turbulent periods followed by turbulent
-      periods, the exact phenomenon the GARCH lesson models) means today's
-      variance is not independent of yesterday's, and under positive serial
-      correlation in volatility, naive \(\sqrt{T}\) scaling <em>understates</em>
-      true multi-period risk. The rule is a useful default, not a
+      <strong>Applying square-root-of-time scaling to today's risk, or to
+      tail quantiles.</strong> Strictly, the derivation only needs the periods
+      to be uncorrelated so that their variances add; with serially
+      uncorrelated returns, \(\sqrt{T}\) holds for the long-run
+      (unconditional) variance even when volatility clusters. What volatility
+      clustering (calm periods followed by calm periods, turbulent periods
+      followed by turbulent periods, the exact phenomenon the GARCH lesson
+      models) breaks is using one long-run \(\sigma\) for <em>today</em>:
+      starting from a turbulent spell, the next \(T\) days' risk is above
+      \(\sigma\sqrt{T}\); starting from a calm one, it is below. Fat tails
+      make scaling a VaR quantile by \(\sqrt{T}\) less reliable still, and
+      genuine autocorrelation in the returns themselves breaks the variance
+      rule directly. The rule is a useful default, not a
       universal law, and it should be checked against realized multi-period
       volatility rather than assumed.
     </p>
@@ -672,7 +676,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>+50% then −50% is a real 25% loss, not a wash.</strong> A 0% arithmetic average return can still lose real money once you're compounding — the whole primer in one trade.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Volatility scales with √T, not T.</strong> \(\sigma_T=\sigma\sqrt{T}\) falls directly out of variances adding for independent periods<!-- DESK:START --> — the exact reason this repo scales daily σ by ×1/×√5/×√20 for daily/weekly/20-day horizons<!-- DESK:END -->.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Drag grows quadratically with σ.</strong> Doubling volatility quadruples the drag (σ², not σ) — which is why two strategies with identical average returns can compound to very different real outcomes.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>√T scaling assumes independence.</strong> Volatility clustering violates it in real markets, and under positive serial correlation, naive √T scaling understates true multi-period risk.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>√T scaling describes long-run σ, not today's risk.</strong> With serially uncorrelated returns the long-run variance still scales with T, but volatility clustering makes today's multi-period risk differ from σ√T (higher or lower), and fat tails make √T-scaled VaR unreliable.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An unlabeled "average return" is ambiguous.</strong> A headline figure that doesn't say arithmetic or geometric should be treated as potentially the more flattering of the two numbers.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>One day near −100% cannot be averaged away.</strong> Daily-reset leveraged and inverse products compound drag of roughly \(k^2\sigma^2/2\), and a single jump day sits outside the \(\sigma^2/2\) approximation: in February 2018 an inverse-VIX note lost more than 90% in an evening and was wound up.</span></div>
   </div>
@@ -770,12 +774,13 @@
     correlation, ordinary least squares, R²) to relate two series to each
     other and know how much of that relationship to trust; and, from this
     page, the returns math — log-additivity, the arithmetic/geometric mean
-    gap, and square-root-of-time scaling — that every one of the fourteen
-    lessons ahead will lean on without re-deriving it. None of that math was
+    gap, and square-root-of-time scaling — that every lesson ahead will lean on without re-deriving it. None of that math was
     optional scaffolding; it is the vocabulary the rest of this series is
-    written in. From here, head to the <a href="../hub.html">Theory Lab
-    hub</a> and start with <a href="emh.html">Lesson 1: The Efficient Market
-    Hypothesis</a> — the question of whether there's anything left to find
+    written in. Next in the <a href="../hub.html">Theory Lab hub</a>'s order
+    comes the Deeper Foundations tier, starting with
+    <a href="linear-algebra-matrices.html">Linear Algebra &amp; Matrices</a>; after
+    that tier, <a href="emh.html">Lesson 1: The Efficient Market
+    Hypothesis</a> takes up the question of whether there's anything left to find
     in a price series at all, which is where the substantive material
     begins.
   </div>
@@ -783,7 +788,7 @@
   <div class="tl-footer-nav">
     <a href="primer-correlation-regression.html">← Correlation &amp; Linear Regression</a>
     <a href="../hub.html">Theory Lab hub</a>
-    <a href="emh.html">Lesson 1: The Efficient Market Hypothesis →</a>
+    <a href="linear-algebra-matrices.html">Linear Algebra &amp; Matrices →</a>
   </div>
 </div>
 <script>

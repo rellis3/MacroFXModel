@@ -252,7 +252,7 @@
           <p>Once lags 1 through p are partialled out, there's genuinely nothing left for lag p+1 to explain. For AR(1) specifically: large at lag 1, then dropping abruptly to near-zero from lag 2 onward — even though the ACF at lag 2, 3, 4… is still visibly nonzero.</p>
         </div>
       </div>
-      <div class="sl-quote">That contrast is the classic Box-Jenkins signature of an autoregressive process — reading where the PACF cuts off is the standard way to identify p, the order of an AR model, directly from data instead of guessing a lookback window.</div>
+      <div class="sl-quote">That contrast is the classic Box-Jenkins signature of an autoregressive process — reading where the PACF cuts off is the standard way to identify p, the order of an AR model, directly from data instead of guessing how many lags to use. (It is a model lag order, not the estimation window for a rolling z-score.)</div>
       <div class="sl-note">The mirror-image rule holds for a moving-average MA(q) process — ACF cuts off after lag q, PACF decays gradually — which is why the two plots together, not either alone, are the classical starting point for choosing an ARIMA model's (p,q).</div>
     </section>
 
@@ -263,7 +263,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">🔢</div><div><h4>Model order identification</h4><p>Box-Jenkins: a PACF cutoff plus a decaying ACF picks the AR order p directly off the plots, before ever running a fit.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">✅</div><div><h4>Pre-model sanity check</h4><p>GARCH, VAR, and the Cointegration residual test all assume stationarity — a correlogram is the cheapest check before trusting any of them.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>ADF lag length</h4><p>The PACF of a differenced residual is a principled way to choose how many lagged-difference terms a Dickey-Fuller regression needs.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">🪟</div><div><h4>Lookback-window design</h4><p>Any "last N periods" feature is an implicit autocorrelation claim — ACF/PACF is the checkable version of that assumption.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🪟</div><div><h4>Lookback-window design</h4><p>Using the last N values as predictors is an implicit autocorrelation claim — ACF/PACF is the checkable version. A rolling z-score's estimation window is a separate choice.</p></div></div>
       </div>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where reading a correlogram quietly goes wrong</div>
@@ -337,7 +337,7 @@
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>
-        <p>Read a correlogram and tell, at a glance, whether a series looks stationary or is dragging a unit root behind it. Pick an AR model's order — or size a lookback window — from evidence instead of a guessed round number. Recognise when a regression's strong-looking relationship might be a statistical mirage rather than a real one, before trusting it with capital.</p>
+        <p>Read a correlogram and tell, at a glance, whether a series looks stationary or is dragging a unit root behind it. Pick an AR model's order — how many past values to use as predictors — from evidence instead of a guessed round number. Recognise when a regression's strong-looking relationship might be a statistical mirage rather than a real one, before trusting it with capital.</p>
       </div>
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>

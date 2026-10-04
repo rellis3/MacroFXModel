@@ -37,7 +37,7 @@
       <li>The ACF at lag \(k\) is the total correlation between a series and its \(k\)-lagged self, mixing direct dependence with everything carried indirectly through intervening lags; a slowly-decaying ACF (still elevated 20-30 lags out) is the classic visual tell of non-stationarity (a unit root).</li>
       <li>The PACF at lag \(k\) strips out that indirect chain, measuring only what lag \(k\) adds beyond what closer lags already explain — which is exactly what lets it identify an AR model's order \(p\).</li>
       <li>The Box-Jenkins signature of an AR(\(p\)) process: the ACF decays gradually (never cleanly stops) while the PACF cuts off sharply after lag \(p\) — for AR(1) specifically, PACF is large at lag 1 and near-zero from lag 2 on, even though the ACF stays visibly nonzero for several more lags.</li>
-      <li>Practically, reading where the PACF cuts off tells you how far back a series' own history is genuinely informative — a principled alternative to guessing a lookback window or grid-searching one.</li>
+      <li>Practically, reading where the PACF cuts off tells you how many of a series' own past values are genuinely informative as predictors (the model's lag order) — a principled alternative to guessing or grid-searching that number. It is not the estimation window for a rolling mean, volatility or z-score, which is a separate choice.</li>
       <li>How it reached trading: Granger &amp; Newbold's 1974 spurious-regression warning and Dickey &amp; Fuller's 1979 unit-root test made "is it stationary?" the first question a desk asks before trading a spread or fitting a forecast model.</li>
     </ul>
   </div>
@@ -109,7 +109,7 @@
   <div class="tl-origin-who">Unit-root testing · Granger &amp; Newbold, 1974; Dickey &amp; Fuller, 1979 — then every relative-value and macro desk</div>
   <p>Before the 1970s, a trader or economist who regressed one trending price on another usually got an impressive fit — a high R², a large t-statistic — and took it as a relationship. Clive Granger and Paul Newbold showed in 1974, by simulation, that regressions between two completely independent random walks routinely look that significant. Yule had warned of "nonsense correlations" in 1926; Granger and Newbold made the warning impossible to ignore for anyone working with prices.</p>
   <p>David Dickey and Wayne Fuller supplied the test in 1979: does a series have a unit root (shocks never fade) or does it revert? Nelson and Plosser (1982) then found that many US macro and price series could not reject a unit root. Engle and Granger's 1987 cointegration framework built directly on this — a spread between two prices is tradable only if the spread itself passes a stationarity test — and that became the statistical basis of pairs and relative-value trading.</p>
-  <p>On a desk today the checks come first: an ADF or KPSS test before trading a spread or regressing one market on another, and the ACF/PACF to see how long a shock persists, what lookback a signal deserves, and whether a forecast model's residuals are still hiding structure.</p>
+  <p>On a desk today the checks come first: an ADF or KPSS test before trading a spread or regressing one market on another, and the ACF/PACF to see how long a shock persists, how many lags a signal deserves, and whether a forecast model's residuals are still hiding structure.</p>
   <div class="tl-role">
     <div class="tl-role-stages">
       <span class="tl-role-stage on">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
@@ -313,7 +313,7 @@
     classic Box-Jenkins signature of an autoregressive process, and reading
     where the PACF cuts off is the standard way to identify \(p\), the
     order of an AR model, directly from data rather than by guessing a
-    lookback window. (The mirror-image rule holds for a moving-average
+    lag count. (The mirror-image rule holds for a moving-average
     MA(\(q\)) process — ACF cuts off after lag \(q\), PACF decays gradually —
     which is why the two plots together, not either alone, are the classical
     starting point for choosing an ARIMA model's \((p,q)\) before ever
@@ -328,7 +328,7 @@
   <div class="tl-solid blue">
     <strong>The signature to memorize:</strong> ACF decays, PACF cuts off —
     that single contrast is what lets you read an AR model's order \(p\)
-    straight off two plots, instead of guessing a lookback window or
+    straight off two plots, instead of guessing a lag count or
     grid-searching one.
   </div>
 
@@ -376,13 +376,19 @@
       predictive structure only at lag 1 (yesterday); everything the ACF
       shows at lags 2 through 7 is the same lag-1 relationship echoing
       forward through the chain, not new independent information at those
-      later lags. A signal that looks back 10 days on this spread is mostly
-      re-adding information the model already has from yesterday alone,
+      later lags. A signal that uses the last 10 days as separate predictors
+      on this spread is mostly re-adding information the model already has from yesterday alone,
       several times over, while contributing very little that's genuinely
       new — extra parameters (and extra estimation noise) bought for very
       little real signal. The PACF is what tells you "stop at lag 1" with
       actual evidence, instead of guessing a window and hoping it holds up
-      out of sample.
+      out of sample. What the PACF settles is the <em>lag order</em> — how
+      many past values the signal should use as predictors. It does not set
+      the estimation window for the spread's rolling mean and standard
+      deviation in a z-score; that window is a separate trade-off between
+      estimation noise and how long the spread's level and volatility stay
+      stable, and even an AR(1) spread needs many observations to pin down
+      its mean.
     </p>
   </div>
 
@@ -482,7 +488,7 @@
     <div class="tl-icard">
       <div class="tl-icon-badge amber">🪟</div>
       <h4>Lookback-window design</h4>
-      <p>Any "last N periods" feature is an implicit autocorrelation claim — ACF/PACF is the checkable version of that assumption.</p>
+      <p>Using the last N values as predictors is an implicit autocorrelation claim — ACF/PACF is the checkable version. A rolling z-score's estimation window is a separate choice.</p>
     </div>
   </div>
 
@@ -519,12 +525,15 @@
   </p>
   <p>
     <strong>Feature and lookback-window design generally.</strong> Any
-    quantitative feature built from "the last \(N\) periods" of some series —
-    a rolling volatility estimate, a momentum score, a mean-reversion
-    z-score — is implicitly assuming that periods within that window carry
-    real information and periods beyond it don't. The ACF/PACF pair is the
-    direct, checkable version of that assumption, as the trading scenario
-    above works through concretely.
+    quantitative feature that uses the last \(N\) values of a series as
+    predictors — lagged returns in a regression, an AR-style reversal score —
+    is implicitly assuming that those lags carry real information and lags
+    beyond them don't. The ACF/PACF pair is the direct, checkable version of
+    that assumption, as the trading scenario above works through concretely.
+    It does not choose the estimation window of a rolling volatility, mean or
+    z-score: that window trades estimation noise against how long the
+    series' level and volatility stay stable, a different question from lag
+    order.
   </p>
 
   <div class="tl-box pitfall">
@@ -572,8 +581,7 @@
       they're closer to a mixed, noisy approximation of one, at best. In
       practice both functions typically show some decay and the "cutoff" is a
       fade into the noise band rather than a hard stop. Use the shapes as a
-      strong heuristic for where a lookback window's information content
-      runs out, not as literal proof of an exact underlying model order.
+      strong heuristic for how many lags carry predictive information, not as literal proof of an exact underlying model order.
     </p>
   </div>
 
@@ -657,19 +665,17 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q5. Why can't you just always use a longer lookback window "to be safe" when building a feature off a series' own history?</summary>
+    <summary>Q5. Why can't you just always use more lags "to be safe" when building a predictor from a series' own history?</summary>
     <div class="tl-answer">
-      Because, per the trading scenario above, a longer window on a series
+      Because, per the trading scenario above, extra lags on a series
       whose PACF cuts off early (say, at lag 1) mostly re-adds information
       the model already has from the closer lags, restated several times
       over through the chained-correlation mechanism the ACF picks up — it
       does not add proportionally more genuine information. What it does add
       is estimation noise (each extra lag/parameter is estimated from finite,
-      noisy data) and slower adaptation to a change in the series' own
-      dynamics, since a longer window smooths over more history that may no
-      longer be representative. The PACF is the tool that tells you where
-      the genuinely new information actually runs out, so extra lookback
-      beyond that point is closer to overfitting risk than to added signal.
+      noisy data) and more room to fit noise in the sample. The PACF is the
+      tool that tells you where the genuinely new information actually runs
+      out, so extra lags beyond that point is closer to overfitting risk than to added signal.
     </div>
   </details>
   <details class="tl-quiz">

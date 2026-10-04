@@ -50,7 +50,7 @@
     moves on quickly, because deriving option pricing theory isn't the place
     to also derive what discounting <em>is</em>. That derivation belongs here.
     Every discount factor, every present-value calculation, every "the market
-    is pricing in X%" statement in finance rests on the same four-hundred-year-old
+    is pricing in X%" statement in finance rests on the same centuries-old
     idea: money has a price, that price is the interest rate, and moving money
     across time changes its value in a way you can compute exactly. Get this
     mechanical and it stops being a footnote you skip past in every other
@@ -646,8 +646,9 @@
       interest — only ever pays \(r\) on the original \(PV\), never on
       previously accrued interest, so it grows linearly and understates
       true compounded growth for any \(t>1\) period (the two formulas agree
-      only within a single period, where there's no prior interest yet to
-      compound).
+      exactly at \(t=1\), where there's no prior interest yet to compound;
+      for a fraction of a period, \(0&lt;t&lt;1\), simple interest actually gives
+      slightly more).
     </div>
   </details>
   <details class="tl-quiz">
@@ -737,7 +738,7 @@
   <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Richard A. Brealey, Stewart C. Myers, and Franklin Allen, <em>Principles of Corporate Finance</em>, McGraw-Hill (any recent edition) — the standard MBA-level treatment of present value, future value, and discounted cash flow, including the compounding-frequency and annuity/perpetuity extensions not covered in depth on this page.</li>
-    <li>Irving Fisher, <em>The Theory of Interest</em>, Macmillan, 1930 — the original formalization of the nominal/real/inflation relationship (the "Fisher equation") introduced above; also the historical source of the "Fisher effect" (nominal rates adjusting to expected inflation) that the upcoming Purchasing Power Parity lesson builds on.</li>
+    <li>Irving Fisher, <em>Appreciation and Interest</em>, 1896, where Fisher first stated the nominal/real/inflation relationship (the "Fisher equation") introduced above, and <em>The Theory of Interest</em>, Macmillan, 1930, his later full treatment — also the historical source of the "Fisher effect" (nominal rates adjusting to expected inflation) that the upcoming Purchasing Power Parity lesson builds on.</li>
     <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — the chapter on determining forward and futures prices derives covered interest rate parity from the identical no-arbitrage argument used in the USD/JPY scenario above, generalized beyond the simple-interest, single-period case shown here.</li>
     <li>The Theory Lab's Black-Scholes lesson (<code>black-scholes.html</code>) — the direct downstream consumer of the discounting math on this page, and the reason \(r\) shows up in an option-pricing formula at all.</li>
   </ul>
