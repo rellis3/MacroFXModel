@@ -60,10 +60,9 @@ These are the conditions that make every later test mean something.
 |---|---|---|---|---|
 | 0.1 | **Freeze v3 as the control.** Config hash, pair list, trade list and bootstrap band written to a frozen expectation | L01 cards 03/10 | `scripts/freeze_expectation.mjs` → `expect_vote_atlas_v3.json` | file exists; `bot-audit` reads it |
 | 0.2 | **Start the trial ledger.** One JSONL line per configuration ever compared on this history: what changed, the date, Sharpe, n | L02 §05 practice 02 | new `analysis/forecaster_lessons/trial_ledger.jsonl` + a 20-line append helper | every later phase appends; DSR reads N from here |
-| 0.3 | **Live ↔ backtest parity** on v3, after the 18 Sep engine fix | L03 TC | `live_parity.py` on the newest v3 decision log | **recall ≥ 90% and precision ≥ 90%**. If it fails, fix the live data/σ path first (the 18 Sep sync finding, `FINDINGS.md` §3.2 item 2) |
-| 0.4 | **Every live trade in R.** Store `sl`/`tp` at entry | L01 card 10 | `pylego/broker/mt5.py` serialisers (`LIVE_BACKTEST_ALIGNMENT.md` §2.2) | live closed trades carry entry, stop and R |
-| 0.5 | **Config hygiene.** The USDCHF per-pair spread cap reading 0.0 (§3.9) | — | bot-config / `pylego/costs.max_spread` | no pair has a 0 cap unless deliberately disabled |
-| 0.6 | **Lockbox date.** Everything after the freeze date is held out from v4 research and examined **once**, at the end | L01 card 03 | written in this file when 0.1 lands | — |
+| 0.3 | **Every live trade in R** (ready for when it trades). Store `sl`/`tp` at entry | L01 card 10 | `pylego/broker/mt5.py` serialisers (`LIVE_BACKTEST_ALIGNMENT.md` §2.2) | live closed trades carry entry, stop and R |
+| 0.4 | **Config hygiene.** The USDCHF per-pair spread cap reading 0.0 (§3.9) | — | bot-config / `pylego/costs.max_spread` | no pair has a 0 cap unless deliberately disabled |
+| 0.5 | **Lockbox date.** Everything after the freeze date is held out from v4 research and examined **once**, at the end | L01 card 03 | written in this file when 0.1 lands | — |
 
 ## Phase 1: L1–L3, the forecasting layer (mostly done; 1 week)
 
@@ -71,9 +70,9 @@ The forecaster is already the strongest part (`FINDINGS.md` §0). Close its know
 
 | # | Change | Lesson | Pass bar (out of sample, per pair) |
 |---|---|---|---|
-| 1.1 | **One forecast for everything.** Today the forecaster v3 export button and Vote Atlas draw the *same* fitted widths (`forecastLadderParams.js`) with *different* σ inputs. The export uses 17:00-NY OANDA D1 bars (Yahoo for NQ) plus event multipliers (`volForecastScheduler` → `computeForecast`). Vote Atlas uses M1 bucketed by London calendar day (24h) and **always** `eventTag:'none'` (`levelAtlasEngine.js:225/303`, `server.js` `_volatilityV2InstrumentPreview`). The widths were fitted on **00:00–22:00 London** sessions (`forge/vol.py` `london22`), so neither input matches the fit. Known symptom: NQ 13.99% vs 24.70% on 2026-09-22, not root-caused (`server.js:21756`). v4: one forecast service, σ on `london22` sessions, event-tagged, that both the export and Vote Atlas read | L01 card 01 (point-in-time, same series); L03 §01 (one layer, one output) | the two exports agree to < 1% on every instrument; live exceedance on 20+ sessions within ±3pp of 50/25/10 |
-| 1.2 | **Estimate index GARCH** by maximum likelihood, rolling, instead of the hand-set β 0.87 | L03 §02 | pinball loss ≤ incumbent; half-life reported |
-| 1.3 | **IV ladder where IV exists** (CME CVOL pairs, GVZ for gold) is already pre-registered as a win, but Vote Atlas does not use it today (only the export's "Forecast (IV)" button does). Make it the default σ for those pairs in the one forecast service | L03 §02 | existing `forge/IV_LADDER_PREREG.md` result holds on the newest fold |
+| 1.1 | **Re-base Vote Atlas on the forecaster v3 export calculation. The export itself is NOT changed.** Today Vote Atlas uses the same fitted widths but its own cruder σ input: M1 by London calendar day, **no event scaling** (`eventTag:'none'` always, `levelAtlasEngine.js:303`) and **no IV**. The export (`volForecastScheduler` → `computeForecast` → `ladder_flat`, plus the IV export for the 5 USD majors and gold) has both. v4 rebuilds the Vote Atlas touches/trades from the export's ladder for every historical day, then compares the books. Needs R2 (OANDA D1 + M1 history, CVOL/GVZ history) | L03 §01 (one forecast layer, one output); L03 §03 (event/jump term) | Vote Atlas on the export ladder ≥ current Vote Atlas on walk-forward Sharpe at equal vol, with DD no worse. If it fails, keep the current σ and record why |
+| 1.2 | *(Optional, indices only.)* The export calc's index σ uses GARCH with a hand-set β 0.87. Try an estimated β **inside the export calc** and keep it only if it wins. This is a tweak, not a replacement | L03 §02 | pinball loss ≤ incumbent; else leave as is |
+| 1.3 | **IV where it won.** The export's "Forecast (IV)" block (CME CVOL for 5 USD majors, GVZ for gold) is pre-registered as an OOS win. Vote Atlas uses it for those pairs via 1.1 | L03 §02 | existing `forge/IV_LADDER_PREREG.md` result holds on the newest fold |
 | 1.4 | Re-run any fade/touch study that used `/api/vol-forecast/backtest-range` before 2026-10-04 (bands were 2–8% narrow) | — | results re-banked |
 
 ## Phase 2: L4, exhaustion as a state (new live input; 1–2 weeks)
@@ -153,12 +152,13 @@ capped at ½-Kelly on the SHRUNK, COST-STRESSED edge  (L01 §06)
 | 5.1 | each factor: Sharpe ≥ base, max DD ≤ base, on ≥ 90% of 1,000 bootstrap paths (the E6 test) |
 | 5.2 | combined: improves both Sharpe and DD vs the best single factor; else ship only the best single factor |
 
-## Phase 6: L8, execution, measured (runs in parallel from Phase 0; R2 + 2–4 weeks live)
+## Phase 6: L8, execution, measured (R2 now; live parts once Vote Atlas trades again)
 
 | # | Task | Lesson | Pass bar |
 |---|---|---|---|
 | 6.1 | **Fill-realism replay** on R2 M1: spread at the time, a trade-through rule (price must trade *past* the rung, not touch it), worst-case same-bar stop/target | L01 card 11 | net mean R > 0 with margin ≥ 1 pip of headroom per kept pair |
 | 6.2 | **Measured spread caps per pair** from real bid/ask history (`/api/level-atlas/spread-check`), replacing guesses | — | caps written to config, none 0 |
+| 6.0 | **Live ↔ backtest parity**, once the bot trades again: `live_parity.py` on its decision log | L03 TC | recall ≥ 90% and precision ≥ 90% before any live P&L is read |
 | 6.3 | **Live cost measurement**: 2–4 weeks at minimum size, unattended, trades in R (0.4) | L01 card 10 | slippage per pair estimated to ±0.2 pip; pairs with cost > headroom dropped |
 
 ## Phase 7: L9, management and monitoring (1 week)
@@ -197,7 +197,7 @@ capped at ½-Kelly on the SHRUNK, COST-STRESSED edge  (L01 §06)
 
 | Weeks | Work |
 |---|---|
-| 1–2 | Phase 0 (parity, R records, freeze, ledger) · Phase 6.1 fill replay (laptop + R2) |
+| 1–2 | Phase 0 (R records, freeze, ledger) · Phase 1.1 re-base on the export calc + 6.1 fill replay (laptop + R2) |
 | 3 | Phase 1 |
 | 4–5 | Phases 2 and 3 (R2) |
 | 6–7 | Phase 5 (sizing) · Phase 6.3 live cost measurement runs unattended |
