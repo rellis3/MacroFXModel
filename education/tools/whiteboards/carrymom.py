@@ -1,0 +1,71 @@
+from ._wb import *
+
+# ── Factors as traits, then solving for a target exposure (factor-based-portfolio-construction) ──
+# Numbers are the lesson's: N = 30, K = 3 → 435 pairwise covariances vs 90 + 6 + 30 = 126;
+# worked example AUDUSD (carry +1.0, momentum +0.2), USDJPY (carry −0.8, momentum +0.6),
+# target q = (carry +1.0, momentum 0) → w = (0.789, −0.263). Value winter: 2018–2020 drawdown,
+# 9 November 2020 reversal, outperformance through 2021–2022. The value path is an
+# illustrative SHAPE only (no scale): the lesson gives dates, not index levels.
+VAL = [[2018.0, 100], [2018.3, 97], [2018.6, 98], [2018.9, 93], [2019.2, 94], [2019.5, 90], [2019.8, 91],
+       [2020.1, 86], [2020.25, 76], [2020.5, 74], [2020.7, 71], [2020.85, 69]]
+REB = [[2020.85, 69], [2020.9, 76], [2021.2, 82], [2021.5, 80], [2021.8, 86], [2022.1, 89], [2022.4, 92],
+       [2022.8, 94]]
+CM = dict(w=600, h=880, intro='Describe every currency by a few shared traits, then solve for the mix of traits you want. Press play, or step through.', steps=[
+    step('Instead of tracking how every currency pair moves with every other one, describe each pair by a few shared traits: carry, momentum (trend) and value, the standard FX/macro trio.',
+         icon('car', 'piggy', 20, 6, 0.6, 'amber', 'carry', sym='%'),
+         icon('mom', 'up', 115, 6, 0.6, 'blue', 'momentum'),
+         icon('val', 'scales', 210, 6, 0.6, 'purple', 'value')),
+    step('Why bother? For 30 currency pairs, every pair-by-pair co-movement is 435 numbers, each one a noisy guess. With 3 factors you need 90 loadings, 6 factor covariances and 30 own-noise variances: 126 numbers.',
+         chart('cnt', (10, 125, 265, 215), 'Numbers, 30 pairs', [0.4, 2.6], [0, 560],
+               [[100, '100'], [435, '435']], [[1, 'every pair'], [2, '3 factors']], pl=46),
+         dict(bars='cb', chart='cnt', data=[[1, 435, '435', 'red'], [2, 126, '126', 'green']], bw=46, ms=1100)),
+    step('Meet two pairs from the worked example. AUDUSD loads +1.0 on carry and +0.2 on momentum. USDJPY loads −0.8 on carry and +0.6 on momentum. Illustrative loadings, not estimated from data.',
+         icon('aud', 'coin', 370, 6, 0.6, 'green', 'AUDUSD', sym='A$'),
+         icon('jpy', 'coin', 490, 6, 0.6, 'red', 'USDJPY', sym='¥'),
+         chart('ld', (295, 125, 295, 215), 'Loadings', [0.4, 2.6], [-1.35, 1.3],
+               [[1, '+1'], [0, '0'], [-1, '−1']], [[1, 'AUDUSD'], [2, 'USDJPY']], zero=True, pl=40),
+         note('lc', 450, 143, 'carry', 'amber', 17), note('lm', 535, 143, 'momentum', 'blue', 17),
+         dict(bars='lb', chart='ld', data=[[0.82, 1.0, '+1.0', 'amber'], [1.18, 0.2, '+0.2', 'blue'],
+                                            [1.82, -0.8, '−0.8', 'amber'], [2.18, 0.6, '+0.6', 'blue']], bw=30, ms=1100)),
+    step('A portfolio\'s exposure to a factor is just a weighted sum: each holding\'s weight times its loading, added up. Like the spiciness of a dish: how much of each ingredient, times how spicy it is.',
+         note('sum', 300, 372, 'portfolio exposure = Σ weight × loading', 'chalk', 20)),
+    step('Now turn it round. Pick the exposure you want first: long carry at exactly +1.0, momentum exactly 0, because a separate momentum book already carries that risk.',
+         box('tgt', 10, 400, 270, 74, 'Target\ncarry +1.0 · momentum 0', 'amber', size=19)),
+    step('Try AUDUSD alone at 100%. Carry comes out at +1.0, on target, but its +0.2 momentum loading sneaks in too. Not what you asked for.',
+         box('wa', 10, 492, 130, 74, 'AUDUSD', 'green', sub='100%', size=19),
+         chart('pf', (295, 395, 295, 190), 'Portfolio exposure', [0.4, 2.6], [-0.3, 1.25],
+               [[1, '+1'], [0, '0']], [[1, 'carry'], [2, 'momentum']], zero=True, pl=40),
+         dict(bars='p1', chart='pf', data=[[1, 1.0, '+1.0', 'amber'], [2, 0.2, '+0.2 ✗', 'red']], bw=46, ms=900)),
+    step('The fix is to short USDJPY. Its momentum loading is big (+0.6), so a short cancels the stray momentum, and because its carry loading is negative, shorting it adds carry too.',
+         box('wj', 150, 492, 130, 74, 'USDJPY', 'red', sub='0%', size=19),
+         dict(pulse='jpy')),
+    step('Solve the two equations together and the answer is exact: long AUDUSD 78.9%, short USDJPY 26.3%.',
+         dict(count='wa', **{'from': 100, 'to': 78.9, 'dp': 1, 'suf': '%', 'ms': 1300}),
+         dict(count='wj', **{'from': 0, 'to': -26.3, 'dp': 1, 'suf': '%', 'ms': 1300}),
+         dict(hide='p1'),
+         dict(bars='p2', chart='pf', data=[[1, 1.0, '+1.00', 'amber'], [2, 0.0, '0.00 ✓', 'green']], bw=46, ms=900)),
+    step('Check it. Carry: 0.789 × 1.0 plus (−0.263) × (−0.8) = 0.789 + 0.211 = 1.000. Momentum: 0.789 × 0.2 plus (−0.263) × 0.6 = 0.158 − 0.158 = 0. Exactly the target.',
+         note('ck1', 300, 612, 'carry:  0.789 + 0.211 = 1.000 ✓', 'amber', 19),
+         note('ck2', 300, 646, 'momentum:  0.158 − 0.158 = 0 ✓', 'blue', 19)),
+    step('With more pairs than factors, say five pairs and two factors, endless mixes all hit the same target. You need a second rule to pick one (smallest risk left over, position caps), and that rule is a real choice.',
+         dict(hide='cnt'), dict(hide='cb'),
+         *[icon(f'c{i}', 'coin', 18 + i * 52, 150, 0.42, 'chalk') for i in range(5)],
+         note('many', 140, 228, '5 pairs, 2 targets:', 'chalk', 18),
+         note('many2', 140, 256, 'endless answers', 'red', 18),
+         note('many3', 140, 290, '+ a tiebreak rule', 'green', 18)),
+    step('But solving for the exposure does not deliver the premium. Value is one of the most studied factors. Value-tilted books held exactly the tilt they solved for, and in 2018–2020 earned exactly the factor\'s return: by many measures its deepest and longest drawdown on record.',
+         chart('vw', (10, 672, 580, 172), 'US value factor, cumulative (illustrative shape)', [2017.9, 2023], [50, 106],
+               [], [[2018, '2018'], [2020, '2020'], [2020.85, '9 Nov'], [2022, '2022']], pl=20, pr=20),
+         series('vd', 'vw', VAL, 'red', ms=1800),
+         dot('lo', 'vw', [2020.85, 69], 'many cut here', 'red', dx=-10, dy=18, anchor='end')),
+    step('Many investors and clients gave up near the low. Then on 9 November 2020 a vaccine announcement set off one of value\'s sharpest one-day reversals in years, and it went on to outperform through 2021 and 2022.',
+         series('vu', 'vw', REB, 'green', ms=1500)),
+    step('The solve gives you exactly the exposure you asked for. Nothing in the model says that factor\'s return has to be positive over any stretch you can sit through.',
+         note('end', 300, 860, 'right exposure ≠ guaranteed premium', 'amber', 19)),
+])
+
+
+BOARD = dict(name='carrymom', lesson='factor-based-portfolio-construction',
+             title='Factor exposures, solved for and then held, step by step', cfg=CM,
+             before='  <div class="tl-section-mark"><span>Section 04</span></div>\n  <h2>How practitioners actually use this</h2>\n  <p>\n    The three factor families',
+             deck_after=11)
