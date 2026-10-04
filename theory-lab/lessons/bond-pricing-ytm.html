@@ -32,7 +32,7 @@
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
       <li>A bond's price is the present value of every cash flow it pays: each coupon \(C\) discounted back from the period it arrives in, plus the face value \(F\) discounted back from maturity — \(P = \sum_{t=1}^{n} \frac{C}{(1+y)^t} + \frac{F}{(1+y)^n}\).</li>
-      <li>Yield to maturity (YTM) is the single discount rate \(y\) that makes that formula's output equal the bond's actual observed market price. It's implicit — you plug in a price and solve for \(y\), not the other way around — and for more than a couple of periods there is no closed-form algebraic solution, only an iterative numerical search.</li>
+      <li>Yield to maturity (YTM) is the single discount rate \(y\) that makes that formula's output equal the bond's actual observed market price. It's implicit — you plug in a price and solve for \(y\), not the other way around — and beyond a couple of periods it is found by an iterative numerical search (exact algebraic formulas exist only up to four periods, and past two they are impractical).</li>
       <li>Price and yield move in opposite directions, always: discount the same fixed cash flows at a higher rate and every term in the sum shrinks, so price falls when yield rises, and vice versa.</li>
       <li>A bond trades at par when its coupon rate equals its YTM, at a premium (above face value) when the coupon rate exceeds YTM, and at a discount (below face value) when YTM exceeds the coupon rate.</li>
       <li>The worked example prices a 5-year, 4% annual-coupon, $1,000 face bond at a 5% YTM and gets \(P \approx \$956.71\) — a discount bond, because the 4% coupon sits below the 5% YTM — then sets up a Newton-Raphson-style iterative search for the YTM implied by an observed market price.</li>
@@ -186,10 +186,11 @@
     <strong>Why there's no clean formula for \(y\):</strong> for a single-period
     bond, solving for \(y\) is simple algebra: \(P=(C+F)/(1+y)\) rearranges
     directly to \(y=(C+F)/P - 1\). For a two-period bond it's a quadratic, at
-    least still solvable by a closed-form formula. But for three or more
-    periods, \(y\) appears raised to three or more different powers in the
-    same equation simultaneously, and there is no general algebraic formula
-    (analogous to the quadratic formula) that isolates it. Every real bond
+    least still solvable by a closed-form formula. For three or four periods
+    it is a cubic or quartic: formulas exist (Cardano, Ferrari) but are far too
+    unwieldy to use, and from five periods on \(y\) appears at five or more
+    powers and there is provably no general algebraic formula (the
+    Abel–Ruffini theorem) that isolates it. Every real bond
     with more than a couple of coupons left needs an <em>iterative numerical
     search</em> — an initial guess for \(y\), refined step by step until the
     formula's price output matches \(P_{mkt}\) closely enough. This
@@ -418,7 +419,7 @@
         <div class="tl-step-body">
           <h4>Discount each of the five $40 coupons</h4>
           <div class="tl-math">
-            \[ \frac{40}{1.05^1}=38.10,\quad \frac{40}{1.05^2}=36.28,\quad \frac{40}{1.05^3}=34.56,\quad \frac{40}{1.05^4}=32.91,\quad \frac{40}{1.05^5}=31.34 \]
+            \[ \frac{40}{1.05^1}=38.10,\quad \frac{40}{1.05^2}=36.28,\quad \frac{40}{1.05^3}=34.55,\quad \frac{40}{1.05^4}=32.91,\quad \frac{40}{1.05^5}=31.34 \]
           </div>
         </div>
       </div>
@@ -427,7 +428,7 @@
         <div class="tl-step-body">
           <h4>Sum the discounted coupons</h4>
           <div class="tl-math">
-            \[ 38.10+36.28+34.56+32.91+31.34 = 173.19 \]
+            \[ 38.10+36.28+34.55+32.91+31.34 = 173.18 \]
           </div>
         </div>
       </div>
@@ -445,7 +446,7 @@
         <div class="tl-step-body">
           <h4>Add the two pieces</h4>
           <div class="tl-math">
-            \[ P = 173.19 + 783.53 = \$956.71 \]
+            \[ P = 173.18 + 783.53 = \$956.71 \]
           </div>
           <p>
             The bond prices at $956.71 — a <strong>discount</strong> to its
@@ -488,9 +489,9 @@
         <div class="tl-step-num">2</div>
         <div class="tl-step-body">
           <h4>Estimate the local slope \(f'(y_0)\) and take a step</h4>
-          <p>A quick numerical estimate (evaluating the pricing formula at \(y=3.9\%\) and \(y=4.1\%\) — prices of \$1,004.48 and \$995.57 respectively — and taking the difference) gives a slope of roughly \(f'(y_0) \approx -4{,}459\) dollars per unit change in \(y\) — consistent with duration-driven price sensitivity, formalized in Lesson 2. The Newton step is:</p>
+          <p>A quick numerical estimate (evaluating the pricing formula at \(y=3.9\%\) and \(y=4.1\%\) — prices of \$1,004.46 and \$995.56 respectively — and taking the difference) gives a slope of roughly \(f'(y_0) \approx -4{,}452\) dollars per unit change in \(y\) — consistent with duration-driven price sensitivity, formalized in Lesson 2. The Newton step is:</p>
           <div class="tl-math">
-            \[ y_1 = 0.0400 - \frac{-21.00}{-4459} \approx 0.0400 - 0.0047 \approx 0.0353 \]
+            \[ y_1 = 0.0400 - \frac{-21.00}{-4452} \approx 0.0400 - 0.0047 \approx 0.0353 \]
           </div>
         </div>
       </div>
@@ -681,7 +682,7 @@
     <strong>Solving for YTM in production systems</strong> is virtually never
     done by hand — every pricing library and terminal runs a Newton-Raphson
     (or a similar bisection/secant) root-finder against the exact pricing
-    equation shown above, purely because no closed form exists for more than
+    equation shown above, because no usable closed form exists for more than
     a couple of coupon periods. The iterative worked example above is the
     literal algorithm, at toy scale, behind every "YTM" field a Bloomberg
     terminal or pricing library displays.
@@ -721,9 +722,9 @@
     </p>
     <p>
       <strong>Assuming a single starting guess always converges cleanly.</strong>
-      Newton-Raphson's iteration can fail to converge, oscillate, or converge
-      to an economically meaningless root (e.g. a negative yield far from
-      any sensible value) if the initial guess is poor or the pricing
+      Newton-Raphson's iteration can fail to converge, oscillate, or jump
+      outside the economically meaningful range (e.g. to a yield below
+      &minus;100%, where the formula is undefined) if the initial guess is poor or the pricing
       function's local slope is unusual — real implementations bound the
       search to a sensible yield range and fall back to a slower but more
       robust method (like bisection) if Newton-Raphson misbehaves.
@@ -734,7 +735,7 @@
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A bond's price is just present value.</strong> \(P = \sum \frac{C}{(1+y)^t} + \frac{F}{(1+y)^n}\) — discount every coupon from the period it lands in, discount the face value from maturity, and add.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>YTM is the same formula solved backwards.</strong> Given an observed market price, YTM is the single discount rate that reproduces it — implicit, and (beyond 1-2 periods) solvable only iteratively, e.g. via Newton-Raphson.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>YTM is the same formula solved backwards.</strong> Given an observed market price, YTM is the single discount rate that reproduces it — implicit, and (beyond 1-2 periods) solved in practice only iteratively, e.g. via Newton-Raphson.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Price and yield move in strictly opposite directions.</strong> This falls directly out of the discounting algebra — no exceptions for a plain fixed-coupon bond.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Coupon rate vs. YTM tells you par/premium/discount.</strong> Coupon = YTM → par; coupon &gt; YTM → premium; coupon &lt; YTM → discount.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The price-yield relationship is curved, not straight.</strong> That curvature (convexity) is why a duration-only estimate of a price move is an approximation, not exact — the subject of the very next lesson.</span></div>
@@ -747,16 +748,15 @@
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
-    <summary>Q1. Why can't you generally solve the bond pricing formula for \(y\) algebraically once there are more than a couple of coupon periods?</summary>
+    <summary>Q1. Why can't you, in practice, solve the bond pricing formula for \(y\) algebraically once there are more than a couple of coupon periods?</summary>
     <div class="tl-answer">
       Because \(y\) appears raised to a different power in every term of the
       sum simultaneously (\((1+y)^1, (1+y)^2, \dots, (1+y)^n\)), and there is
-      no general algebraic formula — analogous to the quadratic formula for
-      degree-2 polynomials — that isolates a single variable appearing at
-      three or more different powers in the same equation. For \(n=1\) it's
+      no usable algebraic formula for a polynomial of that degree. For \(n=1\) it's
       linear (solvable directly); for \(n=2\) it's a quadratic (still
-      solvable by formula); for \(n \ge 3\) there is, in general, no closed
-      form, so YTM must be found by an iterative numerical search such as
+      solvable by formula); for \(n=3,4\) the cubic and quartic formulas exist
+      but are impractically messy; for \(n \ge 5\) the Abel–Ruffini theorem
+      says no general closed form exists at all, so YTM must be found by an iterative numerical search such as
       Newton-Raphson.
     </div>
   </details>
@@ -827,7 +827,7 @@
   <ul class="tl-refs">
     <li>Frank J. Fabozzi, <em>Bond Markets, Analysis, and Strategies</em>, 9th ed., Pearson, 2016 — the standard practitioner/academic textbook covering bond pricing, YTM, and the par/premium/discount framework in full depth.</li>
     <li>Bruce Tuckman &amp; Angel Serrat, <em>Fixed Income Securities: Tools for Today's Markets</em>, 3rd ed., Wiley, 2011 — a rigorous, quant-oriented treatment of bond math, including the numerical methods used to solve for yield in practice.</li>
-    <li>Robert W. Kolb, <em>The Financial Hub of Bond Markets</em> or any standard CFA Institute Level I fixed-income curriculum reading — for the clean/dirty price and accrued interest conventions referenced briefly above.</li>
+    <li>Any standard CFA Institute Level I fixed-income curriculum reading — for the clean/dirty price and accrued interest conventions referenced briefly above.</li>
   </ul>
   </details>
 

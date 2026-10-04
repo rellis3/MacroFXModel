@@ -70,7 +70,7 @@
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">≈</div><div><h4>Assumes roughly independent returns</h4><p>The √k derivation needs periods that don't strongly predict each other. It says nothing about what happens when they do.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">=</div><div><h4>Charges wins and losses equally</h4><p>A squared deviation from the mean doesn't know which side of the mean it came from — a big up-swing widens σₓ exactly as much as a big down-swing.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">⤴</div><div><h4>Autocorrelation inflates the annualized number</h4><p>Trend-following strategies and overlapping-window backtests have genuine serial correlation. Naively annualizing by √k then overstates the true Sharpe — a point Lo (2002) makes formally.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⤴</div><div><h4>Autocorrelation inflates the annualized number</h4><p>Overlapping-window backtests and smoothed or illiquid marks have genuine positive serial correlation. Naively annualizing by √k then overstates the true Sharpe (negative autocorrelation does the reverse) — a point Lo (2002) makes formally.</p></div></div>
       </div>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where this needs qualifying</div>
@@ -96,7 +96,7 @@
           <span class="sl-ctag green">Sortino</span>
           <ul>
             <li>Denominator: downside deviation only (returns below MAR)</li>
-            <li>Divides by the count of below-MAR periods, n_d</li>
+            <li>Divides by the count of below-MAR periods, n_d (Sortino &amp; Price's textbook form divides by the total n)</li>
             <li>Rewards a strategy whose variance is upside-heavy</li>
           </ul>
         </div>
@@ -188,7 +188,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">T, γ</div><div><h4>Track length &amp; shape</h4><p>The reported record's own length, skewness and kurtosis — widen the standard error for a lopsided, fat-tailed track record instead of assuming Gaussian.</p></div></div>
       </div>
       <div class="sl-row"><div class="sl-box">SR₀ ≈ σ_SR·[(1−γ_E)Φ⁻¹(1−1/N) + γ_E·Φ⁻¹(1−1/(Ne))]</div></div>
-      <div class="sl-row" style="margin-top:10px"><div class="sl-box">DSR = Φ( (ŜR − SR₀)√(T−1) ÷ √(1 − γ₃ŜR + (γ₄−1)/4·ŜR²) )</div></div>
+      <div class="sl-row" style="margin-top:10px"><div class="sl-box">DSR = Φ( (ŜR − SR₀)√(T−1) ÷ √(1 − γ₃ŜR + (γ₄−1)/4·ŜR²) ) — ŜR, SR₀ per-period (not annualized), same frequency as T</div></div>
       <p class="sl-p">Both bars below are Sharpe ratios on the same axis — the gap between them isn't a modeling error, it's the price of running 50 variations and keeping only the winner.</p>
       <div class="sl-svgwrap">
         <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart with two bars on the same Sharpe-ratio axis. The left bar, raw reported Sharpe from the best of 50 trials, reaches 1.80. The right bar, the chance-expected ceiling under zero true skill, reaches 1.50, visibly shorter, with the gap between them annotated as explained by the 50 variations tried.">
@@ -217,24 +217,24 @@
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Try it — 50 variations, one reported Sharpe of 1.8</h2>
-      <p class="sl-sub">Starts on this deck's real-world scenario: 50 trials, moderately fat-tailed and left-skewed returns, 60 closed trades.</p>
+      <p class="sl-sub">Starts on this deck's real-world scenario: 50 trials, moderately fat-tailed and left-skewed returns, ten years of daily returns. Sharpes are entered annualized; the calculator divides by √252 to put them in the same per-day units as T, as the DSR formula requires.</p>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it — change any input, live</div>
         <div class="sl-calc-row">
-          <div class="sl-calc-field"><label>Reported Sharpe ŜR</label><input type="number" class="sl-input" id="dsr-sr" value="1.8" step="0.05"></div>
+          <div class="sl-calc-field"><label>Reported Sharpe ŜR (annualized)</label><input type="number" class="sl-input" id="dsr-sr" value="1.8" step="0.05"></div>
           <div class="sl-calc-field"><label>Trials run (N)</label><input type="number" class="sl-input" id="dsr-n" value="50" step="1" min="2"></div>
-          <div class="sl-calc-field"><label>Spread of trial SRs (σ_SR)</label><input type="number" class="sl-input" id="dsr-sigma" value="0.66" step="0.01" min="0.0001"></div>
-          <div class="sl-calc-field"><label>Track length T (trades)</label><input type="number" class="sl-input" id="dsr-t" value="60" step="1" min="3"></div>
+          <div class="sl-calc-field"><label>Spread of trial SRs σ_SR (annualized)</label><input type="number" class="sl-input" id="dsr-sigma" value="0.66" step="0.01" min="0.0001"></div>
+          <div class="sl-calc-field"><label>Track length T (daily returns)</label><input type="number" class="sl-input" id="dsr-t" value="2520" step="1" min="3"></div>
           <div class="sl-calc-field"><label>Skew γ₃</label><input type="number" class="sl-input" id="dsr-skew" value="-0.4" step="0.1"></div>
           <div class="sl-calc-field"><label>Kurtosis γ₄</label><input type="number" class="sl-input" id="dsr-kurt" value="7" step="0.5"></div>
         </div>
         <div class="sl-calc-steps">
           <div>SR₀ (chance-expected ceiling) = <b id="dsr-sr0">1.50</b></div>
           <div>Gap cleared above SR₀ = <b id="dsr-gap">0.30</b></div>
-          <div>DSR = P(true SR &gt; 0) = <b id="dsr-out">0.81</b></div>
+          <div>DSR = P(true SR &gt; 0) = <b id="dsr-out">0.82</b></div>
         </div>
         <button type="button" class="sl-reset-btn" id="dsr-reset">Reset to the worked scenario</button>
-        <div class="sl-note" id="dsr-note">Contrast: judged naively against zero (ignoring that 50 variations were tried), this same track record's standard error gives a probability effectively indistinguishable from 100% — near-certainty on a naive read, 81% once the search itself is priced in. That gap <em>is</em> the multiple-testing correction, made concrete for a single Sharpe ratio.</div>
+        <div class="sl-note" id="dsr-note">Contrast: judged naively against zero (ignoring that 50 variations were tried), this same track record's standard error gives a probability effectively indistinguishable from 100% — near-certainty on a naive read, 82% once the search itself is priced in. That gap <em>is</em> the multiple-testing correction, made concrete for a single Sharpe ratio.</div>
       </div>
     </section>
 
@@ -495,7 +495,8 @@
     var note = document.getElementById('dsr-note');
     var resetBtn = document.getElementById('dsr-reset');
     var DEFAULT_NOTE = note.textContent;
-    var DEFAULTS = { sr: 1.8, n: 50, sigma: 0.66, t: 60, skew: -0.4, kurt: 7 };
+    var DEFAULTS = { sr: 1.8, n: 50, sigma: 0.66, t: 2520, skew: -0.4, kurt: 7 };
+    var RK = Math.sqrt(252); // inputs are annualized; DSR needs per-day Sharpes to match T
 
     function recompute(){
       var sr = parseFloat(srI.value), n = parseFloat(nI.value), sigma = parseFloat(sigmaI.value);
@@ -507,12 +508,13 @@
       }
       var sr0 = sr0For(n, sigma);
       var gap = sr - sr0;
-      var denomSq = 1 - skew * sr + ((kurt - 1) / 4) * sr * sr;
+      var srD = sr / RK, gapD = gap / RK;
+      var denomSq = 1 - skew * srD + ((kurt - 1) / 4) * srD * srD;
       var dsr;
       if (denomSq <= 0) {
         dsr = gap > 0 ? 1 : 0;
       } else {
-        dsr = normCdf(gap * Math.sqrt(t - 1) / Math.sqrt(denomSq));
+        dsr = normCdf(gapD * Math.sqrt(t - 1) / Math.sqrt(denomSq));
       }
       sr0Out.textContent = sr0.toFixed(2);
       gapOut.textContent = (gap >= 0 ? '+' : '') + gap.toFixed(2);

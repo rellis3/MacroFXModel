@@ -121,7 +121,7 @@
   </div>
   <p>
   A return series with \(S<0\) and \(K>0\) — negative skew and fat tails — is the typical shape for daily
-  equity and FX returns: crashes are sharper and more frequent than rallies, and both extremes happen more
+  equity-index returns and for many carry-currency returns: crashes are sharper than rallies, and both extremes happen more
   often than a bell curve predicts. Plugging \(\mu\) and \(\sigma\) alone into the Gaussian VaR formula
   throws this shape information away entirely; \(S\) and \(K\) never appear in it.
   </p>
@@ -149,7 +149,7 @@
   <div class="tl-formula-parts">
     <div class="tl-fp blue"><div class="tl-fp-term">z_α</div><div class="tl-fp-name">The baseline</div><div class="tl-fp-desc">What you'd use if returns really were normal — S=0, K=0 collapses everything below to zero</div></div>
     <div class="tl-fp amber"><div class="tl-fp-term">(z_α²−1)S/6 − (2z_α³−5z_α)S²/36</div><div class="tl-fp-name">Skew correction</div><div class="tl-fp-desc">Pushes the quantile further into the tail when losses are more extreme than gains (S&lt;0)</div></div>
-    <div class="tl-fp purple"><div class="tl-fp-term">(z_α³−3z_α)K/24</div><div class="tl-fp-name">Kurtosis correction</div><div class="tl-fp-desc">Pushes the quantile further out when the distribution has fatter tails than normal (K&gt;0)</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">(z_α³−3z_α)K/24</div><div class="tl-fp-name">Kurtosis correction</div><div class="tl-fp-desc">Pushes the quantile further out when the distribution has fatter tails than normal (K&gt;0), but only beyond \(|z_\alpha|&gt;\sqrt{3}\) (about 95.8% confidence); at 95% it pulls the quantile slightly in</div></div>
   </div>
   <p>
   Every term besides \(z_\alpha\) vanishes when \(S=0\) and \(K=0\) — so a perfectly normal return series

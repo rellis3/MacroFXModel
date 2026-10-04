@@ -76,12 +76,12 @@
             <text x="450" y="128" text-anchor="middle" style="fill:var(--red);font:700 11px 'DM Sans',sans-serif">CVaR₉₅ — the average loss<tspan x="450" dy="14">inside this shaded region</tspan></text>
           </svg>
         </div>
-        <div class="sl-verdict"><strong>CVaR<sub>p</sub>(L) = E[L | L &gt; VaR<sub>p</sub>(L)]</strong> — the average loss, conditional on already being in the tail beyond VaR. Also called <strong>Expected Shortfall (ES)</strong>: same quantity, two names.</div>
+        <div class="sl-verdict"><strong>CVaR<sub>p</sub>(L) = E[L | L &gt; VaR<sub>p</sub>(L)]</strong> for a continuous loss — the average loss, conditional on already being in the tail beyond VaR. In general it is the average of the worst (1−p) share of outcomes, the form that stays coherent for lumpy, discrete losses like the bonds below. Also called <strong>Expected Shortfall (ES)</strong>: same quantity, two names.</div>
       </div>
       <div class="sl-quote">A flood rating tells you the water level for a "1-in-100-year" event. It says nothing about whether, on the unlucky year it's exceeded, you get a light overflow or a total collapse. CVaR is the more useful engineering question: given that the flood exceeds the rated level, how high does the water typically actually get?</div>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Two names, one number</div>
-        <p>Conditional VaR and Expected Shortfall refer to the identical calculation here. If a regulatory document says "ES" and an academic paper says "CVaR," in the continuous-distribution case this deck uses throughout, they're the same thing.</p>
+        <p>Conditional VaR and Expected Shortfall refer to the identical calculation here. If a regulatory document says "ES" and an academic paper says "CVaR," they're the same thing. (For discrete losses, use the worst-(1−p)-share average; the plain conditional form E[L | L &gt; VaR] can then fail sub-additivity too.)</p>
       </div>
     </section>
 
@@ -183,16 +183,16 @@
         <div class="sl-ccard green">
           <span class="sl-ctag green">CVaR — held</span>
           <ul>
-            <li>CVaR(A) = CVaR(B) = $100 → sum $200</li>
-            <li>CVaR(A+B) = E[loss | loss &gt; $100] = $200 (the only outcome past $100 is "both default," costing exactly $200)</li>
-            <li>$200 ≤ $200 — sub-additivity holds, with equality</li>
+            <li>CVaR(A) = CVaR(B) = average of the worst 5% (4% at $100, 1% at $0) = $80 → sum $160</li>
+            <li>CVaR(A+B) = average of the worst 5% (0.16% "both default" at $200, 4.84% "one default" at $100) = $103.20</li>
+            <li>$103.20 ≤ $160 — sub-additivity holds; combining lowers measured risk</li>
           </ul>
         </div>
       </div>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Same numbers, side by side</div>
         <div class="sl-svgwrap">
-          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart: VaR of the summed individual bonds at zero dollars jumps to one hundred dollars combined, a sub-additivity violation; CVaR of the summed individual bonds and the combined portfolio are both level at two hundred dollars, which is coherent">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart: VaR of the summed individual bonds at zero dollars jumps to one hundred dollars combined, a sub-additivity violation; CVaR falls from one hundred sixty dollars summed to one hundred three dollars twenty combined, which is coherent">
             <line x1="30" y1="225" x2="612" y2="225" style="stroke:var(--border);stroke-width:1"/>
             <line x1="250" y1="30" x2="250" y2="225" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
             <text x="140" y="20" text-anchor="middle" style="font:700 12px 'DM Sans',sans-serif;fill:var(--red)">VaR — not coherent</text>
@@ -204,13 +204,13 @@
             <text x="182" y="138" text-anchor="middle" style="font:700 11px 'DM Mono',monospace;fill:var(--red)">$100</text>
             <text x="182" y="240" text-anchor="middle" style="font:10px 'DM Sans',sans-serif;fill:var(--text3)">VaR(A+B)</text>
             <text x="166" y="118" text-anchor="middle" style="font:700 10px 'DM Sans',sans-serif;fill:var(--red)">jumps ⚠</text>
-            <rect x="330" y="65" width="65" height="160" style="fill:var(--green);opacity:.85"/>
-            <text x="362" y="58" text-anchor="middle" style="font:700 11px 'DM Mono',monospace;fill:var(--green)">$200</text>
+            <rect x="330" y="97" width="65" height="128" style="fill:var(--green);opacity:.85"/>
+            <text x="362" y="90" text-anchor="middle" style="font:700 11px 'DM Mono',monospace;fill:var(--green)">$160</text>
             <text x="362" y="240" text-anchor="middle" style="font:10px 'DM Sans',sans-serif;fill:var(--text3)">sum of CVaR(A)+CVaR(B)</text>
-            <rect x="425" y="65" width="65" height="160" style="fill:var(--green);opacity:.85"/>
-            <text x="457" y="58" text-anchor="middle" style="font:700 11px 'DM Mono',monospace;fill:var(--green)">$200</text>
+            <rect x="425" y="142" width="65" height="83" style="fill:var(--green);opacity:.85"/>
+            <text x="457" y="135" text-anchor="middle" style="font:700 11px 'DM Mono',monospace;fill:var(--green)">$103.20</text>
             <text x="457" y="240" text-anchor="middle" style="font:10px 'DM Sans',sans-serif;fill:var(--text3)">CVaR(A+B)</text>
-            <text x="410" y="48" text-anchor="middle" style="font:700 10px 'DM Sans',sans-serif;fill:var(--green)">stays level ✓</text>
+            <text x="410" y="80" text-anchor="middle" style="font:700 10px 'DM Sans',sans-serif;fill:var(--green)">drops ✓</text>
           </svg>
         </div>
       </div>
@@ -236,8 +236,8 @@
         </div>
         <div class="sl-calc-steps">
           <div>VaR(A) = VaR(B) = $<b id="tb-var1">0</b> → sum $<b id="tb-varsum">0</b> <span id="tb-varnote"></span></div>
-          <div>CVaR(A) = CVaR(B) = $<b id="tb-cvar1">100</b> → sum $<b id="tb-cvarsum">200</b></div>
-          <div>Combined CVaR(A+B) = $<b id="tb-cvarcomb">200</b> <span id="tb-cvarnote"></span></div>
+          <div>CVaR(A) = CVaR(B) = $<b id="tb-cvar1">80</b> → sum $<b id="tb-cvarsum">160</b></div>
+          <div>Combined CVaR(A+B) = $<b id="tb-cvarcomb">103.20</b> <span id="tb-cvarnote"></span></div>
         </div>
         <button type="button" class="sl-reset-btn" id="tb-reset">Reset to worked-example numbers</button>
         <div class="sl-note">Guard rails: a blank, negative, or out-of-range field (q or p outside 0–100, F ≤ 0) shows "—" instead of a broken number.</div>
@@ -284,7 +284,7 @@
       <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Checked against this repo's actual code</div>
-        <p>The full lesson describes this material as "conceptual… not a claim that any specific VaR/CVaR implementation is built or validated anywhere in this project." That's now out of date: <strong>js/metricsCore.js</strong> ships real <code>histVaR</code> and <code>histCVaR</code> functions — historical-quantile VaR and the mean-loss-beyond-that-quantile CVaR — which <strong>js/backtestStats.js</strong> actually calls to compute <code>var95</code>, <code>var99</code>, and <code>cvar95</code> on real strategy P&amp;L series. Separately, <strong>js/evtTail.js</strong>'s <code>potVarCvar()</code> computes GPD/POT-based VaR and CVaR for extrapolating past the sample. So VaR and CVaR — in both a plain historical form and a fitted-tail form — are built and running in this codebase today; a full coherence audit of this specific pipeline is the part that remains "conceptual."</p>
+        <p>The full lesson's account matches the code: <strong>js/metricsCore.js</strong> ships real <code>histVaR</code> and <code>histCVaR</code> functions — historical-quantile VaR and the mean-loss-beyond-that-quantile CVaR — which <strong>js/backtestStats.js</strong> actually calls to compute <code>var95</code>, <code>var99</code>, and <code>cvar95</code> on real strategy P&amp;L series. Separately, <strong>js/evtTail.js</strong>'s <code>potVarCvar()</code> and <strong>js/extremesCore.js</strong>'s <code>gpdQuantile()</code>/<code>gpdES()</code> compute GPD/POT-based VaR and CVaR for extrapolating past the sample. <code>histCVaR</code> averages the outcomes at or beyond the VaR quantile — the sample version of the tail average, not exactly the worst-(1−p)-share form on small samples. What is not built: any limit or sizing set on either measure, or a coherence audit of this pipeline.</p>
       </div>
       <!-- DESK:END -->
       <p class="sl-p">This is the first Risk Deep Dive in the curriculum, but not the first place these ideas surface. <a href="extreme-value-theory-micro.html">Extreme Value Theory, or How Bad It Gets, Given That It's Already Bad</a> already builds the peaks-over-threshold machinery<!-- DESK:START --> behind <code>evtTail.js</code>'s fitted VaR/CVaR<!-- DESK:END -->, and <a href="sharpe-family-deflated-micro.html">The Sharpe Ratio Doesn't Know How Many Times You Tried</a> covers the companion question of whether a risk-adjusted return number can be trusted at all.</p>
@@ -396,7 +396,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>VaR marks a threshold; CVaR averages everything beyond it — that structural difference explains everything else in this deck.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Coherence is four testable axioms — monotonicity, sub-additivity, positive homogeneity, translation invariance (Artzner, Delbaen, Eber &amp; Heath, 1999).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>VaR fails sub-additivity — the two-bond example shows two individually "safe" ($0 VaR) positions combining into a $100 VaR, the opposite of what diversification should do.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>CVaR is coherent — same example, CVaR sums exactly ($200 ≤ $200), which is why post-2008 regulation (FRTB) shifted capital requirements from VaR toward Expected Shortfall.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>CVaR is coherent — same example, CVaR stays sub-additive ($103.20 ≤ $160), which is why post-2008 regulation (FRTB) shifted capital requirements from VaR toward Expected Shortfall.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The failure needs a lumpy, tail-heavy distribution — smooth unimodal losses or perfectly correlated positions usually don't trigger it; defaults, jumps, and options are where it bites.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Coherence ≠ good estimation — a coherent formula fed a thin tail sample is still an unstable number; see Extreme Value Theory for the machinery built to stabilize it.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>A limit is only as honest as the model under it: in 2012 a VaR model change roughly halved the London Whale book's reported risk with no position cut, and losses passed $6 billion.<!-- DESK:START --> "ES beats VaR" is untested on this desk.<!-- DESK:END --></p></div>
@@ -532,12 +532,20 @@
       else if (p2 <= alpha) VaR_comb = F;
       else VaR_comb = 2 * F;
 
-      var CVaR_single = q > 0 ? F : 0;
+      // CVaR / Expected Shortfall = average of the worst alpha share of outcomes
+      // (the definition that stays coherent for discrete losses like these).
+      function es(outcomes, a){
+        var sorted = outcomes.slice().sort(function(x, y){ return y[0] - x[0]; });
+        var mass = 0, sum = 0;
+        for (var i = 0; i < sorted.length && mass < a; i++){
+          var take = Math.min(sorted[i][1], a - mass);
+          sum += take * sorted[i][0]; mass += take;
+        }
+        return sum / a;
+      }
+      var CVaR_single = es([[F, q], [0, 1 - q]], alpha);
       var sumVaR = 2 * VaR_single, sumCVaR = 2 * CVaR_single;
-      var CVaR_comb;
-      if (q === 0) CVaR_comb = 0;
-      else if (VaR_comb === 0) CVaR_comb = 2 * F / (2 - q);
-      else CVaR_comb = 2 * F;
+      var CVaR_comb = es([[2 * F, q * q], [F, 2 * q * (1 - q)], [0, (1 - q) * (1 - q)]], alpha);
 
       var1Out.textContent = money(VaR_single).replace('$','');
       varSumOut.textContent = money(sumVaR).replace('$','');

@@ -405,9 +405,9 @@
     a basic property of any smooth maximum, where the first derivative is
     zero right at \(f^*\). That means betting slightly less than \(f^*\)
     costs you very little growth rate, because you're moving along a nearly
-    horizontal part of the curve. But your bet-to-bet variance, and therefore
-    your realized drawdowns, keep shrinking roughly linearly as you scale
-    \(f\) down — no flat spot, just steady reduction. That asymmetry — growth
+    horizontal part of the curve. But your bet-to-bet volatility, and with it
+    your realized drawdowns, keep shrinking at least linearly as you scale
+    \(f\) down (variance falls with \(f^2\)) — no flat spot, just steady reduction. That asymmetry — growth
     given up is small and second-order near the peak, risk given up is large
     and first-order everywhere — is the entire argument for
     <strong>fractional Kelly</strong>: deliberately betting some fraction
@@ -475,8 +475,8 @@
     <p>
       Half-Kelly captures roughly <strong>75% of full Kelly's growth
       rate</strong> — giving up about a quarter of the theoretical best-case
-      compounding — while cutting bet size, and therefore per-bet variance,
-      in half. Because typical drawdown depth for a Kelly-family betting
+      compounding — while cutting bet size, and therefore per-bet volatility,
+      in half (per-bet variance falls to a quarter). Because typical drawdown depth for a Kelly-family betting
       scheme scales with bet size in a way that's considerably worse than
       linear (it's driven by the variance of cumulative log-wealth, which
       scales with \(f^2\)), halving the bet size does not just halve typical
@@ -559,7 +559,7 @@
     <div class="tl-readout">
       Full Kelly f* = 2p−1 = <b id="kelly-fstar-val">10%</b> of bankroll · Half-Kelly = <b id="kelly-half-val">5%</b>
     </div>
-    <div class="tl-hint">Drag the slider to change the win probability. The curve's shape never changes — it always peaks at f* and crosses zero at 2f* — only what f* is worth as a percentage of bankroll (above) changes with the edge.</div>
+    <div class="tl-hint">Drag the slider to change the win probability. In the quadratic approximation the curve's shape never changes — it always peaks at f* and crosses zero at 2f* (the exact even-money curve agrees closely for small edges, but drops to −∞ as f approaches 100%) — only what f* is worth as a percentage of bankroll (above) changes with the edge.</div>
     <div class="tl-chart-caption">
       Growth rate rises with bet size only up to <strong>f*</strong> — betting
       more than that doesn't just add risk, it actively makes the long-run
@@ -879,8 +879,7 @@
       bet, so ordinary variance in outcomes (a losing streak, which will
       happen with a real, computable probability even under a genuine edge)
       still produces large percentage drawdowns. Full Kelly is simply the
-      largest bet size for which the growth rate is still positive and
-      maximal — it is not a claim that the ride there is gentle, and in fact
+      bet size at which the growth rate is maximal — it is not a claim that the ride there is gentle, and in fact
       it's typically one of the roughest growth-optimal sizes you could
       choose, since any smaller size gives up little expected growth (the
       curve is flat near the peak) while noticeably reducing variance.
@@ -920,8 +919,8 @@
       basic property of any smooth maximum), betting somewhat below \(f^*\)
       gives up only a modest amount of theoretical growth rate — half-Kelly
       captures roughly 75% of full Kelly's growth rate in the standard
-      approximation. In exchange, per-bet variance falls linearly with bet
-      size and typical drawdown depth falls by roughly half or more, since
+      approximation. In exchange, per-bet volatility falls linearly with bet
+      size (variance with its square) and typical drawdown depth falls by roughly half or more, since
       drawdown severity is driven by the variance of cumulative log-wealth,
       which scales with \(f^2\). The trade is a modest, controlled haircut to
       best-case growth for a large reduction in realized risk and estimation-error
@@ -934,7 +933,7 @@
       Rewrite \(f^*=\mu/\sigma^2\) using the Sharpe ratio \(S=\mu/\sigma\):
       substituting \(\mu=S\sigma\) gives \(f^*=S/\sigma\). At a fixed Sharpe
       ratio, \(f^*\) is inversely proportional to volatility \(\sigma\), not
-      to \(\sigma^2\) directly, but the deeper reason is that variance enters
+      to \(\sigma^2\) directly, so doubling volatility halves it; but the deeper reason is that variance enters
       the original formula's denominator as \(\sigma^2\) while drift \(\mu\)
       enters linearly — so doubling volatility while holding the edge itself
       fixed cuts the safe optimal position size by four, not by two. This is
@@ -963,7 +962,7 @@
   <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>John L. Kelly Jr., <em>"A New Interpretation of Information Rate"</em>, Bell System Technical Journal, 1956 — the original paper, framed in information-theory terms (channel capacity and a gambler's optimal growth rate) rather than as investment advice; the source of the formula's name.</li>
-    <li>Edward O. Thorp, <em>"The Kelly Criterion in Blackjack, Sports Betting, and the Stock Market"</em>, in <em>Handbook of Asset and Liability Management</em>, 2008 (widely circulated earlier as a standalone paper) — the applied bridge from Kelly's information-theory result to real betting and investing, including the case for fractional Kelly in practice.</li>
+    <li>Edward O. Thorp, <em>"The Kelly Criterion in Blackjack, Sports Betting, and the Stock Market"</em>, in <em>Handbook of Asset and Liability Management</em>, Vol. 1, Elsevier, 2006 (widely circulated earlier as a standalone paper) — the applied bridge from Kelly's information-theory result to real betting and investing, including the case for fractional Kelly in practice.</li>
     <li>Edward O. Thorp, <em>Beat the Dealer</em>, Random House, 1962 — the first rigorous application of a computable edge (blackjack card counting) combined with Kelly-style bankroll management, the origin story for taking this math out of the lab and into practice.</li>
     <li>William Poundstone, <em>Fortune's Formula</em>, Hill and Wang, 2005 — an accessible narrative history of the Kelly criterion, from Bell Labs through Thorp's blackjack and Wall Street careers; a good on-ramp before returning to the primary sources above.</li>
     <li>Leonard C. MacLean, Edward O. Thorp, and William T. Ziemba (eds.), <em>The Kelly Capital Growth Investment Criterion: Theory and Practice</em>, World Scientific, 2011 — the comprehensive academic anthology, including the drawdown-versus-fractional-Kelly analysis referenced in the worked example above.</li>

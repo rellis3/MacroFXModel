@@ -141,7 +141,7 @@
 
     <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 6</div>
-      <h2 class="sl-h2">The correlation ρ is the whole story behind the smile</h2>
+      <h2 class="sl-h2">The correlation ρ is the whole story behind the skew</h2>
       <p class="sl-sub">Same two SDEs, one setting flipped.</p>
       <div class="sl-compare">
         <div class="sl-ccard red">
@@ -150,7 +150,7 @@
             <li>Price shocks and variance shocks are independent</li>
             <li>Vol-of-vol (ξ) alone still bows the curve — a symmetric smile</li>
             <li>No reason for puts to cost more than calls at the same distance from at-the-money</li>
-            <li>Doesn't match what real equity/FX markets actually show</li>
+            <li>Doesn't match what real equity markets actually show</li>
           </ul>
         </div>
         <div class="sl-ccard green">
@@ -159,11 +159,11 @@
             <li>A down-move in price and an up-move in variance tend to arrive together</li>
             <li>Fattens the left tail of the return distribution specifically</li>
             <li>Out-of-the-money puts price with structurally higher implied vol than at-the-money</li>
-            <li>This is the skew almost every equity index and major FX pair actually shows</li>
+            <li>This is the skew almost every equity index actually shows</li>
           </ul>
         </div>
       </div>
-      <p class="sl-p">Empirically ρ is usually <strong>negative</strong> in equity and FX markets — the "leverage effect," originally explained for equities by falling stock prices mechanically raising a firm's leverage ratio, though the same down-move/vol-spike co-movement shows up broadly in FX too, where no literal corporate leverage mechanism exists.</p>
+      <p class="sl-p">Empirically ρ is usually <strong>negative</strong> in equity markets — the "leverage effect," originally explained for equities by falling stock prices mechanically raising a firm's leverage ratio, though similar spot/vol co-movement shows up in FX too, where no literal corporate leverage mechanism exists — there its sign depends on the pair and which way it is quoted (inverting the pair flips ρ).</p>
     </section>
 
     <section class="sl-slide" data-slide="8">
@@ -254,7 +254,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">+</div><div><h4>Bates: stochastic vol plus jumps</h4><p>Literally Heston's two SDEs with a Merton-style jump term added to the price process — continuous stochastic vol shapes the smile, discrete jumps cover short-dated tail risk pure diffusion can't reach.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">≈</div><div><h4>Local &amp; local-stochastic vol</h4><p>Calibrates a vol surface directly to match observed option prices exactly at a point in time — a tighter fit today, at the cost of less clean forward-looking dynamics than Heston's parametric SDEs.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>The Feller condition</h4><p>2κθ ≥ ξ² is needed to guarantee v_t never hits exactly zero. Many real calibrations to option data land outside this region anyway, with real numerical consequences.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">🕓</div><div><h4>Calibration is a snapshot, not a law</h4><p>(κ,θ,ξ,ρ) fitted to today's option surface routinely come out materially different a week later, especially after a regime shift. A tight in-sample fit is curve-fitting by construction, not a validated edge.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🕓</div><div><h4>Calibration is a snapshot, not a law</h4><p>(κ,θ,ξ,ρ) fitted to today's option surface are risk-neutral values, not real-world dynamics, and routinely come out materially different a week later, especially after a regime shift. A tight in-sample fit is curve-fitting by construction, not a validated edge.</p></div></div>
       </div>
       <!-- DESK:START --><div class="sl-callout amber">
         <div class="sl-callout-label">Verified against this repo's current code</div>
@@ -309,7 +309,7 @@
         <button class="sl-quiz-opt" data-correct="true">It collapses back to flat-σ Black-Scholes, with no smile at all</button>
         <button class="sl-quiz-opt">It produces an even steeper skew</button>
         <button class="sl-quiz-opt">It turns into the Merton jump-diffusion model</button>
-        <div class="sl-quiz-explain">The smile is earned specifically by ξ≠0 (variance actually moves) combined with ρ≠0 (that movement is linked to price direction). Switch both off and there's nothing left to generate a smile with.</div>
+        <div class="sl-quiz-explain">ξ≠0 (variance actually moves) is what curves the smile, and ρ≠0 (that movement is linked to price direction) is what tilts it into a skew. Switch both off and there's nothing left to generate a smile with.</div>
       </div>
     </section>
 

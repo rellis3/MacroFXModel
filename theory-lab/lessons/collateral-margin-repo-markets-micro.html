@@ -73,8 +73,8 @@
       <h2 class="sl-h2">Initial margin: a forward-looking buffer</h2>
       <p class="sl-p">IM is not guessed independently by each firm — it's sized using standardized, industry-recognized methodologies. This deck names them without deriving their internal mechanics, exactly as the full lesson does.</p>
       <div class="sl-icard-grid">
-        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>SPAN</h4><p>Standard Portfolio Analysis of Risk, developed by CME. Used for exchange-traded and centrally cleared derivatives — a scenario-based approach evaluating a portfolio's worst plausible loss across a grid of price and volatility shifts.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">🧮</div><div><h4>ISDA SIMM</h4><p>The Standard Initial Margin Model, from ISDA. Used for non-centrally-cleared, bilateral OTC derivatives, mandated for large participants under post-2008 uncleared-margin rules — sensitivity-based, computed from a portfolio's risk-factor exposures.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>SPAN</h4><p>Standard Portfolio Analysis of Risk, developed by CME. The classic standard for exchange-traded futures and options (many cleared-swap CCPs use VaR models instead) — a scenario-based approach evaluating a portfolio's worst plausible loss across a grid of price and volatility shifts.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧮</div><div><h4>ISDA SIMM</h4><p>The Standard Initial Margin Model, from ISDA. Used for non-centrally-cleared, bilateral OTC derivatives, the industry-standard model large participants use to meet post-2008 uncleared-margin rules — sensitivity-based, computed from a portfolio's risk-factor exposures.</p></div></div>
       </div>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where this needs qualifying</div>
@@ -102,7 +102,7 @@
     <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">A haircut: why $100 of collateral often isn't worth $100</h2>
-      <p class="sl-sub">Collateral is rarely counted at full face value. Two risks justify the discount: the collateral's own price could fall, and selling it quickly — especially in a stressed default scenario — can itself move the price against the seller.</p>
+      <p class="sl-sub">Collateral is rarely counted at full market value. Two risks justify the discount: the collateral's own price could fall, and selling it quickly — especially in a stressed default scenario — can itself move the price against the seller.</p>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Worked example</div>
         <div class="sl-row"><div class="sl-box">$100 bond</div><div class="sl-arrow">× (1 − 5%)</div><div class="sl-box green">$95 eligible</div></div>
@@ -119,12 +119,12 @@
     <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Drag the haircut, watch usable collateral shrink</h2>
-      <p class="sl-sub">$100,000 of face value, discounted by whatever haircut a counterparty applies.</p>
+      <p class="sl-sub">$100,000 of market value, discounted by whatever haircut a counterparty applies.</p>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it</div>
         <div class="sl-svgwrap">
           <svg viewBox="0 0 640 110" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A bar showing eligible collateral value shrinking as the haircut percentage increases">
-            <text x="20" y="24" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10.5px">FACE VALUE — $100,000</text>
+            <text x="20" y="24" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10.5px">MARKET VALUE — $100,000</text>
             <rect x="20" y="34" width="600" height="34" rx="6" style="fill:var(--panel2);stroke:var(--border2)"/>
             <rect id="hc-bar" x="20" y="34" width="570" height="34" rx="6" style="fill:var(--green);opacity:.85"/>
             <rect id="hc-cut" x="590" y="34" width="30" height="34" style="fill:var(--red);opacity:.35"/>
@@ -136,9 +136,9 @@
         <input type="range" class="sl-slider" id="hc-slider" min="0" max="30" step="1" value="5">
         <div class="sl-calc-steps">
           <div>Eligible collateral value = $100,000 × (1 − haircut) = <b id="hc-eligible">$95,000.00</b></div>
-          <div>Face value needed to fully cover a $100,000 requirement = <b id="hc-needed">$105,263.16</b></div>
+          <div>Market value needed to fully cover a $100,000 requirement = <b id="hc-needed">$105,263.16</b></div>
         </div>
-        <div class="sl-note">At 0% haircut the bar and the face value match exactly — cash and the most liquid short-dated government bonds sit near this end. At 30% the gap is enormous — the equity-and-below end of the spectrum.</div>
+        <div class="sl-note">At 0% haircut the bar and the market value match exactly — cash and the most liquid short-dated government bonds sit near this end. At 30% the gap is enormous — the equity-and-below end of the spectrum.</div>
       </div>
     </section>
 
@@ -365,7 +365,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Any leveraged position needs a buffer against counterparty default — that buffer is collateral, and it moves according to two distinct rules.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Initial margin is forward-looking — sized (via SPAN or ISDA SIMM) to cover a worst-case loss over the close-out window, posted upfront and recalculated as risk changes.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Variation margin is backward-looking — exchanged daily (or more often) to settle the realized mark-to-market move, keeping current exposure near zero.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A haircut discounts collateral below face value to price in the collateral's own price risk and how long it might take to liquidate — $100 at a 5% haircut counts as $95.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A haircut discounts collateral below market value to price in the collateral's own price risk and how long it might take to liquidate — $100 at a 5% haircut counts as $95.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A repo is legally two sales but economically a fully collateralized loan — the price gap between the two legs is the interest, the repo rate.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>SOFR is computed directly from real overnight Treasury repo data — a concrete, factual bridge to the OIS-discounting machinery in Swap Curves &amp; OIS Discounting.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Money market funds lend, primary dealers borrow, the Fed sits at the edges. Tax date → money fund withdrawals → funds pull cash from repo → cash scarcer → SOFR lifts: the calendar, not stress.</p></div>
@@ -399,7 +399,7 @@
 <script src="../assets/deck.js"></script>
 <script>
 (function(){
-  // Haircut slider — usable collateral value from face value + haircut %.
+  // Haircut slider — usable collateral value from market value + haircut %.
   (function(){
     var slider = document.getElementById('hc-slider');
     if (!slider) return;
@@ -430,7 +430,7 @@
       cut.setAttribute('width', Math.max(BAR_W - eligibleW, 0));
       barLabel.setAttribute('x', BAR_X + 10);
       barLabel.textContent = eligibleW > 90 ? (fmtMoney(eligible).replace('.00','') + ' eligible') : '';
-      cutLabel.textContent = pct === 0 ? 'no haircut applied — full face value counts' : ('haircut: ' + fmtMoney(discounted).replace('.00','') + ' discounted away');
+      cutLabel.textContent = pct === 0 ? 'no haircut applied — full market value counts' : ('haircut: ' + fmtMoney(discounted).replace('.00','') + ' discounted away');
 
       eligibleOut.textContent = fmtMoney(eligible);
       neededOut.textContent = isFinite(neededFace) ? fmtMoney(neededFace) : '—';

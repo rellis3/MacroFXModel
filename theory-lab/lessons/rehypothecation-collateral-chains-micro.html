@@ -179,11 +179,11 @@
       <div class="sl-compare">
         <div class="sl-ccard neutral">
           <span class="sl-ctag blue">SEC Rule 15c3-3 (US) — the Customer Protection Rule</span>
-          <p>Caps a US broker-dealer's rehypothecation of customer margin securities at roughly <strong>140% of the customer's aggregate debit balance</strong> — what the customer actually owes the broker. Excess client securities beyond that must sit in a segregated customer-reserve account, untouched by the broker.</p>
+          <p>Caps a US broker-dealer's rehypothecation of customer margin securities at roughly <strong>140% of the customer's aggregate debit balance</strong> — what the customer actually owes the broker. Excess client securities beyond that must stay in the broker's possession or control, segregated for the customer, untouched by the broker.</p>
         </div>
         <div class="sl-ccard neutral">
           <span class="sl-ctag blue">UK-law practice at the time (as applied to LBIE)</span>
-          <p>Historically permitted broader rehypothecation under standard prime brokerage agreements, with clients able to contractually consent to broader use of posted collateral — without an equivalent statutory percentage cap tied to a customer's debit balance the way Rule 15c3-3 imposes.</p>
+          <p>Historically permitted broader rehypothecation under standard prime brokerage agreements, with clients able to contractually consent to broader use of posted collateral — without an equivalent regulatory percentage cap tied to a customer's debit balance the way Rule 15c3-3 imposes.</p>
         </div>
       </div>
       <div class="sl-quote">Two neighborhoods, two different rules about how many times a landlord can re-rent a spare room you're already renting. One caps it, tied to what you actually owe. The other, at the time, had no such cap written into the rulebook at all. Same underlying activity — very different amount of protection, depending purely on which neighborhood's rules applied to your specific contract.</div>
@@ -210,9 +210,9 @@
           </div>
         </div>
         <button type="button" class="sl-reset-btn" id="rh-reset">Reset to worked-example numbers (80%)</button>
-        <div class="sl-note">Blank, non-numeric, negative, non-finite, or out-of-0–100% input shows "—" instead of a fabricated number. This models a straightforward cap tied to a percentage of the collateral itself, negotiated in a client agreement or set by a jurisdiction's rule — the more common shape a rehypothecation limit takes.</div>
+        <div class="sl-note">Blank, non-numeric, negative, non-finite, or out-of-0–100% input shows "—" instead of a fabricated number. This models a straightforward cap tied to a percentage of the collateral itself, negotiated in a client agreement or set by a jurisdiction's rule — one shape a negotiated rehypothecation limit can take.</div>
       </div>
-      <p class="sl-p">SEC Rule 15c3-3 uses a related but distinct formula: it caps US rehypothecation at roughly 140% of a customer's <em>debit balance</em> — what the customer owes the broker — not a percentage of the posted collateral itself, which is why that figure can legitimately exceed 100%. The calculator above models the simpler, more common shape a cap takes: a straight percentage of the collateral posted. Either way, the UK-law practice applied to LBIE had no directly comparable statutory percentage at all — a different kind of gap than just "a bigger number": one regime bounds the practice with a formula, the other relied on contractual terms with no equivalent statutory ceiling.</p>
+      <p class="sl-p">SEC Rule 15c3-3 uses a related but distinct formula: it caps US rehypothecation at roughly 140% of a customer's <em>debit balance</em> — what the customer owes the broker — not a percentage of the posted collateral itself, which is why that figure can legitimately exceed 100%. The calculator above models a simpler shape a negotiated cap can take: a straight percentage of the collateral posted. Either way, the UK-law practice applied to LBIE had no directly comparable regulatory percentage at all — a different kind of gap than just "a bigger number": one regime bounds the practice with a formula, the other relied on contractual terms with no equivalent regulatory ceiling.</p>
     </section>
 
     <section class="sl-slide" data-slide="8">
@@ -334,7 +334,7 @@
       <div class="sl-quiz-q" data-q="3">
         <div class="sl-quiz-num">Question 3</div>
         <h4>What specific regulatory gap did the Lehman Brothers International (Europe) case expose?</h4>
-        <button class="sl-quiz-opt" data-correct="true">UK rules at the time let LBIE rehypothecate client assets more broadly than US rules would have allowed, with no equivalent statutory percentage cap</button>
+        <button class="sl-quiz-opt" data-correct="true">UK rules at the time let LBIE rehypothecate client assets more broadly than US rules would have allowed, with no equivalent regulatory percentage cap</button>
         <button class="sl-quiz-opt">The UK had no bankruptcy law for broker-dealers at all</button>
         <button class="sl-quiz-opt">US and UK rules were identical, so the outcome would have been the same anywhere</button>
         <div class="sl-quiz-explain">LBIE operated under UK law, historically more permissive on rehypothecation than the US's SEC Rule 15c3-3, which caps rehypothecation at roughly 140% of a customer's debit balance. The booking entity's jurisdiction — not the client's home jurisdiction — governed which rules applied.</div>
@@ -366,7 +366,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Rehypothecation is a specific legal permission — re-using a client's collateral, not just holding it — granted by the client agreement and the governing jurisdiction's rules.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>A collateral chain stacks claims, not assets — each re-pledge down the chain (A→B→C→D…) adds a new obligation referencing the exact same underlying security.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Lehman Brothers International (Europe), 2008, is the case that made this concrete — rehypothecated client assets got tied up in a UK administration process for years, not a hypothetical risk.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The US and UK genuinely differed on how much could be rehypothecated — SEC Rule 15c3-3's roughly 140%-of-debit-balance cap versus a UK-law regime with no equivalent statutory ceiling at the time.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The US and UK genuinely differed on how much could be rehypothecated — SEC Rule 15c3-3's roughly 140%-of-debit-balance cap versus a UK-law regime with no equivalent regulatory ceiling at the time.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A longer chain means more parties exposed to one asset's failure — and a default in the middle of a chain propagates in both directions at once, to whoever it owed and whoever relied on its pledge.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A real collateral chain is a literal exposure network — the same directed, capital-weighted structure the systemic-risk lesson's DebtRank algorithm is built to propagate distress through.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>MF Global, 2011: segregated customer accounts came up roughly $1.6 billion short when the firm failed. "My collateral" is a legal claim on paper; in a run the firm needs cash first.<!-- DESK:START --> Whether that stress can be traded around is untested here.<!-- DESK:END --></p></div>

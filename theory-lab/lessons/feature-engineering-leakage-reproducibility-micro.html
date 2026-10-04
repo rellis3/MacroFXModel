@@ -48,7 +48,7 @@
         <div class="sl-box amber">Live Sharpe ≈ 0.3</div>
       </div>
       <div class="sl-verdict" style="text-align:center;margin-top:-4px">Same strategy, same rules — the backtest was quietly grading itself on a version of history the live system never actually had access to.</div>
-      <p class="sl-p">This is the single most common reason a backtest looks dramatically better than the same strategy performs live. Nothing about the model or the validation split has to be wrong — the leak lives earlier, in what a "feature" was secretly allowed to know at the moment it was computed. Because the leaked information genuinely happened, it correlates with the outcome almost perfectly; that's exactly what makes it so easy to miss and so damaging once it's gone unnoticed into production.</p>
+      <p class="sl-p">This is one of the most common reasons a backtest looks dramatically better than the same strategy performs live. Nothing about the model or the validation split has to be wrong — the leak lives earlier, in what a "feature" was secretly allowed to know at the moment it was computed. Because the leaked information genuinely happened, it correlates with the outcome almost perfectly; that's exactly what makes it so easy to miss and so damaging once it's gone unnoticed into production.</p>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Why this is worth its own lesson</div>
         <p>A backtest can pass every check the previous lesson describes — a genuinely out-of-sample split, realistic costs, no peeking at the test set — and still be worthless, if the features feeding it were never point-in-time honest to begin with. The split protects against one failure mode; this lesson covers a different one that happens earlier.</p>
@@ -245,7 +245,7 @@
       <h2 class="sl-h2">The checklist that catches most of this</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🕒</div><div><h4>Two dates, not one</h4><p>Track a data point's calendar date and its true availability/publication date separately — join on the latter, always.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Only-past statistics</h4><p>Any normalization, z-score, or rank must come from an expanding or rolling window of strictly prior data — recomputed fresh at every point in time.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Only-past statistics</h4><p>Any normalization, z-score, or rank must come from an expanding or rolling window of data up to that point, never later — recomputed fresh at every point in time.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🗂️</div><div><h4>Include the delisted</h4><p>A universe built without the failed and discontinued instruments has already excluded a strategy's own worst cases before the test even starts.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📦</div><div><h4>Snapshot, don't just save</h4><p>Keep the data vintage as it stood historically, plus the code commit and parameter file — pinned together, not tracked separately and hoped to still match.</p></div></div>
       </div>

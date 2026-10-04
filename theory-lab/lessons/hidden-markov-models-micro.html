@@ -274,7 +274,7 @@
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How this gets used — and misused — on a real desk</h2>
       <div class="sl-icard-grid">
-        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Regime-conditional sizing</h4><p>Fit an HMM, then size or switch strategy off the <em>current smoothed probability</em> of each regime — not a hard, all-or-nothing label.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Regime-conditional sizing</h4><p>Fit an HMM, then size or switch strategy off the <em>current filtered probability</em> of each regime — not a hard, all-or-nothing label.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🔍</div><div><h4>Filtered, not smoothed, when live</h4><p>Viterbi labeling uses the whole sequence, including the future relative to any given day. A live system needs the <em>filtered</em> probability — computed from data up to now, and only that.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⚖️</div><div><h4>Model comparison via likelihood</h4><p>More hidden states will always raise the fitted likelihood — that alone is never evidence a richer structure is real. AIC/BIC and genuine out-of-sample testing come first.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>One voice among several</h4><p>Practitioners rarely bet size purely on one model's regime call — it's blended with other signals, the same way a real desk treats any single indicator.</p></div></div>

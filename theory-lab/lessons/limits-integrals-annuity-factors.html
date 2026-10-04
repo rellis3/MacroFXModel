@@ -363,7 +363,7 @@
     </div>
     <div class="tl-compare-card green">
       <h4>m → ∞ within a period — the continuous-compounding limit</h4>
-      <p>Compounding \(m\) times within a period (per <a href="time-value-of-money.html">Time Value of Money</a>'s \(\lim_{m\to\infty}(1+r/m)^m=e^r\)) sends each discrete discount factor \((1+y)^{-t}\) to \(e^{-yt}\). The annuity sum becomes the continuous-time integral \(\int_0^n e^{-yt}\,dt = \frac{1-e^{-yn}}{y}\) — the same shape, with \((1+y)^{-n}\) simply replaced by \(e^{-yn}\).</p>
+      <p>Compounding \(m\) times within a period (per <a href="time-value-of-money.html">Time Value of Money</a>'s \(\lim_{m\to\infty}(1+r/m)^m=e^r\)) sends each discrete discount factor \((1+y)^{-t}\) to \(e^{-yt}\), giving \(\sum_{t=1}^n e^{-yt}\). Spread the $1 per period continuously through each period as well, and the sum becomes the continuous-time integral \(\int_0^n e^{-yt}\,dt = \frac{1-e^{-yn}}{y}\) — the same shape, with \((1+y)^{-n}\) simply replaced by \(e^{-yn}\).</p>
     </div>
   </div>
   <div class="tl-solid green">
@@ -385,8 +385,9 @@
     zero-coupon bond maturing at \(t\) prices at \(P(t)=e^{-r(t)\,t}\) under
     continuous compounding, so its cumulative yield exposure is
     \(t\cdot r(t)\). The <strong>instantaneous forward rate</strong> — the
-    rate the market implicitly expects to prevail for an infinitesimally
-    short period starting at \(t\), exactly what short-rate models like
+    rate locked in today for an infinitesimally short period starting at
+    \(t\) (the market's expected future short rate plus a term premium,
+    so not a pure forecast), exactly what short-rate models like
     <a href="short-rate-models-vasicek-cir-hull-white.html">Vasicek, CIR,
     and Hull-White</a> attempt to describe dynamically — is defined as the
     derivative of that cumulative yield:
@@ -454,7 +455,7 @@
         <div class="tl-hint">Drag toward the left to shrink h. Watch the blue secant line rotate to align with the fixed dashed tangent line as the gap shrinks toward zero — exactly the limit the derivative's definition describes.</div>
       </div>
     </div>
-    <div class="tl-readout" id="lim-slope-readout">secant slope ≈ &minus;11.02 | tangent (exact) slope = &minus;12.51</div>
+    <div class="tl-readout" id="lim-slope-readout">secant slope ≈ &minus;11.48 | tangent (exact) slope = &minus;12.51</div>
     <div class="tl-legend">
       <span><i style="background:var(--text2)"></i>A(5,y) — the curve</span>
       <span><i style="background:var(--amber)"></i>Fixed point, y₀ = 4%</span>
@@ -539,10 +540,10 @@
           <h4>Cross-check the closed form with a numerical finite difference</h4>
           <p>Evaluate the annuity factor at \(y=3.9\%\) and \(y=4.1\%\) (a symmetric ±10bp bump around 4%) and take the central difference, exactly the finite-difference practice covered in the practitioner section below:</p>
           <div class="tl-math">\[ A(0.039) \approx 4.4644 \qquad A(0.041) \approx 4.4393 \]</div>
-          <div class="tl-math">\[ \frac{A(0.041)-A(0.039)}{0.002} \approx -12.51 \qquad\Rightarrow\qquad D_{mod} \approx \frac{12.51}{4.4518} \approx 2.810 \]</div>
+          <div class="tl-math">\[ \frac{A(0.041)-A(0.039)}{0.002} \approx -12.5063 \qquad\Rightarrow\qquad D_{mod} \approx \frac{12.5063}{4.45182} \approx 2.80925 \]</div>
           <p>
-            The finite-difference estimate (2.810) and the closed-form
-            derivative (2.809) agree to within about 0.04% — the small
+            The finite-difference estimate (2.80925) and the closed-form
+            derivative (2.80924) agree to within about 0.0004% — the small
             residual is exactly the kind of discretization error the
             Calculus for Finance lesson's Taylor-series section already
             quantified, not a sign anything here is wrong. Two independent
@@ -766,7 +767,8 @@
       running forever. Letting the compounding frequency \(m\to\infty\)
       within a fixed period instead uses a completely different limit,
       \(\lim_{m\to\infty}(1+r/m)^m=e^r\), which sends each discrete discount
-      factor \((1+y)^{-t}\) to \(e^{-yt}\) and turns the discrete sum into
+      factor \((1+y)^{-t}\) to \(e^{-yt}\); spreading the payments
+      themselves continuously as well then turns the discrete sum into
       the continuous integral \(\int_0^n e^{-yt}dt=\frac{1-e^{-yn}}{y}\).
       They're different limits because they push different quantities to
       infinity — the number of periods in one case, the number of
@@ -777,13 +779,13 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q5. In the worked example, the closed-form modified duration (2.809 years) and the central finite-difference estimate (2.810 years) don't match exactly. Is that a mistake, and why or why not?</summary>
+    <summary>Q5. In the worked example, the closed-form modified duration (2.80924 years) and the central finite-difference estimate (2.80925 years) don't match exactly. Is that a mistake, and why or why not?</summary>
     <div class="tl-answer">
       No — it's the expected, correct behavior of a finite difference. The
       closed-form derivative is the exact limit as the bump size \(h\to 0\);
       the central finite difference uses a small but genuinely non-zero
       \(h=0.001\) (10bp each side), so it's approximating that limit, not
-      computing it exactly. The residual gap (about 0.04%) is precisely the
+      computing it exactly. The residual gap (about 0.0004%) is precisely the
       discretization error the Calculus for Finance lesson's Taylor-series
       section already quantified for finite step sizes — a real, expected
       artifact of using a finite \(h\) rather than evidence anything in the

@@ -36,7 +36,7 @@
           <button class="sl-tab" data-panel="store-2">Immutable dated snapshots</button>
         </div>
         <div class="sl-panel active" id="store-1">
-          <div class="sl-row"><div class="sl-box">March GDP row</div><div class="sl-arrow">overwritten by →</div><div class="sl-box amber">1.4% (final)</div></div>
+          <div class="sl-row"><div class="sl-box">March GDP row</div><div class="sl-arrow">overwritten by →</div><div class="sl-box amber">1.4% (latest)</div></div>
           <div class="sl-verdict"><strong>The original 1.9% preliminary figure is gone.</strong> A query "as of April 28th" now silently returns 1.4% — a number that wasn't published for another two months.</div>
         </div>
         <div class="sl-panel" id="store-2">
@@ -53,7 +53,7 @@
       <h2 class="sl-h2">Revisions: the number you see today isn't the number that existed then</h2>
       <p class="sl-sub">One "March GDP" fact, published then revised twice, at three different dates with three different values.</p>
       <div class="sl-svgwrap">
-        <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Timeline showing March GDP: reference period ends March 31, preliminary estimate 1.9% published April 28, first revision 1.6% published May 26, final revision 1.4% published June 25. A query as of April 15 must return no value at all, since nothing had been published yet.">
+        <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Timeline showing March GDP: reference period ends March 31, preliminary estimate 1.9% published April 28, first revision 1.6% published May 26, second revision 1.4% published June 25. A query as of April 15 must return no value at all, since nothing had been published yet.">
           <line x1="30" y1="120" x2="610" y2="120" style="stroke:var(--border2)" stroke-width="2"/>
           <circle cx="90" cy="120" r="5" style="fill:var(--text3)"/>
           <text x="90" y="102" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:10px">Mar 31</text>
@@ -68,7 +68,7 @@
           <line x1="370" y1="126" x2="370" y2="138" style="stroke:var(--amber)" stroke-width="1.4"/>
           <circle cx="510" cy="120" r="6" style="fill:var(--green)"/>
           <text x="510" y="82" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">Jun 25</text>
-          <text x="510" y="95" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">final revision: 1.4%</text>
+          <text x="510" y="95" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">2nd revision: 1.4%</text>
           <line x1="510" y1="102" x2="510" y2="114" style="stroke:var(--green)" stroke-width="1.4"/>
           <line x1="160" y1="190" x2="160" y2="126" style="stroke:var(--red)" stroke-width="1.4" stroke-dasharray="3,3"/>
           <text x="160" y="206" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:700">Apr 15 query "as of"</text>
@@ -105,7 +105,7 @@
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🗂</div><div><h4>Definition</h4><p>A dataset that only includes entities still active, listed, or reporting <em>today</em> — silently dropping anything that failed, delisted, defaulted, or merged away along the way.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Why it isn't random</h4><p>Failure correlates with poor performance — the entities that disappear are disproportionately the weak ones, not a random cross-section.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">↗</div><div><h4>Direction of the bias</h4><p>Always optimistic. It looks like "the average result of everything ever tried," when it's really "the average of whatever happened to still be around later."</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↗</div><div><h4>Direction of the bias</h4><p>Optimistic, whenever exits are driven by poor results (the usual case). It looks like "the average result of everything ever tried," when it's really "the average of whatever happened to still be around later."</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🌐</div><div><h4>Not just stock-picking</h4><p>Any cross-sectional universe — funds, currencies, bonds, counterparties — is vulnerable if it's built from "what still exists today."</p></div></div>
       </div>
       <div class="sl-quote">Judging how good a school is by only interviewing students still enrolled — never the ones who dropped out — makes the school look great, because struggling students are exactly the ones most likely to have already left. A database built from "what's still around today" makes the identical mistake with funds, companies, or currencies.</div>
@@ -344,7 +344,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Point-in-time correctness is an operational property of the data store — immutable dated snapshots, never one mutable "current" table overwritten in place.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Revisions are common, not rare — using today's fully-revised figure as if it were known on the original release date is a real, easy-to-miss lookahead bug.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>An "as of" query must key off the publication date, never the reference period the data describes — those two dates are routinely far apart.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Survivorship bias silently excludes failures from a "what exists today" universe, and it's always optimistic — never a random, harmless omission.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Survivorship bias silently excludes failures from a "what exists today" universe, and because exits are usually driven by poor results it's optimistic — never a random, harmless omission.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Elton, Gruber &amp; Blake (1996) made this a measured fact, not an argument — a survivors-only mutual fund database meaningfully overstated true average performance.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A point-in-time universe fixes it, but it's genuinely harder and costlier to build than a "current universe, backfilled" database — it has to track membership as of each historical date.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Survivorship can invent a pattern, not just lift an average: a survivors-only fund database shows "hot hands" with no skill in it (1992).<!-- DESK:START --> Desk verdict, NULL: a Sharpe 5.36 level strategy was a survivorship filter; honestly re-tested, the level adds zero or less over a random price.<!-- DESK:END --></p></div>

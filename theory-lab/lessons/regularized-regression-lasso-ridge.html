@@ -17,7 +17,7 @@
   <h1 class="tl-title">Regularized Regression: LASSO &amp; Ridge</h1>
   <p class="tl-dek">Plain OLS will happily fit noise if you hand it enough correlated or irrelevant predictors. Ridge and LASSO fix that by penalizing large coefficients — and the shape of the penalty, not just its size, decides whether a weak predictor gets quietly shrunk or deleted outright.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested anywhere in this repo<!-- DESK:END --></span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — Ridge runs in this repo as a fixed-alpha stacking learner in AnalogML/ml_walkforward.py; LASSO is not used anywhere<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: <a href="regression-diagnostics.html">Regression Diagnostics</a>, Correlation &amp; Linear Regression primer</span>
   </div>
@@ -389,12 +389,15 @@
           <h4>Ridge — shrinks all three, exactly zero for none</h4>
           <p>
             With \(\lambda\) chosen by cross-validation, Ridge gives
-            \(\hat\beta_{Ridge} = (1.4,\ -0.6,\ 0.15)\). All three
+            \(\hat\beta_{Ridge} = (2.2,\ -0.2,\ 0.36)\). All three
             coefficients moved toward zero — \(x_1\)'s inflated weight came
-            down, \(x_2\)'s compensating negative weight shrank in magnitude
-            too, and \(x_3\)'s spurious weight shrank the most (it had the
-            least real signal to begin with, so the penalty dominates it
-            fastest) — but none of the three is exactly zero. Ridge doesn't
+            down and \(x_2\)'s compensating negative weight shrank the most
+            (Ridge shrinks hardest along the poorly-determined direction, here
+            the offsetting difference between two near-duplicates, so the pair's
+            sum stays near 2.0 while the sign-flip almost disappears), and
+            \(x_3\)'s spurious weight shrank only a little (it is uncorrelated with
+            the others, so it gets only the plain \(1/(1+\lambda)\)-style shrink) —
+            but none of the three is exactly zero. Ridge doesn't
             know \(x_3\) is useless; it only knows \(x_3\)'s coefficient is
             small, and shrinks accordingly.
           </p>
@@ -428,7 +431,9 @@
     <p>
       Starts on the worked example's own OLS estimate for \(x_1\),
       \(\hat\beta_{OLS}=3.4\). This uses the standard single-coefficient
-      (orthogonal-design) closed forms for each penalty — a simplified
+      (orthogonal-design) closed forms for each penalty, written for the common
+      scaling \(\tfrac12\|y-X\beta\|^2+\tfrac{\lambda}{2}\|\beta\|_2^2\) (Ridge) and
+      \(\tfrac12\|y-X\beta\|^2+\lambda\|\beta\|_1\) (LASSO) — a simplified
       illustration of the shrinkage <em>mechanism</em>, not a reproduction
       of the correlated, cross-validated 3-predictor fit above. Change
       \(\hat\beta_{OLS}\) or \(\lambda\) and both penalties' shrunk
@@ -456,16 +461,16 @@
 
   <div class="tl-chart">
     <div class="tl-chart-label">The same three coefficients as λ increases</div>
-    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two line-chart panels tracking three coefficients as regularization strength lambda increases. Left panel, Ridge: all three coefficients curve smoothly toward zero but none reach it. Right panel, LASSO: the noise coefficient hits exactly zero first, the duplicate coefficient hits exactly zero next, and the real-signal coefficient shrinks but stays clearly nonzero throughout">
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two line-chart panels tracking three coefficients as regularization strength lambda increases. Left panel, Ridge: all three coefficients move smoothly toward zero, the offsetting near-duplicate pair fastest and the noise coefficient barely, but none reach it. Right panel, LASSO: the noise coefficient hits exactly zero first, the duplicate coefficient hits exactly zero next, and the real-signal coefficient shrinks but stays clearly nonzero throughout">
       <g transform="translate(10,10)">
         <line x1="20" y1="120" x2="270" y2="120" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:2,3"/>
         <line x1="30" y1="20" x2="30" y2="230" style="stroke:var(--border)"/>
         <line x1="30" y1="230" x2="270" y2="230" style="stroke:var(--border)"/>
         <text x="270" y="245" fill="var(--text3)" font-size="11" text-anchor="end">λ →</text>
         <text x="34" y="123" fill="var(--text3)" font-size="10">0</text>
-        <path d="M30,35 L85,55 L140,72.5 L195,80 L250,85" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
-        <path d="M30,152.5 L85,146.25 L140,141.25 L195,137.5 L250,135" style="fill:none;stroke:var(--amber);stroke-width:2.5"/>
-        <path d="M30,110 L85,112 L140,113.75 L195,115.25 L250,116.25" style="fill:none;stroke:var(--purple);stroke-width:2.5"/>
+        <path d="M30,35 L85,47.09 L140,55.26 L195,61.18 L250,65.69" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+        <path d="M30,152.5 L85,141.09 L140,133.59 L195,128.32 L250,124.44" style="fill:none;stroke:var(--amber);stroke-width:2.5"/>
+        <path d="M30,110 L85,110.24 L140,110.48 L195,110.7 L250,110.91" style="fill:none;stroke:var(--purple);stroke-width:2.5"/>
         <text x="150" y="262" fill="var(--text2)" font-size="12" text-anchor="middle" font-weight="600">Ridge — all shrink, none hit zero</text>
       </g>
       <g transform="translate(340,10)">
@@ -487,7 +492,7 @@
       <span><i style="background:var(--amber)"></i>β₂ — the near-duplicate</span>
       <span><i style="background:var(--purple)"></i>β₃ — pure noise</span>
     </div>
-    <div class="tl-chart-caption">Illustrative shrinkage paths built from the worked example's OLS, Ridge, and LASSO fits. Ridge's three curves all bend toward the zero line and flatten out just short of it. LASSO's curves each hit the zero line at a different λ and go flat exactly on it — β₃ (weakest) first, then β₂ (redundant), while β₁ (the real signal) stays clearly above zero across the whole range shown.</div>
+    <div class="tl-chart-caption">Illustrative shrinkage paths built from the worked example's OLS, Ridge, and LASSO fits. Ridge's three curves all move toward the zero line without reaching it — fastest for the offsetting β₁/β₂ pair, barely at all for the uncorrelated β₃. LASSO's curves each hit the zero line at a different λ and go flat exactly on it — β₃ (weakest) first, then β₂ (redundant), while β₁ (the real signal) stays clearly above zero across the whole range shown.</div>
   </div>
 
   <div class="tl-solid amber">
@@ -535,8 +540,8 @@
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
-    <strong>Choosing \(\lambda\) (and \(\rho\), for Elastic Net) is always
-    done by cross-validation, never by in-sample fit.</strong> The in-sample
+    <strong>Choosing \(\lambda\) (and \(\rho\), for Elastic Net) is normally
+    done by cross-validation (occasionally an information criterion such as BIC), never by raw in-sample fit.</strong> The in-sample
     loss is minimized at \(\lambda=0\) by construction — no regularization at
     all always fits the training data at least as well as some regularization
     does, so picking \(\lambda\) to maximize in-sample \(R^2\) would always

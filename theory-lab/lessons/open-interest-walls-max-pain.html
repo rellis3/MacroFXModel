@@ -31,7 +31,7 @@
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
-      <li>A call wall or put wall is simply a strike whose open interest is an outlier relative to its neighbors — the previous lesson's mechanism is what turns that outlier into observed support or resistance.</li>
+      <li>A call wall or put wall is simply a strike whose open interest is an outlier relative to its neighbors — the previous lesson's dealer-hedging mechanism is the usual explanation for why that outlier is read as support or resistance.</li>
       <li><strong>Max pain</strong> is the candidate settlement price that minimizes the total payout option writers owe, summed across <em>every</em> in-the-money option in the whole chain — not a single strike's own OI compared to today's price.</li>
       <li>The economic logic: at expiry, writers (collectively short every outstanding option) must pay exactly the aggregate intrinsic value of every option that finished in the money. The strike minimizing that aggregate payout is the strike where sellers collectively lose the least — the origin of "price gravitates toward max pain," alongside the separate, mechanical dealer-hedging channel from the previous lesson.</li>
       <li>The worked example computes total pain by hand at four candidate strikes on a small seven-strike chain and finds the minimum away from both the call wall and the put wall — the max-pain strike is rarely one of the outlier walls themselves.</li>
@@ -207,8 +207,8 @@
     <tr><td>\(\text{OI}_k^{\text{call}}\), \(\text{OI}_k^{\text{put}}\)</td><td>Open interest (contracts outstanding) in calls / puts at strike \(k\).</td></tr>
     <tr><td>\(\text{CallPain}(S)\), \(\text{PutPain}(S)\)</td><td>Aggregate intrinsic-value payout writers owe on calls / puts, across the whole chain, if the underlying settles at \(S\).</td></tr>
     <tr><td>\(\text{TotalPain}(S)\)</td><td>The sum of both — max pain is the \(S\) that minimizes this.</td></tr>
-    <tr><td>Call wall</td><td>The strike with an outlier concentration of call OI relative to its neighbors — typically above the current price, acting as resistance per the previous lesson's mechanism.</td></tr>
-    <tr><td>Put wall</td><td>The mirror image — an outlier concentration of put OI, typically below current price, acting as support.</td></tr>
+    <tr><td>Call wall</td><td>The strike with an outlier concentration of call OI relative to its neighbors — typically above the current price, usually read as resistance via the previous lesson's mechanism.</td></tr>
+    <tr><td>Put wall</td><td>The mirror image — an outlier concentration of put OI, typically below current price, usually read as support (though under the standard convention dealers are short those puts, so their hedging sells into a decline toward it).</td></tr>
     <tr><td>P/C ratio</td><td>Total put OI ÷ total call OI across the whole chain.</td></tr>
   </table></div>
 
@@ -288,7 +288,7 @@
     <div class="tl-chart-caption">
       Entirely illustrative numbers for a generic instrument — invented for
       this lesson, not pulled from any live feed. The 260 strike (7,800
-      calls, roughly 3.5× the next-largest call strike) is the call wall;
+      calls, roughly 3.5× its 255 neighbour and 3.25× the next-largest call strike) is the call wall;
       the 240 strike (6,500 puts, roughly 2.5× the next-largest put strike)
       is the put wall. With the instrument currently near 255, max pain
       computes (worked out in full below) to 250 — below spot, and notably
@@ -376,10 +376,12 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
             other candidate, including both walls themselves (260's
             113,500 and 240's, computed the same way, would also exceed
             it). With spot near 255, put wall 240, call wall 260, and max
-            pain 250, the read is: an expected range of roughly 240–260,
-            with a mild pull from 255 down toward 250 as the nearest
-            expiry approaches — not a guarantee, a probabilistic tendency
-            built from this specific snapshot of open interest.
+            pain 250, the conventional read is an expected range of roughly
+            240–260, with a commonly claimed pull from 255 down toward 250 as
+            the nearest expiry approaches — a claim that tests of max pain as
+            a magnet have not supported<!-- DESK:START -->, including this
+            desk's own (oi-max-pain, NULL, below)<!-- DESK:END -->. Treat it as
+            a description of this one snapshot of open interest, not a forecast.
           </p>
         </div>
       </div>
@@ -432,8 +434,8 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
     <p>
       Day one: the 240 put wall from the table above sits at 6,500
       contracts. Price sells off toward it intraday, dealer hedging
-      (selling into the decline per the previous lesson, then running out
-      of selling pressure right at the strike) produces a clean bounce —
+      around the strike (in the bounce-at-the-wall telling, dealers long
+      gamma there, so their hedging buys into the decline) produces a clean bounce —
       textbook wall behavior, and it looks, from the outside, like reliable
       support.
     </p>
@@ -474,7 +476,7 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
     </p>
     <p>
       Read through this lesson, the chain became a stack of call walls above the price. By the previous lesson's
-      mechanism, each one is fuel on the way up for whoever wrote those calls and delta-hedges them: as price climbs
+      mechanism, each one is fuel on the way up for whoever wrote those calls and delta-hedges them (here customers bought the calls, so dealers were short them — the opposite of the standard convention): as price climbs
       toward a big call strike, delta rises and the hedge means buying shares. As each strike was overrun, buyers moved
       up to higher strikes, so a fresh wall above became fresh fuel. That is the "wall-break momentum read" in the next
       section, run on repeat.
@@ -563,12 +565,12 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
     <div class="tl-icard">
       <div class="tl-icon-badge blue">↔️</div>
       <h4>Wall-to-wall range read</h4>
-      <p>Treat the put wall and call wall as the rough edges of an expected range while both stay intact, with max pain as a secondary pull inside that range as expiry nears. This read assumes the walls hold — it stops being valid the moment either one decisively breaks.</p>
+      <p>Treat the put wall and call wall as the rough edges of an expected range while both stay intact, with max pain sometimes added as a claimed secondary pull inside that range as expiry nears (a pull tests have not supported). This read assumes the walls hold — it stops being valid the moment either one decisively breaks.</p>
     </div>
     <div class="tl-icard">
       <div class="tl-icon-badge red">🚀</div>
       <h4>Wall-break momentum read</h4>
-      <p>Treat a decisive break of a major wall as the trigger for the opposite trade — per the squeeze mechanism from the previous lesson, the same open interest that built resistance or support becomes forced hedging flow in the breakout's direction once it's breached.</p>
+      <p>Treat a decisive break of a major wall as the trigger for the opposite trade — where dealers are short that open interest, per the squeeze mechanism from the previous lesson, the same open interest that was read as resistance or support becomes forced hedging flow in the breakout's direction once it's breached.</p>
     </div>
     <div class="tl-icard">
       <div class="tl-icon-badge purple">📅</div>
@@ -622,7 +624,7 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Max pain minimizes an aggregate, whole-chain payout — not a single strike's own OI.</strong> Evaluate total pain across every strike for each candidate settlement price, then take the minimum.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The "why minimize" logic is a real economic argument.</strong> Writers collectively pay out exactly the aggregate intrinsic value of ITM options; the minimizing strike is where sellers collectively lose the least.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Max pain and dealer-hedging pull are two distinct mechanisms that can coincide.</strong> One is a payout-incentive argument about expiry; the other is continuous mechanical rehedging — don't conflate them.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Walls and max pain sketch a range, not a certainty.</strong> The worked example's 240–260 range with a mild pull toward 250 is a read of one snapshot, not a forecast.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Walls and max pain sketch a range, not a certainty.</strong> The worked example's 240–260 range, with the commonly claimed pull toward max pain at 250, is a read of one snapshot, not a forecast — and tests have not found that pull.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A wall is a live snapshot, not a fixed structural level.</strong> It weakens or vanishes as positions close — re-check it every session, never assume it persists.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Headline OI overstates true mechanical strength whenever non-hedging participants hold a meaningful share of it</strong> — and that share is never directly observable.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><!-- DESK:START --><strong>Price does not pin to max pain on this desk's data (oi-max-pain, NULL),</strong> and the wall-magnet direction was falsified at 48.8% against a 49.9% placebo. <!-- DESK:END -->Walls can also fail the other way: GameStop in January 2021 saw them overrun and rebuilt higher within days. Whether dealer hedging of them drove the squeeze is contested, not settled.</span></div>

@@ -86,7 +86,7 @@
         <div class="sl-verdict">The penalty is the sum of every coefficient <strong>squared</strong>. Squaring exaggerates large values, so the cheapest way to satisfy the penalty is usually to spread a given amount of "explaining power" across several correlated predictors rather than piling it onto one — exactly the fix for OLS's wild, sign-flipped coefficients under collinearity.</div>
       </div>
       <div class="sl-icard-grid">
-        <div class="sl-icard"><div class="sl-icard-badge">↘</div><div><h4>Shrinks everything, smoothly</h4><p>Every coefficient moves toward zero as λ grows — the ones with real signal, and the weak ones too, in proportion to how little they were carrying.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↘</div><div><h4>Shrinks everything, smoothly</h4><p>Every coefficient moves toward zero as λ grows — the ones with real signal and the weak ones alike (with uncorrelated, standardized predictors, all by the same factor).</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⊘</div><div><h4>Never lands on exactly zero</h4><p>Shrinking a squared term always leaves a diminishing-returns tail — β approaches zero as λ grows but essentially never reaches it exactly, no matter how large λ gets.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🎚</div><div><h4>Shrinks; does not select</h4><p>Ridge doesn't know a predictor is useless — it only knows its coefficient is small, and shrinks accordingly. Every original predictor stays in the model.</p></div></div>
       </div>
@@ -133,11 +133,11 @@
         </div>
         <div class="sl-panel" id="fit-ridge">
           <div class="sl-row">
-            <div class="sl-box">β₁ = 1.4</div>
-            <div class="sl-box">β₂ = −0.6</div>
-            <div class="sl-box">β₃ = 0.15</div>
+            <div class="sl-box">β₁ = 2.2</div>
+            <div class="sl-box">β₂ = −0.2</div>
+            <div class="sl-box">β₃ = 0.36</div>
           </div>
-          <div class="sl-verdict"><strong>All three shrink, none reach zero.</strong> x₁'s inflated weight comes down, x₂'s compensating negative weight shrinks too, and x₃'s spurious weight shrinks the most — it had the least real signal to begin with. But Ridge doesn't know x₃ is useless; it only shrinks by size, so all three stay in the model.</div>
+          <div class="sl-verdict"><strong>All three shrink, none reach zero.</strong> x₁'s inflated weight comes down and x₂'s compensating negative weight shrinks the most — Ridge shrinks hardest along the poorly-determined difference between two near-duplicates, so the pair still sums to about 2.0 — while x₃, uncorrelated with the others, shrinks only a little. But Ridge doesn't know x₃ is useless; it only shrinks by size, so all three stay in the model.</div>
         </div>
         <div class="sl-panel" id="fit-lasso">
           <div class="sl-row">
@@ -200,7 +200,7 @@
     <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Turn the λ dial</h2>
-      <p class="sl-sub">Same three OLS coefficients as the tabs above — 3.4, −1.3, 0.4 — shrunk by each penalty as λ increases.</p>
+      <p class="sl-sub">Same three OLS coefficients as the tabs above — 3.4, −1.3, 0.4 — shrunk one at a time by each penalty's orthogonal-design formula (ignoring the x₁/x₂ correlation, so the bars differ from the tabs' fitted values) as λ increases.</p>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it</div>
         <div class="sl-svgwrap">
@@ -239,7 +239,7 @@
     <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Shrink a coefficient yourself</h2>
-      <p class="sl-sub">The standard single-coefficient (orthogonal-design) closed forms — a simplified illustration of the shrinkage mechanism, not the correlated 3-predictor fit above.</p>
+      <p class="sl-sub">The standard single-coefficient (orthogonal-design) closed forms, for the common scaling ½‖y−Xβ‖² + (λ/2)‖β‖₂² (Ridge) and ½‖y−Xβ‖² + λ‖β‖₁ (LASSO) — a simplified illustration of the shrinkage mechanism, not the correlated 3-predictor fit above.</p>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it — change either input, live</div>
         <div class="sl-calc-row">
@@ -388,7 +388,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Ridge's penalty is the sum of squared coefficients (L2) — it shrinks everything smoothly, but essentially never reaches exactly zero.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>LASSO's penalty is the sum of absolute coefficients (L1) — it can drive some coefficients to exactly zero, performing automatic feature selection.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The difference is geometry: a circle's smooth edge rarely touches at an axis point; a diamond's corners sit exactly on the axes and catch the tangent point disproportionately often.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>λ is always chosen by cross-validation, never in-sample, and predictors must be standardized first — both penalties are scale-dependent.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>λ is chosen by cross-validation (or an information criterion), never by raw in-sample fit, and predictors must be standardized first — both penalties are scale-dependent.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: shrunk means and covariances (Jorion 1986; Ledoit &amp; Wolf 2003–04), then the LASSO as a filter for the factor zoo in the 2010s.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">

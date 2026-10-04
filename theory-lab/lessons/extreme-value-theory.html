@@ -37,7 +37,7 @@
       <li>Peaks-over-threshold (POT) fixes this by discarding everything below a high threshold \(u\) and fitting only the exceedances beyond it — using more of the tail data than a block-maxima approach, while still isolating tail-specific behavior.</li>
       <li>The Generalized Pareto Distribution (GPD) is the shape those exceedances converge to (Balkema-de Haan-Pickands theorem); its shape parameter \(\xi\) tells you whether the tail is heavy/Pareto-type (\(\xi>0\)), exponential (\(\xi=0\)), or bounded (\(\xi<0\)).</li>
       <li>A fitted GPD lets you extrapolate VaR/CVaR past what the raw sample supports — but that's a modeling assumption, not a measurement, and it's unverifiable at the exact quantile you're extrapolating to.</li>
-      <!-- DESK:START --><li>This project's own empirical risk statistics already ship the honest half (historical VaR/CVaR, skew/kurtosis); the GPD/POT layer is deliberately not built here because most strategies' trade counts are far too small to fit \(\xi\) reliably.</li><!-- DESK:END -->
+      <!-- DESK:START --><li>This project's own empirical risk statistics ship the honest half (historical VaR/CVaR, skew/kurtosis), and a peaks-over-threshold GPD fit (probability-weighted moments, in <code>js/evtTail.js</code> and <code>js/extremesCore.js</code>) also runs on strategies' and instruments' daily-return series. It is fit to daily P&amp;L, not trade logs, which are far too small to fit \(\xi\) reliably; even a few hundred days gives only dozens of exceedances, so its \(\xi\) carries wide error bars.</li><!-- DESK:END -->
       <li><strong>Real-world episode:</strong> on 19 October 1987 the S&amp;P 500 fell about 20% in one session, on the order of twenty standard deviations for a market whose daily moves were then around 1%, and the Dow's 22.6% fall nearly doubled the worst days of 1929. A heavy tail (\(\xi&gt;0\)) makes such a day rare but possible; a normal makes it impossible.<!-- DESK:START --> Whether a GPD tail estimate is breached at its advertised rate out of sample is <strong>untested here</strong>, and "something follows a rare move" is tested null (<code>mv-extreme-forward</code>).<!-- DESK:END --></li>
     </ul>
   </div>
@@ -62,9 +62,9 @@
   question — "given that we're already looking at an extreme observation, what shape does the tail
   beyond it take, and can I use that shape to say something honest about outcomes worse than anything
   I've actually observed?" This lesson explains the theory behind that question<!-- DESK:START -->, is explicit about what
-  it can and can't buy you, and is honest that this repo's current tail-risk metrics are deliberately
-  the simpler, sample-bound version of the idea — not a gap to be embarrassed about, but a conscious
-  choice to only claim what the data actually supports<!-- DESK:END -->.
+  it can and can't buy you, and is honest about where this repo stands: the empirical, sample-bound
+  numbers are the default, and the GPD tail fit built alongside them is an extrapolation to be read with
+  its small-sample caveats, claiming only what the data actually supports<!-- DESK:END -->.
   </p>
 
   <div class="tl-box intuition">
@@ -157,8 +157,9 @@
   <p>
   The most direct way to estimate VaR or CVaR from data<!-- DESK:START --> — and exactly what this repo's
   own historical VaR/CVaR implementation does —<!-- DESK:END --> is to sort your observed sample and read the answer
-  straight off it: <em>empirical VaR</em> at confidence \(p\) is just the \((1-p)\) sample quantile (the
-  value such that a fraction \(1-p\) of your observed data falls below it), and <em>empirical CVaR</em>
+  straight off it: <em>empirical VaR</em> at confidence \(p\) is just the \(p\) sample quantile of losses (the
+  value such that a fraction \(1-p\) of your observed losses lies beyond it — equivalently the \((1-p)\)
+  quantile of returns), and <em>empirical CVaR</em>
   is the average of every observation at or beyond that point. This is honest, assumption-free, and
   exactly right — as long as the quantile you're asking for is comfortably <em>inside</em> the range
   your sample actually explores. The problem is entirely about what happens as \(p\) moves toward the
@@ -166,8 +167,8 @@
   \((1-p)\)-quantile is built from roughly \(n(1-p)\) data points sitting at or beyond that level. Set
   \(n=500\) (roughly two years of daily data) and \(p=0.99\): you're estimating a threshold from
   \(500 \times 0.01 = 5\) observations. Push to \(p=0.995\) — a "1-in-200-day" event — and you're down to
-  \(2.5\) observations, meaning the 99.5th percentile is being read off <em>between your single worst
-  and second-worst historical observation</em>, interpolated. Push further to the "1-in-2,000-day"
+  \(2.5\) observations, meaning the 99.5th percentile is being read off <em>between your second-worst
+  and third-worst historical observation</em>, interpolated. Push further to the "1-in-2,000-day"
   event this lesson's title alludes to, and you would need roughly \(2{,}000/252 \approx 8\) years of
   daily data just to see <em>one</em> such event on average — and one occurrence tells you almost
   nothing about the shape of the distribution beyond it, any more than one coin flip tells you a coin's
@@ -344,14 +345,14 @@
     </p>
     <p>
     <strong>The plain historical method.</strong> \(1-p = 0.005\), so the empirical VaR is read off
-    around the \(500 \times 0.005 = 2.5\)th-worst observation — interpolated between your single worst
-    and second-worst historical day. That number is not a stable statistical estimate; it is, almost
-    literally, "whatever your worst day or two happened to be." Re-run the same backtest with a
+    around the \(500 \times 0.005 = 2.5\)th-worst observation — interpolated between your second-worst
+    and third-worst historical day. That number is not a stable statistical estimate; it is, almost
+    literally, "whatever your worst two or three days happened to be." Re-run the same backtest with a
     slightly different two-year window and that number can swing enormously, because it's driven by
     one or two data points rather than by an underlying pattern estimated across many. And the
     1-in-2,000-day quantile is entirely out of reach by this method — with only 500 observations, you
     would need on average <strong>four separate two-year samples</strong> just to expect to see one
-    such event at all; empirical VaR at that level is mathematically undefined for this sample size (the
+    such event at all; empirical VaR at that level can do no better than return your single worst day (the
     quantile formula is asking for data past the edge of what you have).
     </p>
     <p>
@@ -598,7 +599,7 @@
     <strong>Regulatory and internal tail-capital calculations.</strong> Insurers (where EVT has some of
     its deepest roots — modeling catastrophic claims) and banks use POT/GPD fits to set capital reserves
     against extreme, rarely-observed loss scenarios, precisely because regulators require an answer at
-    confidence levels (99.5%+, sometimes 99.9%+ for insurance solvency regimes) that raw historical data
+    confidence levels (99.5% for insurance solvency under Solvency II, 99.9% for bank credit capital) that raw historical data
     cannot support directly.
     </li>
     <li>
@@ -686,7 +687,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The GPD shape parameter ξ is the payload.</strong> Heavy/Pareto-type (ξ&gt;0), exponential (ξ=0), or bounded (ξ&lt;0) — it tells you the qualitative kind of tail, not just its scale.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A fitted GPD extrapolates — it doesn't measure.</strong> Past your sample, the answer is the fitted shape talking, not anything directly observed, and it's unverifiable at the exact quantile you're extrapolating to.</span></div>
     <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The empirical half is already a real, tested piece of this project's own risk tooling.</strong> This project's own empirical risk statistics already ship the honest, assumption-free version of this lesson's core question today.</span></div><!-- DESK:END -->
-    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The GPD/POT layer is deliberately not built here.</strong> Most strategies' trade counts (often under 1,000, some under 100) are far too small to fit ξ reliably — building it now would hide a data-point problem behind fancier math.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A GPD/POT layer is built, on daily returns rather than trades.</strong> <code>js/evtTail.js</code> (threshold at the 90th loss percentile, needs 30+ days and 8+ exceedances) feeds the portfolio pages' EVT VaR/CVaR; <code>js/extremesCore.js</code> (95th percentile, 40+ observations, 10+ exceedances) feeds the analytics desk and forecast-coverage tail reads. Trade logs (often under 1,000 trades, some under 100) stay far too small to fit ξ, and even daily series give only dozens of exceedances, so read ξ with its error bars.</span></div><!-- DESK:END -->
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Report both numbers together, not one alone.</strong> The gap between the empirical and EVT-extrapolated estimate is itself information about how much you're relying on the model.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A "20-sigma day" is a statement about the model, not the market.</strong> 19 October 1987 (S&amp;P about −20%) was impossible under a normal and merely rare under a heavy tail. It also arrived in a cluster and came from a crisis-only mechanism, which strains EVT's own assumptions.<!-- DESK:START --> GPD tail calibration out of sample is untested here; "something follows a rare move" is null (<code>mv-extreme-forward</code>).<!-- DESK:END --></span></div>
   </div>
@@ -700,8 +701,8 @@
     sample you'd expect to see well under one such event on average — the empirical quantile formula is
     effectively asking for a data point past the edge of what the sample contains. Even the much milder
     1-in-200-day (99.5%) quantile is only supported by about 2.5 observations in a 500-day sample,
-    meaning the "estimate" is really just an interpolation between your single worst and second-worst
-    historical day — a number driven by one or two data points, not a stable statistical pattern.
+    meaning the "estimate" is really just an interpolation between your second-worst and third-worst
+    historical day — a number driven by two or three data points, not a stable statistical pattern.
     </div>
   </details>
   <details class="tl-quiz">
@@ -763,8 +764,8 @@
     near enough to trust the fitted shape parameter \(\xi\), let alone extrapolate it to a rarer quantile
     than the sample can support. Fitting EVT machinery on that little data doesn't solve the small-sample
     problem the empirical method already has — it just hides it behind more sophisticated-looking math<!-- DESK:START -->,
-    which is precisely why this repo currently uses the honest empirical historical VaR/CVaR rather than a
-    GPD fit<!-- DESK:END -->.
+    which is why this repo fits its GPD layer to daily-return series rather than trade logs, and keeps the
+    empirical historical VaR/CVaR as the default number beside it<!-- DESK:END -->.
     </div>
   </details>
 

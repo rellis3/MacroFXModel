@@ -138,7 +138,7 @@
         </div>
         <div class="sl-ccard green">
           <span class="sl-ctag green">H₁ — stationary</span>
-          <p>γ &lt; 0, negative enough to clear a critical value. The spread reverts — cointegrated. Now it behaves like the OU mean-reverting object from the previous lesson.</p>
+          <p>γ &lt; 0, negative enough to clear a critical value. The spread reverts — cointegrated. Now it behaves like the OU mean-reverting object from the Ornstein-Uhlenbeck lesson.</p>
         </div>
       </div>
       <div class="sl-callout purple">
@@ -227,7 +227,7 @@
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🔀</div><div><h4>Pairs trading</h4><p>The flagship application. Find an economically linked pair, test for cointegration rather than assuming it from correlation, and — if it passes — trade the z-scored spread market-neutral: long the cheap leg, short the expensive one, sized by β̂.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">📦</div><div><h4>Index / ETF arbitrage</h4><p>The cointegrating relationship is close to mechanically guaranteed by contract (ETF price vs. basket NAV) — the interesting question becomes execution speed and cost, not whether the link is real.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📦</div><div><h4>Index / ETF arbitrage</h4><p>The cointegrating relationship is close to mechanically guaranteed (ETF price vs. basket NAV, held together by creation/redemption arbitrage) — the interesting question becomes execution speed and cost, not whether the link is real.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🌍</div><div><h4>Macro / cross-asset relative value</h4><p>Non-obvious pairs — a currency against a commodity, a corporate spread against equity vol — where the economic link is a hypothesis. The test does real work separating structure from coincidence.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🛠️</div><div><h4>Error-correction models</h4><p>Once cointegration is established, model each series' next change partly on how far last period's spread sat from equilibrium — a forecasting equation, not just a trading rule.</p></div></div>
       </div>
@@ -250,11 +250,11 @@
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Reality check — what this repo actually does</h2>
-      <p class="sl-sub">The full lesson tags this topic "CONCEPT — not yet tested in this repo" and says the project's pair-ranking tooling works from return correlation, not a levels cointegration test. Checking the actual code shows that's now out of date.</p>
+      <p class="sl-sub">The full lesson tags this topic "CONCEPT — an Engle-Granger screen exists in this repo; no result scored yet": no cointegration-pairs result has been scored on the desk ledger. That does not mean the machinery is missing.</p>
       <div class="sl-compare">
         <div class="sl-ccard neutral">
           <span class="sl-ctag blue">The full lesson's framing</span>
-          <p>"CONCEPT — not yet tested in this repo." "This project's existing pair-ranking and lead-lag tooling all currently work from return correlation or lead-lag, not a levels cointegration test — a named, not-yet-built extension."</p>
+          <p>"CONCEPT — an Engle-Granger screen exists in this repo; no result scored yet." No cointegration-pairs result sits on the desk ledger.</p>
         </div>
         <div class="sl-ccard green">
           <span class="sl-ctag green">What's actually in the codebase</span>
@@ -263,7 +263,7 @@
       </div>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Both things are true, in different places</div>
-        <p>The stale "not yet tested" line describes the full lesson's own framing, not this codebase as it stands today. Real Engle-Granger cointegration screening exists and runs in <code>portfolioBacktest/portfolio_backtest.py</code> — and it's built carefully: the screen trains only on a leading in-sample window (<code>coint_train_bars</code>) before any trading starts, exactly the "no lookahead" discipline this lesson's own pitfalls section calls for. <code>forge/residual.py</code>'s ADF/half-life tools work on a different, basket-based residual rather than a classic two-series spread, but they're the same statistical machinery taught here, already in use.</p>
+        <p>The tag means no scored result, not no code. Real Engle-Granger cointegration screening exists and runs in <code>portfolioBacktest/portfolio_backtest.py</code> — and it's built carefully: the screen trains only on a leading in-sample window (<code>coint_train_bars</code>) before any trading starts, exactly the "no lookahead" discipline this lesson's own pitfalls section calls for. <code>forge/residual.py</code>'s ADF/half-life tools work on a different, basket-based residual rather than a classic two-series spread, but they're the same statistical machinery taught here, already in use.</p>
       </div>
     </section>
     <!-- DESK:END -->
@@ -372,7 +372,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Johansen generalizes to baskets of three or more series, avoiding the arbitrary Y-vs-X choice and finding how many equilibria exist at once.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Passing a cointegration test only clears the first bar — lookahead bias, structural breaks, data-mining across candidate pairs, and slow half-lives can all still sink a live pairs trade.</p></div>
         <!-- DESK:START -->
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo already runs Engle-Granger-screened pairs trading (<code>portfolioBacktest</code>) and ADF/half-life diagnostics (<code>forge/residual.py</code>) — the "concept only" framing is now out of date.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo already runs Engle-Granger-screened pairs trading (<code>portfolioBacktest</code>) and ADF/half-life diagnostics (<code>forge/residual.py</code>) — the code exists, though no result from it has been scored on the desk ledger yet.</p></div>
         <!-- DESK:END -->
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>LTCM 1998: genuinely leashed spreads still stretched far enough, at ~25:1 leverage, to end the fund.<!-- DESK:START --> On this desk, fading an FX levels-regression residual was null (1/6 instruments, mean hit rate 0.485); the anchored 2Y yield spread is the validated contrast.<!-- DESK:END --></p></div>
       </div>

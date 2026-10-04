@@ -37,7 +37,7 @@
       <li>Svensson (1994) adds a second curvature term with its own decay parameter \(\lambda_2\), giving the curve two independent humps — the extra flexibility central banks like the ECB and the Fed actually use in their own published curves.</li>
       <li>Fitting either model to observed bond yields is a nonlinear least-squares problem with no closed-form solution — solved iteratively, and prone to different local optima depending on the starting guess, especially for \(\lambda\).</li>
       <li>The worked example plugs \(\beta_0=4.5\%,\ \beta_1=-2.0\%,\ \beta_2=1.0\%,\ \lambda=2.0\) into the formula by hand at 1Y, 2Y, 5Y and 10Y, producing 3.11%, 3.50%, 4.05% and 4.29% — a smooth, upward-sloping, gently humped curve generated entirely from four numbers.</li>
-      <li><strong>Real-world episode:</strong> 2022. As the Fed hiked, the level factor rose and the slope factor \(\beta_1\) flipped from negative to positive (the curve inverted), and a hike-then-cut shape put Svensson's second hump to work.<!-- DESK:START --> Forecasting the betas (Diebold-Li) is <em>untested</em> here; reading the flip as a recession signal tested <strong>NULL</strong> (<code>curve-inversion</code>).<!-- DESK:END --></li>
+      <li><strong>Real-world episode:</strong> 2022. As the Fed hiked, the level factor rose and the slope factor \(\beta_1\) flipped from negative to positive (the curve inverted), and a curve that rose, fell, then rose again at the long end put Svensson's second hump to work.<!-- DESK:START --> Forecasting the betas (Diebold-Li) is <em>untested</em> here; reading the flip as a recession signal tested <strong>NULL</strong> (<code>curve-inversion</code>).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -172,7 +172,7 @@
     <div class="tl-eq-chip c1"><code>x = τ/λ</code><span>maturity rescaled by the decay parameter — unitless</span></div>
     <div class="tl-eq-chip c2"><code>e⁻ˣ</code><span>decays from 1 (at τ=0) toward 0 as τ grows — the "how much short-term behavior is left" weight</span></div>
     <div class="tl-eq-chip c3"><code>L(τ)</code><span>the slope loading — starts at 1, decays smoothly to 0</span></div>
-    <div class="tl-eq-chip c4"><code>L(τ) − e⁻ˣ</code><span>the curvature loading — zero at both ends, positive (or negative) in between</span></div>
+    <div class="tl-eq-chip c4"><code>L(τ) − e⁻ˣ</code><span>the curvature loading — zero at both ends, positive in between (β₂ sets hump or dip)</span></div>
   </div>
 
   <div class="tl-eli5">
@@ -286,10 +286,11 @@
   <div class="tl-solid red">
     <strong>The trap Svensson exists to fix:</strong> the curvature term in
     plain Nelson-Siegel is mathematically capable of producing exactly
-    <em>one</em> hump (or one dip) — no more. A genuinely two-humped real
-    curve (for instance, one segment priced for an expected near-term hiking
-    cycle followed by a segment priced for expected cuts further out) cannot
-    be fit well by four Nelson-Siegel parameters no matter how they're tuned.
+    <em>one</em> hump (or one dip) — no more. A plain hike-then-cut curve that
+    rises then falls is still one hump, which Nelson-Siegel handles. But a real
+    curve with a hump <em>and</em> a dip (for instance, a near-term peak where
+    hikes are priced, a trough further out where cuts are priced, then a rise
+    again at the long end) cannot be fit well by four Nelson-Siegel parameters no matter how they're tuned.
   </div>
 
   <h3>The Svensson extension — a second, independent hump</h3>
@@ -553,8 +554,8 @@
       beyond the longest available bond.
     </p>
     <p>
-      In the U.S. Treasury market, Federal Reserve staff economists Refet
-      Gürkaynak, Brian Sack and Jonathan Wright built (and the Fed still
+      In the U.S. Treasury market, economists Refet
+      Gürkaynak, Brian Sack and Jonathan Wright built (and the Federal Reserve Board still
       updates) a widely used daily Treasury yield curve dataset fitted with
       exactly this Svensson-style extended Nelson-Siegel form — used
       throughout academic and practitioner research as the standard
@@ -594,14 +595,16 @@
       The front of the curve repriced most. The 2-year Treasury yield went from roughly 0.7% at the start of
       2022 to about 4.4% at the end; the 10-year went from about 1.5% to under 4%. Both rose, but the short end
       rose more, and from July 2022 the 2-year stayed above the 10-year. In Nelson-Siegel terms, \(\beta_1\)
-      went from negative to positive: \(y(0)=\beta_0+\beta_1\) now sat above \(y(\infty)=\beta_0\). By 2023 the
-      10-year yield was roughly a full percentage point below the 2-year.
+      went from negative to positive: \(y(0)=\beta_0+\beta_1\) now sat above \(y(\infty)=\beta_0\). At its deepest, in
+      2023, the 10-year yield was roughly a full percentage point below the 2-year.
     </p>
     <p style="margin-bottom:0">
       The shape that followed is the one this lesson's red box warns about. Treasury bills, priced off the
       last few hikes, yielded more than 2-year notes, which were priced for cuts to come, which yielded more
-      than 10-year bonds. A curve that rises for a few months and then falls for years is a hike-then-cut path.
-      That is the case Svensson's second term, with its own \(\lambda_2\), was built for. For holders of long
+      than 10-year bonds; yet by late 2023 the 30-year yielded more than the 10-year again. A curve that rises
+      for a few months, falls for years, then turns up at the long end has a hump and a dip. One Nelson-Siegel
+      hump can fit the rise-then-fall but not the turn back up; that is the case Svensson's second term, with
+      its own \(\lambda_2\), was built for. For holders of long
       bonds, 2022 was one of the worst calendar years on record for US Treasury returns.
     </p>
   </div>
@@ -615,7 +618,7 @@
     <div class="tl-chain-arrow">→</div>
     <div class="tl-chain-link concept"><b>★ This lesson · the factors</b>\(\beta_0\) (level) rises and \(\beta_1\) (slope) flips from negative to positive: \(y(0)=\beta_0+\beta_1\) now sits above \(\beta_0\)</div>
     <div class="tl-chain-arrow">→</div>
-    <div class="tl-chain-link"><b>The market</b>Prices hikes, then cuts: bills above 2-years above 10-years, a two-regime shape one hump struggles with</div>
+    <div class="tl-chain-link"><b>The market</b>Prices hikes, then cuts: bills above 2-years above 10-years, then the 30-year back above the 10-year, a hump and a dip one Nelson-Siegel term can't hold</div>
     <div class="tl-chain-arrow">→</div>
     <div class="tl-chain-link end"><b>Outcome</b>One of the worst years on record for Treasury holders, and a curve shape the 2010s data never showed</div>
   </div>
@@ -661,8 +664,9 @@
   <h2>How practitioners actually use this</h2>
   <p>
     <strong>Daily curve publication.</strong> Central banks and Treasury
-    departments that publish an official smooth reference curve overwhelmingly
-    use Nelson-Siegel or, more often, the Svensson extension — refit fresh
+    departments that publish an official smooth reference curve mostly
+    use Nelson-Siegel or, more often, the Svensson extension (some, such as
+    the Bank of England, use smoothing splines instead) — refit fresh
     each trading day from that day's observed bond prices via the
     nonlinear least-squares procedure above.
   </p>
@@ -740,9 +744,9 @@
     <p>
       <strong>Forcing a genuinely two-humped curve into plain Nelson-Siegel.</strong>
       As shown above, the classic four-parameter form is mathematically
-      capable of exactly one hump. If the real curve has two distinct bumps
-      (for instance, priced-in policy expectations for a hike cycle followed
-      by cuts further out), plain Nelson-Siegel will visibly under-fit no
+      capable of exactly one hump. If the real curve has a hump and a dip
+      (for instance, priced-in hikes, then cuts, then a long end that turns
+      back up), plain Nelson-Siegel will visibly under-fit no
       matter how its four parameters are tuned — that is specifically what
       motivates reaching for Svensson, not adding more Nelson-Siegel-style
       terms of the same shape.
@@ -758,7 +762,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fitting is nonlinear least squares, not a closed-form solve.</strong> \(\lambda\) sits inside the exponential, so it's estimated jointly with the betas by iterative optimization.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>\(\lambda\) (and \(\lambda_2\)) are the hard part.</strong> The optimization surface is prone to local minima and near-collinearity between the two decay parameters in Svensson — a single optimizer run from one starting guess isn't enough to trust.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The fitted curve is a smoothed approximation, not an exact reprice.</strong> Small residuals against the input bonds are normal — don't mistake fitting noise for a trading edge.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The factors are stable until the regime changes.</strong> In 2022 the slope factor \(\beta_1\) flipped from negative to positive as the Fed hiked, and a hike-then-cut curve needed Svensson's second hump.<!-- DESK:START --> Forecasting the betas (Diebold-Li) is untested on this desk; reading the inversion as a sell signal is null (curve-inversion).<!-- DESK:END --></span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The factors are stable until the regime changes.</strong> In 2022 the slope factor \(\beta_1\) flipped from negative to positive as the Fed hiked, and a curve that rose, fell and rose again needed Svensson's second hump.<!-- DESK:START --> Forecasting the betas (Diebold-Li) is untested on this desk; reading the inversion as a sell signal is null (curve-inversion).<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -797,9 +801,9 @@
       term, structurally identical but built on its own decay parameter
       \(\lambda_2\), which lets the fitted curve have two independent humps
       at two different maturities. This matters when the real curve genuinely
-      has two distinct bumps — for example, market pricing that reflects an
-      expected near-term hiking cycle followed by an expected cutting cycle
-      further out — a shape plain Nelson-Siegel cannot represent well no
+      has a hump and a dip — for example, pricing that reflects near-term
+      hikes, then cuts further out, then a long end that turns back up (a
+      simple rise-then-fall hike-then-cut curve is only one hump) — a shape plain Nelson-Siegel cannot represent well no
       matter how its four parameters are tuned.
     </div>
   </details>
@@ -839,7 +843,7 @@
     <li>Charles R. Nelson and Andrew F. Siegel, <em>"Parsimonious Modeling of Yield Curves,"</em> Journal of Business, 1987 — the original paper introducing the four-parameter form derived above.</li>
     <li>Lars E. O. Svensson, <em>"Estimating and Interpreting Forward Interest Rates: Sweden 1992-1994,"</em> NBER Working Paper No. 4871, 1994 — the extension adding the second curvature term and decay parameter.</li>
     <li>Francis X. Diebold and Canlin Li, <em>"Forecasting the Term Structure of Government Bond Yields,"</em> Journal of Econometrics, 2006 — the widely cited dynamic extension treating the fitted betas as forecastable time series.</li>
-    <li>Refet S. Gürkaynak, Brian Sack, and Jonathan H. Wright, <em>"The U.S. Treasury Yield Curve: 1961 to the Present,"</em> Federal Reserve Board Finance and Economics Discussion Series, 2007 — documents the Fed's own Svensson-family fitted Treasury curve dataset referenced in the scenario above.</li>
+    <li>Refet S. Gürkaynak, Brian Sack, and Jonathan H. Wright, <em>"The U.S. Treasury Yield Curve: 1961 to the Present,"</em> <em>Journal of Monetary Economics</em>, 2007 (Federal Reserve Board FEDS working paper 2006-28) — documents the Fed's own Svensson-family fitted Treasury curve dataset referenced in the scenario above.</li>
   </ul>
   </details>
 

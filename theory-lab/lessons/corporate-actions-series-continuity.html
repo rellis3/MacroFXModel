@@ -156,7 +156,8 @@
   <div class="tl-solid red">
     <strong>The trap:</strong> a back-adjusted ("Panama method") series can drift to unusual levels far
     enough in the past — for a long enough history of a contract that has rolled many times, the
-    accumulated additive offsets can even push historical prices <strong>negative</strong>, a value that
+    accumulated additive offsets can even push historical prices <strong>negative</strong> (when the
+    new contract has repeatedly rolled in <em>below</em> the expiring one, so each offset shifts history down), a value that
     obviously never actually traded. This breaks any calculation that depends on the price level being a
     real, positive, tradeable number — most importantly, <em>percentage</em>-return calculations, since a
     percentage return computed off a negative or artificially shifted price level is meaningless, even
@@ -230,8 +231,9 @@
     <em>percentage</em> return between those same two days is now computed off a price level ($72.50)
     that never actually traded on that historical date (the real traded price was $72.00) — a small
     distortion for one roll, but one that compounds with every subsequent roll further back in a
-    multi-year history, which is exactly how a long-back-adjusted series can eventually reach unusual, or
-    even negative, levels.
+    multi-year history, which is exactly how a long-back-adjusted series can eventually reach unusual levels:
+    shifted up when most rolls are upward like this one, or, when the new contract keeps rolling in below the
+    expiring one, shifted down far enough to go negative.
     </p>
   </div>
 
@@ -310,9 +312,9 @@
 
   <h3>Where the textbook version breaks</h3>
   <p>
-    The lesson's methods assume two things that held for over a century of oil futures: traded prices are positive,
+    The lesson's methods assume two things that held for the whole history of WTI futures until 2020: traded prices are positive,
     and the roll is a small gap between two nearby prices. Ratio-adjustment needs both, because it multiplies history
-    by old-price over new-price; with the old price at −$37.63 that ratio is negative and flips the sign of everything
+    by new-price over old-price; with the old price at −$37.63 that ratio is negative and flips the sign of everything
     before it. A percentage return on the front-month series, from about $18 to −$37.63, comes out near −300%, which a
     simple return on a long position in an asset can never reach, while the dollar change is a real loss per barrel.
     For futures the honest unit is dollar P&amp;L on the contract held, which is the Panama series' strength. And a
@@ -397,8 +399,8 @@
     <summary>Q3. Why can a long history of back-adjusted (Panama method) futures prices eventually go negative, and why does that matter?</summary>
     <div class="tl-answer">
     Each roll applies its own additive offset to every price before that roll date, and these offsets
-    compound going further back in history — a long enough series with many rolls can accumulate a large
-    enough total shift that sufficiently old historical prices are pushed below zero, a level that
+    compound going further back in history — a long enough series with many mostly-downward rolls (new
+    contract below the expiring one) can accumulate a large enough total downward shift that sufficiently old historical prices are pushed below zero, a level that
     obviously never actually traded. This matters because any calculation that needs the actual price
     level to be a real, positive, tradeable number — most importantly a percentage return, which divides
     by that level — becomes meaningless once the level itself is an artifact of the adjustment rather than
@@ -433,7 +435,7 @@
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
-    <li>Robert Carver, <em>Systematic Trading: A Unique New Method for Designing Trading and Investing Systems</em> (Harriman House, 2015) — a clear, practitioner-level explanation of continuous futures construction, naming and contrasting the Panama (back-adjustment) and ratio-adjustment methods and their respective tradeoffs.</li>
+    <li>Robert Carver, <em>Systematic Trading: A Unique New Method for Designing Trading and Investing Systems</em> (Harriman House, 2015) — a clear, practitioner-level treatment of the data a systematic futures backtest needs, including stitching individual contracts into a continuous series.</li>
     <li>Jack D. Schwager, <em>Schwager on Futures: Technical Analysis</em> (John Wiley &amp; Sons, 1996) — an early, widely-read treatment of the practical problems continuous/back-adjusted futures contracts create, including the negative-price and percentage-return-distortion issues discussed in this lesson.</li>
     <li>Perry J. Kaufman, <em>Trading Systems and Methods</em> (Wiley, 5th ed., 2013) — covers back-adjustment and continuous contract construction as a standard prerequisite for building and testing any futures trading system.</li>
   </ul>

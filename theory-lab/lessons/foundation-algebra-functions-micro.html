@@ -154,8 +154,8 @@
             <line x1="320" y1="15" x2="320" y2="205" style="stroke:var(--border2);stroke-width:1"/>
             <path style="fill:none;stroke:var(--purple);stroke-width:2" d="M110,190 L150,145 L190,105 L230,72 L270,47 L320,30 L370,47 L410,72 L450,105 L490,145 L530,190"/>
             <text x="500" y="55" text-anchor="middle" style="fill:var(--purple);font-size:11px">curve — slope always changing</text>
-            <line id="fam2-line" x1="70" y1="168" x2="570" y2="168" style="stroke:var(--blue);stroke-width:2.5"/>
-            <circle id="fam2-dot" cx="320" cy="168" r="5" style="fill:var(--blue)"/>
+            <line id="fam2-line" x1="70" y1="169" x2="570" y2="169" style="stroke:var(--blue);stroke-width:2.5"/>
+            <circle id="fam2-dot" cx="320" cy="169" r="5" style="fill:var(--blue)"/>
             <text x="575" y="164" text-anchor="start" style="fill:var(--blue);font-size:11px" id="fam2-label">line — one fixed slope</text>
           </svg>
         </div>
@@ -400,7 +400,7 @@
     var line = document.getElementById('fam2-line');
     var dot = document.getElementById('fam2-dot');
     var label = document.getElementById('fam2-label');
-    var X0 = 320, PX_PER_UNIT = 36, Y0 = 168;
+    var X0 = 320, PX_PER_UNIT = 36, Y0 = 169; // x-axis at pixel 205, so intercept c = 1
     function update(){
       var m = parseInt(slider.value, 10) / 100;
       mVal.textContent = 'm = ' + m.toFixed(2);
@@ -408,7 +408,7 @@
       line.setAttribute('y1', Y0 - m * xLeft * PX_PER_UNIT);
       line.setAttribute('y2', Y0 - m * xRight * PX_PER_UNIT);
       dot.setAttribute('cy', Y0);
-      label.textContent = m === 0 ? 'line — one fixed slope' : ('y = ' + m.toFixed(2) + 'x');
+      label.textContent = m === 0 ? 'line — one fixed slope' : ('y = ' + m.toFixed(2) + 'x + 1');
     }
     slider.addEventListener('input', update);
     update();

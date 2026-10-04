@@ -35,7 +35,7 @@
     <li>This file's own worked numbers: with \(V_H=101\), \(V_L=99\), a spread of 0.60 at \(\alpha=0.3\) doubles to 1.20 at \(\alpha=0.6\), exactly tracking the formula, with the midpoint pinned at 100.00 both times.</li>
     <li>Kyle's Lambda extends the same logic to order size: \(\Delta p=\lambda Q\) with \(\lambda=\sigma_v/(2\sigma_u)\); the worked example runs the same 500-unit order through \(\sigma_u=100\) (liquid, \(\lambda=0.01\), $5 impact) versus \(\sigma_u=20\) (thin, \(\lambda=0.05\), $25 impact) — a five-fold cost difference from liquidity alone.</li>
 <!-- DESK:START -->
-    <li>Both models are the formal "why" behind this repo's fill discipline — the spread every backtest pays is the adverse-selection premium of section 3, and the extra slippage modeled on stop/breakout entries is a high-\(\lambda\) event — connecting directly to this project's own empirical test of whether reported edge survives progressively more realistic fills.</li>
+    <li>Both models are the formal "why" behind this repo's fill discipline — the spread every backtest pays is the adverse-selection premium of section 3, and the extra slippage the house rule asks for on stop/breakout entries is a high-\(\lambda\) event (the backtester, bot/backtest.py, currently charges that slippage flat on every trade, because the journal does not record entry type) — connecting directly to this project's own empirical test of whether reported edge survives progressively more realistic fills.</li>
 <!-- DESK:END -->
     <li><strong>Real-world episode:</strong> the 6 May 2010 Flash Crash. When liquidity providers could no longer tell why prices were falling, they did what Glosten-Milgrom says a market maker must when \(\alpha\) jumps: they widened to the edge or left. \(\sigma_u\) collapsed, \(\lambda\) became enormous for a few minutes, and some stocks traded at a penny.<!-- DESK:START --> The desk's verdict on the spread as a real cost is <strong>Validated</strong> (<code>execution-gate</code>): above spread/ATR 0.15, zero of 30 strategy × timeframe cells were profitable.<!-- DESK:END --></li>
   </ul>
@@ -51,6 +51,9 @@
     default... plus slippage on stop/breakout entries. Free fills are not
     honest," and a standing anti-pattern warns against "assuming the intrabar
     take-profit was hit on a daily bar (path is unknown) — prefer M1 fills."
+    In code, bot/backtest.py's apply_costs() charges that slippage on every
+    replayed trade, not only stop/breakout entries, because the journal records
+    carry no entry-type field; the code calls this the conservative choice.
     This project's own fill-realism research goes further and empirically tests whether
     a strategy's headline Sharpe survives being re-priced through
     progressively more realistic, finer-grained fills. All of that is sound
@@ -754,7 +757,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Kyle's Lambda formalizes why size and depth both matter.</strong> \(\Delta p=\lambda Q\) with \(\lambda=\sigma_v/(2\sigma_u)\) says price impact scales with order size, and the rate it scales at depends on how much noise-trading depth is available to absorb it.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Thin markets mean high \(\lambda\), and high \(\lambda\) means the same order costs more.</strong> A 500-unit order that costs \$5 of impact in a deep market can cost \$25 in a market with a fifth the noise-trading depth — nothing about the order changed, only the depth it landed in.</span></div>
 <!-- DESK:START -->
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This is the theoretical "why" behind this repo's cost/fill-realism discipline.</strong> The round-trip spread every backtest pays is, in theory, the adverse-selection premium of Glosten-Milgrom; the extra slippage modeled on stop/breakout entries is a high-\(\lambda\) event — this project's own house rules and existing fill-realism research were already correct, this lesson just supplies the citation.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This is the theoretical "why" behind this repo's cost/fill-realism discipline.</strong> The round-trip spread every backtest pays is, in theory, the adverse-selection premium of Glosten-Milgrom; the extra slippage the house rule asks for on stop/breakout entries is a high-\(\lambda\) event (bot/backtest.py currently charges it on every trade, a conservative superset) — this project's own house rules and existing fill-realism research were already correct, this lesson just supplies the citation.</span></div>
 <!-- DESK:END -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>\(\lambda\) is not a fixed constant of an instrument.</strong> It depends on time-varying fundamental uncertainty and time-varying noise-trading depth — the same pair has a low \(\lambda\) at London/NY overlap and a high \(\lambda\) at a thin session transition. A single "typical slippage" number applied at every hour throws that away.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Price impact is not purely linear or purely permanent in reality.</strong> Kyle's straight-line \(\Delta p=\lambda Q\) is a tractable first-order approximation; empirical impact grows sub-linearly at large size (closer to a square-root law), and real trades also carry temporary impact that partially reverts, on top of the model's permanent component.</span></div>
@@ -865,8 +868,10 @@
       information-driven). So the same order size that would be cheap during
       calm, orderly trading costs more exactly at the instant a stop or
       breakout order triggers — which is exactly why the repo's fill
-      discipline singles those entry types out for extra slippage rather than
-      applying a flat cost model uniformly to every order type.
+      discipline singles those entry types out for extra slippage. (In practice
+      bot/backtest.py cannot tell entry types apart in its journal replay, so it
+      charges the slippage on every trade, which over-charges the other entries
+      rather than under-charging the risky ones.)
     </div>
   </details>
 <!-- DESK:END -->

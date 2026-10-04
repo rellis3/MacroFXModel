@@ -17,7 +17,7 @@
   <h1 class="tl-title">Cointegration &amp; Statistical Arbitrage</h1>
   <p class="tl-dek">Two series can drift together for years with a 95% correlation and still have no stable relationship at all — cointegration is the specific, testable condition that tells you whether a spread has a home to come back to, or is just two random walks that happened to lean the same way.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not yet tested in this repo<!-- DESK:END --></span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — an Engle-Granger screen exists in this repo; no result scored yet<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Ornstein-Uhlenbeck &amp; Mean Reversion</span>
   </div>
@@ -37,7 +37,7 @@
       <li>Regressing one non-stationary price series on another in levels can produce a striking R² even when the two are completely unrelated random walks (Granger &amp; Newbold's spurious-regression result) — a high R² alone proves nothing.</li>
       <li>The Engle-Granger two-step method fixes this: regress the levels to get a hedge ratio β (Step 1), then run an ADF test — with stricter Engle-Granger/MacKinnon critical values, not plain Dickey-Fuller — on the residual spread to check it's actually stationary (Step 2).</li>
       <li>Johansen's test generalizes this to a basket of three or more series at once, avoiding Engle-Granger's arbitrary Y-vs-X choice and finding how many independent cointegrating relationships exist simultaneously.</li>
-      <li>The worked AUD/USD-vs-NZD/USD example shows the same high Step-1 R² can hide either a real mean-reverting spread or a spurious one — only the Step-2 ADF test tells them apart<!-- DESK:START -->; this project's own pair-ranking tooling currently ranks pairs on return correlation, not a levels cointegration test<!-- DESK:END -->.</li>
+      <li>The worked AUD/USD-vs-NZD/USD example shows the same high Step-1 R² can hide either a real mean-reverting spread or a spurious one — only the Step-2 ADF test tells them apart<!-- DESK:START -->; this repo's pairs backtester (portfolioBacktest/portfolio_backtest.py) already screens pairs with an Engle-Granger test, but no cointegration-pairs result has been scored on the desk ledger<!-- DESK:END -->.</li>
       <li><strong>Real-world episode:</strong> LTCM in 1998. Its convergence trades (on-the-run vs off-the-run Treasuries and more) had genuine economic leashes, but after Russia's default the spreads stretched far beyond their history while the fund was levered about 25:1. A Fed-brokered $3.6bn takeover by 14 firms followed.<!-- DESK:START --> This desk's own residual-fade test on FX was null (<code>residual-reversion-fx</code>).<!-- DESK:END --></li>
     </ul>
   </div>
@@ -65,7 +65,7 @@
     equilibrium relationship that reasserts itself." It is the mathematical
     backbone of pairs trading<!-- DESK:START --> and, more broadly, of every claim in this repo's
     own notes that a cross-asset spread is tradeable as mean reversion rather
-    than just narratively appealing<!-- DESK:END -->. The previous lesson on
+    than just narratively appealing<!-- DESK:END -->. The lesson on
     Ornstein-Uhlenbeck mean reversion described how to model and trade a
     single stationary, mean-reverting series once you have one. This lesson
     is about the step before that: how do you know two non-stationary price
@@ -190,7 +190,7 @@
     \(X_t = \phi X_{t-1} + \epsilon_t\). If \(|\phi| < 1\), shocks decay away
     over time and the series is stationary — it has a fixed mean it keeps
     returning to (this is the AR(1) case underlying the Ornstein-Uhlenbeck
-    process from the previous lesson). If \(\phi = 1\) exactly, you get the
+    process from the Ornstein-Uhlenbeck lesson). If \(\phi = 1\) exactly, you get the
     random walk above: shocks never decay, they accumulate forever. The name
     <strong>"unit root"</strong> comes from writing the model as
     \((1 - \phi L)X_t = \epsilon_t\) (where \(L\) is the lag operator,
@@ -211,7 +211,7 @@
   <p><strong>3. Spurious regression — Granger &amp; Newbold (1974).</strong>
   Ordinary least squares (OLS) regression, and the classical machinery
   built on top of it (R², t-statistics, p-values), assumes the variables
-  involved are stationary. Granger and Clive Newbold showed, first by
+  involved are stationary. Clive Granger and Paul Newbold showed, first by
   simulation and later formalized rigorously by Peter Phillips (1986), what
   happens when you ignore that and regress one <em>independent, unrelated</em>
   random walk on another in levels: you very often get a
@@ -314,8 +314,8 @@
     This looks exactly like the setup Granger &amp; Newbold warned about in
     point 3 — and by itself, it is just as vulnerable to a spuriously high
     R². The crucial move Engle and Granger made is <em>not</em> trusting
-    this regression's R² or t-statistics at all. Instead they proved a
-    separate, useful fact: <em>if</em> \(X_t\) and \(Y_t\) genuinely are
+    this regression's R² or t-statistics at all. Instead they relied on a
+    separate, useful fact (proved by James Stock, 1987): <em>if</em> \(X_t\) and \(Y_t\) genuinely are
     cointegrated, OLS applied this way is <strong>"super-consistent"</strong>
     — the estimate \(\hat\beta\) converges to the true cointegrating
     coefficient unusually fast (at rate \(T\), the sample size, rather than
@@ -384,7 +384,7 @@
     negative enough to reject \(H_0\)), you have real evidence that
     \(X_t\) and \(Y_t\) are cointegrated: the spread \(\hat\epsilon_t\) is
     stationary, has a genuine long-run mean, and behaves like the
-    OU-process-like mean-reverting object covered in the previous lesson —
+    OU-process-like mean-reverting object covered in the Ornstein-Uhlenbeck lesson —
     something you can z-score, put bands around, and trade with an actual
     statistical basis for expecting reversion, rather than a chart that
     happens to look mean-reverting over one convenient window.
@@ -461,7 +461,7 @@
     </p>
     <p>
       <strong>World B — cointegrated.</strong> The residual spread, instead,
-      oscillates in a visibly bounded band — it drifts a few standard
+      oscillates in a visibly bounded band — it drifts one or two standard
       deviations away from its average every few weeks and then comes back,
       repeatedly, throughout the whole two years, never establishing a new
       permanent level. The ADF statistic on \(\hat\epsilon_t\) is negative
@@ -469,9 +469,9 @@
       the unit-root null. Now the spread is a legitimate stationary,
       mean-reverting object — you could take its rolling mean and standard
       deviation, form a z-score, and treat it with exactly the OU-process
-      toolkit from the previous lesson: enter when \(|z|\) exceeds some
-      threshold betting on reversion toward zero, size the trade using the
-      spread's estimated half-life, exit near the mean.
+      toolkit from the Ornstein-Uhlenbeck lesson: enter when \(|z|\) exceeds some
+      threshold betting on reversion toward zero, set the expected holding
+      period from the spread's estimated half-life, exit near the mean.
     </p>
     <p>
       The point of walking through both outcomes is that <strong>you cannot
@@ -587,7 +587,7 @@
       'wandering off on its own like an independent random walk. That’s the ' +
       'spurious case: a plausible-looking combination with no equilibrium ' +
       'actually pulling it back, exactly what an Engle-Granger test on the ' +
-      'residual would reject as a unit root.';
+      'residual would fail to reject (it keeps the unit-root null).';
 
     var spreadLine = document.getElementById('coint-spread-line');
     var caption = document.getElementById('coint-caption-detail');
@@ -717,7 +717,7 @@
     <div class="tl-icard">
       <div class="tl-icon-badge green">📦</div>
       <h4>Index / ETF arbitrage</h4>
-      <p>The cointegrating relationship is close to mechanically guaranteed by contract (ETF price vs. basket NAV) — the real question becomes execution speed and cost.</p>
+      <p>The cointegrating relationship is close to mechanically guaranteed (ETF price vs. basket NAV, held together by creation/redemption arbitrage) — the real question becomes execution speed and cost.</p>
     </div>
     <div class="tl-icard">
       <div class="tl-icon-badge amber">🌍</div>
@@ -748,7 +748,7 @@
   <p>
     <strong>Index arbitrage and ETF/underlying spreads</strong> use the same
     logic where the cointegrating relationship is close to mechanically
-    guaranteed (an ETF's price is contractually tied to its basket's NAV),
+    guaranteed (an ETF's price is tied to its basket's NAV by the creation/redemption arbitrage of authorized participants),
     making the "is it really cointegrated" question closer to a formality —
     the interesting part becomes the speed and cost of executing the
     arbitrage before it closes on its own, not whether the relationship is
@@ -849,7 +849,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A high Step-1 R² proves nothing on its own.</strong> Only the Step-2 ADF test on the residual actually discriminates a real equilibrium relationship from two series that merely trended together over one convenient window.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Passing a cointegration test is not itself a trading edge.</strong> It only clears the first bar — a real statistical relationship — and still needs <!-- DESK:START -->this repo's <!-- DESK:END -->full honest-harness discipline (real costs, true OOS split, ≥30 trades) before being treated as validated.</span></div>
     <!-- DESK:START -->
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo's own notes already flag the gap.</strong> this project's existing pair-ranking and lead-lag tooling all currently work from return correlation or lead-lag, not a levels cointegration test — a named, not-yet-built extension.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The machinery exists here; a scored result does not.</strong> This repo's pairs backtester (portfolioBacktest/portfolio_backtest.py) screens pairs with statsmodels' Engle-Granger <code>coint</code> test, but no cointegration-pairs result has been scored on the desk ledger.</span></div>
     <!-- DESK:END -->
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A cointegrated spread is bounded in the long run, not over your funding horizon.</strong> LTCM's 1998 convergence trades had real economic leashes and still stretched far enough to end the fund.<!-- DESK:START --> On this desk, fading a levels-regression residual on FX was null (residual-reversion-fx: 1/6 instruments, mean hit rate 0.485).<!-- DESK:END --></span></div>
   </div>

@@ -70,7 +70,7 @@
     <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The key insight — theta pays for gamma</h2>
-      <p class="sl-sub">Strip a delta-hedged position down: no net delta to finance, and the rC term is small next to the convexity term for a reasonably-dated option. What's left:</p>
+      <p class="sl-sub">Strip a delta-hedged position down: the financing terms combine into r(C − ΔS) — for a call exactly −rKe⁻ʳᵗN(d₂) — which is small next to the convexity term for a short-dated option at modest rates. What's left:</p>
       <div class="sl-row"><div class="sl-box amber" style="font-size:19px">Θ ≈ −½σ²S²Γ</div></div>
       <p class="sl-p">A delta-hedged, long-gamma position bleeds theta at a rate <strong>directly proportional to its own gamma</strong> — not a coincidence, but the PDE forcing them to move together. That bleed is the fair price of convexity. The mirror-image dealer who sold the option is short gamma and, by the same equation with the opposite sign, long theta: they collect exactly what the long-gamma side pays.</p>
       <div class="sl-compare">
@@ -112,7 +112,7 @@
         <input type="range" class="sl-slider" id="theta-dte-slider" min="1" max="90" step="1" value="90">
         <div class="sl-calc-steps">
           <div>τ = <b id="theta-t-val">0.2466</b>y</div>
-          <div>ATM Θ ≈ $<b id="theta-theta-val">-0.0210</b> per day</div>
+          <div>ATM Θ ≈ $<b id="theta-theta-val">-0.0246</b> per day</div>
         </div>
         <div class="sl-note">The exact same 1/√τ acceleration shown for gamma in the previous lesson — theta's daily bleed roughly doubles from 30→7 DTE, then jumps again into the final day. Not a smooth, linear decline.</div>
       </div>
@@ -132,7 +132,7 @@
           <p>Θ ≈ −29.80/year → <strong>−$0.0816/day</strong> — roughly <strong>2.0×</strong> the 30-day rate.</p>
         </div>
       </div>
-      <div class="sl-row" style="margin-top:14px"><div class="sl-box red">1 DTE: Θ ≈ −77.22/year → −$0.2116/day</div></div>
+      <div class="sl-row" style="margin-top:14px"><div class="sl-box red">1 DTE: Θ ≈ −77.21/year → −$0.2115/day</div></div>
       <p class="sl-p">Another roughly <strong>2.6×</strong> jump from the 7-day rate, and about <strong>5.2×</strong> the 30-day rate — the same accelerating, non-linear shape the Gamma Exposure lesson found for gamma itself (there: roughly 2.1× then 2.6×, going 30→7→1 DTE). The two aren't just similarly shaped by coincidence — they're forced to be, by the identity on the next slide.</p>
     </section>
 
@@ -145,13 +145,13 @@
         <div class="sl-calc-steps" style="font-size:13px">
           <div>DTE 30 — Γ = 0.0696 → −200×Γ = <b>−13.92</b> vs. full closed-form <b>−14.89</b> (residual ≈ −1.0)</div>
           <div>DTE 7 — Γ = 0.1440 → −200×Γ = <b>−28.80</b> vs. full closed-form <b>−29.80</b> (residual ≈ −1.0)</div>
-          <div>DTE 1 — Γ = 0.3811 → −200×Γ = <b>−76.22</b> vs. full closed-form <b>−77.22</b> (residual ≈ −1.0)</div>
+          <div>DTE 1 — Γ = 0.3811 → −200×Γ = <b>−76.22</b> vs. full closed-form <b>−77.21</b> (residual ≈ −1.0)</div>
         </div>
       </div>
-      <p class="sl-p">The delta-hedged approximation reproduces the full closed-form theta almost exactly at every expiry, with a near-constant residual of about −$1.00/year — precisely the small financing term (rC − rSΔ) the key insight set aside for intuition. Not a coincidence baked into round numbers; it's the PDE identity doing exactly what it says.</p>
+      <p class="sl-p">The delta-hedged approximation reproduces the full closed-form theta almost exactly at every expiry, with a near-constant residual of about −$1.00/year — precisely the small financing term (rC − rSΔ) the key insight set aside for intuition. The convexity match is not a coincidence of round numbers: ½σ²S²Γ equals the closed form's first term identically.</p>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Why the residual doesn't shrink too</div>
-        <p>The residual is dominated by rC, the risk-free rate times the option's own value. With r = σ²/2 in these round numbers, N(d₂) stays fixed at 0.5 at every τ, keeping the financing term's shape stable across these particular expiries even as the convexity term changes by more than 5× — a feature of this parameter choice, not a claim the residual is always constant.</p>
+        <p>The residual is rC − rSΔ, which for a call is exactly −rKe⁻ʳᵗN(d₂): interest on the cash borrowed to hold the Δ-share hedge. With r = σ²/2 in these round numbers, N(d₂) stays fixed at 0.5 at every τ, keeping the financing term's shape stable across these particular expiries even as the convexity term changes by more than 5× — a feature of this parameter choice, not a claim the residual is always constant.</p>
       </div>
     </section>
 
@@ -194,8 +194,8 @@
           <div class="sl-verdict">This is a genuine market-practice detail worth knowing exists — but it is a <strong>convention, not a single universal rule</strong>. Different desks and platforms handle it differently. Treat it as "be aware this exists and can differ," not a formula to memorize.</div>
         </div>
         <div class="sl-panel" id="conv-2">
-          <p class="sl-p" style="margin-top:0">A calendar spread sells a near-dated option and buys a longer-dated option at the <em>same</em> strike. Both legs have similar delta and gamma near the money, but the near leg's smaller τ gives it a much larger 1/√τ — so it decays faster in dollar terms than the far leg.</p>
-          <div class="sl-verdict">As long as the underlying stays reasonably close to the strike, the position's net theta is positive — collecting the acceleration differential between the two legs, not a directional bet. The main risk: a big enough move away from the strike hurts the near leg's relative gamma disadvantage more than the collected theta compensates for — the same gamma-theta tradeoff, expressed across two expiries instead of one option.</div>
+          <p class="sl-p" style="margin-top:0">A calendar spread sells a near-dated option and buys a longer-dated option at the <em>same</em> strike. Both legs have similar delta near the money, but the near leg's smaller τ gives it a much larger 1/√τ — more gamma and more theta — so it decays faster in dollar terms than the far leg.</p>
+          <div class="sl-verdict">As long as the underlying stays reasonably close to the strike, the position's net theta is positive — collecting the acceleration differential between the two legs, not a directional bet. The main risk: the spread is net short gamma (the short near leg carries more gamma), so a big enough move away from the strike costs more than the collected theta compensates for — the same gamma-theta tradeoff, expressed across two expiries instead of one option.</div>
         </div>
       </div>
     </section>
@@ -209,14 +209,14 @@
       <div class="sl-compare">
         <div class="sl-ccard red">
           <span class="sl-ctag red">DealerGEX &lt; 0</span>
-          <p>Dealers short gamma (the standard case) forces ThetaExp &gt; 0.</p>
+          <p>Dealers short gamma (e.g. put-heavy strikes) forces ThetaExp &gt; 0.</p>
         </div>
         <div class="sl-ccard green">
           <span class="sl-ctag green">→ ThetaExp &gt; 0</span>
           <p>Dealers long theta. "Short gamma" and "long theta" are the same PDE fact, read off ∂²V/∂S² versus ∂V/∂t — not two separate empirical claims.</p>
         </div>
       </div>
-      <div class="sl-quote">Applying this to the previous lesson's toy three-strike book (σ = 20%, TotalDealerGEX ≈ −$18.51B at one week to expiry): TotalThetaExp ≈ −50(0.20)² × (−$18.51B) = <strong>+$37.02B</strong> per year, illustrative. The dealer book short $18.51B of GEX is, at the same instant, long roughly $37.02B of aggregate theta exposure.</div>
+      <div class="sl-quote">Applying this to the previous lesson's toy three-strike book (σ = 20%, TotalDealerGEX ≈ −$0.92M at one week to expiry, standard convention): TotalThetaExp ≈ −50(0.20)² × (−$0.92M) ≈ <strong>+$1.85M</strong> per year, illustrative. The dealer book short $0.92M of GEX is, at the same instant, long roughly $1.85M of aggregate theta exposure.</div>
     </section>
 
     <section class="sl-slide" data-slide="11">
@@ -323,7 +323,7 @@
 
       <div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
-        <h4>Why does "dealers are typically short gamma" force "dealers are typically long theta," rather than these being two separate observations?</h4>
+        <h4>Why does "dealers are short gamma" force "dealers are long theta," rather than these being two separate observations?</h4>
         <button class="sl-quiz-opt" data-correct="true">ThetaExp ≈ −50σ²×DealerGEX, and −50σ² is always strictly negative — so the two signs are always opposite by algebra, not by coincidence</button>
         <button class="sl-quiz-opt">They're unrelated facts that happen to correlate historically</button>
         <button class="sl-quiz-opt">Theta only turns positive when gamma is exactly zero</button>
@@ -339,7 +339,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The gamma-theta identity is the practical core: for a delta-hedged position, Θ ≈ −½σ²S²Γ — theta is the fair rent for convexity, settled by realized vs. implied volatility.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Theta accelerates near expiry via the same 1/√τ term as gamma — the worked example showed the daily rate roughly doubling from 30→7 DTE, then accelerating again into the final day.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Calendar spreads harvest that acceleration differential directly — selling the faster-decaying near leg against a longer-dated leg at the same strike is a structural theta trade.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Short gamma and long theta are the same fact: ThetaExp_k ≈ −50σ²×DealerGEX_k — the sign always flips, so "dealers usually short gamma" forces "dealers usually long theta" by the same PDE.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Short gamma and long theta are the same fact: ThetaExp_k ≈ −50σ²×DealerGEX_k — the sign always flips, so "dealers short gamma" forces "dealers long theta" by the same PDE.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Weekend theta handling is a practitioner convention, not a universal rule — different desks smooth it differently around the two non-trading days.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>November 2018: short natural gas calls sold "for income" were wiped out by a one-day jump; theta comes in small steps, gamma is paid all at once.<!-- DESK:START --> Desk verdict (iv-over-rv-wider, validated): rich implied-over-realised is followed by WIDER markets. Short-premium P&amp;L itself is untested.<!-- DESK:END --></p></div>
       </div>

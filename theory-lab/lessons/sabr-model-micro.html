@@ -75,7 +75,7 @@
       <h2 class="sl-h2">Four parameters, four separate jobs</h2>
       <p class="sl-sub">Not four interchangeable dials on the same knob — each governs a geometrically distinct feature of the smile.</p>
       <div class="sl-icard-grid">
-        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>α — level</h4><p>Sets the smile's overall height, roughly the at-the-money implied vol. Raise α and the whole smile shifts up in parallel — the same job σ plays in Black-Scholes.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>α — level</h4><p>Sets the smile's overall height, roughly the at-the-money implied vol (with β = 1). Raise α and the whole smile shifts up in parallel — the same job σ plays in Black-Scholes.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🦴</div><div><h4>β — backbone</h4><p>Controls how volatility scales with the forward's own level — not today's smile shape, but how the whole ATM level would shift if the forward moved. Usually fixed by convention.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>ρ — skew</h4><p>Sets the sign and strength of the smile's asymmetry. Negative ρ tilts low strikes (puts) richer than high strikes (calls) — the shape common in FX risk-off and equity markets.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🌊</div><div><h4>ν — curvature</h4><p>Controls how U-shaped the smile is around the money. Low ν stays nearly flat; high ν fattens both wings symmetrically, largely independent of skew.</p></div></div>
@@ -176,7 +176,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>(FK)^((1−β)/2)</h4><p>A moneyness scaling factor that collapses to exactly 1 when β = 1 — one reason β = 1 is a convenient simplifying convention.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">z</div><div><h4>z = (ν/α)·(FK)^((1−β)/2)·ln(F/K)</h4><p>Carries ν's effect into the formula. Vanishes exactly at K = F, where log-moneyness ln(F/K) is zero.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">x</div><div><h4>x(z), built from ρ</h4><p>z ⁄ x(z) → 1 exactly at the money, and is the ratio primarily responsible for the smile's shape away from it.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">T</div><div><h4>[1 + (…) T]</h4><p>The ρ/ν-dependent correction, scaled by time to expiry — flatter for short-dated options, more pronounced for long-dated ones.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">T</div><div><h4>[1 + (…) T]</h4><p>A small correction, every term scaled by time to expiry — it shrinks toward 1 for short-dated options and matters more for long-dated ones. The off-the-money shape itself comes from z/x(z), which has no T in it.</p></div></div>
       </div>
       <p class="sl-p">Set K = F and the general formula collapses to an at-the-money case: <strong>σ<sub>ATM</sub> ≈ (α ÷ F^(1−β)) × [1 + (…) T]</strong>. With β fixed by convention, that leaves exactly three unknowns — α, ρ, ν — matched against the three quotes an FX desk already watches: the ATM vol, the 25-delta risk reversal (skew), and the 25-delta butterfly (curvature). Three unknowns, three constraints, one fast, well-posed fit.</p>
     </section>
@@ -223,7 +223,7 @@
             <li>Closed-form Hagan approximation — pure algebra, essentially free to evaluate</li>
             <li>α, ρ, ν fit in a small, fast root-find (β fixed by convention)</li>
             <li>No mean reversion in its own volatility process — a deliberate simplification</li>
-            <li>Industry-standard tool for quoting and interpolating FX and rates smiles, refit continuously</li>
+            <li>Standard tool for quoting and interpolating rates smiles, widely used for FX, refit continuously</li>
           </ul>
         </div>
         <div class="sl-ccard neutral">
@@ -236,7 +236,7 @@
           </ul>
         </div>
       </div>
-      <div class="sl-quote">Neither wins in the abstract. Heston gets the risk-neutral dynamics right at the cost of a slow, numerical calibration. SABR trades away some of that dynamical rigor for a formula fast enough to refit continuously against a live, moving market.</div>
+      <div class="sl-quote">Neither wins in the abstract. Heston gives one consistent set of dynamics across every expiry at the cost of a slow, numerical calibration. SABR, usually fitted expiry by expiry, trades away that consistency for a formula fast enough to refit continuously against a live, moving market.</div>
     </section>
 
     <section class="sl-slide" data-slide="11">
@@ -254,7 +254,7 @@
         </div>
         <div class="sl-note">Re-solved again, and again, every time spot ticks — because each evaluation is pure algebra, not a Fourier inversion. That's the entire practical difference this lesson is about.</div>
       </div>
-      <p class="sl-p">FX and rates options markets don't trade a continuous strike ladder — only a handful of standard, liquid points (the at-the-money straddle, the 25-delta risk reversal, the 25-delta butterfly). Everything else a client asks for has to be interpolated or extrapolated in a way that doesn't introduce arbitrage. SABR, fit to those liquid points, is the industry's default tool for producing that full curve — precisely because refitting it is cheap enough to run continuously rather than once a day.</p>
+      <p class="sl-p">FX and rates options markets don't trade a continuous strike ladder — only a handful of standard, liquid points (the at-the-money straddle, the 25-delta risk reversal, the 25-delta butterfly). Everything else a client asks for has to be interpolated or extrapolated in a way that doesn't introduce arbitrage. SABR, fit to those liquid points, is the rates market's default tool, and a common FX one, for producing that full curve — precisely because refitting it is cheap enough to run continuously rather than once a day.</p>
     </section>
 
     <section class="sl-slide" data-slide="12">

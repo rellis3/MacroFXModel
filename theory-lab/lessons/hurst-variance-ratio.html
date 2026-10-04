@@ -36,7 +36,7 @@
       <li>R/S analysis estimates the Hurst exponent \(H\) as the slope of \(\log(R/S)_n\) regressed on \(\log n\) — the rescaled range of a chunk's cumulative mean-deviations, measured across several window lengths.</li>
       <li>\(H\) partitions into three regimes: \(H<0.5\) is anti-persistent/mean-reverting, \(H=0.5\) is a random walk (range grows as \(\sqrt{n}\)), and \(H>0.5\) is persistent/trending.</li>
       <li>The variance ratio test (Lo &amp; MacKinlay 1988) asks the same question more rigorously: under a random walk, \(VR(q)=\operatorname{Var}(r_t^{(q)})/(q\cdot\operatorname{Var}(r_t^{(1)}))\) should equal exactly 1, and it comes with an actual standard error/z-statistic instead of an eyeballed regression slope.</li>
-      <!-- DESK:START --><li>This isn't just theory here — this project's own entry-bias logic already runs live R/S analysis (lags 2/4/8/16) as one of five entry-bias features, treating \(H&lt;0.45\) as confirming a fade and \(H&gt;0.55\) as confirming a follow, shared across its live entry logic and its backtest engine.</li><!-- DESK:END -->
+      <!-- DESK:START --><li>This isn't just theory here — this project's own entry-bias logic already runs live R/S analysis (lags 2/4/8/16) as one of five entry-bias features, treating \(H&lt;0.45\) as confirming a fade and \(H&gt;0.55\) as confirming a follow, shared across its live entry logic and its backtest engine. The server-side conviction score dropped it in July 2026, after an out-of-sample benchmark across 10 instruments found no usable predictive relationship.</li><!-- DESK:END -->
       <li>Both statistics are biased in small samples and say nothing about direction — they only license which strategy family (fade vs. follow) has a right to work right now.</li>
       <li><strong>Real-world episode:</strong> trend following's fat and lean years. Managed-futures funds finished 2008 up by double digits and had a very strong 2022 as inflation drove months of one-way moves in bonds and the dollar, but much of the 2010s was lean for the same rules.<!-- DESK:START --> This desk's FX-only trend test was null (<code>trend-following-fx</code>); what validated was persistence of tape speed, not direction (<code>tape-speed-persistence</code>).<!-- DESK:END --></li>
     </ul>
@@ -208,8 +208,8 @@
     Two historical notes worth knowing, because they explain both the name and why this shows up in finance at all.
     Harold Edwin Hurst was a British hydrologist who spent decades studying the Nile river's flood and drought records
     while working on dam design for the Aswan reservoir; he needed to know how large a reservoir had to be to smooth
-    out runs of unusually wet or dry years, and found empirically that the Nile's annual flood records had
-    \(H \approx 0.9\) — strong long-run persistence, wet years clustering with wet years — very much not a random walk,
+    out runs of unusually wet or dry years, and found empirically that the Nile's records had
+    \(H\) well above 0.5 (estimates run from about 0.7 to 0.9) — strong long-run persistence, wet years clustering with wet years — very much not a random walk,
     which had real engineering consequences for how much storage capacity a dam needed. Decades later, Benoit
     Mandelbrot picked up Hurst's rescaled-range method and applied it to financial time series as part of his broader
     argument (developed further in fractal geometry and his critique of the standard Gaussian/random-walk finance
@@ -267,12 +267,12 @@
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Log-log plot of log(n) versus log(R/S) showing three straight reference lines from a common origin at different slopes: a steep red line for H greater than 0.5, a slider-driven amber line whose slope tracks the chosen H, and a shallow blue line for H less than 0.5">
       <line x1="60" y1="20" x2="60" y2="250" style="stroke:var(--border)" />
       <line x1="60" y1="250" x2="610" y2="250" style="stroke:var(--border)" />
-      <line x1="100" y1="240" x2="220" y2="40" style="stroke:var(--red);stroke-width:2" />
+      <line x1="100" y1="240" x2="211" y2="40" style="stroke:var(--red);stroke-width:2" />
       <line id="hurst-active-line" x1="100" y1="240" x2="300" y2="40" style="stroke:var(--amber);stroke-width:2.5" />
-      <line x1="100" y1="240" x2="580" y2="40" style="stroke:var(--blue);stroke-width:2" />
-      <text x="214" y="34" font-size="12" text-anchor="end" fill="var(--red)">H &gt; 0.5 (trending)</text>
+      <line x1="100" y1="240" x2="600" y2="140" style="stroke:var(--blue);stroke-width:2" />
+      <text x="205" y="34" font-size="12" text-anchor="end" fill="var(--red)">H &gt; 0.5 (trending)</text>
       <text id="hurst-active-label" x="306" y="58" font-size="12" fill="var(--amber)">H = 0.50 (random walk)</text>
-      <text x="430" y="95" font-size="12" fill="var(--blue)">H &lt; 0.5 (mean-reverting)</text>
+      <text x="430" y="160" font-size="12" fill="var(--blue)">H &lt; 0.5 (mean-reverting)</text>
       <text x="560" y="272" font-size="12" fill="var(--text3)">log(n)</text>
       <text x="20" y="140" font-size="12" fill="var(--text3)" transform="rotate(-90 20 140)">log(R/S)</text>
     </svg>
@@ -287,8 +287,8 @@
       Because \((R/S)_n \approx c \cdot n^H\), taking logs of both sides turns the power law into a straight line —
       and the <strong>slope</strong> of that line is the Hurst exponent \(H\) itself, which is exactly why the
       log-log regression is how \(H\) gets estimated in practice. A steeper slope means a stronger trending
-      tendency, a shallower slope means stronger mean reversion, and a slope of exactly 0.5 (45° here) is
-      statistically indistinguishable from a random walk. This is a schematic of the three regimes, not a fit to
+      tendency, a shallower slope means stronger mean reversion, and a slope of exactly 0.5 (45° here, because the vertical axis is drawn at twice the horizontal scale, so every
+      drawn slope is proportional to \(H\)) is the random-walk value. The axes carry no data values: this is a schematic of the three regimes, not a fit to
       real data.
     </div>
   </div>
@@ -328,7 +328,7 @@
       example.
     </p>
     <p>
-      <strong>Step 1 — variance of 1-day returns.</strong> Sample variance (population variance, using the 10 raw
+      <strong>Step 1 — variance of 1-day returns.</strong> Variance (population formula, using the 10 raw
       values mean-centered on their mean of 0.09) is \(\operatorname{Var}(r^{(1)}) = 0.1289\) (in \(\%^2\)).
     </p>
     <p>
@@ -522,10 +522,11 @@
       of observations.
     </div>
     <ul>
-      <li><strong>R/S is biased in small samples.</strong> The classical R/S estimator is known (from simulation
-        studies going back to the 1990s, notably by Lo himself) to be biased toward finding \(H > 0.5\) even on data
-        generated by a true random walk when the sample is short, because the max-minus-min range statistic has
-        heavy-tailed small-sample behavior. A handful of windows of length 8–16, as used in a live feature computed
+      <li><strong>R/S is biased in small samples.</strong> The classical R/S estimator is known (from the
+        small-sample expected value of R/S worked out by Anis &amp; Lloyd in 1976, and simulation studies since) to be biased toward finding \(H > 0.5\) even on data
+        generated by a true random walk when the sample is short, because the expected R/S of short windows does not
+        yet follow the asymptotic \(\sqrt{n}\) law. Lo (1991) added a second problem: ordinary short-range
+        autocorrelation also inflates classical R/S. A handful of windows of length 8–16, as used in a live feature computed
         on maybe 20–60 daily bars, is exactly the small-sample regime where this bias is largest — a reading of
         \(H = 0.55\) from a short window carries much less evidence than the same number from thousands of
         observations.</li>
@@ -533,10 +534,10 @@
         Bid-ask bounce, stale/asynchronous quotes, or a single large jump inside the window can inject spurious
         autocorrelation that has nothing to do with genuine trending or mean-reverting behavior in the underlying
         price process.</li>
-      <li><strong>Overlapping windows understate the true sampling variance.</strong> A variance ratio test computed
+      <li><strong>Overlapping windows are not independent observations.</strong> A variance ratio test computed
         with overlapping <em>q</em>-day windows (common because it uses more of the data) needs the Lo–MacKinlay
-        overlapping-sample correction to its standard error — using the non-overlapping formula's standard error on
-        overlapping data will overstate statistical significance.</li>
+        overlapping-sample standard error — treating the overlapping <em>q</em>-day returns as if they were
+        independent observations will overstate statistical significance.</li>
       <li><strong>H near 0.5 does not mean "definitely a random walk."</strong> It means the sample gave no strong
         evidence against a random walk — absence of evidence, not evidence of absence, especially given the
         small-sample bias above. Likewise a single point estimate of 0.6 without a confidence interval or a
@@ -555,7 +556,7 @@
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>H is the slope of log(R/S)ₙ regressed on log n.</strong> \(H<0.5\) is anti-persistent/mean-reverting, \(H=0.5\) is a random walk, \(H>0.5\) is persistent/trending.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The variance ratio test asks the identical question more rigorously.</strong> Under a random walk \(VR(q)=1\) exactly, and Lo &amp; MacKinlay's asymptotic distribution gives you an actual standard error and z-statistic, not an eyeballed slope.</span></div>
-    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This isn't just theory here.</strong> This project's own entry-bias logic already runs live R/S analysis (lags 2/4/8/16) as one of five entry-bias features, shared across its live entry logic and its backtest engine.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This isn't just theory here.</strong> This project's own entry-bias logic already runs live R/S analysis (lags 2/4/8/16) as one of five entry-bias features, shared across its live entry logic and its backtest engine; the server-side conviction score dropped it in July 2026 after it showed no usable out-of-sample relationship.</span></div><!-- DESK:END -->
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Neither statistic predicts direction.</strong> Both only measure whether the recent path has memory that reinforces (trending) or undoes (mean-reverting) past moves — that licenses which strategy family has a right to work, not which way price goes next.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>R/S is biased toward finding H&gt;0.5 in small samples</strong> — exactly the regime a live feature computed on a few dozen daily bars sits in.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A single H or VR reading is noisy and can flip on estimation noise alone.</strong> Treat it as a decaying prior about the current regime, never a fact about the market's permanent nature.</span></div>
@@ -581,7 +582,7 @@
     <summary>Q2. Why is R/S analysis known to be biased in small samples, and what does that mean for a Hurst feature computed on a few dozen daily bars?</summary>
     <div class="tl-answer">
       The range statistic \(R(n)\) (max minus min of a cumulative walk) has a skewed, heavy-tailed small-sample
-      distribution, and simulation studies (including Lo's own 1991 work motivating the variance ratio test) show the
+      distribution, and its small-sample expected value (Anis &amp; Lloyd 1976) and later simulation studies show the
       classical R/S estimator systematically overestimates \(H\) — finds spurious persistence — even on data
       simulated from a true random walk, when the window is short. A feature computed with lags of only 2–16 bars on
       a rolling window of daily bars is squarely in this small-sample regime, so an individual reading should be
@@ -645,8 +646,8 @@
       building on Mandelbrot's earlier academic application of Hurst's method to cotton prices and other markets.</li>
     <li>Andrew W. Lo &amp; A. Craig MacKinlay, "Stock Market Prices Do Not Follow Random Walks: Evidence from a Simple
       Specification Test," <em>The Review of Financial Studies</em>, 1988 — the original variance ratio test paper.</li>
-    <li>Andrew W. Lo, "Long-Term Memory in Stock Market Prices," <em>Econometrica</em>, 1991 — the paper documenting
-      classical R/S analysis's small-sample bias and proposing a modified R/S statistic to correct for it.</li>
+    <li>Andrew W. Lo, "Long-Term Memory in Stock Market Prices," <em>Econometrica</em>, 1991 — the paper showing
+      classical R/S analysis is biased by short-range dependence and proposing a modified R/S statistic robust to it.</li>
   </ul>
   </details>
 
@@ -664,21 +665,16 @@
   var label = document.getElementById('hurst-active-label');
   if (!slider || !readout || !line || !label) return;
 
-  var originX = 100, originY = 240, topY = 40;
-  // dx (screen x-delta from the shared origin) at the three anchor points —
-  // dxBlue/dxRed match the two static reference lines' endpoints exactly, and
-  // dxMid reproduces the original 45-degree "random walk" line at H = 0.5.
-  var dxBlue = 580 - originX; // 480 — H=0.1 anchor, matches the shallow blue H<0.5 line
-  var dxMid  = 300 - originX; // 200 — H=0.5 anchor, the classic 45-degree position
-  var dxRed  = 220 - originX; // 120 — H=0.9 anchor, matches the steep red H>0.5 line
-
-  function dxForH(h) {
-    if (h <= 0.5) {
-      var t = (h - 0.1) / 0.4; // 0 at H=0.1 .. 1 at H=0.5
-      return dxBlue + (dxMid - dxBlue) * t;
-    }
-    var t2 = (h - 0.5) / 0.4; // 0 at H=0.5 .. 1 at H=0.9
-    return dxMid + (dxRed - dxMid) * t2;
+  var originX = 100, originY = 240, topY = 40, rightX = 600;
+  // Screen slope is proportional to H (2 px up per px across per unit H), so
+  // H = 0.5 is the 45-degree line and the two static reference lines are
+  // exactly H = 0.9 (red) and H = 0.1 (blue). The line stops at whichever
+  // edge of the plot it reaches first.
+  var K = 2;
+  function endForH(h) {
+    var slope = K * Math.max(h, 0.01);
+    var dx = Math.min((originY - topY) / slope, rightX - originX);
+    return { x: originX + dx, y: originY - slope * dx };
   }
 
   function regimeWord(h) {
@@ -689,12 +685,15 @@
 
   function update() {
     var h = parseInt(slider.value, 10) / 100;
-    var x2 = originX + dxForH(h);
-    var y2 = topY;
+    var end = endForH(h);
+    var x2 = end.x;
+    var y2 = end.y;
     line.setAttribute('x2', x2);
     line.setAttribute('y2', y2);
-    label.setAttribute('x', x2 + 6);
-    label.setAttribute('y', y2 + 18);
+    var nearRight = x2 > 450;
+    label.setAttribute('text-anchor', nearRight ? 'end' : 'start');
+    label.setAttribute('x', nearRight ? x2 : x2 + 6);
+    label.setAttribute('y', nearRight ? y2 - 8 : y2 + 18);
     label.textContent = 'H = ' + h.toFixed(2) + ' (' + regimeWord(h) + ')';
     readout.textContent = 'H = ' + h.toFixed(2);
   }

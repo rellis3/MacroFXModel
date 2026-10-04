@@ -172,7 +172,7 @@
       <div class="sl-compare">
         <div class="sl-ccard neutral">
           <span class="sl-ctag blue">Mean &amp; standard deviation</span>
-          <p>A single huge outlier drags the mean toward it and inflates the standard deviation — the exact yardstick used to judge "how extreme is this tick" is itself distorted by the tick being judged. The full lesson's worked example: a fat finger sitting at a real, locally enormous deviation can measure as only ~4.2 full-sample standard deviations once two years of other volatile days have widened that same standard deviation — just inside a 5σ threshold, uncaught for two years.</p>
+          <p>A single huge outlier drags the mean toward it and inflates the standard deviation — the exact yardstick used to judge "how extreme is this tick" is itself distorted by the tick being judged. The full lesson's Tokyo-lunch scenario: a fat finger sitting at a real, locally enormous deviation can measure as only ~4.2 full-sample standard deviations once two years of other volatile days have widened that same standard deviation — just inside a 5σ threshold, uncaught for two years.</p>
         </div>
         <div class="sl-ccard green">
           <span class="sl-ctag green">Rolling median &amp; MAD</span>
@@ -240,7 +240,7 @@
       <p class="sl-sub">Once something is flagged bad or absent, deciding what fills it is a separate decision from detection — and none of the three is a safe universal default.</p>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">→</div><div><h4>Forward-fill</h4><p>Repeat the last known value. Reasonable for a short gap in an illiquid instrument. Fails badly across a real event: a halt or stale stretch forward-filled manufactures a flat, zero-return period that a volatility or trend feature reads as authentic calm.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">∿</div><div><h4>Interpolation</h4><p>Draw a line between the last known-good value and the next one. Reasonable for a very short, clearly spurious single-tick gap. Fails across a longer gap: it invents a smooth path, when a halt often resumes at a sharp, discontinuous level nowhere near that average.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∿</div><div><h4>Interpolation</h4><p>Draw a line between the last known-good value and the next one. Reasonable for a very short, clearly spurious single-tick gap — though it uses the value <em>after</em> the gap, which a live system wouldn't yet have, so in a backtest it is a small lookahead. Fails across a longer gap: it invents a smooth path, when a halt often resumes at a sharp, discontinuous level nowhere near that average.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⊘</div><div><h4>Flag and exclude</h4><p>Mark the period missing and leave it out of any calculation. The most honest option — it never manufactures data. Fails if applied too liberally on routine short micro-gaps: it shrinks the usable sample for no real benefit.</p></div></div>
       </div>
       <div class="sl-callout purple">

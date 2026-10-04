@@ -37,7 +37,7 @@
       <li>The <strong>gradient</strong> stacks every partial derivative of a function into one vector, \(\nabla f\), which points in the direction the function increases fastest — the direction gradient descent (a later Numerical Methods lesson) walks in reverse to find a minimum.</li>
       <li>The <strong>Hessian</strong> stacks every <em>second</em> partial derivative into a matrix — the multivariable version of curvature, used to check whether a stationary point is a genuine minimum, a maximum, or a saddle.</li>
       <li>An option's Delta, Gamma, Theta, and Vega are not four separate special concepts — they are literally the partial derivatives of the option-value function \(V(S,t,\sigma,\dots)\) with respect to the underlying, time, and volatility, respectively.</li>
-      <li>Worked example: for \(V(S,t) = S e^{-\delta t}\) (a dividend-paying asset's forward value), \(\partial V/\partial S = e^{-\delta t}\) and \(\partial V/\partial t = -\delta S e^{-\delta t}\) — two different partial derivatives of the exact same function, holding the other variable fixed each time.</li>
+      <li>Worked example: for \(V(S,t) = S e^{-\delta t}\) (a dividend-paying asset's prepaid forward value), \(\partial V/\partial S = e^{-\delta t}\) and \(\partial V/\partial t = -\delta S e^{-\delta t}\) — two different partial derivatives of the exact same function, holding the other variable fixed each time.</li>
       <li><strong>How it reached trading:</strong> the Black–Scholes–Merton model (1973) is a partial differential equation whose hedge is a partial derivative, and options books have been run by these partials, the Greeks, ever since.</li>
     </ul>
   </div>
@@ -220,10 +220,11 @@
   <h3>A richer example: a dividend-paying asset's forward value</h3>
   <p>
     Now take a function where the two variables genuinely interact:
-    \(V(S, t) = S\, e^{-\delta t}\) — the forward (time-\(t\)) value of one
-    unit of an asset currently worth \(S\), paying a continuous dividend
-    yield \(\delta\), where lost dividends compound away the asset's forward
-    value over time. Differentiate with respect to \(S\) first, holding
+    \(V(S, t) = S\, e^{-\delta t}\) — the prepaid forward value (what you
+    pay today to receive one unit at time \(t\)) of an asset currently worth
+    \(S\), paying a continuous dividend yield \(\delta\): the dividends paid
+    before delivery are lost to you, so the longer the horizon \(t\), the
+    lower the value. Differentiate with respect to \(S\) first, holding
     \(t\) (and the constant \(\delta\)) fixed — since \(e^{-\delta t}\)
     doesn't involve \(S\) at all, it's just a fixed multiplying constant from
     \(S\)'s point of view:
@@ -246,7 +247,7 @@
   </div>
   <div class="tl-eq-break">
     <div class="tl-eq-chip c2"><code>∂V/∂t</code><span>treats S as a fixed constant multiplying a function of t</span></div>
-    <div class="tl-eq-chip c4"><code>−δSe^(−δt)</code><span>negative — the forward value decays as more dividends are given up over time</span></div>
+    <div class="tl-eq-chip c4"><code>−δSe^(−δt)</code><span>negative — the forward value falls as the horizon lengthens and more dividends are given up</span></div>
   </div>
   <p>
     Two genuinely different numbers come out of differentiating the exact
@@ -336,7 +337,9 @@
     genuine minimum, a maximum, or a saddle point — all-positive eigenvalues
     mean every direction curves upward (a minimum), all-negative means every
     direction curves downward (a maximum), and mixed signs mean a saddle:
-    curving up in some directions and down in others.
+    curving up in some directions and down in others. If any eigenvalue is
+    exactly zero (and none has the opposite sign), this second-order test is
+    inconclusive and higher-order terms decide.
   </p>
 
   <div class="tl-eli5">
@@ -442,8 +445,8 @@
             raises the forward value by about \$0.9418 (slightly less than
             dollar-for-dollar, because two more years of dividends are still
             being given up); holding the spot price fixed, each additional
-            year that passes lowers the forward value by about \$2.825, as
-            more dividend payments are foregone. Two completely different
+            year of horizon lowers the forward value by about \$2.825, as
+            one more year of dividends is foregone. Two completely different
             numbers, from differentiating the exact same function with
             respect to two different variables — the entire mechanical
             content of this lesson, worked with real numbers.
@@ -508,7 +511,7 @@
       </div>
       <div class="tl-compare-card green">
         <h4>Theta, \(\Theta = \partial V/\partial t\)</h4>
-        <p>Sensitivity to the passage of time alone — the spot price, volatility, and rates frozen. The exact same partial-derivative mechanics as \(\partial V/\partial t\) above, just applied to an option's value function instead of a forward value.</p>
+        <p>Sensitivity to the passage of time alone — the spot price, volatility, and rates frozen. The exact same partial-derivative mechanics as \(\partial V/\partial t\) above, just applied to an option's value function instead of a forward value. (This sign convention takes \(t\) as calendar time; if \(t\) is time remaining to expiry, \(\Theta = -\partial V/\partial t\).)</p>
       </div>
       <div class="tl-compare-card amber">
         <h4>Vega, \(\text{Vega} = \partial V/\partial \sigma\)</h4>
@@ -670,8 +673,8 @@
       when the spot price rises, holding time fixed — an intuitive result,
       since the forward value is directly proportional to the spot price.
       \(\partial V/\partial t = -\delta S e^{-\delta t}\) carries a minus
-      sign because as more time passes, more dividend payments have been (or
-      will be) given up, which continually erodes the forward value relative
+      sign because a longer horizon means more dividend payments are given up
+      before delivery, which continually erodes the forward value relative
       to simply holding the spot price itself — holding \(S\) fixed, letting
       \(t\) grow makes the discount factor \(e^{-\delta t}\) shrink, so the
       forward value shrinks too.
@@ -701,7 +704,8 @@
       directions and downward in others). To tell these apart, check the
       Hessian matrix's eigenvalues at that point: all-positive eigenvalues
       indicate a genuine minimum (every direction curves upward), all-negative
-      indicate a maximum, and a mix of signs indicates a saddle point —
+      indicate a maximum, and a mix of signs indicates a saddle point; a zero eigenvalue
+      (with no opposite sign) leaves the test inconclusive —
       exactly the check a later Numerical Methods lesson's convex-optimization
       material formalizes.
     </div>
