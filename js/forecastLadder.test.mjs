@@ -155,7 +155,7 @@ test('Pine number extraction resolves the right rung on every row', () => {
 });
 
 // ── Event tagging ────────────────────────────────────────────────────────────
-import { detectEventTagFor, instrumentCurrencies } from './volForecast.js';
+import { detectEventTagFor, instrumentCurrencies, computeForecast } from './volForecast.js';
 
 test('a high-impact release in the pair OWN currency is not tagged quiet', () => {
   // The live regression this exists for: 2026-08-20 carried two high-impact AU
@@ -252,4 +252,24 @@ test('each weekly section uses its OWN fitted widths, not sqrt-scaled daily ones
   const num = r => +r.match(/:\s*(\d+\.?\d*)/)[1];
   assert.equal(num(hls.find(([i]) => i < i20)[1]), 4.00);
   assert.equal(num(hls.find(([i]) => i > i20)[1]), 9.00, 'monthly must come from ladder_monthly');
+});
+
+test('computeForecast: an unknown calendar (null/undefined tag) is x1.0, not the quiet-day discount', () => {
+  // Regression: computeForecast used `opts.eventTag ?? 'none'`, so the scheduler's
+  // dead-feed null — and every walk-forward replay passing eventTag:null on purpose
+  // (server.js /api/vol-forecast/backtest-range) — got the ~x0.9 quiet-day narrowing.
+  let px = 1.10, seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647) - 0.5;
+  const bars = Array.from({ length: 120 }, (_, i) => {
+    const open = px, close = px * (1 + rnd() * 0.01);
+    px = close;
+    return { time: 1700000000 + i * 86400, open, high: Math.max(open, close) * 1.003,
+             low: Math.min(open, close) * 0.997, close };
+  });
+  const tagOf = tag => computeForecast(bars, 'fx', 1.0, { instrument: 'EURUSD', eventTag: tag }).ladder;
+  const unknown = tagOf(null), omitted = tagOf(undefined), quiet = tagOf('none');
+  assert.equal(unknown.event_mult, 1, 'null tag must not scale sigma');
+  assert.equal(omitted.event_mult, 1, 'omitted tag must not scale sigma');
+  assert.ok(quiet.event_mult < 1, "an explicit 'none' still earns its discount");
+  assert.ok(unknown.hl.p50 > quiet.hl.p50, 'unknown-calendar bands are wider than quiet-day bands');
 });
