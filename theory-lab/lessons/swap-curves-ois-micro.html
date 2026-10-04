@@ -193,7 +193,7 @@
           </ul>
         </div>
         <div class="sl-ccard green">
-          <span class="sl-ctag green">OIS / SOFR — secured, overnight, near risk-free</span>
+          <span class="sl-ctag green">OIS / SOFR — overnight (SOFR also secured), near risk-free</span>
           <ul>
             <li>References an overnight rate compounded over the period</li>
             <li>SOFR is collateralized by Treasury repo — secured, not a bank's word</li>
@@ -216,15 +216,15 @@
         <div class="sl-card-label"><i></i>Try it</div>
         <div class="sl-tabs" id="world-tabs">
           <button class="sl-tab active" data-panel="world-1">LIBOR-based world</button>
-          <button class="sl-tab" data-panel="world-2">SOFR-based world</button>
+          <button class="sl-tab" data-panel="world-2">OIS-discounting world</button>
         </div>
         <div class="sl-panel active" id="world-1">
           <div class="sl-row"><div class="sl-box amber">LIBOR</div><div class="sl-arrow">discounts AND forecasts</div><div class="sl-box amber">one curve</div></div>
-          <div class="sl-verdict">Pre-2008, one curve did double duty: LIBOR both discounted cashflows to present value <strong>and</strong> forecast the floating leg's future resets — a convenient coincidence that held only because trades were largely uncollateralized, so LIBOR was a reasonable stand-in for the discount rate too.</div>
+          <div class="sl-verdict">Pre-2008, one curve did double duty: LIBOR both discounted cashflows to present value <strong>and</strong> forecast the floating leg's future resets — a convenient coincidence that held because LIBOR sat only a few basis points above overnight rates, so it was a reasonable stand-in for the discount rate too.</div>
         </div>
         <div class="sl-panel" id="world-2">
-          <div class="sl-row"><div class="sl-box green">OIS / SOFR</div><div class="sl-arrow">discounts</div><div class="sl-box">separate SOFR-forward curve</div></div>
-          <div class="sl-verdict">Today, two separate curves do two separate jobs: an OIS curve discounts every cashflow to present value (matching the rate actually earned on posted collateral), while a distinct SOFR-derived forward curve — bootstrapped from SOFR futures and swaps — projects the floating leg's future resets. They're built from different instruments and no longer move in lockstep.</div>
+          <div class="sl-row"><div class="sl-box green">OIS / SOFR</div><div class="sl-arrow">discounts</div><div class="sl-box">separate index forward curve</div></div>
+          <div class="sl-verdict">Today, wherever the floating index differs from the collateral rate, two separate curves do two separate jobs: an OIS curve discounts every cashflow to present value (matching the rate actually earned on posted collateral), while a distinct forward curve for the index (EURIBOR in euros, LIBOR before it) projects the floating leg's future resets. They're built from different instruments and no longer move in lockstep. A USD SOFR swap under SOFR collateral is the exception: one SOFR curve, bootstrapped from SOFR futures and swaps, does both jobs.</div>
         </div>
       </div>
       <p class="sl-p">That split is what the industry calls the <strong>multi-curve framework</strong>. It only exists because the single-curve shortcut broke: once collateralized trades were discounted at OIS specifically, discounting and forecasting stopped being the same job answered by the same number.</p>
@@ -238,7 +238,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>2008 — the discounting problem</h4><p>The crisis exposed that LIBOR embeds bank credit risk — exactly the wrong thing to bake into the discount rate for a fully collateralized derivative.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🕵</div><div><h4>2012 — the manipulation scandal</h4><p>Panel banks were found manipulating their self-reported LIBOR submissions. LIBOR was an estimate with too little real transaction volume behind it to police reliably — regulators concluded it needed replacing, not patching.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>2017–2018 — SOFR is chosen and published</h4><p>The Fed-convened Alternative Reference Rates Committee selected SOFR — derived from actual, large-volume overnight Treasury repo transactions — as LIBOR's replacement. The New York Fed began publishing it in April 2018.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">📅</div><div><h4>2021–2023 — the switchover</h4><p>New swaps and loans gradually moved to SOFR through the early 2020s; most LIBOR panel rates stopped publishing at end-2021; the last USD tenors ceased entirely on 30 June 2023.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📅</div><div><h4>2021–2023 — the switchover</h4><p>New swaps and loans gradually moved to SOFR through the early 2020s; all non-USD LIBOR settings (and two USD tenors) stopped at end-2021; the USD panel ended on 30 June 2023, and the last synthetic USD settings on 30 September 2024.</p></div></div>
       </div>
       <div class="sl-quote">For a rates desk, this meant years of running two curve worlds in parallel — legacy LIBOR trades on the old curve until they matured or converted, new trades on SOFR — on top of the OIS-vs-forecast-curve split already covered.</div>
     </section>
@@ -259,7 +259,7 @@
         <div class="sl-chain-arrow">→</div>
         <div class="sl-chain-link"><b>Regulators</b>2012 settlements; 2017 end-date</div>
         <div class="sl-chain-arrow">→</div>
-        <div class="sl-chain-link end"><b>Outcome</b>SOFR replaces the survey; USD LIBOR ends June 2023</div>
+        <div class="sl-chain-link end"><b>Outcome</b>SOFR replaces the survey; USD LIBOR panel ends June 2023</div>
       </div>
     </section>
 
@@ -314,7 +314,7 @@
         <button class="sl-quiz-opt" data-correct="true">SOFR — because it's derived from actual, large-volume overnight repo transactions rather than a bank's self-reported estimate</button>
         <button class="sl-quiz-opt">The Fed Funds Rate — because it's set directly by the Federal Reserve</button>
         <button class="sl-quiz-opt">Nothing — LIBOR is still the standard reference rate today</button>
-        <div class="sl-quiz-explain">SOFR is secured, overnight, and transaction-based — it can't be gamed the way a panel of banks self-reporting an estimate could be, which is exactly what the 2012 manipulation scandal exposed about LIBOR.</div>
+        <div class="sl-quiz-explain">SOFR is secured, overnight, and transaction-based — it is far harder to game than a panel of banks self-reporting an estimate could be, which is exactly what the 2012 manipulation scandal exposed about LIBOR.</div>
       </div>
 
       <div class="sl-quiz-q" data-q="5">
@@ -334,9 +334,9 @@
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A swap exchanges fixed for floating cashflows on a notional that's never itself exchanged — only the net difference changes hands each period.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The swap rate is the par rate — the fixed K that zeroes out the swap's value at inception — and a swap curve is bootstrapped from swap rates tenor by tenor, the same way a bond curve is bootstrapped from bond prices.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Swap curves replaced government bond curves as the standard "risk-free" benchmark because a swap has no issuance, repo, or scarcity noise the way a specific bond does.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Post-2008, OIS replaced LIBOR for discounting collateralized derivatives, because LIBOR embeds bank credit risk that a secured, overnight rate essentially doesn't.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The multi-curve framework splits discounting (OIS) from forecasting floating resets (a separate SOFR-forward curve) — pre-2008 these were, in effect, one curve.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>LIBOR was retired for two separate reasons — its embedded credit risk, and a 2012 manipulation scandal — and replaced by SOFR, a transaction-based overnight rate, through a multi-year transition ending in mid-2023.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Post-2008, OIS replaced LIBOR for discounting collateralized derivatives, because LIBOR embeds bank credit risk that an overnight rate (SOFR also secured) essentially doesn't.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The multi-curve framework splits discounting (OIS) from forecasting floating resets (a separate index curve, e.g. EURIBOR) — pre-2008 these were, in effect, one curve, and for a SOFR swap under SOFR collateral they are one again.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>LIBOR was retired for two separate reasons — its embedded credit risk, and a 2012 manipulation scandal — and replaced by SOFR, a transaction-based overnight rate, through a multi-year transition: the USD panel ended in mid-2023, the last synthetic settings in September 2024.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Real-world episode: LIBOR was a survey that was lowballed in the crisis; 2012 settlements (Barclays ~$450m, UBS ~$1.5bn) led to SOFR.<!-- DESK:START --> Desk verdict, NULL: SOFR above the floor and SRF use are not stress signals (funding-stress).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
@@ -346,7 +346,7 @@
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>
         <h3>Numerical Methods: Newton-Raphson &amp; Gradient Descent</h3>
-        <p>How a computer actually solves for an unknown that has no closed form — implied volatility, a swap's par rate, or any other root a formula can't be rearranged to give you directly.</p>
+        <p>How a computer actually solves for an unknown that has no closed form — implied volatility, a bond's yield to maturity, or any other root a formula can't be rearranged to give you directly.</p>
         <div class="sl-teaser-btns">
           <a class="sl-btn" href="newton-raphson-gradient-descent-micro.html">Next lesson →</a>
           <a class="sl-btn ghost" href="swap-curves-ois.html">Read the full lesson →</a>

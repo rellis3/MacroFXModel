@@ -52,7 +52,7 @@
     almost embarrassingly simple formula for it, published by the Stanford economist John B. Taylor in 1993, that
     describes — and, remarkably often, roughly predicts — how a rate-setting committee actually behaves. It is not a
     law of physics and no central bank is bound by it, but it is close enough to how real committees think that
-    every major central bank publishes its own version, financial media quotes it during every hiking or cutting
+    the Fed publishes several versions of it, financial media quotes it during every hiking or cutting
     cycle, and trading desks recompute it the moment a CPI or GDP print lands.
   </p>
 <!-- DESK:START -->  <p>
@@ -134,7 +134,7 @@
     <tr><td>\(i\)</td><td>The <strong>policy rate</strong> the rule prescribes — the short-term nominal interest rate a central bank should set (e.g. the Fed funds rate, the ECB deposit rate). This is the rule's single output.</td></tr>
     <tr><td>\(r^{*}\)</td><td>The <strong>neutral (equilibrium) real rate</strong> — the short-term real interest rate consistent with the economy running at full employment/potential with stable inflation, once any transitory shocks have faded. It is not directly observable; it is estimated (e.g. via Laubach-Williams-style models) and moves slowly over time as the economy's long-run growth potential shifts. Taylor's original paper simply assumed \(r^{*}=2\%\).</td></tr>
     <tr><td>\(\pi\)</td><td>The <strong>current (realized) inflation rate</strong> — Taylor used the GDP deflator over the trailing four quarters; modern trackers commonly substitute headline or core CPI/PCE.</td></tr>
-    <tr><td>\(\pi^{*}\)</td><td>The <strong>inflation target</strong> — the central bank's explicit (or, historically, implicit) target, e.g. the Fed's 2% average PCE inflation objective.</td></tr>
+    <tr><td>\(\pi^{*}\)</td><td>The <strong>inflation target</strong> — the central bank's explicit (or, historically, implicit) target, e.g. the Fed's 2% PCE inflation objective.</td></tr>
     <tr><td>\(\pi - \pi^{*}\)</td><td>The <strong>inflation gap</strong> — how far current inflation is running above (positive) or below (negative) target.</td></tr>
     <tr><td>\(y - y^{*}\)</td><td>The <strong>output gap</strong> — the percentage deviation of actual real GDP (\(y\)) from an estimate of potential/full-employment GDP (\(y^{*}\)). Positive means the economy is running hotter than its sustainable capacity ("overheating"); negative means there is economic slack.</td></tr>
     <tr><td>\(a, b\)</td><td>Taylor's <strong>response coefficients</strong> — how aggressively the rule reacts to each gap. A larger coefficient means a given gap moves the prescribed rate by more. Taylor's original paper set \(a = b = 0.5\): each percentage point of either gap moves the prescribed rate by half a percentage point.</td></tr>
@@ -264,7 +264,7 @@
   </div>
   <p>
     No real central bank is bound by this formula. Actual committees weigh dual or multiple mandates, financial
-    stability, forward-guidance credibility already given to markets, and — especially since 2009 — an effective
+    stability, forward-guidance credibility already given to markets, and — especially since late 2008 — an effective
     lower bound on rates that the rule itself knows nothing about. So actual policy rates routinely sit away from
     whatever a plugged-in Taylor Rule spits out. That gap is not noise to be ignored — it is precisely what desks
     and macro traders watch, because history shows deviations tend to get corrected as the underlying data force
@@ -335,11 +335,12 @@
   <p>
     The Taylor Rule's appeal to practitioners is exactly its minimalism: anyone with a CPI/PCE print, a GDP or
     unemployment-based output-gap proxy, and a calculator can reproduce a rough version of it in real time, which is
-    why regional Federal Reserve banks (the Cleveland Fed and the Atlanta Fed both publish live "Taylor Rule
-    Utility" trackers) and sell-side economists maintain running estimates. The Fed itself goes further: its
+    why regional Federal Reserve banks (the Atlanta Fed's live "Taylor Rule Utility" and the Cleveland Fed's
+    "Simple Monetary Policy Rules" tracker) and sell-side economists maintain running estimates. The Fed itself goes further: its
     semiannual <em>Monetary Policy Report</em> to Congress includes a section of "reference rules," presenting
-    several Taylor-style variants side by side — the classic rule above, an "inertial" version that partially
-    anchors on the previous rate to avoid abrupt jumps, and a "balanced approach" rule that doubles the output-gap
+    several Taylor-style variants side by side — the classic rule above, a "first-difference" version that sets
+    the <em>change</em> in the rate from its previous level (earlier reports showed an "inertial" version that
+    partially anchors on the previous rate), and a "balanced approach" rule that doubles the output-gap
     coefficient (\(b=1\) instead of 0.5), reflecting a heavier weight on labor-market slack. The Fed publishing
     several competing rules rather than one is itself the practitioner's central caveat: there is no single
     "correct" Taylor Rule, only a family of them, and which one a given desk quotes depends on its choice of
@@ -354,8 +355,8 @@
     </div>
     <div class="tl-icard">
       <div class="tl-icon-badge green">🐢</div>
-      <h4>Inertial rule</h4>
-      <p>Partially anchors on the previous policy rate to avoid abrupt jumps meeting to meeting.</p>
+      <h4>First-difference / inertial rules</h4>
+      <p>Anchor on the previous policy rate (moving it by a rule-set step, or only part of the way) to avoid abrupt jumps meeting to meeting.</p>
     </div>
     <div class="tl-icard">
       <div class="tl-icon-badge amber">⚖️</div>
@@ -589,7 +590,7 @@
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The rule is a baseline plus two dials.</strong> \(i = r^{*}+\pi+a(\pi-\pi^{*})+b(y-y^{*})\) — a neutral rate, corrected for how far inflation and output sit from target/potential.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Both gaps can reinforce or offset.</strong> In the worked example, a hot inflation gap and a positive output gap both add tightening (2→6%); they can just as easily pull in opposite directions.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Both gaps can reinforce or offset.</strong> In the worked example, a hot inflation gap and a positive output gap both add tightening (neutral 4% → 6%, with the higher inflation level in the baseline adding the rest); they can just as easily pull in opposite directions.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>What moves markets is the GAP, not the level.</strong> Traders watch \(i_{\text{implied}} - i_{\text{actual}}\) — a measure of unresolved policy pressure, not the rule's raw output in isolation.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>"Behind the curve" vs. "ahead of the curve."</strong> Actual policy below the implied rate signals more tightening still needed (hawkish-repricing risk); above it signals cut risk.</span></div>
     <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo has no Taylor-Rule calculator built yet.</strong> This lesson is the theory behind the existing yield-spread notes — a natural, currently-missing companion piece, not a shipped tool.</span></div><!-- DESK:END -->

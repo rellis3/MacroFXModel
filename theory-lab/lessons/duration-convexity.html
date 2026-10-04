@@ -15,7 +15,7 @@
   <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Fixed Income Mathematics · Lesson 2 of 5</div>
   <h1 class="tl-title">Duration &amp; Convexity</h1>
-  <p class="tl-dek">Duration is a bond's average cash-flow timing, in disguise — and, in a completely different disguise, the first term of a Taylor expansion of price around yield. Convexity is the second term, and it's the reason a duration-only estimate always underestimates a bond's true price after a yield move.</p>
+  <p class="tl-dek">Duration is a bond's average cash-flow timing, in disguise — and, in a completely different disguise, the first term of a Taylor expansion of price around yield. Convexity is the second term, and it's the reason a duration-only estimate always underestimates an option-free bond's true price after a yield move.</p>
   <div class="tl-meta">
     <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
@@ -335,17 +335,16 @@
       Same bond as Lesson 1: 5-year, $1,000 face, 4% annual coupon
       (\(C=\$40\)), currently priced at \(P=\$956.71\) at a 5% YTM
       (\(y=0.05\)). Its five discounted cash flows (from Lesson 1) were
-      \$38.10, \$36.28, \$34.56, \$32.91, and a final \$814.87 (the last
-      coupon plus face value, \$1,040, discounted five years) — using more
-      precise intermediate figures of \$38.10, \$36.28, \$34.55, \$32.91,
-      \$31.34 (coupon-only) and \$783.53 (face-only) for the final year.
+      \$38.10, \$36.28, \$34.55, \$32.91, and a final \$814.87 (the last
+      coupon plus face value, \$1,040, discounted five years: Lesson 1's
+      \$31.34 coupon plus \$783.53 face). The sums below use unrounded values.
     </p>
     <div class="tl-steps">
       <div class="tl-step">
         <div class="tl-step-num">1</div>
         <div class="tl-step-body">
           <h4>Weight each cash flow's timing by its share of price</h4>
-          <p>Multiply each cash flow's present value by its own \(t\), then sum: \(1\times38.10 + 2\times36.28 + 3\times34.56 + 4\times32.91 + 5\times814.87\).</p>
+          <p>Multiply each cash flow's present value by its own \(t\), then sum: \(1\times38.10 + 2\times36.28 + 3\times34.55 + 4\times32.91 + 5\times814.87\).</p>
           <div class="tl-math">
             \[ 38.10 + 72.56 + 103.66 + 131.63 + 4074.34 = 4420.29 \]
           </div>
@@ -374,9 +373,9 @@
         <div class="tl-step-num">4</div>
         <div class="tl-step-body">
           <h4>Compute convexity</h4>
-          <p>Weight each cash flow's present value by \(t(t+1)\) this time — \(2\times38.10+6\times36.28+12\times34.56+20\times32.91+30\times814.87 = 25{,}812.69\) — then divide by \(P\cdot(1+y)^2\):</p>
+          <p>Weight each cash flow's present value by \(t(t+1)\) this time — \(2\times38.10+6\times36.28+12\times34.55+20\times32.91+30\times814.87 = 25{,}812.70\) — then divide by \(P\cdot(1+y)^2\):</p>
           <div class="tl-math">
-            \[ C = \frac{25{,}812.69}{956.71 \times 1.05^2} = \frac{25{,}812.69}{1054.77} \approx 24.47 \]
+            \[ C = \frac{25{,}812.70}{956.71 \times 1.05^2} = \frac{25{,}812.70}{1054.77} \approx 24.47 \]
           </div>
         </div>
       </div>

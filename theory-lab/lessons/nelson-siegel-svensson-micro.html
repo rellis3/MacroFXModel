@@ -297,7 +297,7 @@
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
-        <div class="sl-icard"><div class="sl-icard-badge">🏛</div><div><h4>Daily curve publication</h4><p>Central banks and Treasury departments refit fresh each trading day from that day's observed bond prices — the ECB and the Fed both publish a Svensson-family curve, not a raw bootstrap.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏛</div><div><h4>Daily curve publication</h4><p>Many central banks refit fresh each trading day from that day's observed bond prices — the ECB and the Fed both publish a Svensson-family curve, not a raw bootstrap.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Pricing an odd maturity</h4><p>A desk pricing a bond at 17 years — between the usual 15Y and 20Y quotes — reads the rate straight off the fitted curve, which behaves sensibly everywhere, not just at the input bonds' own maturities.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🎛</div><div><h4>A compact risk decomposition</h4><p>β₀, β₁, β₂ map directly onto level, slope and curvature risk — a compact summary of how the whole curve moved, used for hedging without tracking every point separately.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Forecasting the curve itself</h4><p>Diebold &amp; Li (2006): treat fitted β₀(t), β₁(t), β₂(t) as three time series, forecast each one, then reassemble a forecast curve for a future date — forecasting a whole shape, not one point.</p></div></div>
@@ -313,7 +313,7 @@
       <h2 class="sl-h2">2022: the year the factors moved</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">It actually happened</div>
-        <p>Through 2021 the US curve had a low level and a negative slope: short rates near zero, the 10-year around 1.5%. From March 2022 the Fed hiked faster than at any time since the early 1980s, including four 75bp moves in a row. The 2-year went from about 0.7% to about 4.4% in 2022; from July the 2-year stayed above the 10-year. In 2023 bills yielded more than 2-years, which yielded more than 10-years: a hike-then-cut shape.</p>
+        <p>Through 2021 the US curve had a low level and a negative slope: short rates near zero, the 10-year around 1.5%. From March 2022 the Fed hiked faster than at any time since the early 1980s, including four 75bp moves in a row. The 2-year went from about 0.7% to about 4.4% in 2022; from July the 2-year stayed above the 10-year. In 2023 bills yielded more than 2-years, which yielded more than 10-years, yet by late 2023 the 30-year was back above the 10-year: a hump and a dip on one curve.</p>
       </div>
       <div class="sl-chain">
         <div class="sl-chain-link shock"><b>Inflation</b>Far above target, 2021–22</div>
@@ -324,7 +324,7 @@
         <div class="sl-chain-arrow">→</div>
         <div class="sl-chain-link concept"><b>★ This lesson</b>β₀ rises; β₁ flips from negative to positive: the curve inverts</div>
         <div class="sl-chain-arrow">→</div>
-        <div class="sl-chain-link end"><b>Outcome</b>A two-regime curve: Svensson's second hump earns its place</div>
+        <div class="sl-chain-link end"><b>Outcome</b>A rise, a fall, then a rise again: Svensson's second hump earns its place</div>
       </div>
     </section>
 
@@ -376,7 +376,7 @@
         <button class="sl-quiz-opt" data-correct="true">It under-fits — the curvature term can only produce one hump, no matter how β₂ and λ are tuned</button>
         <button class="sl-quiz-opt">It fits perfectly — β₂ can represent any number of humps</button>
         <button class="sl-quiz-opt">It fails to converge entirely</button>
-        <div class="sl-quiz-explain">The curvature loading has exactly one interior extremum. A genuinely two-humped curve needs Svensson's second, independent curvature term (β₃, λ₂) to represent both bumps at once.</div>
+        <div class="sl-quiz-explain">The curvature loading has exactly one interior extremum, so a plain Nelson-Siegel curve has at most one hump or dip (a rise-then-fall hike-then-cut curve is still one). A genuinely two-humped curve needs Svensson's second, independent curvature term (β₃, λ₂) to represent both bumps at once.</div>
       </div>
 
       <div class="sl-quiz-q" data-q="4">
@@ -408,7 +408,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The curvature loading is zero at both ends and nonzero in the middle — β₂ sets the hump's size and direction, λ slides where along the maturity axis it sits.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Svensson adds one more term (β₃, λ₂) for a second, independent hump — six parameters instead of four, and the form central banks like the ECB and the Fed actually publish.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Fitting is nonlinear least squares, not algebra — λ has no closed-form solution and the optimizer can land on different local optima depending on where it starts.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Real-world episode: 2022. The level rose and β₁ flipped positive (the curve inverted); a hike-then-cut shape needed Svensson's second hump.<!-- DESK:START --> Forecasting the betas is untested here; the inversion as a sell signal is null (curve-inversion).<!-- DESK:END --></p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Real-world episode: 2022. The level rose and β₁ flipped positive (the curve inverted); a curve that rose, fell and rose again needed Svensson's second hump.<!-- DESK:START --> Forecasting the betas is untested here; the inversion as a sell signal is null (curve-inversion).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

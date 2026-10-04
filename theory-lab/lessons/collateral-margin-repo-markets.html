@@ -31,7 +31,7 @@
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
-      <li><strong>Initial margin (IM)</strong> is posted upfront as a buffer against <em>potential future</em> exposure — sized using standardized methodologies named here without deriving their internals: <strong>SPAN</strong> for exchange-traded/cleared derivatives, <strong>ISDA SIMM</strong> for non-cleared OTC derivatives.</li>
+      <li><strong>Initial margin (IM)</strong> is posted upfront as a buffer against <em>potential future</em> exposure — sized using standardized methodologies named here without deriving their internals: <strong>SPAN</strong> for exchange-traded futures and options, <strong>ISDA SIMM</strong> for non-cleared OTC derivatives.</li>
       <li><strong>Variation margin (VM)</strong> is exchanged periodically, often daily, to settle the <em>realized</em> mark-to-market change in a position's value — it isn't a buffer against the future, it's a payment for what has already happened.</li>
       <li><strong>Haircuts</strong> discount collateral below its market value to buffer against the collateral's own price volatility and the time it might take to liquidate it in a default — $100 of a volatile bond posted as collateral might count as only $95 of eligible collateral value, a 5% haircut.</li>
       <li>A <strong>repurchase agreement (repo)</strong> is economically a collateralized loan of cash: one party sells a security today with a simultaneous agreement to buy it back later at a slightly higher price — the price difference <em>is</em> the interest, called the repo rate.</li>
@@ -129,12 +129,12 @@
     <div class="tl-icard">
       <div class="tl-icon-badge purple">📊</div>
       <h4>SPAN</h4>
-      <p>Standard Portfolio Analysis of Risk, developed by CME in the 1980s. The methodology most exchanges and clearinghouses use to calculate required initial margin for exchange-traded and centrally cleared derivatives portfolios — a scenario-based approach that evaluates a portfolio's worst plausible loss across a defined grid of price and volatility shift scenarios.</p>
+      <p>Standard Portfolio Analysis of Risk, developed by CME in the 1980s. Long the most widely used methodology for calculating required initial margin on exchange-traded futures and options portfolios (many clearinghouses, especially for cleared swaps, now use VaR-based models instead, and CME is moving to a successor, SPAN 2) — a scenario-based approach that evaluates a portfolio's worst plausible loss across a defined grid of price and volatility shift scenarios.</p>
     </div>
     <div class="tl-icard">
       <div class="tl-icon-badge amber">🧮</div>
       <h4>ISDA SIMM</h4>
-      <p>The Standard Initial Margin Model, developed and maintained by ISDA for non-centrally-cleared (bilateral) OTC derivatives, and mandated for large market participants under the global uncleared-margin rules that followed the 2008 crisis. A sensitivity-based, parametric methodology — required IM is computed from a portfolio's risk sensitivities, bucketed by risk factor and asset class.</p>
+      <p>The Standard Initial Margin Model, developed and maintained by ISDA for non-centrally-cleared (bilateral) OTC derivatives, and the industry-standard model large market participants use to meet the global uncleared-margin rules that followed the 2008 crisis (the rules require the margin, not this model; a regulatory standard schedule is the alternative). A sensitivity-based, parametric methodology — required IM is computed from a portfolio's risk sensitivities, bucketed by risk factor and asset class.</p>
     </div>
   </div>
   <p>
@@ -529,7 +529,7 @@
   <p>
   <strong>Margin calls in practice.</strong> When a position's mark-to-market value moves, the receiving party
   issues a variation-margin call for the realized change; when a portfolio's risk profile changes meaningfully
-  (a new position added, volatility rises), the initial-margin requirement is recalculated — via SPAN for a
+  (a new position added, volatility rises), the initial-margin requirement is recalculated — via SPAN (or a VaR model) for a
   cleared futures/options book, via SIMM for a bilateral OTC book — and additional IM may be called for.
   </p>
   <p>
@@ -567,7 +567,7 @@
       <li><strong>Treating a repo's legal form as its economic substance.</strong> A repo is legally two sales, but economically a collateralized loan — losing sight of the economic substance (e.g. in accounting or risk treatment) is a classic, real source of error.</li>
       <li><strong>Assuming one haircut fits every asset.</strong> Haircuts scale with the specific collateral's volatility and liquidity — applying a Treasury-sized haircut to an equity or a high-yield bond dramatically understates the buffer actually needed.</li>
       <li><strong>Ignoring "specialness."</strong> Assuming every repo trades at the general-collateral rate misses that a specific, high-demand security can trade at a materially lower repo rate purely because of demand to hold that exact security.</li>
-      <li><strong>Treating SPAN and SIMM as interchangeable.</strong> SPAN is the standard for exchange-traded/cleared derivatives; SIMM is the standard for bilateral, non-cleared OTC derivatives — they're built for structurally different market segments, not two names for the same thing.</li>
+      <li><strong>Treating SPAN and SIMM as interchangeable.</strong> SPAN is the classic standard for exchange-traded futures and options; SIMM is the standard for bilateral, non-cleared OTC derivatives — they're built for structurally different market segments, not two names for the same thing.</li>
     </ul>
   </div>
 
@@ -600,10 +600,10 @@
   <details class="tl-quiz">
     <summary>Q2. Name the two standardized methodologies mentioned for calculating initial margin, and which market segment each applies to.</summary>
     <div class="tl-answer">
-    SPAN (Standard Portfolio Analysis of Risk), developed by CME, is the standard used by exchanges and
-    clearinghouses for exchange-traded and centrally cleared derivatives. ISDA SIMM (Standard Initial Margin
-    Model), developed by ISDA, is the standard for non-centrally-cleared, bilateral OTC derivatives, mandated
-    for large market participants under the global uncleared-margin rules. They apply to structurally different
+    SPAN (Standard Portfolio Analysis of Risk), developed by CME, is the classic standard used by exchanges and
+    clearinghouses for exchange-traded futures and options (many cleared-swap CCPs use VaR models instead). ISDA SIMM (Standard Initial Margin
+    Model), developed by ISDA, is the standard for non-centrally-cleared, bilateral OTC derivatives, the industry-standard
+    model large market participants use to meet the global uncleared-margin rules. They apply to structurally different
     parts of the derivatives market — cleared vs. bilateral — and are not interchangeable.
     </div>
   </details>
