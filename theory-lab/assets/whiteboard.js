@@ -511,11 +511,12 @@
       return 450;
     }
     if (op.pulse) { var pb = it[op.pulse]; if (pb) b.flash(pb, anim); return anim ? 700 : 0; }
-    if (op.dim) { var db = it[op.dim]; if (db) { db.g.classList.add('wb-dim'); if (db.lab) db.lab.classList.add('wb-dim'); } return anim ? 350 : 0; }
-    if (op.hide) { var hb = it[op.hide]; if (hb) { hb.g.classList.add('wb-gone'); if (hb.lab) hb.lab.classList.add('wb-gone'); } return anim ? 300 : 0; }
+    if (op.dim) { var db = it[op.dim]; if (db) { db.g.classList.add('wb-dim'); if (db.lab) db.lab.classList.add('wb-dim'); if (db.cross) db.cross.classList.add('wb-dim'); } return anim ? 350 : 0; }
+    if (op.hide) { var hb = it[op.hide]; if (hb) { hb.g.classList.add('wb-gone'); if (hb.lab) hb.lab.classList.add('wb-gone'); if (hb.cross) hb.cross.classList.add('wb-gone'); } return anim ? 300 : 0; }
     if (op.cross) {
       var xb = it[op.cross]; if (!xb || xb.kind !== 'box') return 0;
       var xp = el('path', { d: 'M' + (xb.x - 6) + ',' + (xb.y + xb.h + 6) + ' L' + (xb.x + xb.w + 6) + ',' + (xb.y - 6), class: 'wb-stroke wb-t-red wb-cross', filter: rough }, b.marks);
+      xb.cross = xp;   // so hide / dim take the strike with the item
       drawOn(xp, 450, anim);
       return 500;
     }
