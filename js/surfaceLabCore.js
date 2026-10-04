@@ -229,7 +229,9 @@ export function volClock(profile, slot, rangeSoFarPct, medianRangePct) {
 // 2021-26, by front tercile 20.7% / 28.7% / 35.2% (design 25%); within the middle vol-level tercile 15% -> 48%.
 export const TERM_TENORS = [['VIX1D', '1D', 1], ['VIX9D', '9D', 9], ['VIX', '30D', 30], ['VIX3M', '3M', 91], ['VIX6M', '6M', 182]];
 export const TERM_EDGES = { front: [0.8858, 0.9669], back: [0.8376, 0.9157] };      // terciles fitted 2016-2020
-export const TERM_P75 = { front: [0.207, 0.287, 0.352], back: [0.236, 0.267, 0.343] }; // unseen 2021-26 rates by tercile
+// front: share of days past the PRODUCTION NQ/SPX hl p75, 2021-26, by calm / normal / dear (forge/VOL_CURVE_FRONT_PREREG.md, H5 PASS)
+// back: descriptive (VOL_TERM_CHECK.md, plain yz sigma)
+export const TERM_P75 = { front: [0.190, 0.265, 0.323], back: [0.236, 0.267, 0.343] };
 export function volTerm(series, { keepDays = 780 } = {}) {
   const dates = [...new Set(Object.values(series).flatMap(m => [...m.keys()]))].sort().filter(d => series.VIX?.has(d)).slice(-keepDays);
   const z = TERM_TENORS.map(([id]) => dates.map(d => { const v = series[id]?.get(d); return Number.isFinite(v) ? v : null; }));

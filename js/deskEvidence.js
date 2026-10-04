@@ -564,6 +564,13 @@ export const DESK_EVIDENCE = [
     result: 'BOTH FAIL, and the prompting read DID NOT REPLICATE on the independent CVOL source (analysis/surfaces/SKEW_FADE_RESULTS.md, 8,611 touches): fade rate with skew against 37.5% / 40.1% by half vs 38.1% / 41.0% with it -- no difference. H3 fade-R -0.053 / -0.050, 0/7 instruments, CI [-0.090, -0.015] (significantly negative). H4 -0.100 / +0.012, 1/7.',
     use: 'Do not use options skew to choose fades at the lines, and do not show "skew against this touch" as context: the settlement risk-reversal read was source-specific and is dropped, as the pre-registration said it would be. Together with the butterfly first look (null for continuation) this means the options market\'s SHAPE (skew, tails) adds nothing at the touch; only its LEVEL against the lines\' sigma (the line tag) does.',
   },
+  {
+    id: 'vol-curve-front', domain: 'volatility', verdict: 'validated', date: '2026-10-04', doc: 'forge/VOL_CURVE_FRONT_PREREG.md',
+    instruments: ['NQ', 'SPX'],
+    claim: 'The front of the S&P implied-vol curve (VIX9D / VIX, cut-offs fixed in advance: calm < 0.8858, dear >= 0.9669) tells you whether the PRODUCTION NQ/SPX range lines (yz-10 on NY-close bars x event multiplier, production widths) are too tight or too wide for the day -- and whether that pays as a follow-on-dear / fade-on-calm trade',
+    result: 'RANGE PASSES, TRADES FAIL (analysis/surfaces/VOL_CURVE_FRONT_RESULTS.md, 5,368 index-days, 2,741 touches, 2016-2026). Share of days past the production hl p75 (design 25%): calm 18.2% / 19.0%, normal 24.0% / 26.5%, dear 32.5% / 32.3% by half; logistic DEAR +0.68 / +0.59 (z +5.9 / +5.4) and CALM -0.59 / -0.72 (z -4.9 / -6.0) with the vol-level terciles in the model. NOT the event calendar: dear-front days with no Major release ran 32-33% too. Trades: follow on dear days +0.02 R (line race) and +0.14 R (break shape) pooled but negative in half A and below the shuffle; fade on calm days -0.05 / -0.07 R, negative in both halves and on both instruments.',
+    use: 'Use the front ratio as a RANGE read for NQ/SPX: dear front = the production lines are likely too tight today, calm front = likely too wide (the outer lines cap). It is the strongest index width input found and belongs in the index sigma (a fitted front multiplier beside the event multiplier) and the Daily Read tag. Do not fade on calm days: wide lines mean price stalls short of them, it does not reverse. Never a direction call. The break-shape follow (0.2 sigma stop, 5R) was positive in most front states on indices -- an index-wide lead to pre-register on its own, not a front effect.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
