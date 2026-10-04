@@ -40,7 +40,14 @@ async function cboeSeries(sym, fetchImpl) {
   return m;
 }
 
-export function createSurfaceLab({ kv, fetchCandles, fetchFred, getSession = async () => null, fetchImpl = fetch, log = console }) {
+// Short horizons (5m / 15m / 30m) come from the 1-minute bars the server already holds (the Level Atlas live cache,
+// ~180 days per pair): no extra downloads. Keys are the cache's lower-case pair names.
+export const SHORT = [['eurusd', 'EURUSD'], ['gbpusd', 'GBPUSD'], ['usdjpy', 'USDJPY'], ['audusd', 'AUDUSD'], ['usdcad', 'USDCAD'],
+  ['usdchf', 'USDCHF'], ['gold', 'GOLD'], ['nq', 'NQ'], ['spx', 'SPX'], ['dow', 'DOW'], ['us2000', 'US2000'], ['de30', 'DAX'], ['uk100', 'FTSE']];
+export const SHORT_Q = [5, 15, 30];
+const shortLabel = q => q < 60 ? q + 'm' : (q / 60) + 'h';
+
+export function createSurfaceLab({ kv, fetchCandles, fetchFred, getSession = async () => null, getPacked = async () => null, fetchImpl = fetch, log = console }) {
   let running = false, last = null, memo = null;      // memo: parsed build, so field and summary reads don't re-parse ~2 MB
 
   async function load() {
@@ -113,6 +120,27 @@ export function createSurfaceLab({ kv, fetchCandles, fetchFred, getSession = asy
     return volTerm(series, { keepDays: 780 });
   }
 
+  async function buildShort() {
+    const byInst = {}, errors = {};
+    for (const [key, sym] of SHORT) {
+      try {
+        const pk = await getPacked(key);
+        if (!pk?.n) { errors[sym] = '1-minute bars not in memory yet'; continue; }
+        const bars = new Array(pk.n); for (let i = 0; i < pk.n; i++) bars[i] = { t: pk.times[i], close: pk.closes[i] };
+        const p = persistence(bars, { days: 20, keep: 200, qs: SHORT_Q });
+        if (!p.dates.length) { errors[sym] = 'not enough 1-minute history'; continue; }
+        const byHorizon = Object.fromEntries(SHORT_Q.map((q, h) => {
+          const xs = p.vr.map(v => v[h]).filter(Number.isFinite).sort((a, b) => a - b), v = p.vr.at(-1)[h];
+          const a = xs[Math.floor(xs.length / 3)], b = xs[Math.floor(2 * xs.length / 3)];
+          return [shortLabel(q), { vr: v, state: v <= a ? 'giving back' : v >= b ? 'extending' : 'middle' }];
+        }));
+        byInst[sym] = { dates: p.dates, vr: p.vr, now: { byHorizon, days: p.dates.length } };
+      } catch (e) { errors[sym] = String(e.message || e); }
+      await new Promise(r => setImmediate(r));            // yield between instruments: ~250k bars each
+    }
+    return { qs: SHORT_Q, byInst, errors, note: 'from the server\'s in-memory 1-minute bars (~180 days); cut-offs vs each market\'s own available history' };
+  }
+
   async function tick(reason = 'scheduled', force = false) {
     if (running) return { skipped: 'already running' };
     running = true;
@@ -126,6 +154,7 @@ export function createSurfaceLab({ kv, fetchCandles, fetchFred, getSession = asy
       try { Object.assign(out, await buildIntraday()); } catch (e) { out.errors.intraday = String(e.message || e); }
       try { out.rates = await buildRates(); } catch (e) { out.errors.rates = String(e.message || e); }
       try { out.volTerm = await buildVolTerm(); } catch (e) { out.errors.volTerm = String(e.message || e); }
+      try { out.shortPersistence = await buildShort(); } catch (e) { out.errors.shortPersistence = String(e.message || e); }
       out.builtAt = new Date().toISOString(); out.buildMs = Date.now() - t0;
       await kv.put(SURFACE_KV, JSON.stringify(out)); memo = out;
       last = { at: out.builtAt, reason, ok: true, errors: out.errors };
@@ -148,7 +177,10 @@ export function createSurfaceLab({ kv, fetchCandles, fetchFred, getSession = asy
     const tagDay = days.filter(d => d <= today).at(-1) ?? null, nextDay = days.find(d => d > today) ?? null;
     const tagsOf = d => d ? Object.fromEntries(dr.days[d].setup.rows.map(r => [r.sym, { tag: r.tag, ratio: r.ratio, provisional: !!r.provisional }])) : {};
     const P = s.persistence?.byInst ?? {}, V = s.volTime?.byInst ?? {};
-    const pairRead = Object.fromEntries(Object.entries(P).map(([sym, x]) => [sym, { state: x.now.regime === 'reverting' ? 'giving back' : x.now.regime === 'trending' ? 'extending' : 'middle', vr4h: x.now.vr4h, byHorizon: x.now.byHorizon ?? null }]));
+    const SP = s.shortPersistence?.byInst ?? {};
+    const pairRead = Object.fromEntries(Object.entries(P).map(([sym, x]) => [sym, { state: x.now.regime === 'reverting' ? 'giving back' : x.now.regime === 'trending' ? 'extending' : 'middle', vr4h: x.now.vr4h,
+      // short horizons (5m/15m) first, then the 15-minute-bar horizons (30m..8h); the 1-minute 30m is dropped in favour of the year-long one
+      byHorizon: { ...(SP[sym]?.now?.byHorizon ? Object.fromEntries(Object.entries(SP[sym].now.byHorizon).filter(([h]) => h !== '30m')) : {}), ...(x.now.byHorizon ?? {}) } }]));
     const ccyPersist = Object.fromEntries(CCYS.map(c => { const xs = Object.entries(P).filter(([k]) => /^[A-Z]{6}$/.test(k) && k.includes(c)).map(([, x]) => x.now.vr4h).filter(Number.isFinite);
       return [c, xs.length ? { vr4hMean: Math.round(xs.reduce((a, b) => a + b, 0) / xs.length * 1000) / 1000, pairs: xs.length } : null]; }));
     // live vol clock from the vol forecast's session status (range so far vs the forecast median line)
@@ -187,7 +219,7 @@ export function createSurfaceLab({ kv, fetchCandles, fetchFred, getSession = asy
         const f = req.query.field, meta = { ok: true, builtAt: s.builtAt, buildMs: s.buildMs, errors: s.errors, running, lastTick: last };
         if (!f) return res.json({ ...meta, ...s });
         if (!['absorption', 'crossAsset', 'persistence', 'volTime', 'rates', 'volTerm'].includes(f)) return res.status(400).json({ ok: false, error: `unknown field ${f}` });
-        res.json({ ...meta, [f]: s[f] ?? null });
+        res.json({ ...meta, [f]: f === 'persistence' && s.persistence ? { ...s.persistence, short: s.shortPersistence ?? null } : (s[f] ?? null) });
       } catch (e) { res.status(503).json({ ok: false, error: `KV unavailable: ${e.message}` }); }
     });
     app.get('/api/today-reads', async (_req, res) => {

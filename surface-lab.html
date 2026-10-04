@@ -190,7 +190,8 @@ function fPersistence() {
   card(2, `2) ${S.inst} at ${hz[k]} through the year`, 'The regime is where this line sits against its own past. The bottom third is "giving back", the top third "extending".');
   const WORD = { reverting:'giving back', trending:'extending', middle:'middle' };
   const regimes = Object.entries(P.byInst).filter(([s]) => coreOr(S.inst, Object.keys(P.byInst)).includes(s)).map(([s, Y]) => `${esc(s)} <b>${esc(WORD[Y.now.regime] ?? Y.now.regime)}</b> (${Y.now.vr4h})`).join(' · ');
-  const hzRead = X.now.byHorizon ? Object.entries(X.now.byHorizon).map(([h, o]) => `${h} <b>${esc(o.state)}</b>`).join(' · ') : '';
+  const SPn = D.persistence?.short?.byInst?.[S.inst]?.now?.byHorizon;
+  const hzRead = X.now.byHorizon ? Object.entries({ ...(SPn ? Object.fromEntries(Object.entries(SPn).filter(([h]) => h !== '30m')) : {}), ...X.now.byHorizon }).map(([h, o]) => `${h} <b>${esc(o.state)}</b>`).join(' · ') : '';
   box('concept', `<p>The <b>variance ratio</b> (Lo & MacKinlay, 1988) compares how far price travels over a long block with how far it would travel if each short step were independent. VR = 1 is a random walk. Above 1, moves have been extending (trend). Below 1, they have been giving back (mean reversion).</p><p>Measuring it at 30 minutes, 1, 2, 4 and 8 hours at once shows the market's memory horizon by horizon. It asks the fade-or-continue question of the market itself, not of one line.</p>`);
   box('systems', `<div class="now">${hzRead ? esc(S.inst) + ' by horizon: ' + hzRead + '<br>' : ''}4h state vs each market's own last year (main markets + ${esc(S.inst)}): ${regimes}</div>
     <ul><li><b>Fade/Continue Book and Daily Read:</b> on its own, a <b>giving-back</b> 20 days came with 2–4 points more continuation at p75 touches. But the pre-registered test (2026-10-03) found that <b>once the line tag is known, persistence adds little</b> (not significant in either half). Read the tag first; this is background.</li>
