@@ -25,7 +25,7 @@ v4 does **not** change the core. The ladder and the vote stay; both earned their
    before the test is run.**
 2. **Use the volatility forecast for *how much* as well as *where*** (L03 §02). This is
    the main design gap found in `FINDINGS.md` §0.
-3. **Add the missing meta-label layer** (L03 §01).
+3. **Try the meta-label layer only as a thin, optional filter.** A full meta-label model was already tried here (`Trade_Decision_Engine`, parked), and the new prototype shows the same weak discrimination (Phase 4).
 4. **Put the implementation layer (TC) under measurement**, because that is where the
    fundamental law says IR is being lost (live took 48% of the backtest's trades,
    §3.9).
@@ -40,7 +40,7 @@ L2  Range forecast  forecast ladder p50/p75/p90             (forecaster v3 — u
 L3  Event / jump    scheduled-event multipliers             (null tag = ×1.0, fixed 2026-10-04)
 L4  Exhaustion      IV/σ, range completion, vol-of-vol       (NEW as a live input: a STATE, not a trigger)
 L5  Signal          vote: follow / fade at a touched rung   (unchanged logic; book refit honestly)
-L6  Meta-label      take it or not                          (NEW)
+L6  Meta-label      take it or not                          (OPTIONAL — prior attempt parked; see Phase 4)
 L7  Sizing          how much: vol/exhaustion/meta/margin     (NEW — replaces flat 0.5%)
 L8  Execution       fills, spread caps, slippage            (measured, not assumed)
 L9  Management      DD throttle, ccy gate, kill rule         (keep throttle; add SPRT monitor)
@@ -71,9 +71,9 @@ The forecaster is already the strongest part (`FINDINGS.md` §0). Close its know
 
 | # | Change | Lesson | Pass bar (out of sample, per pair) |
 |---|---|---|---|
-| 1.1 | **One σ series.** The live ladder's σ is computed on the same session bars the widths were fitted on (00:00–22:00 London), not 17:00-NY D1 | L01 card 01 (point-in-time); `forecastSigma.js` header | live exceedance on 20+ sessions within ±3pp of 50/25/10 |
+| 1.1 | **One forecast for everything.** Today the forecaster v3 export button and Vote Atlas draw the *same* fitted widths (`forecastLadderParams.js`) with *different* σ inputs. The export uses 17:00-NY OANDA D1 bars (Yahoo for NQ) plus event multipliers (`volForecastScheduler` → `computeForecast`). Vote Atlas uses M1 bucketed by London calendar day (24h) and **always** `eventTag:'none'` (`levelAtlasEngine.js:225/303`, `server.js` `_volatilityV2InstrumentPreview`). The widths were fitted on **00:00–22:00 London** sessions (`forge/vol.py` `london22`), so neither input matches the fit. Known symptom: NQ 13.99% vs 24.70% on 2026-09-22, not root-caused (`server.js:21756`). v4: one forecast service, σ on `london22` sessions, event-tagged, that both the export and Vote Atlas read | L01 card 01 (point-in-time, same series); L03 §01 (one layer, one output) | the two exports agree to < 1% on every instrument; live exceedance on 20+ sessions within ±3pp of 50/25/10 |
 | 1.2 | **Estimate index GARCH** by maximum likelihood, rolling, instead of the hand-set β 0.87 | L03 §02 | pinball loss ≤ incumbent; half-life reported |
-| 1.3 | **IV ladder where IV exists** (CME CVOL pairs, GVZ for gold) is already pre-registered as a win. Make it the default source for those pairs | L03 §02 | existing `forge/IV_LADDER_PREREG.md` result holds on the newest fold |
+| 1.3 | **IV ladder where IV exists** (CME CVOL pairs, GVZ for gold) is already pre-registered as a win, but Vote Atlas does not use it today (only the export's "Forecast (IV)" button does). Make it the default σ for those pairs in the one forecast service | L03 §02 | existing `forge/IV_LADDER_PREREG.md` result holds on the newest fold |
 | 1.4 | Re-run any fade/touch study that used `/api/vol-forecast/backtest-range` before 2026-10-04 (bands were 2–8% narrow) | — | results re-banked |
 
 ## Phase 2: L4, exhaustion as a state (new live input; 1–2 weeks)
@@ -102,27 +102,32 @@ The vote logic stays. What changes is **how the book behind it is fitted and jud
 | 3.3 | **minMargin stays on its plateau** (3–6). No re-optimisation | L01 card 07 | — |
 | 3.4 | **Deflate with the ledger's real N**, plus CSCV PBO over everything in the ledger | L01 card 05, L02 §05 | DSR ≥ 0.95, PBO ≤ 0.10 |
 
-## Phase 4: L6, the meta-label layer (new; 2 weeks)
+## Phase 4: L6, the meta-label layer (optional, low priority; after Phase 5)
 
-A secondary model, trained only on trades **resolved before** each test window opens,
-predicts each trade's R from features known at entry (`layer_experiments.py` E1 is the
-prototype).
+**Prior attempt: it failed, and the reason matters.** `Trade_Decision_Engine/`
+(`FIT_FINDINGS.md`) fitted a logistic meta-label on 110,883 zone-touch events across 6 FX
+majors. It beat the hand-set weights on Brier but was "weakly discriminating": almost
+every event scored 50–60% and realised about 55%. The WT-stretch and `htf_align` features
+were null, and it was PARKED. Its primary signal was *generic zones with no proven edge*.
+López de Prado's method needs a primary model that already has one
+(`MD files/VWAP_REVERSION_FINDINGS.md` says the same).
 
-- **Features:**
-  - pair, follow/fade, rung, session, side, margin;
-  - target/stop ratio, stop ÷ the pair's median stop;
-  - hour, day of week;
-  - trailing pair and book R;
-  - **plus the L3 event tag and the L4 exhaustion state**;
-  - **plus spread at entry**, once L8 records it.
-- **Policy, fixed in advance:** skip when predicted R ≤ 0. Do not size by the prediction:
-  E1 showed its top deciles flatten.
+**The 2026-10-04 prototype (`layer_experiments.py` E1) shows the same weakness.** On top
+of the Vote Atlas trades, which do have a primary edge, its OOS IC is only 0.031. The
+gain (Sharpe 3.92 → 4.07; more under slippage) comes almost entirely from dropping the
+bottom ~30% of trades, not from fine discrimination.
 
-| # | Task | Pass bar (walk-forward, equal 10% vol) |
+So in v4 the meta-label is a **thin, optional filter**, tried only after the simpler
+rule-based layers:
+- First choice: the rule-based equivalents. Margin weighting (E2, monotone, already
+  passed) and the L4 state go into **sizing** (Phase 5).
+- Only then test whether a model adds anything on top. Features known at entry; policy
+  fixed in advance: skip when predicted R ≤ 0, never size by it.
+
+| # | Task | Pass bar (walk-forward, equal 10% vol, **on top of Phase 5**) |
 |---|---|---|
-| 4.1 | Port E1 to JS (or serve from Python) inside the decision engine, behind a flag | identical predictions to the research version on a fixed sample |
-| 4.2 | Re-test with the L4 features | Sharpe ≥ base **and** ≥ base + 0.3 at +1 pip slippage (prototype: 4.07 vs 3.92; 2.14 vs 1.65) |
-| 4.3 | **Shadow live**: log the skip decision next to every v3 entry; trade nothing | shadow-skipped trades' live R < kept trades' live R over ≥ 300 trades |
+| 4.1 | Re-run E1 with Phase 5 sizing already applied, plus event tag, L4 state and entry spread | Sharpe ≥ Phase-5 book + 0.15 **and** ≥ + 0.3 at +1 pip slippage; else **stop: the layer ships off** (the third strike for meta-labelling in this repo) |
+| 4.2 | Only if 4.1 passes: shadow live, logging skip decisions next to entries, trading nothing | shadow-skipped trades' live R < kept trades' live R over ≥ 300 trades |
 
 ## Phase 5: L7, sizing: the volatility forecast decides *how much* (2 weeks)
 
@@ -195,12 +200,12 @@ capped at ½-Kelly on the SHRUNK, COST-STRESSED edge  (L01 §06)
 | 1–2 | Phase 0 (parity, R records, freeze, ledger) · Phase 6.1 fill replay (laptop + R2) |
 | 3 | Phase 1 |
 | 4–5 | Phases 2 and 3 (R2) |
-| 6–7 | Phase 4 (meta-label, shadow begins) · Phase 6.3 live cost measurement runs unattended |
-| 8–9 | Phase 5 (sizing) · Phase 7 |
+| 6–7 | Phase 5 (sizing) · Phase 6.3 live cost measurement runs unattended |
+| 8–9 | Phase 7 · Phase 4 (optional meta-label, only if time) |
 | 10 | Phase 8: lockbox, freeze, small live rollout |
 
 Effort is mostly offline research. The only time-bound pieces are the parity check (days of
-logs), live cost measurement (2–4 weeks, unattended) and meta-label shadowing. All
-three run in the background.
+logs) and the live cost measurement (2–4 weeks, unattended), plus meta-label shadowing
+if Phase 4 ever passes. They all run in the background.
 
 *Research and education only. Not financial advice.*
