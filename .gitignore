@@ -541,3 +541,6 @@ OI Data/USD_CAD.csv
 OI Data/USD_CHF.csv
 OI Data/USD_JPY.csv
 analysis/.cache/
+
+# DIRECTIONAL-RESCORE touch tables (regenerate: node scripts/rangebook/directional_build.mjs)
+analysis/surfaces/directional/
