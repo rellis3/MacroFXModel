@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Purchasing Power Parity — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -248,7 +249,19 @@
       </div>
     </section>
 
+    <!-- WB:ppp-deck:START -->
     <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">PPP: one coffee, two prices, and a very slow pull</h2>
+      <!-- WB:ppp:START -->
+      <div class="wb" data-title="PPP: one coffee, two prices, and a very slow pull">
+        <script type="application/json">{"w":600,"h":920,"intro":"One coffee priced in two currencies, a cheap-o-meter for whole economies, and why the pull back to fair value takes years. Press play, or step through.","steps":[{"cap":"An identical cup of coffee, same beans, same size: it costs $3 in New York and £3 in London.","do":[{"note":"ny","x":66,"y":20,"text":"New York","size":18,"anchor":"middle","tone":"blue"},{"line":"c10","points":[[32,74],[40,142],[94,142],[102,74],[32,74]],"tone":"blue","width":3,"ms":260},{"line":"c11","points":[[100,88],[116,90],[118,108],[110,120],[96,122]],"tone":"blue","width":3,"ms":260},{"line":"c12","points":[[24,150],[110,150]],"tone":"blue","width":3,"ms":260},{"line":"c13","points":[[54,66],[48,59],[56,53],[50,46]],"tone":"blue","width":3,"ms":260},{"line":"c14","points":[[76,66],[70,59],[78,53],[72,46]],"tone":"blue","width":3,"ms":260},{"chip":"pd","x":66,"y":172,"text":"$3","tone":"blue"},{"note":"ld","x":528,"y":20,"text":"London","size":18,"anchor":"middle","tone":"purple"},{"line":"c20","points":[[486,74],[494,142],[548,142],[556,74],[486,74]],"tone":"purple","width":3,"ms":260},{"line":"c21","points":[[554,88],[570,90],[572,108],[564,120],[550,122]],"tone":"purple","width":3,"ms":260},{"line":"c22","points":[[478,150],[564,150]],"tone":"purple","width":3,"ms":260},{"line":"c23","points":[[508,66],[502,59],[510,53],[504,46]],"tone":"purple","width":3,"ms":260},{"line":"c24","points":[[530,66],[524,59],[532,53],[526,46]],"tone":"purple","width":3,"ms":260},{"chip":"pp","x":528,"y":172,"text":"£3","tone":"purple"}]},{"cap":"The exchange rate is 1.50: one pound buys $1.50. Convert the London coffee into dollars: £3 × 1.50 = $4.50. That is 50% more than New York's, for the very same coffee.","do":[{"chip":"rate","x":300,"y":28,"text":"GBP/USD = 1.50","tone":"amber"},{"icon":"gbp","name":"coin","x":468,"y":104,"s":0.42,"tone":"purple","sym":"£"},{"box":"conv","x":150,"y":58,"w":300,"h":64,"text":"London coffee in dollars","tone":"purple","sub":"$3.00","size":18},{"move":"gbp","x":278,"y":66,"ms":1000},{"hide":"gbp"},{"count":"conv","from":3.0,"to":4.5,"dp":2,"pre":"£3 × 1.50 = $","ms":1000}]},{"cap":"That is the Law of One Price: strip out transport costs, tariffs and taxes, and an identical, tradeable good should cost the same everywhere in one currency. If not, someone buys where it is cheap and sells where it is dear until the gap closes.","do":[{"arrow":["pd","pp"],"label":"buy cheap → sell dear","tone":"green","bend":42}]},{"cap":"Absolute PPP asks what exchange rate would make it fair: the price ratio, $3 ÷ £3 = 1.00. The market says 1.50, so on this one coffee the pound looks 50% expensive.","do":[{"box":"imp","x":150,"y":130,"w":300,"h":64,"text":"PPP rate: $3 ÷ £3 = 1.00","tone":"green","sub":"market: 1.50","size":18},{"pulse":"rate"}]},{"cap":"Scale it up from one coffee to a whole basket, like a CPI basket. It rarely holds exactly: baskets differ between countries, and rent and haircuts can't be shipped across a border to close a price gap.","do":[{"icon":"rent","name":"house","x":34,"y":250,"s":0.6,"tone":"amber","label":"rent","lsize":17},{"icon":"hair","name":"person","x":150,"y":250,"s":0.6,"tone":"amber","label":"haircut","lsize":17},{"cross":"rent"},{"cross":"hair"},{"note":"ship","x":140,"y":360,"text":"can't be shipped","size":18,"anchor":"middle","tone":"red"}]},{"cap":"The Big Mac Index is the famous shortcut: $5.50 in the US against the equivalent of $3.20 elsewhere makes that currency about 42% cheap. A memorable illustration, not a model: one good, with local rent and wages baked in.","do":[{"chart":"bm","x":300,"y":240,"w":290,"h":168,"title":"A Big Mac, in dollars","xd":[0.4,2.6],"yd":[0,8],"yt":[[0,"$0"]],"xt":[[1,"US"],[2,"elsewhere"]],"pl":44,"pr":12},{"bars":"bmb","chart":"bm","bw":58,"ms":1000,"data":[[1,5.5,"$5.50","blue"],[2,3.2,"$3.20","amber"]]},{"note":"bmc","chart":"bm","at":[2,5.6],"text":"≈ 42% cheap","tone":"amber","size":18,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Relative PPP is the version that survives real data. If prices rise 8% a year at home and 2% abroad, the home currency should lose roughly the 6-point gap each year, so neither side gets steadily cheaper.","do":[{"icon":"th1","name":"thermo","x":30,"y":418,"s":0.5,"tone":"red","label":"home 8%","lsize":17},{"icon":"th2","name":"thermo","x":140,"y":418,"s":0.5,"tone":"blue","label":"abroad 2%","lsize":17},{"box":"rel","x":290,"y":426,"w":300,"h":72,"text":"home currency falls","tone":"green","sub":"≈ 8% − 2% = 6% a year","size":18},{"arrow":["th2","rel"],"tone":"green"}]},{"cap":"The real exchange rate turns this into a cheap-o-meter: the currency's value after adjusting for both price levels. If PPP held exactly it would never move. In practice it wanders above or below fair value for years (illustrative path).","do":[{"chart":"rx","x":10,"y":516,"w":580,"h":214,"title":"Real exchange rate (illustrative)","xd":[0,24],"yd":[-25,36],"yt":[[20,"+20%"],[0,"0"],[-20,"−20%"]],"xt":[[0,"yr 0"],[10,"10"],[20,"20"],[24,"24"]],"pl":56,"pr":16},{"series":"fv","chart":"rx","pts":[[0,0],[24,0]],"tone":null,"dash":true,"label":"PPP fair value","lat":[24,0],"ldx":-2,"ldy":14,"lanchor":"end","ms":500},{"series":"rr","chart":"rx","pts":[[0,10],[1,15],[2,20],[3,23],[4,25],[5,26],[6,23],[7,19],[8,16],[9,13],[10,5],[11,-3],[12,-9],[13,-13],[14,-12],[15,-7],[16,-1],[17,5],[18,9],[19,11],[20,10],[21,12],[22,9],[23,7],[24,6]],"tone":"purple","ms":1800},{"note":"uv","chart":"rx","at":[7.2,31],"text":"undervalued: ~10 years","tone":"purple","size":17,"anchor":"start","dx":0,"dy":0},{"note":"ov","chart":"rx","at":[13,-21],"text":"overvalued: ~6 years","tone":"purple","size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"It does drift back, but slowly. Rogoff's \"PPP puzzle\": a deviation takes roughly three to five years to shrink by half. Here a 26% gap takes four years to become 13%.","do":[{"dot":"h1","chart":"rx","at":[5,26],"text":"26%","tone":"green","dy":-14},{"dot":"h2","chart":"rx","at":[9,13],"text":"13%: half gone","tone":"green","dx":10,"dy":-6,"anchor":"start"}]},{"cap":"The trap: \"20% undervalued\" is not a buy signal. Nothing stops a cheap currency getting cheaper first. Buy at the first dot and you sit through years of a wider gap before it narrows.","do":[{"dot":"w1","chart":"rx","at":[2,20],"text":"20%: buy?","tone":"red","dx":10,"dy":18,"anchor":"start"},{"pulse":"rr"}]},{"cap":"It actually happened. In 2022–24 the yen was deeply cheap on PPP, and US inflation (peaking at 9.1%) ran far above Japan's, so relative PPP said the yen should rise. It fell: USD/JPY went from about 115 to near 152 that October, and past 160 in 2024.","do":[{"chart":"jp","x":10,"y":742,"w":350,"h":168,"title":"USD/JPY (approx.)","xd":[2021.85,2024.75],"yd":[105,172],"yt":[[110,"110"],[130,"130"],[150,"150"],[170,"170"]],"xt":[[2022,"2022"],[2023,"2023"],[2024,"2024"]],"pl":46,"pr":14},{"series":"jy","chart":"jp","pts":[[2022.0,115],[2022.8,152],[2024.5,161]],"tone":"red","ms":1300},{"dot":"j1","chart":"jp","at":[2022.0,115],"text":"~115","tone":"red","dx":8,"dy":4,"anchor":"start"},{"dot":"j2","chart":"jp","at":[2022.8,152],"text":"~152","tone":"red","dy":-14},{"dot":"j3","chart":"jp","at":[2024.5,161],"text":"160+","tone":"red","dx":-8,"dy":-14,"anchor":"end"}]},{"cap":"What won: the interest-rate gap, not the price gap. The Fed went from near zero to 5.25–5.50%; the Bank of Japan stayed at −0.1% until March 2024. Money chased the yield out of yen. Japan's yen-buying in 2022 and 2024 slowed the fall but did not reverse it.","do":[{"icon":"fed","name":"bank","x":392,"y":744,"s":0.5,"tone":"green","label":"Fed\n5.25–5.50%","sym":"$","lsize":16},{"icon":"boj","name":"bank","x":502,"y":744,"s":0.5,"tone":"red","label":"BoJ\n−0.1%","sym":"¥","lsize":16},{"icon":"flow","name":"cash","x":512,"y":834,"s":0.42,"tone":"amber","sym":"¥"},{"move":"flow","x":400,"y":834,"ms":1300}]},{"cap":"So PPP is a real long-run anchor and a hopeless short-run clock. For a multi-year decision, like a treasurer hedging a five-year liability, it is a genuine input. For a trade measured in weeks, it says almost nothing.","do":[{"chip":"anc","x":480,"y":900,"text":"an anchor, not a clock","tone":"green"},{"pulse":"fv"}]}]}</script>
+      </div>
+      <!-- WB:ppp:END -->
+    </section>
+    <!-- WB:ppp-deck:END -->
+
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: far from fair value means it will revert, so trade the gap.<!-- DESK:START --> No PPP model exists here; the same claim has been tested with other fair values.<!-- DESK:END --></p>
@@ -270,7 +283,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -321,7 +334,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -398,5 +411,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>
