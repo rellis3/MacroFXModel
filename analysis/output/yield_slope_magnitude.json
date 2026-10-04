@@ -1,0 +1,73 @@
+{
+ "id": "yield-slope-magnitude",
+ "ranAt": "2026-10-04T12:53:58.646Z",
+ "minEvents": 20,
+ "pairs": {
+  "EURUSD": {
+   "n": 31,
+   "spearman": 0.618,
+   "lo": 0.343,
+   "hi": 0.789,
+   "halves": [
+    0.432,
+    0.641
+   ],
+   "placeboPctile": 1,
+   "halvesAgree": true,
+   "ciPositive": true,
+   "placeboClears": true,
+   "pass": true
+  },
+  "GBPUSD": {
+   "n": 39,
+   "spearman": 0.218,
+   "lo": -0.124,
+   "hi": 0.508,
+   "halves": [
+    0.345,
+    0.217
+   ],
+   "placeboPctile": 0.903,
+   "halvesAgree": true,
+   "ciPositive": false,
+   "placeboClears": false,
+   "pass": false
+  },
+  "NZDUSD": {
+   "n": 36,
+   "spearman": -0.197,
+   "lo": -0.527,
+   "hi": 0.191,
+   "halves": [
+    -0.381,
+    -0.134
+   ],
+   "placeboPctile": 0.131,
+   "halvesAgree": false,
+   "ciPositive": false,
+   "placeboClears": false,
+   "pass": false
+  },
+  "USDCHF": {
+   "n": 38,
+   "spearman": 0.076,
+   "lo": -0.211,
+   "hi": 0.359,
+   "halves": [
+    -0.151,
+    0.237
+   ],
+   "placeboPctile": 0.696,
+   "halvesAgree": false,
+   "ciPositive": false,
+   "placeboClears": false,
+   "pass": false
+  }
+ },
+ "gate": {
+  "passCount": 1,
+  "required": 3,
+  "pass": false
+ },
+ "verdict": "NULL"
+}
