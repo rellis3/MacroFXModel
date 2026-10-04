@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Drawdowns and Risk of Ruin — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <style>
   .dd-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
@@ -132,7 +133,19 @@
       <p class="sl-p">Past Kelly you take more risk for <strong>less</strong> growth. Overstate your win rate and "half Kelly" quietly becomes full Kelly. More in <a href="kelly-criterion-micro.html">the Kelly guide</a>.</p>
     </section>
 
+    <!-- WB:drawdown-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">A drawdown and risk of ruin, drawn step by step</h2>
+      <!-- WB:drawdown:START -->
+      <div class="wb" data-title="A drawdown and risk of ruin, drawn step by step">
+        <script type="application/json">{"w":600,"h":830,"intro":"A winning system, a normal losing streak, and the arithmetic of the hole it leaves. Press play, or step through.","steps":[{"cap":"Meet the setup: you, a loaded coin that wins 55% of the time, and an account. Wins and losses are the same size, and you risk 2% of the account on each flip. That is a real edge: +0.10R a trade on average.","do":[{"icon":"you","name":"person","x":30,"y":4,"s":0.62,"label":"you"},{"icon":"coin","name":"coin","x":262,"y":4,"s":0.62,"tone":"green","label":"wins 55%","sym":"55"},{"icon":"acct","name":"piggy","x":488,"y":4,"s":0.62,"tone":"blue","label":"account","sym":"$"},{"arrow":["you","coin"],"label":"flip","size":17},{"arrow":["coin","acct"],"label":"±2% a flip","tone":"blue","size":17}]},{"cap":"The account climbs, with the odd loss along the way, to a new high. That high is the peak every drawdown is measured from.","do":[{"chart":"eq","x":10,"y":128,"w":580,"h":222,"title":"Your account, % of its peak (illustrative)","xd":[0,40],"yd":[80,103],"yt":[[85,"85"],[100,"100"]],"xt":[[0,"0"],[20,"20"],[29,"29"],[40,"40"]]},{"series":"up","chart":"eq","pts":[[0,85.6],[1,87.3],[2,89.0],[3,87.2],[4,89.0],[5,87.2],[6,88.9],[7,90.7],[8,92.5],[9,90.7],[10,88.9],[11,90.6],[12,92.5],[13,94.3],[14,92.4],[15,94.3],[16,96.2],[17,94.2],[18,96.1],[19,98.0],[20,100.0]],"tone":"green","ms":1500},{"dot":"pk","chart":"eq","at":[20,100],"text":"peak","tone":"green","dy":-14}]},{"cap":"Then nine losses in a row. Each one takes 2% of what is left: 0.98 to the ninth power is 0.834, so you are down 16.6% from the peak.","do":[{"series":"dn","chart":"eq","pts":[[20,100.0],[21,98.0],[22,96.04],[23,94.12],[24,92.24],[25,90.39],[26,88.58],[27,86.81],[28,85.08],[29,83.37]],"tone":"red","ms":1600},{"dot":"tr","chart":"eq","at":[29,83.37],"text":"−16.6%","tone":"red","dx":12,"dy":4,"anchor":"start"},{"pulse":"acct"}]},{"cap":"Now the recovery has to start from the smaller base. 16.6% of the peak, earned back on 83.4%, is a gain of 19.9%: more than you lost.","do":[{"series":"pkl","chart":"eq","pts":[[20,100],[40,100]],"tone":"amber","dash":true,"ms":500},{"series":"climb","chart":"eq","pts":[[35,83.37],[35,100]],"tone":"amber","dash":true,"ms":500},{"note":"need","chart":"eq","at":[35.8,91.5],"text":"needs\n+19.9%","tone":"amber","size":18,"anchor":"start","dx":0,"dy":0}]},{"cap":"That gap is the rule: a drawdown d needs a gain of d ÷ (1 − d). Down 20%, you need +25%. Down 50%, the half that is left has to double: +100%.","do":[{"chart":"rec","x":10,"y":368,"w":285,"h":236,"title":"Fall vs gain to get back","xd":[0,3.1],"yd":[0,330],"yt":[[100,"100%"],[300,"300%"]],"xt":[[0.6,"−20%"],[1.6,"−50%"],[2.6,"−75%"]],"pl":50},{"bars":"b1","chart":"rec","data":[[0.45,20,"","red"],[0.78,25,"+25%","green"],[1.45,50,"","red"],[1.78,100,"+100%","green"]],"bw":26,"ms":1000}]},{"cap":"Down 75%, you need +300%. Small holes are almost symmetric; big ones explode. Keep drawdowns where the curve is still flat.","do":[{"bars":"b2","chart":"rec","data":[[2.45,75,"","red"],[2.78,300,"+300%","green"]],"bw":26,"ms":1200},{"pulse":"b2"}]},{"cap":"How surprising was the streak? The chance that a run of 8 losses starts on one particular trade is 0.45 to the eighth power: about 1 in 595. Sounds rare.","do":[{"icon":"t0","name":"coin","x":318,"y":370,"s":0.34,"tone":"red","sym":"✗"},{"icon":"t1","name":"coin","x":352,"y":370,"s":0.34,"tone":"red","sym":"✗"},{"icon":"t2","name":"coin","x":386,"y":370,"s":0.34,"tone":"red","sym":"✗"},{"icon":"t3","name":"coin","x":420,"y":370,"s":0.34,"tone":"red","sym":"✗"},{"icon":"t4","name":"coin","x":454,"y":370,"s":0.34,"tone":"red","sym":"✗"},{"icon":"t5","name":"coin","x":488,"y":370,"s":0.34,"tone":"red","sym":"✗"},{"icon":"t6","name":"coin","x":522,"y":370,"s":0.34,"tone":"red","sym":"✗"},{"icon":"t7","name":"coin","x":556,"y":370,"s":0.34,"tone":"red","sym":"✗"},{"box":"one","x":320,"y":420,"w":270,"h":56,"text":"this trade: 1 in 595","tone":"blue","size":20}]},{"cap":"But you do not take one trade, you take hundreds, and each is a fresh starting point. Over 300 trades, a run of 8 or more shows up about 24% of the time, and by about 750 trades it is more likely than not.","do":[{"cross":"one"},{"box":"many","x":320,"y":506,"w":270,"h":86,"text":"somewhere in\n300 trades","tone":"red","sub":"0.2%","size":20},{"count":"many","from":0.17,"to":24.0,"dp":1,"suf":"%","ms":1300}]},{"cap":"Ruin is about size, not win rate. Call it ruin if the account ever touches half its start. Same 55% coin, 300 trades: at 1–2% risk a trade it almost never happens.","do":[{"chart":"ruin","x":10,"y":622,"w":380,"h":200,"title":"Touched −50%? by risk per trade","xd":[0.4,5.6],"yd":[0,100],"yt":[[50,"50%"],[100,"100%"]],"xt":[[1,"1%"],[2,"2%"],[3,"5%"],[4,"10%"],[5,"20%"]],"pl":50},{"bars":"r1","chart":"ruin","data":[[1,0.0,"0%","green"],[2,0.1,"0.1%","green"]],"bw":32,"ms":700}]},{"cap":"Push the size up and the same edge turns dangerous: 8.6% at 5% risk (half Kelly), 42.1% at 10% (full Kelly), 84.1% at 20%.","do":[{"bars":"r2","chart":"ruin","data":[[3,8.6,"8.6%","amber"],[4,42.1,"42%","red"],[5,84.1,"84%","red"]],"bw":32,"ms":1200},{"icon":"fire","name":"fire","x":405,"y":640,"s":0.55,"tone":"red"}]},{"cap":"Nothing about the coin changed between those bars, only the bet. Bet size, not win rate, decides ruin. Pick a size whose normal drawdowns you can sit through, before the streak arrives.","do":[{"icon":"me","name":"person","x":490,"y":640,"s":0.6,"tone":"green","label":"size it so\nyou can sit\nthrough it","lsize":17},{"pulse":"r1"}]}]}</script>
+      </div>
+      <!-- WB:drawdown:END -->
+    </section>
+    <!-- WB:drawdown-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">How a good system gets abandoned</h2>
       <div class="sl-chain">
@@ -149,7 +162,7 @@
       <p class="sl-p">Recency, loss aversion and performance-chasing all push the same way. Morningstar's "Mind the Gap" studies keep finding the average investor earns less than the funds they hold — money arrives after good runs and leaves after bad ones.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8 · It actually happened</div>
       <h2 class="sl-h2">Value's lost decade, ~2007–2020</h2>
       <p class="sl-p">Buying cheap stocks over expensive ones is one of the most-studied premiums in finance. Measured by the standard academic value factor, it then suffered the longest, deepest drawdown in its recorded history — sharpest in 2018–2020 as growth and tech kept winning.</p>
@@ -157,7 +170,7 @@
       <div class="sl-callout amber"><div class="sl-callout-label">Not a promise</div><p>This doesn't prove every drawdown recovers. It shows that a long, deep drawdown is exactly what a real premium can look like from the inside.</p></div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9 · It actually happened</div>
       <h2 class="sl-h2">March 2000: Tiger closes near the turn</h2>
       <p class="sl-p">Julian Robertson's Tiger Management, one of the great hedge funds of the 1980s and 90s, refused to chase internet stocks, lagged badly through the late-90s boom, and suffered heavy losses and redemptions.</p>
@@ -168,7 +181,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · The desk's verdict</div>
       <h2 class="sl-h2">What was tested here</h2>
       <!-- DESK:END -->
@@ -185,7 +198,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11 · Your exercise</div>
       <h2 class="sl-h2">Write your drawdown rules before you need them</h2>
       <div class="sl-icard-grid">
@@ -196,7 +209,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -234,7 +247,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -383,5 +396,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

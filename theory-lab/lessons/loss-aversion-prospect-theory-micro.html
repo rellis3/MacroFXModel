@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Why a Loss Hurts Twice as Much — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <style>
   /* Local to this deck: two-option gamble buttons. */
@@ -45,7 +46,7 @@
       <p class="sl-p">Classical theory says a $100,000 account is worth the same to you whether it was $90,000 or $110,000 yesterday. Nobody feels it that way. For a trader the reference point is almost always the <strong>entry price</strong>, and the P&amp;L column shows the feeling directly, in red or green.</p>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Why it matters</div>
-        <p>Move the reference point and the same position feels like a different bet. That is the trick professionals use, and you will see it work on slide 7.</p>
+        <p>Move the reference point and the same position feels like a different bet. That is the trick professionals use, and you will see it work on the "Down $1,000, stop right there" slide.</p>
       </div>
     </section>
 
@@ -83,7 +84,19 @@
       </div>
     </section>
 
+    <!-- WB:lossav-deck:START -->
     <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">The loss-aversion curve, drawn step by step</h2>
+      <!-- WB:lossav:START -->
+      <div class="wb" data-title="The loss-aversion curve, drawn step by step">
+        <script type="application/json">{"w":600,"h":660,"intro":"The prospect-theory value curve, drawn point by point, and the coin flip most people refuse. Press play, or step through.","steps":[{"cap":"You do not feel your balance. You feel gains and losses from a reference point, and for a trader that is usually the entry price. Zero is where you came in.","do":[{"icon":"you","name":"person","x":30,"y":6,"s":0.6,"label":"you"},{"chip":"ref","x":235,"y":34,"text":"zero = your entry price","tone":"amber"}]},{"cap":"Draw how it feels. Across: dollars won or lost from the entry. Up: how good or bad that feels. The kink is at zero, where you came in.","do":[{"chart":"vc","x":10,"y":128,"w":580,"h":400,"title":"How a gain or loss feels","xd":[-1000,1000],"yd":[-1050,470],"yt":[[400,"+400"],[0,"0"],[-500,"−500"],[-1000,"−1000"]],"xt":[[-1000,"−$1,000"],[-500,"−$500"],[0,"0"],[500,"+$500"],[1000,"+$1,000"]],"zero":true,"pl":62,"pr":40},{"series":"y0","chart":"vc","pts":[[0,-1050],[0,470]],"tone":null,"width":2,"ms":400}]},{"cap":"Gains first. The curve rises but keeps flattening: +$500 feels like 237, and +$1,000 only 437, not double. Each extra dollar of gain feels smaller.","do":[{"series":"gain","chart":"vc","pts":[[0,0.0],[10,7.6],[25,17.0],[50,31.3],[100,57.5],[150,82.2],[200,105.9],[300,151.3],[400,194.9],[500,237.2],[600,278.5],[700,318.9],[800,358.7],[900,397.9],[1000,436.5]],"tone":"green","ms":1300},{"dot":"g500","chart":"vc","at":[500,237.2],"text":"+$500 → 237","tone":"green","dx":0,"dy":-18},{"dot":"g1k","chart":"vc","at":[1000,436.5],"text":"437","tone":"green","dx":-8,"dy":-16,"anchor":"end"}]},{"cap":"Now losses. If a loss hurt only as much as a gain pleased, the curve would follow the dashed mirror. It drops far more steeply, by λ = 2.25 in Tversky and Kahneman's 1992 estimate: −$500 feels like −534, 2.25 times the +237 of the same-sized gain.","do":[{"series":"mir","chart":"vc","pts":[[0,-0.0],[-10,-7.6],[-25,-17.0],[-50,-31.3],[-100,-57.5],[-150,-82.2],[-200,-105.9],[-300,-151.3],[-400,-194.9],[-500,-237.2],[-600,-278.5],[-700,-318.9],[-800,-358.7],[-900,-397.9],[-1000,-436.5]],"tone":null,"dash":true,"ms":600},{"note":"mirl","chart":"vc","at":[-770,-100],"text":"if a loss hurt\nlike a gain","tone":null,"size":16,"anchor":"middle","dx":0,"dy":0},{"series":"loss","chart":"vc","pts":[[0,0.0],[-10,-17.1],[-25,-38.2],[-50,-70.4],[-100,-129.5],[-150,-185.0],[-200,-238.3],[-300,-340.4],[-400,-438.5],[-500,-533.7],[-600,-626.5],[-700,-717.6],[-800,-807.1],[-900,-895.2],[-1000,-982.2]],"tone":"red","width":3.6,"ms":1500},{"dot":"l500","chart":"vc","at":[-500,-533.7],"text":"−$500 → −534","tone":"red","dx":12,"dy":4,"anchor":"start"},{"pulse":"you"},{"note":"ouch","x":122,"y":100,"text":"ouch!","size":18,"anchor":"start","tone":"red"}]},{"cap":"Here is a coin flip: heads you win $150, tails you lose $100. On average it pays +$25 a flip, so a robot that only cared about averages would play.","do":[{"icon":"coin","name":"coin","x":430,"y":6,"s":0.6,"tone":"amber","label":"heads +$150\ntails −$100","sym":"?","lsize":17}]},{"cap":"On your curve, +$150 feels like 82 and −$100 feels like −129. Half of one plus half of the other is about −24: the flip feels like a loss, so you turn it down.","do":[{"hide":"ouch"},{"dot":"g150","chart":"vc","at":[150,82.2],"text":"+82","tone":"green","dx":0,"dy":-18},{"dot":"l100","chart":"vc","at":[-100,-129.5],"text":"−129","tone":"red","dx":-12,"dy":16,"anchor":"end"},{"chip":"m100","x":470,"y":84,"text":"−$100","tone":"red"},{"move":"m100","x":140,"y":84,"ms":1100},{"note":"no","x":300,"y":108,"text":"no thanks!","size":20,"anchor":"middle","tone":"red"}]},{"cap":"Ask people what win on heads would make them play a flip that loses $100, and most say about $200. That gap is loss aversion.","do":[{"hide":"m100"},{"chip":"w200","x":290,"y":84,"text":"win $200? then OK","tone":"green"},{"hide":"no"}]},{"cap":"The curve bends your choices too. Gains: a sure +$500 feels like 237; a 50% chance of +$1,000 is half of 437, about 218. You bank the sure thing: safe when winning.","do":[{"box":"gf","x":10,"y":540,"w":283,"h":110,"text":"sure +$500: 237\n50% of +$1,000: 218\n→ take the sure gain","tone":"green","size":18}]},{"cap":"Losses, same sizes: a sure −$500 feels like −534; a 50% chance of −$1,000 is half of −982, about −491. The gamble feels less bad, so you take it: reckless when losing.","do":[{"dot":"l1k","chart":"vc","at":[-1000,-982.2],"text":"−982","tone":"red","dx":12,"dy":-14,"anchor":"start"},{"box":"lf","x":307,"y":540,"w":283,"h":110,"text":"sure −$500: −534\n50% of −$1,000: −491\n→ take the gamble","tone":"red","size":18}]},{"cap":"Same sizes, same odds, the opposite choice. On a trading screen that is banking winners early and moving the stop on losers: exactly backwards. The fix is to decide your exits before the curve gets a vote.","do":[{"pulse":"lf"},{"pulse":"gf"}]}]}</script>
+      </div>
+      <!-- WB:lossav:END -->
+    </section>
+    <!-- WB:lossav-deck:END -->
+
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Catch your own curve: two choices</h2>
       <p class="sl-sub">Answer with your gut. Both options in each pair have the same expected value.</p>
@@ -107,7 +120,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Find your own λ</h2>
       <p class="sl-sub">A coin flip: tails you lose $100. What's the smallest win on heads that makes you <em>happy</em> to play?</p>
@@ -124,7 +137,7 @@
       <p class="sl-p">A robot that only cared about averages would play for anything over $100. Most people want about $200. That gap is <strong>loss aversion</strong>, and it is why "losses hurt twice as much" is the slogan.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Small chances feel bigger than they are</h2>
       <p class="sl-sub">Prospect theory's second ingredient: probabilities get a decision weight w(p), not their true size.</p>
@@ -145,7 +158,7 @@
       <p class="sl-p">That is the lottery ticket and the insurance policy in one curve. On a screen it is the far out-of-the-money option that "could go ten times".</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Down $1,000, stop right there</h2>
       <p class="sl-sub">Let the stop hit (a sure −$1,000), or pull it and hold: 50% back to even, 50% out at −$2,200. Holding averages −$1,100: worse.</p>
@@ -162,7 +175,7 @@
       <div class="sl-quote">Same trade, same odds. Only the reference point moved. "Would I open this trade, at this size, right now?" puts it back at today.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7 · It actually happened</div>
       <h2 class="sl-h2">Barings, 1995: account 88888</h2>
       <div class="sl-callout amber">
@@ -183,7 +196,7 @@
       <p class="sl-p">Thaler and Johnson (1990) named the pull: the <strong>break-even effect</strong>. After a loss, any bet that offers a way back to even looks attractive.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8 · It actually happened</div>
       <h2 class="sl-h2">Not just traders: Boston condos</h2>
       <div class="sl-callout amber">
@@ -196,7 +209,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
 <!-- DESK:START -->
       <h2 class="sl-h2">What this desk has, and hasn't, tested</h2>
@@ -214,7 +227,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · Exercise</div>
       <h2 class="sl-h2">Before you touch a stop</h2>
       <p class="sl-sub">Keep this next to the screen. Any "no" and the stop stays.</p>
@@ -227,7 +240,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -271,7 +284,7 @@
 <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -407,5 +420,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

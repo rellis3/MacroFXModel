@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Fed's Corridor — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <style>
   .fc-toggle{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
@@ -155,7 +156,19 @@
       <p class="sl-p">No failure anywhere. The cash is just briefly in the wrong place: in the Treasury's account at the Fed instead of in the repo market. Month-ends work the same way, driven by banks shrinking balance sheets for reporting dates.</p>
     </section>
 
+    <!-- WB:corridor-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">The Fed's corridor, drawn step by step</h2>
+      <!-- WB:corridor:START -->
+      <div class="wb" data-title="The Fed's corridor, drawn step by step">
+        <script type="application/json">{"w":600,"h":540,"intro":"One month of overnight money, drawn step by step: who lends to whom, the Fed's floor and ceiling, the mid-month lift, and the day in 2019 when there was no ceiling. Rates use the lesson's illustrative settings.","steps":[{"cap":"Every night, money market funds lend cash to securities dealers, who hand over Treasuries as collateral and buy them back tomorrow. That is repo. SOFR is its measured price, built from the actual trades.","do":[{"icon":"fund","name":"piggy","x":25,"y":2,"s":0.6,"tone":"green","label":"Money funds\nlend cash","sym":"$","lsize":16},{"icon":"deal","name":"person","x":515,"y":2,"s":0.6,"tone":"blue","label":"Dealers\nborrow cash","lsize":16},{"chip":"cash","x":130,"y":22,"text":"cash","tone":"green"},{"chip":"bond","x":445,"y":58,"text":"Treasuries","tone":"blue"}]},{"cap":"Cash goes one way and the Treasuries go the other, for one night. Dealers need that cash to keep holding their big bond inventories.","do":[{"move":"cash","x":450,"y":22,"ms":1200},{"move":"bond","x":165,"y":58,"ms":1200}]},{"cap":"Now the Fed builds a floor. A money fund can always lend to the Fed itself at the ON RRP rate, 4.25% in the lesson's illustrative settings. So no fund lends to a dealer for less.","do":[{"icon":"fed","name":"bank","x":350,"y":2,"s":0.6,"tone":"amber","label":"The Fed","sym":"$","lsize":16},{"chart":"c1","x":10,"y":160,"w":580,"h":365,"title":"Overnight rates, % (one illustrative month)","xd":[1,30],"yd":[4.15,4.7],"yt":[[4.25,"4.25"],[4.4,"4.40"],[4.5,"4.50"]],"xt":[[1,"1st"],[15,"15th"],[30,"30th"]],"pl":56,"pr":28},{"series":"onrrp","chart":"c1","pts":[[1,4.25],[30,4.25]],"tone":"blue","dash":true},{"note":"lon","chart":"c1","at":[30,4.25],"text":"ON RRP: floor for money funds","tone":"blue","size":17,"anchor":"end","dx":0,"dy":16}]},{"cap":"Banks earn IORB on the reserves they keep at the Fed, 4.40% here. A bank lends into repo only if it pays more than that, after the cost of using its balance sheet.","do":[{"series":"iorb","chart":"c1","pts":[[1,4.4],[30,4.4]],"tone":"green","dash":true},{"note":"lio","chart":"c1","at":[30,4.4],"text":"IORB: floor for banks","tone":"green","size":17,"anchor":"end","dx":0,"dy":16}]},{"cap":"The ceiling: since July 2021 the Standing Repo Facility lends cash against Treasuries every day at the top of the range, 4.50% here. Nobody with access should pay much more than that.","do":[{"series":"srf","chart":"c1","pts":[[1,4.5],[30,4.5]],"tone":"red"},{"note":"lsr","chart":"c1","at":[30,4.5],"text":"SRF: the ceiling","tone":"red","size":17,"anchor":"end","dx":0,"dy":-15}]},{"cap":"On an ordinary day, with plenty of cash around, SOFR sits low in the corridor, around 4.30%, a few basis points above the money funds' floor. (The path is illustrative.)","do":[{"series":"sa","chart":"c1","pts":[[1,4.3],[4,4.31],[7,4.29],[10,4.3],[13,4.31]],"tone":"amber","ms":1200},{"note":"lso","chart":"c1","at":[4,4.31],"text":"SOFR","tone":"amber","size":18,"anchor":"middle","dx":0,"dy":-16}]},{"cap":"Mid-month, taxes fall due. Investors pull cash out of money funds to pay, and the payments land in the Treasury's account at the Fed. That cash has left the repo market.","do":[{"icon":"tsy","name":"govt","x":230,"y":2,"s":0.6,"label":"Treasury's\naccount","lsize":16},{"chip":"tax","x":60,"y":128,"text":"taxes","tone":"red"},{"move":"tax","x":260,"y":128,"ms":1300},{"pulse":"fund"}]},{"cap":"The funds lend less that night, but the dealers still have the same bonds to fund, so they bid up for the scarcer cash. SOFR lifts toward the ceiling: on the 16th it prints 4.48%, 8bp over IORB.","do":[{"series":"sb","chart":"c1","pts":[[13,4.31],[14,4.35],[15,4.43],[16,4.48]],"tone":"amber","ms":900},{"dot":"d16","chart":"c1","at":[16,4.48],"text":"16th: 4.48%","tone":"amber","dy":-34}]},{"cap":"On a tight night a private lender quotes 4.62%. A dealer with SRF access borrows its $1bn from the Fed at 4.50% instead and saves 12bp, $3,333.33 for one night. That is why the rate gets capped near the ceiling.","do":[{"dot":"d62","chart":"c1","at":[16,4.62],"text":"private repo 4.62%","tone":"red","dx":-10,"dy":0,"anchor":"end"},{"chip":"srfl","x":380,"y":128,"text":"$1bn at 4.50%","tone":"amber"},{"move":"srfl","x":515,"y":128,"ms":1200},{"note":"save","chart":"c1","at":[17,4.62],"text":"−12bp = $3,333.33 saved","tone":"amber","size":17,"anchor":"start","dx":10,"dy":0}]},{"cap":"A day or two later the cash flows back and SOFR settles. Every link was someone meeting a known bill on a known date: calendar, not crisis.","do":[{"series":"sc","chart":"c1","pts":[[16,4.48],[17,4.41],[18,4.33],[20,4.3],[24,4.31],[27,4.29],[30,4.3]],"tone":"amber","ms":1300},{"note":"ill","chart":"c1","at":[8,4.19],"text":"calendar, not crisis","tone":"green","size":18,"anchor":"middle","dx":0,"dy":0}]},{"cap":"September 2019 had a day like that, with no standing ceiling. On the 16th, quarterly corporate taxes and a large Treasury settlement drained cash at once, after reserves had been shrinking for some time.","do":[{"hide":"c1"},{"hide":"onrrp"},{"hide":"iorb"},{"hide":"srf"},{"hide":"lon"},{"hide":"lio"},{"hide":"lsr"},{"hide":"lso"},{"hide":"sa"},{"hide":"sb"},{"hide":"sc"},{"hide":"d16"},{"hide":"d62"},{"hide":"save"},{"hide":"ill"},{"hide":"srfl"},{"pulse":"tax"},{"chart":"c2","x":10,"y":160,"w":580,"h":365,"title":"September 2019: SOFR, % (path approx.)","xd":[12,20],"yd":[1.5,5.8],"yt":[[2.0,"2.00"],[3.0,"3.00"],[4.0,"4.00"],[5.0,"5.00"]],"xt":[[12,"12th"],[16,"16th"],[17,"17th"],[20,"20th"]],"pl":56,"pr":28},{"gap":"band","chart":"c2","top":[[12,2.25],[20,2.25]],"bot":[[12,2.0],[20,2.0]],"tone":"green","op":0.35},{"note":"bl","chart":"c2","at":[19.6,2.12],"text":"target range 2.00–2.25%","tone":"green","size":17,"anchor":"end","dx":0,"dy":26},{"note":"noc","chart":"c2","at":[14,4.6],"text":"no ceiling on the board","tone":"red","size":19,"anchor":"middle","dx":0,"dy":0}]},{"cap":"With nothing to cap it, SOFR printed 5.25% on 17 September against a 2.00–2.25% target range.","do":[{"series":"s19","chart":"c2","pts":[[12,2.2],[13,2.2],[16,2.4],[17,5.25],[18,2.6],[19,2.3],[20,2.2]],"tone":"red","ms":1500},{"dot":"d17","chart":"c2","at":[17,5.25],"text":"5.25% on the 17th","tone":"red","dx":12,"dy":4,"anchor":"start"}]},{"cap":"The New York Fed restarted overnight repo operations that day, the first in about a decade, and in October began buying Treasury bills to rebuild reserves. The lesson it drew: a ceiling improvised after the spike comes too late. The SRF, permanent since July 2021, is the standing one.","do":[{"chip":"ops","x":380,"y":128,"text":"repo operations","tone":"amber"},{"move":"ops","x":505,"y":128,"ms":1200},{"note":"fin","chart":"c2","at":[14,3.7],"text":"today: the SRF caps it\nnear the top of the range","tone":"amber","size":18,"anchor":"middle","dx":0,"dy":0}]}]}</script>
+      </div>
+      <!-- WB:corridor:END -->
+    </section>
+    <!-- WB:corridor-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7 · It actually happened</div>
       <h2 class="sl-h2">September 2019: no ceiling in place</h2>
       <div class="sl-callout amber">
@@ -165,7 +178,7 @@
       <p class="sl-p">Flip the toggle on the corridor slide to "No standing ceiling" to see that shape. The lesson the Fed drew: an improvised ceiling comes too late. The SRF, permanent since July 2021, is the standing version.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8 · It actually happened</div>
       <h2 class="sl-h2">March 2023: SVB and the emergency door</h2>
       <div class="sl-callout amber">
@@ -185,7 +198,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">What this desk found when it tested the claim</h2>
       <p class="sl-sub">The folk claim: SOFR above the floor, or a drawn SRF, warns of rougher markets. 2,123 SOFR sessions, 2018-04 to 2026-09, next-5-session range vs a matched control.</p>
@@ -213,7 +226,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The arbitrage in dollars, and the traps</h2>
       <div class="sl-card">
@@ -229,7 +242,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -271,7 +284,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -410,5 +423,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

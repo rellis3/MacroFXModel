@@ -1,0 +1,76 @@
+from ._wb import *
+
+# ── Covered parity, then the carry trade (interest-rate-parity) ──────────────
+# Numbers: worked example (S 1.10, r_d 5%, r_f 3%, $1,000,000, F* ≈ 1.1214, mispriced 1.15
+# → $26,818.18) and the JPY/AUD scenario (yen ≈ −0.1 to 0.1%, RBA 4.35%, ≈4.2pp gap,
+# ≈$420,000 a year on $10,000,000, AUD/JPY −17% from 11 July to 5 August 2024).
+CIP_IDS = ['usb', 'eub', 'spot', 'c1', 'c2', 'c3', 'owe', 'grow', 'fwd', 'fstar', 'tie', 'mis', 'mx', 'fix']
+# AUD/JPY indexed to 100 at the 11 July 2024 peak (day 0); 5 August low ≈ 83 (−17%).
+# Only the endpoints are from the lesson; the path between is illustrative.
+AJ = [[0, 100], [3, 98.5], [6, 96], [10, 94], [14, 91.5], [17, 91], [20, 89.5], [22, 87.5], [25, 83]]
+CARRY = dict(w=600, h=600, intro='Two banks, one round trip. First with the forward locked in (covered parity: no free lunch), then without it (the carry trade). Press play, or step through.', steps=[
+    step('Two banks. The US bank pays 5% a year on dollars; the euro bank pays 3% on euros. Today €1 costs $1.10. That is the spot rate.',
+         icon('usb', 'bank', 20, 14, 0.85, 'blue', 'US bank\n5% on $', sym='$', lsize=17),
+         icon('you', 'person', 257, 14, 0.85, None, 'you'),
+         icon('eub', 'bank', 495, 14, 0.85, 'purple', 'euro bank\n3% on €', sym='€', lsize=17),
+         note('spot', 300, 168, 'spot today: €1 = $1.10', 'amber', 19)),
+    step('Borrow $1,000,000 from the US bank at 5%. In a year you will owe it $1,050,000.',
+         icon('c1', 'cash', 110, 26, 0.5, 'green', '$1,000,000', sym='$', lsize=16),
+         move('c1', 178, 26, 1200),
+         box('owe', 20, 205, 170, 70, 'You owe', 'blue', sub='$1,050,000', size=20)),
+    step('Convert at spot: $1,000,000 ÷ 1.10 = €909,090.91.',
+         dict(hide='c1'),
+         icon('c2', 'cash', 178, 26, 0.5, 'purple', '€909,090.91', sym='€', lsize=16),
+         move('c2', 352, 26, 1100)),
+    step('Deposit the euros in the euro bank at 3%. In a year they grow to €936,363.64.',
+         move('c2', 418, 26, 900),
+         box('grow', 410, 205, 170, 70, 'In a year', 'purple', sub='€909,090.91', size=20),
+         dict(sub='grow', text='€936,363.64')),
+    step('The key move: today, sign a forward contract to sell those €936,363.64 back into dollars in a year. No guessing about the future rate. The fair forward is F* = 1.10 × 1.05 ÷ 1.03 ≈ 1.1214.',
+         icon('fwd', 'scroll', 268, 196, 0.64, 'amber', 'forward, signed today', lsize=16),
+         note('fstar', 300, 318, 'F* = 1.10 × 1.05 ÷ 1.03 ≈ 1.1214', 'amber', 20)),
+    step('A year later the contract turns your euros into $1,050,000 at the fair forward: exactly what you owe. Every step was riskless, and the profit is zero. No free lunch.',
+         dict(hide='c2'),
+         icon('c3', 'cash', 418, 26, 0.5, 'green', '$1,050,000', sym='$', lsize=16),
+         move('c3', 122, 26, 1500),
+         dict(sub='owe', text='repaid · profit $0'),
+         note('tie', 300, 362, '€936,363.64 × 1.1214 ≈ $1,050,000 = the loan', 'green', 19)),
+    step('Suppose a quote said 1.15 instead. The same round trip returns $1,076,818.18: $26,818.18 of riskless profit from no capital. Desks run it at size until the forward is dragged back to about 1.1214. That arbitrage is what keeps covered parity pinned.',
+         box('mis', 70, 392, 460, 72, 'Forward quoted at 1.15?\n€936,363.64 × 1.15 = $1,076,818.18', 'red', size=19),
+         note('fix', 300, 492, '+$26,818.18 free → desks pile in → F back to ≈ 1.1214', 'red', 18),
+         dict(line='mx', points=[[64, 470], [536, 386]], tone='red', width=3, ms=500)),
+    step('Now the carry trade: the same round trip, but with no forward. Borrow yen at about 0% (−0.1% to 0.1%), buy Australian dollars earning 4.35%, and convert back at whatever the rate turns out to be.',
+         *[dict(hide=i) for i in CIP_IDS],
+         icon('jpb', 'bank', 20, 14, 0.85, 'amber', 'Japan\n≈ 0%', sym='¥', lsize=17),
+         icon('aub', 'bank', 495, 14, 0.85, 'green', 'Australia\n4.35%', sym='A$', lsize=17),
+         icon('y1', 'cash', 110, 26, 0.5, 'amber', 'borrow ¥', sym='¥', lsize=16),
+         move('y1', 178, 26, 1000), dict(hide='y1'),
+         icon('a1', 'cash', 178, 26, 0.5, 'green', 'buy A$', sym='A$', lsize=16),
+         move('a1', 418, 26, 1300),
+         icon('nofwd', 'scroll', 268, 196, 0.64, 'chalk', 'no forward', lsize=16),
+         dict(line='nx', points=[[262, 266], [338, 190]], tone='red', width=3, ms=450)),
+    step('The gap is about 4.2 percentage points. On a $10,000,000 position, with the exchange rate unchanged, that is on the order of $420,000 a year, accruing day by day for just holding on.',
+         box('carry', 20, 205, 170, 70, 'Carry a year', 'green', sub='$0', size=20),
+         dict(count='carry', **{'from': 0, 'to': 420, 'dp': 0, 'pre': '$', 'suf': ',000', 'ms': 1600})),
+    step('Uncovered parity says this should be a wash: the Australian dollar should be expected to fall about 4.2% a year, eating the carry. Fama (1984) checked: on average high-yielders tended to hold up or even rise. Across studies the slope averages about −0.88, not the +1 UIP needs. In calm stretches the carry was pocketed largely intact.',
+         dict(hide='nofwd'), dict(hide='nx'),
+         box('uip', 230, 205, 350, 70, 'UIP: A$ should fall ≈ 4.2% a year\n→ the carry is erased', 'blue', size=19),
+         dict(cross='uip'),
+         note('fama', 405, 300, 'the data (Fama 1984): on average it didn\'t', 'green', 18)),
+    step('But you are short a crash. In 2024 yen-funded positions were unwound all at once: AUD/JPY fell about 17% from its 11 July peak to its 5 August low, much of it in the sessions after the Bank of Japan\'s 31 July hike.',
+         chart('aj', (20, 330, 330, 210), 'AUD/JPY, 11 Jul = 100 (approx.)', [0, 25], [80, 103],
+               [[100, '100'], [90, '90']], [[0, '11 Jul'], [20, '31 Jul'], [25, '5 Aug']], pt=40, pr=28),
+         series('ajs', 'aj', AJ, 'red', ms=1600),
+         dot('boj', 'aj', [20, 89.5], 'BoJ hike', 'amber', dx=-6, dy=18, anchor='end'),
+         dot('low', 'aj', [25, 83], '−17%', 'red', dx=-10, dy=2, anchor='end')),
+    step('17% of $10,000,000 is $1,700,000: about four years of that $420,000 carry, gone in roughly three and a half weeks.',
+         chart('pl', (370, 330, 210, 210), '$m on $10m', [0.3, 2.7], [-2.5, 0.9], [[0, '0']], [[1, 'carry'], [2, 'crash']], zero=True, pl=30),
+         dict(bars='plb', chart='pl', data=[[1, 0.42, '+0.42', 'green'], [2, -1.7, '−1.7', 'red']], bw=40, ms=1100)),
+    step('Covered: lock the forward and the round trip pays nothing extra; arbitrage enforces it. Uncovered: skip the forward and the extra interest is pay for standing in the road. Not free money: a bet that is short a fat left tail.',
+         note('end1', 300, 568, 'Covered = no free lunch.  Uncovered = paid to carry crash risk.', 'amber', 19)),
+])
+
+
+BOARD = dict(name='carry', lesson='interest-rate-parity', title='Covered parity, then the carry trade, drawn step by step', cfg=CARRY,
+             before='  <div class="tl-section-mark"><span>Section 03</span></div>\n  <h2>It actually happened: autumn 2008',
+             deck_after=6)
