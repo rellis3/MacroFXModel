@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kalman Filter &amp; Adaptive Relationships — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -146,7 +147,19 @@
       <p class="sl-p">Keep this recursion running and the gain keeps settling toward a <strong>steady-state value</strong> set entirely by the ratio Q/R (here 0.09 — small, so the steady-state gain settles low). Nobody set an N-day lookback anywhere; the filter's effective memory fell straight out of two variance inputs.</p>
     </section>
 
+    <!-- WB:kalman-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">The Kalman filter: blend the guess and the reading</h2>
+      <!-- WB:kalman:START -->
+      <div class="wb" data-title="The Kalman filter: blend the guess and the reading">
+        <script type="application/json">{"w":600,"h":910,"intro":"A boat you can only see through noisy radar, and a hedge ratio you can only see through noisy prices: the same problem, the same fix. The lesson's worked example, step by step.","steps":[{"cap":"Picture tracking a boat at night with radar. You never see the boat itself, only a ping once a minute, and every ping has error in it. Trust one ping alone and you chase noise.","do":[{"icon":"boat","name":"ship","x":56,"y":26,"s":0.72,"tone":"blue","label":"the boat (hidden)","lsize":17},{"note":"p1","x":92,"y":18,"text":"×","size":22,"anchor":"middle","tone":"amber"},{"note":"p2","x":154,"y":44,"text":"×","size":22,"anchor":"middle","tone":"amber"},{"note":"p3","x":40,"y":70,"text":"×","size":22,"anchor":"middle","tone":"amber"},{"note":"p4","x":166,"y":92,"text":"×","size":22,"anchor":"middle","tone":"amber"},{"note":"pl","x":180,"y":70,"text":"radar pings","size":17,"anchor":"start","tone":"amber"}]},{"cap":"A hedge ratio is the same problem. There is a true ratio between two assets, it drifts slowly, and you can never observe it directly. Here is one (illustrative), on a chart you will fill in.","do":[{"icon":"beta","name":"scales","x":310,"y":24,"s":0.6,"tone":"purple","label":"hedge ratio\n(hidden)","lsize":17},{"chart":"m","x":10,"y":168,"w":580,"h":262,"title":"Hedge ratio, day by day (illustrative)","xd":[0,40],"yd":[0.95,1.85],"yt":[[1.0,"1.0"],[1.2,"1.2"],[1.4,"1.4"],[1.6,"1.6"],[1.8,"1.8"]],"xt":[[0,"0"],[10,"10"],[20,"20"],[30,"30"],[40,"day 40"]],"pl":46,"pr":16},{"series":"t","chart":"m","pts":[[0,1.3],[1,1.338],[2,1.312],[3,1.319],[4,1.254],[5,1.252],[6,1.294],[7,1.345],[8,1.31],[9,1.294],[10,1.286],[11,1.205],[12,1.255],[13,1.276],[14,1.292],[15,1.323],[16,1.313],[17,1.32],[18,1.345],[19,1.368],[20,1.353],[21,1.315],[22,1.334],[23,1.346],[24,1.313],[25,1.347],[26,1.366],[27,1.379],[28,1.382],[29,1.399],[30,1.442],[31,1.433],[32,1.477],[33,1.485],[34,1.498],[35,1.544],[36,1.551],[37,1.565],[38,1.548],[39,1.549],[40,1.554]],"tone":"purple","dash":true,"label":"the truth (hidden)","lat":[21,1.76],"ldx":0,"ldy":0,"lanchor":"start","ms":900}]},{"cap":"Each day you get one noisy read on it: today's observed ratio. Like a shaky bathroom scale, any single reading can be off by a lot. Here the reading noise is R = 0.0100, a standard deviation of 0.10.","do":[{"series":"y","chart":"m","pts":[[1,1.35],[2,1.3],[3,1.419],[4,1.203],[5,1.119],[6,1.288],[7,1.392],[8,1.42],[9,1.172],[10,1.157],[11,1.275],[12,1.303],[13,1.429],[14,1.39],[15,1.313],[16,1.286],[17,1.577],[18,1.316],[19,1.289],[20,1.239],[21,1.325],[22,1.348],[23,1.311],[24,1.307],[25,1.374],[26,1.436],[27,1.489],[28,1.403],[29,1.22],[30,1.512],[31,1.291],[32,1.46],[33,1.338],[34,1.498],[35,1.467],[36,1.573],[37,1.895],[38,1.544],[39,1.633],[40,1.421]],"tone":null,"width":1.6,"label":"daily readings","lat":[2,1.76],"ldx":0,"ldy":0,"lanchor":"start","ms":1400}]},{"cap":"Start the filter with a belief: estimate 1.20, uncertainty P = 0.0400, a standard deviation of 0.20, deliberately wide. Here it is on a ruler.","do":[{"chart":"rul","x":10,"y":440,"w":580,"h":170,"title":"One update, on a ruler","xd":[1.15,1.4],"yd":[0,1],"yt":[],"xt":[],"pl":30,"pr":30},{"dot":"e0","chart":"rul","at":[1.2,0],"text":"1.20","tone":"blue","dy":16},{"chip":"est","x":144.0,"y":548,"text":"estimate","tone":"blue"}]},{"cap":"Predict. Before looking at today's reading, carry the estimate forward unchanged: still 1.20. But a day has passed, so the uncertainty grows by the drift variance Q = 0.0009.","do":[{"box":"pred","x":10,"y":622,"w":285,"h":86,"text":"predict: P + Q","tone":"blue","sub":"0.0400","size":19},{"count":"pred","from":0.04,"to":0.0409,"dp":4,"pre":"0.0400 + 0.0009 = ","ms":900}]},{"cap":"Day 1's reading arrives: 1.35. The surprise is 1.35 − 1.20 = 0.15. Trust it fully? Ignore it? Neither.","do":[{"dot":"y1","chart":"rul","at":[1.35,0.72],"text":"reading 1.35","tone":"amber","dy":-16},{"dot":"y1m","chart":"m","at":[1,1.35],"text":"","tone":"amber"}]},{"cap":"The Kalman gain decides how far to move: prediction uncertainty over total uncertainty, 0.0409 ÷ (0.0409 + 0.0100) = 0.804. So the estimate moves 80% of the way to the reading: 1.20 + 0.804 × 0.15 = 1.321. Uncertainty shrinks to 0.0080.","do":[{"box":"gain","x":305,"y":622,"w":285,"h":86,"text":"gain K = P ÷ (P + R)","tone":"green","sub":"0.000","size":19},{"count":"gain","from":0,"to":0.804,"dp":3,"pre":"0.0409 ÷ 0.0509 = ","ms":900},{"move":"est","x":395.7,"y":548,"ms":1100},{"dot":"e1","chart":"rul","at":[1.321,0],"text":"1.321","tone":"blue","dx":4,"dy":16,"anchor":"start"},{"note":"pct","x":289.6,"y":506,"text":"80% of the way","size":17,"anchor":"middle","tone":"green"}]},{"cap":"Day 2: carry 1.321 forward, uncertainty 0.0080 + 0.0009 = 0.0089. The reading is 1.30, a surprise of −0.021. Gain: 0.0089 ÷ 0.0189 = 0.471. The estimate eases to 1.311, uncertainty 0.0047.","do":[{"hide":"e0"},{"hide":"pct"},{"dim":"y1"},{"sub":"pred","text":"0.0080 + 0.0009 = 0.0089"},{"dot":"y2","chart":"rul","at":[1.3,0.72],"text":"1.30","tone":"amber","dy":-16},{"dot":"y2m","chart":"m","at":[2,1.3],"text":"","tone":"amber"},{"sub":"gain","text":"0.0089 ÷ 0.0189 = 0.471"},{"move":"est","x":374.9,"y":548,"ms":900},{"dot":"e2","chart":"rul","at":[1.311,0],"text":"1.311","tone":"blue","dx":-4,"dy":16,"anchor":"end"}]},{"cap":"Nobody touched a setting, yet the gain fell from 0.804 to 0.471, because the filter is now surer of itself. Keep going and it settles toward a steady state set only by Q/R = 0.09: about 0.26 here.","do":[{"chart":"k","x":10,"y":720,"w":580,"h":180,"title":"The gain, day by day","xd":[0.4,8.6],"yd":[0,1],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"6"],[7,"7"],[8,"day 8"]],"pl":46,"pr":16},{"bars":"kb","chart":"k","bw":34,"ms":1300,"data":[[1,0.804,"0.804","green"],[2,0.471,"0.471","green"],[3,0.36,"","green"],[4,0.31,"","green"],[5,0.286,"","green"],[6,0.273,"","green"],[7,0.266,"","green"],[8,0.263,"","green"]]},{"series":"kss","chart":"k","pts":[[0.4,0.258],[8.6,0.258]],"tone":"amber","dash":true,"label":"≈ 0.26 (approx.)","lat":[8.6,0.2583562262423503],"ldx":-4,"ldy":-14,"lanchor":"end","ms":500}]},{"cap":"Run predict-then-update every day. The estimate line smooths through the noise and follows the true ratio as it drifts, with no window length chosen anywhere. Its memory falls out of Q and R.","do":[{"hide":"y1m"},{"hide":"y2m"},{"series":"xh","chart":"m","pts":[[0,1.2],[1,1.321],[2,1.311],[3,1.35],[4,1.304],[5,1.251],[6,1.261],[7,1.296],[8,1.329],[9,1.288],[10,1.254],[11,1.259],[12,1.271],[13,1.312],[14,1.332],[15,1.327],[16,1.316],[17,1.384],[18,1.366],[19,1.346],[20,1.319],[21,1.32],[22,1.328],[23,1.323],[24,1.319],[25,1.333],[26,1.36],[27,1.393],[28,1.396],[29,1.35],[30,1.392],[31,1.366],[32,1.39],[33,1.377],[34,1.408],[35,1.423],[36,1.462],[37,1.574],[38,1.566],[39,1.583],[40,1.541]],"tone":"blue","width":3.6,"label":"filter estimate","lat":[30,1.3922447502297175],"ldx":0,"ldy":34,"lanchor":"middle","ms":1800}]},{"cap":"The catch: Q and R are still your choices. Set Q far too big relative to R and the gain heads toward 1: the line re-draws every noisy print (illustrative). Under-damped, not \"more adaptive\".","do":[{"series":"hot","chart":"m","pts":[[0,1.2],[1,1.339],[2,1.304],[3,1.408],[4,1.222],[5,1.128],[6,1.273],[7,1.382],[8,1.417],[9,1.195],[10,1.16],[11,1.265],[12,1.299],[13,1.418],[14,1.393],[15,1.32],[16,1.289],[17,1.55],[18,1.338],[19,1.294],[20,1.244],[21,1.317],[22,1.346],[23,1.314],[24,1.308],[25,1.368],[26,1.429],[27,1.484],[28,1.411],[29,1.238],[30,1.487],[31,1.309],[32,1.446],[33,1.348],[34,1.484],[35,1.468],[36,1.563],[37,1.864],[38,1.573],[39,1.627],[40,1.44]],"tone":"red","width":2.2,"ms":1400},{"note":"hotl","chart":"m","at":[21,1.05],"text":"Q too big: gain ≈ 1","tone":"red","size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"So: predict, then blend by a gain that is derived, not picked. But grid-searching Q and R until a backtest looks good is the same overfitting as tuning a window length, in a smarter-looking disguise.","do":[{"hide":"hot"},{"hide":"hotl"},{"box":"warn","x":420,"y":20,"w":170,"h":108,"text":"Q, R are\nchosen inputs","tone":"amber","sub":"test out of sample","size":18},{"pulse":"xh"}]}]}</script>
+      </div>
+      <!-- WB:kalman:END -->
+    </section>
+    <!-- WB:kalman-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Run the gain yourself</h2>
       <p class="sl-sub">Kₜ = prior variance ÷ (prior variance + measurement variance). Change any field — starts on Day 1 above.</p>
@@ -168,7 +181,7 @@
       <p class="sl-p">Push R up and watch the gain fall toward zero — a shakier sensor gets discounted. Push P up (a less confident prior) and watch the gain climb toward one. This is the entire method, in one formula and four numbers.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The trade-off, live: smooth vs. reactive</h2>
       <p class="sl-sub">Grey dots are noisy daily observations of a hedge ratio. Drag the slider to shift how much the filtered line trusts each new one.</p>
@@ -217,7 +230,7 @@
       <p class="sl-p">Watch the shaded band as you drag: it narrows toward the low end (a confident, well-averaged estimate) and widens toward the high end (a jagged line that's really just re-drawing the noise). This is the same trade-off Q and R control directly in the real filter — a modeling choice, not something the data decides for you.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The trading case: drift smoothly, don't refit and jump</h2>
       <p class="sl-sub">Same underlying data, two ways of tracking the relationship between two correlated instruments.</p>
@@ -244,7 +257,7 @@
       <div class="sl-quote">This is the standard alternative to rolling-window OLS in statistical arbitrage and pairs trading: track the hedge ratio between two cointegrated instruments with a Kalman filter instead of a rolling regression, so it reacts smoothly to genuine drift instead of exhibiting the equal-weight-in, zero-weight-out discontinuity a fixed window always has. The same idea extends to a time-varying market beta or factor loading — any coefficient conventionally estimated by static OLS.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this is used, and where "adaptive" stops meaning "principled"</h2>
       <div class="sl-icard-grid">
@@ -259,7 +272,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -310,7 +323,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -451,5 +464,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

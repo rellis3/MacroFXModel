@@ -500,11 +500,17 @@ read aloud) say what just happened. Load `assets/whiteboard.css` in the head and
 </div>
 ```
 
+The control bar has a speed button (1× → 1.5× → 2× → 3×). It is one setting for every
+board, remembered across pages; every animation time runs through `T()` in the player,
+so a new op that animates must pass its durations through `T()` too.
+
 In a visual guide, give the board its own slide right after the slide it
 illustrates (kicker `▶ Watch it`). Each board is one scene file in
 `education/tools/whiteboards/<name>.py` (helpers in `_wb.py`) defining `BOARD`;
 `python3 education/tools/build_whiteboards.py [name]` inserts it into the full lesson
-and the deck and renumbers the deck's `data-slide`s.
+and the deck and renumbers the deck's `data-slide`s. Every run also rewrites `theory-lab/watch.html`
+(the index of all boards, linking to `lesson.html#wb-<name>`) and the ▶ badge on
+each hub card whose lesson has a board, so a new board shows up there by itself.
 
 Draw the *thing*, not a label for it: the `icon` op has ~30 hand-drawn doodles (bank
 with ¥/$, cash stack, house, factory, ship, barrel, gold, bond scroll, piggy-bank

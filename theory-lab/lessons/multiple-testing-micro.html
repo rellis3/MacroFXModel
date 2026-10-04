@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Multiple Testing &amp; the Look-Elsewhere Effect — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -151,7 +152,19 @@
       <div class="sl-note">Flagging 10 slices at a 10% target FDR means: on average, roughly 1 of those 10 is expected to be a false positive — not that any specific one is safe, and not that zero false positives exist anywhere in the wider search.</div>
     </section>
 
+    <!-- WB:multitest-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Seventy rolls of the dice: why some backtests win by luck</h2>
+      <!-- WB:multitest:START -->
+      <div class="wb" data-title="Seventy rolls of the dice: why some backtests win by luck">
+        <script type="application/json">{"w":600,"h":822,"intro":"Seventy backtests of nothing, a 5% bar, and how many \"winners\" luck hands you. Press play, or step through.","steps":[{"cap":"You have an idea and test it once, at the usual 5% bar. If there is really nothing there, you still have a 1-in-20 chance of a false alarm. One roll of the dice: fine.","do":[{"icon":"you","name":"person","x":18,"y":8,"s":0.7,"tone":"blue","label":"you","lsize":17},{"icon":"d1","name":"dice","x":112,"y":22,"s":0.5,"tone":"amber"},{"note":"one","x":136,"y":100,"text":"1 test: 5%","size":17,"anchor":"middle","tone":"amber"}]},{"cap":"But you don't run one. You slice: 7 pairs × 5 regimes × 2 holding periods. That is 70 tests, and each one is another roll of the dice.","do":[{"icon":"d2","name":"dice","x":196,"y":22,"s":0.42,"tone":"amber"},{"icon":"d3","name":"dice","x":248,"y":22,"s":0.42,"tone":"amber"},{"icon":"d4","name":"dice","x":300,"y":22,"s":0.42,"tone":"amber"},{"icon":"d5","name":"dice","x":352,"y":22,"s":0.42,"tone":"amber"},{"note":"dots","x":420,"y":46,"text":"…","size":26,"anchor":"middle","tone":"amber"},{"note":"mult","x":290,"y":100,"text":"7 pairs × 5 regimes × 2 periods = 70","size":17,"anchor":"middle","tone":"amber"},{"hide":"one"}]},{"cap":"Make it pure noise: none of the 70 slices has any real edge. Here are their p-values, one bar each. A taller bar is a smaller p-value, a result that looks luckier.","do":[{"chart":"pc","x":10,"y":150,"w":580,"h":300,"title":"70 tests on pure noise (illustrative)","xd":[0.3,70.7],"yd":[0,3.6],"yt":[[0,"p = 1"],[1.301,"0.05"],[3.146,"0.000714"]],"xt":[[1,"1"],[35,"35"],[70,"70"]],"pl":70,"pr":12},{"bars":"raw","chart":"pc","data":[[1,0.169,"","blue"],[2,0.105,"","blue"],[3,0.284,"","blue"],[4,0.291,"","blue"],[5,0.405,"","blue"],[6,0.001,"","blue"],[7,0.539,"","blue"],[8,0.829,"","blue"],[9,0.583,"","blue"],[10,0.584,"","blue"],[11,0.485,"","blue"],[12,0.572,"","blue"],[13,0.968,"","blue"],[14,0.487,"","blue"],[15,0.507,"","blue"],[16,0.245,"","blue"],[17,0.695,"","blue"],[18,1.15,"","blue"],[19,0.693,"","blue"],[20,0.266,"","blue"],[21,0.411,"","blue"],[22,0.135,"","blue"],[23,0.095,"","blue"],[24,0.383,"","blue"],[25,1.003,"","blue"],[26,0.138,"","blue"],[27,0.122,"","blue"],[28,0.402,"","blue"],[29,0.182,"","blue"],[30,0.524,"","blue"],[31,0.039,"","blue"],[32,0.079,"","blue"],[33,0.101,"","blue"],[34,0.02,"","blue"],[35,0.633,"","blue"],[36,0.263,"","blue"],[37,0.136,"","blue"],[38,0.096,"","blue"],[39,0.409,"","blue"],[40,0.858,"","blue"],[41,0.203,"","blue"],[42,0.98,"","blue"],[43,0.152,"","blue"],[44,2.158,"","blue"],[45,0.342,"","blue"],[46,0.319,"","blue"],[47,0.922,"","blue"],[48,0.319,"","blue"],[49,0.301,"","blue"],[50,0.433,"","blue"],[51,0.048,"","blue"],[52,0.062,"","blue"],[53,0.05,"","blue"],[54,0.611,"","blue"],[55,1.587,"","blue"],[56,0.424,"","blue"],[57,0.944,"","blue"],[58,0.152,"","blue"],[59,0.58,"","blue"],[60,0.891,"","blue"],[61,0.547,"","blue"],[62,0.394,"","blue"],[63,0.133,"","blue"],[64,0.336,"","blue"],[65,0.521,"","blue"],[66,0.169,"","blue"],[67,1.344,"","blue"],[68,0.679,"","blue"],[69,0.163,"","blue"],[70,0.124,"","blue"]],"bw":5,"ms":1300}]},{"cap":"Now draw the 5% bar. A few slices poke above it: here 3 of the 70 come out \"significant\". Not one of them is real. That is what noise does.","do":[{"series":"a05","chart":"pc","pts":[[0.3,1.301],[70.7,1.301]],"tone":"amber","dash":true,"label":"5% bar","lat":[70.7,1.301],"ldx":-4,"ldy":-12,"lanchor":"end","ms":500},{"bars":"rawhit","chart":"pc","data":[[44,2.158,"","red"],[55,1.587,"","red"],[67,1.344,"","red"]],"bw":5,"ms":600},{"dot":"w0","chart":"pc","at":[44,2.158],"text":"","tone":"red"},{"dot":"w1","chart":"pc","at":[55,1.587],"text":"","tone":"red"},{"dot":"w2","chart":"pc","at":[67,1.344],"text":"","tone":"red"}]},{"cap":"How many should you expect? Each slice has a 5% chance of a fluke, so 70 × 0.05 = 3.5 false positives on average. Finding about 3 is not a discovery; it is the expected result.","do":[{"box":"efp","x":10,"y":466,"w":280,"h":82,"text":"expected false alarms\n70 × 0.05","tone":"red","sub":"0","size":18},{"count":"efp","from":0,"to":3.5,"dp":1,"ms":1100}]},{"cap":"And the chance of at least one fluke somewhere is 1 − 0.95⁷⁰, about 97.2%. It climbs fast with every test you add, then flattens near 100%.","do":[{"box":"fwer","x":10,"y":560,"w":280,"h":82,"text":"chance of at least one\n1 − 0.95⁷⁰","tone":"red","sub":"0%","size":18},{"chart":"fw","x":305,"y":466,"w":285,"h":176,"title":"P(≥ 1 fluke)","xd":[0,100],"yd":[0,1],"yt":[[0,"0%"],[1,"100%"]],"xt":[[0,"0"],[70,"70"],[100,"m"]],"pl":52,"pr":14},{"series":"fc","chart":"fw","pts":[[0,0.0],[2,0.0975],[4,0.1855],[6,0.2649],[8,0.3366],[10,0.4013],[12,0.4596],[14,0.5123],[16,0.5599],[18,0.6028],[20,0.6415],[22,0.6765],[24,0.708],[26,0.7365],[28,0.7622],[30,0.7854],[32,0.8063],[34,0.8252],[36,0.8422],[38,0.8576],[40,0.8715],[42,0.884],[44,0.8953],[46,0.9055],[48,0.9147],[50,0.9231],[52,0.9306],[54,0.9373],[56,0.9434],[58,0.949],[60,0.9539],[62,0.9584],[64,0.9625],[66,0.9661],[68,0.9694],[70,0.9724],[72,0.9751],[74,0.9775],[76,0.9797],[78,0.9817],[80,0.9835],[82,0.9851],[84,0.9865],[86,0.9879],[88,0.989],[90,0.9901],[92,0.9911],[94,0.9919],[96,0.9927],[98,0.9934],[100,0.9941]],"tone":"red","ms":1200},{"dot":"f70","chart":"fw","at":[70,0.972],"text":"97%","tone":"red","dx":-6,"dy":18,"anchor":"end"},{"count":"fwer","from":0,"to":97.2,"dp":1,"suf":"%","ms":1100}]},{"cap":"The trap: write up only the winner. The luckiest slice came out at p = 0.007, and on its own it looks like an edge. Without the other 69 bars, nobody can tell it is a lottery ticket.","do":[{"icon":"rep","name":"scroll","x":480,"y":6,"s":0.6,"tone":"purple","label":"the write-up","lsize":17},{"chip":"best","x":389.1278409090909,"y":216,"text":"p = 0.007","tone":"red"},{"move":"best","x":528,"y":118,"ms":1200},{"pulse":"rep"}]},{"cap":"Line all 70 up, luckiest first. The best of 70 noise draws is expected to look good: someone has to be the smallest of 70.","do":[{"hide":"best"},{"hide":"raw"},{"hide":"rawhit"},{"hide":"w0"},{"hide":"w1"},{"hide":"w2"},{"bars":"srt","chart":"pc","data":[[1,2.158,"","red"],[2,1.587,"","red"],[3,1.344,"","red"],[4,1.15,"","blue"],[5,1.003,"","blue"],[6,0.98,"","blue"],[7,0.968,"","blue"],[8,0.944,"","blue"],[9,0.922,"","blue"],[10,0.891,"","blue"],[11,0.858,"","blue"],[12,0.829,"","blue"],[13,0.695,"","blue"],[14,0.693,"","blue"],[15,0.679,"","blue"],[16,0.633,"","blue"],[17,0.611,"","blue"],[18,0.584,"","blue"],[19,0.583,"","blue"],[20,0.58,"","blue"],[21,0.572,"","blue"],[22,0.547,"","blue"],[23,0.539,"","blue"],[24,0.524,"","blue"],[25,0.521,"","blue"],[26,0.507,"","blue"],[27,0.487,"","blue"],[28,0.485,"","blue"],[29,0.433,"","blue"],[30,0.424,"","blue"],[31,0.411,"","blue"],[32,0.409,"","blue"],[33,0.405,"","blue"],[34,0.402,"","blue"],[35,0.394,"","blue"],[36,0.383,"","blue"],[37,0.342,"","blue"],[38,0.336,"","blue"],[39,0.319,"","blue"],[40,0.319,"","blue"],[41,0.301,"","blue"],[42,0.291,"","blue"],[43,0.284,"","blue"],[44,0.266,"","blue"],[45,0.263,"","blue"],[46,0.245,"","blue"],[47,0.203,"","blue"],[48,0.182,"","blue"],[49,0.169,"","blue"],[50,0.169,"","blue"],[51,0.163,"","blue"],[52,0.152,"","blue"],[53,0.152,"","blue"],[54,0.138,"","blue"],[55,0.136,"","blue"],[56,0.135,"","blue"],[57,0.133,"","blue"],[58,0.124,"","blue"],[59,0.122,"","blue"],[60,0.105,"","blue"],[61,0.101,"","blue"],[62,0.096,"","blue"],[63,0.095,"","blue"],[64,0.079,"","blue"],[65,0.062,"","blue"],[66,0.05,"","blue"],[67,0.048,"","blue"],[68,0.039,"","blue"],[69,0.02,"","blue"],[70,0.001,"","blue"]],"bw":5,"ms":1100},{"note":"rk","x":104,"y":328,"text":"← luckiest first","size":17,"anchor":"start","tone":"chalk"}]},{"cap":"Bonferroni raises the bar: divide 5% by the 70 tests. Now each slice needs p below 0.05 ÷ 70 ≈ 0.000714, about 70 times stricter. None of the noise gets over it, and the family-wise risk is back to 5%.","do":[{"dim":"a05"},{"series":"bf","chart":"pc","pts":[[0.3,3.146],[70.7,3.146]],"tone":"green","label":"Bonferroni: 0.05 ÷ 70","lat":[70.7,3.146],"ldx":-4,"ldy":-12,"lanchor":"end","ms":900},{"box":"bon","x":10,"y":664,"w":280,"h":76,"text":"Bonferroni bar\n0.05 ÷ 70","tone":"green","sub":"0.05","size":18},{"count":"bon","from":0.05,"to":0.000714,"dp":6,"ms":1200}]},{"cap":"It is strict by design. FX slices share a USD factor, so 70 slices are not 70 independent looks, and the flat bar can also bury real, correlated effects. Benjamini-Hochberg uses a staircase instead: rank 1 must beat 1/70 × 0.10 ≈ 0.00143, rank 10 only 10/70 × 0.10 ≈ 0.0143.","do":[{"series":"bh","chart":"pc","pts":[[0.5,2.845],[1.5,2.845],[1.5,2.544],[2.5,2.544],[2.5,2.368],[3.5,2.368],[3.5,2.243],[4.5,2.243],[4.5,2.146],[5.5,2.146],[5.5,2.067],[6.5,2.067],[6.5,2.0],[7.5,2.0],[7.5,1.942],[8.5,1.942],[8.5,1.891],[9.5,1.891],[9.5,1.845],[10.5,1.845],[10.5,1.804],[11.5,1.804],[11.5,1.766],[12.5,1.766],[12.5,1.731],[13.5,1.731],[13.5,1.699],[14.5,1.699],[14.5,1.669],[15.5,1.669],[15.5,1.641],[16.5,1.641],[16.5,1.615],[17.5,1.615],[17.5,1.59],[18.5,1.59],[18.5,1.566],[19.5,1.566],[19.5,1.544],[20.5,1.544],[20.5,1.523],[21.5,1.523],[21.5,1.503],[22.5,1.503],[22.5,1.483],[23.5,1.483],[23.5,1.465],[24.5,1.465],[24.5,1.447],[25.5,1.447],[25.5,1.43],[26.5,1.43],[26.5,1.414],[27.5,1.414],[27.5,1.398],[28.5,1.398],[28.5,1.383],[29.5,1.383],[29.5,1.368],[30.5,1.368],[30.5,1.354],[31.5,1.354],[31.5,1.34],[32.5,1.34],[32.5,1.327],[33.5,1.327],[33.5,1.314],[34.5,1.314],[34.5,1.301],[35.5,1.301],[35.5,1.289],[36.5,1.289],[36.5,1.277],[37.5,1.277],[37.5,1.265],[38.5,1.265],[38.5,1.254],[39.5,1.254],[39.5,1.243],[40.5,1.243],[40.5,1.232],[41.5,1.232],[41.5,1.222],[42.5,1.222],[42.5,1.212],[43.5,1.212],[43.5,1.202],[44.5,1.202],[44.5,1.192],[45.5,1.192],[45.5,1.182],[46.5,1.182],[46.5,1.173],[47.5,1.173],[47.5,1.164],[48.5,1.164],[48.5,1.155],[49.5,1.155],[49.5,1.146],[50.5,1.146],[50.5,1.138],[51.5,1.138],[51.5,1.129],[52.5,1.129],[52.5,1.121],[53.5,1.121],[53.5,1.113],[54.5,1.113],[54.5,1.105],[55.5,1.105],[55.5,1.097],[56.5,1.097],[56.5,1.089],[57.5,1.089],[57.5,1.082],[58.5,1.082],[58.5,1.074],[59.5,1.074],[59.5,1.067],[60.5,1.067],[60.5,1.06],[61.5,1.06],[61.5,1.053],[62.5,1.053],[62.5,1.046],[63.5,1.046],[63.5,1.039],[64.5,1.039],[64.5,1.032],[65.5,1.032],[65.5,1.026],[66.5,1.026],[66.5,1.019],[67.5,1.019],[67.5,1.013],[68.5,1.013],[68.5,1.006],[69.5,1.006],[69.5,1.0],[70.5,1.0]],"tone":"purple","ms":1300,"label":"BH staircase (q = 10%)","lat":[46,1.182],"ldx":0,"ldy":-24},{"box":"bhb","x":310,"y":664,"w":280,"h":76,"text":"BH, q = 10%\nrank k: p ≤ k/70 × 0.10","tone":"purple","sub":"rank 1: 0.00143","size":18}]},{"cap":"On pure noise nothing should survive either bar, and here nothing does. The fix that comes before any formula: count every test you ran, failures included, so the bar can rise to match.","do":[{"sub":"bhb","text":"rank 10: 0.0143"},{"pulse":"srt"}]},{"cap":"A whole field ran this experiment. Harvey, Liu & Zhu counted 316 published stock-return factors, all tested on the same shared history, and argued a new one should clear a t-statistic of about 3, not the usual 2.","do":[{"icon":"zoo","name":"crowd","x":18,"y":744,"s":0.62,"tone":"amber"},{"note":"zl","x":92,"y":774,"text":"316 factors","size":18,"anchor":"start","tone":"amber"},{"box":"tb2","x":300,"y":748,"w":120,"h":56,"text":"bar: t ≈ 2","tone":"red","size":18},{"box":"tb3","x":466,"y":748,"w":124,"h":56,"text":"bar: t ≈ 3","tone":"green","size":18},{"arrow":["tb2","tb3"],"tone":"green"},{"cross":"tb2"},{"pulse":"tb3"}]}]}</script>
+      </div>
+      <!-- WB:multitest:END -->
+    </section>
+    <!-- WB:multitest-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Same arithmetic, your numbers</h2>
       <p class="sl-sub">Starts on the worked example — N = 70, α = 0.05. Change either field.</p>
@@ -173,7 +186,7 @@
     </section>
 
 <!-- DESK:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">This is why the repo has a house rule about it</h2>
       <div class="sl-quote">"Finding a few 'winners' among 70 slices is what noise does." That line, already written into this repo's own project memory, isn't a cautious-sounding guess — it's a direct restatement of the FWER math: at m = 70, roughly 3.5 false positives are <em>expected</em> from pure noise. A survivor has to clear that bar and hold up out-of-sample before it counts as anything.</div>
@@ -186,7 +199,7 @@
     </section>
 <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How practitioners actually handle this</h2>
       <div class="sl-icard-grid">
@@ -201,7 +214,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">The factor zoo: hundreds of discoveries, one shared dataset</h2>
       <div class="sl-callout amber">
@@ -222,7 +235,7 @@
       <p class="sl-p">Nobody had to cheat. Each test could be run correctly. The error was in m, which no single paper could report because no single paper knew it.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
 <!-- DESK:START -->
       <h2 class="sl-h2">This desk's own version: 54.1% against 54.1%</h2>
@@ -243,7 +256,7 @@
 <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -294,7 +307,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -334,7 +347,7 @@
 <script src="../assets/deck.js"></script>
 <script>
 (function(){
-  // Slide 4 — FWER curve + slider, N tests at fixed alpha = 0.05.
+  // FWER-curve slide + slider, N tests at fixed alpha = 0.05.
   (function(){
     var slider = document.getElementById('fwer-slider');
     if (!slider) return;
@@ -369,7 +382,7 @@
     update();
   })();
 
-  // Slide 8 — FWER / expected false positives / Bonferroni threshold, live.
+  // Live-calculator slide — FWER / expected false positives / Bonferroni threshold, live.
   (function(){
     var nInput = document.getElementById('mt-n');
     if (!nInput) return;
@@ -415,5 +428,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -314,6 +314,8 @@ h2:first-of-type{margin-top:0}
 .tl-mode-btn.active{background:var(--purple-bg);color:var(--purple);border-color:var(--purple-bd)}
 .tl-mode-toggle-hint{font-size:11px;color:var(--text3);margin-left:auto}
 .tl-card-micro-badge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--purple-bg);color:var(--purple);font-size:11px;flex-shrink:0}
+/* ▶ marks a lesson with an animated whiteboard (written by education/tools/build_whiteboards.py; index at watch.html). */
+.tl-card-wb-badge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--amber-bg);color:var(--amber);font-size:10px;flex-shrink:0}
 
 /* Difficulty filter bar + per-card level pill (hub.html only) */
 .tl-diff-filter{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 30px;padding:14px 16px;background:var(--s1);border:1px solid var(--border);border-radius:var(--rl)}

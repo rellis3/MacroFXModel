@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Time Value of Money — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -141,7 +142,19 @@
       <p class="sl-p">Taking the compounding frequency n to infinity invokes the same limit that defines the constant e itself: lim(1+r/n)ⁿ = e^r as n→∞, so FV = PV·e^(rt).</p>
     </section>
 
+    <!-- WB:tvm-deck:START -->
     <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">A coin today vs the same coin later</h2>
+      <!-- WB:tvm:START -->
+      <div class="wb" data-title="A coin today vs the same coin later">
+        <script type="application/json">{"w":600,"h":962,"intro":"One coin today, the same coin later, and the arithmetic that moves money across time in both directions. Press play, or step through.","steps":[{"cap":"Someone offers you $100 right now, or a guaranteed $100 exactly one year from today. Same coin, same number. Which is worth more?","do":[{"icon":"c0","name":"coin","x":34,"y":24,"s":0.62,"tone":"green","label":"$100 today","sym":"$","lsize":18},{"icon":"clk","name":"clock","x":420,"y":30,"s":0.46,"tone":"chalk"},{"icon":"c1","name":"coin","x":480,"y":24,"s":0.62,"tone":"amber","label":"$100 in a year","sym":"$","lsize":18},{"note":"q","x":300,"y":54,"text":"?","size":30,"anchor":"middle","tone":"chalk"}]},{"cap":"Take it now, because of what it can do while you wait. Put it in a bank paying 5% and in a year it has become $105. The person who waited has $100: poorer by $5 for the same promise.","do":[{"hide":"q"},{"icon":"bank","name":"bank","x":262,"y":12,"s":0.6,"tone":"blue","label":"bank pays 5%","sym":"$","lsize":18},{"chip":"dep","x":65,"y":58,"text":"$100","tone":"green"},{"move":"dep","x":292,"y":50,"ms":1000},{"hide":"dep"},{"chip":"out","x":292,"y":50,"text":"$105","tone":"green"},{"move":"out","x":530,"y":140,"ms":900},{"note":"vs","x":300,"y":176,"text":"in a year: $105 beats $100","size":18,"anchor":"middle","tone":"green"}]},{"cap":"Now run it backwards. If $100 today grows into $105 in a year, then $105 arriving in a year is worth exactly $100 today. That is discounting: the same formula, run in reverse.","do":[{"hide":"out"},{"hide":"vs"},{"line":"back","points":[[520,150],[80,150],[96,140],[80,150],[96,160]],"tone":"purple","width":3,"ms":1000},{"note":"bk","x":300,"y":176,"text":"$105 in a year ÷ 1.05 = $100 today","size":18,"anchor":"middle","tone":"purple"}]},{"cap":"The lesson's worked example: $1,000 at 6% a year. After year one the balance has grown by its interest, $60, to $1,060.","do":[{"chart":"bc","x":10,"y":226,"w":580,"h":286,"title":"Your $1,000 at 6%","xd":[-0.5,5.5],"yd":[0,1500],"yt":[[0,"$0"],[1000,"$1,000"]],"xt":[[0,"today"],[1,"yr 1"],[2,"yr 2"],[3,"yr 3"],[4,"yr 4"],[5,"yr 5"]],"pl":70,"pr":14},{"bars":"b01","chart":"bc","data":[[0,1000.0,"$1,000","blue"],[1,1060.0,"$1,060","green"]],"bw":44,"ms":900},{"chip":"fw1","x":121.33333333333333,"y":534,"text":"× 1.06","tone":"green"},{"move":"fw1","x":204.0,"y":534,"ms":800}]},{"cap":"Year two pays 6% on the whole $1,060, interest included: $63.60. Interest earns interest, every year. After five years: 1,000 × 1.06⁵ = $1,338.23.","do":[{"move":"fw1","x":534.6666666666666,"y":534,"ms":1400},{"bars":"b25","chart":"bc","data":[[2,1123.6,"$1,124","green"],[3,1191.02,"$1,191","green"],[4,1262.48,"$1,262","green"],[5,1338.23,"$1,338","green"]],"bw":44,"ms":1400},{"box":"fv","x":10,"y":558,"w":280,"h":76,"text":"FV = 1,000 × 1.06⁵","tone":"green","sub":"$1,000.00","size":19},{"count":"fv","from":1000,"to":1338.23,"dp":2,"pre":"$","ms":1300}]},{"cap":"Compare simple interest, which pays 6% on the original $1,000 only: a straight line to $1,300. Compounding adds $38.23 on top, and the gap keeps widening the longer you wait.","do":[{"series":"simp","chart":"bc","pts":[[0,1000],[5,1300]],"tone":"amber","dash":true,"ms":800},{"dot":"s5","chart":"bc","at":[5,1300],"text":"simple: $1,300","tone":"amber","dx":-34,"dy":-36,"anchor":"end"}]},{"cap":"Compounding more often helps too. The same stated 6%, compounded continuously, gives 1,000 × e^0.3 = $1,349.86: $11.63 more, purely from how often interest is added.","do":[{"box":"ct","x":310,"y":558,"w":280,"h":76,"text":"same 6%, continuously\n1,000 × e^0.3","tone":"purple","sub":"$1,338.23","size":19},{"count":"ct","from":1338.23,"to":1349.86,"dp":2,"pre":"$","ms":1100}]},{"cap":"Now walk back along the timeline. Multiply $1,338.23 by the discount factor 1 ÷ 1.06⁵ = 0.74726 and you land back on $1,000, today. Present value is future value run backwards.","do":[{"hide":"fw1"},{"chip":"bk1","x":534.6666666666666,"y":534,"text":"× 0.74726","tone":"purple"},{"move":"bk1","x":143.33333333333331,"y":534,"ms":1500},{"box":"pv","x":10,"y":648,"w":280,"h":76,"text":"PV = 1,338.23 × 0.74726","tone":"purple","sub":"$1,338.23","size":19},{"count":"pv","from":1338.23,"to":1000.0,"dp":2,"pre":"$","ms":1300}]},{"cap":"The further away the money, the less it is worth today, and a higher rate shrinks it faster. A dollar due in 20 years is worth about 55 cents today at 3%, but only about 13.5 cents at 10%.","do":[{"chart":"df","x":10,"y":740,"w":580,"h":210,"title":"What $1 due later is worth today","xd":[0,30],"yd":[0,1.05],"yt":[[0,"0"],[0.5,"0.5"],[1,"1.0"]],"xt":[[0,"now"],[10,"10"],[20,"20"],[30,"30 yrs"]],"pl":50,"pr":20},{"series":"d3","chart":"df","pts":[[0,1.0],[1,0.9704],[2,0.9418],[3,0.9139],[4,0.8869],[5,0.8607],[6,0.8353],[7,0.8106],[8,0.7866],[9,0.7634],[10,0.7408],[11,0.7189],[12,0.6977],[13,0.6771],[14,0.657],[15,0.6376],[16,0.6188],[17,0.6005],[18,0.5827],[19,0.5655],[20,0.5488],[21,0.5326],[22,0.5169],[23,0.5016],[24,0.4868],[25,0.4724],[26,0.4584],[27,0.4449],[28,0.4317],[29,0.419],[30,0.4066]],"tone":"blue","label":"r = 3%","lat":[30,0.4065696597405991],"ldx":-2,"ldy":-14,"lanchor":"end","ms":1100},{"series":"d10","chart":"df","pts":[[0,1.0],[1,0.9048],[2,0.8187],[3,0.7408],[4,0.6703],[5,0.6065],[6,0.5488],[7,0.4966],[8,0.4493],[9,0.4066],[10,0.3679],[11,0.3329],[12,0.3012],[13,0.2725],[14,0.2466],[15,0.2231],[16,0.2019],[17,0.1827],[18,0.1653],[19,0.1496],[20,0.1353],[21,0.1225],[22,0.1108],[23,0.1003],[24,0.0907],[25,0.0821],[26,0.0743],[27,0.0672],[28,0.0608],[29,0.055],[30,0.0498]],"tone":"red","label":"r = 10%","lat":[30,0.049787068367863944],"ldx":-2,"ldy":-14,"lanchor":"end","ms":1100},{"dot":"p3","chart":"df","at":[20,0.5488116360940264],"text":"0.549","tone":"blue","dx":0,"dy":-16},{"dot":"p10","chart":"df","at":[20,0.1353352832366127],"text":"0.135","tone":"red","dx":0,"dy":-16}]},{"cap":"The same idea, run once per currency, prices an FX forward. USD/JPY spot 150.00, dollars earning 5%, yen 0.1%: the fair 3-month forward is 150 × 1.00025 ÷ 1.0125 ≈ 148.19. Not a forecast; just interest, so nobody gets free money.","do":[{"box":"fx","x":310,"y":648,"w":280,"h":76,"text":"USD/JPY, 3 months\n150 × 1.00025 ÷ 1.0125","tone":"amber","sub":"150.00","size":18},{"count":"fx","from":150,"to":148.19,"dp":2,"ms":1200}]}]}</script>
+      </div>
+      <!-- WB:tvm:END -->
+    </section>
+    <!-- WB:tvm-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">A continuously-compounded rate is a log return in disguise</h2>
       <p class="sl-sub">Take logs of both sides of FV = PV·e^(rt).</p>
@@ -154,7 +167,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Discounting a future cash flow, live</h2>
       <p class="sl-sub">PV = FV × e^(−rt). Change any input — this is the exact machinery hiding inside Ke^(−rT).</p>
@@ -179,7 +192,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Where r comes from inside Black-Scholes</h2>
       <p class="sl-sub">The Black-Scholes formula contains a term Ke^(−rT). This lesson is the entire reason it's there.</p>
@@ -196,7 +209,7 @@
       <div class="sl-quote">None of this requires forecasting where markets are going. Like the rest of risk-neutral pricing, discounting is a mechanical, no-forecast operation on a known future amount and a quoted rate. r shows up in Black-Scholes because you cannot price a future payoff correctly without first moving it to today's terms — not because the model has an opinion about direction.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where r comes from inside an FX forward</h2>
       <p class="sl-sub">Two currencies, two interest rates — the forward rate has to reflect the gap, or a riskless trade prints free money.</p>
@@ -223,7 +236,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Not a forecast — and not optional either</h2>
       <div class="sl-icard-grid">
@@ -238,7 +251,7 @@
       <p class="sl-p">Small rate gaps compound into large gaps over long horizons: at 3 years, 3% and 10% discount curves are still fairly close (0.914 vs. 0.741); by 20 years they've diverged to 0.549 vs. 0.135 — a 4x gap that started as 7 percentage points. Long-dated cash flows — a 30-year bond, a pension liability, a long-dated FX forward — are far more sensitive to the discount rate than short-dated ones, purely because (1+r)ᵗ is exponential in t.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -289,7 +302,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -398,5 +411,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>
