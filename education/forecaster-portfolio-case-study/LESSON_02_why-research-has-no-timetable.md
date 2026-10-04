@@ -8,7 +8,9 @@
 > **Transcription note:** copied from phone screenshots of the lesson, taken
 > 2026-10-04. Nothing has been added or inferred. The original screenshots are
 > kept in `screenshots/lesson-02/` (01–17, in page order), and each figure
-> below names the screenshot it appears in. Each figure is also described in
+> below names the screenshot it appears in. A second, cleaner set of 17 taken
+> later the same day is in `screenshots/lesson-02-repost/` ("repost NN"); it
+> fills in the parts the first set hid. Each figure is also described in
 > words: its axes, lines, colours, labels and caption, as shown. Where
 > something was hidden or cut off it is marked **[not captured]**. Checkpoint
 > answers are listed as shown; the lesson did not mark a correct answer in the
@@ -189,16 +191,12 @@ probability at the median: one half squared, or one in four. At three times
 the median it is one in eight. In general, the probability of running beyond k
 times the median is one half to the power k.
 
-**02 · OVE[RRUNS] — [title not captured]**
+**02 · OVERRUNS — The overrun law** *(repost 04)*
 
     Pr(T > k·t_m) = (½)^k
 
-*Takeaway:* The probability that a memoryless search runs beyond k tim[es the
-medi]an is one half to the power k, independent of the [r]ate.
-
-*(This box was partly covered by a phone text-selection pop-up in the
-screenshot. The tag, title and parts of the takeaway are hidden; the bracketed
-letters are hidden in the screenshot. The formula is as far as it is visible.)*
+*Takeaway:* The probability that a memoryless search runs beyond k times its
+median is one half to the power k, independent of the discovery rate.
 
 **FIGURE 2.1 — The overrun law** *(screenshots 04–05)*
 
@@ -316,9 +314,8 @@ matter of execution.
 - **Caption:** *Each lane is one research direction; the dot marks the
   expected time of its discovery, taken in order. Discoveries cluster early
   and spread out at the end.*
-- Source tag: partly cut off at the top of screenshot 07; the visible part
-  reads "… ORDER STATISTICS OF THE EXPONENTIAL DISTRIBUTION"
-  **[partly not captured]**
+- Source tag: ANALYTIC · ORDER STATISTICS OF THE EXPONENTIAL DISTRIBUTION
+  *(repost 06)*
 
 **FIGURE 2.3 — How parallel search scales** *(screenshot 07)*
 
@@ -364,8 +361,8 @@ number of attempts to a first success follows a beta-geometric distribution.
 
     Pr(N > n) = B(α, β + n) / B(α, β) ∝ n^(−α),      E[N] = (α + β − 1) / (α − 1)   (α > 1
 
-*(The box was clipped at both screen edges: the leading "P" of "Pr" and
-whatever followed "(α > 1" are cut off.)*
+*(The box was clipped at both screen edges in both screenshot sets: the
+leading "P" of "Pr" and whatever followed "(α > 1" are cut off.)*
 
 *Takeaway:* When the success rate is uncertain, the probability of a long
 search decays as a power of n rather than exponentially. The mean is finite
@@ -692,15 +689,18 @@ and appear to decay quickly, although in truth there was nothing there to
 decay. The distinction between a decaying edge and an edge that never existed
 is one the forward record can eventually draw, a subject of Lesson 16.
 
-**FIGURE 5.2 — Confirmation multiplies the odds** *(screenshot 13; animated)*
+**FIGURE 5.2 — Confirmation multiplies the odds** *(screenshot 13 and repost 12; animated)*
 
 - **What it shows:** a large grid of small square cells, one per research
   direction (2,500 in all). Most cells are pale grey. Scattered across the
   grid are green cells and red cells; the red cells are slightly more
   numerous than the green.
-- **State captured:** "After one test: 80 real and 120 without an edge
-  accepted · 40% real". Any later state of the animation (for example after a
-  second test) was **[not captured]**.
+- **State 1 (screenshot 13):** "After one test: 80 real and 120 without an
+  edge accepted · 40% real". Red cells slightly outnumber green ones.
+- **State 2 (repost 12):** "After a second independent test: 64 real and 6
+  without an edge · 91.4% real". The same grid now shows mostly green cells,
+  with only a handful of red ones left.
+- Any other frames of the animation were **[not captured]**.
 - **Caption:** *A programme of 2,500 directions, 4% with a real edge, tested
   at a 5% size with 80% power. Red cells are accepted directions without an
   edge.*
@@ -761,8 +761,8 @@ the research itself.
 
     Pr(T > t) = exp( −∫₀ᵗ λ(s) ds ),      λ(s) = λ₀ e^(−δs)   ⇒   Pr(T = ∞) = e…
 
-*(The box was clipped at both screen edges: the start, "Pr(T", is cut off on
-the left, and the right-hand side of Pr(T = ∞) after "e" is
+*(The box was clipped at both screen edges in both screenshot sets: the
+start, "Pr(T", is cut off on the left, and the right-hand side of Pr(T = ∞) after "e" is
 **[not captured]**.)*
 
 *Takeaway:* When the discovery rate declines through time, the probability of

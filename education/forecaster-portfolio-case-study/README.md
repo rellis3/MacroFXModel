@@ -7,6 +7,6 @@ screenshots are kept alongside.
 | Lesson | File | Screenshots |
 |---|---|---|
 | 01 · One Path Among Many | `LESSON_01_one-path-among-many.md` | `screenshots/lesson-01/` (19) |
-| 02 · Why Research Has No Timetable | `LESSON_02_why-research-has-no-timetable.md` | `screenshots/lesson-02/` (17) |
+| 02 · Why Research Has No Timetable | `LESSON_02_why-research-has-no-timetable.md` | `screenshots/lesson-02/` (17) + `screenshots/lesson-02-repost/` (17) |
 
 The series has 17 lessons; more are added as they are released.
