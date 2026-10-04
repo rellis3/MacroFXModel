@@ -82,10 +82,10 @@
     <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">A richer example — a value that actually curves</h2>
-      <p class="sl-sub">V(S, t) = S·e^(−δt): the forward value of an asset worth S today, paying a continuous dividend yield δ, t years out. This time S and t interact.</p>
+      <p class="sl-sub">V(S, t) = S·e^(−δt): the prepaid forward value (paid today, for delivery t years out) of an asset worth S today, paying a continuous dividend yield δ. This time S and t interact.</p>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">∂S</div><div><h4>Differentiate with respect to S, freeze t</h4><p>∂V/∂S = e^(−δt). Since e^(−δt) doesn't involve S at all, it's just a fixed multiplying constant from S's point of view — this is exactly Delta's structure.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">∂t</div><div><h4>Differentiate with respect to t, freeze S</h4><p>∂V/∂t = −δ·S·e^(−δt). Now S is the fixed constant multiplying a function of t, and the ordinary chain rule handles the exponential — negative, because more elapsed time means more foregone dividends eroding the forward value.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">∂t</div><div><h4>Differentiate with respect to t, freeze S</h4><p>∂V/∂t = −δ·S·e^(−δt). Now S is the fixed constant multiplying a function of t, and the ordinary chain rule handles the exponential — negative, because a longer horizon means more foregone dividends eroding the forward value.</p></div></div>
       </div>
       <p class="sl-p">At S = $100, δ = 3%, t = 2 years: ∂V/∂S = e^(−0.06) ≈ <strong>0.9418</strong> and ∂V/∂t = −0.03 × 100 × 0.9418 ≈ <strong>−2.825</strong>. Two completely different numbers, from differentiating the exact same function twice — the entire mechanical content of this lesson, worked with real numbers.</p>
       <div class="sl-svgwrap">
@@ -214,7 +214,7 @@
         </div>
         <div class="sl-ccard neutral">
           <span class="sl-ctag blue">Theta, Θ = ∂V/∂t</span>
-          <p>Sensitivity to the passage of time alone — spot, volatility, and rates frozen. The same partial-derivative mechanics as ∂V/∂t above.</p>
+          <p>Sensitivity to the passage of time alone — spot, volatility, and rates frozen. The same partial-derivative mechanics as ∂V/∂t above (with t as calendar time; if t is time remaining, Θ = −∂V/∂t).</p>
         </div>
         <div class="sl-ccard neutral">
           <span class="sl-ctag blue">Vega = ∂V/∂σ</span>
@@ -287,7 +287,7 @@
       <div class="sl-quiz-q" data-q="2">
         <div class="sl-quiz-num">Question 2</div>
         <h4>For V(S,t) = S·e^(−δt), why is ∂V/∂t negative while ∂V/∂S is positive?</h4>
-        <button class="sl-quiz-opt" data-correct="true">∂V/∂S is proportional to spot so it's always positive; ∂V/∂t is negative because more elapsed time means more foregone dividends eroding the forward value</button>
+        <button class="sl-quiz-opt" data-correct="true">V is proportional to spot, so ∂V/∂S = e^(−δt) is always positive; ∂V/∂t is negative because a longer horizon means more foregone dividends eroding the forward value</button>
         <button class="sl-quiz-opt">Both should be positive — a sign error in the formula</button>
         <button class="sl-quiz-opt">∂V/∂t is negative because time itself is treated as a negative number</button>
         <div class="sl-quiz-explain">∂V/∂S = e^(−δt) is always positive — the forward value rises when spot rises, time held fixed. ∂V/∂t = −δSe^(−δt) carries a minus sign because, holding S fixed, letting t grow shrinks the discount factor e^(−δt), continually eroding the forward value as more dividends are given up.</div>

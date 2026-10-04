@@ -13,7 +13,7 @@
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Deeper Foundations / Calculus for Finance</div>
   <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
-  <div class="tl-kicker">Deeper Foundations · Lesson 2 of 4</div>
+  <div class="tl-kicker">Deeper Foundations · Lesson 2 of 5</div>
   <h1 class="tl-title">Calculus for Finance: Derivatives, Integrals &amp; Taylor Series</h1>
   <p class="tl-dek">The tangent-line slope, the area under a curve, and the local approximation built from both — the three ideas that Ornstein-Uhlenbeck, Black-Scholes, and Kelly Criterion all quietly assume you already have.</p>
   <div class="tl-meta">
@@ -492,8 +492,8 @@
       <strong>Small step, \(h = 0.05\):</strong> the true value is
       \(\ln(1.05) \approx 0.04879\). The Taylor approximation gives
       \(0.05 - (0.05)^2/2 = 0.05 - 0.00125 = 0.04875\). The error is
-      \(0.04879 - 0.04875 = 0.00004\) — about four hundredths of one
-      percent, small enough to ignore for almost any practical purpose.
+      \(0.04879 - 0.04875 = 0.00004\) — about 0.08% of the true value,
+      small enough to ignore for almost any practical purpose.
     </p>
     <p>
       <strong>Larger step, \(h = 0.30\):</strong> the true value is
@@ -502,8 +502,7 @@
       \(0.26236 - 0.255 = 0.00736\) — roughly 2.8% of the true value, and
       nearly 200 times larger in absolute size than the \(0.00004\) error at
       \(h=0.05\), even though \(h\) only grew sixfold. This is exactly the
-      local-approximation warning the pitfalls section below returns to: the
-      pitfalls section below returns to: the second-order Taylor
+      local-approximation warning the pitfalls section below returns to: the second-order Taylor
       expansion is very accurate for small steps and degrades, sometimes
       quickly, as the step size grows, because it's still ignoring every
       term from the third derivative onward.
