@@ -337,7 +337,9 @@
     genuine minimum, a maximum, or a saddle point — all-positive eigenvalues
     mean every direction curves upward (a minimum), all-negative means every
     direction curves downward (a maximum), and mixed signs mean a saddle:
-    curving up in some directions and down in others.
+    curving up in some directions and down in others. If any eigenvalue is
+    exactly zero (and none has the opposite sign), this second-order test is
+    inconclusive and higher-order terms decide.
   </p>
 
   <div class="tl-eli5">
@@ -702,7 +704,8 @@
       directions and downward in others). To tell these apart, check the
       Hessian matrix's eigenvalues at that point: all-positive eigenvalues
       indicate a genuine minimum (every direction curves upward), all-negative
-      indicate a maximum, and a mix of signs indicates a saddle point —
+      indicate a maximum, and a mix of signs indicates a saddle point; a zero eigenvalue
+      (with no opposite sign) leaves the test inconclusive —
       exactly the check a later Numerical Methods lesson's convex-optimization
       material formalizes.
     </div>

@@ -385,8 +385,9 @@
     zero-coupon bond maturing at \(t\) prices at \(P(t)=e^{-r(t)\,t}\) under
     continuous compounding, so its cumulative yield exposure is
     \(t\cdot r(t)\). The <strong>instantaneous forward rate</strong> — the
-    rate the market implicitly expects to prevail for an infinitesimally
-    short period starting at \(t\), exactly what short-rate models like
+    rate locked in today for an infinitesimally short period starting at
+    \(t\) (the market's expected future short rate plus a term premium,
+    so not a pure forecast), exactly what short-rate models like
     <a href="short-rate-models-vasicek-cir-hull-white.html">Vasicek, CIR,
     and Hull-White</a> attempt to describe dynamically — is defined as the
     derivative of that cumulative yield:

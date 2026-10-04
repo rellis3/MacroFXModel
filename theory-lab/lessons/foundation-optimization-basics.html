@@ -205,7 +205,10 @@
     direction curves downward (a genuine maximum); a mix of positive and
     negative eigenvalues means the function curves upward in some directions
     and downward in others — a <strong>saddle point</strong>, which the
-    first-order condition alone cannot distinguish from a true optimum. This
+    first-order condition alone cannot distinguish from a true optimum. If
+    any eigenvalue is exactly zero (and none has the opposite sign), the
+    second-order test is inconclusive, just like \(f''(x^*)=0\) in one
+    variable. This
     Hessian-eigenvalue check is precisely what a later Numerical Methods
     lesson's "convex optimization" material formalizes and builds algorithms
     around — a function whose Hessian has all-positive eigenvalues
@@ -487,12 +490,15 @@
       measures, at the margin, how much extra portfolio variance must be
       accepted to push the target return up by one more unit — literally the
       "price," in variance terms, of demanding a higher return. This is not
-      an abstract mathematical side effect; it's exactly the slope of the
-      efficient frontier (the curve of best possible risk-return trade-offs)
-      at the specific target return being solved for, and it's precisely
-      why the efficient frontier gets flatter (each extra unit of return
-      costs more variance) as the target return is pushed higher and
-      higher above the minimum-variance portfolio's own return.
+      an abstract mathematical side effect: if the efficient frontier (the
+      curve of best possible risk-return trade-offs) is drawn as minimum
+      variance against target return, \(\lambda\) is exactly its slope,
+      \(d\sigma_p^2/d(\text{target})\), at the target being solved for.
+      That slope rises as the target is pushed higher above the
+      minimum-variance portfolio's own return, so each extra unit of return
+      costs more variance. In the usual picture, with risk on the horizontal
+      axis and return on the vertical, the same fact shows up the other way
+      round: the frontier gets flatter as you move up it.
     </p>
   </div>
 
@@ -661,7 +667,8 @@
       small amount — in other words, it is exactly the marginal "cost," in
       variance terms, of demanding one more unit of expected return. That is
       precisely the slope of the efficient frontier at the target return
-      being solved for, which is a real, economically meaningful quantity a
+      being solved for, when the frontier is drawn as minimum variance
+      against target return, which is a real, economically meaningful quantity a
       portfolio manager cares about directly (how much more risk must be
       accepted to chase a higher return target), not an artifact of the
       algebra used to solve the constrained problem.
