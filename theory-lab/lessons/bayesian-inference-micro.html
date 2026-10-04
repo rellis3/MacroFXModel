@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bayesian Inference &amp; Updating — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -190,7 +191,19 @@
       <p class="sl-p">Out of 1,000 days, 200 really are trend days and 800 aren't. The 80%-accurate classifier correctly flags 160 of the real 200 — but it also incorrectly flags 160 of the 800 reversion days. Those two highlighted <strong>flagged</strong> boxes are the same size. Of the 320 total days that get flagged, only 160 — half — are the real thing.</p>
     </section>
 
+    <!-- WB:bayes-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">One flag, 1,000 days: where the 80% goes</h2>
+      <!-- WB:bayes:START -->
+      <div class="wb" data-title="One flag, 1,000 days: where the 80% goes">
+        <script type="application/json">{"w":600,"h":880,"intro":"A classifier says \"trend day\". How much should you believe it? The lesson's 1,000-day count, step by step.","steps":[{"cap":"You run a classifier that flags \"trend day\". Its report says it is 80% accurate: it fires on 80% of real trend days and stays quiet on 80% of reversion days. Today it fires. Is there an 80% chance today is a trend day?","do":[{"icon":"clf","name":"megaphone","x":30,"y":8,"s":0.72,"tone":"purple","label":"the classifier","lsize":17},{"note":"says","x":250,"y":40,"text":"\"trend day!\"","size":24,"anchor":"middle","tone":"purple"},{"note":"acc","x":250,"y":82,"text":"\"80% accurate\"","size":19,"anchor":"middle"},{"box":"guess","x":420,"y":28,"w":150,"h":64,"text":"80% sure?","tone":"amber","size":22}]},{"cap":"Start before it says anything. Only 20% of days in this market are trend days; most days revert. That base rate is your prior: your belief before the evidence.","do":[{"note":"mt","x":20,"y":140,"text":"your belief: is today a trend day?","size":18,"anchor":"start","tone":"blue"},{"line":"meter","points":[[40,196],[560,196]],"width":3,"ms":600},{"line":"tk0","points":[[40,189],[40,203]],"width":2.4,"ms":150},{"line":"tk1","points":[[144.0,189],[144.0,203]],"width":2.4,"ms":150},{"line":"tk2","points":[[300.0,189],[300.0,203]],"width":2.4,"ms":150},{"line":"tk3","points":[[456.0,189],[456.0,203]],"width":2.4,"ms":150},{"line":"tk4","points":[[560.0,189],[560.0,203]],"width":2.4,"ms":150},{"note":"tl0","x":40,"y":222,"text":"0%","size":16,"anchor":"middle"},{"note":"tl1","x":144.0,"y":222,"text":"20%","size":16,"anchor":"middle"},{"note":"tl2","x":300.0,"y":222,"text":"50%","size":16,"anchor":"middle"},{"note":"tl3","x":456.0,"y":222,"text":"80%","size":16,"anchor":"middle"},{"note":"tl4","x":560.0,"y":222,"text":"100%","size":16,"anchor":"middle"},{"chip":"bel","x":144.0,"y":168,"text":"belief","tone":"blue"}]},{"cap":"Count it out over 1,000 days. 200 are real trend days and 800 are reversion days.","do":[{"box":"all","x":210,"y":250,"w":180,"h":50,"text":"1,000 days","size":21},{"box":"tr","x":40,"y":344,"w":200,"h":56,"text":"200 trend days","tone":"blue","size":20},{"box":"rv","x":340,"y":344,"w":230,"h":56,"text":"800 reversion days","tone":"amber","size":20},{"arrow":["all","tr"]},{"arrow":["all","rv"]},{"note":"l1","x":186,"y":316,"text":"20%","size":18,"anchor":"end"},{"note":"l2","x":414,"y":316,"text":"80%","size":18,"anchor":"start"}]},{"cap":"The classifier fires on 80% of the real trend days: 160 flagged correctly. It misses the other 40.","do":[{"box":"tf","x":10,"y":456,"w":130,"h":60,"text":"160 flagged","tone":"green","size":20},{"box":"tm","x":160,"y":456,"w":104,"h":60,"text":"40 missed","size":18},{"arrow":["tr","tf"]},{"arrow":["tr","tm"]},{"note":"l3","x":84,"y":428,"text":"80%","size":18,"anchor":"end"}]},{"cap":"Now the part people forget. It also fires on 20% of the 800 reversion days: another 160 flags, all false alarms. 640 reversion days stay quiet.","do":[{"box":"rf","x":296,"y":456,"w":130,"h":60,"text":"160 flagged","tone":"red","size":20},{"box":"rq","x":446,"y":456,"w":144,"h":60,"text":"640 quiet","size":18},{"arrow":["rv","rf"]},{"arrow":["rv","rq"]},{"note":"l4","x":372,"y":428,"text":"20%","size":18,"anchor":"end"}]},{"cap":"Today the flag fired, so today is one of the flagged days. Rule out the rest. The flagged pile holds 160 real trend days and 160 false alarms: the same size.","do":[{"cross":"tm"},{"cross":"rq"},{"box":"pile","x":110,"y":568,"w":380,"h":100,"text":"the flag fired: 320 days","top":true,"size":20},{"chip":"c1","x":75,"y":532,"text":"160 real","tone":"green"},{"chip":"c2","x":361,"y":532,"text":"160 false","tone":"red"},{"move":"c1","x":220,"y":640,"ms":1000},{"move":"c2","x":380,"y":640,"ms":1000}]},{"cap":"So the chance today is really a trend day is 160 out of 320: 50%, a coin flip. Not 80%. Your belief moves from 20% to 50%.","do":[{"box":"post","x":150,"y":694,"w":300,"h":70,"text":"160 ÷ 320","tone":"blue","sub":"0%","size":20},{"count":"post","from":0,"to":50,"dp":0,"suf":"%","ms":1100},{"chip":"pr","x":144.0,"y":168,"text":"prior","tone":"purple"},{"dim":"pr"},{"move":"bel","x":300.0,"y":168,"ms":1100},{"cross":"guess"}]},{"cap":"How much was the flag worth on its own? The Bayes factor: 0.80 ÷ 0.20 = 4. A flag is 4 times likelier on a trend day than a reversion day. Prior odds 1 to 4, times 4, gives even odds. \"Substantial\" evidence on Jeffreys' scale: real, not decisive.","do":[{"box":"bf","x":20,"y":784,"w":560,"h":86,"text":"Bayes factor K = 0.80 ÷ 0.20 = 4","tone":"purple","sub":"odds 1 : 4  × 4  →  1 : 1  =  50%","size":20}]},{"cap":"The prior did the damage, not the classifier. If trend days were 50% of days instead, the same flag would take you to 80%. The rarer the thing, the further the answer falls below the quoted accuracy.","do":[{"hide":"all"},{"hide":"tr"},{"hide":"rv"},{"hide":"tf"},{"hide":"tm"},{"hide":"rf"},{"hide":"rq"},{"hide":"pile"},{"hide":"c1"},{"hide":"c2"},{"hide":"all>tr"},{"hide":"all>rv"},{"hide":"tr>tf"},{"hide":"tr>tm"},{"hide":"rv>rf"},{"hide":"rv>rq"},{"hide":"l1"},{"hide":"l2"},{"hide":"l3"},{"hide":"l4"},{"chart":"br","x":20,"y":246,"w":560,"h":424,"title":"Same 80% classifier, two base rates","xd":[0.3,5.2],"yd":[0,100],"yt":[[0,"0%"],[50,"50%"],[100,"100%"]],"xt":[[1.5,"trend days 20%"],[4,"trend days 50%"]],"pl":58,"pr":14},{"bars":"bb","chart":"br","data":[[1,20,"prior 20%","purple"],[2,50,"→ 50%","blue"],[3.5,50,"prior 50%","purple"],[4.5,80,"→ 80%","blue"]],"bw":62,"ms":1300}]},{"cap":"Tomorrow, today's 50% posterior becomes your prior. If a second flag fires, and it is truly independent of the first, even odds times 4 gives 4 to 1: 80%. Two flags that just re-detect the same thing would be counted twice.","do":[{"chip":"p2","x":300.0,"y":168,"text":"today","tone":"blue"},{"dim":"p2"},{"move":"bel","x":456.0,"y":168,"ms":1100},{"note":"sec","x":580,"y":140,"text":"after a 2nd, independent flag","size":17,"anchor":"end","tone":"blue"}]},{"cap":"The flag moved your belief; it did not settle it. Evidence is not the probability it implies: always ask how rare the thing was to begin with.","do":[{"pulse":"post"},{"pulse":"bel"}]}]}</script>
+      </div>
+      <!-- WB:bayes:END -->
+    </section>
+    <!-- WB:bayes-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Watch the posterior swing — drag the base rate</h2>
       <p class="sl-sub">Same classifier throughout. Only the base rate — how rare the flagged thing actually is — changes. Watch what that alone does to your confidence in a single flagged day.</p>
@@ -224,7 +237,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Run the real formula yourself</h2>
       <p class="sl-sub">Same equation as Section 2, editable. Starts on the worked example's exact numbers.</p>
@@ -249,7 +262,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Today's posterior is tomorrow's prior</h2>
       <p class="sl-sub">Bayes' theorem doesn't care whether P(H) came from a textbook base rate or from yesterday's posterior.</p>
@@ -266,7 +279,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">"My strategy has an 80% win rate" is the same fallacy, different costume</h2>
       <div class="sl-compare">
@@ -290,7 +303,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -341,7 +354,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -469,5 +482,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>
