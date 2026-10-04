@@ -440,6 +440,7 @@
         var lp = op.lat ? [SC.px(op.lat[0]), SC.py(op.lat[1])] : spts[spts.length - 1];
         var sl = el('text', { x: lp[0] + (op.ldx || 0), y: lp[1] + (op.ldy || -12), 'text-anchor': op.lanchor || 'middle', 'dominant-baseline': 'middle', 'font-size': op.lsize || 17, class: 'wb-slabel ' + tone(op.tone) }, b.marks);
         sl.textContent = op.label; fadeIn(sl, 400, anim);
+        it[op.series].lab = sl;   // so dim / hide take the label with the line
       }
       if (op.dash) fadeIn(sp, op.ms || 700, anim); else drawOn(sp, op.ms || 1100, anim);
       return op.ms || 1100;

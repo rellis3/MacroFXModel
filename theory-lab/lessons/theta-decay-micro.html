@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Theta Decay — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -200,7 +201,19 @@
       </div>
     </section>
 
+    <!-- WB:theta-deck:START -->
     <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Theta: watch time value melt</h2>
+      <!-- WB:theta:START -->
+      <div class="wb" data-title="Theta: watch time value melt">
+        <script type="application/json">{"w":600,"h":660,"intro":"One at-the-money call, 30 days from expiry, using the lesson's numbers. Watch its time value melt, slowly at first, then fast. Press play, or step through.","steps":[{"cap":"Meet the option: an at-the-money call with spot and strike both at 100, 20% volatility, 2% rates and 30 days left. Being at the money, its whole price, about $2.37, is time value. Picture it as an ice cube.","do":[{"icon":"ice","name":"ice","x":250,"y":6,"s":0.9,"tone":"blue","label":"time value ≈ $2.37","lsize":18}]},{"cap":"You own the cube. The dealer who sold it to you is on the other side. Each day a little of it melts, and that melt is theta: rent you pay for the right to gain from big moves.","do":[{"icon":"you","name":"person","x":40,"y":14,"s":0.7,"tone":"blue","label":"you (long call)","lsize":17},{"icon":"dealer","name":"person","x":490,"y":14,"s":0.7,"tone":"green","label":"seller (short call)","lsize":17},{"icon":"rent","name":"coin","x":120,"y":30,"s":0.38,"tone":"amber","sym":"$"},{"move":"rent","x":440,"y":30,"ms":1500},{"note":"rl","x":300,"y":140,"text":"theta = daily rent →","size":17,"anchor":"middle","tone":"amber"}]},{"cap":"Now let the days pass, spot stuck at 100. From 30 days left down to 7, the option slides from $2.37 to $1.12. At the start it loses about 4 cents a day: theta is −$0.041 per day.","do":[{"hide":"rent"},{"hide":"rl"},{"chart":"val","x":10,"y":150,"w":580,"h":270,"title":"Call value ($) as the days run out","xd":[0,30],"yd":[0,2.75],"yt":[[0,"$0"],[1,"$1"],[2,"$2"]],"xt":[[0,"30 days"],[16,"14"],[23,"7"],[30,"0 left"]],"pl":44,"pr":22},{"series":"v1","chart":"val","pts":[[0,2.368],[3,2.243],[6,2.111],[9,1.971],[12,1.821],[15,1.658],[18,1.479],[21,1.277],[23,1.124]],"tone":"blue","ms":1600},{"dot":"d30","chart":"val","at":[0,2.368],"text":"$2.37 · −$0.041/day","tone":"blue","dx":12,"dy":-14,"anchor":"start"},{"hide":"ice"},{"icon":"ice2","name":"ice","x":262,"y":18,"s":0.66,"tone":"blue","label":"$1.12","lsize":18}]},{"cap":"With 7 days left, theta is −$0.082 per day: roughly twice the 30-day rate, for the same option.","do":[{"dot":"d7","chart":"val","at":[23,1.124],"text":"$1.12 · −$0.082/day","tone":"amber","dx":-12,"dy":22,"anchor":"end"}]},{"cap":"Then the final week. The curve bends sharply down: $1.12 with 7 days left, $0.42 with 1 day left. Nearly half the option's value melts in the last week.","do":[{"series":"v2","chart":"val","pts":[[23,1.124],[24,1.039],[25,0.947],[26,0.846],[27,0.732],[28,0.596],[29,0.42]],"tone":"red","ms":1300},{"hide":"ice2"},{"icon":"ice3","name":"ice","x":274,"y":30,"s":0.42,"tone":"red","label":"$0.42","lsize":18}]},{"cap":"On the last day theta is −$0.21 per day: another 2.6 times jump, and about 5 times the 30-day rate. At expiry, with spot still at 100, the call is worth nothing. The cube is gone.","do":[{"dot":"d1","chart":"val","at":[29,0.42],"text":"$0.42 · −$0.21/day","tone":"red","dx":-14,"dy":12,"anchor":"end"},{"series":"v3","chart":"val","pts":[[29,0.42],[29.4,0.325],[29.7,0.23],[29.9,0.132],[29.97,0.072],[30,0.0]],"tone":"red","ms":600},{"hide":"ice3"},{"note":"pud","x":300,"y":92,"text":"💧 melted","size":20,"anchor":"middle","tone":"red"}]},{"cap":"Side by side: the daily melt at 30, 7 and 1 day to expiry. It doesn't drip steadily like a leaky tap. It speeds up like a countdown timer.","do":[{"chart":"bar","x":10,"y":446,"w":280,"h":200,"title":"Theta, $ lost per day","xd":[0,4],"yd":[0,0.27],"yt":[[0,"0"],[0.1,"0.10"],[0.2,"0.20"]],"xt":[[1,"30d"],[2,"7d"],[3,"1d"]],"pl":46},{"bars":"tb","chart":"bar","data":[[1,0.0408,"0.041","blue"],[2,0.0816,"0.082","amber"],[3,0.2115,"0.212","red"]],"bw":40,"ms":1200}]},{"cap":"Trap: don't multiply today's theta by the days left. 30 days × $0.041 is only $1.22 (the dashed line), yet the option loses its whole $2.37 by expiry. The straight line understates the end and overstates the start.","do":[{"series":"lin","chart":"val","pts":[[0,2.368],[30,1.144]],"tone":"amber","dash":true,"ms":800},{"note":"linl","chart":"val","at":[30,1.146],"text":"30 × $0.041\n= $1.22 only","tone":"amber","size":17,"anchor":"end","dx":-4,"dy":-78}]},{"cap":"Why it speeds up: theta has the same 1/√τ term as gamma. For a hedged option, theta ≈ −½σ²S²Γ. Theta is the rent, gamma is the convexity it buys. Theta pays for gamma.","do":[{"box":"id","x":310,"y":446,"w":280,"h":92,"text":"θ ≈ −½σ²S²Γ\ntheta pays for gamma","tone":"purple","size":20}]},{"cap":"Is the rent fair? It was priced at 20% implied volatility. If the price actually moves more than that, your hedging gains beat the melt and you win. If it stays calmer, you lose, even with no directional view at all.","do":[{"box":"vs","x":310,"y":554,"w":280,"h":92,"text":"realised > 20% → you win\nrealised < 20% → seller wins","tone":"green","size":18},{"pulse":"you"},{"pulse":"dealer"}]},{"cap":"Calendar spread: sell a near-dated option (a fast-melting cube) and buy a later one at the same strike (a slow-melting cube). You pocket the difference in melt speed, as long as the price stays near the strike.","do":[{"hide":"pud"},{"icon":"near","name":"ice","x":196,"y":34,"s":0.48,"tone":"red","label":"SELL near","lsize":17},{"icon":"far","name":"ice","x":318,"y":14,"s":0.7,"tone":"blue","label":"BUY far","lsize":17}]},{"cap":"The catch, for every seller of rent: being long theta means being short gamma. Small steady melt comes in daily; one big move can take it all back and more. Picking up nickels in front of a steamroller.","do":[{"icon":"roller","name":"warn","x":412,"y":44,"s":0.42,"tone":"red"},{"pulse":"dealer"},{"pulse":"near"}]}]}</script>
+      </div>
+      <!-- WB:theta:END -->
+    </section>
+    <!-- WB:theta-deck:END -->
+
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Short gamma and long theta are the same fact</h2>
       <p class="sl-sub">Apply Θ ≈ −½σ²S²Γ to the dealer's own signed gamma at a strike, and aggregate it the same way DealerGEX aggregates gamma.</p>
@@ -219,7 +232,7 @@
       <div class="sl-quote">Applying this to the previous lesson's toy three-strike book (σ = 20%, TotalDealerGEX ≈ −$0.92M at one week to expiry, standard convention): TotalThetaExp ≈ −50(0.20)² × (−$0.92M) ≈ <strong>+$1.85M</strong> per year, illustrative. The dealer book short $0.92M of GEX is, at the same instant, long roughly $1.85M of aggregate theta exposure.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
@@ -237,7 +250,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11 · It actually happened</div>
       <h2 class="sl-h2">November 2018: natural gas calls sold "for income"</h2>
       <div class="sl-callout amber">
@@ -258,7 +271,7 @@
       <p class="sl-p">★ is this lesson's concept. "Picking up nickels in front of a steamroller": many small theta gains, then one move that takes them all back and more.</p>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: when implied vol is far above realised, premium is rich, so sell it and collect the decay.</p>
@@ -280,7 +293,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -331,7 +344,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -521,5 +534,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>
