@@ -209,14 +209,14 @@
       <div class="sl-compare">
         <div class="sl-ccard red">
           <span class="sl-ctag red">DealerGEX &lt; 0</span>
-          <p>Dealers short gamma (the standard case) forces ThetaExp &gt; 0.</p>
+          <p>Dealers short gamma (e.g. put-heavy strikes) forces ThetaExp &gt; 0.</p>
         </div>
         <div class="sl-ccard green">
           <span class="sl-ctag green">→ ThetaExp &gt; 0</span>
           <p>Dealers long theta. "Short gamma" and "long theta" are the same PDE fact, read off ∂²V/∂S² versus ∂V/∂t — not two separate empirical claims.</p>
         </div>
       </div>
-      <div class="sl-quote">Applying this to the previous lesson's toy three-strike book (σ = 20%, TotalDealerGEX ≈ −$18.51M at one week to expiry): TotalThetaExp ≈ −50(0.20)² × (−$18.51M) = <strong>+$37.02M</strong> per year, illustrative. The dealer book short $18.51M of GEX is, at the same instant, long roughly $37.02M of aggregate theta exposure.</div>
+      <div class="sl-quote">Applying this to the previous lesson's toy three-strike book (σ = 20%, TotalDealerGEX ≈ −$0.92M at one week to expiry, standard convention): TotalThetaExp ≈ −50(0.20)² × (−$0.92M) ≈ <strong>+$1.85M</strong> per year, illustrative. The dealer book short $0.92M of GEX is, at the same instant, long roughly $1.85M of aggregate theta exposure.</div>
     </section>
 
     <section class="sl-slide" data-slide="11">
@@ -323,7 +323,7 @@
 
       <div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
-        <h4>Why does "dealers are typically short gamma" force "dealers are typically long theta," rather than these being two separate observations?</h4>
+        <h4>Why does "dealers are short gamma" force "dealers are long theta," rather than these being two separate observations?</h4>
         <button class="sl-quiz-opt" data-correct="true">ThetaExp ≈ −50σ²×DealerGEX, and −50σ² is always strictly negative — so the two signs are always opposite by algebra, not by coincidence</button>
         <button class="sl-quiz-opt">They're unrelated facts that happen to correlate historically</button>
         <button class="sl-quiz-opt">Theta only turns positive when gamma is exactly zero</button>
@@ -339,7 +339,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The gamma-theta identity is the practical core: for a delta-hedged position, Θ ≈ −½σ²S²Γ — theta is the fair rent for convexity, settled by realized vs. implied volatility.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Theta accelerates near expiry via the same 1/√τ term as gamma — the worked example showed the daily rate roughly doubling from 30→7 DTE, then accelerating again into the final day.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Calendar spreads harvest that acceleration differential directly — selling the faster-decaying near leg against a longer-dated leg at the same strike is a structural theta trade.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Short gamma and long theta are the same fact: ThetaExp_k ≈ −50σ²×DealerGEX_k — the sign always flips, so "dealers usually short gamma" forces "dealers usually long theta" by the same PDE.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Short gamma and long theta are the same fact: ThetaExp_k ≈ −50σ²×DealerGEX_k — the sign always flips, so "dealers short gamma" forces "dealers long theta" by the same PDE.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Weekend theta handling is a practitioner convention, not a universal rule — different desks smooth it differently around the two non-trading days.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>November 2018: short natural gas calls sold "for income" were wiped out by a one-day jump; theta comes in small steps, gamma is paid all at once.<!-- DESK:START --> Desk verdict (iv-over-rv-wider, validated): rich implied-over-realised is followed by WIDER markets. Short-premium P&amp;L itself is untested.<!-- DESK:END --></p></div>
       </div>

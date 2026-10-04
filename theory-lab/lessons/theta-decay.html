@@ -36,7 +36,7 @@
       <li><strong>The key insight:</strong> for a delta-hedged position, \(\Theta \approx -\tfrac{1}{2}\sigma^2S^2\Gamma\) — theta and gamma are two views of the same convexity. This is the formal version of "theta pays for gamma": if realized volatility matches implied, the gamma-scalping P&amp;L and the theta bleed offset almost exactly on average.</li>
       <li>Theta accelerates near expiry the same way gamma does, through the same \(1/\sqrt{\tau}\) term — a worked comparison at 30, 7 and 1 day to expiry shows the daily decay roughly doubling, then accelerating again, matching the acceleration already shown for gamma in the previous lesson.</li>
       <li>Calendar spreads are built specifically to harvest that acceleration differential between a near and a far expiry; weekend theta is a related, non-universal practitioner convention worth knowing about, not treating as law.</li>
-      <li><strong>New in this lesson:</strong> combining \(\Theta\approx-\tfrac{1}{2}\sigma^2S^2\Gamma\) with the previous lesson's "dealers are typically net short gamma" gives, term by term, "dealers are typically net long theta" — the same PDE, two different partial derivatives, not two separate facts.</li>
+      <li><strong>New in this lesson:</strong> combining \(\Theta\approx-\tfrac{1}{2}\sigma^2S^2\Gamma\) with the previous lesson's "dealers are net short gamma" gives, term by term, "dealers are net long theta" — the same PDE, two different partial derivatives, not two separate facts.</li>
       <li><strong>Real-world episode:</strong> in November 2018 a managed-account firm selling far out-of-the-money natural gas calls "for income" was wiped out when gas jumped by double digits in a session; hundreds of client accounts were liquidated, some into deficit.<!-- DESK:START --> Tested here (<code>iv-over-rv-wider</code>, validated): when implied vol looks richest against realised, markets run <em>wider</em> afterwards, not calmer. Whether selling that premium pays after the bills is untested.<!-- DESK:END --></li>
     </ul>
   </div>
@@ -67,7 +67,7 @@
     times a constant — which is the entire economic logic behind why
     market-makers get paid to sell convexity, why "theta pays for gamma" is
     said the way it is, and — the genuinely new material in this lesson —
-    why the previous lesson's "dealers are usually short gamma" and "dealers
+    why the previous lesson's "dealers are short gamma" and "dealers
     are usually long theta" are not two separate empirical observations.
     They are the same underlying fact, read off two different partial
     derivatives of one equation. This lesson does not re-derive delta or
@@ -559,10 +559,10 @@
   <h2>The OI angle: short gamma and long theta are the same fact</h2>
   <p>
     The <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp;
-    Dealer Hedging Flows</a> lesson establishes, under the standard
-    simplifying assumption that dealers are net writers of the open interest
-    they hold (\(s_k=-1\) at most strikes), that aggregate dealer gamma
-    exposure is typically negative — "dealers are usually short gamma." That
+    Dealer Hedging Flows</a> lesson turns open interest into signed dealer gamma exposure using an
+    assumed dealer sign at each strike (\(s_k=-1\) where dealers are short —
+    put OI under the standard convention); where the total is negative,
+    "dealers are short gamma." That
     lesson defines, for a strike \(k\), the signed dealer gamma exposure:
   </p>
   <div class="tl-math">
@@ -605,9 +605,9 @@
     opposite</strong> of the sign of \(\text{DealerGEX}_k\) — not usually,
     not typically, but structurally, term by term, as a direct consequence
     of the same delta-hedged approximation used throughout this lesson.
-    Plug in the standard case: \(\text{DealerGEX}_k<0\) (dealers short
+    Plug in the short-gamma case: \(\text{DealerGEX}_k<0\) (dealers short
     gamma) forces \(\text{ThetaExp}_k>0\) (dealers long theta). "Dealers are
-    usually short gamma" and "dealers are usually long theta" are not two
+    short gamma" and "dealers are long theta" are not two
     separate empirical facts about how options markets happen to behave —
     they are the <em>same</em> fact, read off \(\partial^2V/\partial S^2\)
     and \(\partial V/\partial t\) of one identical PDE.
@@ -615,15 +615,15 @@
   <p>
     Applying this to the toy three-strike book from the previous lesson's
     worked example (\(\sigma=20\%\), \(\text{TotalDealerGEX}\approx
-    -\$18.51\text{M}\) at the one-week-to-expiry snapshot):
+    -\$0.92\text{M}\) at the one-week-to-expiry snapshot, standard convention):
   </p>
   <div class="tl-math">
-    \[ \text{TotalThetaExp} \approx -50(0.20)^2 \times (-\$18.51\text{M}) = -2 \times (-\$18.51\text{M}) = +\$37.02\text{M (per year, illustrative)} \]
+    \[ \text{TotalThetaExp} \approx -50(0.20)^2 \times (-\$0.92\text{M}) = -2 \times (-\$0.92\text{M}) \approx +\$1.85\text{M (per year, illustrative)} \]
   </div>
   <p style="margin-bottom:0">
     Under the same assumptions and the same delta-hedged approximation that
     produced the gamma number, the dealer book that is short roughly
-    $18.51M of GEX is, at the same instant, long roughly $37.02M of
+    $0.92M of GEX is, at the same instant, long roughly $1.85M of
     aggregate theta exposure — collecting time decay at that implied rate,
     for as long as the position and the σ assumption used to build it hold.
     This is an illustrative extension of the gamma lesson's own toy example,
@@ -780,7 +780,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The gamma-theta identity is the practical core of this lesson.</strong> For a delta-hedged position, \(\Theta\approx-\tfrac12\sigma^2S^2\Gamma\) — theta is the fair rent paid for convexity, and whether that rent was worth it depends only on realized vs. implied volatility.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Theta accelerates near expiry via the same 1/√τ term as gamma.</strong> The worked example showed the daily decay rate roughly doubling from 30→7 DTE and accelerating again into the final day — not a smooth, linear decline.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Calendar spreads harvest that acceleration differential directly.</strong> Selling the faster-decaying near leg against a longer-dated leg at the same strike is a structural theta trade built on the 1/√τ shape.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Short gamma and long theta are the same fact, not two facts.</strong> \(\text{ThetaExp}_k \approx -50\sigma^2\times\text{DealerGEX}_k\) — the sign always flips, so "dealers are typically net short gamma" (from the previous lesson) forces "dealers are typically net long theta" by the same PDE, viewed through a different partial derivative.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Short gamma and long theta are the same fact, not two facts.</strong> \(\text{ThetaExp}_k \approx -50\sigma^2\times\text{DealerGEX}_k\) — the sign always flips, so "dealers are net short gamma" (from the previous lesson) forces "dealers are net long theta" by the same PDE, viewed through a different partial derivative.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Theta is not linear — never assume today's decay rate holds for the rest of the month.</strong> The daily rate itself changes sharply as expiry approaches.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Weekend theta handling is a practitioner convention, not a universal rule.</strong> Different desks and platforms smooth it differently — check the specific source rather than assuming.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Rich-looking premium is a warning, not a gift<!-- DESK:START --> (iv-over-rv-wider, validated)<!-- DESK:END -->.</strong><!-- DESK:START --> Top-decile implied-over-realised was followed by wider indices: NAS100 +0.38 ATR next week, SPX500 +0.67 next month.<!-- DESK:END --> November 2018's short natural gas calls show what a jump does to "income": theta is collected in small steps, gamma is paid all at once.</span></div>
@@ -865,7 +865,7 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q6. Derive why "dealers are typically net short gamma" and "dealers are typically net long theta" are the same fact rather than two separate empirical observations.</summary>
+    <summary>Q6. Derive why "dealers are net short gamma" and "dealers are net long theta" are the same fact rather than two separate empirical observations.</summary>
     <div class="tl-answer">
       Applying the delta-hedged identity to a dealer's own signed position
       at strike \(k\) gives \(\text{ThetaExp}_k\approx-\tfrac12\sigma^2S^2
@@ -875,9 +875,8 @@
       -50\sigma^2\times\text{DealerGEX}_k\). Since \(-50\sigma^2\) is always
       strictly negative, this equation forces \(\text{ThetaExp}_k\) and
       \(\text{DealerGEX}_k\) to always carry opposite signs — not usually,
-      always, as a direct algebraic consequence. Plugging in the standard
-      assumption that \(\text{DealerGEX}_k\) is typically negative (dealers
-      short gamma) therefore forces \(\text{ThetaExp}_k\) to be typically
+      always, as a direct algebraic consequence. Wherever \(\text{DealerGEX}_k\) is
+      negative (dealers short gamma), \(\text{ThetaExp}_k\) is therefore
       positive (dealers long theta) — the two statements are the same PDE
       fact, read off \(\partial^2V/\partial S^2\) versus \(\partial
       V/\partial t\), not two independent empirical claims about how
@@ -889,7 +888,7 @@
   <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> — the PDE and the closed-form price this lesson's theta derivation builds directly on top of; read it first for delta and gamma.</li>
-    <li><a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a> — the dealer-GEX formula and the "dealers are typically short gamma" assumption this lesson's OI-angle section extends into a theta statement.</li>
+    <li><a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a> — the dealer-GEX formula and the "dealers are short gamma" assumption this lesson's OI-angle section extends into a theta statement.</li>
     <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — the standard textbook derivation of the Greeks, including theta, from the Black-Scholes PDE.</li>
     <li>Espen Gaarder Haug, <em>The Complete Guide to Option Pricing Formulas</em>, 2nd ed., McGraw-Hill, 2007 — a comprehensive reference for closed-form Greek formulas (including theta) across option types and model variants, useful once the plain European case here needs extending.</li>
   </ul>

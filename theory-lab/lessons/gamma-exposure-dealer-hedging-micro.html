@@ -32,13 +32,13 @@
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">+Γ</div><div><h4>Long an option → positive gamma</h4><p>Buying a call or a put, either one, always carries positive gamma. That's true regardless of strike, moneyness, or which type of option it is.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">−Γ</div><div><h4>Short an option → negative gamma</h4><p>Writing (selling) an option flips the sign of every one of its Greeks, gamma included. The dealer who wrote it now holds negative gamma on that contract.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">🙋</div><div><h4>Customers are typically net buyers</h4><p>The standard assumption: retail and institutional flow buys calls for upside speculation and buys puts for downside protection or speculation — net long options, in aggregate.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Dealers absorb that demand</h4><p>To fill customer buy orders, dealers take the other side — writing options — which leaves dealers net <strong>short</strong> gamma across most of the book.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🙋</div><div><h4>Customers buy puts, sell calls</h4><p>The standard convention: customers are net buyers of puts (downside protection) and net sellers of calls (covered-call overwriting). A cruder simplification has them buying both.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Dealers take the other side</h4><p>So dealers are <strong>short</strong> the puts (negative gamma) and <strong>long</strong> the calls (positive gamma). Net dealer gamma at a strike follows call OI minus put OI.</p></div></div>
       </div>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>The trade, drawn as a flow</div>
         <div class="sl-row"><div class="sl-box green">Customer buys a call<br><small>long, +Γ</small></div><div class="sl-arrow">→</div><div class="sl-box amber">Dealer writes the call<br><small>short, −Γ</small></div></div>
-        <div class="sl-verdict">Same contract, opposite gamma. The customer's long position is exactly mirrored by the dealer's short one — that mirroring is where "dealers are net short gamma" comes from.</div>
+        <div class="sl-verdict">Same contract, opposite gamma. Whenever a customer buys an option the dealer is short it — which is why put-heavy strikes leave dealers short gamma, while overwritten calls leave them long.</div>
       </div>
       <div class="sl-quote">This is a standard, usually-reasonable <strong>assumption</strong> about who's on which side of the trade — not something read directly off a strike's open interest. Slide 4 comes back to exactly how far that assumption can be trusted.</div>
     </section>
@@ -69,12 +69,12 @@
       <h2 class="sl-h2">The dealer's sign is an assumption, not an observation</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">State this plainly</div>
-        <p>Open interest tells you how many contracts are outstanding at a strike. It does <strong>not</strong> tell you who holds the long side and who holds the short side. "Dealers are net short this strike" is a standard, usually-reasonable, but genuinely unverifiable assumption layered on top of the raw OI number — not a fact read directly off the data. Different providers assuming differently will disagree on a strike's sign even while agreeing on its raw OI.</p>
+        <p>Open interest tells you how many contracts are outstanding at a strike. It does <strong>not</strong> tell you who holds the long side and who holds the short side. "Dealers own the calls and wrote the puts" is a standard, usually-reasonable, but genuinely unverifiable assumption layered on top of the raw OI number — not a fact read directly off the data. Different providers assuming differently will disagree on a strike's sign even while agreeing on its raw OI.</p>
       </div>
       <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Fact-check against this repo's own code</div>
-        <p>The full lesson's meta badge reads <strong>"CONCEPT — not built or tested in this repo."</strong> That's now stale. This codebase has real, tested gamma/dealer-positioning modules: <code>js/gammaGreeks.js</code> (Black-Scholes gamma, vanna, charm, and a rigorous root-found gamma-flip), <code>js/gammaFlow.js</code> (flip distance and drift), <code>js/fullBookGex.js</code> (multi-expiry aggregate GEX with a PIN/BREAKOUT regime call), and <code>js/oi.js</code> (~2,950 lines wiring all of it into the live options-chain pipeline) — each backed by a passing offline test suite (<code>gammaGreeks.test.mjs</code>, <code>gammaFlow.test.mjs</code>, <code>fullBookGex.test.mjs</code>). One nuance worth carrying forward too: the live code's actual sign convention is <code>(callOI − putOI) × Γ × mult × spot</code> — dealers modeled as effectively long the calls and short the puts at a strike — which is subtly different from the "dealer short both sides everywhere" simplification this lesson's own worked examples use for hand arithmetic.</p>
+        <p>The full lesson's meta badge reads <strong>"CONCEPT — not built or tested in this repo."</strong> That's now stale. This codebase has real, tested gamma/dealer-positioning modules: <code>js/gammaGreeks.js</code> (Black-Scholes gamma, vanna, charm, and a rigorous root-found gamma-flip), <code>js/gammaFlow.js</code> (flip distance and drift), <code>js/fullBookGex.js</code> (multi-expiry aggregate GEX with a PIN/BREAKOUT regime call), and <code>js/oi.js</code> (~2,950 lines wiring all of it into the live options-chain pipeline) — each backed by a passing offline test suite (<code>gammaGreeks.test.mjs</code>, <code>gammaFlow.test.mjs</code>, <code>fullBookGex.test.mjs</code>). One nuance worth carrying forward too: the live code's actual sign convention is <code>(callOI − putOI) × Γ × mult × spot</code> — dealers modeled as effectively long the calls and short the puts at a strike — the same convention this deck's toy book uses.</p>
       </div>
       <!-- DESK:END -->
     </section>
@@ -153,8 +153,8 @@
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it</div>
         <div class="sl-tabs" id="regime-tabs">
-          <button class="sl-tab active" data-panel="regime-short">Short dealer gamma (typical)</button>
-          <button class="sl-tab" data-panel="regime-long">Long dealer gamma</button>
+          <button class="sl-tab active" data-panel="regime-short">Short dealer gamma (e.g. put-heavy)</button>
+          <button class="sl-tab" data-panel="regime-long">Long dealer gamma (e.g. call-heavy)</button>
         </div>
         <div class="sl-panel active" id="regime-short">
           <div class="sl-row"><div class="sl-box amber">Price rises</div><div class="sl-arrow">→</div><div class="sl-box red">Dealer buys</div></div>
@@ -187,7 +187,7 @@
         <div class="sl-callout-label">Two honest caveats</div>
         <p>First, the flip is <strong>estimated from the current OI distribution</strong> and the assumed dealer signs — it shifts every time OI at any strike changes or the front-month expiry rolls, not a fixed constant painted on a chart. Second, it inherits the same unverifiable-sign problem as any single strike's GEX: if the true mix of who's long and who's short differs from the standard assumption, the true flip differs from the estimated one too.</p>
       </div>
-      <div class="sl-quote">A "wall" isn't sellers lying in wait — it's the point where the hedging <em>demand</em> that had been fuelling a move runs out because the hedge is already complete — for dealers short the calls, only well past the strike, where delta nears 1 (at the strike delta is about 0.5 and gamma peaks; a stall right there needs dealers long gamma). When a wall breaks instead, delta jumps faster than the existing hedge accounted for, and that same mechanism reverses into a squeeze.</div>
+      <div class="sl-quote">A call "wall" holds when dealers are long gamma there (the standard convention: customers overwrote the calls) — their hedging sells into the rally hardest right around the strike, where gamma peaks. If customers bought those calls instead, dealers are short gamma and the same strike's hedging <em>buys</em> hardest around the strike: fuel for a squeeze rather than a wall.</div>
     </section>
 
     <section class="sl-slide" data-slide="9">
@@ -224,35 +224,35 @@
     <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Add up a toy three-strike book, live</h2>
-      <p class="sl-sub">S = 100, assuming the standard "dealer net short everywhere" case at every strike. Edit any OI or Γ.</p>
+      <p class="sl-sub">S = 100, standard convention (dealers long call OI, short put OI), Γ from Black-Scholes at 7 DTE, σ = 20%. Enter call OI minus put OI (negative for put-heavy) and Γ.</p>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it</div>
         <div class="sl-calc-row">
-          <div class="sl-calc-field"><label>Strike 95 — combined OI</label><input type="number" class="sl-input" id="gx-oi-95" value="4000" step="100" min="0"></div>
+          <div class="sl-calc-field"><label>Strike 95 — call OI − put OI</label><input type="number" class="sl-input" id="gx-oi-95" value="-2400" step="100"></div>
           <div class="sl-calc-op">×</div>
-          <div class="sl-calc-field"><label>Γ per contract</label><input type="number" class="sl-input" id="gx-g-95" value="0.050" step="0.001" min="0"></div>
+          <div class="sl-calc-field"><label>Γ per contract</label><input type="number" class="sl-input" id="gx-g-95" value="0.025" step="0.001" min="0"></div>
           <div class="sl-calc-op">× 100 × S² × 0.01 =</div>
-          <div class="sl-calc-result"><div class="sl-calc-result-label">Dealer GEX @ 95</div><div class="sl-calc-result-val" id="gx-out-95">−$2.00M</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Dealer GEX @ 95</div><div class="sl-calc-result-val" id="gx-out-95">−$600.00K</div></div>
         </div>
         <div class="sl-calc-row">
-          <div class="sl-calc-field"><label>Strike 100 — combined OI</label><input type="number" class="sl-input" id="gx-oi-100" value="9800" step="100" min="0"></div>
+          <div class="sl-calc-field"><label>Strike 100 — call OI − put OI</label><input type="number" class="sl-input" id="gx-oi-100" value="-1000" step="100"></div>
           <div class="sl-calc-op">×</div>
           <div class="sl-calc-field"><label>Γ per contract</label><input type="number" class="sl-input" id="gx-g-100" value="0.144" step="0.001" min="0"></div>
           <div class="sl-calc-op">× 100 × S² × 0.01 =</div>
-          <div class="sl-calc-result"><div class="sl-calc-result-label">Dealer GEX @ 100</div><div class="sl-calc-result-val" id="gx-out-100">−$14.11M</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Dealer GEX @ 100</div><div class="sl-calc-result-val" id="gx-out-100">−$1.44M</div></div>
         </div>
         <div class="sl-calc-row">
-          <div class="sl-calc-field"><label>Strike 105 — combined OI</label><input type="number" class="sl-input" id="gx-oi-105" value="6000" step="100" min="0"></div>
+          <div class="sl-calc-field"><label>Strike 105 — call OI − put OI</label><input type="number" class="sl-input" id="gx-oi-105" value="3600" step="100"></div>
           <div class="sl-calc-op">×</div>
-          <div class="sl-calc-field"><label>Γ per contract</label><input type="number" class="sl-input" id="gx-g-105" value="0.040" step="0.001" min="0"></div>
+          <div class="sl-calc-field"><label>Γ per contract</label><input type="number" class="sl-input" id="gx-g-105" value="0.031" step="0.001" min="0"></div>
           <div class="sl-calc-op">× 100 × S² × 0.01 =</div>
-          <div class="sl-calc-result"><div class="sl-calc-result-label">Dealer GEX @ 105</div><div class="sl-calc-result-val" id="gx-out-105">−$2.40M</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Dealer GEX @ 105</div><div class="sl-calc-result-val" id="gx-out-105">$1.12M</div></div>
         </div>
         <div class="sl-calc-steps">
-          <div>Total dealer GEX across all three strikes: <b id="gx-total">−$18.51M</b></div>
+          <div>Total dealer GEX across all three strikes: <b id="gx-total">−$924.00K</b></div>
         </div>
         <button type="button" class="sl-reset-btn" id="gx-reset">Reset to worked-example numbers</button>
-        <div class="sl-note">Blank or negative a field and that strike's contribution — and the total — read "—" rather than breaking. This toy book is deliberately small so the arithmetic is checkable by hand; a real broad-index book runs into the billions once OI is in the hundreds of thousands of contracts per strike, but the formula is identical.</div>
+        <div class="sl-note">Blank a field (or enter a negative Γ) and that strike's contribution — and the total — read "—" rather than breaking. The cruder "dealers short everything" simplification would score the same 4,000 / 9,800 / 6,000 contracts as about −$16.97M, every strike negative. This toy book is deliberately small so the arithmetic is checkable by hand; a real broad-index book runs into the billions once OI is in the hundreds of thousands of contracts per strike, but the formula is identical.</div>
       </div>
     </section>
 
@@ -332,12 +332,12 @@
         <button class="sl-quiz-opt" data-correct="true">No — OI only counts contracts outstanding, not who holds which side</button>
         <button class="sl-quiz-opt">Yes — the long side is always reported first in the OI figure</button>
         <button class="sl-quiz-opt">Yes, but only for strikes above the current spot price</button>
-        <div class="sl-quiz-explain">"Dealers are net short this strike" is a standard, usually-reasonable assumption layered on top of raw OI — it isn't something the OI number itself reveals.</div>
+        <div class="sl-quiz-explain">"Dealers own the calls and wrote the puts" is a standard, usually-reasonable assumption layered on top of raw OI — it isn't something the OI number itself reveals.</div>
       </div>
 
       <div class="sl-quiz-q" data-q="3">
         <div class="sl-quiz-num">Question 3</div>
-        <h4>In the typical case (dealer short gamma), what happens to hedging flow as price rises?</h4>
+        <h4>When dealers are short gamma (e.g. at put-heavy strikes), what happens to hedging flow as price rises?</h4>
         <button class="sl-quiz-opt" data-correct="true">Dealers must buy — flow has the same sign as the move, which is destabilizing</button>
         <button class="sl-quiz-opt">Dealers must sell — flow opposes the move, which is stabilizing</button>
         <button class="sl-quiz-opt">Nothing changes until the option expires</button>
@@ -367,7 +367,7 @@
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
-        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Any option that's bought carries positive gamma; any option that's written carries negative gamma — dealers absorbing customer buying end up net short gamma across most of the book, an assumption about who's on which side, not a directly observable fact.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Any option that's bought carries positive gamma; any option that's written carries negative gamma — under the standard convention dealers are short the puts customers buy and long the calls customers overwrite, an assumption about who's on which side, not a directly observable fact.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Calls and puts at the same strike and expiry have identical gamma, by put-call parity — it's the dealer's long/short sign, never the option type, that decides whether hedging flow amplifies or dampens a move.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>GEX rescales gamma into dollars-per-1%-move — Γ × OI × 100 × S² × 0.01 — the unit that lets strikes, underlyings, and expiries actually be compared to each other.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Short dealer gamma pushes hedging flow the same direction as price, amplifying moves; long dealer gamma pushes it the opposite direction, dampening them — buy the dip vs. sell the rip, mechanically, not by choice.</p></div>
@@ -463,7 +463,7 @@
     var resetBtn = document.getElementById('gx-reset');
     var S = 100;
     var FACTOR = 100 * S * S * 0.01; // contract multiplier x S^2 x 0.01 = 10,000 at S=100
-    var DEFAULTS = { oi95: 4000, g95: 0.050, oi100: 9800, g100: 0.144, oi105: 6000, g105: 0.040 };
+    var DEFAULTS = { oi95: -2400, g95: 0.025, oi100: -1000, g100: 0.144, oi105: 3600, g105: 0.031 };
 
     function fmtDollars(v){
       var sign = v < 0 ? '−' : '';
@@ -476,14 +476,14 @@
       return sign + '$' + str;
     }
 
-    // Standard-case assumption: dealer is net short at every strike (sign = -1).
+    // Standard convention: dealer long call OI, short put OI, so net OI = call OI - put OI (may be negative).
     function rowValue(oiEl, gEl, outEl){
       var oi = parseFloat(oiEl.value), g = parseFloat(gEl.value);
-      if (!isFinite(oi) || !isFinite(g) || oi < 0 || g < 0) {
+      if (!isFinite(oi) || !isFinite(g) || g < 0) {
         outEl.textContent = '—';
         return null;
       }
-      var v = -(g * oi * FACTOR);
+      var v = g * oi * FACTOR;
       outEl.textContent = fmtDollars(v);
       return v;
     }

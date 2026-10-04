@@ -199,7 +199,7 @@
         <div class="sl-calc-steps">
           <div>Vanna(K) ≈ <b id="vc-slider-vanna">0.0505</b> — <span id="vc-slider-sign">slightly positive (near the money)</span></div>
         </div>
-        <div class="sl-note">Drag to K = 105 and the readout should land on ≈0.4870 — the same full-precision Vanna the calculator above computes (the full lesson's hand-rounded worked example prints 0.4871; a full-precision computation from the identical formula gives 0.4870, a one-digit rounding artifact from the lesson's own intermediate hand-rounding, not a different formula). Deep in the money (low K) Vanna runs negative; out of the money it runs positive.</div>
+        <div class="sl-note">Drag to K = 105 and the readout should land on ≈0.4870 — the same full-precision Vanna the calculator above computes (the full lesson's worked example lands on the same 0.4870). Deep in the money (low K) Vanna runs negative; out of the money it runs positive.</div>
       </div>
     </section>
 
@@ -240,13 +240,13 @@
           <p>Delta-shift per day in shares of the underlying (×S for dollars, as with VannaExp). Charm's raw output is annualized; ÷365 converts to "per calendar day."</p>
         </div>
       </div>
-      <p class="sl-p">Under the standard "dealer short the OI they wrote" assumption, positive Vanna at a strike means a vol rise alone grows the dealer's required hedge — genuine buying with no price move behind it. Charm's mechanism is identical in spirit, driven by the calendar instead.</p>
+      <p class="sl-p">Where dealers are short the OI, positive Vanna at a strike means a vol rise alone grows the dealer's required hedge — genuine buying with no price move behind it. Charm's mechanism is identical in spirit, driven by the calendar instead.</p>
     </section>
 
     <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">A toy three-strike dollar Vanna book</h2>
-      <p class="sl-sub">S=100 (so S×0.01=1), dealer net short every strike (standard assumption). The 95 and 100 Vannas are made-up round figures for the arithmetic; true Black-Scholes Vanna there is about −0.375 and +0.05 (it changes sign through the money). Edit any OI or Vanna.</p>
+      <p class="sl-sub">S=100 (so S×0.01=1), dealer net short every strike (the cruder simplification, for easy arithmetic). The 95 and 100 Vannas are made-up round figures for the arithmetic; true Black-Scholes Vanna there is about −0.375 and +0.05 (it changes sign through the money). Edit any OI or Vanna.</p>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it</div>
         <div class="sl-calc-row">
@@ -264,14 +264,14 @@
           <div class="sl-calc-result"><div class="sl-calc-result-label">Dealer VannaExp @ 100</div><div class="sl-calc-result-val" id="vc-out-100">−$270,000</div></div>
         </div>
         <div class="sl-calc-row">
-          <div class="sl-calc-field"><label>Strike 105 — Vanna</label><input type="number" class="sl-input" id="vc-v-105" value="0.4871" step="0.0001" min="0"></div>
+          <div class="sl-calc-field"><label>Strike 105 — Vanna</label><input type="number" class="sl-input" id="vc-v-105" value="0.4870" step="0.0001" min="0"></div>
           <div class="sl-calc-op">×</div>
           <div class="sl-calc-field"><label>Combined OI</label><input type="number" class="sl-input" id="vc-oi-105" value="7000" step="100" min="0"></div>
           <div class="sl-calc-op">× 100 × (S×0.01) =</div>
-          <div class="sl-calc-result"><div class="sl-calc-result-label">Dealer VannaExp @ 105</div><div class="sl-calc-result-val" id="vc-out-105">−$340,970</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Dealer VannaExp @ 105</div><div class="sl-calc-result-val" id="vc-out-105">−$340,900</div></div>
         </div>
         <div class="sl-calc-steps">
-          <div>Total dealer Vanna exposure across all three strikes: <b id="vc-total">−$660,970</b></div>
+          <div>Total dealer Vanna exposure across all three strikes: <b id="vc-total">−$660,900</b></div>
         </div>
         <button type="button" class="sl-reset-btn" id="vc-toy-reset">Reset to worked-example numbers</button>
         <div class="sl-note">Blank or negative a field and that strike's contribution — and the total — read "—" rather than breaking. The lesson rounds this to "roughly $661,000."</div>
@@ -283,13 +283,13 @@
       <h2 class="sl-h2">A genuinely smaller flow, and why</h2>
       <p class="sl-sub">Set the toy book above against the dealer-GEX lesson's own three-strike toy example.</p>
       <div class="sl-svgwrap">
-        <svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two horizontal bars, roughly to scale. A thin bar for roughly 661 thousand dollars of vanna exposure and a full-width bar for roughly 18.5 million dollars of gamma exposure">
+        <svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two horizontal bars, roughly to scale. A thin bar for roughly 661 thousand dollars of vanna exposure and a full-width bar for roughly 17.0 million dollars of gamma exposure">
           <text x="10" y="20" font-size="12" font-family="'DM Mono',monospace" fill="var(--blue)">Vanna flow (toy book)</text>
-          <rect x="10" y="28" width="22" height="22" rx="3" style="fill:var(--blue-bg);stroke:var(--blue-bd);stroke-width:1.5"/>
-          <text x="40" y="44" font-size="13" font-weight="700" font-family="'DM Mono',monospace" fill="var(--blue)">≈ $661,000</text>
+          <rect x="10" y="28" width="24" height="22" rx="3" style="fill:var(--blue-bg);stroke:var(--blue-bd);stroke-width:1.5"/>
+          <text x="42" y="44" font-size="13" font-weight="700" font-family="'DM Mono',monospace" fill="var(--blue)">≈ $661,000</text>
           <text x="10" y="90" font-size="12" font-family="'DM Mono',monospace" fill="var(--green)">Gamma flow (dealer-GEX lesson's toy book)</text>
           <rect x="10" y="98" width="610" height="22" rx="3" style="fill:var(--green-bg);stroke:var(--green-bd);stroke-width:1.5"/>
-          <text x="320" y="114" text-anchor="middle" font-size="13" font-weight="700" font-family="'DM Mono',monospace" fill="var(--green)">≈ $18.5 million</text>
+          <text x="320" y="114" text-anchor="middle" font-size="13" font-weight="700" font-family="'DM Mono',monospace" fill="var(--green)">≈ $17.0 million</text>
         </svg>
       </div>
       <div class="sl-callout amber">
@@ -419,7 +419,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Second-order Greeks ask how a first-order Greek itself responds to price, vol, or time — Gamma already did this for Delta-vs-price; these six extend it to every other pair.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Vanna and Charm are the two that matter most — a vol-triggered flow and a pure-time-triggered flow, each real and mechanically distinct from price-triggered gamma hedging.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Vanna's two definitions are the same mixed partial, guaranteed equal by Clairaut's/Schwarz's theorem — not a coincidence, a theorem.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Dollar Vanna exposure scales with S; dollar Gamma exposure scales with S² — one mechanical reason vanna flows run smaller than gamma flows — about 28× in the lesson's own toy comparison.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Dollar Vanna exposure scales with S; dollar Gamma exposure scales with S² — one mechanical reason vanna flows run smaller than gamma flows — about 26× in the lesson's own toy comparison.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Speed, Color, and Zomma are genuinely niche — real and correctly derived, but rarely tracked day to day<!-- DESK:START -->, and (unlike Vanna/Charm) still unimplemented anywhere in this repo<!-- DESK:END -->.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Every one of these flows is a mechanical hedging description, never a directional signal — confusing the two repeats the same mistake the dealer-GEX lesson already warns against.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>15 January 2015: EUR/CHF gapped close to 30% as vol jumped, so Vanna and Vomma, the "small" cross terms, became the P&amp;L, and then the expansion itself failed.<!-- DESK:START --> Vanna/charm flows into expiry are untested on this desk.<!-- DESK:END --></p></div>
@@ -504,7 +504,7 @@
 
   // Vanna-vs-strike slider — live-redrawing SVG curve, fixed S/σ/T/r matching
   // the calculator above, so K=105 on the slider reproduces the same 0.4870
-  // full-precision Vanna (the full lesson's hand-rounded prose prints 0.4871).
+  // full-precision Vanna, as the full lesson's worked example prints.
   (function(){
     var slider = document.getElementById('vc-slider');
     if (!slider) return;
@@ -573,7 +573,7 @@
     var resetBtn = document.getElementById('vc-toy-reset');
     var S = 100;
     var FACTOR = 100 * (S * 0.01); // contract multiplier x (S x 0.01) = 100 at S=100
-    var DEFAULTS = { v95: 0.10, oi95: 5000, v100: 0.30, oi100: 9000, v105: 0.4871, oi105: 7000 };
+    var DEFAULTS = { v95: 0.10, oi95: 5000, v100: 0.30, oi100: 9000, v105: 0.4870, oi105: 7000 };
 
     function fmtDollars(v){
       var sign = v < 0 ? '−' : '';

@@ -22,7 +22,7 @@
     <section class="sl-slide active" data-slide="1">
       <div class="sl-kicker">Lesson 6 · Time Series &amp; Regimes</div>
       <h1 class="sl-h1">GARCH &amp; <em>Volatility Clustering</em></h1>
-      <p class="sl-lede">The direction of tomorrow's move is close to unpredictable. The <em>size</em> of tomorrow's move is not — big days follow big days, calm follows calm, and that regularity is stable enough to build a one-day-ahead forecast on. GARCH is the model that turns "volatility has memory" into a number<!-- DESK:START -->, and it's one of three sigma estimators this project actually runs<!-- DESK:END -->.</p>
+      <p class="sl-lede">The direction of tomorrow's move is close to unpredictable. The <em>size</em> of tomorrow's move is not — big days follow big days, calm follows calm, and that regularity is stable enough to build a one-day-ahead forecast on. GARCH is the model that turns "volatility has memory" into a number<!-- DESK:START -->, and it's one of the sigma estimators this project actually runs<!-- DESK:END -->.</p>
     </section>
 
     <section class="sl-slide" data-slide="2">
@@ -246,14 +246,14 @@
     <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this connects to MacroFXModel</h2>
-      <p class="sl-p">This project runs GARCH(1,1) in production — <code>js/volBacktestEngine.js</code> implements exactly this recursion as <code>garchSigmas()</code>, initialized at the unconditional variance ω/(1−α−β) so the very first forecasts aren't biased by starting at zero.</p>
+      <p class="sl-p">This project runs GARCH(1,1) in production — <code>js/volForecast.js</code> (<code>garch11VolSeries()</code>) and the walk-forward backtester <code>js/volBacktestEngine.js</code> (<code>garchSigmas()</code>) implement exactly this recursion, initialized at the unconditional variance ω/(1−α−β) so the very first forecasts aren't biased by starting at zero.</p>
       <div class="sl-icard-grid">
-        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>One of three estimators</h4><p>GARCH(1,1) is used for the <strong>index</strong> asset class. Commodity uses HV20; FX uses Yang-Zhang(30) — a range-based OHLC estimator. Same walk-forward harness, three different sigma series.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">🎛</div><div><h4>Its actual fitted parameters</h4><p>α = 0.06, β = 0.91 — persistence 0.97, half-life ≈ 23 days. Close to, but a bit less sticky than, this lesson's illustrative 0.08 / 0.90 example.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>One of three estimators</h4><p>GARCH(1,1) is used for the <strong>index</strong> asset class. In the live forecaster, commodity (gold) has used Yang-Zhang since 2026-06-30 (it was HV20, which the walk-forward backtester still uses) and FX uses Yang-Zhang(30) — a range-based OHLC estimator.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎛</div><div><h4>Its actual fitted parameters</h4><p>Live index forecaster: α = 0.06 with an interim β = 0.87 since 2026-06-19 — persistence 0.93, half-life ≈ 9.5 days — because β = 0.91 (persistence 0.97, half-life ≈ 23 days) proved too sticky. β = 0.91 stays as the legacy comparison column and in the backtester. Both are less sticky than this lesson's illustrative 0.08 / 0.90 example.</p></div></div>
       </div>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where this needs qualifying</div>
-        <p>This is not a claim that GARCH beats the alternatives out-of-sample — it's one of three estimators compared under the same harness, and which one wins is an empirical question the source lesson leaves open, not something assumed from the math.</p>
+        <p>This is not a claim that GARCH beats the alternatives out-of-sample — it's one of the estimators compared under the same harness, and which one wins is an empirical question the source lesson leaves open, not something assumed from the math.</p>
       </div>
     </section>
     <!-- DESK:END -->
@@ -355,7 +355,7 @@
         <button class="sl-quiz-opt" data-correct="true">Index</button>
         <button class="sl-quiz-opt">FX</button>
         <button class="sl-quiz-opt">Commodity</button>
-        <div class="sl-quiz-explain">Index uses GARCH(1,1) (α=0.06, β=0.91); commodity uses HV20; FX uses Yang-Zhang(30) — three estimators run under the same harness.</div>
+        <div class="sl-quiz-explain">Index uses GARCH(1,1) (α=0.06, interim β=0.87; β=0.91 kept as the legacy comparison); commodity (since 2026-06-30) and FX use Yang-Zhang.</div>
       </div>
       <!-- DESK:END -->
     </section>
@@ -368,7 +368,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>GARCH(1,1) has three additive pieces: a floor ω, a reaction to yesterday's squared shock α·ε²ₜ₋₁, and inertia from yesterday's own variance β·σ²ₜ₋₁.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>α+β is the persistence — the day-over-day decay rate of a shock's excess over normal — and it must stay under 1 or the model isn't covariance-stationary.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The long-run variance is ω/(1−α−β); the half-life of a shock is ln(0.5)/ln(α+β).</p></div>
-        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This project already runs GARCH(1,1) in production — α=0.06, β=0.91 — as one of three sigma estimators, applied to the index asset class alongside HV20 (commodity) and Yang-Zhang (FX).</p></div><!-- DESK:END -->
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This project already runs GARCH(1,1) in production for the index asset class — α=0.06, interim β=0.87 (β=0.91 kept as the legacy comparison) — while commodity and FX use Yang-Zhang.</p></div><!-- DESK:END -->
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>March 2020: a calm February, then ±9–12% S&amp;P days back to back and a record VIX of 82.69. GARCH tracks a storm once it starts; it can't see one coming.<!-- DESK:START --> Desk test: the pace of the tape persists intraday (tape-speed-persistence, VALIDATED).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">

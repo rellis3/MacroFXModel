@@ -306,10 +306,10 @@
     </div>
     <p>Now assemble Vanna:</p>
     <div class="tl-math">
-      \[ \text{Vanna} = -\varphi(d_1)\frac{d_2}{\sigma} = -(0.3955)\left(\frac{-0.3078}{0.25}\right) = -(0.3955)(-1.2312) \approx 0.4871 \]
+      \[ \text{Vanna} = -\varphi(d_1)\frac{d_2}{\sigma} = -(0.3955)\left(\frac{-0.30782}{0.25}\right) = -(0.3955)(-1.2313) \approx 0.4870 \]
     </div>
     <div class="tl-eq-break">
-      <div class="tl-eq-chip c3"><code>Vanna &asymp; 0.4871</code><span>positive — makes sense for an OTM call, below</span></div>
+      <div class="tl-eq-chip c3"><code>Vanna &asymp; 0.4870</code><span>positive — makes sense for an OTM call, below</span></div>
     </div>
     <p style="margin-bottom:0">
       The sign is worth checking, not just accepting: \(d_2\) here is
@@ -320,7 +320,7 @@
       being positive says exactly "Delta goes up when vol goes up" for this
       option. As with Vega, this raw number is per 1.00 (a full 100 vol
       points) of \(\sigma\); multiplying by 0.01 rescales it to "per 1 vol
-      point," the convention used below: \(0.4871 \times 0.01 \approx
+      point," the convention used below: \(0.4870 \times 0.01 \approx
       0.00487\) — roughly half a delta-point of shift for every 1-point move
       in implied vol (e.g. 25% &rarr; 26%), with the underlying not having
       moved a cent.
@@ -363,7 +363,7 @@
       d&#8321; = <b id="vanna-scratch-d1">-0.1311</b>&emsp;d&#8322; = <b id="vanna-scratch-d2">-0.3078</b>&emsp;&phi;(d&#8321;) = <b id="vanna-scratch-phi">0.3955</b>
     </div>
     <div class="tl-readout">
-      Vanna &asymp; <b id="vanna-scratch-vanna">0.4871</b> per 1.00&sigma; &asymp; <b id="vanna-scratch-vannapt">0.00487</b> per vol point
+      Vanna &asymp; <b id="vanna-scratch-vanna">0.4870</b> per 1.00&sigma; &asymp; <b id="vanna-scratch-vannapt">0.00487</b> per vol point
       <span id="vanna-scratch-note" class="tl-scratch-note"></span>
     </div>
     <button type="button" id="vanna-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
@@ -440,9 +440,8 @@
   </p>
   <p>
     The mechanism this dollar figure describes is genuinely distinct from
-    gamma-driven hedging. Recall from the dealer-GEX lesson: under the
-    standard assumption that dealers are net short the OI they wrote to the
-    public, the dealer holds a long hedge position exactly matching the
+    gamma-driven hedging. Recall from the dealer-GEX lesson: for OI the
+    dealer is net short (calls customers bought, say), the dealer holds a long hedge position exactly matching the
     customers' aggregate Delta. If that OI carries positive Vanna (as the
     worked example's out-of-the-money call did), a rise in implied vol alone
     — <strong>with spot unchanged</strong> — raises the customers' aggregate
@@ -506,9 +505,10 @@
     <p>
       Fix \(S=100\) (so \(S \times 0.01 = 1\), simplifying the arithmetic
       exactly the way the dealer-GEX lesson's own toy example picked
-      \(S=100\)) and reuse the standard assumption that dealers are net short
-      the open interest at every strike (\(s_k=-1\)). Vanna at the 105 strike
-      is the 0.4871 derived above; the 95 and 100 strikes use smaller,
+      \(S=100\)) and, for simple arithmetic, use the dealer-GEX lesson's cruder
+      "dealers net short every strike" simplification (\(s_k=-1\)) rather
+      than its standard long-calls/short-puts convention. Vanna at the 105 strike
+      is the 0.4870 derived above; the 95 and 100 strikes use smaller,
       made-up round figures purely to show the arithmetic. (With the same
       inputs, Black-Scholes Vanna is actually about −0.375 at 95 and +0.05 at
       100: Vanna changes sign as the strike moves through the money, so a real
@@ -518,16 +518,16 @@
       <pre style="margin:0;text-align:left;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.7">Strike   Vanna    Combined OI   DealerVannaExp = -Vanna x OI x 100 x (S x 0.01)
 95       0.10     5,000         -0.10 x 5,000 x 100 x 1  = -$50,000
 100      0.30     9,000         -0.30 x 9,000 x 100 x 1  = -$270,000
-105      0.4871   7,000         -0.4871 x 7,000 x 100 x 1 = -$340,970
+105      0.4870   7,000         -0.4870 x 7,000 x 100 x 1 = -$340,900
                                 Total Dealer Vanna Exposure  ~ -$661,000</pre>
     </div>
     <p style="margin-bottom:0">
-      Read this as: under the standard short-OI assumption, a full 1-point
+      Read this as: under that short-everything simplification, a full 1-point
       rise in implied volatility across this toy book forces roughly
       $661,000 of net delta-hedge rebalancing (here, buying, driven by the
       negative sign and positive Vanna at every strike) — with spot
       unchanged. Set this next to the dealer-GEX lesson's own three-strike
-      toy example, which produced roughly <strong>$18.5 million</strong> for
+      toy example, which under the same short-everything simplification gives roughly <strong>$17.0 million</strong> for
       comparable open interest: dollar Vanna exposure scales with \(S\), not
       \(S^2\) the way dollar Gamma exposure does, which is one genuine
       mechanical reason vanna flows run smaller in typical dollar magnitude
@@ -699,8 +699,8 @@
     <p style="margin-bottom:0">
       <strong>Treating vanna/charm flows as comparable in size to gamma
       flows.</strong> The toy aggregation above showed roughly $661,000 of
-      Vanna-driven flow against roughly $18.5 million of Gamma-driven flow for
-      comparable open interest — roughly 28× apart, a little over one order of magnitude (and quoted per different shocks: a 1-point vol move against a 1% price move). Vanna and
+      Vanna-driven flow against roughly $17.0 million of Gamma-driven flow (same short-everything simplification) for
+      comparable open interest — roughly 26× apart, a little over one order of magnitude (and quoted per different shocks: a 1-point vol move against a 1% price move). Vanna and
       Charm explain real, distinct flow on days gamma alone can't account
       for, but they are not a comparably sized force in typical markets.
     </p>
@@ -714,7 +714,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Vanna's two definitions are the same mixed partial derivative, guaranteed equal by Clairaut's/Schwarz's theorem.</strong> Not a coincidence — computing it via Delta's vol-sensitivity or Vega's price-sensitivity must give the same number.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Charm mirrors Gamma's own late-life acceleration.</strong> Both blow up as expiry nears because both are driven by \(T\to0\) — charm flows concentrate in the same final days the dealer-GEX lesson flagged for gamma effects.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Speed, Color, and Zomma are genuinely niche.</strong> Real, correctly derived, and rarely tracked by real desks day to day — don't overstate their practical relevance relative to Vanna and Charm.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Vanna/charm flows are a second-order effect on top of gamma exposure, not a comparably sized force.</strong> The toy example showed it roughly 28× (a little over one order of magnitude) smaller in dollar terms — this lesson explains the mechanism, it is not a claim of a specific tradeable edge.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Vanna/charm flows are a second-order effect on top of gamma exposure, not a comparably sized force.</strong> The toy example showed it roughly 26× (a little over one order of magnitude) smaller in dollar terms — this lesson explains the mechanism, it is not a claim of a specific tradeable edge.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Every dollar exposure figure here still inherits the dealer-sign assumption from the GEX lesson.</strong> Whether dealers are actually net long or short any given strike remains unverifiable from open interest alone.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Second-order terms matter most exactly when price and vol jump together, and then the expansion fails.</strong> On 15 January 2015 EUR/CHF fell close to 30% in minutes as vol jumped; a delta- and vega-flat short-put book was unhedged against Vanna and Vomma, and then against the gap itself.<!-- DESK:START --> "Vanna/charm flows into expiry" is untested on this desk.<!-- DESK:END --></span></div>
   </div>
@@ -728,7 +728,7 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q2. In the worked example (\(S=100\), \(K=105\), \(\sigma=0.25\), \(T=0.5\)), Vanna came out positive (\(\approx0.4871\)). Explain in plain English why a positive sign makes economic sense for this specific option.</summary>
+    <summary>Q2. In the worked example (\(S=100\), \(K=105\), \(\sigma=0.25\), \(T=0.5\)), Vanna came out positive (\(\approx0.4870\)). Explain in plain English why a positive sign makes economic sense for this specific option.</summary>
     <div class="tl-answer">
       The option is out of the money (\(K=105 > S=100\)). Raising implied volatility increases the probability that the underlying ends up above the strike at expiry, which raises the option's Delta (it becomes more like a real long-stock position). Vanna being positive says exactly that: "Delta increases as \(\sigma\) increases" for this option. Had the option instead been deep in the money, its Delta would already be near its ceiling of 1.0, leaving much less room for vol to push it higher — a very different, and often much smaller or negative, Vanna value.
     </div>
