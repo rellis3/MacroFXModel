@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Herding, Narratives and Bubbles — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -116,7 +117,19 @@
       <div class="sl-quote">Limits of arbitrage (Shleifer &amp; Vishny, 1997): a manager who fights a mispricing that gets worse loses clients exactly when the bet is best. Being early is the same as being wrong, for a while.</div>
     </section>
 
+    <!-- WB:herding-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">A cascade and a bubble, drawn step by step</h2>
+      <!-- WB:herding:START -->
+      <div class="wb" data-title="A cascade and a bubble, drawn step by step">
+        <script type="application/json">{"w":600,"h":900,"intro":"Two restaurants, a crowd that copies, and the arithmetic of how a whole market ends up confidently wrong. Press play, or step through.","steps":[{"cap":"You arrive in a new town and find two restaurants side by side. Your guidebook mildly prefers B. But A has three tables of diners, and B is empty.","do":[{"icon":"rA","name":"house","x":40,"y":4,"s":0.8,"tone":"green","label":"A","lsize":22},{"icon":"rB","name":"house","x":450,"y":4,"s":0.8,"tone":"blue","label":"B","lsize":22},{"icon":"d1","name":"person","x":14,"y":128,"s":0.36,"tone":"green"},{"icon":"d2","name":"person","x":52,"y":128,"s":0.36,"tone":"green"},{"icon":"d3","name":"person","x":90,"y":128,"s":0.36,"tone":"green"},{"icon":"you","name":"person","x":270,"y":110,"s":0.5,"label":"you","lsize":17},{"icon":"book","name":"scroll","x":330,"y":112,"s":0.42,"tone":"blue","label":"guidebook: B","lsize":16}]},{"cap":"You reason, quite sensibly, that those diners probably knew something. So you ignore the mild tip in your book and walk into A.","do":[{"move":"you","x":128,"y":118,"ms":1100}]},{"cap":"The next couple arrive. Their guidebook also mildly prefers B, but now A has four tables. They go to A too.","do":[{"icon":"c1","name":"person","x":270,"y":110,"s":0.4},{"icon":"c2","name":"person","x":310,"y":110,"s":0.4},{"move":"c1","x":186,"y":124,"ms":1000},{"move":"c2","x":224,"y":124,"ms":1100}]},{"cap":"The catch: after you, every choice tells the street nothing, because everyone would have picked A whatever their own book said. A busy restaurant can be full of people who each privately thought B was better.","do":[{"note":"priv","x":214,"y":207,"text":"each privately: B","size":17,"anchor":"middle","tone":"blue"},{"note":"first","x":57,"y":207,"text":"decided it","size":17,"anchor":"middle","tone":"amber"},{"pulse":"rA"}]},{"cap":"Now the arithmetic. Each person's own clue is right 70% of the time. Keep a tally d: how many more \"buy\" clues than \"pass\" clues earlier actions gave away. While d is −1, 0 or +1, your own clue decides, so your action reveals it.","do":[{"note":"trk","x":300,"y":243,"text":"tally d = buy clues − pass clues, given away so far","size":17,"anchor":"middle"},{"line":"axis","points":[[80,300],[520,300]],"width":2.5,"ms":600},{"note":"tk-2","x":100,"y":326,"text":"−2","size":18,"anchor":"middle"},{"note":"tk-1","x":200,"y":326,"text":"−1","size":18,"anchor":"middle"},{"note":"tk0","x":300,"y":326,"text":"0","size":18,"anchor":"middle"},{"note":"tk1","x":400,"y":326,"text":"+1","size":18,"anchor":"middle"},{"note":"tk2","x":500,"y":326,"text":"+2","size":18,"anchor":"middle"},{"note":"learn","x":300,"y":268,"text":"your own clue decides","size":17,"anchor":"middle","tone":"green"},{"chip":"d","x":300,"y":300,"text":"d","tone":"green"}]},{"cap":"Two \"buy\" clues in a row and d reaches +2. Now even a \"pass\" clue leaves you buying, so everyone copies, no action reveals anything new, and d never moves again. That is a cascade.","do":[{"move":"d","x":400,"y":300,"ms":600},{"move":"d","x":500,"y":300,"ms":600},{"note":"lockR","x":500,"y":268,"text":"locked: copy","size":17,"anchor":"middle","tone":"amber"}]},{"cap":"It can lock onto the wrong side as easily. Both first clues right: 0.7 × 0.7 = 0.49. Both wrong: 0.3 × 0.3 = 0.09. It is a race, so the crowd herds the wrong way 0.09 ÷ 0.58, about 15.5% of the time, usually within the first three or four people.","do":[{"chip":"dw","x":300,"y":300,"text":"d","tone":"red"},{"move":"dw","x":200,"y":300,"ms":600},{"move":"dw","x":100,"y":300,"ms":600},{"note":"lockL","x":100,"y":268,"text":"locked: copy","size":17,"anchor":"middle","tone":"red"},{"note":"pw","x":100,"y":352,"text":"both wrong 0.09","size":17,"anchor":"middle","tone":"red"},{"note":"pr","x":500,"y":352,"text":"both right 0.49","size":17,"anchor":"middle","tone":"green"}]},{"cap":"Compare 20 people who each act on their own clue and take a vote: wrong only about 3.3% of the time. Copying, rational for each person, makes the group about five times more likely to be wrong. The crowd holds the information of about two people, not twenty.","do":[{"chart":"wr","x":10,"y":384,"w":280,"h":196,"title":"How often the crowd is wrong","xd":[0,2],"yd":[0,18],"yt":[[5,"5%"],[15,"15%"]],"xt":[[0.55,"copying"],[1.45,"20 votes"]],"pl":46},{"bars":"wb","chart":"wr","data":[[0.55,15.5,"15.5%","red"],[1.45,3.3,"3.3%","green"]],"bw":40,"ms":1000}]},{"cap":"Stories carry the cascade. A rising price is the most convincing evidence a story can have: price up, the story sounds truer, more people buy, price up again.","do":[{"icon":"story","name":"megaphone","x":318,"y":412,"s":0.5,"tone":"purple"},{"note":"storyl","x":343,"y":400,"text":"\"a new era\"","size":16,"anchor":"middle","tone":"purple"},{"icon":"pup","name":"up","x":506,"y":412,"s":0.5,"tone":"green","label":"price up","lsize":16},{"icon":"buy","name":"crowd","x":412,"y":486,"s":0.5,"tone":"amber","label":"more buyers","lsize":16},{"arrow":["story","pup"],"tone":"purple","id":"l1"},{"arrow":["pup","buy"],"tone":"green","id":"l2"},{"arrow":["buy","story"],"tone":"amber","id":"l3"}]},{"cap":"The dot-com bubble. In December 1996 Greenspan asked how we would know when \"irrational exuberance\" had gone too far. The Nasdaq then nearly quadrupled, to a closing peak of 5,048.62 on 10 March 2000.","do":[{"chart":"nq","x":10,"y":600,"w":580,"h":250,"title":"Nasdaq Composite (approx. path)","xd":[1996.8,2003.0],"yd":[0,5800],"yt":[[1000,"1k"],[3000,"3k"],[5000,"5k"]],"xt":[[1997,"1997"],[1998,"1998"],[1999,"1999"],[2000,"2000"],[2001,"2001"],[2002,"2002"]],"pl":44},{"dot":"warn","chart":"nq","at":[1996.93,1291],"text":"Dec 1996 warning","tone":"amber","dx":4,"dy":26,"anchor":"start"},{"series":"up","chart":"nq","pts":[[1996.93,1291],[1997.3,1260],[1997.5,1440],[1997.8,1700],[1998.0,1570],[1998.3,1830],[1998.5,1890],[1998.77,1420],[1999.0,2190],[1999.3,2540],[1999.5,2690],[1999.75,2740],[1999.95,4070],[2000.1,4700],[2000.19,5048.62]],"tone":"green","ms":1700},{"dot":"pk","chart":"nq","at":[2000.19,5048.62],"text":"5,048.62","tone":"green","dx":-10,"dy":-4,"anchor":"end"}]},{"cap":"The sceptics were right too early. Tiger Management, a value fund that would not buy the tech story, closed at the end of March 2000 after years of losses and withdrawals: within weeks of the top.","do":[{"series":"dn1","chart":"nq","pts":[[2000.19,5048.62],[2000.25,4570]],"tone":"red","ms":500},{"dot":"tiger","chart":"nq","at":[2000.25,4570],"text":"Tiger closes","tone":"purple","dx":12,"dy":-6,"anchor":"start"}]},{"cap":"Then the panic. The leverage that forced buying on the way up forced selling on the way down. By 9 October 2002 the Nasdaq closed at 1,114.11: about 78% below the peak.","do":[{"series":"dn2","chart":"nq","pts":[[2000.25,4570],[2000.29,3400],[2000.42,3900],[2000.65,4200],[2000.98,2470],[2001.25,1640],[2001.45,2160],[2001.72,1420],[2001.95,1950],[2002.2,1850],[2002.45,1460],[2002.7,1170],[2002.77,1114.11]],"tone":"red","ms":1700},{"dot":"tr","chart":"nq","at":[2002.77,1114.11],"text":"1,114.11  (−78%)","tone":"red","dx":-8,"dy":24,"anchor":"end"}]},{"cap":"Before you join or fight a crowd, ask what you know that the last buyer didn't. Write your own clue down before you look at the queue, and size so that being early can't force you out.","do":[{"note":"end","x":300,"y":882,"text":"Your own clue, written first: the one thing a cascade throws away.","size":19,"anchor":"middle","tone":"amber"},{"pulse":"book"}]}]}</script>
+      </div>
+      <!-- WB:herding:END -->
+    </section>
+    <!-- WB:herding-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7 · It actually happened</div>
       <h2 class="sl-h2">January 2021: GameStop and a narrative with a villain</h2>
       <div class="sl-callout amber">
@@ -137,7 +150,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8 · What this desk found</div>
       <h2 class="sl-h2">Crowding warnings don't time the turn</h2>
       <p class="sl-sub">The folk claim: "you can see the herd crowding in, and that tells you a break is coming."</p>
@@ -164,7 +177,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9 · Do this now</div>
       <h2 class="sl-h2">The narrative check, before you join or fight a crowd</h2>
       <div class="sl-recap">
@@ -176,7 +189,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -220,7 +233,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -322,5 +335,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>
