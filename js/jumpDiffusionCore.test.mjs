@@ -12,7 +12,7 @@
 import assert from 'node:assert/strict';
 import {
   bipower, jumpFraction, lmThreshold, localSigma, buildGrid, deseasonalise,
-  detectJumps, scoreAgainstTimeOfDay, BUCKET_MIN, K_WINDOW,
+  detectJumps, scoreAgainstTimeOfDay, nextBarFlagLevel, BUCKET_MIN, K_WINDOW,
 } from './jumpDiffusionCore.js';
 
 let pass = 0;
@@ -155,6 +155,26 @@ t('time-of-day scoring bands against THAT checkpoint, not a full-day percentile'
   assert.equal(scoreAgainstTimeOfDay(0.13, 60, table).band, 'extreme');
   assert.equal(scoreAgainstTimeOfDay(0.13, 720, table).band, 'high');
   assert.equal(scoreAgainstTimeOfDay(0.02, 720, table).band, 'below median');
+});
+
+t('nextBarFlagLevel is the exact boundary detectJumps applies to the next return', () => {
+  const r = noise(600);
+  const tod = r.map((_, i) => (i * 5) % 1440);
+  const factors = Array.from({ length: 1440 / BUCKET_MIN }, (_, b) => 0.6 + (b % 7) * 0.15);
+  const nextTod = (600 * 5) % 1440;
+  const lvl = nextBarFlagLevel(r, tod, factors, nextTod);
+  assert.ok(lvl && lvl.applied && lvl.logRet > 0);
+  for (const sign of [1, -1]) {
+    const over = detectJumps([...r, sign * lvl.logRet * 1.001], [...tod, nextTod], factors);
+    const under = detectJumps([...r, sign * lvl.logRet * 0.999], [...tod, nextTod], factors);
+    assert.equal(over.flags[600], true);
+    assert.equal(under.flags[600], false);
+  }
+});
+
+t('nextBarFlagLevel is null while the local-vol window is too thin', () => {
+  const r = noise(Math.floor(K_WINDOW / 2) - 5);
+  assert.equal(nextBarFlagLevel(r, r.map(() => 0), null, 0), null);
 });
 
 console.log(`\n${pass} passed`);

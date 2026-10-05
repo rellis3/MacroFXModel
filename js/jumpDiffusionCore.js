@@ -170,6 +170,36 @@ export function detectJumps(ret, tod, factors, { k = K_WINDOW, alpha = ALPHA, n 
 }
 
 /**
+ * The size of move the NEXT return would need to be flagged by `detectJumps`.
+ *
+ * Same test, solved for |r|: the next return's local σ is built from the k returns
+ * strictly before it — i.e. the tail of `ret`, which is all known now — so the bar is
+ * exact, not an estimate. It is then re-seasonalised by the factor for the bucket the
+ * next return will END in (`nextTod`, UTC minute-of-day), because the detector divides
+ * that factor out before testing.
+ *
+ * Returns { logRet, sigma, factor, threshold, applied } where logRet is the absolute
+ * close-to-close log return that would flag (either direction), or null when the
+ * window is too thin for the detector to test the next bar at all.
+ */
+export function nextBarFlagLevel(ret, tod, factors, nextTod,
+  { k = K_WINDOW, alpha = ALPHA, n = BARS_PER_DAY, bucketMin = BUCKET_MIN } = {}) {
+  const { adjusted, applied } = deseasonalise(ret, tod, factors, { bucketMin });
+  const m = adjusted.length;
+  // Mirrors localSigma at index i = m: products lo..m-1, lo = max(m-k+1, 1).
+  const lo = Math.max(m - k + 1, 1);
+  if (m - lo < Math.floor(k / 2)) return null;
+  let s = 0;
+  for (let j = lo; j < m; j++) s += Math.abs(adjusted[j]) * Math.abs(adjusted[j - 1]);
+  const sigma = Math.sqrt(Math.max(s / (m - lo), 0));
+  if (!(sigma > 0)) return null;
+  const nb = 1440 / bucketMin;
+  const factor = applied ? Math.max(factors[Math.floor(nextTod / bucketMin) % nb], 0.05) : 1;
+  const threshold = lmThreshold(n, alpha);
+  return { logRet: threshold * sigma * factor, sigma, factor, threshold, applied };
+}
+
+/**
  * Score a live jump share against the study's time-of-day distribution.
  * `table` is { checkpoints: [minuteOfLondonDay...], p50:[], p75:[], p90:[], p95:[], p99:[] }
  * for one instrument. Picks the LAST checkpoint at or before `londonMinute` — a
