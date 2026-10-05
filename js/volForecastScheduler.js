@@ -658,10 +658,13 @@ const EXPECTED_DIRECTIONALITY = 0.6745 / 1.572 * 100;  // ~42.9%
 // High = rolling max of all H1 highs since the anchor; Low = rolling min;
 // Close = last available H1 bar's close (current price). For markets closed at
 // the anchor (some equity indices) the first available bar becomes the anchor.
-async function fetchMidnightAnchoredBar(instrument) {
-  const midnight = new Date(londonMidnightSec() * 1000);
+// `window` (optional) pins an explicit session: { fromSec, toSec } = that London day's midnight → next midnight.
+// Default (no window) is unchanged: everything since the most recent London midnight.
+async function fetchMidnightAnchoredBar(instrument, window = null) {
+  const midnight = new Date((window?.fromSec ?? londonMidnightSec()) * 1000);
   const url = `${_oandaBase()}/v3/instruments/${encodeURIComponent(instrument)}/candles`
-            + `?granularity=H1&from=${encodeURIComponent(midnight.toISOString())}&price=M`;
+            + `?granularity=H1&from=${encodeURIComponent(midnight.toISOString())}&price=M`
+            + (window?.toSec ? `&to=${encodeURIComponent(new Date(window.toSec * 1000).toISOString())}` : '');
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` },
     signal:  AbortSignal.timeout(15_000),
@@ -669,7 +672,8 @@ async function fetchMidnightAnchoredBar(instrument) {
   if (!res.ok) throw new Error(`Oanda HTTP ${res.status}`);
 
   // Include incomplete bars — the in-progress hour contributes to H/L/C.
-  const candles = ((await res.json()).candles ?? []).filter(c => c.mid);
+  let candles = ((await res.json()).candles ?? []).filter(c => c.mid);
+  if (window?.toSec) candles = candles.filter(c => Date.parse(c.time) / 1000 < window.toSec);
   if (candles.length === 0) throw new Error('No bars since midnight');
 
   const open  = parseFloat(candles[0].mid.o);  // London-midnight (or first-available) anchor
@@ -882,9 +886,44 @@ export async function getSessionStatus() {
 // re-run. Stored as vol_session_YYYY-MM-DD in KV (CF-persisted) so historical
 // sessions can be extracted for any captured date.
 
+// The daily trigger fires on the first 5-min tick at/after 22:00 UTC. In BST London midnight is 23:00 UTC, so a
+// delayed tick (restart, deploy, slow run) used to audit AFTER the session ended — getSessionStatus() then measured
+// the NEXT session's first minutes and stored them as this session (6 of 14 records, 2026-09-15 → 10-02).
+// A late audit now measures this session's own London-midnight → next-midnight window explicitly.
+const _londonDateOf = (ms = Date.now()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date(ms));
+// 00:30 UTC is still on the London date in both BST and GMT, and before either clock change (01:00 / 02:00 local), so the
+// offset read there is the one in force at that date's midnight.
+const _londonMidnightOf = date => londonMidnightSec(new Date(`${date}T00:30:00Z`));
+
+async function _sessionRecordFor(sessionDate) {
+  const fc = forecastState.latest;
+  if (!fc || fc.session_date !== sessionDate) {
+    console.warn(`[VOL-FORECAST] Late audit for ${sessionDate} skipped: cached forecast is for ${fc?.session_date ?? 'nothing'}`);
+    return null;
+  }
+  const next = new Date(`${sessionDate}T12:00:00Z`); next.setUTCDate(next.getUTCDate() + 1);
+  const window = { fromSec: _londonMidnightOf(sessionDate), toSec: _londonMidnightOf(next.toISOString().slice(0, 10)) };
+  const instruments = {};
+  await Promise.all(INSTRUMENTS.map(async cfg => {
+    try {
+      const f = fc.instruments[cfg.name];
+      if (!f) return;
+      const bar = await fetchMidnightAnchoredBar(cfg.oandaInstrument, window);
+      instruments[cfg.name] = {
+        ...computeSessionMetrics(bar, f, bar.bars),
+        forecast:    { hl_median: f.hl_median, hl_75: f.hl_75, oc_median: f.oc_median, oc_75: f.oc_75 },
+        bar_time: bar.time, anchor_time: bar.anchor_time, bar_count: bar.bar_count, complete: bar.complete,
+      };
+    } catch (err) { instruments[cfg.name] = { error: err.message }; }
+  }));
+  return { ok: true, session_date: fc.session_date, session_label: fc.session_label,
+           fetched_at: new Date().toISOString(), late_audit: true, instruments };
+}
+
 async function _auditSession(sessionDate) {
   try {
-    const status = await getSessionStatus();
+    const late = _londonDateOf() > sessionDate;
+    const status = late ? await _sessionRecordFor(sessionDate) : await getSessionStatus();
     if (!status?.ok) return;
     const record = { ...status, audited_at: new Date().toISOString() };
     await kv.put(`vol_session_${sessionDate}`, JSON.stringify(record));
