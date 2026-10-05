@@ -1,0 +1,12 @@
+{
+ "id": "lean-trade-rule",
+ "verdict": "BLOCKED",
+ "reason": "H1 bars end 2026-08-21, ledger starts 2026-09-14 \u2014 no overlap",
+ "barsTo": "2026-08-21",
+ "ledgerFrom": "2026-09-14",
+ "ledgerTo": "2026-10-05",
+ "dayBets": 17,
+ "minDayBets": 30,
+ "alsoUntestable": true,
+ "note": "TWO independent blockers. Even with perfect bars this is UNTESTABLE: 17 day-bets against a floor of 30. The SAMPLE is the binding constraint, not the data gap \u2014 the ledger needs about six weeks more before the question can be asked at all."
+}
