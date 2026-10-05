@@ -21967,6 +21967,23 @@ app.get('/api/vol-forecast/ivadj-ladder/export', async (_req, res) => {
   }
 });
 
+// GET /api/vol-forecast/ivadj-ladder/json — the same IV-adjusted daily ladders as the
+// export above, as JSON, for the v3 chart's "Forecast · IV-adjusted" view. Instruments
+// without a usable IV are absent (the chart then draws the plain ladder and says so).
+app.get('/api/vol-forecast/ivadj-ladder/json', async (_req, res) => {
+  if (!forecastState.latest) return res.status(202).json({ ok: false, error: 'forecast not ready' });
+  try {
+    const ohlc = await ensureOhlcCache();
+    let oiStore = {};
+    try { const raw = await kv.get('oi_store'); if (raw) { const p = JSON.parse(raw); oiStore = p.data ?? p; } } catch { /* FX falls back */ }
+    const { instruments, adjusted, skipped } = buildIvAdjInstruments(forecastState.latest, ohlc, oiStore, VOL_INSTRUMENTS, Date.now(), await _ivAdjCboeLatest());
+    res.json({ ok: true, session_date: forecastState.latest.session_date,
+               instruments: Object.fromEntries(adjusted.map(a => [a.name, instruments[a.name].ladder])), adjusted, skipped });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Forward scorecard of the 2026-10-05 forecast lines ─────────────────────────
 // js/forecastScorecard.js has the scoring; this is the plumbing. Every 30 min:
 //   1. the morning of a session (>= 07:00 London, after the IV capture) snapshot the
@@ -22156,7 +22173,8 @@ app.get('/api/vol-forecast/ladder/frozen', async (req, res) => {
       if (prior.length < 60) continue;
       try {
         const f = _computeForecast(prior, cfg.assetClass, 1.0, { instrument: cfg.name, eventTag: null });
-        if (f?.ladder) out[cfg.name] = { daily: f.ladder, weekly: f.ladder_weekly, monthly: f.ladder_monthly };
+        if (f?.ladder) out[cfg.name] = { daily: f.ladder, weekly: f.ladder_weekly, monthly: f.ladder_monthly,
+                                         weekly_rev: f.ladder_weekly_rev, monthly_rev: f.ladder_monthly_rev };
       } catch { /* one instrument short of bars must not fail the whole response */ }
     }
     res.json({ ok: true, kind, period_start: start, instruments: out });
