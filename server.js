@@ -2697,13 +2697,18 @@ async function _injectServerContext(pair, s) {
   if (!s.impliedVol && (key === 'EURUSD' || key === 'GOLD')) {
     try {
       const cv  = await _getCvol();
-      const sid = key === 'EURUSD' ? 'EVZCLS' : 'GVZCLS';
-      if (cv.levels[sid] != null) {
-        s.impliedVol = {
-          index: sid === 'EVZCLS' ? 'EVZ (EUR/USD 1M implied vol)' : 'GVZ (Gold 1M implied vol)',
-          level: cv.levels[sid], pct: cv.pct[sid],
-          realized: fc?.vol_annual ?? null,
-        };
+      if (key === 'EURUSD') {
+        // EVZ died 2025-03-11. Pairing its cached level with a CURRENT realised vol was
+        // not a stale comparison, it was an incoherent one -- 2025 implied against 2026
+        // realised, handed to a paid model as a reading.
+        const fxIv = await _fxImpliedVol(cv);
+        if (fxIv) s.impliedVol = { index: `EUR/USD 1M implied vol (${fxIv.source})`,
+                                   level: fxIv.level, pct: fxIv.pct,
+                                   realized: fc?.vol_annual ?? null, asOf: fxIv.asOf };
+      } else if (cv.levels.GVZCLS != null) {
+        s.impliedVol = { index: 'GVZ (Gold 1M implied vol)',
+                         level: cv.levels.GVZCLS, pct: cv.pct.GVZCLS,
+                         realized: fc?.vol_annual ?? null };
       }
     } catch { /* left absent — prompt tolerates it */ }
   }
@@ -14425,6 +14430,40 @@ async function _getCvol() {
   return data;
 }
 
+// ── One EUR/USD implied-vol read, with staleness FATAL rather than cosmetic ──
+//
+// WHY THIS IS A FUNCTION. This bug was already found and fixed ONCE, four lines above:
+// `coherence` keyed off EVZCLS and was reading a 2025 percentile as today's. Three other
+// consumers were missed -- the /api/risk-flags FX-vol flag, the AI prompt's impliedVol
+// block and the EUR/USD VRP -- so the same dead series kept driving all three. Three
+// copies of a rule is how one of them stays wrong. One function, every caller.
+//
+// THE RULE `!= null` CANNOT EXPRESS. EVZCLS stopped printing 2025-03-11 and its cached
+// level passes every null check ever written: PRESENT is not CURRENT. `_cvol` has
+// computed `stale[sid]` (age > 14d) all along and nothing ever read it. Past that bound
+// the honest answer is NO READING, not a number -- a VRP of a 2025 implied minus a 2026
+// realised is not a stale figure, it is a meaningless one.
+//
+// Order: the nightly CME settles capture (oi_store, refreshed ~06:37 daily), then the
+// CVOL snapshot while it is still inside the staleness bound, then nothing. EVZCLS is
+// never returned. It stays in the cvol payload for the data-health map and the record.
+//
+// GOLD IS UNAFFECTED. GVZCLS is alive and still prints; only the EUR/USD leg died.
+async function _fxImpliedVol(cv) {
+  try {
+    const live = await _briefIvLive();
+    if (Number.isFinite(live?.eurusd?.iv30)) {
+      return { level: live.eurusd.iv30, pct: null, source: 'CME settles (nightly)',
+               asOf: live.asOf ?? null, rr: live.eurusd.rr ?? null };
+    }
+  } catch { /* fall through to the snapshot */ }
+  if (cv?.levels?.CME_EURUSD != null && cv?.stale?.CME_EURUSD !== true) {
+    return { level: cv.levels.CME_EURUSD, pct: cv.pct?.CME_EURUSD ?? null,
+             source: 'CME CVOL snapshot', asOf: cv.asOf?.CME_EURUSD ?? null, rr: null };
+  }
+  return null;
+}
+
 /**
  * Today's implied vol, from the capture that actually runs nightly.
  *
@@ -14705,7 +14744,13 @@ async function computeRiskFlags() {
   const vix3m  = fred.vix3m?.value ?? null;
   const hyChg  = lastChange(hyHist, 5, false);            // OAS is in % points
   const jpyChg = lastChange(jpyHist, 5, true);            // DEXJPUS: falling = JPY strengthening
-  const evzPct = cvol?.pct?.EVZCLS ?? null;
+  // Was `cvol?.pct?.EVZCLS` -- a percentile of a 5-year window whose last 1.6 years are
+  // empty, reported as today's. The live capture gives a LEVEL but no 5y distribution is
+  // wired yet, so this flag now goes DARK rather than wrong. Visible, not silent: the
+  // detail line says why. Reviving it needs the settlement IV history (OI Data/) turned
+  // into a distribution -- that is a build, not a guard.
+  const fxIv = await _fxImpliedVol(cvol);
+  const evzPct = fxIv?.pct ?? null;
 
   const flags = [
     { key: 'vix_level', label: 'VIX elevated',
@@ -14727,7 +14772,11 @@ async function computeRiskFlags() {
       detail: jpyChg != null ? `USD/JPY ${jpyChg >= 0 ? '+' : ''}${jpyChg.toFixed(1)}% / 5 obs (flag ≤−1.5%)` : 'USD/JPY history unavailable' },
     { key: 'evz_stress', label: 'FX implied vol stressed',
       on: evzPct != null ? evzPct >= 80 : null, value: evzPct,
-      detail: evzPct != null ? `EVZ at ${evzPct}th percentile of 5y (flag ≥80th)` : 'EVZ unavailable' },
+      detail: evzPct != null
+        ? `EUR/USD implied vol at ${evzPct}th percentile of 5y (flag ≥ 80th)`
+        : fxIv
+          ? `EUR/USD implied vol ${fxIv.level}% (${fxIv.source}) — no 5y percentile wired, so this flag is OFF rather than guessed`
+          : 'EUR/USD implied vol unavailable (EVZ retired 2025-03-11)' },
     { key: 'stock_bond_corr', label: 'Stock-bond correlation broken',
       on: sbCorr != null ? sbCorr.corr > 0 : null,
       value: sbCorr != null ? +sbCorr.corr.toFixed(2) : null,
@@ -22169,8 +22218,11 @@ app.get('/api/vol-forecast/intelligence', async (_req, res) => {
       // already relies on for the AI-analysis prompt's impliedVol section.
       let vrp = null;
       if (cvolResult?.levels && (cfg.name === 'EURUSD' || cfg.name === 'GOLD')) {
-        const sid = cfg.name === 'EURUSD' ? 'EVZCLS' : 'GVZCLS';
-        const ivLevel = cvolResult.levels[sid];
+        // EUR/USD goes through _fxImpliedVol: a VRP of a 2025 implied minus a 2026
+        // realised is meaningless, not merely late. Gold keeps GVZCLS, which is alive.
+        const ivLevel = cfg.name === 'EURUSD'
+          ? (await _fxImpliedVol(cvolResult))?.level ?? null
+          : cvolResult.levels.GVZCLS ?? null;
         if (ivLevel != null && fc.vol_annual > 0) vrp = ivPremium(ivLevel, fc.vol_annual);
       }
 
