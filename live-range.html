@@ -149,6 +149,7 @@ table.lr-t th:first-child, table.lr-t td:first-child { text-align: left; font-fa
 
 <script type="module">
 import { sessionState, reforecast, morningLevels, classOf, londonParts } from './js/intradayRange.js';
+import { LINE_TOUCH } from './js/lineTouchReach.js';
 
 const OANDA_SYM = {
   EURUSD:'EUR/USD', GBPUSD:'GBP/USD', USDJPY:'USD/JPY', EURJPY:'EUR/JPY', GBPJPY:'GBP/JPY', AUDUSD:'AUD/USD',
@@ -310,6 +311,29 @@ async function loadCard(name) {
       chips.push(`<span class="v3-chip ${x.up ? 'up' : 'dn'} ${x.hit ? 'hit' : ''}">AM ${x.up ? '↑' : '↓'}p75 <b>${x.hit ? '✓' : pct(x.p)}</b></span>`);
     }
   } else chips.push('<span class="v3-chip muted">first re-forecast at 01:00 London</span>');
+  // "From here": once a projected line is reached, the chance of reaching the next one before the
+  // close — the model's own conditional, CALIBRATED in forge/LINE_TOUCH_REACH_PREREG.md — plus how
+  // far a p75 touch typically carries (that study's table).
+  if (L) {
+    const grp = L.h <= 7 ? '01-07' : L.h <= 14 ? '08-14' : '15-21';
+    const tbl = LINE_TOUCH?.classes?.[classOf(name)] ?? {};
+    for (const up of [true, false]) {
+      const ext = up ? st.now.high : st.now.low, P = up ? L.projHigh : L.projLow;
+      const beyond = k => (up ? ext >= P[k] : ext <= P[k]);
+      const prob = k => (up ? L.probUp(P[k]) : L.probDn(P[k]));
+      const a = up ? '↑' : '↓', cls = up ? 'up' : 'dn', side = up ? 'up' : 'dn';
+      if (beyond('p90')) {
+        chips.push(`<span class="v3-chip ${cls}" title="Past this hour's p90 line: a top-10% day">${a}p90 reached · <b>big day</b></span>`);
+      } else if (beyond('p75')) {
+        const cond = prob('p90') / Math.max(prob('p75'), 1e-9);
+        const ov = tbl[`${side}|${grp}|p75_to_p90`]?.overshoot_median;
+        chips.push(`<span class="v3-chip ${cls}" title="Line-touch study (CALIBRATED): from p75 about 2 in 5 reach p90 before the close; the day's extreme typically carries this share of the way">${a}p75 hit → p90 <b>${pct(cond)}</b>${ov != null ? ` · carries ~<b>${Math.round(ov * 100)}%</b> of the way` : ''}</span>`);
+      } else if (beyond('p50') && prob('p50') < 0.99) {        // skip when p50 just sits on the extreme
+        const cond = prob('p75') / Math.max(prob('p50'), 1e-9);
+        chips.push(`<span class="v3-chip ${cls}" title="Line-touch study: from p50 about 1 in 2 reach p75 before the close">${a}p50 hit → p75 <b>${pct(cond)}</b></span>`);
+      }
+    }
+  }
   if (!sig) chips.push('<span class="v3-chip dn">no σ in today\'s forecast</span>');
   c.el.querySelector('[data-chips]').innerHTML = chips.join('');
   c.el.querySelector('[data-proj]').innerHTML = L
