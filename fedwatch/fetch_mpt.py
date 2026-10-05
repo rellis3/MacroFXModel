@@ -77,16 +77,33 @@ def _etag_load():
         return {}
 
 
-def _etag_save(etag, as_of):
+def _etag_save(etag, as_of, last_mod):
     try:
-        ETAG_FILE.write_text(json.dumps({"etag": etag, "asOf": as_of}))
+        ETAG_FILE.write_text(json.dumps({"etag": etag, "asOf": as_of,
+                                         "lastModified": last_mod}))
     except Exception as e:
         print(f"  could not cache etag ({e}) -- next run re-downloads, harmless")
 
 
-def _get(url, etag=None, timeout=120):
+def _get(url, etag=None, last_mod=None, timeout=120):
+    """Conditional GET.
+
+    IT MUST BE If-Modified-Since, NOT If-None-Match. Measured 2026-10-05 against
+    the live file with the ETag the server itself had just returned:
+
+        If-None-Match (quoted AND unquoted)  ->  HTTP 200, 6,981,543 bytes
+        If-Modified-Since                    ->  HTTP 304,         0 bytes
+
+    The CDN serves an ETag header and then ignores it for conditional requests.
+    Built on the ETag this would have pulled 7 MB on every run, three times a day,
+    for ever -- and still returned correct data, so nothing would ever have flagged
+    it. The ETag is still cached, but only to notice a change; the CONDITION is the
+    timestamp.
+    """
     req = urllib.request.Request(url, headers={"User-Agent": "MacroFXModel/1.0"})
-    if etag:
+    if last_mod:
+        req.add_header("If-Modified-Since", last_mod)
+    elif etag:
         req.add_header("If-None-Match", etag)
     try:
         r = urllib.request.urlopen(req, timeout=timeout)
@@ -203,9 +220,10 @@ def main():
     # download.
     prev = _etag_load()
     etag = None if a.force else prev.get("etag")
-    print(f"[mpt] stored asOf={prev.get('asOf')} etag={(etag or '-')[:12]}")
+    since = None if a.force else prev.get("lastModified")
+    print(f"[mpt] stored asOf={prev.get('asOf')} since={since or '-'}")
 
-    code, body, new_etag, last_mod = _get(URL, etag)
+    code, body, new_etag, last_mod = _get(URL, etag, since)
     print(f"[mpt] GET -> HTTP {code}  last-modified={last_mod}")
     if code == 304:
         print("[mpt] unchanged (304, zero bytes) -- nothing to do")
@@ -235,7 +253,7 @@ def main():
     # only cache the ETag once the write SUCCEEDED, or a failed run would mark the
     # file as seen and never retry it
     if status == 200:
-        _etag_save(new_etag, payload["asOf"])
+        _etag_save(new_etag, payload["asOf"], last_mod)
     return 0 if status == 200 else 1
 
 
