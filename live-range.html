@@ -8,73 +8,128 @@
 <link rel="stylesheet" href="./css/index.css">
 <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
-#lr { padding: 14px 24px 40px; box-sizing: border-box; max-width: 1500px; margin: 0 auto; }
-.lr-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-bottom: 12px; border-bottom: 1.5px solid var(--border); }
-.lr-title { font-size: 17px; font-weight: 700; color: var(--text); }
-.lr-sub { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 2px; }
-.lr-right { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.lr-btn, .lr-sel { font: 500 12px 'DM Sans', sans-serif; color: var(--text); background: var(--bg2, transparent); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; text-decoration: none; }
-.lr-btn:hover { border-color: var(--blue); }
-.lr-status { font: 11px 'DM Mono', monospace; color: var(--text3); }
-.lr-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; margin-top: 14px; }
-@media (max-width: 1000px) { .lr-grid { grid-template-columns: 1fr; } }
-#lrChart { height: 560px; border: 1px solid var(--border); border-radius: 8px; }
-.lr-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
-.lr-card h3 { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--text2, var(--text)); text-transform: uppercase; letter-spacing: .04em; }
-.lr-kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: 12.5px; }
-.lr-kv .k { color: var(--text3); }
-.lr-kv .v { font-family: 'DM Mono', monospace; text-align: right; color: var(--text); }
-table.lr-t { width: 100%; border-collapse: collapse; font-size: 12px; }
-table.lr-t th, table.lr-t td { padding: 4px 6px; border-bottom: 1px solid var(--border); text-align: right; font-family: 'DM Mono', monospace; }
+/* Layout and card language copied from vol-forecast-v3.html so the two read as one tool. */
+#v2App { padding: 0 24px 40px; width: 100%; box-sizing: border-box; }
+.v2-sticky { position: sticky; top: 0; z-index: 200; background: var(--bg); padding-top: 14px; }
+.v2-header { display: flex; align-items: center; gap: 14px; padding-bottom: 12px; border-bottom: 1.5px solid var(--border); }
+.v2-title-group { display: flex; flex-direction: column; }
+.v2-title { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -.01em; }
+.v2-title .v3-ver { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; letter-spacing: .12em; margin-left: 6px; }
+.v2-subtitle { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 2px; }
+.v2-header-right { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.v2-auto-toggle { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; cursor: pointer; }
+.v2-auto-toggle input[type=checkbox] { accent-color: var(--blue); cursor: pointer; }
+.v2-tabbar { display: flex; align-items: center; border-bottom: 1.5px solid var(--border); padding-top: 6px; flex-wrap: wrap; }
+.v2-tab { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--text3); padding: 8px 16px 9px;
+  cursor: pointer; border-bottom: 2.5px solid transparent; transition: color .15s, border-color .15s; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+.v2-tab:hover { color: var(--text2); }
+.v2-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+.v2-tab-right { margin-left: auto; display: flex; align-items: center; gap: 8px; padding-bottom: 4px; }
+.v2-tool-btn { background: none; border: 1.5px solid var(--border); border-radius: 20px; padding: 3px 11px; cursor: pointer; font-size: 11px;
+  font-weight: 500; color: var(--text2); font-family: 'DM Sans', sans-serif; transition: all .2s; white-space: nowrap; text-decoration: none; }
+.v2-tool-btn:hover { border-color: var(--blue); color: var(--blue); }
+.v2-status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+.v2-status-dot.ok { background: var(--green); } .v2-status-dot.spin { background: var(--blue); animation: blink .5s infinite; } .v2-status-dot.err { background: var(--red); }
+.v2-date-row { display: flex; align-items: center; gap: 12px; padding: 14px 0 6px; flex-wrap: wrap; }
+.v2-date-heading { font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -.02em; }
+.v2-session-meta { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-left: auto; }
+.v2-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 14px; }
+@media (max-width: 900px) { .v2-grid { grid-template-columns: 1fr; } #v2App { padding: 0 12px 48px; } }
+.v2-card { background: var(--s1); border: 1.5px solid var(--border); border-radius: 16px; padding: 14px 16px 12px; display: flex; flex-direction: column;
+  gap: 10px; transition: border-color .2s, box-shadow .2s; box-shadow: 0 1px 4px rgba(0,0,0,.10); min-width: 0; overflow: hidden; }
+.v2-card:hover { border-color: var(--border2); box-shadow: 0 4px 14px rgba(0,0,0,.16); }
+.v2-card.wide { grid-column: 1 / -1; }
+.v2-inst-name { font-size: 16px; font-weight: 700; font-family: 'DM Mono', monospace; letter-spacing: .08em; color: var(--text); text-transform: uppercase; flex-shrink: 0; }
+.v3-id { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; min-width: 0; }
+.v3-price { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; }
+.v3-chg { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.v3-cap { display: inline-flex; align-items: center; font-family: 'DM Mono', monospace; font-size: 10px; border: 1px solid var(--blue-bd); border-radius: 20px;
+  overflow: hidden; background: var(--blue-bg); flex-shrink: 0; }
+.v3-cap span { padding: 3px 8px; white-space: nowrap; }
+.v3-cap span + span { border-left: 1px solid var(--blue-bd); }
+.v3-cap.hi { border-color: var(--red-bd); background: var(--red-bg); } .v3-cap.hi span + span { border-color: var(--red-bd); }
+.v3-cap.lo { border-color: var(--green-bd); background: var(--green-bg); } .v3-cap.lo span + span { border-color: var(--green-bd); }
+.v3-live { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+.v3-live.on { background: var(--green); box-shadow: 0 0 0 3px var(--green-bg); }
+.v2-m5-wrap { position: relative; height: 240px; margin: 4px 0 2px; border-radius: 6px; overflow: hidden; background: var(--s2); }
+.v2-card.wide .v2-m5-wrap { height: 460px; }
+.v3-chart-btns { position: absolute; top: 6px; right: 62px; z-index: 5; display: flex; gap: 4px; }
+.v3-chart-btns button { background: var(--s1); border: 1px solid var(--border); color: var(--text2); border-radius: 6px; font-size: 11px; padding: 2px 7px; cursor: pointer; opacity: .85; }
+.v3-chart-btns button:hover { border-color: var(--blue); color: var(--blue); }
+.v3-status { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.v3-chip { display: inline-flex; align-items: center; gap: 4px; font-family: 'DM Mono', monospace; font-size: 9.5px; color: var(--text2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 2px 8px; white-space: nowrap; line-height: 1.4; }
+.v3-chip b { color: var(--text); font-weight: 600; }
+.v3-chip.up { border-color: var(--green-bd); background: var(--green-bg); } .v3-chip.dn { border-color: var(--red-bd); background: var(--red-bg); }
+.v3-chip.hit { opacity: .6; }
+.lr-detail { display: none; grid-template-columns: 1fr 1fr; gap: 14px; }
+.v2-card.wide .lr-detail { display: grid; }
+@media (max-width: 900px) { .lr-detail { grid-template-columns: 1fr; } }
+table.lr-t { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+table.lr-t th, table.lr-t td { padding: 4px 6px; border-bottom: 1px solid var(--border); text-align: right; font-family: 'DM Mono', monospace; color: var(--text2); }
+table.lr-t th { color: var(--text3); font-weight: 500; }
 table.lr-t th:first-child, table.lr-t td:first-child { text-align: left; font-family: 'DM Sans', sans-serif; }
-.up { color: #2fa36b; } .dn { color: #d9534f; } .muted { color: var(--text3); }
-.lr-note { font-size: 11px; color: var(--text3); line-height: 1.5; }
-.lr-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--text3); margin-top: 6px; }
+.up { color: var(--green); } .dn { color: var(--red); } .muted { color: var(--text3); }
+.lr-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11px; color: var(--text3); padding: 10px 0 0; }
 .sw { display: inline-block; width: 18px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 5px; }
+.lr-info { margin-top: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: 11.5px; color: var(--text2); line-height: 1.55; background: var(--s1); }
+.lr-info summary { cursor: pointer; color: var(--text); font-weight: 600; font-size: 12px; }
+.lr-empty { color: var(--text3); font-size: 12px; padding: 30px 0; text-align: center; grid-column: 1 / -1; }
 </style>
 </head>
-<body>
-<div id="lr">
-  <div class="lr-head">
-    <div>
-      <div class="lr-title">⏱ Live Range</div>
-      <div class="lr-sub">hourly re-forecast of how much range is still to come · size, never direction</div>
+<body class="dark">
+<div id="v2App">
+<div class="v2-sticky">
+  <div class="v2-header">
+    <div style="width:32px;height:32px;background:linear-gradient(135deg,#1847c2,#7c3aed);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <svg viewBox="0 0 17 17" width="16" height="16" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="8.5" cy="9" r="6"/><path d="M8.5 5.5 V9 L11 10.5"/><path d="M6.5 1.5 h4"/>
+      </svg>
     </div>
-    <div class="lr-right">
-      <select id="lrInst" class="lr-sel" aria-label="Instrument"></select>
-      <button class="lr-btn" id="lrCopy" title="Copy the current projected levels as text">⧉ Copy lines</button>
-      <label class="lr-status"><input type="checkbox" id="lrAuto" checked> auto 60s</label>
-      <a class="lr-btn" href="vol-forecast-v3.html">← Vol Forecast v3</a>
+    <div class="v2-title-group">
+      <div class="v2-title">Live Range<span class="v3-ver">V3</span></div>
+      <div class="v2-subtitle">Hourly re-forecast of the range still to come · updated <span id="lrUpdated">—</span> London</div>
     </div>
-  </div>
-  <div class="lr-status" id="lrStatus" style="margin-top:8px">Loading…</div>
-  <div class="lr-grid">
-    <div>
-      <div id="lrChart"></div>
-      <div class="lr-legend">
-        <span><span class="sw" style="border-color:#7f8c9d;border-top-style:dotted"></span>morning lines (p50 / p75 / p90, fixed)</span>
-        <span><span class="sw" style="border-color:#2fa36b"></span>projected high (p75 bold, p50 / p90 thin)</span>
-        <span><span class="sw" style="border-color:#d9534f"></span>projected low</span>
-        <span class="muted">steps re-draw on every hour, 01:00 → 21:00 London</span>
-      </div>
-    </div>
-    <div>
-      <div class="lr-card"><h3 id="lrNowH">Now</h3><div class="lr-kv" id="lrNow"></div></div>
-      <div class="lr-card"><h3>Projected extremes for today</h3><table class="lr-t" id="lrProj"></table></div>
-      <div class="lr-card"><h3>Morning lines: still reached today?</h3><table class="lr-t" id="lrReach"></table></div>
-      <div class="lr-card lr-note">
-        <b>What this is.</b> At each hour the session so far is placed by how much range it has used and how fast the
-        last hour was (both in units of the forecast's σ). The fitted history of "how much more after a session like this,
-        at this hour" sets the projected high and low.
-        <br><br><b>Evidence.</b> Pre-registered (forge/INTRADAY_RANGE_PREREG.md): it beats the morning lines on the final
-        day range at 21/21 hourly checkpoints for FX + gold and 19/21 for indices, out of sample. The real gain is
-        morning to midday (FX 9–17% better 08:00–13:00); late-day gains are mostly "the day is nearly over".
-        <br><br><b>Read with care.</b> Indices' downside lines run a little tight (p75 hit 29% vs 25%). After about 15:00 the
-        median "more to come" is usually zero, so the p50 line sits on the current extreme. Reach odds are reliable up to
-        ~30% and understate above that. Pairs without a fit (commodities, BTC) are not listed.
-      </div>
+    <div class="v2-header-right">
+      <button class="dark-btn" id="lrThemeBtn" title="Switch light / dark">☀️ Light</button>
+      <label class="v2-auto-toggle"><input type="checkbox" id="lrAuto" checked> Auto-refresh</label>
+      <button class="dark-btn" id="lrRefresh">↻ Refresh</button>
+      <a class="v2-tool-btn" href="vol-forecast-v3.html">← Vol Forecast v3</a>
     </div>
   </div>
+  <div class="v2-tabbar" id="lrTabs">
+    <div class="v2-tab active" data-f="all">All</div>
+    <div class="v2-tab" data-f="fx">FX</div>
+    <div class="v2-tab" data-f="gold">Gold</div>
+    <div class="v2-tab" data-f="idx">Indices</div>
+    <div class="v2-tab-right"><span class="v2-status-dot" id="lrDot"></span><span class="v2-subtitle" id="lrStatus" style="margin:0">loading…</span></div>
+  </div>
+</div>
+
+<div class="v2-date-row">
+  <div class="v2-date-heading" id="lrDate">—</div>
+  <div class="v2-session-meta" id="lrMeta"></div>
+</div>
+<div class="lr-legend">
+  <span><span class="sw" style="border-color:#7f8c9d;border-top-style:dotted"></span>morning lines · p50 / p75 / p90 · fixed</span>
+  <span><span class="sw" style="border-color:#22c55e"></span>projected high · p75 bold, p50 / p90 thin</span>
+  <span><span class="sw" style="border-color:#ef4444"></span>projected low</span>
+  <span>lines re-draw on each hour, 01:00 → 21:00 London · ⤢ widens a card with full tables</span>
+</div>
+<details class="lr-info">
+  <summary>How to read this · evidence</summary>
+  At each hour the session so far is placed by how much range it has used and how fast the last hour was, both in units of the
+  forecast's σ. The fitted history of "how much more came after a session like this, at this hour" sets the projected high and low.
+  Size only, never direction.<br>
+  <b>Evidence:</b> pre-registered (forge/INTRADAY_RANGE_PREREG.md). It beats the morning lines on the final day range at 21/21 hourly
+  checkpoints for FX + gold and 19/21 for indices, out of sample. The real gain is morning to midday (FX 9–17% better 08:00–13:00);
+  late-day gains are mostly "the day is nearly over".<br>
+  <b>Read with care:</b> indices' downside lines run a little tight (p75 hit 29% vs 25%). After ~15:00 the median "more to come" is usually
+  zero, so the p50 line sits on the current extreme. Reach odds are reliable to ~30% and understate above that; beyond the fitted grid
+  they show as &lt;5% / &gt;95%. Commodities and BTC have no fit and are not listed.
+</details>
+
+<div class="v2-grid" id="lrGrid"></div>
 </div>
 
 <script type="module">
@@ -88,139 +143,232 @@ const OANDA_SYM = {
   CHFJPY:'CHF/JPY', NZDCAD:'NZD/CAD', GOLD:'XAU/USD',
   NQ:'NAS100_USD', SPX500:'SPX500_USD', US30:'US30_USD', US2000:'US2000_USD', UK100:'UK100_GBP', DE30:'DE30_EUR',
 };
+const INDICES = new Set(['NQ', 'SPX500', 'US30', 'US2000', 'UK100', 'DE30']);
+const kind = n => INDICES.has(n) ? 'idx' : n === 'GOLD' ? 'gold' : 'fx';
 const $ = id => document.getElementById(id);
 const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } },
                 set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* private window */ } } };
-const digits = n => /JPY/.test(n) ? 3 : n === 'GOLD' ? 2 : ['NQ','SPX500','US30','US2000','UK100','DE30'].includes(n) ? 1 : 5;
+const digits = n => /JPY/.test(n) ? 3 : n === 'GOLD' ? 2 : INDICES.has(n) ? 1 : 5;
 const fmt = (n, v) => (v == null || !Number.isFinite(v)) ? '—' : v.toFixed(digits(n));
 // The fitted grid spans 5%..95%: beyond it the honest statement is a bound, not a number.
 const pct = v => v <= 0.05 ? '&lt;5%' : v >= 0.95 ? '&gt;95%' : `${Math.round(v * 100)}%`;
+const hh = h => `${String(h).padStart(2, '0')}:00`;
 
-let forecast = null, chart = null, candles = null, lines = [], priceLines = [], timer = null, lastText = '';
+let forecast = null, timer = null;
+const cards = new Map();   // name -> { el, chart, candles, series[], priceLines[], visible, loadedAt, text }
 
-function css(v, fb) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim() || fb; }
-
-function buildChart() {
-  const el = $('lrChart');
-  chart = LightweightCharts.createChart(el, {
-    autoSize: true,
-    layout: { background: { type: 'solid', color: 'transparent' }, textColor: css('--text3', '#8a94a6'), fontFamily: 'DM Mono, monospace' },
-    grid: { vertLines: { color: 'rgba(128,128,128,.08)' }, horzLines: { color: 'rgba(128,128,128,.08)' } },
-    timeScale: { timeVisible: true, secondsVisible: false, rightOffset: 4 },
-    rightPriceScale: { borderVisible: false },
-    localization: { timeFormatter: t => new Date(t * 1000).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }) },
-  });
-  candles = chart.addCandlestickSeries({ upColor: '#2fa36b', downColor: '#d9534f', borderVisible: false, wickUpColor: '#2fa36b', wickDownColor: '#d9534f' });
+// ── theme (shared with Vol Forecast v3 via the same localStorage key) ─────────
+function theme() { try { return localStorage.getItem('vf_theme') || 'dark'; } catch { return 'dark'; } }
+function chartTheme() {
+  const dark = document.body.classList.contains('dark');
+  const line = dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.12)';
+  return {
+    layout: { background: { type: 'solid', color: 'transparent' }, textColor: dark ? '#9ca3af' : '#4b5a6e', fontFamily: 'DM Mono, monospace' },
+    grid: { vertLines: { color: dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }, horzLines: { color: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' } },
+    timeScale: { borderColor: line, timeVisible: true, secondsVisible: false, rightOffset: 2 },
+    rightPriceScale: { borderColor: line },
+    crosshair: { vertLine: { color: dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)', labelBackgroundColor: dark ? '#1e2030' : '#e8edf6' },
+                 horzLine: { color: dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)', labelBackgroundColor: dark ? '#1e2030' : '#e8edf6' } },
+  };
+}
+function applyTheme(t) {
+  document.body.classList.toggle('dark', t === 'dark');
+  $('lrThemeBtn').textContent = t === 'dark' ? '☀️ Light' : '🌙 Dark';
+  for (const c of cards.values()) c.chart?.applyOptions(chartTheme());
 }
 
-function clearOverlays() {
-  for (const s of lines) chart.removeSeries(s);
-  for (const p of priceLines) candles.removePriceLine(p);
-  lines = []; priceLines = [];
-}
-
-// UTC epoch-second of a London wall-clock hour on the session date (DST-safe: search ±2h).
 function londonHourToT(date, h) {
   const base = Date.parse(`${date}T00:00:00Z`) / 1000 + h * 3600;
   for (const off of [0, -3600, 3600, -7200]) { const p = londonParts(base + off); if (p.date === date && Math.abs(p.hour - h) < 1e-9) return base + off; }
   return base;
 }
 
-async function load(first = false) {
-  const name = $('lrInst').value;
-  if (!forecast || first) {
-    const r = await fetch('/api/vol-forecast');
-    forecast = await r.json();
-  }
+// ── cards ─────────────────────────────────────────────────────────────────────
+function buildCard(name) {
+  const el = document.createElement('div');
+  el.className = 'v2-card'; el.dataset.k = kind(name); el.id = `lr-${name}`;
+  el.innerHTML = `
+    <div class="v3-id">
+      <span class="v2-inst-name">${name}</span>
+      <span class="v3-price" data-px>—</span><span class="v3-chg" data-chg></span>
+      <span style="flex:1"></span>
+      <span class="v3-cap" data-cap title="Range used so far today, against the morning p50 range"><span>—</span></span>
+      <span class="v3-live" data-live title="live session data"></span>
+    </div>
+    <div style="position:relative">
+      <div class="v2-m5-wrap" data-chart></div>
+      <div class="v3-chart-btns">
+        <button data-copy title="Copy the current projected levels">⧉</button>
+        <button data-wide title="Widen: bigger chart + full tables">⤢</button>
+      </div>
+    </div>
+    <div class="v3-status" data-chips><span class="v3-chip muted">waiting for data…</span></div>
+    <div class="lr-detail">
+      <div><table class="lr-t" data-proj></table></div>
+      <div><table class="lr-t" data-reach></table></div>
+    </div>`;
+  const c = { el, chart: null, candles: null, series: [], priceLines: [], visible: false, loadedAt: 0, text: '' };
+  el.querySelector('[data-wide]').onclick = () => { el.classList.toggle('wide'); };
+  el.querySelector('[data-copy]').onclick = async e => {
+    if (!c.text) return; const b = e.currentTarget;
+    try { await navigator.clipboard.writeText(c.text); b.textContent = '✓'; } catch { b.textContent = '✗'; }
+    setTimeout(() => (b.textContent = '⧉'), 1500);
+  };
+  cards.set(name, c);
+  return el;
+}
+
+function ensureChart(c) {
+  if (c.chart) return;
+  c.chart = LightweightCharts.createChart(c.el.querySelector('[data-chart]'), {
+    autoSize: true, ...chartTheme(),
+    localization: { timeFormatter: t => new Date(t * 1000).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }) },
+  });
+  c.candles = c.chart.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderVisible: false, wickUpColor: '#22c55e', wickDownColor: '#ef4444' });
+}
+
+async function loadCard(name) {
+  const c = cards.get(name); if (!c) return;
   const fc = forecast?.instruments?.[name];
   const sig = fc?.ladder?.sigma_daily_pct;
   const r = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(OANDA_SYM[name])}&incomplete=1`);
-  const data = await r.json();
-  if (!r.ok || !data?.values?.length) { $('lrStatus').textContent = `No bars for ${name}: ${data?.error ?? r.status}`; return; }
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || !data?.values?.length) { c.el.querySelector('[data-chips]').innerHTML = `<span class="v3-chip dn">no bars: ${data?.error ?? r.status}</span>`; return; }
   const bars = [...data.values].reverse().map(b => ({ t: b.t, open: +b.open, high: +b.high, low: +b.low, close: +b.close }));
   const st = sessionState(bars);
-  if (!st) { $('lrStatus').textContent = 'No bars in the current London session yet.'; return; }
-  const dayBars = bars.filter(b => londonParts(b.t).date === st.date && londonParts(b.t).hour < 22);
+  if (!st) { c.el.querySelector('[data-chips]').innerHTML = '<span class="v3-chip muted">no bars in this London session yet</span>'; return; }
+  const dayBars = bars.filter(b => { const p = londonParts(b.t); return p.date === st.date && p.hour < 22; });
+  ensureChart(c);
+  for (const s of c.series) c.chart.removeSeries(s);
+  for (const p of c.priceLines) c.candles.removePriceLine(p);
+  c.series = []; c.priceLines = [];
 
-  // candles + whitespace out to 22:00 so the projected lines have room
   const end = londonHourToT(st.date, 22), lastT = dayBars.at(-1).t;
   const ws = []; for (let t = lastT + 300; t < end; t += 300) ws.push({ time: t });
-  candles.setData([...dayBars.map(b => ({ time: b.t, open: b.open, high: b.high, low: b.low, close: b.close })), ...ws]);
-  candles.applyOptions({ priceFormat: { type: 'price', precision: digits(name), minMove: 10 ** -digits(name) } });
-  clearOverlays();
+  c.candles.setData([...dayBars.map(b => ({ time: b.t, open: b.open, high: b.high, low: b.low, close: b.close })), ...ws]);
+  c.candles.applyOptions({ priceFormat: { type: 'price', precision: digits(name), minMove: 10 ** -digits(name) } });
 
-  // morning lines (fixed, faint)
   const ml = morningLevels(fc?.ladder, st.open);
   for (const [k, v] of Object.entries(ml)) {
-    priceLines.push(candles.createPriceLine({ price: v, color: k.startsWith('up') ? 'rgba(47,163,107,.45)' : 'rgba(217,83,79,.45)',
-      lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, axisLabelVisible: false, title: `AM ${k.replace('_', ' ')}` }));
+    c.priceLines.push(c.candles.createPriceLine({ price: v, color: k.startsWith('up') ? 'rgba(34,197,94,.45)' : 'rgba(239,68,68,.45)',
+      lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, axisLabelVisible: false, title: k.split('_')[1] }));
   }
-
-  // hourly re-forecast path
   const rf = st.checkpoints.map(cp => reforecast(cp, { instrument: name, open: st.open, sigmaDailyPct: sig })).filter(Boolean);
-  const latest = rf.at(-1);
+  const L = rf.at(-1);
   if (rf.length) {
-    const mk = (key, side, w) => {
-      const s = chart.addLineSeries({ color: side === 'H' ? '#2fa36b' : '#d9534f', lineWidth: w, lineType: LightweightCharts.LineType.WithSteps,
-        priceLineVisible: false, lastValueVisible: w > 1, crosshairMarkerVisible: false });
+    for (const side of ['H', 'L']) for (const [key, w] of [['p50', 1], ['p75', 3], ['p90', 1]]) {
+      const s = c.chart.addLineSeries({ color: side === 'H' ? '#22c55e' : '#ef4444', lineWidth: w, lineType: LightweightCharts.LineType.WithSteps,
+        priceLineVisible: false, lastValueVisible: key === 'p75', crosshairMarkerVisible: false });
       const pts = rf.map(x => ({ time: londonHourToT(st.date, x.h), value: (side === 'H' ? x.projHigh : x.projLow)[key] }));
       pts.push({ time: end, value: pts.at(-1).value });
-      s.setData(pts); lines.push(s);
-    };
-    for (const side of ['H', 'L']) { mk('p50', side, 1); mk('p75', side, 3); mk('p90', side, 1); }
+      s.setData(pts); c.series.push(s);
+    }
   }
 
-  // side panels
-  const hl50 = fc?.ladder?.hl?.p50, usedPct = (st.now.high - st.now.low) / st.open * 100;
-  $('lrNowH').textContent = latest ? `As of ${String(latest.h).padStart(2, '0')}:00 London` : 'Before 01:00 London';
-  $('lrNow').innerHTML = [
-    ['Session', `${st.date}`], ['Open', fmt(name, st.open)], ['Last', fmt(name, st.now.close)],
-    ['Range used', `${usedPct.toFixed(2)}%${hl50 ? ` · ${Math.round(usedPct / hl50 * 100)}% of AM p50` : ''}`],
-    ...(latest ? [['Session so far', `${latest.cell.used} used · ${latest.cell.speed} last hour`],
-                  ['Range still expected', `${(latest.remaining.p50 / st.open * 100).toFixed(2)}% · p75 ${(latest.remaining.p75 / st.open * 100).toFixed(2)}%`]] : []),
-    ['σ (forecast)', sig ? `${sig}%/day` : 'n/a'],
-  ].map(([k, v]) => `<div class="k">${k}</div><div class="v">${v}</div>`).join('');
-  $('lrProj').innerHTML = latest
-    ? `<tr><th></th><th>p50</th><th>p75</th><th>p90</th></tr>`
-      + `<tr><td class="up">High</td>${['p50','p75','p90'].map(k => `<td>${fmt(name, latest.projHigh[k])}</td>`).join('')}</tr>`
-      + `<tr><td class="dn">Low</td>${['p50','p75','p90'].map(k => `<td>${fmt(name, latest.projLow[k])}</td>`).join('')}</tr>`
-    : '<tr><td class="muted">First update at 01:00 London.</td></tr>';
-  $('lrReach').innerHTML = `<tr><th>AM line</th><th>level</th><th>today?</th></tr>` + Object.entries(ml).map(([k, v]) => {
-    const up = k.startsWith('up');
-    const hit = up ? st.now.high >= v : st.now.low <= v;
-    const p = hit ? null : latest ? (up ? latest.probUp(v) : latest.probDn(v)) : null;
-    return `<tr><td class="${up ? 'up' : 'dn'}">${up ? '↑' : '↓'} ${k.split('_')[1]}</td><td>${fmt(name, v)}</td><td>${hit ? '✓ reached' : p == null ? '—' : pct(p)}</td></tr>`;
-  }).join('');
+  // header row
+  const chg = (st.now.close / st.open - 1) * 100;
+  c.el.querySelector('[data-px]').textContent = fmt(name, st.now.close);
+  const ch = c.el.querySelector('[data-chg]'); ch.textContent = `${chg >= 0 ? '▲' : '▼'} ${Math.abs(chg).toFixed(2)}%`; ch.style.color = chg >= 0 ? 'var(--green)' : 'var(--red)';
+  const hl50 = fc?.ladder?.hl?.p50, usedPct = (st.now.high - st.now.low) / st.open * 100, ofAm = hl50 ? usedPct / hl50 : null;
+  const cap = c.el.querySelector('[data-cap]');
+  cap.className = `v3-cap ${ofAm == null ? '' : ofAm >= 1 ? 'hi' : ofAm < 0.5 ? 'lo' : ''}`;
+  cap.innerHTML = `<span>${usedPct.toFixed(2)}% used</span>${ofAm != null ? `<span>${Math.round(ofAm * 100)}% of AM p50</span>` : ''}${L ? `<span>${L.cell.used} · ${L.cell.speed} pace</span>` : ''}`;
+  const live = Date.now() / 1000 - lastT < 15 * 60; c.el.querySelector('[data-live]').classList.toggle('on', live);
 
-  lastText = latest ? [
-    `LIVE RANGE ${name} · ${st.date} · as of ${String(latest.h).padStart(2, '0')}:00 London`,
-    `Projected high p50/p75/p90: ${['p50','p75','p90'].map(k => fmt(name, latest.projHigh[k])).join(' / ')}`,
-    `Projected low  p50/p75/p90: ${['p50','p75','p90'].map(k => fmt(name, latest.projLow[k])).join(' / ')}`,
-  ].join('\n') : '';
-  const fcNote = forecast?.session_date && forecast.session_date !== st.date ? ` · forecast is for ${forecast.session_label}` : '';
-  $('lrStatus').textContent = `${name} · ${dayBars.length} bars · updated ${new Date().toLocaleTimeString('en-GB')}${fcNote}${!sig ? ' · no σ in forecast' : ''}`;
+  // chips (card) + tables (wide)
+  const reach = Object.entries(ml).map(([k, v]) => {
+    const up = k.startsWith('up'), hit = up ? st.now.high >= v : st.now.low <= v;
+    return { k, up, v, hit, p: hit ? 1 : L ? (up ? L.probUp(v) : L.probDn(v)) : null };
+  });
+  const chips = [];
+  if (L) {
+    chips.push(`<span class="v3-chip">@ <b>${hh(L.h)}</b></span>`);
+    chips.push(`<span class="v3-chip up">↑ p75 <b>${fmt(name, L.projHigh.p75)}</b></span>`);
+    chips.push(`<span class="v3-chip dn">↓ p75 <b>${fmt(name, L.projLow.p75)}</b></span>`);
+    chips.push(`<span class="v3-chip">left p50 <b>${(L.remaining.p50 / st.open * 100).toFixed(2)}%</b> · p75 <b>${(L.remaining.p75 / st.open * 100).toFixed(2)}%</b></span>`);
+    for (const x of reach.filter(x => x.k.endsWith('p75'))) {
+      chips.push(`<span class="v3-chip ${x.up ? 'up' : 'dn'} ${x.hit ? 'hit' : ''}">AM ${x.up ? '↑' : '↓'}p75 <b>${x.hit ? '✓' : pct(x.p)}</b></span>`);
+    }
+  } else chips.push('<span class="v3-chip muted">first re-forecast at 01:00 London</span>');
+  if (!sig) chips.push('<span class="v3-chip dn">no σ in today\'s forecast</span>');
+  c.el.querySelector('[data-chips]').innerHTML = chips.join('');
+  c.el.querySelector('[data-proj]').innerHTML = L
+    ? `<tr><th>Projected</th><th>p50</th><th>p75</th><th>p90</th></tr>`
+      + `<tr><td class="up">High</td>${['p50','p75','p90'].map(k => `<td>${fmt(name, L.projHigh[k])}</td>`).join('')}</tr>`
+      + `<tr><td class="dn">Low</td>${['p50','p75','p90'].map(k => `<td>${fmt(name, L.projLow[k])}</td>`).join('')}</tr>`
+      + `<tr><td class="muted">Range left</td>${['p50','p75','p90'].map(k => `<td>${(L.remaining[k] / st.open * 100).toFixed(2)}%</td>`).join('')}</tr>`
+    : '<tr><td class="muted">First re-forecast at 01:00 London.</td></tr>';
+  c.el.querySelector('[data-reach]').innerHTML = `<tr><th>Morning line</th><th>level</th><th>today?</th></tr>`
+    + reach.map(x => `<tr><td class="${x.up ? 'up' : 'dn'}">${x.up ? '↑' : '↓'} ${x.k.split('_')[1]}</td><td>${fmt(name, x.v)}</td><td>${x.hit ? '✓ reached' : x.p == null ? '—' : pct(x.p)}</td></tr>`).join('');
+  c.text = L ? [`LIVE RANGE ${name} · ${st.date} · as of ${hh(L.h)} London`,
+    `Projected high p50/p75/p90: ${['p50','p75','p90'].map(k => fmt(name, L.projHigh[k])).join(' / ')}`,
+    `Projected low  p50/p75/p90: ${['p50','p75','p90'].map(k => fmt(name, L.projLow[k])).join(' / ')}`].join('\n') : '';
+  c.loadedAt = Date.now();
+  return { st, L };
+}
+
+// Only cards on screen fetch and draw — 30+ instruments would otherwise hammer the candle route.
+const io = new IntersectionObserver(entries => {
+  for (const e of entries) {
+    const name = e.target.id.slice(3), c = cards.get(name); if (!c) continue;
+    c.visible = e.isIntersecting;
+    if (c.visible && Date.now() - c.loadedAt > 55_000) loadCard(name).then(updateMeta).catch(() => {});
+  }
+}, { rootMargin: '200px' });
+
+function updateMeta(res) {
+  if (!res?.st) return;
+  const d = new Date(`${res.st.date}T12:00:00Z`);
+  $('lrDate').textContent = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const h = res.L?.h;
+  $('lrMeta').textContent = h ? `as of ${hh(h)} London${h < 21 ? ` · next re-forecast ${hh(h + 1)}` : ' · final re-forecast of the day'}` : 'first re-forecast at 01:00 London';
+}
+
+async function refreshVisible() {
+  $('lrDot').className = 'v2-status-dot spin';
+  const names = [...cards.keys()].filter(n => cards.get(n).visible && cards.get(n).el.style.display !== 'none');
+  let last = null;
+  for (const n of names) { try { last = await loadCard(n) ?? last; } catch { /* one card failing must not stop the rest */ } }
+  updateMeta(last);
+  $('lrUpdated').textContent = new Date().toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' });
+  $('lrDot').className = 'v2-status-dot ok';
+  $('lrStatus').textContent = `${names.length} on screen refreshed`;
+}
+
+function applyFilter(f) {
+  store.set('lr_filter', f);
+  for (const t of document.querySelectorAll('#lrTabs .v2-tab')) t.classList.toggle('active', t.dataset.f === f);
+  for (const c of cards.values()) c.el.style.display = (f === 'all' || c.el.dataset.k === f) ? '' : 'none';
 }
 
 function schedule() {
   clearInterval(timer);
-  if ($('lrAuto').checked) timer = setInterval(() => load().catch(e => $('lrStatus').textContent = e.message), 60_000);
+  if ($('lrAuto').checked) timer = setInterval(() => refreshVisible().catch(() => {}), 60_000);
 }
 
 async function init() {
-  buildChart();
+  applyTheme(theme());
+  $('lrThemeBtn').onclick = () => { const t = theme() === 'dark' ? 'light' : 'dark'; try { localStorage.setItem('vf_theme', t); } catch {} applyTheme(t); };
+  $('lrRefresh').onclick = () => refreshVisible();
+  $('lrAuto').onchange = schedule;
+  for (const t of document.querySelectorAll('#lrTabs .v2-tab')) t.onclick = () => applyFilter(t.dataset.f);
+
   const r = await fetch('/api/vol-forecast');
   forecast = await r.json();
-  const names = Object.keys(forecast?.instruments ?? {}).filter(n => classOf(n) && OANDA_SYM[n]);
-  $('lrInst').innerHTML = names.map(n => `<option>${n}</option>`).join('');
-  const want = new URLSearchParams(location.search).get('i') ?? store.get('lr_inst');
-  if (want && names.includes(want)) $('lrInst').value = want;
-  $('lrInst').onchange = () => { store.set('lr_inst', $('lrInst').value); load().catch(e => $('lrStatus').textContent = e.message); };
-  $('lrAuto').onchange = schedule;
-  $('lrCopy').onclick = async () => { if (!lastText) return; try { await navigator.clipboard.writeText(lastText); $('lrCopy').textContent = '✓ Copied'; } catch { $('lrCopy').textContent = '✗'; } setTimeout(() => $('lrCopy').textContent = '⧉ Copy lines', 1800); };
-  await load();
+  const order = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'];
+  const names = Object.keys(forecast?.instruments ?? {}).filter(n => classOf(n) && OANDA_SYM[n])
+    .sort((a, b) => ((order.indexOf(a) + 1) || 99) - ((order.indexOf(b) + 1) || 99));
+  const grid = $('lrGrid');
+  if (!names.length) { grid.innerHTML = '<div class="lr-empty">No forecast available yet.</div>'; return; }
+  for (const n of names) { const el = buildCard(n); grid.appendChild(el); io.observe(el); }
+  const want = new URLSearchParams(location.search).get('i');
+  if (want && cards.has(want)) { cards.get(want).el.classList.add('wide'); cards.get(want).el.scrollIntoView({ block: 'start' }); }
+  applyFilter(store.get('lr_filter') ?? 'all');
+  $('lrStatus').textContent = `${names.length} instruments · ${forecast.session_label ?? ''}`;
+  $('lrDot').className = 'v2-status-dot ok';
   schedule();
 }
-init().catch(e => { $('lrStatus').textContent = `Error: ${e.message}`; });
+init().catch(e => { $('lrStatus').textContent = `Error: ${e.message}`; $('lrDot').className = 'v2-status-dot err'; });
 </script>
 </body>
 </html>
