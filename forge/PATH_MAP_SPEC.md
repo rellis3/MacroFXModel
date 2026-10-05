@@ -55,7 +55,7 @@ absorbs instead of re-testing: the rung chain (`/api/vol-forecast/ladder/path-st
 | # | Variant | Added | Status |
 |---|---|---|---|
 | 1 | as above | 2026-10-06 | run: 190 cells, 6 pass, all "range used > 1.2" → continuation (p50 +7.5pp, p75 +6.0pp vs null) — **suspect, see Amendment 1** |
-| 2 | null and race measured from the touch bar's CLOSE (Amendment 1) | 2026-10-06 | registered |
+| 2 | null and race measured from the touch bar's CLOSE (Amendment 1) | 2026-10-06 | run: 190 cells, **0 pass** |
 
 ## Amendment 1 (2026-10-06, after variant 1's results, before variant 2 is run)
 
@@ -65,3 +65,26 @@ days) a one-minute bar's overshoot is larger in σ units, so the distance to the
 assumes and continuation is overstated mechanically. Variant 2 measures a and b from the touch bar's close (the price
 at which the race actually starts); everything else unchanged. Variant 1's numbers stay on record above. Only cells
 that pass under variant 2 count as dynamics.
+
+## Results (variant 2, 2026-10-06) — `analysis/output/path_map_summary.log`, page `path-map.html`
+
+156,734 first touches, 2,656 sessions, 34 instruments, 2016-05 → 2026-08. 190 cells examined; **0 dynamics.**
+
+| rung | touches | continuation share | random walk from the close | next line by end | back level by end | held | unresolved |
+|---|---|---|---|---|---|---|---|
+| p50 | 91,666 | 58.2% | 57.3% | 50% | 40% | 31% | 21% |
+| p75 | 46,252 | 46.7% | 46.7% | 41% | 45% | 35% | 25% |
+| p90 | 18,816 | 51.2% | 51.1% | 38% | 38% | 37% | 33% |
+
+Read:
+- **Once the race is measured from where it actually starts, price around the HAR lines races like a random walk** —
+  at every rung, in every regime, event bucket, class and range-used bucket. Variant 1's "range used > 1.2"
+  continuation (+6 to +7.5pp) was entirely the touch-bar overshoot: it is 0.0pp under variant 2.
+- **What does vary is how much day is left.** A p50 touch in 00-07 London is held as the day's extreme 23% of the time;
+  in 20-24, 74%. Next-line reach falls from 62% to 12% over the same hours. That is the exhaustion clock
+  (EXHAUSTION-SCHEDULE) seen from the lines: touches late in the day are final because the session ends, not because
+  price turns. The late-hour cells' positive continuation share (+6 to +9pp, few resolved races) fails the rule and is
+  most likely the session-end cut favouring the nearer barrier.
+- For layer 5 this says: there is no direction to take at a line from these conditions. What the lines carry is
+  **how far price can still travel and how much time it has** — the decision layer should be built on remaining
+  travel, not on fade vs continue.

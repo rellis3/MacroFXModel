@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Path Map</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text2:#c9d1d9; --text3:#8b949e;
+          --cont:#e57a3a; --fade:#4a8ee8; --amber:#d29922; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:1180px; margin:0 auto; padding:18px 16px 48px; display:grid; gap:16px; }
+  h1 { font-size:20px; margin:0; } h2 { font-size:13px; margin:0 0 8px; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
+  .sub { color:var(--text3); max-width:90ch; margin:4px 0 0; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:6px; padding:14px; min-width:0; }
+  .tbl { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; }
+  th, td { padding:6px 8px; border-bottom:1px solid var(--border); text-align:right; white-space:nowrap; }
+  th:first-child, td:first-child, td.l { text-align:left; } th { color:var(--text3); font-weight:500; font-size:12px; }
+  td.c { font-weight:600; border-radius:3px; }
+  .dyn { outline:2px solid var(--amber); outline-offset:-2px; }
+  .muted { color:var(--text3); } .note { color:var(--text3); font-size:12px; max-width:110ch; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; }
+  .kpi { background:#0d1117; border:1px solid var(--border); border-radius:5px; padding:10px; }
+  .kpi b { display:block; font-size:16px; } .kpi span { color:var(--text3); font-size:12px; }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; color:var(--text3); font-size:12px; margin-top:6px; }
+  .legend i { display:inline-block; width:12px; height:12px; border-radius:2px; vertical-align:-2px; margin-right:4px; }
+  select { background:#21262d; color:var(--text); border:1px solid var(--border); border-radius:5px; padding:4px 8px; font:inherit; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>Path Map — how price behaves around the forecast lines</h1>
+    <p class="sub">Layer 4 of the Forecaster system. A <b>map, not a trade</b>. For every first touch of a HAR ladder line (OH/OL p50, p75, p90), what came first afterwards:
+      the <b>next line out</b> (continuation) or the <b>level back in</b> (fade: p50→open, p75→p50, p90→p75)? Each share is compared with a random walk started at the line,
+      which reaches the next line first with probability b ÷ (a + b) from its own distances. Above that is continuation, below is fading.
+      A cell is called a <b>dynamic</b> only if it beats both the random walk and its rung's average by more than 2 standard errors, the same way, in both halves of the sample.</p>
+  </div>
+
+  <section class="card"><h2>Summary</h2><div class="kpis" id="kpis"></div><p class="note" id="meta"></p></section>
+
+  <section class="card">
+    <h2>Continuation vs random walk, by condition</h2>
+    <div class="tbl"><table id="oneway"></table></div>
+    <div class="legend"><span><i style="background:var(--cont)"></i>continues more than a random walk</span><span><i style="background:var(--fade)"></i>fades more than a random walk</span><span><i style="outline:2px solid var(--amber)"></i>passes the dynamic rule</span><span>Cell = continuation share − random-walk share, in percentage points. Hover for detail.</span></div>
+  </section>
+
+  <section class="card">
+    <h2>What happens after a touch, by rung</h2>
+    <div class="tbl"><table id="rungs"></table></div>
+    <p class="note">next / back = reached the next line / the level back in by session end, in either order. held = the day's final high (or low) ended within 0.25σ beyond the line. unresolved = neither level reached before the session ended.</p>
+  </section>
+
+  <section class="card">
+    <h2>Two conditions together <select id="pick"></select></h2>
+    <div class="tbl"><table id="twoway"></table></div>
+    <p class="note">Cells with fewer than 300 touches are not shown.</p>
+  </section>
+
+  <p class="note">Spec: forge/PATH_MAP_SPEC.md · builder scripts/pathmap/path_map_build.mjs · summary analysis/pathmap/path_map_summary.py · data path-map.json (offline build, OANDA M1).</p>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const pp = x => (x >= 0 ? '+' : '') + (x * 100).toFixed(1);
+const pc = x => x == null ? '—' : (x * 100).toFixed(0) + '%';
+function shade(d) {
+  const a = Math.min(1, Math.abs(d) / 0.08);
+  return d >= 0 ? `rgba(229,122,58,${0.12 + 0.6 * a})` : `rgba(74,142,232,${0.12 + 0.6 * a})`;
+}
+const tip = x => `n ${x.n} touches, ${x.dates} sessions · continuation ${pc(x.cont)} vs random walk ${pc(x.null)} (±${(x.se * 100).toFixed(1)}pp) · ` +
+  Object.entries(x.halves ?? {}).map(([h, v]) => `${h} ${pc(v.cont)} vs ${pc(v.null)}`).join(' · ') + ` · next ${pc(x.next)} back ${pc(x.back)} held ${pc(x.held)}`;
+const cellHtml = x => x ? `<td class="c ${x.dynamic ? 'dyn' : ''}" style="background:${shade(x.cont - x.null)}" title="${tip(x)}">${pp(x.cont - x.null)}</td>` : '<td class="muted">—</td>';
+
+fetch('path-map.json').then(r => r.json()).then(d => {
+  const dyn = [...d.oneway, ...d.twoway].filter(x => x.dynamic);
+  $('kpis').innerHTML = [
+    [`${d.events.toLocaleString()}`, `line touches · ${d.dates.toLocaleString()} sessions · ${d.instruments} instruments`],
+    [`${d.cells_examined}`, 'condition cells examined'],
+    [`${dyn.length}`, 'pass the dynamic rule'],
+  ].map(([b, t]) => `<div class="kpi"><b>${b}</b><span>${t}</span></div>`).join('');
+  $('meta').textContent = `Data ${d.span[0]} → ${d.span[1]}, built ${d.generated}. Halves: H1 to 2020, H2 from 2021.`;
+
+  const rungs = ['p50', 'p75', 'p90'];
+  $('rungs').innerHTML = '<tr><th>rung</th><th>touches</th><th>continuation</th><th>random walk</th><th>next</th><th>back</th><th>held</th><th>unresolved</th><th>median mins</th></tr>' +
+    rungs.map(r => { const x = d.rungs[r]; return `<tr><td>${r}</td><td>${x.n.toLocaleString()}</td><td>${pc(x.cont)}</td><td>${pc(x.null)}</td><td>${pc(x.next)}</td><td>${pc(x.back)}</td><td>${pc(x.held)}</td><td>${pc(x.unresolved)}</td><td>${x.mins ?? '—'}</td></tr>`; }).join('');
+
+  const vars = [...new Set(d.oneway.map(x => x.var))];
+  let html = '<tr><th>condition</th><th>bucket</th>' + rungs.map(r => `<th>${r}</th>`).join('') + '</tr>';
+  html += `<tr><td class="l muted">all</td><td class="l muted">pooled</td>${rungs.map(r => cellHtml(d.rungs[r])).join('')}</tr>`;
+  for (const v of vars) {
+    const buckets = [...new Set(d.oneway.filter(x => x.var === v).map(x => x.bucket))];
+    buckets.forEach((b, i) => {
+      html += `<tr><td class="l">${i === 0 ? v : ''}</td><td class="l">${b}</td>` +
+        rungs.map(r => cellHtml(d.oneway.find(x => x.var === v && x.bucket === b && x.rung === r))).join('') + '</tr>';
+    });
+  }
+  $('oneway').innerHTML = html;
+
+  const tv = [...new Set(d.twoway.map(x => x.var))];
+  $('pick').innerHTML = tv.map(v => `<option>${v}</option>`).join('');
+  const drawTwo = () => {
+    const v = $('pick').value, rows = d.twoway.filter(x => x.var === v);
+    const bs = [...new Set(rows.map(x => x.bucket))];
+    $('twoway').innerHTML = '<tr><th>bucket</th>' + rungs.map(r => `<th>${r}</th>`).join('') + '</tr>' +
+      bs.map(b => `<tr><td class="l">${b}</td>${rungs.map(r => cellHtml(rows.find(x => x.bucket === b && x.rung === r))).join('')}</tr>`).join('');
+  };
+  $('pick').onchange = drawTwo; drawTwo();
+}).catch(e => { $('meta').textContent = 'failed to load path-map.json: ' + e.message; });
+</script>
+</body>
+</html>
