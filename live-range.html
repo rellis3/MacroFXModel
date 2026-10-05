@@ -72,6 +72,12 @@ table.lr-t th:first-child, table.lr-t td:first-child { text-align: left; font-fa
 .up { color: var(--green); } .dn { color: var(--red); } .muted { color: var(--text3); }
 .lr-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11px; color: var(--text3); padding: 10px 0 0; }
 .sw { display: inline-block; width: 18px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 5px; }
+.lr-key { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; margin-top: 10px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--s1); }
+@media (max-width: 900px) { .lr-key { grid-template-columns: 1fr; } }
+.lr-key-h { font-size: 11px; font-weight: 600; color: var(--text); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .04em; }
+.lr-key-row { font-size: 11.5px; color: var(--text2); padding: 2px 0; display: flex; align-items: center; gap: 8px; }
+.lr-key-row .sw { width: 26px; margin-right: 0; flex-shrink: 0; }
+.lr-key-row b { font-family: 'DM Mono', monospace; font-weight: 600; }
 .lr-info { margin-top: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: 11.5px; color: var(--text2); line-height: 1.55; background: var(--s1); }
 .lr-info summary { cursor: pointer; color: var(--text); font-weight: 600; font-size: 12px; }
 .lr-empty { color: var(--text3); font-size: 12px; padding: 30px 0; text-align: center; grid-column: 1 / -1; }
@@ -110,11 +116,20 @@ table.lr-t th:first-child, table.lr-t td:first-child { text-align: left; font-fa
   <div class="v2-date-heading" id="lrDate">—</div>
   <div class="v2-session-meta" id="lrMeta"></div>
 </div>
-<div class="lr-legend">
-  <span><span class="sw" style="border-color:#7f8c9d;border-top-style:dotted"></span>morning lines · p50 / p75 / p90 · fixed</span>
-  <span><span class="sw" style="border-color:#22c55e"></span>projected high · p75 bold, p50 / p90 thin</span>
-  <span><span class="sw" style="border-color:#ef4444"></span>projected low</span>
-  <span>lines re-draw on each hour, 01:00 → 21:00 London · ⤢ widens a card with full tables</span>
+<div class="lr-key">
+  <div class="lr-key-col">
+    <div class="lr-key-h">Projected for today <span class="muted">· re-drawn every hour 01:00 → 21:00 London</span></div>
+    <div class="lr-key-row"><span class="sw" style="border-color:#22c55e;border-top-style:dashed;border-top-width:1px"></span><b class="up">↑ p50</b> about even odds price gets above this today</div>
+    <div class="lr-key-row"><span class="sw" style="border-color:#22c55e;border-top-width:3px"></span><b class="up">↑ p75</b> 1 in 4 chance price gets above this · <b>the main line</b></div>
+    <div class="lr-key-row"><span class="sw" style="border-color:#22c55e;border-top-style:dotted;border-top-width:2px"></span><b class="up">↑ p90</b> 1 in 10 chance: a big day</div>
+    <div class="lr-key-row"><span class="sw" style="border-color:#ef4444;border-top-width:3px"></span><b class="dn">↓ p50 / p75 / p90</b> the same for the low side, same styles</div>
+  </div>
+  <div class="lr-key-col">
+    <div class="lr-key-h">Morning forecast <span class="muted">· fixed all day</span></div>
+    <div class="lr-key-row"><span class="sw" style="border-color:rgba(127,140,157,.7);border-top-style:dotted;border-top-width:1px"></span>faint dotted, labelled <b>AM ↑p50 … AM ↓p90</b>: the morning ladder off the open</div>
+    <div class="lr-key-row muted">Green = high side, red = low side. Size, not direction: how far price is likely to stretch each way before the 22:00 close.</div>
+    <div class="lr-key-row muted">⤢ widens a card with the full tables · ⧉ copies its current levels</div>
+  </div>
 </div>
 <details class="lr-info">
   <summary>How to read this · evidence</summary>
@@ -251,14 +266,19 @@ async function loadCard(name) {
   const ml = morningLevels(fc?.ladder, st.open);
   for (const [k, v] of Object.entries(ml)) {
     c.priceLines.push(c.candles.createPriceLine({ price: v, color: k.startsWith('up') ? 'rgba(34,197,94,.45)' : 'rgba(239,68,68,.45)',
-      lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, axisLabelVisible: false, title: k.split('_')[1] }));
+      lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, axisLabelVisible: false,
+      title: `AM ${k.startsWith('up') ? '↑' : '↓'}${k.split('_')[1]}` }));
   }
   const rf = st.checkpoints.map(cp => reforecast(cp, { instrument: name, open: st.open, sigmaDailyPct: sig })).filter(Boolean);
   const L = rf.at(-1);
   if (rf.length) {
-    for (const side of ['H', 'L']) for (const [key, w] of [['p50', 1], ['p75', 3], ['p90', 1]]) {
-      const s = c.chart.addLineSeries({ color: side === 'H' ? '#22c55e' : '#ef4444', lineWidth: w, lineType: LightweightCharts.LineType.WithSteps,
-        priceLineVisible: false, lastValueVisible: key === 'p75', crosshairMarkerVisible: false });
+    // p50 dashed thin · p75 bold solid (the main line) · p90 dotted — each labelled on the price axis.
+    const STYLE = { p50: [1, LightweightCharts.LineStyle.Dashed], p75: [3, LightweightCharts.LineStyle.Solid], p90: [2, LightweightCharts.LineStyle.Dotted] };
+    for (const side of ['H', 'L']) for (const key of ['p50', 'p75', 'p90']) {
+      const [w, ls] = STYLE[key];
+      const s = c.chart.addLineSeries({ color: side === 'H' ? '#22c55e' : '#ef4444', lineWidth: w, lineStyle: ls,
+        lineType: LightweightCharts.LineType.WithSteps, priceLineVisible: false, lastValueVisible: true,
+        title: `${side === 'H' ? '↑' : '↓'} ${key}`, crosshairMarkerVisible: false });
       const pts = rf.map(x => ({ time: londonHourToT(st.date, x.h), value: (side === 'H' ? x.projHigh : x.projLow)[key] }));
       pts.push({ time: end, value: pts.at(-1).value });
       s.setData(pts); c.series.push(s);
