@@ -62,3 +62,38 @@ with steadier risk is still a usable answer: it buys the same return with a smal
 
 Offline only. No bot or live sizing changes from this test; a pass is a reason to put a sizing column on the shadow
 screen, not to change position sizes.
+
+## Results (2026-10-05) — `python -m forge.run_vol_target` → analysis/output/vol_target.log
+
+**PRIMARY 1 — vol targeting steadies risk: PASS.** **PRIMARY 2 — the σ choice matters: FAIL.**
+
+| LONG (6 indices + GOLD), full 2016-08 → 2026-08 | constant risk | live estimator | HAR-800 | IV-adjusted | pure IV |
+|---|---|---|---|---|---|
+| Sharpe | 0.93 | 0.91 | 0.90 | 0.96 | 0.98 |
+| vol of monthly vol (lower = steadier) | 0.631 | 0.245 | 0.256 | 0.253 | 0.272 |
+| worst month (σ units) | −61.7 | −49.6 | −47.3 | −51.6 | −52.7 |
+| max drawdown | −212.7 | −169.2 | −171.5 | −155.8 | −159.1 |
+| Sharpe vs constant (90% CI) | — | −0.02 [−0.25, +0.19] | −0.03 [−0.24, +0.16] | +0.03 [−0.16, +0.21] | +0.04 [−0.13, +0.23] |
+
+| TREND (28 instruments), full 2016-11 → 2026-08 | constant risk | live estimator | HAR-800 | IV-adjusted | pure IV |
+|---|---|---|---|---|---|
+| Sharpe | −0.16 | 0.16 | 0.16 | 0.13 | 0.11 |
+| vol of monthly vol | 0.613 | 0.467 | 0.469 | 0.468 | 0.472 |
+| worst month | −170.1 | −91.0 | −89.8 | −92.4 | −96.1 |
+| max drawdown | −464.3 | −258.1 | −270.5 | −281.6 | −295.0 |
+| Sharpe vs constant (90% CI) | — | +0.32 [+0.14, +0.50] | +0.32 [+0.15, +0.48] | +0.29 [+0.13, +0.44] | +0.27 [+0.12, +0.42] |
+
+HAR-800 vs live estimator Sharpe: LONG −0.01 [−0.08, +0.06], TREND +0.00 [−0.06, +0.06].
+Test window (2025-09-05 →, ~250 sessions): same ordering on steadiness; Sharpe differences all inside noise
+(LONG ~1.3 for every arm; TREND ~−0.04 constant vs ~−0.18 vol-targeted).
+
+Read:
+- Sizing by any forecast σ cuts the month-to-month swing in risk by more than half on LONG (0.63 → ~0.25) and the
+  worst month by ~20–25%, at the same average exposure and the same Sharpe. That is the Lesson-3 result: same return,
+  smaller worst month.
+- On TREND it also lifts Sharpe from −0.16 to +0.16 (interval excludes zero): constant-size trend loses mostly on
+  high-vol days and vol targeting shrinks exactly those. The trend signal itself is still weak (+0.16, negative in the
+  test year) — this improves a poor strategy, it does not make a tradeable one.
+- **Which σ hardly matters for sizing.** Live, HAR, IV-adjusted and IV are within ~0.03 of each other everywhere.
+  Sizing divides by σ relative to its own median, so the regime-level calibration HAR fixes (ladder widths) barely
+  moves position sizes. The HAR case rests on the ladder, not on sizing.
