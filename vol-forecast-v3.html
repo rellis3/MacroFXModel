@@ -890,6 +890,7 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
     </div>
     <button id="vfLevelsBtn" hidden></button><button id="vfBriefBtn" hidden></button>
     <div class="v2-tool-sep"></div>
+    <a class="v2-tool-btn" id="vfLiveRangeLink" href="live-range.html" style="text-decoration:none" title="Live Range: the day's range re-forecast every hour from what the session has done so far (range used, speed, time of day). Projected high/low lines step through the day next to the fixed morning lines. Pre-registered PASS (forge/INTRADAY_RANGE_PREREG.md).">⏱ Live Range ↗</a>
     <button class="v2-tool-btn" id="vfChartLevelBtn" onclick="toggleChartLevelMode()" title="Cycle the chart's forecast lines: Forecast → COG → Bot → Forecast/COG Weekly → Forecast/COG Monthly. Forecast draws the fitted ladder (O-H / O-L at p50/p75/p90); weekly and monthly use their OWN fitted widths. Bot draws the Volatility Bot's ACTUAL frozen plan lines. Remembered across page loads (shared with v2).">📐 Chart: Forecast</button>
     <div class="v3-dd" id="vfAnalysisDd">
       <button class="v2-tool-btn" onclick="toggleDd(event,'vfAnalysisDd')">📈 Analysis ▾</button>

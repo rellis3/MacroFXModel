@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Range</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+#lr { padding: 14px 24px 40px; box-sizing: border-box; max-width: 1500px; margin: 0 auto; }
+.lr-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-bottom: 12px; border-bottom: 1.5px solid var(--border); }
+.lr-title { font-size: 17px; font-weight: 700; color: var(--text); }
+.lr-sub { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 2px; }
+.lr-right { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.lr-btn, .lr-sel { font: 500 12px 'DM Sans', sans-serif; color: var(--text); background: var(--bg2, transparent); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; text-decoration: none; }
+.lr-btn:hover { border-color: var(--blue); }
+.lr-status { font: 11px 'DM Mono', monospace; color: var(--text3); }
+.lr-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; margin-top: 14px; }
+@media (max-width: 1000px) { .lr-grid { grid-template-columns: 1fr; } }
+#lrChart { height: 560px; border: 1px solid var(--border); border-radius: 8px; }
+.lr-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+.lr-card h3 { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--text2, var(--text)); text-transform: uppercase; letter-spacing: .04em; }
+.lr-kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: 12.5px; }
+.lr-kv .k { color: var(--text3); }
+.lr-kv .v { font-family: 'DM Mono', monospace; text-align: right; color: var(--text); }
+table.lr-t { width: 100%; border-collapse: collapse; font-size: 12px; }
+table.lr-t th, table.lr-t td { padding: 4px 6px; border-bottom: 1px solid var(--border); text-align: right; font-family: 'DM Mono', monospace; }
+table.lr-t th:first-child, table.lr-t td:first-child { text-align: left; font-family: 'DM Sans', sans-serif; }
+.up { color: #2fa36b; } .dn { color: #d9534f; } .muted { color: var(--text3); }
+.lr-note { font-size: 11px; color: var(--text3); line-height: 1.5; }
+.lr-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--text3); margin-top: 6px; }
+.sw { display: inline-block; width: 18px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 5px; }
+</style>
+</head>
+<body>
+<div id="lr">
+  <div class="lr-head">
+    <div>
+      <div class="lr-title">⏱ Live Range</div>
+      <div class="lr-sub">hourly re-forecast of how much range is still to come · size, never direction</div>
+    </div>
+    <div class="lr-right">
+      <select id="lrInst" class="lr-sel" aria-label="Instrument"></select>
+      <button class="lr-btn" id="lrCopy" title="Copy the current projected levels as text">⧉ Copy lines</button>
+      <label class="lr-status"><input type="checkbox" id="lrAuto" checked> auto 60s</label>
+      <a class="lr-btn" href="vol-forecast-v3.html">← Vol Forecast v3</a>
+    </div>
+  </div>
+  <div class="lr-status" id="lrStatus" style="margin-top:8px">Loading…</div>
+  <div class="lr-grid">
+    <div>
+      <div id="lrChart"></div>
+      <div class="lr-legend">
+        <span><span class="sw" style="border-color:#7f8c9d;border-top-style:dotted"></span>morning lines (p50 / p75 / p90, fixed)</span>
+        <span><span class="sw" style="border-color:#2fa36b"></span>projected high (p75 bold, p50 / p90 thin)</span>
+        <span><span class="sw" style="border-color:#d9534f"></span>projected low</span>
+        <span class="muted">steps re-draw on every hour, 01:00 → 21:00 London</span>
+      </div>
+    </div>
+    <div>
+      <div class="lr-card"><h3 id="lrNowH">Now</h3><div class="lr-kv" id="lrNow"></div></div>
+      <div class="lr-card"><h3>Projected extremes for today</h3><table class="lr-t" id="lrProj"></table></div>
+      <div class="lr-card"><h3>Morning lines: still reached today?</h3><table class="lr-t" id="lrReach"></table></div>
+      <div class="lr-card lr-note">
+        <b>What this is.</b> At each hour the session so far is placed by how much range it has used and how fast the
+        last hour was (both in units of the forecast's σ). The fitted history of "how much more after a session like this,
+        at this hour" sets the projected high and low.
+        <br><br><b>Evidence.</b> Pre-registered (forge/INTRADAY_RANGE_PREREG.md): it beats the morning lines on the final
+        day range at 21/21 hourly checkpoints for FX + gold and 19/21 for indices, out of sample. The real gain is
+        morning to midday (FX 9–17% better 08:00–13:00); late-day gains are mostly "the day is nearly over".
+        <br><br><b>Read with care.</b> Indices' downside lines run a little tight (p75 hit 29% vs 25%). After about 15:00 the
+        median "more to come" is usually zero, so the p50 line sits on the current extreme. Reach odds are reliable up to
+        ~30% and understate above that. Pairs without a fit (commodities, BTC) are not listed.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { sessionState, reforecast, morningLevels, classOf, londonParts } from './js/intradayRange.js';
+
+const OANDA_SYM = {
+  EURUSD:'EUR/USD', GBPUSD:'GBP/USD', USDJPY:'USD/JPY', EURJPY:'EUR/JPY', GBPJPY:'GBP/JPY', AUDUSD:'AUD/USD',
+  USDCAD:'USD/CAD', USDCHF:'USD/CHF', NZDUSD:'NZD/USD', EURGBP:'EUR/GBP', EURAUD:'EUR/AUD', EURCHF:'EUR/CHF',
+  EURCAD:'EUR/CAD', EURNZD:'EUR/NZD', GBPAUD:'GBP/AUD', GBPCHF:'GBP/CHF', GBPCAD:'GBP/CAD', GBPNZD:'GBP/NZD',
+  AUDJPY:'AUD/JPY', AUDNZD:'AUD/NZD', AUDCAD:'AUD/CAD', AUDCHF:'AUD/CHF', NZDJPY:'NZD/JPY', CADJPY:'CAD/JPY',
+  CHFJPY:'CHF/JPY', NZDCAD:'NZD/CAD', GOLD:'XAU/USD',
+  NQ:'NAS100_USD', SPX500:'SPX500_USD', US30:'US30_USD', US2000:'US2000_USD', UK100:'UK100_GBP', DE30:'DE30_EUR',
+};
+const $ = id => document.getElementById(id);
+const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } },
+                set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* private window */ } } };
+const digits = n => /JPY/.test(n) ? 3 : n === 'GOLD' ? 2 : ['NQ','SPX500','US30','US2000','UK100','DE30'].includes(n) ? 1 : 5;
+const fmt = (n, v) => (v == null || !Number.isFinite(v)) ? '—' : v.toFixed(digits(n));
+// The fitted grid spans 5%..95%: beyond it the honest statement is a bound, not a number.
+const pct = v => v <= 0.05 ? '&lt;5%' : v >= 0.95 ? '&gt;95%' : `${Math.round(v * 100)}%`;
+
+let forecast = null, chart = null, candles = null, lines = [], priceLines = [], timer = null, lastText = '';
+
+function css(v, fb) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim() || fb; }
+
+function buildChart() {
+  const el = $('lrChart');
+  chart = LightweightCharts.createChart(el, {
+    autoSize: true,
+    layout: { background: { type: 'solid', color: 'transparent' }, textColor: css('--text3', '#8a94a6'), fontFamily: 'DM Mono, monospace' },
+    grid: { vertLines: { color: 'rgba(128,128,128,.08)' }, horzLines: { color: 'rgba(128,128,128,.08)' } },
+    timeScale: { timeVisible: true, secondsVisible: false, rightOffset: 4 },
+    rightPriceScale: { borderVisible: false },
+    localization: { timeFormatter: t => new Date(t * 1000).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }) },
+  });
+  candles = chart.addCandlestickSeries({ upColor: '#2fa36b', downColor: '#d9534f', borderVisible: false, wickUpColor: '#2fa36b', wickDownColor: '#d9534f' });
+}
+
+function clearOverlays() {
+  for (const s of lines) chart.removeSeries(s);
+  for (const p of priceLines) candles.removePriceLine(p);
+  lines = []; priceLines = [];
+}
+
+// UTC epoch-second of a London wall-clock hour on the session date (DST-safe: search ±2h).
+function londonHourToT(date, h) {
+  const base = Date.parse(`${date}T00:00:00Z`) / 1000 + h * 3600;
+  for (const off of [0, -3600, 3600, -7200]) { const p = londonParts(base + off); if (p.date === date && Math.abs(p.hour - h) < 1e-9) return base + off; }
+  return base;
+}
+
+async function load(first = false) {
+  const name = $('lrInst').value;
+  if (!forecast || first) {
+    const r = await fetch('/api/vol-forecast');
+    forecast = await r.json();
+  }
+  const fc = forecast?.instruments?.[name];
+  const sig = fc?.ladder?.sigma_daily_pct;
+  const r = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(OANDA_SYM[name])}&incomplete=1`);
+  const data = await r.json();
+  if (!r.ok || !data?.values?.length) { $('lrStatus').textContent = `No bars for ${name}: ${data?.error ?? r.status}`; return; }
+  const bars = [...data.values].reverse().map(b => ({ t: b.t, open: +b.open, high: +b.high, low: +b.low, close: +b.close }));
+  const st = sessionState(bars);
+  if (!st) { $('lrStatus').textContent = 'No bars in the current London session yet.'; return; }
+  const dayBars = bars.filter(b => londonParts(b.t).date === st.date && londonParts(b.t).hour < 22);
+
+  // candles + whitespace out to 22:00 so the projected lines have room
+  const end = londonHourToT(st.date, 22), lastT = dayBars.at(-1).t;
+  const ws = []; for (let t = lastT + 300; t < end; t += 300) ws.push({ time: t });
+  candles.setData([...dayBars.map(b => ({ time: b.t, open: b.open, high: b.high, low: b.low, close: b.close })), ...ws]);
+  candles.applyOptions({ priceFormat: { type: 'price', precision: digits(name), minMove: 10 ** -digits(name) } });
+  clearOverlays();
+
+  // morning lines (fixed, faint)
+  const ml = morningLevels(fc?.ladder, st.open);
+  for (const [k, v] of Object.entries(ml)) {
+    priceLines.push(candles.createPriceLine({ price: v, color: k.startsWith('up') ? 'rgba(47,163,107,.45)' : 'rgba(217,83,79,.45)',
+      lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, axisLabelVisible: false, title: `AM ${k.replace('_', ' ')}` }));
+  }
+
+  // hourly re-forecast path
+  const rf = st.checkpoints.map(cp => reforecast(cp, { instrument: name, open: st.open, sigmaDailyPct: sig })).filter(Boolean);
+  const latest = rf.at(-1);
+  if (rf.length) {
+    const mk = (key, side, w) => {
+      const s = chart.addLineSeries({ color: side === 'H' ? '#2fa36b' : '#d9534f', lineWidth: w, lineType: LightweightCharts.LineType.WithSteps,
+        priceLineVisible: false, lastValueVisible: w > 1, crosshairMarkerVisible: false });
+      const pts = rf.map(x => ({ time: londonHourToT(st.date, x.h), value: (side === 'H' ? x.projHigh : x.projLow)[key] }));
+      pts.push({ time: end, value: pts.at(-1).value });
+      s.setData(pts); lines.push(s);
+    };
+    for (const side of ['H', 'L']) { mk('p50', side, 1); mk('p75', side, 3); mk('p90', side, 1); }
+  }
+
+  // side panels
+  const hl50 = fc?.ladder?.hl?.p50, usedPct = (st.now.high - st.now.low) / st.open * 100;
+  $('lrNowH').textContent = latest ? `As of ${String(latest.h).padStart(2, '0')}:00 London` : 'Before 01:00 London';
+  $('lrNow').innerHTML = [
+    ['Session', `${st.date}`], ['Open', fmt(name, st.open)], ['Last', fmt(name, st.now.close)],
+    ['Range used', `${usedPct.toFixed(2)}%${hl50 ? ` · ${Math.round(usedPct / hl50 * 100)}% of AM p50` : ''}`],
+    ...(latest ? [['Session so far', `${latest.cell.used} used · ${latest.cell.speed} last hour`],
+                  ['Range still expected', `${(latest.remaining.p50 / st.open * 100).toFixed(2)}% · p75 ${(latest.remaining.p75 / st.open * 100).toFixed(2)}%`]] : []),
+    ['σ (forecast)', sig ? `${sig}%/day` : 'n/a'],
+  ].map(([k, v]) => `<div class="k">${k}</div><div class="v">${v}</div>`).join('');
+  $('lrProj').innerHTML = latest
+    ? `<tr><th></th><th>p50</th><th>p75</th><th>p90</th></tr>`
+      + `<tr><td class="up">High</td>${['p50','p75','p90'].map(k => `<td>${fmt(name, latest.projHigh[k])}</td>`).join('')}</tr>`
+      + `<tr><td class="dn">Low</td>${['p50','p75','p90'].map(k => `<td>${fmt(name, latest.projLow[k])}</td>`).join('')}</tr>`
+    : '<tr><td class="muted">First update at 01:00 London.</td></tr>';
+  $('lrReach').innerHTML = `<tr><th>AM line</th><th>level</th><th>today?</th></tr>` + Object.entries(ml).map(([k, v]) => {
+    const up = k.startsWith('up');
+    const hit = up ? st.now.high >= v : st.now.low <= v;
+    const p = hit ? null : latest ? (up ? latest.probUp(v) : latest.probDn(v)) : null;
+    return `<tr><td class="${up ? 'up' : 'dn'}">${up ? '↑' : '↓'} ${k.split('_')[1]}</td><td>${fmt(name, v)}</td><td>${hit ? '✓ reached' : p == null ? '—' : pct(p)}</td></tr>`;
+  }).join('');
+
+  lastText = latest ? [
+    `LIVE RANGE ${name} · ${st.date} · as of ${String(latest.h).padStart(2, '0')}:00 London`,
+    `Projected high p50/p75/p90: ${['p50','p75','p90'].map(k => fmt(name, latest.projHigh[k])).join(' / ')}`,
+    `Projected low  p50/p75/p90: ${['p50','p75','p90'].map(k => fmt(name, latest.projLow[k])).join(' / ')}`,
+  ].join('\n') : '';
+  const fcNote = forecast?.session_date && forecast.session_date !== st.date ? ` · forecast is for ${forecast.session_label}` : '';
+  $('lrStatus').textContent = `${name} · ${dayBars.length} bars · updated ${new Date().toLocaleTimeString('en-GB')}${fcNote}${!sig ? ' · no σ in forecast' : ''}`;
+}
+
+function schedule() {
+  clearInterval(timer);
+  if ($('lrAuto').checked) timer = setInterval(() => load().catch(e => $('lrStatus').textContent = e.message), 60_000);
+}
+
+async function init() {
+  buildChart();
+  const r = await fetch('/api/vol-forecast');
+  forecast = await r.json();
+  const names = Object.keys(forecast?.instruments ?? {}).filter(n => classOf(n) && OANDA_SYM[n]);
+  $('lrInst').innerHTML = names.map(n => `<option>${n}</option>`).join('');
+  const want = new URLSearchParams(location.search).get('i') ?? store.get('lr_inst');
+  if (want && names.includes(want)) $('lrInst').value = want;
+  $('lrInst').onchange = () => { store.set('lr_inst', $('lrInst').value); load().catch(e => $('lrStatus').textContent = e.message); };
+  $('lrAuto').onchange = schedule;
+  $('lrCopy').onclick = async () => { if (!lastText) return; try { await navigator.clipboard.writeText(lastText); $('lrCopy').textContent = '✓ Copied'; } catch { $('lrCopy').textContent = '✗'; } setTimeout(() => $('lrCopy').textContent = '⧉ Copy lines', 1800); };
+  await load();
+  schedule();
+}
+init().catch(e => { $('lrStatus').textContent = `Error: ${e.message}`; });
+</script>
+</body>
+</html>
