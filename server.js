@@ -4546,6 +4546,47 @@ async function _buildMorningBrief() {
           : 'Normal clustering.');
     }
   } catch { /* omitted from prompt when unavailable */ }
+  // FED PATH — what the market is PAYING for on policy, rather than what the 2-year
+  // implies by proxy. rates.html has carried that proxy since it was built and says so
+  // in its own note ("a proper implied path needs fed funds futures, which have no free
+  // feed this desk trusts"); this is the feed, from KV mpt_store_v1.
+  //
+  // THE LINE LEADS ON THE CHANGE, NOT THE LEVEL. "December hike odds are 88%" is a fact
+  // about the calendar. "88% today against 93% a week ago" is the market moving a hike,
+  // which is the only part that can inform anything.
+  //
+  // AND IT STATES ITS OWN EVIDENCE. This feed is days old on this desk and has no entry
+  // in the ledger: there is no tested relationship between a repricing here and anything
+  // in FX or the indices. The prompt is told that explicitly, because a confident number
+  // with no verdict beside it is exactly how a dead EVZ ended up driving a risk flag.
+  let fedPathLine = '';
+  try {
+    const raw = await kv.get('mpt_store_v1').catch(() => null);
+    const parsed = raw ? JSON.parse(raw) : null;
+    const d = parsed?.data ?? parsed;
+    const w = d?.windows?.[0];
+    if (w && Number.isFinite(w.hike)) {
+      const a = w.hikeAgo || {};
+      const mv = (then, label) => (Number.isFinite(then)
+        ? `${then.toFixed(1)}% ${label}` : null);
+      const hist = [mv(a.d1, 'yesterday'), mv(a.w1, 'a week ago'), mv(a.m1, 'a month ago')]
+        .filter(Boolean).join(', ');
+      const drift = Number.isFinite(a.w1) ? +(w.hike - a.w1).toFixed(1) : null;
+      fedPathLine =
+        `Fed path, market-implied (as of ${d.asOf}; current range ${String(d.currentRange || '').replace(/bps/g, 'bp')}): `
+        + `probability of a HIGHER rate over the window from ${w.ref} is ${w.hike.toFixed(1)}%`
+        + (hist ? `, against ${hist}` : '') + '. '
+        + (drift == null ? ''
+           : Math.abs(drift) < 2 ? 'Barely moved on the week. '
+           : `${drift > 0 ? 'Priced MORE' : 'Priced LESS'} tightening over the week (${drift > 0 ? '+' : ''}${drift}pp). `)
+        + 'These are odds for the 3-MONTH AVERAGE rate over a forward WINDOW, from CME SOFR '
+        + 'options — NOT per-FOMC-meeting odds, which is what CME FedWatch quotes and will '
+        + 'differ by a few points. UNTESTED on this desk: no measured relationship between a '
+        + 'repricing here and FX or the indices, so use it as CONTEXT for why the front end '
+        + 'moved, never as a signal or a direction.';
+    }
+  } catch { /* omitted from prompt when unavailable */ }
+
   // PRECEDENT — the one global read that says what FOLLOWED conditions like today's
   // rather than describing them. Read straight from the cached study; if it has not
   // been built yet the brief simply omits it rather than guessing.
@@ -4768,6 +4809,7 @@ async function _buildMorningBrief() {
     surpriseLine || null,
     corrLine || null,
     regimeLine || null,
+    fedPathLine || null,
     riskLine || null,
     ivLine || null,
   ].filter(Boolean).join('\n');
