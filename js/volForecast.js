@@ -720,7 +720,10 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0, opts = 
   // estimator its widths were fit against (see js/forecastLadderParams.js) — which
   // is why it cannot simply reuse `sigmaFwd` above.
   const _instrument = opts.instrument ?? '';
-  const _eventTag   = opts.eventTag ?? 'none';
+  // null/undefined = calendar NOT KNOWN -> x1.0 (see the contract above
+  // detectEventTagFor). Coercing it to 'none' priced a dead feed, and every
+  // walk-forward replay that passes eventTag:null on purpose, as a quiet day.
+  const _eventTag   = opts.eventTag ?? null;
   let _ladder = null, _ladderW = null, _ladderM = null;
   try {
     const _lp = LADDER_PARAMS.pairs?.[String(_instrument).toUpperCase()]

@@ -1,0 +1,186 @@
+[
+ {
+  "period": [
+   "2026-09-03",
+   "2026-09-18"
+  ],
+  "backtest_trades": 316,
+  "live_entries": 236,
+  "matched": 152,
+  "recall": 0.4810126582278481,
+  "precision": 0.6440677966101694,
+  "backtestR_taken": 0.0508486842105263,
+  "backtestR_missed": 0.22062804878048783,
+  "missed_minus_taken_t": 1.736117363908718,
+  "why_missed": [
+   [
+    "no live event at all (signal never fired live)",
+    116
+   ],
+   [
+    "live entered same pair, different side/rung/decision",
+    27
+   ],
+   [
+    "rejected: order_rejected",
+    5
+   ],
+   [
+    "skipped: stack_guard: already SHORT",
+    3
+   ],
+   [
+    "pair_blocked: currency_gate: currency loss gate: USD r",
+    2
+   ],
+   [
+    "skipped: stack_guard: already LONG",
+    2
+   ],
+   [
+    "rejected: spread 7.5p > max 5.2p",
+    1
+   ],
+   [
+    "pair_blocked: currency_gate: currency loss gate: AUD r",
+    1
+   ],
+   [
+    "rejected: spread 1.9p > max 1.0p",
+    1
+   ],
+   [
+    "pair_blocked: currency_gate: currency loss gate: EUR r",
+    1
+   ],
+   [
+    "pair_blocked: risk_guard: [usdchf] Cooldown",
+    1
+   ],
+   [
+    "pair_blocked: risk_guard: [us2000] Cooldown",
+    1
+   ],
+   [
+    "pair_blocked: risk_guard: [euraud] Cooldown",
+    1
+   ],
+   [
+    "rejected: spread 27.4p > max 5.3p",
+    1
+   ],
+   [
+    "rejected: spread 2.8p > max 2.3p",
+    1
+   ]
+  ]
+ },
+ {
+  "period": [
+   "2026-09-03",
+   "2026-09-14"
+  ],
+  "backtest_trades": 212,
+  "live_entries": 134,
+  "matched": 91,
+  "recall": 0.42924528301886794,
+  "precision": 0.6791044776119403,
+  "backtestR_taken": 0.047813186813186845,
+  "backtestR_missed": 0.1869173553719008,
+  "missed_minus_taken_t": 1.127605701863778,
+  "why_missed": [
+   [
+    "no live event at all (signal never fired live)",
+    86
+   ],
+   [
+    "live entered same pair, different side/rung/decision",
+    23
+   ],
+   [
+    "rejected: order_rejected",
+    5
+   ],
+   [
+    "pair_blocked: currency_gate: currency loss gate: USD r",
+    2
+   ],
+   [
+    "rejected: spread 7.5p > max 5.2p",
+    1
+   ],
+   [
+    "pair_blocked: currency_gate: currency loss gate: AUD r",
+    1
+   ],
+   [
+    "rejected: spread 1.9p > max 1.0p",
+    1
+   ],
+   [
+    "skipped: stack_guard: already LONG",
+    1
+   ],
+   [
+    "skipped: stack_guard: already SHORT",
+    1
+   ]
+  ]
+ },
+ {
+  "period": [
+   "2026-09-15",
+   "2026-09-18"
+  ],
+  "backtest_trades": 104,
+  "live_entries": 102,
+  "matched": 61,
+  "recall": 0.5865384615384616,
+  "precision": 0.5980392156862745,
+  "backtestR_taken": 0.05537704918032787,
+  "backtestR_missed": 0.31548837209302333,
+  "missed_minus_taken_t": 1.5859453232510576,
+  "why_missed": [
+   [
+    "no live event at all (signal never fired live)",
+    30
+   ],
+   [
+    "live entered same pair, different side/rung/decision",
+    4
+   ],
+   [
+    "skipped: stack_guard: already SHORT",
+    2
+   ],
+   [
+    "pair_blocked: currency_gate: currency loss gate: EUR r",
+    1
+   ],
+   [
+    "pair_blocked: risk_guard: [usdchf] Cooldown",
+    1
+   ],
+   [
+    "pair_blocked: risk_guard: [us2000] Cooldown",
+    1
+   ],
+   [
+    "pair_blocked: risk_guard: [euraud] Cooldown",
+    1
+   ],
+   [
+    "skipped: stack_guard: already LONG",
+    1
+   ],
+   [
+    "rejected: spread 27.4p > max 5.3p",
+    1
+   ],
+   [
+    "rejected: spread 2.8p > max 2.3p",
+    1
+   ]
+  ]
+ }
+]
