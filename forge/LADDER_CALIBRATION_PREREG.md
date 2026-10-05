@@ -50,9 +50,9 @@ through `buildLadder`'s read-only `ladderParams` override, and promotion to live
 |---|---|---|---|
 | 1 | `forecastLadderParamsV2.js` as-is (har_rv_log σ, its own widths and event multipliers) | 2026-10-05 | **PRIMARY PASS · GUARD FAIL · TARGET BAR NOT MET** — see Results |
 
-| 2 | HAR-log σ exactly as production computes it (`forecastSigma(last 800 D1 bars, 'har_rv_log')`), widths refit | 2026-10-05 | registered (Amendment 1) |
-| 3 | IV-adjusted σ = σ·exp(k(ln(IV/σ) − μ)) as the shipped "Forecast · IV-adjusted" export, k/μ/widths refit on train | 2026-10-05 | registered (Amendment 1) |
-| 4 | Pure IV σ = IV/√252 (CME 30d ATM majors, GVZ gold, VIX/VXN indices, crosses from legs), widths refit | 2026-10-05 | registered (Amendment 1) |
+| 2 | HAR-log σ exactly as production computes it (`forecastSigma(last 800 D1 bars, 'har_rv_log')`), widths refit | 2026-10-05 | **PASS (preferred)** — primary 1.41 vs 2.86, guard 1.24 vs 1.53, bar not met |
+| 3 | IV-adjusted σ = σ·exp(k(ln(IV/σ) − μ)) as the shipped "Forecast · IV-adjusted" export, k/μ/widths refit on train | 2026-10-05 | PASS — primary 1.98, guard 1.77, bar not met |
+| 4 | Pure IV σ = IV/√252 (CME 30d ATM majors, GVZ gold, VIX/VXN indices, crosses from legs), widths refit | 2026-10-05 | PASS — primary 2.05, guard 1.82, bar not met |
 
 Further variants (σ shrunk toward its long-run level, σ-regime-conditional widths, IV blend) are added
 here by amendment **before** they are run.
@@ -116,3 +116,33 @@ Read: HAR fixes the **shape** (the regime tilt is gone, slope 0.6 → ~0.9) but 
 mostly 20–22%), in-sample included — so this is a level mismatch between the V2 widths and the σ that
 `forecastSigma('har_rv_log')` produces on NY-close bars (the widths were fitted on forge's HAR series), not a
 regime effect. Same failure mode the params header warns of: widths are quantiles of realised ÷ σ for ONE σ series.
+
+### Variants 2–4 — one harness, NY-close bars (Amendment 2 rerun, 2026-10-05)
+
+`python -m forge.run_ladder_candidates` → `analysis/output/ladder_candidates_ny.log`. Test 2025-09-05 → 2026-08-21,
+7,042 instrument-days, 253 dates, 28 instruments (6 majors, GOLD, 15 crosses, 6 indices); train 43,809 rows.
+Every arm's widths fitted identically on train; only σ differs. A0 = live estimator refit the same way.
+
+| | A0 live estimator | A2 HAR-800 | A3 IV-adjusted | A4 pure IV |
+|---|---|---|---|---|
+| HL > p50 / p75 / p90 | 46.5 / 23.2 / 9.4 | 47.5 / 23.1 / 9.6 | 46.2 / 22.3 / 9.3 | 45.7 / 22.4 / 9.2 |
+| 12-rung miss (GUARD) | 1.53pp | **1.24pp** | 1.77pp | 1.82pp |
+| HL > p75 by σ quintile Q1…Q5 | 29.6 / 24.3 / 20.3 / 21.0 / 18.6 | 23.6 / 21.6 / 21.7 / 23.0 / 25.0 | 23.7 / 20.6 / 19.0 / 22.6 / 22.6 | 21.6 / 19.5 / 18.3 / 23.8 / 25.1 |
+| HL > p90 by σ quintile Q1…Q5 | 14.7 / 10.1 / 7.3 / 7.0 / 6.8 | 11.1 / 8.9 / 8.5 / 8.7 / 9.8 | 12.0 / 9.2 / 7.5 / 8.4 / 8.8 | 10.7 / 7.7 / 7.1 / 9.3 / 10.1 |
+| 30-cell miss (PRIMARY) | 2.86pp | **1.41pp** | 1.98pp | 2.05pp |
+| HL p50+p75 pinball vs A0 | 1 | **0.950 (100% better)** | 0.960 (96%) | 0.970 (75%) |
+| slope | 0.53 | 0.86 | 0.95 | 1.00 |
+| HL > p75 Q1 / Q5, indices | 29.0 / 22.6 | 21.2 / 29.4 | 15.2 / 27.2 | 11.4 / 29.7 |
+
+**Verdict:** A2, A3, A4 all PASS primary and guard; none meets the target bar (A2's worst cell: Q2 HL p75 21.6%,
+3.4pp off). Per Amendment 1 the preferred candidate is **A2 — HAR-log exactly as production computes it (last 800
+NY-close bars), with widths refit on that σ**: lowest regime miss, the only arm better than A0 on the unconditional
+guard, sharper on all 28 instruments. The IV arms reach a steeper slope but over-correct on indices (quiet-day
+quintile only 11–15% over p75). Caveats: one test year (253 dates); event multipliers off in every arm.
+
+Side findings for follow-up (no live change made):
+1. The `*_d1.parquet` files are UTC days with Sunday stubs; the shipped IV-adjusted export
+   (`forecastLadderIvAdjParams.js`) was fitted on them while live feeds it NY-close OANDA bars, and a UTC day
+   overlaps the first London hour in summer. Its calibration claim should be re-checked on NY-close bars.
+2. The live `f.harLog` shadow already computes A2's σ every day (since 2026-09-15) but is unscored and on the old
+   Feller bands, not these widths.
