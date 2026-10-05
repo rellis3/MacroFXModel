@@ -1,0 +1,178 @@
+{
+ "classes": {
+  "indices": {
+   "split": "2022-07-29",
+   "median_ratio": 1.0015,
+   "share_better": 0.333,
+   "verdict": "FAIL",
+   "beta_std": {
+    "iv_sig": 0.1783,
+    "ev_size": 0.0452,
+    "surp_prev": -0.0057
+   },
+   "per_instrument": [
+    {
+     "inst": "DE30",
+     "ratio": 1.0027
+    },
+    {
+     "inst": "DOW",
+     "ratio": 0.9929
+    },
+    {
+     "inst": "NQ",
+     "ratio": 1.0006
+    },
+    {
+     "inst": "SPX",
+     "ratio": 0.9941
+    },
+    {
+     "inst": "UK100",
+     "ratio": 1.0185
+    },
+    {
+     "inst": "US2000",
+     "ratio": 1.0024
+    }
+   ],
+   "p75_by_state": {
+    "top-decile ev_size": {
+     "A": 0.316,
+     "B": 0.232,
+     "n": 1018
+    },
+    "surp_prev>=2": {
+     "A": 0.235,
+     "B": 0.239,
+     "n": 327
+    },
+    "no release, no surprise": {
+     "A": 0.222,
+     "B": 0.228,
+     "n": 2222
+    },
+    "all": {
+     "A": 0.246,
+     "B": 0.244,
+     "n": 6050
+    }
+   },
+   "release_types_with_effect": 26,
+   "widest_types": {
+    "ism manufacturing pmi": 0.072,
+    "personal income": 0.073,
+    "markit manufacturing pmi flash": 0.084,
+    "markit services pmi flash": 0.084,
+    "fed chair powell testimony": 0.093,
+    "fed press conference": 0.113,
+    "building permits level": 0.142,
+    "president trump statement on coronavirus": 0.364
+   },
+   "quietest_types": {
+    "speech by fed's chair powell": -0.09,
+    "jolts job openings": -0.09,
+    "inflation rate year-over-year": -0.032,
+    "core inflation rate year-over-year": -0.028,
+    "retail sales month-over-month": -0.026
+   }
+  },
+  "fx_gold": {
+   "split": "2022-12-07",
+   "median_ratio": 0.9695,
+   "share_better": 1.0,
+   "verdict": "PASS",
+   "beta_std": {
+    "iv_sig": 0.1332,
+    "ev_size": 0.0674,
+    "surp_prev": -0.0149
+   },
+   "per_instrument": [
+    {
+     "inst": "AUDUSD",
+     "ratio": 0.9573
+    },
+    {
+     "inst": "EURUSD",
+     "ratio": 0.9585
+    },
+    {
+     "inst": "GBPUSD",
+     "ratio": 0.9774
+    },
+    {
+     "inst": "GOLD",
+     "ratio": 0.9825
+    },
+    {
+     "inst": "USDCAD",
+     "ratio": 0.9757
+    },
+    {
+     "inst": "USDCHF",
+     "ratio": 0.9677
+    },
+    {
+     "inst": "USDJPY",
+     "ratio": 0.9695
+    }
+   ],
+   "p75_by_state": {
+    "top-decile ev_size": {
+     "A": 0.455,
+     "B": 0.289,
+     "n": 817
+    },
+    "surp_prev>=2": {
+     "A": 0.215,
+     "B": 0.265,
+     "n": 223
+    },
+    "no release, no surprise": {
+     "A": 0.184,
+     "B": 0.21,
+     "n": 2405
+    },
+    "all": {
+     "A": 0.239,
+     "B": 0.227,
+     "n": 6554
+    }
+   },
+   "release_types_with_effect": 28,
+   "widest_types": {
+    "building permits level": 0.079,
+    "payroll jobs growth": 0.101,
+    "claimant count change": 0.108,
+    "ism non-manufacturing pmi": 0.117,
+    "inflation rate year-over-year": 0.121,
+    "core inflation rate year-over-year": 0.131,
+    "fed press conference": 0.239,
+    "president trump statement on coronavirus": 0.309
+   },
+   "quietest_types": {
+    "durable goods orders month-over-month": -0.007,
+    "gfk consumer confidence index": 0.009,
+    "fomc meeting minutes": 0.01,
+    "personal income": 0.019,
+    "markit manufacturing pmi flash": 0.035
+   }
+  }
+ },
+ "audit": {
+  "NQ": "2537 sessions to 2026-07-02",
+  "SPX": "2537 sessions to 2026-07-02",
+  "DOW": "2537 sessions to 2026-07-02",
+  "US2000": "2537 sessions to 2026-07-02",
+  "DE30": "2494 sessions to 2026-07-02",
+  "UK100": "2480 sessions to 2026-07-02",
+  "EURUSD": "2581 sessions to 2026-07-02",
+  "GBPUSD": "2571 sessions to 2026-07-02",
+  "USDJPY": "2571 sessions to 2026-07-02",
+  "GOLD": "2534 sessions to 2026-07-02",
+  "AUDUSD": "2039 sessions to 2026-07-02",
+  "USDCAD": "2039 sessions to 2026-07-02",
+  "USDCHF": "2039 sessions to 2026-07-02"
+ },
+ "calendar_major_rows": 5189
+}

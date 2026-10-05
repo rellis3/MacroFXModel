@@ -70,3 +70,40 @@ Widths are refit on each arm's σ. **Split:** by date per class, first 60% train
   carries the calendar.
 
 Script: `forge/run_event_layer.py`. Output: `analysis/output/event_layer/RESULTS.md`.
+
+---
+
+## Results (2026-10-05, run after the pre-registration commit 2d478d77)
+
+Full tables: `analysis/output/event_layer/RESULTS.md`.
+
+| | FX + gold (7) | indices (6) |
+|---|---|---|
+| test pinball (IV + events) ÷ (IV only), median | **0.970** | 1.002 |
+| B better on | **7/7** | 2/6 |
+| p75 exceedance, top-decile release days, A → B | **45.5% → 28.9%** | 31.6% → 23.2% |
+| p75 exceedance, no release and no surprise, A → B | 18.4% → 21.0% | 22.2% → 22.8% |
+| sign of `surp_prev` (expected +) | **−** (−0.015) | − (−0.006) |
+| **verdict** | **PASS** | **FAIL** |
+
+**Reading.**
+- **FX + gold.** On big release days (payrolls, CPI, claimant count, ISM services, Fed press
+  conferences) the IV-adjusted lines run badly tight: p75 is passed 45% of the time against
+  25%. The train-fitted release-type size fixes most of it. Implied vol (30-day) spreads a
+  single release over a month, so it does not carry the day.
+- **Indices.** VIX already prices the calendar, so there is no increment, although the
+  biggest-release days are still slightly better calibrated.
+- **Yesterday's surprise does not widen today** on either class. The secondary sign check
+  fails; the PASS rests on `ev_size`.
+- **Caveats.**
+  - The calendar has USD, EUR and GBP releases only. JPY / AUD / CAD / CHF releases are
+    untested.
+  - One release type ("President Trump statement on coronavirus", 2020) carries a large effect
+    and is a one-period artefact. It will not recur in a live feed.
+
+**Decision per the pre-registration:** add the event term to the IV-adjusted export for FX + gold.
+
+**Implementation blocker, before it can go live.** The live calendar feed names releases
+differently from `calendar_events.csv` (memory: Event Book vs calendar vocabularies, 0/10
+joined by name). The fitted release-type table needs an explicit name map to the live feed, so
+the live build waits on that map.
