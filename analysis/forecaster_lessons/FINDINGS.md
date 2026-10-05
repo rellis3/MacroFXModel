@@ -21,6 +21,28 @@ The one check that does need R2 M1 bars is fill realism: whether a touch becomes
 and the real spread and slippage per pair (§2.1). It is listed as step 1 of §4.
 
 
+
+> **⚠ RETRACTION, 2026-10-05.** `vp2.json`, the Vote Atlas record behind §2–§3, was saved
+> on 2026-09-18, **before** PR #1497 (merged 2026-09-30). That PR fixed a look-ahead in
+> `prevOutcomeSameDay`, one of the vote's core dimensions.
+> - After the fix the honest vote is losing: m≥3 PF 1.06 → 0.95.
+> - PR #1498's pre-registered Vote Atlas v4 tests found the export lines
+>   indistinguishable from random levels (0/28; gross 0.000R).
+>
+> **Invalid:** every Vote-Atlas-specific number in §2–§3. That includes the 3.95 Sharpe,
+> the cost headroom, PBO/DSR, the meta-label/sizing/throttle experiments, the event-day
+> split and the live parity reading. They describe a leaked backtest. The *methods* and
+> scripts are fine and can be re-run on a post-fix trade list.
+>
+> **Still valid:**
+> - §0's design comparison. #1498 makes its main point stronger: our lines carry no
+>   direction edge, as Lesson 03 predicts.
+> - The `volForecast.js` null-tag bug fix.
+> - The code audit (§3.8).
+> - §3.7, now re-tallied: 1 of 38 directions accepted, 0 live-confirmed.
+>
+> The v4 plan is withdrawn (`VOTE_ATLAS_V4_PLAN.md`).
+
 ## 0. The question: how far is what we built from what the course describes?
 
 *What we built:*
@@ -43,7 +65,7 @@ contents beyond that can't be compared.
 | **A dedicated volatility-forecasting layer**: GARCH, clustering, shock half-life (L03 §02) | Forecaster v3: Yang-Zhang σ (FX, gold), GARCH (indices), HAR shadow, an implied-vol ladder that beat realised vol OOS, quantile widths fitted per pair and pinned to p50/75/90 exceedance targets OOS | **Level or ahead.** The lesson stops at textbook GARCH. Gaps: index GARCH α/β are hand-set ("interim" β 0.87), not estimated. **Vote Atlas does not trade the export button's ladder:** same widths, different σ input (London-day M1 vs 17:00-NY D1), no event scaling, no IV (plan item 1.1: re-base Vote Atlas on the export calc; the export itself is unchanged) |
 | **Jumps separate from diffusion** (L03 §03) | Event multipliers (FOMC/NFP/CPI/holiday); jump-diffusion research page | **Close.** The multipliers are a crude jump term, used in band width only, not in risk or sizing |
 | (not covered in L01–03) | **Exhaustion**: IV/σ predicts p75 breaches OOS (13 / 22 / 35% vs 25%); Surface Lab | **Beyond what the course has shown** |
-| **Volatility decides *how much*, not *which way*** (L03 §02: "structure … bears on how much to hold rather than on which way to bet") | The forecast places **levels**; the vote then bets **direction** at them (fade/follow); size is a flat 0.5% risk. Partial exception: stops scale with σ, so each trade is vol-normalised | **The biggest design difference.** Our own record agrees with the course: pure direction bets at the lines failed 11 times (§3.7) |
+| **Volatility decides *how much*, not *which way*** (L03 §02: "structure … bears on how much to hold rather than on which way to bet") | The forecast places **levels**; the vote then bets **direction** at them (fade/follow); size is a flat 0.5% risk | **The biggest design difference, and now confirmed as the reason it fails:** after the #1497 look-ahead fix the vote loses, and #1498 found the lines no better than random levels for direction. Pure fades failed 11 times too (§3.7) |
 | **Meta-labelling**: a second model decides whether and how much to act (L03 §01) | Tried before: `Trade_Decision_Engine` (logistic on 110,883 zone-touch events) was weakly discriminating and PARKED. Not on Vote Atlas today | **Tried, failed on a primary with no edge.** On top of Vote Atlas the new prototype is also weak (IC 0.031): a small gain from dropping the bottom 30% (E1/E5). Treat as optional |
 | **Separate layers, each tested against its own standard** (L03 §01) | Forecast layer: its own tests (exceedance, pinball), done properly. Decision layer (vote) is only tested together with the overlays. Management layer (risk guard, ccy gate) runs uncalibrated inherited defaults | **Medium.** The bottom layer is clean; the upper layers are tested together |
 | **Fundamental law IR ≈ TC·IC·√BR** (L03 §01) | Huge breadth (about 5,000 trades/yr, 17 instruments), small IC per trade: the shape the law favours. TC leaks: live took only 48% of the backtest's trades (§3.9) | **Right shape, leaky implementation** |
@@ -55,8 +77,8 @@ already as good as theirs and better in places (calibrated quantiles, implied vo
 exhaustion). The real gap is **what the forecast is used for**: theirs drives exposure,
 ours drives directional bets at levels. Around that we are missing the meta-label
 layer, the decision and management layers aren't separated and tested on their own,
-and the validation discipline is only partly applied. None of this needs a restart.
-`VOTE_ATLAS_V4_PLAN.md` turns it into a build plan.
+and the validation discipline is only partly applied. After the #1497 fix and #1498's tests, the directional use is dead. The forecast's value
+is as a range/risk forecast (`VOTE_ATLAS_V4_PLAN.md`, withdrawn plan + what still stands).
 
 The rest of this file is the **supporting evidence**: the lessons' checks run on the
 Vote Atlas record, layer experiments, live parity, and the code audit.

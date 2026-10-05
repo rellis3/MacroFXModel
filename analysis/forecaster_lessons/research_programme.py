@@ -16,14 +16,18 @@ The tallies are typed in from that file; edit them as verdicts are banked.
 import math
 
 # ── tallies (august analysis.md) ────────────────────────────────────────────
-ACCEPTED = ['Range-Line / Fib Atlas (§13)', 'Yield-spread z-reversion', 'Touch motifs + double tops/bottoms',
-            'Level-Atlas vote book (vp2)']
+# 2026-10-05: three of the four "accepted" edges were killed by look-ahead fixes merged
+# 2026-09-30 (PR #1497): Fib Atlas (0/16 pairs), touch motifs (PF 1.25 -> 0.95), Vote Atlas
+# (honest m>=3 PF 1.06 -> 0.95); PR #1498's pre-registered Vote Atlas v4 tests: lines ~ random
+# levels (0/28). Only the yield-spread z-reversion remains accepted (paper).
+ACCEPTED = ['Yield-spread z-reversion']
+KILLED_BY_LOOKAHEAD = ['Range-Line / Fib Atlas (§13)', 'Touch motifs + double tops/bottoms', 'Level-Atlas vote book (vp2)']
 NULLS = (['POI-reaction fade', 'range-extension fade', 'z-score gated zones', 'VWAP reversion', 'VuManChu direction',
           'EMA cross / FX momentum', 'k-NN analogs + chart patterns', 'NQ-QMR (falsified)',
           'econ-trend', 'macro-direction', 'credit-stress gate', 'CB sentiment', 'GLI→FX',
           'mechanical fades at vol lines', 'hedge-v1', 'Hurst feature', 'layer2 vol-bot SL/TP', 'overnight hold',
           'max-copier', 'Dax IFO', 'MVE z-fade', 'post-FOMC drift (spec failed OOS)']
-         + [f'retail strategy {i}' for i in range(1, 13)])
+         + [f'retail strategy {i}' for i in range(1, 13)] + KILLED_BY_LOOKAHEAD)
 LIVE_CONFIRMED = 0          # none of the accepted edges has a live record in R yet; Fib Atlas paper: −$13.7k on 101 trades
 FADE_FAMILY_FAILURES = ['POI fade', 'range-ext fade', 'z-score zones', 'mechanical vol-line fades', 'VWAP reversion',
                         'cog-fade', 'band-fade (Stage 1)', 'reversal-fade', '48-cell fade stop/target grid',
