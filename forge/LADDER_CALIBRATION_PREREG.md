@@ -48,7 +48,7 @@ through `buildLadder`'s read-only `ladderParams` override, and promotion to live
 
 | # | Candidate | Added | Status |
 |---|---|---|---|
-| 1 | `forecastLadderParamsV2.js` as-is (har_rv_log σ, its own widths and event multipliers) | 2026-10-05 | running |
+| 1 | `forecastLadderParamsV2.js` as-is (har_rv_log σ, its own widths and event multipliers) | 2026-10-05 | **PRIMARY PASS · GUARD FAIL · TARGET BAR NOT MET** — see Results |
 
 Further variants (σ shrunk toward its long-run level, σ-regime-conditional widths, IV blend) are added
 here by amendment **before** they are run.
@@ -57,3 +57,23 @@ here by amendment **before** they are run.
 
 Pass or fail, no live file changes. A passing candidate goes onto the side-by-side shadow screen to be
 watched on live data; a failing one is recorded here and in the ledger with the cells it failed.
+
+## Results
+
+### Variant 1 — HAR-v2 as-is (2026-10-05)
+
+Window 2025-09-05 → 2026-08-20, 8,415 instrument-days, 248 dates, 34 instruments, identical rows for both.
+
+| | live | HAR-v2 |
+|---|---|---|
+| 12-rung unconditional mean miss | 0.96pp | 2.61pp → **GUARD FAIL** |
+| 30-cell σ-quintile mean miss | 2.72pp | 2.59pp → **PRIMARY PASS** |
+| HL > p75 by σ quintile Q1…Q5 | 31.4 / 23.4 / 20.3 / 21.2 / 18.6 | 22.2 / 18.9 / 18.7 / 20.9 / 21.8 |
+| HL > p90 by σ quintile Q1…Q5 | 15.1 / 10.9 / 7.5 / 7.8 / 7.2 | 10.1 / 8.0 / 7.1 / 7.8 / 7.7 |
+| log-log slope fx / gold / index | 0.61 / 0.55 / 0.60 | 0.86 / 0.94 / 0.88 |
+
+Read: HAR fixes the **shape** (the regime tilt is gone, slope 0.6 → ~0.9) but the whole ladder is **too wide**
+(HL > p75 20.6% overall). Diagnostic, not a rule: it is too wide in **every year 2016–2026** (HL > p75 17.7–25.4%,
+mostly 20–22%), in-sample included — so this is a level mismatch between the V2 widths and the σ that
+`forecastSigma('har_rv_log')` produces on NY-close bars (the widths were fitted on forge's HAR series), not a
+regime effect. Same failure mode the params header warns of: widths are quantiles of realised ÷ σ for ONE σ series.
