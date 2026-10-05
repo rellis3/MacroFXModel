@@ -39,6 +39,7 @@ import { COG_CONST } from './cogReverseEngineer.js';
 import { buildLadder, flattenLadder } from './forecastLadder.js';
 import { forecastSigma } from './forecastSigma.js';
 import { LADDER_PARAMS } from './forecastLadderParams.js';
+import { buildRevertingLadder } from './forecastLadderReverting.js';
 import { volAcceleration, termStructureState, rangeEfficiencyRatio, realisedSkew } from './volStateEngine.js';
 import { driftAnatomy } from './driftAnatomy.js';
 
@@ -734,11 +735,21 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0, opts = 
       _ladderM = _mk('monthly');
     }
   } catch { /* ladder is additive — never let it break the incumbent forecast */ }
+  // Reverting weekly/monthly ladder (forge/HORIZON_REVERSION_PREREG.md, PASS
+  // 2026-10-05). Separate fields, separate export; the √h ladders above are untouched.
+  let _ladderWR = null, _ladderMR = null;
+  try {
+    const _ro = { instrument: _instrument, assetClass, eventTag: _eventTag };
+    _ladderWR = buildRevertingLadder(ohlc, { ..._ro, horizon: 'weekly' });
+    _ladderMR = buildRevertingLadder(ohlc, { ..._ro, horizon: 'monthly' });
+  } catch { /* additive — never break the incumbent forecast */ }
 
   const _base = Object.assign(_buildOutput(volSeries, sigmaFwd, assetClass, newsMult), {
     ladder:         _ladder,
     ladder_weekly:  _ladderW,
     ladder_monthly: _ladderM,
+    ladder_weekly_rev:  _ladderWR,
+    ladder_monthly_rev: _ladderMR,
     ladder_flat:    _ladder ? flattenLadder(_ladder) : null,
     yz_vol_annual:     r2s(yzPct     * Math.sqrt(TRADING_DAYS)),
     yz_hl_median:      r2s(BM_RANGE_P50 * yzPct),

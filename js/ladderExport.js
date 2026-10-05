@@ -40,6 +40,8 @@ const HORIZON_TITLE = {
   daily:   'VOL & RANGE FORECAST',
   weekly:  'VOL & RANGE FORECAST — WEEKLY',   // carries BOTH 5-day and 20-day, see below
   monthly: 'VOL & RANGE FORECAST — MONTHLY (20-day)',
+  // Same two sections as `weekly`, from the reverting ladder (forge/HORIZON_REVERSION_PREREG.md).
+  weekly_rev: 'VOL & RANGE FORECAST — WEEKLY (REVERTING σ)',
 };
 
 // `<label> : <p50>% median · <p75>% <75th-word> · <p90>% 90th`
@@ -61,7 +63,9 @@ function _rungRow(key, q) {
 export function buildLadderExportText(data, horizon = 'daily', opts = {}) {
   const { includeDrift = true } = opts;
   const key = horizon === 'weekly' ? 'ladder_weekly'
+            : horizon === 'weekly_rev' ? 'ladder_weekly_rev'
             : horizon === 'monthly' ? 'ladder_monthly' : 'ladder';
+  const rev = horizon === 'weekly_rev';
 
   const lines = [
     `**${HORIZON_TITLE[horizon] ?? HORIZON_TITLE.daily}**`,
@@ -95,7 +99,7 @@ export function buildLadderExportText(data, horizon = 'daily', opts = {}) {
     lines.push(_div(name));
     lines.push(`Volatility (annualized) : ${_pc(L.vol_annual)}%`);
 
-    if (horizon === 'weekly') {
+    if (horizon === 'weekly' || rev) {
       // BOTH horizons in ONE paste, matching the COG weekly export exactly.
       // pine/weekly_vol_overlay.pine finds its sections by header — "5-DAY"+"WEEKLY"
       // and "20-DAY"+"MONTHLY" — and its "Both" display mode overlays them, so a
@@ -105,8 +109,10 @@ export function buildLadderExportText(data, horizon = 'daily', opts = {}) {
       // Each section uses its OWN fitted widths (ladder_weekly / ladder_monthly),
       // not the daily rungs scaled by sqrt-time — refitting per horizon is the point
       // of having them, since vol mean-reverts inside a week.
-      for (const [hdr, lad] of [['── 5-Day (Weekly)', f.ladder_weekly],
-                                ['── 20-Day (Monthly)', f.ladder_monthly]]) {
+      // The reverting variant keeps the SAME section headers so the same indicator
+      // parses it; only the title line and the numbers differ.
+      for (const [hdr, lad] of [['── 5-Day (Weekly)', rev ? f.ladder_weekly_rev : f.ladder_weekly],
+                                ['── 20-Day (Monthly)', rev ? f.ladder_monthly_rev : f.ladder_monthly]]) {
         if (!lad) continue;
         lines.push(hdr);
         for (const q of ['hl', 'oc', 'oh', 'ol']) {
@@ -145,7 +151,11 @@ export function buildLadderExportText(data, horizon = 'daily', opts = {}) {
     lines.push('');
   }
 
-  if (first) {
+  if (first && rev) {
+    lines.push(`[reverting ladder · σ_h mean-reverts to its 250-day level, half-life `
+             + `${first.ladder_weekly_rev?.half_life_days ?? '—'}d weekly / ${first.ladder_monthly_rev?.half_life_days ?? '—'}d monthly`
+             + ` · per-instrument σ estimator · p50/p75/p90 = exceeded 50%/25%/10% of periods · forge/HORIZON_REVERSION_PREREG.md]`);
+  } else if (first) {
     lines.push(`[fitted ladder · σ=${first[key].estimator ?? '—'} · widths ${first[key].width_source}`
              + ` · p50/p75/p90 = exceeded 50%/25%/10% of periods]`);
   }

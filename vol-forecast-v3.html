@@ -919,6 +919,7 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
         <button class="vf-exp-item" id="vfLadderBtn"     onclick="closeExpDropdown();exportLadder('daily')"          disabled>⬇ Forecast <span style="font-size:9px;opacity:.55">p50/75/90</span></button>
         <button class="vf-exp-item" id="vfIvLadderBtn"   onclick="closeExpDropdown();exportIvLadder()"               disabled title="Same paste as Forecast; EURUSD/GBPUSD/AUDUSD/USDCAD/USDCHF use CME 30-day implied vol and GOLD uses CBOE GVZ (each beat realized vol out of sample, forge/IV_LADDER_PREREG.md + IV_LADDER_GOLD_PREREG.md). Every other block is unchanged.">⬇ Forecast (IV) <span style="font-size:9px;opacity:.55">implied-vol σ</span></button>
         <button class="vf-exp-item" id="vfLadderWkBtn"   onclick="closeExpDropdown();exportLadder('weekly')"         disabled>⬇ Forecast Weekly <span style="font-size:9px;opacity:.55">5-day + 20-day in one</span></button>
+        <button class="vf-exp-item" id="vfLadderWkRevBtn" onclick="closeExpDropdown();exportLadder('weekly_rev')"   disabled title="Same paste format as Forecast Weekly (same indicator), but σ fades back to its 250-day level across the week/month instead of √-time scaling. Passed its pre-registered test 2026-10-05 (forge/HORIZON_REVERSION_PREREG.md): bands right after calm AND after stress, not just on average.">⬇ Forecast Weekly · Reverting <span style="font-size:9px;opacity:.55">σ fades back · test</span></button>
         <button class="vf-exp-item" id="vfLadderSessBtn" onclick="closeExpDropdown();exportLadder('daily',true)"     disabled>⬇ Forecast + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
         <div class="vf-exp-sep"></div>
         <button class="vf-exp-item" id="vfCogBtn"        onclick="closeExpDropdown();exportCog()"                    disabled>⬇ COG <span style="font-size:9px;opacity:.55">reverse-eng</span></button>
@@ -1716,7 +1717,7 @@ function loadForecast(date) {
       }
 
       // Enable export/tools buttons
-      ['vfLadderBtn','vfIvLadderBtn','vfLadderWkBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn',
+      ['vfLadderBtn','vfIvLadderBtn','vfLadderWkBtn','vfLadderWkRevBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn',
        // Archived group — everything that needs only the forecast payload
        'vfExportBtn','vfExtendedBtn','vfExportV2Btn','vfCalibratedBtn','vfCalExtBtn','vfCogV2Btn'].forEach(id => {
         const el = document.getElementById(id);
@@ -2630,7 +2631,8 @@ function buildCogV2ExportText(data) {
 // variants drifted apart from the server's — one source, one output.
 async function exportLadder(horizon = 'daily', withSession = false) {
   const btnId = withSession ? 'vfLadderSessBtn'
-    : horizon === 'weekly' ? 'vfLadderWkBtn' : 'vfLadderBtn';
+    : horizon === 'weekly' ? 'vfLadderWkBtn'
+    : horizon === 'weekly_rev' ? 'vfLadderWkRevBtn' : 'vfLadderBtn';
   const btn = document.getElementById(btnId);
   _btnLabel(btn); btn.textContent = '… building'; btn.disabled = true;
   try {

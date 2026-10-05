@@ -21686,15 +21686,16 @@ app.get('/api/vol-forecast/ladder/path-stats', (req, res) => {
 // the page fetches it rather than rendering its own copy, which is what stops the
 // browser and the server from quietly disagreeing the way the old Export /
 // Calibrated / Export-v2 / Extended builders did.
-//   GET /api/vol-forecast/ladder/export?horizon=daily|weekly|monthly[&session=1]
+//   GET /api/vol-forecast/ladder/export?horizon=daily|weekly|monthly|weekly_rev[&session=1]
 app.get('/api/vol-forecast/ladder/export', async (req, res) => {
   if (!forecastState.latest) {
     return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
   }
-  const horizon = ['daily', 'weekly', 'monthly'].includes(String(req.query.horizon))
+  const horizon = ['daily', 'weekly', 'monthly', 'weekly_rev'].includes(String(req.query.horizon))
     ? String(req.query.horizon) : 'daily';
   try {
-    const has = Object.values(forecastState.latest.instruments ?? {}).some(f => f?.ladder);
+    const has = Object.values(forecastState.latest.instruments ?? {})
+      .some(f => horizon === 'weekly_rev' ? f?.ladder_weekly_rev : f?.ladder);
     if (!has) {
       return res.status(202).type('text/plain')
         .send('Ladder not present on the cached forecast — hit ↻ Refresh to recompute.');
