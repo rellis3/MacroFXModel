@@ -79,6 +79,19 @@ and only σ differs**:
   from A0's σ ÷ its trailing 250-session median. Also reported: HL p50+p75 pinball ratio vs A0, slope.
 - More than one arm may pass; then the one with the lower PRIMARY miss is preferred, pinball as tie-break.
 
+## Amendment 2 (2026-10-05, after the first Amendment-1 run, before any rerun)
+
+The first run's daily bars (`VolRangeForecaster/data/m1/*_d1.parquet`, the inputs `export_iv_adjusted_params.py`
+calls "OANDA D1") turned out to be **UTC-midnight days with Sunday stub bars** (546 Sundays for EURUSD, median range
+0.12% vs ~0.6% on weekdays). Live σ comes from OANDA `granularity=D` (17:00 New York close, no Sunday stub). The stubs
+hit HAR's lag-1 term every Monday (HAR-800 σ moved 9.0% a day vs yz_10's 3.9%), and a UTC day also ends at 01:00
+London in summer, overlapping the first hour of the session it forecasts. That run is therefore **void as a test of
+the live inputs** (its output is kept in the log for the record: A2 fail, A3/A4 primary+guard pass).
+
+Rerun with σ inputs rebuilt the live way: NY-close daily bars from M1 (`nyCloseDailyBars`, sessions with ≥ 60 M1
+bars, as the JS scorecard and v4Days use), for A0, A2, A3 and the crosses' leg correlations. Everything else as
+Amendment 1. Consequence to follow up separately: the shipped IV-adjusted params were fitted on the stub bars.
+
 ## Outcome handling
 
 Pass or fail, no live file changes. A passing candidate goes onto the side-by-side shadow screen to be
