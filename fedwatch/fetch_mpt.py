@@ -101,7 +101,7 @@ def _kv_get(key):
     try:
         with urllib.request.urlopen(f"{BASE}/api/kv/get?key={key}", timeout=60) as r:
             j = json.loads(r.read().decode())
-        v = j.get("value") if isinstance(j, dict) else None
+        v = (j.get("data") if isinstance(j, dict) and not j.get("miss") else None)
         return json.loads(v) if isinstance(v, str) else v
     except Exception as e:
         print(f"  kv get {key} failed ({e}) -- treating as first run")
@@ -109,7 +109,11 @@ def _kv_get(key):
 
 
 def _kv_set(key, obj):
-    body = json.dumps({"key": key, "value": json.dumps(obj)}).encode()
+    # THE FIELD IS `data`, NOT `value`. Sending `value` is accepted, returns
+    # {"ok":true}, and stores NOTHING -- the read then comes back as the string
+    # "null". A write that reports success while persisting nothing is the worst
+    # shape of failure available, so this mirrors oi_recon/ingest.mjs exactly.
+    body = json.dumps({"key": key, "data": obj, "timestamp": int(dt.datetime.now().timestamp() * 1000)}).encode()
     req = urllib.request.Request(f"{BASE}/api/kv/set", data=body,
                                  headers={"Content-Type": "application/json"}, method="POST")
     with urllib.request.urlopen(req, timeout=120) as r:

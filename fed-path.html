@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fed Path Odds — market-implied policy probabilities</title>
+<style>
+/* Same visual system as cot-extremes.html and the OI dashboard so the three read as one
+   desk. Red = tighter/hike, green = easier/cut — the same direction convention the rest
+   of the desk uses for "bad for risk" / "good for risk", not an arbitrary pick. */
+:root{
+  --bg:#0b0d10; --bg2:#12161c; --bg3:#181d24; --line:#262c35; --line2:#333b46;
+  --tx:#eef1f5; --tx2:#a8b1bd; --tx3:#71798a;
+  --acc:#e0a339; --hike:#e8615f; --cut:#46b87a; --neu:#54a8de;
+  --warn:#e8963c; --ok:#46b87a;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);
+  font:15px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1280px;margin:0 auto;padding:0 22px 80px}
+a{color:var(--acc)}
+.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:20px 0 16px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.top h1{margin:0;font-size:22px;font-weight:650;letter-spacing:.1em;text-transform:uppercase}
+.top h1 span{color:var(--acc)}
+.top .sub{color:var(--tx2);font-size:13px}
+.top .right{margin-left:auto;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.btn{background:var(--bg3);border:1px solid var(--line2);color:var(--tx2);
+  padding:9px 15px;border-radius:5px;cursor:pointer;font-size:13px;font-family:var(--mono);
+  text-decoration:none;display:inline-block}
+.btn:hover{border-color:var(--acc);color:var(--tx)}
+.badge{font-family:var(--mono);font-size:12px;padding:5px 10px;border-radius:4px;
+  border:1px solid var(--line2);color:var(--tx2)}
+.badge.fresh{border-color:var(--ok);color:var(--ok)}
+.badge.late{border-color:var(--warn);color:var(--warn)}
+.panel{background:var(--bg2);border:1px solid var(--line);border-radius:8px;
+  padding:18px 20px;margin-bottom:18px}
+.panel h2{margin:0 0 4px;font-size:13px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--tx2);font-weight:650}
+.panel .dek{color:var(--tx3);font-size:13px;margin:0 0 14px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:right;color:var(--tx3);font-weight:600;font-size:11px;letter-spacing:.07em;
+  text-transform:uppercase;padding:0 10px 8px;border-bottom:1px solid var(--line)}
+th:first-child{text-align:left}
+td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;
+  font-family:var(--mono);font-variant-numeric:tabular-nums}
+td:first-child{text-align:left;font-family:inherit}
+tr:last-child td{border-bottom:none}
+tr.sel td{background:#161b22}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:#141921}
+.hike{color:var(--hike)} .cut{color:var(--cut)} .dim{color:var(--tx3)}
+.d-up{color:var(--hike)} .d-dn{color:var(--cut)}
+.bars{display:flex;flex-direction:column;gap:5px;margin-top:4px}
+.bar{display:grid;grid-template-columns:118px 1fr 56px;align-items:center;gap:10px;
+  font-family:var(--mono);font-size:12.5px}
+.bar .t{color:var(--tx2)}
+.bar .v{height:16px;background:var(--neu);border-radius:3px;min-width:2px}
+.bar .n{text-align:right;color:var(--tx2)}
+.bar.cur .v{background:var(--acc)}
+.bar.cur .t{color:var(--acc)}
+.note{color:var(--tx3);font-size:12.5px;line-height:1.7;border-top:1px solid var(--line);
+  padding-top:14px;margin-top:4px}
+.note b{color:var(--tx2)}
+.err{color:var(--warn);font-family:var(--mono);font-size:13px}
+@media(max-width:700px){
+  .wrap{padding:0 14px 60px}
+  .bar{grid-template-columns:96px 1fr 48px}
+  th,td{padding:7px 5px;font-size:12.5px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Fed <span>Path</span> Odds</h1>
+    <div class="sub">market-implied probabilities for the policy rate</div>
+    <div class="right">
+      <span class="badge" id="asof">loading…</span>
+      <a class="btn" href="rates.html">Rates</a>
+      <a class="btn" href="today.html">Today</a>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Hike probability by window</h2>
+    <p class="dek">Each row is a forward window. The columns are what the same window was
+      priced at a day, a week and a month ago — <b>the change is the signal</b>, not the level.
+      Click a row to load its distribution and history below.</p>
+    <div id="tbl"><span class="dim">loading…</span></div>
+  </div>
+
+  <div class="panel">
+    <h2 id="dist-h">Rate distribution</h2>
+    <p class="dek">Where the market puts the 3-month average rate for the selected window.
+      The gold bar is the range in force today.</p>
+    <div class="bars" id="dist"></div>
+  </div>
+
+  <div class="panel">
+    <h2 id="hist-h">Hike odds over time</h2>
+    <p class="dek">How the same window has been repriced. A step here is the market moving a
+      hike between meetings, which a level alone cannot show.</p>
+    <div id="chart"></div>
+  </div>
+
+  <div class="panel">
+    <div class="note" id="note"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = v => v == null ? '—' : (+v).toFixed(1);
+let STORE = null, SEL = null;
+
+function delta(now, then) {
+  if (now == null || then == null) return '<span class="dim">—</span>';
+  const d = now - then;
+  if (Math.abs(d) < 0.05) return '<span class="dim">' + fmt(then) + '</span>';
+  const cls = d > 0 ? 'd-up' : 'd-dn';
+  return fmt(then) + ' <span class="' + cls + '">(' + (d > 0 ? '+' : '') + d.toFixed(1) + ')</span>';
+}
+
+function renderTable() {
+  const ws = STORE.windows || [];
+  if (!ws.length) { $('tbl').innerHTML = '<span class="err">no windows in the capture</span>'; return; }
+  let h = '<table><thead><tr><th>Window starts</th><th>Hike now</th><th>1 day ago</th>' +
+          '<th>1 week ago</th><th>1 month ago</th><th>Cut now</th><th>Mean bps</th></tr></thead><tbody>';
+  for (const w of ws) {
+    const a = w.hikeAgo || {};
+    h += '<tr data-ref="' + w.ref + '"' + (w.ref === SEL ? ' class="sel"' : '') + '>' +
+         '<td>' + w.ref + '</td>' +
+         '<td class="hike"><b>' + fmt(w.hike) + '%</b></td>' +
+         '<td>' + delta(w.hike, a.d1) + '</td>' +
+         '<td>' + delta(w.hike, a.w1) + '</td>' +
+         '<td>' + delta(w.hike, a.m1) + '</td>' +
+         '<td class="cut">' + fmt(w.cut) + '%</td>' +
+         '<td class="dim">' + fmt(w.mean) + '</td></tr>';
+  }
+  $('tbl').innerHTML = h + '</tbody></table>';
+  for (const tr of $('tbl').querySelectorAll('tbody tr')) {
+    tr.onclick = () => { SEL = tr.dataset.ref; renderTable(); renderDist(); renderChart(); };
+  }
+}
+
+function renderDist() {
+  const w = (STORE.windows || []).find(x => x.ref === SEL);
+  $('dist-h').textContent = 'Rate distribution — window from ' + (SEL || '');
+  if (!w || !w.dist || !Object.keys(w.dist).length) {
+    $('dist').innerHTML = '<span class="dim">no distribution for this window</span>'; return;
+  }
+  const max = Math.max(...Object.values(w.dist));
+  $('dist').innerHTML = Object.entries(w.dist).map(([k, v]) => {
+    const cur = k === STORE.currentRange;
+    return '<div class="bar' + (cur ? ' cur' : '') + '"><div class="t">' + k.replace(/bps/g, '') + '</div>' +
+           '<div class="v" style="width:' + Math.max(2, (v / max) * 100) + '%"></div>' +
+           '<div class="n">' + v.toFixed(1) + '%</div></div>';
+  }).join('');
+}
+
+function renderChart() {
+  const s = (STORE.series || {})[SEL];
+  $('hist-h').textContent = 'Hike odds over time — window from ' + (SEL || '');
+  if (!s || s.length < 2) {
+    $('chart').innerHTML = '<span class="dim">no series kept for this window (the nearest few only)</span>';
+    return;
+  }
+  const W = 1000, H = 220, P = { l: 44, r: 12, t: 12, b: 26 };
+  const ys = s.map(r => r[1]).filter(v => v != null);
+  const lo = Math.max(0, Math.min(...ys) - 4), hi = Math.min(100, Math.max(...ys) + 4);
+  const x = i => P.l + (i / (s.length - 1)) * (W - P.l - P.r);
+  const y = v => P.t + (1 - (v - lo) / (hi - lo || 1)) * (H - P.t - P.b);
+  const pts = s.map((r, i) => r[1] == null ? null : x(i) + ',' + y(r[1])).filter(Boolean).join(' ');
+  // Ticks are drawn at values the line actually reaches, so no label sits off the scale.
+  const ticks = [lo, (lo + hi) / 2, hi].map(v =>
+    '<line x1="' + P.l + '" y1="' + y(v) + '" x2="' + (W - P.r) + '" y2="' + y(v) +
+    '" stroke="#262c35" stroke-width="1"/>' +
+    '<text x="' + (P.l - 7) + '" y="' + (y(v) + 4) + '" fill="#71798a" font-size="11" text-anchor="end">' +
+    v.toFixed(0) + '%</text>').join('');
+  const first = s[0][0], last = s[s.length - 1][0];
+  $('chart').innerHTML =
+    '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto" role="img" ' +
+    'aria-label="Hike probability over time for the window starting ' + SEL + '">' + ticks +
+    '<polyline points="' + pts + '" fill="none" stroke="#e8615f" stroke-width="2" ' +
+    'stroke-linejoin="round" stroke-linecap="round"/>' +
+    '<text x="' + P.l + '" y="' + (H - 7) + '" fill="#71798a" font-size="11">' + first + '</text>' +
+    '<text x="' + (W - P.r) + '" y="' + (H - 7) + '" fill="#71798a" font-size="11" text-anchor="end">' +
+    last + '</text></svg>';
+}
+
+function renderNote() {
+  const d = STORE;
+  $('note').innerHTML =
+    '<b>What these numbers are.</b> Probabilities for the <b>three-month average rate over a ' +
+    'forward window</b>, estimated by the Atlanta Fed from CME three-month SOFR options. ' +
+    'They are <b>not</b> odds for a given FOMC meeting. CME FedWatch answers the meeting ' +
+    'question from fed funds futures and will differ by a few points — the direction is the ' +
+    'same, the instrument is not. Do not relabel a window as a meeting.<br><br>' +
+    '<b>Cadence.</b> Published every US trading day, carrying the previous day’s data, so a ' +
+    'correct feed is always one business day behind. Measured over the file’s own history: ' +
+    '883 dates across 917 business days, and every absence is a US market holiday.<br><br>' +
+    '<b>Source.</b> ' + (d.source || 'Atlanta Fed Market Probability Tracker') +
+    '. History ' + (d.history ? d.history.from + ' → ' + d.history.to : '—') +
+    ' (' + (d.nDates || '?') + ' dates). Captured by <code>fedwatch/run_daily.bat</code>, ' +
+    'read through <code>/api/fed-path</code>. Nothing on this page is a forecast.';
+}
+
+(async () => {
+  try {
+    const r = await fetch('/api/fed-path');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'no capture');
+    STORE = d;
+    SEL = (d.windows && d.windows[0] && d.windows[0].ref) || null;
+    const late = d.ageDays != null && d.ageDays > 4;
+    $('asof').className = 'badge ' + (late ? 'late' : 'fresh');
+    $('asof').textContent = 'as of ' + d.asOf + (d.ageDays != null ? ' · ' + d.ageDays + 'd' : '') +
+                            ' · ' + (d.currentRange || '').replace(/bps/g, '');
+    renderTable(); renderDist(); renderChart(); renderNote();
+  } catch (e) {
+    $('asof').className = 'badge late';
+    $('asof').textContent = 'unavailable';
+    $('tbl').innerHTML = '<span class="err">' + e.message + ' — has fedwatch/run_daily.bat run?</span>';
+  }
+})();
+</script>
+</body>
+</html>

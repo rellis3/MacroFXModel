@@ -14524,7 +14524,11 @@ app.get('/api/fed-path', async (_req, res) => {
   try {
     const raw = await kv.get('mpt_store_v1');
     if (!raw) return res.json({ ok: false, error: 'no capture yet', store: null });
-    const d = JSON.parse(raw);
+    // The store is written as {key, data, timestamp}; every other reader here
+    // unwraps `.data` with a fallback for anything written flat.
+    const parsed = JSON.parse(raw);
+    const d = parsed?.data ?? parsed;
+    if (!d || !d.asOf) return res.json({ ok: false, error: 'capture present but empty', store: null });
     const ageDays = d.asOf
       ? Math.round((Date.now() - Date.parse(d.asOf + 'T00:00:00Z')) / 86400000)
       : null;
