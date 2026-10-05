@@ -23,7 +23,8 @@ const N = tested.length;
 // 5% of them by chance. Against the observed passes that bounds how many could be luck.
 const chance = Math.round(0.05 * N * 10) / 10;
 
-const docsInLedger = new Set(E.map(e => String(e.doc ?? '').split('#')[0].trim()).filter(Boolean));
+// `also` lists extra write-ups an entry covers (e.g. gex-range's follow-up tests).
+const docsInLedger = new Set(E.flatMap(e => [e.doc, ...(e.also ?? [])]).map(d => String(d ?? '').split('#')[0].trim()).filter(Boolean));
 const prereg = [];
 for (const r of ROOTS) {
   if (!existsSync(r)) continue;

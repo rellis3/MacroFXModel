@@ -10,16 +10,16 @@ Generated 2026-10-05.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **81** |
-| validated | 27 |
-| null | 51 |
+| claims tested (validated + null + underpowered) | **94** |
+| validated | 32 |
+| null | 59 |
 | underpowered | 3 |
-| context (base rates, descriptions: not counted as tests) | 18 |
-| pre-registrations with no banked verdict (below) | 16 |
+| context (base rates, descriptions: not counted as tests) | 19 |
+| pre-registrations with no banked verdict (below) | 1 |
 
-**What the count says (Lesson 02 §05).** If none of the 81 claims were real, tests at the usual 5% size would still pass
-about **4.1** of them by luck. 27 passed, so most passes are unlikely to be luck alone, but
-**roughly 4 of the 27 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 94 claims were real, tests at the usual 5% size would still pass
+about **4.7** of them by luck. 32 passed, so most passes are unlikely to be luck alone, but
+**roughly 5 of the 32 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -30,6 +30,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-07-17 | yield-spread-sleeve | macro | validated | MD files/YIELD_SPREAD_STRATEGY.md |
 | 2026-07-20 | trend-following-fx | price | null | MD files/CROSS_ASSET_TREND_DESIGN.md · memory project_trend_following_status |
 | 2026-07-25 | conviction-vote | execution | null | memory project_backtest_entry_quality |
+| 2026-07-28 | qmr-direction-vs-geometry | price | null | MD files/PREREGISTERED_EVALUATIONS.md#5b |
 | 2026-08-20 | cb-tone-direction | events | null | MD files/CB_SENTIMENT_PRICE_TEST.md |
 | 2026-08-20 | post-fomc-usd-drift | events | validated | MD files/POST_FOMC_DRIFT_TEST.md |
 | 2026-08-23 | yields-to-fx-direction | macro | null | memory: project_yield_asset_coupling |
@@ -72,6 +73,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-09-18 | opening-range-break | price | null | MD files/TECHNICAL_RANGE_TESTS.md#T4 |
 | 2026-09-18 | yen-into-yields | macro | context | MD files/MARKET_SENSE_TESTS.md#M7 |
 | 2026-09-19 | month-end-rebalance | price | null | MD files/LEAD_LAG_TESTS.md#L2 |
+| 2026-09-19 | motif-regime-lookahead | execution | context | MD files/MOTIF_REGIME_LOOKAHEAD_PREREG.md |
 | 2026-09-19 | nowcast-gap-cpi | events | null | MD files/NOWCAST_TESTS.md#N1 |
 | 2026-09-19 | nowcast-gap-gdp | events | context | MD files/NOWCAST_TESTS.md#N2 |
 | 2026-09-19 | spread-leads-fx-hours | macro | null | MD files/LEAD_LAG_TESTS.md#L1 |
@@ -92,21 +94,31 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-09-23 | breadth-narrowing | price | null | MD files/BREADTH_NARROWING_PREREG.md |
 | 2026-09-23 | daily-band-fade | price | null | MD files/BAND_FADE_DAILY.md |
 | 2026-09-23 | dispersion-crowded-week | volatility | null | MD files/DISPERSION.md#D1 |
+| 2026-09-23 | gamma-real-iv | positioning | null | oi_research_book/GAMMA_REAL_IV_PREREG.md |
+| 2026-09-23 | iv-forecast | volatility | validated | oi_research_book/IV_FORECAST_PREREG.md |
+| 2026-09-23 | iv-ladder | volatility | validated | forge/IV_LADDER_PREREG.md |
+| 2026-09-23 | iv-regime-fade-follow | volatility | null | forge/IV_REGIME_FADE_FOLLOW_PREREG.md |
+| 2026-09-23 | iv-sizing-filter | volatility | null | forge/IV_SIZING_FILTER_PREREG.md |
 | 2026-09-23 | mv-creditstack-range | macro | context | MD files/OUTCOME_LOOP.md |
 | 2026-09-23 | mv-dislocation-forward | macro | null | MD files/OUTCOME_LOOP.md |
 | 2026-09-23 | mv-dispersion-range | volatility | validated | MD files/OUTCOME_LOOP.md |
 | 2026-09-23 | mv-extreme-forward | price | null | MD files/OUTCOME_LOOP.md |
 | 2026-09-23 | mv-vixterm-range | volatility | validated | MD files/OUTCOME_LOOP.md |
+| 2026-09-23 | wall-placebo | positioning | null | oi_research_book/WALL_PLACEBO_PREREG.md |
 | 2026-09-24 | gex-range | positioning | validated | oi_research_book/GEX_RANGE_BROWNIAN_RESULTS.md |
 | 2026-09-25 | dr-copper | macro | null | MD files/DR_COPPER_PREREG.md |
 | 2026-09-25 | driver-roundtrip | price | null | MD files/ROUNDTRIP_PREREG.md |
 | 2026-09-25 | rates-pivot-lead | macro | null | MD files/RATES_PIVOT_LEAD_PREREG.md |
 | 2026-09-27 | dispersion-reset | volatility | validated | MD files/DISPERSION.md#D2 |
 | 2026-09-27 | fx-factor-book-v2 | macro | underpowered | MD files/FX_FACTOR_V2_TEST.md |
+| 2026-09-27 | iv-ladder-gold | volatility | validated | forge/IV_LADDER_GOLD_PREREG.md |
 | 2026-09-27 | ou-bands-fx-crosses | price | underpowered | MD files/FX_FACTOR_V2_TEST.md#9 |
 | 2026-09-27 | spread-divergence-range | volatility | null | MD files/SPREAD_DIVERGENCE_RANGE_PREREG.md |
 | 2026-09-27 | yield-move-fx-range | volatility | null | MD files/YIELD_MOVE_FX_RANGE_PREREG.md |
 | 2026-09-28 | news-asymmetry | events | null | MD files/NEWS_ASYMMETRY_PREREG.md |
+| 2026-09-29 | v4-dirtag | price | null | forge/V4_EURUSD_DIRTAG_PREREG.md |
+| 2026-09-29 | v4-stage0 | price | null | forge/V4_STAGE0_PREREG.md |
+| 2026-09-29 | v4-stage1 | price | null | forge/V4_EURUSD_STAGE1_PREREG.md |
 | 2026-10-01 | curve-inversion | macro | null | MD files/CURVE_INVERSION_PREREG.md |
 | 2026-10-02 | funding-stress | macro | null | MD files/FUNDING_STRESS_PREREG.md |
 | 2026-10-03 | macro-confluence-baa-credit | macro | null | MD files/MACRO_CONFLUENCE_BAA_CREDIT_PREREG.md |
@@ -124,26 +136,13 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-05 | event-layer | events | null | forge/EVENT_LAYER_PREREG.md |
 | 2026-10-05 | horizon-reversion | volatility | validated | forge/HORIZON_REVERSION_PREREG.md |
 | 2026-10-05 | intraday-range | volatility | validated | forge/INTRADAY_RANGE_PREREG.md |
+| 2026-10-05 | ladder-calibration | volatility | validated | forge/LADDER_CALIBRATION_PREREG.md |
 | 2026-10-05 | line-touch-reach | volatility | validated | forge/LINE_TOUCH_REACH_PREREG.md |
 | 2026-10-05 | us-extras-confirm | volatility | validated | forge/US_EXTRAS_CONFIRM_PREREG.md |
+| 2026-10-05 | vol-target | volatility | validated | forge/VOL_TARGET_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
 These were designed as tests but never reached the Evidence Book. Each is either still to run, or ran and was not banked (the second is the failure Lesson 02 warns about: a search that forgets its misses looks better than it is). Bank or close each one.
 
-- `MD files/MOTIF_REGIME_LOOKAHEAD_PREREG.md`: Motif swing-regime lookahead — pre-registration (written BEFORE the fix)
-- `MD files/PREREGISTERED_EVALUATIONS.md`: Pre-registered forward evaluations (locked 2026-07-12)
-- `forge/IV_LADDER_GOLD_PREREG.md`: Pre-registration — Gold IV ladder from CBOE GVZ vs the production realized ladder
-- `forge/IV_LADDER_PREREG.md`: Pre-registration — IV-driven forecast ladder vs the production realized-vol ladder
-- `forge/IV_REGIME_FADE_FOLLOW_PREREG.md`: Pre-registration — Does the IV regime tell Vote Atlas when to fade and when to follow?
-- `forge/IV_SIZING_FILTER_PREREG.md`: Pre-registration — IV position sizing, and a term-structure "stand aside" filter
-- `forge/LADDER_CALIBRATION_PREREG.md`: Pre-registration — LADDER CALIBRATION scorecard: live ladder vs side-by-side candidates
-- `forge/V4_EURUSD_DIRTAG_PREREG.md`: today.html direction tag — 6-year EURUSD replay (pre-registration)
-- `forge/V4_EURUSD_STAGE1_PREREG.md`: Vote Atlas v4 — EURUSD Stage 1 pre-registration (context features)
-- `forge/V4_STAGE0_PREREG.md`: Vote Atlas v4 — Stage 0 pre-registration (base rates)
-- `forge/VOL_TARGET_PREREG.md`: Pre-registration — VOL-TARGET: does sizing by the forecast σ beat constant risk, and does the σ matter?
-- `oi_research_book/G3_AND_EVENTDAY_PREREG.md`: Pre-registration — (A) the event-day confound, (B) does G3's wall edge predict direction?
-- `oi_research_book/GAMMA_REAL_IV_PREREG.md`: Pre-registration — Gamma flip / net GEX rebuilt with REAL implied vol
-- `oi_research_book/GEX_FX_CROSSMATCH_PREREG.md`: Pre-registration — does the NQ gamma-diffusion effect appear in FX?
-- `oi_research_book/IV_FORECAST_PREREG.md`: Pre-registration — IV from CME settlements: does it forecast vol better than realized vol?
-- `oi_research_book/WALL_PLACEBO_PREREG.md`: Pre-registration — Is the wall-touch rejection about the WALL, or about touching anything?
+- `MD files/LEAN_TRADE_RULE_PREREG.md`: LEAN-TRADE-RULE — the lean traded as a real trade, with a stop
