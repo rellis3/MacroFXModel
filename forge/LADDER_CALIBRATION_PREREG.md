@@ -50,8 +50,34 @@ through `buildLadder`'s read-only `ladderParams` override, and promotion to live
 |---|---|---|---|
 | 1 | `forecastLadderParamsV2.js` as-is (har_rv_log σ, its own widths and event multipliers) | 2026-10-05 | **PRIMARY PASS · GUARD FAIL · TARGET BAR NOT MET** — see Results |
 
+| 2 | HAR-log σ exactly as production computes it (`forecastSigma(last 800 D1 bars, 'har_rv_log')`), widths refit | 2026-10-05 | registered (Amendment 1) |
+| 3 | IV-adjusted σ = σ·exp(k(ln(IV/σ) − μ)) as the shipped "Forecast · IV-adjusted" export, k/μ/widths refit on train | 2026-10-05 | registered (Amendment 1) |
+| 4 | Pure IV σ = IV/√252 (CME 30d ATM majors, GVZ gold, VIX/VXN indices, crosses from legs), widths refit | 2026-10-05 | registered (Amendment 1) |
+
 Further variants (σ shrunk toward its long-run level, σ-regime-conditional widths, IV blend) are added
 here by amendment **before** they are run.
+
+## Amendment 1 (2026-10-05, before any variant 2–4 result was computed)
+
+Variants 2–4 need implied-vol inputs the JS harness does not have, and variant 1 showed widths only work on
+the exact σ series they were fitted on. So variants 2–4 are scored in ONE Python harness,
+`forge/run_ladder_candidates.py`, where **every arm's widths are fitted by the same procedure on the same rows
+and only σ differs**:
+
+- Inputs as the shipped IV-adjusted export uses them (`forge/export_iv_adjusted_params.py`): σ from the
+  production estimator on OANDA D1 bars (last bar before the session); realised H-L / |O-C| / O-H / O-L on the
+  London 00–22 session; IV: CME constant-maturity 30d ATM (majors), GVZ (gold), VIX / VXN (indices), crosses
+  from the two legs' IV and their 60-bar return correlation. Variant 2's σ comes from the JS production function
+  itself (`forecastSigma(bars.slice(-800), 'har_rv_log')`), run per day on the same D1 bars.
+- Arms: **A0** live estimator σ (the baseline, refit the same way), **A2** HAR-800, **A3** IV-adjusted, **A4** pure IV.
+- Instruments: the 28 with an IV source (6 USD majors, GOLD, 15 crosses, 6 indices). NZD pairs excluded (no IV).
+- Rows: sessions where every arm has a σ (FX IV starts 2020-09). Train = dates < 2025-09-05; test = 2025-09-05 on.
+- Widths per instrument × quantity × rung: `forge.vol.fit_width_multiplier` on train rows. k and μ (A3) per class
+  on train rows. **No event multipliers in any arm** (identical for all; IV already prices scheduled events).
+- Scoring on test rows exactly as the Pass rule above, with A0 in place of "live": PRIMARY 30-cell σ-quintile miss
+  lower than A0; GUARD 12-rung miss ≤ A0 + 1pp; TARGET BAR every quintile within ±3pp at HL p75/p90. Quintiles
+  from A0's σ ÷ its trailing 250-session median. Also reported: HL p50+p75 pinball ratio vs A0, slope.
+- More than one arm may pass; then the one with the lower PRIMARY miss is preferred, pinball as tie-break.
 
 ## Outcome handling
 
