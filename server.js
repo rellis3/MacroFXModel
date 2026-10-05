@@ -11174,6 +11174,7 @@ app.get('/api/jump-diffusion/live', async (req, res) => {
       if (!det.flags[i]) continue;
       const bar = bars[endIdx[i]];
       jumps.push({
+        t: bar.time,                                               // epoch s, bar open
         utc: new Date(bar.time * 1000).toISOString().slice(11, 16),
         ret_pct: Math.round(ret[i] * 1e6) / 1e4,
         direction: ret[i] > 0 ? 'up' : 'down',
@@ -11192,6 +11193,7 @@ app.get('/api/jump-diffusion/live', async (req, res) => {
     const lvl = nextBarFlagLevel(ret, tod, inst.periodicity, Math.floor((nextTime % 86400) / 60),
       { n: BARS_PER_DAY });
     const flagAt = lvl == null ? null : {
+      bar_t: nextTime,
       bar_utc: new Date(nextTime * 1000).toISOString().slice(11, 16),
       ref_close: lastClose,
       up_close: lastClose * Math.exp(lvl.logRet),
