@@ -14500,6 +14500,40 @@ async function _briefIvLive() {
   return { asOf: String(asOf ?? '').slice(0, 10) || 'today', eurusd, gold };
 }
 
+// ── /api/fed-path — market-implied odds on the fed funds path ────────────────
+//
+// Serves KV mpt_store_v1, written once a business day by fedwatch/run_daily.bat
+// from the Atlanta Fed Market Probability Tracker (CME 3-month SOFR options).
+//
+// WHY A ROUTE AT ALL rather than letting the page hit /api/kv/get: that endpoint
+// has its own READ allowlist, separate from the write and durability gates, and it
+// 403s this key -- it 403s eod_review_v1 too, which is a perfectly live key. So a
+// browser cannot read the store directly and needs this.
+//
+// WHAT THE NUMBERS ARE, stated here because the distinction is easy to lose: these
+// are probabilities for the 3-month AVERAGE rate over a forward WINDOW, not odds
+// for a given FOMC MEETING. CME FedWatch answers the meeting question from fed
+// funds futures and will differ by a few points -- on 2026-10-02 this put December
+// hike odds at 88.5% against FedWatch's ~83%. Directionally the same story, not the
+// same instrument, and a window must never be relabelled as a meeting.
+//
+// Read-through only: nothing is recomputed here, and a missing store is reported as
+// such rather than faked, so a scheduler that stopped firing is visible instead of
+// being papered over with the last good numbers.
+app.get('/api/fed-path', async (_req, res) => {
+  try {
+    const raw = await kv.get('mpt_store_v1');
+    if (!raw) return res.json({ ok: false, error: 'no capture yet', store: null });
+    const d = JSON.parse(raw);
+    const ageDays = d.asOf
+      ? Math.round((Date.now() - Date.parse(d.asOf + 'T00:00:00Z')) / 86400000)
+      : null;
+    res.json({ ok: true, ...d, ageDays });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── /api/data-health — when did each feed last actually update? ──────────────
 // Reads what is ALREADY cached rather than re-fetching anything: every number below is a
 // timestamp some other job has already written. The point is not new data, it is that
@@ -14566,6 +14600,19 @@ async function _buildDataHealth() {
     }
   } catch {}
   push('oi_store', 'CME settles capture (OI + IV term structure)', oiLast, 1);
+
+  // Fed path odds. CADENCE IS 2, NOT 1, AND THAT IS THE POINT. The Atlanta Fed
+  // publishes on business day D carrying D-1, so a correct feed is ALWAYS a day
+  // behind and a 1-day cadence would paint this amber every single morning. A badge
+  // that is always amber is a badge nobody reads, which is the failure this panel
+  // exists to prevent. Two observed publication times, 15:57 and 16:28 UK, so the
+  // afternoon triggers can also land before the file does -- another reason not to
+  // judge it on one day.
+  try {
+    const raw = await kv.get('mpt_store_v1');
+    const mpt = raw ? JSON.parse(raw) : null;
+    if (mpt?.asOf) push('mpt', 'Fed path odds (Atlanta Fed MPT)', mpt.asOf, 2, { refreshEveryH: 24 });
+  } catch {}
 
   // the written reads, on a wall clock rather than a market one
   try { const st = await _loadEodReviewStore(); if (st?.latest?.generatedAt) push('eodReview', 'Evening written review', st.latest.generatedAt, 1, { market: false }); } catch {}
