@@ -918,6 +918,7 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
       <div class="vf-exp-menu">
         <button class="vf-exp-item" id="vfLadderBtn"     onclick="closeExpDropdown();exportLadder('daily')"          disabled>⬇ Forecast <span style="font-size:9px;opacity:.55">p50/75/90</span></button>
         <button class="vf-exp-item" id="vfIvLadderBtn"   onclick="closeExpDropdown();exportIvLadder()"               disabled title="Same paste as Forecast; EURUSD/GBPUSD/AUDUSD/USDCAD/USDCHF use CME 30-day implied vol and GOLD uses CBOE GVZ (each beat realized vol out of sample, forge/IV_LADDER_PREREG.md + IV_LADDER_GOLD_PREREG.md). Every other block is unchanged.">⬇ Forecast (IV) <span style="font-size:9px;opacity:.55">implied-vol σ</span></button>
+        <button class="vf-exp-item" id="vfIvAdjBtn"      onclick="closeExpDropdown();exportIvAdj()"                  disabled title="Daily Forecast with σ blended toward implied vol by a fitted amount: VIX/VXN for indices, CME 30-day ATM for the USD majors, GVZ for gold, and crosses built from their two USD legs. Passed two pre-registered tests plus a re-check on these live inputs (28/28 instruments better, every rung calibrated). Same paste format as Forecast; pairs with no implied vol (NZD, commodities, BTC) stay on the plain ladder.">⬇ Forecast · IV-adjusted <span style="font-size:9px;opacity:.55">daily · σ blended toward IV</span></button>
         <button class="vf-exp-item" id="vfLadderWkBtn"   onclick="closeExpDropdown();exportLadder('weekly')"         disabled>⬇ Forecast Weekly <span style="font-size:9px;opacity:.55">5-day + 20-day in one</span></button>
         <button class="vf-exp-item" id="vfLadderWkRevBtn" onclick="closeExpDropdown();exportLadder('weekly_rev')"   disabled title="Same paste format as Forecast Weekly (same indicator), but σ fades back to its 250-day level across the week/month instead of √-time scaling. Passed its pre-registered test 2026-10-05 (forge/HORIZON_REVERSION_PREREG.md): bands right after calm AND after stress, not just on average.">⬇ Forecast Weekly · Reverting <span style="font-size:9px;opacity:.55">σ fades back · test</span></button>
         <button class="vf-exp-item" id="vfLadderSessBtn" onclick="closeExpDropdown();exportLadder('daily',true)"     disabled>⬇ Forecast + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
@@ -1717,7 +1718,7 @@ function loadForecast(date) {
       }
 
       // Enable export/tools buttons
-      ['vfLadderBtn','vfIvLadderBtn','vfLadderWkBtn','vfLadderWkRevBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn',
+      ['vfLadderBtn','vfIvLadderBtn','vfIvAdjBtn','vfLadderWkBtn','vfLadderWkRevBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn',
        // Archived group — everything that needs only the forecast payload
        'vfExportBtn','vfExtendedBtn','vfExportV2Btn','vfCalibratedBtn','vfCalExtBtn','vfCogV2Btn'].forEach(id => {
         const el = document.getElementById(id);
@@ -2652,6 +2653,24 @@ async function exportLadder(horizon = 'daily', withSession = false) {
 // IV Forecast — the same daily paste with σ from CME 30-day implied vol on the five
 // USD majors where it beat the realized ladder OOS (js/ivLadderExport.js). Built
 // server-side for the same reason as exportLadder: one source, one output.
+// Daily Forecast with σ blended toward implied vol (fitted amount) — server-built, same
+// paste format. Headers name what was adjusted and what stayed on the plain ladder.
+async function exportIvAdj() {
+  const btn = document.getElementById('vfIvAdjBtn');
+  _btnLabel(btn); btn.textContent = '… building'; btn.disabled = true;
+  try {
+    const r = await fetch('/api/vol-forecast/ivadj-ladder/export');
+    const text = await r.text();
+    if (!r.ok) { btn.textContent = r.status === 202 ? '… not ready' : '✗ failed'; setTimeout(() => _btnRestore(btn), 2600); return; }
+    btn.disabled = false;
+    const date = (currentForecast && currentForecast.session_date) || 'latest';
+    _emitCalibrated('vfIvAdjBtn', text, `vol-forecast-ivadj-${date}.txt`);
+  } catch (e) {
+    btn.textContent = '✗ failed';
+    setTimeout(() => _btnRestore(btn), 2600);
+  }
+}
+
 async function exportIvLadder() {
   const btn = document.getElementById('vfIvLadderBtn');
   _btnLabel(btn); btn.textContent = '… building'; btn.disabled = true;

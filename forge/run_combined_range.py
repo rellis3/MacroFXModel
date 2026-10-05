@@ -41,7 +41,8 @@ def london_date(idx) -> pd.DatetimeIndex:
 def cboe(sym: str) -> pd.Series:
     t = pd.read_csv(CBOE / f"{sym}.csv")
     t.columns = [c.strip().upper() for c in t.columns]
-    s = pd.Series(t["CLOSE"].astype(float).to_numpy(), index=pd.to_datetime(t["DATE"], format="%m/%d/%Y"))
+    col = "CLOSE" if "CLOSE" in t.columns else t.columns[-1]        # 2-column files (GVZ) carry the close as their only value
+    s = pd.Series(t[col].astype(float).to_numpy(), index=pd.to_datetime(t["DATE"], format="%m/%d/%Y"))
     return s[~s.index.duplicated()].sort_index()
 
 

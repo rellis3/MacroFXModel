@@ -58,6 +58,7 @@ import { stressReplay, allocationCompare, STRESS_WINDOWS }           from './js/
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { buildLadderExportText, buildSessionAddendum }               from './js/ladderExport.js';
 import { buildIvLadderExportText }                                    from './js/ivLadderExport.js';
+import { buildIvAdjExportText }                                       from './js/forecastLadderIvAdj.js';
 import { impliedDayMove }                                             from './js/ivMetrics.js';
 import { parseForexFactory as _calParseFF, parseNasdaq as _calParseNasdaq, upcoming as _calUpcoming, printed as _calPrinted, calendarHealth as _calHealth } from './js/calendarFeed.js';
 import { ladderPathChain, describeSide }                            from './js/ladderPathStats.js';   // "at the p50 line, what happens next?" — the conditional rung chain
@@ -21748,6 +21749,63 @@ app.get('/api/vol-forecast/iv-ladder/export', async (_req, res) => {
     const { text, swapped, skipped } = buildIvLadderExportText(forecastState.latest, oiStore, VOL_INSTRUMENTS, Date.now(), { gvz });
     res.set('X-IV-Swapped', swapped.map(s => `${s.name}:${s.iv30}`).join(',') || 'none');
     res.set('X-IV-Skipped', skipped.map(s => `${s.name}:${s.reason}`).join(',') || 'none');
+    res.type('text/plain').send(text);
+  } catch (e) {
+    res.status(500).type('text/plain').send(`Error: ${e.message}`);
+  }
+});
+
+// GET /api/vol-forecast/ivadj-ladder/export
+//
+// "Forecast · IV-adjusted": the daily Forecast export with σ BLENDED toward implied vol
+// by a fitted amount (js/forecastLadderIvAdj.js has the formula and evidence: two
+// pre-registered PASSes + a re-check on these exact live inputs, 28/28 instruments).
+// Distinct from /iv-ladder/export above, which SWAPS σ for IV on 5 majors + gold.
+// IV: VIX/VXN closes (CBOE), GVZ, the QuikStrike capture (oi_store), crosses from their
+// two USD legs. Anything without a usable IV falls back to the production block, and the
+// response headers say which.
+let _ivAdjCboe = { at: 0, v: null };
+async function _cboeCloseLatest(sym) {
+  // _cboeCsv takes the 2nd column, which is the OPEN on 5-column files (VIX, VXN, …).
+  // The calibration used the CLOSE, so read the header and take CLOSE explicitly.
+  const r = await fetch(`https://cdn.cboe.com/api/global/us_indices/daily_prices/${sym}_History.csv`, { signal: AbortSignal.timeout(25_000) });
+  if (!r.ok) throw new Error(`CBOE ${sym} HTTP ${r.status}`);
+  const rows = (await r.text()).trim().split(/\r?\n/);
+  const head = rows[0].split(',').map(h => h.trim().toUpperCase());
+  const ci = head.includes('CLOSE') ? head.indexOf('CLOSE') : head.length - 1;
+  for (let i = rows.length - 1; i > 0; i--) {
+    const c = rows[i].split(','); const m = String(c[0]).trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    const v = parseFloat(c[ci]);
+    if (m && Number.isFinite(v)) return { date: `${m[3]}-${m[1]}-${m[2]}`, value: v };
+  }
+  return null;
+}
+async function _ivAdjCboeLatest() {
+  if (_ivAdjCboe.v && Date.now() - _ivAdjCboe.at < 6 * 3600_000) return _ivAdjCboe.v;
+  const out = { ...(_ivAdjCboe.v ?? {}) };
+  for (const sym of ['VIX', 'VXN']) {
+    try { const v = await _cboeCloseLatest(sym); if (v) out[sym] = v; }
+    catch (e) { console.warn(`[ivadj-ladder] ${sym} fetch failed:`, e.message); }
+  }
+  const g = await _ivGvzLatest(); if (g) out.GVZ = g;
+  _ivAdjCboe = { at: Date.now(), v: out };
+  return out;
+}
+app.get('/api/vol-forecast/ivadj-ladder/export', async (_req, res) => {
+  if (!forecastState.latest) {
+    return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
+  }
+  try {
+    const ohlc = await ensureOhlcCache();
+    let oiStore = {};
+    try {
+      const raw = await kv.get('oi_store');
+      if (raw) { const p = JSON.parse(raw); oiStore = p.data ?? p; }
+    } catch { /* no OI -> FX and crosses fall back to the production block */ }
+    const cboe = await _ivAdjCboeLatest();
+    const { text, adjusted, skipped } = buildIvAdjExportText(forecastState.latest, ohlc, oiStore, VOL_INSTRUMENTS, Date.now(), cboe);
+    res.set('X-IVAdj-Adjusted', adjusted.map(a => `${a.name}:${a.adj}`).join(',') || 'none');
+    res.set('X-IVAdj-Skipped', skipped.map(s => `${s.name}:${s.reason}`).join(',').replace(/[^ -~]/g, '') || 'none');
     res.type('text/plain').send(text);
   } catch (e) {
     res.status(500).type('text/plain').send(`Error: ${e.message}`);
