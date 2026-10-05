@@ -116,6 +116,7 @@ function render(d) {
   const idx = $('idx').checked;
   $('days').innerHTML = '<tr><th>session</th><th>instruments</th><th>H-L past p75 live</th><th>past p75 HAR</th><th>past p90 live</th><th>past p90 HAR</th></tr>' +
     (dates.length ? dates.map(k => {
+      if (d.days[k].skipped) return `<tr><td>${k}</td><td colspan="5" class="muted" style="text-align:left">not scored — ${d.days[k].skipped}</td></tr>`;
       const rows = d.days[k].rows.filter(x => idx || !x.provisional);
       const c = (arm, key) => rows.filter(x => x[arm][key] === 1).length;
       return `<tr><td>${k}</td><td>${rows.length}</td><td class="live">${c('live', 'hl_p75')}</td><td class="har">${c('har', 'hl_p75')}</td>

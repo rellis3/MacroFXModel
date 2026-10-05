@@ -69,18 +69,28 @@ export function ladders(sym, fc) {
 export function scoreInstrument(sym, fc, sess) {
   const lad = ladders(sym, fc);
   if (!lad || !sess || sess.error || !Number.isFinite(sess.hl)) return null;
+  // vol_session stores oc SIGNED (close - open); the ladder's oc rungs are for |close - open|.
+  const real = { hl: sess.hl, oh: sess.oh, ol: sess.ol, oc: Number.isFinite(sess.oc) ? Math.abs(sess.oc) : null };
   const hit = arm => {
     const out = {};
     for (const q of QS) for (const p of RS) {
       const v = lad[arm][`${q}_${p}`];
-      if (Number.isFinite(v) && Number.isFinite(sess[q])) out[`${q}_${p}`] = sess[q] > v ? 1 : 0;
+      if (Number.isFinite(v) && Number.isFinite(real[q])) out[`${q}_${p}`] = real[q] > v ? 1 : 0;
     }
     return out;
   };
   return { sym, ratio: lad.ratio, event: lad.event, provisional: !!lad.provisional, complete: sess.complete ?? null,
-           realised: { hl: sess.hl, oh: sess.oh, ol: sess.ol, oc: sess.oc },
+           realised: { hl: sess.hl, oh: sess.oh, ol: sess.ol, oc: sess.oc == null ? null : Math.abs(sess.oc) },
            live: hit('live'), har: hit('har'),
            width: { live_hl_p75: lad.live.hl_p75, har_hl_p75: lad.har.hl_p75 } };
+}
+
+// A session audit is only usable if it was taken before that London date ended. Audits that ran after London
+// midnight (seen 4 times in 12 sessions, 2026-09/10) captured the NEXT session's first minutes — ranges near zero.
+export function auditUsable(sessionDate, auditedAt) {
+  if (!auditedAt) return true;
+  const london = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date(auditedAt));
+  return london <= sessionDate;
 }
 
 // Running scorecard over scored days: exceedance per rung per arm, the 12-rung mean miss, and the HL p75 / p90

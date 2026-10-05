@@ -6,7 +6,7 @@
 //
 //   GET /api/har-shadow            today's two ladders per instrument + the running scorecard + per-day rows
 //   GET /api/har-shadow?indices=1  also count the indices (provisional: live index σ comes from Yahoo bars)
-import { ladders, scoreInstrument, scorecard, harParamsFor, SHADOW_START } from './harShadowCore.js';
+import { ladders, scoreInstrument, scorecard, harParamsFor, auditUsable, SHADOW_START } from './harShadowCore.js';
 
 const TTL_MS = 10 * 60e3, MAX_DAYS = 400;
 const parse = raw => { if (!raw) return null; const p = typeof raw === 'string' ? JSON.parse(raw) : raw; return p?.data ?? p; };
@@ -25,6 +25,11 @@ export function createHarShadow({ kv, log = console }) {
     if (scored.has(date)) return scored.get(date);
     const [sess, fc] = [parse(await kv.get(`vol_session_${date}`)), parse(await kv.get(`vol_forecast_${date}`))];
     if (!sess?.instruments || !fc?.instruments) return null;
+    if (!auditUsable(date, sess.audited_at)) {                // captured after the session ended: skip, and say so
+      const day = { rows: [], skipped: `audit taken ${sess.audited_at}, after the London session ended` };
+      if (date < londonDate()) scored.set(date, day);
+      return day;
+    }
     const rows = Object.keys(fc.instruments).filter(harParamsFor)
       .map(s => scoreInstrument(s, fc.instruments[s], sess.instruments[s])).filter(Boolean);
     if (!rows.length) return null;
