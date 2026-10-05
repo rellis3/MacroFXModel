@@ -144,6 +144,11 @@ table.lr-t th:first-child, table.lr-t td:first-child { text-align: left; font-fa
   they show as &lt;5% / &gt;95%. Commodities and BTC have no fit and are not listed.
 </details>
 
+<details class="lr-info" id="lrTrack">
+  <summary>Track record · forward, scored automatically after every session <span class="muted" id="lrTrackMeta"></span></summary>
+  <div id="lrTrackBody" class="muted" style="margin-top:8px">Loading…</div>
+</details>
+
 <div class="v2-grid" id="lrGrid"></div>
 </div>
 
@@ -390,8 +395,31 @@ function schedule() {
   if ($('lrAuto').checked) timer = setInterval(() => refreshVisible().catch(() => {}), 60_000);
 }
 
+// ── Track record (forward scorecard, /api/forecast-scorecard) ─────────────────
+async function loadTrack() {
+  try {
+    const r = await fetch('/api/forecast-scorecard'); const d = await r.json();
+    const S = d?.summary; if (!S) throw new Error('no summary');
+    $('lrTrackMeta').textContent = S.sessions ? `· ${S.sessions} sessions, ${S.weeks} weeks since ${S.since}` : '· collecting';
+    if (!S.sessions) { $('lrTrackBody').innerHTML = 'Collecting. The first session is scored after tonight\'s 22:00 London close; the first week on Friday night. Expect the numbers to be noisy until a few weeks have built up.'; return; }
+    const p = v => v == null ? '—' : `${Math.round(v * 100)}%`;
+    const tgt = ['50%', '25%', '10%'];
+    const row = (lab, A) => A ? `<tr><td>${lab}</td><td>${A.n}</td>${A.hl.map(p).map(x => `<td>${x}</td>`).join('')}</tr>` : '';
+    const head = t => `<tr><th>${t}</th><th>n</th><th>H-L p50 (${tgt[0]})</th><th>p75 (${tgt[1]})</th><th>p90 (${tgt[2]})</th></tr>`;
+    const ratio = (v, n, a, b) => v == null ? '' : `<div style="margin:4px 0 10px">${b} vs ${a} forecast error: <b style="color:${v < 1 ? 'var(--green)' : 'var(--red)'}">${v < 1 ? `${Math.round((1 - v) * 100)}% better` : `${Math.round((v - 1) * 100)}% worse`}</b> <span class="muted">(${n} paired instrument-days · lower error = better)</span></div>`;
+    const live = Object.entries(S.live ?? {}).sort().map(([g, T]) => `<tr><td>${g} London</td><td>${T.n}</td><td>${p(T.up[1])} / ${p(T.dn[1])}</td><td>${p(T.up[2])} / ${p(T.dn[2])}</td></tr>`).join('');
+    $('lrTrackBody').innerHTML = `<div class="muted" style="margin-bottom:6px">Share of days the realised move went PAST each line (target in brackets).</div>`
+      + `<table class="lr-t">${head('Daily')}${row('plain ladder', S.daily.plain)}${row('IV-adjusted', S.daily.ivadj)}</table>`
+      + ratio(S.daily_ivadj_vs_plain_pinball, S.daily_pairs, 'plain', 'IV-adjusted')
+      + (S.weeks ? `<table class="lr-t">${head('Weekly (5-day)')}${row('√h ladder', S.weekly.sqrt)}${row('reverting', S.weekly.rev)}</table>`
+        + ratio(S.weekly_rev_vs_sqrt_pinball, S.weekly_pairs, '√h', 'reverting') : '<div class="muted" style="margin:6px 0 10px">Weekly: first week scored on Friday night.</div>')
+      + (live ? `<table class="lr-t"><tr><th>Live Range</th><th>checkpoints</th><th>past p75 ↑ / ↓ (25%)</th><th>past p90 ↑ / ↓ (10%)</th></tr>${live}</table>` : '');
+  } catch (e) { $('lrTrackBody').textContent = `Track record unavailable: ${e.message}`; }
+}
+
 async function init() {
   applyTheme(theme());
+  loadTrack();
   $('lrThemeBtn').onclick = () => { const t = theme() === 'dark' ? 'light' : 'dark'; try { localStorage.setItem('vf_theme', t); } catch {} applyTheme(t); };
   $('lrRefresh').onclick = () => refreshVisible();
   $('lrAuto').onchange = schedule;

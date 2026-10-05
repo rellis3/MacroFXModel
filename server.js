@@ -58,7 +58,9 @@ import { stressReplay, allocationCompare, STRESS_WINDOWS }           from './js/
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { buildLadderExportText, buildSessionAddendum }               from './js/ladderExport.js';
 import { buildIvLadderExportText }                                    from './js/ivLadderExport.js';
-import { buildIvAdjExportText }                                       from './js/forecastLadderIvAdj.js';
+import { buildIvAdjExportText, buildIvAdjInstruments }                from './js/forecastLadderIvAdj.js';
+import { scoreSession, scoreWeek, summarise as summariseScorecard }  from './js/forecastScorecard.js';
+import { londonParts as _lrLondonParts }                              from './js/intradayRange.js';
 import { impliedDayMove }                                             from './js/ivMetrics.js';
 import { parseForexFactory as _calParseFF, parseNasdaq as _calParseNasdaq, upcoming as _calUpcoming, printed as _calPrinted, calendarHealth as _calHealth } from './js/calendarFeed.js';
 import { ladderPathChain, describeSide }                            from './js/ladderPathStats.js';   // "at the p50 line, what happens next?" — the conditional rung chain
@@ -21962,6 +21964,92 @@ app.get('/api/vol-forecast/ivadj-ladder/export', async (_req, res) => {
     res.type('text/plain').send(text);
   } catch (e) {
     res.status(500).type('text/plain').send(`Error: ${e.message}`);
+  }
+});
+
+// ── Forward scorecard of the 2026-10-05 forecast lines ─────────────────────────
+// js/forecastScorecard.js has the scoring; this is the plumbing. Every 30 min:
+//   1. the morning of a session (>= 07:00 London, after the IV capture) snapshot the
+//      IV-adjusted daily ladder — that export is otherwise computed on request, so without
+//      a snapshot its forecast for the day would not exist afterwards;
+//   2. after each London session closes (22:15), score it from OANDA H1 bars: plain vs
+//      IV-adjusted daily, and the Live Range bands replayed at every hourly checkpoint;
+//   3. on a Friday, score the week: sqrt-h vs reverting weekly from Monday's archive.
+// Stored in KV forecast_scorecard_v1 (CF-persisted, permanent). Read by
+// GET /api/forecast-scorecard → the Track record card on live-range.html.
+const _FCARD_KEY = 'forecast_scorecard_v1';
+async function _fcardH1(oandaInstrument) {
+  const instrument = _liqGateOandaSym(oandaInstrument);
+  const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(instrument)}/candles?granularity=H1&count=170&price=M`, {
+    headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000),
+  });
+  if (!r.ok) throw new Error(`OANDA ${r.status}`);
+  const d = await r.json();
+  return (d.candles ?? []).filter(c => c.complete && c.mid).map(c => ({
+    t: Math.floor(Date.parse(c.time) / 1000), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
+}
+const _fcardDate = (date, addDays) => new Date(Date.parse(`${date}T12:00:00Z`) + addDays * 86400_000).toISOString().slice(0, 10);
+async function _fcardTick() {
+  if (!process.env.OANDA_KEY || !forecastState.latest) return;
+  const now = _lrLondonParts(Date.now() / 1000);
+  let store = null;
+  try { store = JSON.parse(await kv.get(_FCARD_KEY) || 'null'); } catch { /* corrupt -> start again below */ }
+  store ??= { started: now.date, days: {}, weeks: {}, snap: {} };
+  store.snap ??= {}; store.days ??= {}; store.weeks ??= {};
+  let dirty = false;
+
+  // 1. morning snapshot of the IV-adjusted ladder for today's session
+  const L = forecastState.latest;
+  if (L.session_date === now.date && now.hour >= 7 && !store.snap[now.date]) {
+    const ohlc = await ensureOhlcCache();
+    let oiStore = {};
+    try { const raw = await kv.get('oi_store'); if (raw) { const p = JSON.parse(raw); oiStore = p.data ?? p; } } catch { /* no OI -> FX arms skipped */ }
+    const { instruments, adjusted } = buildIvAdjInstruments(L, ohlc, oiStore, VOL_INSTRUMENTS, Date.now(), await _ivAdjCboeLatest());
+    store.snap[now.date] = Object.fromEntries(adjusted.map(a => [a.name, instruments[a.name].ladder]));
+    dirty = true;
+  }
+
+  // 2. score finished sessions from the last few days that have an archived forecast
+  const todo = [];
+  for (let k = 0; k <= 5; k++) {
+    const ds = _fcardDate(now.date, -k);
+    if (store.days[ds] || (ds === now.date && now.hour < 22.25)) continue;
+    const raw = await kv.get(`vol_forecast_${ds}`).catch(() => null);
+    if (raw) todo.push([ds, JSON.parse(raw)]);
+  }
+  if (todo.length) {
+    const barsByName = {};
+    for (const cfg of VOL_INSTRUMENTS) {
+      try { barsByName[cfg.name] = await _fcardH1(cfg.oandaInstrument); } catch { /* one instrument failing must not stop the rest */ }
+    }
+    for (const [ds, fc] of todo) {
+      store.days[ds] = scoreSession({ date: ds, forecast: fc, ivadj: store.snap[ds], barsByName });
+      // 3. the week, scored on its Friday session
+      if (new Date(`${ds}T12:00:00Z`).getUTCDay() === 5) {
+        const monday = _fcardDate(ds, -4);
+        const mraw = store.weeks[monday] ? null : await kv.get(`vol_forecast_${monday}`).catch(() => null);
+        if (mraw) store.weeks[monday] = scoreWeek({ dates: [0, 1, 2, 3, 4].map(i => _fcardDate(monday, i)), forecast: JSON.parse(mraw), barsByName });
+      }
+    }
+    dirty = true;
+  }
+  if (dirty) {
+    const keep = (o, n) => Object.fromEntries(Object.entries(o).sort(([a], [b]) => (a < b ? -1 : 1)).slice(-n));
+    store.days = keep(store.days, 400); store.weeks = keep(store.weeks, 120); store.snap = keep(store.snap, 10);
+    await kv.put(_FCARD_KEY, JSON.stringify(store));
+  }
+}
+svcInterval('forecastScorecard', () => _fcardTick().catch(e => console.error('[forecast-scorecard]', e.message)), 30 * 60_000);
+svcTimeout('forecastScorecard', () => _fcardTick().catch(e => console.error('[forecast-scorecard]', e.message)), 3 * 60_000);
+
+// GET /api/forecast-scorecard → the rolled-up forward record (raw=1 adds the per-day rows)
+app.get('/api/forecast-scorecard', async (req, res) => {
+  try {
+    const store = JSON.parse(await kv.get(_FCARD_KEY) || 'null') ?? { days: {}, weeks: {}, snap: {} };
+    res.json({ ok: true, started: store.started ?? null, summary: summariseScorecard(store),
+               snapshots: Object.keys(store.snap ?? {}), ...(req.query.raw === '1' ? { days: store.days, weeks: store.weeks } : {}) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
