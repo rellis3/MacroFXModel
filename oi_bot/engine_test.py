@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from oi_bot.engine import (OISession, zone_id, should_fire, make_spec, maxpain_stop,  # noqa: E402
+from oi_bot.engine import (OISession, opposing_position, zone_id, should_fire, make_spec, maxpain_stop,  # noqa: E402
                            _tp, stack_conflict, position_mode)
 
 fails = 0
@@ -266,6 +266,16 @@ ok("same chain (basis re-plan) keeps the one-shot state",
    ch.set_chain("oi:1") is False and ch.decide(30241.4) == [])
 ok("NEW chain (next day's capture) resets it → today's max pain can trade once",
    ch.set_chain("oi:2") is True and len(ch.decide(30241.4)) == 1)
+
+# 2026-10-05 gold: fade_buy_4142.13 filled 13:39 (long), then the same wall came back as
+# fade_sell_4142.39 after price dipped under it and filled 13:50 (short). Both open at once.
+GSYMS = {"gold", "XAUUSD"}
+book = [{"symbol": "XAUUSD", "direction": "BUY", "open_price": 4144.34, "ticket": 43174711}]
+ok("a SELL while this bot is long gold is an opposing position", opposing_position(GSYMS, False, book)["ticket"] == 43174711)
+ok("another BUY is not opposing (that is the stack guard's question)", opposing_position(GSYMS, True, book) is None)
+ok("a different instrument's long does not block a gold sell",
+   opposing_position(GSYMS, False, [{"symbol": "US100", "direction": "BUY", "ticket": 1}]) is None)
+ok("flat book → nothing opposes", opposing_position(GSYMS, False, []) is None)
 
 ok("empty book → nothing to conflict with",
    stack_conflict(SYMS, True, 1.34526, [], 0.0010) is None)

@@ -294,6 +294,25 @@ def stack_conflict(symbols, dir_up: bool, entry: float, open_positions: list,
     return None
 
 
+def opposing_position(symbols, dir_up: bool, open_positions: list) -> dict | None:
+    """The first OPEN position on this instrument (any spelling in ``symbols``) in the
+    OPPOSITE direction to a new entry, else ``None``.
+
+    The planner decides whether a wall is support or resistance from the plan's spot,
+    and the plan is rebuilt on live price all session — so when price crosses a wall the
+    same strike comes back as the other side's zone. 2026-10-05 gold: bought the ~4142
+    wall at 13:39 (support), price dipped under it, sold the SAME wall at 13:50
+    (resistance) — long and short one level at once; earlier a max-pain buy opened while
+    a fade short was live. A bot hedging itself only pays spread twice. The executor
+    defers (never burns) the new zone until the opposing position is gone — so a
+    role-reversal trade after the first one is STOPPED is still allowed."""
+    want_opp = "SELL" if dir_up else "BUY"
+    for p in (open_positions or []):
+        if p.get("symbol") in symbols and p.get("direction") == want_opp:
+            return p
+    return None
+
+
 class OISession:
     """Per-instrument execution state: the plan's zones + one-shot bookkeeping.
 

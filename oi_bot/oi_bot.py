@@ -41,7 +41,7 @@ from pylego.broker.paper import PaperBroker                  # noqa: E402
 from pylego.quotes import QuoteFeed                          # noqa: E402
 from pylego.costs import expected_fill, max_spread           # noqa: E402
 from pylego.risk_guard import RiskGuard, log_block_transition  # noqa: E402
-from oi_bot.engine import OISession, stack_conflict, position_mode  # noqa: E402
+from oi_bot.engine import OISession, stack_conflict, position_mode, opposing_position  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("oi_bot")
@@ -74,6 +74,11 @@ DEFAULT_CFG = {
     # the deferred zone can still fire once the conflicting position is gone.
     "stack_guard": True,
     "stack_guard_pips": 10,
+    # Opposite guard: never hold an instrument both ways. A wall's support/resistance side
+    # follows the live plan spot, so the same strike can be bought and then sold minutes
+    # later (gold 2026-10-05: long 4144 at 13:39, short 4140.65 at 13:50, same wall).
+    # Defers the new zone until the opposing position closes. False = off.
+    "opposite_guard": True,
     # ── 2026-08 quant-review additions ─────────────────────────────────────────
     # Portfolio risk budget: per-trade risk is risk_pct × the zone's sizeFactor
     # (up to ~2×), and max_open alone allowed a worst-case book risking >10%
@@ -589,6 +594,7 @@ def run(base_url: str, force_live: bool) -> None:
     sessions: dict[str, OISession] = {}
     reject_until: dict[str, float] = {}          # zone_id → epoch to retry after (anti-spam)
     stack_skips: dict[str, int] = {}             # zone_id → conflicting ticket (once-per-change logging)
+    opp_skips: dict[str, int] = {}               # zone_id → opposing ticket (once-per-change logging)
     budget_skips: dict[str, bool] = {}           # zone_id → deferred-by-risk-budget (once-per-change logging)
     anchor_warned: set[str] = set()              # zone_id → already warned that its stop is plan-anchored
     rr_warned: set[str] = set()                  # zone_id → already logged a fire-time reward:risk skip
@@ -1068,6 +1074,21 @@ def run(base_url: str, force_live: bool) -> None:
                                          f"same-direction {cls} position(s) (cap {gcap}); correlated = one bet")
                             continue
                     group_skips.pop(zid, None)
+                    # Never hold this instrument both ways (engine.opposing_position): a wall's
+                    # side flips when price crosses it, and a max-pain zone can point against an
+                    # open fade. Defer until the opposing position is gone — not burned, so a
+                    # role-reversal after a STOP still trades. `opposite_guard: false` turns it off.
+                    if cfg.get("opposite_guard", True):
+                        opp = opposing_position(sym_set, spec["dir_up"], open_book)
+                        if opp is not None:
+                            otk = opp.get("ticket")
+                            if opp_skips.get(zid) != otk:
+                                opp_skips[zid] = otk
+                                log.info(f"OPPOSITE GUARD [{instr}] {zid} deferred — already "
+                                         f"{'SHORT' if spec['dir_up'] else 'LONG'} @ {opp.get('open_price')} "
+                                         f"(ticket {otk}); this bot does not hold an instrument both ways")
+                            continue
+                    opp_skips.pop(zid, None)
                     # Refuse a redundant same-direction stack near an open position
                     # (one bet, not two). Defer, don't burn: the zone re-fires once
                     # the conflicting position is gone. Log once per (zone → ticket).
