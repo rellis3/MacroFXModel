@@ -22,7 +22,7 @@ revised as lessons are released.
 
 | # | Layer | Job | Status |
 |---|---|---|---|
-| 1 | Data | One definition of a bar, a session and a realised value per instrument; sources fixed; integrity checked automatically | **in progress** — see below |
+| 1 | Data | One definition of a bar, a session and a realised value per instrument; sources fixed; integrity checked automatically | **spec + check built** (plans/DATA_SPEC.md, scripts/data_integrity.mjs); open: stale M1 cache, Yahoo indices, IV-adj refit |
 | 2 | Measurement | The quantities everything is scored against: London-day O→H, O→L, H−L, \|O−C\|; intraday path | defined (forge `london22`, vol_session audit) |
 | 3 | Volatility forecast | How far price is likely to travel today, as p50/p75/p90 lines | **HAR-800 preferred** (forge/LADDER_CALIBRATION_PREREG.md); live shadow: har-shadow.html |
 | 4 | Path dynamics | A descriptive map: given today's lines, where price is, the time, the regime and the range used, what happens next (reach next rung / stall / return), with intervals | scattered pieces, not yet one map |
