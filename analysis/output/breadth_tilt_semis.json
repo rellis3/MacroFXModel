@@ -1,0 +1,41 @@
+{
+ "id": "breadth-tilt-semis",
+ "ranAt": "2026-10-05T19:29:31.980Z",
+ "minEvents": 20,
+ "span": [
+  "2020-10-05",
+  "2026-10-05"
+ ],
+ "n": 1507,
+ "setups": {
+  "narrow": 14,
+  "broad": 14
+ },
+ "cells": {
+  "narrow_h20": {
+   "untestable": true,
+   "nA": 13,
+   "nB": 1021
+  },
+  "broad_h20": {
+   "untestable": true,
+   "nA": 14,
+   "nB": 1021
+  },
+  "narrow_h60": {
+   "untestable": true,
+   "nA": 13,
+   "nB": 591
+  },
+  "broad_h60": {
+   "untestable": true,
+   "nA": 13,
+   "nB": 591
+  }
+ },
+ "gate": {
+  "narrowClearsZero": false,
+  "mirrorContaminated": false
+ },
+ "verdict": "UNTESTABLE"
+}
