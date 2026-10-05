@@ -981,3 +981,74 @@ not.**
   about the event's realised distribution. The desk now has a live risk reversal from the
   nightly CME settles capture (`oi_store.riskReversal`), which is the input such a test
   would need, and no verdict on it.
+
+---
+
+## 2026-10-05 — "Diversification is dead" (RSP/SPY, and the AI-bottleneck tilt)
+
+> *"This is the RSP spy ratio… this ratio just broke its multi-year trend line a few
+> sessions ago. This is the market telling you that breadth is collapsing… even the Mag
+> Seven is too broad. The real leadership is compressed into the physical bottlenecks of
+> the AI buildout. This is memory, lithography and foundry… a tilt towards the AI
+> bottlenecks generated 3.6% in expected alpha over SPY, an equal-weight S&P that's RSP
+> generated negative alpha over the same time period."*
+
+**This is his third clip on the same theme, and the desk has tested all three.**
+
+**1. The claim splits cleanly in two**, and the halves have very different standing:
+- **(a) Breadth is collapsing and you should act on it.** Already here, three times over.
+- **(b) The leadership is semis — memory, lithography, foundry — and tilting there pays.**
+  New. Never measured here.
+
+**2. What the desk already holds on (a).**
+
+| his claim | here |
+|---|---|
+| RSP/SPY narrowing is actionable | `breadth-narrowing` — **TESTED NULL, n=35 de-clustered events**, 23 years |
+| crowded / fragile AI trade (earlier clip) | `dispersion-crowded-week` — **NULL**, 68 setups |
+| rotation extreme | `rotation-extreme` — **NULL, n=140**. *"Rotation is description, not a warning."* |
+
+`breadth-narrowing` died on its **mirror**: extreme BROADENING raised forward range just as
+much (+0.28 vs +0.37), so the effect belonged to the volatile period both readings sit
+inside rather than to breadth. Direction was −0.5% at 20d [−2.70, +1.57].
+
+**3. But his PREMISE is right, and this desk already says so in better words.** The
+`breadth-narrowing` entry's own `use` note reads:
+
+> *"Show the narrowing, never alert on it. Use it for positioning, not timing: at an extreme
+> reading, long the index is long a handful of its largest companies rather than 'the
+> market', and an index hedge is hedging direction when the exposure is concentration."*
+
+**That is "diversification is dead", stated more precisely than he states it.** The desk
+agrees with the *condition* and rejects the *timing*. Worth saying plainly rather than
+leading with the null: he is not wrong about what the ratio describes, he is wrong that it
+tells you when to move. Three separate tests, all on his own framing, found the description
+real and the trigger empty.
+
+**4. The new half is testable, and the data is already here.** `SMH` is in the drill bundle
+alongside `RSP` and `SPY` (`server.js:15176`), **1,581 dates from 2020-10**, plus ten XL*
+sector ETFs. SMH holds exactly the names he lists — TSMC, ASML, Micron, Applied Materials,
+Lam — so it is the closest listed proxy to "memory, lithography and foundry".
+
+**Pre-registered as `breadth-tilt-semis` (`MD files/BREADTH_TILT_SEMIS_PREREG.md`, committed
+before the harness).** The design point that decides it is NOT significance:
+
+> Semis led this entire sample. Any in-sample tilt backtest over 2020-2026 shows large
+> alpha whether or not breadth contributed anything. So the gate is whether the
+> NARROW-conditioned SMH−SPY spread beats the **unconditional** SMH−SPY spread — and
+> whether BROAD setups predict it just as well.
+
+Same shape as `growth-vs-yields`, where the Nasdaq range effect was real and yields turned
+out to be a passenger; the one-leg control is what separated them. **Written prior: this
+fails on the unconditional control.** A result against that prior is worth more than a
+confirmation, which is why it is written down.
+
+**5. On the 3.6%.** Unfalsifiable as given — no period, no method, no out-of-sample split —
+and the next sentence is a funnel to the paid letter. Not a reason to dismiss the idea; it
+is simply not evidence, and "expected alpha" from an in-sample rebalance attribution is the
+easiest number in finance to produce. The desk measures it independently or not at all.
+
+**Verdict.** Premise CONFIRMED as description and already better stated here. Timing claim
+null three ways and not worth re-testing. **The sleeve-selection half is the first Crown
+claim in a while with a clean testable core and the data already on the desk** — pre-registered,
+harness not yet written.
