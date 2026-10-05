@@ -2358,6 +2358,8 @@ async function loadGate() {
   setTimeout(() => loadWiderMarket().catch(() => {}), 4000);
   setTimeout(() => loadDrill().catch(() => {}), 5000);                // one reading a day       // the equity half of the board
   setInterval(() => loadWiderMarket().catch(() => {}), 60 * 60_000);
+  setTimeout(() => loadFedPath().catch(() => {}), 2600);          // what is priced on the Fed
+  setInterval(() => loadFedPath().catch(() => {}), 60 * 60_000);  // business-daily feed; hourly is plenty
   setTimeout(() => loadCorrStatus().catch(() => {}), 2500);       // is the correlation history actually there?
   setInterval(() => loadCorrStatus().catch(() => {}), 15 * 60_000);
   setTimeout(() => loadNewsOutcomes().catch(() => {}), 6000);      // what the day's releases actually did
@@ -8612,6 +8614,16 @@ function corrCardHtml() {
 }
 let _corrStatus = null;
 
+// Fed path odds — KV mpt_store_v1 via /api/fed-path, captured once a business day
+// by fedwatch/run_daily.bat. Loaded like loadCorrStatus: fetch, stash, re-render the
+// sidebar, and stay silent if it is not there rather than showing a broken row.
+let _fedPath = null;
+async function loadFedPath() {
+  try { const d = await jget('/api/fed-path'); _fedPath = d?.ok ? d : null; }
+  catch { _fedPath = null; }
+  try { renderSidebar(); } catch (e) {}
+}
+
 async function loadCorrStatus() {
   try { _corrStatus = await jget('/api/corr-history/status'); }
   catch { _corrStatus = null; }
@@ -8753,6 +8765,18 @@ function booksCardHtml() {
   const f = fred ?? {}; const s2 = f.us2y?.value, s10 = f.us10y?.value, s30 = f.us30y?.value, real = f.tips?.value, bei = f.bei?.value;
   const rl = s2 != null && s10 != null ? `2s10s <b>${Math.round((s10 - s2) * 100)}bp</b>${s30 != null ? `, 2s30s ${Math.round((s30 - s2) * 100)}bp` : ''}${real != null && bei != null ? ` · 10Y = real ${real.toFixed(2)} + inflation ${bei.toFixed(2)}` : ''}` : 'the curve, real vs inflation, the term premium';
   row('rates.html', '📉', 'Rates &amp; Policy', rl, 'nominal split into real and inflation, the term premium, what is priced — with the verdicts stapled on');
+  // what the market is PAYING on policy, next to the curve that proxies it. The live
+  // line is the WEEK-OVER-WEEK move, not the level: "December 88%" is a fact about the
+  // calendar, "88% against 93% a week ago" is the market moving a hike between meetings.
+  (() => {
+    const w = _fedPath?.windows?.[0]; if (!w || !Number.isFinite(w.hike)) return;
+    const wk = w.hikeAgo?.w1, d = Number.isFinite(wk) ? +(w.hike - wk).toFixed(1) : null;
+    const mv = d == null ? '' : Math.abs(d) < 2 ? ' · flat on the week'
+      : ` · <b>${d > 0 ? '+' : ''}${d}pp</b> on the week`;
+    row('fed-path.html', '🎯', 'Fed Path Odds',
+      `rate above ${String(_fedPath.currentRange || '').replace(/bps/g, '').replace(/\s+/g, '')} by ${w.ref}: <b>${w.hike.toFixed(0)}%</b>${mv}`,
+      'market-implied policy odds from CME SOFR options — window, not meeting; untested here, context only');
+  })();
   // central banks: only when a decision is inside ten days
   const CB = { US: ['fomc-sentiment.html', 'Fed'], EU: ['ecb-sentiment.html', 'ECB'], GB: ['boe-sentiment.html', 'Bank of England'], JP: ['boj-sentiment.html', 'Bank of Japan'] };
   const cbEv = (events ?? []).filter(e => e.ms > nowMs - 2 * 864e5 && e.ms < nowMs + 10 * 864e5 && _tlFam(e.event) === 'rate decision' && CB[e.country]).sort((a, b) => a.ms - b.ms)[0];

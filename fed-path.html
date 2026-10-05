@@ -84,7 +84,7 @@ tbody tr:hover td{background:#141921}
   </div>
 
   <div class="panel">
-    <h2>Hike probability by window</h2>
+    <h2>Probability the rate ends up ABOVE today’s range</h2>
     <p class="dek">Each row is a forward window. The columns are what the same window was
       priced at a day, a week and a month ago — <b>the change is the signal</b>, not the level.
       Click a row to load its distribution and history below.</p>
@@ -126,7 +126,7 @@ function delta(now, then) {
 function renderTable() {
   const ws = STORE.windows || [];
   if (!ws.length) { $('tbl').innerHTML = '<span class="err">no windows in the capture</span>'; return; }
-  let h = '<table><thead><tr><th>Window starts</th><th>Hike now</th><th>1 day ago</th>' +
+  let h = '<table><thead><tr><th>Window starts</th><th>Above now</th><th>1 day ago</th>' +
           '<th>1 week ago</th><th>1 month ago</th><th>Cut now</th><th>Mean bps</th></tr></thead><tbody>';
   for (const w of ws) {
     const a = w.hikeAgo || {};
@@ -195,6 +195,9 @@ function renderNote() {
   $('note').innerHTML =
     '<b>What these numbers are.</b> Probabilities for the <b>three-month average rate over a ' +
     'forward window</b>, estimated by the Atlanta Fed from CME three-month SOFR options. ' +
+    'The Atlanta Fed calls the field <i>Prob: hike</i>, but its own dictionary defines it as ' +
+    'the probability that the average rate ends up <b>above the current target range</b> — which is ' +
+    'not quite the same as a hike being delivered, and is why this page says “above”. ' +
     'They are <b>not</b> odds for a given FOMC meeting. CME FedWatch answers the meeting ' +
     'question from fed funds futures and will differ by a few points — the direction is the ' +
     'same, the instrument is not. Do not relabel a window as a meeting.<br><br>' +

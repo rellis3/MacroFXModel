@@ -101,7 +101,8 @@ async function main() {
     </div>
     <div class="sub">The curve is <b>${slopeWord}</b> (2s10s ${s10 != null ? bp(s10) : '?'}${c.us10y != null && c.us2y != null ? `, ${(c.us10y - c.us2y) > 0 ? 'steepening' : 'flattening'} ${bp(c.us10y - c.us2y)} over the month${Math.abs(c.us2y) > Math.abs(c.us10y) ? ', the front end leading — a vote on the central bank' : ', the long end leading — a vote on inflation and supply'}` : ''}).</div>
     <div class="sub">${tpWord}</div>
-    <div class="sub">${priced != null ? `<b>What is priced</b>, by proxy: the 2-year sits ${priced.toFixed(0)}bp ${priced >= 0 ? 'above' : 'below'} the policy rate — roughly <b>${Math.abs(priced / 25).toFixed(1)} ${priced >= 0 ? 'hikes' : 'cuts'}</b> over two years if it were all expected policy (it is not entirely; a proper implied path needs fed funds futures, which have no free feed this desk trusts). Tested here: whether a print was "priced in" did not change what it did to prices (null, 2026-09-17).` : ''}</div>`;
+    <div class="sub" id="fedpath">What is actually priced — loading…</div>
+    <div class="sub">${priced != null ? `<b>What is priced</b>, by proxy: the 2-year sits ${priced.toFixed(0)}bp ${priced >= 0 ? 'above' : 'below'} the policy rate — roughly <b>${Math.abs(priced / 25).toFixed(1)} ${priced >= 0 ? 'hikes' : 'cuts'}</b> over two years if it were all expected policy (it is not entirely — this is a PROXY, and the measured version is directly below). Tested here: whether a print was "priced in" did not change what it did to prices (null, 2026-09-17).` : ''}</div>`;
   const last = (k, dp = 2) => f(k, dp) + '%';
   chart(document.getElementById('chCurve'), [{ name: '2y', color: 'var(--amber)', pts: S.us2y, last: last('us2y') }, { name: '10y', color: 'var(--blue)', pts: S.us10y, last: last('us10y') }, { name: '30y', color: 'var(--purple)', pts: S.us30y, last: last('us30y') }]);
   const by = k => new Map(S[k]); const slope = (a, b) => S[a].filter(([d]) => by(b).has(d)).map(([d, v]) => [d, +((v - by(b).get(d)) * 100).toFixed(0)]);
@@ -130,6 +131,51 @@ async function main() {
     if (S.srf?.length) chart(document.getElementById('chBackstop'), [{ name: 'repo backstop, $bn', color: 'var(--red)', pts: S.srf, last: `$${srf.toFixed(1)}bn` }, ...(S.rrp?.length ? [{ name: 'RRP, $bn', color: 'var(--text3)', pts: S.rrp, last: `$${(P.rrp?.value ?? 0).toFixed(0)}bn` }] : [])], { unit: 'bp', zero: true });
   }
   // the non-US legs: daily from the BoE, Bundesbank and MoF (FRED only mirrors these monthly)
+  // WHAT IS ACTUALLY PRICED, rather than the 2-year proxy above it. Both are kept
+  // deliberately: the proxy is a two-year average sum of policy, this is a dated
+  // distribution per window, and when they disagree that gap is itself the read --
+  // a 2-year carrying term premium rather than expected policy looks like hikes it
+  // is not pricing.
+  //
+  // The box leads on the WEEK-OVER-WEEK move. A level is a fact about the calendar;
+  // the change is the market moving a hike between meetings, which is the only part
+  // that can inform anything.
+  fetch('/api/fed-path').then(r => r.json()).then(d => {
+    const el = document.getElementById('fedpath'); if (!el) return;
+    if (!d?.ok || !d.windows?.length) {
+      el.innerHTML = '<b>What is actually priced</b>: no capture yet \u2014 '
+        + '<code>fedwatch/run_daily.bat</code> has not written one.';
+      return;
+    }
+    const cur = String(d.currentRange || '').replace(/bps/g, '').replace(/\s+/g, '');
+    const parts = d.windows.slice(0, 3).map(w => {
+      const wk = w.hikeAgo?.w1;
+      const mv = Number.isFinite(wk) ? +(w.hike - wk).toFixed(1) : null;
+      const tag = mv == null ? '' : Math.abs(mv) < 2 ? ' (flat on the week)'
+        : ` (<b>${mv > 0 ? '+' : ''}${mv}pp</b> on the week)`;
+      return `${w.ref} <b>${w.hike.toFixed(0)}%</b>${tag}`;
+    }).join(' \u00b7 ');
+    // One sentence of reading, not a verdict: the desk has no tested relationship
+    // between a repricing here and anything else, and says so rather than implying one.
+    const w0 = d.windows[0], wk0 = w0.hikeAgo?.w1;
+    const drift = Number.isFinite(wk0) ? +(w0.hike - wk0).toFixed(1) : null;
+    const read = drift == null ? ''
+      : Math.abs(drift) < 2
+        ? ' The front end has not repriced this week.'
+        : ` The market has priced <b>${drift > 0 ? 'more' : 'less'}</b> tightening over the week`
+          + `, which is what a 2-year move on no new policy news usually turns out to be.`;
+    el.innerHTML = `<b>What is actually priced</b>, measured: probability the average rate is `
+      + `above ${cur} \u2014 ${parts}.${read} `
+      + `<span class="muted">Atlanta Fed, from CME 3-month SOFR options, as of ${d.asOf}`
+      + `${d.ageDays != null ? ` (${d.ageDays}d)` : ''} \u00b7 window not meeting, so it will differ `
+      + `from CME FedWatch by a few points \u00b7 UNTESTED here: no measured link between a `
+      + `repricing and FX or the indices, so this is context, not a signal \u00b7 `
+      + `<a href="fed-path.html">fed-path.html</a></span>`;
+  }).catch(() => {
+    const el = document.getElementById('fedpath');
+    if (el) el.textContent = 'What is actually priced: unavailable.';
+  });
+
   fetch('/api/intl-yields').then(r => r.json()).then(iy => {
     const el = document.getElementById('intl'); if (!iy?.ok) { el.textContent = 'not loaded'; return; }
     const U = new Map(S.us10y ?? []); const T = iy.series;
