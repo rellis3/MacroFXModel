@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HAR Shadow Ladder</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text2:#c9d1d9; --text3:#8b949e;
+          --pos:#3fb950; --neg:#f85149; --amber:#d29922; --blue:#58a6ff; --live:#8b949e; --har:#58a6ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:1180px; margin:0 auto; padding:18px 16px 48px; display:grid; gap:16px; }
+  h1 { font-size:20px; margin:0; } h2 { font-size:13px; margin:0 0 8px; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
+  .sub { color:var(--text3); max-width:85ch; margin:4px 0 0; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:6px; padding:14px; min-width:0; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  button, label.tog { background:#21262d; color:var(--text); border:1px solid var(--border); border-radius:5px; padding:5px 10px; cursor:pointer; font:inherit; }
+  #status { color:var(--text3); font-size:12px; }
+  .tbl { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; }
+  th, td { padding:6px 8px; border-bottom:1px solid var(--border); text-align:right; white-space:nowrap; }
+  th:first-child, td:first-child { text-align:left; } th { color:var(--text3); font-weight:500; font-size:12px; }
+  .live { color:var(--live); } .har { color:var(--har); font-weight:600; }
+  .good { color:var(--pos); } .bad { color:var(--neg); } .muted { color:var(--text3); } .note { color:var(--text3); font-size:12px; max-width:110ch; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:10px; }
+  .kpi { background:#0d1117; border:1px solid var(--border); border-radius:5px; padding:10px; }
+  .kpi b { display:block; font-size:20px; } .kpi span { color:var(--text3); font-size:12px; }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:16px; }
+  .prov { color:var(--amber); font-size:11px; }
+  .empty { color:var(--text3); padding:8px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>HAR Shadow Ladder</h1>
+    <p class="sub">A side-by-side forward test. <span class="live">Live</span> is the forecast ladder the Vol Forecast publishes today.
+      <span class="har">HAR</span> is a candidate built from the HAR-log σ the forecast already stores each night, with widths fitted on that σ.
+      The live ladder is right on average but tilts with the regime: after quiet spells its p75 is passed on ~30% of days, after busy spells ~19% (target 25%).
+      In the pre-registered test HAR removed most of that tilt. This page watches whether it holds on live data. <b>Nothing here changes the live ladder, the exports or any bot.</b></p>
+  </div>
+  <div class="row"><button id="reload">↻ Reload</button>
+    <label class="tog"><input type="checkbox" id="idx"> include indices (provisional)</label>
+    <span id="status">loading…</span></div>
+
+  <section class="card">
+    <h2>Scorecard since the shadow started</h2>
+    <div class="kpis" id="kpis"></div>
+    <p class="note" id="scoreNote"></p>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <h2>By regime — does the tilt go away?</h2>
+      <div class="tbl"><table id="regime"></table></div>
+      <p class="note">Regime = live σ ÷ HAR σ that day. HAR carries a long-run anchor, so a high ratio means the live σ is running hot versus its long-run level (busy), a low one cold (quiet). Target: p75 passed 25% of days, p90 10%, in every row.</p>
+    </section>
+    <section class="card">
+      <h2>Every rung — how often it was passed</h2>
+      <div class="tbl"><table id="rungs"></table></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2 id="todayTitle">Today's ladders</h2>
+    <div class="tbl"><table id="today"></table></div>
+    <p class="note">Percent of the London-midnight open. Levels shown where the live ladder carries the open. HAR has no event multiplier (as tested); the live event tag is shown for reference.</p>
+  </section>
+
+  <section class="card">
+    <h2>Day by day</h2>
+    <div class="tbl"><table id="days"></table></div>
+  </section>
+
+  <p class="note">Evidence and rules: forge/LADDER_CALIBRATION_PREREG.md (variant 2). Logic: js/harShadowCore.js. Widths: js/forecastLadderParamsHar800.js. Read-only API: /api/har-shadow.</p>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const pc = (x, d = 1) => x == null ? '—' : (x * 100).toFixed(d) + '%';
+const num = (x, d = 2) => x == null ? '—' : Number(x).toFixed(d);
+const px = x => x == null ? '—' : (x >= 100 ? x.toFixed(1) : x >= 10 ? x.toFixed(3) : x.toFixed(5));
+const cls = (v, t, tol = 0.03) => v == null ? '' : Math.abs(v - t) <= tol ? 'good' : 'bad';
+
+function render(d) {
+  const s = d.scorecard;
+  $('status').textContent = `built ${new Date(d.builtAt).toLocaleString()} · forecast for ${d.sessionDate ?? '—'}`;
+  $('kpis').innerHTML = [
+    [`${s.dates}`, 'scored sessions'], [`${s.n}`, 'instrument-days'],
+    [`<span class="live">${num(s.miss12.live)}</span> / <span class="har">${num(s.miss12.har)}</span>pp`, 'average miss, all 12 rungs (live / HAR)'],
+    [`<span class="live">${pc(s.rungs.hl_p75.live)}</span> / <span class="har">${pc(s.rungs.hl_p75.har)}</span>`, 'H-L past p75 (target 25%)'],
+  ].map(([b, t]) => `<div class="kpi"><b>${b}</b><span>${t}</span></div>`).join('');
+  $('scoreNote').textContent = s.dates < 40
+    ? `Early days: ${s.dates} sessions. Instruments move together (one USD shock hits many pairs), so precision comes from the number of sessions, not instrument-days. Treat differences under ~5pp as noise until there are 40+ sessions.`
+    : `${s.dates} sessions scored.`;
+  $('regime').innerHTML = '<tr><th>regime</th><th>n</th><th>p75 live</th><th>p75 HAR</th><th>p90 live</th><th>p90 HAR</th></tr>' +
+    (s.regime ?? []).map(g => `<tr><td>${g.label}</td><td>${g.n}</td>
+      <td class="live ${cls(g.live_hl_p75, .25)}">${pc(g.live_hl_p75)}</td><td class="har ${cls(g.har_hl_p75, .25)}">${pc(g.har_hl_p75)}</td>
+      <td class="live ${cls(g.live_hl_p90, .10)}">${pc(g.live_hl_p90)}</td><td class="har ${cls(g.har_hl_p90, .10)}">${pc(g.har_hl_p90)}</td></tr>`).join('') +
+    (s.regime ? '' : '<tr><td colspan="6" class="empty">Needs a few scored sessions.</td></tr>');
+  $('rungs').innerHTML = '<tr><th>rung</th><th>target</th><th>live</th><th>HAR</th></tr>' +
+    Object.entries(s.rungs).map(([k, v]) => `<tr><td>${k.replace('_', ' ').toUpperCase()}</td><td>${pc(v.target, 0)}</td>
+      <td class="live ${cls(v.live, v.target)}">${pc(v.live)}</td><td class="har ${cls(v.har, v.target)}">${pc(v.har)}</td></tr>`).join('');
+
+  $('todayTitle').textContent = `Today's ladders — session ${d.sessionDate ?? '—'}`;
+  $('today').innerHTML = '<tr><th>instrument</th><th>σ live</th><th>σ HAR</th><th>ratio</th><th>event</th><th>H-L p75 live / HAR</th><th>OH p75 live / HAR</th><th>OL p75 live / HAR</th><th>OH p90 live / HAR</th><th>OL p90 live / HAR</th></tr>' +
+    (d.today.length ? d.today.map(t => {
+      const lv = t.liveLevels ?? {}, hv = t.harLevels ?? {};
+      const pair = (a, b, isPx) => `<span class="live">${isPx ? px(a) : num(a)}</span> / <span class="har">${isPx ? px(b) : num(b)}</span>`;
+      const lvl = k => t.open ? pair(lv[k], hv[k], true) : pair(t.live[k], t.har[k]) + '%';
+      return `<tr><td>${t.sym}${t.provisional ? ' <span class="prov">provisional</span>' : ''}</td><td class="live">${num(t.liveSigma, 3)}%</td><td class="har">${num(t.harSigma, 3)}%</td>
+        <td>${num(t.ratio)}</td><td class="muted">${t.event ?? '—'}${t.eventMult ? ' ×' + t.eventMult : ''}</td>
+        <td>${pair(t.live.hl_p75, t.har.hl_p75)}%</td><td>${lvl('oh_p75')}</td><td>${lvl('ol_p75')}</td><td>${lvl('oh_p90')}</td><td>${lvl('ol_p90')}</td></tr>`;
+    }).join('') : '<tr><td colspan="10" class="empty">No forecast with a HAR shadow yet.</td></tr>');
+
+  const dates = Object.keys(d.days).sort().reverse();
+  const idx = $('idx').checked;
+  $('days').innerHTML = '<tr><th>session</th><th>instruments</th><th>H-L past p75 live</th><th>past p75 HAR</th><th>past p90 live</th><th>past p90 HAR</th></tr>' +
+    (dates.length ? dates.map(k => {
+      const rows = d.days[k].rows.filter(x => idx || !x.provisional);
+      const c = (arm, key) => rows.filter(x => x[arm][key] === 1).length;
+      return `<tr><td>${k}</td><td>${rows.length}</td><td class="live">${c('live', 'hl_p75')}</td><td class="har">${c('har', 'hl_p75')}</td>
+        <td class="live">${c('live', 'hl_p90')}</td><td class="har">${c('har', 'hl_p90')}</td></tr>`;
+    }).join('') : '<tr><td colspan="6" class="empty">No scored sessions yet.</td></tr>');
+}
+async function load() {
+  $('status').textContent = 'loading…';
+  try { const r = await fetch('/api/har-shadow' + ($('idx').checked ? '?indices=1' : '')); const d = await r.json(); if (!r.ok) throw new Error(d.error || r.status); render(d); }
+  catch (e) { $('status').textContent = 'failed: ' + e.message; }
+}
+$('reload').onclick = load; $('idx').onchange = load;
+load();
+</script>
+</body>
+</html>
