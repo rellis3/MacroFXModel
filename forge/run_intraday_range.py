@@ -57,7 +57,9 @@ def pinball(a, p, t):
     return np.where(d >= 0, t * d, (t - 1) * d)
 
 
-def main():
+def build_frame():
+    """One row per (instrument, session, checkpoint h): state at h and what came after. Shared with
+    forge/run_line_touch_reach.py so both studies read identical rows."""
     est = ladder_estimators()
     rows = []
     for name in sorted(est):
@@ -94,6 +96,11 @@ def main():
         print(f"{name:7s} {int(complete.sum())} complete sessions", flush=True)
     X = pd.concat(rows, ignore_index=True)
     X["R"] = X["U"] + X["Dn"]
+    return X, est
+
+
+def main():
+    X, est = build_frame()
 
     report, params = {"classes": {}}, {"generated": str(date.today()), "source": "forge/run_intraday_range.py",
                                         "prereg": "forge/INTRADAY_RANGE_PREREG.md", "grid": GRID,

@@ -44,3 +44,29 @@ own conditional. If MISCALIBRATED, it shows the realised table from this study (
 hour group). Overshoot is shown as a typical "carries about X% of the way to p90" note.
 
 Script: `forge/run_line_touch_reach.py`. Output: `analysis/output/line_touch_reach/RESULTS.md`.
+
+---
+
+## Results (2026-10-05, run after the pre-registration commit e48d601c)
+
+Full table: `analysis/output/line_touch_reach/RESULTS.md`. **Verdict: CALIBRATED.** 20 of 22
+eligible cells are within ±5pp of the model's implied share.
+
+| | FX + gold | indices |
+|---|---|---|
+| p50 → p75 (implied 50%) | 48–49% | 46–55% |
+| p75 → p90 (implied 40%) | 38–41% | 33–47% |
+| overshoot past p75, median (share of the p75→p90 gap) | 0.72–0.78 | 0.64–0.93 |
+| overshoot past p75, 75th percentile | 1.39–1.51 (beyond p90) | 1.27–1.71 |
+
+**The two misses are both indices:** upside p75 → p90 at 01–07 runs **47%** (vs 40%), and
+downside p75 → p90 at 15–21 is **33%**. Late-day p50 → p75 has no rows for FX, because the
+late p50 line usually sits on the current extreme.
+
+**Reading.** A Live Range line is not a barrier. From the bold p75 it is about a 2-in-5 chance
+of reaching p90 before the close, and the day's extreme typically carries about ¾ of the way
+there. This is a size statement only; nothing here tests a bounce.
+
+**Decision per the pre-registration:** CALIBRATED, so the page shows the model's own
+conditional chance on each card once a line is reached, plus the typical-overshoot note from
+this table.

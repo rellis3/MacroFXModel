@@ -1,0 +1,304 @@
+{
+ "classes": {
+  "fx_gold": {
+   "split": "2022-05-30",
+   "rows": [
+    {
+     "side": "dn",
+     "hours": "01-07",
+     "measure": "p50_to_p75",
+     "touches": 105223,
+     "realised": 0.485,
+     "implied": 0.5,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": null,
+     "overshoot_p75_frac": null
+    },
+    {
+     "side": "dn",
+     "hours": "01-07",
+     "measure": "p75_to_p90",
+     "touches": 51013,
+     "realised": 0.407,
+     "implied": 0.4,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": 0.775,
+     "overshoot_p75_frac": 1.515
+    },
+    {
+     "side": "dn",
+     "hours": "08-14",
+     "measure": "p50_to_p75",
+     "touches": 62490,
+     "realised": 0.485,
+     "implied": 0.5,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": null,
+     "overshoot_p75_frac": null
+    },
+    {
+     "side": "dn",
+     "hours": "08-14",
+     "measure": "p75_to_p90",
+     "touches": 49828,
+     "realised": 0.397,
+     "implied": 0.4,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": 0.754,
+     "overshoot_p75_frac": 1.489
+    },
+    {
+     "side": "dn",
+     "hours": "15-21",
+     "measure": "p50_to_p75",
+     "touches": 0,
+     "realised": null,
+     "implied": null,
+     "eligible": false,
+     "calibrated": false,
+     "overshoot_median_frac": null,
+     "overshoot_p75_frac": null
+    },
+    {
+     "side": "dn",
+     "hours": "15-21",
+     "measure": "p75_to_p90",
+     "touches": 12807,
+     "realised": 0.393,
+     "implied": 0.4,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": 0.758,
+     "overshoot_p75_frac": 1.471
+    },
+    {
+     "side": "up",
+     "hours": "01-07",
+     "measure": "p50_to_p75",
+     "touches": 108341,
+     "realised": 0.493,
+     "implied": 0.5,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": null,
+     "overshoot_p75_frac": null
+    },
+    {
+     "side": "up",
+     "hours": "01-07",
+     "measure": "p75_to_p90",
+     "touches": 53381,
+     "realised": 0.401,
+     "implied": 0.4,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": 0.769,
+     "overshoot_p75_frac": 1.487
+    },
+    {
+     "side": "up",
+     "hours": "08-14",
+     "measure": "p50_to_p75",
+     "touches": 60751,
+     "realised": 0.483,
+     "implied": 0.5,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": null,
+     "overshoot_p75_frac": null
+    },
+    {
+     "side": "up",
+     "hours": "08-14",
+     "measure": "p75_to_p90",
+     "touches": 52797,
+     "realised": 0.395,
+     "implied": 0.4,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": 0.755,
+     "overshoot_p75_frac": 1.469
+    },
+    {
+     "side": "up",
+     "hours": "15-21",
+     "measure": "p50_to_p75",
+     "touches": 0,
+     "realised": null,
+     "implied": null,
+     "eligible": false,
+     "calibrated": false,
+     "overshoot_median_frac": null,
+     "overshoot_p75_frac": null
+    },
+    {
+     "side": "up",
+     "hours": "15-21",
+     "measure": "p75_to_p90",
+     "touches": 14286,
+     "realised": 0.377,
+     "implied": 0.4,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": 0.725,
+     "overshoot_p75_frac": 1.392
+    }
+   ]
+  },
+  "indices": {
+   "split": "2022-06-15",
+   "rows": [
+    {
+     "side": "dn",
+     "hours": "01-07",
+     "measure": "p50_to_p75",
+     "touches": 22409,
+     "realised": 0.512,
+     "implied": 0.5,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": null,
+     "overshoot_p75_frac": null
+    },
+    {
+     "side": "dn",
+     "hours": "01-07",
+     "measure": "p75_to_p90",
+     "touches": 11463,
+     "realised": 0.37,
+     "implied": 0.401,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": 0.723,
+     "overshoot_p75_frac": 1.37
+    },
+    {
+     "side": "dn",
+     "hours": "08-14",
+     "measure": "p50_to_p75",
+     "touches": 19061,
+     "realised": 0.512,
+     "implied": 0.5,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": null,
+     "overshoot_p75_frac": null
+    },
+    {
+     "side": "dn",
+     "hours": "08-14",
+     "measure": "p75_to_p90",
+     "touches": 11555,
+     "realised": 0.364,
+     "implied": 0.401,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": 0.695,
+     "overshoot_p75_frac": 1.356
+    },
+    {
+     "side": "dn",
+     "hours": "15-21",
+     "measure": "p50_to_p75",
+     "touches": 1028,
+     "realised": 0.463,
+     "implied": 0.501,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": null,
+     "overshoot_p75_frac": null
+    },
+    {
+     "side": "dn",
+     "hours": "15-21",
+     "measure": "p75_to_p90",
+     "touches": 4609,
+     "realised": 0.333,
+     "implied": 0.401,
+     "eligible": true,
+     "calibrated": false,
+     "overshoot_median_frac": 0.635,
+     "overshoot_p75_frac": 1.271
+    },
+    {
+     "side": "up",
+     "hours": "01-07",
+     "measure": "p50_to_p75",
+     "touches": 22483,
+     "realised": 0.546,
+     "implied": 0.5,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": null,
+     "overshoot_p75_frac": null
+    },
+    {
+     "side": "up",
+     "hours": "01-07",
+     "measure": "p75_to_p90",
+     "touches": 12274,
+     "realised": 0.47,
+     "implied": 0.401,
+     "eligible": true,
+     "calibrated": false,
+     "overshoot_median_frac": 0.926,
+     "overshoot_p75_frac": 1.708
+    },
+    {
+     "side": "up",
+     "hours": "08-14",
+     "measure": "p50_to_p75",
+     "touches": 21087,
+     "realised": 0.543,
+     "implied": 0.5,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": null,
+     "overshoot_p75_frac": null
+    },
+    {
+     "side": "up",
+     "hours": "08-14",
+     "measure": "p75_to_p90",
+     "touches": 12816,
+     "realised": 0.444,
+     "implied": 0.401,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": 0.858,
+     "overshoot_p75_frac": 1.69
+    },
+    {
+     "side": "up",
+     "hours": "15-21",
+     "measure": "p50_to_p75",
+     "touches": 1845,
+     "realised": 0.505,
+     "implied": 0.501,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": null,
+     "overshoot_p75_frac": null
+    },
+    {
+     "side": "up",
+     "hours": "15-21",
+     "measure": "p75_to_p90",
+     "touches": 7215,
+     "realised": 0.415,
+     "implied": 0.401,
+     "eligible": true,
+     "calibrated": true,
+     "overshoot_median_frac": 0.784,
+     "overshoot_p75_frac": 1.547
+    }
+   ]
+  }
+ },
+ "verdict": "CALIBRATED",
+ "calibrated_share": 0.909
+}
