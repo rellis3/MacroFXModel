@@ -21783,7 +21783,7 @@ async function _cboeCloseLatest(sym) {
 async function _ivAdjCboeLatest() {
   if (_ivAdjCboe.v && Date.now() - _ivAdjCboe.at < 6 * 3600_000) return _ivAdjCboe.v;
   const out = { ...(_ivAdjCboe.v ?? {}) };
-  for (const sym of ['VIX', 'VXN']) {
+  for (const sym of ['VIX', 'VXN', 'VIX3M', 'VIX9D']) {   // VIX3M/VIX9D: the US-index extras (curve state)
     try { const v = await _cboeCloseLatest(sym); if (v) out[sym] = v; }
     catch (e) { console.warn(`[ivadj-ladder] ${sym} fetch failed:`, e.message); }
   }

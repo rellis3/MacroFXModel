@@ -1,0 +1,87 @@
+{
+ "window": [
+  "2011-01-03",
+  "2015-12-31"
+ ],
+ "split": "2014-01-03",
+ "median_ratio": 0.9565,
+ "n_better": 3,
+ "verdict": "CONFIRMED",
+ "beta_A": {
+  "iv_sig": 0.1527
+ },
+ "beta_B": {
+  "iv_sig": 0.152,
+  "vix_inv": 0.0373,
+  "front_dear": 0.046,
+  "front_calm": -0.0474,
+  "all_down": 0.0384,
+  "nq_dw": 0.0216
+ },
+ "signs_ok": {
+  "vix_inv": true,
+  "front_dear": true,
+  "front_calm": true,
+  "all_down": true,
+  "nq_dw": true
+ },
+ "p75_by_state": {
+  "vix_inv": {
+   "A": 0.388,
+   "B": 0.191,
+   "n": 152
+  },
+  "front_dear": {
+   "A": 0.383,
+   "B": 0.303,
+   "n": 900
+  },
+  "front_calm": {
+   "A": 0.183,
+   "B": 0.296,
+   "n": 388
+  },
+  "all_down": {
+   "A": 0.412,
+   "B": 0.311,
+   "n": 408
+  },
+  "nq_dw": {
+   "A": 0.392,
+   "B": 0.284,
+   "n": 472
+  }
+ },
+ "per_instrument": [
+  {
+   "inst": "DOW",
+   "n_train": 753,
+   "n_test": 503,
+   "ratio": 0.9678
+  },
+  {
+   "inst": "NQ",
+   "n_train": 753,
+   "n_test": 503,
+   "ratio": 0.9452
+  },
+  {
+   "inst": "SPX",
+   "n_train": 753,
+   "n_test": 503,
+   "ratio": 0.9392
+  },
+  {
+   "inst": "US2000",
+   "n_train": 753,
+   "n_test": 503,
+   "ratio": 1.0011
+  }
+ ],
+ "audit": {
+  "SPX": "1256/1258 sessions usable, 2011-01-05 to 2015-12-31",
+  "NQ": "1256/1258 sessions usable, 2011-01-05 to 2015-12-31",
+  "DOW": "1256/1258 sessions usable, 2011-01-05 to 2015-12-31",
+  "US2000": "1256/1258 sessions usable, 2011-01-05 to 2015-12-31"
+ }
+}

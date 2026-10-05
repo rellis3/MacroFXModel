@@ -82,3 +82,34 @@ test('export: own title, production row format, footer names no ticker (Pine swi
   const footer = text.split('\n').at(-1);
   assert.doesNotMatch(footer.toUpperCase(), /EURUSD|GOLD|NQ|SPX|RANGE|MOVE|OPEN HIGH|OPEN LOW|DRIFT/);
 });
+
+import { usExtras, barsBefore } from './forecastLadderIvAdj.js';
+
+test('barsBefore drops a partial bar dated on/after the session (mid-day Yahoo warm)', () => {
+  const b = bars(10);
+  const sess = b[8].time;                               // pretend bars 8 and 9 are "today" or later
+  assert.equal(barsBefore(b, sess).length, 8);
+  assert.equal(barsBefore(b, null).length, 10);
+});
+
+test('US extras: computed from CBOE closes + six indices, null if any input missing', () => {
+  const names = ['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'];
+  const down = n => { const b = bars(30, 0.004, 3); b.push({ ...b.at(-1), time: '2099-01-01', close: b.at(-1).close * 0.99 }); return b; };
+  const cache = Object.fromEntries(names.map(n => [n, down(n)]));
+  const cboe = { VIX: { value: 25 }, VIX3M: { value: 22 }, VIX9D: { value: 26 } };
+  const e = usExtras(cboe, cache, null);
+  assert.deepEqual([e.vix_inv, e.front_dear, e.front_calm, e.all_down], [1, 1, 0, 1]);
+  assert.equal(usExtras({ VIX: { value: 25 } }, cache, null), null, 'missing VIX3M -> null, not a guess');
+  assert.equal(usExtras(cboe, { NQ: cache.NQ }, null), null, 'missing indices -> null');
+});
+
+test('US index: joint form when extras present, IV-only fallback otherwise; non-US never uses extras', () => {
+  const b = bars();
+  const ext = { vix_inv: 1, front_dear: 1, front_calm: 0, all_down: 1, nq_dw: 1 };
+  const J = buildIvAdjLadder(b, { instrument: 'SPX500', ivAnnualPct: 20, assetClass: 'index', extras: ext });
+  const I = buildIvAdjLadder(b, { instrument: 'SPX500', ivAnnualPct: 20, assetClass: 'index', extras: null });
+  assert.equal(J.form, 'iv+extras'); assert.equal(I.form, 'iv');
+  assert.ok(J.hl.p75 > I.hl.p75, 'stress flags all on -> wider than IV alone');
+  const D = buildIvAdjLadder(b, { instrument: 'DE30', ivAnnualPct: 20, assetClass: 'index', extras: ext });
+  assert.equal(D.form, 'iv', 'DE30 has no confirmed extras');
+});

@@ -67,27 +67,67 @@ export function legCorrelation(barsA, barsB, window = IVADJ_PARAMS.corr_window) 
   return sxx > 0 && syy > 0 ? sxy / Math.sqrt(sxx * syy) : null;
 }
 
-/** One IV-adjusted daily ladder (same object shape as buildLadder). Null if no params or no σ. */
+export const EXTRA_KEYS = ['vix_inv', 'front_dear', 'front_calm', 'all_down', 'nq_dw'];
+const FRONT_DEAR = 0.9669, FRONT_CALM = 0.8858;           // frozen cut-offs (forge/VOL_CURVE_FRONT_PREREG.md)
+
+/** Bars strictly before the session (drops a partial Yahoo bar after a mid-day cache warm). */
+export function barsBefore(bars, sessionDate) {
+  if (!Array.isArray(bars) || !sessionDate) return bars;
+  return bars.filter(b => { const k = _key(b); return !k || k < sessionDate; });
+}
+
+/**
+ * The five US-index extras (forge/US_EXTRAS_CONFIRM_PREREG.md), from the latest CBOE closes and
+ * the six indices' last completed daily bars. Null when any input is missing — the caller then
+ * uses the IV-only form rather than guessing a value.
+ */
+export function usExtras(cboe, ohlcCache, sessionDate, names = ['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100']) {
+  const v = s => (cboe?.[s]?.value > 0 ? cboe[s].value : NaN);
+  const [vix, v3m, v9d] = [v('VIX'), v('VIX3M'), v('VIX9D')];
+  if (![vix, v3m, v9d].every(Number.isFinite)) return null;
+  const last2 = n => { const b = barsBefore(ohlcCache?.[n], sessionDate); return b?.length >= 6 ? b : null; };
+  const six = names.map(last2);
+  if (six.some(b => !b)) return null;
+  const front = v9d / vix;
+  const nq = six[0], c = nq[nq.length - 1].close, c5 = nq[nq.length - 6].close;
+  return {
+    vix_inv: vix > v3m ? 1 : 0,
+    front_dear: front >= FRONT_DEAR ? 1 : 0,
+    front_calm: front < FRONT_CALM ? 1 : 0,
+    all_down: six.every(b => b[b.length - 1].close < b[b.length - 2].close) ? 1 : 0,
+    nq_dw: c / c5 - 1 <= -0.01 ? 1 : 0,
+  };
+}
+
+/** One IV-adjusted daily ladder (same object shape as buildLadder). Null if no params or no σ.
+ *  `extras` (US indices only): when present and the instrument has a joint fit, the confirmed
+ *  VIX-curve / breadth terms are added; otherwise the IV-only form is used. */
 export function buildIvAdjLadder(bars, { instrument, ivAnnualPct, assetClass = 'fx', eventTag = null,
-                                         params = IVADJ_PARAMS } = {}) {
+                                         params = IVADJ_PARAMS, extras = null } = {}) {
   const p = params.pairs?.[_pkey(instrument)];
   if (!p?.width || !(ivAnnualPct > 0)) return null;
   const sigmaT = forecastSigma(bars, p.estimator);
   if (!(sigmaT > 0)) return null;
   const x = Math.log((ivAnnualPct / 100) / (sigmaT * SQRT252));
-  const adj = Math.exp(p.k * (x - p.mu));
+  const J = p.extras && extras && EXTRA_KEYS.every(k => Number.isFinite(extras[k])) ? p.extras : null;
+  const adj = J
+    ? Math.exp(J.coef.x * (x - J.mean.x) + EXTRA_KEYS.reduce((a, k) => a + J.coef[k] * (extras[k] - J.mean[k]), 0))
+    : Math.exp(p.k * (x - p.mu));
+  const width = J ? J.width : p.width;
   const evMult = eventMultiplier(paramsFor(instrument, assetClass), eventTag);
   const sPct = sigmaT * adj * evMult * 100;
   const out = {
     sigma_daily_pct: _r2(sigmaT * 100), sigma_used_pct: _r2(sPct),
     vol_annual: _r2(sigmaT * SQRT252 * 100), iv_annual: _r2(ivAnnualPct),
     iv_adjust: Math.round(adj * 1000) / 1000,
+    form: J ? 'iv+extras' : 'iv',
+    ...(J ? { extras: { ...extras } } : {}),
     event_tag: eventTag ?? null, event_mult: Math.round(evMult * 1000) / 1000,
     horizon: 'daily', params_source: 'fitted-ivadj', width_source: 'fitted-ivadj', estimator: p.estimator,
     iv_source: p.iv_source,
   };
   for (const q of ['hl', 'oc', 'oh', 'ol']) {
-    const w = p.width[q];
+    const w = width[q];
     if (!Array.isArray(w)) continue;
     out[q] = {};
     RUNGS.forEach((rung, i) => { if (Number.isFinite(w[i])) out[q][rung] = _r2(w[i] * sPct); });
@@ -127,6 +167,10 @@ export function buildIvAdjInstruments(latest, ohlcCache, oiStore, registry, now,
     return { iv: c.value };
   };
 
+  const sessionDate = latest?.session_date ?? null;
+  const cache = Object.fromEntries(Object.entries(ohlcCache ?? {}).map(([n, b]) => [n, barsBefore(b, sessionDate)]));
+  ohlcCache = cache;
+  const ext = usExtras(cboe, cache, null);                 // already cut to bars before the session
   const instruments = {}, adjusted = [], skipped = [];
   for (const [name, fc] of Object.entries(src)) {
     instruments[name] = fc;                                // default: production ladder, unchanged
@@ -146,11 +190,12 @@ export function buildIvAdjInstruments(latest, ohlcCache, oiStore, registry, now,
     if (!r || r.why) { skipped.push({ name, reason: r?.why ?? 'no IV' }); continue; }
     const lad = buildIvAdjLadder(ohlcCache?.[name], {
       instrument: name, ivAnnualPct: r.iv, assetClass: byName[name]?.assetClass ?? 'fx',
-      eventTag: fc?.ladder ? fc.ladder.event_tag : null, params,
+      eventTag: fc?.ladder ? fc.ladder.event_tag : null, params, extras: p.extras ? ext : null,
     });
     if (!lad) { skipped.push({ name, reason: 'σ unavailable (bars not cached)' }); continue; }
     instruments[name] = { ...fc, ladder: lad };
-    adjusted.push({ name, iv: _r2(r.iv), adj: lad.iv_adjust, source: p.iv_source, ...(r.rho != null ? { rho: _r2(r.rho) } : {}) });
+    adjusted.push({ name, iv: _r2(r.iv), adj: lad.iv_adjust, source: p.iv_source, form: lad.form,
+                    ...(r.rho != null ? { rho: _r2(r.rho) } : {}) });
   }
   return { instruments, adjusted, skipped };
 }

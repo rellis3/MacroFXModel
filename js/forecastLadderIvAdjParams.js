@@ -103,7 +103,49 @@ export const IVADJ_PARAMS = {
      1.8999
     ]
    },
-   "n": 2584
+   "n": 2584,
+   "extras": {
+    "coef": {
+     "x": 0.74818,
+     "vix_inv": 0.10479,
+     "front_dear": 0.09743,
+     "front_calm": -0.13247,
+     "all_down": 0.0256,
+     "nq_dw": 0.11103
+    },
+    "mean": {
+     "x": 0.45165,
+     "vix_inv": 0.07469,
+     "front_dear": 0.33088,
+     "front_calm": 0.34133,
+     "all_down": 0.19156,
+     "nq_dw": 0.24884
+    },
+    "width": {
+     "hl": [
+      1.5369,
+      2.02,
+      2.5682
+     ],
+     "oc": [
+      0.668,
+      1.1782,
+      1.784
+     ],
+     "oh": [
+      0.6938,
+      1.1637,
+      1.7109
+     ],
+     "ol": [
+      0.6476,
+      1.2031,
+      1.858
+     ]
+    },
+    "evidence": "forge/US_EXTRAS_CONFIRM_PREREG.md",
+    "n": 2584
+   }
   },
   "NQ": {
    "class": "indices",
@@ -133,7 +175,49 @@ export const IVADJ_PARAMS = {
      1.9857
     ]
    },
-   "n": 2584
+   "n": 2584,
+   "extras": {
+    "coef": {
+     "x": 0.74818,
+     "vix_inv": 0.10479,
+     "front_dear": 0.09743,
+     "front_calm": -0.13247,
+     "all_down": 0.0256,
+     "nq_dw": 0.11103
+    },
+    "mean": {
+     "x": 0.34205,
+     "vix_inv": 0.07469,
+     "front_dear": 0.33088,
+     "front_calm": 0.34133,
+     "all_down": 0.19156,
+     "nq_dw": 0.24884
+    },
+    "width": {
+     "hl": [
+      1.5658,
+      2.0477,
+      2.5924
+     ],
+     "oc": [
+      0.7047,
+      1.251,
+      1.8462
+     ],
+     "oh": [
+      0.7017,
+      1.1768,
+      1.693
+     ],
+     "ol": [
+      0.6461,
+      1.2181,
+      1.9232
+     ]
+    },
+    "evidence": "forge/US_EXTRAS_CONFIRM_PREREG.md",
+    "n": 2584
+   }
   },
   "SPX": {
    "class": "indices",
@@ -163,7 +247,49 @@ export const IVADJ_PARAMS = {
      1.9548
     ]
    },
-   "n": 2584
+   "n": 2584,
+   "extras": {
+    "coef": {
+     "x": 0.74818,
+     "vix_inv": 0.10479,
+     "front_dear": 0.09743,
+     "front_calm": -0.13247,
+     "all_down": 0.0256,
+     "nq_dw": 0.11103
+    },
+    "mean": {
+     "x": 0.42737,
+     "vix_inv": 0.07469,
+     "front_dear": 0.33088,
+     "front_calm": 0.34133,
+     "all_down": 0.19156,
+     "nq_dw": 0.24884
+    },
+    "width": {
+     "hl": [
+      1.5224,
+      2.0001,
+      2.5711
+     ],
+     "oc": [
+      0.6743,
+      1.1952,
+      1.7497
+     ],
+     "oh": [
+      0.6903,
+      1.1481,
+      1.6606
+     ],
+     "ol": [
+      0.6391,
+      1.186,
+      1.9189
+     ]
+    },
+    "evidence": "forge/US_EXTRAS_CONFIRM_PREREG.md",
+    "n": 2584
+   }
   },
   "UK100": {
    "class": "indices",
@@ -223,7 +349,49 @@ export const IVADJ_PARAMS = {
      1.88
     ]
    },
-   "n": 2584
+   "n": 2584,
+   "extras": {
+    "coef": {
+     "x": 0.74818,
+     "vix_inv": 0.10479,
+     "front_dear": 0.09743,
+     "front_calm": -0.13247,
+     "all_down": 0.0256,
+     "nq_dw": 0.11103
+    },
+    "mean": {
+     "x": 0.01601,
+     "vix_inv": 0.07469,
+     "front_dear": 0.33088,
+     "front_calm": 0.34133,
+     "all_down": 0.19156,
+     "nq_dw": 0.24884
+    },
+    "width": {
+     "hl": [
+      1.5727,
+      2.0305,
+      2.6042
+     ],
+     "oc": [
+      0.7037,
+      1.2005,
+      1.741
+     ],
+     "oh": [
+      0.685,
+      1.1726,
+      1.7071
+     ],
+     "ol": [
+      0.6828,
+      1.2433,
+      1.8912
+     ]
+    },
+    "evidence": "forge/US_EXTRAS_CONFIRM_PREREG.md",
+    "n": 2584
+   }
   },
   "AUDUSD": {
    "class": "fx_major",

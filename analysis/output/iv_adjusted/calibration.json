@@ -141,6 +141,40 @@
      "ratio": 0.9731
     }
    ]
+  },
+  "us_extras": {
+   "split": "2022-08-23",
+   "median_ratio": 0.9654,
+   "share_better": 0.75,
+   "pass": true,
+   "coef_train": {
+    "x": 0.7277,
+    "vix_inv": 0.1276,
+    "front_dear": 0.074,
+    "front_calm": -0.147,
+    "all_down": 0.0348,
+    "nq_dw": 0.1372
+   },
+   "per": [
+    {
+     "inst": "DOW",
+     "ratio": 0.9781
+    },
+    {
+     "inst": "NQ",
+     "ratio": 0.9527
+    },
+    {
+     "inst": "SPX",
+     "ratio": 0.9411
+    },
+    {
+     "inst": "US2000",
+     "ratio": 1.0143
+    }
+   ],
+   "k_train": null,
+   "k_all": null
   }
  },
  "audit": {

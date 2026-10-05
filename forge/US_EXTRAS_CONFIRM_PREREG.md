@@ -54,3 +54,29 @@ post-hoc size was about 2.5%.
   replicating.
 
 Script: `forge/run_us_extras_confirm.py`. Output: `analysis/output/us_extras_confirm/RESULTS.md`.
+
+---
+
+## Results (2026-10-05, run after the pre-registration commit e19b8dec)
+
+Full tables: `analysis/output/us_extras_confirm/RESULTS.md`. 1,256 sessions per index
+(2011-01-05 → 2015-12-31); train before 2014-01-03.
+
+| | |
+|---|---|
+| test pinball (IV + extras) ÷ (IV only), median | **0.957** |
+| better on | **3/4**: SPX 0.939, NQ 0.945, DOW 0.968; US2000 1.001 (flat) |
+| extras with the ledger's sign | **5/5** |
+| p75 exceedance on VIX-inverted days, A → B | 38.8% → 19.1% |
+| front dear / calm days, A → B | 38.3% → 30.3% / 18.3% → 29.6% |
+| **verdict** | **CONFIRMED** |
+
+On untouched years the increment is larger than the post-hoc observation (4.4% vs 2.5%).
+US2000 does not benefit in either window.
+
+**Live-type re-fit** (`analysis/output/iv_adjusted/CALIBRATION.md`, `us_extras`): joint vs
+IV-only median 0.965, 3/4 better, US2000 1.014 again.
+
+**Decision per the pre-registration:** the extras are added to the IV-adjusted export for
+NQ / SPX500 / US30 / US2000. US2000 is kept because the rule names all four, although it
+shows no gain. Live falls back to IV-only whenever a curve or breadth input is missing.

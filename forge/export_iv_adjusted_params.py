@@ -42,6 +42,11 @@ LEG = {"EUR": ("EURUSD", +1), "GBP": ("GBPUSD", +1), "AUD": ("AUDUSD", +1),
 IVFILE = {"EURUSD": "eur_usd", "GBPUSD": "gbp_usd", "AUDUSD": "aud_usd", "USDJPY": "usd_jpy",
           "USDCAD": "usd_cad", "USDCHF": "usd_chf"}
 INDEX_IV = {"NQ": "VXN", "SPX": "VIX", "DOW": "VIX", "US2000": "VIX", "DE30": "VIX", "UK100": "VIX"}
+# US-EXTRAS-CONFIRM (forge/US_EXTRAS_CONFIRM_PREREG.md, CONFIRMED on untouched 2011-2015): the
+# VIX-curve / breadth terms add to IV/sigma on these four only.
+US_EXTRAS = ("NQ", "SPX", "DOW", "US2000")
+EXTRAS = ("vix_inv", "front_dear", "front_calm", "all_down", "nq_dw")
+BREADTH = ("NQ", "SPX", "DOW", "US2000", "DE30", "UK100")
 CROSSES = ("AUDCAD", "AUDCHF", "AUDJPY", "CADCHF", "CADJPY", "CHFJPY", "EURAUD", "EURCAD",
            "EURCHF", "EURGBP", "EURJPY", "GBPAUD", "GBPCAD", "GBPCHF", "GBPJPY")
 CLASS = {**{n: "indices" for n in INDEX_IV}, **{n: "fx_major" for n in IVFILE}, "GOLD": "fx_major",
@@ -72,7 +77,7 @@ def realised(name: str) -> pd.DataFrame:
 
 def main():
     est = ladder_estimators()
-    vix, vxn, gvz = cboe("VIX"), cboe("VXN"), cboe("GVZ")
+    vix, vxn, gvz, vix3m, vix9d = cboe("VIX"), cboe("VXN"), cboe("GVZ"), cboe("VIX3M"), cboe("VIX9D")
     bars = {n: d1(n) for n in {*INDEX_IV, *IVFILE, "GOLD", *CROSSES}}
     ret = {n: np.log(b["close"]).diff() for n, b in bars.items()}
     rows, audit = [], {}
@@ -149,6 +154,66 @@ def main():
         print(f"\n{cls}: k_train {k_tr:.3f} k_all {k_all:.3f}  median B/A {np.median(r_):.4f} better {(r_ < 1).mean():.0%}  pass={check[cls]['pass']}")
         print("  ", per)
 
+    # ── US indices: IV/sigma + the five confirmed extras, fitted jointly on live-type inputs ──
+    closes = pd.DataFrame({n: bars[n]["close"] for n in BREADTH})
+    r6 = closes.pct_change()
+    full6 = r6.notna().all(axis=1)
+    all_down = ((r6 < 0).all(axis=1) & full6).astype(float)[full6]
+    nqc = bars["NQ"]["close"]
+    nq_dw = ((nqc / nqc.shift(5) - 1) <= -0.01).astype(float)[nqc.shift(5).notna()]
+    U = X[X["inst"].isin(US_EXTRAS)].copy()
+    D = pd.DatetimeIndex(U["date"])
+    front = asof_before(D, vix9d) / asof_before(D, vix)
+    U["vix_inv"] = (asof_before(D, vix) > asof_before(D, vix3m)).astype(float)
+    U["front_dear"] = np.where(np.isfinite(front), (front >= 0.9669).astype(float), np.nan)
+    U["front_calm"] = np.where(np.isfinite(front), (front < 0.8858).astype(float), np.nan)
+    U["all_down"], U["nq_dw"] = asof_before(D, all_down), asof_before(D, nq_dw)
+    U = U[U[list(EXTRAS)].notna().all(axis=1)].reset_index(drop=True)
+    FE = ("x", *EXTRAS)
+
+    def joint(sub):
+        cen = sub.groupby("inst")[["x", *EXTRAS]].mean()
+        y = np.log(sub["hl"] / sub["sig_d"]); y = (y - y.groupby(sub["inst"]).transform("mean")).to_numpy()
+        Z = sub[list(FE)].to_numpy(float) - cen.loc[sub["inst"], list(FE)].to_numpy(float)
+        sd = Z.std(axis=0); sd[sd == 0] = 1.0
+        b = np.linalg.solve((Z / sd).T @ (Z / sd) + LAMBDA * np.eye(len(FE)), (Z / sd).T @ y)
+        return dict(zip(FE, b / sd)), cen          # coefficients in raw units, per-instrument centres
+
+    def adj_sig(g, coef, cen):
+        z = sum(coef[f] * (g[f].to_numpy() - cen.loc[g["inst"], f].to_numpy()) for f in FE)
+        return g["sig_d"].to_numpy() * np.exp(z)
+
+    usplit = U["date"].quantile(TRAIN_FRAC)
+    utr = U[U["date"] < usplit]
+    cJ, cenJ = joint(utr)
+    kI, muI = fit_k(utr)                            # IV-only arm, same rows, for the comparison
+    uper = []
+    for inst, g in U.groupby("inst"):
+        gtr, gte = g[g["date"] < usplit], g[g["date"] >= usplit]
+        losses = {}
+        for arm, fn in (("ivonly", lambda gg: gg["sig_d"].to_numpy() * np.exp(kI * (gg["x"].to_numpy() - muI[inst]))),
+                        ("joint", lambda gg: adj_sig(gg, cJ, cenJ))):
+            L = 0.0
+            for t in (0.50, 0.75):
+                m = V.fit_width_multiplier(fn(gtr), gtr["hl"].to_numpy(), t)
+                pred = m * fn(gte); d_ = gte["hl"].to_numpy() - pred
+                L += float(np.where(d_ >= 0, t * d_, (t - 1) * d_).mean())
+            losses[arm] = L
+        uper.append({"inst": inst, "ratio": round(losses["joint"] / losses["ivonly"], 4)})
+    ur = np.array([p["ratio"] for p in uper])
+    check["us_extras"] = {"split": str(usplit.date()), "median_ratio": round(float(np.median(ur)), 4),
+                          "share_better": round(float((ur < 1).mean()), 3), "pass": bool(np.median(ur) < 0.99 and (ur < 1).sum() >= 3),
+                          "coef_train": {k: round(float(v), 4) for k, v in cJ.items()}, "per": uper, "k_train": None, "k_all": None}
+    print(f"us_extras (joint vs IV-only, live-type): median {np.median(ur):.4f}, better {(ur < 1).sum()}/4", uper)
+    cAll, cenAll = joint(U)
+    for inst, g in U.groupby("inst"):
+        sfull = adj_sig(g, cAll, cenAll)
+        params[inst]["extras"] = {
+            "coef": {f: round(float(cAll[f]), 5) for f in FE},                 # 'x' = ln(IV/sigma) coefficient
+            "mean": {f: round(float(cenAll.loc[inst, f]), 5) for f in FE},
+            "width": {q: [round(V.fit_width_multiplier(sfull, g[q].to_numpy(), t), 4) for t in TAUS] for q in QUANT},
+            "evidence": "forge/US_EXTRAS_CONFIRM_PREREG.md", "n": int(len(g))}
+
     for leg in LEG.values():                                   # crosses need the legs' params on the live side
         params.setdefault(leg[0], {})
     meta = {"generated": str(date.today()), "source": "forge/export_iv_adjusted_params.py",
@@ -174,7 +239,7 @@ def main():
                "| " + " | ".join(p["inst"] for p in c["per"]) + " |", "|" + "---|" * len(c["per"]),
                "| " + " | ".join(str(p["ratio"]) for p in c["per"]) + " |", "",
                "| rung | target | A exceed | B exceed |", "|---|---|---|---|"]
-        for rk in sorted(exc[cls]):
+        for rk in sorted(exc.get(cls, {})):
             tgt = {"p50": 50, "p75": 25, "p90": 10}[rk.split("_")[1]]
             a, b = exc[cls][rk]["A"], exc[cls][rk]["B"]
             md.append(f"| {rk} | {tgt}% | {a[0] / a[1]:.1%} | {b[0] / b[1]:.1%} |")

@@ -71,6 +71,17 @@ Split 2024-04-03. Elasticity k: 0.64 (train) / 0.645 (all data, exported). Media
 | ol_p75 | 25% | 23.6% | 24.0% |
 | ol_p90 | 10% | 10.0% | 9.9% |
 
+## us_extras — PASS
+
+Split 2022-08-23. Elasticity k: None (train) / None (all data, exported). Median B÷A **0.9654**, B better on **75%**.
+
+| DOW | NQ | SPX | US2000 |
+|---|---|---|---|
+| 0.9781 | 0.9527 | 0.9411 | 1.0143 |
+
+| rung | target | A exceed | B exceed |
+|---|---|---|---|
+
 ## Data
 
 - NQ: indices, 2584 sessions, 2016-08-22 to 2026-08-21
