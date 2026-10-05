@@ -639,11 +639,11 @@ export const DESK_EVIDENCE = [
     use: 'A Live Range line is not a barrier: from the bold p75, about 2 in 5 days reach p90. Use it for targets and expectations, not for fades.',
   },
   {
-    id: 'event-layer', domain: 'events', verdict: 'validated', date: '2026-10-05', doc: 'forge/EVENT_LAYER_PREREG.md',
+    id: 'event-layer', domain: 'events', verdict: 'null', date: '2026-10-05', doc: 'forge/EVENT_LAYER_PREREG.md',
     instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'GOLD'],
     claim: 'On top of the IV-adjusted daily lines, the typical size of the day’s scheduled release type (and yesterday’s surprise) improves the range forecast',
-    result: 'FX+gold PASS: pinball 0.970, 7/7; top-decile release days p75 passed 45.5% -> 28.9%. Indices FAIL (1.002, 2/6): VIX already prices the calendar. Yesterday’s surprise does NOT widen today (sign negative, both classes). USD/EUR/GBP releases only.',
-    use: 'On big FX release days (payrolls, CPI, Fed press conference) the IV-adjusted lines run tight: widen them by the release type’s size. Not for US indices. Do not widen the day after a surprise.',
+    result: 'First test (calendar_events.csv) PASSED for FX+gold (0.970, 7/7) but did NOT replicate on live inputs (ForexFactory names, live IV-adjusted sigma, 2020-2025): 0.9937 vs the 0.99 bar; the fitted correction overshoots (big-release-day p75 35.5% -> 17.3%). Yesterday’s surprise null in both. The live export’s coarse event tag already brings FOMC/NFP/CPI days to 27.1% passed vs 25%.',
+    use: 'Keep the coarse event tag on the IV-adjusted lines; it already handles release days. No finer release-type layer. Do not widen the day after a surprise.',
   },
 ];
 

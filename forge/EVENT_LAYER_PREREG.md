@@ -107,3 +107,32 @@ Full tables: `analysis/output/event_layer/RESULTS.md`.
 differently from `calendar_events.csv` (memory: Event Book vs calendar vocabularies, 0/10
 joined by name). The fitted release-type table needs an explicit name map to the live feed, so
 the live build waits on that map.
+
+---
+
+## Live-type re-check (2026-10-06): does NOT replicate, not shipped
+
+Re-run on the inputs the live path uses (`analysis/output/event_layer/LIVE_CALIBRATION.md`,
+`forge/export_event_layer_params.py`):
+- ForexFactory High releases, which carry the live feed's names, all nine currencies;
+- the LIVE IV-adjusted σ;
+- 2020-09 → 2025-04.
+
+The same rule was applied: median 0.9937 (needs < 0.99), 71% better. **FAIL.**
+
+The release-day miscalibration is real: IV-adjusted alone has p75 passed **35.5%** on the
+biggest release days. The fitted correction overshoots, though: its coefficient is 1.48, and
+those days come out at 17.3%.
+
+**Descriptive check of what is actually live.** The IV-adjusted export already multiplies by
+the coarse event tag (FOMC / NFP / CPI / high / holiday). With it, p75 is passed:
+- **27.1%** on FOMC / NFP / CPI days;
+- 22.6% on other high-release days;
+- 18.7% on days with no high-impact release.
+
+So the live lines are already roughly right on release days. The remaining gap (tier-1 slightly
+tight, quiet days slightly wide) is small.
+
+**Decision.** No release-type layer ships. The coarse tag stays. Re-tuning the fine-grained
+term until it passes would be the forking-paths search Lesson 02 warns about, so it is closed
+here. Yesterday's-surprise term: null.

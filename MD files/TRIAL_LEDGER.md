@@ -11,15 +11,15 @@ Generated 2026-10-05.
 | | n |
 |---|---|
 | claims tested (validated + null + underpowered) | **81** |
-| validated | 28 |
-| null | 50 |
+| validated | 27 |
+| null | 51 |
 | underpowered | 3 |
 | context (base rates, descriptions: not counted as tests) | 18 |
 | pre-registrations with no banked verdict (below) | 16 |
 
 **What the count says (Lesson 02 §05).** If none of the 81 claims were real, tests at the usual 5% size would still pass
-about **4.1** of them by luck. 28 passed, so most passes are unlikely to be luck alone, but
-**roughly 4 of the 28 could be**. Which ones cannot be told from the backtest.
+about **4.1** of them by luck. 27 passed, so most passes are unlikely to be luck alone, but
+**roughly 4 of the 27 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -121,7 +121,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-05 | breadth-tilt-semis | price | underpowered | MD files/BREADTH_TILT_SEMIS_PREREG.md |
 | 2026-10-05 | combined-range | volatility | validated | forge/COMBINED_RANGE_PREREG.md |
 | 2026-10-05 | cross-iv | volatility | validated | forge/CROSS_IV_PREREG.md |
-| 2026-10-05 | event-layer | events | validated | forge/EVENT_LAYER_PREREG.md |
+| 2026-10-05 | event-layer | events | null | forge/EVENT_LAYER_PREREG.md |
 | 2026-10-05 | horizon-reversion | volatility | validated | forge/HORIZON_REVERSION_PREREG.md |
 | 2026-10-05 | intraday-range | volatility | validated | forge/INTRADAY_RANGE_PREREG.md |
 | 2026-10-05 | line-touch-reach | volatility | validated | forge/LINE_TOUCH_REACH_PREREG.md |
