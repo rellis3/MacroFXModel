@@ -273,3 +273,10 @@ test('computeForecast: an unknown calendar (null/undefined tag) is x1.0, not the
   assert.ok(quiet.event_mult < 1, "an explicit 'none' still earns its discount");
   assert.ok(unknown.hl.p50 > quiet.hl.p50, 'unknown-calendar bands are wider than quiet-day bands');
 });
+
+test('live index names map to their own fit, not the class default (SPX500 -> SPX, US30 -> DOW)', () => {
+  assert.equal(paramsFor('SPX500', 'index').key, 'SPX');
+  assert.equal(paramsFor('US30', 'index').key, 'DOW');
+  assert.equal(paramsFor('SPX500', 'index').source, 'fitted');
+  assert.equal(paramsFor('NOT_A_PAIR', 'index').source, 'class-default');
+});

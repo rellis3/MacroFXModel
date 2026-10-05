@@ -54,8 +54,14 @@ const _r2 = x => Math.round(x * 100) / 100;
 // import) — the one seam a parallel calibration (e.g. Vote Atlas v2's
 // forecastLadderParamsV2.js) needs to swap in, without touching this
 // function's behaviour for any existing caller that doesn't pass it.
+// The live forecaster names two indices differently from the fitted-params keys; without
+// this map SPX500 / US30 silently fell to the class default (widths, estimator and event
+// multipliers) instead of their own SPX / DOW fit.
+export const LADDER_ALIAS = { SPX500: 'SPX', US30: 'DOW' };
+
 export function paramsFor(instrument, assetClass = 'fx', ladderParams = LADDER_PARAMS) {
-  const key = String(instrument || '').toUpperCase();
+  const raw = String(instrument || '').toUpperCase();
+  const key = ladderParams.pairs?.[raw] ? raw : (LADDER_ALIAS[raw] ?? raw);
   const pair = ladderParams.pairs?.[key];
   if (pair) return { ...pair, source: 'fitted', key };
   const cls = ladderParams.classDefaults?.[assetClass] ?? ladderParams.classDefaults?.fx;

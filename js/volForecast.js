@@ -36,7 +36,7 @@
  */
 
 import { COG_CONST } from './cogReverseEngineer.js';
-import { buildLadder, flattenLadder } from './forecastLadder.js';
+import { buildLadder, flattenLadder, paramsFor } from './forecastLadder.js';
 import { forecastSigma } from './forecastSigma.js';
 import { LADDER_PARAMS } from './forecastLadderParams.js';
 import { buildRevertingLadder } from './forecastLadderReverting.js';
@@ -726,8 +726,7 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0, opts = 
   const _eventTag   = opts.eventTag ?? null;
   let _ladder = null, _ladderW = null, _ladderM = null;
   try {
-    const _lp = LADDER_PARAMS.pairs?.[String(_instrument).toUpperCase()]
-             ?? LADDER_PARAMS.classDefaults?.[assetClass];
+    const _lp = paramsFor(_instrument, assetClass);      // alias-aware (SPX500 -> SPX, US30 -> DOW)
     const _ls = forecastSigma(ohlc, _lp?.estimator ?? 'yz_30');
     if (_ls > 0) {
       const _mk = horizon => buildLadder(_ls, {

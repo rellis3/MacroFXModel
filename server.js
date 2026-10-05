@@ -15290,9 +15290,15 @@ const _DRILL_FRED = { us2y: 'DGS2', us10y: 'DGS10', us30y: 'DGS30', tips: 'DFII1
 async function _cboeCsv(sym) {
   const r = await fetch(`https://cdn.cboe.com/api/global/us_indices/daily_prices/${sym}_History.csv`, { signal: AbortSignal.timeout(25_000) });
   if (!r.ok) throw new Error(`CBOE ${sym} HTTP ${r.status}`);
-  return (await r.text()).trim().split('\n').slice(1).map(l => {
-    const [d, v] = l.split(','); const m = String(d).trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    return m ? { date: `${m[3]}-${m[1]}-${m[2]}`, value: parseFloat(v) } : null;
+  // 5-column files (VIX, VXN, VIX9D, VIX3M, VIX6M, RVX, …) are DATE,OPEN,HIGH,LOW,CLOSE:
+  // the old "second column" read returned the OPEN. Take CLOSE by header; 2-column files
+  // (GVZ, DSPX, …) have no CLOSE header and keep their single value column.
+  const rows = (await r.text()).trim().split(/\r?\n/);
+  const head = rows[0].split(',').map(h => h.trim().toUpperCase());
+  const ci = head.includes('CLOSE') ? head.indexOf('CLOSE') : 1;
+  return rows.slice(1).map(l => {
+    const c = l.split(','); const m = String(c[0]).trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    return m ? { date: `${m[3]}-${m[1]}-${m[2]}`, value: parseFloat(c[ci]) } : null;
   }).filter(o => o && Number.isFinite(o.value));
 }
 const _cboeDspx = () => _cboeCsv('DSPX');
