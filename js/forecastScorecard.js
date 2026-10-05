@@ -131,3 +131,41 @@ export function summarise(store) {
     live: Object.fromEntries(Object.entries(live).map(([g, T]) => [g, { n: T.n, up: T.up.map(x => r4(x / T.n)), dn: T.dn.map(x => r4(x / T.n)) }])),
   };
 }
+
+/**
+ * Plain-English verdicts for the page. Judged on SESSIONS / WEEKS, not instrument-days: 30+
+ * instruments on one day mostly share the same few moves (MD: range-forecast-calibrated note), so
+ * 123 instrument-days from 3 sessions is 3 observations, not 123. Thresholds are fixed here, in
+ * advance: no verdict before 15 sessions (daily) / 6 weeks (weekly); "better/worse" only past ±2%.
+ * Returns [{ topic, status: 'early'|'good'|'warn'|'same', text }].
+ */
+export const VERDICT_MIN = { sessions: 15, weeks: 6 };
+export function verdicts(S) {
+  const out = [];
+  const pc = x => `${Math.round(x * 100)}%`;
+  const fit = (rate, n, what, enough) => {
+    if (!enough || !n) return { status: 'early', text: `${what}: too early to judge.` };
+    if (rate > 0.30) return { status: 'warn', text: `${what}: running TIGHT, days bigger than forecast (p75 passed ${pc(rate)} vs 25%).` };
+    if (rate < 0.20) return { status: 'warn', text: `${what}: running WIDE, days smaller than forecast (p75 passed ${pc(rate)} vs 25%).` };
+    return { status: 'good', text: `${what}: about right (p75 passed ${pc(rate)} vs 25%).` };
+  };
+  const vs = (ratio, pairs, units, enough, a, b) => {
+    if (!enough || ratio == null) return { status: 'early', text: `${b} vs ${a}: too early to judge (${units} so far).` };
+    if (ratio < 0.98) return { status: 'good', text: `${b} beating ${a} by ${Math.round((1 - ratio) * 100)}% (${units}). Keep using it.` };
+    if (ratio > 1.02) return { status: 'warn', text: `${b} doing WORSE than ${a} by ${Math.round((ratio - 1) * 100)}% (${units}). Consider going back to ${a}.` };
+    return { status: 'same', text: `${b} and ${a} about the same so far (${units}).` };
+  };
+  const dEnough = S.sessions >= VERDICT_MIN.sessions, wEnough = S.weeks >= VERDICT_MIN.weeks;
+  out.push({ topic: 'daily', ...vs(S.daily_ivadj_vs_plain_pinball, S.daily_pairs, `${S.sessions} sessions`, dEnough && S.daily_pairs > 0, 'plain Forecast', 'IV-adjusted') });
+  out.push({ topic: 'daily', ...fit(S.daily?.ivadj?.hl?.[1], S.daily?.ivadj?.n, 'IV-adjusted daily lines', dEnough) });
+  out.push({ topic: 'daily', ...fit(S.daily?.plain?.hl?.[1], S.daily?.plain?.n, 'Plain daily lines', dEnough) });
+  out.push({ topic: 'weekly', ...vs(S.weekly_rev_vs_sqrt_pinball, S.weekly_pairs, `${S.weeks} weeks`, wEnough && S.weekly_pairs > 0, '√h Weekly', 'Reverting Weekly') });
+  out.push({ topic: 'weekly', ...fit(S.weekly?.rev?.hl?.[1], S.weekly?.rev?.n, 'Reverting weekly lines', wEnough) });
+  const L = Object.values(S.live ?? {});
+  if (L.length) {
+    const n = L.reduce((a, g) => a + g.n, 0);
+    const p75 = L.reduce((a, g) => a + g.n * (g.up[1] + g.dn[1]) / 2, 0) / Math.max(n, 1);
+    out.push({ topic: 'live', ...fit(p75, n, 'Live Range bold lines', dEnough) });
+  } else out.push({ topic: 'live', status: 'early', text: 'Live Range bold lines: too early to judge.' });
+  return out;
+}

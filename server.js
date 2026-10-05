@@ -59,7 +59,7 @@ import { forecastFields, buildAllExports }                           from './js/
 import { buildLadderExportText, buildSessionAddendum }               from './js/ladderExport.js';
 import { buildIvLadderExportText }                                    from './js/ivLadderExport.js';
 import { buildIvAdjExportText, buildIvAdjInstruments }                from './js/forecastLadderIvAdj.js';
-import { scoreSession, scoreWeek, summarise as summariseScorecard }  from './js/forecastScorecard.js';
+import { scoreSession, scoreWeek, summarise as summariseScorecard, verdicts as scorecardVerdicts } from './js/forecastScorecard.js';
 import { londonParts as _lrLondonParts }                              from './js/intradayRange.js';
 import { impliedDayMove }                                             from './js/ivMetrics.js';
 import { parseForexFactory as _calParseFF, parseNasdaq as _calParseNasdaq, upcoming as _calUpcoming, printed as _calPrinted, calendarHealth as _calHealth } from './js/calendarFeed.js';
@@ -22063,7 +22063,8 @@ svcTimeout('forecastScorecard', () => _fcardTick().catch(e => console.error('[fo
 app.get('/api/forecast-scorecard', async (req, res) => {
   try {
     const store = JSON.parse(await kv.get(_FCARD_KEY) || 'null') ?? { days: {}, weeks: {}, snap: {} };
-    res.json({ ok: true, started: store.started ?? null, summary: summariseScorecard(store),
+    const summary = summariseScorecard(store);
+    res.json({ ok: true, started: store.started ?? null, summary, verdicts: scorecardVerdicts(summary),
                snapshots: Object.keys(store.snap ?? {}), ...(req.query.raw === '1' ? { days: store.days, weeks: store.weeks } : {}) });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });

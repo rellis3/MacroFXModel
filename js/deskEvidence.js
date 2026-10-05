@@ -596,6 +596,48 @@ export const DESK_EVIDENCE = [
     result: 'UNTESTABLE on the data this desk holds, and that IS the finding. Pre-registered in f7929fd before the harness existed. SMH, RSP and SPY are carried only from 2020-10 -- 1,507 usable sessions. A rolling 504-session threshold consumes the first two years, and de-clustering at 20 sessions (a narrowing regime persists for months) leaves 13-14 independent episodes against a pre-registered floor of 20. Every cell returned UNTESTABLE at both the 20- and 60-session horizons, for the narrowing setup and for its broadening mirror alike. No excess return is reported, because computing one on 13 episodes and quoting it is precisely the error the floor exists to prevent. NOTE WHAT THIS DOES NOT SAY: not that the tilt is null, and not that the claim is wrong. The question was asked properly and this sample cannot answer it.',
     use: 'Never cite this for or against an AI-bottleneck tilt in either direction. The adjacent BREADTH claims are separately and properly null -- breadth-narrowing (35 de-clustered events over 23 years, killed by its mirror), rotation-extreme (n=140) and dispersion-crowded-week (68 setups) -- but all three asked what the INDEX does next, so none of them reaches this cross-sectional sleeve question, which stays open. The fix is MORE HISTORY, not a different design: SMH trades back to 2000 and RSP to 2003, so the identical pre-registered test on a longer series would clear the floor several times over. Re-running the same design on a longer sample is legitimate; relaxing the de-clustering or the floor after seeing 13 episodes would not be.',
   },
+  {
+    id: 'horizon-reversion', domain: 'volatility', verdict: 'validated', date: '2026-10-05', doc: 'forge/HORIZON_REVERSION_PREREG.md',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'GOLD', 'NQ', 'SPX'],
+    claim: 'Weekly/monthly range lines that let sigma fade back to its 250-day level (Lesson 03 half-life) beat the sqrt-h scaling of today’s sigma',
+    result: 'PASS: test pinball weekly 0.968 (33/33 instruments better), monthly 0.936 (94%). p75 exceedance by calm/normal/stressed state, sqrt-h vs reverting: weekly 30.7/20.0/15.2% -> 24.3/20.5/19.3%; monthly 32.5/18.3/12.4% -> 20.7/20.1/21.3%.',
+    use: 'Weekly/monthly lines: use the "Forecast Weekly · Reverting" export / chart view. The sqrt-h lines run too narrow after calm spells and too wide after stressed ones.',
+  },
+  {
+    id: 'combined-range', domain: 'volatility', verdict: 'validated', date: '2026-10-05', doc: 'forge/COMBINED_RANGE_PREREG.md',
+    instruments: ['NQ', 'SPX', 'DOW', 'US2000', 'DE30', 'UK100', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'GOLD'],
+    claim: 'The validated pre-open range findings, fitted JOINTLY into the ladder sigma, beat the ladder alone on the daily range',
+    result: 'PASS: test pinball 0.900 indices (6/6), 0.939 FX+gold (7/7). Implied vol / own sigma carries almost all of it (IV-only 0.923 / 0.938, post-hoc ablation); VIX-curve/breadth/NQ-week add ~2.5% for US indices only. Live-type re-calibration 28/28 (analysis/output/iv_adjusted/CALIBRATION.md).',
+    use: 'Daily lines: the "Forecast · IV-adjusted" export / chart view. IV/sigma (the Daily Read exhaustion tag) belongs INSIDE the range forecast, as a blend (elasticity ~0.6-0.8), not a pure swap.',
+  },
+  {
+    id: 'cross-iv', domain: 'volatility', verdict: 'validated', date: '2026-10-05', doc: 'forge/CROSS_IV_PREREG.md',
+    instruments: ['EURJPY', 'GBPJPY', 'EURGBP', 'AUDJPY', 'CADJPY', 'EURAUD', 'EURCHF', 'GBPCHF', 'GBPAUD', 'GBPCAD', 'AUDCAD', 'EURCAD'],
+    claim: 'A cross’s implied vol built from its two USD legs (CVOL + trailing leg correlation) improves its daily range lines the way own-IV does for the majors',
+    result: 'PASS: test pinball median 0.965, 15/15 crosses better; low/high leg-IV/sigma tercile p75 exceedance 15.8% / 31.9% -> 22.8% / 23.3%. The majors’ elasticity transfers (0.969).',
+    use: 'Crosses join the IV-adjusted daily lines. NZD pairs have no NZD implied vol and stay on the plain ladder.',
+  },
+  {
+    id: 'us-extras-confirm', domain: 'volatility', verdict: 'validated', date: '2026-10-05', doc: 'forge/US_EXTRAS_CONFIRM_PREREG.md',
+    instruments: ['NQ', 'SPX', 'DOW'],
+    claim: 'On US indices the VIX-curve / breadth / NQ-down-week terms add to IV/sigma, confirmed on years no test had touched (2011-2015)',
+    result: 'CONFIRMED: (IV + extras) / (IV only) test pinball median 0.957, 3/4 better (US2000 flat in both windows), 5/5 signs as ledger; VIX-inverted-day p75 exceedance 38.8% -> 19.1%.',
+    use: 'Built into the IV-adjusted export for NQ/SPX500/US30/US2000. A calm VIX front narrows the US index lines; an inverted or dear curve widens them.',
+  },
+  {
+    id: 'intraday-range', domain: 'volatility', verdict: 'validated', date: '2026-10-05', doc: 'forge/INTRADAY_RANGE_PREREG.md',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'GOLD', 'NQ', 'SPX', 'DE30'],
+    claim: 'An hourly re-forecast of the remaining range (range used x last-hour speed, by hour) beats the morning lines for the rest of the day',
+    result: 'PASS: FX+gold 21/21 hourly checkpoints, indices 19/21. Informative gain 08:00-13:00 (FX 9-17%, indices 3-4%); late-day gains largely mechanical. Indices downside lines slightly tight (p75 29%).',
+    use: 'live-range.html: projected high/low lines that step each hour. Size and reach only, never direction.',
+  },
+  {
+    id: 'line-touch-reach', domain: 'volatility', verdict: 'validated', date: '2026-10-05', doc: 'forge/LINE_TOUCH_REACH_PREREG.md',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'GOLD', 'NQ', 'SPX'],
+    claim: 'After price reaches a Live Range line, the model’s own odds of reaching the next line before the close hold',
+    result: 'CALIBRATED: 20/22 eligible cells within 5pp. p50 -> p75 ~50%, p75 -> p90 ~40% (FX 38-41%, indices 33-47%); a p75 touch typically carries ~3/4 of the way to p90.',
+    use: 'A Live Range line is not a barrier: from the bold p75, about 2 in 5 days reach p90. Use it for targets and expectations, not for fades.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what

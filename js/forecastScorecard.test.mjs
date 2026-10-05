@@ -51,3 +51,14 @@ test('session + week scoring and the roll-up', () => {
 test('Live Range replay skips instruments with no fit', () => {
   assert.equal(scoreLiveRange(day(), '2026-01-14', 'WHEAT', 1), null);
 });
+
+import { verdicts } from './forecastScorecard.js';
+test('verdicts: "too early" until 15 sessions, then plain judgements on fixed thresholds', () => {
+  const base = { sessions: 3, weeks: 1, daily_pairs: 40, daily_ivadj_vs_plain_pinball: 0.9, weekly_pairs: 0, weekly_rev_vs_sqrt_pinball: null,
+                 daily: { plain: { n: 100, hl: [0.5, 0.47, 0.2] }, ivadj: { n: 40, hl: [0.5, 0.25, 0.1] } }, weekly: {}, live: {} };
+  assert.ok(verdicts(base).every(v => v.status === 'early'), 'nothing judged on 3 sessions');
+  const v = verdicts({ ...base, sessions: 20 });
+  assert.match(v[0].text, /beating plain Forecast by 10%/);
+  assert.equal(v[1].status, 'good');
+  assert.match(v[2].text, /TIGHT/);
+});
