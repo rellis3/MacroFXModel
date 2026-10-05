@@ -48,6 +48,10 @@ const KV_FILE   = path.join(DATA_DIR, 'kv.json');
 //    surprise_index, events_*  re-fetched from Finnhub on next page load
 const _CF_EXACT = new Set([
   'tg_config', 'ai_alert_cfg',
+  'mpt_store_v1',           // Atlanta Fed Market Probability Tracker: fed-path hike/cut odds + a trailing
+                             // series. The CHANGE is the point (hike odds 71%->19% in a week is the read),
+                             // so a reset would destroy the only part that matters.
+                             // Must also be in _worker.js PERMANENT_KEYS.
   'macro_regime_fx_v1',      // 8y regime-conditional FX study — ~11 sequential FRED calls to
                              // rebuild, and the answer only changes by one day at a time.
   'desk_watch_v1',           // the early-warning layer's state + fire log: which conditions are on, when each
