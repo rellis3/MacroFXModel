@@ -1,0 +1,199 @@
+{
+ "split_date": "2023-05-02",
+ "beta_std": 0.1107,
+ "elasticity": 0.591,
+ "median_ratio": 0.9653,
+ "share_better": 1.0,
+ "transfer_median_ratio": 0.9689,
+ "transfer_share_better": 1.0,
+ "p75_by_state": {
+  "iv_low": {
+   "A": 0.158,
+   "B": 0.228,
+   "T": 0.254,
+   "n": 4254
+  },
+  "iv_high": {
+   "A": 0.319,
+   "B": 0.233,
+   "T": 0.208,
+   "n": 4065
+  },
+  "all_days": {
+   "A": 0.238,
+   "B": 0.235,
+   "T": 0.236,
+   "n": 13049
+  }
+ },
+ "verdict": "PASS",
+ "per_instrument": [
+  {
+   "inst": "AUDCAD",
+   "n_train": 1205,
+   "n_test": 870,
+   "ratio_B": 0.9416,
+   "ratio_transfer": 0.9423,
+   "A_p75": 0.259,
+   "B_p75": 0.238,
+   "corr_iv_rv20": 0.432
+  },
+  {
+   "inst": "AUDCHF",
+   "n_train": 1205,
+   "n_test": 870,
+   "ratio_B": 0.9462,
+   "ratio_transfer": 0.9477,
+   "A_p75": 0.234,
+   "B_p75": 0.221,
+   "corr_iv_rv20": 0.317
+  },
+  {
+   "inst": "AUDJPY",
+   "n_train": 1209,
+   "n_test": 870,
+   "ratio_B": 0.9572,
+   "ratio_transfer": 0.9594,
+   "A_p75": 0.231,
+   "B_p75": 0.224,
+   "corr_iv_rv20": 0.427
+  },
+  {
+   "inst": "CADCHF",
+   "n_train": 1205,
+   "n_test": 869,
+   "ratio_B": 0.9272,
+   "ratio_transfer": 0.9249,
+   "A_p75": 0.23,
+   "B_p75": 0.245,
+   "corr_iv_rv20": 0.385
+  },
+  {
+   "inst": "CADJPY",
+   "n_train": 1205,
+   "n_test": 870,
+   "ratio_B": 0.9605,
+   "ratio_transfer": 0.9577,
+   "A_p75": 0.231,
+   "B_p75": 0.249,
+   "corr_iv_rv20": 0.463
+  },
+  {
+   "inst": "CHFJPY",
+   "n_train": 1205,
+   "n_test": 870,
+   "ratio_B": 0.9689,
+   "ratio_transfer": 0.9689,
+   "A_p75": 0.224,
+   "B_p75": 0.24,
+   "corr_iv_rv20": 0.565
+  },
+  {
+   "inst": "EURAUD",
+   "n_train": 1205,
+   "n_test": 870,
+   "ratio_B": 0.9749,
+   "ratio_transfer": 0.9825,
+   "A_p75": 0.243,
+   "B_p75": 0.236,
+   "corr_iv_rv20": 0.473
+  },
+  {
+   "inst": "EURCAD",
+   "n_train": 1205,
+   "n_test": 870,
+   "ratio_B": 0.9653,
+   "ratio_transfer": 0.971,
+   "A_p75": 0.205,
+   "B_p75": 0.213,
+   "corr_iv_rv20": 0.592
+  },
+  {
+   "inst": "EURCHF",
+   "n_train": 1205,
+   "n_test": 870,
+   "ratio_B": 0.9757,
+   "ratio_transfer": 0.9764,
+   "A_p75": 0.226,
+   "B_p75": 0.244,
+   "corr_iv_rv20": 0.544
+  },
+  {
+   "inst": "EURGBP",
+   "n_train": 1697,
+   "n_test": 870,
+   "ratio_B": 0.9844,
+   "ratio_transfer": 0.9887,
+   "A_p75": 0.274,
+   "B_p75": 0.259,
+   "corr_iv_rv20": 0.61
+  },
+  {
+   "inst": "EURJPY",
+   "n_train": 1697,
+   "n_test": 870,
+   "ratio_B": 0.9752,
+   "ratio_transfer": 0.9779,
+   "A_p75": 0.217,
+   "B_p75": 0.22,
+   "corr_iv_rv20": 0.594
+  },
+  {
+   "inst": "GBPAUD",
+   "n_train": 1205,
+   "n_test": 870,
+   "ratio_B": 0.9544,
+   "ratio_transfer": 0.963,
+   "A_p75": 0.27,
+   "B_p75": 0.224,
+   "corr_iv_rv20": 0.439
+  },
+  {
+   "inst": "GBPCAD",
+   "n_train": 1205,
+   "n_test": 870,
+   "ratio_B": 0.9703,
+   "ratio_transfer": 0.9698,
+   "A_p75": 0.228,
+   "B_p75": 0.229,
+   "corr_iv_rv20": 0.522
+  },
+  {
+   "inst": "GBPCHF",
+   "n_train": 1205,
+   "n_test": 870,
+   "ratio_B": 0.9553,
+   "ratio_transfer": 0.9513,
+   "A_p75": 0.261,
+   "B_p75": 0.27,
+   "corr_iv_rv20": 0.454
+  },
+  {
+   "inst": "GBPJPY",
+   "n_train": 1697,
+   "n_test": 870,
+   "ratio_B": 0.9735,
+   "ratio_transfer": 0.9749,
+   "A_p75": 0.234,
+   "B_p75": 0.22,
+   "corr_iv_rv20": 0.469
+  }
+ ],
+ "audit": {
+  "AUDCAD": "2075/2628 usable, 2018-10-02 to 2026-08-21",
+  "AUDCHF": "2075/2628 usable, 2018-10-02 to 2026-08-21",
+  "AUDJPY": "2079/2632 usable, 2018-10-02 to 2026-08-21",
+  "CADCHF": "2074/2628 usable, 2018-10-02 to 2026-08-21",
+  "CADJPY": "2075/2628 usable, 2018-10-02 to 2026-08-21",
+  "CHFJPY": "2075/2628 usable, 2018-10-02 to 2026-08-21",
+  "EURAUD": "2075/2628 usable, 2018-10-02 to 2026-08-21",
+  "EURCAD": "2075/2628 usable, 2018-10-02 to 2026-08-21",
+  "EURCHF": "2075/2628 usable, 2018-10-02 to 2026-08-21",
+  "EURGBP": "2567/2628 usable, 2016-11-14 to 2026-08-21",
+  "EURJPY": "2567/2628 usable, 2016-11-14 to 2026-08-21",
+  "GBPAUD": "2075/2628 usable, 2018-10-02 to 2026-08-21",
+  "GBPCAD": "2075/2628 usable, 2018-10-02 to 2026-08-21",
+  "GBPCHF": "2075/2628 usable, 2018-10-02 to 2026-08-21",
+  "GBPJPY": "2567/2628 usable, 2016-11-14 to 2026-08-21"
+ }
+}

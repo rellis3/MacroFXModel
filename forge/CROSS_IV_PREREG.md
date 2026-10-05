@@ -64,3 +64,29 @@ By date: train = first 60% of the crosses' pooled dates, test = last 40%.
 FAIL leaves the crosses on the plain ladder in that export.
 
 Script: `forge/run_cross_iv.py`. Output: `analysis/output/cross_iv/RESULTS.md`.
+
+---
+
+## Results (2026-10-05, run after the pre-registration commit f96cda2b)
+
+Full tables: `analysis/output/cross_iv/RESULTS.md`. 15 crosses; EURGBP/EURJPY/GBPJPY from
+2016-11, the rest from 2018-10. Train/test split: 2023-05-02.
+
+| | |
+|---|---|
+| test pinball B ÷ A, median | **0.965** |
+| B better on | **15/15** crosses |
+| p75 exceedance on low leg-IV÷σ days, A → B | 15.8% → 22.8% |
+| p75 exceedance on high leg-IV÷σ days, A → B | 31.9% → 23.3% |
+| transfer (majors' elasticity 0.786, frozen) | median 0.969, 15/15 better |
+| elasticity fitted on crosses | 0.591 |
+| corr(leg-built IV, the cross's next-20 realised vol) | 0.32 (AUDCHF) to 0.61 (EURGBP) |
+| **verdict** | **PASS** |
+
+**Reading.** Implied vol built from the two USD legs does for the crosses what own IV did for
+the majors, at a slightly smaller size (3.5% vs 6%). That is expected, because the
+realised correlation adds estimation noise. The majors' elasticity transfers almost
+unchanged, so one IV-adjustment form serves all non-NZD FX.
+
+**Decision:** the crosses join the daily IV-adjusted export with their own fitted elasticity
+(0.591). The NZD pairs stay on the plain ladder (no NZD implied vol).
