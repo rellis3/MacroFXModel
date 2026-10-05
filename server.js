@@ -14614,8 +14614,12 @@ async function _buildDataHealth() {
   // judge it on one day.
   try {
     const raw = await kv.get('mpt_store_v1');
-    const mpt = raw ? JSON.parse(raw) : null;
-    if (mpt?.asOf) push('mpt', 'Fed path odds (Atlanta Fed MPT)', mpt.asOf, 2, { refreshEveryH: 24 });
+    const parsed = raw ? JSON.parse(raw) : null;
+    // {key, data, timestamp} — the SAME unwrap the route needs. Missing it here is
+    // how this row silently did not appear at all, and a row that is absent reads
+    // as "fine", which is the worst of the three possible answers.
+    const mpt = parsed?.data ?? parsed;
+    push('mpt', 'Fed path odds (Atlanta Fed MPT)', mpt?.asOf ?? null, 2, { refreshEveryH: 24 });
   } catch {}
 
   // the written reads, on a wall clock rather than a market one
