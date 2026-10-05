@@ -73,3 +73,36 @@ Any instrument with fewer than 100 weekly windows is dropped and listed.
 
 Script: `forge/run_horizon_reversion.py`. Output:
 `analysis/output/horizon_reversion/RESULTS.md`.
+
+---
+
+## Results (2026-10-05, run after the pre-registration commit dded98b2)
+
+Full tables: `analysis/output/horizon_reversion/RESULTS.md`. 33 instruments, 10 years of
+`london22` sessions, none dropped.
+
+| | weekly (5) | monthly (20, overlapping) |
+|---|---|---|
+| HL chosen on train | 5 days (grid edge) | 10 days |
+| test pinball B ÷ A, median | **0.968** | **0.936** |
+| B better on | **100%** of instruments | **94%** |
+| p75 exceedance calm / normal / stressed, A | 30.7 / 20.0 / 15.2% | 32.5 / 18.3 / 12.4% |
+| same, B | 24.3 / 20.5 / 19.3% | 20.7 / 20.1 / 21.3% |
+| tercile spread A → B | 0.155 → 0.050 | 0.201 → 0.012 |
+| **verdict** | **PASS** | **PASS** |
+
+**Reading.** The incumbent's multi-day bands are too narrow after calm spells and too wide
+after stressed ones. That is exactly what a fixed √h scaling of a state that mean-reverts
+should produce (Lesson 03 §02). Arm B removes most of that state bias. Mechanically, B
+blends the short-window production σ back towards its trailing 250-day level over the
+horizon.
+
+**Caveats.**
+- Weekly's chosen HL sits on the grid's lower edge. A shorter HL was not tested; doing so
+  would be a new trial.
+- Monthly windows overlap, so their effective test sample is small. The median-across-
+  instruments criterion is robust to that, but the per-instrument monthly numbers are noisy.
+
+**Decision per the pre-registration:** propose arm B as a flagged option for the
+weekly/monthly ladder in `js/forecastLadder.js`. The export changes only on the owner's
+decision.
