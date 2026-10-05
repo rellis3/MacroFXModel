@@ -74,3 +74,40 @@ is **< 0.98** and B beats A on **≥ 60%**.
 - FAIL: record it here; no page.
 
 Script: `forge/run_intraday_range.py`. Output: `analysis/output/intraday_range/RESULTS.md`.
+
+---
+
+## Results (2026-10-05, run after the pre-registration commit 6615a0cd)
+
+Full tables: `analysis/output/intraday_range/RESULTS.md`. 34 instruments, about 2,650–2,790
+complete sessions each (2016–2026).
+
+**Implementation notes, not in the pre-registration:**
+- A grid cell with fewer than 30 train days uses the whole checkpoint's distribution. This
+  is needed where tercile edges tie, e.g. DE30/UK100 before their open.
+- Arm A's final-range widths are taken from one row per day, because indices have no
+  01:00 row.
+
+| | FX + gold (28) | indices (6) |
+|---|---|---|
+| checkpoints passed | **21/21** | **19/21** |
+| B ÷ A at 08:00 / 10:00 / 12:00 / 14:00 | 0.914 / 0.854 / 0.827 / 0.739 | 0.961 / 0.966 / 0.975 / 0.929 |
+| B ÷ A at 21:00 | 0.085 | 0.106 |
+| **verdict** | **PASS** | **PASS** |
+
+**Reading.**
+- The morning and midday gain is the informative part: FX 9–17% at 08:00–13:00, indices
+  3–4%. Late-day ratios are large partly mechanically, because the morning line does not
+  know the day is nearly done. That is the EXHAUSTION-SCHEDULE clock effect, now inside a
+  forecast.
+- **Drawn lines (U / D quantiles), test exceedance:** close to target through 14:00 (FX U
+  p75 23–24%, p90 9–10%).
+  - Indices' downside runs slightly tight (D p75 29%, p90 13–14%).
+  - After 15:00 the p50 "more to come" is usually zero, so its exceedance reads 17–30%: the
+    line sits on the current extreme.
+- **Reach probability** for the morning p75 levels is calibrated to about 30%. In the top
+  decile it understates (38–40% predicted vs 45–46% realised).
+
+**Decision per the pre-registration:** build the live page (`live-range.html`), reached
+from a shortcut on Vol Forecast v3. Params: `js/intradayRangeParams.js` (grids fitted on
+all data).
