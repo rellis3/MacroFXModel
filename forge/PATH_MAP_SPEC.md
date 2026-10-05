@@ -54,4 +54,14 @@ absorbs instead of re-testing: the rung chain (`/api/vol-forecast/ladder/path-st
 
 | # | Variant | Added | Status |
 |---|---|---|---|
-| 1 | as above | 2026-10-06 | registered |
+| 1 | as above | 2026-10-06 | run: 190 cells, 6 pass, all "range used > 1.2" → continuation (p50 +7.5pp, p75 +6.0pp vs null) — **suspect, see Amendment 1** |
+| 2 | null and race measured from the touch bar's CLOSE (Amendment 1) | 2026-10-06 | registered |
+
+## Amendment 1 (2026-10-06, after variant 1's results, before variant 2 is run)
+
+Variant 1's null assumes the race starts exactly at the line, but the race is scored from the bar after the touch, and
+the touch bar can close past the line. On days running hotter than their forecast (exactly the "range used > 1.2"
+days) a one-minute bar's overshoot is larger in σ units, so the distance to the next line is shorter than the null
+assumes and continuation is overstated mechanically. Variant 2 measures a and b from the touch bar's close (the price
+at which the race actually starts); everything else unchanged. Variant 1's numbers stay on record above. Only cells
+that pass under variant 2 count as dynamics.
