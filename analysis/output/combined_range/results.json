@@ -1,0 +1,301 @@
+{
+ "audit": {
+  "NQ": "2573/2584 sessions usable (100%), 2016-09-06 to 2026-08-21",
+  "SPX": "2573/2584 sessions usable (100%), 2016-09-06 to 2026-08-21",
+  "DOW": "2573/2584 sessions usable (100%), 2016-09-06 to 2026-08-21",
+  "US2000": "2573/2584 sessions usable (100%), 2016-09-06 to 2026-08-21",
+  "DE30": "2529/2540 sessions usable (100%), 2016-09-06 to 2026-08-20",
+  "UK100": "2515/2526 sessions usable (100%), 2016-09-07 to 2026-08-20",
+  "EURUSD": "2617/2628 sessions usable (100%), 2016-09-06 to 2026-08-21",
+  "GBPUSD": "2607/2628 sessions usable (99%), 2016-09-20 to 2026-08-21",
+  "USDJPY": "2607/2628 sessions usable (99%), 2016-09-20 to 2026-08-21",
+  "GOLD": "2570/2581 sessions usable (100%), 2016-09-06 to 2026-08-21",
+  "AUDUSD": "2075/2628 sessions usable (79%), 2018-10-02 to 2026-08-21",
+  "USDCAD": "2075/2628 sessions usable (79%), 2018-10-02 to 2026-08-21",
+  "USDCHF": "2075/2628 sessions usable (79%), 2018-10-02 to 2026-08-21"
+ },
+ "classes": {
+  "indices": {
+   "split_date": "2022-08-29",
+   "median_ratio": 0.9004,
+   "share_B_better": 1.0,
+   "verdict": "PASS",
+   "coefficients": {
+    "vix_inv": {
+     "beta_std": 0.0287,
+     "range_mult_when_on": 1.106,
+     "expected": "+",
+     "sign_ok": "True"
+    },
+    "front_dear": {
+     "beta_std": 0.0334,
+     "range_mult_when_on": 1.074,
+     "expected": "+",
+     "sign_ok": "True"
+    },
+    "front_calm": {
+     "beta_std": -0.059,
+     "range_mult_when_on": 0.885,
+     "expected": "-",
+     "sign_ok": "True"
+    },
+    "iv_sig": {
+     "beta_std": 0.192,
+     "range_mult_per_+1_log_iv_sig": 2.01,
+     "expected": "+",
+     "sign_ok": "True"
+    },
+    "all_down": {
+     "beta_std": 0.0132,
+     "range_mult_when_on": 1.034,
+     "expected": "+",
+     "sign_ok": "True"
+    },
+    "nq_dw": {
+     "beta_std": 0.0472,
+     "range_mult_when_on": 1.116,
+     "expected": "+",
+     "sign_ok": "True"
+    }
+   },
+   "p75_exceed_by_state": {
+    "vix_inv": {
+     "A": 0.375,
+     "B": 0.213,
+     "n": 328
+    },
+    "front_dear": {
+     "A": 0.317,
+     "B": 0.237,
+     "n": 2144
+    },
+    "front_calm": {
+     "A": 0.196,
+     "B": 0.275,
+     "n": 1839
+    },
+    "all_down": {
+     "A": 0.334,
+     "B": 0.237,
+     "n": 1151
+    },
+    "nq_dw": {
+     "A": 0.341,
+     "B": 0.214,
+     "n": 1709
+    },
+    "iv_sig_low": {
+     "A": 0.131,
+     "B": 0.252,
+     "n": 1833
+    },
+    "iv_sig_high": {
+     "A": 0.364,
+     "B": 0.222,
+     "n": 2038
+    },
+    "all_days": {
+     "A": 0.258,
+     "B": 0.25,
+     "n": 6138
+    }
+   },
+   "flagged_states_closer_to_25": "7/7",
+   "per_instrument": [
+    {
+     "inst": "DE30",
+     "n_train": 1516,
+     "n_test": 1013,
+     "ratio": 0.9447,
+     "A_p75_exc": 0.269,
+     "B_p75_exc": 0.205
+    },
+    {
+     "inst": "DOW",
+     "n_train": 1543,
+     "n_test": 1030,
+     "ratio": 0.8761,
+     "A_p75_exc": 0.26,
+     "B_p75_exc": 0.263
+    },
+    {
+     "inst": "NQ",
+     "n_train": 1543,
+     "n_test": 1030,
+     "ratio": 0.8782,
+     "A_p75_exc": 0.252,
+     "B_p75_exc": 0.267
+    },
+    {
+     "inst": "SPX",
+     "n_train": 1543,
+     "n_test": 1030,
+     "ratio": 0.8617,
+     "A_p75_exc": 0.262,
+     "B_p75_exc": 0.282
+    },
+    {
+     "inst": "UK100",
+     "n_train": 1510,
+     "n_test": 1005,
+     "ratio": 0.9466,
+     "A_p75_exc": 0.261,
+     "B_p75_exc": 0.178
+    },
+    {
+     "inst": "US2000",
+     "n_train": 1543,
+     "n_test": 1030,
+     "ratio": 0.9226,
+     "A_p75_exc": 0.247,
+     "B_p75_exc": 0.304
+    }
+   ]
+  },
+  "fx_gold": {
+   "split_date": "2023-01-09",
+   "median_ratio": 0.9389,
+   "share_B_better": 1.0,
+   "verdict": "PASS",
+   "coefficients": {
+    "vix_inv": {
+     "beta_std": 0.0041,
+     "range_mult_when_on": 1.014,
+     "expected": "+",
+     "sign_ok": "True"
+    },
+    "front_dear": {
+     "beta_std": 0.0101,
+     "range_mult_when_on": 1.021,
+     "expected": "+",
+     "sign_ok": "True"
+    },
+    "front_calm": {
+     "beta_std": -0.0408,
+     "range_mult_when_on": 0.918,
+     "expected": "-",
+     "sign_ok": "True"
+    },
+    "iv_sig": {
+     "beta_std": 0.1337,
+     "range_mult_per_+1_log_iv_sig": 2.195,
+     "expected": "+",
+     "sign_ok": "True"
+    },
+    "all_down": {
+     "beta_std": 0.011,
+     "range_mult_when_on": 1.027,
+     "expected": "+",
+     "sign_ok": "True"
+    },
+    "nq_dw": {
+     "beta_std": -0.0088,
+     "range_mult_when_on": 0.981,
+     "expected": "+",
+     "sign_ok": false
+    }
+   },
+   "p75_exceed_by_state": {
+    "vix_inv": {
+     "A": 0.277,
+     "B": 0.277,
+     "n": 361
+    },
+    "front_dear": {
+     "A": 0.277,
+     "B": 0.246,
+     "n": 2195
+    },
+    "front_calm": {
+     "A": 0.197,
+     "B": 0.248,
+     "n": 2111
+    },
+    "all_down": {
+     "A": 0.271,
+     "B": 0.243,
+     "n": 1184
+    },
+    "nq_dw": {
+     "A": 0.236,
+     "B": 0.225,
+     "n": 1727
+    },
+    "iv_sig_low": {
+     "A": 0.137,
+     "B": 0.231,
+     "n": 2319
+    },
+    "iv_sig_high": {
+     "A": 0.351,
+     "B": 0.257,
+     "n": 2210
+    },
+    "all_days": {
+     "A": 0.232,
+     "B": 0.238,
+     "n": 6653
+    }
+   },
+   "flagged_states_closer_to_25": "5/7",
+   "per_instrument": [
+    {
+     "inst": "AUDUSD",
+     "n_train": 1122,
+     "n_test": 953,
+     "ratio": 0.9331,
+     "A_p75_exc": 0.227,
+     "B_p75_exc": 0.227
+    },
+    {
+     "inst": "EURUSD",
+     "n_train": 1664,
+     "n_test": 953,
+     "ratio": 0.9533,
+     "A_p75_exc": 0.229,
+     "B_p75_exc": 0.225
+    },
+    {
+     "inst": "GBPUSD",
+     "n_train": 1654,
+     "n_test": 953,
+     "ratio": 0.9509,
+     "A_p75_exc": 0.243,
+     "B_p75_exc": 0.234
+    },
+    {
+     "inst": "GOLD",
+     "n_train": 1635,
+     "n_test": 935,
+     "ratio": 0.9133,
+     "A_p75_exc": 0.265,
+     "B_p75_exc": 0.28
+    },
+    {
+     "inst": "USDCAD",
+     "n_train": 1122,
+     "n_test": 953,
+     "ratio": 0.9389,
+     "A_p75_exc": 0.244,
+     "B_p75_exc": 0.228
+    },
+    {
+     "inst": "USDCHF",
+     "n_train": 1122,
+     "n_test": 953,
+     "ratio": 0.9307,
+     "A_p75_exc": 0.216,
+     "B_p75_exc": 0.239
+    },
+    {
+     "inst": "USDJPY",
+     "n_train": 1654,
+     "n_test": 953,
+     "ratio": 0.9549,
+     "A_p75_exc": 0.201,
+     "B_p75_exc": 0.232
+    }
+   ]
+  }
+ }
+}

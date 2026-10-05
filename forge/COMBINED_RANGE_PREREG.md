@@ -90,3 +90,59 @@ last 40%.** β and widths are frozen on train.
 - FAIL / MIXED: record the result. The validated findings stay as context chips.
 
 Script: `forge/run_combined_range.py`. Output: `analysis/output/combined_range/RESULTS.md`.
+
+---
+
+## Results (2026-10-05, run after the pre-registration commit dcb88638)
+
+Full tables: `analysis/output/combined_range/RESULTS.md`. Data audit: 99–100% of sessions
+usable, except AUDUSD/USDCAD/USDCHF at 79% (CVOL starts 2018-10). Train/test split: indices
+2022-08-29, FX + gold 2023-01-09.
+
+| | indices (6) | FX + gold (7) |
+|---|---|---|
+| test pinball B ÷ A, median | **0.900** | **0.939** |
+| B better on | **6/6** | **7/7** |
+| flagged states closer to 25% p75 | 7/7 | 5/7 |
+| **verdict** | **PASS** | **PASS** |
+
+**Joint coefficients (range multiplier).** Every sign matches its ledger entry except
+`nq_dw` on FX (×0.98). That finding was only ever validated on NQ.
+
+| | vix_inv | front_dear | front_calm | iv_sig (per +1 log) | all_down | nq_dw |
+|---|---|---|---|---|---|---|
+| indices | ×1.11 | ×1.07 | ×0.89 | ×2.01 | ×1.03 | ×1.12 |
+| FX + gold | ×1.01 | ×1.02 | ×0.92 | ×2.20 | ×1.03 | ×0.98 |
+
+**p75 exceedance (target 25%), A → B, test:**
+- indices: high IV÷σ days 36.4% → 22.2%; low IV÷σ days 13.1% → 25.2%; VIX inverted 37.5% → 21.3%;
+- FX + gold: high IV÷σ 35.1% → 25.7%; low 13.7% → 23.1%.
+
+**Post-hoc ablation (not pre-registered, labelled as such).** Same run with `iv_sig` as the
+only feature:
+
+| | median B ÷ A |
+|---|---|
+| indices, IV÷σ only | 0.923 |
+| indices, combined | 0.900 |
+| FX + gold, IV÷σ only | 0.938 |
+| FX + gold, combined | 0.939 |
+
+**Reading.**
+- **One finding does most of the work:** own implied vol ÷ own σ. The forecast lines run too
+  narrow when options price more vol than σ shows, and too wide when they price less.
+- The VIX-curve / breadth / NQ-week findings add about 2.5% more, **for US indices only**
+  (SPX 0.916 → 0.862, NQ 0.921 → 0.878). They make DE30/UK100 slightly worse
+  (0.93 → 0.95) and add nothing on FX.
+- This is Lesson 01 §05 in practice: several separately-validated findings were largely
+  the same information.
+- The fitted IV elasticity is ~0.70 (indices) and ~0.79 (FX), i.e. σ_adj ≈ σ^0.3 · IV^0.7.
+  That is a *blend*, where the existing "Forecast (IV)" export uses pure IV (elasticity 1).
+  Blend vs pure IV has **not** been tested head to head.
+
+**Decision per the pre-registration:** propose the adjustment as an option on the daily
+ladder, the same way as the reverting weekly ladder. Suggested scope from the ablation:
+- IV÷σ for every instrument with an IV source;
+- the US vol-curve/breadth terms for US indices only.
+
+The second is post-hoc, so it needs its own confirmation before it ships.
