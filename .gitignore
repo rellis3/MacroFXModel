@@ -545,3 +545,6 @@ analysis/.cache/
 # DIRECTIONAL-RESCORE touch tables (regenerate: node scripts/rangebook/directional_build.mjs)
 analysis/surfaces/directional/
 analysis/surfaces/exhaustion/
+analysis/surfaces/ladder_calibration/
+analysis/surfaces/ladder_calibration_v2/
+analysis/surfaces/ladder_calibration_v2.log
