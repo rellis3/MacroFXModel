@@ -38,8 +38,13 @@ h) rows of the same class and hour (drift control). Excess = state mean − base
 ## Variant log
 | # | Variant | Added | Status |
 |---|---|---|---|
-| A1 | as above | 2026-10-06 | pending |
-| B1 | trend state = 2 consecutive hours | 2026-10-06 | pending |
-| B2 | 3 consecutive hours | 2026-10-06 | pending |
+| A1 | as above | 2026-10-06 | run: 0 of 68 selected cells pass → no better than the static-line Book |
+| B1 | trend state = 2 consecutive hours | 2026-10-06 | run: 0 edges |
+| B2 | 3 consecutive hours | 2026-10-06 | run: 0 edges |
 
 Further variants dated and logged before running. Output: `analysis/output/live_range_book/RESULTS.md`; verdict banked in `js/deskEvidence.js`.
+
+## Results (2026-10-06) — `analysis/output/live_range_book/RESULTS.md`
+**A: NO BETTER THAN THE STATIC-LINE BOOK.** 195,618 resolved touches; 838 cell × strategy pairs; 68 selected on train (mean R +0.150);
+on test mean R +0.001, 26.5% still positive, 0 passed. Pooled net R: continue −0.18 to −0.45, fade ≈ 0 to −0.1 (late p90 fade intervals
+are wide because the risk distance is tiny). **B: 0 edges** in 7 cells (test excess −0.05 to +0.05σ vs spread 0.016–0.03σ).

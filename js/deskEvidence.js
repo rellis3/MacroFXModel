@@ -658,6 +658,12 @@ export const DESK_EVIDENCE = [
     use: 'The lines the page draws sit about 3pp (p75) and 2pp (p90) too far out in the FX class, and the “from here” 40% reads about 36%. A refit of the grids on pit σ (first 60% of dates) closes this; not applied, live files untouched.',
   },
   {
+    id: 'live-range-book', domain: 'price', verdict: 'null', date: '2026-10-06', doc: 'forge/LIVE_RANGE_BOOK_PREREG.md',
+    claim: 'The Fade/Continue Book run on the hourly-moving Live Range lines (not the static morning lines) fades or continues profitably in some cell, and a trend-day state built from the line path (the up or down p50 line touched in consecutive hours) predicts direction to the close',
+    result: 'Null both parts. A: 195,618 resolved first touches, 34 instruments, 838 cell x strategy pairs (session, touch number today, used x pace cell, a/b geometry, regime, jump earlier today, big line shift, side). Pooled net R per trade after spread is negative for continue (-0.18 to -0.45R) and about zero or negative for fade. 68 cells had train net R > 0; mean train R +0.150 became +0.001 on test, only 26.5% stayed positive, 0 passed (CI wholly above 0 and both halves positive). B: trend state (2 and 3 consecutive hours riding the p50 line) 7 class x hour cells, forward return to 22:00 vs the same-hour drift: all inside noise (test excess -0.05 to +0.05 sigma, spread 0.016-0.03 sigma), 0 edges. Train 2016-2022 selection, test 2022-06 to 2026-08, grids refit on train.',
+    use: 'Moving the lines to hourly does not create a fade or continue edge: the race after a touch is still the optional-stopping geometry plus spread, and consecutive line touches do not mark a trend day. The lines remain a calibrated size and time-left tool. Caveat: R explodes on late p90 fades (tiny risk distance), so the p90 pooled interval is wide.',
+  },
+  {
     id: 'event-layer', domain: 'events', verdict: 'null', date: '2026-10-05', doc: 'forge/EVENT_LAYER_PREREG.md',
     claim: 'On top of the IV-adjusted daily lines, the typical size of the day’s scheduled release type (and yesterday’s surprise) improves the range forecast',
     result: 'First test (calendar_events.csv) PASSED for FX+gold (0.970, 7/7) but did NOT replicate on live inputs (ForexFactory names, live IV-adjusted sigma, 2020-2025): 0.9937 vs the 0.99 bar; the fitted correction overshoots (big-release-day p75 35.5% -> 17.3%). Yesterday’s surprise null in both. The live export’s coarse event tag already brings FOMC/NFP/CPI days to 27.1% passed vs 25%.',

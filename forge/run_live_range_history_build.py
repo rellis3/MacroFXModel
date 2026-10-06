@@ -125,7 +125,7 @@ def main():
         jobs["real"].append((n, i, fits[cls_of(n)], False))
         jobs["ship"].append((n, i, shipped_params(cls_of(n)), True))
     pd.Series(names).to_json(OUT / "names.json")
-    for tag in ("real", "ship"):
+    for tag in (("real",) if "real" in sys.argv else ("real", "ship")):
         with ProcessPoolExecutor(8) as ex:
             res = list(ex.map(pass_b, jobs[tag]))
         pd.concat([r[0] for r in res], ignore_index=True).to_parquet(OUT / ("hours.parquet" if tag == "real" else "hours_ship.parquet"))

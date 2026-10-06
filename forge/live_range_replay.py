@@ -24,7 +24,7 @@ INDEX = {"NQ", "SPX500", "DOW", "US2000", "DE30", "UK100"}
 FORGE_KEY = {"SPX500": "spx500", "DOW": "us30"}
 # hours-table columns
 HC = ["h", "valid", "cell", "used", "speed", "U", "Dn", "runH", "runL", "offU0", "offU1", "offU2", "offD0", "offD1",
-      "offD2", "jbefore", "jlast", "rU0", "rU1", "rU2", "rD0", "rD1", "rD2"]
+      "offD2", "jbefore", "jlast", "rU0", "rU1", "rU2", "rD0", "rD1", "rD2", "cH", "cF"]
 EC = ["h", "side", "rung", "ti", "tmin", "off", "over", "j1", "a", "b", "pre", "code", "inhour", "rtjump", "cell",
       "used", "speed"]
 
@@ -54,7 +54,7 @@ def load_sessions(name: str):
 def replay(hrs, op, hi, lo, cl, unit, ue, se, offU, offD, scale):
     """ue/se: (22,2) edges, offU/offD: (22,9,3) offsets in sigma. Returns hours table (21,23) and events (126,17)."""
     n = len(hrs)
-    HT = np.full((21, 23), np.nan)
+    HT = np.full((21, 25), np.nan)
     EV = np.full((126, 17), np.nan)
     kh = np.empty(23, np.int64)
     for h in range(23):
@@ -106,6 +106,7 @@ def replay(hrs, op, hi, lo, cl, unit, ue, se, offU, offD, scale):
             if jump[i]:
                 jl = 1.0; break
         HT[r, 15] = jb; HT[r, 16] = jl
+        HT[r, 23] = (cl[k - 1] - op[0]) / unit; HT[r, 24] = (cl[n - 1] - op[0]) / unit
         for q in range(3):
             HT[r, 9 + q] = offU[h, c, q]; HT[r, 12 + q] = offD[h, c, q]
             lu = runH + offU[h, c, q] * unit
