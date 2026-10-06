@@ -54,7 +54,7 @@ Train = sessions < 2025-09-05 (same split as layer 3). Test = 2025-09-05 → 202
 | # | Variant | Added | Status |
 |---|---|---|---|
 | 1 | R0, R1, R2 as above | 2026-10-06 | run: **all FAIL** (90-cell miss 6.7 / 5.7 / 5.8pp; worst cell 16–18pp) — regimes calibrated, time-of-day shape wrong |
-| 3 | R5 per-hour × vol-so-far tercile multipliers (Amendment 2) | 2026-10-06 | registered |
+| 3 | R5 per-hour × vol-so-far tercile multipliers (Amendment 2) | 2026-10-06 | run: **FAIL** (miss 1.73pp, worst cell 6.0pp); slightly sharper than R3 (pinball 0.975 vs 0.980) |
 | 2 | R3 per-hour multipliers; R4 = R3 + today-so-far (Amendment 1) | 2026-10-06 | run: **R3 near-pass** (miss 1.62pp ✓, worst cell 5.1pp ✗ vs 5.0), R4 miss 1.78 / worst 6.7 ✗ |
 
 ## Amendment 1 (2026-10-06, after variant 1, before variant 2)
@@ -111,3 +111,18 @@ Read for the system:
 - No "budget spent" effect: more range used so far means MORE travel to come, at every checkpoint.
 - Status: R3 is the working remaining-travel model, **not passed**; the 21:00 checkpoint is flagged unreliable. It goes
   to the shadow screen as a forward check, where the late-session cell can be watched on live data.
+
+## Results (variant 3, 2026-10-06)
+
+| model | 90-cell miss | worst p75/p90 cell | pinball vs R0 | verdict |
+|---|---|---|---|---|
+| R3 per-hour | 1.62pp | 5.1pp | 0.980 | fail by 0.1pp |
+| R5 per-hour × vol-so-far tercile | 1.73pp | 6.0pp | 0.975 | fail |
+
+R5's worst cells are the same 21:00 downside p75 cells (31.0% / 30.8% vs 25%) plus busy-regime p75 cells
+(19.7–19.8%). Built into layer 5 directly, vol-so-far recovers under half of layer 6's skill on the same labels (Brier
+skill vs flat rates: p50 +0.62%, p75 +0.87%, against the boosting model's +1.45% / +2.06%).
+
+Read: splitting each hour's multipliers three ways thins the data enough to cost calibration while capturing only part
+of the signal. **R3 stays the working model** (not passed; 21:00 flagged). The vol-so-far signal is real but small and
+is better carried by a separate confidence model (layer 6) than by more bins in layer 5 — if it is carried at all.
