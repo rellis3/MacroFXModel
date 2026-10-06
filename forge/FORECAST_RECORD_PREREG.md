@@ -57,3 +57,17 @@ correlation is kept), mean block 20 sessions, 2,000 replicates, seed 20261006. 9
 | # | Variant | Why | Run? |
 |---|---|---|---|
 | 0 | as above | registered | — |
+
+## Amendment 1 (2026-10-06, before any Step 1 result)
+
+"Complete session" was written as `last_min >= 21:00`. Step 0's coverage check showed DE30 and UK100 data stop at
+21:00 London (last bar 20:59), so that rule would drop almost every DAX/FTSE session. Replaced by: last bar within
+30 minutes of the instrument's median last bar (`complete()` in `scripts/forecast_history/forecast_record.py`). The
+same definition is used by Steps 2 and 3. Data definition only; no scoring rule changed.
+
+## Amendment 2 (2026-10-06, before any Step 1 result)
+
+Amendment 1's "within 30 minutes of the median last bar" still dropped ~26 sessions a year on US indices and gold:
+the weeks when US and UK clocks differ, when those markets close at 21:00 London. Those are full sessions. New
+rule: **last bar at or after 20:00 London**. It drops 453 of 91,517 sessions (early-close holidays and data gaps;
+DOW 84, NQ 88, SPX500 86, US2000 93, GOLD 81, UK100 20, GBPNZD 1). Used by Steps 1–3.
