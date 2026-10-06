@@ -3,6 +3,26 @@
 *Plan agreed in outline with the owner 2026-10-06. Part of `plans/FORECASTER_SYSTEM_BLUEPRINT.md`. Each step gets
 its own pre-registration before its results are computed.*
 
+## END STATE (owner asked 2026-10-06: "plan me to something you are aiming at")
+
+**One product: the Daily Plan page.** One row per instrument, every morning, refreshed hourly:
+1. **One set of lines** (the forecast layer, FINISHED after step A below). No more line variants.
+2. **Room left** — Live Range's hourly remaining-range re-forecast (already built).
+3. **Act / skip at a line** — only if 3b passes; otherwise the row says "lines are for stops and targets, not entries".
+4. **Stop and size** — from the jump/gap tables (Step 2) and the lines: stop beyond the jump-through zone, size =
+   risk budget ÷ stop distance.
+5. **Track record** — the forward scorecard for exactly what the row shows.
+
+**Path (each step ends in a decision, not another variant):**
+- A. **Finish the forecast:** merge persistence + implied vol into ONE candidate (arm C, already passed 0.968) and
+  let the scorecard pick it vs the plain export after 15 sessions. Then retire the other line exports to an archive
+  menu. No new line work after this.
+- B. **Decide the act layer:** score 3b (decisions built). PASS → act/skip flags; FAIL → no entry signals, recorded.
+- C. **Stop and size rules** from Step 2 (no new research; rules with the evidence attached).
+- D. **Build the Daily Plan page** (one page, replaces hopping between v3 / Live Range / exports).
+- E. **Lessons 4–17** check this one product as they arrive (costs, data, multiple testing, holdout, forward power),
+  instead of spawning new builds.
+
 ## Ground rules (owner, 2026-10-06)
 
 1. **No Vote Atlas input anywhere.** Its trades, votes, outcomes, configurations and results carried look-ahead
