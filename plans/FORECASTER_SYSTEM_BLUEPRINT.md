@@ -121,11 +121,11 @@ Lessons 11–16 are the validation module. When each lesson lands, its check rep
 | L01 §04 | Spread of paths (bootstrap) | 3 | **done for the export calc** (forge/FORECAST_RECORD_PREREG.md): calibrated, skill 4.9% [3.7, 6.2], regime flaw found | same yardstick for any candidate σ |
 | L01 §05 | 12-check validation card | all | not built as a card | **1st:** a card per layer, filled for layer 3 |
 | L01 §06 | Volatility drag, Kelly | 7 | **done** (analysis/forecaster_lessons/SIZING_NOTE.md): no build, 10% target about 1/5 Kelly | re-check at spread book review |
-| L02 §01–§04 | Waiting times, overruns, uncertain rate, cost of search | process | not built | **2nd:** discovery rate and stopping rule from the ledger |
+| L02 §01–§04 | Waiting times, overruns, uncertain rate, cost of search | process | **stopping rule adopted 2026-10-06**: one prereg + one logged variant per direction, then a decision | discovery-rate tracker from the ledger |
 | L02 §05 | Breadth enters the evidence | process | **done**: TRIAL_LEDGER (94 tested, about 5 passes expected by luck) | keep current |
 | L02 §06 | Discovery rate declines | process | not built | with L02 §01–§04 |
 | L03 §01 | Layers, IR ≈ TC·IC·√BR | all | blueprint; TC unmeasured (no decision layer yet) | after layer 5 |
-| L03 §01 | Meta-labelling | 6 | not started. Rebuilt from the lesson's target with **our forecast as the primary**; no Vote Atlas input (owner rule) | plans/LESSON_TARGET_REBUILD_PLAN.md step 3 |
+| L03 §01 | Meta-labelling | 6 | 3a (morning trust) FAIL then nothing left after the forecast fix; 3b stopped (direction from the forecast conflicts with L03 §02). **Re-aimed:** primary = yield-spread book, meta-label = forecast state → size | plans/LESSON_TARGET_REBUILD_PLAN.md step C |
 | L03 §02 | Vol clustering, persistence, half-life | 3 | HAR-800 preferred, weekly reverting, IV-adjusted, Live Range. Step 1 shows the daily export over-reacts to regime (busy too wide, quiet too tight) | daily persistence fix, scored on the Step 1 yardstick |
 | L03 §03 | Jumps, excess kurtosis | 3, 7 | **done** (forge/JUMPS_PREREG.md): 6.6% of variance, 78% unscheduled, p90 event term FAIL; stop gap-risk table | use in layer 7 stops |
 

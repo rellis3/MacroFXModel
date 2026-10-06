@@ -99,3 +99,14 @@ information is left once the forecast itself is fixed. Expectation stated now: s
 - **Uniqueness weight** = 1 ÷ the number of this instrument's decisions open at the same time (both sides can be).
 - Benchmark, models, walk-forward, threshold rule and PASS as registered above.
 - Builder `scripts/forecast_history/meta_label_3b_build.mjs`, scorer `scripts/forecast_history/meta_label_3b.py`.
+
+## Amendment 3 (2026-10-06): 3b STOPPED before any result
+
+3b is stopped unscored. The decision table was built (`analysis/output/meta_label/decisions_3b/`, 34 instruments,
+~50,000 first p50 touches, gitignored) and only build sanity counts were looked at (EURUSD outcome shares); no meta-model
+was fitted and no pass statistic computed. Reason, using only information available before results (Lesson 02 §04: a
+stopping rule may depend only on what is already known): Lesson 03 §02 says a volatility forecast bears on **how much
+to hold, not which way to bet**, and 3b's primary takes direction from the forecast's own lines. Lesson 03 §01 defines
+meta-labelling on a primary that already chooses direction. The meta-label is re-aimed at a primary with a validated
+direction edge (the yield-spread book), in a new pre-registration. The 3b table must not be scored later without a
+new, logged reason.

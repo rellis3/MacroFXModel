@@ -13,15 +13,25 @@ its own pre-registration before its results are computed.*
    risk budget ÷ stop distance.
 5. **Track record** — the forward scorecard for exactly what the row shows.
 
+**Lesson review 2026-10-06 (owner asked "are we on track with the lessons?")** — two drifts corrected:
+1. No stopping rule (Lesson 02 practice 01) → five forecast line variants. **Rule from now on: each direction gets one
+   pre-registered test + at most one logged variant, then a decision.**
+2. Trying to get direction from the forecast (3b). Lesson 03 §02: volatility decides **how much to hold, not which
+   way**. Lesson 03 §01: meta-labelling sits on a primary that already chooses direction. 3b stopped before results
+   (forge/META_LABEL_PREREG.md Amendment 3).
+
 **Path (each step ends in a decision, not another variant):**
-- A. **Finish the forecast:** merge persistence + implied vol into ONE candidate (arm C, already passed 0.968) and
-  let the scorecard pick it vs the plain export after 15 sessions. Then retire the other line exports to an archive
-  menu. No new line work after this.
-- B. **Decide the act layer:** score 3b (decisions built). PASS → act/skip flags; FAIL → no entry signals, recorded.
-- C. **Stop and size rules** from Step 2 (no new research; rules with the evidence attached).
-- D. **Build the Daily Plan page** (one page, replaces hopping between v3 / Live Range / exports).
-- E. **Lessons 4–17** check this one product as they arrive (costs, data, multiple testing, holdout, forward power),
-  instead of spawning new builds.
+- A. **Finish the forecast** (L03 §02): one pre-registered head-to-head on the Step 0 table — persistence + IV vs
+  IV-adjusted vs HAR-800 vs plain — pick ONE; the scorecard confirms it forward (L02: the second, independent test).
+  Other line exports move to an archive menu. No line work after this.
+- B. **The "how much" layer** (L03's main use, L01 §06 Kelly, L03 §03 jumps): per instrument, stop outside the
+  jump-through zone, size = risk budget ÷ stop distance, weekend gap allowance. Rules with evidence attached.
+- C. **Meta-label done the lesson's way** (L03 §01): primary = the yield-spread book (validated direction edge);
+  meta-label = forecast regime, jump state, room left → act / size up / size down. New pre-registration.
+- D. **Seal a holdout + parameter stability** (L01 cards 03, 07): everything after 2026-08-21 and the forward
+  scorecard are the lockbox, looked at once when A–C are frozen; one stability run on the chosen forecast.
+- E. **Daily Plan page**: lines, room left, stop and size, act/size flag (only if C passes), track record.
+- F. **Lessons 4–17** check this one product as they arrive.
 
 ## Ground rules (owner, 2026-10-06)
 
@@ -102,5 +112,5 @@ feature. Lesson 02's research-pace tracker runs alongside (it reads the ledger, 
 | 1 forecast record | **done**: calibrated on all 12 rungs pooled; skill over climatology 4.9% [3.7, 6.2]; in-sample flattery 0.5%. Flaw = regime: busy days too wide (HL p75 19.9%), quiet too narrow (30.6%) → Lesson 03 §02 persistence fix is the next forecast change (`analysis/output/forecast_record/RESULTS.md`) |
 | 2 jumps | **done**: jumps 6.6% of variance, only 22% scheduled; FX/gold p90 breaks on jump days (14% vs 7%); p90 event term FAIL; stop gap-risk table for layer 7 (`analysis/output/jumps/RESULTS.md`). Caveat: k=5 jump-day detector has no intraday-seasonality adjustment, so it flags ~96 days/yr |
 | 3a meta-label: trust the lines | **done, FAIL as registered** (`analysis/output/meta_label/RESULTS_3a.md`): range skill 4.8% [3.2, 6.6], strong ranking (12% → 46%), but over-confident at the low end; low side PASS (1.6%). Drivers: weekday, release day, IV ÷ σ, recent misses → fix inside the forecast |
-| 3b meta-label: act at a line | pre-registered `forge/META_LABEL_PREREG.md` |
+| 3b meta-label: act at a line | **STOPPED before results** (Amendment 3): direction from the forecast conflicts with Lesson 03; meta-label re-aimed at the yield-spread book (step C) |
 | 4 bring together | not started |
