@@ -122,3 +122,66 @@ export function scorecard(days, { includeProvisional = false } = {}) {
   return { n: rows.length, dates: new Set(rows.map(x => x.date)).size, rungs, regime, edges: edges?.map(e => r(e)),
            miss12: { live: mean(miss.live), har: mean(miss.har) } };
 }
+
+// ── Layer 5: remaining travel (R3, forge/REMAINING_TRAVEL_PREREG.md) ─────────────────────────────────────────
+// At London checkpoints 01:00, 03:00 … 21:00: from the price at that moment, how far can price still travel up and
+// down before the session ends? travel_q = R3 multiplier[class][hour][side][q] × HAR daily σ × open. Scored on hourly
+// candles (an hour's high/low equal its minutes' extremes). 21:00 is flagged unreliable in the research.
+import { REMAINING_TRAVEL_R3 } from './remainingTravelParamsR3.js';
+
+export const CHECKPOINTS = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21];
+const RT_MAJORS = new Set(['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY']);
+const RT_INDICES = new Set(['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100']);
+export function travelClass(sym) {
+  const s = String(sym).toUpperCase();
+  if (RT_INDICES.has(s)) return 'index';
+  if (s === 'GOLD') return 'gold';
+  if (RT_MAJORS.has(s)) return 'major';
+  return /^[A-Z]{6}$/.test(s) ? 'cross' : null;
+}
+
+// bars: [{t (epoch sec, bar START), o, h, l, c}] for one London session, ascending. openSec = that London midnight.
+// Returns one row per checkpoint reached: price at the checkpoint, travel still to come, and the R3 thresholds.
+export function travelRows(sym, bars, openSec, sigmaDailyPct) {
+  const cls = travelClass(sym), M = REMAINING_TRAVEL_R3.classes[cls];
+  if (!M || !(sigmaDailyPct > 0) || !bars?.length) return [];
+  const o = bars[0].o, unit = sigmaDailyPct / 100 * o, out = [];
+  for (const h of CHECKPOINTS) {
+    const cut = openSec + h * 3600;
+    const before = bars.filter(b => b.t < cut), after = bars.filter(b => b.t >= cut);
+    if (!before.length || !after.length) continue;
+    const P = before[before.length - 1].c;
+    const hi = Math.max(...after.map(b => b.h)), lo = Math.min(...after.map(b => b.l));
+    const m = M[String(h)];
+    out.push({ h, P, up: (hi - P) / unit, down: (P - lo) / unit, thr: m, flagged: REMAINING_TRAVEL_R3.flagged_hours.includes(h) });
+  }
+  return out;
+}
+
+// Today's remaining-travel levels from the latest checkpoint already passed (price levels and σ distances).
+export function travelLevels(sym, P, open, sigmaDailyPct, h) {
+  const M = REMAINING_TRAVEL_R3.classes[travelClass(sym)]?.[String(h)];
+  if (!M || !(P > 0) || !(sigmaDailyPct > 0)) return null;
+  const unit = sigmaDailyPct / 100 * open, lv = {};
+  for (const q of ['p50', 'p75', 'p90']) { lv[`up_${q}`] = P + M.up[q] * unit; lv[`down_${q}`] = P - M.down[q] * unit; }
+  return { h, P, mult: M, levels: lv, flagged: REMAINING_TRAVEL_R3.flagged_hours.includes(h) };
+}
+
+// Exceedance of each rung by checkpoint band, pooled over instruments and sessions. Target: p50 50%, p75 25%, p90 10%.
+export const TRAVEL_BANDS = { 1: '01-05', 3: '01-05', 5: '01-05', 7: '07-11', 9: '07-11', 11: '07-11', 13: '13-15', 15: '13-15', 17: '17-19', 19: '17-19', 21: '21' };
+export function travelScorecard(days) {
+  const acc = {};
+  let n = 0; const dates = new Set();
+  for (const [date, d] of Object.entries(days ?? {})) for (const row of d.travel ?? []) {
+    n++; dates.add(date);
+    for (const band of [TRAVEL_BANDS[row.h], 'all']) {
+      const a = (acc[band] ??= { n: 0 });
+      a.n++;
+      for (const s of ['up', 'down']) for (const q of ['p50', 'p75', 'p90']) {
+        const k = `${s}_${q}`; a[k] = (a[k] ?? 0) + (row[s] > row.thr[s][q] ? 1 : 0);
+      }
+    }
+  }
+  for (const a of Object.values(acc)) for (const k of Object.keys(a)) if (k !== 'n') a[k] = r(a[k] / a.n);
+  return { n, dates: dates.size, bands: acc };
+}

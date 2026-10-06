@@ -68,6 +68,20 @@
   </section>
 
   <section class="card">
+    <h2>Layer 5 — remaining travel (R3), scored on live sessions</h2>
+    <p class="note">At each London checkpoint (01:00, 03:00 … 21:00): from the price at that moment, how far can price still go up and down before the session ends?
+      The research model (R3, per-hour multipliers of HAR σ) is calibrated across the day except 21:00 downside, which is flagged. Target: p50 passed 50% of the time, p75 25%, p90 10%.</p>
+    <div class="tbl"><table id="travelScore"></table></div>
+    <p class="note" id="travelNote"></p>
+  </section>
+
+  <section class="card">
+    <h2 id="travelTodayTitle">Remaining travel now</h2>
+    <div class="tbl"><table id="travelToday"></table></div>
+    <p class="note">Levels from the price at the latest checkpoint already passed. A forecast of how far price can still travel, not of which way.</p>
+  </section>
+
+  <section class="card">
     <h2>Day by day</h2>
     <div class="tbl"><table id="days"></table></div>
   </section>
@@ -112,11 +126,27 @@ function render(d) {
         <td>${pair(t.live.hl_p75, t.har.hl_p75)}%</td><td>${lvl('oh_p75')}</td><td>${lvl('ol_p75')}</td><td>${lvl('oh_p90')}</td><td>${lvl('ol_p90')}</td></tr>`;
     }).join('') : '<tr><td colspan="10" class="empty">No forecast with a HAR shadow yet.</td></tr>');
 
+  const ts = d.travelScore ?? { bands: {} };
+  const bandOrder = ['01-05', '07-11', '13-15', '17-19', '21', 'all'];
+  const tc = (v, t) => v == null ? '' : Math.abs(v - t) <= (t === .5 ? .05 : .04) ? 'good' : 'bad';
+  $('travelScore').innerHTML = '<tr><th>checkpoint band</th><th>n</th><th>up p50</th><th>up p75</th><th>up p90</th><th>down p50</th><th>down p75</th><th>down p90</th></tr>' +
+    bandOrder.filter(b => ts.bands[b]).map(b => { const x = ts.bands[b];
+      return `<tr><td>${b === 'all' ? '<b>all</b>' : b}${b === '21' ? ' <span class="prov">flagged</span>' : ''}</td><td>${x.n}</td>` +
+        ['up', 'down'].flatMap(s => [['p50', .5], ['p75', .25], ['p90', .1]].map(([q, t]) => `<td class="${tc(x[s + '_' + q], t)}">${pc(x[s + '_' + q])}</td>`)).join('') + '</tr>'; }).join('') +
+    (Object.keys(ts.bands).length ? '' : '<tr><td colspan="8" class="empty">No scored sessions yet.</td></tr>');
+  $('travelNote').textContent = d.h1Error ? `Hourly candles unavailable: ${d.h1Error}.` :
+    `${ts.n} checkpoints over ${ts.dates} sessions since ${d.shadowStart}. Small samples: treat gaps under ~8pp as noise until 40+ sessions.`;
+  const tt = d.travelToday ?? [];
+  $('travelTodayTitle').textContent = tt.length ? `Remaining travel now — ${d.travelTodayDate}, from the ${String(tt[0].h).padStart(2, '0')}:00 checkpoint${tt[0].flagged ? ' (flagged hour)' : ''}` : 'Remaining travel now';
+  $('travelToday').innerHTML = '<tr><th>instrument</th><th>price at checkpoint</th><th>up p50</th><th>up p75</th><th>up p90</th><th>down p50</th><th>down p75</th><th>down p90</th></tr>' +
+    (tt.length ? tt.map(t => `<tr><td>${t.sym}</td><td>${px(t.P)}</td>` + ['up', 'down'].flatMap(s => ['p50', 'p75', 'p90'].map(q => `<td>${px(t.levels[s + '_' + q])}</td>`)).join('') + '</tr>').join('')
+      : '<tr><td colspan="8" class="empty">No checkpoint reached yet today (first is 01:00 London).</td></tr>');
+
   const dates = Object.keys(d.days).sort().reverse();
   const idx = $('idx').checked;
   $('days').innerHTML = '<tr><th>session</th><th>instruments</th><th>H-L past p75 live</th><th>past p75 HAR</th><th>past p90 live</th><th>past p90 HAR</th></tr>' +
     (dates.length ? dates.map(k => {
-      if (d.days[k].skipped) return `<tr><td>${k}</td><td colspan="5" class="muted" style="text-align:left">not scored — ${d.days[k].skipped}</td></tr>`;
+      if (d.days[k].skipped) return `<tr><td>${k}</td><td colspan="5" class="muted" style="text-align:left">ladder not scored — ${d.days[k].skipped}${d.days[k].travel?.length ? ' (remaining travel scored)' : ''}</td></tr>`;
       const rows = d.days[k].rows.filter(x => idx || !x.provisional);
       const c = (arm, key) => rows.filter(x => x[arm][key] === 1).length;
       return `<tr><td>${k}</td><td>${rows.length}</td><td class="live">${c('live', 'hl_p75')}</td><td class="har">${c('har', 'hl_p75')}</td>
