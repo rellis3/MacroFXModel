@@ -96,6 +96,13 @@ export function scoreRow(sym, fc, sess, setup) {
   };
 }
 
+// A session audit is only usable if it was taken before that London date ended. Before 2026-10-06 (cf47b9a0) the
+// audit could run after London midnight and record the NEXT session's first minutes (6 of 15 records, Sep-Oct 2026).
+export function auditUsable(sessionDate, auditedAt) {
+  if (!auditedAt) return true;
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date(auditedAt)) <= sessionDate;
+}
+
 // Running tally per tag across every scored day: how often the range passed p75 / p90 vs design and vs research.
 export function tally(days) {
   const t = {};

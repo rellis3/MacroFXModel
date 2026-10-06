@@ -8,7 +8,7 @@
 //   3. LESSON: the newest scored day gets one lesson picked from what happened.
 // Storage: KV `daily_read_v1` = { days: { 'YYYY-MM-DD': { setup:{at,rows}, score:{at,rows}, lesson } }, log: [] }.
 // Reads only: vol_forecast_latest, vol_forecast_<date>, vol_session_<date>, paper_record_v1. No orders, no alerts.
-import { DAILY_READ_KV, TAGS, EXPECT_P75, setupRow, scoreRow, tally, pickLesson } from './dailyReadCore.js';
+import { DAILY_READ_KV, TAGS, EXPECT_P75, setupRow, scoreRow, tally, pickLesson, auditUsable } from './dailyReadCore.js';
 import { INSTRUMENTS as PAPER_INSTRUMENTS } from './paperRecordCore.js';
 import { PAPER_KV } from './paperRecordRoutes.js';
 
@@ -49,10 +49,16 @@ export function createDailyRead({ kv, log = console }) {
   }
 
   async function scoreDay(store, date) {
-    if (store.days[date]?.score) return false;
+    if (store.days[date]?.score || store.days[date]?.skipped) return false;
     if (Date.now() - (tried.get(date) ?? 0) < RETRY_MS) return false;
     const [sess, fc] = [parse(await kv.get(`vol_session_${date}`)), parse(await kv.get(`vol_forecast_${date}`))];
     if (!sess?.instruments || !fc?.instruments) { tried.set(date, Date.now()); return false; }
+    if (!auditUsable(date, sess.audited_at)) {             // audit measured the next session: never score it
+      store.days[date] = { ...(store.days[date] ?? {}), skipped: { at: new Date().toISOString(), auditedAt: sess.audited_at,
+        why: 'session audit taken after the London session ended (it measured the next session)' } };
+      note(store, `skipped ${date}: late session audit (${sess.audited_at})`);
+      return true;
+    }
     const setupBy = Object.fromEntries((store.days[date]?.setup?.rows ?? []).map(r => [r.sym, r]));
     const rows = syms(fc).map(s => scoreRow(s, fc.instruments[s], sess.instruments[s], setupBy[s])).filter(Boolean);
     if (!rows.length) { tried.set(date, Date.now()); return false; }
@@ -68,6 +74,15 @@ export function createDailyRead({ kv, log = console }) {
       const today = londonDate(), store = await load();
       const paper = parse(await kv.get(PAPER_KV));
       await buildSetup(store, paper, today);
+      // Days scored before the late-audit check existed: move any built on a late audit out of the scores.
+      for (const [d, day] of Object.entries(store.days)) {
+        if (day.score?.auditedAt && !auditUsable(d, day.score.auditedAt)) {
+          day.skipped = { at: new Date().toISOString(), auditedAt: day.score.auditedAt,
+            why: 'session audit taken after the London session ended (it measured the next session)' };
+          delete day.score; delete day.lesson;
+          note(store, `unscored ${d}: late session audit (${day.skipped.auditedAt})`);
+        }
+      }
       for (const d of [today, ...bizDaysBefore(today, SCORE_LOOKBACK)]) await scoreDay(store, d);
       const scored = Object.keys(store.days).filter(d => store.days[d].score).sort();
       const newest = scored.at(-1);
