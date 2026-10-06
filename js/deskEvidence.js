@@ -783,6 +783,12 @@ export const DESK_EVIDENCE = [
     result: 'PASS both arms. Without IV: pinball 0.976 [0.970, 0.981] of the control, better in every class and every fold; calm-vs-busy HL p75 miss cut from 5.6pp to 1.8pp (quiet 30.3% to 24.7%, busy 19.4% to 24.9%). With IV (13 instruments): 0.960 [0.951, 0.968]. Monday/Thursday weekday skew removed (slight overshoot to Mon 26%, Tue 22%).',
     use: 'Candidate shadow forecast (persistence-adjusted). The export over-reacts to recent vol; this pulls sigma back toward its usual level and corrects weekday. Lines from it are the better base for the decision layers.',
   },
+  {
+    id: 'meta-label-trust-lines-persist', domain: 'volatility', verdict: 'null', date: '2026-10-06', doc: 'forge/META_LABEL_PREREG.md',
+    claim: 'After the persistence fix, morning information still predicts when the (persistence-adjusted) p75 lines will be passed',
+    result: 'No: range skill 0.3% [-0.9, 1.4], high side -0.3%, low side 0.0%, all FAIL (Amendment 2 re-run, walk-forward 2021-2026). The forecast fix absorbed what 3a found. Only leftover: implied vol (top decile 33% passed vs 23% base), which the IV arm of the fix covers.',
+    use: 'Do not build a separate morning trust score: fix the forecast instead (done for persistence/weekday; IV arm next). The meta-label belongs at the line touch (3b).',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what

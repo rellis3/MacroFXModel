@@ -31,6 +31,8 @@ LABELS = {"y_hl": ("r_hl", "pit_hl_p75"), "y_up": ("r_oh", "pit_oh_p75"), "y_dn"
 NUM = ["regime", "y_err", "y_err5", "y_js", "y_zbns", "y_jump", "gap_abs", "dsig", "iv_sig"]
 CAT = ["event", "weekday", "klass"]
 EMBARGO = 5
+PERSIST = "--persist" in sys.argv     # META_LABEL Amendment 2: labels from the persistence-adjusted lines
+SUFFIX = "_persist" if PERSIST else ""
 
 
 def implied_vol() -> dict[str, pd.Series]:
@@ -69,8 +71,14 @@ def load() -> pd.DataFrame:
     X = X[(X.oos == 1) & complete(X)].copy()
     X["klass"] = X.inst.map(klass)
     X["weekday"] = pd.to_datetime(X.date).dt.dayofweek.astype(str)
-    for y, (r, line) in LABELS.items():
-        X[y] = (X[r] > X[line]).astype(int)
+    if PERSIST:
+        B = pd.read_csv("analysis/output/forecast_fix/live_variant/lines_B.csv")
+        X = X.merge(B[["inst", "date"] + [f"B_{q}_p75" for q in ("hl", "oh", "ol")]], on=["inst", "date"], how="inner")
+        for y, (r, line) in LABELS.items():
+            X[y] = (X[r] > X[line.replace("pit_", "B_")]).astype(int)
+    else:
+        for y, (r, line) in LABELS.items():
+            X[y] = (X[r] > X[line]).astype(int)
     return X.sort_values(["date", "inst"]).reset_index(drop=True)
 
 
@@ -163,14 +171,14 @@ def main():
         res["labels"][y] = lab
     res["logit_top_coefs_last_fold"] = coefs
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "results_3a.json").write_text(json.dumps(res, indent=1, default=str))
-    P.to_csv(OUT / "predictions_3a.csv", index=False)
+    (OUT / f"results_3a{SUFFIX}.json").write_text(json.dumps(res, indent=1, default=str))
+    P.to_csv(OUT / f"predictions_3a{SUFFIX}.csv", index=False)
     write_md(res)
 
 
 def write_md(res):
     name = {"y_hl": "range passes HL p75", "y_up": "high passes OH p75", "y_dn": "low passes OL p75"}
-    md = ["# STEP 3a — meta-label \"trust the lines\" (results)", "",
+    md = ["# STEP 3a — meta-label \"trust the lines\" (results)" + (" — on the PERSISTENCE-ADJUSTED lines (Amendment 2)" if PERSIST else ""), "",
           f"Pre-registration: `forge/META_LABEL_PREREG.md` (+ Amendment 1). Test = forecast folds 1–5, each trained only on "
           f"earlier out-of-sample folds with a 5-session embargo: **{res['n_test']:,} instrument-sessions, {res['dates']:,} dates**. "
           "Skill = 1 − Brier(model) ÷ Brier(training base rate); 95% date-block bootstrap. PASS = skill interval above 0 "
@@ -198,7 +206,7 @@ def write_md(res):
     md += ["## Largest logistic coefficients (last fold, standardised)", ""]
     for y, c in res["logit_top_coefs_last_fold"].items():
         md.append(f"- {name[y]}: " + ", ".join(f"{k} {v:+}" for k, v in c.items()))
-    (OUT / "RESULTS_3a.md").write_text("\n".join(md) + "\n", encoding="utf-8")
+    (OUT / f"RESULTS_3a{SUFFIX}.md").write_text("\n".join(md) + "\n", encoding="utf-8")
     print("\n".join(md[:14]))
 
 
