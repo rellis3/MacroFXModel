@@ -776,6 +776,13 @@ export const DESK_EVIDENCE = [
     result: 'Registered rule (skill above 0 AND every decile within 3pp) met only for the low side (logistic, skill 1.6% [1.0, 2.3]). Range: real skill 4.8% [3.2, 6.6] and strong ranking (bottom decile 12% passed vs top 46%, base 24%) but over-confident at the low end (predicted 7%, happened 12%), so FAIL. Drivers: weekday (Monday HL p75 passed 20.6%, Thursday 27.7%), release day, implied vol above sigma, recent misses (persistence).',
     use: 'Mornings carry real information about whether the lines will hold, but as a separate trust score it is not yet calibrated. The same drivers (weekday, implied vol, persistence) are better fixed inside the forecast itself.',
   },
+  {
+    id: 'forecast-persistence-fix', domain: 'volatility', verdict: 'validated', date: '2026-10-06', doc: 'forge/FORECAST_FIX_PREREG.md',
+    instruments: ['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'CADCHF', 'CADJPY', 'CHFJPY', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD', 'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'NZDCAD', 'NZDJPY', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
+    claim: 'Nudging the export sigma each morning by regime (sigma vs its usual level), yesterday and last-5-day range misses, and weekday (+ implied vol where it exists) beats the export with refit widths, walk-forward 2020-2026',
+    result: 'PASS both arms. Without IV: pinball 0.976 [0.970, 0.981] of the control, better in every class and every fold; calm-vs-busy HL p75 miss cut from 5.6pp to 1.8pp (quiet 30.3% to 24.7%, busy 19.4% to 24.9%). With IV (13 instruments): 0.960 [0.951, 0.968]. Monday/Thursday weekday skew removed (slight overshoot to Mon 26%, Tue 22%).',
+    use: 'Candidate shadow forecast (persistence-adjusted). The export over-reacts to recent vol; this pulls sigma back toward its usual level and corrects weekday. Lines from it are the better base for the decision layers.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
