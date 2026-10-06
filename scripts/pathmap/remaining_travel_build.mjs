@@ -26,7 +26,7 @@ for (const [key, SYM] of JOBS) {
   const sessions = bucketM1IntoSessions(packed, 'Europe/London');
   const cls = INDICES.has(SYM) ? 'index' : SYM === 'GOLD' ? 'gold' : MAJORS.has(SYM) ? 'major' : 'cross';
   const prof = new Float64Array(1500), profN = new Float64Array(1500);
-  const out = ['inst,cls,date,h,sig,sigRel,pos,used,rv,up,down,nhi,nlo'];
+  const out = ['inst,cls,date,h,sig,sigRel,pos,used,rv,up,down,nhi,nlo,hiPos,loPos'];
   let j = 0; const hist = [];
   for (const date of [...sessions.keys()].sort()) {
     const dow = new Date(date + 'T12:00:00Z').getUTCDay();
@@ -56,7 +56,7 @@ for (const [key, SYM] of JOBS) {
           const P = bars[x - 1].close;
           out.push([SYM, cls, date, CHECK[ci], r4(sigAnn / Math.sqrt(252)), sigRel, r4((P - o) / unit), r4((hi - lo) / unit), r4(rv / (sd * sd)),
             r4(Math.max(0, sufHi[x] - P) / unit), r4(Math.max(0, P - sufLo[x]) / unit),
-            r4(Math.max(0, sufHi[x] - hi) / unit), r4(Math.max(0, lo - sufLo[x]) / unit)].join(','));
+            r4(Math.max(0, sufHi[x] - hi) / unit), r4(Math.max(0, lo - sufLo[x]) / unit), r4((hi - o) / unit), r4((lo - o) / unit)].join(','));
         }
         ci++;
       }

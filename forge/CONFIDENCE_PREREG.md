@@ -52,4 +52,33 @@ base rates, not on a confidence score).
 
 | # | Variant | Added | Status |
 |---|---|---|---|
-| 1 | M1, M2 as above | 2026-10-06 | registered |
+| 1 | M1, M2 as above | 2026-10-06 | run: chosen M2 **FAIL** (skill real, calibration 3.4pp > 3.0) |
+
+## Results (variant 1, 2026-10-06) — `analysis/output/confidence_fit.log`
+
+Rows: train 2.89M, validation 0.35M, test 0.33M (248 test sessions, 34 instruments, checkpoints 01–19 London).
+
+| model | rung | validation BSS [95%] | test BSS [95%] | test max decile miss | test AUC |
+|---|---|---|---|---|---|
+| M1 logistic | p50 | +0.86% [+0.50, +1.24] | +0.61% [+0.31, +0.91] | 2.9pp | 0.546 |
+| M1 logistic | p75 | +1.37% [+0.81, +1.97] | +1.00% [+0.61, +1.38] | 3.0pp | 0.565 |
+| **M2 boosting (chosen)** | p50 | +1.48% [+1.05, +1.95] | **+1.45% [+1.08, +1.88]** | 2.8pp | 0.568 |
+| **M2 boosting (chosen)** | p75 | +2.08% [+1.36, +2.84] | **+2.06% [+1.53, +2.62]** | **3.4pp ✗** | 0.593 |
+
+**Pre-registered verdict: FAIL** — M2's skill is real (both intervals clear zero, unchanged from validation to test)
+but its p75 reliability misses one decile by 3.4pp against a 3.0pp limit. M1 has less skill and sits exactly on the
+limit (3.0pp). Not loosened.
+
+Read:
+- The skill is **small**: about 1.5–2% better Brier than layer 5's flat base rates (AUC 0.57–0.59). Conditions known at
+  a checkpoint tell a slightly-more-likely day from a slightly-less-likely one; they do not separate a 40% day from a
+  10% day.
+- What carries it (permutation importance, % of base Brier): **time of day 3.6%** and **realised vol so far 3.2%**,
+  then IV ÷ σ 0.7%, day of week 0.6%, range used 0.4%; price vs open, distance from the running extreme, yesterday's
+  range and the σ regime ≈ 0. This is layer 5's finding again — busy-so-far days keep travelling — plus hour-level
+  shape the per-hour multipliers do not fully capture.
+- Skill grows through the day (test BSS +0.5–0.7% at 01–07 London, +3.3% at 17, +4.2% at 19) and is larger for indices
+  (+3.0%) and gold (+2.9%) than crosses (+1.2%).
+- For the system: layer 5's base rates are nearly as good as any confidence score built from these conditions. A
+  confidence layer is worth carrying only as a small adjustment late in the session, and only once its calibration
+  holds; the obvious next variant is realised-vol-so-far built into layer 5 directly rather than a separate model.
