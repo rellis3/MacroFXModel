@@ -55,3 +55,35 @@ built for the diffusion part can be right on average and still wrong in the tail
 | 0 | as above, k = 5 | registered | — |
 | 1 | k = 4 | sensitivity | reported alongside |
 | 2 | k = 6 | sensitivity | reported alongside |
+| 3 | seasonality-adjusted Lee–Mykland detector (Amendment 1) | the registered detector ignores time-of-day volatility | yes, after results; reported alongside, registered result kept |
+| 4 | Barndorff-Nielsen–Shephard daily ratio test, 1% (Amendment 2) | variant 3 still flags ~57% of EURUSD days | yes, after results; reported alongside |
+
+## Amendment 1 (2026-10-06, AFTER the registered results were seen — a measurement correction, not a new test)
+
+The registered jump-day rule (largest 5-min move > 5× the day's average 5-min move) flagged ~96 days a year. Under
+no-jump returns it should flag almost none: 5-minute volatility is 2–3× higher at the London open and US data
+times, so the rule mostly caught ordinary busy minutes. Owner asked for the correction.
+
+**Variant 3 detector** (Lee & Mykland 2008, with the robust intraday periodicity of Boudt, Croux & Laurent 2011):
+- u = r ÷ √(BV ÷ 264) per 5-min return (daily scale);
+- periodicity f_s for each 5-min slot s = median |u| ÷ 0.6745 over the instrument's **previous 250 sessions**
+  (causal), normalised so the mean of f² over active slots is 1; slots with no data get f = undefined and z = 0;
+- z = u ÷ f_s; **jump day** if max |z| > 4.29 (the Lee–Mykland Gumbel critical value for n = 264 at 1% per day:
+  c_n + s_n · 4.6, c_n = √(2 ln n) − (ln π + ln ln n) ÷ (2√(2 ln n)), s_n = 1 ÷ √(2 ln n));
+- the jump bar is the slot of max |z|.
+
+Only Q1's jump-day frequency/size, Q2 and Q3 use the jump-day flag; those are re-reported with variant 3 next to the
+registered k = 5. Q1's jump share, Q4 and Q5 do not use the flag and are unchanged. Script:
+`scripts/forecast_history/jump_flags_seasonal.py` → `analysis/output/jumps/flags_seasonal.csv`.
+
+## Amendment 2 (2026-10-06, after variant 3 was run on EURUSD and NQ)
+
+Variant 3 flagged 144 EURUSD and 171 NQ days a year. Diagnosis: the grid matches the table exactly (max |r| and slot
+agree on 99.8% of sessions); 5-minute returns stay heavy-tailed after the time-of-day adjustment (kurtosis 14), and
+many flags sit in thin-liquidity slots (00:00 London, the 21:00–22:00 rollover) — spread spikes, not economic jumps.
+A largest-bar test calibrated on a normal null is fragile here.
+
+**Variant 4**: the day-level BNS ratio test. RV, BV as registered; TQ = n · μ⁻³ · Σ |r_i r_{i−1} r_{i−2}|^{4/3},
+μ = 2^{2/3} Γ(7/6) ÷ Γ(1/2); z = ((RV − BV) ÷ RV) ÷ √((π²/4 + π − 5) · (1/n) · max(1, TQ ÷ BV²)); **jump day** if
+z > 2.326 (1% one-sided). Its jump bar (for Q2's scheduled check) is variant 3's max-|z| slot. With a 1% false-alarm
+rate, flagged share − 1% estimates the real jump-day share. Same script and output file.

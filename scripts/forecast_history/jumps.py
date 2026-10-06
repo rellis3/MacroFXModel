@@ -22,6 +22,8 @@ D_STOP = (0.25, 0.5, 1.0)
 TAGS = ("FOMC", "NFP", "CPI", "high", "none", "holiday")
 EVENT_DAYS = {"FOMC", "NFP", "CPI", "high"}
 N5 = 264
+# detector name -> (flag column, jump-bar minute column); k5 is the registered one
+DET = {f"k{k}": (f"jump{k}", "min_max_r5") for k in KS}
 
 
 def currencies(insts):
@@ -52,6 +54,10 @@ def load() -> pd.DataFrame:
     X["jsize"] = X.max_r5.abs() / X.pit_sig_used         # daily-σ units
     X["z"] = X.r_ocs / X.pit_sig_used
     X["monday"] = pd.to_datetime(X.date).dt.dayofweek == 0
+    fl = Path("analysis/output/jumps/flags_seasonal.csv")          # variants 3-4 (JUMPS_PREREG Amendments 1-2)
+    if fl.exists():
+        X = X.merge(pd.read_csv(fl)[["inst", "date", "jump_lm", "min_jump_lm", "jump_bns"]], on=["inst", "date"], how="left")
+        DET.update({"lm": ("jump_lm", "min_jump_lm"), "bns": ("jump_bns", "min_jump_lm")})
     return X.reset_index(drop=True)
 
 
@@ -61,18 +67,19 @@ def main():
     rel = releases()
     cal_end = rel.date.max()
     by_day = rel.groupby("date")
-    sched = np.full(len(X), np.nan)
-    for i, (d, inst, m) in enumerate(zip(X.date, X.inst, X.min_max_r5)):
-        if d > cal_end:
-            continue
-        start = m - 5                                     # the jump bar spans [m-5, m)
-        if d not in by_day.groups:
-            sched[i] = 0.0
-            continue
-        g = by_day.get_group(d)
-        g = g[g.ccy.isin(ccy[inst])]
-        sched[i] = float(((start >= g.minute - 5) & (start <= g.minute + 15)).any())
-    X["sched"] = sched
+    for mcol in sorted({m for _, m in DET.values()}):
+        sched = np.full(len(X), np.nan)
+        for i, (d, inst, m) in enumerate(zip(X.date, X.inst, X[mcol])):
+            if d > cal_end or not np.isfinite(m):
+                continue
+            start = m - 5                                     # the jump bar spans [m-5, m)
+            if d not in by_day.groups:
+                sched[i] = 0.0
+                continue
+            g = by_day.get_group(d)
+            g = g[g.ccy.isin(ccy[inst])]
+            sched[i] = float(((start >= g.minute - 5) & (start <= g.minute + 15)).any())
+        X[f"sched_{mcol}"] = sched
     # Coverage: the calendar holds USD/EUR/GBP only; an instrument is fully covered when all its currencies are.
     covered = {i for i, c in ccy.items() if set(c) <= {"USD", "EUR", "GBP"}}
     X["cal_covered"] = X.inst.isin(covered)
@@ -107,9 +114,10 @@ def main():
     q1 = {}
     for g, m in groups:
         row = {"n": int(m.sum()), "jump_share": ci(O.jump_share.fillna(0).to_numpy(), one, m), "excess_kurtosis": kurt(m)}
-        for k in KS:
-            fr = ci(O[f"jump{k}"].to_numpy(), one, m)
-            row[f"lambda_per_year_k{k}"] = [round(x * 252, 1) for x in fr]
+        for name, (col, _) in DET.items():
+            ok = m & O[col].notna().to_numpy()
+            fr = ci(O[col].fillna(0).to_numpy(), one, ok)
+            row[f"lambda_per_year_{name}"] = [round(x * 252, 1) for x in fr]
         jm = m & (O[f"jump{K0}"] == 1).to_numpy()
         row["size_sigma_median"] = round(float(O.jsize[jm].median()), 3)
         row["size_sigma_p90"] = round(float(O.jsize[jm].quantile(0.9)), 3)
@@ -122,10 +130,11 @@ def main():
     # Q2 scheduled or not (instruments whose currencies the calendar fully covers, dates it covers)
     q2 = {}
     for g, m in groups:
-        for k in KS:
-            mm = m & (O[f"jump{k}"] == 1).to_numpy() & O.sched.notna().to_numpy() & O.cal_covered.to_numpy()
+        for name, (col, mcol) in DET.items():
+            sc = O[f"sched_{mcol}"]
+            mm = m & (O[col] == 1).to_numpy() & sc.notna().to_numpy() & O.cal_covered.to_numpy()
             if mm.sum() >= 50:
-                q2.setdefault(g, {})[f"k{k}"] = {"n_jump_days": int(mm.sum()), "share_scheduled": ci(O.sched.fillna(0).to_numpy(), one, mm)}
+                q2.setdefault(g, {})[name] = {"n_jump_days": int(mm.sum()), "share_scheduled": ci(sc.fillna(0).to_numpy(), one, mm)}
     res["Q2"] = q2
 
     # Q3 tail on jump days vs other days
@@ -133,10 +142,11 @@ def main():
     for g, m in groups:
         for fam in ("hl", "oh", "ol"):
             ex = (O[f"r_{fam}"] > O[f"pit_{fam}_p90"]).astype(float).to_numpy()
-            for k in KS:
-                j = (O[f"jump{k}"] == 1).to_numpy()
-                q3.setdefault(g, {}).setdefault(fam, {})[f"k{k}"] = {
-                    "jump_days": ci(ex, one, m & j), "other_days": ci(ex, one, m & ~j), "n_jump": int((m & j).sum())}
+            for name, (col, _) in DET.items():
+                j = (O[col] == 1).to_numpy()
+                o = (O[col] == 0).to_numpy()
+                q3.setdefault(g, {}).setdefault(fam, {})[name] = {
+                    "jump_days": ci(ex, one, m & j), "other_days": ci(ex, one, m & o), "n_jump": int((m & j).sum())}
     res["Q3"] = q3
 
     # Q4 rung-specific p90 multiplier per event tag, fitted per instrument inside each fold's training window
@@ -205,12 +215,13 @@ def pct(c, scale=100, nd=1):
 def write_md(res):
     md = ["# STEP 2 — jumps (results)", "", "Pre-registration: `forge/JUMPS_PREREG.md`. Out-of-sample sessions "
           f"(point-in-time forecast): {res['n_oos']:,} instrument-sessions, {res['dates']:,} dates. 95% intervals: date-block "
-          f"bootstrap (as Step 1). Jump day: largest 5-min move > {K0}× the day's typical 5-min move (k = 4, 6 alongside).", "",
-          "## Q1 How much is jump", "", "| class | n | jump share of variance % | jump days / yr (k4 · k5 · k6) | size median / p90 (σ) | excess kurtosis |",
+          f"bootstrap (as Step 1). Jump-day detectors: k4/k5/k6 = largest 5-min move > k× the day's average 5-min move (k5 registered); "
+          "lm = seasonality-adjusted Lee–Mykland (Amendment 1); bns = Barndorff-Nielsen–Shephard daily ratio test at 1% (Amendment 2).", "",
+          "## Q1 How much is jump", "", "| class | n | jump share of variance % | jump days / yr: " + " · ".join(DET) + " | size median / p90 (σ, k5) | excess kurtosis |",
           "|---|---|---|---|---|---|"]
     for g, r in res["Q1"]["by_class"].items():
-        md.append(f"| {g} | {r['n']} | {pct(r['jump_share'])} | {r['lambda_per_year_k4'][0]} · **{r['lambda_per_year_k5'][0]}** "
-                  f"[{r['lambda_per_year_k5'][1]}, {r['lambda_per_year_k5'][2]}] · {r['lambda_per_year_k6'][0]} | "
+        lam = " · ".join(f"{r[f'lambda_per_year_{n}'][0]}" for n in DET)
+        md.append(f"| {g} | {r['n']} | {pct(r['jump_share'])} | {lam} | "
                   f"{r['size_sigma_median']} / {r['size_sigma_p90']} | {r['excess_kurtosis'][0]} [{r['excess_kurtosis'][1]}, {r['excess_kurtosis'][2]}] |")
     md += ["", "## Q2 Scheduled or not", "", "Instruments whose currencies the calendar fully covers (USD/EUR/GBP), to "
            f"{res['calendar_end']}. Scheduled = jump bar within −5/+15 min of a Major release for the instrument's currencies.", "",
@@ -218,12 +229,14 @@ def write_md(res):
     for g, r in res["Q2"].items():
         for k, v in r.items():
             md.append(f"| {g} | {k} | {v['n_jump_days']} | {pct(v['share_scheduled'])} |")
-    md += ["", "## Q3 p90 exceedance on jump days vs other days (%, target 10)", "", "| class | line | jump days (k5) | other days | n jump |",
-           "|---|---|---|---|---|"]
+    md += ["", "## Q3 p90 exceedance on jump days vs other days (%, target 10)", "", "| class | line | detector | jump days | other days | n jump |",
+           "|---|---|---|---|---|---|"]
     for g, r in res["Q3"].items():
         for fam, v in r.items():
-            x = v[f"k{K0}"]
-            md.append(f"| {g} | {fam.upper()} | {pct(x['jump_days'])} | {pct(x['other_days'])} | {x['n_jump']} |")
+            for name, x in v.items():
+                if name in ("k4", "k6"):
+                    continue
+                md.append(f"| {g} | {fam.upper()} | {name} | {pct(x['jump_days'])} | {pct(x['other_days'])} | {x['n_jump']} |")
     q4 = res["Q4"]
     md += ["", f"## Q4 Rung-specific p90 event multiplier (walk-forward) — **{q4['verdict_hl']}** (HL, the registered rule)", "",
            "| line | days | n | p90 pinball change [95%] | p90 exceed before | after |", "|---|---|---|---|---|---|"]

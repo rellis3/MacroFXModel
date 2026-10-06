@@ -743,7 +743,7 @@ export const DESK_EVIDENCE = [
   {
     id: 'jump-structure', domain: 'volatility', verdict: 'context', date: '2026-10-06', doc: 'forge/JUMPS_PREREG.md',
     claim: 'How much of the daily move is jump, whether jumps are scheduled, and whether the forecast tail breaks on jump days',
-    result: 'Jumps (RV minus bipower) are 6.6% [6.3, 6.9] of intraday variance; only 22% [19, 26] of jump days are scheduled releases (majors 37%). FX/gold p90 is passed 13-15% on jump days vs ~7% otherwise; indices no different. Single-step loss: one 5-min bar crosses a 0.5-sigma stop on 11% of sessions; Monday open gaps beyond 0.5 sigma 9% vs 1.4% Tue-Fri.',
+    result: 'Jumps (RV minus bipower) are 6.6% [6.3, 6.9] of intraday variance. With the day-level BNS jump test (1%; the registered largest-bar rule over-flagged 96 days/yr, Amendments 1-2) about 32 jump days a year (~12% of days); only 25% [20, 29] are scheduled releases (majors 33%). HL p90 is passed 17.1% on jump days vs 8.7% otherwise; indices too, mostly upside (OH p90 19.1% vs 10.2%). Single-step loss: one 5-min bar crosses a 0.5-sigma stop on 11% of sessions; Monday open gaps beyond 0.5 sigma 9% vs 1.4% Tue-Fri.',
     use: 'Most jumps cannot be known in advance, so they belong in stop placement and sizing, not the lines. Stops inside 0.5 sigma get jumped often; treat Monday opens as gap risk.',
   },
   {
