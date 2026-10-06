@@ -89,8 +89,8 @@ dynamic, no trade is scored and the reason is stated.
 | 2 | race limited to the touch hour (the page's redraw interval) | 2026-10-06 | run |
 | 3 | jump-through threshold 0.10σ and 0.50σ (sensitivity of J2) | 2026-10-06 | run (columns in the Q2 table) |
 | 4 | shipped (all-data) params, same test period: shows how much the in-sample fit flatters the lines | 2026-10-06 | run |
-| 5 | closer placebo (factors 0.90-0.97 and 1.03-1.10) for variants 1 and 2 | 2026-10-06, after variants 1-2 were seen, before 5 is run | pending |
-| 6 | jump-state adjustment keyed on "a jump in the last hour before the redraw" (variant 1's adjustment used "a jump any time earlier today") | 2026-10-06, after variant 1's Q4 was seen, before 6 is run | pending |
+| 5 | closer placebo (factors 0.90-0.97 and 1.03-1.10) for variants 1 and 2 | 2026-10-06, after variants 1-2 were seen, before 5 is run | run |
+| 6 | jump-state adjustment keyed on "a jump in the last hour before the redraw" (variant 1's adjustment used "a jump any time earlier today") | 2026-10-06, after variant 1's Q4 was seen, before 6 is run | run |
 
 Any further variant is appended here, dated, before it runs.
 
@@ -108,3 +108,31 @@ line's. Variant 5 shrinks the placebo's distance change to ±3-10% to see whethe
 or stays (real). The registered rule and verdict for variants 1 and 2 stay as run. The BNS day flag is end-of-day and
 defined by a jump bar, which is often the touch bar itself: it is descriptive only (as registered), the real-time
 splits carry the usable reading.
+
+## Results (2026-10-06) — `analysis/output/live_range_history/RESULTS.md`, `results.json`
+
+Test = last 40% of dates per class (2022-06 → 2026-08, 1,079 dates, 36,340 instrument-sessions, 92,914 real touches, 96,912
+placebo touches). Grids refit on the first 60%. Fidelity to the shipped JS: 1,890 lines, max difference 0.0σ.
+
+**Q3 (verdict).** Variant 1 (registered): 7 of 255 cells cleared the dynamic rule (2.7%, below the 5% chance rate) →
+**PATH-NEUTRAL**; pooled real − placebo out-share within ±1pp in every rung and class. Variant 2: 42 of 196 flagged, all at a
+common −2 to −4pp offset → under the registered rule "DYNAMICS FOUND", but variant 5 (closer-matched placebo, logged after
+seeing it) removes the offset (5a: 0/255, 5b: 2/196) so it was the placebo's changed distances, not the lines. Both are on record.
+No after-touch edge survives costs (spread ÷ σ 0.016 FX/gold, 0.024 indices; 0 of 34 above 0.15).
+
+**Q2.** Jump-through (touch bar overshoots ≥ 0.25σ): 3–5% of late-day touches, 26% (p75) and 44% (p90) for early-morning lines.
+On BNS jump days 15–20% vs 3–5% (end-of-day, descriptive; the jump bar is often the touch bar). Real-time "a jump earlier today":
+FX +3 to +5pp, indices inside noise; J1 (runs through to the next line) no change.
+
+**Q4.** Reach odds are calibrated with no jump so far today. They are off by +8pp after a jump in the LAST hour (p75→p90 48% FX
+n 1,775, 48% indices n 343) and on BNS jump days (descriptive). Variant 6's last-hour adjustment lowers test log-loss by
+0.00011 [0.00021, 0.00001] — wholly below 0 by the registered rule, but on ~1% of touch rows. Variant 1's "jump any time earlier"
+adjustment: −0.00003 [−0.00028, +0.00020], nothing.
+
+**Q5.** Median re-estimate shift of a line at a redraw 0.03–0.12σ (p90 of |shift| 0.10–0.38σ). After a top-decile push-out the
+p75 line is reached 17.8% (FX) / 20.4% (indices) vs 25% — the line is too far after a big widening (n 1,357 / 4,307 rows,
+descriptive). After a pull-in, no difference.
+
+**Variant 4 / point-in-time finding.** The shipped params were fitted on all dates and on a σ about 10% below the page's σ
+(0.90 median on 31 of 33 instruments checked). On the page's σ they under-reach: p75 exceedance 21.5% FX / 24.2% indices (target
+25%), p75→p90 35.9% / 37.8% (40%). The refit gives 24.0 / 27.6% and 39.7 / 41.1%. Nothing was changed live.

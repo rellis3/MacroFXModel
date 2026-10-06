@@ -640,6 +640,24 @@ export const DESK_EVIDENCE = [
     use: 'A Live Range line is not a barrier: from the bold p75, about 2 in 5 days reach p90. Use it for targets and expectations, not for fades.',
   },
   {
+    id: 'live-range-line-race', domain: 'price', verdict: 'null', date: '2026-10-06', doc: 'forge/LIVE_RANGE_HISTORY_PREREG.md',
+    claim: 'Price behaves differently at the Live Range page’s hourly-moving lines than at control lines: after a touch it continues or fades more than chance',
+    result: 'PATH-NEUTRAL. Hourly lines replayed from M1 for 34 instruments (fidelity to the page’s JS exact), grids refit on the first 60% of dates, scored on 2022-06 to 2026-08: 92,914 real touches vs 96,912 placebo touches. Race from the touch bar’s close, next line out vs back level: real − placebo within ±1pp pooled in every rung/class (FX p50 25.2% vs 25.3%, p75 32.9% vs 32.8%, p90 48.5% vs 48.5%). 255 cells (rung, class, hour, side, used×pace cell, regime, jump-already-today, big line shift): 7 cleared the rule at the registered placebo (2.7%, below the 5% chance rate), 0 of 255 with a closer-matched placebo. Hour-limited race: the registered placebo flagged 42/196 cells at a common −2 to −4pp offset, which vanished (2/196) once the placebo’s distances were matched, so it was a baseline artefact. Net of spread (0.016σ FX, 0.024σ indices, 0/34 above 0.15) no cell is an edge; the best (FX p90, 08-14, high used/high pace, +8.3pp, n 374) is one of 255 picked on the test data.',
+    use: 'Do not trade a fade or a continuation at a Live Range line. The lines carry how far and how much time is left, not a direction at the touch. The one cluster to watch, not act on: FX p90 touches 08:00-14:00 on the upside continued a little more than the placebo (+4.8pp, n 670).',
+  },
+  {
+    id: 'live-range-jump-through', domain: 'volatility', verdict: 'context', date: '2026-10-06', doc: 'forge/LIVE_RANGE_HISTORY_PREREG.md',
+    claim: 'Jumps run straight through the Live Range lines (the lines only react at the next hourly redraw), and the reach odds fail on jump days',
+    result: 'Test 2022-06 to 2026-08. A touch bar overshoots its line by ≥0.25σ in 3-5% of touches late in the day but 26% (p75) / 44% (p90) for early-morning lines; on BNS jump days 15-20% vs 3-5%, but that flag is end-of-day and the jump bar is often the touch bar itself. Usable in real time: a ≥0.5σ 5-minute move EARLIER today lifts FX jump-through only +3 to +5pp (indices inside noise) and does not move reach odds (p75→p90 43.5% [39.5, 47.4] vs 39.6%). A ≥0.5σ move in the LAST HOUR before a redraw lifts p75→p90 to 48.2% FX [44.4, 51.8] (n 1,775) and 48.1% indices (n 343) vs 40%; a jump-in-last-hour correction cuts test log-loss by 0.00011 [0.00021, 0.00001] (statistically below 0, practically ~1% of touch rows). BNS jump days: p75→p90 47.9% FX / 50.8% indices vs 38-40% (descriptive; known only afterwards).',
+    use: 'Expect jump-through mostly from the touch bar itself, which no line can anticipate. After a ≥0.5σ five-minute move in the last hour, read p75→p90 as about 48-49%, not 40%. A big jump earlier in the session does not need its own adjustment.',
+  },
+  {
+    id: 'live-range-sigma-basis', domain: 'volatility', verdict: 'context', date: '2026-10-06', doc: 'forge/LIVE_RANGE_HISTORY_PREREG.md',
+    claim: 'The Live Range grids (js/intradayRangeParams.js) are calibrated on the σ the page feeds them, and the 2026-10-05 test was out of sample',
+    result: 'Neither. The grids and tercile edges were fitted on ALL dates (the 60/40 split only scored them), and on a daily σ (D1 estimator on OANDA bars) that is about 10% below the page’s σ (NY-close forecast σ): ratio median 0.90 on 31 of the 33 instruments checked (DE30/UK100 1.00; SPX500 not checked). Shipped params on the page’s σ, test 2022-06 to 2026-08: p75 exceedance FX 21.5% (target 25%), indices 24.2%; p90 8.0% (10%); p75→p90 35.9% FX (40%), 37.8% indices; refit in the page’s σ basis: 24.0/27.6%, 9.5/11.2%, 39.7/41.1%.',
+    use: 'The lines the page draws sit about 3pp (p75) and 2pp (p90) too far out in the FX class, and the “from here” 40% reads about 36%. A refit of the grids on pit σ (first 60% of dates) closes this; not applied, live files untouched.',
+  },
+  {
     id: 'event-layer', domain: 'events', verdict: 'null', date: '2026-10-05', doc: 'forge/EVENT_LAYER_PREREG.md',
     claim: 'On top of the IV-adjusted daily lines, the typical size of the day’s scheduled release type (and yesterday’s surprise) improves the range forecast',
     result: 'First test (calendar_events.csv) PASSED for FX+gold (0.970, 7/7) but did NOT replicate on live inputs (ForexFactory names, live IV-adjusted sigma, 2020-2025): 0.9937 vs the 0.99 bar; the fitted correction overshoots (big-release-day p75 35.5% -> 17.3%). Yesterday’s surprise null in both. The live export’s coarse event tag already brings FOMC/NFP/CPI days to 27.1% passed vs 25%.',
