@@ -68,3 +68,16 @@ no parameter-stability check, no one-day-delay check, and Lesson 3's own cluster
 | A2 | **Fundamental-law framing**: express each forecast layer's skill as an IC and count breadth | L3 §01 |
 | A4 | **Sizing uses loss-given-stop**: feed the stop-risk map into the layer-7 sizing rule | L3 §03 |
 | A5 | **Toolkit additions**: Lo's η(q), Bayesian Sharpe shrinkage, FDR and likelihood-ratio arithmetic | L1 §03, L2 §05 |
+
+## Progress (2026-10-06)
+
+| action | state |
+|---|---|
+| A7 lockbox | **done** — forge/LOCKBOX_PROTOCOL.md, forge/lockbox_manifest.json (13 files hashed), `python -m forge.lockbox_check` |
+| A3 stylized facts | **done** — plans/STYLIZED_FACTS.md |
+| A5 toolkit | **done** — Lo η(q), shrinkage, FDR, posterior after passes, best-of-N; 24 tests reproduce L1/L2 numbers |
+| A1 interfaces | **done** — plans/LAYER_INTERFACES.md |
+| A4 sizing uses loss-given-stop | **done** — forge/sizing.py, plans/SIZING_RULE.md |
+| A9 / A6 robustness | see plans/ROBUSTNESS.md |
+| A8 price the search | see plans/SEARCH_BREADTH.md |
+| A2 IC / breadth | see plans/SEARCH_BREADTH.md |
