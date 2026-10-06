@@ -59,4 +59,25 @@ The others move to an archive menu. Live Range is re-pointed at the chosen σ.
 
 | # | Variant | Why | Run? |
 |---|---|---|---|
-| 0 | as above | registered | — |
+| 0 | as above | registered | PICK: SI where IV exists, S elsewhere (2026-10-06) |
+| 1 | **live-type implied vol** for SI (below) | research IV (CME CVOL) ≠ the live sources | yes, before its results — the one allowed variant; the forecast work closes after it |
+
+## Variant 1 — live-type implied vol (logged 2026-10-06 after variant 0's pick, before variant 1 is run)
+
+The live server reads 30-day ATM implied vol from the QuikStrike capture for the USD majors and GVZ for gold, not CME
+CVOL. Variant 1 rescored SI on the history of those sources:
+
+- **USD majors:** CME settlement-inverted 30-day ATM (`oi_research_book/data/iv_daily_*.parquet`, `iv30`, from
+  2020-09). The same series the IV-adjusted export was calibrated on.
+- **GOLD:** GVZ.
+- **Indices:** VIX / VXN, unchanged.
+- **IV ÷ σ uses the live estimator's σ_daily** (as every other variant-1 feature does).
+
+Rows: where SI exists. FX majors' SI needs ≥ 500 training rows with IV, so it starts after the first IV year.
+
+**Decision (fixed now):**
+- SI ships for the IV instruments only if, on these rows, it is still eligible (same three rules vs P) **and** beats
+  S by more than 0.5% (the tie rule).
+- Otherwise S (persistence) ships for all 34.
+
+Either way the forecast work closes here.
