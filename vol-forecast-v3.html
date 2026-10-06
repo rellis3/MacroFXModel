@@ -899,6 +899,7 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
         <div class="v3-menu-h">Daily</div>
         <button class="v2-tool-btn" data-mode="forecast" onclick="setChartLevelMode('forecast')"><span class="v3-tick"></span>Forecast <span class="v3-sub">fitted ladder</span></button>
         <button class="v2-tool-btn" data-mode="forecast_ivadj" onclick="setChartLevelMode('forecast_ivadj')" title="Same lines as the 'Forecast · IV-adjusted' export: σ blended toward implied vol (VIX/VXN, CME 30-day ATM, GVZ, crosses from their legs; US indices add the VIX-curve/breadth terms). Pairs with no implied vol draw the plain Forecast."><span class="v3-tick"></span>Forecast · IV-adjusted <span class="v3-sub">σ blended toward IV</span></button>
+        <button class="v2-tool-btn" data-mode="forecast_persist" onclick="setChartLevelMode('forecast_persist')" title="Shadow candidate (not the production calc): the Forecast's own σ nudged each morning for regime (σ vs its usual level), recent range misses and weekday. Fixes the over-reaction found point-in-time: after calm the plain lines run tight, after busy spells wide. Walk-forward 2020-2026 on these exact live inputs: 2% better than the control, calm-vs-busy miss 6.8 → 2.4 pp (forge/FORECAST_FIX_PREREG.md)."><span class="v3-tick"></span>Forecast · persistence-adjusted <span class="v3-sub">shadow · regime + weekday</span></button>
         <button class="v2-tool-btn" data-mode="cog" onclick="setChartLevelMode('cog')"><span class="v3-tick"></span>COG <span class="v3-sub">reverse-eng</span></button>
         <button class="v2-tool-btn" data-mode="bot" onclick="setChartLevelMode('bot')" title="The Volatility Bot's ACTUAL frozen plan lines."><span class="v3-tick"></span>Bot <span class="v3-sub">frozen plan</span></button>
         <div class="v3-menu-sep"></div>
@@ -941,6 +942,7 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
         <button class="vf-exp-item" id="vfLadderBtn"     onclick="closeExpDropdown();exportLadder('daily')"          disabled>⬇ Forecast <span style="font-size:9px;opacity:.55">p50/75/90</span></button>
         <button class="vf-exp-item" id="vfIvLadderBtn"   onclick="closeExpDropdown();exportIvLadder()"               disabled title="Same paste as Forecast; EURUSD/GBPUSD/AUDUSD/USDCAD/USDCHF use CME 30-day implied vol and GOLD uses CBOE GVZ (each beat realized vol out of sample, forge/IV_LADDER_PREREG.md + IV_LADDER_GOLD_PREREG.md). Every other block is unchanged.">⬇ Forecast (IV) <span style="font-size:9px;opacity:.55">implied-vol σ</span></button>
         <button class="vf-exp-item" id="vfIvAdjBtn"      onclick="closeExpDropdown();exportIvAdj()"                  disabled title="Daily Forecast with σ blended toward implied vol by a fitted amount: VIX/VXN for indices, CME 30-day ATM for the USD majors, GVZ for gold, and crosses built from their two USD legs. Passed two pre-registered tests plus a re-check on these live inputs (28/28 instruments better, every rung calibrated). Same paste format as Forecast; pairs with no implied vol (NZD, commodities, BTC) stay on the plain ladder.">⬇ Forecast · IV-adjusted <span style="font-size:9px;opacity:.55">daily · σ blended toward IV</span></button>
+        <button class="vf-exp-item" id="vfPersistBtn"    onclick="closeExpDropdown();exportPersist()"                disabled title="Shadow candidate (not the production calc): the Forecast's own σ nudged each morning for regime (σ vs its usual level), recent range misses and weekday. Fixes the over-reaction found point-in-time: after calm the plain lines run tight, after busy spells wide. Walk-forward 2020-2026 on these exact live inputs: 2% better than the control, calm-vs-busy miss 6.8 → 2.4 pp (forge/FORECAST_FIX_PREREG.md). Same paste format as Forecast.">⬇ Forecast · persistence-adjusted <span style="font-size:9px;opacity:.55">daily · shadow</span></button>
         <button class="vf-exp-item" id="vfLadderWkBtn"   onclick="closeExpDropdown();exportLadder('weekly')"         disabled>⬇ Forecast Weekly <span style="font-size:9px;opacity:.55">5-day + 20-day in one</span></button>
         <button class="vf-exp-item" id="vfLadderWkRevBtn" onclick="closeExpDropdown();exportLadder('weekly_rev')"   disabled title="Same paste format as Forecast Weekly (same indicator), but σ fades back to its 250-day level across the week/month instead of √-time scaling. Passed its pre-registered test 2026-10-05 (forge/HORIZON_REVERSION_PREREG.md): bands right after calm AND after stress, not just on average.">⬇ Forecast Weekly · Reverting <span style="font-size:9px;opacity:.55">σ fades back · test</span></button>
         <button class="vf-exp-item" id="vfLadderSessBtn" onclick="closeExpDropdown();exportLadder('daily',true)"     disabled>⬇ Forecast + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
@@ -1688,7 +1690,7 @@ function loadForecast(date) {
       loadCogHv().then(() => { if (_modeCtx().cog) _redrawCogCharts(); });   // prime COG cc-HV σ early so the export button is instant (cache-hit on the warmed key)
       if (_modeCtx().bot) loadBotPlan().then(_redrawCogCharts);   // prime the bot plan if Bot level-mode is active
       { const _k = _modeCtx().kind; if (_k) loadFrozen(_k).then(() => { _syncChartLevelBtn(); _redrawCogCharts(); }); }   // prime the frozen period-start forecast for weekly/monthly modes
-      if (_modeCtx().ivadj) loadIvAdj().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });   // prime the IV-adjusted ladders if that view is active
+      if (_modeCtx().ivadj) loadIvAdj().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });   // prime the IV-adjusted ladders if that view is active if (_modeCtx().persist) loadPersist().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });
 
       if (sdot) sdot.className = 'v2-status-dot ok';
       if (stxt) stxt.textContent = 'OK';
@@ -1741,7 +1743,7 @@ function loadForecast(date) {
       }
 
       // Enable export/tools buttons
-      ['vfLadderBtn','vfIvLadderBtn','vfIvAdjBtn','vfLadderWkBtn','vfLadderWkRevBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn',
+      ['vfLadderBtn','vfIvLadderBtn','vfIvAdjBtn','vfPersistBtn','vfLadderWkBtn','vfLadderWkRevBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn',
        // Archived group — everything that needs only the forecast payload
        'vfExportBtn','vfExtendedBtn','vfExportV2Btn','vfCalibratedBtn','vfCalExtBtn','vfCogV2Btn'].forEach(id => {
         const el = document.getElementById(id);
@@ -1856,7 +1858,7 @@ function _reloadForecastView(date) {
     loadCogHv().then(() => { if (_modeCtx().cog) _redrawCogCharts(); });   // prime COG cc-HV σ early so the export button is instant (cache-hit on the warmed key)
       if (_modeCtx().bot) loadBotPlan().then(_redrawCogCharts);   // prime the bot plan if Bot level-mode is active
     { const _k = _modeCtx().kind; if (_k) loadFrozen(_k).then(() => { _syncChartLevelBtn(); _redrawCogCharts(); }); }   // prime the frozen period-start forecast for weekly/monthly modes
-      if (_modeCtx().ivadj) loadIvAdj().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });   // prime the IV-adjusted ladders if that view is active
+      if (_modeCtx().ivadj) loadIvAdj().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });   // prime the IV-adjusted ladders if that view is active if (_modeCtx().persist) loadPersist().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });
     currentSession  = session;
     renderV2Grid(forecast);
     if (session && session.instruments) {
@@ -2689,6 +2691,23 @@ async function exportIvAdj() {
     btn.disabled = false;
     const date = (currentForecast && currentForecast.session_date) || 'latest';
     _emitCalibrated('vfIvAdjBtn', text, `vol-forecast-ivadj-${date}.txt`);
+  } catch (e) {
+    btn.textContent = '✗ failed';
+    setTimeout(() => _btnRestore(btn), 2600);
+  }
+}
+
+// Shadow: persistence-adjusted daily Forecast (server-built, same paste format).
+async function exportPersist() {
+  const btn = document.getElementById('vfPersistBtn');
+  _btnLabel(btn); btn.textContent = '… building'; btn.disabled = true;
+  try {
+    const r = await fetch('/api/vol-forecast/persist-ladder/export');
+    const text = await r.text();
+    if (!r.ok) { btn.textContent = r.status === 202 ? '… not ready' : '✗ failed'; setTimeout(() => _btnRestore(btn), 2600); return; }
+    btn.disabled = false;
+    const date = (currentForecast && currentForecast.session_date) || 'latest';
+    _emitCalibrated('vfPersistBtn', text, `vol-forecast-persist-${date}.txt`);
   } catch (e) {
     btn.textContent = '✗ failed';
     setTimeout(() => _btnRestore(btn), 2600);
@@ -4213,14 +4232,14 @@ const _d1Cache = {};
 // Unlike the live daily bands, they are point-in-time forecasts: σ is taken from the
 // forecast in effect as the period opened and held constant, so the envelope is issued
 // once (Monday / month start) and you watch price travel through it.
-const _LEVEL_MODES = ['forecast', 'forecast_ivadj', 'cog', 'bot', 'forecast_weekly', 'forecast_weekly_rev', 'cog_weekly',
+const _LEVEL_MODES = ['forecast', 'forecast_ivadj', 'forecast_persist', 'cog', 'bot', 'forecast_weekly', 'forecast_weekly_rev', 'cog_weekly',
                       'forecast_monthly', 'forecast_monthly_rev', 'cog_monthly'];
 const _MODE_LABEL  = {
   forecast: 'Forecast', cog: 'COG', bot: 'Bot',
   forecast_weekly: 'Forecast Weekly', cog_weekly: 'COG Weekly',
   forecast_monthly: 'Forecast Monthly', cog_monthly: 'COG Monthly',
   // 2026-10-05 exports: same lines the matching Export item prints.
-  forecast_ivadj: 'Forecast · IV-adjusted',
+  forecast_ivadj: 'Forecast · IV-adjusted', forecast_persist: 'Forecast · persistence-adjusted',
   forecast_weekly_rev: 'Forecast Weekly · Reverting', forecast_monthly_rev: 'Forecast Monthly · Reverting',
 };
 // The stored preference may still name the pre-collapse modes; map them forward so a
@@ -4245,6 +4264,7 @@ function _modeCtx() {
   return {
     weekly, monthly, cog, bot,
     ivadj: _levelMode === 'forecast_ivadj',
+    persist: _levelMode === 'forecast_persist',
     rev:   _levelMode === 'forecast_weekly_rev' || _levelMode === 'forecast_monthly_rev',
     mult:  monthly ? _SQRT20 : weekly ? _SQRT5 : 1,
     gran:  monthly ? 'D' : 'M5',
@@ -4369,6 +4389,17 @@ function loadIvAdj() {
   return _ivadjPromise;
 }
 
+// Persistence-adjusted daily ladders (/api/vol-forecast/persist-ladder/json — the shadow export's numbers).
+let _persist = null, _persistAt = 0, _persistPromise = null;
+function loadPersist() {
+  if (_persist && Date.now() - _persistAt < 30 * 60_000) return Promise.resolve(_persist);
+  if (!_persistPromise) _persistPromise = fetch('/api/vol-forecast/persist-ladder/json').then(r => r.json())
+    .then(j => { _persist = j?.ok ? j : { instruments: {} }; _persistAt = Date.now(); return _persist; })
+    .catch(() => (_persist = { instruments: {} }))
+    .finally(() => { _persistPromise = null; });
+  return _persistPromise;
+}
+
 // The forecast instrument whose bands a chart uses in the current mode: the frozen
 // (period-start) forecast for weekly/monthly modes, else the live per-pair forecast.
 function _bandInst(name, liveF) {
@@ -4436,11 +4467,11 @@ function _chartLevels(name, f) {
   // `ladder_monthly` carry their OWN fitted widths, which is the whole reason they
   // exist (a week's range is narrower than five independent days imply).
   if (!cog) {
-    const { weekly: wk, monthly: mo, ivadj, rev } = _modeCtx();
+    const { weekly: wk, monthly: mo, ivadj, persist, rev } = _modeCtx();
     // New views: IV-adjusted daily, reverting weekly/monthly. A missing ladder falls back
     // to the plain one (never a guess) and is counted so the button can say so.
     const pick = rev ? (wk ? src?.ladder_weekly_rev : src?.ladder_monthly_rev)
-               : ivadj ? _ivadj?.instruments?.[name] : null;
+               : ivadj ? _ivadj?.instruments?.[name] : persist ? _persist?.instruments?.[name] : null;
     const lad = pick?.oh ? pick : wk ? src?.ladder_weekly : mo ? src?.ladder_monthly : src?.ladder;
     if (lad?.oh?.p50 != null) {
       return {
@@ -4473,10 +4504,11 @@ function _syncChartLevelBtn() {
   // back to the live forecast (so the bands aren't truly frozen this period).
   const live = kind && _frozen[kind].forecast && _frozen[kind].live;
   // New views fall back to the plain ladder per instrument when theirs is missing — say how many.
-  const { ivadj, rev } = _modeCtx();
+  const { ivadj, persist, rev } = _modeCtx();
   const names = Object.keys(currentForecast?.instruments ?? {});
   let miss = 0;
   if (ivadj && _ivadj) miss = names.filter(n => !_ivadj.instruments?.[n]?.oh).length;
+  if (persist && _persist) miss = names.filter(n => !_persist.instruments?.[n]?.oh).length;
   if (rev && kind && _frozen[kind].forecast) {
     const key = weekly ? 'ladder_weekly_rev' : 'ladder_monthly_rev';
     miss = names.filter(n => !_frozen[kind].forecast.instruments?.[n]?.[key]?.oh).length;
@@ -4508,6 +4540,7 @@ function setChartLevelMode(mode) {
   _levelMode = mode;
   try { localStorage.setItem('vf_chart_level_mode', _levelMode); } catch (_) {}
   if (_modeCtx().ivadj) loadIvAdj().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });
+  if (_modeCtx().persist) loadPersist().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });
   _syncChartLevelBtn();
   _redrawCogCharts();
   // COG variants' index lines use COG close-to-close HV σ — fetch it (once), then

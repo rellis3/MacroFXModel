@@ -59,6 +59,7 @@ import { forecastFields, buildAllExports }                           from './js/
 import { buildLadderExportText, buildSessionAddendum }               from './js/ladderExport.js';
 import { buildIvLadderExportText }                                    from './js/ivLadderExport.js';
 import { buildIvAdjExportText, buildIvAdjInstruments }                from './js/forecastLadderIvAdj.js';
+import { buildPersistExportText, buildPersistInstruments }            from './js/forecastLadderPersist.js';
 import { scoreSession, scoreWeek, summarise as summariseScorecard, verdicts as scorecardVerdicts } from './js/forecastScorecard.js';
 import { londonParts as _lrLondonParts }                              from './js/intradayRange.js';
 import { impliedDayMove }                                             from './js/ivMetrics.js';
@@ -21984,6 +21985,37 @@ app.get('/api/vol-forecast/ivadj-ladder/json', async (_req, res) => {
   }
 });
 
+// GET /api/vol-forecast/persist-ladder/export   and   /json
+//
+// "Forecast · persistence-adjusted" — a SHADOW daily ladder beside the production export (js/forecastLadderPersist.js).
+// The production σ (event multiplier included) nudged for regime (σ vs its usual level), recent range misses and
+// weekday. Evidence: forge/FORECAST_FIX_PREREG.md variant 1, walk-forward 2020-2026 on these exact live-computable
+// inputs (NY-close daily bars): pinball 0.980 of the refit control, calm-vs-busy miss 6.8 -> 2.4 pp. Nothing reads
+// it but the v3 page's export menu / chart view and the forward scorecard.
+app.get('/api/vol-forecast/persist-ladder/export', async (_req, res) => {
+  if (!forecastState.latest) return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
+  try {
+    const ohlc = await ensureOhlcCache();
+    const { text, adjusted, skipped } = buildPersistExportText(forecastState.latest, ohlc, VOL_INSTRUMENTS);
+    res.set('X-Persist-Adjusted', adjusted.map(a => `${a.name}:${a.adj}`).join(',') || 'none');
+    res.set('X-Persist-Skipped', skipped.map(s => `${s.name}:${s.reason}`).join(',').replace(/[^ -~]/g, '') || 'none');
+    res.type('text/plain').send(text);
+  } catch (e) {
+    res.status(500).type('text/plain').send(`Error: ${e.message}`);
+  }
+});
+app.get('/api/vol-forecast/persist-ladder/json', async (_req, res) => {
+  if (!forecastState.latest) return res.status(202).json({ ok: false, error: 'forecast not ready' });
+  try {
+    const ohlc = await ensureOhlcCache();
+    const { instruments, adjusted, skipped } = buildPersistInstruments(forecastState.latest, ohlc, VOL_INSTRUMENTS);
+    res.json({ ok: true, session_date: forecastState.latest.session_date,
+               instruments: Object.fromEntries(adjusted.map(a => [a.name, instruments[a.name].ladder])), adjusted, skipped });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Forward scorecard of the 2026-10-05 forecast lines ─────────────────────────
 // js/forecastScorecard.js has the scoring; this is the plumbing. Every 30 min:
 //   1. the morning of a session (>= 07:00 London, after the IV capture) snapshot the
@@ -22012,7 +22044,7 @@ async function _fcardTick() {
   let store = null;
   try { store = JSON.parse(await kv.get(_FCARD_KEY) || 'null'); } catch { /* corrupt -> start again below */ }
   store ??= { started: now.date, days: {}, weeks: {}, snap: {} };
-  store.snap ??= {}; store.days ??= {}; store.weeks ??= {};
+  store.snap ??= {}; store.snapP ??= {}; store.days ??= {}; store.weeks ??= {};
   let dirty = false;
 
   // 1. morning snapshot of the IV-adjusted ladder for today's session
@@ -22024,6 +22056,16 @@ async function _fcardTick() {
     const { instruments, adjusted } = buildIvAdjInstruments(L, ohlc, oiStore, VOL_INSTRUMENTS, Date.now(), await _ivAdjCboeLatest());
     store.snap[now.date] = Object.fromEntries(adjusted.map(a => [a.name, instruments[a.name].ladder]));
     dirty = true;
+  }
+
+  // 1b. morning snapshot of the persistence-adjusted shadow ladder (forge/FORECAST_FIX_PREREG.md). Needs only the
+  //     production forecast + daily bars, so it is taken as soon as today's forecast exists.
+  if (L.session_date === now.date && !store.snapP[now.date]) {
+    try {
+      const { instruments, adjusted } = buildPersistInstruments(L, await ensureOhlcCache(), VOL_INSTRUMENTS);
+      store.snapP[now.date] = Object.fromEntries(adjusted.map(a => [a.name, instruments[a.name].ladder]));
+      dirty = true;
+    } catch (e) { console.warn('[fcard] persist snapshot failed:', e.message); }
   }
 
   // 2. score finished sessions from the last few days that have an archived forecast
@@ -22040,7 +22082,7 @@ async function _fcardTick() {
       try { barsByName[cfg.name] = await _fcardH1(cfg.oandaInstrument); } catch { /* one instrument failing must not stop the rest */ }
     }
     for (const [ds, fc] of todo) {
-      store.days[ds] = scoreSession({ date: ds, forecast: fc, ivadj: store.snap[ds], barsByName });
+      store.days[ds] = scoreSession({ date: ds, forecast: fc, ivadj: store.snap[ds], persist: store.snapP[ds], barsByName });
       // 3. the week, scored on its Friday session
       if (new Date(`${ds}T12:00:00Z`).getUTCDay() === 5) {
         const monday = _fcardDate(ds, -4);
@@ -22052,7 +22094,7 @@ async function _fcardTick() {
   }
   if (dirty) {
     const keep = (o, n) => Object.fromEntries(Object.entries(o).sort(([a], [b]) => (a < b ? -1 : 1)).slice(-n));
-    store.days = keep(store.days, 400); store.weeks = keep(store.weeks, 120); store.snap = keep(store.snap, 10);
+    store.days = keep(store.days, 400); store.weeks = keep(store.weeks, 120); store.snap = keep(store.snap, 10); store.snapP = keep(store.snapP, 10);
     await kv.put(_FCARD_KEY, JSON.stringify(store));
   }
 }

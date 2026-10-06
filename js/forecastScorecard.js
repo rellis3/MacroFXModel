@@ -67,7 +67,7 @@ export function scoreLiveRange(bars, date, instrument, sigmaDailyPct) {
 }
 
 /** Score one finished session for every instrument that has bars and a forecast. */
-export function scoreSession({ date, forecast, ivadj, barsByName }) {
+export function scoreSession({ date, forecast, ivadj, persist, barsByName }) {
   const rows = {};
   for (const [name, fc] of Object.entries(forecast?.instruments ?? {})) {
     const bars = barsByName?.[name];
@@ -75,6 +75,7 @@ export function scoreSession({ date, forecast, ivadj, barsByName }) {
     if (!real || real.days !== 1) continue;
     const row = { plain: scoreLadder(fc?.ladder, real) };
     if (ivadj?.[name]) row.ivadj = scoreLadder(ivadj[name], real);
+    if (persist?.[name]) row.persist = scoreLadder(persist[name], real);   // shadow: forge/FORECAST_FIX_PREREG.md
     const lr = scoreLiveRange(bars, date, name, fc?.ladder?.sigma_daily_pct);
     if (lr) row.live = lr;
     rows[name] = row;
@@ -109,10 +110,11 @@ const _rates = A => ({ n: A.n, ...Object.fromEntries(['hl', 'oh', 'ol'].map(q =>
 /** Roll the stored records up into what the page shows. */
 export function summarise(store) {
   const days = Object.keys(store?.days ?? {}).sort(), weeks = Object.keys(store?.weeks ?? {}).sort();
-  const daily = {}, weekly = {}, live = {}, paired = { daily: { plain: 0, ivadj: 0, n: 0 }, weekly: { sqrt: 0, rev: 0, n: 0 } };
+  const daily = {}, weekly = {}, live = {}, paired = { daily: { plain: 0, ivadj: 0, n: 0 }, persist: { plain: 0, persist: 0, n: 0 }, weekly: { sqrt: 0, rev: 0, n: 0 } };
   for (const d of days) for (const row of Object.values(store.days[d])) {
-    _accLadder(daily, 'plain', row.plain); _accLadder(daily, 'ivadj', row.ivadj);
+    _accLadder(daily, 'plain', row.plain); _accLadder(daily, 'ivadj', row.ivadj); _accLadder(daily, 'persist', row.persist);
     if (row.plain?.pin != null && row.ivadj?.pin != null) { paired.daily.plain += row.plain.pin; paired.daily.ivadj += row.ivadj.pin; paired.daily.n += 1; }
+    if (row.plain?.pin != null && row.persist?.pin != null) { paired.persist.plain += row.plain.pin; paired.persist.persist += row.persist.pin; paired.persist.n += 1; }
     for (const [g, G] of Object.entries(row.live ?? {})) {
       const T = live[g] ??= { n: 0, up: [0, 0, 0], dn: [0, 0, 0] };
       T.n += G.n; G.up.forEach((x, i) => (T.up[i] += x)); G.dn.forEach((x, i) => (T.dn[i] += x));
@@ -127,6 +129,7 @@ export function summarise(store) {
     daily: Object.fromEntries(Object.entries(daily).map(([k, A]) => [k, _rates(A)])),
     weekly: Object.fromEntries(Object.entries(weekly).map(([k, A]) => [k, _rates(A)])),
     daily_ivadj_vs_plain_pinball: paired.daily.n ? r4(paired.daily.ivadj / paired.daily.plain) : null, daily_pairs: paired.daily.n,
+    daily_persist_vs_plain_pinball: paired.persist.n ? r4(paired.persist.persist / paired.persist.plain) : null, persist_pairs: paired.persist.n,
     weekly_rev_vs_sqrt_pinball: paired.weekly.n ? r4(paired.weekly.rev / paired.weekly.sqrt) : null, weekly_pairs: paired.weekly.n,
     live: Object.fromEntries(Object.entries(live).map(([g, T]) => [g, { n: T.n, up: T.up.map(x => r4(x / T.n)), dn: T.dn.map(x => r4(x / T.n)) }])),
   };
@@ -167,5 +170,8 @@ export function verdicts(S) {
     const p75 = L.reduce((a, g) => a + g.n * (g.up[1] + g.dn[1]) / 2, 0) / Math.max(n, 1);
     out.push({ topic: 'live', ...fit(p75, n, 'Live Range bold lines', dEnough) });
   } else out.push({ topic: 'live', status: 'early', text: 'Live Range bold lines: too early to judge.' });
+  // shadow (forge/FORECAST_FIX_PREREG.md), appended so existing verdict positions are unchanged
+  out.push({ topic: 'daily', ...vs(S.daily_persist_vs_plain_pinball, S.persist_pairs, `${S.sessions} sessions`, dEnough && S.persist_pairs > 0, 'plain Forecast', 'Persistence-adjusted (shadow)') });
+  out.push({ topic: 'daily', ...fit(S.daily?.persist?.hl?.[1], S.daily?.persist?.n, 'Persistence-adjusted daily lines', dEnough) });
   return out;
 }

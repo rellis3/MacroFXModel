@@ -1,0 +1,119 @@
+/**
+ * Forecast · persistence-adjusted — a SHADOW daily ladder beside the production export.
+ *
+ * Lesson 03 §02 (volatility persists and reverts): the export over-reacts to regime. After calm spells its HL p75
+ * is passed ~30% of the time, after busy spells ~19% (forge/FORECAST_RECORD_PREREG.md). This nudges the export's
+ * own σ each morning:
+ *
+ *   σ_new = σ_used × exp(β_class · (x − mean_instrument)),   rung % = width × σ_new %
+ *
+ *   x = regime  log(σ_daily ÷ median σ_daily over the previous 250 sessions)
+ *       res1    log(yesterday's NY-close high−low % ÷ the σ_daily that applied to it)
+ *       res5    mean of res1 over the last 5 bars
+ *       wd1..4  Tuesday … Friday (Monday = base)
+ *
+ * Evidence: forge/FORECAST_FIX_PREREG.md variant 1 — these exact live-computable inputs, walk-forward 2020-2026:
+ * pinball 0.980 [0.974, 0.985] of the refit control, better in every class, calm-vs-busy miss 6.8 -> 2.4 pp.
+ * Params js/forecastLadderPersistParams.js. σ_used (event multiplier included) comes from the production ladder,
+ * so the event conditioning is unchanged. Side by side only: nothing live reads this.
+ */
+import { forecastSigma } from './forecastSigma.js';
+import { paramsFor } from './forecastLadder.js';
+import { PERSIST_PARAMS } from './forecastLadderPersistParams.js';
+import { barsBefore } from './forecastLadderIvAdj.js';
+import { buildLadderExportText } from './ladderExport.js';
+
+const RUNGS = ['p50', 'p75', 'p90'];
+const _r2 = x => Math.round(x * 100) / 100;
+const _r4 = x => Math.round(x * 1e4) / 1e4;
+
+/** σ_daily % (2 dp, as buildLadder carries it) from bars[0..k), the live estimator. */
+function sigmaPct(bars, k, est) {
+  const s = forecastSigma(bars.slice(0, k), est);
+  return s > 0 ? _r2(s * 100) : null;
+}
+
+/** The feature vector from NY-close daily bars that closed before the session. Null when history is short. */
+export function persistFeatures(bars, { instrument, assetClass = 'fx', sessionDate, params = PERSIST_PARAMS }) {
+  if (!Array.isArray(bars) || bars.length < 300 || !sessionDate) return null;
+  const est = paramsFor(instrument, assetClass).estimator ?? 'yz_30';
+  const n = bars.length;
+  const win = params.regime_window;                         // 250
+  const sig = new Map();                                    // k -> σ % from bars[0..k)
+  const S = k => { if (!sig.has(k)) sig.set(k, sigmaPct(bars, k, est)); return sig.get(k); };
+  const today = S(n);
+  const prior = [];
+  for (let k = n - win; k < n; k++) { const v = S(k); if (v > 0) prior.push(v); }
+  if (!(today > 0) || prior.length < 120) return null;
+  prior.sort((a, b) => a - b);
+  const m = prior.length, med = m % 2 ? prior[(m - 1) / 2] : (prior[m / 2 - 1] + prior[m / 2]) / 2;
+  const res = [];
+  for (let j = n - params.res_window; j < n; j++) {         // bar j's range ÷ the σ that applied to it (bars before j)
+    const b = bars[j], s = S(j);
+    if (!(s > 0) || !(b?.open > 0)) return null;
+    res.push(Math.log(Math.max((b.high - b.low) / b.open * 100, 1e-6) / s));
+  }
+  const wd = new Date(sessionDate + 'T12:00:00Z').getUTCDay();          // 1 = Monday … 5 = Friday
+  return {
+    regime: Math.log(today / med), res1: res.at(-1), res5: res.reduce((a, x) => a + x, 0) / res.length,
+    wd1: wd === 2 ? 1 : 0, wd2: wd === 3 ? 1 : 0, wd3: wd === 4 ? 1 : 0, wd4: wd === 5 ? 1 : 0,
+    sigma_daily_pct: today,
+  };
+}
+
+/** One persistence-adjusted ladder (buildLadder's shape). `sigmaUsedPct` = the production ladder's σ_used. */
+export function buildPersistLadder(bars, { instrument, assetClass = 'fx', sessionDate, sigmaUsedPct, eventTag = null,
+                                          params = PERSIST_PARAMS } = {}) {
+  const p = params.pairs?.[String(instrument).toUpperCase()];
+  const beta = p && params.classes?.[p.class]?.beta;
+  if (!p?.width || !beta || !(sigmaUsedPct > 0)) return null;
+  const x = persistFeatures(bars, { instrument, assetClass, sessionDate, params });
+  if (!x) return null;
+  const z = params.features.reduce((a, k) => a + beta[k] * (x[k] - p.mean[k]), 0);
+  const adj = Math.exp(z);
+  const sPct = sigmaUsedPct * adj;
+  const out = {
+    sigma_daily_pct: x.sigma_daily_pct, sigma_used_pct: _r2(sPct), sigma_export_pct: _r2(sigmaUsedPct),
+    persist_adjust: Math.round(adj * 1000) / 1000,
+    features: Object.fromEntries(params.features.map(k => [k, _r4(x[k])])),
+    event_tag: eventTag, horizon: 'daily', params_source: 'fitted-persist', width_source: 'fitted-persist',
+  };
+  for (const q of ['hl', 'oc', 'oh', 'ol']) {
+    const w = p.width[q];
+    if (!Array.isArray(w)) continue;
+    out[q] = {};
+    RUNGS.forEach((r, i) => { if (Number.isFinite(w[i])) out[q][r] = _r2(w[i] * sPct); });
+  }
+  return out;
+}
+
+/** Every instrument in the production forecast: persistence-adjusted where params + bars allow, else unchanged. */
+export function buildPersistInstruments(latest, ohlcCache, registry, params = PERSIST_PARAMS) {
+  const src = latest?.instruments ?? {};
+  const byName = Object.fromEntries((registry ?? []).map(c => [c.name, c]));
+  const sessionDate = latest?.session_date ?? null;
+  const instruments = {}, adjusted = [], skipped = [];
+  for (const [name, fc] of Object.entries(src)) {
+    instruments[name] = fc;
+    const L = fc?.ladder;
+    if (!params.pairs?.[name]) { skipped.push({ name, reason: 'no persistence params (plain ladder)' }); continue; }
+    if (!(L?.sigma_used_pct > 0)) { skipped.push({ name, reason: 'no production σ' }); continue; }
+    const bars = barsBefore(ohlcCache?.[name], sessionDate);
+    const lad = buildPersistLadder(bars, { instrument: name, assetClass: byName[name]?.assetClass ?? 'fx', sessionDate,
+                                           sigmaUsedPct: L.sigma_used_pct, eventTag: L.event_tag ?? null, params });
+    if (!lad) { skipped.push({ name, reason: 'not enough daily bars' }); continue; }
+    instruments[name] = { ...fc, ladder: lad };
+    adjusted.push({ name, adj: lad.persist_adjust });
+  }
+  return { instruments, adjusted, skipped };
+}
+
+/** Export text in the production daily format (same Pine parsing), its own title, a footer with no ticker or row token. */
+export function buildPersistExportText(latest, ohlcCache, registry) {
+  const { instruments, adjusted, skipped } = buildPersistInstruments(latest, ohlcCache, registry);
+  const lines = buildLadderExportText({ session_label: latest?.session_label, instruments }, 'daily').split('\n');
+  lines[0] = '**VOL & RANGE FORECAST — PERSISTENCE-ADJUSTED (SHADOW)**';
+  lines.push('', `[Persistence-adjusted: σ nudged for regime, recent misses and weekday on ${adjusted.length} instruments, `
+    + `${skipped.length} on the plain ladder. Shadow candidate, walk-forward tested 2020-2026; not the production calc]`);
+  return { text: lines.join('\n'), adjusted, skipped };
+}

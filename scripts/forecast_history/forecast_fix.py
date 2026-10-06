@@ -26,6 +26,11 @@ CELLS = [(q, r) for q in Q for r in R]
 FB = ["regime", "res1", "res5", "wd1", "wd2", "wd3", "wd4"]
 FC = FB + ["iv_sig"]
 EMBARGO, LAMBDA = 5, 1.0
+LIVE = "--live" in sys.argv          # variant 1: live-computable inputs (FORECAST_FIX_PREREG variant 1)
+BASE = "live_sig_used" if LIVE else "pit_sig_used"
+NYD = Path("analysis/output/ladder_candidates/d1")
+if LIVE:
+    OUT = Path("analysis/output/forecast_fix/live_variant")
 
 
 def load() -> pd.DataFrame:
@@ -33,11 +38,23 @@ def load() -> pd.DataFrame:
     parts = []
     for f in sorted(H.glob("*.csv")):
         d = pd.read_csv(f).sort_values("date").reset_index(drop=True)
-        s = d.pit_sig_used
-        d["regime"] = np.log(s / s.shift(1).rolling(250, min_periods=120).median())
-        res = np.log(d.r_hl.clip(lower=1e-6) / s)
-        d["res1"] = res.shift(1)
-        d["res5"] = res.shift(1).rolling(5, min_periods=3).mean()
+        if LIVE:
+            # only what the live server holds: NY-close daily bars and the live estimator's sigma (pre-event)
+            sd = d.live_sig_daily
+            d["regime"] = np.log(sd / sd.shift(1).rolling(250, min_periods=120).median())
+            ny = pd.DataFrame(json.loads((NYD / f"{f.stem}.json").read_text()))
+            ny["hl_ny"] = (ny.h - ny.l) / ny.o * 100
+            d = d.merge(ny[["d", "hl_ny"]].rename(columns={"d": "date"}), on="date", how="left")
+            r_ny = np.log(d.hl_ny.clip(lower=1e-6) / sd)            # that NY day's range / the sigma that applied to it
+            d["res1"] = r_ny.shift(1)
+            d["res5"] = r_ny.shift(1).rolling(5, min_periods=3).mean()
+            res = np.log(d.r_hl.clip(lower=1e-6) / d[BASE])
+        else:
+            s = d.pit_sig_used
+            d["regime"] = np.log(s / s.shift(1).rolling(250, min_periods=120).median())
+            res = np.log(d.r_hl.clip(lower=1e-6) / s)
+            d["res1"] = res.shift(1)
+            d["res5"] = res.shift(1).rolling(5, min_periods=3).mean()
         wd = pd.to_datetime(d.date).dt.dayofweek
         for k in range(1, 5):
             d[f"wd{k}"] = (wd == k).astype(float)
@@ -64,7 +81,7 @@ def fit_beta(tr: pd.DataFrame, feats):
 
 def apply_beta(d: pd.DataFrame, feats, beta, means):
     Z = d[feats].to_numpy(float) - means.reindex(d.inst)[feats].to_numpy(float)
-    return d.pit_sig_used.to_numpy() * np.exp(Z @ beta)
+    return d[BASE].to_numpy() * np.exp(Z @ beta)
 
 
 def widths(tr_sig, tr):
@@ -88,7 +105,7 @@ def main():
         prior = np.sort(X.loc[X.date < te.date.min(), "date"].unique())
         cut = prior[-EMBARGO]
         tr = X[X.date < cut].copy()
-        te["sigA"] = te.pit_sig_used
+        te["sigA"] = te[BASE]
         for cls in sorted(X.klass.unique()):
             trc, mk = tr[tr.klass == cls], te.klass == cls
             bB, mB = fit_beta(trc, FB)
@@ -104,7 +121,7 @@ def main():
             tr.loc[trc.index, "sigB_tr"] = apply_beta(trc, FB, bB, mB)
             if len(trc_iv) > 500:
                 tr.loc[trc_iv.index, "sigC_tr"] = apply_beta(trc_iv, FC, bC, mC)
-        for arm, trcol, tecol in (("A1", "pit_sig_used", "sigA"), ("B", "sigB_tr", "sigB"), ("C", "sigC_tr", "sigC")):
+        for arm, trcol, tecol in (("A1", BASE, "sigA"), ("B", "sigB_tr", "sigB"), ("C", "sigC_tr", "sigC")):
             ok = tr[trcol].notna() if trcol in tr else pd.Series(False, index=tr.index)
             w = widths(tr.loc[ok, trcol].to_numpy(), tr[ok])
             for q, r in CELLS:
@@ -117,12 +134,12 @@ def main():
     di = pd.Series(np.arange(len(dates)), index=dates)[T.date].to_numpy()
     nd = len(dates)
     W = boot_weights(nd)
-    sig = T.pit_sig_used.to_numpy()
+    sig = T[BASE].to_numpy()
 
     def loss(arm):
         tot = np.zeros(len(T))
         for q, r in CELLS:
-            fc = T[f"{arm}_{q}_{r}"].to_numpy() if arm != "A0" else T[f"pit_{q}_{r}"].to_numpy()
+            fc = T[f"{arm}_{q}_{r}"].to_numpy() if arm != "A0" else T[f"{'live' if LIVE else 'pit'}_{q}_{r}"].to_numpy()
             tot += pinball(T[Q[q]].to_numpy(), fc, R[r]) / sig
         return tot
 
@@ -138,7 +155,7 @@ def main():
     T["weekday"] = pd.to_datetime(T.date).dt.day_name()
 
     def exceed(arm, m, q="hl", r="p75"):
-        fc = T[f"{arm}_{q}_{r}"] if arm != "A0" else T[f"pit_{q}_{r}"]
+        fc = T[f"{arm}_{q}_{r}"] if arm != "A0" else T[f"{'live' if LIVE else 'pit'}_{q}_{r}"]
         return float((T[Q[q]][m] > fc[m]).mean())
 
     res = {"n": len(T), "dates": nd, "betas": betas, "arms": {}}
@@ -169,7 +186,7 @@ def main():
 def write_md(res):
     A = res["arms"]
     pct = lambda c: f"{c[0]:.4f} [{c[1]:.4f}, {c[2]:.4f}]"
-    md = ["# STEP 1b — forecast persistence / weekday / IV fix (results)", "",
+    md = ["# STEP 1b — forecast persistence / weekday / IV fix (results)" + (" — VARIANT 1, live-computable inputs" if LIVE else ""), "",
           f"Pre-registration: `forge/FORECAST_FIX_PREREG.md`. Walk-forward folds 0–5: **{res['n']:,} instrument-sessions, "
           f"{res['dates']:,} dates**. Pinball over 12 rungs ÷ σ_used, ratio vs A1 (same σ, widths refit), 95% date-block interval.", "",
           "| arm | rows | pinball ÷ A1 [95%] | regime miss (HL p75, max |exc − 25%|) arm vs A1 | worst class ratio | verdict |",
@@ -202,5 +219,42 @@ def write_md(res):
     print("\n".join(md[:12]))
 
 
+
+
+def export_params():
+    """Variant 1 shipped params: beta per class + per-instrument centring means and widths, fit on ALL sessions
+    (the ladder's convention). Writes js/forecastLadderPersistParams.js."""
+    from datetime import date
+    X = load()
+    LIVE_NAME = {"DOW": "US30"}
+    out = {"generated": str(date.today()), "prereg": "forge/FORECAST_FIX_PREREG.md (variant 1, live-computable inputs)",
+           "evidence": "analysis/output/forecast_fix/live_variant/RESULTS.md", "fit": "all sessions 2016-2026 (in-sample, ladder convention)",
+           "features": FB, "regime_window": 250, "res_window": 5, "sigma_round_dp": 2, "classes": {}, "pairs": {}}
+    X["sig_new"] = np.nan
+    for cls in sorted(X.klass.unique()):
+        trc = X[X.klass == cls]
+        b, means = fit_beta(trc, FB)
+        out["classes"][cls] = {"beta": dict(zip(FB, [round(float(v), 6) for v in b]))}
+        X.loc[trc.index, "sig_new"] = apply_beta(trc, FB, b, means)
+        for inst, m in means.iterrows():
+            out["pairs"].setdefault(LIVE_NAME.get(inst, inst), {})["mean"] = {k: round(float(v), 6) for k, v in m.items()}
+    for inst, g in X.groupby("inst"):
+        p = out["pairs"][LIVE_NAME.get(inst, inst)]
+        p["class"] = klass(inst)
+        p["width"] = {q: [round(float((g[col] / g.sig_new).quantile(t)), 4) for t in R.values()] for q, col in Q.items()}
+        p["n"] = int(len(g))
+    js = ("/**\n * Persistence-adjusted forecast params (shadow candidate). GENERATED — do not hand-edit.\n"
+          " * Regenerate: PYTHONPATH=. python scripts/forecast_history/forecast_fix.py --live --export\n"
+          " * Evidence: forge/FORECAST_FIX_PREREG.md variant 1 (walk-forward PASS 2020-2026), fit here on all sessions.\n"
+          " * sigma_new = sigma_used x exp(beta . (x - mean_instrument)); rung % = width x sigma_new %.\n */\n"
+          "export const PERSIST_PARAMS = " + json.dumps(out) + ";\n")
+    Path("js/forecastLadderPersistParams.js").write_text(js, encoding="utf-8")
+    print("wrote js/forecastLadderPersistParams.js", {c: v["beta"] for c, v in out["classes"].items()})
+
+
 if __name__ == "__main__":
-    main()
+    if "--export" in sys.argv:
+        assert LIVE, "export is for the live-computable variant: pass --live --export"
+        export_params()
+    else:
+        main()
