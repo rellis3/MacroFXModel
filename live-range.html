@@ -268,6 +268,12 @@ async function loadCard(name) {
   const ws = []; for (let t = lastT + 300; t < end; t += 300) ws.push({ time: t });
   c.candles.setData([...dayBars.map(b => ({ time: b.t, open: b.open, high: b.high, low: b.low, close: b.close })), ...ws]);
   c.candles.applyOptions({ priceFormat: { type: 'price', precision: digits(name), minMove: 10 ** -digits(name) } });
+  // The whitespace out to 22:00 would otherwise leave the default view on its last slots and push the
+  // real candles off the left edge in the morning. Show the whole session, once per day (keeps user zoom).
+  if (c.viewDate !== st.date) {
+    c.chart.timeScale().setVisibleRange({ from: dayBars[0].t, to: end });
+    c.viewDate = st.date;
+  }
 
   const ml = morningLevels(fc?.ladder, st.open);
   for (const [k, v] of Object.entries(ml)) {
