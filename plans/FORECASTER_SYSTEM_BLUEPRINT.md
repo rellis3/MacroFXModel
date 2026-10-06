@@ -37,6 +37,12 @@ The lessons say the Forecaster Portfolio has **seven layers**: the third is vola
 meta-labelling, the rest are proprietary. The layer list below is **our inference**, not the lesson's, and will be
 revised as lessons are released.
 
+## Compliance review
+
+`plans/LESSON_COMPLIANCE_REVIEW.md` (2026-10-06): on track in direction, behind on validation discipline — the test
+year has been reused across variants (no locked holdout), Lesson 3's clustering measurements were skipped, no
+parameter-stability or one-day-delay checks. Actions A1–A9 there, A7 (lockbox) first.
+
 ## Lesson intake (every new lesson)
 
 Each lesson adds instructions; each pass makes the process stronger. When a lesson lands:
