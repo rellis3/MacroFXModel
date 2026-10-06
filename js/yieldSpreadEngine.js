@@ -48,6 +48,7 @@ function cfFromOpts(opts) {
     autoOrient: opts.autoOrient !== false,
     invert: opts.invert || {},
     returnDaily: opts.returnDaily || false,
+    includeTrades: opts.includeTrades === true,   // research: return the trade list (forge/META_LABEL_YS_PREREG.md)
   };
 }
 
@@ -182,6 +183,7 @@ function simulateBook(pairDataList, cf) {
     perPair,
     combined: {
       all: summ(allTrades), is: summ(is), oos: summ(oos), splitDate, nTrades: allTrades.length,
+      ...(cf.includeTrades ? { trades: allTrades } : {}),
       portfolioSharpe: { all: sharpeFromDaily(cRetAll), oos: sharpeFromDaily(cRetOos) },
       perYear: perYearBreakdown(allTrades, { costPct: cf.costPct }),
       perYearOos: perYearBreakdown(oos, { costPct: cf.costPct }),
