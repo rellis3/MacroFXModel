@@ -141,7 +141,18 @@ export const forecastState = {
   latest:    null,   // most recent forecast object
   history:   [],     // last 5 forecasts, newest first
   ohlcCache: {},     // name → OHLC bars array, kept for YZ on-demand compute
+  ladderOhlcCache: {},   // name → OANDA D bars for the ladder family where they differ from ohlcCache (cash indices)
 };
+
+// Cash indices whose incumbent runs on Yahoo cash-session bars: the ladder family (and the HAR shadow, the IV-adjusted
+// export) is built from OANDA NY-close bars instead, the bars its widths were fitted on (plans/DATA_SPEC.md fault 2:
+// Yahoo cash σ is 14-28% low, HL p75 passed 40-58% of days). NQ stays on NQ=F futures, which matches (ratio 1.02).
+export const LADDER_OANDA_INDICES = new Set(['SPX500', 'US30', 'US2000', 'DE30', 'UK100']);
+async function fetchLadderBars(cfg) {
+  if (!LADDER_OANDA_INDICES.has(cfg.name) || !process.env.OANDA_KEY) return null;
+  try { return await fetchOHLCOanda(cfg.oandaInstrument); }
+  catch (e) { console.warn(`[VOL-FORECAST] ${cfg.name} ladder bars (OANDA) failed: ${e.message} — ladder falls back to the incumbent bars`); return null; }
+}
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 const DOW_NAMES   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -399,6 +410,18 @@ async function fetchNewsEvents(targetDate) {
 // Idempotent + single-flight so concurrent callers share one fetch, and partial
 // (some instruments failed) is fine — the zone builder skips short series.
 let _ohlcWarmInFlight = null;
+// The bars the LADDER family should use: OANDA for the cash indices (fault 2), else the incumbent bars.
+export async function ensureLadderOhlcCache() {
+  const base = await ensureOhlcCache();
+  for (const cfg of INSTRUMENTS) {
+    if (LADDER_OANDA_INDICES.has(cfg.name) && !forecastState.ladderOhlcCache[cfg.name]) {
+      const b = await fetchLadderBars(cfg);
+      if (b) forecastState.ladderOhlcCache[cfg.name] = b;
+    }
+  }
+  return { ...base, ...forecastState.ladderOhlcCache };
+}
+
 export async function ensureOhlcCache() {
   if (Object.keys(forecastState.ohlcCache).length > 0) return forecastState.ohlcCache;
   if (_ohlcWarmInFlight) return _ohlcWarmInFlight;
@@ -542,16 +565,18 @@ export async function runVolForecast(targetDate) {
     try {
       const { bars: ohlc, source: instSource } = await fetchOHLC(cfg);
       forecastState.ohlcCache[cfg.name] = ohlc;
+      const ladderBars = await fetchLadderBars(cfg);
+      if (ladderBars) forecastState.ladderOhlcCache[cfg.name] = ladderBars;
       const eventTag = detectEventTagFor(events, cfg.name);
       const f    = computeForecast(ohlc, cfg.assetClass, newsMult,
-        { instrument: cfg.name, eventTag, drift: { carry: carryByPair[cfg.name] } });
+        { instrument: cfg.name, eventTag, drift: { carry: carryByPair[cfg.name] }, ladderOhlc: ladderBars ?? undefined });
       if (HAR_SHADOW_ON) {
         // Shadow must never break the primary forecast: any HAR failure → null.
         try { f.har = harShadowFields(ohlc, cfg.assetClass, newsMult); }
         catch (e) { f.har = null; console.warn(`[VOL-FORECAST] ${cfg.name} HAR shadow failed: ${e.message}`); }
       }
       if (HARLOG_SHADOW_ON) {
-        try { f.harLog = harLogShadowFields(ohlc, cfg.assetClass, newsMult); }
+        try { f.harLog = harLogShadowFields(ladderBars ?? ohlc, cfg.assetClass, newsMult); }
         catch (e) { f.harLog = null; console.warn(`[VOL-FORECAST] ${cfg.name} HAR-log shadow failed: ${e.message}`); }
       }
       // COG-v2 gold σ: HAR-IV from the GVZ implied-vol series (indices/gold that have

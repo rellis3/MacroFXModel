@@ -8,7 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { crossImpliedVol, legCorrelation, buildIvAdjLadder, buildIvAdjInstruments, buildIvAdjExportText } from './forecastLadderIvAdj.js';
-import { IVADJ_PARAMS } from './forecastLadderIvAdjParams.js';
+import { IVADJ_PARAMS } from './forecastLadderIvAdjParamsNY.js';
 import { forecastSigma } from './forecastSigma.js';
 
 const near = (a, b, tol = 1e-9) => Math.abs(a - b) <= tol;

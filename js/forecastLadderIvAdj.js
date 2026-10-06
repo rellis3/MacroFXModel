@@ -27,7 +27,9 @@ import { eventMultiplier, paramsFor, RUNGS } from './forecastLadder.js';
 import { constantMaturityIV } from './ivMetrics.js';
 import { buildLadderExportText } from './ladderExport.js';
 import { IV_MAX_AGE_H } from './ivLadderExport.js';
-import { IVADJ_PARAMS } from './forecastLadderIvAdjParams.js';
+// Refit on NY-close bars (forge/export_iv_adjusted_params_ny.py, 2026-10-06): the original params were fitted on
+// UTC-day bars with Sunday stubs while live feeds NY-close bars, leaving the lines ~10% too wide (DATA_SPEC fault 1).
+import { IVADJ_PARAMS } from './forecastLadderIvAdjParamsNY.js';
 
 const SQRT252 = Math.sqrt(252);
 const _r2 = x => Math.round(x * 100) / 100;

@@ -724,10 +724,18 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0, opts = 
   // detectEventTagFor). Coercing it to 'none' priced a dead feed, and every
   // walk-forward replay that passes eventTag:null on purpose, as a quiet day.
   const _eventTag   = opts.eventTag ?? null;
-  let _ladder = null, _ladderW = null, _ladderM = null;
+  let _ladder = null, _ladderW = null, _ladderM = null, _ladderYahoo = null;
+  // The ladder's widths were fitted on OANDA NY-close bars. For the cash indices the incumbent runs on Yahoo
+  // cash-session bars, whose σ is 14-28% lower (plans/DATA_SPEC.md fault 2), so the caller passes OANDA bars as
+  // opts.ladderOhlc and the ladder family is built from those; the Yahoo-built daily ladder is kept beside it.
+  const _lbars = Array.isArray(opts.ladderOhlc) && opts.ladderOhlc.length >= 60 ? opts.ladderOhlc : ohlc;
   try {
     const _lp = paramsFor(_instrument, assetClass);      // alias-aware (SPX500 -> SPX, US30 -> DOW)
-    const _ls = forecastSigma(ohlc, _lp?.estimator ?? 'yz_30');
+    const _ls = forecastSigma(_lbars, _lp?.estimator ?? 'yz_30');
+    if (_lbars !== ohlc) {
+      const _ys = forecastSigma(ohlc, _lp?.estimator ?? 'yz_30');
+      if (_ys > 0) _ladderYahoo = buildLadder(_ys, { instrument: _instrument, assetClass, eventTag: _eventTag, horizon: 'daily' });
+    }
     if (_ls > 0) {
       const _mk = horizon => buildLadder(_ls, {
         instrument: _instrument, assetClass, eventTag: _eventTag, horizon,
@@ -742,8 +750,8 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0, opts = 
   let _ladderWR = null, _ladderMR = null;
   try {
     const _ro = { instrument: _instrument, assetClass, eventTag: _eventTag };
-    _ladderWR = buildRevertingLadder(ohlc, { ..._ro, horizon: 'weekly' });
-    _ladderMR = buildRevertingLadder(ohlc, { ..._ro, horizon: 'monthly' });
+    _ladderWR = buildRevertingLadder(_lbars, { ..._ro, horizon: 'weekly' });
+    _ladderMR = buildRevertingLadder(_lbars, { ..._ro, horizon: 'monthly' });
   } catch { /* additive — never break the incumbent forecast */ }
 
   const _base = Object.assign(_buildOutput(volSeries, sigmaFwd, assetClass, newsMult), {
@@ -753,6 +761,8 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0, opts = 
     ladder_weekly_rev:  _ladderWR,
     ladder_monthly_rev: _ladderMR,
     ladder_flat:    _ladder ? flattenLadder(_ladder) : null,
+    ladder_sigma_source: _lbars !== ohlc ? 'oanda' : null,       // set only when the ladder bars differ from the incumbent's
+    ladder_yahoo:   _ladderYahoo,                                // side-by-side record of the old (Yahoo-σ) daily ladder
     yz_vol_annual:     r2s(yzPct     * Math.sqrt(TRADING_DAYS)),
     yz_hl_median:      r2s(BM_RANGE_P50 * yzPct),
     yz_oc_median:      r2s(HN_P50       * yzPct),

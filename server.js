@@ -44,7 +44,7 @@ import { appendRows as vmAppendRows, readRange as vmReadRange, buildRow as vmBui
          resolveDue as vmResolveDue, scoreRows as vmScoreRows, logKey as vmLogKey } from './js/vumanchuLogger.js';
 import { renderVumanchuMtfPNG, renderVumanchuMtfSVG, vumanchuMtfData, vumanchuMtfCaption, TF_SECONDS as VM_TF_SECONDS, AGREE_MODES as VM_AGREE_MODES } from './js/vumanchuMtf.js';
 import { renderMtfStackPNG, mtfStackData, mtfStackCaption, SERIES_SOURCES as MTF_SERIES_SOURCES, MAX_TFS as MTF_MAX_TFS, MIN_BARS as MTF_STACK_MIN_BARS } from './js/mtfStack.js';
-import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus, ensureOhlcCache, INSTRUMENTS as VOL_INSTRUMENTS } from './js/volForecastScheduler.js';
+import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus, ensureOhlcCache, ensureLadderOhlcCache, INSTRUMENTS as VOL_INSTRUMENTS } from './js/volForecastScheduler.js';
 import { costRatio, medianTimeToTouch, ivPremium, carryToVol } from './js/volStateEngine.js';
 import { yangZhangVolSeries, hv20Series, ewmaVolSeries, computeForecast as _computeForecast } from './js/volForecast.js';
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
@@ -21952,7 +21952,7 @@ app.get('/api/vol-forecast/ivadj-ladder/export', async (_req, res) => {
     return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
   }
   try {
-    const ohlc = await ensureOhlcCache();
+    const ohlc = await ensureLadderOhlcCache();   // OANDA bars for the cash indices (DATA_SPEC fault 2)
     let oiStore = {};
     try {
       const raw = await kv.get('oi_store');
@@ -21974,7 +21974,7 @@ app.get('/api/vol-forecast/ivadj-ladder/export', async (_req, res) => {
 app.get('/api/vol-forecast/ivadj-ladder/json', async (_req, res) => {
   if (!forecastState.latest) return res.status(202).json({ ok: false, error: 'forecast not ready' });
   try {
-    const ohlc = await ensureOhlcCache();
+    const ohlc = await ensureLadderOhlcCache();   // OANDA bars for the cash indices (DATA_SPEC fault 2)
     let oiStore = {};
     try { const raw = await kv.get('oi_store'); if (raw) { const p = JSON.parse(raw); oiStore = p.data ?? p; } } catch { /* FX falls back */ }
     const { instruments, adjusted, skipped } = buildIvAdjInstruments(forecastState.latest, ohlc, oiStore, VOL_INSTRUMENTS, Date.now(), await _ivAdjCboeLatest());
