@@ -72,3 +72,30 @@ The primary model here is **our forecast** (the Vol Forecast v3 export calculati
    USDCAD, USDCHF, GOLD (XAUUSD); VXN for NQ; VIX for SPX500, DOW, US2000, DE30, UK100. Crosses and NZDUSD: missing.
    Value = last close strictly before the session date (`asof_before`).
 3. **Complete sessions**: last bar ≥ 20:00 London (forge/FORECAST_RECORD_PREREG.md Amendment 2).
+
+## Amendment 2 (2026-10-06, after 3a's result, before 3a-variant-1 and before any 3b result)
+
+**3a variant 1 — trust the persistence-adjusted lines.** 3a found its drivers were the forecast's own leftovers; those
+are now fixed in the shadow forecast (forge/FORECAST_FIX_PREREG.md variant 1, PASS). Re-run 3a unchanged except the
+labels use that forecast's walk-forward lines (`analysis/output/forecast_fix/live_variant/lines_B.csv`, each test
+year fitted on earlier data only). Same features, folds, models and PASS rule. Purpose: measure what morning
+information is left once the forecast itself is fixed. Expectation stated now: skill well below 3a's 4.8%.
+
+**3b — final specification (before any 3b number):**
+- **Lines:** the persistence-adjusted walk-forward lines (as above), not the plain export: the shipped candidate.
+- **Primary:** first touch of OH p50 → long; first touch of OL p50 → short; at most one per side per session.
+  Entry = the touch bar's close. If the touch bar itself also reaches that side's p75 (or the open), the decision is
+  **same-bar** — counted, excluded from scoring (no intrabar order is assumed).
+- **Barriers (from the next bar):** +1 = that side's p75 first; −1 = the session open first (a bar touching both
+  counts as −1, stop first); otherwise at the session end (22:00 London) R = signed move ÷ the distance to the open.
+  R(+1) = distance to p75 ÷ distance to open. **Cost** = `costForPair` round-trip % (js/perLineStrategy.js, as the V4
+  studies), in R units ÷ the distance to the open.
+- **Features at the touch** (bars up to and including the touch bar): London minute; range used (running H−L ÷
+  HL p50); pace (60-minute move in the trade's direction ÷ σ); largest 5-minute move so far ÷ σ; other side's p50
+  touched first (0/1); distances to p75 and to the open ÷ σ; plus the morning features of 3a (regime, yesterday's
+  miss, 5-day miss, event, weekday, class, implied vol ÷ σ, yesterday's BNS jump).
+- **Live Range's re-forecast is NOT a feature:** its params were fitted on the first 60% of dates, which overlaps
+  the test years. Its raw inputs (range used, pace, hour) are features instead.
+- **Uniqueness weight** = 1 ÷ the number of this instrument's decisions open at the same time (both sides can be).
+- Benchmark, models, walk-forward, threshold rule and PASS as registered above.
+- Builder `scripts/forecast_history/meta_label_3b_build.mjs`, scorer `scripts/forecast_history/meta_label_3b.py`.

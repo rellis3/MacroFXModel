@@ -129,6 +129,9 @@ def main():
         print(f"fold {f}: train {len(tr):,} to {cut}, test {len(te):,}", flush=True)
         rows.append(te)
     T = pd.concat(rows, ignore_index=True)
+    OUT.mkdir(parents=True, exist_ok=True)
+    # each test-year row's arm-B lines (walk-forward, point-in-time): read by the Step 3 re-runs
+    T[["inst", "date", "fold", "sigB"] + [f"B_{q}_{r}" for q, r in CELLS]].to_csv(OUT / "lines_B.csv", index=False)
 
     dates = np.sort(T.date.unique())
     di = pd.Series(np.arange(len(dates)), index=dates)[T.date].to_numpy()
