@@ -49,20 +49,22 @@ def pinball(y, q, t):
     return np.where(d >= 0, t * d, (t - 1) * d)
 
 
-def fit_multipliers(tr, scale):
-    """m[class][side][rung] = quantile of target / scale on train."""
+def fit_multipliers(tr, scale, by_hour=False):
+    """m[(class[, hour])][side][rung] = quantile of target / scale on train."""
+    keys = ["cls", "h"] if by_hour else ["cls"]
     m = {}
-    for cls, g in tr.groupby("cls"):
-        m[cls] = {s: {r: float(np.quantile(g[s] / scale[g.index], t)) for r, t in TAUS.items()} for s in SIDES}
+    for k, g in tr.groupby(keys):
+        kk = k if by_hour else (k[0] if isinstance(k, tuple) else k)
+        m[kk] = {s: {r: float(np.quantile(g[s] / scale[g.index], t)) for r, t in TAUS.items()} for s in SIDES}
     return m
 
 
-def predict(df, scale, m):
+def predict(df, scale, m, by_hour=False):
+    key = list(zip(df["cls"], df["h"])) if by_hour else list(df["cls"])
     out = {}
     for s in SIDES:
         for r in TAUS:
-            mult = df["cls"].map({c: m[c][s][r] for c in m})
-            out[f"{s}_{r}"] = mult * scale
+            out[f"{s}_{r}"] = np.array([m[k][s][r] for k in key]) * scale.to_numpy()
     return pd.DataFrame(out, index=df.index)
 
 
@@ -87,17 +89,36 @@ for cls, g in tr.groupby("cls"):
     k_by_cls[cls] = float(best[1])
 kk = rows["cls"].map(k_by_cls)
 models["R2"] = ("vol-time + today so far", rows["s1"] * np.power(rows["sig_sofar"].clip(lower=0.05), rows["elapsed"] * kk))
+# Amendment 1 (variant 2): per-hour multipliers
+models["R3"] = ("per-hour multipliers", pd.Series(1.0, index=rows.index))
+k4 = {}
+for cls, g in tr.groupby("cls"):
+    best = None
+    for k in KGRID:
+        sc = np.power(g["sig_sofar"].clip(lower=0.05), g["elapsed"] * k)
+        L = 0.0
+        for h, gh in g.groupby("h"):
+            for s in SIDES:
+                for r in ("p50", "p75"):
+                    mq = np.quantile(gh[s] / sc[gh.index], TAUS[r])
+                    L += pinball(gh[s].to_numpy(), (mq * sc[gh.index]).to_numpy(), TAUS[r]).sum()
+        if best is None or L < best[0]:
+            best = (L, k)
+    k4[cls] = float(best[1])
+models["R4"] = ("per-hour + today so far", np.power(rows["sig_sofar"].clip(lower=0.05), rows["elapsed"] * rows["cls"].map(k4)))
+BY_HOUR = {"R3", "R4"}
 
 te = rows[~rows["train"]].copy()
-res = {"generated": str(date.today()), "spec": "forge/REMAINING_TRAVEL_PREREG.md", "k_by_class": k_by_cls,
+res = {"generated": str(date.today()), "spec": "forge/REMAINING_TRAVEL_PREREG.md", "k_by_class": k_by_cls, "k4_by_class": k4,
        "share_left": {c: {str(h): round(v, 4) for h, v in d.items()} for c, d in share_left.items()},
        "test": {"rows": int(len(te)), "dates": int(te["date"].nunique()), "instruments": int(te["inst"].nunique())}, "models": {}}
 print(f"test {te['date'].min()} -> {te['date'].max()}: {len(te)} checkpoints, {te['date'].nunique()} sessions, {te['inst'].nunique()} instruments")
-print("R2 k per class:", k_by_cls)
+print("R2 k per class:", k_by_cls, " R4 k per class:", k4)
 pin0 = None
 for name, (label, scale) in models.items():
-    m = fit_multipliers(tr, scale)
-    pr = predict(te, scale, m)
+    bh = name in BY_HOUR
+    m = fit_multipliers(tr, scale, bh)
+    pr = predict(te, scale.loc[te.index], m, bh)
     x = te.join(pr)
     cells, worst, table = [], 0.0, []
     for (band, reg), g in x[x["regime"] != "nan"].groupby(["band", "regime"]):
@@ -119,7 +140,7 @@ for name, (label, scale) in models.items():
     ratio = float(np.median([pin[i] / pin0[i] for i in pin]))
     passed = miss <= 2.5 and worst <= 0.05
     by_band = x.groupby("band").apply(lambda g: {f"{s}_{r}": round(float((g[s] > g[f"{s}_{r}"]).mean()), 3) for s in SIDES for r in TAUS}).to_dict()
-    res["models"][name] = {"label": label, "multipliers": m, "miss90": round(miss, 2), "worst_p75_p90": round(worst * 100, 2),
+    res["models"][name] = {"label": label, "multipliers": {str(k): v for k, v in m.items()}, "miss90": round(miss, 2), "worst_p75_p90": round(worst * 100, 2),
                            "pinball_vs_R0": round(ratio, 4), "pass": bool(passed), "cells": table, "by_band": by_band}
     print(f"\n{name} {label}: 90-cell miss {miss:.2f}pp, worst p75/p90 cell {worst*100:.1f}pp, pinball vs R0 {ratio:.4f} -> {'PASS' if passed else 'FAIL'}")
     for band in ("01-05", "07-11", "13-15", "17-19", "21"):

@@ -54,7 +54,7 @@ Train = sessions < 2025-09-05 (same split as layer 3). Test = 2025-09-05 → 202
 | # | Variant | Added | Status |
 |---|---|---|---|
 | 1 | R0, R1, R2 as above | 2026-10-06 | run: **all FAIL** (90-cell miss 6.7 / 5.7 / 5.8pp; worst cell 16–18pp) — regimes calibrated, time-of-day shape wrong |
-| 2 | R3 per-hour multipliers; R4 = R3 + today-so-far (Amendment 1) | 2026-10-06 | registered |
+| 2 | R3 per-hour multipliers; R4 = R3 + today-so-far (Amendment 1) | 2026-10-06 | run: **R3 near-pass** (miss 1.62pp ✓, worst cell 5.1pp ✗ vs 5.0), R4 miss 1.78 / worst 6.7 ✗ |
 
 ## Amendment 1 (2026-10-06, after variant 1, before variant 2)
 
@@ -70,3 +70,32 @@ Same split, same scoring and pass rule.
 
 Descriptive finding from variant 1 (no rule): remaining travel is LARGEST when the most range is already used
 (> 1.4σ so far) at every checkpoint — no "budget spent" effect; busy days stay busy (intraday volatility clustering).
+
+## Results (variant 2, 2026-10-06) — `analysis/output/remaining_travel_fit.log`
+
+Test 2025-09-05 → 2026-08-20: 91,523 checkpoints, 248 sessions, 34 instruments.
+
+| model | 90-cell miss (≤ 2.5) | worst p75/p90 cell (≤ 5.0) | pinball vs R0 | verdict |
+|---|---|---|---|---|
+| R0 clock √(hours left) | 6.74pp | 17.9pp | 1.000 | fail |
+| R1 vol-time √(variance left) | 5.72pp | 16.5pp | 0.996 | fail |
+| R2 R1 + today so far | 5.81pp | 18.0pp | 0.989 | fail |
+| **R3 per-hour multipliers** | **1.62pp** | **5.1pp** | **0.980** | **fail by 0.1pp** |
+| R4 R3 + today so far | 1.78pp | 6.7pp | 0.973 | fail |
+
+R3 by band (up p50/p75/p90 exceedance; target 50/25/10): 01-05 51/25/10 · 07-11 51/25/10 · 13-15 51/25/10 ·
+17-19 49/25/10 · 21 51/26/10; down the same within 2pp except 21:00 (57/29/11). By regime p75 23.7–25.1%, p90 9.1–10.0%.
+
+**No candidate passes the pre-registered rule.** R3 is the best and fails on one place only: the **21:00 checkpoint,
+downside, p75** (quiet 30.1%, normal 29.8% vs 25%). That cell varies by year (2016 21.7%, 2018 28.0%, 2020 29.5%,
+2023 20.5%, 2025 28.9%, 2026 30.0%; train mean 25% by construction), broad across classes in the test year (fx 29%,
+gold 37%, indices 28%): the last two hours of the session swing between calm and busy years. The rule is not loosened
+after the fact.
+
+Read for the system:
+- The √-time shape of a random walk is wrong for remaining travel; the shape must be learned per checkpoint hour. With
+  it, remaining travel is calibrated across the day and across regimes everywhere except the session's last hours.
+- "Today so far" (R4) sharpens a little (pinball 0.973 vs 0.980) but costs calibration: not worth it.
+- No "budget spent" effect: more range used so far means MORE travel to come, at every checkpoint.
+- Status: R3 is the working remaining-travel model, **not passed**; the 21:00 checkpoint is flagged unreliable. It goes
+  to the shadow screen as a forward check, where the late-session cell can be watched on live data.
