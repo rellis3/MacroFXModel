@@ -29,11 +29,17 @@ Both continue and fade are always reported; always-continue and always-fade on t
 ## Variant log
 | # | Variant | Added | Status |
 |---|---|---|---|
-| 1 | primary: expanding window, mean ≥ +0.03R, t ≥ 3, n ≥ 200, families A/B/C | 2026-10-06 | pending |
-| 2 | loose: mean > 0, t ≥ 1.5, n ≥ 100 | 2026-10-06 | pending |
-| 3 | rolling 3-year training window instead of expanding | 2026-10-06 | pending |
-| 4 | trailing-regime-aware: decisions made separately for the top / bottom half of trailing 250-session σ | 2026-10-06 | pending |
+| 1 | primary: expanding window, mean ≥ +0.03R, t ≥ 3, n ≥ 200, families A/B/C | 2026-10-06 | run |
+| 2 | loose: mean > 0, t ≥ 1.5, n ≥ 100 | 2026-10-06 | run |
+| 3 | rolling 3-year training window instead of expanding | 2026-10-06 | run |
+| 4 | trailing-regime-aware: decisions made separately for the top / bottom half of trailing 250-session σ | 2026-10-06 | run |
 
 Further variants dated and logged before they run. Also reported, descriptively: for each class × rung, how often the walk-forward chose
 continue / fade / no trade by hour and weekday, and how stable the choice was year to year ("track if at p50/p75/p90 we should continue
 or fade"). Output `analysis/output/live_range_wf/RESULTS.md`; banked in `js/deskEvidence.js`.
+
+## Results (2026-10-06) — `analysis/output/live_range_wf/RESULTS.md`
+157,129 resolved touches, 2018-04 → 2026-08. **0 of 12 variant × family combinations pass.** Primary (mean ≥ +0.03R, t ≥ 3, n ≥ 200): the
+learner traded 0 (A, C) or 84 (B) of 157k touches, none profitable. Loose (V2): 800-4,100 trades, net R −0.03 to −0.15, 1 of 8 years positive;
+selection beats a random pick by +0.07R (B) but both sides lose after spread. 3-year rolling (V3) and regime-split (V4): ≤ 118 trades, no edge.
+Note: pre-resolved races (14% of touches) are dropped, as in LIVE_RANGE_BOOK.

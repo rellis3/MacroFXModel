@@ -664,6 +664,12 @@ export const DESK_EVIDENCE = [
     use: 'Moving the lines to hourly does not create a fade or continue edge: the race after a touch is still the optional-stopping geometry plus spread, and consecutive line touches do not mark a trend day. The lines remain a calibrated size and time-left tool. Caveat: R explodes on late p90 fades (tiny risk distance), so the p90 pooled interval is wide.',
   },
   {
+    id: 'live-range-walkforward', domain: 'price', verdict: 'null', date: '2026-10-06', doc: 'forge/LIVE_RANGE_WALKFORWARD_PREREG.md',
+    claim: 'Train forward on prior days only, by weekday and hour, and each day choose continue or fade for the p50 / p75 / p90 hourly-moving Live Range lines; that decision rule trades profitably 2018-2026',
+    result: 'Null. 157,129 resolved line touches on 34 instruments, 2,176 days, grids refit every quarter on prior data only, decision refit every day on prior days only (expanding window; 3-year rolling and trailing-vol-regime variants too). Primary rule (trailing net R >= +0.03, t >= 3, n >= 200): the learner almost never found a cell worth trading, 0 to 118 trades of 157k, none profitable. Loose rule (mean > 0, t >= 1.5, n >= 100): 3-4k trades, net R -0.03 to -0.15 per trade, positive in 1 of 8 years. The learner does pick the less-bad side (+0.07R over a random continue/fade pick, CI [+0.02, +0.12]) but both sides lose after spread (same trades: always continue -0.19R, always fade -0.055R). 0 of 12 variants pass.',
+    use: 'There is no hour / weekday / line rung where a walking-forward continue-or-fade rule works on the moving lines. Do not build a continue/fade chooser on them. The decision to trade or not at a line is worth nothing beyond what the line says about range and time left.',
+  },
+  {
     id: 'event-layer', domain: 'events', verdict: 'null', date: '2026-10-05', doc: 'forge/EVENT_LAYER_PREREG.md',
     claim: 'On top of the IV-adjusted daily lines, the typical size of the day’s scheduled release type (and yesterday’s surprise) improves the range forecast',
     result: 'First test (calendar_events.csv) PASSED for FX+gold (0.970, 7/7) but did NOT replicate on live inputs (ForexFactory names, live IV-adjusted sigma, 2020-2025): 0.9937 vs the 0.99 bar; the fitted correction overshoots (big-release-day p75 35.5% -> 17.3%). Yesterday’s surprise null in both. The live export’s coarse event tag already brings FOMC/NFP/CPI days to 27.1% passed vs 25%.',
