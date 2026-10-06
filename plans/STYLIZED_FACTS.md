@@ -33,3 +33,19 @@ daily bars to 2026-08-21 (the lockbox holdout begins after), 5-minute returns fr
 - **Indices show next-day reversal** (lag-1 return autocorrelation −0.08 to −0.13 on all six indices, about 5 standard
   errors). FX and gold do not (−0.02). Recorded, not chased: it may partly be the 17:00 New York bar boundary on index
   CFDs; it is a direction question for a later lesson, logged as an idea (Lesson 2: record every direction).
+
+## Follow-up: does √time scaling of the daily ladder hold? (`analysis/system/horizon_scaling.py`)
+
+Quantile of week / month high−low ÷ (σ_daily × √h), divided by the same daily quantile (1.00 = √time right), training
+years only:
+
+| class | week p50 / p75 / p90 | month p50 / p75 / p90 |
+|---|---|---|
+| fx majors | 1.04 / 1.01 / 0.99 | 1.04 / 1.03 / 0.99 |
+| crosses | 1.03 / 1.01 / 1.00 | 1.04 / 1.02 / 1.02 |
+| gold | 1.04 / 1.02 / 1.02 | 1.06 / 1.06 / 1.23 (111 months) |
+| indices | 1.05 / 1.07 / 1.04 | **1.12 / 1.13 / 1.15** |
+
+√time is close for FX (within ~4%); index monthly lines would be ~12–15% too tight and gold's monthly p90 ~23% too
+tight under √time. The live ladder carries fitted weekly/monthly widths per instrument (`horizons` in
+forecastLadderParams.js), so √time only bites where it is the fallback — use fitted horizon widths for indices and gold.

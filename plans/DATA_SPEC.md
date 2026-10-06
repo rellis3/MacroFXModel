@@ -47,7 +47,7 @@ All as % of the session open: **HL** = (high − low), **OH** = (high − open),
 
 | # | Fault | Found | State |
 |---|---|---|---|
-| 1 | `*_d1.parquet` are UTC days with Sunday stubs | 2026-10-05 (LADDER_CALIBRATION Amendment 2) | research switched to NY-close bars; shipped IV-adjusted params were fitted on stub bars — **re-fit pending** |
+| 1 | `*_d1.parquet` are UTC days with Sunday stubs | 2026-10-05 (LADDER_CALIBRATION Amendment 2) | research switched to NY-close bars. IV-adjusted refit on NY-close bars done side by side (`forge/export_iv_adjusted_params_ny.py` → `js/forecastLadderIvAdjParamsNY.js`, CALIBRATION_NY.md: passes all classes, B÷A 0.92 / 0.95 / 0.97). Refit widths are **~10% smaller** (median 0.90): the stub days biased σ low, the shipped fit compensated with wider widths, and live feeds stub-free bars — so the **live IV-adjusted lines are likely ~10% too wide**. Switching the live export to the NY params is a live change awaiting the user's decision |
 | 2 | Live index σ from Yahoo vs research OANDA | 2026-10-04 | open — flagged provisional |
 | 3 | vol_session audits after London midnight recorded the next session (6 of 15) | 2026-10-05 | **fixed** cf47b9a0 (late audit pins its own window); the 6 bad records stay bad — readers skip them (`auditUsable` in js/harShadowCore.js and js/dailyReadCore.js; Daily Read unscored them, 5cac377d) |
 | 4 | vol_session `oc` signed | 2026-10-05 | documented; readers take abs |
