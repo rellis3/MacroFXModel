@@ -162,3 +162,23 @@ for k, (a, b) in STRESS.items():
     OUT["layer5"].setdefault("stress_p75", {})[k] = round(float(ex * 100), 1)
 print(f"  stress windows, p75 exceeded (target 25%): {OUT['layer5']['stress_p75']}")
 Path("analysis/output/robustness.json").write_text(json.dumps(OUT, indent=1))
+
+# ── Layer 3 regime metric with a NEUTRAL bucketing variable ───────────────────
+# The 30-cell regime miss buckets days by one arm's own σ ÷ its median. That variable is correlated with that arm's
+# own forecast error (regression to the mean), so it penalises whichever arm defines the buckets. Neutral alternative:
+# trailing 20-session mean realised H-L ÷ trailing 250-session median H-L (both strictly before the day).
+chk = chk.copy()
+X2 = X.sort_values(["inst", "date"]).copy()
+X2["rv20"] = X2.groupby("inst")["hl"].transform(lambda s: s.shift(1).rolling(20, min_periods=15).mean())
+X2["rv250"] = X2.groupby("inst")["hl"].transform(lambda s: s.shift(1).rolling(250, min_periods=120).median())
+X2["nrel"] = X2["rv20"] / X2["rv250"]
+chk = chk.merge(X2[["inst", "date", "nrel"]], on=["inst", "date"], how="left")
+e2 = np.quantile(chk["nrel"].dropna(), [0.2, 0.4, 0.6, 0.8])
+chk["quint"] = np.searchsorted(e2, chk["nrel"].fillna(1).to_numpy())
+print("\nLayer 3 regime miss with NEUTRAL buckets (trailing realised range, not either forecast):")
+OUT["layer3_neutral"] = {}
+for arm in arms:
+    s = score3(arm)
+    OUT["layer3_neutral"][arm] = {"miss30_regime": s["miss30_regime"], "hl_p75_by_quintile": s["hl_p75_by_quintile"]}
+    print(f"  {arm:16} regime miss {s['miss30_regime']:.2f}pp  HL>p75 by quintile {s['hl_p75_by_quintile']}")
+Path("analysis/output/robustness.json").write_text(json.dumps(OUT, indent=1))

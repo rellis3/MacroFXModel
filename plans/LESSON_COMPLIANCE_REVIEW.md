@@ -78,6 +78,6 @@ no parameter-stability check, no one-day-delay check, and Lesson 3's own cluster
 | A5 toolkit | **done** — Lo η(q), shrinkage, FDR, posterior after passes, best-of-N; 24 tests reproduce L1/L2 numbers |
 | A1 interfaces | **done** — plans/LAYER_INTERFACES.md |
 | A4 sizing uses loss-given-stop | **done** — forge/sizing.py, plans/SIZING_RULE.md |
-| A9 / A6 robustness | see plans/ROBUSTNESS.md |
-| A8 price the search | see plans/SEARCH_BREADTH.md |
-| A2 IC / breadth | see plans/SEARCH_BREADTH.md |
+| A9 / A6 robustness | **done** — plans/ROBUSTNESS.md: plateaus pass, one-day delay pass; found own-σ regime buckets biased → neutral buckets; layer-3 gap smaller (0.2–0.7pp) |
+| A8 price the search | **done** — plans/SEARCH_BREADTH.md: HAR > live after best-of-4; HAR vs IV-adjusted indistinguishable |
+| A2 IC / breadth | **done** — ICs HAR 0.38, live 0.29, R3 0.41, M2 0.14–0.19; breadth ≈ 2.1 independent forecasts/day |

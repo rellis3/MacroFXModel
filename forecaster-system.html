@@ -56,7 +56,7 @@
       <div class="layer done"><div class="num">3</div><div>
         <h3>Volatility forecast <span class="pill">HAR chosen · live shadow</span></h3>
         <div class="q">How far is price likely to travel today? (p50 / p75 / p90 lines)</div>
-        <div class="v">The live ladder is right on average but tilts with the regime (quiet days pass p75 ~30%, busy ~19%). HAR-log σ on the production path removes most of it (regime miss 2.86 → 1.41pp, sharper on 28/28 instruments).</div>
+        <div class="v">The live ladder is right on average but tilts with the regime (quiet days pass p75 ~30%, busy ~20%). HAR-log σ flattens it (29% → 26%) and is sharper (IC 0.38 vs 0.29); the gap is smaller than first reported once regimes are bucketed neutrally, and HAR vs the IV-adjusted ladder cannot be separated. Frozen in the lockbox.</div>
         <div class="links"><a href="har-shadow.html">HAR Shadow (live)</a> · <code>forge/LADDER_CALIBRATION_PREREG.md</code></div></div></div>
 
       <div class="layer done"><div class="num">4</div><div>
@@ -91,6 +91,7 @@
       <tr><th>Lesson</th><th>What it added</th><th>Layers</th></tr>
       <tr><td>01 · One path among many</td><td>Every number is one draw from a distribution: bootstrap paths, error bars, check across regimes and horizons</td><td>all (rules) · toolkit</td></tr>
       <tr><td>02 · Research has no timetable</td><td>The breadth of the search enters the evidence: log every variant, deflate for it</td><td>all (variant logs) · toolkit</td></tr>
+      <tr><td>Compliance review</td><td>Holdout locked; Lesson 3's measurements run (size has memory, direction none, half-life 7–391 days, jumps ~12% of variance); parameter plateaus and one-day delay pass; search priced; ICs and breadth (~2 independent forecasts a day) measured</td><td>all · plans/LESSON_COMPLIANCE_REVIEW.md</td></tr>
       <tr><td>03 · A system built in layers</td><td>Separate forecasting from decision; volatility is the forecastable object; jumps matter for single-step loss; meta-labelling; test each layer on its own</td><td>3, 4, 5, 6, 7</td></tr>
     </table>
   </section>
