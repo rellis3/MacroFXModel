@@ -25,7 +25,8 @@ its own pre-registration before its results are computed.*
   Original step: **Finish the forecast** (L03 §02): one pre-registered head-to-head on the Step 0 table — persistence + IV vs
   IV-adjusted vs HAR-800 vs plain — pick ONE; the scorecard confirms it forward (L02: the second, independent test).
   Other line exports move to an archive menu. No line work after this.
-- B. **The "how much" layer** (L03's main use, L01 §06 Kelly, L03 §03 jumps): per instrument, stop outside the
+- B. ✅ **DONE 2026-10-06** (forge/HOW_MUCH_SPEC.md, analysis/output/how_much/RESULTS.md): minimum stop 0.55–0.60σ by class (one 5-min bar crosses it on ≤5% of days; a 0.25σ stop is crossed on 37–48%); worst-case step past the stop p90 0.4–0.8σ (upper bound); Monday gap p90 ~0.5σ vs ~0.2σ other days. `js/howMuch.js` (+ params, tests): size = budget ÷ (stop + step [+ weekend]).
+  Original step: **The "how much" layer** (L03's main use, L01 §06 Kelly, L03 §03 jumps): per instrument, stop outside the
   jump-through zone, size = risk budget ÷ stop distance, weekend gap allowance. Rules with evidence attached.
 - C. **Meta-label done the lesson's way** (L03 §01): primary = the yield-spread book (validated direction edge);
   meta-label = forecast regime, jump state, room left → act / size up / size down. New pre-registration.

@@ -63,7 +63,9 @@ def flags_for(sym: str, root: str) -> pd.DataFrame:
     return pd.DataFrame({"inst": sym, "date": tab.date, "zmax": np.round(zmax, 3),
                          "jump_lm": np.where(ok, (zmax > CRIT).astype(float), np.nan),
                          "min_jump_lm": (k + 1) * 5, "r_jump_lm": np.round(r[np.arange(len(r)), k] * 100, 5),
-                         "z_bns": np.round(zb, 3), "jump_bns": (zb > 2.326).astype(float)})
+                         "z_bns": np.round(zb, 3), "jump_bns": (zb > 2.326).astype(float),
+                         # largest single 5-min move up / down, % of price (forge/HOW_MUCH_SPEC.md rule 5)
+                         "max_up5": np.round(np.nanmax(r, axis=1) * 100, 5), "max_dn5": np.round(-np.nanmin(r, axis=1) * 100, 5)})
 
 
 def main():
