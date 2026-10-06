@@ -85,10 +85,12 @@ dynamic, no trade is scored and the reason is stated.
 
 | # | Variant | Added | Status |
 |---|---|---|---|
-| 1 | as above; race to 22:00 on fixed levels; placebo baseline; refit grids on first 60% of dates | 2026-10-06 | pending |
-| 2 | race limited to the touch hour (the page's redraw interval) | 2026-10-06 | pending |
-| 3 | jump-through threshold 0.10σ and 0.50σ (sensitivity of J2) | 2026-10-06 | pending |
-| 4 | shipped (all-data) params, same test period: shows how much the in-sample fit flatters the lines | 2026-10-06 | pending |
+| 1 | as above; race to 22:00 on fixed levels; placebo baseline; refit grids on first 60% of dates | 2026-10-06 | run |
+| 2 | race limited to the touch hour (the page's redraw interval) | 2026-10-06 | run |
+| 3 | jump-through threshold 0.10σ and 0.50σ (sensitivity of J2) | 2026-10-06 | run (columns in the Q2 table) |
+| 4 | shipped (all-data) params, same test period: shows how much the in-sample fit flatters the lines | 2026-10-06 | run |
+| 5 | closer placebo (factors 0.90-0.97 and 1.03-1.10) for variants 1 and 2 | 2026-10-06, after variants 1-2 were seen, before 5 is run | pending |
+| 6 | jump-state adjustment keyed on "a jump in the last hour before the redraw" (variant 1's adjustment used "a jump any time earlier today") | 2026-10-06, after variant 1's Q4 was seen, before 6 is run | pending |
 
 Any further variant is appended here, dated, before it runs.
 
@@ -96,3 +98,13 @@ Any further variant is appended here, dated, before it runs.
 
 Script `forge/run_live_range_history.py`; tables `analysis/output/live_range_history/` (RESULTS.md, results.json);
 verdict banked in `js/deskEvidence.js`.
+
+## Amendment 1 (2026-10-06, after variants 1 and 2 were run, before variants 5-6)
+
+Variant 2 flagged 42 of 196 cells, nearly all with the SAME sign (real below placebo by 2-4pp) — a systematic offset, not
+cell-specific dynamics. A placebo at 0.7-1.3× distances has different distances (a, b) from the real line, and an
+hour-limited race resolves the nearer barrier first, so the placebo's out-share is biased differently from the real
+line's. Variant 5 shrinks the placebo's distance change to ±3-10% to see whether the offset shrinks with it (structural)
+or stays (real). The registered rule and verdict for variants 1 and 2 stay as run. The BNS day flag is end-of-day and
+defined by a jump bar, which is often the touch bar itself: it is descriptive only (as registered), the real-time
+splits carry the usable reading.
