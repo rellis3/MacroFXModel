@@ -101,7 +101,11 @@ export function buildPersistInstruments(latest, ohlcCache, registry, params = PE
     const bars = barsBefore(ohlcCache?.[name], sessionDate);
     const lad = buildPersistLadder(bars, { instrument: name, assetClass: byName[name]?.assetClass ?? 'fx', sessionDate,
                                            sigmaUsedPct: L.sigma_used_pct, eventTag: L.event_tag ?? null, params });
-    if (!lad) { skipped.push({ name, reason: 'not enough daily bars' }); continue; }
+    if (!lad) {
+      const n = Array.isArray(bars) ? bars.length : 0, last = Array.isArray(bars) ? (bars.at(-1)?.date ?? '?') : '-';
+      skipped.push({ name, reason: n < 300 ? `only ${n} daily bars (needs 300, last ${last})` : `σ history incomplete (${n} bars, last ${last})` });
+      continue;
+    }
     instruments[name] = { ...fc, ladder: lad };
     adjusted.push({ name, adj: lad.persist_adjust });
   }
