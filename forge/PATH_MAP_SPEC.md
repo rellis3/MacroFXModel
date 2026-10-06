@@ -63,7 +63,7 @@ absorbs instead of re-testing: the rung chain (`/api/vol-forecast/ladder/path-st
 
 The random-walk null b/(a+b) ignores the session-end cut-off (which favours the nearer level among resolved races),
 bar-sized steps, volatility clustering and drift; the late-hour cells (+6 to +9pp, failing the rule) look like that.
-Variant 3 replaces it as the PRIMARY baseline with a **placebo**: on every session, two fake ladders with every width
+Variant 3 replaces it as the PRIMARY baseline with a **placebo**: on every session, two control ladders with every width
 multiplied by a factor drawn uniformly from [0.70, 0.90] ∪ [1.10, 1.30] (seeded per instrument-session, so not the real
 line), raced by exactly the same code from their own touch-bar close. A cell is a **dynamic** only if its real
 continuation share differs from the placebo share for the same cell by more than 2 date-clustered SEs of the
@@ -109,7 +109,7 @@ Read:
 
 ## Results (variant 3, placebo baseline, 2026-10-06)
 
-156,734 real touches + 326,375 placebo touches (same sessions, fake ladders at 0.7–0.9× / 1.1–1.3×), 314 cells.
+156,734 real touches + 326,375 placebo touches (same sessions, control ladders at 0.7–0.9× / 1.1–1.3×), 314 cells.
 **0 dynamics.**
 
 | rung | real continuation | placebo continuation | difference | random walk from close |
@@ -118,7 +118,7 @@ Read:
 | p75 | 46.7% | 46.4% | +0.3pp (z +0.5) | 46.7% |
 | p90 | 51.2% | 51.9% | −0.7pp (z −0.8) | 51.1% |
 
-- The real HAR lines behave exactly like fake lines at other distances: price does not treat them as special, in any
+- The real HAR lines behave exactly like control lines at other distances: price does not treat them as special, in any
   hour, regime, event bucket, class, range-used, approach-speed, prior-day-level or IV-÷-σ bucket.
 - Variant 2's late-hour excess (+6 to +9pp vs the random walk) is gone against the placebo (+2.7pp, z 0.7): it was
   the session-end cut-off, which the placebo shares.

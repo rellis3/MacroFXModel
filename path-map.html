@@ -34,7 +34,7 @@
     <h1>Path Map — how price behaves around the forecast lines</h1>
     <p class="sub">Layer 4 of the Forecaster system. A <b>map, not a trade</b>. For every first touch of a HAR ladder line (OH/OL p50, p75, p90), what came first afterwards:
       the <b>next line out</b> (continuation) or the <b>level back in</b> (fade: p50→open, p75→p50, p90→p75)? Each share is compared with <b>placebo lines</b>:
-      fake ladders drawn on the same days at 0.7–0.9× or 1.1–1.3× the real widths and raced by exactly the same code. Whatever the fake lines show is what
+      control ladders drawn on the same days at 0.7–0.9× or 1.1–1.3× the real widths and raced by exactly the same code. Whatever the control lines show is what
       "no special line" looks like, with session end, bar size and volatility clustering all included. Above the placebo is continuation, below is fading.
       A cell is called a <b>dynamic</b> only if real and placebo differ by more than 2 standard errors, the same way, in both halves of the sample.</p>
   </div>
@@ -44,7 +44,7 @@
   <section class="card">
     <h2>Real lines vs placebo lines, by condition</h2>
     <div class="tbl"><table id="oneway"></table></div>
-    <div class="legend"><span><i style="background:var(--cont)"></i>continues more than at fake lines</span><span><i style="background:var(--fade)"></i>fades more than at fake lines</span><span><i style="outline:2px solid var(--amber)"></i>passes the dynamic rule</span><span>Cell = continuation share at the real lines − at the placebo lines, in percentage points. Hover for detail.</span></div>
+    <div class="legend"><span><i style="background:var(--cont)"></i>continues more than at control lines</span><span><i style="background:var(--fade)"></i>fades more than at control lines</span><span><i style="outline:2px solid var(--amber)"></i>passes the dynamic rule</span><span>Cell = continuation share at the real lines − at the placebo lines, in percentage points. Hover for detail.</span></div>
   </section>
 
   <section class="card">
