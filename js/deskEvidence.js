@@ -734,6 +734,24 @@ export const DESK_EVIDENCE = [
     result: 'Wall-minus-placebo break rates within +/-2.1pp at every horizon, every CI containing 0; the wall beats placebo in 6/14 cells.',
     use: 'Treat OI walls as ordinary levels; the wall-touch read describes a detector artefact plus short-horizon mean reversion.',
   },
+  {
+    id: 'forecast-record-pit', domain: 'volatility', verdict: 'context', date: '2026-10-06', doc: 'forge/FORECAST_RECORD_PREREG.md',
+    claim: 'The v3 export forecast, rebuilt point-in-time (walk-forward specs, 34 instruments, 52,486 out-of-sample sessions 2020-08 to 2026-08), is calibrated and beats climatology',
+    result: 'All 12 rungs calibrated pooled (e.g. HL p75 24.7% [23.3, 26.1]); pinball skill over a 250-session climatology 4.9% [3.7, 6.2]; today’s settings applied backwards flatter it by only 0.5%. Flaw: regime. Busy days (sigma > 1.15x its median) too wide, HL p75 19.9%; quiet days (< 0.85x) too narrow, HL p75 30.6%. Skill in normal regimes only 1.3%.',
+    use: 'Trust the lines on average. Lean on them less after a vol spike (they run wide) and more cautiously after calm (they run tight); the fix belongs in sigma persistence (Lesson 03 §02).',
+  },
+  {
+    id: 'jump-structure', domain: 'volatility', verdict: 'context', date: '2026-10-06', doc: 'forge/JUMPS_PREREG.md',
+    claim: 'How much of the daily move is jump, whether jumps are scheduled, and whether the forecast tail breaks on jump days',
+    result: 'Jumps (RV minus bipower) are 6.6% [6.3, 6.9] of intraday variance; only 22% [19, 26] of jump days are scheduled releases (majors 37%). FX/gold p90 is passed 13-15% on jump days vs ~7% otherwise; indices no different. Single-step loss: one 5-min bar crosses a 0.5-sigma stop on 11% of sessions; Monday open gaps beyond 0.5 sigma 9% vs 1.4% Tue-Fri.',
+    use: 'Most jumps cannot be known in advance, so they belong in stop placement and sizing, not the lines. Stops inside 0.5 sigma get jumped often; treat Monday opens as gap risk.',
+  },
+  {
+    id: 'jump-p90-event-term', domain: 'volatility', verdict: 'null', date: '2026-10-06', doc: 'forge/JUMPS_PREREG.md',
+    claim: 'A p90-only event multiplier per release tag (Merton: jumps fatten the tail more than the middle), fitted walk-forward, improves the forecast tail on event days',
+    result: 'FAIL. Event-day HL p90 pinball got worse by 0.8% [0.2, 1.4]; all days +0.5% [0.2, 0.9]. Event-day p90 was already 10.0% under the equal-scaling event multiplier.',
+    use: 'Keep the equal-scaling event multiplier; scheduled tails are already priced.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what

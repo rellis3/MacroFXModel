@@ -100,7 +100,7 @@ Lessons 11–16 are the validation module. When each lesson lands, its check rep
 | L01 §01 | A record is one draw | all | rule adopted | — |
 | L01 §02 | Outcome probabilities over a horizon | 3 | **done**: p50/p75/p90 ladder, calibration-scored | — |
 | L01 §03 | Sharpe SE, Lo's correction, shrinkage | 3, 7 | partly: `js/backtestStats.js` has PSR/DSR, N never the real search size; shrinkage used in SIZING_NOTE | **1st:** one validation card module |
-| L01 §04 | Spread of paths (bootstrap) | 3 | partly: forecast PASSes are mostly "better on k of n instruments", no date-block interval | **1st:** re-score built layer-3 results with date-block bootstrap intervals |
+| L01 §04 | Spread of paths (bootstrap) | 3 | **done for the export calc** (forge/FORECAST_RECORD_PREREG.md): calibrated, skill 4.9% [3.7, 6.2], regime flaw found | same yardstick for any candidate σ |
 | L01 §05 | 12-check validation card | all | not built as a card | **1st:** a card per layer, filled for layer 3 |
 | L01 §06 | Volatility drag, Kelly | 7 | **done** (analysis/forecaster_lessons/SIZING_NOTE.md): no build, 10% target about 1/5 Kelly | re-check at spread book review |
 | L02 §01–§04 | Waiting times, overruns, uncertain rate, cost of search | process | not built | **2nd:** discovery rate and stopping rule from the ledger |
@@ -108,8 +108,8 @@ Lessons 11–16 are the validation module. When each lesson lands, its check rep
 | L02 §06 | Discovery rate declines | process | not built | with L02 §01–§04 |
 | L03 §01 | Layers, IR ≈ TC·IC·√BR | all | blueprint; TC unmeasured (no decision layer yet) | after layer 5 |
 | L03 §01 | Meta-labelling | 6 | not started. Rebuilt from the lesson's target with **our forecast as the primary**; no Vote Atlas input (owner rule) | plans/LESSON_TARGET_REBUILD_PLAN.md step 3 |
-| L03 §02 | Vol clustering, persistence, half-life | 3 | **done**: HAR-800 preferred, weekly reverting (HL 5d/10d), IV-adjusted, Live Range | intervals (L01 §04) |
-| L03 §03 | Jumps, excess kurtosis | 3, 7 | partly: event layer re-check FAILED, coarse tag stays; gap/jump tails for stops not built | plans/LESSON_TARGET_REBUILD_PLAN.md step 2 |
+| L03 §02 | Vol clustering, persistence, half-life | 3 | HAR-800 preferred, weekly reverting, IV-adjusted, Live Range. Step 1 shows the daily export over-reacts to regime (busy too wide, quiet too tight) | daily persistence fix, scored on the Step 1 yardstick |
+| L03 §03 | Jumps, excess kurtosis | 3, 7 | **done** (forge/JUMPS_PREREG.md): 6.6% of variance, 78% unscheduled, p90 event term FAIL; stop gap-risk table | use in layer 7 stops |
 
 Parallel work: layers 1, 4 and 5 (DATA_SPEC, PATH MAP, remaining travel) are being built in another session; check
 `git log -- plans/` before touching them.

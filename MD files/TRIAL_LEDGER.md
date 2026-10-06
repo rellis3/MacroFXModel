@@ -4,21 +4,21 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-10-05.
+Generated 2026-10-06.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **94** |
+| claims tested (validated + null + underpowered) | **95** |
 | validated | 32 |
-| null | 59 |
+| null | 60 |
 | underpowered | 3 |
-| context (base rates, descriptions: not counted as tests) | 19 |
-| pre-registrations with no banked verdict (below) | 1 |
+| context (base rates, descriptions: not counted as tests) | 21 |
+| pre-registrations with no banked verdict (below) | 2 |
 
-**What the count says (Lesson 02 §05).** If none of the 94 claims were real, tests at the usual 5% size would still pass
-about **4.7** of them by luck. 32 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 95 claims were real, tests at the usual 5% size would still pass
+about **4.8** of them by luck. 32 passed, so most passes are unlikely to be luck alone, but
 **roughly 5 of the 32 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -140,9 +140,13 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-05 | line-touch-reach | volatility | validated | forge/LINE_TOUCH_REACH_PREREG.md |
 | 2026-10-05 | us-extras-confirm | volatility | validated | forge/US_EXTRAS_CONFIRM_PREREG.md |
 | 2026-10-05 | vol-target | volatility | validated | forge/VOL_TARGET_PREREG.md |
+| 2026-10-06 | forecast-record-pit | volatility | context | forge/FORECAST_RECORD_PREREG.md |
+| 2026-10-06 | jump-p90-event-term | volatility | null | forge/JUMPS_PREREG.md |
+| 2026-10-06 | jump-structure | volatility | context | forge/JUMPS_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
 These were designed as tests but never reached the Evidence Book. Each is either still to run, or ran and was not banked (the second is the failure Lesson 02 warns about: a search that forgets its misses looks better than it is). Bank or close each one.
 
 - `MD files/LEAN_TRADE_RULE_PREREG.md`: LEAN-TRADE-RULE — the lean traded as a real trade, with a stop
+- `forge/META_LABEL_PREREG.md`: STEP 3 — Meta-labelling on our own forecast (Lesson 03 §01)

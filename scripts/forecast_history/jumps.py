@@ -49,7 +49,7 @@ def load() -> pd.DataFrame:
     big = (X.max_r5.abs() / 100)                          # largest 5-min move (fraction)
     for k in KS:
         X[f"jump{k}"] = (big > k * sig5).astype(float)
-    X["size"] = X.max_r5.abs() / X.pit_sig_used         # daily-σ units
+    X["jsize"] = X.max_r5.abs() / X.pit_sig_used         # daily-σ units
     X["z"] = X.r_ocs / X.pit_sig_used
     X["monday"] = pd.to_datetime(X.date).dt.dayofweek == 0
     return X.reset_index(drop=True)
@@ -111,8 +111,8 @@ def main():
             fr = ci(O[f"jump{k}"].to_numpy(), one, m)
             row[f"lambda_per_year_k{k}"] = [round(x * 252, 1) for x in fr]
         jm = m & (O[f"jump{K0}"] == 1).to_numpy()
-        row["size_sigma_median"] = round(float(O.size[jm].median()), 3)
-        row["size_sigma_p90"] = round(float(O.size[jm].quantile(0.9)), 3)
+        row["size_sigma_median"] = round(float(O.jsize[jm].median()), 3)
+        row["size_sigma_p90"] = round(float(O.jsize[jm].quantile(0.9)), 3)
         q1[g] = row
     q1_inst = {i: {"jump_share": round(float(g.jump_share.mean()), 4), f"lambda_k{K0}": round(float(g[f"jump{K0}"].mean() * 252), 1),
                    "excess_kurtosis": round(float((g.z ** 4).mean() / (g.z ** 2).mean() ** 2 - 3), 2)}
