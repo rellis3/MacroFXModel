@@ -57,6 +57,24 @@ absorbs instead of re-testing: the rung chain (`/api/vol-forecast/ladder/path-st
 | 1 | as above | 2026-10-06 | run: 190 cells, 6 pass, all "range used > 1.2" → continuation (p50 +7.5pp, p75 +6.0pp vs null) — **suspect, see Amendment 1** |
 | 2 | null and race measured from the touch bar's CLOSE (Amendment 1) | 2026-10-06 | run: 190 cells, **0 pass** |
 
+| 3 | placebo baseline + three new conditions (Amendment 2) | 2026-10-06 | registered |
+
+## Amendment 2 (2026-10-06, after variant 2, before variant 3 is run)
+
+The random-walk null b/(a+b) ignores the session-end cut-off (which favours the nearer level among resolved races),
+bar-sized steps, volatility clustering and drift; the late-hour cells (+6 to +9pp, failing the rule) look like that.
+Variant 3 replaces it as the PRIMARY baseline with a **placebo**: on every session, two fake ladders with every width
+multiplied by a factor drawn uniformly from [0.70, 0.90] ∪ [1.10, 1.30] (seeded per instrument-session, so not the real
+line), raced by exactly the same code from their own touch-bar close. A cell is a **dynamic** only if its real
+continuation share differs from the placebo share for the same cell by more than 2 date-clustered SEs of the
+difference, the same way, in both halves. The b/(a+b) null is still reported.
+
+New conditions (one-way, and two-way with hour where cells ≥ 300):
+- **approach**: |close at touch − close 30 bars earlier| in σ units; terciles (slow / mid / fast) over all real touches.
+- **prior-day level**: the line within 0.15σ of the previous session's high (up lines) or low (down lines): yes / no.
+- **IV ÷ σ**: implied vol ÷ √252 ÷ HAR σ, IV = last value strictly before the session (CME 30d ATM for the 6 USD
+  majors, GVZ for gold, VXN for NQ, VIX for SPX500/US30/US2000; none for crosses and DE30/UK100); terciles.
+
 ## Amendment 1 (2026-10-06, after variant 1's results, before variant 2 is run)
 
 Variant 1's null assumes the race starts exactly at the line, but the race is scored from the bar after the touch, and
