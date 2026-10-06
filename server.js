@@ -22062,9 +22062,13 @@ async function _fcardTick() {
   //     production forecast + daily bars, so it is taken as soon as today's forecast exists.
   if (L.session_date === now.date && !store.snapP[now.date]) {
     try {
-      const { instruments, adjusted } = buildPersistInstruments(L, await ensureOhlcCache(), VOL_INSTRUMENTS);
-      store.snapP[now.date] = Object.fromEntries(adjusted.map(a => [a.name, instruments[a.name].ladder]));
-      dirty = true;
+      const { instruments, adjusted, skipped } = buildPersistInstruments(L, await ensureOhlcCache(), VOL_INSTRUMENTS);
+      // ensureOhlcCache can hand back a half-warmed cache (post-deploy): instruments with no bars yet show as
+      // "only 0 daily bars". Don't freeze the day's snapshot without them; the next 30-min tick retries.
+      if (!skipped.some(x => /^only 0 /.test(x.reason))) {
+        store.snapP[now.date] = Object.fromEntries(adjusted.map(a => [a.name, instruments[a.name].ladder]));
+        dirty = true;
+      }
     } catch (e) { console.warn('[fcard] persist snapshot failed:', e.message); }
   }
 
