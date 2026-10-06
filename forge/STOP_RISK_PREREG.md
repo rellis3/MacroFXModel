@@ -40,4 +40,10 @@ descriptive; it feeds the sizing rule (layer 7) as a per-cell "loss given stop" 
 
 | # | Variant | Added | Status |
 |---|---|---|---|
-| 1 | as above | 2026-10-06 | registered |
+| 1 | as above, hold = 24 h of trading time (Amendment 1) | 2026-10-06 | registered |
+
+## Amendment 1 (2026-10-06, smoke test on 2 instruments, before the full run)
+
+A 24-hour **clock** hold lets a Friday entry expire on Saturday, so no hold reached the Sunday reopen (NQ: 29 weekend
+holds in 10 years) — contradicting the design's intent that holds cross weekends. The hold is now **1,440 M1 bars**
+(24 hours of trading time): Friday entries run into the next week's open. Nothing else changes.
