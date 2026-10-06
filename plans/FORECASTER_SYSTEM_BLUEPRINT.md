@@ -4,6 +4,25 @@ Source: `education/forecaster-portfolio-case-study/` (cog, "Case Study: The Fore
 transcribed as of 2026-10-05). **This file is updated every time a new lesson is added**: read the lesson, note what it
 adds or changes per layer, then build.
 
+## Purpose: what we are building, why, and to what end
+
+*Agreed with the owner 2026-10-06. Re-read this before starting any piece of work here.*
+
+- **What:** a forecaster system on the course's architecture, separate layers each tested on its own. The base is the
+  owner's own volatility forecast (the Vol Forecast v3 export calc), improved, never replaced by a textbook model.
+- **Why:** the owner's earlier systems (Vote Atlas, the fade/continue book) fused forecast, decision and sizing into one
+  rule, and died of look-ahead bias and untested layers. The course shows how institutions avoid that.
+- **What the evidence already says (94 tests, `MD files/TRIAL_LEDGER.md`):** how far price travels is forecastable;
+  which way it goes at our lines is not. So the system's value starts as range, room and risk, and any direction or
+  confidence layer must earn its place with its own test.
+- **To what end:** each day the system says how far price can travel, how much is left, whether to act and how much,
+  with an honest record per layer that shows how sure we can be. Run side by side with the live pages; nothing live
+  changes until the owner chooses.
+- **How we work:** in lesson order. Each lesson section is mapped to a layer, built individually, validated
+  (pre-registered, intervals, variant log), noted in the tracker below, then brought together. Each new lesson
+  (3 of 17 so far) is read and folded in before building on it.
+- **Not the goal:** a quick profit test, a revived Atlas, or a year of paper trading.
+
 Rules for every layer (from the lessons):
 - **L3 — one job per layer, tested against its own standard.** A forecast is scored against outcomes, not P&L; a
   decision rule against what it decides; sizing against risk. A good final P&L can hide a weak layer.
@@ -60,3 +79,37 @@ Conditioning variables: rung reached, London hour, regime (live σ ÷ HAR σ), e
 | 01 One path among many | Sampling distributions, bootstrap of paths, regime dependence, horizon aggregation |
 | 02 Research has no timetable | Search breadth enters significance; log every variant |
 | 03 A system built in layers | Separate forecasting from decision; volatility is the forecastable object (GARCH clustering, persistence/half-life); jumps (Merton) matter for single-step loss; meta-labelling; validate layer by layer |
+
+## Series map (from Lesson 01 §05: which future lesson covers which check)
+
+| Check | Lesson | Check | Lesson |
+|---|---|---|---|
+| 01 point-in-time data | 5 | 07 parameter stability | 13 |
+| 02 in-sample / out-of-sample, walk-forward | 7, 14 | 08 path robustness (bootstrap, placebo) | 1, 15 |
+| 03 holdout and lockbox | 14 | 09 regimes and stress | 6, 10 |
+| 04 purged / embargoed CV, PBO | 13 | 10 forward evidence, power to detect decay | 16 |
+| 05 multiple testing (DSR, Reality Check) | 4, 12 | 11 costs and capacity | 4 |
+| 06 significance (PSR, MinTRL) | 11 | 12 a procedure for any record | 17 |
+
+Lessons 11–16 are the validation module. When each lesson lands, its check replaces our interim version.
+
+## Lesson tracker (work through in this order; update the row when a piece is built or tested)
+
+| Lesson § | Topic | Layer | Status | Next |
+|---|---|---|---|---|
+| L01 §01 | A record is one draw | all | rule adopted | — |
+| L01 §02 | Outcome probabilities over a horizon | 3 | **done**: p50/p75/p90 ladder, calibration-scored | — |
+| L01 §03 | Sharpe SE, Lo's correction, shrinkage | 3, 7 | partly: `js/backtestStats.js` has PSR/DSR, N never the real search size; shrinkage used in SIZING_NOTE | **1st:** one validation card module |
+| L01 §04 | Spread of paths (bootstrap) | 3 | partly: forecast PASSes are mostly "better on k of n instruments", no date-block interval | **1st:** re-score built layer-3 results with date-block bootstrap intervals |
+| L01 §05 | 12-check validation card | all | not built as a card | **1st:** a card per layer, filled for layer 3 |
+| L01 §06 | Volatility drag, Kelly | 7 | **done** (analysis/forecaster_lessons/SIZING_NOTE.md): no build, 10% target about 1/5 Kelly | re-check at spread book review |
+| L02 §01–§04 | Waiting times, overruns, uncertain rate, cost of search | process | not built | **2nd:** discovery rate and stopping rule from the ledger |
+| L02 §05 | Breadth enters the evidence | process | **done**: TRIAL_LEDGER (94 tested, about 5 passes expected by luck) | keep current |
+| L02 §06 | Discovery rate declines | process | not built | with L02 §01–§04 |
+| L03 §01 | Layers, IR ≈ TC·IC·√BR | all | blueprint; TC unmeasured (no decision layer yet) | after layer 5 |
+| L03 §01 | Meta-labelling | 6 | not started. Prior attempts: Trade Decision Engine (method sound, primary had no edge, binary flags, no overlap weights); Vote Atlas E1 invalid (leaked record) | **3rd:** prereg on a primary with a record, continuous range/IV features, overlap-weighted walk-forward |
+| L03 §02 | Vol clustering, persistence, half-life | 3 | **done**: HAR-800 preferred, weekly reverting (HL 5d/10d), IV-adjusted, Live Range | intervals (L01 §04) |
+| L03 §03 | Jumps, excess kurtosis | 3, 7 | partly: event layer re-check FAILED, coarse tag stays; gap/jump tails for stops not built | with layer 7 stops |
+
+Parallel work: layers 1, 4 and 5 (DATA_SPEC, PATH MAP, remaining travel) are being built in another session; check
+`git log -- plans/` before touching them.
