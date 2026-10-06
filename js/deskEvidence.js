@@ -795,6 +795,13 @@ export const DESK_EVIDENCE = [
     result: 'No: range skill 0.3% [-0.9, 1.4], high side -0.3%, low side 0.0%, all FAIL (Amendment 2 re-run, walk-forward 2021-2026). The forecast fix absorbed what 3a found. Only leftover: implied vol (top decile 33% passed vs 23% base), which the IV arm of the fix covers.',
     use: 'Do not build a separate morning trust score: fix the forecast instead (done for persistence/weekday; IV arm next). The meta-label belongs at the line touch (3b).',
   },
+  {
+    id: 'forecast-pick', domain: 'volatility', verdict: 'validated', date: '2026-10-06', doc: 'forge/FORECAST_PICK_PREREG.md',
+    instruments: ['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'CADCHF', 'CADJPY', 'CHFJPY', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD', 'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'NZDCAD', 'NZDJPY', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
+    claim: 'Head-to-head of every daily forecast on one yardstick (walk-forward 2020-2026, widths refit for all): which one set of lines to keep',
+    result: 'All 34: persistence 0.980 [0.974, 0.985] of plain, HAR-800 0.984, both fix the calm/busy flaw (plain 6.8pp miss). IV-13: persistence + IV 0.968 [0.961, 0.975], IV-adjusted 0.976, persistence 0.980, HAR-800 0.984. Pick by the fixed rule: persistence + IV where implied vol exists, persistence elsewhere.',
+    use: 'The one set of daily lines for the Daily Plan. Other line exports go to an archive menu. Forward scorecard = its second, independent test.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what

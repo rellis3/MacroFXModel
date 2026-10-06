@@ -1,0 +1,291 @@
+{
+ "all34": {
+  "rows": 52486,
+  "dates": 1558,
+  "arms": {
+   "P": {
+    "pinball_mean": 2.49954,
+    "ratio_vs_P": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "regime_hl_p75": {
+     "quiet": 0.2977,
+     "normal": 0.2258,
+     "busy": 0.1817
+    },
+    "regime_miss": 0.0683,
+    "by_class": {
+     "fx_crosses": 1.0,
+     "fx_majors": 1.0,
+     "gold": 1.0,
+     "indices": 1.0
+    },
+    "exceed_pooled": {
+     "oh_p50": 0.4925,
+     "oh_p75": 0.2434,
+     "oh_p90": 0.0948,
+     "ol_p50": 0.4937,
+     "ol_p75": 0.2427,
+     "ol_p90": 0.0948,
+     "hl_p50": 0.4826,
+     "hl_p75": 0.2354,
+     "hl_p90": 0.0924,
+     "oc_p50": 0.4942,
+     "oc_p75": 0.2448,
+     "oc_p90": 0.0957
+    }
+   },
+   "H": {
+    "pinball_mean": 2.4586,
+    "ratio_vs_P": [
+     0.9836,
+     0.9772,
+     0.9897
+    ],
+    "regime_hl_p75": {
+     "quiet": 0.2689,
+     "normal": 0.2562,
+     "busy": 0.2754
+    },
+    "regime_miss": 0.0254,
+    "by_class": {
+     "fx_crosses": 0.9826,
+     "fx_majors": 0.9977,
+     "gold": 0.9922,
+     "indices": 0.9692
+    },
+    "exceed_pooled": {
+     "oh_p50": 0.5093,
+     "oh_p75": 0.258,
+     "oh_p90": 0.1051,
+     "ol_p50": 0.5077,
+     "ol_p75": 0.2595,
+     "ol_p90": 0.1043,
+     "hl_p50": 0.522,
+     "hl_p75": 0.2647,
+     "hl_p90": 0.1072,
+     "oc_p50": 0.5109,
+     "oc_p75": 0.2603,
+     "oc_p90": 0.106
+    },
+    "eligible": true
+   },
+   "S": {
+    "pinball_mean": 2.44923,
+    "ratio_vs_P": [
+     0.9799,
+     0.9738,
+     0.9848
+    ],
+    "regime_hl_p75": {
+     "quiet": 0.2387,
+     "normal": 0.2257,
+     "busy": 0.2378
+    },
+    "regime_miss": 0.0243,
+    "by_class": {
+     "fx_crosses": 0.9793,
+     "fx_majors": 0.988,
+     "gold": 0.9864,
+     "indices": 0.9711
+    },
+    "exceed_pooled": {
+     "oh_p50": 0.4928,
+     "oh_p75": 0.2411,
+     "oh_p90": 0.0936,
+     "ol_p50": 0.4913,
+     "ol_p75": 0.2428,
+     "ol_p90": 0.0954,
+     "hl_p50": 0.4794,
+     "hl_p75": 0.2326,
+     "hl_p90": 0.0939,
+     "oc_p50": 0.4946,
+     "oc_p75": 0.2435,
+     "oc_p90": 0.0949
+    },
+    "eligible": true
+   }
+  },
+  "best": "S",
+  "pick": "S"
+ },
+ "iv13": {
+  "rows": 19831,
+  "dates": 1557,
+  "arms": {
+   "P": {
+    "pinball_mean": 2.50741,
+    "ratio_vs_P": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "regime_hl_p75": {
+     "quiet": 0.3049,
+     "normal": 0.2287,
+     "busy": 0.1863
+    },
+    "regime_miss": 0.0637,
+    "by_class": {
+     "fx_majors": 1.0,
+     "gold": 1.0,
+     "indices": 1.0
+    },
+    "exceed_pooled": {
+     "oh_p50": 0.4926,
+     "oh_p75": 0.2476,
+     "oh_p90": 0.0983,
+     "ol_p50": 0.5029,
+     "ol_p75": 0.2482,
+     "ol_p90": 0.0934,
+     "hl_p50": 0.4943,
+     "hl_p75": 0.2404,
+     "hl_p90": 0.0918,
+     "oc_p50": 0.5028,
+     "oc_p75": 0.2518,
+     "oc_p90": 0.0963
+    }
+   },
+   "I": {
+    "pinball_mean": 2.4473,
+    "ratio_vs_P": [
+     0.976,
+     0.9718,
+     0.98
+    ],
+    "regime_hl_p75": {
+     "quiet": 0.2397,
+     "normal": 0.2176,
+     "busy": 0.2272
+    },
+    "regime_miss": 0.0324,
+    "by_class": {
+     "fx_majors": 0.9792,
+     "gold": 0.9697,
+     "indices": 0.9739
+    },
+    "exceed_pooled": {
+     "oh_p50": 0.4909,
+     "oh_p75": 0.2414,
+     "oh_p90": 0.0932,
+     "ol_p50": 0.4992,
+     "ol_p75": 0.2443,
+     "ol_p90": 0.089,
+     "hl_p50": 0.4826,
+     "hl_p75": 0.2273,
+     "hl_p90": 0.0851,
+     "oc_p50": 0.5014,
+     "oc_p75": 0.245,
+     "oc_p90": 0.0905
+    },
+    "eligible": true
+   },
+   "H": {
+    "pinball_mean": 2.46666,
+    "ratio_vs_P": [
+     0.9837,
+     0.9759,
+     0.9913
+    ],
+    "regime_hl_p75": {
+     "quiet": 0.2785,
+     "normal": 0.2491,
+     "busy": 0.2688
+    },
+    "regime_miss": 0.0285,
+    "by_class": {
+     "fx_majors": 0.9966,
+     "gold": 0.9922,
+     "indices": 0.9692
+    },
+    "exceed_pooled": {
+     "oh_p50": 0.5062,
+     "oh_p75": 0.2596,
+     "oh_p90": 0.1078,
+     "ol_p50": 0.5126,
+     "ol_p75": 0.2603,
+     "ol_p90": 0.0992,
+     "hl_p50": 0.5229,
+     "hl_p75": 0.264,
+     "hl_p90": 0.1024,
+     "oc_p50": 0.5139,
+     "oc_p75": 0.2623,
+     "oc_p90": 0.1043
+    },
+    "eligible": true
+   },
+   "S": {
+    "pinball_mean": 2.45733,
+    "ratio_vs_P": [
+     0.98,
+     0.9736,
+     0.9858
+    ],
+    "regime_hl_p75": {
+     "quiet": 0.2449,
+     "normal": 0.2207,
+     "busy": 0.2286
+    },
+    "regime_miss": 0.0293,
+    "by_class": {
+     "fx_majors": 0.9878,
+     "gold": 0.9864,
+     "indices": 0.9711
+    },
+    "exceed_pooled": {
+     "oh_p50": 0.4928,
+     "oh_p75": 0.2436,
+     "oh_p90": 0.0948,
+     "ol_p50": 0.4973,
+     "ol_p75": 0.2458,
+     "ol_p90": 0.0923,
+     "hl_p50": 0.4845,
+     "hl_p75": 0.2305,
+     "hl_p90": 0.0916,
+     "oc_p50": 0.5,
+     "oc_p75": 0.2453,
+     "oc_p90": 0.093
+    },
+    "eligible": true
+   },
+   "SI": {
+    "pinball_mean": 2.42761,
+    "ratio_vs_P": [
+     0.9682,
+     0.9605,
+     0.9751
+    ],
+    "regime_hl_p75": {
+     "quiet": 0.238,
+     "normal": 0.2164,
+     "busy": 0.2267
+    },
+    "regime_miss": 0.0336,
+    "by_class": {
+     "fx_majors": 0.9752,
+     "gold": 0.9708,
+     "indices": 0.9606
+    },
+    "exceed_pooled": {
+     "oh_p50": 0.4905,
+     "oh_p75": 0.2403,
+     "oh_p90": 0.0926,
+     "ol_p50": 0.4985,
+     "ol_p75": 0.244,
+     "ol_p90": 0.0896,
+     "hl_p50": 0.4801,
+     "hl_p75": 0.2261,
+     "hl_p90": 0.0877,
+     "oc_p50": 0.4994,
+     "oc_p75": 0.2422,
+     "oc_p90": 0.0887
+    },
+    "eligible": true
+   }
+  },
+  "best": "SI",
+  "pick": "SI"
+ }
+}

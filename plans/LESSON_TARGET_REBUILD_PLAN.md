@@ -21,7 +21,8 @@ its own pre-registration before its results are computed.*
    (forge/META_LABEL_PREREG.md Amendment 3).
 
 **Path (each step ends in a decision, not another variant):**
-- A. **Finish the forecast** (L03 §02): one pre-registered head-to-head on the Step 0 table — persistence + IV vs
+- A. ✅ **PICKED 2026-10-06** (forge/FORECAST_PICK_PREREG.md): persistence + IV where implied vol exists (0.968), persistence elsewhere (0.980). Remaining: live-type IV check (the one allowed variant: research used CME CVOL, live uses the QuikStrike ATM-30 / GVZ), then ship as the one forecast and archive the rest.
+  Original step: **Finish the forecast** (L03 §02): one pre-registered head-to-head on the Step 0 table — persistence + IV vs
   IV-adjusted vs HAR-800 vs plain — pick ONE; the scorecard confirms it forward (L02: the second, independent test).
   Other line exports move to an archive menu. No line work after this.
 - B. **The "how much" layer** (L03's main use, L01 §06 Kelly, L03 §03 jumps): per instrument, stop outside the
