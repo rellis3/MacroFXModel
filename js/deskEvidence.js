@@ -808,6 +808,12 @@ export const DESK_EVIDENCE = [
     result: 'All 34: persistence 0.980 [0.974, 0.985] of plain, HAR-800 0.984, both fix the calm/busy flaw (plain 6.8pp miss). IV-13: persistence + IV 0.968 [0.961, 0.975], IV-adjusted 0.976, persistence 0.980, HAR-800 0.984. Pick by the fixed rule: persistence + IV where implied vol exists, persistence elsewhere.',
     use: 'The one set of daily lines for the Daily Plan. Other line exports go to an archive menu. Forward scorecard = its second, independent test.',
   },
+  {
+    id: 'meta-label-yield-spread', domain: 'volatility', verdict: 'null', date: '2026-10-06', doc: 'forge/META_LABEL_YS_PREREG.md',
+    claim: 'The volatility system state at entry (regime, recent range vs forecast, today range, recent jumps, plus the primary z) tells when the yield-spread book is right, so meta-sizing beats flat (Lesson 03 meta-labelling)',
+    result: 'FAIL, wrong way round. 221 walk-forward test trades 2019-2026: per-trade Sharpe 0.100 meta vs 0.165 flat, difference -0.065 [-0.117, +0.006]. Top predicted tercile won 52.8% (mean +0.02%) vs bottom 62.2% (+0.38%). The model learned high-vol entries win; the test years said the opposite. 2020 flat -31.7%, meta -49.3%.',
+    use: 'Keep the yield-spread book flat or vol-targeted; the volatility state does not say when it is right. Small sample (power for large effects only): not shown, not proven absent.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
