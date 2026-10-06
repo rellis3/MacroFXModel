@@ -53,4 +53,20 @@ Train = sessions < 2025-09-05 (same split as layer 3). Test = 2025-09-05 → 202
 
 | # | Variant | Added | Status |
 |---|---|---|---|
-| 1 | R0, R1, R2 as above | 2026-10-06 | registered |
+| 1 | R0, R1, R2 as above | 2026-10-06 | run: **all FAIL** (90-cell miss 6.7 / 5.7 / 5.8pp; worst cell 16–18pp) — regimes calibrated, time-of-day shape wrong |
+| 2 | R3 per-hour multipliers; R4 = R3 + today-so-far (Amendment 1) | 2026-10-06 | registered |
+
+## Amendment 1 (2026-10-06, after variant 1, before variant 2)
+
+Variant 1 result (`analysis/output/remaining_travel_fit.log`): every candidate is calibrated across regimes (quiet /
+normal / busy p75 exceedance 23–25%, p90 9–10%) but not across the day: one multiplier per class scaled by √(clock or
+variance left) runs too wide late (17–21: p75 exceeded 8–16%, p90 2–6%) and slightly tight early (p50 0.55–0.57).
+The √-time shape of a random walk's maximum does not match how remaining travel shrinks through the session.
+
+Variant 2 lets the data set the time shape:
+- **R3**: multiplier per class × side × rung × **checkpoint hour** (11 hours), scale = σ (no time formula).
+- **R4**: R3 × the today-so-far factor of R2 (σ̂_sofar ^ (elapsed × k), k per class refit on train).
+Same split, same scoring and pass rule.
+
+Descriptive finding from variant 1 (no rule): remaining travel is LARGEST when the most range is already used
+(> 1.4σ so far) at every checkpoint — no "budget spent" effect; busy days stay busy (intraday volatility clustering).
