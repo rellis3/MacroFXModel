@@ -111,5 +111,6 @@ Lessons 11–16 are the validation module. When each lesson lands, its check rep
 | L03 §02 | Vol clustering, persistence, half-life | 3 | HAR-800 preferred, weekly reverting, IV-adjusted, Live Range. Step 1 shows the daily export over-reacts to regime (busy too wide, quiet too tight) | daily persistence fix, scored on the Step 1 yardstick |
 | L03 §03 | Jumps, excess kurtosis | 3, 7 | **done** (forge/JUMPS_PREREG.md): 6.6% of variance, 78% unscheduled, p90 event term FAIL; stop gap-risk table | use in layer 7 stops |
 
+Side study handed off 2026-10-06: Live Range moving lines across history + jump-through risk (plans/LIVE_RANGE_HISTORY_BRIEF.md).
 Parallel work: layers 1, 4 and 5 (DATA_SPEC, PATH MAP, remaining travel) are being built in another session; check
 `git log -- plans/` before touching them.
