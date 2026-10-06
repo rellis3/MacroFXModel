@@ -63,3 +63,12 @@ The primary model here is **our forecast** (the Vol Forecast v3 export calculati
 | # | Variant | Why | Run? |
 |---|---|---|---|
 | 0 | as above | registered | — |
+
+## Amendment 1 (2026-10-06, before any Step 3 result)
+
+1. **Yesterday's jump flag** = the BNS day-level test (forge/JUMPS_PREREG.md Amendment 2), not k = 5: Step 2 showed the
+   k = 5 rule flags ~96 days a year, mostly ordinary busy minutes. Yesterday's z_BNS is also given as a number.
+2. **Implied vol sources**, as in forge/run_combined_range.py `CLASSES`: CME CVOL for EURUSD, GBPUSD, USDJPY, AUDUSD,
+   USDCAD, USDCHF, GOLD (XAUUSD); VXN for NQ; VIX for SPX500, DOW, US2000, DE30, UK100. Crosses and NZDUSD: missing.
+   Value = last close strictly before the session date (`asof_before`).
+3. **Complete sessions**: last bar ≥ 20:00 London (forge/FORECAST_RECORD_PREREG.md Amendment 2).
