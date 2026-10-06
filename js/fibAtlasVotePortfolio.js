@@ -38,7 +38,7 @@
 // helper that silently mismapped Fib Atlas's vocabulary" is the precise bug
 // this session already found and fixed once (fibAtlasZonePricer.js).
 import {
-  applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights,
+  applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, causalInverseVolWeights,
   riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopFraction,
   applyCostEfficiencyFilter, applyGapFilter, applyStoredContinuationExit, tradeFactors,
 } from './levelAtlasVoteReview.js';
@@ -502,7 +502,7 @@ export async function buildFibAtlasVotePortfolio({
 
   const buildWeights = perPairTrades => sizing === 'fixed-risk'
     ? Object.fromEntries(Object.keys(perPairTrades).map(p => [p, 1]))
-    : (weighting === 'inverse-vol' ? inverseVolWeights(perPairTrades) : null);
+    : (weighting === 'inverse-vol' ? causalInverseVolWeights(perPairTrades) : null);   // causal: no future P&L
 
   const weights = buildWeights(perPairTradesFinal);
   const combined = buildPortfolioDailySeries(perPairTradesFinal, weights ? { weights } : {});

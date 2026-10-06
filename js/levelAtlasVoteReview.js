@@ -1072,9 +1072,10 @@ export function buildPortfolioDailySeries(perPairTrades, { weights = null } = {}
   for (const pair of pairs) {
     const trades = perPairTrades[pair] ?? [];
     const weight = w[pair] ?? 0;
+    const perDate = w.__byDate?.[pair];          // time-varying weights (causalInverseVolWeights), else the static one
     byPair[pair] = { trades: trades.length, weight };
     for (const [date, pnl] of dailySeriesFor(trades)) {
-      byDate.set(date, (byDate.get(date) ?? 0) + pnl * weight);
+      byDate.set(date, (byDate.get(date) ?? 0) + pnl * (perDate?.get(date) ?? weight));
     }
   }
   const dates = [...byDate.keys()].sort();
@@ -1092,6 +1093,8 @@ export function buildPortfolioDailySeries(perPairTrades, { weights = null } = {}
  * rather than an infinite inverse — excluded, not a divide-by-zero.
  *
  *   inverseVolWeights({ EURUSD: trades, ... }) -> { EURUSD: fraction, ... } (sums to 1) | null
+ *
+ * FULL-SAMPLE (uses future P&L): in-sample description only. Portfolio backtests use causalInverseVolWeights.
  */
 export function inverseVolWeights(perPairTrades) {
   const pairs = Object.keys(perPairTrades ?? {});
@@ -1106,6 +1109,49 @@ export function inverseVolWeights(perPairTrades) {
   const invVols = Object.fromEntries(pairs.map(p => [p, vols[p] > 1e-9 ? 1 / vols[p] : 0]));
   const total = Object.values(invVols).reduce((a, b) => a + b, 0);
   return total > 0 ? Object.fromEntries(pairs.map(p => [p, +(invVols[p] / total).toFixed(4)])) : null;
+}
+
+/**
+ * CAUSAL inverse-vol weights (2026-10-06). `inverseVolWeights` above measures each pair's vol on its WHOLE trade
+ * history, so every day's weight uses P&L from the future — a look-ahead on the portfolio pages' "inverse-vol" option
+ * (plans/LESSON_COMPLIANCE_REVIEW.md, Lesson 1 check 01). This version sets each date's weights from each pair's daily
+ * P&L strictly BEFORE that date (last `lookback` trading days, at least `minObs`). Pairs without enough history yet
+ * take an equal 1/n share; the rest split the remainder in proportion to 1/vol. Returns the mean weight per pair (for
+ * display) plus a non-enumerable `__byDate` that `buildPortfolioDailySeries` applies date by date.
+ *
+ *   causalInverseVolWeights({ EURUSD: trades, ... }, { lookback: 60, minObs: 20 }) -> { EURUSD: meanFraction, ... }
+ */
+export function causalInverseVolWeights(perPairTrades, { lookback = 60, minObs = 20 } = {}) {
+  const pairs = Object.keys(perPairTrades ?? {});
+  if (!pairs.length) return null;
+  const n = pairs.length;
+  const series = Object.fromEntries(pairs.map(p => [p, dailySeriesFor(perPairTrades[p])]));
+  const dates = [...new Set(pairs.flatMap(p => series[p].map(([d]) => d)))].sort();
+  const byDate = Object.fromEntries(pairs.map(p => [p, new Map()]));
+  const ptr = Object.fromEntries(pairs.map(p => [p, 0]));
+  const sumW = Object.fromEntries(pairs.map(p => [p, 0]));
+  for (const d of dates) {
+    const iv = {};
+    for (const p of pairs) {
+      const s = series[p];
+      while (ptr[p] < s.length && s[ptr[p]][0] < d) ptr[p]++;          // s[0..ptr) are strictly before d
+      const past = s.slice(Math.max(0, ptr[p] - lookback), ptr[p]).map(([, v]) => v);
+      if (past.length >= minObs) {
+        const m = past.reduce((a, b) => a + b, 0) / past.length;
+        const sd = Math.sqrt(past.reduce((a, b) => a + (b - m) ** 2, 0) / past.length);
+        if (sd > 1e-9) iv[p] = 1 / sd;
+      }
+    }
+    const elig = Object.keys(iv), share = (n - (pairs.length - elig.length)) / n;
+    const tot = elig.reduce((a, p) => a + iv[p], 0);
+    for (const p of pairs) {
+      const w = iv[p] != null ? share * iv[p] / tot : 1 / n;
+      byDate[p].set(d, w); sumW[p] += w;
+    }
+  }
+  const out = Object.fromEntries(pairs.map(p => [p, +(sumW[p] / dates.length).toFixed(4)]));
+  Object.defineProperty(out, '__byDate', { value: byDate, enumerable: false });
+  return out;
 }
 
 /**

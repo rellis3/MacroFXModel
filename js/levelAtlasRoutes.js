@@ -27,7 +27,7 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext, splitAt } from './levelAtlasReport.js';
-import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyGradedDrawdownThrottle, DEFAULT_GRADED_THROTTLE_TIERS, applyFadeStopTightening, applyCurrencyLossGate, computeIntradayMAE, priceAtTighterStop, applyMaeStopGate, voteDecision, VOTE_TRADES_SCHEMA } from './levelAtlasVoteReview.js';
+import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, causalInverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyGradedDrawdownThrottle, DEFAULT_GRADED_THROTTLE_TIERS, applyFadeStopTightening, applyCurrencyLossGate, computeIntradayMAE, priceAtTighterStop, applyMaeStopGate, voteDecision, VOTE_TRADES_SCHEMA } from './levelAtlasVoteReview.js';
 import { summarizeTrades, maxDrawdownFromPnls, sharpeStdError, minTrackRecordLength } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
 import { costForPair } from './perLineStrategy.js';
@@ -1132,7 +1132,7 @@ export function mountLevelAtlasRoutes(app, express) {
 
       const buildWeights = perPairTrades => sizing === 'fixed-risk'
         ? Object.fromEntries(Object.keys(perPairTrades).map(p => [p, 1]))
-        : (weighting === 'inverse-vol' ? inverseVolWeights(perPairTrades) : null);
+        : (weighting === 'inverse-vol' ? causalInverseVolWeights(perPairTrades) : null);   // causal: no future P&L
 
       // `portfolioStats`' own `maxDD` is the COMPOUNDED (reinvested) drawdown —
       // correct for an account that scales position size up with a growing
