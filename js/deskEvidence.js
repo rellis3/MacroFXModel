@@ -752,6 +752,12 @@ export const DESK_EVIDENCE = [
     result: 'FAIL. Event-day HL p90 pinball got worse by 0.8% [0.2, 1.4]; all days +0.5% [0.2, 0.9]. Event-day p90 was already 10.0% under the equal-scaling event multiplier.',
     use: 'Keep the equal-scaling event multiplier; scheduled tails are already priced.',
   },
+  {
+    id: 'meta-label-trust-lines', domain: 'volatility', verdict: 'null', date: '2026-10-06', doc: 'forge/META_LABEL_PREREG.md',
+    claim: 'A meta-label using only what is known at the London open predicts when the forecast p75 lines will be passed (range, high side, low side), well calibrated, walk-forward 2021-2026',
+    result: 'Registered rule (skill above 0 AND every decile within 3pp) met only for the low side (logistic, skill 1.6% [1.0, 2.3]). Range: real skill 4.8% [3.2, 6.6] and strong ranking (bottom decile 12% passed vs top 46%, base 24%) but over-confident at the low end (predicted 7%, happened 12%), so FAIL. Drivers: weekday (Monday HL p75 passed 20.6%, Thursday 27.7%), release day, implied vol above sigma, recent misses (persistence).',
+    use: 'Mornings carry real information about whether the lines will hold, but as a separate trust score it is not yet calibrated. The same drivers (weekday, implied vol, persistence) are better fixed inside the forecast itself.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what

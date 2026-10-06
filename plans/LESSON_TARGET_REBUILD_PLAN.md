@@ -80,6 +80,6 @@ feature. Lesson 02's research-pace tracker runs alongside (it reads the ledger, 
 | 0 forecast history | **done** (e2742574): 91,517 sessions, 52,776 out-of-sample from 2020-08-21; reproduction, fold boundaries, sanity, causality 15/15 pass (`analysis/output/forecast_history/CHECKS.md`). M1 ends 2026-08-21 (top-up needs OANDA_KEY). HAR-800 / IV-adjusted side columns not yet added |
 | 1 forecast record | **done**: calibrated on all 12 rungs pooled; skill over climatology 4.9% [3.7, 6.2]; in-sample flattery 0.5%. Flaw = regime: busy days too wide (HL p75 19.9%), quiet too narrow (30.6%) → Lesson 03 §02 persistence fix is the next forecast change (`analysis/output/forecast_record/RESULTS.md`) |
 | 2 jumps | **done**: jumps 6.6% of variance, only 22% scheduled; FX/gold p90 breaks on jump days (14% vs 7%); p90 event term FAIL; stop gap-risk table for layer 7 (`analysis/output/jumps/RESULTS.md`). Caveat: k=5 jump-day detector has no intraday-seasonality adjustment, so it flags ~96 days/yr |
-| 3a meta-label: trust the lines | pre-registered `forge/META_LABEL_PREREG.md` |
+| 3a meta-label: trust the lines | **done, FAIL as registered** (`analysis/output/meta_label/RESULTS_3a.md`): range skill 4.8% [3.2, 6.6], strong ranking (12% → 46%), but over-confident at the low end; low side PASS (1.6%). Drivers: weekday, release day, IV ÷ σ, recent misses → fix inside the forecast |
 | 3b meta-label: act at a line | pre-registered `forge/META_LABEL_PREREG.md` |
 | 4 bring together | not started |
