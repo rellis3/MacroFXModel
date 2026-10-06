@@ -79,4 +79,20 @@ for the owner to compare, and Step 3b is built on whichever lines the owner pref
 
 | # | Variant | Why | Run? |
 |---|---|---|---|
-| 0 | arms A0, A1, B, C as above | registered | — |
+| 0 | arms A0, A1, B, C as above | registered | PASS (B and C), 2026-10-06 |
+| 1 | **live-computable inputs** (below) | the live server has only New York-close daily bars and today's event tag | yes, before its results; must pass the same three rules before it is shipped |
+
+## Variant 1 — live-computable inputs (logged 2026-10-06, after variant 0's PASS, before variant 1 is run)
+
+The live export cannot rebuild London-session ranges or past days' event multipliers. Variant 1 uses only what the
+live server holds (OANDA New York-close daily bars, the live estimator, today's event tag):
+
+- **σ base** = the export with **today's live settings** (`live_sig_used`), as the live page would draw it.
+  Widths are still refit walk-forward per fold; control A1 = the same σ with refit widths.
+- **`regime`** = log(σ_daily ÷ median σ_daily over the previous 250 sessions), σ_daily before the event multiplier.
+- **`res1`** = log(yesterday's New York-close bar high−low ÷ open ÷ the σ_daily that applied to it); **`res5`** = mean
+  of the last 5.
+- weekday as before. IV arm (C) deferred to a second live step.
+
+Same pass rules. Script: `scripts/forecast_history/forecast_fix.py --live`. If it passes, the shipped params are a
+fit on all sessions (the ladder's convention), labelled as such.
