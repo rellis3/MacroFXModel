@@ -1,0 +1,58 @@
+{
+ "frozen": "2026-10-06",
+ "commit": "664b2d5279945d789625d832870181eb6a11e84b",
+ "files": {
+  "layer3_live_ladder_params": {
+   "path": "js/forecastLadderParams.js",
+   "sha256": "20bf0e70f87176688bb1e8d1d12936f1ce74a15345f12041e3ebecdcb166e01f"
+  },
+  "layer3_har800_params": {
+   "path": "js/forecastLadderParamsHar800.js",
+   "sha256": "a0bed156800ea7b390d56e9b6c1c8d66ad9535c2a7c22e22e0888bc3bce7b0c2"
+  },
+  "layer3_har800_sigma": {
+   "path": "scripts/rangebook/har800_sigma.mjs",
+   "sha256": "22c9e94e0803036f2e4c14b508389c8995a8c209330b98c1fed4ad3ed355bad5"
+  },
+  "layer3_sigma_estimators": {
+   "path": "js/forecastSigma.js",
+   "sha256": "ddcd8d441e550ad15b1aa92d40854f37484d2ee4273544210af91f25525aa7aa"
+  },
+  "layer3_ladder_builder": {
+   "path": "js/forecastLadder.js",
+   "sha256": "501053888cd25e748998ddcc949c1bd278f58290880b761daca7ca7a2c9f6189"
+  },
+  "layer3_harness": {
+   "path": "forge/run_ladder_candidates.py",
+   "sha256": "280a93ae0a0b12d3a0e0e0aaedfb7aea2b46f543a4a11ebfa51f1dd4452e0ad4"
+  },
+  "layer3_har800_export": {
+   "path": "forge/export_har800_params.py",
+   "sha256": "da75bd84bc57d7371a778fd606d669f210bd43db7a9cfe3ca63b618547d81aee"
+  },
+  "layer5_r3_params": {
+   "path": "js/remainingTravelParamsR3.js",
+   "sha256": "ef0c74b91b72b53ee8ad095b55fa59e4c156cb80fec3f2abd72140e6e9c7055b"
+  },
+  "layer5_builder": {
+   "path": "scripts/pathmap/remaining_travel_build.mjs",
+   "sha256": "c7cb7e7bf1461657dcb689eeaa3ab778d67bde6d748d63ac8d0c169080caeb9b"
+  },
+  "layer5_fit": {
+   "path": "analysis/pathmap/remaining_travel_fit.py",
+   "sha256": "f38929c69991615c40a65d65b9958360ed8280fbde78b17b3c9757d01687136c"
+  },
+  "layer6_fit": {
+   "path": "analysis/pathmap/confidence_fit.py",
+   "sha256": "c710e24de469a8bbe1b11fabd080ecabb804a9354b0a16f61e9226c57372f3b0"
+  },
+  "layer7_stop_builder": {
+   "path": "scripts/pathmap/stop_risk_build.mjs",
+   "sha256": "10f3c055d4aba0a50818321b319a8462b213adcf3dcab98f101d00edcb34f134"
+  },
+  "shadow_core": {
+   "path": "js/harShadowCore.js",
+   "sha256": "8e61fef501d3cb136b69c43ed583f0625a0873e662e0fe36471cb5430c9bf5a4"
+  }
+ }
+}
