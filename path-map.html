@@ -33,17 +33,18 @@
   <div>
     <h1>Path Map — how price behaves around the forecast lines</h1>
     <p class="sub">Layer 4 of the Forecaster system. A <b>map, not a trade</b>. For every first touch of a HAR ladder line (OH/OL p50, p75, p90), what came first afterwards:
-      the <b>next line out</b> (continuation) or the <b>level back in</b> (fade: p50→open, p75→p50, p90→p75)? Each share is compared with a random walk started at the line,
-      which reaches the next line first with probability b ÷ (a + b) from its own distances. Above that is continuation, below is fading.
-      A cell is called a <b>dynamic</b> only if it beats both the random walk and its rung's average by more than 2 standard errors, the same way, in both halves of the sample.</p>
+      the <b>next line out</b> (continuation) or the <b>level back in</b> (fade: p50→open, p75→p50, p90→p75)? Each share is compared with <b>placebo lines</b>:
+      fake ladders drawn on the same days at 0.7–0.9× or 1.1–1.3× the real widths and raced by exactly the same code. Whatever the fake lines show is what
+      "no special line" looks like, with session end, bar size and volatility clustering all included. Above the placebo is continuation, below is fading.
+      A cell is called a <b>dynamic</b> only if real and placebo differ by more than 2 standard errors, the same way, in both halves of the sample.</p>
   </div>
 
   <section class="card"><h2>Summary</h2><div class="kpis" id="kpis"></div><p class="note" id="meta"></p></section>
 
   <section class="card">
-    <h2>Continuation vs random walk, by condition</h2>
+    <h2>Real lines vs placebo lines, by condition</h2>
     <div class="tbl"><table id="oneway"></table></div>
-    <div class="legend"><span><i style="background:var(--cont)"></i>continues more than a random walk</span><span><i style="background:var(--fade)"></i>fades more than a random walk</span><span><i style="outline:2px solid var(--amber)"></i>passes the dynamic rule</span><span>Cell = continuation share − random-walk share, in percentage points. Hover for detail.</span></div>
+    <div class="legend"><span><i style="background:var(--cont)"></i>continues more than at fake lines</span><span><i style="background:var(--fade)"></i>fades more than at fake lines</span><span><i style="outline:2px solid var(--amber)"></i>passes the dynamic rule</span><span>Cell = continuation share at the real lines − at the placebo lines, in percentage points. Hover for detail.</span></div>
   </section>
 
   <section class="card">
@@ -68,22 +69,22 @@ function shade(d) {
   const a = Math.min(1, Math.abs(d) / 0.08);
   return d >= 0 ? `rgba(229,122,58,${0.12 + 0.6 * a})` : `rgba(74,142,232,${0.12 + 0.6 * a})`;
 }
-const tip = x => `n ${x.n} touches, ${x.dates} sessions · continuation ${pc(x.cont)} vs random walk ${pc(x.null)} (±${(x.se * 100).toFixed(1)}pp) · ` +
-  Object.entries(x.halves ?? {}).map(([h, v]) => `${h} ${pc(v.cont)} vs ${pc(v.null)}`).join(' · ') + ` · next ${pc(x.next)} back ${pc(x.back)} held ${pc(x.held)}`;
-const cellHtml = x => x ? `<td class="c ${x.dynamic ? 'dyn' : ''}" style="background:${shade(x.cont - x.null)}" title="${tip(x)}">${pp(x.cont - x.null)}</td>` : '<td class="muted">—</td>';
+const tip = x => `n ${x.n} touches, ${x.dates} sessions · continuation ${pc(x.cont)} vs placebo ${pc(x.placebo)} (±${(x.se_diff * 100).toFixed(1)}pp) · random walk ${pc(x.null)} · ` +
+  Object.entries(x.halves ?? {}).map(([h, v]) => `${h} ${pc(v.cont)} vs ${pc(v.placebo)}`).join(' · ') + ` · next ${pc(x.next)} back ${pc(x.back)} held ${pc(x.held)}`;
+const cellHtml = x => x ? `<td class="c ${x.dynamic ? 'dyn' : ''}" style="background:${shade(x.diff)}" title="${tip(x)}">${pp(x.diff)}</td>` : '<td class="muted">—</td>';
 
 fetch('path-map.json').then(r => r.json()).then(d => {
   const dyn = [...d.oneway, ...d.twoway].filter(x => x.dynamic);
   $('kpis').innerHTML = [
-    [`${d.events.toLocaleString()}`, `line touches · ${d.dates.toLocaleString()} sessions · ${d.instruments} instruments`],
+    [`${d.events.toLocaleString()}`, `real line touches (+${d.placebo_events.toLocaleString()} placebo) · ${d.dates.toLocaleString()} sessions · ${d.instruments} instruments`],
     [`${d.cells_examined}`, 'condition cells examined'],
     [`${dyn.length}`, 'pass the dynamic rule'],
   ].map(([b, t]) => `<div class="kpi"><b>${b}</b><span>${t}</span></div>`).join('');
   $('meta').textContent = `Data ${d.span[0]} → ${d.span[1]}, built ${d.generated}. Halves: H1 to 2020, H2 from 2021.`;
 
   const rungs = ['p50', 'p75', 'p90'];
-  $('rungs').innerHTML = '<tr><th>rung</th><th>touches</th><th>continuation</th><th>random walk</th><th>next</th><th>back</th><th>held</th><th>unresolved</th><th>median mins</th></tr>' +
-    rungs.map(r => { const x = d.rungs[r]; return `<tr><td>${r}</td><td>${x.n.toLocaleString()}</td><td>${pc(x.cont)}</td><td>${pc(x.null)}</td><td>${pc(x.next)}</td><td>${pc(x.back)}</td><td>${pc(x.held)}</td><td>${pc(x.unresolved)}</td><td>${x.mins ?? '—'}</td></tr>`; }).join('');
+  $('rungs').innerHTML = '<tr><th>rung</th><th>touches</th><th>continuation</th><th>placebo</th><th>random walk</th><th>next</th><th>back</th><th>held</th><th>unresolved</th><th>median mins</th></tr>' +
+    rungs.map(r => { const x = d.rungs[r]; return `<tr><td>${r}</td><td>${x.n.toLocaleString()}</td><td>${pc(x.cont)}</td><td>${pc(x.placebo)}</td><td>${pc(x.null)}</td><td>${pc(x.next)}</td><td>${pc(x.back)}</td><td>${pc(x.held)}</td><td>${pc(x.unresolved)}</td><td>${x.mins ?? '—'}</td></tr>`; }).join('');
 
   const vars = [...new Set(d.oneway.map(x => x.var))];
   let html = '<tr><th>condition</th><th>bucket</th>' + rungs.map(r => `<th>${r}</th>`).join('') + '</tr>';

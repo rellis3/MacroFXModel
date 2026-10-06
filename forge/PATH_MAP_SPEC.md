@@ -57,7 +57,7 @@ absorbs instead of re-testing: the rung chain (`/api/vol-forecast/ladder/path-st
 | 1 | as above | 2026-10-06 | run: 190 cells, 6 pass, all "range used > 1.2" → continuation (p50 +7.5pp, p75 +6.0pp vs null) — **suspect, see Amendment 1** |
 | 2 | null and race measured from the touch bar's CLOSE (Amendment 1) | 2026-10-06 | run: 190 cells, **0 pass** |
 
-| 3 | placebo baseline + three new conditions (Amendment 2) | 2026-10-06 | registered |
+| 3 | placebo baseline + three new conditions (Amendment 2) | 2026-10-06 | run: 314 cells, **0 pass** |
 
 ## Amendment 2 (2026-10-06, after variant 2, before variant 3 is run)
 
@@ -106,3 +106,24 @@ Read:
 - For layer 5 this says: there is no direction to take at a line from these conditions. What the lines carry is
   **how far price can still travel and how much time it has** — the decision layer should be built on remaining
   travel, not on fade vs continue.
+
+## Results (variant 3, placebo baseline, 2026-10-06)
+
+156,734 real touches + 326,375 placebo touches (same sessions, fake ladders at 0.7–0.9× / 1.1–1.3×), 314 cells.
+**0 dynamics.**
+
+| rung | real continuation | placebo continuation | difference | random walk from close |
+|---|---|---|---|---|
+| p50 | 58.2% | 58.3% | −0.0pp (z −0.1) | 57.3% |
+| p75 | 46.7% | 46.4% | +0.3pp (z +0.5) | 46.7% |
+| p90 | 51.2% | 51.9% | −0.7pp (z −0.8) | 51.1% |
+
+- The real HAR lines behave exactly like fake lines at other distances: price does not treat them as special, in any
+  hour, regime, event bucket, class, range-used, approach-speed, prior-day-level or IV-÷-σ bucket.
+- Variant 2's late-hour excess (+6 to +9pp vs the random walk) is gone against the placebo (+2.7pp, z 0.7): it was
+  the session-end cut-off, which the placebo shares.
+- Largest single cell: p90 on a prior-day high/low +5.6pp (z 2.4, n 1,134), one of 314 — about what chance gives, and
+  it does not hold in both halves.
+- **Layer 4 conclusion (final for this data):** the lines are a calibrated *distance* forecast; price around them is
+  path-neutral. What changes through the day is how much time and travel is left (held-as-extreme 23% → 74%). Layer 5
+  is built on remaining travel.
