@@ -107,9 +107,9 @@ Lessons 11–16 are the validation module. When each lesson lands, its check rep
 | L02 §05 | Breadth enters the evidence | process | **done**: TRIAL_LEDGER (94 tested, about 5 passes expected by luck) | keep current |
 | L02 §06 | Discovery rate declines | process | not built | with L02 §01–§04 |
 | L03 §01 | Layers, IR ≈ TC·IC·√BR | all | blueprint; TC unmeasured (no decision layer yet) | after layer 5 |
-| L03 §01 | Meta-labelling | 6 | not started. Prior attempts: Trade Decision Engine (method sound, primary had no edge, binary flags, no overlap weights); Vote Atlas E1 invalid (leaked record) | **3rd:** prereg on a primary with a record, continuous range/IV features, overlap-weighted walk-forward |
+| L03 §01 | Meta-labelling | 6 | not started. Rebuilt from the lesson's target with **our forecast as the primary**; no Vote Atlas input (owner rule) | plans/LESSON_TARGET_REBUILD_PLAN.md step 3 |
 | L03 §02 | Vol clustering, persistence, half-life | 3 | **done**: HAR-800 preferred, weekly reverting (HL 5d/10d), IV-adjusted, Live Range | intervals (L01 §04) |
-| L03 §03 | Jumps, excess kurtosis | 3, 7 | partly: event layer re-check FAILED, coarse tag stays; gap/jump tails for stops not built | with layer 7 stops |
+| L03 §03 | Jumps, excess kurtosis | 3, 7 | partly: event layer re-check FAILED, coarse tag stays; gap/jump tails for stops not built | plans/LESSON_TARGET_REBUILD_PLAN.md step 2 |
 
 Parallel work: layers 1, 4 and 5 (DATA_SPEC, PATH MAP, remaining travel) are being built in another session; check
 `git log -- plans/` before touching them.
