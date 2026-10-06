@@ -37,6 +37,16 @@ The lessons say the Forecaster Portfolio has **seven layers**: the third is vola
 meta-labelling, the rest are proprietary. The layer list below is **our inference**, not the lesson's, and will be
 revised as lessons are released.
 
+## Lesson intake (every new lesson)
+
+Each lesson adds instructions; each pass makes the process stronger. When a lesson lands:
+1. Transcribe it into `education/forecaster-portfolio-case-study/` (word for word, figures described).
+2. Add a row to the lesson log below: what it adds, and **which layer(s)** it touches.
+3. For each touched layer, write what changes: a new rule for every layer, a new test, a new condition, or a new
+   variant. New tests and variants go into that layer's pre-registration as dated amendments **before** they run.
+4. Re-run the affected layer(s) with the new instruction; record results in the same file; update the status table.
+5. If a lesson changes the layer list itself (e.g. names a layer we had not inferred), revise the table and say so.
+
 ## Layers
 
 | # | Layer | Job | Status |

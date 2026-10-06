@@ -54,6 +54,7 @@ Train = sessions < 2025-09-05 (same split as layer 3). Test = 2025-09-05 → 202
 | # | Variant | Added | Status |
 |---|---|---|---|
 | 1 | R0, R1, R2 as above | 2026-10-06 | run: **all FAIL** (90-cell miss 6.7 / 5.7 / 5.8pp; worst cell 16–18pp) — regimes calibrated, time-of-day shape wrong |
+| 3 | R5 per-hour × vol-so-far tercile multipliers (Amendment 2) | 2026-10-06 | registered |
 | 2 | R3 per-hour multipliers; R4 = R3 + today-so-far (Amendment 1) | 2026-10-06 | run: **R3 near-pass** (miss 1.62pp ✓, worst cell 5.1pp ✗ vs 5.0), R4 miss 1.78 / worst 6.7 ✗ |
 
 ## Amendment 1 (2026-10-06, after variant 1, before variant 2)
@@ -70,6 +71,17 @@ Same split, same scoring and pass rule.
 
 Descriptive finding from variant 1 (no rule): remaining travel is LARGEST when the most range is already used
 (> 1.4σ so far) at every checkpoint — no "budget spent" effect; busy days stay busy (intraday volatility clustering).
+
+## Amendment 2 (2026-10-06, after variant 2 and layer 6, before variant 3)
+
+Layer 6 (forge/CONFIDENCE_PREREG.md) found the only conditions that sharpen layer 5 are time of day and **realised vol
+so far**; R4's power-law form for the latter cost calibration. Variant 3 builds it in directly, binned, with no
+functional form:
+- **R5**: multiplier per class × side × rung × checkpoint hour × **vol-so-far tercile**, where vol-so-far =
+  realised variance so far ÷ the class's expected variance share elapsed at that hour (R1's profile), terciles cut per
+  class × hour on train. Scale = σ.
+Same split, scoring and pass rule; also reported: pinball vs R3, and the Brier skill of R5's implied reach rates vs
+R3's flat ones on layer 6's p50/p75 labels (does R5 absorb layer 6's skill?).
 
 ## Results (variant 2, 2026-10-06) — `analysis/output/remaining_travel_fit.log`
 
