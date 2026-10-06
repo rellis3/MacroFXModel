@@ -14,6 +14,11 @@
  *
  * Evidence: forge/FORECAST_FIX_PREREG.md variant 1 — these exact live-computable inputs, walk-forward 2020-2026:
  * pinball 0.980 [0.974, 0.985] of the refit control, better in every class, calm-vs-busy miss 6.8 -> 2.4 pp.
+ *
+ * THE CHOSEN FORECAST (forge/FORECAST_PICK_PREREG.md, head-to-head of all five daily forecasts): where implied vol
+ * exists (6 USD majors, gold, 6 indices) x also carries iv_sig = log(implied vol % / annualised sigma_daily %), with its
+ * own beta/means/widths (the `iv` block): 0.964 of plain on the live IV sources (QuikStrike ATM-30 / GVZ / VIX / VXN).
+ * No usable IV that morning -> the persistence form (no guess).
  * Params js/forecastLadderPersistParams.js. σ_used (event multiplier included) comes from the production ladder,
  * so the event conditioning is unchanged. Side by side only: nothing live reads this.
  */
@@ -63,23 +68,28 @@ export function persistFeatures(bars, { instrument, assetClass = 'fx', sessionDa
 
 /** One persistence-adjusted ladder (buildLadder's shape). `sigmaUsedPct` = the production ladder's σ_used. */
 export function buildPersistLadder(bars, { instrument, assetClass = 'fx', sessionDate, sigmaUsedPct, eventTag = null,
-                                          params = PERSIST_PARAMS } = {}) {
+                                          ivAnnualPct = null, params = PERSIST_PARAMS } = {}) {
   const p = params.pairs?.[String(instrument).toUpperCase()];
-  const beta = p && params.classes?.[p.class]?.beta;
-  if (!p?.width || !beta || !(sigmaUsedPct > 0)) return null;
+  if (!p?.width || !params.classes?.[p.class]?.beta || !(sigmaUsedPct > 0)) return null;
   const x = persistFeatures(bars, { instrument, assetClass, sessionDate, params });
   if (!x) return null;
-  const z = params.features.reduce((a, k) => a + beta[k] * (x[k] - p.mean[k]), 0);
+  const useIv = Boolean(p.iv?.width && params.classes_iv?.[p.class]?.beta && ivAnnualPct > 0);
+  if (useIv) x.iv_sig = Math.log(ivAnnualPct / (x.sigma_daily_pct * Math.sqrt(252)));
+  const feats = useIv ? params.features_iv : params.features;
+  const beta = useIv ? params.classes_iv[p.class].beta : params.classes[p.class].beta;
+  const mean = useIv ? p.iv.mean : p.mean, width = useIv ? p.iv.width : p.width;
+  const z = feats.reduce((a, k) => a + beta[k] * (x[k] - mean[k]), 0);
   const adj = Math.exp(z);
   const sPct = sigmaUsedPct * adj;
   const out = {
     sigma_daily_pct: x.sigma_daily_pct, sigma_used_pct: _r2(sPct), sigma_export_pct: _r2(sigmaUsedPct),
-    persist_adjust: Math.round(adj * 1000) / 1000,
-    features: Object.fromEntries(params.features.map(k => [k, _r4(x[k])])),
+    persist_adjust: Math.round(adj * 1000) / 1000, form: useIv ? 'persist+iv' : 'persist',
+    ...(useIv ? { iv_annual: _r2(ivAnnualPct), iv_source: p.iv.source } : {}),
+    features: Object.fromEntries(feats.map(k => [k, _r4(x[k])])),
     event_tag: eventTag, horizon: 'daily', params_source: 'fitted-persist', width_source: 'fitted-persist',
   };
   for (const q of ['hl', 'oc', 'oh', 'ol']) {
-    const w = p.width[q];
+    const w = width[q];
     if (!Array.isArray(w)) continue;
     out[q] = {};
     RUNGS.forEach((r, i) => { if (Number.isFinite(w[i])) out[q][r] = _r2(w[i] * sPct); });
@@ -88,7 +98,7 @@ export function buildPersistLadder(bars, { instrument, assetClass = 'fx', sessio
 }
 
 /** Every instrument in the production forecast: persistence-adjusted where params + bars allow, else unchanged. */
-export function buildPersistInstruments(latest, ohlcCache, registry, params = PERSIST_PARAMS) {
+export function buildPersistInstruments(latest, ohlcCache, registry, params = PERSIST_PARAMS, ivByName = {}) {
   const src = latest?.instruments ?? {};
   const byName = Object.fromEntries((registry ?? []).map(c => [c.name, c]));
   const sessionDate = latest?.session_date ?? null;
@@ -100,24 +110,27 @@ export function buildPersistInstruments(latest, ohlcCache, registry, params = PE
     if (!(L?.sigma_used_pct > 0)) { skipped.push({ name, reason: 'no production σ' }); continue; }
     const bars = barsBefore(ohlcCache?.[name], sessionDate);
     const lad = buildPersistLadder(bars, { instrument: name, assetClass: byName[name]?.assetClass ?? 'fx', sessionDate,
-                                           sigmaUsedPct: L.sigma_used_pct, eventTag: L.event_tag ?? null, params });
+                                           sigmaUsedPct: L.sigma_used_pct, eventTag: L.event_tag ?? null,
+                                           ivAnnualPct: ivByName?.[name] ?? null, params });
     if (!lad) {
       const n = Array.isArray(bars) ? bars.length : 0, last = Array.isArray(bars) ? (bars.at(-1)?.date ?? '?') : '-';
       skipped.push({ name, reason: n < 300 ? `only ${n} daily bars (needs 300, last ${last})` : `σ history incomplete (${n} bars, last ${last})` });
       continue;
     }
     instruments[name] = { ...fc, ladder: lad };
-    adjusted.push({ name, adj: lad.persist_adjust });
+    adjusted.push({ name, adj: lad.persist_adjust, form: lad.form });
   }
   return { instruments, adjusted, skipped };
 }
 
 /** Export text in the production daily format (same Pine parsing), its own title, a footer with no ticker or row token. */
-export function buildPersistExportText(latest, ohlcCache, registry) {
-  const { instruments, adjusted, skipped } = buildPersistInstruments(latest, ohlcCache, registry);
+export function buildPersistExportText(latest, ohlcCache, registry, ivByName = {}) {
+  const { instruments, adjusted, skipped } = buildPersistInstruments(latest, ohlcCache, registry, PERSIST_PARAMS, ivByName);
   const lines = buildLadderExportText({ session_label: latest?.session_label, instruments }, 'daily').split('\n');
-  lines[0] = '**VOL & RANGE FORECAST — PERSISTENCE-ADJUSTED (SHADOW)**';
-  lines.push('', `[Persistence-adjusted: σ nudged for regime, recent misses and weekday on ${adjusted.length} instruments, `
-    + `${skipped.length} on the plain ladder. Shadow candidate, walk-forward tested 2020-2026; not the production calc]`);
+  lines[0] = '**VOL & RANGE FORECAST — CHOSEN (PERSISTENCE + IV)**';
+  const withIv = adjusted.filter(a => a.form === 'persist+iv').length;
+  lines.push('', `[Chosen forecast: σ nudged for regime, recent misses and weekday on ${adjusted.length} instruments `
+    + `(${withIv} also blended toward implied vol), ${skipped.length} on the plain ladder. Picked head-to-head over all `
+    + `five daily forecasts, walk-forward 2020-2026]`);
   return { text: lines.join('\n'), adjusted, skipped };
 }

@@ -899,7 +899,7 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
         <div class="v3-menu-h">Daily</div>
         <button class="v2-tool-btn" data-mode="forecast" onclick="setChartLevelMode('forecast')"><span class="v3-tick"></span>Forecast <span class="v3-sub">fitted ladder</span></button>
         <button class="v2-tool-btn" data-mode="forecast_ivadj" onclick="setChartLevelMode('forecast_ivadj')" title="Same lines as the 'Forecast · IV-adjusted' export: σ blended toward implied vol (VIX/VXN, CME 30-day ATM, GVZ, crosses from their legs; US indices add the VIX-curve/breadth terms). Pairs with no implied vol draw the plain Forecast."><span class="v3-tick"></span>Forecast · IV-adjusted <span class="v3-sub">σ blended toward IV</span></button>
-        <button class="v2-tool-btn" data-mode="forecast_persist" onclick="setChartLevelMode('forecast_persist')" title="Shadow candidate (not the production calc): the Forecast's own σ nudged each morning for regime (σ vs its usual level), recent range misses and weekday. Fixes the over-reaction found point-in-time: after calm the plain lines run tight, after busy spells wide. Walk-forward 2020-2026 on these exact live inputs: 2% better than the control, calm-vs-busy miss 6.8 → 2.4 pp (forge/FORECAST_FIX_PREREG.md)."><span class="v3-tick"></span>Forecast · persistence-adjusted <span class="v3-sub">shadow · regime + weekday</span></button>
+        <button class="v2-tool-btn" data-mode="forecast_persist" onclick="setChartLevelMode('forecast_persist')" title="Shadow candidate (not the production calc): the Forecast's own σ nudged each morning for regime (σ vs its usual level), recent range misses and weekday. Fixes the over-reaction found point-in-time: after calm the plain lines run tight, after busy spells wide. Walk-forward 2020-2026 on these exact live inputs: 2% better than the control, calm-vs-busy miss 6.8 → 2.4 pp (forge/FORECAST_FIX_PREREG.md)."><span class="v3-tick"></span>Forecast · chosen ★ <span class="v3-sub">persistence + IV</span></button>
         <button class="v2-tool-btn" data-mode="cog" onclick="setChartLevelMode('cog')"><span class="v3-tick"></span>COG <span class="v3-sub">reverse-eng</span></button>
         <button class="v2-tool-btn" data-mode="bot" onclick="setChartLevelMode('bot')" title="The Volatility Bot's ACTUAL frozen plan lines."><span class="v3-tick"></span>Bot <span class="v3-sub">frozen plan</span></button>
         <div class="v3-menu-sep"></div>
@@ -939,10 +939,8 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
     <div class="vf-exp-dd" id="vfExpDropdown">
       <button class="v2-tool-btn" id="vfExpPillBtn" onclick="toggleExpDropdown(event)" disabled>⬇ Export ▾</button>
       <div class="vf-exp-menu">
-        <button class="vf-exp-item" id="vfLadderBtn"     onclick="closeExpDropdown();exportLadder('daily')"          disabled>⬇ Forecast <span style="font-size:9px;opacity:.55">p50/75/90</span></button>
-        <button class="vf-exp-item" id="vfIvLadderBtn"   onclick="closeExpDropdown();exportIvLadder()"               disabled title="Same paste as Forecast; EURUSD/GBPUSD/AUDUSD/USDCAD/USDCHF use CME 30-day implied vol and GOLD uses CBOE GVZ (each beat realized vol out of sample, forge/IV_LADDER_PREREG.md + IV_LADDER_GOLD_PREREG.md). Every other block is unchanged.">⬇ Forecast (IV) <span style="font-size:9px;opacity:.55">implied-vol σ</span></button>
-        <button class="vf-exp-item" id="vfIvAdjBtn"      onclick="closeExpDropdown();exportIvAdj()"                  disabled title="Daily Forecast with σ blended toward implied vol by a fitted amount: VIX/VXN for indices, CME 30-day ATM for the USD majors, GVZ for gold, and crosses built from their two USD legs. Passed two pre-registered tests plus a re-check on these live inputs (28/28 instruments better, every rung calibrated). Same paste format as Forecast; pairs with no implied vol (NZD, commodities, BTC) stay on the plain ladder.">⬇ Forecast · IV-adjusted <span style="font-size:9px;opacity:.55">daily · σ blended toward IV</span></button>
-        <button class="vf-exp-item" id="vfPersistBtn"    onclick="closeExpDropdown();exportPersist()"                disabled title="Shadow candidate (not the production calc): the Forecast's own σ nudged each morning for regime (σ vs its usual level), recent range misses and weekday. Fixes the over-reaction found point-in-time: after calm the plain lines run tight, after busy spells wide. Walk-forward 2020-2026 on these exact live inputs: 2% better than the control, calm-vs-busy miss 6.8 → 2.4 pp (forge/FORECAST_FIX_PREREG.md). Same paste format as Forecast.">⬇ Forecast · persistence-adjusted <span style="font-size:9px;opacity:.55">daily · shadow</span></button>
+        <button class="vf-exp-item" id="vfPersistBtn"    onclick="closeExpDropdown();exportPersist()"                disabled title="The ONE daily forecast picked head-to-head over all five (forge/FORECAST_PICK_PREREG.md, walk-forward 2020-2026): the Forecast's σ nudged each morning for regime, recent range misses and weekday, plus implied vol on the 13 instruments that have it (USD majors, gold, indices). 0.964 of the plain Forecast where IV exists, 0.980 elsewhere; fixes the plain lines running tight after calm and wide after busy spells. Scored daily against plain in the forward scorecard. Same paste format as Forecast.">⬇ Forecast · chosen ★ <span style="font-size:9px;opacity:.55">persistence + IV · daily</span></button>
+        <button class="vf-exp-item" id="vfLadderBtn"     onclick="closeExpDropdown();exportLadder('daily')"          disabled>⬇ Forecast <span style="font-size:9px;opacity:.55">plain · production p50/75/90</span></button>
         <button class="vf-exp-item" id="vfLadderWkBtn"   onclick="closeExpDropdown();exportLadder('weekly')"         disabled>⬇ Forecast Weekly <span style="font-size:9px;opacity:.55">5-day + 20-day in one</span></button>
         <button class="vf-exp-item" id="vfLadderWkRevBtn" onclick="closeExpDropdown();exportLadder('weekly_rev')"   disabled title="Same paste format as Forecast Weekly (same indicator), but σ fades back to its 250-day level across the week/month instead of √-time scaling. Passed its pre-registered test 2026-10-05 (forge/HORIZON_REVERSION_PREREG.md): bands right after calm AND after stress, not just on average.">⬇ Forecast Weekly · Reverting <span style="font-size:9px;opacity:.55">σ fades back · test</span></button>
         <button class="vf-exp-item" id="vfLadderSessBtn" onclick="closeExpDropdown();exportLadder('daily',true)"     disabled>⬇ Forecast + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
@@ -954,6 +952,8 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
         <div class="vf-exp-sep"></div>
         <button class="vf-exp-head" onclick="toggleExpArchived(event)" title="Retired export formats — superseded by the Forecast and COG families, kept wired in case a number is missed."><span class="vf-exp-caret">▶</span> Archived</button>
         <div class="vf-exp-arch">
+          <button class="vf-exp-item" id="vfIvLadderBtn"   onclick="closeExpDropdown();exportIvLadder()"               disabled title="Same paste as Forecast; EURUSD/GBPUSD/AUDUSD/USDCAD/USDCHF use CME 30-day implied vol and GOLD uses CBOE GVZ (each beat realized vol out of sample, forge/IV_LADDER_PREREG.md + IV_LADDER_GOLD_PREREG.md). Every other block is unchanged.">⬇ Forecast (IV) <span style="font-size:9px;opacity:.55">implied-vol σ</span></button>
+          <button class="vf-exp-item" id="vfIvAdjBtn"      onclick="closeExpDropdown();exportIvAdj()"                  disabled title="Daily Forecast with σ blended toward implied vol by a fitted amount: VIX/VXN for indices, CME 30-day ATM for the USD majors, GVZ for gold, and crosses built from their two USD legs. Passed two pre-registered tests plus a re-check on these live inputs (28/28 instruments better, every rung calibrated). Same paste format as Forecast; pairs with no implied vol (NZD, commodities, BTC) stay on the plain ladder.">⬇ Forecast · IV-adjusted <span style="font-size:9px;opacity:.55">daily · σ blended toward IV</span></button>
           <button class="vf-exp-item" id="vfExportBtn"      onclick="closeExpDropdown();exportForecast()"           disabled>⬇ Export <span style="font-size:9px;opacity:.55">plain forecast</span></button>
           <button class="vf-exp-item" id="vfExtendedBtn"    onclick="closeExpDropdown();exportExtended()"           disabled>⬇ Extended <span style="font-size:9px;opacity:.55">+ percentile/legs/cone</span></button>
           <button class="vf-exp-item" id="vfExportV2Btn"    onclick="closeExpDropdown();exportV2()"                 disabled>⬇ Export v2 <span style="font-size:9px;opacity:.55">drifted-BM O-H/O-L</span></button>
@@ -2697,7 +2697,7 @@ async function exportIvAdj() {
   }
 }
 
-// Shadow: persistence-adjusted daily Forecast (server-built, same paste format).
+// The chosen daily forecast (persistence + IV; forge/FORECAST_PICK_PREREG.md), server-built, same paste format.
 async function exportPersist() {
   const btn = document.getElementById('vfPersistBtn');
   _btnLabel(btn); btn.textContent = '… building'; btn.disabled = true;
@@ -2707,7 +2707,7 @@ async function exportPersist() {
     if (!r.ok) { btn.textContent = r.status === 202 ? '… not ready' : '✗ failed'; setTimeout(() => _btnRestore(btn), 2600); return; }
     btn.disabled = false;
     const date = (currentForecast && currentForecast.session_date) || 'latest';
-    _emitCalibrated('vfPersistBtn', text, `vol-forecast-persist-${date}.txt`);
+    _emitCalibrated('vfPersistBtn', text, `vol-forecast-chosen-${date}.txt`);
   } catch (e) {
     btn.textContent = '✗ failed';
     setTimeout(() => _btnRestore(btn), 2600);
@@ -4239,7 +4239,7 @@ const _MODE_LABEL  = {
   forecast_weekly: 'Forecast Weekly', cog_weekly: 'COG Weekly',
   forecast_monthly: 'Forecast Monthly', cog_monthly: 'COG Monthly',
   // 2026-10-05 exports: same lines the matching Export item prints.
-  forecast_ivadj: 'Forecast · IV-adjusted', forecast_persist: 'Forecast · persistence-adjusted',
+  forecast_ivadj: 'Forecast · IV-adjusted', forecast_persist: 'Forecast · chosen ★',
   forecast_weekly_rev: 'Forecast Weekly · Reverting', forecast_monthly_rev: 'Forecast Monthly · Reverting',
 };
 // The stored preference may still name the pre-collapse modes; map them forward so a

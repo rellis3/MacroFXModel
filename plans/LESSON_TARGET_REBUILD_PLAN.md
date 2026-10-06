@@ -21,7 +21,7 @@ its own pre-registration before its results are computed.*
    (forge/META_LABEL_PREREG.md Amendment 3).
 
 **Path (each step ends in a decision, not another variant):**
-- A. ✅ **PICKED 2026-10-06** (forge/FORECAST_PICK_PREREG.md): persistence + IV where implied vol exists (0.968), persistence elsewhere (0.980). Remaining: live-type IV check (the one allowed variant: research used CME CVOL, live uses the QuikStrike ATM-30 / GVZ), then ship as the one forecast and archive the rest.
+- A. ✅ **DONE 2026-10-06 — forecast work CLOSED** (forge/FORECAST_PICK_PREREG.md): persistence + IV where implied vol exists (live-type IV check PASS: 0.964 of plain, beats persistence by 1.6%), persistence elsewhere (0.980). Shipped as "Forecast · chosen ★" (top of v3 Export + Chart view, scorecard column); IV and IV-adjusted line exports moved to Archived. The plain Forecast stays the production calc (pages/bots read it) until the owner switches. Live Range keeps its own fitted σ (its intraday params were fitted on the plain σ; re-pointing would need a refit — not done, by the stopping rule).
   Original step: **Finish the forecast** (L03 §02): one pre-registered head-to-head on the Step 0 table — persistence + IV vs
   IV-adjusted vs HAR-800 vs plain — pick ONE; the scorecard confirms it forward (L02: the second, independent test).
   Other line exports move to an archive menu. No line work after this.

@@ -60,5 +60,14 @@ ok('bars on/after the session date are ignored', (() => {
   return a === r.instruments.EURUSD.ladder.sigma_used_pct;
 })());
 
+// implied-vol branch (the chosen forecast on the 13 IV instruments)
+const Liv = buildPersistLadder(B, { instrument: 'EURUSD', sessionDate: next, sigmaUsedPct: 0.40, ivAnnualPct: 7.5 });
+ok('IV given -> persist+iv form with its own widths', Liv.form === 'persist+iv' && Math.abs(Liv.hl.p75 - PERSIST_PARAMS.pairs.EURUSD.iv.width.hl[1] * Liv.sigma_used_pct) < 0.01);
+ok('iv_sig = log(IV / annualised sigma_daily)', Math.abs(Liv.features.iv_sig - Math.log(7.5 / (Liv.sigma_daily_pct * Math.sqrt(252)))) < 1e-3);
+const Lhi = buildPersistLadder(B, { instrument: 'EURUSD', sessionDate: next, sigmaUsedPct: 0.40, ivAnnualPct: 15 });
+ok('higher implied vol -> wider lines', Lhi.hl.p75 > Liv.hl.p75);
+ok('no IV -> persistence form', buildPersistLadder(B, { instrument: 'EURUSD', sessionDate: next, sigmaUsedPct: 0.40 }).form === 'persist');
+ok('instrument without an iv block ignores IV', buildPersistLadder(B, { instrument: 'EURJPY', sessionDate: next, sigmaUsedPct: 0.40, ivAnnualPct: 9 }).form === 'persist');
+
 console.log(fail ? `${fail} FAILED` : 'all passed');
 process.exit(fail ? 1 : 0);

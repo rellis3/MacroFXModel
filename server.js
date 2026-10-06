@@ -21992,12 +21992,22 @@ app.get('/api/vol-forecast/ivadj-ladder/json', async (_req, res) => {
 // weekday. Evidence: forge/FORECAST_FIX_PREREG.md variant 1, walk-forward 2020-2026 on these exact live-computable
 // inputs (NY-close daily bars): pinball 0.980 of the refit control, calm-vs-busy miss 6.8 -> 2.4 pp. Nothing reads
 // it but the v3 page's export menu / chart view and the forward scorecard.
+// Implied vol per instrument (annual %), resolved exactly as the IV-adjusted export does (QuikStrike ATM-30 for the
+// USD majors, GVZ for gold, VIX/VXN for the indices): the chosen forecast's IV term on those 13 instruments.
+async function _persistIvByName(ohlc) {
+  try {
+    let oiStore = {};
+    try { const raw = await kv.get('oi_store'); if (raw) { const p = JSON.parse(raw); oiStore = p.data ?? p; } } catch { /* no OI -> FX falls back */ }
+    const { adjusted } = buildIvAdjInstruments(forecastState.latest, ohlc, oiStore, VOL_INSTRUMENTS, Date.now(), await _ivAdjCboeLatest());
+    return Object.fromEntries(adjusted.filter(a => a.iv > 0).map(a => [a.name, a.iv]));
+  } catch (e) { console.warn('[persist-ladder] IV resolve failed:', e.message); return {}; }
+}
 app.get('/api/vol-forecast/persist-ladder/export', async (_req, res) => {
   if (!forecastState.latest) return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
   try {
     const ohlc = await ensureOhlcCache();
-    const { text, adjusted, skipped } = buildPersistExportText(forecastState.latest, ohlc, VOL_INSTRUMENTS);
-    res.set('X-Persist-Adjusted', adjusted.map(a => `${a.name}:${a.adj}`).join(',') || 'none');
+    const { text, adjusted, skipped } = buildPersistExportText(forecastState.latest, ohlc, VOL_INSTRUMENTS, await _persistIvByName(ohlc));
+    res.set('X-Persist-Adjusted', adjusted.map(a => `${a.name}:${a.adj}:${a.form}`).join(',') || 'none');
     res.set('X-Persist-Skipped', skipped.map(s => `${s.name}:${s.reason}`).join(',').replace(/[^ -~]/g, '') || 'none');
     res.type('text/plain').send(text);
   } catch (e) {
@@ -22008,7 +22018,7 @@ app.get('/api/vol-forecast/persist-ladder/json', async (_req, res) => {
   if (!forecastState.latest) return res.status(202).json({ ok: false, error: 'forecast not ready' });
   try {
     const ohlc = await ensureOhlcCache();
-    const { instruments, adjusted, skipped } = buildPersistInstruments(forecastState.latest, ohlc, VOL_INSTRUMENTS);
+    const { instruments, adjusted, skipped } = buildPersistInstruments(forecastState.latest, ohlc, VOL_INSTRUMENTS, undefined, await _persistIvByName(ohlc));
     res.json({ ok: true, session_date: forecastState.latest.session_date,
                instruments: Object.fromEntries(adjusted.map(a => [a.name, instruments[a.name].ladder])), adjusted, skipped });
   } catch (e) {
@@ -22058,11 +22068,12 @@ async function _fcardTick() {
     dirty = true;
   }
 
-  // 1b. morning snapshot of the persistence-adjusted shadow ladder (forge/FORECAST_FIX_PREREG.md). Needs only the
-  //     production forecast + daily bars, so it is taken as soon as today's forecast exists.
-  if (L.session_date === now.date && !store.snapP[now.date]) {
+  // 1b. morning snapshot of the CHOSEN forecast (persistence + IV; forge/FORECAST_PICK_PREREG.md). Its IV term reads
+  //     the same capture as the IV-adjusted snapshot, so it waits for the same 07:00 London window.
+  if (L.session_date === now.date && now.hour >= 7 && !store.snapP[now.date]) {
     try {
-      const { instruments, adjusted, skipped } = buildPersistInstruments(L, await ensureOhlcCache(), VOL_INSTRUMENTS);
+      const ohlcP = await ensureOhlcCache();
+      const { instruments, adjusted, skipped } = buildPersistInstruments(L, ohlcP, VOL_INSTRUMENTS, undefined, await _persistIvByName(ohlcP));
       // ensureOhlcCache can hand back a half-warmed cache (post-deploy): instruments with no bars yet show as
       // "only 0 daily bars". Don't freeze the day's snapshot without them; the next 30-min tick retries.
       if (!skipped.some(x => /^only 0 /.test(x.reason))) {

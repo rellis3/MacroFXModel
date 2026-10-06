@@ -75,7 +75,7 @@ export function scoreSession({ date, forecast, ivadj, persist, barsByName }) {
     if (!real || real.days !== 1) continue;
     const row = { plain: scoreLadder(fc?.ladder, real) };
     if (ivadj?.[name]) row.ivadj = scoreLadder(ivadj[name], real);
-    if (persist?.[name]) row.persist = scoreLadder(persist[name], real);   // shadow: forge/FORECAST_FIX_PREREG.md
+    if (persist?.[name]) row.persist = scoreLadder(persist[name], real);   // the chosen forecast: forge/FORECAST_PICK_PREREG.md
     const lr = scoreLiveRange(bars, date, name, fc?.ladder?.sigma_daily_pct);
     if (lr) row.live = lr;
     rows[name] = row;
@@ -170,8 +170,8 @@ export function verdicts(S) {
     const p75 = L.reduce((a, g) => a + g.n * (g.up[1] + g.dn[1]) / 2, 0) / Math.max(n, 1);
     out.push({ topic: 'live', ...fit(p75, n, 'Live Range bold lines', dEnough) });
   } else out.push({ topic: 'live', status: 'early', text: 'Live Range bold lines: too early to judge.' });
-  // shadow (forge/FORECAST_FIX_PREREG.md), appended so existing verdict positions are unchanged
-  out.push({ topic: 'daily', ...vs(S.daily_persist_vs_plain_pinball, S.persist_pairs, `${S.sessions} sessions`, dEnough && S.persist_pairs > 0, 'plain Forecast', 'Persistence-adjusted (shadow)') });
-  out.push({ topic: 'daily', ...fit(S.daily?.persist?.hl?.[1], S.daily?.persist?.n, 'Persistence-adjusted daily lines', dEnough) });
+  // the chosen forecast (forge/FORECAST_PICK_PREREG.md), appended so existing verdict positions are unchanged
+  out.push({ topic: 'daily', ...vs(S.daily_persist_vs_plain_pinball, S.persist_pairs, `${S.sessions} sessions`, dEnough && S.persist_pairs > 0, 'plain Forecast', 'Chosen forecast (persistence + IV)') });
+  out.push({ topic: 'daily', ...fit(S.daily?.persist?.hl?.[1], S.daily?.persist?.n, 'Chosen forecast daily lines', dEnough) });
   return out;
 }
