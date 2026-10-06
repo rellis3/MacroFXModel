@@ -147,3 +147,42 @@ def control_diff(real: tuple[float, float], control: tuple[float, float]) -> dic
 def halves_agree(z1: float, z2: float, bar: float = 2.0) -> bool:
     """The repo's replication rule: beyond `bar` standard errors, the same sign, in both halves."""
     return abs(z1) > bar and abs(z2) > bar and np.sign(z1) == np.sign(z2)
+
+
+# ── Additions (compliance action A5) ──────────────────────────────────────────
+def lo_eta(returns, q: int = 252, max_lag: int | None = None) -> float:
+    """Lo (2002) annualisation factor η(q) = q / √(q + 2 Σ_{k=1}^{q−1} (q−k) ρ_k). Equals √q for independent returns;
+    smaller with positive autocorrelation (the √-rule then overstates). Lesson 1 formula 03. Lags beyond `max_lag`
+    are treated as zero (Lesson 1 uses 1-20)."""
+    r = np.asarray(returns, float) - np.mean(returns)
+    den = (r * r).sum()
+    L = min(q - 1, max_lag if max_lag is not None else q - 1)
+    s = sum((q - k) * float((r[k:] * r[:-k]).sum() / den) for k in range(1, L + 1))
+    return float(q / math.sqrt(max(q + 2 * s, 1e-12)))
+
+
+def shrink_sharpe(sr: float, se: float, prior_mean: float = 1.0, prior_sd: float = 1.0) -> dict:
+    """Bayesian shrinkage (Lesson 1 formula 04): Ŝ_post = S₀ + (1 − B)(Ŝ − S₀), B = SE² / (SE² + τ²)."""
+    B = se * se / (se * se + prior_sd * prior_sd)
+    return {"B": float(B), "posterior": float(prior_mean + (1 - B) * (sr - prior_mean))}
+
+
+def false_discovery_rate(base_rate: float, alpha: float = 0.05, power: float = 0.8) -> float:
+    """Lesson 2 §05: share of passes that carry no edge = α(1−π) / (α(1−π) + power·π)."""
+    a = alpha * (1 - base_rate)
+    return float(a / (a + power * base_rate))
+
+
+def posterior_after_passes(base_rate: float, n_passes: int, alpha: float = 0.05, power: float = 0.8) -> float:
+    """Each independent pass multiplies the odds by power/α (Lesson 2 §05: 4% → ~40% → ~91% at α 5%, power 80%)."""
+    odds = base_rate / (1 - base_rate) * (power / alpha) ** n_passes
+    return float(odds / (1 + odds))
+
+
+def expected_best_of_n_se(n: int, reps: int = 200000, rng=None) -> float:
+    """Expected maximum of n independent standard normals (in standard errors): 0.00 for 1, 1.67 for 13, 2.88 for 300
+    (Lesson 2 §05 fig 5.1)."""
+    if n <= 1:
+        return 0.0
+    rng = rng if rng is not None else np.random.default_rng(0)
+    return float(rng.standard_normal((reps, n)).max(axis=1).mean())
