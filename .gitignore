@@ -553,3 +553,4 @@ analysis/output/data_integrity/
 analysis/output/path_map/
 analysis/output/remaining_travel/
 analysis/output/stop_risk/
+analysis/output/stylized_facts*
