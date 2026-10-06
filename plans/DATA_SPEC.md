@@ -49,7 +49,7 @@ All as % of the session open: **HL** = (high − low), **OH** = (high − open),
 |---|---|---|---|
 | 1 | `*_d1.parquet` are UTC days with Sunday stubs | 2026-10-05 (LADDER_CALIBRATION Amendment 2) | research switched to NY-close bars; shipped IV-adjusted params were fitted on stub bars — **re-fit pending** |
 | 2 | Live index σ from Yahoo vs research OANDA | 2026-10-04 | open — flagged provisional |
-| 3 | vol_session audits after London midnight recorded the next session (6 of 15) | 2026-10-05 | **fixed** cf47b9a0 (late audit pins its own window); the 6 bad records stay bad — readers must skip them (`auditUsable` in js/harShadowCore.js); Daily Read still scores them |
+| 3 | vol_session audits after London midnight recorded the next session (6 of 15) | 2026-10-05 | **fixed** cf47b9a0 (late audit pins its own window); the 6 bad records stay bad — readers skip them (`auditUsable` in js/harShadowCore.js and js/dailyReadCore.js; Daily Read unscored them, 5cac377d) |
 | 4 | vol_session `oc` signed | 2026-10-05 | documented; readers take abs |
 | 5 | Calendar proxy ends 2026-07-02 | 2026-10-04 | open |
 | 6 | `inverseVolWeights` full-sample variance (lookahead) | 2026-10-05 | open (outside this system) |

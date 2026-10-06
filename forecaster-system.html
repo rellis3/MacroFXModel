@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forecaster System</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text2:#c9d1d9; --text3:#8b949e;
+          --done:#3fb950; --warn:#d29922; --todo:#6e7681; --blue:#58a6ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:1100px; margin:0 auto; padding:18px 16px 48px; display:grid; gap:16px; }
+  h1 { font-size:20px; margin:0; } h2 { font-size:13px; margin:0 0 10px; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
+  .sub { color:var(--text3); max-width:90ch; margin:4px 0 0; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:6px; padding:14px; min-width:0; }
+  .layers { display:grid; gap:10px; }
+  .layer { display:grid; grid-template-columns:44px 1fr; gap:12px; background:#0d1117; border:1px solid var(--border); border-radius:6px; padding:12px; }
+  .num { font-size:20px; font-weight:700; text-align:center; border-radius:5px; padding-top:4px; height:40px; }
+  .done .num { background:rgba(63,185,80,.15); color:var(--done); } .warn .num { background:rgba(210,153,34,.15); color:var(--warn); }
+  .todo .num { background:rgba(110,118,129,.15); color:var(--todo); }
+  .layer h3 { margin:0; font-size:15px; } .layer .q { color:var(--text3); font-size:12px; margin:2px 0 6px; }
+  .layer .v { color:var(--text2); } .layer .links { margin-top:6px; font-size:12px; color:var(--text3); }
+  .pill { font-size:11px; font-weight:700; padding:1px 7px; border-radius:3px; margin-left:6px; vertical-align:2px; }
+  .done .pill { background:rgba(63,185,80,.15); color:var(--done); } .warn .pill { background:rgba(210,153,34,.15); color:var(--warn); }
+  .todo .pill { background:rgba(110,118,129,.2); color:var(--text3); }
+  a { color:var(--blue); text-decoration:none; } a:hover { text-decoration:underline; }
+  code { color:var(--text2); font-size:12px; }
+  table { border-collapse:collapse; width:100%; } th, td { padding:6px 8px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+  th { color:var(--text3); font-weight:500; font-size:12px; }
+  ul { margin:6px 0 0; padding-left:18px; } li { margin:3px 0; color:var(--text2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>Forecaster System — built layer by layer from the lessons</h1>
+    <p class="sub">A systematic build following the "Forecaster Portfolio" case study (3 of 17 lessons so far). Each layer has one job, is tested against its own standard,
+      reports uncertainty, and logs every variant tried. New versions run side by side with the live system; nothing live changes until it is chosen.
+      Plan and rules: <code>plans/FORECASTER_SYSTEM_BLUEPRINT.md</code>. Updated with every lesson.</p>
+  </div>
+
+  <section class="card">
+    <h2>The seven layers</h2>
+    <div class="layers">
+      <div class="layer done"><div class="num">1</div><div>
+        <h3>Data <span class="pill">built</span></h3>
+        <div class="q">Are the prices, sessions and sources correct and consistent?</div>
+        <div class="v">One definition of a session, a daily bar and a realised value; sources per instrument; automated integrity report. Faults found and logged: UTC-day bars with Sunday stubs, Yahoo vs OANDA for indices, late session audits (fixed), signed open-to-close, local data 46 days stale.</div>
+        <div class="links"><code>plans/DATA_SPEC.md</code> · <code>scripts/data_integrity.mjs</code></div></div></div>
+
+      <div class="layer done"><div class="num">2</div><div>
+        <h3>Measurement <span class="pill">defined</span></h3>
+        <div class="q">What is everything scored against?</div>
+        <div class="v">London-day open→high, open→low, high−low and |open−close|, as % of the London-midnight open; intraday path from 1-minute bars.</div></div></div>
+
+      <div class="layer done"><div class="num">3</div><div>
+        <h3>Volatility forecast <span class="pill">HAR chosen · live shadow</span></h3>
+        <div class="q">How far is price likely to travel today? (p50 / p75 / p90 lines)</div>
+        <div class="v">The live ladder is right on average but tilts with the regime (quiet days pass p75 ~30%, busy ~19%). HAR-log σ on the production path removes most of it (regime miss 2.86 → 1.41pp, sharper on 28/28 instruments).</div>
+        <div class="links"><a href="har-shadow.html">HAR Shadow (live)</a> · <code>forge/LADDER_CALIBRATION_PREREG.md</code></div></div></div>
+
+      <div class="layer done"><div class="num">4</div><div>
+        <h3>Path map <span class="pill">done</span></h3>
+        <div class="q">How does price behave around those lines?</div>
+        <div class="v">Real lines race exactly like control lines at other distances in all 314 conditions: no fade or continuation at the lines. What changes is time left: a line touched in the morning is the day's extreme 23% of the time, after 20:00 74%.</div>
+        <div class="links"><a href="path-map.html">Path Map</a> · <code>forge/PATH_MAP_SPEC.md</code></div></div></div>
+
+      <div class="layer warn"><div class="num">5</div><div>
+        <h3>Remaining travel <span class="pill">near-pass · live shadow</span></h3>
+        <div class="q">From here, with the time left, how far can price still go?</div>
+        <div class="v">Per-hour multipliers of σ (R3): calibrated across the day and regimes (miss 1.6pp) except 21:00 downside; fails the frozen rule by 0.1pp. Live on 16 sessions: up 53/24/9%, down 51/26/11% vs 50/25/10. More range used so far means more travel to come.</div>
+        <div class="links"><a href="har-shadow.html">HAR Shadow (layer 5 section)</a> · <code>forge/REMAINING_TRAVEL_PREREG.md</code></div></div></div>
+
+      <div class="layer warn"><div class="num">6</div><div>
+        <h3>Confidence <span class="pill">small skill · calibration fail</span></h3>
+        <div class="q">How likely is layer 5's call to be right today — should we act at all?</div>
+        <div class="v">Calibrated boosting beats layer 5's flat rates by 1.5–2.1% (Brier, holds out of sample) but misses calibration by 0.4pp. Carried by time of day and volatility so far; most useful late in the session.</div>
+        <div class="links"><code>forge/CONFIDENCE_PREREG.md</code></div></div></div>
+
+      <div class="layer warn"><div class="num">7</div><div>
+        <h3>Sizing and risk <span class="pill">sizing + stop map done</span></h3>
+        <div class="q">How much to hold, where stops go, what a stop really costs.</div>
+        <div class="v">Sizing by any forecast σ halves the swing in risk at the same return (which σ hardly matters). Stops fill clean within the week (p99 1.0R) but not over weekends (p99 2.1R, 13% gap-through), on release minutes (1.6R), overnight (1.3R), tier-1 days or indices.</div>
+        <div class="links"><code>forge/VOL_TARGET_PREREG.md</code> · <code>forge/STOP_RISK_PREREG.md</code></div></div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Lessons absorbed</h2>
+    <table>
+      <tr><th>Lesson</th><th>What it added</th><th>Layers</th></tr>
+      <tr><td>01 · One path among many</td><td>Every number is one draw from a distribution: bootstrap paths, error bars, check across regimes and horizons</td><td>all (rules) · toolkit</td></tr>
+      <tr><td>02 · Research has no timetable</td><td>The breadth of the search enters the evidence: log every variant, deflate for it</td><td>all (variant logs) · toolkit</td></tr>
+      <tr><td>03 · A system built in layers</td><td>Separate forecasting from decision; volatility is the forecastable object; jumps matter for single-step loss; meta-labelling; test each layer on its own</td><td>3, 4, 5, 6, 7</td></tr>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>How each new lesson is absorbed</h2>
+    <ul>
+      <li>Transcribe it word for word into <code>education/forecaster-portfolio-case-study/</code>.</li>
+      <li>Map what it adds to the layer(s) it touches.</li>
+      <li>Write each new instruction as a dated amendment to that layer's pre-registration — before anything runs.</li>
+      <li>Re-run the affected layers, record the results in the same file, update this page.</li>
+    </ul>
+    <p class="sub" style="margin-top:8px">Shared statistics (Sharpe standard error, loss probability by horizon, bootstrap paths, deflated Sharpe, clustered errors, the replication rule): <code>forge/evaltools.py</code>, tested against Lesson 1's own numbers.</p>
+  </section>
+</div>
+</body>
+</html>

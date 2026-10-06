@@ -49,6 +49,8 @@ Each lesson adds instructions; each pass makes the process stronger. When a less
 
 ## Layers
 
+Overview page: `forecaster-system.html`. Shared statistics: `forge/evaltools.py` (tested: `python -m forge.test_evaltools`).
+
 | # | Layer | Job | Status |
 |---|---|---|---|
 | 1 | Data | One definition of a bar, a session and a realised value per instrument; sources fixed; integrity checked automatically | **spec + check built** (plans/DATA_SPEC.md, scripts/data_integrity.mjs); open: stale M1 cache, Yahoo indices, IV-adj refit |
