@@ -857,6 +857,12 @@ export const DESK_EVIDENCE = [
     result: 'Card 01 PASS both: chosen forecast 0.9802 vs 0.9800 with every input a session late; yield book +0.204% vs +0.243%/trade with rates a day late. Card 09: chosen forecast beat plain in all 4 measurable crises (0.88-0.99; COVID predates the walk-forward lines), but both run tight (HL p75 passed 25-35%); stop rule FAILS the stress bar: one 5-min bar crosses the min stop on ~10% of crisis days vs 4.2% normal. Card 11: majors + gold cost 2-7% of the min stop; 6 crosses over 10% (EURNZD 19%, GBPAUD 12%, EURGBP 12%, AUDCAD 11%, GBPCAD 10%, EURAUD 10%); at rollover spreads are 50-100% of the stop.',
     use: 'Timing-robust (no exact-alignment dependence). In a crisis week, widen stops (about double the jump-through rate). Prefer majors/gold; treat the 6 flagged crosses as cost-heavy; never place tight stops across the 21-22 UTC rollover. Daily Plan now adds the measured spread to planned loss.',
   },
+  {
+    id: 'dip-with-bias', domain: 'price', verdict: 'null', date: '2026-10-07', doc: 'forge/DIP_WITH_BIAS_PREREG.md',
+    claim: 'Buying the ~0.8 sigma dip below the London open (the shape of 4 posted C.OG trades: fills 0.67-0.88 sigma below open, between the export p50 and p75) is an edge when only taken in a trusted direction (the yield-spread book)',
+    result: 'FAIL. Six yield pairs, M1, 2016-2026, target 0.4 sigma / stop 0.6 sigma, after costs: with the bias -0.048R [-0.088, -0.004] (1,574 trades, 55.6% wins vs 60% needed); against -0.090R; no filter -0.073R. Direction ordering is consistent (with > none > against, also in the 13-16 UK window: -0.044 / -0.062 / -0.115) but the gain over no filter, +0.025R [-0.012, +0.064], is too small to beat the geometry and cost.',
+    use: 'The yield-spread direction tilts dip-buys the right way but not enough to make a 0.8 sigma dip-buy with this target/stop pay. Whatever C.OG uses for direction, it is not this book; his posted trades are 6 winners, the shape not the rule.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what

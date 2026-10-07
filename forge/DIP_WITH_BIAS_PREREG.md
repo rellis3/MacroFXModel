@@ -54,3 +54,11 @@ numbers were not fitted to it.
 - **FAIL:** that combination isn't the edge, whatever C.OG's actual system is.
 
 Output `analysis/output/dip_bias/RESULTS.md`; script `scripts/dip_bias/build.mjs` + `score.py`.
+
+## Amendment 1 (2026-10-07, after the first run): execution fault in the W-his window only
+
+When the 13:00 window opened with price already through the 0.8σ level, the simulation filled at the level (a worse
+price than the market) and, if price was already through the stop, booked an instant −1R. A real limit order placed
+then fills at the market (that bar's open), and is not placed when the stop is already breached. Fixed. The primary
+W-all window is unaffected (orders live from the 00:00 open, price starts at the open). The first-run W-his numbers are
+void.
