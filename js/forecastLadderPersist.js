@@ -22,7 +22,7 @@
  * Params js/forecastLadderPersistParams.js. σ_used (event multiplier included) comes from the production ladder,
  * so the event conditioning is unchanged. Side by side only: nothing live reads this.
  */
-import { forecastSigma } from './forecastSigma.js';
+import { forecastSigma, SIGMA_ESTIMATORS } from './forecastSigma.js';
 import { paramsFor } from './forecastLadder.js';
 import { PERSIST_PARAMS } from './forecastLadderPersistParams.js';
 import { barsBefore } from './forecastLadderIvAdj.js';
@@ -31,6 +31,7 @@ import { buildLadderExportText } from './ladderExport.js';
 const RUNGS = ['p50', 'p75', 'p90'];
 const _r2 = x => Math.round(x * 100) / 100;
 const _r4 = x => Math.round(x * 1e4) / 1e4;
+const SQRT252 = Math.sqrt(252);
 
 /** σ_daily % (2 dp, as buildLadder carries it) from bars[0..k), the live estimator. */
 function sigmaPct(bars, k, est) {
@@ -44,8 +45,18 @@ export function persistFeatures(bars, { instrument, assetClass = 'fx', sessionDa
   const est = paramsFor(instrument, assetClass).estimator ?? 'yz_30';
   const n = bars.length;
   const win = params.regime_window;                         // 250
-  const sig = new Map();                                    // k -> σ % from bars[0..k)
-  const S = k => { if (!sig.has(k)) sig.set(k, sigmaPct(bars, k, est)); return sig.get(k); };
+  // σ % from bars[0..k). The contemporaneous estimators (YZ / EWMA / naive) are causal, so one pass over all bars gives
+  // exactly forecastSigma(bars.slice(0, k)) at every k (= series[k-1]); recomputing 256 prefixes took ~1.5 s per request.
+  const fn = est !== 'har_rv_log' ? SIGMA_ESTIMATORS[est] : null;
+  const series = fn ? fn(bars) : null;
+  const sig = new Map();
+  const S = k => {
+    if (!sig.has(k)) {
+      const v = series ? series[k - 1] : NaN;
+      sig.set(k, series ? (Number.isFinite(v) && v > 0 ? _r2(v / SQRT252) : null) : sigmaPct(bars, k, est));
+    }
+    return sig.get(k);
+  };
   const today = S(n);
   const prior = [];
   for (let k = n - win; k < n; k++) { const v = S(k); if (v > 0) prior.push(v); }

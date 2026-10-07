@@ -17,3 +17,7 @@ Line-ending-proof check (git blob ids; verify with `git hash-object <file>`):
 | `js/howMuchParams.js` | `dfaff153429bf852e4b2cb2eb0c6894cfbe8fbc0` |
 | `js/forecastLadderPersist.js` | `256615753ced7fba74df7e3e655489111366f3a7` |
 | `js/howMuch.js` | `1bc6d8e103dde8cf4ce227911b8e6b47a5710dd8` |
+
+## Logged changes after sealing
+
+- 2026-10-07: `js/forecastLadderPersist.js` — σ history computed in one pass instead of 256 prefix recomputes (the live endpoint timed out). **Outputs identical**: regime, res1, res5 and σ matched the old method exactly on EURUSD, GBPUSD, GOLD, NQ, EURJPY, USDJPY (yz_10 and ewma_094). New git blob: `b0072d2c7a626b6027017872de0035585d299f07`. No parameter or rule changed.

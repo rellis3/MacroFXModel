@@ -21998,7 +21998,11 @@ async function _persistIvByName(ohlc) {
   try {
     let oiStore = {};
     try { const raw = await kv.get('oi_store'); if (raw) { const p = JSON.parse(raw); oiStore = p.data ?? p; } } catch { /* no OI -> FX falls back */ }
-    const { adjusted } = buildIvAdjInstruments(forecastState.latest, ohlc, oiStore, VOL_INSTRUMENTS, Date.now(), await _ivAdjCboeLatest());
+    // Never block on a CBOE re-download (5 files, 25 s timeout each): use the last closes and refresh in the background.
+    const stale = !_ivAdjCboe.v || Date.now() - _ivAdjCboe.at > 6 * 3600_000;
+    const cboe = _ivAdjCboe.v ?? await _ivAdjCboeLatest();
+    if (_ivAdjCboe.v && stale) _ivAdjCboeLatest().catch(() => {});
+    const { adjusted } = buildIvAdjInstruments(forecastState.latest, ohlc, oiStore, VOL_INSTRUMENTS, Date.now(), cboe);
     return Object.fromEntries(adjusted.filter(a => a.iv > 0).map(a => [a.name, a.iv]));
   } catch (e) { console.warn('[persist-ladder] IV resolve failed:', e.message); return {}; }
 }
