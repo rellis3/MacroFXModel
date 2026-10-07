@@ -41,7 +41,7 @@ frequency by hour × 3×3: Brier skill with a date-block 95% interval; **PASS** 
 | # | Variant | Added | Status |
 |---|---|---|---|
 | 1 | as above | 2026-10-07 | run |
-| 2 | decomposition (Amendment 1): geometry-only model vs indicators, and drop-one-family ablations | 2026-10-07, after variant 1 was seen, before 2 is run | pending |
+| 2 | decomposition (Amendment 1): geometry-only model vs indicators, and drop-one-family ablations | 2026-10-07, after variant 1 was seen, before 2 is run | run |
 
 Output `analysis/output/live_range_features/RESULTS.md`; banked in `js/deskEvidence.js`.
 
@@ -57,3 +57,11 @@ off the extreme, not off price. The registered verdict stands as run; variant 2 
 - **Ablations:** G1 with one family removed (VWAP, ROC+acceleration, WaveTrend, RSI, timing: weekday + age of extreme, relative volume),
   each scored against G0 the same way. Same for T2 (target R) with G0R = [hour, used, pace, position extremity].
 - Models trained on a random 40% of train rows for speed, identically for G0, G1 and ablations (comparisons are like for like).
+
+## Results (2026-10-07) — `analysis/output/live_range_features/RESULTS.md`, `RESULTS_abl.md`
+**T1:** 1 of 23 feature × class tests adds information (IV÷σ on FX/gold, 14/20 checkpoints, ~3% pinball at 02-14h); every price-action
+indicator 0-9 of 20. **T2:** the combined model beats the page's model (FX 19/20, indices 10/20). **T3 (registered):** extreme-in Brier skill +22% FX,
++19% indices — **ADDS** by the registered rule. **Variant 2 (Amendment 1):** it is geometry. A model with only price's distance from the running
+extreme, hour, used and pace scores +23% / +21% on its own; the indicators add +0.42% FX and +0.28% indices, VWAP / ROC / WaveTrend / RSI ≈ 0,
+age of the extreme and weekday +0.27% FX, relative volume +0.07 / +0.15%. Reading: the line cannot tell a spent move from a live one; the
+price's pullback from the extreme and the clock do, and no oscillator adds to them. Checkpoint 01:00 has too few bars for RSI(14); not scored.
