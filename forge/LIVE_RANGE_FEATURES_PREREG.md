@@ -40,6 +40,20 @@ frequency by hour × 3×3: Brier skill with a date-block 95% interval; **PASS** 
 ## Variant log
 | # | Variant | Added | Status |
 |---|---|---|---|
-| 1 | as above | 2026-10-07 | pending |
+| 1 | as above | 2026-10-07 | run |
+| 2 | decomposition (Amendment 1): geometry-only model vs indicators, and drop-one-family ablations | 2026-10-07, after variant 1 was seen, before 2 is run | pending |
 
 Output `analysis/output/live_range_features/RESULTS.md`; banked in `js/deskEvidence.js`.
+
+## Amendment 1 (2026-10-07, after variant 1 was run, before variant 2)
+
+Variant 1 (as registered) returned T3 skill +22% (FX/gold) and +19% (indices) on "the running extreme is already in". That is too large to
+read as indicator information: the side-oriented *position in range* feature is the price's distance from the running extreme, and a
+price far below its high with little time left rarely sets a new high — geometry, which the page's lines do not use because they hang
+off the extreme, not off price. The registered verdict stands as run; variant 2 decomposes it so the reading is honest:
+- **G0 (geometry):** gradient-boosted model on [hour, range used, pace, side, price's distance from the running extreme in σ]. 
+- **G1 (all features):** as variant 1. The information in the INDICATORS beyond geometry = skill of G1 over G0 (Brier skill vs G0 with a
+  date-block 95% interval; **adds** if lower bound > 0 and ≥ 1%).
+- **Ablations:** G1 with one family removed (VWAP, ROC+acceleration, WaveTrend, RSI, timing: weekday + age of extreme, relative volume),
+  each scored against G0 the same way. Same for T2 (target R) with G0R = [hour, used, pace, position extremity].
+- Models trained on a random 40% of train rows for speed, identically for G0, G1 and ablations (comparisons are like for like).
