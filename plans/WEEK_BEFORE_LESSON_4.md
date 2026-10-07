@@ -49,4 +49,4 @@ Holdout stays sealed (opens 2027-01-04). Nothing live changes without the owner.
 - 2026-10-07 item 3–4 ✅ effective sample ~1,838 (755 modern). Meta-labelling on the long data: **FAIL with a working
   instrument** (sanity passed); volatility features +0.000. Era gate dropped pre-1996 data: old behaviour taught the model
   the wrong things. Meta-labelling closed for good on this book.
-- Next: items 5 (card 01 delay check), 6 (card 09 stress), 7 (card 11 costs).
+- 2026-10-07 items 5–7 ✅ (analysis/output/card_checks/RESULTS.md): delay check PASS ×2; forecast holds in crises, stops need widening in crises (~10% vs 4%); 6 cost-heavy crosses; Daily Plan now includes measured spread.

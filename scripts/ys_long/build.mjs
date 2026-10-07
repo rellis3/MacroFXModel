@@ -11,7 +11,9 @@ import { usdRole } from '../../js/macroDirectionCore.js';
 const OUT = 'analysis/output/ys_long';
 const FRED = path.join(OUT, 'fred');
 fs.mkdirSync(FRED, { recursive: true });
-const CFG = { zWindow: 126, entry: 2.0, zExit: 1.5, maxHold: 20, cost: 0.02 / 100, lagUs: 2, lagFor: 45 };
+const EXTRA = +(process.env.EXTRA_LAG ?? 0);     // card 01 delay check (forge/CARD_CHECKS_PREREG.md): every rate input N days later
+const SUF = EXTRA ? `_lag${EXTRA}` : '';
+const CFG = { zWindow: 126, entry: 2.0, zExit: 1.5, maxHold: 20, cost: 0.02 / 100, lagUs: 2 + EXTRA, lagFor: 45 + EXTRA };
 const PAIRS = [
   // key, label, FX series (quoted as the pair), foreign rate (or [old, new, switchDate]), group
   ['usdjpy', 'USDJPY', 'DEXJPUS', 'IRSTCI01JPM156N', 'original'],
@@ -84,6 +86,6 @@ for (const [key, label, fxId, rateSpec, group] of PAIRS) {
   coverage[label] = { group, fx_from: from, fx_to: to, first_z: firstZ, trades: n, inverted };
   console.log(`${label}: FX ${from}→${to}, z from ${firstZ}, ${n} trades`);
 }
-fs.writeFileSync(path.join(OUT, 'trades.csv'), tradeRows.join('\n') + '\n');
-fs.writeFileSync(path.join(OUT, 'daily_flat.csv'), flatRows.join('\n') + '\n');
-fs.writeFileSync(path.join(OUT, 'coverage.json'), JSON.stringify(coverage, null, 1));
+fs.writeFileSync(path.join(OUT, `trades${SUF}.csv`), tradeRows.join('\n') + '\n');
+fs.writeFileSync(path.join(OUT, `daily_flat${SUF}.csv`), flatRows.join('\n') + '\n');
+if (!EXTRA) fs.writeFileSync(path.join(OUT, 'coverage.json'), JSON.stringify(coverage, null, 1));

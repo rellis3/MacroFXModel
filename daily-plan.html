@@ -180,7 +180,10 @@ table.dp .grp { border-left: 1.5px solid var(--border); }
   and sits ~3 pts too wide at p75 in FX because its grids were fitted on a slightly lower σ (Evidence Book: live-range-sigma-basis). Read it as
   "how much day is left", not as an exhaustion detector.<br>
   <b>Stop and size</b>: forge/HOW_MUCH_SPEC.md (Lesson 03 §03: jump risk passes through stops; Lesson 01 §06: size below
-  Kelly). Minimum stop 0.55–0.60σ by class; the worst-case step past it is a cautious upper bound.<br>
+  Kelly). Minimum stop 0.55–0.60σ by class; the worst-case step past it is a cautious upper bound. In crisis weeks (gilt 2022,
+  yen carry 2024, tariffs 2025) one 5-minute bar crossed that stop on ~10% of days vs 4% normally: widen it in a crisis. The
+  measured spread at the current hour is added to the planned loss; "⚠" marks a pair whose spread is over 10% of its stop
+  (forge/CARD_CHECKS_PREREG.md). Avoid the 21:00–22:00 UTC rollover: spreads there are 50–100% of the stop on many crosses.<br>
   <b>Not here</b>: entry signals. Direction at the lines and two meta-labelling builds were tested properly and closed
   (forge/META_LABEL_PROPER_PREREG.md).
 </details>
@@ -209,7 +212,18 @@ const fmt = (n, v) => (v == null || !Number.isFinite(v)) ? '—' : v.toFixed(dig
 const sizeFmt = v => !Number.isFinite(v) ? '—' : v >= 1000 ? Math.round(v).toLocaleString('en-GB') : v >= 10 ? v.toFixed(1) : v.toFixed(3);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-let plain = null, chosen = null, timer = null, filter = store.get('dp_filter') ?? 'all';
+let plain = null, chosen = null, spreads = null, timer = null, filter = store.get('dp_filter') ?? 'all';
+
+// Measured spread (price units) at the current UTC hour, from /api/spread-profile (since 2026-09-17; 26 FX pairs + gold).
+// Gold's pips there are $1 (the canonical size); falls back to the 07-16 UTC mean when this hour has no samples.
+function spreadPrice(name) {
+  const P = spreads?.[name === 'GOLD' ? 'XAU_USD' : `${name.slice(0, 3)}_${name.slice(3)}`];
+  if (!P) return null;
+  const h = String(new Date().getUTCHours()).padStart(2, '0');
+  const pips = P.byHour?.[h]?.n >= 5 ? P.byHour[h].mean : P.entryHoursMean;
+  if (!Number.isFinite(pips)) return null;
+  return pips * (name === 'GOLD' ? 1 : /JPY/.test(name) ? 0.01 : 0.0001);
+}
 const state = new Map();     // name -> { st, rf } from the latest 5-min fetch
 
 function theme() { try { return localStorage.getItem('vf_theme') || 'dark'; } catch { return 'dark'; } }
@@ -255,6 +269,10 @@ function row(name) {
   const sig = L.sigma_used_pct;
   const lo = stopAndSize({ instrument: name, price: px, sigmaPct: sig, side: 'long', riskBudget: budget, weekend });
   const sh = stopAndSize({ instrument: name, price: px, sigmaPct: sig, side: 'short', riskBudget: budget, weekend });
+  // Card 11 (forge/CARD_CHECKS_PREREG.md): the measured spread at this UTC hour is paid on top of the planned loss.
+  const spr = spreadPrice(name);
+  for (const x of [lo, sh]) if (x && spr != null) { x.loss_per_unit += spr; x.size = budget > 0 ? budget / x.loss_per_unit : x.size; }
+  const costShare = lo && spr != null ? spr / lo.stop_distance : null;
   const tag = !isChosen ? '<span class="dp-tag" title="No chosen-forecast params: plain Forecast lines">plain</span>'
     : L.form === 'persist+iv' ? `<span class="dp-tag iv" title="Persistence + implied vol (${esc(L.iv_source ?? '')} ${L.iv_annual ?? ''}%)">chosen · IV</span>`
     : '<span class="dp-tag" title="Persistence-adjusted (no implied vol for this instrument today)">chosen</span>';
@@ -264,7 +282,9 @@ function row(name) {
     + `<td class="grp">${bar}</td><td>${room}</td>`
     + `<td class="grp">${lo ? fmt(name, lo.stop_price) : '—'}</td><td>${lo?.size != null ? sizeFmt(lo.size) : '—'}</td>`
     + `<td class="grp">${sh ? fmt(name, sh.stop_price) : '—'}</td><td>${sh?.size != null ? sizeFmt(sh.size) : '—'}</td>`
-    + `<td title="stop + worst-case step${weekend ? ' + Monday gap' : ''}, in σ">${lo ? lo.planned_loss_sigma.toFixed(2) + 'σ' : '—'}</td></tr>`;
+    + `<td title="stop + worst-case step${weekend ? ' + Monday gap' : ''}, in σ; plus one round-trip spread at this hour (measured)">${lo ? lo.planned_loss_sigma.toFixed(2) + 'σ' : '—'}`
+    + `${costShare == null ? ' <span class="muted" title="no measured spread for this instrument">+ spread n/a</span>'
+        : ` <span class="${costShare > 0.10 ? 'dn' : 'muted'}" title="spread ${(costShare * 100).toFixed(1)}% of the minimum stop at this hour${costShare > 0.10 ? ': cost-heavy (> 10%)' : ''}">+${(costShare * 100).toFixed(0)}% cost${costShare > 0.10 ? ' ⚠' : ''}</span>`}</td></tr>`;
 }
 
 function render() {
@@ -275,10 +295,13 @@ function render() {
 async function refresh() {
   $('dpDot').className = 'v2-status-dot spin';
   try {
-    [plain, chosen] = await Promise.all([
+    let sp;
+    [plain, chosen, sp] = await Promise.all([
       fetch('/api/vol-forecast').then(r => r.json()),
       fetch('/api/vol-forecast/persist-ladder/json').then(r => r.json()).catch(() => null),
+      fetch('/api/spread-profile').then(r => r.json()).catch(() => null),
     ]);
+    spreads = sp?.pairs ?? null;
     if (!chosen?.ok) chosen = null;
     const N = names();
     for (let i = 0; i < N.length; i += 4) await Promise.all(N.slice(i, i + 4).map(n => loadState(n).catch(() => state.set(n, {}))));

@@ -851,6 +851,12 @@ export const DESK_EVIDENCE = [
     result: 'No, and this time the test could tell (sanity check PASSED: top tercile |z| 1.87 vs 1.69). 8,142 modern-era bets (~754 effective): precision 51.0% meta vs 51.0% primary [-2.0, +2.1pp]; Sharpe gain -0.013 [-0.066, +0.036]; volatility features +0.000 [-0.019, +0.022]. Era gate: training from 1976 did WORSE on the modern era than training from 1996 (-0.023 vs -0.012), so the old data was dropped: the owner was right that 50-year-old behaviour does not teach the modern market here.',
     use: 'Meta-labelling closed for good on this book: the volatility state does not say when the yield-spread book is right, with enough data to see it if it did. Trade the book by its own rule (|z| >= 2), flat or vol-targeted. Use 1976+ data for confirming the primary, not for training models on today.',
   },
+  {
+    id: 'card-checks-01-09-11', domain: 'execution', verdict: 'context', date: '2026-10-07', doc: 'forge/CARD_CHECKS_PREREG.md',
+    claim: 'Lesson 01 cards on the built system: one-day delay (01), stress windows (09), measured spreads vs stops (11)',
+    result: 'Card 01 PASS both: chosen forecast 0.9802 vs 0.9800 with every input a session late; yield book +0.204% vs +0.243%/trade with rates a day late. Card 09: chosen forecast beat plain in all 4 measurable crises (0.88-0.99; COVID predates the walk-forward lines), but both run tight (HL p75 passed 25-35%); stop rule FAILS the stress bar: one 5-min bar crosses the min stop on ~10% of crisis days vs 4.2% normal. Card 11: majors + gold cost 2-7% of the min stop; 6 crosses over 10% (EURNZD 19%, GBPAUD 12%, EURGBP 12%, AUDCAD 11%, GBPCAD 10%, EURAUD 10%); at rollover spreads are 50-100% of the stop.',
+    use: 'Timing-robust (no exact-alignment dependence). In a crisis week, widen stops (about double the jump-through rate). Prefer majors/gold; treat the 6 flagged crosses as cost-heavy; never place tight stops across the 21-22 UTC rollover. Daily Plan now adds the measured spread to planned loss.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
