@@ -69,3 +69,11 @@ interval above 0; positive in both halves. Reported: A and C separately, per ins
 
 One logged variant per study at most (e.g. K = 4 if K = 16 fails only on power). Output
 `analysis/output/rates_residual/RESULTS.md`; scripts `scripts/rates_residual/`.
+
+## Amendment 1 (2026-10-08 ~00:30, after the first run): S2 coverage variant (the one logged variant for S2)
+
+The first S2 run joined all 18 instruments on common 15-min bars. The Gilt CFD trades only 08:00–16:45 London (and the Bund
+CFD and DAX ~07:00–19:45), so the join plus the 32 consecutive bars needed (4 h look-back + 4 h forward) left n = 2,790
+samples vs 17,912 in S1 — S2 failed on POWER (b +0.345 [−0.084, +0.706]), not on its estimate. Variant: "everything else"
+= the 14 instruments that trade ~23 h (drop UK10YB, DE10YB, DE30). Everything else unchanged (3 PCs, 20-day window, same
+PASS rules, 200 placebos). This is S2's only variant; its result is final either way.

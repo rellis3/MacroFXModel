@@ -1,3 +1,4 @@
+"""S2 coverage variant (forge/RATES_RESIDUAL_PREREG.md Amendment 1)."""
 """Rates residual book S1-S3 (forge/RATES_RESIDUAL_PREREG.md).
 
     python scripts/rates_residual/study.py
@@ -18,7 +19,7 @@ DRIVERS = {"EUR_USD": ["USB02Y_USD", "USB10Y_USD", "DE10YB_EUR"], "GBP_USD": ["U
            "NAS100_USD": ["USB02Y_USD", "USB10Y_USD"], "SPX500_USD": ["USB02Y_USD", "USB10Y_USD"]}
 COST = {"EUR_USD": 0.008, "GBP_USD": 0.01, "USD_JPY": 0.01, "XAU_USD": 0.02, "NAS100_USD": 0.01, "SPX500_USD": 0.01}  # % round trip
 HALF = "2022-05-01"
-ALL = sorted(p.stem for p in M.glob("*.parquet"))
+ALL = sorted(p.stem for p in M.glob("*.parquet") if p.stem not in ("UK10YB_GBP", "DE10YB_EUR", "DE30_EUR"))
 S = {n: pd.read_parquet(M / f"{n}.parquet")["close"] for n in ALL}
 
 
@@ -126,31 +127,8 @@ def summarise(df, label):
     return r
 
 
-# ---------- S1: natural drivers ----------
-FR1 = {}
-def s1_fn(tgt, shift=0):
-    if tgt not in FR1: FR1[tgt] = frame([tgt] + DRIVERS[tgt])
-    idx, R = FR1[tgt]
-    Xd = R[:, 1:]
-    if shift: Xd = np.roll(Xd, shift, axis=0)
-    return idx, R[:, 0], Xd
-
-df1, gaps1 = run_family(s1_fn)
-res = {"S1": summarise(df1, "S1")}
-pl = []
-for k in range(N_PL):
-    sh = int(rng.integers(20 * 80, 400 * 80))
-    d, _ = run_family(lambda t: s1_fn(t, sh))
-    pl.append(float(ols_b(d)[1]))
-    if (k + 1) % 50 == 0: print("S1 placebo", k + 1, flush=True)
-pl = np.array(pl)
-r = res["S1"]; r["placebo"] = {"p95": round(float(np.percentile(pl, 95)), 4), "median": round(float(np.median(pl)), 4),
-                               "real_beats_pct": round(float((r["pooled"]["b"][0] > pl).mean() * 100), 1)}
-r["pass"] = bool(r["pooled"]["b"][1] > 0 and min(r["halves_b"]) > 0 and sum(v > 0 for v in r["by_target_b"].values()) >= 4
-                 and r["placebo"]["real_beats_pct"] >= 95)
-print("S1 done", r["pooled"], r["pass"], flush=True)
-
-# ---------- S2: PCA of everything else ----------
+res = {}
+# ---------- S2 (variant)
 FR_ALL = frame(ALL)
 idxA, RA = FR_ALL
 uA, invA = day_ids(idxA)
@@ -199,70 +177,18 @@ r["pass"] = bool(r["pooled"]["b"][1] > 0 and min(r["halves_b"]) > 0 and sum(v > 
                  and r["placebo"]["real_beats_pct"] >= 95)
 print("S2 done", r["pooled"], r["pass"], flush=True)
 
-# ---------- S3: the S1 gap at C.OG's lines ----------
-T = pd.read_csv("analysis/output/cog_yield_dir/trades.csv")
-LON = ZoneInfo("Europe/London")
-tmap = {"EURUSD": "EUR_USD", "GOLD": "XAU_USD", "NQ": "NAS100_USD"}
-gs = []
-for ins, g in T.groupby("ins"):
-    gp = gaps1[tmap[ins]].dropna()
-    fill = pd.to_datetime(g.date) + pd.to_timedelta(g.fill_min, unit="m")
-    fill_utc = fill.dt.tz_localize(LON, ambiguous="NaT", nonexistent="NaT").dt.tz_convert("UTC").dt.tz_localize(None)
-    look = fill_utc - pd.Timedelta(minutes=30)           # last COMPLETED bar: opened at or before fill - 30 min (closed by fill - 15)
-    j = np.searchsorted(gp.index.to_numpy(), look.to_numpy(), side="right") - 1
-    okj = (j >= 0) & look.notna().to_numpy()
-    jj = np.clip(j, 0, len(gp) - 1)
-    stale = (look.to_numpy() - gp.index.to_numpy()[jj]) > np.timedelta64(2, "h")
-    gap = np.where(okj & ~stale, gp.I.to_numpy()[jj] - gp.O.to_numpy()[jj], np.nan)
-    gs.append(g.assign(gap=gap))
-T3 = pd.concat(gs)
-T3.to_csv(OUT / "line_trades_gap.csv", index=False, float_format="%.5f")    # for S6 (vote.py)
-T3 = T3[T3.gap.notna() & (T3.date >= "2018-02-01")]
-T3["month"] = T3.date.str[:7]
-
-
-def boot_m(a, b=None):
-    ms = sorted(set(a.month) | (set(b.month) if b is not None else set()))
-    ga = {m: x.R.to_numpy() for m, x in a.groupby("month")}; gb = {m: x.R.to_numpy() for m, x in b.groupby("month")} if b is not None else None
-    reps = []
-    for _ in range(B):
-        pick = rng.choice(ms, len(ms))
-        x = np.concatenate([ga.get(m, np.empty(0)) for m in pick]); v = x.mean()
-        if gb is not None: v -= np.concatenate([gb.get(m, np.empty(0)) for m in pick]).mean()
-        reps.append(v)
-    pt = a.R.mean() - (b.R.mean() if b is not None else 0)
-    return [round(float(pt), 4), *np.round(np.nanpercentile(reps, [2.5, 97.5]), 4).tolist()]
-
-
-keep = T3[(np.sign(T3.gap) == T3.side) & (T3.gap.abs() > 0.5)]
-opp = T3[(np.sign(T3.gap) == -T3.side) & (T3.gap.abs() > 0.5)]
-s3 = {"n_all": int(len(T3)), "n_keep": int(len(keep)), "keep": boot_m(keep), "keep_minus_all": boot_m(keep, T3),
-      "opposite": round(float(opp.R.mean()), 4), "all": round(float(T3.R.mean()), 4),
-      "halves_keep": [round(float(keep[keep.date < HALF].R.mean()), 4), round(float(keep[keep.date >= HALF].R.mean()), 4)],
-      "by_setup_ins": {f"{s}|{i}": [round(float(x.R.mean()), 4), int(len(x))] for (s, i), x in keep.groupby(["setup", "ins"])},
-      "by_setup_ins_all": {f"{s}|{i}": round(float(x.R.mean()), 4) for (s, i), x in T3.groupby(["setup", "ins"])}}
-s3["pass"] = bool(s3["keep"][1] > 0 and s3["keep_minus_all"][1] > 0 and min(s3["halves_keep"]) > 0)
-res["S3"] = s3
-for nm, gp in (("S1", gaps1),):
-    pd.concat({k: v for k, v in gp.items()}, names=["tgt", "t"]).to_parquet(OUT / f"gaps_{nm}.parquet")
-(OUT / "results.json").write_text(json.dumps(res, indent=1, default=str))
 
 f = lambda c: f"{c[0]:+.4f} [{c[1]:+.4f}, {c[2]:+.4f}]"
-md = ["# Rates residual book (results)", "", "Pre-registration: `forge/RATES_RESIDUAL_PREREG.md`. OANDA M15 2018-01 → 2026-10. "
-      "I = rates-implied 4h move, O = own 4h move, F = next 4h, all in σ units; b = how much of the rates-implied move price "
-      "adds over the next 4h (controlling for its own move, c). Sampled every 4h; day-block bootstrap.", ""]
-for k, title in (("S1", "S1 — natural drivers (bond CFDs)"), ("S2", "S2 — PCA of every other instrument")):
-    r = res[k]
-    md += [f"## {title}: **{'PASS' if r['pass'] else 'FAIL'}**", "",
-           f"- b (catch-up to the implied move): **{f(r['pooled']['b'])}**; c (own move): {f(r['pooled']['c'])}; n {r['n']}",
-           f"- halves b: {r['halves_b'][0]:+.4f} / {r['halves_b'][1]:+.4f}; by target: " + ", ".join(f"{t} {v:+.4f}" for t, v in r["by_target_b"].items()),
-           f"- placebo (drivers shifted): median {r['placebo']['median']:+.4f}, 95th {r['placebo']['p95']:+.4f}, real beats {r['placebo']['real_beats_pct']}%",
-           f"- gap trade (|I−O| > 1.5, 4h, after costs): {r['gap_trade']['mean_net_bp']:+.2f} bp/trade, hit {r['gap_trade']['hit'] * 100:.1f}%, n {r['gap_trade']['n']}; "
-           + ", ".join(f"{t} {v:+.2f}" for t, v in r["gap_trade"]["by_target_bp"].items()), ""]
-md += [f"## S3 — the S1 gap as the direction at C.OG's lines: **{'PASS' if s3['pass'] else 'FAIL'}**", "",
-       f"- Kept (price behind rates in the trade's direction, |gap| > 0.5): {f(s3['keep'])} R, n {s3['n_keep']} of {s3['n_all']}",
-       f"- Kept minus all: {f(s3['keep_minus_all'])}; opposite filter {s3['opposite']:+.4f}; all {s3['all']:+.4f}",
-       f"- Halves kept: {s3['halves_keep'][0]:+.4f} / {s3['halves_keep'][1]:+.4f}",
-       "- Kept by setup|instrument [R, n] vs all: " + "; ".join(f"{k} {v[0]:+.3f} ({v[1]}) vs {s3['by_setup_ins_all'][k]:+.3f}" for k, v in s3["by_setup_ins"].items())]
-(OUT / "RESULTS.md").write_text("\n".join(md) + "\n", encoding="utf-8")
-print("\n".join(md).encode("ascii", "replace").decode())
+r = res["S2"]
+md = ["", f"## S2 variant (Amendment 1: the 14 ~23h instruments): **{'PASS' if r['pass'] else 'FAIL'}**", "",
+      f"- b: **{f(r['pooled']['b'])}**; c: {f(r['pooled']['c'])}; n {r['n']}",
+      f"- halves b: {r['halves_b'][0]:+.4f} / {r['halves_b'][1]:+.4f}; by target: " + ", ".join(f"{t} {v:+.4f}" for t, v in r["by_target_b"].items()),
+      f"- placebo: median {r['placebo']['median']:+.4f}, 95th {r['placebo']['p95']:+.4f}, real beats {r['placebo']['real_beats_pct']}%",
+      f"- gap trade: {r['gap_trade']['mean_net_bp']:+.2f} bp/trade, hit {r['gap_trade']['hit'] * 100:.1f}%, n {r['gap_trade']['n']}; " + ", ".join(f"{t} {v:+.2f}" for t, v in r["gap_trade"]["by_target_bp"].items())]
+with open(OUT / "RESULTS.md", "a", encoding="utf-8") as fh: fh.write("
+".join(md) + "
+")
+json.dump(r, open(OUT / "s2_variant.json", "w"), indent=1, default=str)
+pd.concat({k: v for k, v in gaps2.items()}, names=["tgt", "t"]).to_parquet(OUT / "gaps_S2v.parquet")
+print("
+".join(md).encode("ascii", "replace").decode())
