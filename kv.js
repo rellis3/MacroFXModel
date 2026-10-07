@@ -64,6 +64,8 @@ const _CF_EXACT = new Set([
                              // the live calibration record of the IV-vs-sigma call. Must also be in _worker.js PERMANENT_KEYS.
   'forecast_scorecard_v1',   // forward scorecard of the forecast lines (plain vs IV-adjusted daily, sqrt-h vs reverting
                              // weekly, Live Range bands): a forward record, not re-derivable. Must also be in _worker.js PERMANENT_KEYS.
+  'signal_journal_v1',       // Signal Journal: line touches + odds + outcomes, yield-spread alert positions
+                             // (forge/SIGNAL_JOURNAL_PREREG.md): a forward record. Must also be in _worker.js PERMANENT_KEYS.
   'paper_record_v1',         // rich-vol break paper record (paper-record.html): every flag and hypothetical trade since
                              // the record began; a forward test, not re-derivable. Must also be in _worker.js PERMANENT_KEYS.
   'daily_snapshot_v1',       // one row per day of what the page THOUGHT: the brief's regime line, the chain

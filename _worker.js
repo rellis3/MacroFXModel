@@ -76,7 +76,7 @@ function isAllowedKVKey(key) {
     'spread_profile_v1',
     'pattern_bot_state', 'pattern_bot_status', 'pattern_bot_config',
     'level_engine_bot_state', 'level_engine_bot_status', 'level_engine_fwd_log',
-    'bot_allocations', 'paper_record_v1', 'daily_read_v1', 'surface_lab_v1', 'forecast_scorecard_v1']);
+    'bot_allocations', 'paper_record_v1', 'daily_read_v1', 'surface_lab_v1', 'forecast_scorecard_v1', 'signal_journal_v1']);
   const PREFIXES = ['expect_', 'ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'event_windows_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'rgv4_', 'rgv7_', 'trade_hist_', 'confluence_', 'vmlog_', 'oi_raw_', 'bot_daily_recon_', 'sched_lastrun_'];
   if (EXACT.has(key)) return true;
   return PREFIXES.some(p => key.startsWith(p));
@@ -1067,6 +1067,7 @@ export default {
             'daily_snapshot_v1',
             'paper_record_v1',
             'forecast_scorecard_v1',
+            'signal_journal_v1',
             'daily_read_v1',
             'surface_lab_v1',
             'desk_watch_v1',

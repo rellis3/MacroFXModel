@@ -62,6 +62,10 @@ import { buildIvAdjExportText, buildIvAdjInstruments }                from './js
 import { buildPersistExportText, buildPersistInstruments }            from './js/forecastLadderPersist.js';
 import { scoreSession, scoreWeek, summarise as summariseScorecard, verdicts as scorecardVerdicts } from './js/forecastScorecard.js';
 import { londonParts as _lrLondonParts }                              from './js/intradayRange.js';
+import { sessionState as _sjSession }                                 from './js/intradayRange.js';
+import { detectTouches as sjDetect, scoreTouch as sjScore, yieldEvents as sjYieldEvents, formatDigest as sjDigest, formatYield as sjYieldText, MAIN as SJ_MAIN } from './js/signalJournal.js';
+import { stopAndSize as sjStopAndSize }                               from './js/howMuch.js';
+import { directionFromZ as sjDirFromZ }                               from './js/yieldSpreadCore.js';
 import { impliedDayMove }                                             from './js/ivMetrics.js';
 import { parseForexFactory as _calParseFF, parseNasdaq as _calParseNasdaq, upcoming as _calUpcoming, printed as _calPrinted, calendarHealth as _calHealth } from './js/calendarFeed.js';
 import { ladderPathChain, describeSide }                            from './js/ladderPathStats.js';   // "at the p50 line, what happens next?" — the conditional rung chain
@@ -22119,6 +22123,173 @@ async function _fcardTick() {
 }
 svcInterval('forecastScorecard', () => _fcardTick().catch(e => console.error('[forecast-scorecard]', e.message)), 30 * 60_000);
 svcTimeout('forecastScorecard', () => _fcardTick().catch(e => console.error('[forecast-scorecard]', e.message)), 3 * 60_000);
+
+// ── Signal Journal (forge/SIGNAL_JOURNAL_PREREG.md) ───────────────────────────────────────────────────────────────
+// Every 5 min: freeze today's chosen-forecast lines (the scorecard's morning snapshot when it exists), detect first
+// touches of every rung with their historical odds (js/signalJournal.js), Telegram the main instruments' touches as an
+// hourly digest, yield-spread entries/exits immediately (direction comes only from that book), and after 22:15 London
+// score the day + send a summary. Alerts and a journal only: no orders. KV signal_journal_v1 (CF-persisted).
+const _SJ_KEY = 'signal_journal_v1';
+const _sjBarCache = new Map();
+const _sjDigits = n => /JPY/.test(n) ? 3 : n === 'GOLD' ? 2 : ['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'].includes(n) ? 1 : 5;
+const _sjFmt = (n, v) => (Number.isFinite(v) ? v.toFixed(_sjDigits(n)) : '—');
+async function _sjBars(cfg) {
+  const inst = _liqGateOandaSym(cfg.oandaInstrument);
+  const hit = _sjBarCache.get(inst);
+  if (hit && Date.now() - hit.at < 60_000) return hit.bars;
+  const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(inst)}/candles?granularity=M5&count=320&price=M`,
+    { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
+  if (!r.ok) throw new Error(`OANDA ${r.status}`);
+  const bars = ((await r.json()).candles ?? []).filter(c => c.mid).map(c => ({ t: Math.floor(Date.parse(c.time) / 1000),
+    open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
+  _sjBarCache.set(inst, { at: Date.now(), bars });
+  return bars;
+}
+function _sjTradingDays(fromDate, toDate) {
+  let n = 0;
+  for (let d = new Date(`${fromDate}T12:00:00Z`); d.toISOString().slice(0, 10) < toDate; d.setUTCDate(d.getUTCDate() + 1)) {
+    const w = d.getUTCDay(); if (w !== 0 && w !== 6) n++;
+  }
+  return n;
+}
+async function _sjSend(text) {
+  if (!text || !state.tg?.token || !state.tg?.chatId || state.cfg?.serverEnabled === false) return false;
+  return sendTelegram(state.tg.token, state.tg.chatId, text).catch(() => false);
+}
+const _sjSessionBars = (bars, date) => bars.filter(b => { const p = _lrLondonParts(b.t); return p.date === date && p.hour < 22; });
+async function _sjTick() {
+  if (!process.env.OANDA_KEY || !forecastState.latest) return;
+  const now = _lrLondonParts(Date.now() / 1000);
+  const wd = new Date(`${now.date}T12:00:00Z`).getUTCDay();
+  let J = null;
+  try { J = JSON.parse(await kv.get(_SJ_KEY) || 'null'); } catch { /* corrupt -> start again */ }
+  J ??= { started: now.date, days: {}, positions: {}, closed: [] };
+  let dirty = false;
+  const L = forecastState.latest;
+  const byName = Object.fromEntries(VOL_INSTRUMENTS.map(c => [c.name, c]));
+
+  // 1. today's lines + touches (weekdays, during the London session)
+  if (wd !== 0 && wd !== 6 && L.session_date === now.date && now.hour < 22) {
+    const day = (J.days[now.date] ??= { lines: null, touches: [], lastDigestAt: 0, scored: false, eodSent: false });
+    if (!day.lines) {
+      let lines = null;
+      try { const sc = JSON.parse(await kv.get(_FCARD_KEY) || 'null'); lines = sc?.snapP?.[now.date] ?? null; } catch { /* none */ }
+      if (!lines) {
+        const ohlc = await ensureOhlcCache();
+        const { instruments, adjusted } = buildPersistInstruments(L, ohlc, VOL_INSTRUMENTS, undefined, await _persistIvByName(ohlc));
+        if (adjusted.length >= 20) lines = Object.fromEntries(adjusted.map(a => [a.name, instruments[a.name].ladder]));
+      }
+      if (lines) { day.lines = lines; dirty = true; }
+    }
+    if (day.lines) {
+      for (const name of Object.keys(day.lines)) {
+        const cfg = byName[name]; if (!cfg) continue;
+        let bars;
+        try { bars = await _sjBars(cfg); } catch { continue; }
+        const st = _sjSession(bars, now.date);
+        if (!st) continue;
+        for (const x of sjDetect(name, _sjSessionBars(bars, now.date), st.open, day.lines[name])) {
+          if (day.touches.some(y => y.instrument === name && y.side === x.side && y.rung === x.rung)) continue;
+          day.touches.push({ ...x, open: st.open, main: SJ_MAIN.has(name), sent: false });
+          dirty = true;
+        }
+      }
+      // hourly digest of the main instruments' new touches
+      const pending = day.touches.filter(x => x.main && !x.sent);
+      if (pending.length && Date.now() - (day.lastDigestAt || 0) >= 55 * 60_000) {
+        if (await _sjSend(sjDigest(pending, _sjFmt))) { for (const x of pending) x.sent = true; day.lastDigestAt = Date.now(); dirty = true; }
+      }
+    }
+  }
+
+  // 2. yield-spread entries / exits (direction), during London 07-21 on weekdays
+  if (wd !== 0 && wd !== 6 && now.hour >= 7 && now.hour < 21) {
+    try {
+      const raw = await kv.get('yield_spread_plan');
+      const parsed = raw ? JSON.parse(raw) : null;
+      const plan = parsed?.data ?? parsed;
+      if (plan?.signals) {
+        const prices = {};
+        for (const s of Object.values(plan.signals)) {
+          const cfg = byName[s.label];
+          if (cfg) { try { prices[s.label] = (await _sjBars(cfg)).at(-1)?.close; } catch { /* skip */ } }
+        }
+        const ev = sjYieldEvents(plan.signals, J.positions, prices, pos => _sjTradingDays(pos.entryDate, now.date),
+          s => sjDirFromZ(s.z, !!s.inverted));
+        for (const e of ev) {
+          if (e.kind === 'entry') {
+            const sig = J.days[now.date]?.lines?.[e.label]?.sigma_used_pct ?? L.instruments?.[e.label]?.ladder?.sigma_used_pct;
+            const hm = sig ? sjStopAndSize({ instrument: e.label, price: e.price, sigmaPct: sig, side: e.dir === 'LONG' ? 'long' : 'short' }) : null;
+            const stop = hm ? { price: hm.stop_price, sigma: hm.min_stop_sigma } : null;
+            J.positions[e.label] = { dir: e.dir, entry: e.price, entryDate: now.date, entryAt: Date.now(), z: e.z, stop: stop?.price ?? null };
+            await _sjSend(sjYieldText(e, _sjFmt, stop));
+          } else {
+            const p = e.pos, ret = (p.dir === 'LONG' ? 1 : -1) * (e.price - p.entry) / p.entry;
+            J.closed.push({ label: e.label, dir: p.dir, entry: p.entry, entryDate: p.entryDate, exit: e.price, exitDate: now.date, reason: e.reason, ret });
+            delete J.positions[e.label];
+            await _sjSend(sjYieldText(e, _sjFmt));
+          }
+          dirty = true;
+        }
+      }
+    } catch (e) { console.warn('[signal-journal] yield', e.message); }
+  }
+
+  // 3. after 22:15 London: score today's touches and send the summary
+  const today = J.days[now.date];
+  if (today && !today.scored && now.hour >= 22.25 && today.touches.length) {
+    for (const name of [...new Set(today.touches.map(x => x.instrument))]) {
+      let bars;
+      try { bars = _sjSessionBars(await _sjBars(byName[name]), now.date); } catch { continue; }
+      if (!bars.length) continue;
+      for (const x of today.touches.filter(y => y.instrument === name)) x.outcome = sjScore(x, bars);
+    }
+    today.scored = true; dirty = true;
+    const M = today.touches.filter(x => x.main && x.outcome);
+    const went = M.filter(x => x.outcome.reached != null);
+    const pct = (a, b) => (b ? `${Math.round(a / b * 100)}%` : '—');
+    const avg = (xs, f) => (xs.length ? xs.reduce((s, x) => s + (f(x) ?? 0), 0) / xs.length : 0);
+    const txt = `📒 <b>Signal Journal — ${now.date}</b>\nMain-instrument line touches: ${M.length}`
+      + (went.length ? `\nReached the next line: ${pct(went.filter(x => x.outcome.reached).length, went.length)} (history said ${Math.round(avg(went, x => x.odds.reach) * 100)}%)` : '')
+      + (M.length ? `\nTouch stayed the day extreme: ${pct(M.filter(x => x.outcome.final).length, M.length)} (history said ${Math.round(avg(M, x => x.odds.final) * 100)}%)` : '')
+      + `\nOpen yield-spread trades: ${Object.keys(J.positions).join(', ') || 'none'}`;
+    if (!today.eodSent && await _sjSend(txt)) today.eodSent = true;
+  }
+
+  if (dirty) {
+    const keep = Object.keys(J.days).sort().slice(-120);
+    J.days = Object.fromEntries(keep.map(d => [d, J.days[d]]));
+    J.closed = (J.closed ?? []).slice(-500);
+    await kv.put(_SJ_KEY, JSON.stringify(J));
+  }
+}
+svcInterval('signalJournal', () => _sjTick().catch(e => console.error('[signal-journal]', e.message)), 5 * 60_000);
+svcTimeout('signalJournal', () => _sjTick().catch(e => console.error('[signal-journal]', e.message)), 4 * 60_000);
+
+// GET /api/signal-journal → the Journal panel on daily-plan.html: today's touches (odds, outcomes), open yield-spread
+// trades, closed trades, and the forward calibration of every stated odds type so far.
+app.get('/api/signal-journal', async (_req, res) => {
+  try {
+    const J = JSON.parse(await kv.get(_SJ_KEY) || 'null') ?? { days: {}, positions: {}, closed: [] };
+    const dates = Object.keys(J.days).sort();
+    const scored = dates.flatMap(d => (J.days[d].touches ?? []).filter(x => x.outcome).map(x => ({ ...x, date: d })));
+    const cal = (rows, stated, got) => {
+      const r = rows.filter(x => stated(x) != null && got(x) != null);
+      return { n: r.length, sessions: new Set(r.map(x => x.date)).size,
+               stated: r.length ? +(r.reduce((s, x) => s + stated(x), 0) / r.length).toFixed(3) : null,
+               realised: r.length ? +(r.filter(got).length / r.length).toFixed(3) : null };
+    };
+    const last = dates.at(-1);
+    const closedRet = (J.closed ?? []).map(c => c.ret);
+    res.json({ ok: true, started: J.started ?? null,
+               today: last ? { date: last, touches: J.days[last].touches ?? [], scored: !!J.days[last].scored, hasLines: !!J.days[last].lines } : null,
+               positions: J.positions ?? {}, closed: (J.closed ?? []).slice(-50),
+               calibration: { reach: cal(scored, x => x.odds?.reach, x => x.outcome?.reached), final: cal(scored, x => x.odds?.final, x => x.outcome?.final),
+                              verdictAfter: { touches: 100, sessions: 20 } },
+               yieldBook: { trades: closedRet.length, meanPct: closedRet.length ? +(closedRet.reduce((a, b) => a + b, 0) / closedRet.length * 100).toFixed(3) : null,
+                            winRate: closedRet.length ? +(closedRet.filter(r => r > 0).length / closedRet.length).toFixed(3) : null, verdictAfter: 30 } });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 // GET /api/forecast-scorecard → the rolled-up forward record (raw=1 adds the per-day rows)
 app.get('/api/forecast-scorecard', async (req, res) => {

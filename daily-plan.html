@@ -166,6 +166,14 @@ table.dp .grp { border-left: 1.5px solid var(--border); }
 </table></div>
 
 <details class="lr-info" open>
+  <summary>📒 Signal Journal · today's alerts, odds and outcomes <span class="muted" id="dpJournalMeta"></span></summary>
+  <div class="muted" style="margin:6px 0">Direction alerts come only from the yield-spread book (confirmed on 1976–2014). Line touches carry
+    history's odds and what they suggest doing; they are not entry calls. Everything is scored at the 22:00 close
+    (forge/SIGNAL_JOURNAL_PREREG.md). Telegram: yield entries/exits at once, line touches hourly, a summary after 22:15.</div>
+  <div id="dpJournal">Loading…</div>
+</details>
+
+<details class="lr-info" open>
   <summary>Track record · forward, scored after every session <span class="muted" id="dpTrackMeta"></span></summary>
   <div id="dpTrack" class="dp-verdicts muted" style="margin-top:8px">Loading…</div>
 </details>
@@ -329,7 +337,37 @@ async function loadTrack() {
   } catch (e) { $('dpTrack').textContent = `Track record unavailable: ${e.message}`; }
 }
 
-function schedule() { clearInterval(timer); if ($('dpAuto').checked) timer = setInterval(() => refresh(), 5 * 60_000); }
+async function loadJournal() {
+  try {
+    const J = await (await fetch('/api/signal-journal')).json();
+    if (!J?.ok) throw new Error(J?.error ?? 'unavailable');
+    const pc = v => (v == null ? '—' : `${Math.round(v * 100)}%`);
+    const hm = h => `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
+    const T = (J.today?.touches ?? []).slice().sort((a, b) => b.t - a.t);
+    $('dpJournalMeta').textContent = J.started ? `· recording since ${J.started}` : '· starting';
+    const pos = Object.entries(J.positions ?? {});
+    const posHtml = pos.length
+      ? `<table class="lr-t"><tr><th>Yield-spread trade</th><th>side</th><th>entry</th><th>since</th><th>stop</th></tr>`
+        + pos.map(([k, p]) => `<tr><td>${esc(k)}</td><td class="${p.dir === 'LONG' ? 'up' : 'dn'}">${esc(p.dir)}</td><td>${fmt(k, p.entry)}</td><td>${esc(p.entryDate)}</td><td>${fmt(k, p.stop)}</td></tr>`).join('') + '</table>'
+      : '<div class="muted">No open yield-spread trade. Entries fire when a pair\'s spread z reaches ±2.</div>';
+    const touchHtml = T.length
+      ? `<table class="lr-t"><tr><th>Time</th><th>Instrument</th><th>Line</th><th>reach next</th><th>stays day extreme</th><th>what it suggests</th><th>outcome</th></tr>`
+        + T.map(x => `<tr><td>${hm(x.londonHour)}</td><td>${esc(x.instrument)}${x.main ? '' : ' <span class="muted">·</span>'}</td>`
+          + `<td class="${x.side === 'up' ? 'up' : 'dn'}">${x.side === 'up' ? '↑' : '↓'}${esc(x.rung)} ${fmt(x.instrument, x.level)}</td>`
+          + `<td>${x.odds?.next ? pc(x.odds.reach) : '—'}</td><td>${pc(x.odds?.final)}</td><td>${esc(x.guidance)}</td>`
+          + `<td>${x.outcome ? `${x.outcome.reached == null ? '' : x.outcome.reached ? '✓ reached · ' : '✗ not reached · '}${x.outcome.final ? 'was the extreme' : 'extended'}` : '<span class="muted">open</span>'}</td></tr>`).join('') + '</table>'
+      : `<div class="muted">${J.today?.hasLines ? 'No line touched yet today.' : 'Waiting for today\'s lines.'}</div>`;
+    const C = J.calibration ?? {}, Y = J.yieldBook ?? {};
+    const calRow = (lab, c) => `<tr><td>${lab}</td><td>${c?.n ?? 0}</td><td>${c?.sessions ?? 0}</td><td>${pc(c?.stated)}</td><td>${pc(c?.realised)}</td></tr>`;
+    const calHtml = `<table class="lr-t"><tr><th>Forward check</th><th>touches</th><th>sessions</th><th>history said</th><th>happened</th></tr>`
+      + calRow('reach the next line', C.reach) + calRow('stay the day extreme', C.final) + '</table>'
+      + `<div class="muted" style="margin-top:4px">Verdict after ${C.verdictAfter?.touches ?? 100} touches and ${C.verdictAfter?.sessions ?? 20} sessions. `
+      + `Yield-spread book: ${Y.trades ?? 0} closed trades${Y.trades ? `, mean ${Y.meanPct}% , ${Math.round(Y.winRate * 100)}% wins` : ''} (history +0.24%, 55%; verdict after ${Y.verdictAfter ?? 30}).</div>`;
+    $('dpJournal').innerHTML = posHtml + '<div style="height:8px"></div>' + touchHtml + '<div style="height:8px"></div>' + calHtml;
+  } catch (e) { $('dpJournal').textContent = `Journal unavailable: ${e.message}`; }
+}
+
+function schedule() { clearInterval(timer); if ($('dpAuto').checked) timer = setInterval(() => { refresh(); loadJournal(); }, 5 * 60_000); }
 
 function init() {
   applyTheme(theme());
@@ -346,6 +384,7 @@ function init() {
       for (const x of document.querySelectorAll('#dpTabs .v2-tab')) x.classList.toggle('active', x.dataset.f === filter); render(); };
   }
   loadTrack();
+  loadJournal();
   refresh().then(schedule);
 }
 init();
