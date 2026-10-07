@@ -688,7 +688,7 @@ export const DESK_EVIDENCE = [
     use: 'Do not build a fade / continue chooser from these confluences on either line: the lift they give is about what chance gives and none survives spread. The moving line does not unlock them. Use the full-day map for expectations (how far, how long, how often the extreme is in) and the existing finding that the clock and the price pullback from the extreme carry the information. Phase 2 (FVG, Fibonacci, round numbers) not run.',
   },
   {
-    id: 'event-layer', domain: 'events', verdict: 'null', date: '2026-10-05', doc: 'forge/EVENT_LAYER_PREREG.md',
+    id: 'event-layer', domain: 'events', verdict: 'null', date: '2026-10-05', doc: 'forge/EVENT_LAYER_PREREG.md',
     claim: 'On top of the IV-adjusted daily lines, the typical size of the day’s scheduled release type (and yesterday’s surprise) improves the range forecast',
     result: 'First test (calendar_events.csv) PASSED for FX+gold (0.970, 7/7) but did NOT replicate on live inputs (ForexFactory names, live IV-adjusted sigma, 2020-2025): 0.9937 vs the 0.99 bar; the fitted correction overshoots (big-release-day p75 35.5% -> 17.3%). Yesterday’s surprise null in both. The live export’s coarse event tag already brings FOMC/NFP/CPI days to 27.1% passed vs 25%.',
     use: 'Keep the coarse event tag on the IV-adjusted lines; it already handles release days. No finer release-type layer. Do not widen the day after a surprise.',
@@ -868,6 +868,12 @@ export const DESK_EVIDENCE = [
     claim: 'Buying the ~0.8 sigma dip below the London open (the shape of 4 posted C.OG trades: fills 0.67-0.88 sigma below open, between the export p50 and p75) is an edge when only taken in a trusted direction (the yield-spread book)',
     result: 'FAIL. Six yield pairs, M1, 2016-2026, target 0.4 sigma / stop 0.6 sigma, after costs: with the bias -0.048R [-0.088, -0.004] (1,574 trades, 55.6% wins vs 60% needed); against -0.090R; no filter -0.073R. Direction ordering is consistent (with > none > against, also in the 13-16 UK window: -0.044 / -0.062 / -0.115) but the gain over no filter, +0.025R [-0.012, +0.064], is too small to beat the geometry and cost.',
     use: 'The yield-spread direction tilts dip-buys the right way but not enough to make a 0.8 sigma dip-buy with this target/stop pay. Whatever C.OG uses for direction, it is not this book; his posted trades are 6 winners, the shape not the rule.',
+  },
+  {
+    id: 'cog-setups-direction', domain: 'price', verdict: 'null', date: '2026-10-07', doc: 'forge/COG_SETUPS_PREREG.md',
+    claim: "C.OG's two setups, confirmed against his own published lines (EURUSD fills on his median O-C line; gold entries on the London-midnight open with a ~0.1 sigma stop), are an edge on their own or when taken in a trend / prior-day direction",
+    result: "NOTHING PASSES (10 tests, Holm). EURUSD/GOLD/NQ, M1, 2016-2026, his formula on a rebuilt sigma, after costs. A (fade at his median, stop his 75th, target halfway back): -0.066R [-0.085, -0.047], 47.7% targets vs 57.5% needed; best direction = with the 20-day trend -0.047R, better than against (-0.085R) on all 3 instruments and both halves but +0.019R [-0.002, +0.039] over no filter. B (retest of the London open in the breakaway direction, stop 0.1 sigma, target his 75th): -0.201R, 3.8% targets, 86.7% stops; mirror worse (-0.355R); no direction rule helps (best +0.032R over none, interval spans 0). Mechanics audited: only 6-10% of B stops land on the fill bar; ignoring the stop, the breakaway reaches his 75th only 10-19% of retest days. His sigma is not exactly rebuildable (corr 0.5 FX/gold, 0.1 NQ vs his published vol); on his exact lines (2026, ~40 days each) the same picture (A -0.171R).",
+    use: 'His entry LOCATIONS are real (the fills sit on his lines) but location plus a mechanical direction does not pay. Direction lesson: if fading a line, fade WITH the 20-day trend (buy dips in uptrends), never against; it is the only consistent tilt, still too small alone. A return to the London open is a coin flip, not a springboard. His posted winners need something we cannot see (discretion, macro gates, or selective posting).',
   },
 ];
 
