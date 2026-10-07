@@ -21,3 +21,4 @@ Line-ending-proof check (git blob ids; verify with `git hash-object <file>`):
 ## Logged changes after sealing
 
 - 2026-10-07: `js/forecastLadderPersist.js` — σ history computed in one pass instead of 256 prefix recomputes (the live endpoint timed out). **Outputs identical**: regime, res1, res5 and σ matched the old method exactly on EURUSD, GBPUSD, GOLD, NQ, EURJPY, USDJPY (yz_10 and ewma_094). New git blob: `b0072d2c7a626b6027017872de0035585d299f07`. No parameter or rule changed.
+- 2026-10-07: `js/forecastLadderPersist.js` — added `vol_annual` + `event_mult` display fields: the export text skipped every adjusted instrument without them (owner spotted the paste held only BTC/commodities). **Lines unchanged** (σ_new, widths, rungs identical). New git blob: `72f186f7aa7b949fc7d5167c551222d70ce2e92e`.

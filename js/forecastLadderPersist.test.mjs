@@ -69,5 +69,19 @@ ok('higher implied vol -> wider lines', Lhi.hl.p75 > Liv.hl.p75);
 ok('no IV -> persistence form', buildPersistLadder(B, { instrument: 'EURUSD', sessionDate: next, sigmaUsedPct: 0.40 }).form === 'persist');
 ok('instrument without an iv block ignores IV', buildPersistLadder(B, { instrument: 'EURJPY', sessionDate: next, sigmaUsedPct: 0.40, ivAnnualPct: 9 }).form === 'persist');
 
+// the paste must contain the ADJUSTED instruments (2026-10-07 bug: missing vol_annual dropped all of them)
+{
+  const { buildPersistExportText } = await import('./forecastLadderPersist.js');
+  const lat = { session_date: next, session_label: 'TEST', instruments: {
+    EURUSD: { ladder: { sigma_used_pct: 0.4, event_tag: 'high', event_mult: 1.026, vol_annual: 6 } },
+    GOLD:   { ladder: { sigma_used_pct: 1.0, event_tag: 'high', event_mult: 1.0, vol_annual: 16 } },
+    BTCUSD: { ladder: { sigma_used_pct: 2, vol_annual: 30, hl: { p50: 1, p75: 2, p90: 3 }, oh: { p50: 1, p75: 2, p90: 3 }, ol: { p50: 1, p75: 2, p90: 3 }, oc: { p50: 1, p75: 2, p90: 3 } } } } };
+  const { text, adjusted } = buildPersistExportText(lat, { EURUSD: B, GOLD: B }, [{ name: 'EURUSD', assetClass: 'fx' }, { name: 'GOLD', assetClass: 'commodity' }], { EURUSD: 7.5 });
+  ok('adjusted instruments appear in the paste', adjusted.length === 2 && /── EURUSD/.test(text) && /── GOLD/.test(text));
+  ok('unadjusted instrument still appears', /── BTCUSD/.test(text));
+  const L1 = buildPersistLadder(B, { instrument: 'EURUSD', sessionDate: next, sigmaUsedPct: 0.40, eventMult: 1.026 });
+  ok('vol_annual = chosen sigma before the event multiplier, annualised', Math.abs(L1.vol_annual - L1.sigma_used_pct / 1.026 * Math.sqrt(252)) < 0.1);   // sigma_used_pct is rounded to 2 dp; x sqrt(252) magnifies it
+}
+
 console.log(fail ? `${fail} FAILED` : 'all passed');
 process.exit(fail ? 1 : 0);

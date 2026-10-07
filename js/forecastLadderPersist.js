@@ -79,7 +79,7 @@ export function persistFeatures(bars, { instrument, assetClass = 'fx', sessionDa
 
 /** One persistence-adjusted ladder (buildLadder's shape). `sigmaUsedPct` = the production ladder's σ_used. */
 export function buildPersistLadder(bars, { instrument, assetClass = 'fx', sessionDate, sigmaUsedPct, eventTag = null,
-                                          ivAnnualPct = null, params = PERSIST_PARAMS } = {}) {
+                                          eventMult = 1, ivAnnualPct = null, params = PERSIST_PARAMS } = {}) {
   const p = params.pairs?.[String(instrument).toUpperCase()];
   if (!p?.width || !params.classes?.[p.class]?.beta || !(sigmaUsedPct > 0)) return null;
   const x = persistFeatures(bars, { instrument, assetClass, sessionDate, params });
@@ -94,6 +94,9 @@ export function buildPersistLadder(bars, { instrument, assetClass = 'fx', sessio
   const sPct = sigmaUsedPct * adj;
   const out = {
     sigma_daily_pct: x.sigma_daily_pct, sigma_used_pct: _r2(sPct), sigma_export_pct: _r2(sigmaUsedPct),
+    // annualised chosen σ before the event multiplier, as the production ladder reports it. The export text SKIPS any
+    // instrument without vol_annual — missing it dropped every adjusted instrument from the paste (fixed 2026-10-07).
+    vol_annual: _r2(sPct / (eventMult > 0 ? eventMult : 1) * SQRT252), event_mult: Math.round((eventMult > 0 ? eventMult : 1) * 1000) / 1000,
     persist_adjust: Math.round(adj * 1000) / 1000, form: useIv ? 'persist+iv' : 'persist',
     ...(useIv ? { iv_annual: _r2(ivAnnualPct), iv_source: p.iv.source } : {}),
     features: Object.fromEntries(feats.map(k => [k, _r4(x[k])])),
@@ -121,7 +124,7 @@ export function buildPersistInstruments(latest, ohlcCache, registry, params = PE
     if (!(L?.sigma_used_pct > 0)) { skipped.push({ name, reason: 'no production σ' }); continue; }
     const bars = barsBefore(ohlcCache?.[name], sessionDate);
     const lad = buildPersistLadder(bars, { instrument: name, assetClass: byName[name]?.assetClass ?? 'fx', sessionDate,
-                                           sigmaUsedPct: L.sigma_used_pct, eventTag: L.event_tag ?? null,
+                                           sigmaUsedPct: L.sigma_used_pct, eventTag: L.event_tag ?? null, eventMult: L.event_mult ?? 1,
                                            ivAnnualPct: ivByName?.[name] ?? null, params });
     if (!lad) {
       const n = Array.isArray(bars) ? bars.length : 0, last = Array.isArray(bars) ? (bars.at(-1)?.date ?? '?') : '-';
