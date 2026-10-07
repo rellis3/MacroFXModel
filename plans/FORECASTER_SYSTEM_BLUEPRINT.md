@@ -119,7 +119,7 @@ Lessons 11–16 are the validation module. When each lesson lands, its check rep
 | L01 §02 | Outcome probabilities over a horizon | 3 | **done**: p50/p75/p90 ladder, calibration-scored | — |
 | L01 §03 | Sharpe SE, Lo's correction, shrinkage | 3, 7 | partly: `js/backtestStats.js` has PSR/DSR, N never the real search size; shrinkage used in SIZING_NOTE | **1st:** one validation card module |
 | L01 §04 | Spread of paths (bootstrap) | 3 | **done for the export calc** (forge/FORECAST_RECORD_PREREG.md): calibrated, skill 4.9% [3.7, 6.2], regime flaw found | same yardstick for any candidate σ |
-| L01 §05 | 12-check validation card | all | not built as a card | **1st:** a card per layer, filled for layer 3 |
+| L01 §05 | 12-check validation card | all | layer 3 checks done: point-in-time (Step 0), walk-forward (Steps 1/1b/A), multiple testing counted (ledger), significance intervals, **parameter stability PLATEAU**, **holdout sealed** (opens 2027-01-04), forward scorecard running | card page = Daily Plan track record |
 | L01 §06 | Volatility drag, Kelly | 7 | **done** (analysis/forecaster_lessons/SIZING_NOTE.md): no build, 10% target about 1/5 Kelly | re-check at spread book review |
 | L02 §01–§04 | Waiting times, overruns, uncertain rate, cost of search | process | **stopping rule adopted 2026-10-06**: one prereg + one logged variant per direction, then a decision | discovery-rate tracker from the ledger |
 | L02 §05 | Breadth enters the evidence | process | **done**: TRIAL_LEDGER (94 tested, about 5 passes expected by luck) | keep current |

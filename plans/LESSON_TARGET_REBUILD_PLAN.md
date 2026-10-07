@@ -32,7 +32,8 @@ its own pre-registration before its results are computed.*
 - C. ✅ **DONE 2026-10-06 — FAIL** (forge/META_LABEL_YS_PREREG.md): meta-sizing the yield-spread book on the vol state lowered per-trade Sharpe 0.165 → 0.100 [diff −0.117, +0.006]; top tercile won least. Book stays flat / vol-targeted. Meta-labelling closed for now (stopping rule).
   Original step: **Meta-label done the lesson's way** (L03 §01): primary = the yield-spread book (validated direction edge);
   meta-label = forecast regime, jump state, room left → act / size up / size down. New pre-registration.
-- D. **Seal a holdout + parameter stability** (L01 cards 03, 07): everything after 2026-08-21 and the forward
+- D. ✅ **DONE 2026-10-07** (forge/STABILITY_AND_HOLDOUT_PREREG.md): stability PLATEAU (6 perturbations 0.978–0.983 vs base 0.980); holdout sealed (analysis/output/holdout/SEAL.md), opened once 2027-01-04.
+  Original step: **Seal a holdout + parameter stability** (L01 cards 03, 07): everything after 2026-08-21 and the forward
   scorecard are the lockbox, looked at once when A–C are frozen; one stability run on the chosen forecast.
 - E. **Daily Plan page**: lines, room left, stop and size, act/size flag (only if C passes), track record.
 - F. **Lessons 4–17** check this one product as they arrive.
