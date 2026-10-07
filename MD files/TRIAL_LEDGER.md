@@ -10,16 +10,16 @@ Generated 2026-10-07.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **108** |
+| claims tested (validated + null + underpowered) | **109** |
 | validated | 35 |
-| null | 70 |
+| null | 71 |
 | underpowered | 3 |
 | context (base rates, descriptions: not counted as tests) | 23 |
 | pre-registrations with no banked verdict (below) | 6 |
 
-**What the count says (Lesson 02 §05).** If none of the 108 claims were real, tests at the usual 5% size would still pass
-about **5.4** of them by luck. 35 passed, so most passes are unlikely to be luck alone, but
-**roughly 5 of the 35 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 109 claims were real, tests at the usual 5% size would still pass
+about **5.5** of them by luck. 35 passed, so most passes are unlikely to be luck alone, but
+**roughly 6 of the 35 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -155,6 +155,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-06 | meta-label-yield-spread | volatility | null | forge/META_LABEL_YS_PREREG.md |
 | 2026-10-07 | live-range-clock | volatility | null | forge/LIVE_RANGE_CLOCK_BASELINE_PREREG.md |
 | 2026-10-07 | live-range-features | volatility | null | forge/LIVE_RANGE_FEATURES_PREREG.md |
+| 2026-10-07 | meta-label-long | volatility | null | forge/META_LABEL_LONG_PREREG.md |
 | 2026-10-07 | meta-label-proper | volatility | null | forge/META_LABEL_PROPER_PREREG.md |
 | 2026-10-07 | ys-long-breadth | macro | null | forge/YS_LONG_CONFIRM_PREREG.md |
 | 2026-10-07 | ys-long-confirm | macro | validated | forge/YS_LONG_CONFIRM_PREREG.md |

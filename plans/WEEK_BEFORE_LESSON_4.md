@@ -41,3 +41,12 @@ extend the forecast-layer history (intraday measures) by 11 years.
    (stop ≥ a multiple of spread; size after cost).
 
 Holdout stays sealed (opens 2027-01-04). Nothing live changes without the owner.
+
+## Progress
+
+- 2026-10-07 item 1–2 ✅ long FRED dataset built; **yield-spread book CONFIRMED on 1976–2014** (+0.24%/trade, 4/4 decades,
+  6/6 pairs; Sharpe ~0.4, modest). Breadth pairs same sign, not significant alone.
+- 2026-10-07 item 3–4 ✅ effective sample ~1,838 (755 modern). Meta-labelling on the long data: **FAIL with a working
+  instrument** (sanity passed); volatility features +0.000. Era gate dropped pre-1996 data: old behaviour taught the model
+  the wrong things. Meta-labelling closed for good on this book.
+- Next: items 5 (card 01 delay check), 6 (card 09 stress), 7 (card 11 costs).

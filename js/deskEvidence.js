@@ -845,6 +845,12 @@ export const DESK_EVIDENCE = [
     result: 'FAIL by the registered rule, same sign: 638 trades +0.229% per trade [-0.050, +0.492], win 54.5%; each pair about +0.23% (PF 1.23-1.26) but no single interval excludes 0. Daily Sharpe 0.28.',
     use: 'Consistent with the main book but not confirmed on its own; do not add these pairs to the live book on this evidence.',
   },
+  {
+    id: 'meta-label-long', domain: 'volatility', verdict: 'null', date: '2026-10-07', doc: 'forge/META_LABEL_LONG_PREREG.md',
+    claim: 'With ~2x the independent sample (FRED 1976+, tested on the modern era 2006-2026 only), meta-labelling finds when the yield-spread book is right, and the volatility state adds to it',
+    result: 'No, and this time the test could tell (sanity check PASSED: top tercile |z| 1.87 vs 1.69). 8,142 modern-era bets (~754 effective): precision 51.0% meta vs 51.0% primary [-2.0, +2.1pp]; Sharpe gain -0.013 [-0.066, +0.036]; volatility features +0.000 [-0.019, +0.022]. Era gate: training from 1976 did WORSE on the modern era than training from 1996 (-0.023 vs -0.012), so the old data was dropped: the owner was right that 50-year-old behaviour does not teach the modern market here.',
+    use: 'Meta-labelling closed for good on this book: the volatility state does not say when the yield-spread book is right, with enough data to see it if it did. Trade the book by its own rule (|z| >= 2), flat or vol-targeted. Use 1976+ data for confirming the primary, not for training models on today.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what

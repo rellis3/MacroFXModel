@@ -1,0 +1,86 @@
+{
+ "gate": {
+  "sharpe_L": -0.0233,
+  "sharpe_M": -0.0117,
+  "old_data_kept": false,
+  "main": "M (1996+)"
+ },
+ "main": {
+  "n": 8142,
+  "eff": 754,
+  "base": {
+   "prec_primary": 0.5101,
+   "prec_meta": 0.5104,
+   "rec_meta": 0.45,
+   "sh_flat": 0.0014,
+   "sh_meta": -0.0117,
+   "share_bet": 0.4498
+  },
+  "ablation": {
+   "prec_primary": 0.5101,
+   "prec_meta": 0.5052,
+   "rec_meta": 0.477,
+   "sh_flat": 0.0014,
+   "sh_meta": -0.0119,
+   "share_bet": 0.4816
+  },
+  "ci": {
+   "prec": [
+    -0.0204,
+    0.0205
+   ],
+   "sh": [
+    -0.0655,
+    0.0359
+   ],
+   "sh_vs_abl": [
+    -0.019,
+    0.0217
+   ]
+  },
+  "sanity": true,
+  "dsr": 0.043,
+  "verdict": "FAIL",
+  "vol_earns": false,
+  "terciles": [
+   {
+    "terc": "low",
+    "n": 2714,
+    "win": 0.5107,
+    "ret": 0.0001,
+    "absz": 1.6943
+   },
+   {
+    "terc": "mid",
+    "n": 2714,
+    "win": 0.5033,
+    "ret": -0.0001,
+    "absz": 1.6777
+   },
+   {
+    "terc": "high",
+    "n": 2714,
+    "win": 0.5162,
+    "ret": 0.0001,
+    "absz": 1.8744
+   }
+  ],
+  "coef": {
+   "z": -0.069,
+   "usd_trend": 0.055,
+   "today": 0.048,
+   "cusum_with": 0.039,
+   "spread": 0.025,
+   "since_cross": 0.024,
+   "dsig5": 0.023,
+   "regime": -0.021,
+   "absz": 0.015,
+   "res5": 0.012
+  }
+ },
+ "other_arm": {
+  "name": "L (1976+)",
+  "sh_meta": -0.0233,
+  "prec_meta": 0.5051
+ }
+}
