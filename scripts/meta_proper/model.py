@@ -30,7 +30,9 @@ F_VOL = ["regime", "res5", "today", "jumps5", "dsig5", "iv_sig"]
 F_OTHER = ["usd_trend", "cal5"]
 TEST_YEARS = range(2019, 2027)
 EMBARGO_DAYS = 14                    # 10 trading days, in calendar days
-B, SEED, N_TRIALS = 2000, 20261007, 5
+LOGIT = "--logit" in sys.argv                # Variant 1 (owner's option A)
+B, SEED, N_TRIALS = 2000, 20261007, (6 if LOGIT else 5)
+SUFFIX = "_logit" if LOGIT else ""
 
 
 def vol_features() -> pd.DataFrame:
@@ -140,14 +142,21 @@ def run(E, feats, label):
         rank = tr.d.rank(pct=True)
         w = tr.uniq * (0.5 + 0.5 * rank)
         A, Bm = design(tr, te, feats)
-        mu = float(min(max(tr.uniq.mean(), 0.05), 1.0))
-        # Amendment 1: "leaves of ~50 events" on the full sample = 50 x mean uniqueness on the uniqueness-sized bootstrap
-        rf = RandomForestClassifier(n_estimators=500, max_features="sqrt", min_samples_leaf=max(5, round(50 * mu)),
-                                    class_weight="balanced_subsample", max_samples=mu, random_state=0, n_jobs=-1)
-        rf.fit(A, tr.y, sample_weight=w)
-        te["p"] = rf.predict_proba(Bm)[:, 1]
+        if LOGIT:                                    # Variant 1 (owner's option A): logistic, standardised on train
+            from sklearn.linear_model import LogisticRegression
+            m_, s_ = A.mean(), A.std().replace(0, 1)
+            lr = LogisticRegression(C=1.0, max_iter=5000).fit((A - m_) / s_, tr.y, sample_weight=w)
+            te["p"] = lr.predict_proba((Bm - m_) / s_)[:, 1]
+            te["imp"] = json.dumps(dict(zip(A.columns, np.round(lr.coef_[0], 4))))
+        else:
+            mu = float(min(max(tr.uniq.mean(), 0.05), 1.0))
+            # Amendment 1: "leaves of ~50 events" on the full sample = 50 x mean uniqueness on the uniqueness-sized bootstrap
+            rf = RandomForestClassifier(n_estimators=500, max_features="sqrt", min_samples_leaf=max(5, round(50 * mu)),
+                                        class_weight="balanced_subsample", max_samples=mu, random_state=0, n_jobs=-1)
+            rf.fit(A, tr.y, sample_weight=w)
+            te["p"] = rf.predict_proba(Bm)[:, 1]
+            te["imp"] = json.dumps(dict(zip(A.columns, np.round(rf.feature_importances_, 4))))
         te["size"] = bet_size(te.p.to_numpy())
-        te["imp"] = json.dumps(dict(zip(A.columns, np.round(rf.feature_importances_, 4))))
         rows.append(te)
         if label == "full":
             print(f"{Y}: train {len(tr)}, test {len(te)}", flush=True)
@@ -208,24 +217,29 @@ def main():
     vol_earns = passed and ci["sh_vs_abl"][0] > 0
     full["terc"] = pd.qcut(full.p.rank(method="first"), 3, labels=["low", "mid", "high"])   # rank: p can tie at 0.5
     terc = full.groupby("terc", observed=True).agg(n=("y", "size"), win=("y", "mean"), ret=("ret", "mean"), absz=("absz", "mean"))
-    imp = pd.DataFrame([json.loads(s) for s in full.drop_duplicates("imp").imp]).mean().sort_values(ascending=False)
+    imp = pd.DataFrame([json.loads(s) for s in full.drop_duplicates("imp").imp]).mean()
+    imp = imp.reindex(imp.abs().sort_values(ascending=False).index)
+    tl, th = terc.loc["low"], terc.loc["high"]
+    sane = bool(th["absz"] > tl["absz"] and th["win"] > tl["win"])      # Variant 1 pre-condition
     res = {"n_test": len(full), "years": sorted(full.d.dt.year.unique().tolist()), "eff_T": T,
            "full": {k: round(float(v), 4) for k, v in m.items()}, "ablation": {k: round(float(v), 4) for k, v in base["ablation"].items()},
            "ci": ci, "f1_primary": round(f1(m["prec_primary"], 1.0), 4), "f1_meta": round(f1(m["prec_meta"], m["rec_meta"]), 4),
-           "dsr": round(dsr, 4), "sr0": round(sr0, 4), "verdict": "PASS" if passed else "FAIL", "vol_system_earns_place": bool(vol_earns),
+           "dsr": round(dsr, 4), "sr0": round(sr0, 4), "sanity": sane,
+           "verdict": ("PASS" if passed else "FAIL") if sane else "UNINFORMATIVE (sanity check failed)",
+           "vol_system_earns_place": bool(vol_earns and sane),
            "terciles": terc.round(4).reset_index().astype({"terc": str}).to_dict("records"),
            "importance": imp.round(4).head(12).to_dict(),
            "per_year": {int(yr): {"n": int(len(gp)), "flat": round(float(gp.ret.sum() * 100), 2), "meta": round(float((gp.ret * gp["size"]).sum() * 100), 2),
                                   "prec_primary": round(float(gp.y.mean()), 3), "prec_meta": round(float(gp.y[gp.p > 0.5].mean()), 3) if (gp.p > 0.5).any() else None}
                         for yr, gp in full.groupby(full.d.dt.year)}}
-    (D / "results.json").write_text(json.dumps(res, indent=1, default=str))
-    full.drop(columns=["imp"]).to_csv(D / "predictions.csv", index=False)
+    (D / f"results{SUFFIX}.json").write_text(json.dumps(res, indent=1, default=str))
+    full.drop(columns=["imp"]).to_csv(D / f"predictions{SUFFIX}.csv", index=False)
     write_md(res)
 
 
 def write_md(r):
     F, A, c = r["full"], r["ablation"], r["ci"]
-    md = ["# Meta-labelling built properly — results (layers 3–7)", "",
+    md = ["# Meta-labelling built properly — results (layers 3–7)" + (" — VARIANT 1, logistic" if LOGIT else ""), "",
           f"Pre-registration: `forge/META_LABEL_PROPER_PREREG.md`. Walk-forward by year {r['years'][0]}–{r['years'][-1]}, purged + "
           f"10-trading-day embargo: **{r['n_test']:,} primary bets** (~{r['eff_T']:,} effective after overlap). 95% intervals: month-block bootstrap.", "",
           f"## Verdict: **{r['verdict']}**" + (" — and the volatility system earns its place" if r["vol_system_earns_place"] else
@@ -244,8 +258,10 @@ def write_md(r):
     md += [f"| {t['terc']} | {t['n']} | {t['win'] * 100:.1f}% | {t['ret'] * 100:.3f}% | {t['absz']:.2f} |" for t in r["terciles"]]
     md += ["", "| year | bets | primary precision | meta precision | flat total % | meta total % |", "|---|---|---|---|---|---|"]
     md += [f"| {y} | {v['n']} | {v['prec_primary'] * 100:.1f}% | {(v['prec_meta'] or 0) * 100:.1f}% | {v['flat']:+.2f} | {v['meta']:+.2f} |" for y, v in r["per_year"].items()]
-    md += ["", "Feature importance (impurity, mean over years; descriptive): " + ", ".join(f"{k} {v:.3f}" for k, v in r["importance"].items())]
-    (D / "RESULTS.md").write_text("\n".join(md) + "\n", encoding="utf-8")
+    md += ["", f"Sanity check (top tercile has higher mean |z| and higher win rate than bottom): **{'passed' if r['sanity'] else 'FAILED'}**.", "",
+           ("Logistic coefficients (standardised, mean over years): " if LOGIT else "Feature importance (impurity, mean over years; descriptive): ")
+           + ", ".join(f"{k} {v:+.3f}" for k, v in r["importance"].items())]
+    (D / f"RESULTS{SUFFIX}.md").write_text("\n".join(md) + "\n", encoding="utf-8")
     print("\n".join(md))
 
 

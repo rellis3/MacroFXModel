@@ -28,6 +28,7 @@ its own pre-registration before its results are computed.*
 - B. ✅ **DONE 2026-10-06** (forge/HOW_MUCH_SPEC.md, analysis/output/how_much/RESULTS.md): minimum stop 0.55–0.60σ by class (one 5-min bar crosses it on ≤5% of days; a 0.25σ stop is crossed on 37–48%); worst-case step past the stop p90 0.4–0.8σ (upper bound); Monday gap p90 ~0.5σ vs ~0.2σ other days. `js/howMuch.js` (+ params, tests): size = budget ÷ (stop + step [+ weekend]).
   Original step: **The "how much" layer** (L03's main use, L01 §06 Kelly, L03 §03 jumps): per instrument, stop outside the
   jump-through zone, size = risk budget ÷ stop distance, weekend gap allowance. Rules with evidence attached.
+- C+. ✅ **Meta-labelling built properly 2026-10-07 — CLOSED** (forge/META_LABEL_PROPER_PREREG.md): AFML pipeline, 3,144 bets / ~395 effective; forest and logistic both failed the sanity check (could not recover the known |z| effect); volatility features added 0. Effective sample is the limit.
 - C. ✅ **DONE 2026-10-06 — FAIL** (forge/META_LABEL_YS_PREREG.md): meta-sizing the yield-spread book on the vol state lowered per-trade Sharpe 0.165 → 0.100 [diff −0.117, +0.006]; top tercile won least. Book stays flat / vol-targeted. Meta-labelling closed for now (stopping rule).
   Original step: **Meta-label done the lesson's way** (L03 §01): primary = the yield-spread book (validated direction edge);
   meta-label = forecast regime, jump state, room left → act / size up / size down. New pre-registration.

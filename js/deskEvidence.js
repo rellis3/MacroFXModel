@@ -820,6 +820,12 @@ export const DESK_EVIDENCE = [
     result: 'FAIL, wrong way round. 221 walk-forward test trades 2019-2026: per-trade Sharpe 0.100 meta vs 0.165 flat, difference -0.065 [-0.117, +0.006]. Top predicted tercile won 52.8% (mean +0.02%) vs bottom 62.2% (+0.38%). The model learned high-vol entries win; the test years said the opposite. 2020 flat -31.7%, meta -49.3%.',
     use: 'Keep the yield-spread book flat or vol-targeted; the volatility state does not say when it is right. Small sample (power for large effects only): not shown, not proven absent.',
   },
+  {
+    id: 'meta-label-proper', domain: 'volatility', verdict: 'null', date: '2026-10-07', doc: 'forge/META_LABEL_PROPER_PREREG.md',
+    claim: 'Meta-labelling built properly (AFML: high-recall yield-spread primary at CUSUM events, triple-barrier labels from sigma, uniqueness weights, purged walk-forward, probability bet sizing) finds when the primary is right, and the volatility system adds to it',
+    result: 'No. 3,144 test bets 2019-2026 (~395 effective). Forest: precision 50.3% vs primary 51.6%, Sharpe 0.022 vs 0.025. Logistic: 52.6% vs 51.6% [-1.7, +3.6pp], Sharpe +0.002 [-0.05, +0.05]. Both FAILED the sanity check (did not recover the known |z| >= 2 effect, 58.6% vs ~50%), so uninformative; volatility features added nothing in either (ablation -0.021 / +0.000). Deflated Sharpe 0.22.',
+    use: 'Meta-labelling closed (stopping rule). Effective sample, not method, is the limit. Keep the yield-spread book flat / vol-targeted; its traded |z| >= 2 rule already captures what a meta-model would learn.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
