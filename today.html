@@ -1310,6 +1310,7 @@
   <span class="spacer"></span>
   <span class="stamp" id="hdrStamp"></span>
   <button class="hbtn" onclick="loadAll(true)">⟳ Refresh</button>
+  <button class="hbtn" onclick="openMarketPicture()" title="One view — the picture, where it points, where it does not, and the record behind it. Copyable.">📋 Picture</button>
   <button class="hbtn" onclick="openSiteMap()" title="Site map — all pages with descriptions">🗺 Site Map</button>
   <button class="hbtn" onclick="openApiMap()" title="API map — every backend endpoint, what it does, who calls it">🔌 API Map</button>
   <button class="hbtn" onclick="openDataMap()" title="Data map — every data feed, what it is for, where it is used, when it last updated">🗄 Data Map</button>
@@ -13267,5 +13268,160 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
     <div class="focus-body" id="focusBody"></div>
   </div>
 </div>
+
+<!-- ═══ MARKET PICTURE ═══════════════════════════════════════════════════════
+     ONE VIEW over a board that otherwise asks you to assemble the story yourself.
+
+     WHY IT EXISTS. The board shows twelve instruments and their factor scores and
+     leaves the reader to build the picture. A desk note does the opposite: one
+     causal paragraph, a short list of where it applies, an explicit list of where
+     it does not, and the levels. Same inputs, readable shape.
+
+     WHAT IT DELIBERATELY DOES NOT DO: invent causation. "Yields are high SO the
+     dollar is firm" is a claim this desk has tested and not found
+     (yields-to-fx-direction, null; forward coupling is same-bar only). So the
+     picture states what IS, in priority order, and lets the reader join it up.
+     Facts, not a story with arrows in it.
+
+     AND IT CARRIES ITS OWN RECORD. The last block is the hit rate and the net-of-
+     cost number for exactly these leans. A note that looks decisive without one is
+     only more confident, not more right. ═══════════════════════════════════════ -->
+<div class="mp-overlay" id="mpOverlay" onclick="if(event.target===this)closeMarketPicture()">
+  <div class="mp-box">
+    <div class="mp-head">
+      <b>Market Picture</b>
+      <span class="mp-when" id="mpWhen"></span>
+      <span style="flex:1"></span>
+      <button class="hbtn" onclick="copyMarketPicture(this)">Copy</button>
+      <button class="hbtn" onclick="closeMarketPicture()">Close</button>
+    </div>
+    <pre class="mp-body" id="mpBody">building…</pre>
+  </div>
+</div>
+<style>
+.mp-overlay{display:none;position:fixed;inset:0;z-index:980;background:rgba(0,0,0,.72);
+  padding:28px 16px;overflow:auto}
+.mp-overlay.open{display:block}
+.mp-box{max-width:760px;margin:0 auto;background:var(--panel,#12161c);
+  border:1px solid var(--line,#262c35);border-radius:10px;overflow:hidden}
+.mp-head{display:flex;align-items:center;gap:10px;padding:12px 16px;
+  border-bottom:1px solid var(--line,#262c35)}
+.mp-when{color:var(--muted,#8b94a3);font-size:12.5px}
+.mp-body{margin:0;padding:18px 20px;white-space:pre-wrap;word-break:break-word;
+  font:13.5px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color:var(--tx,#eef1f5);max-height:72vh;overflow:auto}
+@media(max-width:640px){ .mp-body{font-size:12.5px;padding:14px} }
+</style>
+<script>
+// Built fresh each open from whatever the page already has in memory — no new
+// fetches except the ledger summary, which is the one number the board does not
+// already hold.
+let _mpText = '';
+
+function _mpNum(v, dp = 2) { return v == null || !isFinite(v) ? null : (+v).toFixed(dp); }
+
+function _mpPicture() {
+  const L = [];
+  const f = fred ?? {};
+  const vix = f.vix?.value, vix3m = f.vix3m?.value;
+  if (vix != null) {
+    const term = vix != null && vix3m != null
+      ? (vix > vix3m ? 'backwardated (near-term above 3-month)' : 'contango (normal)') : null;
+    L.push(`Vol: VIX ${_mpNum(vix,1)}${vix3m != null ? ` vs 3-month ${_mpNum(vix3m,1)} — ${term}` : ''}.`);
+  }
+  const hy = f.hy?.value, hyPrev = f.hy?.prev;
+  if (hy != null) {
+    const d = hyPrev != null ? (hy - hyPrev) * 100 : null;
+    L.push(`Credit: high-yield OAS ${_mpNum(hy)}%${d != null ? ` (${d >= 0 ? '+' : ''}${d.toFixed(0)}bp)` : ''}.`);
+  }
+  const dxy = f.dxy?.value, dxyPrev = f.dxy?.prev;
+  if (dxy != null) L.push(`Dollar: DXY ${_mpNum(dxy)}${dxyPrev != null ? ` (${dxy >= dxyPrev ? '+' : ''}${(dxy - dxyPrev).toFixed(2)})` : ''}.`);
+  const us10 = f.us10y?.value, us2 = f.us2y?.value;
+  if (us10 != null) L.push(`Rates: US 10y ${_mpNum(us10)}%${us2 != null ? `, 2s10s ${Math.round((us10 - us2) * 100)}bp` : ''}.`);
+  const w = _fedPath?.windows?.[0];
+  if (w && isFinite(w.hike)) {
+    const wk = w.hikeAgo?.w1, mv = isFinite(wk) ? +(w.hike - wk).toFixed(1) : null;
+    L.push(`Policy: ${w.hike.toFixed(0)}% priced above the current range by ${w.ref}`
+      + (mv == null ? '.' : Math.abs(mv) < 2 ? ', flat on the week.' : `, ${mv > 0 ? '+' : ''}${mv}pp on the week.`));
+  }
+  return L.length ? L.join('\n') : 'Not enough loaded yet — refresh the board and reopen.';
+}
+
+function _mpLines() {
+  const rs = (typeof allRows === 'function' ? allRows() : []) || [];
+  const points = [], quiet = [];
+  for (const r of rs) {
+    let d = null; try { d = directionFor(r); } catch (e) {}
+    const nm = (typeof dispName === 'function' ? dispName(r.name) : r.name);
+    if (!d || !d.direction || d.direction === 'flat') { quiet.push(nm); continue; }
+    let wrong = null, exp = null;
+    try { wrong = wrongAtFor(r); } catch (e) {}
+    const used = r.used != null ? `${Math.round(r.used)}% used` : null;
+    const arrow = d.direction === 'up' ? '▲' : '▼';
+    points.push(`${arrow} ${nm.padEnd(10)} ${String(d.direction).toUpperCase().padEnd(5)}`
+      + ` ${d.agree != null ? `${d.agree}/${d.total}` : ''}`
+      + (wrong?.price != null ? `  invalid ${d.direction === 'up' ? '<' : '>'} ${wrong.price}` : '')
+      + (used ? `  ${used}` : ''));
+  }
+  return { points, quiet };
+}
+
+async function _mpRecord() {
+  try {
+    const j = await (await fetch('/api/ledger')).json();
+    const h = j?.summary?.overall?.h0;
+    if (!h || h.n == null) return 'No scored record yet.';
+    return `These leans have run ${(h.hitRate * 100).toFixed(1)}% at the next close `
+      + `(n=${h.n} over ${j.summary.days} days, CI ${(h.hitRateLo * 100).toFixed(0)}–${(h.hitRateHi * 100).toFixed(0)}%).\n`
+      + `Net of spread: ${h.meanPnlNetAtr >= 0 ? '+' : ''}${h.meanPnlNetAtr} ATR per trade `
+      + `(gross ${h.meanPnlAtr >= 0 ? '+' : ''}${h.meanPnlAtr}).\n`
+      + `Read the arrows as CONTEXT for sizing and expectation — on this record they do not\n`
+      + `pay as entries on their own.`;
+  } catch (e) { return 'Record unavailable.'; }
+}
+
+window.openMarketPicture = async function () {
+  const el = document.getElementById('mpOverlay');
+  el.classList.add('open');
+  const now = new Date();
+  document.getElementById('mpWhen').textContent =
+    now.toLocaleString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const { points, quiet } = _mpLines();
+  const head = `MARKET PICTURE — ${now.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}`;
+  let ev = '';
+  try {
+    const nxt = (events ?? []).filter(e => e.ms > Date.now() && (e.impact ?? '').toLowerCase() === 'high')
+      .sort((a, b) => a.ms - b.ms)[0];
+    if (nxt) ev = `Next high-impact: ${nxt.country} ${nxt.event} `
+      + new Date(nxt.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) + ' UK';
+  } catch (e) {}
+
+  const body = [
+    head, '',
+    'THE PICTURE', _mpPicture(), '',
+    `WHERE IT POINTS (${points.length})`,
+    points.length ? points.join('\n') : 'Nothing is leaning today. That is an answer, not a gap.', '',
+    `NOT TODAY (${quiet.length})`,
+    quiet.length ? quiet.join(', ') + ' — no lean' : '—', '',
+    'WHAT TO EXPECT',
+    (ev || 'No high-impact release scheduled.') + '\nExpected ranges are on the cards; the 75th band is the aim, not the median.', '',
+    'THE RECORD — read before acting on any of the above',
+    'loading…',
+  ].join('\n');
+  document.getElementById('mpBody').textContent = body;
+  const rec = await _mpRecord();
+  _mpText = body.replace('loading…', rec);
+  document.getElementById('mpBody').textContent = _mpText;
+};
+window.closeMarketPicture = function () { document.getElementById('mpOverlay').classList.remove('open'); };
+window.copyMarketPicture = function (btn) {
+  const t = _mpText || document.getElementById('mpBody').textContent || '';
+  navigator.clipboard.writeText(t).then(() => {
+    const o = btn.textContent; btn.textContent = 'Copied';
+    setTimeout(() => { btn.textContent = o; }, 1400);
+  }).catch(() => { btn.textContent = 'Copy failed'; });
+};
+</script>
+
 </body>
 </html>
