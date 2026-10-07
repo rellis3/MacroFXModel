@@ -49,7 +49,7 @@ cells, no price/level/flow column cleared costs; the burden is on the new line.
 ## Variant log
 | # | Variant | Added | Status |
 |---|---|---|---|
-| 1 | as above, with Amendment 0 (all passes + full-day tracking) | 2026-10-07 | pending |
+| 1 | as above, with Amendments 0-1 (all passes + full-day tracking; 2-year burn-in) | 2026-10-07 | run: outcome (d), none matter |
 | 2 | phase 2: FVG, Fibonacci, round numbers | 2026-10-07 | not run |
 
 Output `analysis/output/live_range_confluence/RESULTS.md`; banked in `js/deskEvidence.js`.
@@ -73,3 +73,9 @@ The moving-line grids are refit quarterly from 2018-04 (the earliest the existin
 2018-04. T3's meta-label model needs prior touches to learn from, so it gets a **2-year burn-in: trading starts 2020-04** (not 2018-04), giving six
 full test years 2020-2025. The pass rule's "≥ 6 of 8 full years" becomes **≥ 5 of 6 full years** (same 75%). Model refit every quarter on all prior
 events (at most a random 200k to bound time), class as a feature. Everything else is unchanged.
+
+## Results (2026-10-07) — `analysis/output/live_range_confluence/RESULTS.md`
+**Outcome (d): none of the confluences matter, at either line.** 204 tests: real lift at moving lines 12 (5.9%), static 9 (4.4%), unlocked by the moving
+line 4 (2%, below chance). T3 meta-label: moving −0.21R per trade, static −0.012R, 1 of 6 years positive, AUC no better than the line-spacing geometry.
+T3b: moving 0 of 11, static 2 of 55 (both lean on dropping unresolved late-day stalls). Caveat: pre-resolved, both-in-bar and unresolved races are dropped from
+the trade tests (17-32% of passes, most at late static lines), which flatters late-day static numbers; the descriptive map includes them.
