@@ -10,15 +10,15 @@ Generated 2026-10-07.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **112** |
+| claims tested (validated + null + underpowered) | **113** |
 | validated | 35 |
-| null | 74 |
+| null | 75 |
 | underpowered | 3 |
 | context (base rates, descriptions: not counted as tests) | 24 |
 | pre-registrations with no banked verdict (below) | 6 |
 
-**What the count says (Lesson 02 §05).** If none of the 112 claims were real, tests at the usual 5% size would still pass
-about **5.6** of them by luck. 35 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 113 claims were real, tests at the usual 5% size would still pass
+about **5.7** of them by luck. 35 passed, so most passes are unlikely to be luck alone, but
 **roughly 6 of the 35 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -155,6 +155,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-06 | meta-label-yield-spread | volatility | null | forge/META_LABEL_YS_PREREG.md |
 | 2026-10-07 | card-checks-01-09-11 | execution | context | forge/CARD_CHECKS_PREREG.md |
 | 2026-10-07 | cog-setups-direction | price | null | forge/COG_SETUPS_PREREG.md |
+| 2026-10-07 | cog-spread-direction | macro | null | forge/COG_SPREAD_DIRECTION_PREREG.md |
 | 2026-10-07 | dip-with-bias | price | null | forge/DIP_WITH_BIAS_PREREG.md |
 | 2026-10-07 | live-range-clock | volatility | null | forge/LIVE_RANGE_CLOCK_BASELINE_PREREG.md |
 | 2026-10-07 | live-range-confluence-book | price | null | forge/LIVE_RANGE_CONFLUENCE_BOOK_PREREG.md |

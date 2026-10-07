@@ -1,0 +1,453 @@
+{
+ "oos": {
+  "est": -0.0333,
+  "lo": -0.0776,
+  "hi": 0.0154,
+  "n": 1521
+ },
+ "oos_minus_nofilter": {
+  "est": -0.0002,
+  "lo": -0.0362,
+  "hi": 0.0355
+ },
+ "oos_by_ins": {
+  "EURUSD": {
+   "n": 276,
+   "meanR": -0.1169
+  },
+  "GOLD": {
+   "n": 489,
+   "meanR": -0.0314
+  },
+  "NQ": {
+   "n": 756,
+   "meanR": -0.0039
+  }
+ },
+ "nofilter_oos": -0.0331,
+ "picks": [
+  {
+   "ins": "EURUSD",
+   "year": 2019,
+   "setup": "C",
+   "signal": "T10Y2Y:lvl",
+   "sign": 1,
+   "train_meanR": 0.0878,
+   "test_n": 88,
+   "test_meanR": -0.1368
+  },
+  {
+   "ins": "EURUSD",
+   "year": 2020,
+   "setup": "C",
+   "signal": "BOOK-USD:lvl",
+   "sign": 1,
+   "train_meanR": 0.045,
+   "test_n": 50,
+   "test_meanR": -0.2497
+  },
+  {
+   "ins": "EURUSD",
+   "year": 2021,
+   "setup": "A",
+   "signal": "DFF:chg20",
+   "sign": -1,
+   "train_meanR": 0.0324,
+   "test_n": 32,
+   "test_meanR": -0.1966
+  },
+  {
+   "ins": "EURUSD",
+   "year": 2022,
+   "setup": "C",
+   "signal": "3M-FF:chg1",
+   "sign": -1,
+   "train_meanR": 0.0142,
+   "test_n": 81,
+   "test_meanR": -0.0371
+  },
+  {
+   "ins": "EURUSD",
+   "year": 2023,
+   "setup": "A",
+   "signal": "DFF:chg5",
+   "sign": -1,
+   "train_meanR": 0.06,
+   "test_n": 6,
+   "test_meanR": 0.1304
+  },
+  {
+   "ins": "EURUSD",
+   "year": 2024,
+   "setup": "A",
+   "signal": "DFF:chg5",
+   "sign": -1,
+   "train_meanR": 0.0626,
+   "test_n": 6,
+   "test_meanR": 0.0383
+  },
+  {
+   "ins": "EURUSD",
+   "year": 2025,
+   "setup": "A",
+   "signal": "DFF:chg5",
+   "sign": -1,
+   "train_meanR": 0.0617,
+   "test_n": 10,
+   "test_meanR": -0.0192
+  },
+  {
+   "ins": "EURUSD",
+   "year": 2026,
+   "setup": "A",
+   "signal": "DFF:chg5",
+   "sign": -1,
+   "train_meanR": 0.0571,
+   "test_n": 3,
+   "test_meanR": 0.243
+  },
+  {
+   "ins": "GOLD",
+   "year": 2019,
+   "setup": "C",
+   "signal": "3M-FF:chg1",
+   "sign": -1,
+   "train_meanR": 0.0318,
+   "test_n": 74,
+   "test_meanR": -0.0469
+  },
+  {
+   "ins": "GOLD",
+   "year": 2020,
+   "setup": "C",
+   "signal": "BOOK-USD:chg20",
+   "sign": -1,
+   "train_meanR": 0.0299,
+   "test_n": 37,
+   "test_meanR": 0.0607
+  },
+  {
+   "ins": "GOLD",
+   "year": 2021,
+   "setup": "C",
+   "signal": "BOOK-USD:chg20",
+   "sign": -1,
+   "train_meanR": 0.035,
+   "test_n": 58,
+   "test_meanR": 0.1051
+  },
+  {
+   "ins": "GOLD",
+   "year": 2022,
+   "setup": "C",
+   "signal": "BOOK-USD:chg20",
+   "sign": -1,
+   "train_meanR": 0.0494,
+   "test_n": 61,
+   "test_meanR": -0.2158
+  },
+  {
+   "ins": "GOLD",
+   "year": 2023,
+   "setup": "C",
+   "signal": "BOOK-USD:chg20",
+   "sign": -1,
+   "train_meanR": 0.0022,
+   "test_n": 74,
+   "test_meanR": -0.0195
+  },
+  {
+   "ins": "GOLD",
+   "year": 2024,
+   "setup": "C",
+   "signal": "BOOK-USD:chg20",
+   "sign": -1,
+   "train_meanR": -0.0016,
+   "test_n": 69,
+   "test_meanR": -0.1421
+  },
+  {
+   "ins": "GOLD",
+   "year": 2025,
+   "setup": "C",
+   "signal": "BAA-AAA:chg1",
+   "sign": 1,
+   "train_meanR": 0.0088,
+   "test_n": 74,
+   "test_meanR": 0.1662
+  },
+  {
+   "ins": "GOLD",
+   "year": 2026,
+   "setup": "C",
+   "signal": "BAA-AAA:chg1",
+   "sign": 1,
+   "train_meanR": 0.0238,
+   "test_n": 42,
+   "test_meanR": -0.1939
+  },
+  {
+   "ins": "NQ",
+   "year": 2019,
+   "setup": "C",
+   "signal": "3M-FF:chg20",
+   "sign": 1,
+   "train_meanR": 0.1473,
+   "test_n": 100,
+   "test_meanR": -0.0369
+  },
+  {
+   "ins": "NQ",
+   "year": 2020,
+   "setup": "C",
+   "signal": "3M-FF:chg20",
+   "sign": 1,
+   "train_meanR": 0.0945,
+   "test_n": 104,
+   "test_meanR": -0.0243
+  },
+  {
+   "ins": "NQ",
+   "year": 2021,
+   "setup": "C",
+   "signal": "BAA10Y:chg20",
+   "sign": -1,
+   "train_meanR": 0.0705,
+   "test_n": 119,
+   "test_meanR": 0.073
+  },
+  {
+   "ins": "NQ",
+   "year": 2022,
+   "setup": "C",
+   "signal": "BAA10Y:chg1",
+   "sign": -1,
+   "train_meanR": 0.0735,
+   "test_n": 100,
+   "test_meanR": -0.0596
+  },
+  {
+   "ins": "NQ",
+   "year": 2023,
+   "setup": "C",
+   "signal": "BAA-AAA:chg1",
+   "sign": -1,
+   "train_meanR": 0.0552,
+   "test_n": 110,
+   "test_meanR": 0.088
+  },
+  {
+   "ins": "NQ",
+   "year": 2024,
+   "setup": "C",
+   "signal": "BAA-AAA:chg1",
+   "sign": -1,
+   "train_meanR": 0.0603,
+   "test_n": 65,
+   "test_meanR": 0.0455
+  },
+  {
+   "ins": "NQ",
+   "year": 2025,
+   "setup": "C",
+   "signal": "BAA-AAA:chg1",
+   "sign": -1,
+   "train_meanR": 0.059,
+   "test_n": 79,
+   "test_meanR": -0.1115
+  },
+  {
+   "ins": "NQ",
+   "year": 2026,
+   "setup": "C",
+   "signal": "BAA10Y:chg20",
+   "sign": -1,
+   "train_meanR": 0.0552,
+   "test_n": 79,
+   "test_meanR": -0.042
+  }
+ ],
+ "placebo": {
+  "runs": 500,
+  "median": -0.0407,
+  "p95": -0.0092,
+  "real_beats_pct": 63.0
+ },
+ "in_sample_top": {
+  "EURUSD": [
+   {
+    "setup": "A",
+    "signal": "DFF:chg5",
+    "sign": -1,
+    "n": 178,
+    "meanR": 0.0603
+   },
+   {
+    "setup": "A",
+    "signal": "T10Y2Y:lvl",
+    "sign": 1,
+    "n": 964,
+    "meanR": 0.0027
+   },
+   {
+    "setup": "C",
+    "signal": "T10Y2Y:lvl",
+    "sign": 1,
+    "n": 937,
+    "meanR": 0.0011
+   },
+   {
+    "setup": "A",
+    "signal": "BAA-AAA:lvl",
+    "sign": -1,
+    "n": 976,
+    "meanR": -0.0058
+   },
+   {
+    "setup": "C",
+    "signal": "DGS2:lvl",
+    "sign": -1,
+    "n": 920,
+    "meanR": -0.0114
+   },
+   {
+    "setup": "A",
+    "signal": "DFF:chg20",
+    "sign": -1,
+    "n": 368,
+    "meanR": -0.0172
+   },
+   {
+    "setup": "A",
+    "signal": "BOOK-USD:chg20",
+    "sign": -1,
+    "n": 531,
+    "meanR": -0.018
+   },
+   {
+    "setup": "C",
+    "signal": "BAA-AAA:lvl",
+    "sign": -1,
+    "n": 925,
+    "meanR": -0.0189
+   }
+  ],
+  "GOLD": [
+   {
+    "setup": "C",
+    "signal": "BAA-AAA:chg1",
+    "sign": 1,
+    "n": 818,
+    "meanR": 0.0126
+   },
+   {
+    "setup": "C",
+    "signal": "BOOK-USD:chg20",
+    "sign": -1,
+    "n": 619,
+    "meanR": 0.0105
+   },
+   {
+    "setup": "C",
+    "signal": "T10Y2Y:chg20",
+    "sign": 1,
+    "n": 982,
+    "meanR": 0.0059
+   },
+   {
+    "setup": "C",
+    "signal": "BAA10Y:chg20",
+    "sign": 1,
+    "n": 950,
+    "meanR": 0.0
+   },
+   {
+    "setup": "C",
+    "signal": "DGS2:chg20",
+    "sign": -1,
+    "n": 975,
+    "meanR": -0.0002
+   },
+   {
+    "setup": "C",
+    "signal": "T10Y2Y:lvl",
+    "sign": 1,
+    "n": 1041,
+    "meanR": -0.0031
+   },
+   {
+    "setup": "C",
+    "signal": "BAA10Y:chg5",
+    "sign": 1,
+    "n": 924,
+    "meanR": -0.0048
+   },
+   {
+    "setup": "C",
+    "signal": "DGS2:chg1",
+    "sign": 1,
+    "n": 842,
+    "meanR": -0.0086
+   }
+  ],
+  "NQ": [
+   {
+    "setup": "C",
+    "signal": "BAA10Y:chg20",
+    "sign": -1,
+    "n": 1081,
+    "meanR": 0.0481
+   },
+   {
+    "setup": "C",
+    "signal": "BAA-AAA:chg1",
+    "sign": -1,
+    "n": 902,
+    "meanR": 0.044
+   },
+   {
+    "setup": "C",
+    "signal": "2Y-FF:lvl",
+    "sign": -1,
+    "n": 1078,
+    "meanR": 0.0361
+   },
+   {
+    "setup": "C",
+    "signal": "BAA10Y:chg1",
+    "sign": -1,
+    "n": 884,
+    "meanR": 0.0352
+   },
+   {
+    "setup": "C",
+    "signal": "T10YIE:lvl",
+    "sign": -1,
+    "n": 1076,
+    "meanR": 0.0264
+   },
+   {
+    "setup": "C",
+    "signal": "T10Y2Y:chg5",
+    "sign": 1,
+    "n": 1007,
+    "meanR": 0.0246
+   },
+   {
+    "setup": "C",
+    "signal": "DFII10:chg5",
+    "sign": -1,
+    "n": 1094,
+    "meanR": 0.0237
+   },
+   {
+    "setup": "C",
+    "signal": "DFII10:chg1",
+    "sign": -1,
+    "n": 1033,
+    "meanR": 0.0226
+   }
+  ]
+ },
+ "verdict": "FAIL"
+}
