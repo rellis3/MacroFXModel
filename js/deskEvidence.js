@@ -881,6 +881,24 @@ export const DESK_EVIDENCE = [
     result: 'FAIL. EURUSD/GOLD/NQ 2016-2026, 192 choices per instrument (12 spreads x 4 reads x sign x fade/continue), picked on past years, scored next year 2019-2026: OOS -0.033R [-0.078, +0.015], exactly the no-filter -0.033R (difference -0.000 [-0.036, +0.035]); 500 time-shifted placebo runs median -0.041R, real beats 63% (95% needed). Picks unstable for EURUSD/GOLD; NQ kept picking credit (continue in the direction credit spreads are tightening) 2021-2026 but scored about flat OOS (-0.004R). In-sample best-of-192 looked like +0.01 to +0.06R; walk-forward erased it.',
     use: 'No daily US rate spread, read at a one-day conservative lag, gives direction at his lines; the in-sample winners are selection noise. Do not wire any spread as a line-direction filter. Untested leads: non-US daily rates (not on FRED daily), intraday rate moves (same-bar only so far), rate SURPRISES on release days rather than daily drift.',
   },
+  {
+    id: 'rates-residual-catchup', domain: 'macro', verdict: 'null', date: '2026-10-08', doc: 'forge/RATES_RESIDUAL_PREREG.md',
+    claim: "C.OG's residual idea (stream 2026-10-05): when price is out of line with its rates-implied path (rolling beta on US 2y/10y CFDs, plus the Bund/Gilt for EUR/GBP), price catches up over the next 4 hours; and that gap gives the direction at his lines",
+    result: 'S1 FAIL, well powered: catch-up coefficient b -0.001 [-0.058, +0.060] pooled over EURUSD/GBPUSD/USDJPY/gold/NAS100/SPX500, M15 2018-2026 (17,912 non-overlapping 4h samples; split 3 up / 3 down); gap trade +0.19bp/trade, hit 49.2%. S2 FAIL (PCA residual vs 14 other ~23h markets, Amendment 1 after a first run starved to n 2,790 by Gilt hours had shown +0.35): b -0.056 [-0.211, +0.100], n 13,512, negative on all 6 targets. S3 FAIL: at his median line, keeping trades where price is behind rates in the trade direction -0.058R vs all -0.050R (difference -0.009 [-0.045, +0.026]). On his 6 trade days + 2 stream days the bond-CFD gap does not reproduce what his SOFR/ESTR line showed (on 2 and 5 Oct it said NQ was AHEAD of rates).',
+    use: 'Bond CFDs (2y/10y) carry no lead over FX, gold or indices, even as a residual gap; the link is same-bar only (now shown four ways). If his edge is rates-led, it lives in the short-rate futures (SR3 vs ESTR/Euribor), which this desk does not have yet -- export them from TradingView or IBKR (scratchpad/ibkr_stir_pull.py) and rerun the same harness.',
+  },
+  {
+    id: 'policy-direction-at-lines', domain: 'macro', verdict: 'null', date: '2026-10-08', doc: 'forge/POLICY_DIRECTION_PREREG.md',
+    claim: 'The slow, literature-backed rate directions give the direction at his lines: the post-FOMC dollar drift (sessions D+1..D+5, dollar up) and the 63-day change in US-minus-German 2y (Ang & Chen sign); and the 2y momentum pays as a multi-day EURUSD hold',
+    result: 'S4 FAIL: dollar-up side +0.002R [-0.066, +0.066] (78 events, event-resampled), against -0.104R, with minus against +0.105 [-0.030, +0.240]; continuation trades on EURUSD with the drift +0.109R. S5a FAIL: with the 2y momentum -0.030R vs all EURUSD line trades +0.029 [-0.005, +0.063] better. S5b FAIL: EURUSD 5-day hold 2000-2026 +1.0bp [-5, +8], hit 49.7%, Sharpe 0.06; 20-day the same.',
+    use: 'Both tilt the right way (with > against) and neither is big enough alone. The 2y-momentum FX effect from the literature does not show on EURUSD 2000-2026 at a 5-20 day hold. Keep them only as vote components.',
+  },
+  {
+    id: 'direction-vote-at-lines', domain: 'price', verdict: 'context', date: '2026-10-08', doc: 'forge/DIRECTION_VOTE_PREREG.md',
+    claim: 'Stacking the weak direction tilts (20-day trend, yield book, US-DE 2y momentum, post-FOMC drift, rates gap) into a vote separates line trades: take only trades with 2+ net agreeing',
+    result: 'S6 FAIL on the bar: v>=2 -0.019R [-0.073, +0.034], minus all +0.031 [-0.021, +0.082]. But the ladder is MONOTONE: v>=2 -0.019, v=1 -0.039, v=0 -0.044, v=-1 -0.065, v<=-2 -0.082 (2018+, with gap); without the gap 2016+: -0.013, -0.017, -0.064, -0.076, -0.100. S7a FAIL: the same vote does not predict the London session direction (+0.004 sigma, hit 49.0%, 1,534 days). S7b FAIL: entering at the median line in the vote direction, stop 0.6 sigma, out 22:00: +0.022R [-0.040, +0.088] (gold +0.106R, EURUSD +0.010R).',
+    use: 'The components carry real ranking information AT the line (agreement adds) but not about the day, and no geometry tried makes it pay. Context, not a signal: if a line trade is taken, prefer the side most components agree with; never the side they oppose (the v<=-2 rung is the worst trade on the board).',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what

@@ -40,3 +40,10 @@ Pre-registration: `forge/RATES_RESIDUAL_PREREG.md`. OANDA M15 2018-01 → 2026-1
 ## S7b — median-line entry in the vote's direction, stop 0.6σ, out 22:00: **FAIL**
 
 - mean R +0.0219 [-0.0397, +0.0884], n 1126; halves +0.0303 / +0.0143; by instrument EURUSD +0.0096, GOLD +0.1063; |v| ≥ 1: +0.0019
+
+## S2 variant (Amendment 1: the 14 ~23h instruments): **FAIL**
+
+- b: **-0.0555 [-0.2108, +0.0998]**; c: +0.0012 [-0.0301, +0.0342]; n 13512
+- halves b: -0.1264 / -0.0372; by target: EUR_USD -0.0665, GBP_USD -0.1153, NAS100_USD -0.0273, SPX500_USD -0.0584, USD_JPY -0.0290, XAU_USD -0.0407
+- placebo: median +0.0434, 95th +0.6315, real beats 43.5%
+- gap trade: -0.52 bp/trade, hit 47.5%, n 2057; EUR_USD +0.14, GBP_USD -2.11, USD_JPY -0.42, XAU_USD -1.27, NAS100_USD +0.03, SPX500_USD +0.92

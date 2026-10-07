@@ -10,15 +10,15 @@ Generated 2026-10-07.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **113** |
+| claims tested (validated + null + underpowered) | **115** |
 | validated | 35 |
-| null | 75 |
+| null | 77 |
 | underpowered | 3 |
-| context (base rates, descriptions: not counted as tests) | 24 |
-| pre-registrations with no banked verdict (below) | 6 |
+| context (base rates, descriptions: not counted as tests) | 25 |
+| pre-registrations with no banked verdict (below) | 7 |
 
-**What the count says (Lesson 02 §05).** If none of the 113 claims were real, tests at the usual 5% size would still pass
-about **5.7** of them by luck. 35 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 115 claims were real, tests at the usual 5% size would still pass
+about **5.8** of them by luck. 35 passed, so most passes are unlikely to be luck alone, but
 **roughly 6 of the 35 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -164,6 +164,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-07 | meta-label-proper | volatility | null | forge/META_LABEL_PROPER_PREREG.md |
 | 2026-10-07 | ys-long-breadth | macro | null | forge/YS_LONG_CONFIRM_PREREG.md |
 | 2026-10-07 | ys-long-confirm | macro | validated | forge/YS_LONG_CONFIRM_PREREG.md |
+| 2026-10-08 | direction-vote-at-lines | price | context | forge/DIRECTION_VOTE_PREREG.md |
+| 2026-10-08 | policy-direction-at-lines | macro | null | forge/POLICY_DIRECTION_PREREG.md |
+| 2026-10-08 | rates-residual-catchup | macro | null | forge/RATES_RESIDUAL_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -175,3 +178,4 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/SIGNAL_JOURNAL_PREREG.md`: Signal Journal — live alerts with stated odds, tracked forward (Lesson 01 card 10, Lesson 16)
 - `forge/STABILITY_AND_HOLDOUT_PREREG.md`: STEP D — Parameter stability + the sealed holdout (Lesson 01 cards 07 and 03)
 - `forge/STOP_RISK_PREREG.md`: Layer 7 — STOP RISK MAP: how often does a stop fill worse than its price, and by how much?
+- `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
