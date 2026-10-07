@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Plan</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+/* Layout copied from live-range.html / vol-forecast-v3.html so the pages read as one tool. */
+#v2App { padding: 0 24px 40px; width: 100%; box-sizing: border-box; }
+.v2-sticky { position: sticky; top: 0; z-index: 200; background: var(--bg); padding-top: 14px; }
+.v2-header { display: flex; align-items: center; gap: 14px; padding-bottom: 12px; border-bottom: 1.5px solid var(--border); }
+.v2-title-group { display: flex; flex-direction: column; }
+.v2-title { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -.01em; }
+.v2-title .v3-ver { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; letter-spacing: .12em; margin-left: 6px; }
+.v2-subtitle { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 2px; }
+.v2-header-right { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.v2-auto-toggle { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; cursor: pointer; }
+.v2-auto-toggle input[type=checkbox] { accent-color: var(--blue); cursor: pointer; }
+.v2-tabbar { display: flex; align-items: center; border-bottom: 1.5px solid var(--border); padding-top: 6px; flex-wrap: wrap; }
+.v2-tab { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--text3); padding: 8px 16px 9px;
+  cursor: pointer; border-bottom: 2.5px solid transparent; transition: color .15s, border-color .15s; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+.v2-tab:hover { color: var(--text2); }
+.v2-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+.v2-tab-right { margin-left: auto; display: flex; align-items: center; gap: 8px; padding-bottom: 4px; }
+.v2-tool-btn { background: none; border: 1.5px solid var(--border); border-radius: 20px; padding: 3px 11px; cursor: pointer; font-size: 11px;
+  font-weight: 500; color: var(--text2); font-family: 'DM Sans', sans-serif; transition: all .2s; white-space: nowrap; text-decoration: none; }
+.v2-tool-btn:hover { border-color: var(--blue); color: var(--blue); }
+.v2-status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+.v2-status-dot.ok { background: var(--green); } .v2-status-dot.spin { background: var(--blue); animation: blink .5s infinite; } .v2-status-dot.err { background: var(--red); }
+.v2-date-row { display: flex; align-items: center; gap: 12px; padding: 14px 0 6px; flex-wrap: wrap; }
+.v2-date-heading { font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -.02em; }
+.v2-session-meta { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-left: auto; }
+.v2-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 14px; }
+@media (max-width: 900px) { .v2-grid { grid-template-columns: 1fr; } #v2App { padding: 0 12px 48px; } }
+.v2-card { background: var(--s1); border: 1.5px solid var(--border); border-radius: 16px; padding: 14px 16px 12px; display: flex; flex-direction: column;
+  gap: 10px; transition: border-color .2s, box-shadow .2s; box-shadow: 0 1px 4px rgba(0,0,0,.10); min-width: 0; overflow: hidden; }
+.v2-card:hover { border-color: var(--border2); box-shadow: 0 4px 14px rgba(0,0,0,.16); }
+.v2-card.wide { grid-column: 1 / -1; }
+.v2-inst-name { font-size: 16px; font-weight: 700; font-family: 'DM Mono', monospace; letter-spacing: .08em; color: var(--text); text-transform: uppercase; flex-shrink: 0; }
+.v3-id { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; min-width: 0; }
+.v3-price { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; }
+.v3-chg { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.v3-cap { display: inline-flex; align-items: center; font-family: 'DM Mono', monospace; font-size: 10px; border: 1px solid var(--blue-bd); border-radius: 20px;
+  overflow: hidden; background: var(--blue-bg); flex-shrink: 0; }
+.v3-cap span { padding: 3px 8px; white-space: nowrap; }
+.v3-cap span + span { border-left: 1px solid var(--blue-bd); }
+.v3-cap.hi { border-color: var(--red-bd); background: var(--red-bg); } .v3-cap.hi span + span { border-color: var(--red-bd); }
+.v3-cap.lo { border-color: var(--green-bd); background: var(--green-bg); } .v3-cap.lo span + span { border-color: var(--green-bd); }
+.v3-live { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+.v3-live.on { background: var(--green); box-shadow: 0 0 0 3px var(--green-bg); }
+.v2-m5-wrap { position: relative; height: 240px; margin: 4px 0 2px; border-radius: 6px; overflow: hidden; background: var(--s2); }
+.v2-card.wide .v2-m5-wrap { height: 460px; }
+.v3-chart-btns { position: absolute; top: 6px; right: 62px; z-index: 5; display: flex; gap: 4px; }
+.v3-chart-btns button { background: var(--s1); border: 1px solid var(--border); color: var(--text2); border-radius: 6px; font-size: 11px; padding: 2px 7px; cursor: pointer; opacity: .85; }
+.v3-chart-btns button:hover { border-color: var(--blue); color: var(--blue); }
+.v3-status { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.v3-chip { display: inline-flex; align-items: center; gap: 4px; font-family: 'DM Mono', monospace; font-size: 9.5px; color: var(--text2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 2px 8px; white-space: nowrap; line-height: 1.4; }
+.v3-chip b { color: var(--text); font-weight: 600; }
+.v3-chip.up { border-color: var(--green-bd); background: var(--green-bg); } .v3-chip.dn { border-color: var(--red-bd); background: var(--red-bg); }
+.v3-chip.hit { opacity: .6; }
+.lr-detail { display: none; grid-template-columns: 1fr 1fr; gap: 14px; }
+.v2-card.wide .lr-detail { display: grid; }
+@media (max-width: 900px) { .lr-detail { grid-template-columns: 1fr; } }
+table.lr-t { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+table.lr-t th, table.lr-t td { padding: 4px 6px; border-bottom: 1px solid var(--border); text-align: right; font-family: 'DM Mono', monospace; color: var(--text2); }
+table.lr-t th { color: var(--text3); font-weight: 500; }
+table.lr-t th:first-child, table.lr-t td:first-child { text-align: left; font-family: 'DM Sans', sans-serif; }
+.up { color: var(--green); } .dn { color: var(--red); } .muted { color: var(--text3); }
+.lr-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11px; color: var(--text3); padding: 10px 0 0; }
+.sw { display: inline-block; width: 18px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 5px; }
+.lr-key { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; margin-top: 10px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--s1); }
+@media (max-width: 900px) { .lr-key { grid-template-columns: 1fr; } }
+.lr-key-h { font-size: 11px; font-weight: 600; color: var(--text); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .04em; }
+.lr-key-row { font-size: 11.5px; color: var(--text2); padding: 2px 0; display: flex; align-items: center; gap: 8px; }
+.lr-key-row .sw { width: 26px; margin-right: 0; flex-shrink: 0; }
+.lr-key-row b { font-family: 'DM Mono', monospace; font-weight: 600; }
+.lr-info { margin-top: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: 11.5px; color: var(--text2); line-height: 1.55; background: var(--s1); }
+.lr-info summary { cursor: pointer; color: var(--text); font-weight: 600; font-size: 12px; }
+.lr-empty { color: var(--text3); font-size: 12px; padding: 30px 0; text-align: center; grid-column: 1 / -1; }
+
+.dp-wrap { overflow-x: auto; margin-top: 12px; border: 1.5px solid var(--border); border-radius: 14px; background: var(--s1); }
+table.dp { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 980px; }
+table.dp th { position: sticky; top: 0; background: var(--s1); color: var(--text3); font-weight: 500; font-size: 10.5px; text-align: right;
+  padding: 8px 8px; border-bottom: 1.5px solid var(--border); white-space: nowrap; font-family: 'DM Sans', sans-serif; }
+table.dp td { padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: right; font-family: 'DM Mono', monospace; color: var(--text2); white-space: nowrap; }
+table.dp th:first-child, table.dp td:first-child { text-align: left; }
+table.dp td.inst { font-weight: 700; color: var(--text); letter-spacing: .06em; }
+table.dp tr:hover td { background: var(--s2); }
+table.dp .grp { border-left: 1.5px solid var(--border); }
+.dp-controls { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 10px; font-size: 12px; color: var(--text2); }
+.dp-controls input[type=number] { width: 90px; background: var(--s2); border: 1.5px solid var(--border); border-radius: 8px; color: var(--text);
+  padding: 4px 8px; font-family: 'DM Mono', monospace; font-size: 12px; }
+.dp-tag { display: inline-block; font-size: 9.5px; border: 1px solid var(--border); border-radius: 10px; padding: 1px 6px; color: var(--text3); }
+.dp-tag.iv { border-color: var(--blue-bd); color: var(--blue); }
+.dp-bar { display: inline-block; width: 54px; height: 6px; background: var(--s2); border-radius: 3px; vertical-align: middle; margin-right: 6px; overflow: hidden; }
+.dp-bar i { display: block; height: 100%; background: var(--blue); }
+.dp-bar.hi i { background: var(--red); }
+.dp-verdicts div { padding: 2px 0; color: var(--text); }
+</style>
+</head>
+<body class="dark">
+<div id="v2App">
+<div class="v2-sticky">
+  <div class="v2-header">
+    <div style="width:32px;height:32px;background:linear-gradient(135deg,#0f766e,#1847c2);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <svg viewBox="0 0 17 17" width="16" height="16" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2.5" y="3" width="12" height="11.5" rx="2"/><path d="M2.5 6.5h12M6 1.5v3M11 1.5v3M5.5 9.5h3M5.5 12h6"/>
+      </svg>
+    </div>
+    <div class="v2-title-group">
+      <div class="v2-title">Daily Plan<span class="v3-ver">LESSONS</span></div>
+      <div class="v2-subtitle">The chosen forecast · room left · stop and size · its record · updated <span id="dpUpdated">—</span> London</div>
+    </div>
+    <div class="v2-header-right">
+      <button class="dark-btn" id="dpThemeBtn" title="Switch light / dark">☀️ Light</button>
+      <label class="v2-auto-toggle"><input type="checkbox" id="dpAuto" checked> Auto-refresh</label>
+      <button class="dark-btn" id="dpRefresh">↻ Refresh</button>
+      <a class="v2-tool-btn" href="live-range.html">⏱ Live Range</a>
+      <a class="v2-tool-btn" href="vol-forecast-v3.html">← Vol Forecast v3</a>
+    </div>
+  </div>
+  <div class="v2-tabbar" id="dpTabs">
+    <div class="v2-tab active" data-f="all">All</div>
+    <div class="v2-tab" data-f="fx">FX</div>
+    <div class="v2-tab" data-f="gold">Gold</div>
+    <div class="v2-tab" data-f="idx">Indices</div>
+    <div class="v2-tab-right"><span class="v2-status-dot" id="dpDot"></span><span class="v2-subtitle" id="dpStatus" style="margin:0">loading…</span></div>
+  </div>
+</div>
+
+<div class="v2-date-row">
+  <div class="v2-date-heading" id="dpDate">—</div>
+  <div class="v2-session-meta" id="dpMeta"></div>
+</div>
+
+<div class="lr-key">
+  <div class="lr-key-col">
+    <div class="lr-key-h">What each column is</div>
+    <div class="lr-key-row"><b>Lines</b>&nbsp;today's ↑/↓ p75 off the London open from the chosen forecast (1 in 4 chance price gets past each)</div>
+    <div class="lr-key-row"><b>Used</b>&nbsp;the range so far as a share of today's p75 range (red bar = past it)</div>
+    <div class="lr-key-row"><b>Room left</b>&nbsp;Live Range's re-forecast at the last hour: more range still likely to come (p50 · p75). Mostly set by the time of day (range used and pace add ~1–1.5%); in FX it runs ~3 pts wide at p75</div>
+    <div class="lr-key-row"><b>Stop / size</b>&nbsp;for a long and a short entered now: the nearest stop a single 5-min bar rarely jumps (≤ 5% of days), and the size whose planned loss, including the worst-case step past the stop, equals your budget</div>
+  </div>
+  <div class="lr-key-col">
+    <div class="lr-key-h">What this page will not tell you</div>
+    <div class="lr-key-row muted">Which way to trade. Every honest test of direction from these lines, and of meta-labelling a directional book on them, came back empty (Evidence Book). The lines say how far price can travel and how much to hold.</div>
+    <div class="lr-key-row muted">Size is in units of the instrument per your budget in its quote currency (EURUSD: euros per USD of budget). Convert yourself for cross-currency accounts.</div>
+  </div>
+</div>
+
+<div class="dp-controls">
+  <label>Risk budget per trade (quote ccy) <input type="number" id="dpBudget" min="1" step="10" value="100"></label>
+  <label class="v2-auto-toggle"><input type="checkbox" id="dpWeekend"> Holding over the weekend (adds the Monday gap allowance)</label>
+</div>
+
+<div class="dp-wrap"><table class="dp" id="dpTable">
+  <thead><tr>
+    <th>Instrument</th><th>Price</th><th>Forecast</th><th class="grp">↓ p75</th><th>↑ p75</th>
+    <th class="grp">Used (of p75 range)</th><th>Room left p50 · p75</th>
+    <th class="grp">Long: stop</th><th>size</th><th class="grp">Short: stop</th><th>size</th><th>planned loss</th>
+  </tr></thead>
+  <tbody id="dpBody"><tr><td colspan="12" class="muted">Loading…</td></tr></tbody>
+</table></div>
+
+<details class="lr-info" open>
+  <summary>Track record · forward, scored after every session <span class="muted" id="dpTrackMeta"></span></summary>
+  <div id="dpTrack" class="dp-verdicts muted" style="margin-top:8px">Loading…</div>
+</details>
+
+<details class="lr-info">
+  <summary>Where each part comes from · the lessons</summary>
+  <b>Lines</b>: the chosen forecast, picked head-to-head over all five daily forecasts (forge/FORECAST_PICK_PREREG.md): the
+  Forecast's σ nudged for regime, recent range misses and weekday (Lesson 03 §02, persistence), plus implied vol on the 13
+  instruments that have it. Walk-forward 2020–2026: 0.964 of the plain Forecast where IV exists, 0.980 elsewhere; stable under
+  parameter nudges (forge/STABILITY_AND_HOLDOUT_PREREG.md). Holdout sealed until 2027-01-04.<br>
+  <b>Room left</b>: Live Range (forge/INTRADAY_RANGE_PREREG.md). The side study found it behaves mostly as a clock (forge/LIVE_RANGE_CLOCK_BASELINE_PREREG.md)
+  and sits ~3 pts too wide at p75 in FX because its grids were fitted on a slightly lower σ (Evidence Book: live-range-sigma-basis). Read it as
+  "how much day is left", not as an exhaustion detector.<br>
+  <b>Stop and size</b>: forge/HOW_MUCH_SPEC.md (Lesson 03 §03: jump risk passes through stops; Lesson 01 §06: size below
+  Kelly). Minimum stop 0.55–0.60σ by class; the worst-case step past it is a cautious upper bound.<br>
+  <b>Not here</b>: entry signals. Direction at the lines and two meta-labelling builds were tested properly and closed
+  (forge/META_LABEL_PROPER_PREREG.md).
+</details>
+</div>
+
+<script type="module">
+import { sessionState, reforecast } from './js/intradayRange.js';
+import { stopAndSize } from './js/howMuch.js';
+
+const OANDA_SYM = {
+  EURUSD:'EUR/USD', GBPUSD:'GBP/USD', USDJPY:'USD/JPY', EURJPY:'EUR/JPY', GBPJPY:'GBP/JPY', AUDUSD:'AUD/USD',
+  USDCAD:'USD/CAD', USDCHF:'USD/CHF', NZDUSD:'NZD/USD', EURGBP:'EUR/GBP', EURAUD:'EUR/AUD', EURCHF:'EUR/CHF',
+  EURCAD:'EUR/CAD', EURNZD:'EUR/NZD', GBPAUD:'GBP/AUD', GBPCHF:'GBP/CHF', GBPCAD:'GBP/CAD', GBPNZD:'GBP/NZD',
+  AUDJPY:'AUD/JPY', AUDNZD:'AUD/NZD', AUDCAD:'AUD/CAD', AUDCHF:'AUD/CHF', NZDJPY:'NZD/JPY', CADJPY:'CAD/JPY',
+  CHFJPY:'CHF/JPY', NZDCAD:'NZD/CAD', GOLD:'XAU/USD',
+  NQ:'NAS100_USD', SPX500:'SPX500_USD', US30:'US30_USD', US2000:'US2000_USD', UK100:'UK100_GBP', DE30:'DE30_EUR',
+};
+const INDICES = new Set(['NQ', 'SPX500', 'US30', 'US2000', 'UK100', 'DE30']);
+const kind = n => INDICES.has(n) ? 'idx' : n === 'GOLD' ? 'gold' : 'fx';
+const LEAD = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'];
+const $ = id => document.getElementById(id);
+const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } },
+                set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* private window */ } } };
+const digits = n => /JPY/.test(n) ? 3 : n === 'GOLD' ? 2 : INDICES.has(n) ? 1 : 5;
+const fmt = (n, v) => (v == null || !Number.isFinite(v)) ? '—' : v.toFixed(digits(n));
+const sizeFmt = v => !Number.isFinite(v) ? '—' : v >= 1000 ? Math.round(v).toLocaleString('en-GB') : v >= 10 ? v.toFixed(1) : v.toFixed(3);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+let plain = null, chosen = null, timer = null, filter = store.get('dp_filter') ?? 'all';
+const state = new Map();     // name -> { st, rf } from the latest 5-min fetch
+
+function theme() { try { return localStorage.getItem('vf_theme') || 'dark'; } catch { return 'dark'; } }
+function applyTheme(t) { document.body.classList.toggle('dark', t === 'dark'); $('dpThemeBtn').textContent = t === 'dark' ? '☀️ Light' : '🌙 Dark'; }
+
+// Every instrument with a forecast and a 5-min feed: the majors / gold / indices first, then the crosses A–Z.
+function names() {
+  const all = Object.keys(plain?.instruments ?? {}).filter(n => OANDA_SYM[n]);
+  return [...LEAD.filter(n => all.includes(n)), ...all.filter(n => !LEAD.includes(n)).sort()];
+}
+
+async function bars(name) {
+  const r = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(OANDA_SYM[name])}&incomplete=1`);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d?.values?.length) return null;
+  return [...d.values].reverse().map(b => ({ t: b.t, open: +b.open, high: +b.high, low: +b.low, close: +b.close }));
+}
+
+async function loadState(name) {
+  const B = await bars(name);
+  const st = B ? sessionState(B) : null;
+  let rf = null;
+  if (st) {
+    const sig = plain?.instruments?.[name]?.ladder?.sigma_daily_pct;      // Live Range's params were fitted on this σ
+    const cps = st.checkpoints.map(cp => reforecast(cp, { instrument: name, open: st.open, sigmaDailyPct: sig })).filter(Boolean);
+    rf = cps.at(-1) ?? null;
+  }
+  state.set(name, { st, rf });
+}
+
+function row(name) {
+  const L = chosen?.instruments?.[name] ?? plain?.instruments?.[name]?.ladder;
+  const isChosen = !!chosen?.instruments?.[name];
+  const S = state.get(name) ?? {};
+  const st = S.st, rf = S.rf;
+  if (!L?.oh || !st) return `<tr data-k="${kind(name)}"><td class="inst">${name}</td><td colspan="11" class="muted">${!L?.oh ? 'no forecast' : 'no bars yet this session'}</td></tr>`;
+  const open = st.open, px = st.now.close;
+  const up75 = open * (1 + L.oh.p75 / 100), dn75 = open * (1 - L.ol.p75 / 100);
+  const usedShare = (st.now.high - st.now.low) / open * 100 / L.hl.p75;
+  const bar = `<span class="dp-bar ${usedShare >= 1 ? 'hi' : ''}"><i style="width:${Math.min(100, usedShare * 100).toFixed(0)}%"></i></span>${Math.round(usedShare * 100)}%`;
+  const room = rf ? `${(rf.remaining.p50 / open * 100).toFixed(2)}% · ${(rf.remaining.p75 / open * 100).toFixed(2)}%` : '<span class="muted">from 01:00</span>';
+  const budget = +$('dpBudget').value || 0, weekend = $('dpWeekend').checked;
+  const sig = L.sigma_used_pct;
+  const lo = stopAndSize({ instrument: name, price: px, sigmaPct: sig, side: 'long', riskBudget: budget, weekend });
+  const sh = stopAndSize({ instrument: name, price: px, sigmaPct: sig, side: 'short', riskBudget: budget, weekend });
+  const tag = !isChosen ? '<span class="dp-tag" title="No chosen-forecast params: plain Forecast lines">plain</span>'
+    : L.form === 'persist+iv' ? `<span class="dp-tag iv" title="Persistence + implied vol (${esc(L.iv_source ?? '')} ${L.iv_annual ?? ''}%)">chosen · IV</span>`
+    : '<span class="dp-tag" title="Persistence-adjusted (no implied vol for this instrument today)">chosen</span>';
+  const adj = isChosen && L.persist_adjust ? ` <span class="muted" title="Chosen σ vs the plain Forecast σ">${L.persist_adjust >= 1 ? '+' : ''}${Math.round((L.persist_adjust - 1) * 100)}%</span>` : '';
+  return `<tr data-k="${kind(name)}"><td class="inst">${name}</td><td>${fmt(name, px)}</td><td>${tag}${adj}</td>`
+    + `<td class="grp dn">${fmt(name, dn75)}</td><td class="up">${fmt(name, up75)}</td>`
+    + `<td class="grp">${bar}</td><td>${room}</td>`
+    + `<td class="grp">${lo ? fmt(name, lo.stop_price) : '—'}</td><td>${lo?.size != null ? sizeFmt(lo.size) : '—'}</td>`
+    + `<td class="grp">${sh ? fmt(name, sh.stop_price) : '—'}</td><td>${sh?.size != null ? sizeFmt(sh.size) : '—'}</td>`
+    + `<td title="stop + worst-case step${weekend ? ' + Monday gap' : ''}, in σ">${lo ? lo.planned_loss_sigma.toFixed(2) + 'σ' : '—'}</td></tr>`;
+}
+
+function render() {
+  $('dpBody').innerHTML = names().map(row).join('') || '<tr><td colspan="12" class="muted">No forecast available yet.</td></tr>';
+  for (const tr of $('dpBody').querySelectorAll('tr[data-k]')) tr.style.display = (filter === 'all' || tr.dataset.k === filter) ? '' : 'none';
+}
+
+async function refresh() {
+  $('dpDot').className = 'v2-status-dot spin';
+  try {
+    [plain, chosen] = await Promise.all([
+      fetch('/api/vol-forecast').then(r => r.json()),
+      fetch('/api/vol-forecast/persist-ladder/json').then(r => r.json()).catch(() => null),
+    ]);
+    if (!chosen?.ok) chosen = null;
+    const N = names();
+    for (let i = 0; i < N.length; i += 4) await Promise.all(N.slice(i, i + 4).map(n => loadState(n).catch(() => state.set(n, {}))));
+    render();
+    const nIv = Object.values(chosen?.instruments ?? {}).filter(l => l.form === 'persist+iv').length;
+    $('dpDate').textContent = plain?.session_label ?? plain?.session_date ?? '—';
+    $('dpMeta').textContent = chosen ? `chosen forecast on ${Object.keys(chosen.instruments).length} instruments (${nIv} with implied vol)` : 'chosen forecast unavailable: plain lines shown';
+    $('dpUpdated').textContent = new Date().toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' });
+    $('dpStatus').textContent = `${N.length} instruments`;
+    $('dpDot').className = 'v2-status-dot ok';
+  } catch (e) {
+    $('dpStatus').textContent = `Error: ${e.message}`; $('dpDot').className = 'v2-status-dot err';
+  }
+}
+
+async function loadTrack() {
+  try {
+    const d = await (await fetch('/api/forecast-scorecard')).json();
+    const S = d?.summary;
+    $('dpTrackMeta').textContent = S?.sessions ? `· ${S.sessions} sessions since ${S.since}` : '· collecting';
+    const icon = { good: '✅', warn: '⚠️', same: '➖', early: '⏳' };
+    const V = (d.verdicts ?? []).filter(v => /Chosen|Plain daily|Live Range/.test(v.text));
+    $('dpTrack').innerHTML = (V.map(v => `<div>${icon[v.status] ?? '•'} ${esc(v.text)}</div>`).join('') || 'No verdicts yet.')
+      + '<div class="muted" style="margin-top:6px">Verdicts wait for 15 sessions. This is monitoring; the sealed holdout opens once on 2027-01-04.</div>';
+  } catch (e) { $('dpTrack').textContent = `Track record unavailable: ${e.message}`; }
+}
+
+function schedule() { clearInterval(timer); if ($('dpAuto').checked) timer = setInterval(() => refresh(), 5 * 60_000); }
+
+function init() {
+  applyTheme(theme());
+  $('dpThemeBtn').onclick = () => { const t = theme() === 'dark' ? 'light' : 'dark'; try { localStorage.setItem('vf_theme', t); } catch {} applyTheme(t); };
+  $('dpBudget').value = store.get('dp_budget') ?? '100';
+  $('dpWeekend').checked = new Date().getUTCDay() === 5;                 // Friday: default to holding over the weekend
+  $('dpBudget').oninput = () => { store.set('dp_budget', $('dpBudget').value); render(); };
+  $('dpWeekend').onchange = render;
+  $('dpRefresh').onclick = () => refresh();
+  $('dpAuto').onchange = schedule;
+  for (const t of document.querySelectorAll('#dpTabs .v2-tab')) {
+    t.classList.toggle('active', t.dataset.f === filter);
+    t.onclick = () => { filter = t.dataset.f; store.set('dp_filter', filter);
+      for (const x of document.querySelectorAll('#dpTabs .v2-tab')) x.classList.toggle('active', x.dataset.f === filter); render(); };
+  }
+  loadTrack();
+  refresh().then(schedule);
+}
+init();
+</script>
+</body>
+</html>

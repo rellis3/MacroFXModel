@@ -35,7 +35,8 @@ its own pre-registration before its results are computed.*
 - D. ✅ **DONE 2026-10-07** (forge/STABILITY_AND_HOLDOUT_PREREG.md): stability PLATEAU (6 perturbations 0.978–0.983 vs base 0.980); holdout sealed (analysis/output/holdout/SEAL.md), opened once 2027-01-04.
   Original step: **Seal a holdout + parameter stability** (L01 cards 03, 07): everything after 2026-08-21 and the forward
   scorecard are the lockbox, looked at once when A–C are frozen; one stability run on the chosen forecast.
-- E. **Daily Plan page**: lines, room left, stop and size, act/size flag (only if C passes), track record.
+- E. ✅ **BUILT 2026-10-07**: daily-plan.html (chosen-forecast lines, range used, room left from Live Range with its clock/σ caveats, long+short stop and size from js/howMuch.js with budget + weekend, forward track record). Linked from v3 and Live Range.
+  Original step: **Daily Plan page**: lines, room left, stop and size, act/size flag (only if C passes), track record.
 - F. **Lessons 4–17** check this one product as they arrive.
 
 ## Ground rules (owner, 2026-10-06)
