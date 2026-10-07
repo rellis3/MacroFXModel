@@ -22194,8 +22194,9 @@ async function _sjTick() {
           dirty = true;
         }
       }
-      // hourly digest of the main instruments' new touches
-      const pending = day.touches.filter(x => x.main && !x.sent);
+      // Owner 2026-10-07: the all-instrument digest was noise. Telegram only carries touches on instruments with an OPEN
+      // yield-spread trade (trade management); every touch still lands on the Daily Plan's Journal panel.
+      const pending = day.touches.filter(x => !x.sent && J.positions?.[x.instrument]);
       if (pending.length && Date.now() - (day.lastDigestAt || 0) >= 55 * 60_000) {
         if (await _sjSend(sjDigest(pending, _sjFmt))) { for (const x of pending) x.sent = true; day.lastDigestAt = Date.now(); dirty = true; }
       }
