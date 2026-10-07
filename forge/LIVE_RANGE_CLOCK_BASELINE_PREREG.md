@@ -25,6 +25,11 @@ Pinball loss summed over q ∈ {0.50, 0.75, 0.90} on R, per instrument per check
 ## Variant log
 | # | Variant | Added | Status |
 |---|---|---|---|
-| 1 | as above | 2026-10-07 | pending |
+| 1 | as above | 2026-10-07 | run |
 
 Output `analysis/output/live_range_clock/RESULTS.md`; banked in `js/deskEvidence.js`.
+
+## Results (2026-10-07) — `analysis/output/live_range_clock/RESULTS.md`
+**THE MOVING LINE IS A CLOCK** in both classes. FX+gold: B beats the clock-only forecast at 12 of 21 checkpoints (need 14), with a median
+B÷C of 0.988 (08-14, 15-21) and 0.995 (01-07); indices 7 of 21, B÷C 1.005 / 0.991 / 0.982 by hour group. Used alone explains most of the
+morning/midday gain, pace alone most of the late gain; the 3×3 beats either alone by under 1%.

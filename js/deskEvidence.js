@@ -670,6 +670,12 @@ export const DESK_EVIDENCE = [
     use: 'There is no hour / weekday / line rung where a walking-forward continue-or-fade rule works on the moving lines. Do not build a continue/fade chooser on them. The decision to trade or not at a line is worth nothing beyond what the line says about range and time left.',
   },
   {
+    id: 'live-range-clock', domain: 'volatility', verdict: 'null', date: '2026-10-07', doc: 'forge/LIVE_RANGE_CLOCK_BASELINE_PREREG.md',
+    claim: 'The Live Range moving lines (range used x last-hour pace, by hour) forecast the remaining range better than the clock of the day alone',
+    result: 'Fails the registered bar: THE MOVING LINE IS A CLOCK. Test = last 40% of dates, 34 instruments, pinball on remaining range, median across instruments, B (3x3 page model) / C (hour only): FX+gold beats the clock at 12 of 21 checkpoints (need 14), by only 1-1.5% (median ratio 0.988 at 08-14 and 15-21, 0.995 at 01-07), better on 90-100% of instruments but by a hair; indices 7 of 21, 1-2% in the afternoon, worse than the clock before 09:00. Range used alone carries most of the morning/midday gain, pace alone most of the late gain; the 3x3 beats either alone by under 1%. The earlier 9-17% (FX) gain of the hourly lines over the MORNING lines is therefore almost entirely time of day.',
+    use: 'Treat the hourly lines as a clock-aware range shrinker: the next exhaustion line closes in because time passes, with range used and pace adding about 1 to 1.5% of forecast skill beyond that. Do not present the lines as detecting exhaustion from price action. A static hour-by-hour table of remaining range would do nearly the same job.',
+  },
+  {
     id: 'event-layer', domain: 'events', verdict: 'null', date: '2026-10-05', doc: 'forge/EVENT_LAYER_PREREG.md',
     claim: 'On top of the IV-adjusted daily lines, the typical size of the day’s scheduled release type (and yesterday’s surprise) improves the range forecast',
     result: 'First test (calendar_events.csv) PASSED for FX+gold (0.970, 7/7) but did NOT replicate on live inputs (ForexFactory names, live IV-adjusted sigma, 2020-2025): 0.9937 vs the 0.99 bar; the fitted correction overshoots (big-release-day p75 35.5% -> 17.3%). Yesterday’s surprise null in both. The live export’s coarse event tag already brings FOMC/NFP/CPI days to 27.1% passed vs 25%.',
