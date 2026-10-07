@@ -124,7 +124,7 @@ Lessons 11–16 are the validation module. When each lesson lands, its check rep
 | L02 §01–§04 | Waiting times, overruns, uncertain rate, cost of search | process | **stopping rule adopted 2026-10-06**: one prereg + one logged variant per direction, then a decision | discovery-rate tracker from the ledger |
 | L02 §05 | Breadth enters the evidence | process | **done**: TRIAL_LEDGER (94 tested, about 5 passes expected by luck) | keep current |
 | L02 §06 | Discovery rate declines | process | not built | with L02 §01–§04 |
-| L03 §01 | Layers, IR ≈ TC·IC·√BR | all | blueprint; TC unmeasured (no decision layer yet) | after layer 5 |
+| L03 §01 | Layers, IR ≈ TC·IC·√BR | all | layers built and joined on daily-plan.html (forecast → room left → stop/size → record); no decision layer by evidence, so TC/BR not applicable | revisit when a validated directional book is sized through it |
 | L03 §01 | Meta-labelling | 6 | 3a (morning trust) FAIL then nothing left after the forecast fix; 3b stopped (direction from the forecast conflicts with L03 §02). **Re-aimed:** primary = yield-spread book, meta-label = forecast state → size | plans/LESSON_TARGET_REBUILD_PLAN.md step C |
 | L03 §02 | Vol clustering, persistence, half-life | 3 | HAR-800 preferred, weekly reverting, IV-adjusted, Live Range. Step 1 shows the daily export over-reacts to regime (busy too wide, quiet too tight) | daily persistence fix, scored on the Step 1 yardstick |
 | L03 §03 | Jumps, excess kurtosis | 3, 7 | **done** (forge/JUMPS_PREREG.md): 6.6% of variance, 78% unscheduled, p90 event term FAIL; stop gap-risk table | use in layer 7 stops |
