@@ -99,3 +99,11 @@ Builder `scripts/meta_proper/build_events.mjs` (layers 1–2), `scripts/meta_pro
 | # | Variant | Why | Run? |
 |---|---|---|---|
 | 0 | as above | registered | — |
+
+## Amendment 1 (2026-10-07): implementation fault — the first run produced no model
+
+With `max_samples` = mean uniqueness (0.12, so ~360 draws per tree) and `min_samples_leaf = 50`, scikit-learn grew
+**single-node trees**: every prediction 0.500, every importance 0. That is a fault, not a result (nothing was fitted),
+so its numbers are void. The registered intent was "leaves of about 50 events" on the full sample. On a 12% bootstrap
+sample that is `min_samples_leaf = max(5, round(50 × mean uniqueness))` (≈ 6). Fixed to that; nothing else
+changes. Logged here rather than as the allowed variant, because no valid run preceded it.

@@ -1,0 +1,149 @@
+{
+ "n_test": 3144,
+ "years": [
+  2019,
+  2020,
+  2021,
+  2022,
+  2023,
+  2024,
+  2025,
+  2026
+ ],
+ "eff_T": 395,
+ "full": {
+  "prec_primary": 0.5156,
+  "prec_meta": 0.5033,
+  "rec_meta": 0.5614,
+  "sh_flat": 0.0255,
+  "sh_meta": 0.022,
+  "share_bet": 0.5751
+ },
+ "ablation": {
+  "prec_primary": 0.5156,
+  "prec_meta": 0.5106,
+  "rec_meta": 0.5632,
+  "sh_flat": 0.0255,
+  "sh_meta": 0.0433,
+  "share_bet": 0.5687
+ },
+ "ci": {
+  "prec": [
+   -0.0328,
+   0.0092
+  ],
+  "sh": [
+   -0.068,
+   0.0599
+  ],
+  "sh_vs_abl": [
+   -0.0716,
+   0.0291
+  ],
+  "prec_vs_abl": [
+   -0.0302,
+   0.0141
+  ]
+ },
+ "f1_primary": 0.6804,
+ "f1_meta": 0.5308,
+ "dsr": 0.2235,
+ "sr0": 0.06,
+ "verdict": "FAIL",
+ "vol_system_earns_place": false,
+ "terciles": [
+  {
+   "terc": "low",
+   "n": 1048,
+   "win": 0.5315,
+   "ret": 0.0005,
+   "absz": 1.7717
+  },
+  {
+   "terc": "mid",
+   "n": 1048,
+   "win": 0.5086,
+   "ret": 0.0001,
+   "absz": 1.7473
+  },
+  {
+   "terc": "high",
+   "n": 1048,
+   "win": 0.5067,
+   "ret": 0.0001,
+   "absz": 1.769
+  }
+ ],
+ "importance": {
+  "spread": 0.0759,
+  "since_cross": 0.0748,
+  "today": 0.0726,
+  "absz": 0.0725,
+  "usd_trend": 0.0723,
+  "regime": 0.072,
+  "z": 0.0713,
+  "dz5": 0.0712,
+  "iv_sig": 0.068,
+  "res5": 0.068,
+  "dsig5": 0.0675,
+  "cal5": 0.0417
+ },
+ "per_year": {
+  "2019": {
+   "n": 438,
+   "flat": -26.53,
+   "meta": 0.0,
+   "prec_primary": 0.466,
+   "prec_meta": 0.466
+  },
+  "2020": {
+   "n": 340,
+   "flat": -36.79,
+   "meta": 0.06,
+   "prec_primary": 0.429,
+   "prec_meta": 0.424
+  },
+  "2021": {
+   "n": 509,
+   "flat": 27.86,
+   "meta": 0.0,
+   "prec_primary": 0.55,
+   "prec_meta": 0.512
+  },
+  "2022": {
+   "n": 464,
+   "flat": 44.12,
+   "meta": 0.42,
+   "prec_primary": 0.554,
+   "prec_meta": 0.582
+  },
+  "2023": {
+   "n": 404,
+   "flat": 67.54,
+   "meta": 0.67,
+   "prec_primary": 0.592,
+   "prec_meta": 0.598
+  },
+  "2024": {
+   "n": 374,
+   "flat": 15.48,
+   "meta": 0.67,
+   "prec_primary": 0.527,
+   "prec_meta": 0.535
+  },
+  "2025": {
+   "n": 341,
+   "flat": -13.68,
+   "meta": -0.12,
+   "prec_primary": 0.466,
+   "prec_meta": 0.456
+  },
+  "2026": {
+   "n": 274,
+   "flat": -3.4,
+   "meta": 0.05,
+   "prec_primary": 0.507,
+   "prec_meta": 0.544
+  }
+ }
+}
