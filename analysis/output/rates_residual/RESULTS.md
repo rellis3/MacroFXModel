@@ -30,3 +30,13 @@ Pre-registration: `forge/RATES_RESIDUAL_PREREG.md`. OANDA M15 2018-01 → 2026-1
 - ladder (mean R, n): v>=2 -0.019 (1016); v=1 -0.039 (1168); v=0 -0.044 (1426); v=-1 -0.065 (1168); v<=-2 -0.082 (1016)
 - without the rates gap, 2016-10 →: v>=2 -0.013 (1203); v=1 -0.017 (4247); v=0 -0.064 (1384); v=-1 -0.076 (4247); v<=-2 -0.100 (1203)
 - kept by setup|instrument: A|EURUSD -0.050 (301); A|GOLD +0.045 (227); A|NQ -0.034 (285); C|EURUSD -0.002 (157); C|GOLD -0.150 (21); C|NQ -0.043 (25)
+
+## S7a — vote (|v| ≥ 2) vs the London session direction: **FAIL**
+
+- mean signed open→22:00 return: +0.0037 [-0.0467, +0.0521] σ after cost, hit 49.0%, n 1534 days
+- halves +0.0004 / +0.0067; by instrument EURUSD -0.0001, GOLD +0.0319
+- |v| ≥ 1 (any lean): +0.0058 σ (n 4175)
+
+## S7b — median-line entry in the vote's direction, stop 0.6σ, out 22:00: **FAIL**
+
+- mean R +0.0219 [-0.0397, +0.0884], n 1126; halves +0.0303 / +0.0143; by instrument EURUSD +0.0096, GOLD +0.1063; |v| ≥ 1: +0.0019
