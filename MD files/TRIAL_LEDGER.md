@@ -10,16 +10,16 @@ Generated 2026-10-07.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **105** |
-| validated | 34 |
-| null | 68 |
+| claims tested (validated + null + underpowered) | **108** |
+| validated | 35 |
+| null | 70 |
 | underpowered | 3 |
 | context (base rates, descriptions: not counted as tests) | 23 |
-| pre-registrations with no banked verdict (below) | 4 |
+| pre-registrations with no banked verdict (below) | 6 |
 
-**What the count says (Lesson 02 §05).** If none of the 105 claims were real, tests at the usual 5% size would still pass
-about **5.3** of them by luck. 34 passed, so most passes are unlikely to be luck alone, but
-**roughly 5 of the 34 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 108 claims were real, tests at the usual 5% size would still pass
+about **5.4** of them by luck. 35 passed, so most passes are unlikely to be luck alone, but
+**roughly 5 of the 35 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -154,7 +154,10 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-06 | meta-label-trust-lines-persist | volatility | null | forge/META_LABEL_PREREG.md |
 | 2026-10-06 | meta-label-yield-spread | volatility | null | forge/META_LABEL_YS_PREREG.md |
 | 2026-10-07 | live-range-clock | volatility | null | forge/LIVE_RANGE_CLOCK_BASELINE_PREREG.md |
+| 2026-10-07 | live-range-features | volatility | null | forge/LIVE_RANGE_FEATURES_PREREG.md |
 | 2026-10-07 | meta-label-proper | volatility | null | forge/META_LABEL_PROPER_PREREG.md |
+| 2026-10-07 | ys-long-breadth | macro | null | forge/YS_LONG_CONFIRM_PREREG.md |
+| 2026-10-07 | ys-long-confirm | macro | validated | forge/YS_LONG_CONFIRM_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -162,5 +165,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 
 - `MD files/LEAN_TRADE_RULE_PREREG.md`: LEAN-TRADE-RULE — the lean traded as a real trade, with a stop
 - `forge/CONFIDENCE_PREREG.md`: Layer 6 — CONFIDENCE (meta-labelling): can today's conditions sharpen layer 5's probabilities?
+- `forge/LIVE_RANGE_CONFLUENCE_BOOK_PREREG.md`: LIVE-RANGE-CONFLUENCE-BOOK: does the line that moves with the day unlock confluences for fade vs continue?
 - `forge/REMAINING_TRAVEL_PREREG.md`: Layer 5 — REMAINING TRAVEL: from here, with the time left, how far can price still go?
+- `forge/STABILITY_AND_HOLDOUT_PREREG.md`: STEP D — Parameter stability + the sealed holdout (Lesson 01 cards 07 and 03)
 - `forge/STOP_RISK_PREREG.md`: Layer 7 — STOP RISK MAP: how often does a stop fill worse than its price, and by how much?

@@ -832,6 +832,19 @@ export const DESK_EVIDENCE = [
     result: 'No. 3,144 test bets 2019-2026 (~395 effective). Forest: precision 50.3% vs primary 51.6%, Sharpe 0.022 vs 0.025. Logistic: 52.6% vs 51.6% [-1.7, +3.6pp], Sharpe +0.002 [-0.05, +0.05]. Both FAILED the sanity check (did not recover the known |z| >= 2 effect, 58.6% vs ~50%), so uninformative; volatility features added nothing in either (ablation -0.021 / +0.000). Deflated Sharpe 0.22.',
     use: 'Meta-labelling closed (stopping rule). Effective sample, not method, is the limit. Keep the yield-spread book flat / vol-targeted; its traded |z| >= 2 rule already captures what a meta-model would learn.',
   },
+  {
+    id: 'ys-long-confirm', domain: 'macro', verdict: 'validated', date: '2026-10-07', doc: 'forge/YS_LONG_CONFIRM_PREREG.md',
+    instruments: ['USDJPY', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'EURUSD'],
+    claim: 'The yield-spread book (validated on 2015+) holds on 40 untouched years 1976-2014 rebuilt from free FRED data, configuration unchanged: an independent second test (Lesson 02)',
+    result: 'PASS. 868 trades: +0.243% net per trade [+0.005, +0.464], win 55.1%, PF 1.28; positive in 4/4 decades (+0.34, +0.35, +0.22, +0.10%) and 6/6 pairs. Daily flat-book Sharpe 0.39, well below the 2015+ figures (0.8-1.1): real but modest. FRED rebuild of 2015-2026 +0.30% (PF 1.42), consistent.',
+    use: 'The book has a real, modest edge across five decades, so plan around a Sharpe nearer 0.4 than 1. The long history (1976+) is now the data source for anything that needs more independent yield-spread decisions.',
+  },
+  {
+    id: 'ys-long-breadth', domain: 'macro', verdict: 'null', date: '2026-10-07', doc: 'forge/YS_LONG_CONFIRM_PREREG.md',
+    claim: 'The same yield-spread rule works on three never-tested pairs (NZDUSD, USDNOK, USDSEK), 1976/79/82-2026',
+    result: 'FAIL by the registered rule, same sign: 638 trades +0.229% per trade [-0.050, +0.492], win 54.5%; each pair about +0.23% (PF 1.23-1.26) but no single interval excludes 0. Daily Sharpe 0.28.',
+    use: 'Consistent with the main book but not confirmed on its own; do not add these pairs to the live book on this evidence.',
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what

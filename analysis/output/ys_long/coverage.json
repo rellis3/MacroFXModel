@@ -1,0 +1,74 @@
+{
+ "USDJPY": {
+  "group": "original",
+  "fx_from": "1971-01-04",
+  "fx_to": "2026-10-02",
+  "first_z": "1985-09-13",
+  "trades": 184,
+  "inverted": false
+ },
+ "GBPUSD": {
+  "group": "original",
+  "fx_from": "1971-01-04",
+  "fx_to": "2026-10-02",
+  "first_z": "1976-07-02",
+  "trades": 222,
+  "inverted": true
+ },
+ "AUDUSD": {
+  "group": "original",
+  "fx_from": "1971-01-04",
+  "fx_to": "2026-10-02",
+  "first_z": "1976-07-02",
+  "trades": 226,
+  "inverted": true
+ },
+ "USDCAD": {
+  "group": "original",
+  "fx_from": "1971-01-04",
+  "fx_to": "2026-10-02",
+  "first_z": "1976-07-02",
+  "trades": 220,
+  "inverted": false
+ },
+ "USDCHF": {
+  "group": "original",
+  "fx_from": "1971-01-04",
+  "fx_to": "2026-10-02",
+  "first_z": "1976-07-02",
+  "trades": 198,
+  "inverted": false
+ },
+ "EURUSD": {
+  "group": "original",
+  "fx_from": "1999-01-04",
+  "fx_to": "2026-10-02",
+  "first_z": "1999-01-04",
+  "trades": 123,
+  "inverted": true
+ },
+ "NZDUSD": {
+  "group": "breadth",
+  "fx_from": "1971-01-04",
+  "fx_to": "2026-10-02",
+  "first_z": "1976-07-02",
+  "trades": 220,
+  "inverted": true
+ },
+ "USDNOK": {
+  "group": "breadth",
+  "fx_from": "1971-01-04",
+  "fx_to": "2026-10-02",
+  "first_z": "1979-03-16",
+  "trades": 218,
+  "inverted": false
+ },
+ "USDSEK": {
+  "group": "breadth",
+  "fx_from": "1971-01-04",
+  "fx_to": "2026-10-02",
+  "first_z": "1982-03-16",
+  "trades": 200,
+  "inverted": false
+ }
+}
