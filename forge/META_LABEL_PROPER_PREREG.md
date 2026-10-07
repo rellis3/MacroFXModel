@@ -98,7 +98,8 @@ Builder `scripts/meta_proper/build_events.mjs` (layers 1–2), `scripts/meta_pro
 
 | # | Variant | Why | Run? |
 |---|---|---|---|
-| 0 | as above | registered | — |
+| 0 | as above | registered | FAIL, and failed the sanity check (did not recover the known \|z\| effect) — uninformative, 2026-10-07 |
+| 1 | **logistic regression** in place of the forest (below) | the forest could not find even a known effect at ~400 effective samples | yes — owner chose it; the last allowed attempt, meta-labelling closes after it |
 
 ## Amendment 1 (2026-10-07): implementation fault — the first run produced no model
 
@@ -107,3 +108,15 @@ With `max_samples` = mean uniqueness (0.12, so ~360 draws per tree) and `min_sam
 so its numbers are void. The registered intent was "leaves of about 50 events" on the full sample. On a 12% bootstrap
 sample that is `min_samples_leaf = max(5, round(50 × mean uniqueness))` (≈ 6). Fixed to that; nothing else
 changes. Logged here rather than as the allowed variant, because no valid run preceded it.
+
+## Variant 1 — logistic regression (logged 2026-10-07 after variant 0, before variant 1 is run; owner chose option A)
+
+- **Model:** `LogisticRegression(C=1.0)` on features standardised with the training mean and sd. Missing values →
+  training median + a missing flag. Weights = uniqueness × time decay, as registered.
+- **Everything else unchanged:** features, walk-forward / purge / embargo, bet sizing, scores, ablation (logistic
+  without the volatility features), Deflated Sharpe (N = 6 trials now), PASS rule.
+- **Sanity pre-condition (new, fixed now):** pooled over test years, the top predicted tercile must have a higher
+  mean |z| **and** a higher win rate than the bottom tercile. If it does not, the result is reported as
+  uninformative, exactly like variant 0.
+- **Either way, meta-labelling closes here** (stopping rule). A PASS with the volatility system earning its place →
+  build the sizing into the Daily Plan; anything else → recorded, and the book stays flat / vol-targeted.
