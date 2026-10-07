@@ -66,3 +66,10 @@ Output `analysis/output/live_range_confluence/RESULTS.md`; banked in `js/deskEvi
    confluences): touch frequency, the share that continue to the next line / fall back / stall, typical MFE / MAE and their timing, how often the
    touch is the day's extreme and when. Moving and static lines side by side. It states what the day does at each line, to read before any trade rule.
 4. T1 / T2 / T3 are unchanged except they now use all passes (the first-touch-only subset is reported alongside as a check).
+
+## Amendment 1 (2026-10-07, after the event tables were built, before any lift, comparison or trade was scored)
+
+The moving-line grids are refit quarterly from 2018-04 (the earliest the existing walk-forward frame supports), so moving and static events both start
+2018-04. T3's meta-label model needs prior touches to learn from, so it gets a **2-year burn-in: trading starts 2020-04** (not 2018-04), giving six
+full test years 2020-2025. The pass rule's "≥ 6 of 8 full years" becomes **≥ 5 of 6 full years** (same 75%). Model refit every quarter on all prior
+events (at most a random 200k to bound time), class as a feature. Everything else is unchanged.
