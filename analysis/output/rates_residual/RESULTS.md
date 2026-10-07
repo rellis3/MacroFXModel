@@ -22,3 +22,11 @@ Pre-registration: `forge/RATES_RESIDUAL_PREREG.md`. OANDA M15 2018-01 → 2026-1
 - Kept minus all: -0.0087 [-0.0449, +0.0257]; opposite filter -0.0231; all -0.0495
 - Halves kept: -0.0576 / -0.0585
 - Kept by setup|instrument [R, n] vs all: A|EURUSD -0.058 (513) vs -0.068; A|GOLD -0.044 (448) vs -0.093; A|NQ -0.075 (584) vs -0.043; C|EURUSD +0.055 (41) vs -0.061; C|GOLD +0.027 (32) vs -0.021; C|NQ -0.118 (64) vs -0.020
+
+## S6 — direction vote (forge/DIRECTION_VOTE_PREREG.md): **FAIL**
+
+- v ≥ 2 kept: -0.0188 [-0.0726, +0.0336] R, n 1016 of 5794; minus all +0.0307 [-0.0205, +0.0820]
+- halves: -0.0704 / +0.0027
+- ladder (mean R, n): v>=2 -0.019 (1016); v=1 -0.039 (1168); v=0 -0.044 (1426); v=-1 -0.065 (1168); v<=-2 -0.082 (1016)
+- without the rates gap, 2016-10 →: v>=2 -0.013 (1203); v=1 -0.017 (4247); v=0 -0.064 (1384); v=-1 -0.076 (4247); v<=-2 -0.100 (1203)
+- kept by setup|instrument: A|EURUSD -0.050 (301); A|GOLD +0.045 (227); A|NQ -0.034 (285); C|EURUSD -0.002 (157); C|GOLD -0.150 (21); C|NQ -0.043 (25)

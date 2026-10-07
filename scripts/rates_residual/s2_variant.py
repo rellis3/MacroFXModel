@@ -185,10 +185,7 @@ md = ["", f"## S2 variant (Amendment 1: the 14 ~23h instruments): **{'PASS' if r
       f"- halves b: {r['halves_b'][0]:+.4f} / {r['halves_b'][1]:+.4f}; by target: " + ", ".join(f"{t} {v:+.4f}" for t, v in r["by_target_b"].items()),
       f"- placebo: median {r['placebo']['median']:+.4f}, 95th {r['placebo']['p95']:+.4f}, real beats {r['placebo']['real_beats_pct']}%",
       f"- gap trade: {r['gap_trade']['mean_net_bp']:+.2f} bp/trade, hit {r['gap_trade']['hit'] * 100:.1f}%, n {r['gap_trade']['n']}; " + ", ".join(f"{t} {v:+.2f}" for t, v in r["gap_trade"]["by_target_bp"].items())]
-with open(OUT / "RESULTS.md", "a", encoding="utf-8") as fh: fh.write("
-".join(md) + "
-")
+with open(OUT / "RESULTS.md", "a", encoding="utf-8") as fh: fh.write(chr(10).join(md) + chr(10))
 json.dump(r, open(OUT / "s2_variant.json", "w"), indent=1, default=str)
 pd.concat({k: v for k, v in gaps2.items()}, names=["tgt", "t"]).to_parquet(OUT / "gaps_S2v.parquet")
-print("
-".join(md).encode("ascii", "replace").decode())
+print(chr(10).join(md).encode("ascii", "replace").decode())
