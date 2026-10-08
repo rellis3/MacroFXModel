@@ -217,7 +217,7 @@ def day_events(row, bars, cs, di):
     o_, sig = float(row.open), float(row.sig)
     sigp = o_ * sig / 100
     chi, clo = np.maximum.accumulate(H), np.minimum.accumulate(L)
-    out, skipped = [], {"early": 0, "late": 0}
+    out, skipped = [], {"early": 0, "late": 0, "no_leadup": 0}
     wd = pd.Timestamp(row.date).dayofweek
     gap_sig = row.gap / sig if pd.notna(row.gap) else np.nan
     event_hi = float(str(row.event) in ("high", "FOMC", "NFP", "CPI"))       # scripts/v4/calendarProxy.mjs tags
@@ -241,6 +241,9 @@ def day_events(row, bars, cs, di):
                     continue
                 if m > T_MAX:
                     skipped["late"] += 1
+                    continue
+                if t == 0:                       # session's first bar starts after 01:00 (data gap): no lead-up to measure
+                    skipped["no_leadup"] += 1
                     continue
                 thr = s * ((H if s > 0 else L) - lv) / sigp          # beyond the level (+)
                 back = s * ((L if s > 0 else H) - lv) / sigp         # back toward the open (−)
@@ -339,7 +342,7 @@ def stage_events(mode: str, insts):
         except FileNotFoundError:
             print(f"{inst}: no M1 parquet, skipped")
             continue
-        rows, skip, missing = [], {"early": 0, "late": 0}, 0
+        rows, skip, missing = [], {"early": 0, "late": 0, "no_leadup": 0}, 0
         cols = {x: m[x].to_numpy() for x in ("min", "o", "h", "l", "c")}
         for row in g.itertuples(index=False):
             if row.date not in days:
