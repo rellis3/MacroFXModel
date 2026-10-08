@@ -1054,7 +1054,11 @@ function ladderSvg(e,big){
     const mn=win[win.length-1].strike, mx=win[0].strike, sm=e.ivSmile;
     const pts=sm.strikes.map((k,i)=>({k,iv:sm.iv?.[i],pv:sm.ivPrior?.[i]})).filter(q=>q.k>=mn&&q.k<=mx&&q.iv>0).sort((a,b)=>b.k-a.k);
     if(pts.length>=3){
-      const all=pts.flatMap(q=>[q.iv,q.pv]).filter(v=>v>0), ilo=Math.min(...all), ihi=Math.max(...all), pad=(ihi-ilo)*0.08||ilo*0.05;
+      // Floor the IV axis at 3 vol points wide. Auto-scaling a near-flat smile (gold read
+      // 20.5-21.0%) stretched half a point of noise across the whole chart into zigzags
+      // that looked like structure. A flat smile should look flat.
+      const all=pts.flatMap(q=>[q.iv,q.pv]).filter(v=>v>0), mid=(Math.min(...all)+Math.max(...all))/2,
+        half=Math.max((Math.max(...all)-Math.min(...all))/2, 0.015), ilo=mid-half, ihi=mid+half, pad=half*0.08;
       const IX=v=>X0+(v-(ilo-pad))/((ihi-ilo+2*pad)||1)*(X1-X0);
       const path=key=>pts.filter(q=>q[key]>0).map((q,i)=>(i?'L':'M')+IX(q[key]).toFixed(1)+' '+yAt(q.k)?.toFixed(1)).filter(t=>!/undefined/.test(t)).join(' ');
       const pp=path('pv'); if(pp) s+=`<path d="${pp}" fill="none" stroke="var(--tx3)" stroke-width="1.2" stroke-dasharray="3 4"/>`;
