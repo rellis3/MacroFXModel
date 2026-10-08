@@ -22,9 +22,9 @@ grows the history. Deleting a file loses bars IBKR will not serve again.
 | CME_SR3H7.csv | SOFR Mar'27 | 11,773 | same | |
 | CME_SR3M7.csv | SOFR Jun'27 | 11,771 | same | |
 | ICEEU_IZ6.csv | 3M Euribor Dec'26 (ICE) | 10,513 | 2026-04-07 00:00 → 2026-10-08 13:15 | 566 |
-| ICEEU_ER3_front-2026-10-08.csv | 3M €STR (ICE), front on 2026-10-08, month not recorded | 9,863 | same | 2 |
-| EUREX_ST3_front-2026-10-08.csv | 3M €STR (Eurex), front on 2026-10-08, month not recorded | 6,919 | 2026-04-07 06:00 → 2026-10-08 13:15 | 0 |
+| ICEEU_ER3U6.csv | 3M €STR Sep'26 (ICE) | 9,863 | same | 2 |
+| EUREX_FST3_20261216_M.csv | 3M €STR Sep'26 (Eurex) | 6,919 | 2026-04-07 06:00 → 2026-10-08 13:15 | 0 |
 
 **The €STR futures barely trade intraday** (median 2 and 0 contracts per 15 minutes): their 15-min closes are mostly
-stale prints. **Euribor is the usable euro leg** for anything intraday. The two `_front-2026-10-08` files came from an
-earlier version of the pull script that did not record the contract month; later pulls write the real `localSymbol`.
+stale prints. **Euribor is the usable euro leg** for anything intraday. CME €STR (ESRM7, 6,563 bars) was pulled once and lost
+before archiving; the next run re-pulls it.

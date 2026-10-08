@@ -78,7 +78,7 @@ def archive(contract, bars, label: str):
     """Merge bars into analysis/output/stir/<EXCHANGE>_<localSymbol>.csv (UTC bar-start times, newer pull wins)."""
     df = util.df(bars)
     df.insert(0, "time", pd.to_datetime(df.pop("date"), utc=True).dt.strftime("%Y-%m-%dT%H:%M:%SZ"))
-    path = ARCHIVE / f"{contract.exchange}_{contract.localSymbol}.csv"
+    path = ARCHIVE / f"{contract.exchange}_{contract.localSymbol.replace(' ', '_')}.csv"   # Eurex: 'FST3 20261216 M'
     before = 0
     if path.exists():
         old = pd.read_csv(path)
