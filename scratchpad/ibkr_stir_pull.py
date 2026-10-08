@@ -57,6 +57,7 @@ CLIENT_ID = 7
 # pacing limits on a first try. Widen once this is confirmed working.
 BAR_SIZE = "15 mins"
 DURATION = "6 M"
+SOFR_MONTHS = ["202609", "202612", "202703", "202706"]   # SR3U26 (his) + the next three quarterlies
 
 
 def resolve_front(ib: IB, candidates, keywords, label: str):
@@ -124,10 +125,33 @@ def main():
                   f"on port {PORT}? ({e})")
 
     print("pulling SOFR 3-month futures...")
-    sofr = pull_front_future(ib, [("SR3", "CME", "USD"), ("SOFR3", "CME", "USD"), ("SR3", "GLOBEX", "USD")],
+    sofr = pull_front_future(ib, [("SOFR3", "CME", "USD"), ("SR3", "CME", "USD"), ("SR3", "GLOBEX", "USD")],
                              ["SOFR", "SR3"], "SOFR")
     if sofr is not None:
         sofr[["date", "close"]].rename(columns={"close": "value"}).to_csv(OUT / "sofr_sr3.csv", index=False)
+
+    # The front (Sep'26) is mostly fixed already and moves in single 0.0025 ticks intraday (TWS 2026-10-07: 96.0525-96.0575
+    # all day). The next contracts carry the market's view of coming Fed meetings and re-price more on data, so pull them
+    # too, as full OHLCV, one file per month.
+    for month in SOFR_MONTHS:
+        c = Future(symbol="SOFR3", exchange="CME", currency="USD", lastTradeDateOrContractMonth=month)
+        try:
+            det = ib.reqContractDetails(c)
+        except Exception as e:
+            print(f"  SOFR {month}: request failed ({e})")
+            continue
+        if not det:
+            print(f"  SOFR {month}: not listed")
+            continue
+        con = det[0].contract
+        bars = ib.reqHistoricalData(con, endDateTime="", durationStr=DURATION, barSizeSetting=BAR_SIZE,
+                                    whatToShow="TRADES", useRTH=False, formatDate=1)
+        if not bars:
+            print(f"  SOFR {month} ({con.localSymbol}): no bars")
+            continue
+        df = util.df(bars)
+        df.to_csv(OUT / f"sofr3_{month}.csv", index=False)
+        print(f"  SOFR {month} ({con.localSymbol}): {len(df)} bars, {df['date'].iloc[0]} -> {df['date'].iloc[-1]}")
 
     print("pulling 3-month Euribor futures...")
     euribor = pull_front_future(ib, [("I", "ICEEU", "EUR"), ("I", "IFEU", "EUR"), ("EU3", "ICEEU", "EUR")],
