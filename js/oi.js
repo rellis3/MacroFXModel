@@ -4,6 +4,7 @@ import { wallStrengthTier, oiSkew, oiConcentration, clusterStrikes, wallFreshnes
 import { gammaFlip, distanceToFlip } from './gammaFlow.js';
 import { charmVannaExposure, gexFlipPrice, gexFlipCrossings } from './gammaGreeks.js';
 import { fullBookGex } from './fullBookGex.js';
+import { gexLadder } from './gexLadder.js';
 import { expectedMove, expectedMoveFromStraddle, ivTermStructure, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
 import { lessonLinkHTML } from './lessonLinks.js';
 
@@ -972,7 +973,7 @@ export function oiMatrixTermStructure(raw, minOI = 1) {
 // FULL-BOOK GEX (aggregate every expiry, not just the selected one). Reuses _matrixRows
 // (one parse) and mirrors the basis/inversion the single-expiry parse applies. Drops
 // strikes below minOI per expiry and expiries with < 2 real strikes. Returns
-// [{ dte, strikes, calls, puts }] or null for the simple (non-matrix) format.
+// [{ dte, code, strikes, calls, puts }] or null for the simple (non-matrix) format.
 export function oiMatrixExpiryLegs(raw, { basis = 0, inverted = false, minOI = 1 } = {}) {
   const parsed = _matrixRows(raw);
   if (!parsed) return null;
@@ -986,7 +987,7 @@ export function oiMatrixExpiryLegs(raw, { basis = 0, inverted = false, minOI = 1
       if (c + p < minOI) continue;
       strikes.push(shift(r.strike)); calls.push(c); puts.push(p);
     }
-    if (strikes.length >= 2) legs.push({ dte: parsed.dtes[e] ?? null, strikes, calls, puts });
+    if (strikes.length >= 2) legs.push({ dte: parsed.dtes[e] ?? null, code: parsed.codes?.[e] ?? null, strikes, calls, puts });
   }
   return legs.length ? legs : null;
 }
@@ -1465,6 +1466,49 @@ export function rebuildGexProfile(inst) {
   const spot = Number.isFinite(inst.spot) && inst.spot > 0 ? inst.spot : strikes[Math.floor(strikes.length / 2)];
   const T = Math.min(365, Math.max(1, Number.isFinite(inst.dte) && inst.dte > 0 ? inst.dte : 14)) / 365;
   return buildGexProfile(strikes, calls, puts, spot, pair, T, null, oiContractSize(pair));
+}
+
+// PER-EXPIRY GEX LADDER for the dashboard's strike ladder (see gexLadder.js). Built on
+// read, not stored: everything it needs is already on the entry (the raw matrix, basis,
+// C/P swap, per-expiry ATM IV, volume), so it costs no KV space and can never go stale
+// against the levels. Each expiry's gamma uses its own DTE and the settlements ATM IV
+// for that DTE (flat vol when none) — the same weighting as fullBook. Calls/puts are
+// flipped into pair terms for inverted pairs exactly as the single-expiry profile is.
+// Falls back to one series from gexProfile for a simple (non-matrix) paste.
+export function oiGexLadder(inst) {
+  if (!inst || !(inst.spot > 0)) return null;
+  const pair = inst.pair || '';
+  const spot = inst.spot, flat = oiFlatVol(pair), mult = oiContractSize(pair);
+  const pts = (inst.ivTermStructure?.points || []).filter(p => p && p.iv > 0 && Number.isFinite(p.dte));
+  const atmFor = dte => {
+    if (!pts.length || !Number.isFinite(dte)) return flat;
+    return pts.slice().sort((a, b) => Math.abs(a.dte - dte) - Math.abs(b.dte - dte))[0].iv / 100;
+  };
+  const basis = Number.isFinite(inst.basis) ? inst.basis : 0;
+  const inverted = futuresIsInverted(pair);
+  let legs = inst.rawOI ? oiMatrixExpiryLegs(inst.rawOI, { basis, inverted, minOI: inst.minOI ?? 1 }) : null;
+  if (legs && inst.cpSwapped) legs = legs.map(l => ({ ...l, calls: l.puts, puts: l.calls }));
+  if (!legs || !legs.length) {
+    const gp = (inst.gexProfile || []).filter(r => Number.isFinite(r.strike));
+    if (gp.length < 2) return null;
+    legs = [{ dte: inst.dte ?? null, code: inst.primaryExpiry?.code ?? null,
+      strikes: gp.map(r => r.strike), calls: gp.map(r => r.callOI || 0), puts: gp.map(r => r.putOI || 0) }];
+  }
+  for (const l of legs) l.sigma = atmFor(l.dte);
+  const near = legs.slice().sort((a, b) => (a.dte ?? 1e9) - (b.dte ?? 1e9))[0];
+  let vol = null;
+  if (Array.isArray(inst.volCP) && inst.volCP.length) {
+    vol = { strikes: inst.volCP.map(r => r[0]), calls: inst.volCP.map(r => r[1]), puts: inst.volCP.map(r => r[2]) };
+  } else if (inst.rawVol) {
+    const shift = s => basis !== 0 ? (inverted ? 1 / s - basis : s - basis) : s;
+    const v = oiParseVolume(inst.rawVol).map(x => ({ strike: shift(x.strike), volume: x.volume }))
+      .filter(x => Number.isFinite(x.strike) && x.strike > 0);
+    if (v.length) vol = { strikes: v.map(x => x.strike), totals: v.map(x => x.volume) };
+  }
+  if (vol) { vol.dte = near?.dte ?? inst.dte ?? null; vol.sigma = near?.sigma ?? flat; }
+  const out = gexLadder(legs, spot, { mult, flatSigma: flat, vol });
+  if (out) out.volSource = pts.length ? 'atm-iv' : 'flat';
+  return out;
 }
 
 // THE DAY'S TRADING BAND — how far price can plausibly travel today, as a fraction of price.
@@ -2420,6 +2464,16 @@ export async function buildOIEntry({
   const _totCallVol = _volSplit ? _volSplit.calls.reduce((a, b) => a + Math.abs(b), 0) : 0;
   const _totPutVol  = _volSplit ? _volSplit.puts.reduce((a, b) => a + Math.abs(b), 0) : 0;
   const volPcRatio = volumePCRatio(_totCallVol, _totPutVol);   // today's flow (vs the resting OI P/C)
+  // Per-strike call/put volume, spot-equivalent and in pair terms — what the dashboard's
+  // VOLUME-gamma ladder needs to show a NET (signed) bar. rawVol keeps only the total per
+  // strike, so the split is stored here. A re-analyse re-parses the compact rawVol (no
+  // split), so carry the prior split forward only when the volume paste is unchanged.
+  let volCP = _volSplit ? _volSplit.strikes.map((s, i) => {
+    let c = Math.abs(_volSplit.calls[i] || 0), p = Math.abs(_volSplit.puts[i] || 0);
+    if (cpSwapped) [c, p] = [p, c];
+    return [+volShift(s).toFixed(6), c, p];
+  }).filter(r => Number.isFinite(r[0]) && r[0] >= _volLo && r[0] <= _volHi && (r[1] + r[2]) > 0) : null;
+  if (!(volCP && volCP.length)) volCP = (priorEntry && priorEntry.rawVol === _compactVol && Array.isArray(priorEntry.volCP)) ? priorEntry.volCP : null;
   // Tag each wall fresh/active/stale by today's volume at that strike vs its resting OI.
   for (const w of callWalls) w.fresh = wallFreshness(w.oi, _volAt(w.strike));
   for (const w of putWalls)  w.fresh = wallFreshness(w.oi, _volAt(w.strike));
@@ -2585,6 +2639,7 @@ export async function buildOIEntry({
     rawOI: _compactOI,
     rawChg: _compactChg,
     rawVol: _compactVol,
+    volCP,            // [[strike, callVol, putVol]] spot-terms, pair-terms — the volume-gamma ladder's call/put split
     rawIV: _src.rawIV && _src.rawIV.trim() ? _src.rawIV : null,   // QuikStrike IV settlement paste (for charm/vanna re-parse on reopen)
     rawIVTerm: _src.rawIVTerm && _src.rawIVTerm.trim() ? _src.rawIVTerm : null,   // "Settlements" term-structure paste (re-parse on reopen)
     priceScale: _priceScale,   // CME → OANDA price units applied at parse (1 = none; grains 0.01)

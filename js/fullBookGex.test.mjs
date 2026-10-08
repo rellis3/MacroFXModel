@@ -62,6 +62,11 @@ console.log('[guards]');
   ok('empty legs → null', fullBookGex([], spot) === null);
   ok('no spot → null', fullBookGex([{ dte: 7, strikes: [1], calls: [1], puts: [1] }], 0) === null);
   ok('missing dte falls back (no throw)', !!fullBookGex([{ strikes: [4100], calls: [10], puts: [5] }], spot));
+  {
+    const r0 = fullBookGex([{ dte: 0, strikes: [4100], calls: [10], puts: [5] }], spot, { mult: 1, flatSigma: sig });
+    const want = bsGamma(spot, 4100, 1 / 365, sig) * 5 * spot;
+    ok('0-DTE weighted at ONE day, not the 14-day missing-DTE default', Math.abs(r0.gex - want) < 0.01, `${r0.gex} vs ${want}`);
+  }
   ok('0-DTE floored (no infinite gamma)', Number.isFinite(fullBookGex([{ dte: 0, strikes: [4100, 4110], calls: [10, 5], puts: [5, 5] }], spot).gex));
 }
 
