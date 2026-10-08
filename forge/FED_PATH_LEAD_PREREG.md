@@ -34,3 +34,10 @@ One run. If it fails, the wide-scan lead is closed as a chance cluster. If it pa
 validated on one confirmation sample and gets a forward paper record before anything is built on it.
 
 Output `analysis/output/fed_path_lead/RESULTS.md`; script `scripts/rates_residual/fed_path_lead.py`.
+
+## Result (2026-10-08), run once as registered
+
+**FAIL.** t +1.43 (needs +2.0), corr +0.029, 5,735 bars over 119 days (`analysis/output/fed_path_lead/RESULTS.md`).
+Same sign as discovery and smaller (discovery months t +2.84). By target: EURUSD −0.54, AUDUSD +1.27, silver +1.03,
+DAX +1.44. Gross read: 1,880 trades, +0.005% per trade before costs, hit 50.3% (below one spread). Per the stopping
+rule the wide-scan lead is closed: whatever is there is too small to see on six months or to trade at 15-min resolution.

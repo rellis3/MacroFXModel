@@ -915,11 +915,10 @@ export const DESK_EVIDENCE = [
     instruments: ['NQ', 'SPX500', 'DE30', 'EURUSD', 'GBPUSD', 'USDJPY', 'GOLD'],
   },
   {
-    id: 'stir-wide-scan', domain: 'macro', verdict: 'context', date: '2026-10-08', doc: 'forge/STIR_WIDE_SCAN_PROTOCOL.md',
+    id: 'stir-wide-scan', domain: 'macro', verdict: 'null', date: '2026-10-08', doc: 'forge/STIR_WIDE_SCAN_PROTOCOL.md',
     claim: 'Searching 48,600 ways short-rate futures could lead 18 markets (12 rate series incl. differentials and Fed-path slopes x 9 features x 5 horizons x 5 sessions), found on Apr-Jul 2026 and checked on Aug-Oct 2026',
     result: 'No single test beats the scrambled-rates family-wise bar (best |t| 3.35 vs 4.45). Broad discovery-holdout agreement rho +0.018 (scrambled 95th +0.069). But 25 of the top 30 kept their sign in the holdout vs scrambled median 14 (1 of 30 scrambles reached it): a borderline LEAD. The top results cluster on the Fed-path slope (SR3M7 minus SR3Z6, how many 2027 cuts are priced) leading EURUSD / DAX / silver / AUD by 15 min - 2 h, mostly London morning and Asia.',
-    use: 'A lead to confirm, not a result: one registered test of the Fed-path-slope cluster on the live contracts\' Oct 2025 - Apr 2026 history (scratchpad/ibkr_stir_pull.py --end 2026-04-12). Until then, nothing to wire.',
-    instruments: ['EURUSD', 'DE30', 'XAGUSD', 'AUDUSD'],
+    use: 'CLOSED 2026-10-08 (forge/FED_PATH_LEAD_PREREG.md): the cluster tested once on untouched Oct 2025 - Apr 2026 data, Fed-path slope 30-min change vs a EURUSD/AUD/silver/DAX basket next 30 min, Asia + London morning: t +1.43 (needed 2.0), same sign but smaller than discovery (+2.84), EURUSD alone -0.54; gross +0.005% per trade, below one spread. Too small to trade at 15 min. Nothing to wire.',
   },
   {
     id: 'rate-diff-xsmom', domain: 'macro', verdict: 'null', date: '2026-10-08', doc: 'forge/RATE_XSMOM_PREREG.md',
