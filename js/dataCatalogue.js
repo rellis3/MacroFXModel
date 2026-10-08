@@ -38,6 +38,7 @@ export const SOURCES = {
   oanda: { label: 'OANDA v3', keyed: true, note: 'Price data. Candles are stamped with the session OPEN (17:00 New York), so the date on a daily bar is the session BEFORE the one it closes in.' },
   yahoo: { label: 'Yahoo Finance', keyed: false, note: 'Sector ETFs and single names. Proven keyless; no history guarantee.' },
   cme:   { label: 'CME settlements / QuikStrike', keyed: false, note: 'Scraped nightly into OI Data/. The option book and six years of recoverable implied vol.' },
+  ibkr:  { label: 'Interactive Brokers (local TWS)', keyed: true, note: 'Needs TWS/Gateway open on the owner’s machine (scratchpad/ibkr_stir_pull.py); cannot run from Railway or a cloud session. ~6 months of 15-min history per request.' },
 };
 
 /**
@@ -64,6 +65,8 @@ export const CATALOGUE = [
   { id: 'T10Y2Y', source: 'fred', group: 'curve', label: '10y minus 2y', why: 'The classic recession spread.', readBy: ['netLiquidity', 'liquidityGate'], evidence: ['curve-inversion'],
     trap: 'Fifty years of daily data collapse to TEN independent inversion episodes. Any statistic computed per DAY on this series is counting one event hundreds of times -- which is how the folk version survives. Tested 2026-10-01: the tradeable half is null.' },
   { id: 'THREEFYTP10', source: 'fred', group: 'curve', label: '10y term premium (ACM)', why: 'Splits the 10-year into expectations and the premium paid to hold duration.', readBy: ['rates', 'weekMap'], evidence: [], trap: 'Lags by days -- judge freshness on its own cadence, not the daily one.' },
+  { id: 'SOFR3', source: 'ibkr', group: 'curve', label: 'SOFR 3-month futures, 15-min (SR3U6/Z6/H7/M7)', why: 'The short-rate leg on C.OG’s screen (SR3U2026 vs a euro short-rate future, plotted over NQ / EURUSD): the front of the policy path, which re-prices on data and Fed-speak before the 2y. Bond CFDs carried no lead (plans/STUDY_BOOK_2026-10-08.md); this is the untested input.', readBy: ['rates_residual'], evidence: [], trap: 'IBKR serves only ~6 months at 15 min, so analysis/output/stir/ is an archive that each run of scratchpad/ibkr_stir_pull.py merges into -- deleting it loses history IBKR will not give back. The front contract (U6) is mostly fixed and moves in single 0.0025 ticks intraday; the later months carry the information.' },
+  { id: 'EUR_STIR', source: 'ibkr', group: 'curve', label: 'Euro short-rate futures, 15-min (Euribor I, ESTR ER3 / ST3 / CME ESTR)', why: 'The euro leg of the same spread; which ticker C.OG uses is unknown, so every IBKR-listed 3-month euro short-rate future is pulled.', readBy: ['rates_residual'], evidence: [], trap: 'ICE and Eurex may need their own IBKR market-data subscription; a resolved contract with no bars is that, not missing data. Front contracts only -- they roll.' },
 
   // ── Real yields and inflation pricing ─────────────────────────────────────
   { id: 'DFII5',  source: 'fred', group: 'inflation', label: '5y TIPS real yield', why: 'Nominal = real + breakeven; the real half is the genuine discount-rate hit.', readBy: ['chapters'], evidence: [] },
