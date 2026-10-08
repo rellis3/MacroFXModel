@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "analysis/output/line_touch_wide_scan"
 arg = lambda k, d: type(d)(sys.argv[sys.argv.index(k) + 1]) if k in sys.argv else d
 W = arg("--w", 0.1)
+LOCAL = arg("--local", 0.0)                 # adaptive stop: m x last-60-min range (forge/LINE_TOUCH_ADAPTIVE_STOP_PREREG.md)
 BASE_MULT = 2.0
 HOLDOUT, PLACEBO = "--holdout" in sys.argv, "--placebo" in sys.argv
 SPLIT, HALF, PER_WEEK = pd.Timestamp("2022-06-24"), pd.Timestamp("2024-06-01"), 2.0
@@ -26,7 +27,12 @@ SPREAD = {"eurusd": 0.00006, "gbpusd": 0.00009, "usdjpy": 0.007, "audusd": 0.000
 df = pd.read_parquet(OUT / "features.parquet")
 tw = pd.read_parquet(OUT / "targets_widths.parquet")
 assert (df.t.to_numpy() == tw.t.to_numpy()).all() and (df.pair.to_numpy() == tw.pair.to_numpy()).all()
-if W != 0.1:
+if LOCAL:
+    tl = pd.read_parquet(OUT / "targets_local.parquet")
+    assert (df.t.to_numpy() == tl.t.to_numpy()).all() and (df.pair.to_numpy() == tl.pair.to_numpy()).all()
+    df["R_cont"], df["R_fade"] = tl[f"R_cont_L{LOCAL}"].to_numpy(), tl[f"R_fade_L{LOCAL}"].to_numpy()
+    df["Rp"], df["L_over_scale"] = tl[f"Rp_L{LOCAL}"].to_numpy(), tl["L_over_scale"].to_numpy()
+elif W != 0.1:
     df["R_cont"], df["R_fade"] = tw[f"R_cont_{W}"].to_numpy(), tw[f"R_fade_{W}"].to_numpy()
 df["dt"] = pd.to_datetime(df.t, unit="s")
 df["weekday"] = pd.to_datetime(df.date).dt.dayofweek
@@ -37,10 +43,12 @@ FEAT = ["hour", "minsIn", "minsLeft", "weekday", "side", "rung", "fam", "lvl_dis
         "prev_ret_s", "prev_rng", "n_prior", "last_prior15", "mv5", "mv15", "mv30", "mv60", "eff15", "eff60",
         "near60", "body1", "wf1", "wb1", "rng1", "body3", "wf3", "wb3", "rng3", "body5", "wf5", "wb5", "rng5",
         "since_counter", "vwap_dist", "vwap_slope", "rsi14", "vol15", "used", "pos", "since_ext"]
+if LOCAL:
+    FEAT = FEAT + ["L_over_scale"]
 df = df.dropna(subset=["R_cont", "R_fade", "ret60"])
 df = df[(df.rng1 <= 0.5) & (df.hour < 20)].reset_index(drop=True)
 df["year"] = df.dt.dt.year
-df["cost1"] = df.pair.map(SPREAD).to_numpy() / (W * df.scale.to_numpy())      # R cost at 1x the table
+df["cost1"] = df.pair.map(SPREAD).to_numpy() / (df.Rp.to_numpy() if LOCAL else W * df.scale.to_numpy())      # R cost at 1x the table
 disc = (df.dt < SPLIT).to_numpy()
 hold = ~disc
 nfit = [0]
@@ -122,7 +130,7 @@ Y = {"R_cont": df.R_cont.to_numpy(float), "R_fade": df.R_fade.to_numpy(float)}
 P = predict(Y, HOLDOUT)
 c = bisect(P, disc)
 dc, wk = select(P, c, disc)
-rep = {"width": W, "c": c, "discovery": summarise(dc, wk, "discovery_oof")}
+rep = {"width": W, "local_m": LOCAL, "c": c, "discovery": summarise(dc, wk, "discovery_oof")}
 rep["discovery"]["by_year_net_x2"] = {int(y): float((g.g - 2 * g.cost1).mean()) for y, g in dc.groupby("year")}
 print("W", W, "c", round(c, 4), json.dumps(rep["discovery"], default=float))
 if HOLDOUT:
@@ -153,4 +161,4 @@ if HOLDOUT:
         rep["placebo_net_p95"], rep["placebo_gross_p95"] = float(np.percentile(pn, 95)), float(np.percentile(pg, 95))
         rep["beats_placebo_net_p95"] = bool(rep["holdout"]["net_x2"] > rep["placebo_net_p95"])
 rep["fits"] = nfit[0]
-(OUT / f"cost_w{W}{'_holdout' if HOLDOUT else ''}.json").write_text(json.dumps(rep, indent=1, default=float))
+(OUT / f"cost_{'L'+str(LOCAL) if LOCAL else 'w'+str(W)}{'_holdout' if HOLDOUT else ''}.json").write_text(json.dumps(rep, indent=1, default=float))

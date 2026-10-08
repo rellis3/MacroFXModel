@@ -32,3 +32,16 @@ Chosen width 0.20: **pass rule FAILS** (interval includes zero, first half negat
 Frozen c does not transfer in scale to the holdout (0.54/week vs 2/week), so holdout counts differ by width. Placebo not run (rule already failed).
 Selecting on net cost shrinks the gross edge (+0.21R cost-blind -> +0.05R): the model had been leaning on high-cost trades.
 Only a forward record with real server spreads (spread_profile_v1) can decide; spreads here are the repo's table at 2x, crosses estimated.
+
+## Adaptive-stop phase (forge/LINE_TOUCH_ADAPTIVE_STOP_PREREG.md): stop = m x last-60-min range, clamped, cost 2x table
+
+| m | discovery gross | discovery net x2 | holdout n (per week) | holdout gross | holdout net x2 | 95% interval | continue share |
+|---|---|---|---|---|---|---|---|
+| 0.5 | +0.104 | +0.028 | 66 (0.30) | -0.033 | -0.076 | [-0.36, +0.21] | 73% |
+| 1.0 | -0.001 | -0.069 | 136 (0.63) | -0.186 | -0.230 | [-0.42, -0.04] | 96% |
+| **1.5 (chosen on discovery)** | +0.101 | +0.035 | 147 (0.68) | -0.174 | -0.223 | [-0.43, -0.04] | 89% |
+
+Chosen m=1.5: **pass rule FAILS** (net -0.22R, interval excludes zero on the negative side, both halves negative, 3 of 17 instruments positive).
+With the stop sized to context the selector switches from fades to continuation in discovery, and that does not hold out.
+Holdout read for four designs now (flat 0.10 stop, per-instrument cost x3 widths, adaptive stop x3 multiples): the only replicated
+effect is the gross fade at fresh extremes with a tight stop, which cost removes.
