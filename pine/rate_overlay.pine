@@ -1,0 +1,93 @@
+//@version=6
+indicator("Rate Overlay on Price (SOFR / yields / spreads)", shorttitle="Rate Overlay", overlay=true, max_bars_back=2000)
+
+// Draws a rate series (a yield, a short-rate future, or the spread between two) ON the price chart, rescaled so it sits
+// on the candles, the way C.OG overlays his SOFR-vs-ESTR line on NQ / EURUSD. Then it measures, on this chart, what the
+// eye cannot: how closely they move together, whether the RATE moves first or the PRICE does, and when price has
+// drifted unusually far from the rate line (the "residual" C.OG talks about).
+//
+// Keep every statement on ONE line (see pine/fx_yield_alignment.pine): wrapped lines break when pasted.
+//
+// Quick set-ups (Rate A / Rate B):
+//   NQ or SPX vs Fed path:          CME:SR3H2027 (futures price box ON), B off, Invert ON (lower rates = higher stocks)
+//   EURUSD vs US-EU short rates:    CME:SR3Z2026 (futures ON) minus ICEEUR:IZ2026 or a euro 2y (TVC:DE02Y), Invert ON
+//   EURUSD vs 2y yield spread:      TVC:US02Y minus TVC:DE02Y, Invert ON
+//   USDJPY vs US 2y:                TVC:US02Y, B off, Invert OFF
+// Use whichever symbols your TradingView plan shows data for; if a box shows "no data", that feed is not on your plan.
+// Research note (MacroFXModel, 2026-10-08): on 15-min bars, SOFR futures and markets move together in the SAME bar; a
+// lead of rates over price was not found. Read the overlay as "what rates are doing right now", and check the lead
+// numbers in the table on your own chart before trusting any "rates turned first" read.
+
+// ─── Inputs ───────────────────────────────────────────────────────────────────
+string symA    = input.symbol("TVC:US02Y", "Rate A", group="Rate series", tooltip="A yield (TVC:US02Y), a short-rate future (CME:SR3H2027) or any symbol.")
+bool   futA    = input.bool(false, "A is a futures PRICE (convert: rate = 100 - price)", group="Rate series", tooltip="Tick for SOFR / Euribor / ESTR futures so the line shows the RATE (up = higher rates priced).")
+bool   useB    = input.bool(true, "Subtract Rate B (plot A - B, a spread)", group="Rate series")
+string symB    = input.symbol("TVC:DE02Y", "Rate B", group="Rate series")
+bool   futB    = input.bool(false, "B is a futures PRICE (rate = 100 - price)", group="Rate series")
+bool   invert  = input.bool(true, "Invert the rate line", group="Rate series", tooltip="ON when price should FALL as the rate rises (EURUSD vs US-minus-EU, NQ vs US rates). The correlation numbers in the table tell you which way your chart actually behaves right now.")
+int    normLen = input.int(200, "Fit window (bars)", minval=20, group="Scaling", tooltip="The rate line is rescaled to price over this many bars. Shorter = hugs price more tightly (and looks more 'correlated' than it is).")
+int    corrLen = input.int(200, "Correlation window (bars)", minval=20, group="Statistics")
+float  resThr  = input.float(2.0, "Residual flag (z)", minval=0.5, step=0.25, group="Statistics", tooltip="Flag bars where price is this many standard deviations away from the rate line.")
+bool   showRes = input.bool(true, "Shade residual extremes", group="Display")
+bool   showTbl = input.bool(true, "Show statistics table", group="Display")
+color  lineCol = input.color(color.new(#3b82f6, 0), "Rate line colour", group="Display")
+
+// ─── Data (no look-ahead; gaps forward-filled so futures/bond hours line up with the chart) ─────────────────────────
+float a = request.security(symA, timeframe.period, close, gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true)
+float b = request.security(symB, timeframe.period, close, gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true)
+float rA = futA ? 100 - a : a
+float rB = futB ? 100 - b : b
+float rate = useB ? rA - rB : rA
+float r = invert ? -rate : rate
+
+// ─── Rescale the rate onto price: same z-score, drawn in price units ─────────────────────────────────────────────────
+float mP = ta.sma(close, normLen)
+float sP = ta.stdev(close, normLen)
+float mR = ta.sma(r, normLen)
+float sR = ta.stdev(r, normLen)
+float zR = sR > 0 ? (r - mR) / sR : na
+float zP = sP > 0 ? (close - mP) / sP : na
+float rateOnPrice = mP + zR * sP
+plot(rateOnPrice, "Rate (rescaled to price)", color=lineCol, linewidth=2)
+
+// ─── Residual: price minus the rate line, in standard deviations ─────────────────────────────────────────────────────
+float resid = zP - zR
+bool  hiRes = not na(resid) and resid > resThr
+bool  loRes = not na(resid) and resid < -resThr
+bgcolor(showRes and hiRes ? color.new(color.red, 88) : showRes and loRes ? color.new(color.green, 88) : na, title="Residual extreme")
+alertcondition(hiRes and not hiRes[1], "Price far ABOVE rate line", "Rate Overlay: price is more than the residual threshold above the rate line")
+alertcondition(loRes and not loRes[1], "Price far BELOW rate line", "Rate Overlay: price is more than the residual threshold below the rate line")
+
+// ─── Does the rate move first? Correlations of bar-to-bar CHANGES (levels always look correlated when both trend) ────
+float dR = ta.change(r)
+float dP = ta.change(close)
+float cSame  = ta.correlation(dR, dP, corrLen)
+float cRate1 = ta.correlation(dR[1], dP, corrLen)
+float cRate2 = ta.correlation(dR[2], dP, corrLen)
+float cRate4 = ta.correlation(ta.change(r, 4)[4], ta.change(close, 4), corrLen)
+float cPx1   = ta.correlation(dP[1], dR, corrLen)
+float cLevel = ta.correlation(r, close, corrLen)
+
+f_fmt(x) => na(x) ? "n/a" : str.tostring(x, "+0.00;-0.00")
+f_col(x) => na(x) ? color.gray : math.abs(x) >= 0.3 ? color.new(#22c55e, 0) : math.abs(x) >= 0.1 ? color.new(#eab308, 0) : color.new(#9ca3af, 0)
+
+var table t = table.new(position.top_right, 2, 9, bgcolor=color.new(#0b1220, 10), border_width=1, border_color=color.new(#334155, 0))
+if showTbl and barstate.islast
+    table.cell(t, 0, 0, "Rate overlay", text_color=color.white, text_size=size.small)
+    table.cell(t, 1, 0, (useB ? "A - B" : "A") + (invert ? " (inverted)" : ""), text_color=color.white, text_size=size.small)
+    table.cell(t, 0, 1, "Same-bar move corr", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 1, f_fmt(cSame), text_color=f_col(cSame), text_size=size.small)
+    table.cell(t, 0, 2, "Rate leads 1 bar", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 2, f_fmt(cRate1), text_color=f_col(cRate1), text_size=size.small)
+    table.cell(t, 0, 3, "Rate leads 2 bars", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 3, f_fmt(cRate2), text_color=f_col(cRate2), text_size=size.small)
+    table.cell(t, 0, 4, "Rate 4-bar move -> next 4", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 4, f_fmt(cRate4), text_color=f_col(cRate4), text_size=size.small)
+    table.cell(t, 0, 5, "Price leads rate 1 bar", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 5, f_fmt(cPx1), text_color=f_col(cPx1), text_size=size.small)
+    table.cell(t, 0, 6, "Level corr (flatters)", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 6, f_fmt(cLevel), text_color=color.gray, text_size=size.small)
+    table.cell(t, 0, 7, "Residual now (z)", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 7, f_fmt(resid), text_color=hiRes or loRes ? color.orange : color.silver, text_size=size.small)
+    table.cell(t, 0, 8, "Window", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 8, str.tostring(corrLen) + " bars", text_color=color.gray, text_size=size.small)
