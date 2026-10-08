@@ -85,3 +85,19 @@ and before the holdout is read:
    under this rule to 2 trades a week pooled on discovery out-of-fold output, then frozen.
 
 The first-pass number is recorded here so it is not forgotten: **unamended discovery pass = +0.52R gross, an artifact.**
+
+## Amendment 2 (2026-10-08, after the second discovery-only pass, holdout STILL NOT read)
+
+With Amendment 1 in force the discovery pass again selected +0.50R gross, 97% fades. Audit: 521 of 617 selected touches
+are at 21:00-23:59 UTC (median 103 minutes left in the session, as few as 2), the FX rollover window, where the exit is
+a forced session-end close and real spreads are several times the 0.02-of-range cost assumed. This is the known
+20:00-22:00 UTC reversal window (memory: project_reversal_hour_window) and fails the execution-feasibility gate
+(project_execution_feasibility_gate). It is not a tradeable selector.
+
+**Disclosure:** this exclusion is motivated by having seen the discovery winner sit in that window, so it is a
+researcher-degree-of-freedom the pass rule must account for. The final trial count includes both passes.
+
+3. **Eligibility:** touches at 20:00-23:59 UTC are excluded from training and trading.
+
+Amendments stop here. Whatever the next discovery pass selects is carried to the holdout unchanged, and the result is
+reported as it comes out. The unamended and Amendment-1 passes are recorded above as artifacts (+0.52R / +0.50R gross).
