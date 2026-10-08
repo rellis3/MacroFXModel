@@ -99,6 +99,8 @@ def resolve_front(ib: IB, candidates, keywords, label: str):
 def fetch_bars(ib: IB, contract, label: str):
     """Historical bars with a long timeout: 6 months of 15-min bars can take minutes, far past the 20 s
     RequestTimeout used for contract look-ups. A timeout or error is reported and skipped, not fatal."""
+    # ICE CONTFUT details come back as '20261214 10:00:00 GB'; the history request only accepts yyyyMM / yyyyMMdd
+    contract.lastTradeDateOrContractMonth = (contract.lastTradeDateOrContractMonth or "").split(" ")[0]
     saved, ib.RequestTimeout = ib.RequestTimeout, 0          # 0 = no overall cap; the request's own timeout applies
     try:
         return ib.reqHistoricalData(contract, endDateTime="", durationStr=DURATION, barSizeSetting=BAR_SIZE,
@@ -138,44 +140,49 @@ def main():
                   f"on port {PORT}? ({e})")
 
     print("pulling SOFR 3-month futures...")
-    sofr = pull_front_future(ib, [("SOFR3", "CME", "USD"), ("SR3", "CME", "USD"), ("SR3", "GLOBEX", "USD")],
-                             ["SOFR", "SR3"], "SOFR")
-    if sofr is not None:
-        sofr[["date", "close"]].rename(columns={"close": "value"}).to_csv(OUT / "sofr_sr3.csv", index=False)
+    if (OUT / "sofr_sr3.csv").exists() and all((OUT / f"sofr3_{m}.csv").exists() for m in SOFR_MONTHS):
+        print("  already pulled (scratchpad/output/sofr*.csv) -- delete those files to re-pull")
+    else:
+        sofr = pull_front_future(ib, [("SOFR3", "CME", "USD"), ("SR3", "CME", "USD"), ("SR3", "GLOBEX", "USD")],
+                                 ["SOFR", "SR3"], "SOFR")
+        if sofr is not None:
+            sofr[["date", "close"]].rename(columns={"close": "value"}).to_csv(OUT / "sofr_sr3.csv", index=False)
 
-    # The front (Sep'26) is mostly fixed already and moves in single 0.0025 ticks intraday (TWS 2026-10-07: 96.0525-96.0575
-    # all day). The next contracts carry the market's view of coming Fed meetings and re-price more on data, so pull them
-    # too, as full OHLCV, one file per month.
-    for month in SOFR_MONTHS:
-        c = Future(symbol="SOFR3", exchange="CME", currency="USD", lastTradeDateOrContractMonth=month)
-        try:
-            det = ib.reqContractDetails(c)
-        except Exception as e:
-            print(f"  SOFR {month}: request failed ({e})")
+        # The front (Sep'26) is mostly fixed already and moves in single 0.0025 ticks intraday (TWS 2026-10-07:
+        # 96.0525-96.0575 all day). The next contracts carry the market's view of coming Fed meetings and re-price more
+        # on data, so pull them too, as full OHLCV, one file per month.
+        for month in SOFR_MONTHS:
+            c = Future(symbol="SOFR3", exchange="CME", currency="USD", lastTradeDateOrContractMonth=month)
+            try:
+                det = ib.reqContractDetails(c)
+            except Exception as e:
+                print(f"  SOFR {month}: request failed ({e})")
+                continue
+            if not det:
+                print(f"  SOFR {month}: not listed")
+                continue
+            con = det[0].contract
+            bars = fetch_bars(ib, con, f"SOFR {month}")
+            if not bars:
+                print(f"  SOFR {month} ({con.localSymbol}): no bars")
+                continue
+            df = util.df(bars)
+            df.to_csv(OUT / f"sofr3_{month}.csv", index=False)
+            print(f"  SOFR {month} ({con.localSymbol}): {len(df)} bars, {df['date'].iloc[0]} -> {df['date'].iloc[-1]}")
+
+    # The EU leg: which ticker C.OG's TradingView chart uses is not known, so pull every 3-month euro short-rate future
+    # IBKR lists (IBKR symbol search, 2026-10-08), front contract, full OHLCV.
+    for fname, cands, label in (("euribor_i.csv", [("I", "ICEEU", "EUR")], "Euribor 3M (ICE I)"),
+                                ("estr_ice_er3.csv", [("ER3", "ICEEU", "EUR")], "ESTR 3M (ICE ER3)"),
+                                ("estr_eurex_st3.csv", [("ST3", "EUREX", "EUR")], "ESTR 3M (Eurex ST3)"),
+                                ("estr_cme.csv", [("ESTR", "CME", "EUR")], "ESTR (CME)")):
+        if (OUT / fname).exists():
+            print(f"{label}: already pulled ({fname})")
             continue
-        if not det:
-            print(f"  SOFR {month}: not listed")
-            continue
-        con = det[0].contract
-        bars = fetch_bars(ib, con, f"SOFR {month}")
-        if not bars:
-            print(f"  SOFR {month} ({con.localSymbol}): no bars")
-            continue
-        df = util.df(bars)
-        df.to_csv(OUT / f"sofr3_{month}.csv", index=False)
-        print(f"  SOFR {month} ({con.localSymbol}): {len(df)} bars, {df['date'].iloc[0]} -> {df['date'].iloc[-1]}")
-
-    print("pulling 3-month Euribor futures...")
-    euribor = pull_front_future(ib, [("I", "ICEEU", "EUR"), ("I", "IFEU", "EUR"), ("EU3", "ICEEU", "EUR")],
-                                ["Euribor", "EURIBOR"], "Euribor")
-    if euribor is not None:
-        euribor[["date", "close"]].rename(columns={"close": "value"}).to_csv(OUT / "euribor_i.csv", index=False)
-
-    print("pulling 3-month ESTR futures (if IBKR lists them)...")
-    estr = pull_front_future(ib, [("FST3", "EUREX", "EUR"), ("ESTR3", "EUREX", "EUR")], ["ESTR", "Euro short-term rate"], "ESTR")
-    if estr is not None:
-        estr[["date", "close"]].rename(columns={"close": "value"}).to_csv(OUT / "estr_3m.csv", index=False)
-
+        print(f"pulling {label}...")
+        df = pull_front_future(ib, cands, [cands[0][0]], label)
+        if df is not None:
+            df.to_csv(OUT / fname, index=False)
     ib.disconnect()
     print(f"\nwritten to {OUT}")
 
