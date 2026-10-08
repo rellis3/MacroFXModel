@@ -57,7 +57,8 @@ CLIENT_ID = 7
 # pacing limits on a first try. Widen once this is confirmed working.
 BAR_SIZE = "15 mins"
 DURATION = "6 M"
-SOFR_MONTHS = ["202609", "202612", "202703", "202706"]   # SR3U26 (his) + the next three quarterlies
+HIST_TIMEOUT = 600   # seconds per history request
+SOFR_MONTHS =["202609", "202612", "202703", "202706"]   # SR3U26 (his) + the next three quarterlies
 
 
 def resolve_front(ib: IB, candidates, keywords, label: str):
@@ -95,16 +96,28 @@ def resolve_front(ib: IB, candidates, keywords, label: str):
     return None
 
 
+def fetch_bars(ib: IB, contract, label: str):
+    """Historical bars with a long timeout: 6 months of 15-min bars can take minutes, far past the 20 s
+    RequestTimeout used for contract look-ups. A timeout or error is reported and skipped, not fatal."""
+    saved, ib.RequestTimeout = ib.RequestTimeout, 0          # 0 = no overall cap; the request's own timeout applies
+    try:
+        return ib.reqHistoricalData(contract, endDateTime="", durationStr=DURATION, barSizeSetting=BAR_SIZE,
+                                    whatToShow="TRADES", useRTH=False, formatDate=1, timeout=HIST_TIMEOUT)
+    except Exception as e:
+        print(f"  {label}: history request failed or timed out after {HIST_TIMEOUT}s ({type(e).__name__}: {e}) "
+              f"-- try a shorter DURATION")
+        return None
+    finally:
+        ib.RequestTimeout = saved
+
+
 def pull_front_future(ib: IB, candidates, keywords, label: str):
     """Resolves the front contract and pulls its historical bars."""
     resolved = resolve_front(ib, candidates, keywords, label)
     if resolved is None:
         return None
 
-    bars = ib.reqHistoricalData(
-        resolved, endDateTime="", durationStr=DURATION, barSizeSetting=BAR_SIZE,
-        whatToShow="TRADES", useRTH=False, formatDate=1,
-    )
+    bars = fetch_bars(ib, resolved, label)
     if not bars:
         print(f"  {label}: reqHistoricalData returned NOTHING -- check for a market-data "
               f"subscription error in the TWS/Gateway log window")
@@ -144,8 +157,7 @@ def main():
             print(f"  SOFR {month}: not listed")
             continue
         con = det[0].contract
-        bars = ib.reqHistoricalData(con, endDateTime="", durationStr=DURATION, barSizeSetting=BAR_SIZE,
-                                    whatToShow="TRADES", useRTH=False, formatDate=1)
+        bars = fetch_bars(ib, con, f"SOFR {month}")
         if not bars:
             print(f"  SOFR {month} ({con.localSymbol}): no bars")
             continue
