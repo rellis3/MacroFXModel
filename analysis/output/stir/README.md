@@ -26,5 +26,6 @@ grows the history. Deleting a file loses bars IBKR will not serve again.
 | EUREX_FST3_20261216_M.csv | 3M €STR Sep'26 (Eurex) | 6,919 | 2026-04-07 06:00 → 2026-10-08 13:15 | 0 |
 
 **The €STR futures barely trade intraday** (median 2 and 0 contracts per 15 minutes): their 15-min closes are mostly
-stale prints. **Euribor is the usable euro leg** for anything intraday. CME €STR (ESRM7, 6,563 bars) was pulled once and lost
-before archiving; the next run re-pulls it.
+stale prints. **Euribor is the usable euro leg** for anything intraday. CME €STR (CME_ESRM7.csv, Jun'27, 5,771 bars, 2026-04-13 → 2026-10-07)
+was added on the second pull. Thin contracts gain bars mid-history on a re-pull (IBKR skips some empty 15-min bars),
+so the merge also fills gaps, not just the newest end.
