@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>NT8ZmqBridge.Server</AssemblyName>
+    <RootNamespace>NT8ZmqBridge.Server</RootNamespace>
+    <NTBin Condition="'$(NTBin)' == ''">C:\Program Files\NinjaTrader 8\bin</NTBin>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="NetMQ" Version="4.0.1.13" />
+    <Reference Include="NinjaTrader.Core">
+      <HintPath>$(NTBin)\NinjaTrader.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+  <!-- Stage what NT8 needs in bin\Custom: the bridge, NetMQ and its dependencies. Never NT8's own DLLs. -->
+  <Target Name="StageClosure" AfterTargets="Build">
+    <ItemGroup>
+      <_stage Include="$(OutDir)*.dll" Exclude="$(OutDir)NinjaTrader.*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_stage)" DestinationFolder="$(OutDir)stage" />
+  </Target>
+</Project>

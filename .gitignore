@@ -555,3 +555,9 @@ analysis/output/remaining_travel/
 analysis/output/stop_risk/
 analysis/output/stylized_facts*
 analysis/output/yahoo_d1/
+
+# NT8 bridge data (large; local only)
+analysis/output/nt8/
+analysis/output/nt8_live/
+nt8_bridge/server/bin/
+nt8_bridge/server/obj/
