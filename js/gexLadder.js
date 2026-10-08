@@ -19,10 +19,28 @@
  * call/put split is known, gross (unsigned) otherwise — a gross bar says "busy", not
  * which way dealers lean.
  *
+ * SECOND-ORDER GREEKS per strike, per expiry, same book and same sign convention:
+ *   dex   = (callOI·N(d1) + putOI·(N(d1)−1))·mult — the platform's DEX (oiCalcExposures), per strike.
+ *   charm = (callOI − putOI)·mult·∂Δ/∂t, PER DAY — how much hedge the book needs
+ *           from time passing alone (what pins price into expiry).
+ *   vanna = (callOI − putOI)·mult·∂Δ/∂σ, PER 1 VOL POINT — how much hedge a 1-point
+ *           move in implied vol forces.
+ * All three are in UNITS OF THE UNDERLYING (like DEX), so a day's charm or a vol point's
+ * vanna reads directly against the delta bars. (The headline cex/vex are ×spot.)
+ * Each expiry uses one (ATM) vol across its strikes, so charm/vanna here are the
+ * per-strike shape; the headline charm/vanna flips use the full per-strike smile.
+ *
  * Pure, offline-testable. Analysis/display only — nothing trades off this.
  */
 
-import { bsGamma } from './gammaGreeks.js';
+import { bsGamma, bsCharm, bsVanna } from './gammaGreeks.js';
+
+// Standard normal CDF (Abramowitz-Stegun 7.1.26, |err| < 1.5e-7) — for N(d1) call delta.
+function normCdf(x) {
+  const t = 1 / (1 + 0.3275911 * Math.abs(x) / Math.SQRT2);
+  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x / 2);
+  return x >= 0 ? 0.5 * (1 + y) : 0.5 * (1 - y);
+}
 
 const r5 = v => (Number.isFinite(v) ? +v.toPrecision(5) : 0);
 
@@ -51,19 +69,29 @@ export function gexLadder(legs, spot, { mult = 1, flatSigma = 0.2, maxSeries = 4
   if (strikes.length < 2) return null;
   const idx = new Map(strikes.map((s, i) => [key(s), i]));
 
-  const blank = () => ({ call: new Array(strikes.length).fill(0), put: new Array(strikes.length).fill(0) });
+  const zeros = () => new Array(strikes.length).fill(0);
+  const blank = () => ({ call: zeros(), put: zeros(), dex: zeros(), charm: zeros(), vanna: zeros() });
   const fill = (into, l) => {
     const t = T(l.dte);
     for (let i = 0; i < l.strikes.length; i++) {
       const j = idx.get(key(l.strikes[i])); if (j == null) continue;
-      const g = bsGamma(spot, l.strikes[i], t, l.sigma); if (g == null) continue;
-      into.call[j] += (l.calls[i] || 0) * g * mult * spot;
-      into.put[j]  += (l.puts[i]  || 0) * g * mult * spot;
+      const k = l.strikes[i], c = l.calls[i] || 0, p = l.puts[i] || 0;
+      const g = bsGamma(spot, k, t, l.sigma); if (g == null) continue;
+      into.call[j] += c * g * mult * spot;
+      into.put[j]  += p * g * mult * spot;
+      const d1 = (Math.log(spot / k) + 0.5 * l.sigma * l.sigma * t) / (l.sigma * Math.sqrt(t));
+      const cd = normCdf(d1);
+      into.dex[j]   += (c * cd + p * (cd - 1)) * mult;
+      into.charm[j] += (c - p) * mult * bsCharm(spot, k, t, l.sigma) / 365;
+      into.vanna[j] += (c - p) * mult * bsVanna(spot, k, t, l.sigma) * 0.01;
     }
   };
+  const sum = a => a.reduce((x, y) => x + y, 0);
   const finish = (s, meta) => {
     const net = s.call.map((c, i) => c - s.put[i]);
-    return { ...meta, call: s.call.map(r5), put: s.put.map(r5), net: net.map(r5), total: r5(net.reduce((a, b) => a + b, 0)) };
+    return { ...meta, call: s.call.map(r5), put: s.put.map(r5), net: net.map(r5), total: r5(sum(net)),
+      dex: s.dex.map(r5), charm: s.charm.map(r5), vanna: s.vanna.map(r5),
+      totals: { dex: r5(sum(s.dex)), charm: r5(sum(s.charm)), vanna: r5(sum(s.vanna)) } };
   };
 
   const series = [];

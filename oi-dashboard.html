@@ -308,7 +308,7 @@ const HELP = {
   charm:['Charm flip','Where <b>time-decay</b> driven hedging reverses. Charm is how delta changes as time passes.','This is the mechanism that pins price to big strikes into expiry. Negligible until the last day or two, then it dominates.'],
   vanna:['Vanna flip','Where <b>volatility-driven</b> hedging reverses. Vanna is how delta changes when implied vol moves.','Dormant until IV moves. Classic use: after an event IV collapses, and if dealers are positioned right that forces buying with no news at all.'],
   expmove:['Expected move','The range the options market itself expects price to stay inside by expiry.','Use it as a reality check on take-profits. A target outside this band is one the option market is pricing as unlikely — if your TP sits there, you are betting against their own pricing.'],
-  ladder:['Strike ladder','Every strike near price, highest at the top, with four views of the same book. <b>Net GEX by expiry</b>: dealer gamma per strike, one colour per expiry — right of zero is call-dominated (dealers lean against moves, ranges hold), left is put-dominated (they push moves along). <b>Call / Put GEX</b>: the same gamma split by side. <b>Volume gamma</b>: today&rsquo;s traded volume weighted by gamma — where today&rsquo;s activity is. <b>Open interest</b>: raw contracts, calls right, puts left.','<b>The IV line</b> (top axis) is the implied-vol smile across strikes: lowest at the money, rising into the wings. On the COG version of this chart there is one such line per expiry; a near-dated smile curls up hardest because short-dated wings are the most expensive. A wing bending up sharply = protection on that side is being bid. Dashed = previous settle.','Near expiry the 0/1-DTE colours dominate per contract: a big far-month bar can matter less than a small near-dated one at the money.'],
+  ladder:['Strike ladder','Every strike near price, highest at the top, with four views of the same book. <b>Net GEX by expiry</b>: dealer gamma per strike, one colour per expiry — right of zero is call-dominated (dealers lean against moves, ranges hold), left is put-dominated (they push moves along). <b>Call / Put GEX</b>: the same gamma split by side. <b>Volume gamma</b>: today&rsquo;s traded volume weighted by gamma — where today&rsquo;s activity is. <b>Open interest</b>: raw contracts, calls right, puts left. <b>Delta / Charm / Vanna</b>: the same book through the other greeks, stacked by expiry — the hedge already on (delta), the hedge change from time passing (charm, per day) and from implied vol moving (vanna, per vol point).','<b>The IV line</b> (top axis) is the implied-vol smile across strikes: lowest at the money, rising into the wings. On the COG version of this chart there is one such line per expiry; a near-dated smile curls up hardest because short-dated wings are the most expensive. A wing bending up sharply = protection on that side is being bid. Dashed = previous settle.','Near expiry the 0/1-DTE colours dominate per contract: a big far-month bar can matter less than a small near-dated one at the money.'],
   smile:['IV smile','What the options market is <b>bracing for</b> — not direction, but how much movement, and which side people are paying up to protect. <b>Blue is today, grey is the previous settlement.</b> Blue below grey means the market expects a calmer day than it did yesterday.','Use it to decide <b>how far to trust your signal</b>, never to pick a side. Calm or falling: trade normally. Rising sharply — especially with the left wing steepening, meaning downside protection is getting expensive — is the market buying umbrellas. If your signal is long, that is a reason to go smaller or wait, not to reverse.'],
   term:['ATM IV term structure','At-the-money implied vol across <b>expiries</b> — the market vol forecast by horizon.','<b>Upward sloping</b> is normal: more time, more uncertainty. <b>Inverted</b> (near-dated higher) means an event is expected soon and short-dated levels break more easily.'],
   flow:['Positioning and flow','Aggregate reads on how the option book is positioned and how that changed since yesterday.','These describe the <b>character</b> of the market — whether moves get damped or amplified, whether positioning is being built or unwound. They are context, not entry signals.'],
@@ -915,6 +915,13 @@ function renderRail(){
 // money, rising into the wings; where the line bends up hardest is where the market is
 // paying most for protection.
 let LADMODE = 'gex', LADIV = true;
+// Which per-expiry field each stacked view reads, and its axis unit.
+const LAD_GREEK = {
+  gex:  { key:'net',   unit:'net GEX (OI)' },
+  dex:  { key:'dex',   unit:'delta exposure (DEX)' },
+  charm:{ key:'charm', unit:'charm · delta change per day' },
+  vanna:{ key:'vanna', unit:'vanna · delta change per 1 vol pt' },
+};
 const LAD_COLS = ['#f0a04b','#5fbf8f','#4b8fd6','#b48ce8','#5d6878'];
 const fN = n => { if(!Number.isFinite(n)) return '—'; const a=Math.abs(n), s=n<0?'−':'';
   return a>=1e12?s+(a/1e12).toFixed(2)+'T':a>=1e9?s+(a/1e9).toFixed(2)+'B':a>=1e6?s+(a/1e6).toFixed(1)+'M':a>=1e3?s+(a/1e3).toFixed(1)+'K':s+a.toFixed(a<10?2:0); };
@@ -959,12 +966,17 @@ function ladderRows(e,mode){
     return { rows, unit:'GEX (OI)', src:`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
       legend:[['var(--call)','Call GEX',fN(tc)],['var(--put)','Put GEX',fN(-tp)],['var(--tx2)','Net',fN(tc-tp)]] };
   }
-  const ser=L.series;
+  // gex / dex / charm / vanna: one stacked colour per expiry, same layout.
+  const G=LAD_GREEK[mode]||LAD_GREEK.gex, ser=L.series;
+  if(G.key!=='net' && !ser.some(s=>Array.isArray(s[G.key]))) return { rows:[], unit:'', legend:[], src:'',
+    empty:'This view needs the per-expiry ladder from the server.<br>Reload once the server is updated.' };
+  const val=(s,i)=>(s[G.key]&&s[G.key][i])||0;
+  const tot=s=>G.key==='net'?s.total:(s.totals?.[G.key] ?? (s[G.key]||[]).reduce((a,b)=>a+b,0));
   const rows=L.strikes.map((k,i)=>({strike:k,
-    segs:ser.map((s,j)=>({v:s.net[i]||0,col:LAD_COLS[s.rest?4:Math.min(j,3)]})),
-    tip:ser.map(s=>`${s.label}: ${fN(s.net[i])}`).join(' · ')+` · total ${fN(ser.reduce((a,s)=>a+(s.net[i]||0),0))}`}));
-  return { rows, unit:'net GEX (OI)', src:L.fallback?'single expiry — full matrix not available':`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
-    legend:ser.map((s,j)=>[LAD_COLS[s.rest?4:Math.min(j,3)], s.label+(s.code?' · '+esc(s.code):''), fN(s.total)]) };
+    segs:ser.map((s,j)=>({v:val(s,i),col:LAD_COLS[s.rest?4:Math.min(j,3)]})),
+    tip:ser.map(s=>`${s.label}: ${fN(val(s,i))}`).join(' · ')+` · total ${fN(ser.reduce((a,s)=>a+val(s,i),0))}`}));
+  return { rows, unit:G.unit, src:L.fallback?'single expiry — full matrix not available':`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
+    legend:ser.map((s,j)=>[LAD_COLS[s.rest?4:Math.min(j,3)], s.label+(s.code?' · '+esc(s.code):''), fN(tot(s))]) };
 }
 
 function niceStep(span,n){ const raw=span/Math.max(1,n), p=Math.pow(10,Math.floor(Math.log10(raw||1))), f=raw/p;
@@ -1042,7 +1054,10 @@ function ladderSvg(e,big){
     }
   }
   // price lines — labels stacked so levels a few points apart don't print over each other
-  const lines=[[e.gexFlip,'var(--gam)','GEX FLIP',true],[e.maxPain,'var(--pain)','MAX PAIN',true],
+  const gf=e.greeksFlow||{};
+  const lines=[...(LADMODE==='charm'?[[gf.charmFlip,'var(--warn)','CHARM FLIP',true]]:[]),
+    ...(LADMODE==='vanna'?[[gf.vannaFlip,'#7fd0ff','VANNA FLIP',true]]:[]),
+    [e.gexFlip,'var(--gam)','GEX FLIP',true],[e.maxPain,'var(--pain)','MAX PAIN',true],
     [e.putWall,'var(--put)','PUT WALL',true],[e.callWall,'var(--call)','CALL WALL',true],[spot,'var(--tx)','SPOT',false]]
     .map(([px,col,txt,dash])=>({px,col,txt,dash,y:yAt(px)})).filter(l=>l.y!=null).sort((a,b)=>a.y-b.y);
   let lastY=-1e9;
@@ -1059,10 +1074,13 @@ function chartLadder(e,big){
   const notes={
     gex:'Each colour is one expiry\'s net dealer gamma; right of zero = call-dominated (dealers lean against moves), left = put-dominated (they chase). The nearest expiries carry the most gamma per contract, so a short bar in the far-month colour can matter less than it looks. Green tint = PIN zone, red tint = BREAKOUT zone.',
     cp:'Call gamma right, put gamma left, every expiry summed. Where both are big the strike is contested; where one side dominates, that side\'s hedging sets the behaviour.',
+    dex:'Delta exposure: how much of the underlying the option book is long (right) or short (left) per strike, by expiry. It is the hedge already on — big bars are where hedges get unwound if price moves through, or as the options expire.',
+    charm:'Charm: how much the hedge changes <b>per day from time passing alone</b>, price and vol unchanged. On this page\'s convention (dealers long calls, short puts): a bar to the <b>right</b> means dealers must <b>sell</b> as the day passes, to the <b>left</b> they must <b>buy</b>. Tiny weeks out, dominant in the last 1–2 days — so watch the 0–1 DTE colours, not the far month. Amber dashes = charm flip.',
+    vanna:'Vanna: how much the hedge changes for a <b>1-point move in implied vol</b>. Same convention: a bar to the <b>right</b> means dealers <b>buy</b> if IV <b>falls</b> (and sell if it rises); <b>left</b> is the reverse. Dormant while IV is flat — it matters on IV crush after an event or an IV spike in a selloff. Read it with the ATM IV change in Today\'s read. Blue dashes = vanna flip.',
     vol:'Today\'s traded volume weighted by gamma — where today\'s activity carries hedging weight. A busy strike with little open interest is a fresh fight, not an established wall.',
     oi:'Raw contracts, primary expiry. A tall bar is a lot of paper parked at a price — not proof dealers are hedging it. Near expiry, prefer the GEX view.'};
   return `<div class="ladder" data-big="${big?1:0}">
-    <div class="lctl">${tab('gex','Net GEX by expiry')}${tab('cp','Call / Put GEX')}${tab('vol','Volume gamma')}${tab('oi','Open interest')}
+    <div class="lctl">${tab('gex','Net GEX by expiry')}${tab('cp','Call / Put GEX')}${tab('dex','Delta')}${tab('charm','Charm')}${tab('vanna','Vanna')}${tab('vol','Volume gamma')}${tab('oi','Open interest')}
       <label class="liv"><input type="checkbox" ${LADIV?'checked':''} onchange="LADIV=this.checked;refreshLadders()"> IV smile</label></div>
     <div class="llegend">${leg}${R&&R.src?`<span class="muted" style="margin-left:auto">${R.src}</span>`:''}</div>
     ${ladderSvg(e,big)}
