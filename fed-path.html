@@ -83,6 +83,15 @@ tbody tr:hover td{background:#141921}
     </div>
   </div>
 
+  <div class="panel" id="zqPanel" style="display:none">
+    <h2>Per-meeting odds — fed funds futures</h2>
+    <p class="dek">From this desk’s own CBOT ZQ pull, priced <b>per FOMC decision</b> rather than per
+      three-month window. This is the CME FedWatch calculation; on 2026-10-08 it put October at 18.8%
+      against FedWatch’s 19.4% two days earlier. Thin contracts are marked — the back of the strip
+      barely trades and its odds are stale prints.</p>
+    <div id="zqTbl"></div>
+  </div>
+
   <div class="panel">
     <h2>Probability the rate ends up ABOVE today’s range</h2>
     <p class="dek">Each row is a forward window. The columns are what the same window was
@@ -121,6 +130,24 @@ function delta(now, then) {
   if (Math.abs(d) < 0.05) return '<span class="dim">' + fmt(then) + '</span>';
   const cls = d > 0 ? 'd-up' : 'd-dn';
   return fmt(then) + ' <span class="' + cls + '">(' + (d > 0 ? '+' : '') + d.toFixed(1) + ')</span>';
+}
+
+function renderZq(z) {
+  const el = document.getElementById('zqTbl'), panel = document.getElementById('zqPanel');
+  if (!z?.meetings?.length) return;                 // absent is silent, never a broken panel
+  panel.style.display = '';
+  let h = '<table><thead><tr><th>FOMC decision</th><th>Priced move</th><th>% of 25bp</th>'
+        + '<th>Rate after</th><th>Volume</th></tr></thead><tbody>';
+  for (const m of z.meetings) {
+    const cls = m.moveBp > 0 ? 'hike' : m.moveBp < 0 ? 'cut' : 'dim';
+    h += `<tr><td>${m.meeting}${m.combined ? ' <span class="dim">(2 meetings, combined)</span>' : ''}`
+       + `${m.solvedBackwards ? ' <span class="dim">← back-solved</span>' : ''}</td>`
+       + `<td class="${cls}">${m.moveBp > 0 ? '+' : ''}${m.moveBp}bp</td>`
+       + `<td class="${cls}"><b>${m.probPct}%</b></td>`
+       + `<td class="dim">${m.rAfter.toFixed(3)}%</td>`
+       + `<td class="${m.thin ? 'dim' : ''}">${m.volumeHint ?? '—'}${m.thin ? ' THIN' : ''}</td></tr>`;
+  }
+  el.innerHTML = h + '</tbody></table>';
 }
 
 function renderTable() {
@@ -221,7 +248,7 @@ function renderNote() {
     $('asof').className = 'badge ' + (late ? 'late' : 'fresh');
     $('asof').textContent = 'as of ' + d.asOf + (d.ageDays != null ? ' · ' + d.ageDays + 'd' : '') +
                             ' · ' + (d.currentRange || '').replace(/bps/g, '');
-    renderTable(); renderDist(); renderChart(); renderNote();
+    renderZq(d.zq); renderTable(); renderDist(); renderChart(); renderNote();
   } catch (e) {
     $('asof').className = 'badge late';
     $('asof').textContent = 'unavailable';
