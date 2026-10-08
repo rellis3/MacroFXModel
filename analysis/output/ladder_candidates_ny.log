@@ -1,0 +1,117 @@
+NQ 2748 2016-01-04 2026-08-21
+SPX 2748 2016-01-04 2026-08-21
+DOW 2748 2016-01-04 2026-08-21
+US2000 2748 2016-01-04 2026-08-21
+DE30 2702 2016-01-04 2026-08-20
+UK100 2687 2016-01-04 2026-08-20
+EURUSD 2758 2016-01-04 2026-08-21
+GBPUSD 2758 2016-01-04 2026-08-21
+AUDUSD 2758 2016-01-04 2026-08-21
+USDJPY 2758 2016-01-04 2026-08-21
+USDCAD 2758 2016-01-04 2026-08-21
+USDCHF 2758 2016-01-04 2026-08-21
+GOLD 2745 2016-01-04 2026-08-21
+AUDCAD 2758 2016-01-04 2026-08-21
+AUDCHF 2758 2016-01-04 2026-08-21
+AUDJPY 2761 2016-01-04 2026-08-21
+CADCHF 2758 2016-01-04 2026-08-21
+CADJPY 2758 2016-01-04 2026-08-21
+CHFJPY 2758 2016-01-04 2026-08-21
+EURAUD 2758 2016-01-04 2026-08-21
+EURCAD 2758 2016-01-04 2026-08-21
+EURCHF 2758 2016-01-04 2026-08-21
+EURGBP 2758 2016-01-04 2026-08-21
+EURJPY 2758 2016-01-04 2026-08-21
+GBPAUD 2758 2016-01-04 2026-08-21
+GBPCAD 2758 2016-01-04 2026-08-21
+GBPCHF 2758 2016-01-04 2026-08-21
+GBPJPY 2758 2016-01-04 2026-08-21
+AUDCAD.json 2659
+AUDCHF.json 2659
+AUDJPY.json 2662
+AUDUSD.json 2659
+CADCHF.json 2659
+CADJPY.json 2659
+CHFJPY.json 2659
+DE30.json 2603
+DOW.json 2649
+EURAUD.json 2659
+EURCAD.json 2659
+EURCHF.json 2659
+EURGBP.json 2659
+EURJPY.json 2659
+EURUSD.json 2659
+GBPAUD.json 2659
+GBPCAD.json 2659
+GBPCHF.json 2659
+GBPJPY.json 2659
+GBPUSD.json 2659
+GOLD.json 2646
+NQ.json 2649
+SPX.json 2649
+UK100.json 2588
+US2000.json 2649
+USDCAD.json 2659
+USDCHF.json 2659
+USDJPY.json 2659
+NQ      indices   2584 sessions 2016-08-22 -> 2026-08-21
+SPX     indices   2584 sessions 2016-08-22 -> 2026-08-21
+DOW     indices   2584 sessions 2016-08-22 -> 2026-08-21
+US2000  indices   2584 sessions 2016-08-22 -> 2026-08-21
+DE30    indices   2540 sessions 2016-08-22 -> 2026-08-20
+UK100   indices   2526 sessions 2016-08-22 -> 2026-08-20
+EURUSD  fx_major  1565 sessions 2020-09-09 -> 2026-08-21
+GBPUSD  fx_major  1565 sessions 2020-09-09 -> 2026-08-21
+AUDUSD  fx_major  1565 sessions 2020-09-09 -> 2026-08-21
+USDJPY  fx_major  1565 sessions 2020-09-09 -> 2026-08-21
+USDCAD  fx_major  1565 sessions 2020-09-09 -> 2026-08-21
+USDCHF  fx_major  1565 sessions 2020-09-09 -> 2026-08-21
+GOLD    fx_major  2581 sessions 2016-08-22 -> 2026-08-21
+AUDCAD  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+AUDCHF  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+AUDJPY  crosses   1569 sessions 2020-09-09 -> 2026-08-21
+CADCHF  crosses   1564 sessions 2020-09-09 -> 2026-08-21
+CADJPY  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+CHFJPY  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+EURAUD  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+EURCAD  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+EURCHF  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+EURGBP  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+EURJPY  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+GBPAUD  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+GBPCAD  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+GBPCHF  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+GBPJPY  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+A3 crosses: k=0.645
+A3 fx_major: k=0.742
+A3 indices: k=0.659
+
+Test 2025-09-05 -> 2026-08-21: 7042 instrument-days, 253 dates, 28 instruments; train rows 43809
+
+== Unconditional exceedance, HL p50/p75/p90 and OH p90 | 12-rung mean miss
+  A0 live estimator             HL  46.5  23.2   9.4   OH p90   9.7   miss 1.53pp
+  A2 HAR-800 (production path)  HL  47.5  23.1   9.6   OH p90   9.3   miss 1.24pp
+  A3 IV-adjusted                HL  46.2  22.3   9.3   OH p90   9.2   miss 1.77pp
+  A4 pure IV                    HL  45.7  22.4   9.2   OH p90   9.2   miss 1.82pp
+
+== By sigma quintile (A0 sigma / trailing 250 median): HL > p75 | HL > p90
+  A0 live estimator              Q1 29.6/14.7  Q2 24.3/10.1  Q3 20.3/ 7.3  Q4 21.0/ 7.0  Q5 18.6/ 6.8   30-cell miss 2.86pp  bar not met
+  A2 HAR-800 (production path)   Q1 23.6/11.1  Q2 21.6/ 8.9  Q3 21.7/ 8.5  Q4 23.0/ 8.7  Q5 25.0/ 9.8   30-cell miss 1.41pp  bar not met
+  A3 IV-adjusted                 Q1 23.7/12.0  Q2 20.6/ 9.2  Q3 19.0/ 7.5  Q4 22.6/ 8.4  Q5 22.6/ 8.8   30-cell miss 1.98pp  bar not met
+  A4 pure IV                     Q1 21.6/10.7  Q2 19.5/ 7.7  Q3 18.3/ 7.1  Q4 23.8/ 9.3  Q5 25.1/10.1   30-cell miss 2.05pp  bar not met
+
+== HL p50+p75 pinball, median per-instrument ratio vs A0 (lower = sharper and right) | slope
+  A0 live estimator             pinball 1.0000 (better on 0%)   slope 0.53
+  A2 HAR-800 (production path)  pinball 0.9495 (better on 100%)   slope 0.86
+  A3 IV-adjusted                pinball 0.9604 (better on 96%)   slope 0.95
+  A4 pure IV                    pinball 0.9697 (better on 75%)   slope 1.00
+
+== By class: HL > p75 by quintile Q1 / Q5
+  crosses     A0 32.4/14.8   A2 24.1/23.0   A3 26.7/19.5   A4 24.8/24.6
+  fx_major    A0 24.2/19.1   A2 21.7/24.1   A3 17.4/25.6   A4 16.0/26.6
+  indices     A0 29.0/22.6   A2 21.2/29.4   A3 15.2/27.2   A4 11.4/29.7
+
+== VERDICT vs A0 (pre-registered)
+  A2 HAR-800 (production path)  PRIMARY PASS (1.41 vs 2.86) · GUARD PASS (1.24 vs 1.53) · TARGET BAR NOT MET
+  A3 IV-adjusted                PRIMARY PASS (1.98 vs 2.86) · GUARD PASS (1.77 vs 1.53) · TARGET BAR NOT MET
+  A4 pure IV                    PRIMARY PASS (2.05 vs 2.86) · GUARD PASS (1.82 vs 1.53) · TARGET BAR NOT MET

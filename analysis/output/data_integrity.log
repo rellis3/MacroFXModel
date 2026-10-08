@@ -1,0 +1,44 @@
+audcad 2026-08-21 missing 0 short 16
+audchf 2026-08-21 missing 0 short 16
+audjpy 2026-08-21 missing 0 short 16
+audnzd 2026-08-21 missing 0 short 16
+audusd 2026-08-21 missing 0 short 18
+cadchf 2026-08-21 missing 0 short 16
+cadjpy 2026-08-21 missing 0 short 16
+chfjpy 2026-08-21 missing 0 short 16
+euraud 2026-08-21 missing 0 short 16
+eurcad 2026-08-21 missing 0 short 16
+eurchf 2026-08-21 missing 0 short 16
+eurgbp 2026-08-21 missing 0 short 16
+eurjpy 2026-08-21 missing 0 short 16
+eurnzd 2026-08-21 missing 0 short 16
+eurusd 2026-08-21 missing 0 short 16
+gbpaud 2026-08-21 missing 0 short 16
+gbpcad 2026-08-21 missing 0 short 16
+gbpchf 2026-08-21 missing 0 short 16
+gbpjpy 2026-08-21 missing 0 short 16
+gbpnzd 2026-08-21 missing 0 short 16
+gbpusd 2026-08-21 missing 0 short 16
+nzdcad 2026-08-21 missing 0 short 16
+nzdjpy 2026-08-21 missing 0 short 16
+nzdusd 2026-08-21 missing 0 short 17
+usdcad 2026-08-21 missing 0 short 16
+usdchf 2026-08-21 missing 0 short 19
+usdjpy 2026-08-21 missing 0 short 16
+gold 2026-08-21 missing 12 short 17
+nq 2026-08-21 missing 9 short 19
+spx500 2026-08-21 missing 9 short 95
+us30 2026-08-21 missing 9 short 20
+us2000 2026-08-21 missing 11 short 17
+de30 2026-08-20 missing 58 short 1
+uk100 2026-08-20 missing 73 short 18
+
+FLAG live σ source — 7 instruments on Yahoo bars (NQ, BTCUSD, SPX500, DE30, UK100, US30, US2000): research/fits use OANDA M1, so their ladders are provisional
+OK   stale forecasts — none
+OK   HAR shadow present — all 41
+FLAG session audits taken in time — 9 usable / 15 (late: 2026-09-15, 2026-09-18, 2026-09-22, 2026-09-25, 2026-09-28, 2026-10-01)
+FLAG local M1 cache aligned — behind newest (2026-08-21): de30 2026-08-20, uk100 2026-08-20
+FLAG local M1 cache fresh — newest bar 2026-08-21 (46 days old) — research results stop there
+OK   daily bars for research — use NY-close bars from M1 (nyCloseDailyBars, n >= 60); *_d1.parquet are UTC days with Sunday stubs — do not use for σ
+
+wrote analysis/output/data_integrity/REPORT.md

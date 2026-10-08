@@ -1,0 +1,89 @@
+AUDCAD.json 3219
+AUDCHF.json 3217
+AUDJPY.json 3219
+AUDUSD.json 3219
+CADCHF.json 3217
+CADJPY.json 3219
+CHFJPY.json 3219
+DE30.json 2603
+DOW.json 3208
+EURAUD.json 3219
+EURCAD.json 3219
+EURCHF.json 3219
+EURGBP.json 3219
+EURJPY.json 3219
+EURUSD.json 3219
+GBPAUD.json 3217
+GBPCAD.json 3219
+GBPCHF.json 3219
+GBPJPY.json 3219
+GBPUSD.json 3219
+GOLD.json 3205
+NQ.json 3208
+SPX.json 3208
+UK100.json 2588
+US2000.json 3204
+USDCAD.json 3219
+USDCHF.json 3219
+USDJPY.json 3219
+NQ      indices   2584 sessions 2016-08-22 -> 2026-08-21
+SPX     indices   2584 sessions 2016-08-22 -> 2026-08-21
+DOW     indices   2584 sessions 2016-08-22 -> 2026-08-21
+US2000  indices   2584 sessions 2016-08-22 -> 2026-08-21
+DE30    indices   2540 sessions 2016-08-22 -> 2026-08-20
+UK100   indices   2526 sessions 2016-08-22 -> 2026-08-20
+EURUSD  fx_major  1565 sessions 2020-09-09 -> 2026-08-21
+GBPUSD  fx_major  1565 sessions 2020-09-09 -> 2026-08-21
+AUDUSD  fx_major  1565 sessions 2020-09-09 -> 2026-08-21
+USDJPY  fx_major  1565 sessions 2020-09-09 -> 2026-08-21
+USDCAD  fx_major  1565 sessions 2020-09-09 -> 2026-08-21
+USDCHF  fx_major  1565 sessions 2020-09-09 -> 2026-08-21
+GOLD    fx_major  2581 sessions 2016-08-22 -> 2026-08-21
+AUDCAD  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+AUDCHF  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+AUDJPY  crosses   1569 sessions 2020-09-09 -> 2026-08-21
+CADCHF  crosses   1564 sessions 2020-09-09 -> 2026-08-21
+CADJPY  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+CHFJPY  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+EURAUD  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+EURCAD  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+EURCHF  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+EURGBP  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+EURJPY  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+GBPAUD  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+GBPCAD  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+GBPCHF  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+GBPJPY  crosses   1565 sessions 2020-09-09 -> 2026-08-21
+A3 crosses: k=0.649
+A3 fx_major: k=0.761
+A3 indices: k=0.618
+
+Test 2025-09-05 -> 2026-08-21: 7042 instrument-days, 253 dates, 28 instruments; train rows 43809
+
+== Unconditional exceedance, HL p50/p75/p90 and OH p90 | 12-rung mean miss
+  A0 live estimator             HL  46.7  23.7   9.2   OH p90   9.8   miss 1.33pp
+  A2 HAR-800 (production path)  HL  39.3  17.9   6.9   OH p90   7.3   miss 4.79pp
+  A3 IV-adjusted                HL  46.2  22.8   9.4   OH p90   9.2   miss 1.63pp
+  A4 pure IV                    HL  45.8  22.4   9.3   OH p90   9.3   miss 1.69pp
+
+== By sigma quintile (A0 sigma / trailing 250 median): HL > p75 | HL > p90
+  A0 live estimator              Q1 34.4/17.2  Q2 23.7/ 9.6  Q3 21.6/ 7.0  Q4 18.5/ 6.8  Q5 18.6/ 6.2   30-cell miss 3.29pp  bar not met
+  A2 HAR-800 (production path)   Q1 15.1/ 6.6  Q2 14.4/ 5.8  Q3 16.0/ 5.4  Q4 17.1/ 6.2  Q5 27.3/10.2   30-cell miss 4.48pp  bar not met
+  A3 IV-adjusted                 Q1 25.8/14.1  Q2 21.3/ 8.1  Q3 19.7/ 7.5  Q4 21.4/ 8.6  Q5 24.6/ 9.2   30-cell miss 2.01pp  bar not met
+  A4 pure IV                     Q1 22.5/11.8  Q2 20.7/ 8.0  Q3 18.7/ 7.5  Q4 21.5/ 8.2  Q5 27.4/10.9   30-cell miss 2.36pp  bar not met
+
+== HL p50+p75 pinball, median per-instrument ratio vs A0 (lower = sharper and right) | slope
+  A0 live estimator             pinball 1.0000 (better on 0%)   slope 0.52
+  A2 HAR-800 (production path)  pinball 1.0347 (better on 18%)   slope 0.59
+  A3 IV-adjusted                pinball 0.9571 (better on 96%)   slope 0.88
+  A4 pure IV                    pinball 0.9757 (better on 64%)   slope 0.91
+
+== By class: HL > p75 by quintile Q1 / Q5
+  crosses     A0 36.1/15.9   A2 15.8/24.6   A3 29.1/20.6   A4 25.4/23.1
+  fx_major    A0 28.6/16.9   A2 11.7/25.6   A3 16.1/24.7   A4 14.7/27.0
+  indices     A0 31.0/23.8   A2 10.4/31.1   A3 16.9/28.9   A4 10.6/31.3
+
+== VERDICT vs A0 (pre-registered)
+  A2 HAR-800 (production path)  PRIMARY FAIL (4.48 vs 3.29) · GUARD FAIL (4.79 vs 1.33) · TARGET BAR NOT MET
+  A3 IV-adjusted                PRIMARY PASS (2.01 vs 3.29) · GUARD PASS (1.63 vs 1.33) · TARGET BAR NOT MET
+  A4 pure IV                    PRIMARY PASS (2.36 vs 3.29) · GUARD PASS (1.69 vs 1.33) · TARGET BAR NOT MET

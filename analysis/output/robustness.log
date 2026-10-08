@@ -1,0 +1,30 @@
+Layer 3 — fit 2016-08-22 → 2022-09-05, check → 2025-09-05: 26746 instrument-days, 793 dates
+  HAR 400          12-rung miss 0.44pp  regime miss 0.97pp  HL>p75 by quintile [29.5, 25.0, 23.9, 24.0, 26.2]  stress {'SVB 2023-03': 26.0, 'yen unwind 2024-08': 50.9, 'tariffs 2025-04': 37.5}
+  HAR 600          12-rung miss 1.02pp  regime miss 1.29pp  HL>p75 by quintile [30.0, 25.6, 25.4, 25.4, 28.8]  stress {'SVB 2023-03': 28.7, 'yen unwind 2024-08': 49.3, 'tariffs 2025-04': 43.2}
+  HAR 800          12-rung miss 1.07pp  regime miss 1.29pp  HL>p75 by quintile [31.1, 26.8, 25.8, 24.6, 26.7]  stress {'SVB 2023-03': 30.7, 'yen unwind 2024-08': 46.7, 'tariffs 2025-04': 39.9}
+  HAR 1000         12-rung miss 0.82pp  regime miss 1.24pp  HL>p75 by quintile [31.5, 26.6, 25.0, 23.9, 26.6]  stress {'SVB 2023-03': 29.1, 'yen unwind 2024-08': 47.2, 'tariffs 2025-04': 38.6}
+  HAR 1200         12-rung miss 0.88pp  regime miss 1.26pp  HL>p75 by quintile [31.7, 26.6, 25.0, 24.0, 27.1]  stress {'SVB 2023-03': 28.8, 'yen unwind 2024-08': 44.3, 'tariffs 2025-04': 39.8}
+  HAR 800 +1 day   12-rung miss 1.04pp  regime miss 1.29pp  HL>p75 by quintile [28.4, 26.7, 25.7, 25.8, 29.4]  stress {'SVB 2023-03': 32.1, 'yen unwind 2024-08': 47.6, 'tariffs 2025-04': 39.9}
+  live estimator   12-rung miss 0.55pp  regime miss 0.93pp  HL>p75 by quintile [27.4, 24.8, 23.6, 22.2, 25.0]  stress {'SVB 2023-03': 30.4, 'yen unwind 2024-08': 42.1, 'tariffs 2025-04': 31.3}
+  live +1 day      12-rung miss 0.60pp  regime miss 0.92pp  HL>p75 by quintile [25.4, 23.8, 23.4, 22.4, 26.6]  stress {'SVB 2023-03': 30.5, 'yen unwind 2024-08': 44.1, 'tariffs 2025-04': 32.9}
+
+Layer 5 — check 2022-09-05 → 2025-09-05: 287557 checkpoints
+  R3 fit on FIT:            90-cell miss 1.46pp  worst p75/p90 cell 4.8pp
+  R3 × 0.95:                 90-cell miss 2.02pp  worst 5.5pp
+  R3 × 1.05:                 90-cell miss 2.14pp  worst 6.6pp
+  R3 fit on block 2016-05→2018-12  90-cell miss 1.76pp  worst 4.6pp
+  R3 fit on block 2019→2020        90-cell miss 1.64pp  worst 5.7pp
+  R3 fit on block 2021→2022-09     90-cell miss 1.37pp  worst 5.2pp
+  median coefficient of variation of the p75 multipliers across the three blocks: 0.028
+  R3 with σ delayed one session: 90-cell miss 1.53pp  worst 6.0pp
+  stress windows, p75 exceeded (target 25%): {'SVB 2023-03': 27.2, 'yen unwind 2024-08': 31.8, 'tariffs 2025-04': 35.5}
+
+Layer 3 regime miss with NEUTRAL buckets (trailing realised range, not either forecast):
+  HAR 400          regime miss 0.77pp  HL>p75 by quintile [27.6, 24.8, 24.6, 26.0, 25.6]
+  HAR 600          regime miss 1.25pp  HL>p75 by quintile [27.5, 25.5, 26.5, 27.8, 27.9]
+  HAR 800          regime miss 1.29pp  HL>p75 by quintile [28.6, 26.4, 26.9, 27.0, 26.1]
+  HAR 1000         regime miss 1.10pp  HL>p75 by quintile [28.9, 26.0, 26.5, 26.2, 25.9]
+  HAR 1200         regime miss 1.12pp  HL>p75 by quintile [28.6, 26.2, 26.4, 26.5, 26.7]
+  HAR 800 +1 day   regime miss 1.26pp  HL>p75 by quintile [29.2, 26.5, 26.8, 27.2, 26.3]
+  live estimator   regime miss 1.48pp  HL>p75 by quintile [30.2, 25.2, 24.0, 23.6, 19.9]
+  live +1 day      regime miss 1.40pp  HL>p75 by quintile [29.3, 25.1, 23.4, 23.8, 20.0]

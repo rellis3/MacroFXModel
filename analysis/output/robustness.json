@@ -1,0 +1,250 @@
+{
+ "layer3": {
+  "HAR 400": {
+   "miss12": 0.44,
+   "miss30_regime": 0.97,
+   "hl_p75_by_quintile": [
+    29.5,
+    25.0,
+    23.9,
+    24.0,
+    26.2
+   ],
+   "stress_hl_p75": {
+    "SVB 2023-03": 26.0,
+    "yen unwind 2024-08": 50.9,
+    "tariffs 2025-04": 37.5
+   }
+  },
+  "HAR 600": {
+   "miss12": 1.02,
+   "miss30_regime": 1.29,
+   "hl_p75_by_quintile": [
+    30.0,
+    25.6,
+    25.4,
+    25.4,
+    28.8
+   ],
+   "stress_hl_p75": {
+    "SVB 2023-03": 28.7,
+    "yen unwind 2024-08": 49.3,
+    "tariffs 2025-04": 43.2
+   }
+  },
+  "HAR 800": {
+   "miss12": 1.07,
+   "miss30_regime": 1.29,
+   "hl_p75_by_quintile": [
+    31.1,
+    26.8,
+    25.8,
+    24.6,
+    26.7
+   ],
+   "stress_hl_p75": {
+    "SVB 2023-03": 30.7,
+    "yen unwind 2024-08": 46.7,
+    "tariffs 2025-04": 39.9
+   }
+  },
+  "HAR 1000": {
+   "miss12": 0.82,
+   "miss30_regime": 1.24,
+   "hl_p75_by_quintile": [
+    31.5,
+    26.6,
+    25.0,
+    23.9,
+    26.6
+   ],
+   "stress_hl_p75": {
+    "SVB 2023-03": 29.1,
+    "yen unwind 2024-08": 47.2,
+    "tariffs 2025-04": 38.6
+   }
+  },
+  "HAR 1200": {
+   "miss12": 0.88,
+   "miss30_regime": 1.26,
+   "hl_p75_by_quintile": [
+    31.7,
+    26.6,
+    25.0,
+    24.0,
+    27.1
+   ],
+   "stress_hl_p75": {
+    "SVB 2023-03": 28.8,
+    "yen unwind 2024-08": 44.3,
+    "tariffs 2025-04": 39.8
+   }
+  },
+  "HAR 800 +1 day": {
+   "miss12": 1.04,
+   "miss30_regime": 1.29,
+   "hl_p75_by_quintile": [
+    28.4,
+    26.7,
+    25.7,
+    25.8,
+    29.4
+   ],
+   "stress_hl_p75": {
+    "SVB 2023-03": 32.1,
+    "yen unwind 2024-08": 47.6,
+    "tariffs 2025-04": 39.9
+   }
+  },
+  "live estimator": {
+   "miss12": 0.55,
+   "miss30_regime": 0.93,
+   "hl_p75_by_quintile": [
+    27.4,
+    24.8,
+    23.6,
+    22.2,
+    25.0
+   ],
+   "stress_hl_p75": {
+    "SVB 2023-03": 30.4,
+    "yen unwind 2024-08": 42.1,
+    "tariffs 2025-04": 31.3
+   }
+  },
+  "live +1 day": {
+   "miss12": 0.6,
+   "miss30_regime": 0.92,
+   "hl_p75_by_quintile": [
+    25.4,
+    23.8,
+    23.4,
+    22.4,
+    26.6
+   ],
+   "stress_hl_p75": {
+    "SVB 2023-03": 30.5,
+    "yen unwind 2024-08": 44.1,
+    "tariffs 2025-04": 32.9
+   }
+  }
+ },
+ "layer5": {
+  "R3 fit 2016-05\u21922022-09": {
+   "miss90": 1.46,
+   "worst": 4.8
+  },
+  "R3 \u00d7 0.95": {
+   "miss90": 2.02,
+   "worst": 5.5
+  },
+  "R3 \u00d7 1.05": {
+   "miss90": 2.14,
+   "worst": 6.6
+  },
+  "R3 block 2016-05\u21922018-12": {
+   "miss90": 1.76,
+   "worst": 4.6
+  },
+  "R3 block 2019\u21922020": {
+   "miss90": 1.64,
+   "worst": 5.7
+  },
+  "R3 block 2021\u21922022-09": {
+   "miss90": 1.37,
+   "worst": 5.2
+  },
+  "multiplier_cv_across_blocks": 0.028,
+  "R3 \u03c3 delayed one session": {
+   "miss90": 1.53,
+   "worst": 6.0
+  },
+  "stress_p75": {
+   "SVB 2023-03": 27.2,
+   "yen unwind 2024-08": 31.8,
+   "tariffs 2025-04": 35.5
+  }
+ },
+ "layer3_neutral": {
+  "HAR 400": {
+   "miss30_regime": 0.77,
+   "hl_p75_by_quintile": [
+    27.6,
+    24.8,
+    24.6,
+    26.0,
+    25.6
+   ]
+  },
+  "HAR 600": {
+   "miss30_regime": 1.25,
+   "hl_p75_by_quintile": [
+    27.5,
+    25.5,
+    26.5,
+    27.8,
+    27.9
+   ]
+  },
+  "HAR 800": {
+   "miss30_regime": 1.29,
+   "hl_p75_by_quintile": [
+    28.6,
+    26.4,
+    26.9,
+    27.0,
+    26.1
+   ]
+  },
+  "HAR 1000": {
+   "miss30_regime": 1.1,
+   "hl_p75_by_quintile": [
+    28.9,
+    26.0,
+    26.5,
+    26.2,
+    25.9
+   ]
+  },
+  "HAR 1200": {
+   "miss30_regime": 1.12,
+   "hl_p75_by_quintile": [
+    28.6,
+    26.2,
+    26.4,
+    26.5,
+    26.7
+   ]
+  },
+  "HAR 800 +1 day": {
+   "miss30_regime": 1.26,
+   "hl_p75_by_quintile": [
+    29.2,
+    26.5,
+    26.8,
+    27.2,
+    26.3
+   ]
+  },
+  "live estimator": {
+   "miss30_regime": 1.48,
+   "hl_p75_by_quintile": [
+    30.2,
+    25.2,
+    24.0,
+    23.6,
+    19.9
+   ]
+  },
+  "live +1 day": {
+   "miss30_regime": 1.4,
+   "hl_p75_by_quintile": [
+    29.3,
+    25.1,
+    23.4,
+    23.8,
+    20.0
+   ]
+  }
+ }
+}

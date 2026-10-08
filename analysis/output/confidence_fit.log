@@ -1,0 +1,45 @@
+rows: train 2889456  val 349840  test 334960  (test sessions 248)
+M2 iterations chosen on validation: 300
+
+M1 logistic:
+   val_p50   BSS +0.0086 [+0.0050, +0.0124]  max decile miss 1.3pp  AUC 0.550
+   test_p50  BSS +0.0061 [+0.0031, +0.0091]  max decile miss 2.9pp  AUC 0.546
+   val_p75   BSS +0.0137 [+0.0081, +0.0197]  max decile miss 2.6pp  AUC 0.567
+   test_p75  BSS +0.0100 [+0.0061, +0.0138]  max decile miss 3.0pp  AUC 0.565
+   PASS (test, both rungs): False
+
+M2 calibrated boosting:
+   val_p50   BSS +0.0148 [+0.0105, +0.0195]  max decile miss 0.4pp  AUC 0.565
+   test_p50  BSS +0.0145 [+0.0108, +0.0188]  max decile miss 2.8pp  AUC 0.568
+   val_p75   BSS +0.0208 [+0.0136, +0.0284]  max decile miss 0.6pp  AUC 0.583
+   test_p75  BSS +0.0206 [+0.0153, +0.0262]  max decile miss 3.4pp  AUC 0.593
+   PASS (test, both rungs): False
+
+Chosen on validation: M2  -> pre-registered verdict: FAIL
+
+Permutation importance on test (Brier increase as % of the base-rate Brier):
+   time of day                      +3.63%
+   realised vol so far              +3.23%
+   implied vol ÷ σ                  +0.69%
+   day of week                      +0.57%
+   range used so far                +0.42%
+   price vs open                    +0.03%
+   distance from running extreme    +0.03%
+   yesterday's range                +0.02%
+   regime                           +0.01%
+
+Test BSS by class and by hour band (chosen model):
+   cls=cross: BSS +0.0119
+   cls=gold: BSS +0.0286
+   cls=index: BSS +0.0297
+   cls=major: BSS +0.0196
+   h=1: BSS +0.0062
+   h=3: BSS +0.0070
+   h=5: BSS +0.0057
+   h=7: BSS +0.0048
+   h=9: BSS +0.0110
+   h=11: BSS +0.0161
+   h=13: BSS +0.0194
+   h=15: BSS +0.0252
+   h=17: BSS +0.0329
+   h=19: BSS +0.0420

@@ -1,0 +1,87 @@
+3,601,920 stop records, 1,293,233 hits, 34 instruments
+
+ stop d×σ  P(hit) P(gap|hit)  mean R  p99 R worst R  excess
+     0.25   0.779      0.042   1.012   1.13   28.16  +0.012
+     0.50   0.573      0.036   1.008   1.07   17.15  +0.008
+     1.00   0.274      0.035   1.006   1.09    8.68  +0.006
+     1.50   0.119      0.037   1.006   1.11    5.79  +0.005
+     2.00   0.051      0.038   1.006   1.13    4.34  +0.006
+
+by class:
+   d 0.50 cross                  hits 239,318  gap 0.032  mean 1.007  p99 1.05  worst 14.08
+   d 0.50 gold                   hits  12,261  gap 0.017  mean 1.005  p99 1.01  worst 3.15
+   d 0.50 index                  hits  75,430  gap 0.055  mean 1.014  p99 1.38  worst 17.15  MATERIAL
+   d 0.50 major                  hits  86,054  gap 0.033  mean 1.005  p99 1.02  worst 7.74
+   d 1.00 cross                  hits 110,008  gap 0.030  mean 1.005  p99 1.06  worst 7.04
+   d 1.00 gold                   hits   6,067  gap 0.015  mean 1.003  p99 1.00  worst 2.07
+   d 1.00 index                  hits  39,296  gap 0.057  mean 1.011  p99 1.28  worst 8.68  MATERIAL
+   d 1.00 major                  hits  41,764  gap 0.030  mean 1.003  p99 1.01  worst 4.49
+   d 2.00 cross                  hits  18,586  gap 0.032  mean 1.005  p99 1.12  worst 3.52
+   d 2.00 gold                   hits   1,287  gap 0.023  mean 1.003  p99 1.12  worst 1.54
+   d 2.00 index                  hits   8,918  gap 0.060  mean 1.011  p99 1.33  worst 4.34  MATERIAL
+   d 2.00 major                  hits   7,606  gap 0.028  mean 1.002  p99 1.00  worst 2.24
+
+by weekend:
+   d 0.50 crossed a weekend      hits  33,293  gap 0.143  mean 1.085  p99 2.82  worst 17.15  MATERIAL
+   d 0.50 within the week        hits 379,770  gap 0.026  mean 1.001  p99 1.01  worst 14.08
+   d 1.00 crossed a weekend      hits  21,617  gap 0.130  mean 1.047  p99 2.08  worst 8.68  MATERIAL
+   d 1.00 within the week        hits 175,518  gap 0.023  mean 1.001  p99 1.00  worst 7.04
+   d 2.00 crossed a weekend      hits   5,538  gap 0.133  mean 1.035  p99 1.85  worst 4.34  MATERIAL
+   d 2.00 within the week        hits  30,859  gap 0.021  mean 1.001  p99 1.00  worst 3.52
+
+by hit in:
+   d 0.50 next session           hits 162,521  gap 0.052  mean 1.019  p99 1.56  worst 17.15  MATERIAL
+   d 0.50 same session           hits 250,542  gap 0.025  mean 1.001  p99 1.01  worst 14.08
+   d 1.00 next session           hits 103,849  gap 0.047  mean 1.010  p99 1.30  worst 8.68  MATERIAL
+   d 1.00 same session           hits  93,286  gap 0.021  mean 1.001  p99 1.00  worst 7.04
+   d 2.00 next session           hits  23,723  gap 0.048  mean 1.008  p99 1.27  worst 4.34  MATERIAL
+   d 2.00 same session           hits  12,674  gap 0.018  mean 1.001  p99 1.00  worst 3.52
+
+by event day:
+   d 0.50 high                   hits 125,707  gap 0.034  mean 1.008  p99 1.09  worst 8.32
+   d 0.50 none                   hits 235,554  gap 0.035  mean 1.007  p99 1.03  worst 17.15
+   d 0.50 tier1                  hits  46,663  gap 0.041  mean 1.016  p99 1.55  worst 7.30  MATERIAL
+   d 0.50 unknown                hits   5,139  gap 0.039  mean 1.002  p99 1.06  worst 1.66
+   d 1.00 high                   hits  60,208  gap 0.035  mean 1.006  p99 1.12  worst 4.17
+   d 1.00 none                   hits 110,540  gap 0.034  mean 1.005  p99 1.03  worst 8.68
+   d 1.00 tier1                  hits  24,106  gap 0.043  mean 1.010  p99 1.32  worst 3.70  MATERIAL
+   d 1.00 unknown                hits   2,281  gap 0.027  mean 1.001  p99 1.01  worst 1.25
+   d 2.00 high                   hits  11,104  gap 0.037  mean 1.005  p99 1.14  worst 2.87
+   d 2.00 none                   hits  19,482  gap 0.035  mean 1.006  p99 1.06  worst 4.34
+   d 2.00 tier1                  hits   5,437  gap 0.049  mean 1.010  p99 1.39  worst 2.83  MATERIAL
+   d 2.00 unknown                hits     374  gap 0.032  mean 1.000  p99 1.01  worst 1.07
+
+by hit minute:
+   d 0.50 on :00/:30 (+4 min)    hits 100,059  gap 0.060  mean 1.029  p99 1.88  worst 17.15  MATERIAL
+   d 0.50 other minutes          hits 313,004  gap 0.028  mean 1.001  p99 1.01  worst 14.08
+   d 1.00 on :00/:30 (+4 min)    hits  47,969  gap 0.066  mean 1.021  p99 1.58  worst 8.68  MATERIAL
+   d 1.00 other minutes          hits 149,166  gap 0.025  mean 1.001  p99 1.00  worst 7.04
+   d 2.00 on :00/:30 (+4 min)    hits   8,399  gap 0.083  mean 1.019  p99 1.53  worst 4.34  MATERIAL
+   d 2.00 other minutes          hits  27,998  gap 0.024  mean 1.002  p99 1.00  worst 3.52
+
+25 of 70 condition cells are MATERIAL:
+   d 0.25 weekend    crossed a weekend      hits 29,842  gap 0.195  p99 4.42  excess +0.179  worst 22.05
+   d 0.50 weekend    crossed a weekend      hits 33,293  gap 0.143  p99 2.82  excess +0.085  worst 17.15
+   d 0.25 hit minute on :00/:30 (+4 min)    hits 132,390  gap 0.066  p99 2.29  excess +0.043  worst 22.05
+   d 0.25 hit in     next session           hits 149,172  gap 0.068  p99 2.16  excess +0.038  worst 22.05
+   d 1.00 weekend    crossed a weekend      hits 21,617  gap 0.130  p99 2.08  excess +0.047  worst 8.68
+   d 1.50 weekend    crossed a weekend      hits 11,184  gap 0.132  p99 1.92  excess +0.037  worst 5.79
+   d 0.50 hit minute on :00/:30 (+4 min)    hits 100,059  gap 0.060  p99 1.88  excess +0.029  worst 17.15
+   d 2.00 weekend    crossed a weekend      hits  5,538  gap 0.133  p99 1.85  excess +0.035  worst 4.34
+   d 0.25 event day  tier1                  hits 61,725  gap 0.049  p99 1.67  excess +0.024  worst 12.44
+   d 1.00 hit minute on :00/:30 (+4 min)    hits 47,969  gap 0.066  p99 1.58  excess +0.021  worst 8.68
+   d 0.50 hit in     next session           hits 162,521  gap 0.052  p99 1.56  excess +0.019  worst 17.15
+   d 0.50 event day  tier1                  hits 46,663  gap 0.041  p99 1.55  excess +0.017  worst 7.30
+   d 2.00 hit minute on :00/:30 (+4 min)    hits  8,399  gap 0.083  p99 1.53  excess +0.019  worst 4.34
+   d 0.25 class      index                  hits 99,122  gap 0.062  p99 1.48  excess +0.020  worst 22.05
+   d 1.50 hit minute on :00/:30 (+4 min)    hits 20,527  gap 0.075  p99 1.47  excess +0.018  worst 5.79
+   d 2.00 event day  tier1                  hits  5,437  gap 0.049  p99 1.39  excess +0.010  worst 2.83
+   d 0.50 class      index                  hits 75,430  gap 0.055  p99 1.38  excess +0.014  worst 17.15
+   d 0.25 event day  unknown                hits  7,096  gap 0.047  p99 1.35  excess +0.010  worst 3.32
+   d 2.00 class      index                  hits  8,918  gap 0.060  p99 1.33  excess +0.011  worst 4.34
+   d 1.00 event day  tier1                  hits 24,106  gap 0.043  p99 1.32  excess +0.010  worst 3.70
+   d 1.00 hit in     next session           hits 103,849  gap 0.047  p99 1.30  excess +0.011  worst 8.68
+   d 1.00 class      index                  hits 39,296  gap 0.057  p99 1.28  excess +0.011  worst 8.68
+   d 2.00 hit in     next session           hits 23,723  gap 0.048  p99 1.27  excess +0.009  worst 4.34
+   d 1.50 event day  tier1                  hits 11,529  gap 0.045  p99 1.25  excess +0.008  worst 3.01
+   d 1.50 class      index                  hits 19,079  gap 0.062

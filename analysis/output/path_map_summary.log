@@ -1,0 +1,91 @@
+156734 real touches + 326375 placebo, 2656 sessions, 34 instruments, ['2016-05-23', '2026-08-20']
+  p50: real 0.582  placebo 0.583  diff -0.0pp (z -0.1)  rw-null 0.573  held 0.31
+  p75: real 0.467  placebo 0.464  diff +0.3pp (z +0.5)  rw-null 0.467  held 0.35
+  p90: real 0.512  placebo 0.519  diff -0.7pp (z -0.8)  rw-null 0.511  held 0.37
+
+314 cells examined; 0 pass the dynamic rule (real vs placebo, both halves):
+
+One-way, every cell (real − placebo, pp):
+  p50 London hour                00-07 Asia            +0.1 (z +0.1, n 23267)  held 0.23
+  p50 London hour                07-12 London          -0.1 (z -0.1, n 32622)  held 0.27
+  p50 London hour                12-16 overlap         -0.4 (z -0.5, n 25210)  held 0.34
+  p50 London hour                16-20 NY              +0.0 (z +0.0, n 7981)  held 0.52
+  p50 London hour                20-24 late            +2.7 (z +0.7, n 2586)  held 0.74
+  p50 regime (σ vs its norm)     busy                  +0.3 (z +0.3, n 18419)  held 0.31
+  p50 regime (σ vs its norm)     normal                +0.1 (z +0.1, n 46806)  held 0.32
+  p50 regime (σ vs its norm)     quiet                 -0.4 (z -0.6, n 22667)  held 0.31
+  p50 event day                  high                  -0.1 (z -0.1, n 28573)  held 0.30
+  p50 event day                  none                  -0.1 (z -0.2, n 51414)  held 0.32
+  p50 event day                  tier1                 +0.2 (z +0.1, n 10524)  held 0.28
+  p50 range used                 0.8-1.2               -0.5 (z -0.7, n 16763)  held 0.36
+  p50 range used                 <0.8                  +0.1 (z +0.1, n 72023)  held 0.30
+  p50 range used                 >1.2                  -1.0 (z -0.5, n 2880)  held 0.31
+  p50 other side touched         no                    -0.0 (z -0.0, n 80469)  held 0.30
+  p50 other side touched         yes                   -0.3 (z -0.3, n 11197)  held 0.40
+  p50 class                      cross                 -0.1 (z -0.3, n 54334)  held 0.32
+  p50 class                      gold                  +1.0 (z +0.7, n 2659)  held 0.31
+  p50 class                      index                 +0.2 (z +0.3, n 15717)  held 0.30
+  p50 class                      major                 -0.1 (z -0.1, n 18956)  held 0.31
+  p50 approach speed (30 min)    fast                  -0.6 (z -0.9, n 25206)  held 0.25
+  p50 approach speed (30 min)    mid                   +0.1 (z +0.1, n 31903)  held 0.31
+  p50 approach speed (30 min)    slow                  +0.1 (z +0.2, n 34557)  held 0.36
+  p50 prior-day high/low         not                   -0.1 (z -0.1, n 70893)  held 0.31
+  p50 prior-day high/low         on prior-day level    +0.0 (z +0.0, n 20773)  held 0.31
+  p50 implied vol ÷ σ            IV cheap              +0.6 (z +0.6, n 7880)  held 0.33
+  p50 implied vol ÷ σ            IV fair               +0.3 (z +0.3, n 7544)  held 0.30
+  p50 implied vol ÷ σ            IV rich               -0.2 (z -0.2, n 7299)  held 0.28
+  p75 London hour                00-07 Asia            -0.0 (z -0.0, n 5212)  held 0.20
+  p75 London hour                07-12 London          +1.3 (z +1.5, n 12520)  held 0.25
+  p75 London hour                12-16 overlap         -0.4 (z -0.5, n 18149)  held 0.34
+  p75 London hour                16-20 NY              +0.6 (z +0.4, n 7754)  held 0.51
+  p75 London hour                20-24 late            +1.4 (z +0.4, n 2617)  held 0.70
+  p75 regime (σ vs its norm)     busy                  -0.9 (z -0.7, n 9449)  held 0.34
+  p75 regime (σ vs its norm)     normal                +0.2 (z +0.3, n 23374)  held 0.36
+  p75 regime (σ vs its norm)     quiet                 +1.3 (z +1.4, n 11635)  held 0.33
+  p75 event day                  high                  +0.4 (z +0.4, n 14826)  held 0.34
+  p75 event day                  none                  +0.0 (z +0.1, n 25069)  held 0.36
+  p75 event day                  tier1                 +1.0 (z +0.6, n 5789)  held 0.32
+  p75 range used                 0.8-1.2               -0.6 (z -0.9, n 35737)  held 0.35
+  p75 range used                 <0.8                  +0.5 (z +0.4, n 3822)  held 0.35
+  p75 range used                 >1.2                  +1.8 (z +1.4, n 6693)  held 0.32
+  p75 other side touched         no                    +0.2 (z +0.3, n 41238)  held 0.34
+  p75 other side touched         yes                   +0.6 (z +0.4, n 5014)  held 0.38
+  p75 class                      cross                 +0.6 (z +0.9, n 27444)  held 0.35
+  p75 class                      gold                  -0.7 (z -0.3, n 1334)  held 0.32
+  p75 class                      index                 +0.1 (z +0.1, n 7912)  held 0.34
+  p75 class                      major                 -0.5 (z -0.5, n 9562)  held 0.35
+  p75 approach speed (30 min)    fast                  -0.4 (z -0.5, n 18079)  held 0.27
+  p75 approach speed (30 min)    mid                   +0.4 (z +0.5, n 14880)  held 0.36
+  p75 approach speed (30 min)    slow                  +0.5 (z +0.6, n 13293)  held 0.44
+  p75 prior-day high/low         not                   +0.4 (z +0.6, n 39792)  held 0.35
+  p75 prior-day high/low         on prior-day level    -0.3 (z -0.3, n 6460)  held 0.35
+  p75 implied vol ÷ σ            IV cheap              -2.0 (z -1.4, n 3753)  held 0.37
+  p75 implied vol ÷ σ            IV fair               -0.3 (z -0.2, n 3871)  held 0.34
+  p75 implied vol ÷ σ            IV rich               +1.3 (z +0.9, n 3895)  held 0.31
+  p90 London hour                00-07 Asia            +2.2 (z +0.8, n 1307)  held 0.15
+  p90 London hour                07-12 London          -2.7 (z -1.8, n 3459)  held 0.23
+  p90 London hour                12-16 overlap         +0.1 (z +0.1, n 7651)  held 0.33
+  p90 London hour                16-20 NY              -2.2 (z -1.1, n 4565)  held 0.50
+  p90 London hour                20-24 late            +1.7 (z +0.4, n 1834)  held 0.68
+  p90 regime (σ vs its norm)     busy                  +0.3 (z +0.1, n 3852)  held 0.37
+  p90 regime (σ vs its norm)     normal                -0.9 (z -0.8, n 9348)  held 0.38
+  p90 regime (σ vs its norm)     quiet                 -1.5 (z -1.1, n 4939)  held 0.36
+  p90 event day                  high                  -1.7 (z -1.2, n 6268)  held 0.37
+  p90 event day                  none                  +0.1 (z +0.1, n 9732)  held 0.38
+  p90 event day                  tier1                 -0.8 (z -0.3, n 2590)  held 0.34
+  p90 range used                 0.8-1.2               -0.6 (z -0.4, n 2547)  held 0.41
+  p90 range used                 >1.2                  -2.1 (z -2.0, n 16269)  held 0.37
+  p90 other side touched         no                    -1.1 (z -1.2, n 16875)  held 0.38
+  p90 other side touched         yes                   +2.3 (z +1.1, n 1941)  held 0.35
+  p90 class                      cross                 -1.3 (z -1.3, n 11186)  held 0.38
+  p90 class                      gold                  +2.8 (z +0.8, n 534)  held 0.36
+  p90 class                      index                 -0.6 (z -0.3, n 3213)  held 0.36
+  p90 class                      major                 +0.5 (z +0.4, n 3883)  held 0.36
+  p90 approach speed (30 min)    fast                  -1.2 (z -1.1, n 8960)  held 0.29
+  p90 approach speed (30 min)    mid                   +0.5 (z +0.4, n 5460)  held 0.39
+  p90 approach speed (30 min)    slow                  -2.3 (z -1.6, n 4396)  held 0.52
+  p90 prior-day high/low         not                   -1.1 (z -1.3, n 17682)  held 0.37
+  p90 prior-day high/low         on prior-day level    +5.6 (z +2.4, n 1134)  held 0.36
+  p90 implied vol ÷ σ            IV cheap              +1.7 (z +0.7, n 1350)  held 0.39
+  p90 implied vol ÷ σ            IV fair               +0.7 (z +0.3, n 1566)  held 0.37
+  p90 implied vol ÷ σ            IV rich               -0.9 (z -0.4, n 1788)  held 0.34

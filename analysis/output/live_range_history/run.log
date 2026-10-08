@@ -1,0 +1,320 @@
+# LIVE-RANGE-HISTORY — results
+
+Pre-registration: `forge/LIVE_RANGE_HISTORY_PREREG.md`. Test = last 40% of dates per class (fx_gold from 2022-06-23, indices from 2022-07-12); 1079 test dates, 36340 instrument-sessions, 92,914 real line touches, 96,912 placebo touches.
+
+## Q1 replay
+
+Shipped-JS fidelity: 15 recent sessions × 3 instruments, 1,890 lines, max difference 0.0σ (`forge/live_range_fidelity.mjs`). Phantom lines (sit on the running extreme, offset 0, excluded): 1,129,689 of 4,551,726 drawn lines in the test period.
+
+## Q2 touches and jump-through (test period)
+
+Touch rate = lines touched in their own hour ÷ lines drawn. J1 = touch bar also reaches the next line out. J2 = touch bar's overshoot ≥ 0.25σ (0.10σ / 0.50σ in brackets). Overshoot quantiles in σ.
+
+| class | rung | hours | lines | touch rate | J1 | J2 .25σ (.10/.50) | overshoot p50 / p90 |
+|---|---|---|---|---|---|---|---|
+| fx_gold | p50 | 01-07 | 422,404 | 2.7% | 3.4% | 6.8% (22%/3%) | 0.04 / 0.18 |
+| fx_gold | p50 | 08-14 | 250,281 | 11.5% | 2.6% | 3.9% (15%/2%) | 0.03 / 0.13 |
+| fx_gold | p75 | 01-07 | 422,404 | 0.2% | 13.5% | 26.4% (53%/15%) | 0.11 / 0.68 |
+| fx_gold | p75 | 08-14 | 422,408 | 2.3% | 6.4% | 11.2% (30%/5%) | 0.05 / 0.27 |
+| fx_gold | p75 | 15-21 | 116,819 | 11.8% | 2.0% | 3.0% (16%/1%) | 0.03 / 0.13 |
+| fx_gold | p90 | 01-07 | 422,404 | 0.1% | 20.9% | 43.6% (68%/22%) | 0.22 / 0.74 |
+| fx_gold | p90 | 08-14 | 422,408 | 0.4% | 14.3% | 24.6% (51%/10%) | 0.10 / 0.49 |
+| fx_gold | p90 | 15-21 | 323,718 | 3.2% | 17.7% | 4.2% (15%/1%) | 0.03 / 0.14 |
+| indices | p50 | 01-07 | 83,026 | 0.5% | 1.1% | 5.5% (24%/1%) | 0.05 / 0.20 |
+| indices | p50 | 08-14 | 72,095 | 8.4% | 3.4% | 6.5% (23%/2%) | 0.04 / 0.19 |
+| indices | p50 | 15-21 | 4,877 | 27.8% | 1.2% | 2.8% (20%/1%) | 0.04 / 0.15 |
+| indices | p75 | 01-07 | 83,026 | 0.0% | 2.6% | 13.2% (34%/3%) | 0.06 / 0.26 |
+| indices | p75 | 08-14 | 86,350 | 1.5% | 5.0% | 11.0% (34%/5%) | 0.06 / 0.27 |
+| indices | p75 | 15-21 | 46,906 | 9.7% | 1.7% | 2.7% (14%/1%) | 0.03 / 0.12 |
+| indices | p90 | 08-14 | 86,350 | 0.2% | 19.7% | 29.5% (54%/18%) | 0.11 / 0.74 |
+| indices | p90 | 15-21 | 73,535 | 2.8% | 16.9% | 5.4% (21%/2%) | 0.04 / 0.17 |
+
+Jump splits of the jump-through rate (J2 ≥ 0.25σ, touches only). Difference = jump − no-jump, date-block 95% interval. **elevated** = interval wholly above 0 and ≥ 2pp.
+
+| class | rung | split | jump n | no-jump n | J2 jump | J2 no-jump | diff [95%] | verdict |
+|---|---|---|---|---|---|---|---|---|
+| fx_gold | p50 | bns | 6,042 | 34,070 | 14.7% | 2.9% | +11.8pp [+10.1, +13.4] | elevated |
+| fx_gold | p75 | bns | 4,268 | 20,385 | 20.0% | 4.6% | +15.3pp [+12.5, +18.4] | elevated |
+| fx_gold | p90 | bns | 2,350 | 9,811 | 19.4% | 5.1% | +14.3pp [+11.0, +17.5] | elevated |
+| indices | p50 | bns | 959 | 6,862 | 19.1% | 3.9% | +15.1pp [+11.1, +19.7] | elevated |
+| indices | p75 | bns | 834 | 5,064 | 15.6% | 2.8% | +12.8pp [+9.5, +16.3] | elevated |
+| indices | p90 | bns | 382 | 1,887 | 18.6% | 5.1% | +13.5pp [+8.3, +18.4] | elevated |
+| fx_gold | p50 | rtjump | 1,368 | 38,744 | 9.8% | 4.5% | +5.3pp [+1.7, +8.9] | elevated |
+| fx_gold | p75 | rtjump | 2,436 | 22,217 | 10.3% | 6.9% | +3.4pp [+0.7, +6.1] | elevated |
+| fx_gold | p90 | rtjump | 1,964 | 10,197 | 10.7% | 7.3% | +3.4pp [+0.5, +6.1] | elevated |
+| indices | p50 | rtjump | 156 | 7,665 | 8.3% | 5.7% | +2.6pp [-1.4, +7.4] | inside noise |
+| indices | p75 | rtjump | 583 | 5,315 | 5.3% | 4.5% | +0.8pp [-1.8, +3.7] | inside noise |
+| indices | p90 | rtjump | 385 | 1,884 | 12.2% | 6.4% | +5.8pp [-0.7, +12.7] | inside noise |
+
+J1 (runs straight through to the next line in the touch bar), same splits, p75 touches:
+
+| class | split | J1 jump | J1 no-jump | diff [95%] |
+|---|---|---|---|---|
+| fx_gold | bns | 14.1% | 2.1% | +11.9pp [+9.3, +14.7] |
+| indices | bns | 9.8% | 1.2% | +8.6pp [+5.9, +11.4] |
+| fx_gold | rtjump | 4.5% | 4.2% | +0.3pp [-1.2, +1.9] |
+| indices | rtjump | 2.7% | 2.4% | +0.4pp [-1.8, +3.0] |
+
+By hour (p75 lines, fx_gold): touch rate and J2 ≥ 0.25σ
+
+| hour | lines | touch rate | J2 |
+|---|---|---|---|
+| 01:00 | 60,340 | 0.2% | 38.4% |
+| 02:00 | 60,344 | 0.3% | 31.4% |
+| 03:00 | 60,344 | 0.2% | 41.8% |
+| 04:00 | 60,344 | 0.1% | 12.3% |
+| 05:00 | 60,344 | 0.1% | 34.1% |
+| 06:00 | 60,344 | 0.1% | 8.4% |
+| 07:00 | 60,344 | 0.6% | 19.7% |
+| 08:00 | 60,344 | 0.8% | 13.6% |
+| 09:00 | 60,344 | 0.8% | 12.6% |
+| 10:00 | 60,344 | 0.5% | 3.9% |
+| 11:00 | 60,344 | 0.8% | 10.6% |
+| 12:00 | 60,344 | 1.5% | 10.5% |
+| 13:00 | 60,344 | 5.5% | 21.1% |
+| 14:00 | 60,344 | 6.5% | 3.2% |
+| 15:00 | 60,344 | 11.8% | 4.7% |
+| 16:00 | 43,654 | 11.7% | 1.3% |
+| 17:00 | 11,269 | 11.6% | 0.9% |
+| 18:00 | 1,552 | 13.3% | 1.4% |
+
+## Q3 what happens after a touch
+
+Race from the touch bar's close: next line out vs back level (resolved races only; pre-resolved and both-in-one-bar excluded). Baseline = placebo ladders (control lines at 0.7–0.9× / 1.1–1.3× the distances, same code, same sessions).
+
+Of 92,914 real touches: 13,328 (14.3%) closed the touch bar already past the next line or back level; 489 both-in-one-bar; 1,612 unresolved by 22:00.
+
+### Variant 1 — race to 22:00 on fixed levels (primary)
+
+| class | rung | n real | real out-share | placebo | random walk | diff [95%] |
+|---|---|---|---|---|---|---|
+| fx_gold | p50 | 33,876 | 25.2% | 26.1% | 26.1% | -0.91pp [-1.23, -0.58] |
+| fx_gold | p75 | 20,575 | 32.9% | 33.4% | 34.0% | -0.47pp [-0.94, +0.01] |
+| fx_gold | p90 | 9,484 | 48.5% | 48.4% | 50.0% | +0.07pp [-0.88, +1.03] |
+| indices | p50 | 6,838 | 28.9% | 29.7% | 29.6% | -0.78pp [-1.53, -0.09] |
+| indices | p75 | 5,101 | 34.1% | 35.0% | 32.6% | -0.87pp [-1.87, +0.06] |
+| indices | p90 | 1,611 | 52.4% | 51.4% | 50.4% | +0.95pp [-1.23, +3.17] |
+
+Cells examined: **255**; dynamics (CI excludes 0, |diff| ≥ 2pp, same sign in both halves, n ≥ 300): **7** (2.7%; chance rate at 95% ≈ 5%).
+Verdict: **PATH-NEUTRAL**.
+
+| split | cell | n real | real | placebo | diff [95%] | half 1 / half 2 |
+|---|---|---|---|---|---|---|
+| cell used×pace × hours | {'cls': 'fx_gold', 'rung': 2, 'hg': 1, 'cellu': 8} | 374 | 56.7% | 48.4% | +8.3pp [+4.3, +12.3] | +4.7 / +12.3 |
+| base × side | {'cls': 'fx_gold', 'rung': 2, 'hg': 1, 'sd': 1} | 670 | 53.9% | 49.1% | +4.8pp [+1.4, +8.3] | +3.2 / +6.6 |
+| cell used×pace × hours | {'cls': 'indices', 'rung': 0, 'hg': 2, 'cellu': 1} | 352 | 23.6% | 27.6% | -4.0pp [-7.1, -0.8] | -4.4 / -3.7 |
+| cell used×pace × hours | {'cls': 'indices', 'rung': 0, 'hg': 2, 'cellu': 5} | 367 | 24.5% | 20.8% | +3.7pp [+0.6, +6.8] | +2.7 / +4.6 |
+| big line shift (0 narrowed, 1 small, 2 widened) × hours | {'cls': 'fx_gold', 'rung': 0, 'hg': 0, 'shift': 0} | 669 | 30.6% | 33.6% | -3.0pp [-5.4, -0.6] | -3.3 / -2.7 |
+| cell used×pace | {'cls': 'fx_gold', 'rung': 1, 'cellu': 6} | 1,178 | 26.4% | 28.9% | -2.5pp [-4.1, -0.9] | -2.9 / -2.1 |
+| cell used×pace | {'cls': 'indices', 'rung': 0, 'cellu': 1} | 1,059 | 33.8% | 36.1% | -2.3pp [-4.2, -0.4] | -1.8 / -2.8 |
+
+Largest 5 cells by z (shown, whether or not they pass):
+
+| split | cell | n | diff [95%] |
+|---|---|---|---|
+| jump already today | {'cls': 'fx_gold', 'rung': 0, 'rtj': 0} | 32,780 | -1.0pp [-1.3, -0.7] |
+| big line shift (0 narrowed, 1 small, 2 widened) | {'cls': 'fx_gold', 'rung': 0, 'shift': 1} | 27,939 | -0.8pp [-1.1, -0.4] |
+| cell used×pace × hours | {'cls': 'fx_gold', 'rung': 2, 'hg': 1, 'cellu': 8} | 374 | +8.3pp [+4.3, +12.3] |
+| jump already today × hours | {'cls': 'fx_gold', 'rung': 0, 'hg': 0, 'rtj': 0} | 10,181 | -1.5pp [-2.2, -0.7] |
+| regime | {'cls': 'fx_gold', 'rung': 0, 'reg': 1} | 15,144 | -0.9pp [-1.4, -0.4] |
+
+### Variant 2 — race limited to the touch hour
+
+| class | rung | n real | real out-share | placebo | random walk | diff [95%] |
+|---|---|---|---|---|---|---|
+| fx_gold | p50 | 16,262 | 13.5% | 14.9% | 20.6% | -1.44pp [-1.77, -1.09] |
+| fx_gold | p75 | 11,059 | 25.1% | 26.6% | 29.9% | -1.44pp [-1.96, -0.91] |
+| fx_gold | p90 | 5,150 | 49.7% | 49.8% | 50.5% | -0.03pp [-1.26, +1.17] |
+| indices | p50 | 3,620 | 20.2% | 22.3% | 25.8% | -2.01pp [-3.16, -0.85] |
+| indices | p75 | 2,460 | 22.3% | 25.5% | 28.5% | -3.23pp [-4.78, -1.66] |
+| indices | p90 | 955 | 51.4% | 51.1% | 50.4% | +0.27pp [-2.43, +2.81] |
+
+Cells examined: **196**; dynamics (CI excludes 0, |diff| ≥ 2pp, same sign in both halves, n ≥ 300): **42** (21.4%; chance rate at 95% ≈ 5%).
+Verdict: **DYNAMICS FOUND**.
+
+| split | cell | n real | real | placebo | diff [95%] | half 1 / half 2 |
+|---|---|---|---|---|---|---|
+| cell used×pace | {'cls': 'indices', 'rung': 1, 'cellu': 5} | 314 | 20.7% | 27.4% | -6.7pp [-10.8, -2.6] | -5.6 / -8.1 |
+| regime × hours | {'cls': 'indices', 'rung': 1, 'hg': 2, 'reg': 2} | 567 | 15.9% | 20.6% | -4.7pp [-7.3, -2.0] | -6.3 / -4.1 |
+| regime | {'cls': 'indices', 'rung': 1, 'reg': 2} | 629 | 18.4% | 22.9% | -4.4pp [-7.3, -1.8] | -6.9 / -3.5 |
+| cell used×pace | {'cls': 'indices', 'rung': 0, 'cellu': 1} | 556 | 21.8% | 26.1% | -4.4pp [-6.8, -1.9] | -3.6 / -5.2 |
+| big line shift (0 narrowed, 1 small, 2 widened) × hours | {'cls': 'indices', 'rung': 1, 'hg': 2, 'shift': 0} | 500 | 18.2% | 22.2% | -4.0pp [-6.9, -1.3] | -5.8 / -2.2 |
+| regime | {'cls': 'indices', 'rung': 1, 'reg': 0} | 948 | 23.6% | 27.4% | -3.8pp [-6.7, -0.9] | -3.4 / -4.6 |
+| cell used×pace | {'cls': 'indices', 'rung': 0, 'cellu': 8} | 576 | 14.2% | 18.0% | -3.8pp [-6.2, -1.4] | -5.0 / -2.2 |
+| regime × hours | {'cls': 'indices', 'rung': 1, 'hg': 2, 'reg': 0} | 803 | 20.7% | 24.3% | -3.6pp [-6.1, -1.2] | -3.8 / -3.0 |
+| cell used×pace × hours | {'cls': 'fx_gold', 'rung': 0, 'hg': 0, 'cellu': 7} | 424 | 13.0% | 16.5% | -3.6pp [-6.5, -0.8] | -3.8 / -3.5 |
+| cell used×pace × hours | {'cls': 'indices', 'rung': 0, 'hg': 1, 'cellu': 8} | 551 | 12.3% | 15.9% | -3.5pp [-5.8, -1.2] | -4.9 / -1.8 |
+| regime × hours | {'cls': 'indices', 'rung': 0, 'hg': 1, 'reg': 1} | 1,071 | 19.1% | 22.7% | -3.5pp [-5.1, -1.9] | -3.8 / -3.2 |
+| big line shift (0 narrowed, 1 small, 2 widened) × hours | {'cls': 'fx_gold', 'rung': 1, 'hg': 1, 'shift': 0} | 708 | 30.8% | 34.2% | -3.5pp [-5.9, -1.0] | -3.3 / -3.9 |
+| jump already today | {'cls': 'indices', 'rung': 1, 'rtj': 0} | 2,217 | 22.3% | 25.7% | -3.4pp [-5.0, -1.8] | -3.9 / -2.8 |
+| big line shift (0 narrowed, 1 small, 2 widened) | {'cls': 'indices', 'rung': 1, 'shift': 0} | 576 | 19.4% | 22.8% | -3.4pp [-6.2, -0.7] | -4.8 / -1.8 |
+| base × side | {'cls': 'indices', 'rung': 1, 'hg': 2, 'sd': 1} | 1,206 | 21.2% | 24.6% | -3.4pp [-5.0, -1.7] | -4.6 / -2.0 |
+| regime | {'cls': 'indices', 'rung': 0, 'reg': 1} | 1,409 | 19.9% | 23.3% | -3.3pp [-4.9, -1.8] | -3.9 / -2.9 |
+| jump already today | {'cls': 'fx_gold', 'rung': 2, 'rtj': 1} | 835 | 49.1% | 45.8% | +3.3pp [+0.8, +5.8] | +3.0 / +3.5 |
+| base × side | {'cls': 'indices', 'rung': 0, 'hg': 1, 'sd': 1} | 1,360 | 21.2% | 24.4% | -3.2pp [-5.2, -1.4] | -3.5 / -2.9 |
+| cell used×pace | {'cls': 'fx_gold', 'rung': 1, 'cellu': 4} | 1,181 | 26.1% | 29.3% | -3.2pp [-5.1, -1.3] | -1.7 / -4.9 |
+| base rung×class×hours | {'cls': 'indices', 'rung': 1, 'hg': 2} | 2,097 | 19.7% | 23.0% | -3.2pp [-4.6, -2.0] | -4.0 / -2.5 |
+| big line shift (0 narrowed, 1 small, 2 widened) | {'cls': 'indices', 'rung': 1, 'shift': 1} | 1,837 | 23.4% | 26.6% | -3.2pp [-5.0, -1.4] | -3.5 / -2.8 |
+| jump already today × hours | {'cls': 'indices', 'rung': 1, 'hg': 2, 'rtj': 0} | 1,895 | 19.7% | 22.8% | -3.1pp [-4.6, -1.7] | -3.8 / -2.5 |
+| big line shift (0 narrowed, 1 small, 2 widened) × hours | {'cls': 'indices', 'rung': 1, 'hg': 2, 'shift': 1} | 1,552 | 20.4% | 23.5% | -3.1pp [-4.6, -1.7] | -3.6 / -2.6 |
+| base × side | {'cls': 'indices', 'rung': 1, 'hg': 2, 'sd': -1} | 891 | 17.7% | 20.7% | -2.9pp [-5.0, -0.7] | -2.8 / -2.9 |
+| big line shift (0 narrowed, 1 small, 2 widened) × hours | {'cls': 'indices', 'rung': 0, 'hg': 1, 'shift': 1} | 2,352 | 20.0% | 22.7% | -2.6pp [-4.1, -1.2] | -3.1 / -2.1 |
+| cell used×pace | {'cls': 'indices', 'rung': 0, 'cellu': 4} | 462 | 17.3% | 19.9% | -2.6pp [-4.9, -0.4] | -3.0 / -2.2 |
+| base × side | {'cls': 'fx_gold', 'rung': 1, 'hg': 1, 'sd': 1} | 1,543 | 34.3% | 36.9% | -2.5pp [-4.3, -0.9] | -1.2 / -4.1 |
+| cell used×pace × hours | {'cls': 'fx_gold', 'rung': 1, 'hg': 2, 'cellu': 4} | 891 | 20.5% | 23.1% | -2.5pp [-4.3, -0.7] | -1.4 / -3.6 |
+| regime × hours | {'cls': 'fx_gold', 'rung': 1, 'hg': 1, 'reg': 2} | 693 | 36.2% | 38.7% | -2.5pp [-5.1, -0.2] | -0.4 / -4.3 |
+| big line shift (0 narrowed, 1 small, 2 widened) | {'cls': 'indices', 'rung': 0, 'shift': 1} | 3,096 | 20.1% | 22.5% | -2.4pp [-3.7, -1.2] | -3.1 / -1.7 |
+| cell used×pace × hours | {'cls': 'indices', 'rung': 0, 'hg': 1, 'cellu': 4} | 458 | 16.8% | 19.2% | -2.4pp [-4.8, -0.1] | -2.1 / -2.8 |
+| base rung×class×hours | {'cls': 'indices', 'rung': 0, 'hg': 1} | 2,707 | 19.6% | 22.0% | -2.4pp [-3.7, -1.1] | -2.6 / -2.2 |
+| jump already today × hours | {'cls': 'indices', 'rung': 0, 'hg': 1, 'rtj': 0} | 2,647 | 19.6% | 22.0% | -2.4pp [-3.7, -1.1] | -2.7 / -2.1 |
+| cell used×pace | {'cls': 'fx_gold', 'rung': 0, 'cellu': 7} | 1,301 | 8.6% | 11.0% | -2.4pp [-3.6, -1.1] | -1.4 / -3.2 |
+| cell used×pace × hours | {'cls': 'fx_gold', 'rung': 1, 'hg': 1, 'cellu': 8} | 1,002 | 30.7% | 33.1% | -2.3pp [-4.6, -0.1] | -1.1 / -3.8 |
+| jump already today | {'cls': 'fx_gold', 'rung': 0, 'rtj': 1} | 684 | 18.1% | 15.8% | +2.3pp [+0.1, +4.5] | +0.5 / +4.2 |
+| jump already today | {'cls': 'fx_gold', 'rung': 1, 'rtj': 1} | 1,232 | 25.6% | 28.0% | -2.3pp [-4.6, -0.0] | -2.0 / -2.7 |
+| cell used×pace | {'cls': 'fx_gold', 'rung': 0, 'cellu': 3} | 1,200 | 7.9% | 10.1% | -2.2pp [-3.7, -0.7] | -3.1 / -1.4 |
+| cell used×pace | {'cls': 'fx_gold', 'rung': 0, 'cellu': 0} | 2,155 | 16.7% | 18.7% | -2.1pp [-3.2, -1.1] | -2.1 / -2.1 |
+| big line shift (0 narrowed, 1 small, 2 widened) | {'cls': 'fx_gold', 'rung': 1, 'shift': 0} | 3,133 | 21.4% | 23.5% | -2.1pp [-3.1, -1.0] | -1.9 / -2.2 |
+| regime × hours | {'cls': 'fx_gold', 'rung': 1, 'hg': 1, 'reg': 1} | 1,392 | 33.0% | 35.1% | -2.1pp [-3.8, -0.3] | -2.4 / -1.8 |
+| jump already today | {'cls': 'indices', 'rung': 0, 'rtj': 0} | 3,523 | 20.2% | 22.3% | -2.0pp [-3.2, -0.9] | -2.5 / -1.5 |
+
+Largest 5 cells by z (shown, whether or not they pass):
+
+| split | cell | n | diff [95%] |
+|---|---|---|---|
+| jump already today | {'cls': 'fx_gold', 'rung': 0, 'rtj': 0} | 15,578 | -1.6pp [-2.0, -1.2] |
+| jump already today × hours | {'cls': 'fx_gold', 'rung': 0, 'hg': 1, 'rtj': 0} | 12,658 | -1.5pp [-1.8, -1.1] |
+| big line shift (0 narrowed, 1 small, 2 widened) × hours | {'cls': 'fx_gold', 'rung': 0, 'hg': 1, 'shift': 1} | 10,539 | -1.4pp [-1.8, -1.1] |
+| base rung×class×hours | {'cls': 'fx_gold', 'rung': 0, 'hg': 1} | 13,063 | -1.4pp [-1.7, -1.0] |
+| big line shift (0 narrowed, 1 small, 2 widened) | {'cls': 'fx_gold', 'rung': 0, 'shift': 1} | 13,416 | -1.4pp [-1.8, -1.0] |
+
+### Variant 5a — closer placebo (±3–10% distance change), race to 22:00
+
+| class | rung | n real | real out-share | placebo | random walk | diff [95%] |
+|---|---|---|---|---|---|---|
+| fx_gold | p50 | 33,876 | 25.2% | 25.3% | 26.1% | -0.10pp [-0.28, +0.09] |
+| fx_gold | p75 | 20,575 | 32.9% | 32.8% | 34.0% | +0.07pp [-0.21, +0.35] |
+| fx_gold | p90 | 9,484 | 48.5% | 48.5% | 50.0% | -0.00pp [-0.54, +0.53] |
+| indices | p50 | 6,838 | 28.9% | 29.2% | 29.6% | -0.24pp [-0.63, +0.16] |
+| indices | p75 | 5,101 | 34.1% | 34.3% | 32.6% | -0.13pp [-0.71, +0.45] |
+| indices | p90 | 1,611 | 52.4% | 51.8% | 50.4% | +0.59pp [-0.73, +1.91] |
+
+Cells examined: **255**; dynamics (CI excludes 0, |diff| ≥ 2pp, same sign in both halves, n ≥ 300): **0** (0.0%; chance rate at 95% ≈ 5%).
+Verdict: **PATH-NEUTRAL**.
+
+### Variant 5b — closer placebo, race limited to the touch hour
+
+| class | rung | n real | real out-share | placebo | random walk | diff [95%] |
+|---|---|---|---|---|---|---|
+| fx_gold | p50 | 16,262 | 13.5% | 13.6% | 20.6% | -0.13pp [-0.35, +0.07] |
+| fx_gold | p75 | 11,059 | 25.1% | 25.3% | 29.9% | -0.16pp [-0.54, +0.22] |
+| fx_gold | p90 | 5,150 | 49.7% | 49.8% | 50.5% | -0.08pp [-0.82, +0.60] |
+| indices | p50 | 3,620 | 20.2% | 20.9% | 25.8% | -0.70pp [-1.29, -0.11] |
+| indices | p75 | 2,460 | 22.3% | 22.6% | 28.5% | -0.27pp [-1.02, +0.47] |
+| indices | p90 | 955 | 51.4% | 50.7% | 50.4% | +0.68pp [-1.25, +2.48] |
+
+Cells examined: **196**; dynamics (CI excludes 0, |diff| ≥ 2pp, same sign in both halves, n ≥ 300): **2** (1.0%; chance rate at 95% ≈ 5%).
+Verdict: **PATH-NEUTRAL**.
+
+## Q4 reach odds on jump days (test period)
+
+The reach table is **calibrated** on a split if the realised share is within ±5pp of implied (LINE_TOUCH_REACH's rule, n ≥ 200).
+
+By BNS jump day (end-of-day flag — descriptive)
+
+| class | split | p75 exceed (25%) | p90 exceed (10%) | p50→p75 (50%) | p75→p90 (40%) | n touched p75 |
+|---|---|---|---|---|---|---|
+| fx_gold | no jump day | 23.3% [22.7%, 24.0%] | 9.0% [8.5%, 9.5%] | 47.4% [46.3%, 48.5%] | 38.1% [36.9%, 39.4%] | 193,383 |
+| fx_gold | jump day | 28.2% [26.9%, 29.7%] | 12.9% [11.8%, 13.9%] | 56.3% [54.4%, 58.2%] | 47.9% [45.5%, 50.3%] | 37,602 |
+| indices | no jump day | 26.9% [25.8%, 28.0%] | 10.5% [9.8%, 11.2%] | 52.0% [50.4%, 53.6%] | 39.5% [37.8%, 41.0%] | 51,282 |
+| indices | jump day | 33.2% [30.6%, 35.9%] | 16.5% [14.4%, 18.6%] | 61.5% [57.2%, 65.7%] | 50.8% [46.5%, 54.6%] | 8,510 |
+
+By a jump already today at the redraw (real time)
+
+| class | split | p75 exceed (25%) | p90 exceed (10%) | p50→p75 (50%) | p75→p90 (40%) | n touched p75 |
+|---|---|---|---|---|---|---|
+| fx_gold | none yet | 24.2% [23.5%, 24.9%] | 9.5% [9.0%, 10.1%] | 48.7% [47.6%, 49.8%] | 39.6% [38.4%, 40.8%] | 223,032 |
+| fx_gold | jump so far | 20.4% [18.7%, 22.2%] | 9.0% [7.9%, 10.3%] | 49.3% [44.7%, 53.9%] | 43.5% [39.5%, 47.4%] | 7,953 |
+| indices | none yet | 27.8% [26.6%, 29.0%] | 11.3% [10.5%, 12.0%] | 53.2% [51.5%, 54.8%] | 41.1% [39.5%, 42.6%] | 58,373 |
+| indices | jump so far | 22.9% [19.6%, 26.0%] | 10.1% [7.8%, 12.5%] | 58.0% [47.2%, 66.7%] | 41.1% [33.3%, 48.8%] | 1,419 |
+
+By a jump in the last hour before the redraw
+
+| class | split | p75 exceed (25%) | p90 exceed (10%) | p50→p75 (50%) | p75→p90 (40%) | n touched p75 |
+|---|---|---|---|---|---|---|
+| fx_gold | no | 24.0% [23.3%, 24.8%] | 9.5% [9.0%, 10.0%] | 48.7% [47.6%, 49.8%] | 39.7% [38.5%, 40.9%] | 229,210 |
+| fx_gold | yes | 24.6% [22.9%, 26.4%] | 12.9% [11.6%, 14.3%] | 53.1% [48.7%, 57.2%] | 48.2% [44.4%, 51.8%] | 1,775 |
+| indices | no | 27.7% [26.5%, 28.8%] | 11.2% [10.4%, 11.9%] | 53.2% [51.5%, 54.9%] | 41.1% [39.4%, 42.6%] | 59,449 |
+| indices | yes | 25.5% [22.0%, 28.9%] | 15.1% [11.7%, 18.2%] | 56.7% [46.0%, 66.5%] (n<200) | 48.1% [37.7%, 57.1%] | 343 |
+
+### Would a jump-state adjustment fix the p75→p90 odds?
+
+Train-period realised p75→p90 share (in-sample context): fx_gold/jump=0: 39.8%, fx_gold/jump=1: 45.1%, indices/jump=0: 39.9%, indices/jump=1: 47.2%
+Log-loss change per row on test, state-conditional vs flat 40%: -0.00003 [-0.00028, +0.00020] (negative = better).
+
+Variant 6 - keyed on a jump in the last hour: train p75->p90 share fx_gold/jump=0: 40.0%, fx_gold/jump=1: 49.1%, indices/jump=0: 40.1%, indices/jump=1: 48.7%
+Log-loss change per row on test: -0.00011 [-0.00021, -0.00001] (negative = better).
+
+## Q5 how the lines move at each redraw (test period)
+
+Re-estimate shift = change in a line's offset from the running extreme vs the previous hour (σ). Medians of |shift|, by hour group and class; then after a big move in the last hour (a 5-minute return ≥ 0.5σ).
+
+| class | hours | rung | median abs shift | p90 abs shift | after a last-hour jump: median | p90 |
+|---|---|---|---|---|---|---|
+| fx_gold | 01-07 | p50 | 0.038 | 0.102 | 0.096 | 0.182 |
+| fx_gold | 01-07 | p75 | 0.046 | 0.102 | 0.086 | 0.116 |
+| fx_gold | 01-07 | p90 | 0.052 | 0.123 | 0.050 | 0.099 |
+| fx_gold | 08-14 | p50 | 0.035 | 0.096 | 0.037 | 0.197 |
+| fx_gold | 08-14 | p75 | 0.065 | 0.141 | 0.081 | 0.164 |
+| fx_gold | 08-14 | p90 | 0.084 | 0.201 | 0.063 | 0.121 |
+| fx_gold | 15-21 | p50 | 0.000 | 0.000 | 0.000 | 0.000 |
+| fx_gold | 15-21 | p75 | 0.000 | 0.113 | 0.068 | 0.140 |
+| fx_gold | 15-21 | p90 | 0.069 | 0.182 | 0.093 | 0.206 |
+| indices | 01-07 | p50 | 0.034 | 0.082 | 0.043 | 0.080 |
+| indices | 01-07 | p75 | 0.054 | 0.158 | 0.058 | 0.169 |
+| indices | 01-07 | p90 | 0.092 | 0.240 | 0.090 | 0.431 |
+| indices | 08-14 | p50 | 0.038 | 0.123 | 0.135 | 0.217 |
+| indices | 08-14 | p75 | 0.050 | 0.160 | 0.117 | 0.234 |
+| indices | 08-14 | p90 | 0.069 | 0.236 | 0.082 | 0.237 |
+| indices | 15-21 | p50 | 0.000 | 0.070 | 0.000 | 0.086 |
+| indices | 15-21 | p75 | 0.055 | 0.209 | 0.071 | 0.225 |
+| indices | 15-21 | p90 | 0.121 | 0.384 | 0.126 | 0.250 |
+
+Big p75 shift = top decile of |shift| in the class. Does it predict reach? (shares over rows where the line was drawn)
+
+| class | bucket | rows | p75 exceed (25%) | p75→p90 (40%) |
+|---|---|---|---|---|
+| fx_gold | widened (top-decile push-out) | 1,357 | 17.8% [15.4%, 20.1%] | 32.8% [27.1%, 39.2%] (n 241) |
+| fx_gold | narrowed (top-decile pull-in) | 131,931 | 25.2% [24.6%, 25.9%] | 39.6% [38.4%, 40.7%] (n 33,292) |
+| fx_gold | small | 767,999 | 23.8% [23.1%, 24.5%] | 39.7% [38.4%, 41.0%] (n 182,483) |
+| indices | widened (top-decile push-out) | 4,307 | 20.4% [18.3%, 22.7%] | 33.2% [28.8%, 37.5%] (n 879) |
+| indices | narrowed (top-decile pull-in) | 25,852 | 29.3% [28.0%, 30.5%] | 42.1% [40.4%, 43.8%] (n 7,572) |
+| indices | small | 173,787 | 27.6% [26.4%, 28.8%] | 41.1% [39.4%, 42.7%] (n 48,033) |
+
+## Q6 costs
+
+Default spread ÷ 1σ-daily by class (the execution-feasibility proxy; > 0.15 = dead):
+
+| class | median | max | instruments > 0.15 |
+|---|---|---|---|
+| fx_gold | 0.016 | 0.030 | 0 of 28 |
+| indices | 0.024 | 0.073 | 0 of 6 |
+
+Dynamic cells (variant 1), traded in the direction of the diff (continue if +, fade if -): gross edge sigma per touch = |diff| x the cell mean (a + b), net of the median spread. These cells were picked on the same test data from 255 examined, so they are selection-biased upward.
+
+- cell used×pace × hours {'cls': 'fx_gold', 'rung': 2, 'hg': 1, 'cellu': 8}: +8.3pp x 0.97sigma = 0.081 gross; spread 0.016 -> net +0.064 per touch (n 374)
+- base × side {'cls': 'fx_gold', 'rung': 2, 'hg': 1, 'sd': 1}: +4.8pp x 0.78sigma = 0.037 gross; spread 0.016 -> net +0.021 per touch (n 670)
+- cell used×pace × hours {'cls': 'indices', 'rung': 0, 'hg': 2, 'cellu': 1}: -4.0pp x 0.40sigma = 0.016 gross; spread 0.016 -> net -0.000 per touch (n 352)
+- cell used×pace × hours {'cls': 'indices', 'rung': 0, 'hg': 2, 'cellu': 5}: +3.7pp x 0.44sigma = 0.016 gross; spread 0.016 -> net +0.000 per touch (n 367)
+- big line shift (0 narrowed, 1 small, 2 widened) × hours {'cls': 'fx_gold', 'rung': 0, 'hg': 0, 'shift': 0}: -3.0pp x 0.68sigma = 0.020 gross; spread 0.016 -> net +0.004 per touch (n 669)
+- cell used×pace {'cls': 'fx_gold', 'rung': 1, 'cellu': 6}: -2.5pp x 0.51sigma = 0.013 gross; spread 0.016 -> net -0.004 per touch (n 1,178)
+- cell used×pace {'cls': 'indices', 'rung': 0, 'cellu': 1}: -2.3pp x 0.52sigma = 0.012 gross; spread 0.016 -> net -0.004 per touch (n 1,059)
+
+## Variant 4 — shipped (all-data, D1-σ-basis) params vs refit, same test period
+
+| class | params | p75 exceed (25%) | p90 exceed (10%) | p75→p90 (40%) | p50→p75 (50%) |
+|---|---|---|---|---|---|
+| fx_gold | refit on first 60% | 24.0% | 9.5% | 39.7% | 48.7% |
+| fx_gold | shipped | 21.5% | 8.0% | 35.9% | 45.1% |
+| indices | refit on first 60% | 27.6% | 11.2% | 41.1% | 53.2% |
+| indices | shipped | 24.2% | 9.2% | 37.8% | 48.4% |
+wrote results

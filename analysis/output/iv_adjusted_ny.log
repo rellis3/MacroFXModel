@@ -1,0 +1,39 @@
+NQ indices, 2584 sessions, 2016-08-22 to 2026-08-21
+SPX indices, 2584 sessions, 2016-08-22 to 2026-08-21
+DOW indices, 2584 sessions, 2016-08-22 to 2026-08-21
+US2000 indices, 2584 sessions, 2016-08-22 to 2026-08-21
+DE30 indices, 2540 sessions, 2016-08-22 to 2026-08-20
+UK100 indices, 2526 sessions, 2016-08-22 to 2026-08-20
+EURUSD fx_major, 1565 sessions, 2020-09-09 to 2026-08-21
+GBPUSD fx_major, 1565 sessions, 2020-09-09 to 2026-08-21
+AUDUSD fx_major, 1565 sessions, 2020-09-09 to 2026-08-21
+USDJPY fx_major, 1565 sessions, 2020-09-09 to 2026-08-21
+USDCAD fx_major, 1565 sessions, 2020-09-09 to 2026-08-21
+USDCHF fx_major, 1565 sessions, 2020-09-09 to 2026-08-21
+GOLD fx_major, 2581 sessions, 2016-08-22 to 2026-08-21
+AUDCAD crosses, 1565 sessions, 2020-09-09 to 2026-08-21
+AUDCHF crosses, 1565 sessions, 2020-09-09 to 2026-08-21
+AUDJPY crosses, 1569 sessions, 2020-09-09 to 2026-08-21
+CADCHF crosses, 1564 sessions, 2020-09-09 to 2026-08-21
+CADJPY crosses, 1565 sessions, 2020-09-09 to 2026-08-21
+CHFJPY crosses, 1565 sessions, 2020-09-09 to 2026-08-21
+EURAUD crosses, 1565 sessions, 2020-09-09 to 2026-08-21
+EURCAD crosses, 1565 sessions, 2020-09-09 to 2026-08-21
+EURCHF crosses, 1565 sessions, 2020-09-09 to 2026-08-21
+EURGBP crosses, 1565 sessions, 2020-09-09 to 2026-08-21
+EURJPY crosses, 1565 sessions, 2020-09-09 to 2026-08-21
+GBPAUD crosses, 1565 sessions, 2020-09-09 to 2026-08-21
+GBPCAD crosses, 1565 sessions, 2020-09-09 to 2026-08-21
+GBPCHF crosses, 1565 sessions, 2020-09-09 to 2026-08-21
+GBPJPY crosses, 1565 sessions, 2020-09-09 to 2026-08-21
+
+indices: k_train 0.655 k_all 0.676  median B/A 0.9223 better 100%  pass=True
+   [{'inst': 'DE30', 'ratio': 0.934}, {'inst': 'DOW', 'ratio': 0.8953}, {'inst': 'NQ', 'ratio': 0.9197}, {'inst': 'SPX', 'ratio': 0.9137}, {'inst': 'UK100', 'ratio': 0.9345}, {'inst': 'US2000', 'ratio': 0.9248}]
+
+fx_major: k_train 0.784 k_all 0.760  median B/A 0.9527 better 100%  pass=True
+   [{'inst': 'AUDUSD', 'ratio': 0.9359}, {'inst': 'EURUSD', 'ratio': 0.9574}, {'inst': 'GBPUSD', 'ratio': 0.9594}, {'inst': 'GOLD', 'ratio': 0.9208}, {'inst': 'USDCAD', 'ratio': 0.927}, {'inst': 'USDCHF', 'ratio': 0.9527}, {'inst': 'USDJPY', 'ratio': 0.9668}]
+
+crosses: k_train 0.641 k_all 0.648  median B/A 0.9692 better 100%  pass=True
+   [{'inst': 'AUDCAD', 'ratio': 0.9365}, {'inst': 'AUDCHF', 'ratio': 0.9523}, {'inst': 'AUDJPY', 'ratio': 0.9692}, {'inst': 'CADCHF', 'ratio': 0.92}, {'inst': 'CADJPY', 'ratio': 0.9631}, {'inst': 'CHFJPY', 'ratio': 0.9743}, {'inst': 'EURAUD', 'ratio': 0.9752}, {'inst': 'EURCAD', 'ratio': 0.9648}, {'inst': 'EURCHF', 'ratio': 0.9806}, {'inst': 'EURGBP', 'ratio': 0.9758}, {'inst': 'EURJPY', 'ratio': 0.9806}, {'inst': 'GBPAUD', 'ratio': 0.944}, {'inst': 'GBPCAD', 'ratio': 0.9712}, {'inst': 'GBPCHF', 'ratio': 0.9522}, {'inst': 'GBPJPY', 'ratio': 0.9764}]
+us_extras (joint vs IV-only, live-type): median 0.9675, better 3/4 [{'inst': 'DOW', 'ratio': 0.9837}, {'inst': 'NQ', 'ratio': 0.9512}, {'inst': 'SPX', 'ratio': 0.9362}, {'inst': 'US2000', 'ratio': 1.013}]
+wrote js\forecastLadderIvAdjParamsNY.js analysis\output\iv_adjusted\CALIBRATION_NY.md

@@ -1,0 +1,98 @@
+{
+ "NQ": {
+  "ratio_median": 1.021,
+  "ratio_p10": 0.967,
+  "ratio_p90": 1.101,
+  "hl_exceed_oanda": [
+   50.2,
+   25.4,
+   10.2
+  ],
+  "hl_exceed_yahoo": [
+   47.5,
+   23.1,
+   8.8
+  ],
+  "n": 2197
+ },
+ "SPX500": {
+  "ratio_median": 0.783,
+  "ratio_p10": 0.654,
+  "ratio_p90": 0.896,
+  "hl_exceed_oanda": [
+   50.9,
+   25.6,
+   10.5
+  ],
+  "hl_exceed_yahoo": [
+   73.2,
+   48.4,
+   23.2
+  ],
+  "n": 2198
+ },
+ "US30": {
+  "ratio_median": 0.812,
+  "ratio_p10": 0.677,
+  "ratio_p90": 0.918,
+  "hl_exceed_oanda": [
+   50.3,
+   25.5,
+   10.1
+  ],
+  "hl_exceed_yahoo": [
+   71.0,
+   46.3,
+   21.3
+  ],
+  "n": 2198
+ },
+ "US2000": {
+  "ratio_median": 0.725,
+  "ratio_p10": 0.629,
+  "ratio_p90": 0.816,
+  "hl_exceed_oanda": [
+   50.6,
+   25.2,
+   10.5
+  ],
+  "hl_exceed_yahoo": [
+   82.5,
+   58.1,
+   32.1
+  ],
+  "n": 2198
+ },
+ "DE30": {
+  "ratio_median": 0.82,
+  "ratio_p10": 0.709,
+  "ratio_p90": 0.908,
+  "hl_exceed_oanda": [
+   50.3,
+   25.5,
+   10.0
+  ],
+  "hl_exceed_yahoo": [
+   71.5,
+   44.7,
+   20.2
+  ],
+  "n": 2167
+ },
+ "UK100": {
+  "ratio_median": 0.856,
+  "ratio_p10": 0.745,
+  "ratio_p90": 0.957,
+  "hl_exceed_oanda": [
+   50.2,
+   24.6,
+   10.0
+  ],
+  "hl_exceed_yahoo": [
+   68.2,
+   40.0,
+   18.4
+  ],
+  "n": 2151
+ }
+}

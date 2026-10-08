@@ -1,0 +1,53 @@
+{
+ "layer3": {
+  "point_miss30": {
+   "A0": 2.79,
+   "A2": 1.21,
+   "A3": 1.48,
+   "A4": 2.11
+  },
+  "best_of_n_se": 1.03,
+  "margins": {
+   "A0": {
+    "margin_pp": 1.58,
+    "se": 0.45,
+    "z": 2.77,
+    "z_after_selection": 1.74
+   },
+   "A3": {
+    "margin_pp": 0.26,
+    "se": 0.19,
+    "z": 1.17,
+    "z_after_selection": 0.14
+   },
+   "A4": {
+    "margin_pp": 0.89,
+    "se": 0.32,
+    "z": 2.24,
+    "z_after_selection": 1.21
+   }
+  }
+ },
+ "search_counts": {
+  "layer3 ladder \u03c3 arms": 5,
+  "layer4 path-map variants": 3,
+  "layer5 remaining-travel models": 6,
+  "layer6 confidence models": 2,
+  "layer7 stop-risk variants": 1,
+  "vol-target sizing arms": 5
+ },
+ "ic": {
+  "layer 3 live estimator: \u03c3 vs realised range": 0.288,
+  "layer 3 HAR-800: \u03c3 vs realised range": 0.377,
+  "layer 5 R3: forecast vs realised travel (up)": 0.415,
+  "layer 5 R3: forecast vs realised travel (down)": 0.409,
+  "layer 6 M2: reach p50 (2\u00b7AUC \u2212 1)": 0.136,
+  "layer 6 M2: reach p75 (2\u00b7AUC \u2212 1)": 0.186
+ },
+ "breadth": {
+  "instruments": 28,
+  "mean_pairwise_corr_of_forecast_errors": 0.465,
+  "effective_independent_per_day": 2.1,
+  "effective_per_year": 520
+ }
+}

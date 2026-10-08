@@ -2,175 +2,175 @@
  "check": {
   "indices": {
    "split": "2022-08-23",
-   "k_train": 0.616,
-   "k_all": 0.634,
-   "median_ratio": 0.9317,
+   "k_train": 0.655,
+   "k_all": 0.676,
+   "median_ratio": 0.9223,
    "share_better": 1.0,
    "pass": true,
    "per": [
     {
      "inst": "DE30",
-     "ratio": 0.9327
+     "ratio": 0.934
     },
     {
      "inst": "DOW",
-     "ratio": 0.911
+     "ratio": 0.8953
     },
     {
      "inst": "NQ",
-     "ratio": 0.9301
+     "ratio": 0.9197
     },
     {
      "inst": "SPX",
-     "ratio": 0.9308
+     "ratio": 0.9137
     },
     {
      "inst": "UK100",
-     "ratio": 0.9336
+     "ratio": 0.9345
     },
     {
      "inst": "US2000",
-     "ratio": 0.9416
+     "ratio": 0.9248
     }
    ]
   },
   "fx_major": {
    "split": "2024-01-15",
-   "k_train": 0.791,
-   "k_all": 0.762,
-   "median_ratio": 0.9382,
+   "k_train": 0.784,
+   "k_all": 0.76,
+   "median_ratio": 0.9527,
    "share_better": 1.0,
    "pass": true,
    "per": [
     {
      "inst": "AUDUSD",
-     "ratio": 0.9243
+     "ratio": 0.9359
     },
     {
      "inst": "EURUSD",
-     "ratio": 0.9508
+     "ratio": 0.9574
     },
     {
      "inst": "GBPUSD",
-     "ratio": 0.9382
+     "ratio": 0.9594
     },
     {
      "inst": "GOLD",
-     "ratio": 0.9188
+     "ratio": 0.9208
     },
     {
      "inst": "USDCAD",
-     "ratio": 0.9221
+     "ratio": 0.927
     },
     {
      "inst": "USDCHF",
-     "ratio": 0.9385
+     "ratio": 0.9527
     },
     {
      "inst": "USDJPY",
-     "ratio": 0.9746
+     "ratio": 0.9668
     }
    ]
   },
   "crosses": {
    "split": "2024-04-03",
-   "k_train": 0.64,
-   "k_all": 0.645,
-   "median_ratio": 0.9649,
+   "k_train": 0.641,
+   "k_all": 0.648,
+   "median_ratio": 0.9692,
    "share_better": 1.0,
    "pass": true,
    "per": [
     {
      "inst": "AUDCAD",
-     "ratio": 0.9329
+     "ratio": 0.9365
     },
     {
      "inst": "AUDCHF",
-     "ratio": 0.957
+     "ratio": 0.9523
     },
     {
      "inst": "AUDJPY",
-     "ratio": 0.9623
+     "ratio": 0.9692
     },
     {
      "inst": "CADCHF",
-     "ratio": 0.9142
+     "ratio": 0.92
     },
     {
      "inst": "CADJPY",
-     "ratio": 0.9649
+     "ratio": 0.9631
     },
     {
      "inst": "CHFJPY",
-     "ratio": 0.9803
+     "ratio": 0.9743
     },
     {
      "inst": "EURAUD",
-     "ratio": 0.9785
+     "ratio": 0.9752
     },
     {
      "inst": "EURCAD",
-     "ratio": 0.9655
+     "ratio": 0.9648
     },
     {
      "inst": "EURCHF",
-     "ratio": 0.9839
+     "ratio": 0.9806
     },
     {
      "inst": "EURGBP",
-     "ratio": 0.9765
+     "ratio": 0.9758
     },
     {
      "inst": "EURJPY",
-     "ratio": 0.9829
+     "ratio": 0.9806
     },
     {
      "inst": "GBPAUD",
-     "ratio": 0.9368
+     "ratio": 0.944
     },
     {
      "inst": "GBPCAD",
-     "ratio": 0.9628
+     "ratio": 0.9712
     },
     {
      "inst": "GBPCHF",
-     "ratio": 0.9508
+     "ratio": 0.9522
     },
     {
      "inst": "GBPJPY",
-     "ratio": 0.9731
+     "ratio": 0.9764
     }
    ]
   },
   "us_extras": {
    "split": "2022-08-23",
-   "median_ratio": 0.9654,
+   "median_ratio": 0.9675,
    "share_better": 0.75,
    "pass": true,
    "coef_train": {
-    "x": 0.7277,
-    "vix_inv": 0.1276,
-    "front_dear": 0.074,
-    "front_calm": -0.147,
-    "all_down": 0.0348,
-    "nq_dw": 0.1372
+    "x": 0.7625,
+    "vix_inv": 0.1372,
+    "front_dear": 0.0873,
+    "front_calm": -0.156,
+    "all_down": 0.0242,
+    "nq_dw": 0.1285
    },
    "per": [
     {
      "inst": "DOW",
-     "ratio": 0.9781
+     "ratio": 0.9837
     },
     {
      "inst": "NQ",
-     "ratio": 0.9527
+     "ratio": 0.9512
     },
     {
      "inst": "SPX",
-     "ratio": 0.9411
+     "ratio": 0.9362
     },
     {
      "inst": "US2000",
-     "ratio": 1.0143
+     "ratio": 1.013
     }
    ],
    "k_train": null,

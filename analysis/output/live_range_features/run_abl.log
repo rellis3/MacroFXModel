@@ -1,0 +1,33 @@
+# LIVE-RANGE-FEATURES variant 2 — geometry vs indicators
+
+Pre-registration Amendment 1. Brier skill vs the geometry-only model G0 (hour, range used, pace, side, price's distance from the running extreme in σ). Models fitted on a random 40% of train rows.
+
+| class | G0 vs base (geometry alone) | G1 vs G0 (indicators beyond geometry) [95%] | verdict |
+|---|---|---|---|
+| fx_gold | +23.41% | +0.42% [+0.31%, +0.54%] | geometry explains it |
+| indices | +20.87% | +0.28% [+0.06%, +0.50%] | geometry explains it |
+
+What each family adds on top of everything else (full model Brier skill over the same model with that family removed):
+
+| class | family | gain [95%] |
+|---|---|---|
+| fx_gold | VWAP | -0.01% [-0.02%, +0.00%] |
+| fx_gold | ROC + accel | -0.01% [-0.03%, +0.00%] |
+| fx_gold | WaveTrend | +0.01% [-0.01%, +0.03%] |
+| fx_gold | RSI | +0.01% [-0.00%, +0.02%] |
+| fx_gold | timing (weekday, age) | +0.27% [+0.17%, +0.37%] |
+| fx_gold | relative volume | +0.07% [+0.03%, +0.11%] |
+| indices | VWAP | +0.00% [-0.06%, +0.08%] |
+| indices | ROC + accel | +0.00% [-0.05%, +0.06%] |
+| indices | WaveTrend | -0.01% [-0.07%, +0.05%] |
+| indices | RSI | +0.06% [+0.01%, +0.11%] |
+| indices | timing (weekday, age) | +0.11% [-0.06%, +0.29%] |
+| indices | relative volume | +0.15% [+0.01%, +0.29%] |
+
+## Target R (remaining range): combined indicator model vs a geometry model (hour, used, pace, position extremity)
+
+| class | pinball: G1 ÷ G0 (median across instruments, hours 02-21) | instruments where G1 beats G0 |
+|---|---|---|
+| fx_gold | 0.991 | 100% |
+| indices | 0.998 | 100% |
+wrote

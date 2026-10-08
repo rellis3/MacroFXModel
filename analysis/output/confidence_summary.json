@@ -1,0 +1,96 @@
+{
+ "generated": "2026-10-06",
+ "spec": "forge/CONFIDENCE_PREREG.md",
+ "models": {
+  "M1": {
+   "val_p50": {
+    "bss": 0.0086,
+    "ci": [
+     0.005,
+     0.0124
+    ],
+    "max_decile_miss": 1.32,
+    "auc": 0.5498
+   },
+   "test_p50": {
+    "bss": 0.0061,
+    "ci": [
+     0.0031,
+     0.0091
+    ],
+    "max_decile_miss": 2.92,
+    "auc": 0.5461
+   },
+   "val_p75": {
+    "bss": 0.0137,
+    "ci": [
+     0.0081,
+     0.0197
+    ],
+    "max_decile_miss": 2.59,
+    "auc": 0.5669
+   },
+   "test_p75": {
+    "bss": 0.01,
+    "ci": [
+     0.0061,
+     0.0138
+    ],
+    "max_decile_miss": 3.04,
+    "auc": 0.5653
+   },
+   "pass": false
+  },
+  "M2": {
+   "val_p50": {
+    "bss": 0.0148,
+    "ci": [
+     0.0105,
+     0.0195
+    ],
+    "max_decile_miss": 0.39,
+    "auc": 0.5652
+   },
+   "test_p50": {
+    "bss": 0.0145,
+    "ci": [
+     0.0108,
+     0.0188
+    ],
+    "max_decile_miss": 2.75,
+    "auc": 0.5679
+   },
+   "val_p75": {
+    "bss": 0.0208,
+    "ci": [
+     0.0136,
+     0.0284
+    ],
+    "max_decile_miss": 0.61,
+    "auc": 0.5834
+   },
+   "test_p75": {
+    "bss": 0.0206,
+    "ci": [
+     0.0153,
+     0.0262
+    ],
+    "max_decile_miss": 3.37,
+    "auc": 0.5931
+   },
+   "pass": false
+  }
+ },
+ "chosen_on_validation": "M2",
+ "importance_pct_of_base_brier": {
+  "time of day": 3.626,
+  "regime": 0.012,
+  "implied vol \u00f7 \u03c3": 0.693,
+  "range used so far": 0.422,
+  "realised vol so far": 3.229,
+  "price vs open": 0.033,
+  "distance from running extreme": 0.032,
+  "yesterday's range": 0.022,
+  "day of week": 0.573
+ }
+}
