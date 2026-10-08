@@ -17,3 +17,18 @@ one trade per instrument-day, ~2/week frozen on discovery. Holdout 2022-06-24 to
   RSI ~80, volume 1.6x), 86% fades. Gross is similar across lines and hours 7-15 UTC.
 - Artifacts found on the way (recorded in the pre-reg): post-news-spike bars (+0.52R) and the 21:00-23:59 UTC rollover window (+0.50R).
 - Caveats: M1 intrabar order assumed (slightly optimistic); 651 model fits; costs are an assumption (spread data not in M1).
+
+## Cost phase (forge/LINE_TOUCH_COST_PREREG.md): per-instrument spread at 2x the table, stop width 0.10 / 0.20 / 0.30
+
+Score = predicted gross R minus the trade's known cost in R; ~2 trades/week frozen on discovery.
+
+| width | discovery gross | discovery net x2 | holdout n (per week) | holdout gross | holdout net x2 | 95% interval | halves |
+|---|---|---|---|---|---|---|---|
+| 0.10 | +0.054 | -0.058 | 1056 (4.9) | +0.079 | -0.023 | [-0.10, +0.05] | -0.028 / -0.022 |
+| **0.20 (chosen on discovery)** | +0.035 | -0.035 | 117 (0.54) | +0.176 | +0.131 | [-0.09, +0.36] | -0.174 / +0.222 |
+| 0.30 | -0.013 | -0.096 | 23 (0.11) | -0.182 | -0.220 | [-0.66, +0.21] | -0.18 / -0.23 |
+
+Chosen width 0.20: **pass rule FAILS** (interval includes zero, first half negative, 0.54 trades/week < 1, 8 of 11 traded instruments positive).
+Frozen c does not transfer in scale to the holdout (0.54/week vs 2/week), so holdout counts differ by width. Placebo not run (rule already failed).
+Selecting on net cost shrinks the gross edge (+0.21R cost-blind -> +0.05R): the model had been leaning on high-cost trades.
+Only a forward record with real server spreads (spread_profile_v1) can decide; spreads here are the repo's table at 2x, crosses estimated.
