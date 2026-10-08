@@ -1,0 +1,212 @@
+{
+ "R1_primary_K4": {
+  "K": 4,
+  "H": 4,
+  "n": 11240,
+  "days": 134,
+  "pooled": {
+   "b": [
+    0.1859,
+    0.0367,
+    0.3419
+   ],
+   "c": [
+    0.0147,
+    -0.0522,
+    0.0768
+   ]
+  },
+  "halves_b": [
+   0.1791,
+   0.2014
+  ],
+  "half_split": "2026-07-22",
+  "by_target_b": {
+   "EUR_USD": 0.2064,
+   "NAS100_USD": 0.1933,
+   "SPX500_USD": 0.218,
+   "USD_JPY": 0.1693,
+   "XAU_USD": 0.1719
+  },
+  "gap_trade": {
+   "n": 935,
+   "mean_net_bp": 0.45,
+   "hit": 0.4973
+  },
+  "placebo": {
+   "median": 0.015,
+   "p95": 0.5179,
+   "real_beats_pct": 68.5
+  },
+  "checks": {
+   "b_ci_above_0": true,
+   "both_halves": true,
+   "targets_3_of_5": true,
+   "beats_placebo_95": false
+  },
+  "pass": false,
+  "same_bar_corr": {
+   "NAS100_USD~SR3Z6": 0.2146,
+   "NAS100_USD~SR3H7": 0.2325,
+   "SPX500_USD~SR3Z6": 0.2707,
+   "SPX500_USD~SR3H7": 0.2988,
+   "USD_JPY~SR3Z6": -0.2783,
+   "USD_JPY~SR3H7": -0.3106,
+   "XAU_USD~SR3Z6": 0.3817,
+   "XAU_USD~SR3H7": 0.4094,
+   "EUR_USD~SR3Z6": 0.4338,
+   "EUR_USD~IZ6": 0.2767
+  }
+ },
+ "R1_secondary_K16": {
+  "K": 16,
+  "H": 16,
+  "n": 1978,
+  "days": 112,
+  "pooled": {
+   "b": [
+    0.1686,
+    -0.1821,
+    0.4801
+   ],
+   "c": [
+    0.0641,
+    -0.0535,
+    0.1603
+   ]
+  },
+  "halves_b": [
+   0.1988,
+   0.22
+  ],
+  "half_split": "2026-07-22",
+  "by_target_b": {
+   "EUR_USD": 0.064,
+   "NAS100_USD": 0.4632,
+   "SPX500_USD": 0.4522,
+   "USD_JPY": 0.0357,
+   "XAU_USD": 0.1488
+  },
+  "gap_trade": {
+   "n": 158,
+   "mean_net_bp": -9.51,
+   "hit": 0.443
+  },
+  "placebo": {
+   "median": 0.0632,
+   "p95": 1.6644,
+   "real_beats_pct": 54.5
+  },
+  "checks": {
+   "b_ci_above_0": false,
+   "both_halves": true,
+   "targets_3_of_5": true,
+   "beats_placebo_95": false
+  },
+  "pass": false,
+  "same_bar_corr": {
+   "NAS100_USD~SR3Z6": 0.2146,
+   "NAS100_USD~SR3H7": 0.2325,
+   "SPX500_USD~SR3Z6": 0.2707,
+   "SPX500_USD~SR3H7": 0.2988,
+   "USD_JPY~SR3Z6": -0.2783,
+   "USD_JPY~SR3H7": -0.3106,
+   "XAU_USD~SR3Z6": 0.3817,
+   "XAU_USD~SR3H7": 0.4094,
+   "EUR_USD~SR3Z6": 0.4338,
+   "EUR_USD~IZ6": 0.2767
+  }
+ },
+ "R2": {
+  "NAS100_USD~SR3H7": {
+   "same_bar": [
+    0.2325,
+    0.1854,
+    0.2768
+   ],
+   "rates_leads_1": [
+    0.0192,
+    -0.0062,
+    0.0458
+   ],
+   "price_leads_1": [
+    -0.0017,
+    -0.0271,
+    0.0244
+   ],
+   "rates_leads_2": [
+    0.0139,
+    -0.0088,
+    0.0386
+   ],
+   "price_leads_2": [
+    -0.017,
+    -0.0399,
+    0.0087
+   ],
+   "rates_leads_4": [
+    0.0078,
+    -0.0187,
+    0.0371
+   ],
+   "price_leads_4": [
+    -0.0028,
+    -0.0287,
+    0.0241
+   ]
+  },
+  "EUR_USD~DIFF": {
+   "same_bar": [
+    -0.1286,
+    -0.1989,
+    -0.0608
+   ],
+   "rates_leads_1": [
+    0.0065,
+    -0.0232,
+    0.0346
+   ],
+   "price_leads_1": [
+    0.0099,
+    -0.0194,
+    0.0396
+   ],
+   "rates_leads_2": [
+    0.0021,
+    -0.0151,
+    0.0196
+   ],
+   "price_leads_2": [
+    -0.0077,
+    -0.0369,
+    0.0231
+   ],
+   "rates_leads_4": [
+    -0.0086,
+    -0.0372,
+    0.0195
+   ],
+   "price_leads_4": [
+    -0.011,
+    -0.0393,
+    0.0211
+   ]
+  }
+ },
+ "R3": {
+  "pairs": 126,
+  "mean_corr_next_day": 0.0744,
+  "placebo_median": -0.0028,
+  "placebo_p95": 0.0675,
+  "real_beats_pct": 96.6,
+  "mean_corr_same_day": 0.098,
+  "same_day_n": 127,
+  "friday_to_monday": {
+   "n": 24,
+   "mean_corr": 0.1162
+  },
+  "share_positive_next_day": 0.5952,
+  "pass": true,
+  "fri_2026_10_02_to_mon_10_05": 0.3515
+ }
+}

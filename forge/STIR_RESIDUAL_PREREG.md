@@ -78,3 +78,26 @@ No variants. These are the first and last runs on this 6-month pull; the archive
 re-run on a longer history is a new pre-registration, not a variant of this one.
 
 Output: `analysis/output/stir_residual/RESULTS.md`; script `scripts/rates_residual/stir_study.py`.
+
+## Result (2026-10-08) — run once, as registered
+
+`analysis/output/stir_residual/RESULTS.md`. 134 days, 2026-04 → 2026-10.
+
+- **R1 primary (1 h): FAIL** on the placebo rule only. b **+0.186 [+0.037, +0.342]**, n 11,240; both halves positive
+  (+0.18 / +0.20); all 5 targets positive (+0.17 to +0.22). But the shifted-driver placebo's 95th percentile is +0.518:
+  real b beats 68.5% of placebo runs (needs 95%).
+- **R1 secondary (4 h): FAIL.** b +0.169 [−0.182, +0.480], placebo beaten 54.5%. Gap trade −9.5 bp after costs.
+- **R2: no lead** visible in plain correlations. Same bar: NAS100 vs SR3H7 +0.23 [+0.19, +0.28]; EURUSD vs the
+  differential −0.13. Rates → NAS100 next bar +0.019 [−0.006, +0.046]; every lead and reverse interval contains 0.
+- **R3: PASS as registered.** Day-d rate differential vs day-d+1 NAS100, 12:30–18:00 London: mean correlation +0.074,
+  placebo 95th +0.068, beaten 96.6% (126 pairs, 60% positive). Same day +0.098. Fri 2 Oct → Mon 5 Oct +0.35.
+
+**Diagnostics run after the result (not registered, descriptive):**
+- **The R3 match is the afternoon's direction, not its turns.** With each day's straight-line trend removed (leaving only
+  the shape and the turn times that the stream marked), the mean correlation is **−0.021** (placebo 95th +0.050, beaten
+  21%). With NAS100's own day-d path partialled out, +0.017. The direction of the 12:30–18:00 move agrees on 56% of 117
+  pairs. Fri 2 Oct → Mon 5 Oct, turns only: +0.13.
+- **The R1 placebo is a weak yardstick.** When drivers are shifted, β is near zero, so the implied move I is tiny and b is
+  a ratio of noise to near-zero: placebo b spreads from about −0.5 to +0.5 around a median of +0.015. Real b +0.186 sits
+  inside that spread. A scale-free placebo (on the t-statistic or the correlation of I with F) would be the fair one;
+  that is a design for the next pre-registration on a longer pull, not a variant of this one.
