@@ -23,8 +23,10 @@ bars replaced by the newer pull). Run it every few months and the archive keeps 
 """
 from __future__ import annotations
 
+import argparse
 import asyncio
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Python 3.14 no longer creates a default event loop; ib_insync's eventkit asks for one at import time
@@ -54,6 +56,38 @@ EURIBOR_MONTHS = ["202612"]
 # SOFR: named quarterly contracts. The front (Sep'26, SR3U6, the one on C.OG's screen) is mostly fixed already and moves
 # in single 0.0025 ticks intraday; the next ones carry the market's view of coming Fed meetings. Add months as they list.
 SOFR_MONTHS = ["202609", "202612", "202703", "202706"]
+# FED FUNDS: 30-day futures, CBOT, and the ONLY feed that gives a per-FOMC-MEETING probability.
+#
+# WHY MONTHLY AND CONSECUTIVE, where SOFR above is quarterly. ZQ settles to the AVERAGE effective fed funds rate
+# over its contract month, so implied rate = 100 - price. A meeting's priced move is the difference between the
+# month CONTAINING the meeting and the month before it, adjusted for where in the month the meeting falls:
+#
+#     r_after = r_before + (impliedAvg_M - r_before) * daysInMonth / daysAfterMeeting
+#
+# That needs CONSECUTIVE months, not quarters -- a gap and the meeting in between cannot be isolated. This is the
+# calculation CME FedWatch publishes, and the reason rates.html has carried a 2-year-yield PROXY since it was built
+# ("a proper implied path needs fed funds futures, which have no free feed this desk trusts") and why fed-path.html
+# has to say "window, not meeting" about the Atlanta Fed series on every surface.
+#
+# GENERATED, NOT HARD-CODED. SOFR_MONTHS above is a fixed list with "add months as they list" -- fine for quarterlies
+# that roll four times a year, wrong for monthlies that would go stale within weeks.
+#
+# EXPECT THE BACK MONTHS TO BE THIN. The front few ZQ contracts are very liquid; by 9-12 months out the 15-minute
+# bars will be sparse, the same way the euro STIR pull found ESTR printing 0-2 lots per 15 min. Sparse is usable for
+# a daily settlement path and NOT usable for intraday repricing -- check volume before reading anything into a bar.
+ZQ_N_MONTHS = 12
+def _zq_months(n=ZQ_N_MONTHS):
+    """The next n consecutive contract months as yyyyMM, starting with the current one."""
+    now = datetime.now(timezone.utc)
+    y, m = now.year, now.month
+    out = []
+    for _ in range(n):
+        out.append(f"{y:04d}{m:02d}")
+        m += 1
+        if m > 12:
+            m, y = 1, y + 1
+    return out
+
 # Euro leg: which ticker C.OG's TradingView chart uses is not known, so pull every 3-month euro short-rate future IBKR
 # lists (IBKR symbol search, 2026-10-08): its front contract.
 EURO_FRONTS = [("I", "ICEEU", "EUR", "Euribor 3M (ICE)"), ("ER3", "ICEEU", "EUR", "ESTR 3M (ICE)"),
@@ -132,11 +166,17 @@ def pull(ib: IB, symbol, exchange, currency, label, month=None):
     archive(con, bars, label)
 
 
+SKIP_ZQ = False
+
+
 def main():
     global END
     ap = argparse.ArgumentParser()
     ap.add_argument("--end", help="YYYY-MM-DD: pull the ~6 months before this date instead of up to now")
+    ap.add_argument("--no-zq", action="store_true", help="skip fed funds (ZQ) -- it is 12 contracts and most of the runtime")
     a = ap.parse_args()
+    global SKIP_ZQ
+    SKIP_ZQ = bool(a.no_zq)
     if a.end:
         END = datetime.strptime(a.end, "%Y-%m-%d").replace(tzinfo=timezone.utc)
         print(f"older history: the {DURATION} before {a.end} (UTC)")
@@ -151,6 +191,14 @@ def main():
     print("SOFR 3-month futures (CME SOFR3)...")
     for month in SOFR_MONTHS:
         pull(ib, "SOFR3", "CME", "USD", f"SOFR {month}", month)
+
+    # Fed funds. 12 contracts at 15-min is the long pole in this script -- each request can take minutes, so this
+    # roughly doubles the run. --no-zq skips it when you only want the euro spread legs.
+    if not SKIP_ZQ:
+        months = _zq_months()
+        print(f"fed funds 30-day futures (CBOT ZQ), {len(months)} consecutive months {months[0]}-{months[-1]}...")
+        for month in months:
+            pull(ib, "ZQ", "CBOT", "USD", f"ZQ {month}", month)
 
     if END:                         # older pulls: named Euribor contracts (a continuous front takes no end date)
         print("Euribor 3-month futures (ICE I)...")
