@@ -48,6 +48,9 @@ const KV_FILE   = path.join(DATA_DIR, 'kv.json');
 //    surprise_index, events_*  re-fetched from Finnhub on next page load
 const _CF_EXACT = new Set([
   'tg_config', 'ai_alert_cfg',
+  'zq_path_v1',            // fed funds futures rungs, pushed nightly from the owner's TWS. Durable because
+                             // IBKR cannot be reached from Railway: lose it and there is no re-fetch.
+                             // Must also be in _worker.js PERMANENT_KEYS.
   'mpt_store_v1',           // Atlanta Fed Market Probability Tracker: fed-path hike/cut odds + a trailing
                              // series. The CHANGE is the point (hike odds 71%->19% in a week is the read),
                              // so a reset would destroy the only part that matters.
