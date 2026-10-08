@@ -136,7 +136,30 @@ is a lead for a new pre-registration, not a result.
 
 | # | Variant | Why | Run? |
 |---|---|---|---|
-| 0 | as above | registered | — |
+| 0 | as above | registered | **run 2026-10-08: Q1 no on all three rungs; Q2 FAIL** (`analysis/output/line_reaction/RESULTS_chosen.md`) |
+
+Implementation note (2026-10-08, before the analysis stage was run): a touch on a session's very first bar (sessions
+whose first M1 bar is after 01:00, data gaps) has no lead-up and crashed the replay. Those touches are skipped and
+counted as `no_leadup`: 40 in total (DE30 12, UK100 28), out of 608,411 encounters.
+
+### Result, variant 0 (2026-10-08)
+
+608,411 encounters, 84,715 at the line, 34 instruments, 1,557 dates.
+
+- **Q1 (is the line special?): no.** P(reject | resolved) at the line minus its ±0.2/0.3σ neighbours: p50 −0.001
+  [−0.008, 0.004], p75 +0.004 [−0.004, 0.011], p90 −0.002 [−0.014, 0.009]. The rate is flat at ≈ 0.48 across
+  every offset.
+- **Q2 (does the lead-up predict the reaction?): FAIL.** GBM log-loss ÷ base 1.000 [0.999, 1.001]; logit the same.
+  Fading the top quintile −0.011 K [−0.028, 0.005], positive in 1 of 5 folds.
+- **Candle shape and volume add no information** (GBM full ÷ without: 1.000 for both, intervals touching 1).
+  The close-location features show a small descriptive tercile spread at p50 (+0.029 / +0.022, Holm p < 0.01), about
+  the same size at the neighbours (line − neighbours +0.015 [−0.000, 0.028]): not specific to the line, and too small
+  for the walk-forward model to use.
+- **Descriptive, not a registered test:** at the line, breaks (42.0%) slightly outnumber rejects (39.6%), and the
+  follow side is positive (follow all +0.021 K; GBM bottom quintile +0.060 K [0.038, 0.081], 5/5 folds). The same
+  holds at the placebo levels (+0.021 K; bottom quintile +0.080 K), so it is short-horizon continuation at any
+  distance from the open, not a property of the line. +0.06 K = 0.015 σ, around one spread on the majors.
+  Ambiguous bars are 0.1%, so the scoring of ambiguous outcomes does not drive it.
 
 Harness check before any real run (2026-10-07): the full pipeline on two synthetic random-walk instruments (no level
 memory by construction) gave P(reject | resolved) ≈ 0.50 at every offset, Q1 no on every rung, every Holm p = 1,
