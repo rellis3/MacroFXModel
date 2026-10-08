@@ -179,7 +179,7 @@ for cls in ("fx_gold", "indices"):
         cp[str(h)] = {"used_edges": [round(float(x), 4) for x in eu], "speed_edges": [round(float(x), 4) for x in es], "cells": cells}
     P3["classes"][cls] = cp
 P3["instrument_class"] = {n: cls_of(n) for n in names}
-P3["alias"] = {"SPX500": "SPX", "US30": "DOW"}
+P3["alias"] = {"SPX500": "SPX500", "US30": "DOW"}
 Path("js/intradayRangeParamsPit.js").write_text("/**\n * Intraday range re-forecast params refit in the page's own sigma basis. GENERATED - do not hand-edit. SHADOW ONLY.\n"
                                                  " * Regenerate: python -m forge.run_live_range_shadow_p1  (forge/LIVE_RANGE_SHADOW_PREREG.md)\n */\n"
                                                  f"export const INTRADAY_PARAMS_PIT = {json.dumps(P3)};\n", encoding="utf-8")

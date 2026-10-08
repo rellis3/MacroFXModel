@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Range Shadow</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+#sApp { padding: 0 24px 40px; width: 100%; box-sizing: border-box; max-width: 1280px; margin: 0 auto; }
+.s-h { display: flex; align-items: center; gap: 14px; padding: 16px 0 10px; border-bottom: 1.5px solid var(--border); flex-wrap: wrap; }
+.s-title { font-size: 17px; font-weight: 700; color: var(--text); } .s-sub { font-size: 10.5px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.s-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.s-btn { background: none; border: 1.5px solid var(--border); border-radius: 20px; padding: 3px 11px; cursor: pointer; font-size: 11px; color: var(--text2); text-decoration: none; font-family: 'DM Sans', sans-serif; }
+.s-btn:hover { border-color: var(--blue); color: var(--blue); }
+.s-note { margin: 12px 0; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--s1); font-size: 11.5px; color: var(--text2); line-height: 1.55; }
+.s-note b { color: var(--text); }
+table.s-t { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--s1); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+table.s-t th, table.s-t td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: right; font-family: 'DM Mono', monospace; color: var(--text2); white-space: nowrap; }
+table.s-t th { color: var(--text3); font-weight: 500; font-size: 10.5px; position: sticky; top: 0; background: var(--s1); }
+table.s-t th:first-child, table.s-t td:first-child { text-align: left; font-weight: 700; color: var(--text); letter-spacing: .06em; }
+.in { color: var(--green); font-weight: 600; } .live { color: var(--red); font-weight: 600; } .open { color: var(--text2); }
+.muted { color: var(--text3); }
+.wrap { overflow-x: auto; }
+@media (max-width: 900px) { #sApp { padding: 0 12px 40px; } }
+</style>
+</head>
+<body class="dark">
+<div id="sApp">
+  <div class="s-h">
+    <div><div class="s-title">Live Range Shadow</div>
+      <div class="s-sub">read-only · side by side with Live Range · not wired to any bot · <span id="sUpdated">loading…</span></div></div>
+    <div class="s-right"><button class="s-btn" id="sRefresh">↻ Refresh</button><a class="s-btn" href="live-range.html">← Live Range</a></div>
+  </div>
+  <div class="s-note">
+    <b>What this adds to Live Range.</b> (1) <b>"High in / low in"</b>: the chance the running high (or low) is the day's final one, from the hour, the range used and how far
+    price has already pulled back from that extreme. Walk-forward validated, 2018 → 2026: Brier skill +21% (FX/gold) and +18% (indices) over the hour × used × pace base rate;
+    realised minus predicted within 0.3pp / 1.4pp in every decile. Use it to take profit or stand aside, <b>never as a direction</b>: fading an extreme was tested in many forms and does not pay.
+    (2) <b>Refit lines</b>: the same hourly p75 lines with the grids refit in the page's own σ. The shipped grids were fitted on a σ about 10% lower and sit about 3pp too far out
+    (p75 reached 21.5% of days vs 25% intended); refit lines reach 24.0% (FX) out of sample.
+    <br><span class="muted">Evidence: forge/LIVE_RANGE_SHADOW_PREREG.md · analysis/output/live_range_shadow/RESULTS_p1.md. The refit file is fitted on all dates (in-sample by construction); the honest numbers above come from the walk-forward.
+    Between hourly checkpoints the read uses the live high, low and price with the last checkpoint's hour, so it is approximate.</span>
+  </div>
+  <div class="wrap"><table class="s-t"><thead><tr>
+    <th>Instrument</th><th>Hour</th><th>Price</th><th>Range used (σ)</th>
+    <th>From high (σ)</th><th>High in</th><th>From low (σ)</th><th>Low in</th>
+    <th>↑ p75 shipped</th><th>↑ p75 refit</th><th>↓ p75 shipped</th><th>↓ p75 refit</th><th>Room to ↑ refit (σ)</th><th>Room to ↓ refit (σ)</th>
+  </tr></thead><tbody id="sBody"><tr><td colspan="14" class="muted" style="text-align:center;padding:24px">loading…</td></tr></tbody></table></div>
+</div>
+<script type="module">
+import { sessionState, reforecast, classOf } from './js/intradayRange.js';
+import { INTRADAY_PARAMS_PIT } from './js/intradayRangeParamsPit.js';
+import { extremeIn, readIn } from './js/extremeIn.js';
+
+const OANDA_SYM = {
+  EURUSD:'EUR/USD', GBPUSD:'GBP/USD', USDJPY:'USD/JPY', AUDUSD:'AUD/USD', USDCAD:'USD/CAD', USDCHF:'USD/CHF', NZDUSD:'NZD/USD',
+  EURJPY:'EUR/JPY', GBPJPY:'GBP/JPY', EURGBP:'EUR/GBP', GOLD:'XAU/USD',
+  NQ:'NAS100_USD', SPX500:'SPX500_USD', US30:'US30_USD', US2000:'US2000_USD', UK100:'UK100_GBP', DE30:'DE30_EUR',
+};
+const INDICES = new Set(['NQ', 'SPX500', 'US30', 'US2000', 'UK100', 'DE30']);
+const digits = n => /JPY/.test(n) ? 3 : n === 'GOLD' ? 2 : INDICES.has(n) ? 1 : 5;
+const fmt = (n, v) => (v == null || !Number.isFinite(v)) ? '—' : v.toFixed(digits(n));
+const $ = id => document.getElementById(id);
+const cell = (p, what) => p == null ? '<td class="muted">—</td>' : `<td class="${p >= 0.8 ? 'in' : p <= 0.4 ? 'live' : 'open'}" title="${readIn(p, what)}">${Math.round(p * 100)}%</td>`;
+
+async function row(name, forecast) {
+  const sig = forecast?.instruments?.[name]?.ladder?.sigma_daily_pct;
+  const r = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(OANDA_SYM[name])}&incomplete=1`);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || !data?.values?.length || !(sig > 0)) return `<tr><td>${name}</td><td colspan="13" class="muted" style="text-align:left">no bars or σ</td></tr>`;
+  const bars = [...data.values].reverse().map(b => ({ t: b.t, open: +b.open, high: +b.high, low: +b.low, close: +b.close }));
+  const st = sessionState(bars);
+  const cp = st?.checkpoints.at(-1);
+  if (!cp) return `<tr><td>${name}</td><td colspan="13" class="muted" style="text-align:left">first checkpoint at 01:00 London</td></tr>`;
+  const unit = sig / 100 * st.open;
+  const ship = reforecast(cp, { instrument: name, open: st.open, sigmaDailyPct: sig });
+  const refit = reforecast(cp, { instrument: name, open: st.open, sigmaDailyPct: sig, params: INTRADAY_PARAMS_PIT });
+  const x = extremeIn({ h: cp.h, runHigh: st.now.high, runLow: st.now.low, close: st.now.close }, { instrument: name, open: st.open, sigmaDailyPct: sig });
+  const used = (st.now.high - st.now.low) / unit;
+  const roomU = refit ? (refit.projHigh.p75 - st.now.close) / unit : null, roomD = refit ? (st.now.close - refit.projLow.p75) / unit : null;
+  return `<tr><td>${name}</td><td>${String(cp.h).padStart(2, '0')}:00</td><td>${fmt(name, st.now.close)}</td><td>${used.toFixed(2)}</td>
+    <td>${x ? x.dHigh.toFixed(2) : '—'}</td>${cell(x?.pHigh, 'high')}<td>${x ? x.dLow.toFixed(2) : '—'}</td>${cell(x?.pLow, 'low')}
+    <td>${fmt(name, ship?.projHigh.p75)}</td><td>${fmt(name, refit?.projHigh.p75)}</td><td>${fmt(name, ship?.projLow.p75)}</td><td>${fmt(name, refit?.projLow.p75)}</td>
+    <td>${roomU == null ? '—' : roomU.toFixed(2)}</td><td>${roomD == null ? '—' : roomD.toFixed(2)}</td></tr>`;
+}
+
+async function load() {
+  $('sUpdated').textContent = 'loading…';
+  const forecast = await (await fetch('/api/vol-forecast')).json();
+  const names = Object.keys(forecast?.instruments ?? {}).filter(n => OANDA_SYM[n] && classOf(n));
+  const order = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'];
+  names.sort((a, b) => ((order.indexOf(a) + 1) || 99) - ((order.indexOf(b) + 1) || 99));
+  const rows = await Promise.all(names.map(n => row(n, forecast).catch(e => `<tr><td>${n}</td><td colspan="13" class="muted" style="text-align:left">${e.message}</td></tr>`)));
+  $('sBody').innerHTML = rows.join('') || '<tr><td colspan="14" class="muted">No forecast available yet.</td></tr>';
+  $('sUpdated').textContent = `updated ${new Date().toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' })} London`;
+}
+$('sRefresh').onclick = () => load();
+load().catch(e => { $('sUpdated').textContent = `Error: ${e.message}`; });
+setInterval(() => load().catch(() => {}), 120000);
+</script>
+</body>
+</html>

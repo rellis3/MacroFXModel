@@ -688,6 +688,19 @@ export const DESK_EVIDENCE = [
     use: 'Do not build a fade / continue chooser from these confluences on either line: the lift they give is about what chance gives and none survives spread. The moving line does not unlock them. Use the full-day map for expectations (how far, how long, how often the extreme is in) and the existing finding that the clock and the price pullback from the extreme carry the information. Phase 2 (FVG, Fibonacci, round numbers) not run.',
   },
   {
+    id: 'extreme-in-probability', domain: 'volatility', verdict: 'validated', date: '2026-10-08', doc: 'forge/LIVE_RANGE_SHADOW_PREREG.md',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX', 'DE30'],
+    claim: 'The chance that the running high (or low) is already the day’s final one can be read from the hour, the range used and how far price has pulled back from that extreme',
+    result: 'CALIBRATED SHADOW. A count table (hour x pullback bin x used tercile, shrunk toward coarser cells), refit every quarter on prior data only and scored 2018-04 to 2026-08 on 34 instruments: Brier skill +20.9% (FX/gold) [+20.5, +21.3] and +18.0% (indices) [+17.4, +18.6] over the page’s hour x used x pace base rate; 96% / 95% of what a gradient-boosted geometry model reaches; every probability decile within 0.3pp (FX/gold) and 1.4pp (indices) of realised (n >= 48k per decile). Skill is mostly afternoon (+30% after 15:00) and small before 07:00 (+12% / +7%).',
+    use: 'A take-profit / stand-aside read on a running extreme (live-range-shadow.html, read-only): high-in >= 80% means the move is probably done. It is geometry plus the clock, not an indicator, and not a direction: fading the extreme was tested in many forms and does not pay after spread.',
+  },
+  {
+    id: 'live-range-break-linestate', domain: 'price', verdict: 'null', date: '2026-10-08', doc: 'forge/LIVE_RANGE_SHADOW_PREREG.md',
+    claim: 'The hourly moving-line state at entry (room to the next line, range used, pace, hour) improves the rich-IV break rule: as a filter, a meta-label, or by exiting at the moving p75 / p90 line',
+    result: 'Null. 4,633 rich-IV break trades 2018-04 to 2026-08 on the 7 CVOL instruments (baseline +0.123R, published +0.118R). Most room to the moving p75 vs least room: -0.096R [-0.359, +0.144], halves -0.013 / -0.177. Yearly-refit gradient-boosted meta-label from 2020 (takes 61%): taken minus all -0.010R [-0.135, +0.113]. Exit at the moving p75 instead of 5R/10R: -0.186R [-0.273, -0.095] (caps the fat right tail the rule lives on); at p90: -0.011R [-0.073, +0.052]. The M1 exit simulation reproduces the stored 5R/10R outcomes on 95.8% of cells (stops 99.8%, targets 93.5%, day-end exits differ at the margin).',
+    use: 'Keep the rich-IV break as is: do not filter it by distance to the hourly lines and do not take profit at them; the edge sits in the few far winners. Power is limited (a few hundred independent days).',
+  },
+  {
     id: 'event-layer', domain: 'events', verdict: 'null', date: '2026-10-05', doc: 'forge/EVENT_LAYER_PREREG.md',
     claim: 'On top of the IV-adjusted daily lines, the typical size of the day’s scheduled release type (and yesterday’s surprise) improves the range forecast',
     result: 'First test (calendar_events.csv) PASSED for FX+gold (0.970, 7/7) but did NOT replicate on live inputs (ForexFactory names, live IV-adjusted sigma, 2020-2025): 0.9937 vs the 0.99 bar; the fitted correction overshoots (big-release-day p75 35.5% -> 17.3%). Yesterday’s surprise null in both. The live export’s coarse event tag already brings FOMC/NFP/CPI days to 27.1% passed vs 25%.',

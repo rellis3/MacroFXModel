@@ -43,6 +43,13 @@ read. Reached by direct URL only (no nav change in this pass).
 ## Variant log
 | # | Variant | Added | Status |
 |---|---|---|---|
-| 1 | as above | 2026-10-08 | pending |
+| 1 | as above | 2026-10-08 | run: Part 1 PASS (calibrated shadow), Part 2 no improvement, Part 3 written |
 
 Output `analysis/output/live_range_shadow/RESULTS.md`; banked in `js/deskEvidence.js`.
+
+## Results (2026-10-08) — `analysis/output/live_range_shadow/RESULTS_p1.md`, `RESULTS_p2.md`
+**Part 1: CALIBRATED SHADOW.** Walk-forward Brier skill over the hour × used × pace base: +20.9% FX/gold, +18.0% indices; 96% / 95% of the gradient-boosted ceiling; every decile
+within 0.3pp / 1.4pp. **Part 2: no improvement.** Room filter -0.096R [-0.359, +0.144]; meta-label -0.010R [-0.135, +0.113]; exit at the moving p75 -0.186R [-0.273, -0.095], at p90
+-0.011R [-0.073, +0.052]. M1 exit simulation validated at 95.8% (first attempt 89.2% failed my own 90% bar because the book's day end is the London calendar day, not 22:00; fixed and re-run).
+**Part 3:** `js/intradayRangeParamsPit.js` written. Registered check on the walk-forward numbers: FX p75 24.0% ✓, p90 9.5% ✓; indices p75 27.6% ✗ (+2.6pp, the known tight indices
+downside), p90 11.2% ✓. Shadow page `live-range-shadow.html` (direct URL, no nav change); JS parity exact on 12 real sessions (`js/extremeIn.test.mjs`).
