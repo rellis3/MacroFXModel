@@ -5453,32 +5453,56 @@ async function ensureJump(name, force = false) {
     return data;
   } catch (_) { return null; }
 }
-function _jumpChip(j) {
+function _jumpChip(j, name) {
   if (!j?.ok || j.jump_share_pct == null) return '';
   const tod = j.time_of_day;
   const pct = tod?.percentile ?? tod?.pct_rank ?? null;
   const band = tod?.band ?? '';
   const hi = band === 'extreme' || band === 'very high' || band === 'high';
-  return `<span class="v3-chip ${hi ? 'warn' : ''}" title="Share of today's realised variance that came from discrete jumps (RV − BV)/RV, scored against this pair's own distribution for this hour. Descriptive — not a forecast.">⚡ jump <b>${j.jump_share_pct.toFixed(0)}%</b>${band ? ` · ${band}` : ''}${j.n_jumps ? ` · ${j.n_jumps}×` : ''}</span>`;
+  return `<span class="v3-chip ${hi ? 'warn' : ''}" title="Share of today's realised variance that came from discrete jumps (RV − BV)/RV, scored against this pair's own distribution for this hour. Descriptive — not a forecast.">⚡ jump <b>${j.jump_share_pct.toFixed(0)}%</b>${band ? ` · ${band}` : ''}${j.n_jumps ? ` · ${j.n_jumps}×` : ''}</span>${_flagAtChip(name, j)}`;
 }
+// The close the forming M5 candle would need to get a ▲▼ arrow. Exact for that one
+// candle (its local-vol window is all in the past), so it is labelled with the candle.
+function _flagAtChip(name, j) {
+  const f = j?.flag_at;
+  if (!f) return '';
+  return `<span class="v3-chip" title="The ${_londonHM(f.bar_t)} London M5 candle is flagged as a jump if it closes above ${_fmtPrice(f.up_close, _priceFmt(name).precision)} or below ${_fmtPrice(f.down_close, _priceFmt(name).precision)} — ±${f.move_pct}% from the last close ${_fmtPrice(f.ref_close, _priceFmt(name).precision)}. That is ${j.lm_threshold}× the trailing jump-robust 5-min σ, scaled ×${f.tod_factor} for this time of day. Where the bar is — not whether anything will reach it.">⚡ flags ±<b>${_fmtDist(name, f.up_close, f.ref_close)}</b> · ${_londonHM(f.bar_t)}</span>`;
+}
+let _jumpSweeping = false;
 async function sweepJumps() {
-  const names = Object.keys(currentForecast?.instruments || {});
-  for (const name of names) {
-    if (_activeTab !== 'today') return;
-    const j = await ensureJump(name);
-    const el = document.getElementById(`v3jump-${name}`);
-    if (el) el.innerHTML = _jumpChip(j);
-    _markJumpsOnChart(name, j);
-    await new Promise(r => setTimeout(r, 400));
-  }
+  if (_jumpSweeping) return;
+  _jumpSweeping = true;
+  try {
+    const names = Object.keys(currentForecast?.instruments || {});
+    for (const name of names) {
+      if (_activeTab !== 'today') return;
+      const j = await ensureJump(name);
+      const el = document.getElementById(`v3jump-${name}`);
+      if (el) el.innerHTML = _jumpChip(j, name);
+      _markJumpsOnChart(name, j);
+      await new Promise(r => setTimeout(r, 400));
+    }
+  } finally { _jumpSweeping = false; }
+}
+// A "flags at" level is only good for one candle, so the sweep repeats on the cache TTL.
+setInterval(() => { if (!document.hidden) sweepJumps(); }, JUMP_TTL);
+// Card charts plot LONDON wall-clock time dressed as UTC (see _map in loadM5Chart), so a
+// real epoch must be shifted onto that clock before it can find its candle. Matching the
+// jump's UTC hh:mm against those labels put every arrow an hour EARLY during BST — on a
+// calm candle before the move it actually marks.
+const _londonWall = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+function _londonHM(epochSec) { return _londonWall.format(new Date(epochSec * 1000)).slice(11, 16); }
+function _londonChartSec(epochSec) {
+  return Date.parse(_londonWall.format(new Date(epochSec * 1000)).replace(' ', 'T') + ':00Z') / 1000;
 }
 // Lee-Mykland jump timestamps as small markers on the M5 candles.
 function _markJumpsOnChart(name, j) {
   const meta = _chartMeta[name];
   if (!meta?.series || meta.monthly) return;
   const marks = (j?.ok ? j.jumps ?? [] : []).map(jp => {
-    const [hh, mm] = jp.utc.split(':').map(Number);
-    const bar = meta.chartData.find(b => { const t = new Date(b.time * 1000); return t.getUTCHours() === hh && t.getUTCMinutes() === mm; });
+    if (!(jp.t > 0)) return null;
+    const ts = _londonChartSec(jp.t);
+    const bar = meta.chartData.find(b => b.time === ts);
     if (!bar) return null;
     return { time: bar.time, position: jp.direction === 'up' ? 'belowBar' : 'aboveBar', color: '#f59e0b', shape: jp.direction === 'up' ? 'arrowUp' : 'arrowDown', size: 0.8, text: '' };
   }).filter(Boolean);
@@ -5656,14 +5680,14 @@ function _detToday(name) {
   const pct = tod.percentile ?? tod.pct_rank ?? null;
   const band = tod.band ?? '';
   const hi = /extreme|very high|high/.test(band);
-  const jumps = (j.jumps ?? []).map(x => `<span style="display:block;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--text2)"><span style="color:var(--amber)">${x.direction === 'up' ? '▲' : '▼'}</span> ${x.utc} UTC · ${x.ret_pct >= 0 ? '+' : ''}${x.ret_pct}%</span>`).join('');
+  const jumps = (j.jumps ?? []).map(x => `<span style="display:block;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--text2)"><span style="color:var(--amber)">${x.direction === 'up' ? '▲' : '▼'}</span> ${x.t ? _londonHM(x.t) + ' London' : x.utc + ' UTC'} · ${x.ret_pct >= 0 ? '+' : ''}${x.ret_pct}%</span>`).join('');
   return `<div style="display:grid;grid-template-columns:1.3fr 1fr;gap:8px" class="v3-today">
     <div class="v3-tile" style="gap:8px">
       <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><span class="v3-lbl">Jump share so far</span><span class="v" style="font-size:16px">${j.jump_share_pct.toFixed(0)}%</span><span style="font-family:'DM Mono',monospace;font-size:10px;color:${hi ? 'var(--amber)' : 'var(--text2)'}">${band || ''}${pct != null ? ` · p${Math.round(pct)}` : ''} for this hour</span></div>
       <div style="position:relative;height:8px;background:linear-gradient(90deg,var(--s3),var(--amber));border-radius:4px">${pct != null ? `<div style="position:absolute;top:-4px;left:${Math.min(100, Math.max(0, pct))}%;width:2px;height:16px;background:var(--text);margin-left:-1px"></div>` : ''}</div>
       <span class="s">(RV − BV)/RV on 5-min returns, session-break returns dropped · ${j.returns_seen} returns · scored against the ${j.session_minutes}-minute checkpoint, not a full-day ruler. Describes today; claims nothing about tomorrow.</span>
     </div>
-    <div class="v3-tile"><span class="v3-lbl">Jumps flagged (Lee-Mykland 1%)</span>${jumps || '<span style="font-family:\'DM Mono\',monospace;font-size:10.5px;color:var(--text3)">none today — pure diffusion</span>'}<span class="s" style="padding-top:4px">Marked as ▲▼ on the chart.</span></div>
+    <div class="v3-tile"><span class="v3-lbl">Jumps flagged (Lee-Mykland 1%)</span>${jumps || '<span style="font-family:\'DM Mono\',monospace;font-size:10.5px;color:var(--text3)">none today — pure diffusion</span>'}<span class="s" style="padding-top:4px">Marked as ▲▼ on the chart.</span>${j.flag_at ? `<span class="s" style="padding-top:6px;color:var(--text2)">Next: the <b>${_londonHM(j.flag_at.bar_t)}</b> London candle flags if it closes above <b>${_fmtPrice(j.flag_at.up_close, _priceFmt(name).precision)}</b> or below <b>${_fmtPrice(j.flag_at.down_close, _priceFmt(name).precision)}</b> (±${_fmtDist(name, j.flag_at.up_close, j.flag_at.ref_close)} · ${j.lm_threshold}× local σ × ${j.flag_at.tod_factor} time-of-day).</span>` : ''}</div>
   </div>`;
 }
 function _detSizing(name) {

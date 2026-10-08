@@ -206,7 +206,7 @@ import { findImpulseRetracements } from './js/impulseRetracementGeometry.js';
 import { runImpulseEmaRange } from './js/impulseEmaRangeV1Engine.js';
 import { runLiveValidation } from './js/liveValidationCore.js';
 import { OANDA_INSTRUMENT_MAP, clampToNow, fetchIntradayOnce, fetchIntraday } from './js/oandaIntraday.js';
-import { buildGrid, bipower, jumpFraction, detectJumps, scoreAgainstTimeOfDay, STEP_MIN, BARS_PER_DAY } from './js/jumpDiffusionCore.js';
+import { buildGrid, bipower, jumpFraction, detectJumps, nextBarFlagLevel, scoreAgainstTimeOfDay, STEP_MIN, BARS_PER_DAY } from './js/jumpDiffusionCore.js';
 import { _londonParts } from './js/londonSession.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
@@ -11179,6 +11179,7 @@ app.get('/api/jump-diffusion/live', async (req, res) => {
       if (!det.flags[i]) continue;
       const bar = bars[endIdx[i]];
       jumps.push({
+        t: bar.time,                                               // epoch s, bar open
         utc: new Date(bar.time * 1000).toISOString().slice(11, 16),
         ret_pct: Math.round(ret[i] * 1e6) / 1e4,
         direction: ret[i] > 0 ? 'up' : 'down',
@@ -11186,6 +11187,25 @@ app.get('/api/jump-diffusion/live', async (req, res) => {
     }
     const scored = share == null ? null
       : scoreAgainstTimeOfDay(share, londonMinute, inst);
+
+    // "Flag at": the close the candle now forming would need to be marked a jump.
+    // Bars are complete-only, so the next return is (forming close) / (last close),
+    // ending on the bar that opens one step after the last one. Exact, not estimated:
+    // its local-σ window is entirely in the past. Still descriptive — it says where
+    // the bar is, not whether anything will reach it.
+    const lastClose = bars[bars.length - 1].close;
+    const nextTime = lastTime + STEP_MIN * 60;
+    const lvl = nextBarFlagLevel(ret, tod, inst.periodicity, Math.floor((nextTime % 86400) / 60),
+      { n: BARS_PER_DAY });
+    const flagAt = lvl == null ? null : {
+      bar_t: nextTime,
+      bar_utc: new Date(nextTime * 1000).toISOString().slice(11, 16),
+      ref_close: lastClose,
+      up_close: lastClose * Math.exp(lvl.logRet),
+      down_close: lastClose * Math.exp(-lvl.logRet),
+      move_pct: Math.round(lvl.logRet * 1e6) / 1e4,
+      tod_factor: Math.round(lvl.factor * 1000) / 1000,
+    };
 
     res.json({
       ok: true,
@@ -11196,6 +11216,7 @@ app.get('/api/jump-diffusion/live', async (req, res) => {
       jump_share_pct: share == null ? null : Math.round(share * 10000) / 100,
       rv: bp?.rv ?? null, bv: bp?.bv ?? null,
       n_jumps: jumps.length, jumps,
+      flag_at: flagAt,
       time_of_day: scored,
       diurnal_adjusted: det.applied,
       lm_threshold: Math.round(det.threshold * 1000) / 1000,
