@@ -40,7 +40,7 @@ from pathlib import Path
 asyncio.set_event_loop(asyncio.new_event_loop())
 
 try:
-    from ib_insync import IB, Future, util
+    from ib_insync import IB, ContFuture, Future, util
 except ImportError:
     sys.exit("pip install ib_insync first, then re-run this.")
 
@@ -59,21 +59,46 @@ BAR_SIZE = "15 mins"
 DURATION = "6 M"
 
 
-def pull_front_future(ib: IB, symbol: str, exchange: str, currency: str, label: str):
-    """Finds the front (nearest-expiry, most liquid) contract for `symbol` on
-    `exchange` and pulls its historical bars. Prints what it found so you can see
-    which actual contract month got used."""
-    # secType='CONTFUT' asks IBKR for its own continuous-contract front-month series,
-    # which avoids you having to track expiries/rolls yourself.
-    contract = Future(symbol=symbol, exchange=exchange, currency=currency)
-    contract.secType = "CONTFUT"
-    details = ib.reqContractDetails(contract)
-    if not details:
-        print(f"  {label}: NO CONTRACT FOUND for symbol={symbol} exchange={exchange} "
-              f"-- the symbol/exchange is probably wrong, check in TWS's own contract search first")
+def resolve_front(ib: IB, candidates, keywords, label: str):
+    """Try each (symbol, exchange, currency) until IBKR knows it: its continuous front-month series first, else the
+    nearest listed expiry. If none resolves, print what IBKR's own symbol search returns for `keywords` so the right
+    symbol/exchange can be filled in."""
+    for symbol, exchange, currency in candidates:
+        for cont in (ContFuture(symbol=symbol, exchange=exchange, currency=currency),
+                     Future(symbol=symbol, exchange=exchange, currency=currency)):
+            try:
+                details = ib.reqContractDetails(cont)
+            except Exception as e:
+                print(f"  {label}: {symbol}@{exchange} {cont.secType} request failed ({e})")
+                details = []
+            if not details:
+                continue
+            if cont.secType == "CONTFUT":
+                resolved = details[0].contract
+            else:   # every listed expiry: take the nearest
+                resolved = min((d.contract for d in details), key=lambda c: c.lastTradeDateOrContractMonth)
+            print(f"  {label}: resolved {symbol}@{exchange} -> {resolved.localSymbol} {resolved.secType} "
+                  f"{resolved.lastTradeDateOrContractMonth} (conId {resolved.conId})")
+            return resolved
+        print(f"  {label}: {symbol}@{exchange} not known to IBKR")
+    print(f"  {label}: nothing resolved. IBKR symbol search says:")
+    for kw in keywords:
+        try:
+            for m in ib.reqMatchingSymbols(kw) or []:
+                c = m.contract
+                if "FUT" in (m.derivativeSecTypes or []) or c.secType in ("FUT", "IND"):
+                    print(f"     '{kw}': symbol={c.symbol} secType={c.secType} exchange={c.primaryExchange or c.exchange} "
+                          f"currency={c.currency} desc={getattr(c, 'description', '')} derivs={m.derivativeSecTypes}")
+        except Exception as e:
+            print(f"     '{kw}': search failed ({e})")
+    return None
+
+
+def pull_front_future(ib: IB, candidates, keywords, label: str):
+    """Resolves the front contract and pulls its historical bars."""
+    resolved = resolve_front(ib, candidates, keywords, label)
+    if resolved is None:
         return None
-    resolved = details[0].contract
-    print(f"  {label}: resolved to {resolved.localSymbol} on {resolved.exchange} (conId {resolved.conId})")
 
     bars = ib.reqHistoricalData(
         resolved, endDateTime="", durationStr=DURATION, barSizeSetting=BAR_SIZE,
@@ -90,22 +115,30 @@ def pull_front_future(ib: IB, symbol: str, exchange: str, currency: str, label: 
 
 def main():
     ib = IB()
+    ib.RequestTimeout = 20          # a request IBKR never answers no longer hangs forever
     print(f"connecting to {HOST}:{PORT} ...")
     try:
-        ib.connect(HOST, PORT, clientId=CLIENT_ID, timeout=15)
+        ib.connect(HOST, PORT, clientId=CLIENT_ID, timeout=15, readonly=True)   # data only; skips the order-sync requests
     except Exception as e:
         sys.exit(f"could not connect -- is TWS/Gateway open, logged in, and API enabled "
                   f"on port {PORT}? ({e})")
 
-    print("pulling SOFR (CME SR3)...")
-    sofr = pull_front_future(ib, "SR3", "CME", "USD", "SR3")
+    print("pulling SOFR 3-month futures...")
+    sofr = pull_front_future(ib, [("SR3", "CME", "USD"), ("SOFR3", "CME", "USD"), ("SR3", "GLOBEX", "USD")],
+                             ["SOFR", "SR3"], "SOFR")
     if sofr is not None:
         sofr[["date", "close"]].rename(columns={"close": "value"}).to_csv(OUT / "sofr_sr3.csv", index=False)
 
-    print("pulling Euribor (ICE Europe 'I')...")
-    euribor = pull_front_future(ib, "I", "IFEU", "EUR", "Euribor")
+    print("pulling 3-month Euribor futures...")
+    euribor = pull_front_future(ib, [("I", "ICEEU", "EUR"), ("I", "IFEU", "EUR"), ("EU3", "ICEEU", "EUR")],
+                                ["Euribor", "EURIBOR"], "Euribor")
     if euribor is not None:
         euribor[["date", "close"]].rename(columns={"close": "value"}).to_csv(OUT / "euribor_i.csv", index=False)
+
+    print("pulling 3-month ESTR futures (if IBKR lists them)...")
+    estr = pull_front_future(ib, [("FST3", "EUREX", "EUR"), ("ESTR3", "EUREX", "EUR")], ["ESTR", "Euro short-term rate"], "ESTR")
+    if estr is not None:
+        estr[["date", "close"]].rename(columns={"close": "value"}).to_csv(OUT / "estr_3m.csv", index=False)
 
     ib.disconnect()
     print(f"\nwritten to {OUT}")
