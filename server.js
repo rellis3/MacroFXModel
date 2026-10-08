@@ -223,6 +223,7 @@ import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oi
 import { levelExpectation } from './js/levelExpectation.js';   // per-level Reject/Break/Magnet reading
 import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
 import { buildOILevelText } from './js/oiLevelExport.js';
+import { meetingProbabilities as _zqMeetingProbs } from './js/fedPathZq.js';
 import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE, OI_PRODUCT_SPEC as _OI_SPEC } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
 import { buildOIZones, explainNoZones, oiSizeCalibrationStats as _oiSizeCalibrationStats } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
@@ -14600,10 +14601,27 @@ app.get('/api/fed-path', async (_req, res) => {
     const parsed = JSON.parse(raw);
     const d = parsed?.data ?? parsed;
     if (!d || !d.asOf) return res.json({ ok: false, error: 'capture present but empty', store: null });
+    // ZQ: the PER-MEETING path, from the owner's own TWS pull. Served alongside the
+    // Atlanta Fed window series rather than replacing it -- they measure different
+    // things (a decision vs a 3-month average) and on 2026-10-08 they agreed, which
+    // is worth being able to see rather than asserting. The arithmetic lives in
+    // js/fedPathZq.js and is tested against CME FedWatch; nothing is recomputed here.
+    let zq = null;
+    try {
+      const zraw = await kv.get('zq_path_v1');
+      const zp = zraw ? JSON.parse(zraw) : null;
+      const zd = zp?.data ?? zp;
+      if (zd?.rungs?.length) {
+        const mtgs = FOMC_MEETINGS.map(m => m.date).filter(x => x >= zd.rungs[0].ym);
+        const calc = _zqMeetingProbs(zd.rungs, mtgs);
+        zq = { asOf: zd.asOf, fetchedAt: zd.fetchedAt, source: zd.source,
+               rungs: zd.rungs, meetings: calc.rows, anchored: calc.anchored };
+      }
+    } catch { /* the window series still serves on its own */ }
     const ageDays = d.asOf
       ? Math.round((Date.now() - Date.parse(d.asOf + 'T00:00:00Z')) / 86400000)
       : null;
-    res.json({ ok: true, ...d, ageDays });
+    res.json({ ok: true, ...d, ageDays, zq });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
