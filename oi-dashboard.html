@@ -914,7 +914,11 @@ function renderRail(){
 // on the COG version of this chart are the same thing, one smile per expiry. Low at the
 // money, rising into the wings; where the line bends up hardest is where the market is
 // paying most for protection.
-let LADMODE = 'gex', LADIV = true;
+let LADMODE = 'gex', LADIV = true, LADNET = false;
+// Stacking signed segments outward from zero makes a strike whose expiries DISAGREE look
+// bigger than it is: +5 (0 DTE) and −4 (monthly) draws 9 units of bar for a net of +1.
+// So every mixed-sign row gets a white tick at its TRUE net, and "Net only" collapses
+// each row to one bar (coloured by the expiry that dominates it).
 // Which per-expiry field each stacked view reads, and its axis unit.
 const LAD_GREEK = {
   gex:  { key:'net',   unit:'net GEX (OI)' },
@@ -963,7 +967,7 @@ function ladderRows(e,mode){
     const rows=L.strikes.map((k,i)=>{ const c=L.series.reduce((a,s)=>a+(s.call[i]||0),0), p=L.series.reduce((a,s)=>a+(s.put[i]||0),0);
       return {strike:k, segs:[{v:c,col:'var(--call)'},{v:-p,col:'var(--put)'}], tip:`call γ ${fN(c)} · put γ ${fN(p)} · net ${fN(c-p)}`}; });
     const tc=rows.reduce((a,r)=>a+r.segs[0].v,0), tp=rows.reduce((a,r)=>a-r.segs[1].v,0);
-    return { rows, unit:'GEX (OI)', src:`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
+    return { rows, stacked:true, unit:'GEX (OI)', src:`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
       legend:[['var(--call)','Call GEX',fN(tc)],['var(--put)','Put GEX',fN(-tp)],['var(--tx2)','Net',fN(tc-tp)]] };
   }
   // gex / dex / charm / vanna: one stacked colour per expiry, same layout.
@@ -975,7 +979,7 @@ function ladderRows(e,mode){
   const rows=L.strikes.map((k,i)=>({strike:k,
     segs:ser.map((s,j)=>({v:val(s,i),col:LAD_COLS[s.rest?4:Math.min(j,3)]})),
     tip:ser.map(s=>`${s.label}: ${fN(val(s,i))}`).join(' · ')+` · total ${fN(ser.reduce((a,s)=>a+val(s,i),0))}`}));
-  return { rows, unit:G.unit, src:L.fallback?'single expiry — full matrix not available':`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
+  return { rows, stacked:true, unit:G.unit, src:L.fallback?'single expiry — full matrix not available':`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
     legend:ser.map((s,j)=>[LAD_COLS[s.rest?4:Math.min(j,3)], s.label+(s.code?' · '+esc(s.code):''), fN(tot(s))]) };
 }
 
@@ -995,6 +999,9 @@ function ladderSvg(e,big){
   const cap=big?140:56;
   if(win.length>cap) win=win.slice().sort((a,b)=>Math.abs(a.strike-spot)-Math.abs(b.strike-spot)).slice(0,cap);
   win.sort((a,b)=>b.strike-a.strike);
+  if(LADNET && R.stacked) win=win.map(r=>{ const net=r.segs.reduce((a,g)=>a+g.v,0);
+    const dom=r.segs.filter(g=>Math.sign(g.v)===Math.sign(net)).sort((a,b)=>Math.abs(b.v)-Math.abs(a.v))[0];
+    return {...r, segs:[{v:net,col:dom?dom.col:'var(--tx3)'}]}; });
 
   let pos=0,neg=0;
   win.forEach(r=>{ let p=0,n=0; r.segs.forEach(s=>{ if(s.v>0)p+=s.v; else n-=s.v; }); pos=Math.max(pos,p); neg=Math.max(neg,n); });
@@ -1035,6 +1042,9 @@ function ladderSvg(e,big){
       if(g.v>0) p+=g.v; else n+=-g.v;
       const x1=X(Math.min(a,b)), x2=X(Math.max(a,b));
       if(x2-x1>0.3) s+=`<rect x="${x1}" y="${y+1}" width="${x2-x1}" height="${bh}" fill="${g.col}" opacity=".88"/>`; });
+    // Bars on both sides of zero: mark where the row actually nets out.
+    if(R.stacked && p>0 && n>0){ const nx=X(p-n);
+      s+=`<rect x="${nx-1.5}" y="${y-0.5}" width="3" height="${bh+3}" fill="var(--tx)" stroke="var(--bg2)" stroke-width="1"/>`; }
     s+=`<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent"><title>${esc(fx(show(r.strike,e),SYM))} — ${esc(r.tip)}</title></rect>`;
   });
   s+=`<line class="axis" x1="${ZX}" y1="${TOP}" x2="${ZX}" y2="${H}"/>`;
@@ -1081,10 +1091,11 @@ function chartLadder(e,big){
     oi:'Raw contracts, primary expiry. A tall bar is a lot of paper parked at a price — not proof dealers are hedging it. Near expiry, prefer the GEX view.'};
   return `<div class="ladder" data-big="${big?1:0}">
     <div class="lctl">${tab('gex','Net GEX by expiry')}${tab('cp','Call / Put GEX')}${tab('dex','Delta')}${tab('charm','Charm')}${tab('vanna','Vanna')}${tab('vol','Volume gamma')}${tab('oi','Open interest')}
-      <label class="liv"><input type="checkbox" ${LADIV?'checked':''} onchange="LADIV=this.checked;refreshLadders()"> IV smile</label></div>
+      ${R&&R.stacked?`<label class="liv" title="One bar per strike = the true net. Stacked bars on both sides of zero overstate a strike whose expiries (or calls/puts) offset."><input type="checkbox" ${LADNET?'checked':''} onchange="LADNET=this.checked;refreshLadders()"> Net only</label>`:''}
+      <label class="liv" style="margin-left:${R&&R.stacked?'12px':'auto'}"><input type="checkbox" ${LADIV?'checked':''} onchange="LADIV=this.checked;refreshLadders()"> IV smile</label></div>
     <div class="llegend">${leg}${R&&R.src?`<span class="muted" style="margin-left:auto">${R.src}</span>`:''}</div>
     ${ladderSvg(e,big)}
-    <div class="note">${notes[LADMODE]} Hover a row for the numbers. <span class="muted">Tested on this repo's data: wall touches and the GEX flip did not beat placebo levels — read this as where positioning sits, not as an edge.</span></div></div>`;
+    <div class="note">${notes[LADMODE]}${R&&R.stacked&&!LADNET?' <b>White tick</b> = the row\'s true net where bars sit on both sides of zero (they partly cancel, so the bar overstates the strike).':''} Hover a row for the numbers. <span class="muted">Tested on this repo's data: wall touches and the GEX flip did not beat placebo levels — read this as where positioning sits, not as an edge.</span></div></div>`;
 }
 function refreshLadders(){ const e=STORE[SYM]; if(!e) return;
   document.querySelectorAll('.ladder').forEach(el=>{ el.outerHTML=chartLadder(e, el.dataset.big==='1'); }); }
