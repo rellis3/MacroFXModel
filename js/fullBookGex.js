@@ -32,7 +32,9 @@ export function fullBookGex(legs, spot, { mult = 1, flatSigma = 0.2, span = 0.25
   if (!Array.isArray(legs) || !legs.length || !(spot > 0)) return null;
   const clean = legs.map(l => ({
     dte: Number.isFinite(l?.dte) ? l.dte : null,
-    T: Math.max(1, Number.isFinite(l?.dte) && l.dte > 0 ? l.dte : 14) / 365,
+    // 0 DTE is floored to ONE day, not sent to the 14-day missing-DTE default: `dte > 0 ? dte : 14`
+    // treated every 0-DTE column as two weeks out and understated its gamma ~3.7x (√14).
+    T: (Number.isFinite(l?.dte) ? Math.max(1, l.dte) : 14) / 365,
     sigma: (l?.sigma > 0) ? l.sigma : flatSigma,
     strikes: Array.isArray(l?.strikes) ? l.strikes : [],
     calls: Array.isArray(l?.calls) ? l.calls : [],

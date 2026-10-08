@@ -106,6 +106,19 @@ a{color:var(--acc)}
 .c4{grid-column:span 4}.c5{grid-column:span 5}.c7{grid-column:span 7}
 @media(max-width:1250px){.c8,.c6,.c4,.c5,.c7{grid-column:span 12}}
 
+/* strike ladder (COG-style horizontal GEX / volume-gamma / OI chart) */
+.lctl{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.lmode{background:transparent;border:1px solid var(--line2);color:var(--tx3);border-radius:4px;
+  padding:5px 11px;font:12px var(--mono);cursor:pointer}
+.lmode:hover{color:var(--tx);border-color:var(--acc)}
+.lmode.on{color:var(--bg);background:var(--acc);border-color:var(--acc)}
+.liv{margin-left:auto;font-size:12px;color:var(--tx2);display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.llegend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font:12px var(--mono);color:var(--tx2);
+  padding:7px 10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);margin-bottom:8px}
+.lleg{display:inline-flex;align-items:center;gap:7px}
+.lleg i{width:12px;height:12px;border-radius:2px;display:inline-block}
+.lleg b{color:var(--tx);font-weight:600}
+
 table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:14px}
 th{text-align:right;padding:9px 13px;color:var(--tx2);font-weight:600;font-size:11.5px;
   letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--line)}
@@ -295,8 +308,7 @@ const HELP = {
   charm:['Charm flip','Where <b>time-decay</b> driven hedging reverses. Charm is how delta changes as time passes.','This is the mechanism that pins price to big strikes into expiry. Negligible until the last day or two, then it dominates.'],
   vanna:['Vanna flip','Where <b>volatility-driven</b> hedging reverses. Vanna is how delta changes when implied vol moves.','Dormant until IV moves. Classic use: after an event IV collapses, and if dealers are positioned right that forces buying with no news at all.'],
   expmove:['Expected move','The range the options market itself expects price to stay inside by expiry.','Use it as a reality check on take-profits. A target outside this band is one the option market is pricing as unlikely — if your TP sits there, you are betting against their own pricing.'],
-  oichart:['Open interest by strike','How many contracts sit at each strike. <b>Red bars right = calls</b> (resistance above), <b>green bars left = puts</b> (support below). A tall bar is a lot of money parked at that price. Amber dashes mark spot, and only strikes near price are drawn.','Use it to see <b>where the crowd is positioned</b> — not where price is going. One trap: close to expiry a big bar far from price is old paper with no hedging left behind it. The Net GEX chart is the better guide to which strikes still actually matter today.'],
-  gexchart:['Net GEX by strike','Where dealers are forced to hedge, and which way that pushes price. <b>Red above the line</b> = calls dominate, <b>green below</b> = puts dominate. The marked crossing is where their behaviour flips.','<b>Above the flip</b> dealers lean against moves: ranges hold and fading extremes works. <b>Below it</b> they push moves along: breaks run, so do not fade them. If price is sitting right on the crossing the regime is unstable — trade smaller until it picks a side.'],
+  ladder:['Strike ladder','Every strike near price, highest at the top, with four views of the same book. <b>Net GEX by expiry</b>: dealer gamma per strike, one colour per expiry — right of zero is call-dominated (dealers lean against moves, ranges hold), left is put-dominated (they push moves along). <b>Call / Put GEX</b>: the same gamma split by side. <b>Volume gamma</b>: today&rsquo;s traded volume weighted by gamma — where today&rsquo;s activity is. <b>Open interest</b>: raw contracts, calls right, puts left. <b>Delta / Charm / Vanna</b>: the same book through the other greeks, stacked by expiry — the hedge already on (delta), the hedge change from time passing (charm, per day) and from implied vol moving (vanna, per vol point).','<b>The IV line</b> (top axis) is the implied-vol smile across strikes: lowest at the money, rising into the wings. On the COG version of this chart there is one such line per expiry; a near-dated smile curls up hardest because short-dated wings are the most expensive. A wing bending up sharply = protection on that side is being bid. Dashed = previous settle.','Near expiry the 0/1-DTE colours dominate per contract: a big far-month bar can matter less than a small near-dated one at the money.'],
   smile:['IV smile','What the options market is <b>bracing for</b> — not direction, but how much movement, and which side people are paying up to protect. <b>Blue is today, grey is the previous settlement.</b> Blue below grey means the market expects a calmer day than it did yesterday.','Use it to decide <b>how far to trust your signal</b>, never to pick a side. Calm or falling: trade normally. Rising sharply — especially with the left wing steepening, meaning downside protection is getting expensive — is the market buying umbrellas. If your signal is long, that is a reason to go smaller or wait, not to reverse.'],
   term:['ATM IV term structure','At-the-money implied vol across <b>expiries</b> — the market vol forecast by horizon.','<b>Upward sloping</b> is normal: more time, more uncertainty. <b>Inverted</b> (near-dated higher) means an event is expected soon and short-dated levels break more easily.'],
   flow:['Positioning and flow','Aggregate reads on how the option book is positioned and how that changed since yesterday.','These describe the <b>character</b> of the market — whether moves get damped or amplified, whether positioning is being built or unwound. They are context, not entry signals.'],
@@ -794,7 +806,7 @@ const norm = x => String(x||'').toLowerCase().replace(/[/_]/g,'');
 let OI_HIST = {};
 async function load(){
   // /api/oi-store = the KV oi_store with each gexProfile self-healed (rebuilt from the
-  // stored raw paste if the localStorage quota-trim shed it), so the OI-by-strike chart
+  // stored raw paste if the localStorage quota-trim shed it), so the strike ladder
   // and gamma-flip never come up blank for a trimmed pair. Falls back to the raw KV key.
   let r = await fetch('/api/oi-store?cmdty=1',{cache:'no-store'});   // cmdty=1: + oi_store_cmdty
   if(!r.ok) r = await fetch('/api/kv/get?key=oi_store',{cache:'no-store'});
@@ -883,90 +895,211 @@ function renderRail(){
   });
 }
 
-// OI by strike. Reads callOI/putOI off gexProfile — the only CONTIGUOUS per-strike
-// record stored. This chart came out BLANK because those fields did not exist there
-// (gexProfile held only the gamma-weighted values), so every bar had zero width.
-// topLevels is a top-N ranking rather than a ladder, so it is only the fallback for
-// records saved before callOI/putOI were added.
-function chartOI(e,big){
-  let rows=(e.gexProfile||[]).filter(r=>Number.isFinite(r.strike)&&(Number.isFinite(r.callOI)||Number.isFinite(r.putOI)));
-  let src='full ladder';
-  if(!rows.length){
-    rows=(e.topLevels||[]).filter(r=>Number.isFinite(r.strike));
-    src='top strikes only — press Analyse to store the full ladder';
-  }
-  if(rows.length<2) return '<div class="empty">No per-strike open interest stored.<br>Press <b>Analyse</b> on this pair to populate it.</div>';
-  const spot=e.spot, rm=e.refMove?.move;
-  const lo=rm>0?spot-4*rm:-Infinity, hi=rm>0?spot+4*rm:Infinity;
-  let win=rows.filter(r=>r.strike>=lo&&r.strike<=hi);
-  if(win.length<3) win=rows.slice();                       // window too tight → show everything
-  win=win.filter(r=>(r.callOI||0)+(r.putOI||0)>0);
-  if(!win.length) return '<div class="empty">Every strike in the focus window has zero open interest.</div>';
-  // Keep the strikes NEAREST SPOT, then sort for display. Sorting descending first and
-  // slicing kept the 44 HIGHEST strikes instead: gold's +-4x refMove window holds 427
-  // strikes, so the chart rendered 5429-5799 against a 4644 spot and never drew the spot
-  // line at all. The sort below is for the top-down price axis; it must not decide WHICH
-  // strikes survive.
-  const _cap = big?90:44;
-  if(win.length>_cap) win = win.slice()
-    .sort((a,b)=>Math.abs(a.strike-spot)-Math.abs(b.strike-spot)).slice(0,_cap);
-  win.sort((a,b)=>b.strike-a.strike);
-  const maxOI=Math.max(...win.map(r=>Math.max(r.callOI||0,r.putOI||0)),1);
-  const rowH=big?24:18, W=1000, H=Math.max(120,win.length*rowH), MID=W*0.5, HALF=W*0.35;
-  let s=`<svg viewBox="0 0 ${W} ${H+28}">`;
-  win.forEach((r,i)=>{
-    const y=i*rowH+3, bh=rowH-5;
-    const c=(r.callOI||0)/maxOI*HALF, p=(r.putOI||0)/maxOI*HALF;
-    if(p>0.6) s+=`<rect x="${MID-p}" y="${y}" width="${p}" height="${bh}" fill="var(--put)" opacity=".85" rx="1"/>`;
-    if(c>0.6) s+=`<rect x="${MID}" y="${y}" width="${c}" height="${bh}" fill="var(--call)" opacity=".85" rx="1"/>`;
-    s+=`<text class="lbl" x="${MID}" y="${y+bh-2}" text-anchor="middle" style="fill:var(--tx);font-size:${big?12:10.5}px">${fx(show(r.strike,e),SYM)}</text>`;
-    if((r.putOI||0)>maxOI*0.22) s+=`<text class="lbl" x="${MID-p-7}" y="${y+bh-2}" text-anchor="end" style="fill:var(--put)">${fOI(r.putOI)}</text>`;
-    if((r.callOI||0)>maxOI*0.22) s+=`<text class="lbl" x="${MID+c+7}" y="${y+bh-2}" style="fill:var(--call)">${fOI(r.callOI)}</text>`;
-  });
-  const si=win.findIndex(r=>r.strike<=spot);
-  if(si>=0){ const y=si*rowH; s+=`<line class="spotline" x1="0" y1="${y}" x2="${W}" y2="${y}"/>`
-    + `<text class="lbl" x="4" y="${y-5}" style="fill:var(--acc)">spot ${fx(show(spot,e),SYM)}</text>`; }
-  s+=`<line class="axis" x1="${MID}" y1="0" x2="${MID}" y2="${H}"/>`
-   + `<text class="lbl" x="${MID-HALF}" y="${H+19}" style="fill:var(--put)">&#9664; PUTS &middot; support</text>`
-   + `<text class="lbl" x="${MID+HALF}" y="${H+19}" text-anchor="end" style="fill:var(--call)">CALLS &middot; resistance &#9654;</text></svg>`;
-  return s+`<div class="note">${win.length} strikes &middot; ${src}. A tall bar is a wall. Amber dashes mark spot.</div>`;
+// ── STRIKE LADDER ────────────────────────────────────────────────────────────
+// One horizontal chart, strikes down the side (highest at the top, like a DOM), that
+// replaces the old separate "OI by strike" and "Net GEX by strike" panels. Four views
+// of the same ladder:
+//   gex  — net dealer gamma per strike, STACKED BY EXPIRY (0/1/2 DTE … each its own
+//          colour), so you can see which horizon a bar comes from. Near expiry the
+//          0/1-DTE contracts carry most of the gamma, and the single-expiry profile hid them.
+//   cp   — the same gamma split into call gamma (right) and put gamma (left), all expiries.
+//   vol  — VOLUME gamma: today's traded volume weighted by gamma — where today's activity
+//          carries hedging weight, vs the resting book above.
+//   oi   — raw contracts per strike (primary expiry): calls right, puts left.
+// `e.gexLadder` is built server-side on read (js/oi.js oiGexLadder) from the stored raw
+// matrix; when it is missing (KV fallback path) the gex/cp views fall back to the stored
+// single-expiry gexProfile as one series.
+//
+// The IV overlay is the stored per-strike IV SMILE on its own top axis — the curved lines
+// on the COG version of this chart are the same thing, one smile per expiry. Low at the
+// money, rising into the wings; where the line bends up hardest is where the market is
+// paying most for protection.
+let LADMODE = 'gex', LADIV = true, LADNET = false;
+// Stacking signed segments outward from zero makes a strike whose expiries DISAGREE look
+// bigger than it is: +5 (0 DTE) and −4 (monthly) draws 9 units of bar for a net of +1.
+// So every mixed-sign row gets a white tick at its TRUE net, and "Net only" collapses
+// each row to one bar (coloured by the expiry that dominates it).
+// Which per-expiry field each stacked view reads, and its axis unit.
+const LAD_GREEK = {
+  gex:  { key:'net',   unit:'net GEX (OI)' },
+  dex:  { key:'dex',   unit:'delta exposure (DEX)' },
+  charm:{ key:'charm', unit:'charm · delta change per day' },
+  vanna:{ key:'vanna', unit:'vanna · delta change per 1 vol pt' },
+};
+const LAD_COLS = ['#f0a04b','#5fbf8f','#4b8fd6','#b48ce8','#5d6878'];
+const fN = n => { if(!Number.isFinite(n)) return '—'; const a=Math.abs(n), s=n<0?'−':'';
+  return a>=1e12?s+(a/1e12).toFixed(2)+'T':a>=1e9?s+(a/1e9).toFixed(2)+'B':a>=1e6?s+(a/1e6).toFixed(1)+'M':a>=1e3?s+(a/1e3).toFixed(1)+'K':s+a.toFixed(a<10?2:0); };
+
+function ladderData(e){
+  const L=e.gexLadder;
+  if(L && Array.isArray(L.strikes) && L.strikes.length>=2 && Array.isArray(L.series) && L.series.length) return L;
+  const gp=(e.gexProfile||[]).filter(r=>Number.isFinite(r.strike)&&Number.isFinite(r.netGex));
+  if(gp.length<2) return null;
+  const s=gp.slice().sort((a,b)=>a.strike-b.strike);
+  return { strikes:s.map(r=>r.strike), fallback:true, vol:null, nExpiries:1,
+    series:[{ label:(Number.isFinite(e.dte)?e.dte+' DTE':'primary'), dte:e.dte??null, code:e.primaryExpiry?.code??null,
+      call:s.map(r=>r.callGex||0), put:s.map(r=>r.putGex||0), net:s.map(r=>r.netGex), total:s.reduce((a,r)=>a+r.netGex,0) }] };
 }
 
-function chartGEX(e,big){
-  const gp=(e.gexProfile||[]).filter(r=>Number.isFinite(r.netGex)&&Number.isFinite(r.strike));
-  if(gp.length<2) return '<div class="empty">No GEX profile stored.</div>';
-  const rm=e.refMove?.move, spot=e.spot;
-  const lo=rm>0?spot-4*rm:-Infinity, hi=rm>0?spot+4*rm:Infinity;
-  let rows=gp.filter(r=>r.strike>=lo&&r.strike<=hi); if(rows.length<3) rows=gp.slice();
-  rows.sort((a,b)=>a.strike-b.strike);
-  const W=1000,H=big?400:230,P=36;
-  const mn=rows[0].strike, mx=rows[rows.length-1].strike;
-  const mg=Math.max(...rows.map(r=>Math.abs(r.netGex)),1);
-  const X=v=>P+(v-mn)/(mx-mn||1)*(W-2*P), Y=v=>H/2-(v/mg)*(H/2-16);
-  let s=`<svg viewBox="0 0 ${W} ${H+24}">`;
-  // Regime bands FIRST (behind the bars): where along price the book is PIN (long gamma, fade
-  // extremes) vs BREAKOUT (short gamma, don't fade) — the local read the net-GEX scalar hides.
-  const bands=regimeBands(e,mn,mx);
-  bands.forEach(b=>{ const x1=X(Math.max(b.lo,mn)), x2=X(Math.min(b.hi,mx));
-    const col=b.regime==='pin'?'var(--call)':b.regime==='breakout'?'var(--put)':'var(--tx3)';
-    if(x2>x1) s+=`<rect x="${x1}" y="4" width="${x2-x1}" height="${H-8}" fill="${col}" opacity=".08"/>`;
-    if(b.regime!=='neutral'&&x2-x1>34) s+=`<text class="lbl" x="${(x1+x2)/2}" y="${H-6}" text-anchor="middle" style="fill:${col};opacity:.7;font-size:10px;letter-spacing:.08em">${b.regime==='pin'?'PIN':'BREAKOUT'}</text>`;});
-  s+=`<line class="axis" x1="${P}" y1="${H/2}" x2="${W-P}" y2="${H/2}"/>`;
-  const bw=Math.max(2,(W-2*P)/rows.length-1.5);
-  rows.forEach(r=>{const yv=Y(r.netGex);
-    s+=`<rect x="${X(r.strike)-bw/2}" y="${Math.min(yv,H/2)}" width="${bw}" height="${Math.abs(H/2-yv)}" fill="${r.netGex>=0?'var(--call)':'var(--put)'}" opacity=".82" rx="1"/>`;});
-  [[e.gexFlip,'var(--gam)','GEX flip'],[e.gammaFlip,'var(--vol)','gamma flip'],[spot,'var(--acc)','spot']]
-  .forEach(([v,c,t])=>{ if(!Number.isFinite(v)||v<mn||v>mx) return;
-    s+=`<line x1="${X(v)}" y1="6" x2="${X(v)}" y2="${H-6}" stroke="${c}" stroke-width="1.4" stroke-dasharray="4 4"/>`
-     + `<text class="lbl" x="${X(v)+5}" y="18" style="fill:${c}">${t}</text>`;});
-  s+=`<text class="lbl" x="${P}" y="${H+18}">${fx(show(mn,e),SYM)}</text>`
-   + `<text class="lbl" x="${W/2}" y="${H+18}" text-anchor="middle" style="fill:var(--tx3)">strike &rarr;</text>`
-   + `<text class="lbl" x="${W-P}" y="${H+18}" text-anchor="end">${fx(show(mx,e),SYM)}</text></svg>`;
-  const spotReg=regimeAt(e,spot,mn,mx);
-  const spotNote=spotReg==='pin'?' Spot sits in a <b style="color:var(--call)">PIN</b> zone — long dealer gamma, fade extremes toward max pain.'
-    :spotReg==='breakout'?' Spot sits in a <b style="color:var(--put)">BREAKOUT</b> zone — short dealer gamma, breaks run, don\'t fade.':'';
-  return s+`<div class="note">Bars above the line are call-dominated gamma, below are put-dominated. Shaded <b style="color:var(--call)">green = PIN</b> (long gamma, ranges hold), <b style="color:var(--put)">red = BREAKOUT</b> (short gamma, moves run) — the regime is <b>local</b>, flipping at each zero-gamma crossing, not one net-GEX number for the whole book.${spotNote}</div>`;
+// Rows for the current mode: [{strike, segs:[{v,col,label}], tip}] — segs signed, stacked
+// outward from zero (positives right, negatives left), each in its own colour.
+function ladderRows(e,mode){
+  if(mode==='oi'){
+    const gp=(e.gexProfile||[]).filter(r=>Number.isFinite(r.strike)&&(r.callOI||r.putOI));
+    return { rows:gp.map(r=>({strike:r.strike, segs:[{v:r.callOI||0,col:'var(--call)'},{v:-(r.putOI||0),col:'var(--put)'}],
+      tip:`calls ${fOI(r.callOI)} · puts ${fOI(r.putOI)}`})), unit:'contracts (OI)',
+      legend:[['var(--call)','Calls',fOI(e.totalCallOI)],['var(--put)','Puts',fOI(e.totalPutOI)]],
+      src:`primary expiry ${esc(e.primaryExpiry?.code||'')}${Number.isFinite(e.dte)?' · '+e.dte+' DTE':''}` };
+  }
+  const L=ladderData(e); if(!L) return null;
+  if(mode==='vol'){
+    const V=L.vol; if(!V) return { rows:[], unit:'', legend:[], src:'',
+      empty:'No per-strike volume stored.<br>Paste the <b>Volume</b> view with the OI and press Analyse.' };
+    const rows=L.strikes.map((k,i)=>V.volume[i]>0?({strike:k,
+      segs:V.split?[{v:V.call[i],col:'var(--call)'},{v:-V.put[i],col:'var(--put)'}]:[{v:V.gross[i],col:'var(--vol)'}],
+      tip:`volume ${fOI(V.volume[i])} · ${V.split?'net vol-gamma '+fN(V.net[i]):'vol-gamma '+fN(V.gross[i])}`}):null).filter(Boolean);
+    const tot=a=>a.reduce((x,y)=>x+y,0);
+    return { rows, unit:'volume × gamma', src:`today's volume, weighted at ${V.dte??'—'} DTE gamma`,
+      legend:V.split?[['var(--call)','Call vol-γ',fN(tot(V.call))],['var(--put)','Put vol-γ',fN(tot(V.put))],['var(--vol)','Net',fN(tot(V.net))]]
+        :[['var(--vol)','Vol-γ (gross — call/put split not stored)',fN(tot(V.gross))]] };
+  }
+  if(mode==='cp'){
+    const rows=L.strikes.map((k,i)=>{ const c=L.series.reduce((a,s)=>a+(s.call[i]||0),0), p=L.series.reduce((a,s)=>a+(s.put[i]||0),0);
+      return {strike:k, segs:[{v:c,col:'var(--call)'},{v:-p,col:'var(--put)'}], tip:`call γ ${fN(c)} · put γ ${fN(p)} · net ${fN(c-p)}`}; });
+    const tc=rows.reduce((a,r)=>a+r.segs[0].v,0), tp=rows.reduce((a,r)=>a-r.segs[1].v,0);
+    return { rows, stacked:true, unit:'GEX (OI)', src:`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
+      legend:[['var(--call)','Call GEX',fN(tc)],['var(--put)','Put GEX',fN(-tp)],['var(--tx2)','Net',fN(tc-tp)]] };
+  }
+  // gex / dex / charm / vanna: one stacked colour per expiry, same layout.
+  const G=LAD_GREEK[mode]||LAD_GREEK.gex, ser=L.series;
+  if(G.key!=='net' && !ser.some(s=>Array.isArray(s[G.key]))) return { rows:[], unit:'', legend:[], src:'',
+    empty:'This view needs the per-expiry ladder from the server.<br>Reload once the server is updated.' };
+  const val=(s,i)=>(s[G.key]&&s[G.key][i])||0;
+  const tot=s=>G.key==='net'?s.total:(s.totals?.[G.key] ?? (s[G.key]||[]).reduce((a,b)=>a+b,0));
+  const rows=L.strikes.map((k,i)=>({strike:k,
+    segs:ser.map((s,j)=>({v:val(s,i),col:LAD_COLS[s.rest?4:Math.min(j,3)]})),
+    tip:ser.map(s=>`${s.label}: ${fN(val(s,i))}`).join(' · ')+` · total ${fN(ser.reduce((a,s)=>a+val(s,i),0))}`}));
+  return { rows, stacked:true, unit:G.unit, src:L.fallback?'single expiry — full matrix not available':`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
+    legend:ser.map((s,j)=>[LAD_COLS[s.rest?4:Math.min(j,3)], s.label+(s.code?' · '+esc(s.code):''), fN(tot(s))]) };
 }
+
+function niceStep(span,n){ const raw=span/Math.max(1,n), p=Math.pow(10,Math.floor(Math.log10(raw||1))), f=raw/p;
+  return (f<1.5?1:f<3.5?2:f<7.5?5:10)*p; }
+
+function ladderSvg(e,big){
+  const R=ladderRows(e,LADMODE);
+  if(!R) return '<div class="empty">No per-strike data stored.<br>Press <b>Analyse</b> on this pair to populate it.</div>';
+  if(R.empty) return `<div class="empty">${R.empty}</div>`;
+  const spot=e.spot, rm=e.refMove?.move;
+  const lo=rm>0?spot-4*rm:-Infinity, hi=rm>0?spot+4*rm:Infinity;
+  let win=R.rows.filter(r=>r.strike>=lo&&r.strike<=hi&&r.segs.some(s=>s.v));
+  if(win.length<6) win=R.rows.filter(r=>r.segs.some(s=>s.v));
+  if(!win.length) return '<div class="empty">Every strike near price is empty in this view.</div>';
+  // Nearest-to-spot survive the cap; the sort after is only for the top-down axis.
+  const cap=big?140:56;
+  if(win.length>cap) win=win.slice().sort((a,b)=>Math.abs(a.strike-spot)-Math.abs(b.strike-spot)).slice(0,cap);
+  win.sort((a,b)=>b.strike-a.strike);
+  if(LADNET && R.stacked) win=win.map(r=>{ const net=r.segs.reduce((a,g)=>a+g.v,0);
+    const dom=r.segs.filter(g=>Math.sign(g.v)===Math.sign(net)).sort((a,b)=>Math.abs(b.v)-Math.abs(a.v))[0];
+    return {...r, segs:[{v:net,col:dom?dom.col:'var(--tx3)'}]}; });
+
+  let pos=0,neg=0;
+  win.forEach(r=>{ let p=0,n=0; r.segs.forEach(s=>{ if(s.v>0)p+=s.v; else n-=s.v; }); pos=Math.max(pos,p); neg=Math.max(neg,n); });
+  pos=Math.max(pos,neg*0.08,1e-12); neg=Math.max(neg,pos*0.08);
+  const rowH=big?15:Math.max(11,Math.min(15,Math.floor(680/win.length))), L0=96, W=1000, RP=18, TOP=LADIV?30:10;
+  const H=TOP+win.length*rowH, X0=L0, X1=W-RP;
+  const X=v=>X0+(v+neg)/(pos+neg)*(X1-X0), ZX=X(0);
+  // Strike → y, interpolated between row centres (rows are discrete, lines are prices).
+  const yAt=px=>{ if(!Number.isFinite(px)) return null;
+    for(let i=0;i<win.length-1;i++){ const a=win[i].strike,b=win[i+1].strike;
+      if(px<=a&&px>=b){ const t=(a-px)/((a-b)||1); return TOP+(i+t)*rowH+rowH/2; } }
+    return null; };
+  let s=`<svg viewBox="0 0 ${W} ${H+34}" style="max-height:none">`;
+
+  // PIN / BREAKOUT tint behind the bars (gex views): the local regime between zero-gamma
+  // crossings, same bands the old Net GEX chart shaded.
+  if(LADMODE==='gex'||LADMODE==='cp'){
+    const mn=win[win.length-1].strike, mx=win[0].strike;
+    regimeBands(e,mn,mx).forEach(b=>{ if(b.regime==='neutral') return;
+      const y1=yAt(Math.min(b.hi,mx))??TOP, y2=yAt(Math.max(b.lo,mn))??H;
+      if(y2>y1) s+=`<rect x="${X0}" y="${y1}" width="${X1-X0}" height="${y2-y1}" fill="${b.regime==='pin'?'var(--put)':'var(--call)'}" opacity=".07"/>`; });
+  }
+  // x grid + tick labels
+  const st=niceStep(pos+neg,6);
+  for(let v=-Math.floor(neg/st)*st; v<=pos+1e-9; v+=st){ const x=X(v);
+    s+=`<line class="gl" x1="${x}" y1="${TOP}" x2="${x}" y2="${H}"/>`
+     + `<text class="lbl" x="${x}" y="${H+16}" text-anchor="middle" style="font-size:10.5px;fill:var(--tx3)">${LADMODE==='oi'?fOI(v):fN(v)}</text>`; }
+  s+=`<text class="lbl" x="${(X0+X1)/2}" y="${H+31}" text-anchor="middle" style="font-size:10.5px;fill:var(--tx2);letter-spacing:.08em">${esc(R.unit).toUpperCase()}</text>`;
+
+  // rows: strike label + stacked segments + hover target
+  const every=rowH>=11?1:2, fs=Math.min(11.5,rowH-1.5);
+  win.forEach((r,i)=>{
+    const y=TOP+i*rowH, bh=Math.max(2,rowH-2.5);
+    if(i%every===0) s+=`<text class="lbl" x="${L0-8}" y="${y+rowH/2+fs*0.36}" text-anchor="end" style="font-size:${fs}px;fill:var(--tx2)">${fx(show(r.strike,e),SYM)}</text>`;
+    let p=0,n=0;
+    r.segs.forEach(g=>{ if(!g.v) return;
+      const a=g.v>0?p:-n-(-g.v), b=g.v>0?p+g.v:-n;   // [a,b] in value space
+      if(g.v>0) p+=g.v; else n+=-g.v;
+      const x1=X(Math.min(a,b)), x2=X(Math.max(a,b));
+      if(x2-x1>0.3) s+=`<rect x="${x1}" y="${y+1}" width="${x2-x1}" height="${bh}" fill="${g.col}" opacity=".88"/>`; });
+    // Bars on both sides of zero: mark where the row actually nets out.
+    if(R.stacked && p>0 && n>0){ const nx=X(p-n);
+      s+=`<rect x="${nx-1.5}" y="${y-0.5}" width="3" height="${bh+3}" fill="var(--tx)" stroke="var(--bg2)" stroke-width="1"/>`; }
+    s+=`<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent"><title>${esc(fx(show(r.strike,e),SYM))} — ${esc(r.tip)}</title></rect>`;
+  });
+  s+=`<line class="axis" x1="${ZX}" y1="${TOP}" x2="${ZX}" y2="${H}"/>`;
+
+  // IV smile overlay on its own top axis
+  if(LADIV && e.ivSmile && Array.isArray(e.ivSmile.strikes)){
+    const mn=win[win.length-1].strike, mx=win[0].strike, sm=e.ivSmile;
+    const pts=sm.strikes.map((k,i)=>({k,iv:sm.iv?.[i],pv:sm.ivPrior?.[i]})).filter(q=>q.k>=mn&&q.k<=mx&&q.iv>0).sort((a,b)=>b.k-a.k);
+    if(pts.length>=3){
+      const all=pts.flatMap(q=>[q.iv,q.pv]).filter(v=>v>0), ilo=Math.min(...all), ihi=Math.max(...all), pad=(ihi-ilo)*0.08||ilo*0.05;
+      const IX=v=>X0+(v-(ilo-pad))/((ihi-ilo+2*pad)||1)*(X1-X0);
+      const path=key=>pts.filter(q=>q[key]>0).map((q,i)=>(i?'L':'M')+IX(q[key]).toFixed(1)+' '+yAt(q.k)?.toFixed(1)).filter(t=>!/undefined/.test(t)).join(' ');
+      const pp=path('pv'); if(pp) s+=`<path d="${pp}" fill="none" stroke="var(--tx3)" stroke-width="1.2" stroke-dasharray="3 4"/>`;
+      s+=`<path d="${path('iv')}" fill="none" stroke="#7fd0ff" stroke-width="1.6" opacity=".9"/>`;
+      s+=`<line class="axis" x1="${X0}" y1="${TOP-8}" x2="${X1}" y2="${TOP-8}"/>`
+       + [ilo,(ilo+ihi)/2,ihi].map((v,i)=>`<text class="lbl" x="${IX(v)}" y="${TOP-13}" text-anchor="${i===0?'start':i===2?'end':'middle'}" style="font-size:10.5px;fill:#7fd0ff">${i===0?'IV ':''}${(v*100).toFixed(1)}%</text>`).join('');
+    }
+  }
+  // price lines — labels stacked so levels a few points apart don't print over each other
+  const gf=e.greeksFlow||{};
+  const lines=[...(LADMODE==='charm'?[[gf.charmFlip,'var(--warn)','CHARM FLIP',true]]:[]),
+    ...(LADMODE==='vanna'?[[gf.vannaFlip,'#7fd0ff','VANNA FLIP',true]]:[]),
+    [e.gexFlip,'var(--gam)','GEX FLIP',true],[e.maxPain,'var(--pain)','MAX PAIN',true],
+    [e.putWall,'var(--put)','PUT WALL',true],[e.callWall,'var(--call)','CALL WALL',true],[spot,'var(--tx)','SPOT',false]]
+    .map(([px,col,txt,dash])=>({px,col,txt,dash,y:yAt(px)})).filter(l=>l.y!=null).sort((a,b)=>a.y-b.y);
+  let lastY=-1e9;
+  lines.forEach(l=>{ l.ly=Math.max(l.y-4,lastY+13); lastY=l.ly;
+    s+=`<line x1="${X0-90}" y1="${l.y}" x2="${X1}" y2="${l.y}" stroke="${l.col}" stroke-width="${l.dash?1.2:1.6}"${l.dash?' stroke-dasharray="6 4"':''}/>`; });
+  lines.forEach(l=>{ s+=`<text class="lbl" x="${X0+6}" y="${l.ly}" style="fill:${l.col};font-size:11.5px;font-weight:600;paint-order:stroke;stroke:var(--bg2);stroke-width:3.5px">${l.txt} ${fx(show(l.px,e),SYM)}</text>`; });
+  return s+'</svg>';
+}
+
+function chartLadder(e,big){
+  const tab=(m,t)=>`<button class="lmode${LADMODE===m?' on':''}" onclick="setLadMode('${m}')">${t}</button>`;
+  const R=ladderRows(e,LADMODE);
+  const leg=(R&&R.legend||[]).map(([c,t,v])=>`<span class="lleg"><i style="background:${c}"></i>${t}<b>${v}</b></span>`).join('');
+  const notes={
+    gex:'Each colour is one expiry\'s net dealer gamma; right of zero = call-dominated (dealers lean against moves), left = put-dominated (they chase). The nearest expiries carry the most gamma per contract, so a short bar in the far-month colour can matter less than it looks. Green tint = PIN zone, red tint = BREAKOUT zone.',
+    cp:'Call gamma right, put gamma left, every expiry summed. Where both are big the strike is contested; where one side dominates, that side\'s hedging sets the behaviour.',
+    dex:'Delta exposure: how much of the underlying the option book is long (right) or short (left) per strike, by expiry. It is the hedge already on — big bars are where hedges get unwound if price moves through, or as the options expire.',
+    charm:'Charm: how much the hedge changes <b>per day from time passing alone</b>, price and vol unchanged. On this page\'s convention (dealers long calls, short puts): a bar to the <b>right</b> means dealers must <b>sell</b> as the day passes, to the <b>left</b> they must <b>buy</b>. Tiny weeks out, dominant in the last 1–2 days — so watch the 0–1 DTE colours, not the far month. Amber dashes = charm flip.',
+    vanna:'Vanna: how much the hedge changes for a <b>1-point move in implied vol</b>. Same convention: a bar to the <b>right</b> means dealers <b>buy</b> if IV <b>falls</b> (and sell if it rises); <b>left</b> is the reverse. Dormant while IV is flat — it matters on IV crush after an event or an IV spike in a selloff. Read it with the ATM IV change in Today\'s read. Blue dashes = vanna flip.',
+    vol:'Today\'s traded volume weighted by gamma — where today\'s activity carries hedging weight. A busy strike with little open interest is a fresh fight, not an established wall.',
+    oi:'Raw contracts, primary expiry. A tall bar is a lot of paper parked at a price — not proof dealers are hedging it. Near expiry, prefer the GEX view.'};
+  return `<div class="ladder" data-big="${big?1:0}">
+    <div class="lctl">${tab('gex','Net GEX by expiry')}${tab('cp','Call / Put GEX')}${tab('dex','Delta')}${tab('charm','Charm')}${tab('vanna','Vanna')}${tab('vol','Volume gamma')}${tab('oi','Open interest')}
+      ${R&&R.stacked?`<label class="liv" title="One bar per strike = the true net. Stacked bars on both sides of zero overstate a strike whose expiries (or calls/puts) offset."><input type="checkbox" ${LADNET?'checked':''} onchange="LADNET=this.checked;refreshLadders()"> Net only</label>`:''}
+      <label class="liv" style="margin-left:${R&&R.stacked?'12px':'auto'}"><input type="checkbox" ${LADIV?'checked':''} onchange="LADIV=this.checked;refreshLadders()"> IV smile</label></div>
+    <div class="llegend">${leg}${R&&R.src?`<span class="muted" style="margin-left:auto">${R.src}</span>`:''}</div>
+    ${ladderSvg(e,big)}
+    <div class="note">${notes[LADMODE]}${R&&R.stacked&&!LADNET?' <b>White tick</b> = the row\'s true net where bars sit on both sides of zero (they partly cancel, so the bar overstates the strike).':''} Hover a row for the numbers. <span class="muted">Tested on this repo's data: wall touches and the GEX flip did not beat placebo levels — read this as where positioning sits, not as an edge.</span></div></div>`;
+}
+function refreshLadders(){ const e=STORE[SYM]; if(!e) return;
+  document.querySelectorAll('.ladder').forEach(el=>{ el.outerHTML=chartLadder(e, el.dataset.big==='1'); }); }
+function setLadMode(m){ LADMODE=m; refreshLadders(); }
 
 function chartSmile(e,big){
   const sm=e.ivSmile;
@@ -1366,7 +1499,7 @@ function todaysRead(e){
     const isGamma = gl.rows.some(function(r){ return Math.abs(r.strike-biggest.strike) < 1e-6; });
     const bx = xday(biggest.strike);
     const outOfPlay = Number.isFinite(bx) && bx>2;
-    sub.push(_rd(outOfPlay?'warn':isGamma?'ok':'warn','Open interest by strike',
+    sub.push(_rd(outOfPlay?'warn':isGamma?'ok':'warn','Strike ladder — OI',
       'Heaviest strike is <b>'+lvl(biggest.strike)+'</b> ('+dtxt(biggest.strike)+')'
         + (reachTxt(biggest.strike) ? ' — '+reachTxt(biggest.strike) : ''),
       (outOfPlay ? 'Price would need '+bx.toFixed(1)+' normal days to get there, so it is not a level you can trade against today. '
@@ -1378,13 +1511,13 @@ function todaysRead(e){
             + (gl.rows.length ? gl.rows.map(function(r){ return fx(show(r.strike,e),SYM); }).join(' · ') : 'see above')
             + '). Where dealers must hedge beats where the contracts are parked — trust those.')));
   } else {
-    sub.push(_rd('off','Open interest by strike','No per-strike data','Press Analyse to store the full ladder.'));
+    sub.push(_rd('off','Strike ladder — OI','No per-strike data','Press Analyse to store the full ladder.'));
   }
 
   // ── net GEX by strike ──────────────────────────────────────────────────────
   const flip = Number.isFinite(e.gexFlip) ? e.gexFlip : e.gammaFlip;
   const nearFlip = (Number.isFinite(flip) && rm) ? Math.abs(flip-S) < 0.5*rm : false;
-  sub.push(_rd(gex==null?'off':nearFlip?'warn':'ok','Net GEX by strike',
+  sub.push(_rd(gex==null?'off':nearFlip?'warn':'ok','Strike ladder — GEX',
     gex==null ? 'No GEX stored'
       : (pin?'Positive':brk?'Negative':'Flat')+' — flip at <b>'+lvl(flip)+'</b> ('+dtxt(flip)+')',
     !Number.isFinite(flip) ? 'No crossing found in range.'
@@ -1502,15 +1635,14 @@ function render(){
   document.getElementById('sub').textContent =
     nm(SYM)+' · '+(e.primaryExpiry?.code||'no expiry code')+' · '+(e.numRows||0)+' strikes · saved '+ageOf(e).txt+' ago';
   document.getElementById('main').innerHTML = '<div id="statHead">'+priceBar(e)+diagBar(e)+levelStrip(e)+todaysRead(e)+'</div><div class="grid">'
-    + panel('c7','oi','Open interest by strike','oichart',chartOI)
-    + panel('c5','flow','Positioning and flow','flow',flowPanel,true)
-    + panel('c7','gex','Net GEX by strike','gexchart',chartGEX)
-    + panel('c5','smile','IV smile','smile',chartSmile)
+    + panel('c8','ladder','Strike ladder — GEX · volume gamma · OI','ladder',chartLadder)
+    + panel('c4','flow','Positioning and flow','flow',flowPanel,true)
     + panel('c6','cw','Call walls — resistance','walls',x=>wallTable(x,'call'),true)
     + panel('c6','pw','Put walls — support','walls',x=>wallTable(x,'put'),true)
+    + panel('c4','smile','IV smile','smile',chartSmile)
     + panel('c4','term','ATM IV term structure','term',chartTerm)
     + panel('c4','perexp','Per-expiry structure','perexp',termTable,true)
-    + panel('c4','vol','Volume magnets','volmag',volumePanel,true)
+    + panel('c6','vol','Volume magnets','volmag',volumePanel,true)
     + panel('c6','fullbook','Full-book GEX — all expiries','fullbook',fullBookPanel,true)
     + '<div class="p c12"><h3><span class="grow">Reachability \u2014 will price get there?'
       + h('reach') + '</span>'

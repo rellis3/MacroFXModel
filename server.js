@@ -223,6 +223,7 @@ import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oi
 import { levelExpectation } from './js/levelExpectation.js';   // per-level Reject/Break/Magnet reading
 import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
 import { buildOILevelText } from './js/oiLevelExport.js';
+import { oiGexLadder as _oiGexLadder } from './js/oi.js';   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
 import { meetingProbabilities as _zqMeetingProbs } from './js/fedPathZq.js';
 import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE, OI_PRODUCT_SPEC as _OI_SPEC } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
 import { buildOIZones, explainNoZones, oiSizeCalibrationStats as _oiSizeCalibrationStats } from './js/oiZones.js';
@@ -21616,6 +21617,11 @@ app.get('/api/oi-store', async (req, res) => {
           && !(Array.isArray(inst.gexProfile) && inst.gexProfile.length)) {
         const gp = _oiRebuildGex(inst);
         if (gp.length) inst.gexProfile = gp;
+      }
+      // Display-only, derived from fields already on the entry -- computed per read so it
+      // costs no KV space. One bad entry must not blank the whole page.
+      if (inst && typeof inst === 'object') {
+        try { inst.gexLadder = _oiGexLadder(inst); } catch { inst.gexLadder = null; }
       }
     }
     res.json({ data: store });
