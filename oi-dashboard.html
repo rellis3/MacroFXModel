@@ -107,6 +107,22 @@ a{color:var(--acc)}
 @media(max-width:1250px){.c8,.c6,.c4,.c5,.c7{grid-column:span 12}}
 
 /* strike ladder (COG-style horizontal GEX / volume-gamma / OI chart) */
+.ltipbox{font:12px var(--mono);color:var(--tx3);padding:4px 2px 6px;min-height:22px}
+.ltipbox.on{color:var(--tx)}
+@media(max-width:700px){
+  .wrap{padding:0 8px 60px}
+  /* The whole page used to be ~1000px wide on a phone (header buttons don't wrap, tables
+     don't shrink), so the browser zoomed everything out to ~40%. Keep it at screen width. */
+  .top .right{margin-left:0;flex-wrap:wrap}
+  .p .body{overflow-x:auto}
+  .p .body{padding:12px 8px}
+  .lctl{gap:4px}
+  .lmode{padding:5px 8px;font-size:11.5px}
+  .liv{margin-left:0!important;margin-right:10px}
+  .llegend{gap:6px 12px;font-size:11.5px;padding:6px 8px}
+  .llegend .muted{margin-left:0!important;width:100%}
+  .ltipbox{font-size:12.5px}
+}
 .lctl{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
 .lmode{background:transparent;border:1px solid var(--line2);color:var(--tx3);border-radius:4px;
   padding:5px 11px;font:12px var(--mono);cursor:pointer}
@@ -915,6 +931,11 @@ function renderRail(){
 // money, rising into the wings; where the line bends up hardest is where the market is
 // paying most for protection.
 let LADMODE = 'gex', LADIV = true, LADNET = false;
+// Phone layout: the SVG is drawn on a 1000-unit-wide viewBox and scaled to fit, so on a
+// ~380px phone every label shrinks to ~40% and is unreadable. Below this width the ladder
+// is redrawn on a narrow viewBox (text stays near its real size) with fewer, taller rows.
+const LAD_PHONE_PX = 700;
+const ladPhone = () => window.matchMedia('(max-width:'+LAD_PHONE_PX+'px)').matches;   // media query, not innerWidth: a page wider than the screen zooms out and inflates innerWidth
 // Stacking signed segments outward from zero makes a strike whose expiries DISAGREE look
 // bigger than it is: +5 (0 DTE) and −4 (monthly) draws 9 units of bar for a net of +1.
 // So every mixed-sign row gets a white tick at its TRUE net, and "Net only" collapses
@@ -996,7 +1017,8 @@ function ladderSvg(e,big){
   if(win.length<6) win=R.rows.filter(r=>r.segs.some(s=>s.v));
   if(!win.length) return '<div class="empty">Every strike near price is empty in this view.</div>';
   // Nearest-to-spot survive the cap; the sort after is only for the top-down axis.
-  const cap=big?140:56;
+  const ph=!big&&ladPhone();
+  const cap=big?140:(ph?34:56);
   if(win.length>cap) win=win.slice().sort((a,b)=>Math.abs(a.strike-spot)-Math.abs(b.strike-spot)).slice(0,cap);
   win.sort((a,b)=>b.strike-a.strike);
   if(LADNET && R.stacked) win=win.map(r=>{ const net=r.segs.reduce((a,g)=>a+g.v,0);
@@ -1006,7 +1028,7 @@ function ladderSvg(e,big){
   let pos=0,neg=0;
   win.forEach(r=>{ let p=0,n=0; r.segs.forEach(s=>{ if(s.v>0)p+=s.v; else n-=s.v; }); pos=Math.max(pos,p); neg=Math.max(neg,n); });
   pos=Math.max(pos,neg*0.08,1e-12); neg=Math.max(neg,pos*0.08);
-  const rowH=big?15:Math.max(11,Math.min(15,Math.floor(680/win.length))), L0=96, W=1000, RP=18, TOP=LADIV?30:10;
+  const rowH=big?15:ph?19:Math.max(11,Math.min(15,Math.floor(680/win.length))), L0=ph?64:96, W=ph?420:1000, RP=ph?8:18, TOP=LADIV?30:10;
   const H=TOP+win.length*rowH, X0=L0, X1=W-RP;
   const X=v=>X0+(v+neg)/(pos+neg)*(X1-X0), ZX=X(0);
   // Strike → y, interpolated between row centres (rows are discrete, lines are prices).
@@ -1025,14 +1047,14 @@ function ladderSvg(e,big){
       if(y2>y1) s+=`<rect x="${X0}" y="${y1}" width="${X1-X0}" height="${y2-y1}" fill="${b.regime==='pin'?'var(--put)':'var(--call)'}" opacity=".07"/>`; });
   }
   // x grid + tick labels
-  const st=niceStep(pos+neg,6);
+  const st=niceStep(pos+neg,ph?3:6);
   for(let v=-Math.floor(neg/st)*st; v<=pos+1e-9; v+=st){ const x=X(v);
     s+=`<line class="gl" x1="${x}" y1="${TOP}" x2="${x}" y2="${H}"/>`
      + `<text class="lbl" x="${x}" y="${H+16}" text-anchor="middle" style="font-size:10.5px;fill:var(--tx3)">${LADMODE==='oi'?fOI(v):fN(v)}</text>`; }
   s+=`<text class="lbl" x="${(X0+X1)/2}" y="${H+31}" text-anchor="middle" style="font-size:10.5px;fill:var(--tx2);letter-spacing:.08em">${esc(R.unit).toUpperCase()}</text>`;
 
   // rows: strike label + stacked segments + hover target
-  const every=rowH>=11?1:2, fs=Math.min(11.5,rowH-1.5);
+  const every=rowH>=11?1:2, fs=Math.min(ph?12:11.5,rowH-1.5);
   win.forEach((r,i)=>{
     const y=TOP+i*rowH, bh=Math.max(2,rowH-2.5);
     if(i%every===0) s+=`<text class="lbl" x="${L0-8}" y="${y+rowH/2+fs*0.36}" text-anchor="end" style="font-size:${fs}px;fill:var(--tx2)">${fx(show(r.strike,e),SYM)}</text>`;
@@ -1045,7 +1067,8 @@ function ladderSvg(e,big){
     // Bars on both sides of zero: mark where the row actually nets out.
     if(R.stacked && p>0 && n>0){ const nx=X(p-n);
       s+=`<rect x="${nx-1.5}" y="${y-0.5}" width="3" height="${bh+3}" fill="var(--tx)" stroke="var(--bg2)" stroke-width="1"/>`; }
-    s+=`<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent"><title>${esc(fx(show(r.strike,e),SYM))} — ${esc(r.tip)}</title></rect>`;
+    const tipTxt=`${fx(show(r.strike,e),SYM)} — ${r.tip}`;
+    s+=`<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent" style="cursor:pointer" data-tip="${esc(tipTxt)}" onclick="ladTip(this)"><title>${esc(tipTxt)}</title></rect>`;
   });
   s+=`<line class="axis" x1="${ZX}" y1="${TOP}" x2="${ZX}" y2="${H}"/>`;
 
@@ -1076,7 +1099,7 @@ function ladderSvg(e,big){
     .map(([px,col,txt,dash])=>({px,col,txt,dash,y:yAt(px)})).filter(l=>l.y!=null).sort((a,b)=>a.y-b.y);
   let lastY=-1e9;
   lines.forEach(l=>{ l.ly=Math.max(l.y-4,lastY+13); lastY=l.ly;
-    s+=`<line x1="${X0-90}" y1="${l.y}" x2="${X1}" y2="${l.y}" stroke="${l.col}" stroke-width="${l.dash?1.2:1.6}"${l.dash?' stroke-dasharray="6 4"':''}/>`; });
+ s+=`<line x1="${ph?X0:Math.max(0,X0-90)}" y1="${l.y}" x2="${X1}" y2="${l.y}" stroke="${l.col}" stroke-width="${l.dash?1.2:1.6}"${l.dash?' stroke-dasharray="6 4"':''}/>`; });
   lines.forEach(l=>{ s+=`<text class="lbl" x="${X0+6}" y="${l.ly}" style="fill:${l.col};font-size:11.5px;font-weight:600;paint-order:stroke;stroke:var(--bg2);stroke-width:3.5px">${l.txt} ${fx(show(l.px,e),SYM)}</text>`; });
   return s+'</svg>';
 }
@@ -1098,12 +1121,20 @@ function chartLadder(e,big){
       ${R&&R.stacked?`<label class="liv" title="One bar per strike = the true net. Stacked bars on both sides of zero overstate a strike whose expiries (or calls/puts) offset."><input type="checkbox" ${LADNET?'checked':''} onchange="LADNET=this.checked;refreshLadders()"> Net only</label>`:''}
       <label class="liv" style="margin-left:${R&&R.stacked?'12px':'auto'}"><input type="checkbox" ${LADIV?'checked':''} onchange="LADIV=this.checked;refreshLadders()"> IV smile</label></div>
     <div class="llegend">${leg}${R&&R.src?`<span class="muted" style="margin-left:auto">${R.src}</span>`:''}</div>
+    <div class="ltipbox">Tap a row for its numbers</div>
     ${ladderSvg(e,big)}
-    <div class="note">${notes[LADMODE]}${R&&R.stacked&&!LADNET?' <b>White tick</b> = the row\'s true net where bars sit on both sides of zero (they partly cancel, so the bar overstates the strike).':''} Hover a row for the numbers. <span class="muted">Tested on this repo's data: wall touches and the GEX flip did not beat placebo levels — read this as where positioning sits, not as an edge.</span></div></div>`;
+    <div class="note">${notes[LADMODE]}${R&&R.stacked&&!LADNET?' <b>White tick</b> = the row\'s true net where bars sit on both sides of zero (they partly cancel, so the bar overstates the strike).':''} Hover or tap a row for the numbers. <span class="muted">Tested on this repo's data: wall touches and the GEX flip did not beat placebo levels — read this as where positioning sits, not as an edge.</span></div></div>`;
 }
 function refreshLadders(){ const e=STORE[SYM]; if(!e) return;
   document.querySelectorAll('.ladder').forEach(el=>{ el.outerHTML=chartLadder(e, el.dataset.big==='1'); }); }
 function setLadMode(m){ LADMODE=m; refreshLadders(); }
+// Tap-to-read: phones have no hover, so the per-row <title> is unreachable there.
+function ladTip(el){ const box=el.closest('.ladder')?.querySelector('.ltipbox'); if(box){ box.textContent=el.dataset.tip; box.classList.add('on'); } }
+// Redraw when the window crosses the phone breakpoint (rotate / resize) — the layout is
+// chosen at draw time, so without this a rotated phone keeps the wrong one.
+let _ladWasPhone = ladPhone(), _ladResizeT = null;
+window.addEventListener('resize', ()=>{ clearTimeout(_ladResizeT); _ladResizeT=setTimeout(()=>{
+  const now=ladPhone(); if(now!==_ladWasPhone){ _ladWasPhone=now; refreshLadders(); } },150); });
 
 function chartSmile(e,big){
   const sm=e.ivSmile;
