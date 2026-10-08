@@ -26,7 +26,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # Python 3.14 no longer creates a default event loop; ib_insync's eventkit asks for one at import time
@@ -52,6 +52,10 @@ HIST_TIMEOUT = 600   # seconds per history request
 END = ""             # "" = up to now; --end YYYY-MM-DD pulls the 6 months BEFORE that date (older history, same contracts)
 # Named euro contracts for --end pulls (a continuous front cannot be asked for an end date).
 EURIBOR_MONTHS = ["202612"]
+# --expired: quarterlies that have already expired. IBKR serves expired futures history for about 2 years; each is pulled
+# for its last year of life, so stacking them extends the archive back past the 6-month limit, contract by contract.
+EXPIRED_SOFR = ["202503", "202506", "202509", "202512", "202603", "202606"]
+EXPIRED_EURIBOR = ["202503", "202506", "202509", "202512", "202603", "202606", "202609"]
 
 # SOFR: named quarterly contracts. The front (Sep'26, SR3U6, the one on C.OG's screen) is mostly fixed already and moves
 # in single 0.0025 ticks intraday; the next ones carry the market's view of coming Fed meetings. Add months as they list.
@@ -94,15 +98,16 @@ EURO_FRONTS = [("I", "ICEEU", "EUR", "Euribor 3M (ICE)"), ("ER3", "ICEEU", "EUR"
                ("ST3", "EUREX", "EUR", "ESTR 3M (Eurex)"), ("ESTR", "CME", "EUR", "ESTR (CME)")]
 
 
-def fetch_bars(ib: IB, contract, label: str):
+def fetch_bars(ib: IB, contract, label: str, end=None):
     """Historical bars with a long timeout: 6 months of 15-min bars can take minutes, far past the 20 s
-    RequestTimeout used for contract look-ups. A timeout or error is reported and skipped, not fatal."""
+    RequestTimeout used for contract look-ups. A timeout or error is reported and skipped, not fatal.
+    `end` overrides END (expired contracts: their last trading day)."""
     # ICE CONTFUT details come back as '20261214 10:00:00 GB'; the history request only accepts yyyyMM / yyyyMMdd
     contract.lastTradeDateOrContractMonth = (contract.lastTradeDateOrContractMonth or "").split(" ")[0]
     saved, ib.RequestTimeout = ib.RequestTimeout, 0          # 0 = no overall cap; the request's own timeout applies
     try:
         # formatDate=2: timestamps in UTC, whatever time zone TWS is set to
-        return ib.reqHistoricalData(contract, endDateTime=END, durationStr=DURATION, barSizeSetting=BAR_SIZE,
+        return ib.reqHistoricalData(contract, endDateTime=END if end is None else end, durationStr=DURATION, barSizeSetting=BAR_SIZE,
                                     whatToShow="TRADES", useRTH=False, formatDate=2, timeout=HIST_TIMEOUT)
     except Exception as e:
         print(f"  {label}: history request failed or timed out after {HIST_TIMEOUT}s ({type(e).__name__}: {e})")
@@ -127,10 +132,12 @@ def archive(contract, bars, label: str):
           f"{df.time.iloc[0]} -> {df.time.iloc[-1]}")
 
 
-def resolve(ib: IB, symbol, exchange, currency, label, month=None):
+def resolve(ib: IB, symbol, exchange, currency, label, month=None, expired=False):
     """A named contract month, or (month=None) the front: IBKR's continuous series, else the nearest listed expiry.
+    expired=True looks up a contract that has already expired (IBKR keeps their history for about 2 years).
     Prints IBKR's own symbol search if nothing resolves."""
-    tries = [Future(symbol=symbol, exchange=exchange, currency=currency, lastTradeDateOrContractMonth=month)] if month \
+    tries = [Future(symbol=symbol, exchange=exchange, currency=currency, lastTradeDateOrContractMonth=month,
+                    includeExpired=expired)] if month \
         else [ContFuture(symbol=symbol, exchange=exchange, currency=currency), Future(symbol=symbol, exchange=exchange, currency=currency)]
     for c in tries:
         try:
@@ -155,15 +162,23 @@ def resolve(ib: IB, symbol, exchange, currency, label, month=None):
     return None
 
 
-def pull(ib: IB, symbol, exchange, currency, label, month=None):
-    con = resolve(ib, symbol, exchange, currency, label, month)
+def pull(ib: IB, symbol, exchange, currency, label, month=None, expired=False):
+    con = resolve(ib, symbol, exchange, currency, label, month, expired)
     if con is None:
         return
-    bars = fetch_bars(ib, con, label)
-    if not bars:
-        print(f"  {label} ({con.localSymbol}): no bars -- look for a market-data subscription message in the TWS log")
-        return
-    archive(con, bars, label)
+    ends = [None]
+    if expired:
+        # Two 6-month blocks ending at its last trading day and 6 months before it: the contract's last year of life,
+        # including the stretch when it was 6-12 months out (the part of the curve that moves markets most).
+        last = datetime.strptime((con.lastTradeDateOrContractMonth or "").split(" ")[0][:8], "%Y%m%d").replace(tzinfo=timezone.utc)
+        ends = [last + timedelta(days=1), last - timedelta(days=182)]
+    for end in ends:
+        bars = fetch_bars(ib, con, label, end)
+        if not bars:
+            print(f"  {label} ({con.localSymbol}){' to ' + str(end.date()) if end else ''}: no bars -- look for a "
+                  f"market-data subscription or 'no data' message in the TWS log")
+            continue
+        archive(con, bars, label)
 
 
 SKIP_ZQ = False
@@ -174,6 +189,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--end", help="YYYY-MM-DD: pull the ~6 months before this date instead of up to now")
     ap.add_argument("--no-zq", action="store_true", help="skip fed funds (ZQ) -- it is 12 contracts and most of the runtime")
+    ap.add_argument("--expired", action="store_true",
+                    help="ONLY pull expired SOFR / Euribor quarterlies (their last year of life), to extend the history "
+                         "contract by contract")
     a = ap.parse_args()
     global SKIP_ZQ
     SKIP_ZQ = bool(a.no_zq)
@@ -187,6 +205,16 @@ def main():
         ib.connect(HOST, PORT, clientId=CLIENT_ID, timeout=15, readonly=True)   # data only; skips the order-sync requests
     except Exception as e:
         sys.exit(f"could not connect -- is TWS/Gateway open, logged in, and API enabled on port {PORT}? ({e})")
+
+    if a.expired:
+        print(f"expired SOFR quarterlies {EXPIRED_SOFR} and Euribor {EXPIRED_EURIBOR} (last year of each)...")
+        for month in EXPIRED_SOFR:
+            pull(ib, "SOFR3", "CME", "USD", f"SOFR {month} (expired)", month, expired=True)
+        for month in EXPIRED_EURIBOR:
+            pull(ib, "I", "ICEEU", "EUR", f"Euribor {month} (expired)", month, expired=True)
+        ib.disconnect()
+        print(f"\narchive: {ARCHIVE}")
+        return
 
     print("SOFR 3-month futures (CME SOFR3)...")
     for month in SOFR_MONTHS:
