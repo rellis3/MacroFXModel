@@ -47,6 +47,9 @@ CLIENT_ID = 7
 BAR_SIZE = "15 mins"
 DURATION = "6 M"     # about the most IBKR serves at 15 min
 HIST_TIMEOUT = 600   # seconds per history request
+END = ""             # "" = up to now; --end YYYY-MM-DD pulls the 6 months BEFORE that date (older history, same contracts)
+# Named euro contracts for --end pulls (a continuous front cannot be asked for an end date).
+EURIBOR_MONTHS = ["202612"]
 
 # SOFR: named quarterly contracts. The front (Sep'26, SR3U6, the one on C.OG's screen) is mostly fixed already and moves
 # in single 0.0025 ticks intraday; the next ones carry the market's view of coming Fed meetings. Add months as they list.
@@ -65,7 +68,7 @@ def fetch_bars(ib: IB, contract, label: str):
     saved, ib.RequestTimeout = ib.RequestTimeout, 0          # 0 = no overall cap; the request's own timeout applies
     try:
         # formatDate=2: timestamps in UTC, whatever time zone TWS is set to
-        return ib.reqHistoricalData(contract, endDateTime="", durationStr=DURATION, barSizeSetting=BAR_SIZE,
+        return ib.reqHistoricalData(contract, endDateTime=END, durationStr=DURATION, barSizeSetting=BAR_SIZE,
                                     whatToShow="TRADES", useRTH=False, formatDate=2, timeout=HIST_TIMEOUT)
     except Exception as e:
         print(f"  {label}: history request failed or timed out after {HIST_TIMEOUT}s ({type(e).__name__}: {e})")
@@ -130,6 +133,13 @@ def pull(ib: IB, symbol, exchange, currency, label, month=None):
 
 
 def main():
+    global END
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--end", help="YYYY-MM-DD: pull the ~6 months before this date instead of up to now")
+    a = ap.parse_args()
+    if a.end:
+        END = datetime.strptime(a.end, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        print(f"older history: the {DURATION} before {a.end} (UTC)")
     ib = IB()
     ib.RequestTimeout = 20          # contract look-ups: a request IBKR never answers no longer hangs forever
     print(f"connecting to {HOST}:{PORT} ...")
@@ -142,9 +152,14 @@ def main():
     for month in SOFR_MONTHS:
         pull(ib, "SOFR3", "CME", "USD", f"SOFR {month}", month)
 
-    print("euro short-rate futures...")
-    for symbol, exchange, currency, label in EURO_FRONTS:
-        pull(ib, symbol, exchange, currency, label)
+    if END:                         # older pulls: named Euribor contracts (a continuous front takes no end date)
+        print("Euribor 3-month futures (ICE I)...")
+        for month in EURIBOR_MONTHS:
+            pull(ib, "I", "ICEEU", "EUR", f"Euribor {month}", month)
+    else:
+        print("euro short-rate futures...")
+        for symbol, exchange, currency, label in EURO_FRONTS:
+            pull(ib, symbol, exchange, currency, label)
 
     ib.disconnect()
     print(f"\narchive: {ARCHIVE}")
