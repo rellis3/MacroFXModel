@@ -68,3 +68,20 @@ discovery bucket's holdout value, so the next idea starts from where this one po
 ## What this does not claim
 
 Passing means a candidate for the forward paper record, not a live strategy. Nothing here touches live calculations.
+
+## Amendment 1 (2026-10-08, after one discovery-only pass, holdout NOT read)
+
+First discovery pass (out-of-fold, no holdout read) selected 571 trades at +0.52R gross, in every year 2018-2022, 99.8%
+fades. An audit of the selection showed they are touches immediately after a spike: median last-5-minute move 0.83 of
+the day's expected range (population median 0.10), 111 of the 571 on EURCHF in 2020, and the same minute counted up to
+five times because several lines were touched at once. That is an unfillable fast-market reversion, not a decision
+anyone could take at the touch-bar close, and it duplicates one event. Two rules are added before anything else is run
+and before the holdout is read:
+
+1. **Eligibility (applies to training and trading):** a touch is eligible only if the 5-minute range ending at the
+   touch bar is at most 0.5 of the day's expected range. Sensitivity at 0.3 is reported alongside; it is not chosen
+   on holdout.
+2. **One trade per instrument per day:** the first eligible touch of the day whose score clears c. c is re-calibrated
+   under this rule to 2 trades a week pooled on discovery out-of-fold output, then frozen.
+
+The first-pass number is recorded here so it is not forgotten: **unamended discovery pass = +0.52R gross, an artifact.**
