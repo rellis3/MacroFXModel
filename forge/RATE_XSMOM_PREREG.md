@@ -60,3 +60,16 @@ Cost 0.05% per switch.
 
 One run. No parameter changes after it: L = 3 and the top/bottom-third split are the result; the other L are context.
 Output `analysis/output/rate_xsmom/RESULTS.md`; script `scripts/rate_xsmom/study.py`.
+
+## Result (2026-10-08), run once as registered
+
+`analysis/output/rate_xsmom/RESULTS.md`.
+
+- **FX book (L = 3): FAIL.** +0.95% a year, Sharpe 0.13 over 1976–2026; 1976–2014 +0.081% / month [−0.110, +0.276];
+  2015–2026 +0.073% / month. Beyond carry and FX momentum: alpha t +0.81. No look-back (1, 6, 12) does better in both
+  periods.
+- **Sanity:** the CARRY factor built by the same code earns +5.0% a year, Sharpe 0.54, 1976–2014 (interval above 0),
+  as the literature says it should; so the construction works and the momentum signal is simply weak.
+- **NASDAQ rule A: FAIL.** Long only when the US T-bill rate is falling: Sharpe 0.24 vs buy-and-hold 0.35 (1976–2026;
+  difference −0.10 [−0.31, +0.10]), worse in both periods; in the market 46% of the time. Rule B (US minus the other
+  nine) is worse: −0.25 [−0.46, −0.04].

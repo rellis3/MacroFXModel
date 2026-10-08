@@ -1,0 +1,269 @@
+{
+ "fx_main_L3": {
+  "1976-2014": {
+   "months": 427,
+   "mean_pct_month": [
+    0.0811,
+    -0.1098,
+    0.2762
+   ],
+   "ann_return_pct": 0.97,
+   "sharpe": 0.119,
+   "max_dd_pct": -35.3,
+   "hit": 0.511
+  },
+  "2015-2026": {
+   "months": 141,
+   "mean_pct_month": [
+    0.0735,
+    -0.1096,
+    0.2587
+   ],
+   "ann_return_pct": 0.88,
+   "sharpe": 0.182,
+   "max_dd_pct": -11.6,
+   "hit": 0.504
+  },
+  "all": {
+   "months": 568,
+   "mean_pct_month": [
+    0.0792,
+    -0.0688,
+    0.2328
+   ],
+   "ann_return_pct": 0.95,
+   "sharpe": 0.127,
+   "max_dd_pct": -35.3,
+   "hit": 0.509
+  }
+ },
+ "fx_other_L": {
+  "L1": {
+   "1976-2014": {
+    "months": 429,
+    "mean_pct_month": [
+     0.0263,
+     -0.1689,
+     0.2239
+    ],
+    "ann_return_pct": 0.32,
+    "sharpe": 0.04,
+    "max_dd_pct": -50.7,
+    "hit": 0.483
+   },
+   "2015-2026": {
+    "months": 141,
+    "mean_pct_month": [
+     -0.1453,
+     -0.3686,
+     0.0662
+    ],
+    "ann_return_pct": -1.74,
+    "sharpe": -0.363,
+    "max_dd_pct": -30.2,
+    "hit": 0.461
+   }
+  },
+  "L6": {
+   "1976-2014": {
+    "months": 424,
+    "mean_pct_month": [
+     0.1135,
+     -0.0864,
+     0.3199
+    ],
+    "ann_return_pct": 1.36,
+    "sharpe": 0.156,
+    "max_dd_pct": -36.9,
+    "hit": 0.524
+   },
+   "2015-2026": {
+    "months": 141,
+    "mean_pct_month": [
+     0.0222,
+     -0.1276,
+     0.1861
+    ],
+    "ann_return_pct": 0.27,
+    "sharpe": 0.061,
+    "max_dd_pct": -9.1,
+    "hit": 0.504
+   }
+  },
+  "L12": {
+   "1976-2014": {
+    "months": 418,
+    "mean_pct_month": [
+     0.1602,
+     -0.056,
+     0.3666
+    ],
+    "ann_return_pct": 1.92,
+    "sharpe": 0.221,
+    "max_dd_pct": -36.3,
+    "hit": 0.526
+   },
+   "2015-2026": {
+    "months": 141,
+    "mean_pct_month": [
+     -0.0869,
+     -0.2692,
+     0.095
+    ],
+    "ann_return_pct": -1.04,
+    "sharpe": -0.207,
+    "max_dd_pct": -24.6,
+    "hit": 0.504
+   }
+  }
+ },
+ "carry": {
+  "1976-2014": {
+   "months": 430,
+   "mean_pct_month": [
+    0.4163,
+    0.1418,
+    0.665
+   ],
+   "ann_return_pct": 5.0,
+   "sharpe": 0.543,
+   "max_dd_pct": -36.0,
+   "hit": 0.623
+  },
+  "2015-2026": {
+   "months": 141,
+   "mean_pct_month": [
+    0.1316,
+    -0.1077,
+    0.3795
+   ],
+   "ann_return_pct": 1.58,
+   "sharpe": 0.26,
+   "max_dd_pct": -11.1,
+   "hit": 0.582
+  }
+ },
+ "fx_momentum": {
+  "1976-2014": {
+   "months": 430,
+   "mean_pct_month": [
+    0.1882,
+    -0.0474,
+    0.4237
+   ],
+   "ann_return_pct": 2.26,
+   "sharpe": 0.248,
+   "max_dd_pct": -29.1,
+   "hit": 0.533
+  },
+  "2015-2026": {
+   "months": 141,
+   "mean_pct_month": [
+    -0.4175,
+    -0.6472,
+    -0.1661
+   ],
+   "ann_return_pct": -5.01,
+   "sharpe": -0.819,
+   "max_dd_pct": -69.8,
+   "hit": 0.362
+  }
+ },
+ "alpha_vs_carry_mom": {
+  "alpha_pct_month": 0.077,
+  "t": 0.81,
+  "betas": {
+   "carry": -0.007,
+   "fx_mom": 0.132
+  },
+  "months": 568
+ },
+ "correlations": {
+  "carry": -0.02,
+  "fx_momentum": 0.151,
+  "yield_spread_book": 0.114
+ },
+ "fx_checks": {
+  "p1_ci_above_0": false,
+  "p2_mean_above_0": true,
+  "alpha_t_ge_2": false
+ },
+ "fx_pass": false,
+ "nasdaq_A_us_tbill": {
+  "time_in_market": 0.463,
+  "1976-2014": {
+   "rule_sharpe": 0.191,
+   "buyhold_sharpe": 0.259,
+   "rule_ann_excess_pct": 2.94,
+   "buyhold_ann_excess_pct": 5.63,
+   "sharpe_diff": [
+    -0.068,
+    -0.281,
+    0.156
+   ]
+  },
+  "2015-2026": {
+   "rule_sharpe": 0.488,
+   "buyhold_sharpe": 0.7,
+   "rule_ann_excess_pct": 5.51,
+   "buyhold_ann_excess_pct": 12.68,
+   "sharpe_diff": [
+    -0.212,
+    -0.777,
+    0.296
+   ]
+  },
+  "all": {
+   "rule_sharpe": 0.243,
+   "buyhold_sharpe": 0.347,
+   "rule_ann_excess_pct": 3.54,
+   "buyhold_ann_excess_pct": 7.26,
+   "sharpe_diff": [
+    -0.104,
+    -0.313,
+    0.098
+   ]
+  }
+ },
+ "nasdaq_B_us_differential": {
+  "time_in_market": 0.458,
+  "1976-2014": {
+   "rule_sharpe": 0.034,
+   "buyhold_sharpe": 0.259,
+   "rule_ann_excess_pct": 0.54,
+   "buyhold_ann_excess_pct": 5.63,
+   "sharpe_diff": [
+    -0.226,
+    -0.48,
+    0.03
+   ]
+  },
+  "2015-2026": {
+   "rule_sharpe": 0.373,
+   "buyhold_sharpe": 0.7,
+   "rule_ann_excess_pct": 4.66,
+   "buyhold_ann_excess_pct": 12.68,
+   "sharpe_diff": [
+    -0.327,
+    -0.884,
+    0.111
+   ]
+  },
+  "all": {
+   "rule_sharpe": 0.098,
+   "buyhold_sharpe": 0.347,
+   "rule_ann_excess_pct": 1.49,
+   "buyhold_ann_excess_pct": 7.26,
+   "sharpe_diff": [
+    -0.249,
+    -0.46,
+    -0.039
+   ]
+  }
+ },
+ "nasdaq_checks": {
+  "all_ci_above_0": false,
+  "both_periods_positive": false
+ },
+ "nasdaq_pass": false
+}
