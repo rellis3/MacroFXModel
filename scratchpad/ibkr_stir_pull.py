@@ -31,8 +31,13 @@ drop straight into the existing research scripts with no reshaping.
 """
 from __future__ import annotations
 
+import asyncio
 import sys
 from pathlib import Path
+
+# Python 3.14 no longer creates a default event loop; ib_insync's eventkit asks for one at import time
+# ("There is no current event loop in thread 'MainThread'"). Create it first.
+asyncio.set_event_loop(asyncio.new_event_loop())
 
 try:
     from ib_insync import IB, Future, util
