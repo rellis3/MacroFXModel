@@ -3,7 +3,7 @@
 // $-per-1% GEX formula on Cboe's own gamma, gamma vs OI walls, the flip scan, OTM
 // smiles, and the DJX ×100 scale onto the US30 CFD.
 //   node js/cboeChain.test.mjs
-import { parseCboeChain, cboeLadder, cboeSnapshotRow, cboeOverlayInst, CBOE_PAIRS } from './cboeChain.js';
+import { parseCboeChain, cboeLadder, cboeSnapshotRow, cboeOverlayInst, cfdCashOffset, cboeShift, CBOE_PAIRS } from './cboeChain.js';
 import { buildOILevelText } from './oiLevelExport.js';
 
 let fails = 0;
@@ -107,6 +107,27 @@ console.log('[export overlay — the Cboe tick]');
   const fut = buildOILevelText({ SPX500_USD: ov }, { generated: 'x', terms: 'futures' });
   ok('futures terms add the CME basis to Cboe levels', fut.includes(`OI ${(b.levels.callWallGamma + 14).toFixed(2)} : call_wall`));
   ok('no Cboe data → CME entry returned untouched', cboeOverlayInst(cme, null) === cme);
+}
+
+console.log('[CFD − cash offset]');
+{
+  const t0 = Date.UTC(2026, 9, 9, 17, 12);
+  // CFD minute 17:12 opens 7808, closes 7812; Cboe quoted 7805 at 17:12:30 → CFD 7810 → +5.
+  ok('offset = CFD (interpolated to Cboe\'s second) − cash', cfdCashOffset({ t: t0, o: 7808, c: 7812 }, t0 + 30e3, 7805) === 5);
+  ok('no candle → null (uncorrected, not zero-shifted)', cfdCashOffset(null, t0, 7805) === null);
+  ok('implausible gap (>1%) → null', cfdCashOffset({ t: t0, o: 8000, c: 8000 }, t0, 7805) === null);
+  const b = cboeLadder(parseCboeChain(chain()));
+  const s5 = cboeShift(b, 5);
+  ok('shift moves strikes, spot, walls, max pain, flip by the offset', s5.ladder.strikes[0] === b.ladder.strikes[0] + 5 && s5.spot === b.spot + 5
+    && s5.levels.callWallGamma === b.levels.callWallGamma + 5 && s5.levels.maxPain === b.levels.maxPain + 5 && s5.levels.callWallOI === b.levels.callWallOI + 5);
+  ok('shift moves smile strikes and near/OI profiles too', s5.smiles[0].strikes[0] === b.smiles[0].strikes[0] + 5
+    && s5.near[0].strike === b.near[0].strike + 5 && s5.oiProfile[0].strike === b.oiProfile[0].strike + 5);
+  ok('GEX values untouched', s5.ladder.series[0].net === b.ladder.series[0].net || s5.ladder.series[0].net.every((v, i) => v === b.ladder.series[0].net[i]));
+  ok('original not modified', b.cfdOffset === undefined && b.spot === 7800);
+  const s0 = cboeShift(b, null);
+  ok('no offset → prices unchanged, flagged uncorrected', s0.spot === b.spot && s0.cfdOffset === null);
+  ok('export source line says the offset was applied', /CFD−cash \+5 applied/.test(cboeOverlayInst({ spot: 7801 }, s5).oiSource));
+  ok('…or that it was not measured', /not measured/.test(cboeOverlayInst({ spot: 7801 }, s0).oiSource));
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

@@ -285,7 +285,8 @@ export function cboeOverlayInst(cme, built, { label = 'Cboe', stale = false } = 
   });
   return {
     ...cme,
-    oiSource: `${label} index options${stale ? ' (stale copy)' : ''} · as of ${new Date(built.asOfMs).toISOString().slice(11, 16)} UTC, 15-min delayed`,
+    oiSource: `${label} index options${stale ? ' (stale copy)' : ''} · as of ${new Date(built.asOfMs).toISOString().slice(11, 16)} UTC, 15-min delayed`
+      + (Number.isFinite(built.cfdOffset) ? ` · CFD−cash ${built.cfdOffset >= 0 ? '+' : ''}${built.cfdOffset} applied` : ' · CFD−cash offset not measured (levels = cash index)'),
     callWall: L.callWallGamma, putWall: L.putWallGamma, callWalls: cw, putWalls: pw,
     callWallOI: cw[0]?.oi ?? null, putWallOI: pw[0]?.oi ?? null,
     maxPain: L.maxPain, gammaFlip: L.gexFlip, gexFlip: L.gexFlip, gexFlips: L.flips || [],
@@ -293,5 +294,46 @@ export function cboeOverlayInst(cme, built, { label = 'Cboe', stale = false } = 
     fullBook: { gex: L.netGex, flip: L.gexFlip, regime: L.regime, nExpiries: built.ladder.nExpiries, volSource: 'cboe' },
     gexProfile, dte: ser[0]?.dte ?? cme.dte,
     dayExpiry: null, dayExpiryReason: 'ok', perExpiry: [], termStructure: [], clusters: [],
+  };
+}
+
+/**
+ * CFD − CASH OFFSET. Cboe strikes are cash-index levels; the OANDA CFD trades a few points
+ * away from cash (its own fair-value pricing). The gap is measured at Cboe's OWN quote time
+ * — the CFD price in that same minute minus Cboe's index price — so the feed's 15-minute
+ * delay cancels instead of contaminating the comparison. `bar` = the OANDA M1 candle that
+ * contains asOfMs ({ t: open time ms, o, c }); the CFD price is interpolated across the
+ * minute to Cboe's second. Returns null when the inputs are missing or the gap is
+ * implausible (> 1% of price — a wrong candle, not a real offset), so a bad read leaves
+ * levels uncorrected rather than shifted by nonsense.
+ */
+export function cfdCashOffset(bar, asOfMs, indexSpotCfdTerms) {
+  if (!bar || !Number.isFinite(bar.o) || !Number.isFinite(bar.c) || !Number.isFinite(bar.t)) return null;
+  if (!(indexSpotCfdTerms > 0) || !Number.isFinite(asOfMs)) return null;
+  const f = Math.min(1, Math.max(0, (asOfMs - bar.t) / 60e3));
+  const cfd = bar.o + (bar.c - bar.o) * f;
+  const d = cfd - indexSpotCfdTerms;
+  return Math.abs(d) <= indexSpotCfdTerms * 0.01 ? +d.toFixed(4) : null;
+}
+
+// Every price in a cboeLadder() result moved by `d` (CFD − cash): strikes, spot, levels,
+// flips, smiles. Values (GEX, OI) are untouched. Pure; returns a new object. d = 0/null →
+// a copy flagged with cfdOffset null (uncorrected), so callers can say so.
+export function cboeShift(built, d) {
+  if (!built) return built;
+  const ok = Number.isFinite(d) && d !== 0;
+  const sh = v => (Number.isFinite(v) ? +(v + (ok ? d : 0)).toFixed(4) : v);
+  const L = built.levels || {};
+  return {
+    ...built,
+    cfdOffset: Number.isFinite(d) ? d : null,
+    spot: sh(built.spot),
+    ladder: { ...built.ladder, strikes: built.ladder.strikes.map(sh) },
+    oiProfile: (built.oiProfile || []).map(r => ({ ...r, strike: sh(r.strike) })),
+    near: (built.near || []).map(r => ({ ...r, strike: sh(r.strike) })),
+    smiles: (built.smiles || []).map(sm => ({ ...sm, strikes: sm.strikes.map(sh) })),
+    levels: { ...L, callWallGamma: sh(L.callWallGamma), putWallGamma: sh(L.putWallGamma),
+      callWallOI: sh(L.callWallOI), putWallOI: sh(L.putWallOI), maxPain: sh(L.maxPain), gexFlip: sh(L.gexFlip),
+      flips: (L.flips || []).map(f => ({ ...f, price: sh(f.price) })) },
   };
 }

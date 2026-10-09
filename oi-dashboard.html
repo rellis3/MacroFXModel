@@ -1134,7 +1134,7 @@ function chartLadder(e,big){
     const st=CBOE_DATA[SYM];
     const stab=(v,t)=>`<button class="lmode lsrc${LADSRC===v?' on':''}" onclick="setLadSrc('${v}')">${t}</button>`;
     srcBar=`<div class="lctl"><span class="muted" style="font-size:12px;margin-right:4px">Source</span>${stab('cme','CME '+cb.fut+' futures options')}${stab('cboe','Cboe '+cb.label+' index options')}
-      <span class="muted" style="font-size:11.5px;margin-left:6px">${st?.data?`Cboe as of ${hhmm(st.data.asOfMs)}${st.data.stale?' · <b style="color:var(--warn)">stale copy</b>':''} · ${cb.label} ${fx(st.data.spot,SYM)} (15-min delayed)`:st?.err?`<span style="color:var(--warn)">Cboe: ${esc(st.err)}</span>`:''}</span></div>`;
+      <span class="muted" style="font-size:11.5px;margin-left:6px">${st?.data?`Cboe as of ${hhmm(st.data.asOfMs)}${st.data.stale?' · <b style="color:var(--warn)">stale copy</b>':''} · ${cb.label} ${fx(st.data.indexSpot,SYM)} (15-min delayed) · ${Number.isFinite(st.data.cfdOffset)?`CFD−cash ${st.data.cfdOffset>=0?'+':''}${st.data.cfdOffset.toFixed(2)} applied`:'<span style="color:var(--warn)">CFD−cash not measured — levels are cash-index</span>'}`:st?.err?`<span style="color:var(--warn)">Cboe: ${esc(st.err)}</span>`:''}</span></div>`;
     if(st?.data) cmp=cboeCompare(e,st.data,cb);
     if(LADSRC==='cboe'){
       if(!st?.data){ if(!st?.loading) loadCboe(SYM);
@@ -1227,7 +1227,7 @@ function cboeCompare(e,c,cb){
     + row('GEX flip',e.gexFlip,L.gexFlip)
     + row('Max pain',e.dayExpiry?.maxPain??e.maxPain,L.maxPain,'nearest')
     + `<tr><td>Regime</td><td>${cmeReg}</td><td>${esc(L.regime||'—')}</td><td class="muted">${b==null?'no basis stored':'basis '+(b>=0?'+':'')+b.toFixed(2)}</td></tr>`
-    + `</tbody></table><div class="muted" style="font-size:11.5px;margin-top:4px">Both columns in ${nm(SYM)} CFD terms. CME OI walls are the analysed expiry; Cboe OI walls are every expiry. The CFD tracks the cash index, so Cboe needs no basis on the CFD — add the CME basis for ${cb.fut} futures. Recorded daily for comparison (/api/cboe-snapshots).</div></div>`;
+    + `</tbody></table><div class="muted" style="font-size:11.5px;margin-top:4px">Both columns in ${nm(SYM)} CFD terms. CME OI walls are the analysed expiry; Cboe OI walls are every expiry. Cboe strikes are cash-index levels, moved onto the CFD by the CFD−cash gap measured at Cboe's own quote time${Number.isFinite(c.cfdOffset)?` (${c.cfdOffset>=0?'+':''}${c.cfdOffset.toFixed(2)})`:' (not measured — shown uncorrected)'}; the last column adds the CME basis for ${cb.fut} futures. Recorded daily for comparison (/api/cboe-snapshots).</div></div>`;
 }
 // Tap-to-read: phones have no hover, so the per-row <title> is unreachable there.
 function ladTip(el){ const box=el.closest('.ladder')?.querySelector('.ltipbox'); if(box){ box.textContent=el.dataset.tip; box.classList.add('on'); } }
