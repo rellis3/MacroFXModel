@@ -1,0 +1,125 @@
+{
+ "T4_intraday": {
+  "2y spread US-DE | next-hour realised vol": {
+   "t_explore": 1.55,
+   "b_explore": 0.00157,
+   "t_confirm": 1.35,
+   "b_confirm": 0.00577,
+   "oos_r2_gain_pct": 0.033,
+   "n": [
+    3874,
+    5257
+   ]
+  },
+  "2y spread US-DE | next-hour range": {
+   "t_explore": 2.54,
+   "b_explore": 0.0032,
+   "t_confirm": 1.42,
+   "b_confirm": 0.00899,
+   "oos_r2_gain_pct": 0.068,
+   "n": [
+    3874,
+    5257
+   ]
+  },
+  "2y spread US-DE | next-hour direction": {
+   "t_explore": 0.3,
+   "auc_confirm_with": 0.4897,
+   "auc_confirm_without": 0.4891
+  },
+  "US 2y | next-hour realised vol": {
+   "t_explore": 0.27,
+   "b_explore": 0.00037,
+   "t_confirm": 0.85,
+   "b_confirm": 0.00326,
+   "oos_r2_gain_pct": 0.012,
+   "n": [
+    4216,
+    5606
+   ]
+  },
+  "US 2y | next-hour range": {
+   "t_explore": 1.05,
+   "b_explore": 0.00182,
+   "t_confirm": 1.13,
+   "b_confirm": 0.0067,
+   "oos_r2_gain_pct": 0.05,
+   "n": [
+    4216,
+    5606
+   ]
+  },
+  "US 2y | next-hour direction": {
+   "t_explore": 0.21,
+   "auc_confirm_with": 0.4908,
+   "auc_confirm_without": 0.4913
+  },
+  "DE 2y | next-hour realised vol": {
+   "t_explore": -1.12,
+   "b_explore": -0.0054,
+   "t_confirm": -0.88,
+   "b_confirm": -0.00254,
+   "oos_r2_gain_pct": 0.027,
+   "n": [
+    3874,
+    5257
+   ]
+  },
+  "DE 2y | next-hour range": {
+   "t_explore": -1.25,
+   "b_explore": -0.00794,
+   "t_confirm": 1.26,
+   "b_confirm": 0.00544,
+   "oos_r2_gain_pct": -0.273,
+   "n": [
+    3874,
+    5257
+   ]
+  },
+  "DE 2y | next-hour direction": {
+   "t_explore": -0.33,
+   "auc_confirm_with": 0.4921,
+   "auc_confirm_without": 0.4891
+  }
+ },
+ "T6_power_detection_rate": {
+  "1m, planted corr 0.01": 0.0,
+  "1m, planted corr 0.02": 0.13,
+  "1m, planted corr 0.03": 0.33,
+  "1m, planted corr 0.05": 0.47,
+  "15m, planted corr 0.01": 0.0,
+  "15m, planted corr 0.02": 0.0,
+  "15m, planted corr 0.03": 0.03,
+  "15m, planted corr 0.05": 0.0
+ },
+ "posthoc_big_moves": {
+  "Apr-Jun": {
+   "offsets": {
+    "-3": 2,
+    "-2": 2,
+    "-1": 2,
+    "0": 10,
+    "1": 1,
+    "3": 1
+   },
+   "rate_first": 6,
+   "rate_after": 2,
+   "same_minute": 10,
+   "rate-first cases where the rate's direction matched the usual sign": "3/6"
+  },
+  "Jul-Oct": {
+   "offsets": {
+    "-3": 1,
+    "-2": 1,
+    "-1": 3,
+    "0": 11,
+    "1": 1,
+    "3": 1
+   },
+   "rate_first": 5,
+   "rate_after": 2,
+   "same_minute": 11,
+   "rate-first cases where the rate's direction matched the usual sign": "3/5"
+  }
+ }
+}
