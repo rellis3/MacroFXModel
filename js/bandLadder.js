@@ -7,9 +7,16 @@
  * answer rather than around a list.
  *
  * WHAT THE CLOCK ALONE DOES: nothing much. p(median reached before the close | not yet
- * reached) decays monotonically through the session — EUR/USD 48% at 07:00, 26% by
- * 13:30, 8% by 16:30. A re-read on a day where nothing has happened is not a sharper
- * read; it is the same read with less session left to be right in.
+ * reached) decays monotonically through the session — EUR/USD 52% at 02:00, 48% by
+ * 07:00, 26% by 13:30, 8% by 16:30. A re-read on a day where nothing has happened is
+ * not a sharper read; it is the same read with less session left to be right in.
+ *
+ * OVERNIGHT CHECKPOINTS (02:00/04:00/06:00) were added 2026-10-09. The session is a
+ * LONDON CALENDAR DAY, so it always began at midnight — the read simply started seven
+ * hours late, and a band reached at 05:00 showed up as "already in" at 07:00 with
+ * nothing describing how it got there. The decay runs smooth straight through the
+ * London open with no discontinuity, on every instrument: thin overnight liquidity
+ * does NOT make an early touch weaker evidence, which was the live possibility.
  *
  * WHAT THE STATE CHANGE DOES: a great deal. Reaching the median lifts the odds of the
  * 75th by a median of 3.3x, and on 64 of 64 instrument-checkpoint cells the lift is at

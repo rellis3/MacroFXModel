@@ -29,22 +29,35 @@ const NQ_SESSION = { oh_reached_at: null, oh_75_reached_at: null, oh_ratio: 3.03
 t('the ladder reconstructs every checkpoint the day has passed', () => {
   const r = ladder({ params: BAND_REACH_PARAMS.NQ, session: NQ_SESSION, checkpoints: BAND_REACH_CHECKPOINTS, nowMins: 14 * 60 });
   assert.equal(r.ok, true);
-  assert.deepEqual(r.rows.map(x => x.cp), ['07:00', '08:00', '09:00', '10:30', '12:00', '13:30']);
+  assert.deepEqual(r.rows.map(x => x.cp),
+    ['02:00', '04:00', '06:00', '07:00', '08:00', '09:00', '10:30', '12:00', '13:30']);
   assert.equal(r.rows.every(x => x.side === 'dn'), true, 'the low side is the one that extended');
-  // 05:00 UTC = 06:00 UK, so the median was already in at the 07:00 checkpoint
-  assert.equal(r.rows[0].branch, 'extended');
+  // THE OVERNIGHT STORY, which is the whole reason 02:00/04:00/06:00 exist. 05:00 UTC is
+  // 06:00 UK, so the median lands exactly ON a checkpoint: the day reads waiting, waiting,
+  // then extended. Before these were added the ladder opened at 07:00 already saying
+  // "extended", with nothing describing how it got there.
+  assert.equal(r.rows[0].cp, '02:00');
+  assert.equal(r.rows[0].branch, 'waiting', 'nothing had happened at 2am');
+  assert.equal(r.rows[1].branch, 'waiting', 'still nothing at 4am');
+  assert.equal(r.rows.find(x => x.cp === '06:00').branch, 'extended', 'the median lands here');
+  assert.equal(r.rows.find(x => x.cp === '06:00').changed, true, 'and it is marked as the change');
+  assert.equal(r.rows.find(x => x.cp === '07:00').branch, 'extended');
   // 08:00 UTC = 09:00 UK, so the 75th lands exactly on the 09:00 checkpoint
   assert.equal(r.rows.find(x => x.cp === '08:00').branch, 'extended');
   assert.equal(r.rows.find(x => x.cp === '09:00').branch, 'stretch');
   assert.equal(r.rows.at(-1).branch, 'stretch');
 });
 
-t('the row where the read CHANGED is marked, and it is the only one', () => {
+t('every row where the read CHANGED is marked, and only those', () => {
   const r = ladder({ params: BAND_REACH_PARAMS.NQ, session: NQ_SESSION, checkpoints: BAND_REACH_CHECKPOINTS, nowMins: 14 * 60 });
-  assert.deepEqual(r.rows.filter(x => x.changed).map(x => x.cp), ['09:00']);
+  // TWO changes, not one. Before the overnight checkpoints existed this read as a single
+  // change at 09:00, because the ladder opened at 07:00 with the median ALREADY in and
+  // the 06:00 transition had nowhere to appear. That invisible state change is exactly
+  // what the earlier checkpoints recover.
+  assert.deepEqual(r.rows.filter(x => x.changed).map(x => x.cp), ['06:00', '09:00']);
   assert.equal(r.rows[0].first, true, 'the first row is not a change, it is the opening read');
-  assert.equal(r.changes, 1);
-  assert.match(r.whyUnchanged, /changed at 09:00 — a band was reached/);
+  assert.equal(r.changes, 2);
+  assert.match(r.whyUnchanged, /09:00 — a band was reached/);
   assert.match(r.whyUnchanged, /the clock running down/);
 });
 
@@ -66,15 +79,23 @@ t('an assumed side is flagged rather than presented as reconstructed fact', () =
   const quiet = { oh_reached_at: null, ol_reached_at: null, oh_75_reached_at: null, ol_75_reached_at: null, oh_ratio: 40, ol_ratio: 30 };
   const r = ladder({ params: BAND_REACH_PARAMS.NQ, session: quiet, checkpoints: BAND_REACH_CHECKPOINTS, nowMins: 16 * 60 });
   assert.equal(r.rows.every(x => x.sideAssumed), true, 'nothing reached, so the side rests on a ratio only known now');
-  // once a band is reached the side is a FACT and is not flagged
+  // Once a band is reached the side is a FACT. BEFORE it is reached the side rests on a
+  // ratio only known now, so it stays assumed -- and the overnight checkpoints make that
+  // visible for the first time: NQ's band landed at 06:00 UK, so 02:00 and 04:00 are
+  // genuinely "nothing has happened yet" rows and are flagged, while every row from
+  // 06:00 on is reconstructed fact. This is the soft edge the module header names, and
+  // extending the ladder backwards gives it more rows to apply to, not fewer.
   const r2 = ladder({ params: BAND_REACH_PARAMS.NQ, session: NQ_SESSION, checkpoints: BAND_REACH_CHECKPOINTS, nowMins: 14 * 60 });
-  assert.equal(r2.rows.some(x => x.sideAssumed), false);
+  assert.deepEqual(r2.rows.filter(x => x.sideAssumed).map(x => x.cp), ['02:00', '04:00'],
+    'only the rows before the band was reached');
+  assert.equal(r2.rows.filter(x => x.cp >= '06:00').every(x => !x.sideAssumed), true,
+    'from the touch onward the side is a fact');
 });
 
 t('the ladder stops at now and never shows a checkpoint that has not happened', () => {
   const r = ladder({ params: BAND_REACH_PARAMS.NQ, session: NQ_SESSION, checkpoints: BAND_REACH_CHECKPOINTS, nowMins: 9 * 60 + 30 });
-  assert.deepEqual(r.rows.map(x => x.cp), ['07:00', '08:00', '09:00']);
-  assert.equal(ladder({ params: BAND_REACH_PARAMS.NQ, session: NQ_SESSION, checkpoints: BAND_REACH_CHECKPOINTS, nowMins: 6 * 60 }).rows.length, 0);
+  assert.deepEqual(r.rows.map(x => x.cp), ['02:00', '04:00', '06:00', '07:00', '08:00', '09:00']);
+  assert.equal(ladder({ params: BAND_REACH_PARAMS.NQ, session: NQ_SESSION, checkpoints: BAND_REACH_CHECKPOINTS, nowMins: 1 * 60 }).rows.length, 0, 'before 02:00 there is still nothing to show');
 });
 
 t('a missing instrument refuses rather than rendering an empty ladder', () => {

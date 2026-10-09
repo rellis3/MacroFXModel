@@ -18,7 +18,22 @@ const OUT = path.join(__dirname, 'output', 'band_reach_study.json'); fs.mkdirSyn
 const PARAMS = path.join(__dirname, '..', 'js', 'bandReachParams.js');
 const REPS = 600, MIN_N = 40, SEED = 20260918;
 const INSTR = { EURUSD: 'eurusd', GBPUSD: 'gbpusd', USDJPY: 'usdjpy', AUDUSD: 'audusd', USDCAD: 'usdcad', GOLD: 'gold', NQ: 'nas100_usd', SPX500: 'spx500' };
-const CHECKPOINTS = [['07:00', 420], ['08:00', 480], ['09:00', 540], ['10:30', 630], ['12:00', 720], ['13:30', 810], ['15:00', 900], ['16:30', 990]];
+// OVERNIGHT CHECKPOINTS ADDED 2026-10-09. The session is a LONDON CALENDAR DAY
+// (bucketM1IntoSessions with 'Europe/London'), so it starts at 00:00 UK -- but the
+// first checkpoint was 07:00, which left the first seven hours unreadable. A band
+// reached at 05:00 UTC showed up as "already in" at the 07:00 read with nothing
+// describing how it got there.
+//
+// These cost nothing extra to compute: the loop already walks every bar of the
+// session recording the running high/low, so earlier checkpoints are the same walk
+// with more snapshots taken.
+//
+// EXPECT THEM TO BEHAVE DIFFERENTLY, and that is the point. Overnight is thin --
+// an Asia-session touch of the median on low volume is not obviously the same
+// evidence as a London one. band-reach-from-here is VALIDATED for "reaching the
+// median early raises the odds of the 75th", where early currently means 07:00.
+// Whether 03:00-early carries the same information is untested.
+const CHECKPOINTS = [['02:00', 120], ['04:00', 240], ['06:00', 360], ['07:00', 420], ['08:00', 480], ['09:00', 540], ['10:30', 630], ['12:00', 720], ['13:30', 810], ['15:00', 900], ['16:30', 990]];
 function mulberry32(a) { return function () { let t = (a += 0x6D2B79F5); t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const pc = x => x == null ? 'n/a' : `${(x * 100).toFixed(0)}%`;
 const log = (...a) => console.log(...a);

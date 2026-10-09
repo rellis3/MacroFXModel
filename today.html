@@ -10243,7 +10243,7 @@ function renderDrawerBand(r) {
   if (!P || !s || !B?.BAND_REACH_CHECKPOINTS) { sec.style.display = 'none'; return; }
   const now = _ukHM();
   const cps = B.BAND_REACH_CHECKPOINTS; let cp = null; for (const [lbl, mins] of cps) if (now >= mins) cp = lbl;
-  if (!cp) { sec.style.display = ''; $('drBandAt').textContent = '· before the London open'; box.innerHTML = `<div class="ccy-explain">The band read starts at 07:00 UK. Clock for this instrument: the typical daily high is first reached around <b>${P.clock.upMed.med}</b> (p25 ${P.clock.upMed.p25}, p75 ${P.clock.upMed.p75}) on ${Math.round(P.clock.upMed.hit * 100)}% of days; the typical low around <b>${P.clock.dnMed.med}</b> on ${Math.round(P.clock.dnMed.hit * 100)}%.</div>`; return; }
+  if (!cp) { sec.style.display = ''; $('drBandAt').textContent = '· before the London open'; box.innerHTML = `<div class="ccy-explain">The band read starts at 02:00 UK. Clock for this instrument: the typical daily high is first reached around <b>${P.clock.upMed.med}</b> (p25 ${P.clock.upMed.p25}, p75 ${P.clock.upMed.p75}) on ${Math.round(P.clock.upMed.hit * 100)}% of days; the typical low around <b>${P.clock.dnMed.med}</b> on ${Math.round(P.clock.dnMed.hit * 100)}%.</div>`; return; }
   sec.style.display = ''; $('drBandAt').textContent = `· as at ${cp} UK · re-reads at each checkpoint`;
   const row = P.byCheckpoint[cp]; if (!row) { box.innerHTML = ''; return; }
   const pct = x => x?.p != null ? `<b>${Math.round(x.p * 100)}%</b> <span class="muted">[${Math.round(x.lo * 100)}–${Math.round(x.hi * 100)}]</span>` : '—';
@@ -10268,9 +10268,12 @@ function renderDrawerBand(r) {
   // ── the day's ladder of reads, and which one actually said something ──
   // The obvious question about a panel that re-reads eight times is whether the morning
   // read was the useful one. The parameters answer it: p(median reached | not yet)
-  // decays monotonically through the session (EUR/USD 48% at 07:00, 8% by 16:30) — that
-  // is the clock, not a sharper read. What IS informative is a band being REACHED, which
-  // lifts the odds of the next band by a median 3.3x on every one of the 128 cells. So
+  // decays monotonically through the session (EUR/USD 52% at 02:00, 48% at 07:00, 8% by
+  // 16:30) — that is the clock, not a sharper read. What IS informative is a band being
+  // REACHED, which lifts the odds of the next band by a median 3.2x against days where
+  // it was not, on every one of the 176 cells (11 checkpoints x 8 instruments x 2 sides;
+  // re-measured 2026-10-09 when the overnight checkpoints were added, and not one cell
+  // of the 176 has a lift below 1). So
   // the ladder marks the checkpoints where the read changed branch and says the rest are
   // time running down.
   let ladderHtml = '';
