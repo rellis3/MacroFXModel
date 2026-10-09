@@ -28,7 +28,7 @@ Every test was pre-registered before it ran (forge/ or plans/), committed, and l
 | 9 | Same at 1 min + release windows | no rates lead; Nasdaq leads rate quotes by ~1 min at sub-tick size; at releases both move in the same minute | rate_diff_nq/one_minute/ |
 | 10 | Full grid with a SMOOTH spread (US 2y − German 2y from bond futures): 5 series × 1–60 min × lags ±12, distributed-lag both ways, levels / error correction, conditional, rolling | 0 of 600 cells survive; out-of-sample forecasts no better; the 2y spread ~0 even same-bar (legs cancel) | rate_diff_nq/full/ + Lead-Lag Atlas artifact |
 | 11 | Diagnostic review: timestamps/DST, rate measures, transforms and horizons on 29 years of daily data, volatility / range / direction targets, regimes, power | alignment correct; nothing replicates; the grid had little power at 15m → intervals; one candidate (DE 2y, 15m, −0.038) | rate_diff_nq/diagnostics/DIAGNOSTIC_REVIEW.md |
-| 12 | That candidate, once, on new data (Sep 2025 – Mar 2026) | running | forge/DE2Y_NQ_15M_LEAD_PREREG.md |
+| 12 | That candidate, once, on new data (Sep 2025 – Mar 2026) | FAIL: primary regime only 16 days (underpowered); full window −0.008 [−0.035, +0.020] excludes the candidate's −0.038 → lead question CLOSED | forge/DE2Y_NQ_15M_LEAD_PREREG.md |
 
 ## What holds so far
 
