@@ -60,3 +60,19 @@ Every test was pre-registered before it ran (forge/ or plans/), committed, and l
 - Re-run the euro rows of tests 1, 4 and 7 on the clean euro data.
 - The same questions against EURUSD (where the differential is the natural variable).
 - calendar_events.csv ends 2026-07-02.
+
+## Built from the lessons (2026-10-09)
+
+**Rates vs Nasdaq regime read + alerts.** Context only, no forecasting.
+
+- **Engine:** `js/ratesRegime.js`, tested by `js/ratesRegime.test.mjs`.
+- **Server job:** `ratesRegime`, every 15 minutes, using OANDA's US 2y bond CFD and NAS100 at 15-min. It computes:
+  - the rolling 20-day same-bar link and its regime band (strong / moderate / weak, opposite / together);
+  - Nasdaq % per bp of yield;
+  - a sign-flip check;
+  - today's and the last hour's move attribution.
+- **Telegram** (master switch `tgMaster.ratesRegime`) on a band change, a sign flip, or a ≥ 2σ 15-min rate shock. The
+  first run after a deploy is silent.
+- **Where to see it:** `/api/rates-regime`; the rates.html card "Who is driving Nasdaq — rates, or not?"; KV
+  `rates_regime_v1` holds the daily history (the forward record: does the band persist?).
+- **Check on the research data:** 2026-10-07 gives −0.41, −0.063% per bp, strong-opposite.
