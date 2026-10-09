@@ -151,12 +151,38 @@ def do_m1(ib, weeks=26):
         print(f"  {c.localSymbol} -> stir_1m/{path.name}: +{got:,} bars, {n:,} total")
 
 
+def do_fridays(ib, weeks=26):
+    """The m1 step's 1-week requests ended at the RUN time (Friday ~06:30 UTC), so every Friday after that was never
+    requested. Re-pull each Friday as a 1-day request ending Saturday 00:00 UTC, merged into the same files."""
+    print(f"fridays: 1-min MIDPOINT, the {weeks} Fridays the m1 step missed")
+    sat = (NOW + timedelta(days=(5 - NOW.weekday()) % 7)).replace(hour=0, minute=0, second=0, microsecond=0)
+    if sat > NOW:
+        sat -= timedelta(weeks=1)
+    for spec in M1_SET:
+        c = resolve(ib, *spec)
+        if c is None:
+            continue
+        path = M1 / f"{fname(c)}.parquet"
+        last = datetime.strptime(c.lastTradeDateOrContractMonth[:8], "%Y%m%d").replace(tzinfo=timezone.utc) + timedelta(days=1)
+        got = 0
+        for w in range(weeks):
+            end = sat - timedelta(weeks=w)
+            if end > last + timedelta(days=1):
+                continue
+            df = hist(ib, c, end, "1 D", "1 min", "MIDPOINT")
+            if df is None:
+                continue
+            save_merge(path, df)
+            got += len(df)
+        print(f"  {c.localSymbol} -> stir_1m/{path.name}: +{got:,} Friday bars")
+
+
 if __name__ == "__main__":
     steps = sys.argv[1:] or ["clean", "mid15", "m1"]
     ib = IB()
     ib.RequestTimeout = 20
     ib.connect(HOST, PORT, clientId=CID, timeout=15, readonly=True)
     for s in steps:
-        {"clean": do_clean, "mid15": do_mid15, "m1": do_m1}[s](ib)
+        {"clean": do_clean, "mid15": do_mid15, "m1": do_m1, "fridays": do_fridays}[s](ib)
     ib.disconnect()
     print("done")

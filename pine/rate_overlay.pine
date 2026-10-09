@@ -1,5 +1,5 @@
 //@version=6
-indicator("Rate Overlay on Price (SOFR / ESTR / Euribor / yields)", shorttitle="Rate Overlay", overlay=true, max_bars_back=2000)
+indicator("Rate Overlay (SOFR / ESTR / Euribor / yields)", shorttitle="Rate Overlay", overlay=false, max_bars_back=2000)
 
 // Draws a short-rate series ON the price chart (NQ, SPX, EURUSD ...), rescaled to sit on the candles, the way C.OG overlays
 // his SOFR-vs-ESTR line. It FINDS THE DATA ITSELF: for each leg it tries a list of TradingView symbols and uses the first
@@ -19,16 +19,19 @@ indicator("Rate Overlay on Price (SOFR / ESTR / Euribor / yields)", shorttitle="
 // ─── What to plot ─────────────────────────────────────────────────────────────
 string mode    = input.string("US - EU (auto)", "What to plot", options=["US - EU (auto)", "US leg only (auto)", "EU leg only (auto)", "Manual: A - B", "Manual: A only"], group="Rate series", tooltip="Auto modes pick the data feeds for you (see the Data check table). Manual modes use the two symbols below.")
 string usPref  = input.string("Auto: SOFR futures, then yields", "US leg source", options=["Auto: SOFR futures, then yields", "CME SOFR 3M futures (SR3)", "US 2-year yield", "US 3-month bill yield"], group="Rate series")
-int    usPt    = input.int(3, "SOFR curve point (1 = nearest)", minval=1, maxval=8, group="Rate series", tooltip="Continuous CME SR3 contract: 1 = SR31! (nearest quarterly), 2 = SR32!, 3 = SR33! ... In the research the contracts 6-12 months out (about 3-4) moved markets most; the nearest is mostly fixed and barely moves.")
+int    usPt    = input.int(1, "SOFR curve point (1 = nearest)", minval=1, maxval=8, group="Rate series", tooltip="Continuous CME SR3 contract: 1 = SR31! (nearest quarterly), 2 = SR32!, 3 = SR33! ... 1 = C.OG's contract (SR3U2026 is the nearest in Oct 2026). In the research the contracts 6-12 months out (about 3-4) moved markets most.")
 string euPref  = input.string("Auto: ESTR, Euribor, then yield", "EU leg source", options=["Auto: ESTR, Euribor, then yield", "ICE ESTR 3M futures (ER3)", "ICE Euribor 3M futures (I)", "Eurex ESTR 3M futures (FST3)", "CME ESTR futures (ESR)", "German 2-year yield"], group="Rate series", tooltip="ICE ESTR is the leg C.OG uses. Euro futures trade about 01:00-21:45 London; overnight the EU leg holds its last price.")
-int    euPt    = input.int(3, "Euro curve point (1 = nearest)", minval=1, maxval=8, group="Rate series", tooltip="Same idea as the SOFR curve point. Match it to the SOFR point so both legs cover the same future period.")
+int    euPt    = input.int(1, "Euro curve point (1 = nearest)", minval=1, maxval=8, group="Rate series", tooltip="Same idea as the SOFR curve point. Match it to the SOFR point so both legs cover the same future period.")
 bool   showLegs = input.bool(false, "Also draw each leg separately", group="Rate series", tooltip="Orange = US leg, purple = EU leg, each rescaled to price. Shows which leg is actually moving with the chart.")
+string paneSty = input.string("Futures price spread (like C.OG)", "This pane shows", options=["Futures price spread (like C.OG)", "Rate spread (up = higher US-minus-EU rates)"], group="Display", tooltip="The pane draws the RAW spread on its own scale, no fitting to price. Futures price spread = how C.OG's chart reads (up = US rates falling versus euro rates). Rate spread is the same line upside down.")
+bool   onPrice = input.bool(true, "Also draw the line on the price chart (rescaled)", group="Display", tooltip="Rescaling to price uses a rolling fit (Fit window) and bends the path a little; the raw pane is the true shape.")
+bool   hideOff = input.bool(true, "Break the line when the euro market is closed", group="Display", tooltip="Euro rate futures stop overnight and at weekends. Carrying their last price forward while SOFR keeps moving creates false steps at the euro open. ON = draw nothing for those bars.")
 bool   invert  = input.bool(true, "Invert the rate line", group="Rate series", tooltip="ON when price should FALL as the rate rises (NQ vs rates, EURUSD vs US-minus-EU). The 'Same bar' row in the table shows which way your chart behaves now: if it is negative with Invert ON, switch it off.")
 string symA    = input.symbol("CME:SR3H2027", "Manual: Rate A", group="Manual symbols", tooltip="Any symbol, e.g. a specific contract (CME:SR3Z2026) or a yield (TVC:US02Y).")
 bool   futA    = input.bool(true, "A is a futures PRICE (rate = 100 - price)", group="Manual symbols")
 string symB    = input.symbol("TVC:DE02Y", "Manual: Rate B", group="Manual symbols")
 bool   futB    = input.bool(false, "B is a futures PRICE (rate = 100 - price)", group="Manual symbols")
-int    normLen = input.int(200, "Fit window (bars)", minval=20, group="Scaling", tooltip="The rate line is rescaled to price over this many bars. Shorter = hugs price more tightly (and looks more 'correlated' than it is).")
+int    normLen = input.int(1000, "Fit window (bars)", minval=20, group="Scaling", tooltip="The rate line is rescaled to price over this many bars. Shorter = hugs price more tightly (and looks more 'correlated' than it is).")
 int    corrLen = input.int(500, "Correlation window (bars)", minval=20, group="Statistics", tooltip="500 bars on 15m is about 5 trading days. Longer = steadier numbers.")
 float  resThr  = input.float(2.0, "Residual flag (z)", minval=0.5, step=0.25, group="Statistics", tooltip="Flag bars where price is this many standard deviations away from the rate line.")
 int    shiftN  = input.int(0, "Shift rate line forward (bars)", minval=0, maxval=50, group="Lead check", tooltip="Draws the rate line N bars LATER. If rates lead price by N bars, the shifted line should hug the candles better than at 0. Compare 0, 1, 2, 4 and read the lag profile in the table.")
@@ -57,6 +60,14 @@ float e4 = f_req(sE4)
 float e5 = f_req(sE5)
 float mA = f_req(symA)
 float mB = f_req(symB)
+// did the euro feed print a bar on THIS chart bar? (gaps on: no forward fill)
+f_open(sym) => not na(request.security(sym, timeframe.period, close, gaps=barmerge.gaps_on, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true))
+bool o1 = f_open(sE1)
+bool o2 = f_open(sE2)
+bool o3 = f_open(sE3)
+bool o4 = f_open(sE4)
+bool o5 = f_open(sE5)
+bool oB = f_open(symB)
 
 // a feed counts as available once it has returned any bar on this chart
 var bool vU1 = false
@@ -88,6 +99,13 @@ float rB = futB ? 100 - mB : mB
 float rate = mode == "US - EU (auto)" ? rUS - rEU : mode == "US leg only (auto)" ? rUS : mode == "EU leg only (auto)" ? rEU : mode == "Manual: A - B" ? rA - rB : rA
 string what = mode == "US - EU (auto)" ? "US - EU" : mode == "US leg only (auto)" ? "US leg" : mode == "EU leg only (auto)" ? "EU leg" : mode == "Manual: A - B" ? "A - B" : "A"
 float r = invert ? -rate : rate
+// bars where the euro leg is part of the line but its market printed nothing (overnight, weekends)
+bool euUsed = mode == "US - EU (auto)" or mode == "EU leg only (auto)"
+bool euOpen = pE == 1 ? o1 : pE == 2 ? o2 : pE == 3 ? o3 : pE == 4 ? o4 : pE == 5 ? o5 : false
+bool closedBar = hideOff and ((euUsed and not euOpen) or (mode == "Manual: A - B" and not oB))
+// the raw pane line: no fitting to price
+float paneVal = paneSty == "Futures price spread (like C.OG)" ? -rate : rate
+plot(closedBar ? na : paneVal, "Spread (raw)", color=lineCol, linewidth=2, style=plot.style_linebr, offset=shiftN)
 
 // ─── Rescale the rate onto price: same z-score, drawn in price units ─────────────────────────────────────────────────
 float mP = ta.sma(close, normLen)
@@ -101,17 +119,17 @@ float sR = ta.stdev(r, normLen)
 float zR = sR > 0 ? (r - mR) / sR : na
 float zP = sP > 0 ? (close - mP) / sP : na
 float rateOnPrice = mP + zR * sP
-plot(rateOnPrice, "Rate (rescaled to price)", color=lineCol, linewidth=2, offset=shiftN)
+plot(onPrice and not closedBar ? rateOnPrice : na, "Rate (rescaled to price)", color=lineCol, linewidth=2, style=plot.style_linebr, offset=shiftN, force_overlay=true)
 float usLine = f_onPrice(invert ? -rUS : rUS)
 float euLine = f_onPrice(invert ? -rEU : rEU)
-plot(showLegs ? usLine : na, "US leg (rescaled)", color=color.new(#f97316, 0), linewidth=1, offset=shiftN)
-plot(showLegs ? euLine : na, "EU leg (rescaled)", color=color.new(#a855f7, 0), linewidth=1, offset=shiftN)
+plot(showLegs and onPrice ? usLine : na, "US leg (rescaled)", color=color.new(#f97316, 0), linewidth=1, style=plot.style_linebr, offset=shiftN, force_overlay=true)
+plot(showLegs and onPrice and not (hideOff and not euOpen) ? euLine : na, "EU leg (rescaled)", color=color.new(#a855f7, 0), linewidth=1, style=plot.style_linebr, offset=shiftN, force_overlay=true)
 
 // ─── Residual: price minus the rate line, in standard deviations ─────────────────────────────────────────────────────
 float resid = zP - zR
 bool  hiRes = not na(resid) and resid > resThr
 bool  loRes = not na(resid) and resid < -resThr
-bgcolor(showRes and hiRes ? color.new(color.red, 88) : showRes and loRes ? color.new(color.green, 88) : na, title="Residual extreme")
+bgcolor(showRes and hiRes ? color.new(color.red, 88) : showRes and loRes ? color.new(color.green, 88) : na, title="Residual extreme", force_overlay=true)
 alertcondition(hiRes and not hiRes[1], "Price far ABOVE rate line", "Rate Overlay: price is more than the residual threshold above the rate line")
 alertcondition(loRes and not loRes[1], "Price far BELOW rate line", "Rate Overlay: price is more than the residual threshold below the rate line")
 
