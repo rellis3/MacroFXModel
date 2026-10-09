@@ -100,3 +100,13 @@ across it, explore/confirm splits as listed.
 unsuitable specification (T1/T2 fail, or a transform/horizon in T3–T4 replicates where changes did not), conditional
 (a regime in T5 replicates in confirm), or little predictive information (power adequate, specification checks pass,
 nothing replicates).
+
+**Additions after T1/T2 (2026-10-09, before T3-T6 were run):**
+- T5 gains one regime: the **stock-rates sign regime**, the sign of the rolling 60-day correlation between daily US 2y changes and
+  Nasdaq returns (past data only). Reason: T1d showed the same-bar sign flipped in March 2026 (SOFR vs Nasdaq +0.08..+0.35
+  Oct-Feb, −0.15..−0.53 from Mar). Any lead may flip with it, and a "same sign in both halves" rule can then reject a real but
+  regime-dependent effect. The 15-min study's halves (Oct-Mar / Apr-Oct) straddle the flip.
+- **Post-hoc lead, labelled as such:** around the 50 largest 1-min Nasdaq moves, the US 2y's largest move sat 1-3 min
+  BEFORE the Nasdaq move 14 times and after it 2 times. This was seen on all data, so it is checked only for (i) whether the
+  pattern holds separately in Apr-Jun and Jul-Oct, and (ii) whether the rate's move direction in that window predicts the
+  direction of the Nasdaq move (sign agreement vs the same-bar sign). It cannot be confirmed or rejected by more searching here.

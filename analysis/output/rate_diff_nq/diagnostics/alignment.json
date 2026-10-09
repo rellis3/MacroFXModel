@@ -1,0 +1,144 @@
+{
+ "T1a_oanda_vs_ibkr_nq_15m": {
+  "-2": -0.0077,
+  "-1": 0.0089,
+  "0": 0.9653,
+  "1": 0.0058,
+  "2": -0.0044
+ },
+ "T1b_largest_nq_moves_rate_peak_offset::US 2y (ZT)": {
+  "-3": 2,
+  "-2": 5,
+  "-1": 7,
+  "0": 22,
+  "1": 1,
+  "3": 1
+ },
+ "T1b_largest_nq_moves_rate_peak_offset::SOFR Dec26": {
+  "-3": 1,
+  "-2": 4,
+  "-1": 4,
+  "0": 20,
+  "1": 1,
+  "2": 1
+ },
+ "T1c_release_bar_abs_moves": [
+  {
+   "dst_us": "summer",
+   "k": -2,
+   "nq_abs": 0.0802,
+   "sofr_abs": 0.625
+  },
+  {
+   "dst_us": "summer",
+   "k": -1,
+   "nq_abs": 0.0807,
+   "sofr_abs": 0.375
+  },
+  {
+   "dst_us": "summer",
+   "k": 0,
+   "nq_abs": 0.1987,
+   "sofr_abs": 4.0625
+  },
+  {
+   "dst_us": "summer",
+   "k": 1,
+   "nq_abs": 0.1528,
+   "sofr_abs": 1.125
+  },
+  {
+   "dst_us": "summer",
+   "k": 2,
+   "nq_abs": 0.0728,
+   "sofr_abs": 0.75
+  },
+  {
+   "dst_us": "winter",
+   "k": -2,
+   "nq_abs": 0.0653,
+   "sofr_abs": 0.5
+  },
+  {
+   "dst_us": "winter",
+   "k": -1,
+   "nq_abs": 0.0962,
+   "sofr_abs": 0.4444
+  },
+  {
+   "dst_us": "winter",
+   "k": 0,
+   "nq_abs": 0.2557,
+   "sofr_abs": 3.1111
+  },
+  {
+   "dst_us": "winter",
+   "k": 1,
+   "nq_abs": 0.1451,
+   "sofr_abs": 1.5
+  },
+  {
+   "dst_us": "winter",
+   "k": 2,
+   "nq_abs": 0.0738,
+   "sofr_abs": 1.0556
+  }
+ ],
+ "T1c_n_releases": 17,
+ "T1d_same_bar_by_month_US2y": {
+  "2026-04": -0.168,
+  "2026-05": -0.191,
+  "2026-06": -0.167,
+  "2026-07": -0.199,
+  "2026-08": -0.235,
+  "2026-09": -0.396,
+  "2026-10": -0.21
+ },
+ "T1d_same_bar_by_month_SOFR_vs_OANDA": {
+  "2025-10": 0.209,
+  "2025-11": 0.29,
+  "2025-12": 0.08,
+  "2026-01": 0.087,
+  "2026-02": 0.354,
+  "2026-03": -0.533,
+  "2026-04": -0.465,
+  "2026-05": -0.341,
+  "2026-06": -0.15,
+  "2026-07": -0.187,
+  "2026-08": -0.196,
+  "2026-09": -0.278,
+  "2026-10": -0.221
+ },
+ "T2_change_corr_15m": {
+  "SOFR Dec26": {
+   "SOFR Dec26": 1.0,
+   "SOFR Mar27": 0.722,
+   "US 2y (ZT)": 0.476,
+   "Fed funds QZ6": 0.697
+  },
+  "SOFR Mar27": {
+   "SOFR Dec26": 0.722,
+   "SOFR Mar27": 1.0,
+   "US 2y (ZT)": 0.509,
+   "Fed funds QZ6": 0.689
+  },
+  "US 2y (ZT)": {
+   "SOFR Dec26": 0.476,
+   "SOFR Mar27": 0.509,
+   "US 2y (ZT)": 1.0,
+   "Fed funds QZ6": 0.453
+  },
+  "Fed funds QZ6": {
+   "SOFR Dec26": 0.697,
+   "SOFR Mar27": 0.689,
+   "US 2y (ZT)": 0.453,
+   "Fed funds QZ6": 1.0
+  }
+ },
+ "T2_share_bars_moved_15m": {
+  "SOFR Dec26": 0.323,
+  "SOFR Mar27": 0.389,
+  "US 2y (ZT)": 0.72,
+  "Fed funds QZ6": 0.298
+ }
+}
