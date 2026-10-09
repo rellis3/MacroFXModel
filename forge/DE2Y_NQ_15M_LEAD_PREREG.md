@@ -36,3 +36,16 @@ before anything is built, and it stays a 15-min co-movement continuation, not a 
 checked. **FAIL:** the rate-differential / Nasdaq lead question closes; the same-bar link stays as context.
 
 Output `analysis/output/rate_diff_nq/de2y_lead/RESULTS.md`; script `scripts/rate_diff_nq/de2y_lead_test.py`.
+
+## Amendment 1 (2026-10-09, before any confirmation data was seen)
+
+IBKR keeps expired Schatz futures only from the Dec'25 contract (expired 2025-12-08); Dec'24–Sep'25 are not served (checked
+with a contract-details query). So the confirmation window becomes **the Dec'25 contract's front period (from ~100 days
+before its expiry, ~Aug–Sep 2025) → 2026-03-31**, using Dec'25, Mar'26 and Jun'26. That is about 7 months instead of 18.
+- **Untouched?** The German 2y series in this window was not used by any test. Nasdaq in this window was used earlier
+  (Oct 2025 – Mar 2026, in the SOFR/Euribor 15-min studies), but never against the German 2y and never for this
+  hypothesis.
+- **Power:** at the candidate's size (−0.038) the expected |t| is about 3 on the full window. The primary
+  (opposite-regime) subset may be much smaller, because the stock-rates sign looked positive in Oct 2025 – Feb 2026.
+  Its size is reported, and a FAIL on a small primary sample will be described as underpowered, not as a refutation.
+- Test, statistic and pass rule unchanged.

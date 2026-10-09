@@ -230,11 +230,11 @@ def do_schatz_hist(ib):
     (7 days before the previous expiry -> 7 days before its own), 1-week requests. Writes stir_1m_hist/."""
     out_dir = M1.parent / "stir_1m_hist"
     out_dir.mkdir(parents=True, exist_ok=True)
-    months = ["202412", "202503", "202506", "202509", "202512", "202603"]
+    months = ["202512", "202603", "202606"]          # IBKR keeps expired Schatz only from Dec 2025 (checked 2026-10-09)
     prev_exp = None
     for month in months:
         c = None
-        for s in ("FGBS", "GBS"):
+        for s in ("GBS",):                          # IBKR symbol GBS, local symbol "FGBS yyyymmdd M"
             try:
                 c = resolve(ib, s, "EUREX", "EUR", month, True)
             except Exception as e:
