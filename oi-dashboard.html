@@ -446,7 +446,7 @@ function chartLevels(e){
     .forEach(w=>add(w.strike,'put_wall',`put ${fOI(w.oi)}`));
   add(e.maxPain,'max_pain','max pain');
   add(e.gexFlip,'gex_flip','GEX flip');
-  add(e.gammaFlip,'gamma_flip','γ flip');
+  add(e.gammaFlip,'gamma_flip','gamma flip');
   add(e.greeksFlow?.charmFlip,'charm_flip','charm');
   add(e.greeksFlow?.vannaFlip,'vanna_flip','vanna');
   add(e.expectedMove?.upper,'exp_move','exp move ↑');
@@ -985,12 +985,12 @@ function ladderRows(e,mode){
       tip:`volume ${fOI(V.volume[i])} · ${V.split?'net vol-gamma '+fN(V.net[i]):'vol-gamma '+fN(V.gross[i])}`}):null).filter(Boolean);
     const tot=a=>a.reduce((x,y)=>x+y,0);
     return { rows, unit:(L.units==='usd1pct'?'volume gamma · $ per 1% move':'volume × gamma'), src:e._src==='cboe'?'today\'s volume, every expiry at its own gamma':`today's volume, weighted at ${V.dte??'—'} DTE gamma`,
-      legend:V.split?[['var(--call)','Call vol-γ',fN(tot(V.call))],['var(--put)','Put vol-γ',fN(tot(V.put))],['var(--vol)','Net',fN(tot(V.net))]]
-        :[['var(--vol)','Vol-γ (gross — call/put split not stored)',fN(tot(V.gross))]] };
+      legend:V.split?[['var(--call)','Call vol GEX',fN(tot(V.call))],['var(--put)','Put vol GEX',fN(tot(V.put))],['var(--vol)','Net',fN(tot(V.net))]]
+        :[['var(--vol)','Vol GEX (gross — call/put split not stored)',fN(tot(V.gross))]] };
   }
   if(mode==='cp'){
     const rows=L.strikes.map((k,i)=>{ const c=L.series.reduce((a,s)=>a+(s.call[i]||0),0), p=L.series.reduce((a,s)=>a+(s.put[i]||0),0);
-      return {strike:k, segs:[{v:c,col:'var(--call)'},{v:-p,col:'var(--put)'}], tip:`call γ ${fN(c)} · put γ ${fN(p)} · net ${fN(c-p)}`}; });
+      return {strike:k, segs:[{v:c,col:'var(--call)'},{v:-p,col:'var(--put)'}], tip:`call GEX ${fN(c)} · put GEX ${fN(p)} · net ${fN(c-p)}`}; });
     const tc=rows.reduce((a,r)=>a+r.segs[0].v,0), tp=rows.reduce((a,r)=>a-r.segs[1].v,0);
     return { rows, stacked:true, unit:(L.units==='usd1pct'?'GEX · $ per 1% move':'GEX (OI)'), src:`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
       legend:[['var(--call)','Call GEX',fN(tc)],['var(--put)','Put GEX',fN(-tp)],['var(--tx2)','Net',fN(tc-tp)]] };
@@ -1106,7 +1106,7 @@ function ladderSvg(e,big){
   const lines=[...(LADMODE==='charm'?[[gf.charmFlip,'var(--warn)','CHARM FLIP',true]]:[]),
     ...(LADMODE==='vanna'?[[gf.vannaFlip,'#7fd0ff','VANNA FLIP',true]]:[]),
     [e.gexFlip,'var(--gam)','GEX FLIP',true],[e.maxPain,'var(--pain)','MAX PAIN',true],
-    [e.putWall,'var(--put)',e._src==='cboe'?'γ PUT WALL':'OI PUT WALL',true],[e.callWall,'var(--call)',e._src==='cboe'?'γ CALL WALL':'OI CALL WALL',true],
+    [e.putWall,'var(--put)',e._src==='cboe'?'GEX PUT WALL':'OI PUT WALL',true],[e.callWall,'var(--call)',e._src==='cboe'?'GEX CALL WALL':'OI CALL WALL',true],
     // CME: the gamma-ranked walls next to the OI-ranked ones — the strike with the most
     // call (put) gamma over the nearest three expiries, which is how COG picks its call
     // wall. Near expiry the two disagree (gamma piles up at the money, OI sits far out).
@@ -1115,8 +1115,8 @@ function ladderSvg(e,big){
       // Same strike within float noise (the ladder rounds strikes; the stored walls don't).
       const same=(x,y)=>Number.isFinite(x)&&Number.isFinite(y)&&Math.abs(x-y)<=Math.abs(y)*1e-7;
       return [
-      ...(g.c!=null&&!same(g.c,e.callWall)?[[g.c,'var(--call)','γ CALL WALL',false]]:[]),
-      ...(g.p!=null&&!same(g.p,e.putWall)?[[g.p,'var(--put)','γ PUT WALL',false]]:[])]; })():[]),
+      ...(g.c!=null&&!same(g.c,e.callWall)?[[g.c,'var(--call)','GEX CALL WALL',false]]:[]),
+      ...(g.p!=null&&!same(g.p,e.putWall)?[[g.p,'var(--put)','GEX PUT WALL',false]]:[])]; })():[]),
     [spot,'var(--tx)','SPOT',false]]
     .map(([px,col,txt,dash])=>({px,col,txt,dash,y:yAt(px)})).filter(l=>l.y!=null).sort((a,b)=>a.y-b.y);
   let lastY=-1e9;
@@ -1159,7 +1159,7 @@ function chartLadder(e,big){
     <div class="llegend">${leg}${R&&R.src?`<span class="muted" style="margin-left:auto">${R.src}</span>`:''}</div>
     <div class="ltipbox">Tap a row for its numbers</div>
     ${ladderSvg(e,big)}
-    <div class="note">${notes[LADMODE]}${R&&R.stacked&&!LADNET?' <b>White tick</b> = the row\'s true net where bars sit on both sides of zero (they partly cancel, so the bar overstates the strike).':''} Walls: <b>dashed</b> = most contracts (OI), <b>solid</b> = most gamma over the nearest 3 expiries (γ — where hedging concentrates; COG\'s call wall). Hover or tap a row for the numbers. <span class="muted">Tested on this repo's data: wall touches and the GEX flip did not beat placebo levels — read this as where positioning sits, not as an edge.</span></div></div>`;
+    <div class="note">${notes[LADMODE]}${R&&R.stacked&&!LADNET?' <b>White tick</b> = the row\'s true net where bars sit on both sides of zero (they partly cancel, so the bar overstates the strike).':''} Walls: <b>dashed</b> = most contracts (OI), <b>solid</b> = biggest GEX (gamma exposure) over the nearest 3 expiries — where hedging concentrates; COG\'s call wall. Hover or tap a row for the numbers. <span class="muted">Tested on this repo's data: wall touches and the GEX flip did not beat placebo levels — read this as where positioning sits, not as an edge.</span></div></div>`;
 }
 function refreshLadders(){ const e=STORE[SYM]; if(!e) return;
   document.querySelectorAll('.ladder').forEach(el=>{ el.outerHTML=chartLadder(e, el.dataset.big==='1'); }); }
@@ -1219,8 +1219,8 @@ function cboeCompare(e,c,cb){
   const cmeReg=e.exposures?.gex>0?'PIN':e.exposures?.gex<0?'BREAKOUT':'—';
   const row=(k,a,v,hint)=>`<tr><td>${k}${hint?`<span class="muted" style="font-size:11px"> ${hint}</span>`:''}</td><td>${f(a)}</td><td>${f(v)}${gap(a,v)}</td><td class="muted">${fut(v)}</td></tr>`;
   return `<div class="lcmp"><table><thead><tr><th>Level</th><th>CME ${cb.fut} opts</th><th>Cboe ${cb.label} opts</th><th>Cboe in ${cb.fut} terms</th></tr></thead><tbody>`
-    + row('γ call wall',cg.c,L.callWallGamma,'0–2 DTE')
-    + row('γ put wall',cg.p,L.putWallGamma,'0–2 DTE')
+    + row('GEX call wall',cg.c,L.callWallGamma,'0–2 DTE')
+    + row('GEX put wall',cg.p,L.putWallGamma,'0–2 DTE')
     + row('OI call wall',e.callWall,L.callWallOI)
     + row('OI put wall',e.putWall,L.putWallOI)
     + row('GEX flip',e.gexFlip,L.gexFlip)
@@ -1335,7 +1335,7 @@ function diagBar(e){
     Number.isFinite(e.futuresStale)&&Math.abs(e.futuresStale)>0?' ('+(e.futuresStale/pip(SYM)).toFixed(0)+'p stale)':''}</span>`);
   c.push(`<span class="chip ${e.refMove?.source==='flat-vol'?'warn':'good'}">move <b>${esc(e.refMove?.source||'—')}</b></span>`);
   c.push(`<span class="chip ${e.greeksFlow?'good':''}">greeks <b>${e.greeksFlow?e.greeksFlow.source+' · '+e.greeksFlow.dteDays+'d':'none'}</b></span>`);
-  if(e.greekVolMode) c.push(`<span class="chip ${(e.greekVolSource==='smile'||e.greekVolSource==='atm-iv')?'good':(e.greekVolMode==='smile'?'warn':'')}">γ vol <b>${e.greekVolMode==='smile'?'v2 · '+esc(e.greekVolSource||'flat'):'v1 · flat'}</b></span>`);
+  if(e.greekVolMode) c.push(`<span class="chip ${(e.greekVolSource==='smile'||e.greekVolSource==='atm-iv')?'good':(e.greekVolMode==='smile'?'warn':'')}">gamma vol <b>${e.greekVolMode==='smile'?'v2 · '+esc(e.greekVolSource||'flat'):'v1 · flat'}</b></span>`);
   if(/JPY|CAD|CHF/.test(SYM)) c.push(`<span class="chip ${e.cpSwapped?'warn':''}">C/P <b>${e.cpSwapped?'flipped to pair terms':'as quoted (6J/6C/6S)'}</b></span>`);
   if(e.dataWarning) c.push(`<span class="chip bad">⚠ ${esc(e.dataWarning)}</span>`);
   return `<div class="diag">${c.join('')}</div>`;
