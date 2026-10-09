@@ -191,4 +191,21 @@ Every model, feature set, horizon and scale tried is appended to the search ledg
 ## Variant log
 | # | Variant | Added | Status |
 |---|---|---|---|
-| 1 | as above, with the owner decisions | 2026-10-09 | frozen; Stage 0 next |
+| 1 | as above, with the owner decisions | 2026-10-09 | frozen; Stage 0 run 2026-10-09 (below) |
+
+## Stage 0 record (2026-10-09) — checks only, no outcome share seen
+`python -m forge.iep_build` → `data/iep/<SYM>.parquet` (1,797,010 rows, 34 instruments; disc 981,491 · val 527,799 · conf 287,720).
+`python -m forge.iep_stage0` → `analysis/output/intraday_extreme_paths/STAGE0.md`, `stage0.json`.
+- **Parity with layer 5:** all 26,535 shared EURUSD checkpoints match `remaining_travel/EURUSD.csv` (D, used, rv, σ, σ-regime, running extremes) to its 4-dp rounding.
+- **Independent recomputation:** 400 random rows re-derived by pandas time slicing: 0 mismatches.
+- **AMB** ≤ 0.15% everywhere at 1.0u; at 0.5u ≤ 0.2% outside the late band, 0.4–0.5% in it. Negligible; the bound analysis stays registered.
+- **Missing windows:** indices late band H=1 14.3% and gold late 5.0% have no bars (market break); other bands < 1%. Stale decision bars ≤ 3%.
+- **Leak canary:** scorer is not blind. Strong canary (window end return) Brier skill **+0.49**; shuffled **0.000**. The registered canary
+  (next-bar return) gives only **+0.026**: the prereg's expectation of "near-perfect" was wrong (one minute is small against a 2-hour barrier),
+  not the pipeline. Recorded as a wording error, not a design change.
+- **Power (cluster-by-date, H=2, 1.0u, large-move resolved rows):** pooled n_eff 16,108 on discovery; MDE80 1.1pp (disc), **1.4pp projected on
+  Validation**; majors 2.1pp, crosses 1.5pp, indices 3.3pp, gold 4.3pp; fresh extremes 1.8pp. Family C cells (class × regime × band) median 282
+  dates, median MDE80 **7.1pp**, 22% of cells ≤ 5pp (adding the displacement tercile widens this by ~√3). So: the prereg's 3pp pooled bar is well
+  powered, gold and indices less so, and Family C detects only large subgroup effects, as registered.
+- **Clarification (definition gap, fixed before any result):** hour bands by decision checkpoint h: Asia 2–6, London 7–11, overlap 12–15, NY 16–18, late 19–21.
+  "Large move" tercile edges (class × h, discovery) saved in `large_move_tercile_edges_disc.csv`.
