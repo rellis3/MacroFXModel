@@ -209,3 +209,15 @@ Every model, feature set, horizon and scale tried is appended to the search ledg
   powered, gold and indices less so, and Family C detects only large subgroup effects, as registered.
 - **Clarification (definition gap, fixed before any result):** hour bands by decision checkpoint h: Asia 2–6, London 7–11, overlap 12–15, NY 16–18, late 19–21.
   "Large move" tercile edges (class × h, discovery) saved in `large_move_tercile_edges_disc.csv`.
+
+## Stage 1 record (2026-10-09) — descriptive, discovery 2016-2021 only, no test
+`python -m forge.iep_stage1` → `analysis/output/intraday_extreme_paths/STAGE1.md`, `stage1_tables.csv`, `stage1_costs.csv`.
+- **Clarification before any Validation run:** range-used and momentum terciles are taken **within large-move rows, by class × hour** (first
+  run used all rows, which put nearly every large move in "high": 1,028 rows in "low"). Edges frozen in `large_move_used_mom_tercile_edges_disc.csv`;
+  Validation reuses them.
+- **What discovery shows (no inference drawn; read against the sign-flip band):** a small continuation tilt almost everywhere (CONT among resolved
+  ~51-53% vs a null band ~49.4-50.6%); range used, pullback depth, momentum and regime move the **consolidation** share strongly (e.g. CONS 48% → 29%
+  low → high range used) but barely the CONT/REV split; the late stratum leans to reversal (majors 44.3%, crosses 45.0%, CIs below the band),
+  consistent with the known 20:00-22:00 UTC prior; flat-row indices and gold resolve down-first more often (48.4%, 47.2%).
+- **Cost:** at 2x the registered table, median cost/u is 0.11 (majors), 0.10 (indices), 0.17 (gold), 0.19 (crosses); 79% of cross rows exceed 0.15.
+  The largest discovery CONT−REV gap in the main grid (~4pp of rows) is about a third of the majors' cost/u.
