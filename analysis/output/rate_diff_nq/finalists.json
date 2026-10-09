@@ -1,0 +1,410 @@
+[
+ {
+  "id": "F1a",
+  "claim": "Nasdaq leads diff (Granger) 15m",
+  "values": {
+   "explore": {
+    "p": 0.0001,
+    "coef_sum": 0.28256
+   },
+   "explore_mid": {
+    "p": 0.0,
+    "coef_sum": 0.47511
+   },
+   "confirm": {
+    "p": 0.3511,
+    "coef_sum": 0.07715
+   },
+   "confirm_mid": {
+    "p": 0.1966,
+    "coef_sum": 0.14218
+   }
+  },
+  "confirmed_trades": false,
+  "confirmed_mid": false
+ },
+ {
+  "id": "F1b",
+  "claim": "Nasdaq leads diff (Granger) 30m",
+  "values": {
+   "explore": {
+    "p": 0.004,
+    "coef_sum": 0.2528
+   },
+   "explore_mid": {
+    "p": 0.001,
+    "coef_sum": 0.2788
+   },
+   "confirm": {
+    "p": 0.4226,
+    "coef_sum": 0.0498
+   },
+   "confirm_mid": {
+    "p": 0.1892,
+    "coef_sum": 0.09199
+   }
+  },
+  "confirmed_trades": false,
+  "confirmed_mid": false
+ },
+ {
+  "id": "F1c",
+  "claim": "Nasdaq leads generic diff (Granger) 15m",
+  "values": {
+   "explore": {
+    "p": 0.0,
+    "coef_sum": 0.55465
+   },
+   "explore_mid": {
+    "p": 0.0,
+    "coef_sum": 0.53847
+   },
+   "confirm": {
+    "p": 0.0002,
+    "coef_sum": 0.35015
+   },
+   "confirm_mid": {
+    "p": 0.0001,
+    "coef_sum": 0.37721
+   }
+  },
+  "confirmed_trades": true,
+  "confirmed_mid": true
+ },
+ {
+  "id": "F2",
+  "claim": "Nasdaq precedes diff by 1 bar (k=-1)",
+  "values": {
+   "explore": {
+    "corr": 0.026200541353057386,
+    "null95": 0.02094772961437163
+   },
+   "explore_mid": {
+    "corr": 0.02329719955010549,
+    "null95": 0.017132128455526474
+   },
+   "confirm": {
+    "corr": -0.000982633616055402,
+    "null95": 0.016846346565448322
+   },
+   "confirm_mid": {
+    "corr": -0.0033145496692727444,
+    "null95": 0.01917940538770049
+   }
+  },
+  "confirmed_trades": false,
+  "confirmed_mid": false
+ },
+ {
+  "id": "F3a",
+  "claim": "SR3Z6 precedes Nasdaq by 1 bar (k=+1)",
+  "values": {
+   "explore": {
+    "corr": 0.02772816647159187,
+    "null95": 0.021856742608002088
+   },
+   "explore_mid": {
+    "corr": 0.027540976153639103,
+    "null95": 0.02534669907256166
+   },
+   "confirm": {
+    "corr": -0.017924399087789943,
+    "null95": 0.021823505068260987
+   },
+   "confirm_mid": {
+    "corr": -0.02489138387054664,
+    "null95": 0.020210746178762472
+   }
+  },
+  "confirmed_trades": false,
+  "confirmed_mid": false
+ },
+ {
+  "id": "F3b",
+  "claim": "SR3H7 precedes Nasdaq by 1 bar (k=+1)",
+  "values": {
+   "explore": {
+    "corr": 0.029574925920070803,
+    "null95": 0.022801447837731963
+   },
+   "explore_mid": {
+    "corr": 0.030053990588604272,
+    "null95": 0.028357008628180382
+   },
+   "confirm": {
+    "corr": -0.025325313348086968,
+    "null95": 0.02247923075196286
+   },
+   "confirm_mid": {
+    "corr": -0.02769823927786008,
+    "null95": 0.021027283453610573
+   }
+  },
+  "confirmed_trades": false,
+  "confirmed_mid": false
+ },
+ {
+  "id": "F4a",
+  "claim": "SR3Z6 up day d -> Nasdaq down d+1",
+  "values": {
+   "explore": {
+    "corr": -0.3170939724761038,
+    "null95": 0.21521613209078683
+   },
+   "explore_mid": {
+    "corr": -0.3141252234593841,
+    "null95": 0.22011421961214844
+   },
+   "confirm": {
+    "corr": 0.12558411219400586,
+    "null95": 0.1597582616896054
+   },
+   "confirm_mid": {
+    "corr": 0.11858700526745411,
+    "null95": 0.15491468857391227
+   }
+  },
+  "confirmed_trades": false,
+  "confirmed_mid": false
+ },
+ {
+  "id": "F4b",
+  "claim": "SR3H7 up day d -> Nasdaq down d+1",
+  "values": {
+   "explore": {
+    "corr": -0.2945287924972058,
+    "null95": 0.2124767948146094
+   },
+   "explore_mid": {
+    "corr": -0.29703726315158635,
+    "null95": 0.23618489601600326
+   },
+   "confirm": {
+    "corr": 0.15098323773694217,
+    "null95": 0.15606945360480495
+   },
+   "confirm_mid": {
+    "corr": 0.14840655383445275,
+    "null95": 0.15793716128403154
+   }
+  },
+  "confirmed_trades": false,
+  "confirmed_mid": false
+ },
+ {
+  "id": "F4c",
+  "claim": "diff up day d -> Nasdaq down d+1",
+  "values": {
+   "explore": {
+    "corr": -0.2290434233970314,
+    "null95": 0.22809235686426635
+   },
+   "explore_mid": {
+    "corr": -0.23823542805990422,
+    "null95": 0.2136082472101478
+   },
+   "confirm": {
+    "corr": -0.056204796083198484,
+    "null95": 0.1672697875098177
+   },
+   "confirm_mid": {
+    "corr": -0.0367202270585454,
+    "null95": 0.15994200538341988
+   }
+  },
+  "confirmed_trades": false,
+  "confirmed_mid": false
+ },
+ {
+  "id": "F5",
+  "claim": "Nasdaq leads diff by 4h (k=-1)",
+  "values": {
+   "explore": {
+    "corr": 0.16289051074914182,
+    "null95": 0.09222096163300667
+   },
+   "explore_mid": {
+    "corr": 0.16635270033904737,
+    "null95": 0.08152813271017177
+   },
+   "confirm": {
+    "corr": 0.08989525335993231,
+    "null95": 0.08008872870718801
+   },
+   "confirm_mid": {
+    "corr": 0.06859959315117597,
+    "null95": 0.08570749063326843
+   }
+  },
+  "confirmed_trades": true,
+  "confirmed_mid": false
+ },
+ {
+  "id": "F6a",
+  "claim": "diff same-bar positive 15m",
+  "values": {
+   "explore": {
+    "corr": 0.18530065885562766,
+    "null95": 0.019129909407277608
+   },
+   "explore_mid": {
+    "corr": 0.1769984807040561,
+    "null95": 0.02767762892354829
+   },
+   "confirm": {
+    "corr": 0.05656498969422797,
+    "null95": 0.01649754130257371
+   },
+   "confirm_mid": {
+    "corr": 0.06107002061542671,
+    "null95": 0.018564414417582626
+   }
+  },
+  "confirmed_trades": true,
+  "confirmed_mid": true
+ },
+ {
+  "id": "F6b",
+  "claim": "diff same-bar positive 1h",
+  "values": {
+   "explore": {
+    "corr": 0.3108034943679265,
+    "null95": 0.04005228946356295
+   },
+   "explore_mid": {
+    "corr": 0.2959380421148299,
+    "null95": 0.04968055150735934
+   },
+   "confirm": {
+    "corr": 0.08418288892677639,
+    "null95": 0.03840307697049492
+   },
+   "confirm_mid": {
+    "corr": 0.09327100004895955,
+    "null95": 0.044349672585413634
+   }
+  },
+  "confirmed_trades": true,
+  "confirmed_mid": true
+ },
+ {
+  "id": "F6c",
+  "claim": "diff same-day positive",
+  "values": {
+   "explore": {
+    "corr": 0.490688798793383,
+    "null95": 0.22809235686426635
+   },
+   "explore_mid": {
+    "corr": 0.48931220815761894,
+    "null95": 0.22219033488981638
+   },
+   "confirm": {
+    "corr": 0.1467707754360181,
+    "null95": 0.18434467272964933
+   },
+   "confirm_mid": {
+    "corr": 0.14167811199452368,
+    "null95": 0.17696275702523004
+   }
+  },
+  "confirmed_trades": false,
+  "confirmed_mid": false
+ },
+ {
+  "id": "F8a",
+  "claim": "COG pair leads Nasdaq (Granger) 15m",
+  "values": {
+   "explore": {
+    "p": 0.0284,
+    "coef_sum": 0.00695
+   },
+   "explore_mid": {
+    "p": 0.0345,
+    "coef_sum": 0.0047
+   },
+   "confirm": {
+    "p": 0.9161,
+    "coef_sum": 0.00039
+   },
+   "confirm_mid": {
+    "p": 0.233,
+    "coef_sum": 0.00458
+   }
+  },
+  "confirmed_trades": false,
+  "confirmed_mid": false
+ },
+ {
+  "id": "F8b",
+  "claim": "Nasdaq leads COG pair (Granger) 15m",
+  "values": {
+   "explore": {
+    "p": 0.0001,
+    "coef_sum": 0.23767
+   },
+   "explore_mid": {
+    "p": 0.0,
+    "coef_sum": 0.47871
+   },
+   "confirm": {
+    "p": 0.9709,
+    "coef_sum": -0.00168
+   },
+   "confirm_mid": {
+    "p": 0.59,
+    "coef_sum": 0.02491
+   }
+  },
+  "confirmed_trades": false,
+  "confirmed_mid": false
+ },
+ {
+  "id": "F9",
+  "claim": "COG pair precedes Nasdaq by 1 bar (k=+1)",
+  "values": {
+   "explore": {
+    "corr": 0.024697684763932543,
+    "null95": 0.017593002233420495
+   },
+   "explore_mid": {
+    "corr": 0.02615186100329099,
+    "null95": 0.02157582220222785
+   },
+   "confirm": {
+    "corr": 0.0024797059697756526,
+    "null95": 0.022801380189683484
+   },
+   "confirm_mid": {
+    "corr": 0.014566164603533332,
+    "null95": 0.017163436659558533
+   }
+  },
+  "confirmed_trades": false,
+  "confirmed_mid": false
+ },
+ {
+  "id": "F10",
+  "claim": "COG pair up day d -> Nasdaq down d+1",
+  "values": {
+   "explore": {
+    "corr": -0.23922001066648868,
+    "null95": 0.2056732497734632
+   },
+   "explore_mid": {
+    "corr": -0.24813414638582096,
+    "null95": 0.21866630160295084
+   },
+   "confirm": {
+    "corr": -0.08007458788371173,
+    "null95": 0.15411734127634155
+   },
+   "confirm_mid": {
+    "corr": -0.08316049818644074,
+    "null95": 0.126792218283567
+   }
+  },
+  "confirmed_trades": false,
+  "confirmed_mid": false
+ }
+]
