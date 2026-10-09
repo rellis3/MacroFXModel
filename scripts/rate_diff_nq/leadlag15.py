@@ -31,7 +31,8 @@ BPD = 96                                      # 15-min slots per day on the full
 LAGS = range(-8, 9)
 # last trading day per contract (expired: their last bar; live: IBKR contract details)
 LAST = {"CME_SR3M6": "2026-09-15", "CME_SR3U6": "2026-12-15", "CME_SR3Z6": "2027-03-16", "CME_SR3H7": "2027-06-15",
-        "CME_SR3M7": "2027-09-14", "ICEEU_IM6": "2026-06-15", "ICEEU_IU6": "2026-09-14", "ICEEU_IZ6": "2026-12-14"}
+        "CME_SR3M7": "2027-09-14", "ICEEU_IM6": "2026-06-15", "ICEEU_IU6": "2026-09-14", "ICEEU_IZ6": "2026-12-14",
+        "ICEEU_ER3U6": "2026-12-15"}
 
 
 def load(name):
@@ -93,6 +94,8 @@ for fresh in (False, True):
     if "CME_SR3Z6" in LEG and "ICEEU_IZ6" in LEG:
         SERIES[f"US-EU Dec26{tag}"] = dleg("CME_SR3Z6", fresh) - dleg("ICEEU_IZ6", fresh)
     SERIES[f"US-EU generic 6-12m{tag}"] = generic("CME_SR3", fresh=fresh) - generic("ICEEU_I", fresh=fresh)
+    if "CME_SR3U6" in LEG and "ICEEU_ER3U6" in LEG:
+        SERIES[f"COG pair SR3U6-ER3U6{tag}"] = dleg("CME_SR3U6", fresh) - dleg("ICEEU_ER3U6", fresh)
     if "CME_SR3Z6" in LEG:
         SERIES[f"US leg SR3Z6{tag}"] = dleg("CME_SR3Z6", fresh)
     if "CME_SR3H7" in LEG:

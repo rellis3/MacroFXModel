@@ -65,3 +65,10 @@ there, or Granger p < 0.05 for the Granger items; reported for TRADES and, once 
 
 Caveat fixed now: F1/F2/F5 (Nasdaq first) are what stale TRADES closes on the thinner rate leg would produce. They count
 as confirmed only if they survive on MIDPOINT bars.
+
+## Added 2026-10-09, before its exploration numbers were seen: C.OG's exact pair
+
+The clean re-pull showed ICE ESTR ER3U6 trades a median 117 lots per 15 min (the earlier "~2" came from the mixed
+continuous series), so C.OG's pair SR3U6 − ER3U6 is usable from 2025-10. It joins the exploration under the same rule:
+any non-zero lag beyond the scrambled band, or Granger p < 0.05, becomes a finalist (F8+) and is judged on the
+confirmation period exactly as F1–F7.
