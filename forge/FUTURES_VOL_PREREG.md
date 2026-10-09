@@ -75,3 +75,44 @@ the fix here, and rerun; C1 is not examined until C0 reproduces A0.
   point (volume? jumps?) without promoting them.
 - **Not tested here:** whether the futures forecast beats the CFD forecast on CFD targets (needs the CFD translation
   step), order-book information (live depth not yet recorded, feed is delayed), and direction.
+
+---
+
+# Step 2 — CFD translation (added 2026-10-09, after Step 1's result, before any Step 2 number)
+
+*Step 1 (above) passed on futures-on-futures. Step 2 asks the question that matters for the live system: **on the
+CFD ranges the live ladder is scored on, does a futures-based σ beat the CFD-based σ?** Same rules, same session,
+same walk-forward, no live change.*
+
+## Target and pairing
+
+Target = the live CFD's own session ranges (`forge/vol.py::load_daily(pair, session="london22")`: HL, |OC|, OH, OL as %
+of the session open). Pairs (futures root → CFD): NQ→nq, ES→spx500, YM→us30, RTY→us2000, GC→gold, 6E→eurusd,
+6B→gbpusd, 6J→usdjpy, 6A→audusd, 6N→nzdusd, 6C→usdcad, 6S→usdchf (the JPY/CAD/CHF futures are the inverse quote;
+percentage ranges are the same to first order). Secondary: FDAX→de30. CFD session dates are re-expressed as London
+dates so they line up with the futures sessions.
+
+## Arms (all scored on the SAME CFD target rows, CFD widths refit per arm on train)
+
+| arm | σ source |
+|---|---|
+| **B0 control** | `har_rv_log_sigma` on the **CFD** daily OHLC — what is live |
+| B1 (diagnostic) | `har_rv_log_sigma` on the **futures** daily OHLC (Step 1's A0): isolates data source |
+| **B2 PRIMARY** | Step 1's C1 on futures (HAR on 5-minute RV) |
+| B3 (diagnostic) | 50/50 average of B0 and B2 σ |
+
+Only **B2 vs B0** is pass/fail; B1 and B3 are descriptive (4 arms looked at, 1 declared).
+
+## Score and PASS
+
+Loss per session = mean pinball over {HL, |OC|} × {p50, p75, p90} ÷ B0's daily σ%. Ratio = mean loss(arm) ÷ mean loss(B0)
+on rows where every arm has a forecast. Date-block bootstrap (block 20, 2,000 reps, dates resampled jointly across
+roots). B2 passes if, on the 12 primary roots: (1) pooled ratio < 1 with 95% upper bound < 1; (2) < 1 in both halves
+of the OOS period; (3) < 1 on at least 9 of 12; (4) pooled HL p75 exceed-rate within 0.20–0.30.
+
+## Reading it
+
+- **B2 passes:** the gain survives translation; next is a read-only shadow row on `har-shadow.html`.
+- **B2 fails but B1 ≈ B0:** the futures σ only helps on futures targets; the CFD feed's own noise absorbs it.
+- **B1 < B0 on its own:** the data source itself matters, independent of intraday information.
+- Out of sample the CFD M1 history ends before the futures (2026-08), so Step 2 scores through the CFD data's end.
