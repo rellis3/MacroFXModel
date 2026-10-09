@@ -48,6 +48,7 @@
   <div class="intro">The bond market is the first domino. This page is the five-minute fixed-income scan an institutional desk does before anything else, in plain words: what the 10-year is made of (the real cost of money plus expected inflation), what shape the curve is, what the long end is charging over and above the expected path of policy (the term premium), and what the two-year says is priced. Every line carries the desk's own verdict on whether it predicts anything — most of it explains, none of it forecasts a pair's next move.</div>
 
   <div class="card"><h2>Now, in words</h2><div id="now">Loading…</div></div>
+  <div class="card"><h2>Who is driving Nasdaq — rates, or not?</h2><div id="rr">Loading…</div></div>
   <div class="two">
     <div class="card"><h2>The curve — 2, 10 and 30 years, three years back</h2><div id="chCurve"></div></div>
     <div class="card"><h2>The slopes — 2s10s and 2s30s</h2><div id="chSlope"></div></div>
@@ -188,6 +189,29 @@ async function main() {
       <div class="sub">Each gap is the foreign 10-year minus the Treasury 10-year: up means that market is repricing faster than the US. The textbook says a rising gap lifts the currency (for USD/JPY, lowers it). Tested here 2010–2026 (<a href="MD files/NONUS_YIELDS.md" target="_blank">NONUS_YIELDS.md</a>): over 20-day windows the gap and the pair agree with the textbook ${Object.values(L).map(m => `<b>${m.hit}</b> for ${m.pair}`).join(', ')}. Same-window only — after a foreign-led move the next session is a coin flip (50%, 55%, 50%) and no wider than a US-led one. ${Object.values(L).map(m => `${m.name}: ${m.note}.`).join(' ')} Sources: Bank of England IADB, Bundesbank, Japan MoF, daily; FRED only mirrors these monthly.</div>`;
     chart(document.getElementById('chIntl'), [{ name: 'gilt − UST', color: 'var(--red)', pts: gaps.gb10y, last: lastOf(gaps.gb10y) ? bp(lastOf(gaps.gb10y)[1]) : null }, { name: 'Bund − UST', color: 'var(--blue)', pts: gaps.de10y, last: lastOf(gaps.de10y) ? bp(lastOf(gaps.de10y)[1]) : null }, { name: 'JGB − UST', color: 'var(--amber)', pts: gaps.jp10y, last: lastOf(gaps.jp10y) ? bp(lastOf(gaps.jp10y)[1]) : null }], { unit: 'bp', zero: true });
   }).catch(() => { document.getElementById('intl').textContent = 'not loaded'; });
+  // Rates vs Nasdaq regime (js/ratesRegime.js via /api/rates-regime): context, not a signal
+  fetch('/api/rates-regime').then(r => r.json()).then(d => {
+    const el = document.getElementById('rr'); const s = d?.state;
+    if (!s?.ok) { el.innerHTML = `<div class="sub">Not computed yet${d?.error ? ` (${esc(d.error)})` : ''}. It updates every 15 minutes from OANDA's US 2-year bond and NAS100 prices.</div>`; return; }
+    const col = s.band.strength === 'weak' ? 'var(--text2)' : s.band.direction === 'opposite' ? 'var(--red)' : 'var(--bull)';
+    const chip = s.band.strength === 'weak' ? 'rates not driving' : `${s.band.strength}: ${s.band.direction === 'opposite' ? 'moving opposite' : 'moving together'}`;
+    const h = s.history ?? [];
+    const W = 480, H = 110, L = 30, R = 8, T = 8, B = 16, lim = 0.6;
+    const x = i => L + i * (W - L - R) / Math.max(1, h.length - 1), y = v => T + (lim - Math.max(-lim, Math.min(lim, v))) / (2 * lim) * (H - T - B);
+    const bands = [0.3, 0.15, -0.15, -0.3].map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--border)" stroke-dasharray="${Math.abs(v) === 0.3 ? '' : '2 3'}"/><text x="${L - 4}" y="${y(v) + 3}" text-anchor="end">${v.toFixed(2)}</text>`).join('');
+    const path = h.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.corr).toFixed(1)}`).join(' ');
+    const xs = h.length ? [0, Math.floor((h.length - 1) / 2), h.length - 1].map(i => `<text x="${x(i)}" y="${H - 3}" text-anchor="middle">${h[i].date.slice(5)}</text>`).join('') : '';
+    el.innerHTML = `<div class="lead"><span style="font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:${col};border:1px solid ${col};border-radius:4px;padding:1px 6px;margin-right:6px">${chip}</span>${esc(s.read)}</div>
+      <div class="tiles">
+        <div class="tile"><div class="k">20-day link (15-min moves)</div><div class="v" style="color:${col}">${s.corr >= 0 ? '+' : ''}${s.corr.toFixed(2)}</div><div class="d">US 2y yield vs NAS100 · ${s.window.from} → ${s.window.to}</div></div>
+        <div class="tile"><div class="k">Nasdaq per 1 bp of yield</div><div class="v">${s.betaPctPerBp >= 0 ? '+' : ''}${s.betaPctPerBp.toFixed(3)}%</div><div class="d">same 15 minutes · 5 bp ≈ ${(s.betaPctPerBp * 5 >= 0 ? '+' : '')}${(s.betaPctPerBp * 5).toFixed(2)}%</div></div>
+        <div class="tile"><div class="k">Last 15 min</div><div class="v">${s.lastBar.yieldBp >= 0 ? '+' : ''}${s.lastBar.yieldBp.toFixed(1)}bp</div><div class="d ${s.lastBar.shock ? 'dn' : ''}">${Math.abs(s.lastBar.z).toFixed(1)}σ ${s.lastBar.shock ? '· rate shock' : ''} · Nasdaq ${s.lastBar.nasdaqPct >= 0 ? '+' : ''}${s.lastBar.nasdaqPct.toFixed(2)}%</div></div>
+      </div>
+      <div class="sub">${esc(d.lines?.lastHour ?? '')}<br>${esc(d.lines?.today ?? '')}</div>
+      <svg class="ch" viewBox="0 0 ${W} ${H}">${bands}<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--text3)"/><path d="${path}" fill="none" stroke="${col}" stroke-width="1.8"/>${xs}</svg>
+      <div class="lg"><span><i style="border-color:${col}"></i>rolling 20-day link at each day's close</span><span>solid lines ±0.30 = strong · dashed ±0.15 = moderate</span></div>
+      <div class="sub">How to read it: below zero, Nasdaq falls when yields rise in the same 15 minutes (rates in charge; good news is bad news); above zero they rise together (growth-driven); near zero, rate news barely moves Nasdaq. The sign flipped in March 2026. ${d.lastAlert ? `Last alert ${esc(d.lastAlert.at.slice(0, 16).replace('T', ' '))} UTC.` : ''} <b>Context, not a signal:</b> testing found no lead of rates over Nasdaq at any horizon (Evidence Book: rate-diff-nq-leadlag); this says which regime the market is in and how much of a move was rates, after the fact. Updated ${esc((d.updatedAt ?? '').slice(0, 16).replace('T', ' '))} UTC from OANDA's US 2-year bond CFD and NAS100.</div>`;
+  }).catch(() => { document.getElementById('rr').textContent = 'not loaded'; });
   const ids = ['yields-to-fx-direction', 'spread-leads-fx-hours', 'yield-spread-sleeve', 'priced-in-direction', 'fed-two-moves', 'front-end-shock', 'oil-breakevens-lag', 'real-yield-gold', 'crowded-bond-short-fomc', 'post-fomc-usd-drift', 'fomc-leadup-surprise-table'];
   const rows = DESK_EVIDENCE.filter(e => ids.includes(e.id) || (e.domain === 'macro' && /yield|curve|rate|fed|fomc|breakeven|real/i.test(e.claim)));
   const seen = new Set(); document.getElementById('ev').innerHTML = rows.filter(e => !seen.has(e.id) && seen.add(e.id)).map(e => `<div class="ev"><span class="v ${e.verdict}">${e.verdict === 'validated' ? 'validated' : e.verdict === 'null' ? 'null' : e.verdict === 'underpowered' ? 'underpowered' : 'base rate'}</span><span><b>${esc(e.claim)}.</b> ${esc(e.result.length > 260 ? e.result.slice(0, 257) + '…' : e.result)} <i style="color:var(--text3)">— ${esc(e.use.length > 160 ? e.use.slice(0, 157) + '…' : e.use)}</i></span></div>`).join('');

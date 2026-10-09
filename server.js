@@ -183,6 +183,7 @@ import { marketState as _mtMarketState, sectorBoard as _mtSectorBoard } from './
 import { buildQuestion as _buildQuestion, DRILL_SERIES as _DRILL_SERIES, GENERATOR_SERIES as _GEN_SERIES, DRILL_WINDOW as _DRILL_WINDOW } from './js/marketDrill.js';
 import { plannedInWindow } from './js/endOfDay.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
+import { ratesRegimeRead as _ratesRegimeRead, alertText as _ratesRegimeAlert, attributionLine as _ratesRegimeAttrib } from './js/ratesRegime.js';
 import { computeFrozenSigma as _vwapFrozenSigmaCore, computeStretchSnapshot as _vwapStretchSnapshot } from './js/vwapStretchCore.js';
 import { expectedRanges as _expectedRanges, formatDigest as _formatDigest } from './js/digest.js';
 import { eventImpact as _eventImpact } from './js/eventImpactMap.js';   // the book's size per family and pair, for the digest's prints line   // the 07:00 digest and the one forecast the desk makes (range), scored at the close
@@ -2034,6 +2035,7 @@ const TG_SENDERS = {
   volLevels:         'Vol-forecast level proximity (superseded, off by default)',
   surprise:          'Forecast-path surprise pings',
   hedgeSignals:      'Hedge pair signals',
+  ratesRegime:       'Rates vs Nasdaq regime change / rate shock (context, not a signal)',
   // volatility_bot_v2 (the Python bot) checks this directly via ai_alert_cfg
   // (see its own tg_master_on doc) — unlike every other sender above, this
   // one is NOT enforced by server.js's tgOn(), since the bot that actually
@@ -3893,6 +3895,58 @@ app.post('/api/desk-watch/tick', async (req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 svcInterval('deskWatch', () => _deskWatchTick().catch(e => console.error('[desk-watch]', e.message)), _WATCH_EVERY_MS);
+
+// ── Rates vs Nasdaq regime (js/ratesRegime.js) ───────────────────────────────
+// Context only: "are rates driving Nasdaq right now?" (rolling 20-day same-bar link between the US 2y bond CFD and
+// NAS100) and "how much of today's move is rates?". Built from plans/RATES_NASDAQ_WORKLOG.md: the same-bar link is the
+// one relationship that held, and its sign changes by regime; no lead survived, so nothing here forecasts. Telegram on a
+// regime-band change, a sign flip, or a >= 2-sigma 15-min rate shock (from Railway, gated by tgMaster.ratesRegime).
+// The KV row keeps a daily history = the forward record (does the band persist?).
+const _RR_KV = 'rates_regime_v1';
+let _rrRunning = false, _rrLast = { at: 0, error: null };
+async function _ratesRegimeTick(opts = {}) {
+  if (_rrRunning) return _rrLast;
+  _rrRunning = true;
+  try {
+    if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set');
+    const from = new Date(Date.now() - 45 * 86400e3).toISOString().slice(0, 10);
+    const [bond, nq] = await Promise.all([fetchIntraday('USB02Y_USD', 'M15', { from }), fetchIntraday('NAS100_USD', 'M15', { from })]);
+    const cur = _ratesRegimeRead({ bond, nq });
+    let prev = null, daily = [];
+    try { const raw = await kv.getStrict(_RR_KV); if (raw) { const p = JSON.parse(raw); prev = p.state ?? null; daily = Array.isArray(p.daily) ? p.daily : []; } }
+    catch (e) { console.warn('[rates-regime] store unreadable, not overwriting:', e.message); throw e; }
+    let sent = false, msg = null;
+    if (cur.ok) {
+      const d = cur.window.to;
+      daily = daily.filter(r => r.date !== d).concat([{ date: d, corr: cur.corr, beta: cur.betaPctPerBp, band: cur.band.key }]).slice(-400);
+      msg = prev && !cur.stale ? _ratesRegimeAlert(prev, cur) : null;     // first run after deploy: record, do not page
+      if (msg && !opts.silent && tgOn('ratesRegime') && state.tg?.token && state.tg?.chatId) sent = await sendTelegram(state.tg.token, state.tg.chatId, msg);
+      await kv.put(_RR_KV, JSON.stringify({ state: cur, daily, updatedAt: new Date().toISOString(), lastAlert: msg ? { at: new Date().toISOString(), text: msg, sent } : (prev?.lastAlert ?? null) }));
+    }
+    _rrLast = { at: Date.now(), ok: cur.ok, reason: cur.reason ?? null, band: cur.band?.key ?? null, alerted: !!msg, sent, error: null };
+    return _rrLast;
+  } catch (e) {
+    _rrLast = { ..._rrLast, at: Date.now(), error: e.message };
+    console.error('[rates-regime]', e.message);
+    return _rrLast;
+  } finally { _rrRunning = false; }
+}
+app.get('/api/rates-regime', async (_req, res) => {
+  try {
+    const raw = await kv.get(_RR_KV);
+    const p = raw ? JSON.parse(raw) : null;
+    const s = p?.state ?? null;
+    res.json({ ok: !!s?.ok, state: s, daily: p?.daily ?? [], updatedAt: p?.updatedAt ?? null, lastAlert: p?.lastAlert ?? null,
+               lines: s?.ok ? { today: _ratesRegimeAttrib(s.today, 'Today'), lastHour: _ratesRegimeAttrib(s.lastHour, 'Last hour') } : null,
+               lastTick: _rrLast.at ? new Date(_rrLast.at).toISOString() : null, error: _rrLast.error ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/rates-regime/tick', async (req, res) => {
+  try { res.json({ ok: true, ...(await _ratesRegimeTick({ silent: req.query.silent === '1' })) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('ratesRegime', () => _ratesRegimeTick().catch(e => console.error('[rates-regime]', e.message)), 15 * 60_000);
+svcTimeout('ratesRegime', () => _ratesRegimeTick({ silent: true }).catch(e => console.error('[rates-regime]', e.message)), 90_000);
 
 // ── The chain, read aloud ────────────────────────────────────────────────────
 // The chain panel judges each textbook link on measured moves. This turns those
