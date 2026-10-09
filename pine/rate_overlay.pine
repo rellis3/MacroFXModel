@@ -1,55 +1,111 @@
 //@version=6
-indicator("Rate Overlay on Price (SOFR / yields / spreads)", shorttitle="Rate Overlay", overlay=true, max_bars_back=2000)
+indicator("Rate Overlay on Price (SOFR / ESTR / Euribor / yields)", shorttitle="Rate Overlay", overlay=true, max_bars_back=2000)
 
-// Draws a rate series (a yield, a short-rate future, or the spread between two) ON the price chart, rescaled so it sits
-// on the candles, the way C.OG overlays his SOFR-vs-ESTR line on NQ / EURUSD. Then it measures, on this chart, what the
-// eye cannot: how closely they move together, whether the RATE moves first or the PRICE does, and when price has
-// drifted unusually far from the rate line (the "residual" C.OG talks about).
+// Draws a short-rate series ON the price chart (NQ, SPX, EURUSD ...), rescaled to sit on the candles, the way C.OG overlays
+// his SOFR-vs-ESTR line. It FINDS THE DATA ITSELF: for each leg it tries a list of TradingView symbols and uses the first
+// one that returns bars on your chart (your plan decides which do). The "Data check" table (bottom left) shows every
+// symbol it tried and whether TradingView gave it data, so you can see what intraday feeds you have.
+//
+// Then it measures, on this chart, what the eye cannot: how closely rate and price move together, whether the RATE moves
+// first or the PRICE does (lag profile 0-8 bars), and when price has drifted unusually far from the rate line.
 //
 // Keep every statement on ONE line (see pine/fx_yield_alignment.pine): wrapped lines break when pasted.
 //
-// Quick set-ups (Rate A / Rate B):
-//   NQ or SPX vs Fed path:          CME:SR3H2027 (futures price box ON), B off, Invert ON (lower rates = higher stocks)
-//   EURUSD vs US-EU short rates:    CME:SR3Z2026 (futures ON) minus ICEEUR:IZ2026 or a euro 2y (TVC:DE02Y), Invert ON
-//   EURUSD vs 2y yield spread:      TVC:US02Y minus TVC:DE02Y, Invert ON
-//   USDJPY vs US 2y:                TVC:US02Y, B off, Invert OFF
-// Use whichever symbols your TradingView plan shows data for; if a box shows "no data", that feed is not on your plan.
-// Research note (MacroFXModel, 2026-10-08): on 15-min bars, SOFR futures and markets move together in the SAME bar; a
-// lead of rates over price was not found. Read the overlay as "what rates are doing right now", and check the lead
-// numbers in the table on your own chart before trusting any "rates turned first" read.
+// Futures are converted to RATES (100 - price), so every line reads "up = higher rates priced".
+// Research note (MacroFXModel 2026-10-09, analysis/output/rate_diff_nq/REPORT.md): at 1 min to daily, SOFR/ESTR/Euribor
+// futures and Nasdaq move in the SAME bars; no lead of rates over Nasdaq was found. For Nasdaq the rate LEVEL (either leg)
+// was the steadier co-mover; the US-EU gap's link switched on and off. Check the lag rows on your own charts.
 
-// ─── Inputs ───────────────────────────────────────────────────────────────────
-string symA    = input.symbol("TVC:US02Y", "Rate A", group="Rate series", tooltip="A yield (TVC:US02Y), a short-rate future (CME:SR3H2027) or any symbol.")
-bool   futA    = input.bool(false, "A is a futures PRICE (convert: rate = 100 - price)", group="Rate series", tooltip="Tick for SOFR / Euribor / ESTR futures so the line shows the RATE (up = higher rates priced).")
-bool   useB    = input.bool(true, "Subtract Rate B (plot A - B, a spread)", group="Rate series")
-string symB    = input.symbol("TVC:DE02Y", "Rate B", group="Rate series")
-bool   futB    = input.bool(false, "B is a futures PRICE (rate = 100 - price)", group="Rate series")
-bool   invert  = input.bool(true, "Invert the rate line", group="Rate series", tooltip="ON when price should FALL as the rate rises (EURUSD vs US-minus-EU, NQ vs US rates). The correlation numbers in the table tell you which way your chart actually behaves right now.")
+// ─── What to plot ─────────────────────────────────────────────────────────────
+string mode    = input.string("US - EU (auto)", "What to plot", options=["US - EU (auto)", "US leg only (auto)", "EU leg only (auto)", "Manual: A - B", "Manual: A only"], group="Rate series", tooltip="Auto modes pick the data feeds for you (see the Data check table). Manual modes use the two symbols below.")
+string usPref  = input.string("Auto: SOFR futures, then yields", "US leg source", options=["Auto: SOFR futures, then yields", "CME SOFR 3M futures (SR3)", "US 2-year yield", "US 3-month bill yield"], group="Rate series")
+int    usPt    = input.int(3, "SOFR curve point (1 = nearest)", minval=1, maxval=8, group="Rate series", tooltip="Continuous CME SR3 contract: 1 = SR31! (nearest quarterly), 2 = SR32!, 3 = SR33! ... In the research the contracts 6-12 months out (about 3-4) moved markets most; the nearest is mostly fixed and barely moves.")
+string euPref  = input.string("Auto: ESTR, Euribor, then yield", "EU leg source", options=["Auto: ESTR, Euribor, then yield", "ICE ESTR 3M futures (ER3)", "ICE Euribor 3M futures (I)", "Eurex ESTR 3M futures (FST3)", "CME ESTR futures (ESR)", "German 2-year yield"], group="Rate series", tooltip="ICE ESTR is the leg C.OG uses. Euro futures trade about 01:00-21:45 London; overnight the EU leg holds its last price.")
+int    euPt    = input.int(3, "Euro curve point (1 = nearest)", minval=1, maxval=8, group="Rate series", tooltip="Same idea as the SOFR curve point. Match it to the SOFR point so both legs cover the same future period.")
+bool   showLegs = input.bool(false, "Also draw each leg separately", group="Rate series", tooltip="Orange = US leg, purple = EU leg, each rescaled to price. Shows which leg is actually moving with the chart.")
+bool   invert  = input.bool(true, "Invert the rate line", group="Rate series", tooltip="ON when price should FALL as the rate rises (NQ vs rates, EURUSD vs US-minus-EU). The 'Same bar' row in the table shows which way your chart behaves now: if it is negative with Invert ON, switch it off.")
+string symA    = input.symbol("CME:SR3H2027", "Manual: Rate A", group="Manual symbols", tooltip="Any symbol, e.g. a specific contract (CME:SR3Z2026) or a yield (TVC:US02Y).")
+bool   futA    = input.bool(true, "A is a futures PRICE (rate = 100 - price)", group="Manual symbols")
+string symB    = input.symbol("TVC:DE02Y", "Manual: Rate B", group="Manual symbols")
+bool   futB    = input.bool(false, "B is a futures PRICE (rate = 100 - price)", group="Manual symbols")
 int    normLen = input.int(200, "Fit window (bars)", minval=20, group="Scaling", tooltip="The rate line is rescaled to price over this many bars. Shorter = hugs price more tightly (and looks more 'correlated' than it is).")
-int    corrLen = input.int(200, "Correlation window (bars)", minval=20, group="Statistics")
+int    corrLen = input.int(500, "Correlation window (bars)", minval=20, group="Statistics", tooltip="500 bars on 15m is about 5 trading days. Longer = steadier numbers.")
 float  resThr  = input.float(2.0, "Residual flag (z)", minval=0.5, step=0.25, group="Statistics", tooltip="Flag bars where price is this many standard deviations away from the rate line.")
 int    shiftN  = input.int(0, "Shift rate line forward (bars)", minval=0, maxval=50, group="Lead check", tooltip="Draws the rate line N bars LATER. If rates lead price by N bars, the shifted line should hug the candles better than at 0. Compare 0, 1, 2, 4 and read the lag profile in the table.")
 bool   showRes = input.bool(true, "Shade residual extremes", group="Display")
 bool   showTbl = input.bool(true, "Show statistics table", group="Display")
+bool   showChk = input.bool(true, "Show data check table", group="Display")
 color  lineCol = input.color(color.new(#3b82f6, 0), "Rate line colour", group="Display")
 
-// ─── Data (no look-ahead; gaps forward-filled so futures/bond hours line up with the chart) ─────────────────────────
-float a = request.security(symA, timeframe.period, close, gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true)
-float b = request.security(symB, timeframe.period, close, gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true)
-float rA = futA ? 100 - a : a
-float rB = futB ? 100 - b : b
-float rate = useB ? rA - rB : rA
+// ─── Candidate feeds (no look-ahead; gaps forward-filled so futures/bond hours line up with the chart) ───────────────
+f_req(sym) => request.security(sym, timeframe.period, close, gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true)
+string sU1 = "CME:SR3" + str.tostring(usPt) + "!"
+string sU2 = "TVC:US02Y"
+string sU3 = "TVC:US03MY"
+string sE1 = "ICEEUR:ER3" + str.tostring(euPt) + "!"
+string sE2 = "ICEEUR:I" + str.tostring(euPt) + "!"
+string sE3 = "EUREX:FST3" + str.tostring(euPt) + "!"
+string sE4 = "CME:ESR" + str.tostring(euPt) + "!"
+string sE5 = "TVC:DE02Y"
+float u1 = f_req(sU1)
+float u2 = f_req(sU2)
+float u3 = f_req(sU3)
+float e1 = f_req(sE1)
+float e2 = f_req(sE2)
+float e3 = f_req(sE3)
+float e4 = f_req(sE4)
+float e5 = f_req(sE5)
+float mA = f_req(symA)
+float mB = f_req(symB)
+
+// a feed counts as available once it has returned any bar on this chart
+var bool vU1 = false
+var bool vU2 = false
+var bool vU3 = false
+var bool vE1 = false
+var bool vE2 = false
+var bool vE3 = false
+var bool vE4 = false
+var bool vE5 = false
+vU1 := vU1 or not na(u1)
+vU2 := vU2 or not na(u2)
+vU3 := vU3 or not na(u3)
+vE1 := vE1 or not na(e1)
+vE2 := vE2 or not na(e2)
+vE3 := vE3 or not na(e3)
+vE4 := vE4 or not na(e4)
+vE5 := vE5 or not na(e5)
+
+// pick: forced source if chosen, else the first available in priority order
+int pU = usPref == "CME SOFR 3M futures (SR3)" ? 1 : usPref == "US 2-year yield" ? 2 : usPref == "US 3-month bill yield" ? 3 : vU1 ? 1 : vU2 ? 2 : vU3 ? 3 : 0
+int pE = euPref == "ICE ESTR 3M futures (ER3)" ? 1 : euPref == "ICE Euribor 3M futures (I)" ? 2 : euPref == "Eurex ESTR 3M futures (FST3)" ? 3 : euPref == "CME ESTR futures (ESR)" ? 4 : euPref == "German 2-year yield" ? 5 : vE1 ? 1 : vE2 ? 2 : vE3 ? 3 : vE4 ? 4 : vE5 ? 5 : 0
+float rUS = pU == 1 ? 100 - u1 : pU == 2 ? u2 : pU == 3 ? u3 : na
+float rEU = pE == 1 ? 100 - e1 : pE == 2 ? 100 - e2 : pE == 3 ? 100 - e3 : pE == 4 ? 100 - e4 : pE == 5 ? e5 : na
+string nUS = pU == 1 ? sU1 + " (futures -> rate)" : pU == 2 ? sU2 + " (yield)" : pU == 3 ? sU3 + " (yield)" : "none available"
+string nEU = pE == 1 ? sE1 + " (futures -> rate)" : pE == 2 ? sE2 + " (futures -> rate)" : pE == 3 ? sE3 + " (futures -> rate)" : pE == 4 ? sE4 + " (futures -> rate)" : pE == 5 ? sE5 + " (yield)" : "none available"
+float rA = futA ? 100 - mA : mA
+float rB = futB ? 100 - mB : mB
+float rate = mode == "US - EU (auto)" ? rUS - rEU : mode == "US leg only (auto)" ? rUS : mode == "EU leg only (auto)" ? rEU : mode == "Manual: A - B" ? rA - rB : rA
+string what = mode == "US - EU (auto)" ? "US - EU" : mode == "US leg only (auto)" ? "US leg" : mode == "EU leg only (auto)" ? "EU leg" : mode == "Manual: A - B" ? "A - B" : "A"
 float r = invert ? -rate : rate
 
 // ─── Rescale the rate onto price: same z-score, drawn in price units ─────────────────────────────────────────────────
 float mP = ta.sma(close, normLen)
 float sP = ta.stdev(close, normLen)
+f_onPrice(x) =>
+    float sx = ta.stdev(x, normLen)
+    float mx = ta.sma(x, normLen)
+    sx > 0 ? mP + (x - mx) / sx * sP : na
 float mR = ta.sma(r, normLen)
 float sR = ta.stdev(r, normLen)
 float zR = sR > 0 ? (r - mR) / sR : na
 float zP = sP > 0 ? (close - mP) / sP : na
 float rateOnPrice = mP + zR * sP
 plot(rateOnPrice, "Rate (rescaled to price)", color=lineCol, linewidth=2, offset=shiftN)
+float usLine = f_onPrice(invert ? -rUS : rUS)
+float euLine = f_onPrice(invert ? -rEU : rEU)
+plot(showLegs ? usLine : na, "US leg (rescaled)", color=color.new(#f97316, 0), linewidth=1, offset=shiftN)
+plot(showLegs ? euLine : na, "EU leg (rescaled)", color=color.new(#a855f7, 0), linewidth=1, offset=shiftN)
 
 // ─── Residual: price minus the rate line, in standard deviations ─────────────────────────────────────────────────────
 float resid = zP - zR
@@ -73,35 +129,70 @@ float c8 = ta.correlation(dR[8], dP, corrLen)
 float cRate4 = ta.correlation(ta.change(r, 4)[4], ta.change(close, 4), corrLen)
 float cPx1   = ta.correlation(dP[1], dR, corrLen)
 float cLevel = ta.correlation(r, close, corrLen)
+float cUS = ta.correlation(ta.change(invert ? -rUS : rUS), dP, corrLen)
+float cEU = ta.correlation(ta.change(invert ? -rEU : rEU), dP, corrLen)
 // rough noise level: |corr| below 2/sqrt(window) is indistinguishable from zero (0.14 at 200 bars, 0.09 at 500)
 float noise = 2 / math.sqrt(corrLen)
 float bestLead = math.max(math.abs(nz(c1)), math.abs(nz(c2)), math.abs(nz(c3)), math.abs(nz(c4)), math.abs(nz(c6)), math.abs(nz(c8)))
+// share of bars on which the rate actually changed (futures move in ticks; many unchanged bars weaken every number)
+float moved = ta.sma(dR != 0 and not na(dR) ? 1.0 : 0.0, corrLen)
 
 f_fmt(x) => na(x) ? "n/a" : str.tostring(x, "+0.00;-0.00")
 // green = clearly beyond noise, amber = borderline, grey = indistinguishable from zero on this window
 f_col(x) => na(x) ? color.gray : math.abs(x) >= 2 * noise ? color.new(#22c55e, 0) : math.abs(x) >= noise ? color.new(#eab308, 0) : color.new(#9ca3af, 0)
 f_row(tb, row, label, val) =>
     table.cell(tb, 0, row, label, text_color=color.silver, text_size=size.small)
-    table.cell(tb, 1, row, f_fmt(val) + (row >= 2 and row <= 7 and math.abs(nz(val)) == bestLead and bestLead >= noise ? "  <- strongest lead" : ""), text_color=f_col(val), text_size=size.small)
+    table.cell(tb, 1, row, f_fmt(val) + (row >= 4 and row <= 9 and math.abs(nz(val)) == bestLead and bestLead >= noise ? "  <- strongest lead" : ""), text_color=f_col(val), text_size=size.small)
 
-var table t = table.new(position.top_right, 2, 14, bgcolor=color.new(#0b1220, 10), border_width=1, border_color=color.new(#334155, 0))
+var table t = table.new(position.top_right, 2, 19, bgcolor=color.new(#0b1220, 10), border_width=1, border_color=color.new(#334155, 0))
 if showTbl and barstate.islast
-    table.cell(t, 0, 0, "Rate overlay " + (useB ? "A - B" : "A") + (invert ? " (inv)" : ""), text_color=color.white, text_size=size.small)
+    table.cell(t, 0, 0, "Rate overlay: " + what + (invert ? " (inverted)" : ""), text_color=color.white, text_size=size.small)
     table.cell(t, 1, 0, "corr of moves", text_color=color.white, text_size=size.small)
-    f_row(t, 1, "Same bar (together)", c0)
-    f_row(t, 2, "Rate leads 1 bar", c1)
-    f_row(t, 3, "Rate leads 2 bars", c2)
-    f_row(t, 4, "Rate leads 3 bars", c3)
-    f_row(t, 5, "Rate leads 4 bars", c4)
-    f_row(t, 6, "Rate leads 6 bars", c6)
-    f_row(t, 7, "Rate leads 8 bars", c8)
-    f_row(t, 8, "Rate 4-bar swing -> next 4", cRate4)
-    f_row(t, 9, "Price leads rate 1 bar", cPx1)
-    table.cell(t, 0, 10, "Noise level (+/-)", text_color=color.silver, text_size=size.small)
-    table.cell(t, 1, 10, str.tostring(noise, "0.00") + " over " + str.tostring(corrLen) + " bars", text_color=color.gray, text_size=size.small)
-    table.cell(t, 0, 11, "Level corr (flatters)", text_color=color.silver, text_size=size.small)
-    table.cell(t, 1, 11, f_fmt(cLevel), text_color=color.gray, text_size=size.small)
-    table.cell(t, 0, 12, "Residual now (z)", text_color=color.silver, text_size=size.small)
-    table.cell(t, 1, 12, f_fmt(resid), text_color=hiRes or loRes ? color.orange : color.silver, text_size=size.small)
-    table.cell(t, 0, 13, "Line shifted forward", text_color=color.silver, text_size=size.small)
-    table.cell(t, 1, 13, str.tostring(shiftN) + " bars", text_color=color.gray, text_size=size.small)
+    table.cell(t, 0, 1, "US leg feed", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 1, nUS, text_color=pU == 0 ? color.red : color.silver, text_size=size.small)
+    table.cell(t, 0, 2, "EU leg feed", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 2, nEU, text_color=pE == 0 ? color.red : color.silver, text_size=size.small)
+    f_row(t, 3, "Same bar (together)", c0)
+    f_row(t, 4, "Rate leads 1 bar", c1)
+    f_row(t, 5, "Rate leads 2 bars", c2)
+    f_row(t, 6, "Rate leads 3 bars", c3)
+    f_row(t, 7, "Rate leads 4 bars", c4)
+    f_row(t, 8, "Rate leads 6 bars", c6)
+    f_row(t, 9, "Rate leads 8 bars", c8)
+    f_row(t, 10, "Rate 4-bar swing -> next 4", cRate4)
+    f_row(t, 11, "Price leads rate 1 bar", cPx1)
+    f_row(t, 12, "US leg alone, same bar", cUS)
+    f_row(t, 13, "EU leg alone, same bar", cEU)
+    table.cell(t, 0, 14, "Noise level (+/-)", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 14, str.tostring(noise, "0.00") + " over " + str.tostring(corrLen) + " bars", text_color=color.gray, text_size=size.small)
+    table.cell(t, 0, 15, "Bars where the rate moved", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 15, na(moved) ? "n/a" : str.tostring(moved * 100, "0") + "%", text_color=nz(moved) < 0.3 ? color.orange : color.gray, text_size=size.small)
+    table.cell(t, 0, 16, "Level corr (flatters)", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 16, f_fmt(cLevel), text_color=color.gray, text_size=size.small)
+    table.cell(t, 0, 17, "Residual now (z)", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 17, f_fmt(resid), text_color=hiRes or loRes ? color.orange : color.silver, text_size=size.small)
+    table.cell(t, 0, 18, "Line shifted forward", text_color=color.silver, text_size=size.small)
+    table.cell(t, 1, 18, str.tostring(shiftN) + " bars", text_color=color.gray, text_size=size.small)
+
+// ─── Data check: every feed tried, and whether TradingView returned bars for it on this chart ───────────────────────
+f_chk(tb, row, sym, ok, last, used) =>
+    table.cell(tb, 0, row, sym, text_color=used ? color.white : color.silver, text_size=size.tiny)
+    table.cell(tb, 1, row, ok ? "data" : "no data", text_color=ok ? color.new(#22c55e, 0) : color.new(#ef4444, 0), text_size=size.tiny)
+    table.cell(tb, 2, row, ok ? str.tostring(last, "#.####") : "-", text_color=color.gray, text_size=size.tiny)
+    table.cell(tb, 3, row, used ? "<- in use" : "", text_color=color.new(#3b82f6, 0), text_size=size.tiny)
+
+var table chk = table.new(position.bottom_left, 4, 10, bgcolor=color.new(#0b1220, 10), border_width=1, border_color=color.new(#334155, 0))
+if showChk and barstate.islast
+    table.cell(chk, 0, 0, "Data check (" + timeframe.period + ")", text_color=color.white, text_size=size.tiny)
+    table.cell(chk, 1, 0, "status", text_color=color.white, text_size=size.tiny)
+    table.cell(chk, 2, 0, "last", text_color=color.white, text_size=size.tiny)
+    table.cell(chk, 3, 0, "", text_color=color.white, text_size=size.tiny)
+    f_chk(chk, 1, sU1 + "  SOFR fut", vU1, u1, pU == 1)
+    f_chk(chk, 2, sU2 + "  US 2y", vU2, u2, pU == 2)
+    f_chk(chk, 3, sU3 + "  US 3m", vU3, u3, pU == 3)
+    f_chk(chk, 4, sE1 + "  ESTR ICE", vE1, e1, pE == 1)
+    f_chk(chk, 5, sE2 + "  Euribor ICE", vE2, e2, pE == 2)
+    f_chk(chk, 6, sE3 + "  ESTR Eurex", vE3, e3, pE == 3)
+    f_chk(chk, 7, sE4 + "  ESTR CME", vE4, e4, pE == 4)
+    f_chk(chk, 8, sE5 + "  DE 2y", vE5, e5, pE == 5)
+    table.cell(chk, 0, 9, "Red = not on your plan / no such symbol. Use the source menus to force one.", text_color=color.gray, text_size=size.tiny)
