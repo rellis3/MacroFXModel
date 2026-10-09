@@ -242,3 +242,27 @@ no new interactions or subgroup search; 2025 → 2026-08 is NOT a pristine holdo
   layer with 5-day moving-block bootstrap; credit rule as section 6 (on Validation only here; Confirmation is not pristine and is not run in Stage 2).
 - **Cost gate:** the Stage 1 cost table (2x registered; estimated instruments flagged). A significant directional effect smaller than cost/u is a
   research finding, not a trading edge.
+
+## Stage 2 record (2026-10-09) — Validation 2022-2024, 84,653 rows, 778 dates
+`python -m forge.iep_stage2 run` → `STAGE2.md`, `stage2.json`; `python -m forge.iep_stage2_check` → `STAGE2_CHECK.md` (registered criteria the
+first script left uncomputed; no new test).
+- **Direction (CONT vs REV): null.** A1 fresh extremes 50.3% [49.0, 51.5] (discovery's 51-53% tilt did not carry over); A2, A3, A5, A8, A9 null after Holm.
+  Ladder: **no layer beats a constant 50/50 forecast** (Brier 0.5000; L0 0.5025, L1 0.5014, L2 0.5011, L3 0.5015, L4 0.5014; GBM 0.5092). The
+  registered "L1 beats L0" (+0.22% [0.09, 0.36]) reflects a noisy L0 (instrument × hour cells), not information: recorded, not credited.
+  Cross-asset hurts direction (L3 −0.08% [−0.14, −0.03]); macro adds nothing (L4 +0.02% [−0.12, +0.18]).
+- **Size (CONS vs a 1u move): real, as expected.** A4 range used high vs low −18.0pp (halves −18.5 / −17.5, 100% of instruments) — passes;
+  A7 IV÷σ high vs low −13.6pp (−15.6 / −11.1, 100%) — passes; A10 VIX high vs low −6.1pp, Holm p 0.014 (halves −4.8 / −9.5, 82% of 34 instruments) —
+  passes (STAGE2.md's verdict line said otherwise only because halves were not computed for A10; corrected in STAGE2_CHECK.md); A6 regime null after Holm.
+  Ladder (Brier skill vs previous layer): L1 price +4.47% [3.36, 5.69] credited (L0 is itself 3.6% better than the constant training share);
+  L2 volatility +0.15% [−0.07, 0.35] (log loss +0.29% [0.11, 0.47], just under the 0.3% bar) — not credited pooled, credited for gold (+1.60% [0.91, 2.41]);
+  L3 cross-asset +0.13% [0.04, 0.21] — CI > 0 but below 0.3%, not credited pooled, credited for indices (+0.41% [0.22, 0.60]); L4 macro +0.18% [−0.11, 0.52]
+  not credited (majors −0.54%). GBM ceiling +5.67% vs L0 (≈ +1.2% beyond L4 logistic): non-linear structure, matching Family B.
+- **Race (CONT/REV/CONS jointly):** all gain is the CONS part (L1 +2.36%; later layers not credited).
+- **Family B (BH 10%):** pass on CONS: pb×age, pb×band, used×band, mom×pb. Pass on CONT|res: pb×age (driven by deep pullbacks > 1σ: 32-37% continuation
+  on 29-103 dates), regime×used and displacement×regime (busy regime × high range used / high displacement: 46.1% ±2.3, halves 46.0/46.5 and 45.5/47.5;
+  quiet × high: 52.6%). These cells are post-hoc readings of registered interactions: leads for confirmation, not findings. Prior-day replication null (p 0.27).
+- **Cost gate:** the largest directional cell gaps (≈ 4-8pp of resolved rows) are below cost/u (≈ 10pp majors/indices, 17-19pp gold/crosses, 2x table;
+  16 crosses + NZDUSD + US2000 estimated). One post-hoc decile figure (L4, indices, bottom decile REV−CONT 11.8pp vs cost 10.0pp) is a single number
+  out of 32 shown, from a model that does not beat 50/50: not an edge.
+- **Deviations / issues:** (1) A10 verdict line corrected as above; (2) the ladder's elapsed-variance share omits the 00:00-01:00 slot (rv_ratio feature
+  only); (3) direction credited against L0 by the registered rule but disclosed against the constant; (4) late stratum and Family C not run (Stage 3).
