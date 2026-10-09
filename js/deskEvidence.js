@@ -921,6 +921,13 @@ export const DESK_EVIDENCE = [
     use: 'CLOSED 2026-10-08 (forge/FED_PATH_LEAD_PREREG.md): the cluster tested once on untouched Oct 2025 - Apr 2026 data, Fed-path slope 30-min change vs a EURUSD/AUD/silver/DAX basket next 30 min, Asia + London morning: t +1.43 (needed 2.0), same sign but smaller than discovery (+2.84), EURUSD alone -0.54; gross +0.005% per trade, below one spread. Too small to trade at 15 min. Nothing to wire.',
   },
   {
+    id: 'rate-diff-nq-leadlag', domain: 'macro', verdict: 'null', date: '2026-10-09', doc: 'analysis/output/rate_diff_nq/REPORT.md',
+    claim: 'The US-EU short-rate differential (SOFR minus Euribor / ESTR futures, incl. C.OG\'s SR3U6 - ER3U6 pair) leads or lags Nasdaq at some timeframe (1m to daily), in some regime',
+    result: 'Coincident only. Explore Oct 2025-Mar 2026, confirm Apr-Oct 2026 (15-min TRADES and MIDPOINT), 1-min MIDPOINT Apr-Oct: every rates-first candidate failed confirmation and several reversed sign (SR3Z6 one bar ahead +0.028 -> -0.018; rates up today -> Nasdaq down tomorrow -0.32 -> +0.13; C.OG pair Granger rate->Nasdaq p 0.028 -> 0.92). Nasdaq -> rates Granger p ~0.000 at 1-5 min in both halves but ~0.5 bp per 1% Nasdaq move, a fraction of a tick, gone by 15 min (large-tick quote adjustment). Same-bar link of each leg strong (-0.11 to -0.35, higher rates <-> lower Nasdaq); the DIFFERENTIAL\'s link flips with which leg moves markets: +0.18 (15m) Oct-Mar, +0.06 Apr-Oct.',
+    use: 'Do not read a rate-differential overlay as a leading indicator for Nasdaq: they move in the same minutes. For Nasdaq the rate LEVEL (either leg) is the steadier co-mover; the US-EU gap belongs with EURUSD. Untested: seconds-level leads (tick data) and large-surprise-only effects (calendar file ends 2026-07-02).',
+    instruments: ['NQ', 'SPX500'],
+  },
+  {
     id: 'rate-diff-xsmom', domain: 'macro', verdict: 'null', date: '2026-10-08', doc: 'forge/RATE_XSMOM_PREREG.md',
     claim: "C.OG's suggestion: cross-sectional momentum in short-term rate differentials (rank 9 currencies vs USD by the 3-month change in their 3-month-rate gap, long top third / short bottom third), and NASDAQ only while US short rates fall",
     result: 'FX FAIL: +0.95% a year, Sharpe 0.13, 1976-2026 (1976-2014 +0.081%/month [-0.110, +0.276]; 2015-2026 +0.073%); alpha over carry and FX momentum t +0.81; look-backs 1/6/12 no better in both periods. Same code ranking by rate LEVEL (carry) earns +5.0%/yr, Sharpe 0.54, 1976-2014 (interval above 0), so the construction works. NASDAQ rule FAIL: Sharpe 0.24 vs buy-and-hold 0.35, worse in both periods (in the market 46%); US-minus-others version worse (-0.25 [-0.46, -0.04]).',
