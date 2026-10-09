@@ -225,7 +225,7 @@ import { levelExpectation } from './js/levelExpectation.js';   // per-level Reje
 import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
 import { buildOILevelText } from './js/oiLevelExport.js';
 import { oiGexLadder as _oiGexLadder } from './js/oi.js';
-import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _parseCboeChain, cboeLadder as _cboeLadder, cboeSnapshotRow as _cboeSnapshotRow, cboeOverlayInst as _cboeOverlayInst, cfdCashOffset as _cfdCashOffset, cboeShift as _cboeShift } from './js/cboeChain.js';   // free delayed Cboe index-options chain (additive to CME; dashboard toggle + tracking)   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
+import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _parseCboeChain, cboeLadder as _cboeLadder, cboeSnapshotRow as _cboeSnapshotRow, cboeOverlayInst as _cboeOverlayInst, cfdCashOffset as _cfdCashOffset, cboeShift as _cboeShift, cashRefTime as _cashRefTime } from './js/cboeChain.js';   // free delayed Cboe index-options chain (additive to CME; dashboard toggle + tracking)   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
 import { meetingProbabilities as _zqMeetingProbs } from './js/fedPathZq.js';
 import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE, OI_PRODUCT_SPEC as _OI_SPEC } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
 import { buildOIZones, explainNoZones, oiSizeCalibrationStats as _oiSizeCalibrationStats } from './js/oiZones.js';
@@ -21732,15 +21732,18 @@ async function _cboeCfdOffset(pair, asOfMs, indexSpot) {
   const k = `${pair}@${asOfMs}`;
   if (_cboeOffCache.has(k)) return _cboeOffCache.get(k);
   let d = null;
+  // Outside the cash session Cboe's price is the 16:00 NY close: compare the CFD at that
+  // close (the last second before it), not at Cboe's later timestamp.
+  const refMs = _cashRefTime(asOfMs) === asOfMs ? asOfMs : _cashRefTime(asOfMs) - 1000;
   try {
-    const from = new Date(Math.floor(asOfMs / 60e3) * 60e3 - 60e3).toISOString();
+    const from = new Date(Math.floor(refMs / 60e3) * 60e3 - 60e3).toISOString();
     const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(pair)}/candles?granularity=M1&price=M&count=3&from=${encodeURIComponent(from)}`,
       { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(8_000) });
     if (r.ok) {
       const j = await r.json();
       const bars = (j.candles || []).filter(c => c.mid).map(c => ({ t: new Date(c.time).getTime(), o: +c.mid.o, c: +c.mid.c }));
-      const bar = bars.find(b => asOfMs >= b.t && asOfMs < b.t + 60e3) || null;
-      d = _cfdCashOffset(bar, asOfMs, indexSpot);
+      const bar = bars.find(b => refMs >= b.t && refMs < b.t + 60e3) || null;
+      d = _cfdCashOffset(bar, refMs, indexSpot);
     }
   } catch { d = null; }
   if (_cboeOffCache.size > 200) _cboeOffCache.clear();

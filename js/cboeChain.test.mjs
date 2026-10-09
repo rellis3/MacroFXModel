@@ -3,7 +3,7 @@
 // $-per-1% GEX formula on Cboe's own gamma, gamma vs OI walls, the flip scan, OTM
 // smiles, and the DJX ×100 scale onto the US30 CFD.
 //   node js/cboeChain.test.mjs
-import { parseCboeChain, cboeLadder, cboeSnapshotRow, cboeOverlayInst, cfdCashOffset, cboeShift, CBOE_PAIRS } from './cboeChain.js';
+import { parseCboeChain, cboeLadder, cboeSnapshotRow, cboeOverlayInst, cfdCashOffset, cboeShift, cashRefTime, CBOE_PAIRS } from './cboeChain.js';
 import { buildOILevelText } from './oiLevelExport.js';
 
 let fails = 0;
@@ -128,6 +128,16 @@ console.log('[CFD − cash offset]');
   ok('no offset → prices unchanged, flagged uncorrected', s0.spot === b.spot && s0.cfdOffset === null);
   ok('export source line says the offset was applied', /CFD−cash \+5 applied/.test(cboeOverlayInst({ spot: 7801 }, s5).oiSource));
   ok('…or that it was not measured', /not measured/.test(cboeOverlayInst({ spot: 7801 }, s0).oiSource));
+}
+
+console.log('[CFD − cash: which minute to compare]');
+{
+  const iso = t => new Date(cashRefTime(Date.parse(t))).toISOString();
+  ok('in session: Cboe\'s own quote time', iso('2026-10-09T17:12:00Z') === '2026-10-09T17:12:00.000Z');
+  ok('Friday evening: that day\'s 16:00 NY close (20:00 UTC in EDT)', iso('2026-10-09T22:40:00Z') === '2026-10-09T20:00:00.000Z');
+  ok('weekend: Friday\'s close', iso('2026-10-11T23:40:00Z') === '2026-10-09T20:00:00.000Z');
+  ok('Monday before the open: Friday\'s close', iso('2026-10-12T12:00:00Z') === '2026-10-09T20:00:00.000Z');
+  ok('winter (EST): close is 21:00 UTC', iso('2026-12-11T22:40:00Z') === '2026-12-11T21:00:00.000Z');
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

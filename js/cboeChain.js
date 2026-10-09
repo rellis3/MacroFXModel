@@ -307,6 +307,40 @@ export function cboeOverlayInst(cme, built, { label = 'Cboe', stale = false } = 
  * implausible (> 1% of price — a wrong candle, not a real offset), so a bad read leaves
  * levels uncorrected rather than shifted by nonsense.
  */
+// WHEN to read the CFD for the comparison. In the US cash session Cboe's index price is
+// live (15-min delayed), so the CFD is read at Cboe's own quote time. Outside it (evening,
+// overnight, weekend) Cboe keeps serving the 16:00 New York CLOSE under a later timestamp,
+// and at that later time the CFD has either moved on or is shut (Friday 22:40 UTC: no
+// candle at all, so every weekend export read "not measured"). The matching CFD price is
+// the one at the last 16:00 New York close at or before the quote. DST-correct via Intl.
+// Holidays are not modelled: no candle at that minute → the offset reads null, as before.
+function _nyParts(ms) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short' })
+    .formatToParts(new Date(ms)).map(x => [x.type, x.value]));
+  return { y: +p.year, mo: +p.month, d: +p.day, h: +p.hour, mi: +p.minute, wd: p.weekday };
+}
+function _nyToUtc(y, mo, d, h, mi) {
+  // Guess as UTC, then correct by the New York offset at that instant (one pass is exact
+  // except inside the DST jump hour, which 16:00 never is).
+  const guess = Date.UTC(y, mo - 1, d, h, mi);
+  const p = _nyParts(guess);
+  const asUtc = Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi);
+  return guess + (guess - asUtc);
+}
+export function cashRefTime(asOfMs) {
+  if (!Number.isFinite(asOfMs)) return asOfMs;
+  const p = _nyParts(asOfMs), mins = p.h * 60 + p.mi, wk = !['Sat', 'Sun'].includes(p.wd);
+  if (wk && mins >= 9 * 60 + 30 && mins <= 16 * 60) return asOfMs;            // in session: live
+  // Last 16:00 New York close at or before asOf.
+  let t = (wk && mins > 16 * 60) ? asOfMs : asOfMs - 864e5;
+  for (let k = 0; k < 7; k++, t -= 864e5) {
+    const q = _nyParts(t);
+    if (!['Sat', 'Sun'].includes(q.wd)) return _nyToUtc(q.y, q.mo, q.d, 16, 0);
+  }
+  return asOfMs;
+}
+
 export function cfdCashOffset(bar, asOfMs, indexSpotCfdTerms) {
   if (!bar || !Number.isFinite(bar.o) || !Number.isFinite(bar.c) || !Number.isFinite(bar.t)) return null;
   if (!(indexSpotCfdTerms > 0) || !Number.isFinite(asOfMs)) return null;
