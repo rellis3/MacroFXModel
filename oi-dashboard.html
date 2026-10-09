@@ -249,6 +249,7 @@ tr.dim td{opacity:.42}
       <button class="btn" id="sortBtn">Walls: STRENGTH</button>
       <button class="btn" id="expBtn">⬇ Export lines</button>
       <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);cursor:pointer" title="Export the lines in raw CME/COMEX futures price terms instead of OANDA spot — to overlay on a futures chart. Adds the basis back. Default: spot."><input type="checkbox" id="futTerms" style="cursor:pointer"> futures terms</label>
+      <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);cursor:pointer" title="Index pairs (SPX500, NAS100, US2000, US30) take their walls, max pain, GEX flip and regime from the Cboe index-options chain (SPX/NDX/RUT/DJX, 15-min delayed). Everything Cboe has no equivalent for — expected move, charm/vanna, risk reversal, volume — stays CME, and every other pair is CME as before. Unticked = CME only. Display/export only: the bots always read CME."><input type="checkbox" id="cboeSrc" style="cursor:pointer"> Cboe (indices)</label>
       <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);cursor:pointer" title="Draw EVERY expiry's max-pain and call/put wall as lines (DTE-tagged, far ones faded), not just the primary + day set. For seeing the whole term structure on the chart."><input type="checkbox" id="allExp" style="cursor:pointer"> all expiries</label>
       <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);cursor:pointer" title="Only what the model actually analysed: the primary + day expiry walls, max pain, gamma/gex flips, plus the charm/vanna flips and expected-move band. Drops other-expiry walls, catch levels and anything flagged far, and orders lines by price so a strike with several things on it reads as one stack. Gold goes from ~30 lines to ~9. Overrides 'all expiries'."><input type="checkbox" id="todayOnly" style="cursor:pointer"> today only</label>
       <button class="btn" id="reanBtn" title="Re-derive every pair's levels from the OI data already stored (adds the day-expiry / latest compute) — no re-paste. Pinned to the saved basis, so LEVELS DO NOT MOVE: use Re-basis for that.">↻ Re-analyse all</button>
@@ -1133,7 +1134,7 @@ function chartLadder(e,big){
     const st=CBOE_DATA[SYM];
     const stab=(v,t)=>`<button class="lmode lsrc${LADSRC===v?' on':''}" onclick="setLadSrc('${v}')">${t}</button>`;
     srcBar=`<div class="lctl"><span class="muted" style="font-size:12px;margin-right:4px">Source</span>${stab('cme','CME '+cb.fut+' futures options')}${stab('cboe','Cboe '+cb.label+' index options')}
-      <span class="muted" style="font-size:11.5px;margin-left:6px">${st?.data?`Cboe as of ${hhmm(st.data.asOfMs)}${st.data.stale?' · <b style="color:var(--warn)">stale copy</b>':''} · ${cb.label} ${fx(st.data.spot,SYM)} (15-min delayed)`:st?.err?`<span style="color:var(--warn)">Cboe: ${esc(st.err)}</span>`:''}</span></div>`;
+      <span class="muted" style="font-size:11.5px;margin-left:6px">${st?.data?`Cboe as of ${hhmm(st.data.asOfMs)}${st.data.stale?' · <b style="color:var(--warn)">stale copy</b>':''} · ${cb.label} ${fx(st.data.indexSpot,SYM)} (15-min delayed) · ${Number.isFinite(st.data.cfdOffset)?`CFD−cash ${st.data.cfdOffset>=0?'+':''}${st.data.cfdOffset.toFixed(2)} applied`:'<span style="color:var(--warn)">CFD−cash not measured — levels are cash-index</span>'}`:st?.err?`<span style="color:var(--warn)">Cboe: ${esc(st.err)}</span>`:''}</span></div>`;
     if(st?.data) cmp=cboeCompare(e,st.data,cb);
     if(LADSRC==='cboe'){
       if(!st?.data){ if(!st?.loading) loadCboe(SYM);
@@ -1226,7 +1227,7 @@ function cboeCompare(e,c,cb){
     + row('GEX flip',e.gexFlip,L.gexFlip)
     + row('Max pain',e.dayExpiry?.maxPain??e.maxPain,L.maxPain,'nearest')
     + `<tr><td>Regime</td><td>${cmeReg}</td><td>${esc(L.regime||'—')}</td><td class="muted">${b==null?'no basis stored':'basis '+(b>=0?'+':'')+b.toFixed(2)}</td></tr>`
-    + `</tbody></table><div class="muted" style="font-size:11.5px;margin-top:4px">Both columns in ${nm(SYM)} CFD terms. CME OI walls are the analysed expiry; Cboe OI walls are every expiry. The CFD tracks the cash index, so Cboe needs no basis on the CFD — add the CME basis for ${cb.fut} futures. Recorded daily for comparison (/api/cboe-snapshots).</div></div>`;
+    + `</tbody></table><div class="muted" style="font-size:11.5px;margin-top:4px">Both columns in ${nm(SYM)} CFD terms. CME OI walls are the analysed expiry; Cboe OI walls are every expiry. Cboe strikes are cash-index levels, moved onto the CFD by the CFD−cash gap measured at Cboe's own quote time${Number.isFinite(c.cfdOffset)?` (${c.cfdOffset>=0?'+':''}${c.cfdOffset.toFixed(2)})`:' (not measured — shown uncorrected)'}; the last column adds the CME basis for ${cb.fut} futures. Recorded daily for comparison (/api/cboe-snapshots).</div></div>`;
 }
 // Tap-to-read: phones have no hover, so the per-row <title> is unreachable there.
 function ladTip(el){ const box=el.closest('.ladder')?.querySelector('.ltipbox'); if(box){ box.textContent=el.dataset.tip; box.classList.add('on'); } }
@@ -1835,7 +1836,8 @@ document.getElementById('expBtn').onclick=async()=>{
     const fut=document.getElementById('futTerms')?.checked ? '&terms=futures' : '';
     const allE=document.getElementById('allExp')?.checked ? '&allExpiry=1' : '';
     const tdy=document.getElementById('todayOnly')?.checked ? '&mode=today' : '';
-    const r=await fetch('/api/vol-forecast/zones?reach=1'+fut+allE+tdy,{cache:'no-store'});
+    const cbo=document.getElementById('cboeSrc')?.checked ? '&src=cboe' : '';
+    const r=await fetch('/api/vol-forecast/zones?reach=1'+fut+allE+tdy+cbo,{cache:'no-store'});
     const txt=await r.text();
     document.getElementById('zoomTitle').textContent='C+Z / OI export — paste into the TradingView indicator';
     document.getElementById('zoomBody').innerHTML='<button class="btn" id="cpBtn" style="margin-bottom:12px">Copy to clipboard</button>'

@@ -3,7 +3,8 @@
 // $-per-1% GEX formula on Cboe's own gamma, gamma vs OI walls, the flip scan, OTM
 // smiles, and the DJX ×100 scale onto the US30 CFD.
 //   node js/cboeChain.test.mjs
-import { parseCboeChain, cboeLadder, cboeSnapshotRow, CBOE_PAIRS } from './cboeChain.js';
+import { parseCboeChain, cboeLadder, cboeSnapshotRow, cboeOverlayInst, cfdCashOffset, cboeShift, CBOE_PAIRS } from './cboeChain.js';
+import { buildOILevelText } from './oiLevelExport.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  → ' + e : ''}`); if (!c) fails++; };
@@ -81,6 +82,52 @@ console.log('[snapshot row]');
   const row = cboeSnapshotRow(b, { spot: 7801, basis: 14, callWall: 7900, putWall: 7700, gexFlip: 7750, maxPain: 7800, exposures: { gex: -5 } });
   ok('row carries Cboe levels and the CME levels side by side', row.levels.callWallGamma === b.levels.callWallGamma && row.cme.callWall === 7900 && row.cme.gex === -5);
   ok('top strikes capped at 10', row.topStrikes.length <= 10);
+}
+
+console.log('[export overlay — the Cboe tick]');
+{
+  const b = cboeLadder(parseCboeChain(chain()));
+  const cme = { pair: 'SPX500_USD', spot: 7801, basis: 14, savedAt: 'today', callWall: 7900, putWall: 7600, maxPain: 7700,
+    gexFlip: 7650, gammaFlip: 7650, exposures: { gex: -5, dex: 1 }, refMove: { move: 60 },
+    expectedMove: { upper: 7900, lower: 7700, pct: 1.3, dte: 1 }, riskReversal: { rr: 2, tilt: 'downside' },
+    callWalls: [{ strike: 7900, oi: 5000, tier: 'strong' }], putWalls: [{ strike: 7600, oi: 4000, tier: 'strong' }],
+    perExpiry: [{ dte: 30, maxPain: 7500, callWall: 8100, putWall: 7300 }], termStructure: [{ dte: 30, maxPain: 7500 }],
+    volumeMagnets: [{ strike: 7750, volume: 900 }] };
+  const ov = cboeOverlayInst(cme, b, { label: 'Cboe SPX' });
+  ok('walls, max pain, flip and net GEX come from Cboe', ov.callWall === b.levels.callWallGamma && ov.putWall === b.levels.putWallGamma
+    && ov.maxPain === b.levels.maxPain && ov.gexFlip === b.levels.gexFlip && ov.exposures.gex === b.levels.netGex);
+  ok('spot, basis, expected move, risk reversal, volume kept from CME', ov.spot === 7801 && ov.basis === 14
+    && ov.expectedMove === cme.expectedMove && ov.riskReversal === cme.riskReversal && ov.volumeMagnets === cme.volumeMagnets);
+  ok('CME other-expiry walls / term structure not mixed in', ov.perExpiry.length === 0 && ov.termStructure.length === 0 && ov.dayExpiry === null);
+  ok('headline walls carry a tier (survive the export size floor)', !!ov.callWalls[0]?.tier && !!ov.putWalls[0]?.tier);
+  ok('the CME entry itself is not modified', cme.callWall === 7900 && cme.perExpiry.length === 1);
+  const txt = buildOILevelText({ SPX500_USD: ov }, { generated: 'x' });
+  ok('export block names its source', /source Cboe SPX index options/.test(txt));
+  ok('export draws the Cboe call wall, not the CME one', txt.includes(`OI ${b.levels.callWallGamma.toFixed(2)} : call_wall`) && !txt.includes('OI 7900.00 : call_wall'));
+  const fut = buildOILevelText({ SPX500_USD: ov }, { generated: 'x', terms: 'futures' });
+  ok('futures terms add the CME basis to Cboe levels', fut.includes(`OI ${(b.levels.callWallGamma + 14).toFixed(2)} : call_wall`));
+  ok('no Cboe data → CME entry returned untouched', cboeOverlayInst(cme, null) === cme);
+}
+
+console.log('[CFD − cash offset]');
+{
+  const t0 = Date.UTC(2026, 9, 9, 17, 12);
+  // CFD minute 17:12 opens 7808, closes 7812; Cboe quoted 7805 at 17:12:30 → CFD 7810 → +5.
+  ok('offset = CFD (interpolated to Cboe\'s second) − cash', cfdCashOffset({ t: t0, o: 7808, c: 7812 }, t0 + 30e3, 7805) === 5);
+  ok('no candle → null (uncorrected, not zero-shifted)', cfdCashOffset(null, t0, 7805) === null);
+  ok('implausible gap (>1%) → null', cfdCashOffset({ t: t0, o: 8000, c: 8000 }, t0, 7805) === null);
+  const b = cboeLadder(parseCboeChain(chain()));
+  const s5 = cboeShift(b, 5);
+  ok('shift moves strikes, spot, walls, max pain, flip by the offset', s5.ladder.strikes[0] === b.ladder.strikes[0] + 5 && s5.spot === b.spot + 5
+    && s5.levels.callWallGamma === b.levels.callWallGamma + 5 && s5.levels.maxPain === b.levels.maxPain + 5 && s5.levels.callWallOI === b.levels.callWallOI + 5);
+  ok('shift moves smile strikes and near/OI profiles too', s5.smiles[0].strikes[0] === b.smiles[0].strikes[0] + 5
+    && s5.near[0].strike === b.near[0].strike + 5 && s5.oiProfile[0].strike === b.oiProfile[0].strike + 5);
+  ok('GEX values untouched', s5.ladder.series[0].net === b.ladder.series[0].net || s5.ladder.series[0].net.every((v, i) => v === b.ladder.series[0].net[i]));
+  ok('original not modified', b.cfdOffset === undefined && b.spot === 7800);
+  const s0 = cboeShift(b, null);
+  ok('no offset → prices unchanged, flagged uncorrected', s0.spot === b.spot && s0.cfdOffset === null);
+  ok('export source line says the offset was applied', /CFD−cash \+5 applied/.test(cboeOverlayInst({ spot: 7801 }, s5).oiSource));
+  ok('…or that it was not measured', /not measured/.test(cboeOverlayInst({ spot: 7801 }, s0).oiSource));
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

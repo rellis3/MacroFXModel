@@ -82,6 +82,7 @@ function regimeOf(inst) {
 
 function fmtSaved(inst) {
   const bits = [];
+  if (inst?.oiSource) bits.push(`source ${inst.oiSource}`);   // Cboe overlay: say whose levels these are
   if (inst?.savedAt) bits.push(`saved ${inst.savedAt}`);
   if (Number.isFinite(inst?.spot)) bits.push(`spot ${inst.spot}`);
   // THE BASIS, AND HOW OLD IT IS. Every level here is `strike - basis`, so the whole

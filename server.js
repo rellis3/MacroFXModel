@@ -224,7 +224,7 @@ import { levelExpectation } from './js/levelExpectation.js';   // per-level Reje
 import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
 import { buildOILevelText } from './js/oiLevelExport.js';
 import { oiGexLadder as _oiGexLadder } from './js/oi.js';
-import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _parseCboeChain, cboeLadder as _cboeLadder, cboeSnapshotRow as _cboeSnapshotRow } from './js/cboeChain.js';   // free delayed Cboe index-options chain (additive to CME; dashboard toggle + tracking)   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
+import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _parseCboeChain, cboeLadder as _cboeLadder, cboeSnapshotRow as _cboeSnapshotRow, cboeOverlayInst as _cboeOverlayInst, cfdCashOffset as _cfdCashOffset, cboeShift as _cboeShift } from './js/cboeChain.js';   // free delayed Cboe index-options chain (additive to CME; dashboard toggle + tracking)   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
 import { meetingProbabilities as _zqMeetingProbs } from './js/fedPathZq.js';
 import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE, OI_PRODUCT_SPEC as _OI_SPEC } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
 import { buildOIZones, explainNoZones, oiSizeCalibrationStats as _oiSizeCalibrationStats } from './js/oiZones.js';
@@ -21652,8 +21652,12 @@ async function _cboeBuilt(pair, { force = false } = {}) {
       const r = await fetch(_cboeUrl(cfg.sym), { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' },
         redirect: 'follow', signal: AbortSignal.timeout(25_000) });
       if (!r.ok) throw new Error(`Cboe ${r.status}`);
-      const built = _cboeLadder(_parseCboeChain(await r.json()), { scale: cfg.scale });
-      if (!built) throw new Error('Cboe chain empty or unparseable');
+      const raw = _cboeLadder(_parseCboeChain(await r.json()), { scale: cfg.scale });
+      if (!raw) throw new Error('Cboe chain empty or unparseable');
+      // Put the cash-index levels onto the CFD: measure CFD − cash at Cboe's own quote time
+      // (OANDA M1 for that minute) and shift every price by it. No OANDA key / no candle /
+      // implausible gap → left uncorrected and flagged (cfdOffset null).
+      const built = _cboeShift(raw, await _cboeCfdOffset(pair, raw.asOfMs, raw.spot));
       const row = { at: Date.now(), built, err: null };
       _cboeCache.set(cfg.sym, row);
       return { ...row, stale: false };
@@ -21664,6 +21668,30 @@ async function _cboeBuilt(pair, { force = false } = {}) {
   })();
   _cboeInflight.set(cfg.sym, p);
   return p;
+}
+
+// CFD − cash gap at Cboe's quote time, from the OANDA M1 candle covering that minute.
+// Cached per (pair, asOf) — the Cboe timestamp only moves when Cboe publishes.
+const _cboeOffCache = new Map();
+async function _cboeCfdOffset(pair, asOfMs, indexSpot) {
+  if (!process.env.OANDA_KEY || !Number.isFinite(asOfMs)) return null;
+  const k = `${pair}@${asOfMs}`;
+  if (_cboeOffCache.has(k)) return _cboeOffCache.get(k);
+  let d = null;
+  try {
+    const from = new Date(Math.floor(asOfMs / 60e3) * 60e3 - 60e3).toISOString();
+    const r = await fetch(`${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(pair)}/candles?granularity=M1&price=M&count=3&from=${encodeURIComponent(from)}`,
+      { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(8_000) });
+    if (r.ok) {
+      const j = await r.json();
+      const bars = (j.candles || []).filter(c => c.mid).map(c => ({ t: new Date(c.time).getTime(), o: +c.mid.o, c: +c.mid.c }));
+      const bar = bars.find(b => asOfMs >= b.t && asOfMs < b.t + 60e3) || null;
+      d = _cfdCashOffset(bar, asOfMs, indexSpot);
+    }
+  } catch { d = null; }
+  if (_cboeOffCache.size > 200) _cboeOffCache.clear();
+  _cboeOffCache.set(k, d);
+  return d;
 }
 
 app.get('/api/cboe-chain', async (req, res) => {
@@ -22606,6 +22634,20 @@ app.get('/api/vol-forecast/zones', async (req, res) => {
         const rawC = await kv.get('oi_store_cmdty').catch(() => null);
         const cm = rawC ? (JSON.parse(rawC).data ?? JSON.parse(rawC)) : {};
         for (const [k, v] of Object.entries(cm || {})) if (!(k in store)) store[k] = v;
+      }
+      // '?src=cboe' (the export's Cboe tick): the index pairs take their walls / max pain /
+      // flips / GEX from the Cboe index-options chain; everything Cboe lacks stays CME (see
+      // cboeOverlayInst). Applied to this request's in-memory copy only — oi_store is never
+      // written, so the bots and the unticked export are unaffected. A pair whose Cboe fetch
+      // fails simply keeps its CME block. Done BEFORE P(touch), so reach is computed on the
+      // levels actually exported.
+      if (String(req.query.src || '') === 'cboe') {
+        await Promise.all(Object.keys(_CBOE_PAIRS).filter(p => store[p]).map(async p => {
+          try {
+            const r = await _cboeBuilt(p);
+            store[p] = _cboeOverlayInst(store[p], r.built, { label: 'Cboe ' + _CBOE_PAIRS[p].label, stale: r.stale });
+          } catch (e) { console.error('[export cboe]', p, e.message); }
+        }));
       }
       // COT rides along as a per-pair CONTEXT line only — it has no price coordinate, so
       // it is never emitted as an `OI {price}` level the indicator would draw.

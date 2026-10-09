@@ -25,6 +25,7 @@
  */
 
 import { bsGamma, bsCharm, bsVanna } from './gammaGreeks.js';
+import { wallStrengthTier } from './oiConfluence.js';
 
 // OANDA index CFD → Cboe underlying. `fut` is the CME future the CFD basis is quoted
 // against, for showing Cboe levels in futures terms.
@@ -167,8 +168,8 @@ export function cboeLadder(parsed, { scale = 1, windowFrac = 0.06, maxSeries = 4
   // Levels. Gamma walls read the nearest `wallExpiries` expiries (where the hedging is);
   // OI walls read every expiry (where the contracts are) — the two questions the page
   // keeps apart for CME too.
-  const near = Z().map(() => ({ c: 0, p: 0 }));
-  accs.slice(0, wallExpiries).forEach(a => a.call.forEach((v, i) => { near[i].c += v; near[i].p += a.put[i]; }));
+  const near = Z().map(() => ({ c: 0, p: 0, oc: 0, op: 0 }));
+  accs.slice(0, wallExpiries).forEach(a => a.call.forEach((v, i) => { near[i].c += v; near[i].p += a.put[i]; near[i].oc += a.oiC[i]; near[i].op += a.oiP[i]; }));
   const argmax = f => { let b = -1, bv = 0; strikes.forEach((k, i) => { const v = f(i); if (v > bv) { bv = v; b = i; } }); return b < 0 ? null : strikes[b]; };
   const callWallGamma = argmax(i => near[i].c), putWallGamma = argmax(i => near[i].p);
   const callWallOI = argmax(i => allAcc.oiC[i]), putWallOI = argmax(i => allAcc.oiP[i]);
@@ -216,6 +217,9 @@ export function cboeLadder(parsed, { scale = 1, windowFrac = 0.06, maxSeries = 4
     spot: +(S * scale).toFixed(4), indexSpot: S, asOfMs: parsed.asOfMs,
     ladder: { units: 'usd1pct', strikes: strikes.map(k => +(k * scale).toFixed(4)), series, vol, nExpiries: exps.length },
     oiProfile: strikes.map((k, i) => ({ strike: +(k * scale).toFixed(4), callOI: allAcc.oiC[i], putOI: allAcc.oiP[i] })),
+    // Near-dated (wall expiries) call/put GEX + contracts per strike — what the gamma
+    // walls are ranked on, kept so the export can build a wall list from the same book.
+    near: strikes.map((k, i) => ({ strike: +(k * scale).toFixed(4), callGex: r5(near[i].c), putGex: r5(near[i].p), callOI: near[i].oc, putOI: near[i].op })),
     smiles,
     levels: {
       callWallGamma: sc(callWallGamma), putWallGamma: sc(putWallGamma),
@@ -240,5 +244,96 @@ export function cboeSnapshotRow(built, cme) {
     cme: cme ? { spot: cme.spot ?? null, basis: cme.basis ?? null, callWall: cme.callWall ?? null, putWall: cme.putWall ?? null,
       gexFlip: cme.gexFlip ?? null, maxPain: cme.maxPain ?? null, gex: cme.exposures?.gex ?? null,
       expiry: cme.primaryExpiry?.code ?? null, savedAtMs: cme.savedAtMs ?? null } : null,
+  };
+}
+
+/**
+ * The CME oi_store entry with its LEVEL fields replaced by Cboe's, so the existing export
+ * (buildOILevelText) runs on it unchanged — the "Cboe" tick on the export. Cboe supplies
+ * the walls (gamma-ranked over the near expiries, tiered by the same 3x-neighbours rule),
+ * max pain (nearest expiry), the GEX flip(s), net GEX / regime and the per-strike gamma
+ * profile that drives the heat and hold scores. Everything Cboe has no equivalent for is
+ * KEPT from CME: spot, basis (so futures terms still add the ES/NQ/RTY/YM basis), the
+ * reference / expected move, charm-vanna, risk reversal, volume magnets. CME's other-
+ * expiry walls, term structure, clusters and day set are dropped rather than mixed in, so
+ * every wall on a Cboe block comes from one book. Pure; returns a new object.
+ */
+export function cboeOverlayInst(cme, built, { label = 'Cboe', stale = false } = {}) {
+  if (!cme || !built || !built.levels || !Array.isArray(built.near)) return cme;
+  const L = built.levels, near = built.near;
+  const walls = side => {
+    const gk = side === 'call' ? 'callGex' : 'putGex', ok = side === 'call' ? 'callOI' : 'putOI';
+    const rows = near.filter(r => r[gk] > 0);
+    const ref = rows.reduce((m, r) => Math.max(m, r[gk]), 0);
+    return rows.map(r => {
+      const i = near.indexOf(r);
+      const neigh = [i - 2, i - 1, i + 1, i + 2].filter(j => near[j]).map(j => near[j][gk]);
+      const t = wallStrengthTier(r[gk], neigh, { ref });
+      return { strike: r.strike, oi: r[ok], gex: r[gk], mult: t.multiple, tier: t.tier, chg: 0, persistence: 0 };
+    }).sort((a, b) => b.gex - a.gex).slice(0, 12);
+  };
+  const cw = walls('call'), pw = walls('put');
+  // The headline wall must carry a tier or the export's size floor drops it; the
+  // gamma-ranked #1 is by definition the strongest near-dated wall.
+  for (const w of [cw[0], pw[0]]) if (w && !w.tier) w.tier = 'strong';
+  const ser = built.ladder.series.filter(s => !s.rest);
+  const gexProfile = built.ladder.strikes.map((k, i) => {
+    const callGex = built.ladder.series.reduce((a, s) => a + (s.call[i] || 0), 0);
+    const putGex = built.ladder.series.reduce((a, s) => a + (s.put[i] || 0), 0);
+    const o = built.oiProfile[i] || {};
+    return { strike: k, callOI: o.callOI || 0, putOI: o.putOI || 0, callGex, putGex, netGex: callGex - putGex, gamma: callGex + putGex };
+  });
+  return {
+    ...cme,
+    oiSource: `${label} index options${stale ? ' (stale copy)' : ''} · as of ${new Date(built.asOfMs).toISOString().slice(11, 16)} UTC, 15-min delayed`
+      + (Number.isFinite(built.cfdOffset) ? ` · CFD−cash ${built.cfdOffset >= 0 ? '+' : ''}${built.cfdOffset} applied` : ' · CFD−cash offset not measured (levels = cash index)'),
+    callWall: L.callWallGamma, putWall: L.putWallGamma, callWalls: cw, putWalls: pw,
+    callWallOI: cw[0]?.oi ?? null, putWallOI: pw[0]?.oi ?? null,
+    maxPain: L.maxPain, gammaFlip: L.gexFlip, gexFlip: L.gexFlip, gexFlips: L.flips || [],
+    exposures: { ...(cme.exposures || {}), gex: L.netGex },
+    fullBook: { gex: L.netGex, flip: L.gexFlip, regime: L.regime, nExpiries: built.ladder.nExpiries, volSource: 'cboe' },
+    gexProfile, dte: ser[0]?.dte ?? cme.dte,
+    dayExpiry: null, dayExpiryReason: 'ok', perExpiry: [], termStructure: [], clusters: [],
+  };
+}
+
+/**
+ * CFD − CASH OFFSET. Cboe strikes are cash-index levels; the OANDA CFD trades a few points
+ * away from cash (its own fair-value pricing). The gap is measured at Cboe's OWN quote time
+ * — the CFD price in that same minute minus Cboe's index price — so the feed's 15-minute
+ * delay cancels instead of contaminating the comparison. `bar` = the OANDA M1 candle that
+ * contains asOfMs ({ t: open time ms, o, c }); the CFD price is interpolated across the
+ * minute to Cboe's second. Returns null when the inputs are missing or the gap is
+ * implausible (> 1% of price — a wrong candle, not a real offset), so a bad read leaves
+ * levels uncorrected rather than shifted by nonsense.
+ */
+export function cfdCashOffset(bar, asOfMs, indexSpotCfdTerms) {
+  if (!bar || !Number.isFinite(bar.o) || !Number.isFinite(bar.c) || !Number.isFinite(bar.t)) return null;
+  if (!(indexSpotCfdTerms > 0) || !Number.isFinite(asOfMs)) return null;
+  const f = Math.min(1, Math.max(0, (asOfMs - bar.t) / 60e3));
+  const cfd = bar.o + (bar.c - bar.o) * f;
+  const d = cfd - indexSpotCfdTerms;
+  return Math.abs(d) <= indexSpotCfdTerms * 0.01 ? +d.toFixed(4) : null;
+}
+
+// Every price in a cboeLadder() result moved by `d` (CFD − cash): strikes, spot, levels,
+// flips, smiles. Values (GEX, OI) are untouched. Pure; returns a new object. d = 0/null →
+// a copy flagged with cfdOffset null (uncorrected), so callers can say so.
+export function cboeShift(built, d) {
+  if (!built) return built;
+  const ok = Number.isFinite(d) && d !== 0;
+  const sh = v => (Number.isFinite(v) ? +(v + (ok ? d : 0)).toFixed(4) : v);
+  const L = built.levels || {};
+  return {
+    ...built,
+    cfdOffset: Number.isFinite(d) ? d : null,
+    spot: sh(built.spot),
+    ladder: { ...built.ladder, strikes: built.ladder.strikes.map(sh) },
+    oiProfile: (built.oiProfile || []).map(r => ({ ...r, strike: sh(r.strike) })),
+    near: (built.near || []).map(r => ({ ...r, strike: sh(r.strike) })),
+    smiles: (built.smiles || []).map(sm => ({ ...sm, strikes: sm.strikes.map(sh) })),
+    levels: { ...L, callWallGamma: sh(L.callWallGamma), putWallGamma: sh(L.putWallGamma),
+      callWallOI: sh(L.callWallOI), putWallOI: sh(L.putWallOI), maxPain: sh(L.maxPain), gexFlip: sh(L.gexFlip),
+      flips: (L.flips || []).map(f => ({ ...f, price: sh(f.price) })) },
   };
 }
