@@ -1106,7 +1106,18 @@ function ladderSvg(e,big){
   const lines=[...(LADMODE==='charm'?[[gf.charmFlip,'var(--warn)','CHARM FLIP',true]]:[]),
     ...(LADMODE==='vanna'?[[gf.vannaFlip,'#7fd0ff','VANNA FLIP',true]]:[]),
     [e.gexFlip,'var(--gam)','GEX FLIP',true],[e.maxPain,'var(--pain)','MAX PAIN',true],
-    [e.putWall,'var(--put)',e._src==='cboe'?'γ PUT WALL':'PUT WALL',true],[e.callWall,'var(--call)',e._src==='cboe'?'γ CALL WALL':'CALL WALL',true],[spot,'var(--tx)','SPOT',false]]
+    [e.putWall,'var(--put)',e._src==='cboe'?'γ PUT WALL':'OI PUT WALL',true],[e.callWall,'var(--call)',e._src==='cboe'?'γ CALL WALL':'OI CALL WALL',true],
+    // CME: the gamma-ranked walls next to the OI-ranked ones — the strike with the most
+    // call (put) gamma over the nearest three expiries, which is how COG picks its call
+    // wall. Near expiry the two disagree (gamma piles up at the money, OI sits far out).
+    // Skipped when it lands on the OI wall, so one strike never carries two labels.
+    ...(e._src!=='cboe'?(()=>{ const g=_nearGammaWalls(e.gexLadder);
+      // Same strike within float noise (the ladder rounds strikes; the stored walls don't).
+      const same=(x,y)=>Number.isFinite(x)&&Number.isFinite(y)&&Math.abs(x-y)<=Math.abs(y)*1e-7;
+      return [
+      ...(g.c!=null&&!same(g.c,e.callWall)?[[g.c,'var(--call)','γ CALL WALL',false]]:[]),
+      ...(g.p!=null&&!same(g.p,e.putWall)?[[g.p,'var(--put)','γ PUT WALL',false]]:[])]; })():[]),
+    [spot,'var(--tx)','SPOT',false]]
     .map(([px,col,txt,dash])=>({px,col,txt,dash,y:yAt(px)})).filter(l=>l.y!=null).sort((a,b)=>a.y-b.y);
   let lastY=-1e9;
   lines.forEach(l=>{ l.ly=Math.max(l.y-4,lastY+13); lastY=l.ly;
@@ -1148,7 +1159,7 @@ function chartLadder(e,big){
     <div class="llegend">${leg}${R&&R.src?`<span class="muted" style="margin-left:auto">${R.src}</span>`:''}</div>
     <div class="ltipbox">Tap a row for its numbers</div>
     ${ladderSvg(e,big)}
-    <div class="note">${notes[LADMODE]}${R&&R.stacked&&!LADNET?' <b>White tick</b> = the row\'s true net where bars sit on both sides of zero (they partly cancel, so the bar overstates the strike).':''} Hover or tap a row for the numbers. <span class="muted">Tested on this repo's data: wall touches and the GEX flip did not beat placebo levels — read this as where positioning sits, not as an edge.</span></div></div>`;
+    <div class="note">${notes[LADMODE]}${R&&R.stacked&&!LADNET?' <b>White tick</b> = the row\'s true net where bars sit on both sides of zero (they partly cancel, so the bar overstates the strike).':''} Walls: <b>dashed</b> = most contracts (OI), <b>solid</b> = most gamma over the nearest 3 expiries (γ — where hedging concentrates; COG\'s call wall). Hover or tap a row for the numbers. <span class="muted">Tested on this repo's data: wall touches and the GEX flip did not beat placebo levels — read this as where positioning sits, not as an edge.</span></div></div>`;
 }
 function refreshLadders(){ const e=STORE[SYM]; if(!e) return;
   document.querySelectorAll('.ladder').forEach(el=>{ el.outerHTML=chartLadder(e, el.dataset.big==='1'); }); }
