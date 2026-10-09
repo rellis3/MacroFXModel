@@ -116,3 +116,11 @@ of the OOS period; (3) < 1 on at least 9 of 12; (4) pooled HL p75 exceed-rate wi
 - **B2 fails but B1 ≈ B0:** the futures σ only helps on futures targets; the CFD feed's own noise absorbs it.
 - **B1 < B0 on its own:** the data source itself matters, independent of intraday information.
 - Out of sample the CFD M1 history ends before the futures (2026-08), so Step 2 scores through the CFD data's end.
+
+## Step 2b — does the gain need futures at all? (added 2026-10-09, after Step 2's result, before any Step 2b number)
+
+Step 2 found B1 ≈ B0 (the data source alone changes nothing), which suggests the gain is the 5-minute realised variance,
+not the futures. **Arm B4:** the same HAR on log rv5 (identical code to C1), but with rv5 computed from the **CFD M1
+bars** (`london22`), scored on the same CFD rows as B0 and B2 (arms {B0, B2, B4}; run separately so Step 2's numbers
+are unchanged). Pre-declared reading: B4 vs B0 uses the same four rules; **B4 vs B2** decides whether futures add
+anything beyond CFD intraday data — "futures needed" only if B2 beats B4 with a 95% upper bound < 1 in B2/B4 ratio.
