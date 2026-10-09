@@ -55,3 +55,33 @@ ZW 0.978.
    CFD HAR on the target the live system uses?).
 2. If the gain survives translation, add a shadow row to `har-shadow.html` (read-only), per owner rule.
 3. Order-book information is untested: the live feed is 10-min delayed, recording is on hold.
+
+---
+
+# Step 2 result — CFD translation (pre-reg: Step 2 section of forge/FUTURES_VOL_PREREG.md, c740b12f)
+
+*Run 2026-10-09 with `python -m forge.run_futures_vs_cfd`. Scored on the live CFD `london22` session ranges; OOS
+2020-04 → CFD data end (2026-07/08). Widths refit on the CFD target per arm.*
+
+| arm | pooled loss ratio vs B0 (live HAR on CFD) | 95% CI | halves | roots better |
+|---|---|---|---|---|
+| B1 futures daily HAR (data source only) | 0.9983 | [0.9938, 1.0023] | 0.9994 / 0.9975 | 6 / 12 |
+| **B2 PRIMARY** futures 5-min-RV HAR | **0.9847** | [0.9785, 0.9908] | 0.9819 / 0.9878 | **12 / 12** |
+| B3 50/50 blend of B0 and B2 | 0.9862 | [0.9828, 0.9893] | 0.9851 / 0.9874 | 12 / 12 |
+
+Pooled HL p75 exceed-rate: control 0.256, B2 0.256.
+
+**B2 verdict: PASS** — all four rules (upper bound < 1; both halves < 1; 12/12 ≥ 9/12; exceed-rate 0.256 in 0.20–0.30).
+
+## Reading it
+
+- **The futures data source alone changes nothing** (B1 ≈ B0, interval spans 1). The gain comes from the intraday
+  information (5-minute realised variance), not from "futures vs CFD".
+- The gain on CFD targets (1.5%) is the same size as on futures targets (1.3%): it translates intact.
+- Per root: NQ 0.977, ES 0.978, YM 0.987, RTY 0.986, gold 0.990, 6E 0.975, 6B 0.969, 6J 0.989, 6A 0.988, 6N 0.993,
+  6C 0.998, 6S 0.986. Indices and EUR/GBP gain most; CAD and NZD barely.
+- The blend (B3) has a tighter interval but no better point estimate than B2 alone; nothing here favours blending.
+- DAX (secondary, one root): B2 0.985, interval [0.971, 1.001] — consistent, not conclusive alone.
+- The size is unchanged from Step 1: a real ~1.5% lower ladder loss, not a new edge. It is cheap to get: the CFD M1
+  bars we already hold can compute 5-minute RV, so this may not even need futures data. **Untested:** whether the same
+  5-minute-RV HAR run on the CFD M1 bars (no futures) captures the same gain. If it does, the live path needs no bridge.

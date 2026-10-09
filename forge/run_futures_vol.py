@@ -141,9 +141,10 @@ def build_frame(root: str) -> pd.DataFrame:
 
 # ── walk-forward scoring ─────────────────────────────────────────────────────────────────────
 
-def score_root(fr: pd.DataFrame) -> pd.DataFrame:
+def score_root(fr: pd.DataFrame, arms=None, ctrl: str = "A0") -> pd.DataFrame:
     """Per-session OOS losses (control-σ normalised) for every arm, plus HL p75 exceed flags."""
-    need = [f"sigma_{a}" for a in ARMS]
+    arms = arms or ARMS
+    need = [f"sigma_{a}" for a in arms]
     fr = fr.dropna(subset=["hl_pct", "oc_pct"]).copy()
     out = []
     for i, (tr0, split, te_end) in enumerate(V.fold_bounds(fr["date"], 6)):
@@ -152,9 +153,9 @@ def score_root(fr: pd.DataFrame) -> pd.DataFrame:
         test = fr[ok & (fr["date"] >= split) & (fr["date"] < te_end)]
         if len(train) < 200 or len(test) < 30:
             continue
-        ctrl = test["sigma_A0"].to_numpy() / V.SQRT252
+        cs = test[f"sigma_{ctrl}"].to_numpy() / V.SQRT252
         rec = {"date": test["date"].to_numpy(), "fold": i}
-        for arm in ARMS:
+        for arm in arms:
             mult = {k: v for k, v in V._fit_multiplier_set(train, arm).items() if np.isfinite(v)}
             pred = V.predicted_quantiles(test[f"sigma_{arm}"].to_numpy(), mult)
             losses = []
@@ -163,13 +164,13 @@ def score_root(fr: pd.DataFrame) -> pd.DataFrame:
                 if key not in pred:
                     continue
                 losses.append(V.pinball_loss(test[f"{q}_pct"].to_numpy(), pred[key], tau))
-            rec[f"loss_{arm}"] = np.mean(losses, axis=0) / ctrl
+            rec[f"loss_{arm}"] = np.mean(losses, axis=0) / cs
             rec[f"exc75_{arm}"] = (test["hl_pct"].to_numpy() > pred["hl_p75"]).astype(float)
         out.append(pd.DataFrame(rec))
     return pd.concat(out, ignore_index=True) if out else pd.DataFrame()
 
 
-def block_bootstrap(per_root: dict, arm: str, reps: int = 2000, block: int = 20, seed: int = 7):
+def block_bootstrap(per_root: dict, arm: str, ctrl: str = "A0", reps: int = 2000, block: int = 20, seed: int = 7):
     """Pooled (equal-weight over roots) ratio of mean loss arm/A0, jointly resampling calendar-date blocks."""
     dates = sorted(set().union(*[set(df["date"]) for df in per_root.values()]))
     pos = {d: i for i, d in enumerate(dates)}
@@ -178,7 +179,7 @@ def block_bootstrap(per_root: dict, arm: str, reps: int = 2000, block: int = 20,
     LC = np.zeros((nd, len(per_root)))
     for j, df in enumerate(per_root.values()):
         idx = df["date"].map(pos).to_numpy()
-        LA[idx, j] = df["loss_A0"].to_numpy()
+        LA[idx, j] = df[f"loss_{ctrl}"].to_numpy()
         LC[idx, j] = df[f"loss_{arm}"].to_numpy()
     point = np.mean(LC.sum(0) / LA.sum(0))
     rng = np.random.default_rng(seed)
@@ -192,38 +193,41 @@ def block_bootstrap(per_root: dict, arm: str, reps: int = 2000, block: int = 20,
     return float(point), float(np.quantile(ratios, 0.025)), float(np.quantile(ratios, 0.975))
 
 
-def summarize(per_root: dict, label: str) -> dict:
+def summarize(per_root: dict, label: str, arms=None, ctrl: str = "A0", primary: str = "C1") -> dict:
+    arms = arms or ARMS
     res = {"label": label, "roots": {}, "pooled": {}}
     for root, df in per_root.items():
-        res["roots"][root] = {"n": int(len(df)), **{a: float(df[f"loss_{a}"].mean() / df["loss_A0"].mean())
-                                                    for a in ARMS if a != "A0"},
-                              "exc75_C1": float(df["exc75_C1"].mean()), "exc75_A0": float(df["exc75_A0"].mean())}
+        res["roots"][root] = {"n": int(len(df)), **{a: float(df[f"loss_{a}"].mean() / df[f"loss_{ctrl}"].mean())
+                                                    for a in arms if a != ctrl},
+                              "exc75_P": float(df[f"exc75_{primary}"].mean()), "exc75_C": float(df[f"exc75_{ctrl}"].mean())}
     all_dates = sorted(set().union(*[set(df["date"]) for df in per_root.values()]))
     mid = all_dates[len(all_dates) // 2]
-    for arm in ARMS[1:]:
-        pt, lo, hi = block_bootstrap(per_root, arm)
+    for arm in [x for x in arms if x != ctrl]:
+        pt, lo, hi = block_bootstrap(per_root, arm, ctrl)
         halves = []
         for part in ("first", "second"):
             sub = {r: (df[df["date"] < mid] if part == "first" else df[df["date"] >= mid]) for r, df in per_root.items()}
-            halves.append(float(np.mean([s[f"loss_{arm}"].mean() / s["loss_A0"].mean() for s in sub.values() if len(s)])))
+            halves.append(float(np.mean([s[f"loss_{arm}"].mean() / s[f"loss_{ctrl}"].mean() for s in sub.values() if len(s)])))
         wins = int(sum(v[arm] < 1 for v in res["roots"].values()))
         res["pooled"][arm] = {"ratio": pt, "ci95": [lo, hi], "half1": halves[0], "half2": halves[1],
                               "roots_better": wins, "roots": len(per_root)}
-    res["pooled"]["exc75_C1"] = float(np.mean([v["exc75_C1"] for v in res["roots"].values()]))
-    res["pooled"]["exc75_A0"] = float(np.mean([v["exc75_A0"] for v in res["roots"].values()]))
+    res["pooled"]["exc75_P"] = float(np.mean([v["exc75_P"] for v in res["roots"].values()]))
+    res["pooled"]["exc75_C"] = float(np.mean([v["exc75_C"] for v in res["roots"].values()]))
+    res["arms"] = [x for x in arms if x != ctrl]
     return res
 
 
 def show(res: dict) -> None:
+    arms = res["arms"]
     print(f"\n=== {res['label']} ===")
-    print(f"{'root':6} {'n':>5}  " + "  ".join(f"{a:>6}" for a in ARMS[1:]) + "   exc75 A0 / C1")
+    print(f"{'root':6} {'n':>5}  " + "  ".join(f"{a:>6}" for a in arms) + "   exc75 ctrl / primary")
     for r, v in res["roots"].items():
-        print(f"{r:6} {v['n']:5d}  " + "  ".join(f"{v[a]:6.3f}" for a in ARMS[1:]) + f"   {v['exc75_A0']:.2f} / {v['exc75_C1']:.2f}")
-    for a in ARMS[1:]:
+        print(f"{r:6} {v['n']:5d}  " + "  ".join(f"{v[a]:6.3f}" for a in arms) + f"   {v['exc75_C']:.2f} / {v['exc75_P']:.2f}")
+    for a in arms:
         p = res["pooled"][a]
         print(f"POOLED {a}: ratio {p['ratio']:.4f}  CI95 [{p['ci95'][0]:.4f}, {p['ci95'][1]:.4f}]  "
               f"halves {p['half1']:.4f} / {p['half2']:.4f}  better on {p['roots_better']}/{p['roots']}")
-    print(f"pooled HL p75 exceed-rate  A0 {res['pooled']['exc75_A0']:.3f}  C1 {res['pooled']['exc75_C1']:.3f}")
+    print(f"pooled HL p75 exceed-rate  control {res['pooled']['exc75_C']:.3f}  primary {res['pooled']['exc75_P']:.3f}")
 
 
 def main():
