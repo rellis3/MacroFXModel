@@ -45,3 +45,23 @@ signal. Diagnose insignificant results instead of stopping, without forcing a re
   sub-bar timing, nonlinearity.
 
 Scripts `scripts/rate_diff_nq/`; output `analysis/output/rate_diff_nq/`.
+
+## Exploration results and the finalists (fixed 2026-10-09, before the confirmation period was run)
+
+Explore run: `analysis/output/rate_diff_nq/explore/RESULTS.md` (Oct 2025 – Mar 2026, TRADES bars, clean data).
+
+**Finalists** (each is confirmed on 2026-04-01 → 10-08 if it has the SAME SIGN and is beyond the scrambled-day 95% band
+there, or Granger p < 0.05 for the Granger items; reported for TRADES and, once pulled, MIDPOINT bars):
+
+| # | claim | explore evidence |
+|---|---|---|
+| F1 | Nasdaq leads the US–EU differential (Granger price→rate) at 15m / 30m | Dec26 p 0.000 / 0.004; generic 0.000 / 0.000; reverse 0.05–0.7 |
+| F2 | Nasdaq move precedes the differential by one 15-min bar (k = −1 > 0) | Dec26 +0.026★ |
+| F3 | US leg moves precede Nasdaq by one 15-min bar (k = +1 > 0) | SR3Z6 +0.028★, SR3H7 +0.030★ |
+| F4 | Rate rise on day d → Nasdaq lower on day d+1 (daily k = +1 < 0) | SR3Z6 −0.317★, SR3H7 −0.295★, diff −0.229★ |
+| F5 | 4h: Nasdaq leads the differential by 4h (k = −1 > 0) | Dec26 +0.163★ |
+| F6 | Same-bar link positive for the differential at every timeframe | +0.19 (15m) … +0.33 (4h), +0.49 daily |
+| F7 | Same-bar link of each leg is strongly negative in London hours, weak or positive in US hours | SR3Z6 London −0.49 vs US open +0.10 |
+
+Caveat fixed now: F1/F2/F5 (Nasdaq first) are what stale TRADES closes on the thinner rate leg would produce. They count
+as confirmed only if they survive on MIDPOINT bars.
