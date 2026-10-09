@@ -225,12 +225,46 @@ def do_2y(ib, weeks=26):
         print(f"  {c.localSymbol} -> stir_1m/{path.name}: {n:,} bars")
 
 
+def do_schatz_hist(ib):
+    """forge/DE2Y_NQ_15M_LEAD_PREREG.md: expired Schatz (FGBS) 1-min MIDPOINT, each contract over its front window
+    (7 days before the previous expiry -> 7 days before its own), 1-week requests. Writes stir_1m_hist/."""
+    out_dir = M1.parent / "stir_1m_hist"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    months = ["202412", "202503", "202506", "202509", "202512", "202603"]
+    prev_exp = None
+    for month in months:
+        c = None
+        for s in ("FGBS", "GBS"):
+            try:
+                c = resolve(ib, s, "EUREX", "EUR", month, True)
+            except Exception as e:
+                print(f"  {s} {month}: {e}")
+            if c is not None:
+                break
+        if c is None:
+            print(f"  Schatz {month}: not found")
+            continue
+        exp = datetime.strptime(c.lastTradeDateOrContractMonth[:8], "%Y%m%d").replace(tzinfo=timezone.utc)
+        start = (prev_exp - timedelta(days=7)) if prev_exp else exp - timedelta(days=100)
+        stop = exp - timedelta(days=7)
+        prev_exp = exp
+        path = out_dir / f"{fname(c)}.parquet"
+        end = stop + timedelta(days=1)
+        while end > start:
+            df = hist(ib, c, end, "1 W", "1 min", "MIDPOINT")
+            if df is not None:
+                save_merge(path, df)
+            end -= timedelta(weeks=1)
+        n = len(pd.read_parquet(path, columns=["time"])) if path.exists() else 0
+        print(f"  {c.localSymbol} (exp {exp.date()}) -> stir_1m_hist/{path.name}: {n:,} bars, front window {start.date()} -> {stop.date()}")
+
+
 if __name__ == "__main__":
     steps = sys.argv[1:] or ["clean", "mid15", "m1"]
     ib = IB()
     ib.RequestTimeout = 20
     ib.connect(HOST, PORT, clientId=CID, timeout=15, readonly=True)
     for s in steps:
-        {"clean": do_clean, "mid15": do_mid15, "m1": do_m1, "fridays": do_fridays, "u6": do_u6, "2y": do_2y}[s](ib)
+        {"clean": do_clean, "mid15": do_mid15, "m1": do_m1, "fridays": do_fridays, "u6": do_u6, "2y": do_2y, "schatz_hist": do_schatz_hist}[s](ib)
     ib.disconnect()
     print("done")
