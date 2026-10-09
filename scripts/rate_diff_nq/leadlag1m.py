@@ -71,6 +71,37 @@ if "SR3Z6" in legs and "ER3U6" in legs:
 for k in ("SR3Z6", "SR3H7", "IZ6", "ER3U6"):
     if k in legs:
         S[f"leg {k}"] = dmin(legs[k])
+def bond_yield_bp(roll):
+    """1-min yield change in bp from 2-year bond futures (price -> yield: dy = -dlnP / D * 1e4, D = 1.9), contracts
+    stitched by calendar roll, changes only within one contract. None if the files are not there."""
+    out = pd.Series(np.nan, index=grid)
+    got = False
+    for name, a, b in roll:
+        s = load(name)
+        if s is None:
+            continue
+        got = True
+        lp = np.log(s.reindex(grid))
+        r = (-(lp.diff()) / 1.9 * 1e4).where(lp.notna() & lp.shift(1).notna())
+        m = np.ones(len(grid), bool)
+        if a:
+            m &= grid >= pd.Timestamp(a)
+        if b:
+            m &= grid < pd.Timestamp(b)
+        out[m] = r[m]
+    return out if got else None
+
+
+ROLL_2Y = "2026-08-28"
+us2 = bond_yield_bp([("CBOT_ZTU6", None, ROLL_2Y), ("CBOT_ZTZ6", ROLL_2Y, None)])
+_gbs = lambda tok: next((p.stem for p in sorted(D1.glob("EUREX_*GBS*.parquet")) if tok in p.stem), None)
+de2 = bond_yield_bp([(n, a, b) for n, a, b in ((_gbs("202609"), None, ROLL_2Y), (_gbs("202612"), ROLL_2Y, None)) if n])
+if us2 is not None:
+    S["leg US 2y yield (ZT)"] = us2
+if de2 is not None:
+    S["leg DE 2y yield (Schatz)"] = de2
+if us2 is not None and de2 is not None:
+    S["2y spread (US - DE)"] = us2 - de2
 day = grid.normalize()
 
 

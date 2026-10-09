@@ -192,12 +192,45 @@ def do_u6(ib, weeks=6):
     print(f"  {c.localSymbol} -> stir_1m/{path.name}: {n:,} bars")
 
 
+def do_2y(ib, weeks=26):
+    """1-min MIDPOINT for the 2-year bond futures (smooth rate legs): US 2y note (CBOT ZT) and German 2y Schatz (Eurex).
+    Front contracts for the window: Dec'26 from ~end Aug, Sep'26 before that (expired, includeExpired). Whole weeks
+    ending Saturday 00:00 UTC."""
+    sat = (NOW + timedelta(days=(5 - NOW.weekday()) % 7)).replace(hour=0, minute=0, second=0, microsecond=0)
+    specs = [("ZT", "CBOT", "USD", "202612", False), ("ZT", "CBOT", "USD", "202609", True),
+             ("GBS", "EUREX", "EUR", "202612", False), ("GBS", "EUREX", "EUR", "202609", True)]
+    for sym, exch, ccy, month, exp in specs:
+        c = None
+        for s in ((sym,) if sym != "GBS" else ("GBS", "FGBS", "SCHATZ")):
+            try:
+                c = resolve(ib, s, exch, ccy, month, exp)
+            except Exception as e:
+                print(f"  {s} {month}: {e}")
+            if c is not None:
+                break
+        if c is None:
+            for m in (ib.reqMatchingSymbols("Schatz" if sym == "GBS" else "2-Year") or [])[:8]:
+                print(f"     search: {m.contract.symbol} {m.contract.secType} {m.contract.primaryExchange} {m.derivativeSecTypes}")
+            continue
+        path = M1 / f"{fname(c)}.parquet"
+        last = datetime.strptime(c.lastTradeDateOrContractMonth[:8], "%Y%m%d").replace(tzinfo=timezone.utc)
+        for w in range(weeks):
+            end = sat - timedelta(weeks=w)
+            if end - timedelta(weeks=1) > last + timedelta(days=1):
+                continue
+            df = hist(ib, c, min(end, last + timedelta(days=1)), "1 W", "1 min", "MIDPOINT")
+            if df is not None:
+                save_merge(path, df)
+        n = len(pd.read_parquet(path, columns=["time"])) if path.exists() else 0
+        print(f"  {c.localSymbol} -> stir_1m/{path.name}: {n:,} bars")
+
+
 if __name__ == "__main__":
     steps = sys.argv[1:] or ["clean", "mid15", "m1"]
     ib = IB()
     ib.RequestTimeout = 20
     ib.connect(HOST, PORT, clientId=CID, timeout=15, readonly=True)
     for s in steps:
-        {"clean": do_clean, "mid15": do_mid15, "m1": do_m1, "fridays": do_fridays, "u6": do_u6}[s](ib)
+        {"clean": do_clean, "mid15": do_mid15, "m1": do_m1, "fridays": do_fridays, "u6": do_u6, "2y": do_2y}[s](ib)
     ib.disconnect()
     print("done")
