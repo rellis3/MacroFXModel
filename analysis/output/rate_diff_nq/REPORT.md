@@ -48,8 +48,8 @@ Holdout: 15-min family explored Oct 2025 – Mar 2026, confirmed Apr – Oct 202
   a continuously-priced index), not with Nasdaq carrying rate information.
 
 **5. At data releases both react within the release minute.**
-- 18 US/EU releases (Apr – Jul; calendar ends 2 Jul): the rate legs reached half their 30-min move first in 8–11, Nasdaq
-  in 2; median half-move time 0 min for rates vs 1.5 min for Nasdaq. But many rate moves were 1–2 ticks (a single tick
+- 22 US/EU releases (Apr – Jul; calendar ends 2 Jul): the rate legs reached half their 30-min move first in 10–13, Nasdaq
+  in 2–4; median half-move time 0 min for rates vs 2 min for Nasdaq. But many rate moves were 1–2 ticks (a single tick
   completes "half the move" at minute 0); on the large ones (FOMC 17 Jun 11 bp, GDP 25 Jun, NFP 2 Jul) both moved in the
   same minute. No minute-scale lead a retail trader could act on.
 
@@ -65,3 +65,10 @@ The US–EU short-rate differential and Nasdaq **coincide**; they do not lead ea
 differential's coincident link itself switches on and off with which rate leg is moving markets; for Nasdaq the rate
 level is the steadier co-mover. Overlaid on a chart, the line will track price closely at times (as on C.OG's charts)
 because they move in the same minutes, not because one turns first.
+
+## Correction (2026-10-09)
+
+The first 1-min pull missed every Friday after 06:30 UTC (weekly requests ended at the run time). Fridays were re-pulled
+(`scratchpad/ibkr_hf_pull.py fridays`) and the 1-min study re-run: no conclusion changed. Rate → Nasdaq Granger p 0.13–0.94
+for every series in both halves (one isolated 0.044); Nasdaq → rate p ≈ 0.000 on every leg in both halves; release windows
+now 22 (rates complete half their move first in 10–13, Nasdaq in 2–4, the same tick-size caveat applies).
