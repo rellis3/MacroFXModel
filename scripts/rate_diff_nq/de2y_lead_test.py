@@ -64,7 +64,7 @@ def stat(xa, ya, mask):
     t = s.mean() / s.std(ddof=1) * np.sqrt(len(s))
     c = float((az * bz).mean())
     slope = float(np.polyfit(a, b, 1)[0])            # % Nasdaq per bp of German 2y
-    return {"corr": round(c, 4), "t": round(float(t), 2), "ci95": [round(c - 1.96 * abs(c / t), 4), round(c + 1.96 * abs(c / t), 4)] if t else None,
+    return {"corr": round(c, 4), "t": round(float(t), 2), "ci95": [float(round(c - 1.96 * abs(c / t), 4)), float(round(c + 1.96 * abs(c / t), 4))] if t else None,
             "bars": int(ok.sum()), "days": int(len(s)), "nasdaq_pct_per_bp": round(slope, 5)}
 
 

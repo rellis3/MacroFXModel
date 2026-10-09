@@ -1,0 +1,69 @@
+{
+ "window": [
+  "2025-09-01 00:15:00",
+  "2026-04-01 00:00:00"
+ ],
+ "schatz_contracts": [
+  "EUREX_FGBS_20251208_M",
+  "EUREX_FGBS_20260306_M",
+  "EUREX_FGBS_20260608_M"
+ ],
+ "primary (stocks & yields move opposite)": {
+  "corr": -0.0064,
+  "t": -0.19,
+  "ci95": [
+   -0.0711,
+   0.0584
+  ],
+  "bars": 1306,
+  "days": 16,
+  "nasdaq_pct_per_bp": -0.00114
+ },
+ "full window": {
+  "corr": -0.0075,
+  "t": -0.54,
+  "ci95": [
+   -0.0349,
+   0.0199
+  ],
+  "bars": 11903,
+  "days": 147,
+  "nasdaq_pct_per_bp": -0.00215
+ },
+ "opposite regime (move together)": {
+  "corr": -0.0067,
+  "t": -0.43,
+  "ci95": [
+   -0.0374,
+   0.0241
+  ],
+  "bars": 8240,
+  "days": 101,
+  "nasdaq_pct_per_bp": -0.00253
+ },
+ "same-bar check, primary regime": {
+  "corr": -0.5884,
+  "t": -2.54,
+  "ci95": [
+   -1.0419,
+   -0.1348
+  ],
+  "bars": 1320,
+  "days": 16,
+  "nasdaq_pct_per_bp": -0.10553
+ },
+ "same-bar check, move-together regime": {
+  "corr": 0.0442,
+  "t": 0.79,
+  "ci95": [
+   -0.0651,
+   0.1534
+  ],
+  "bars": 8251,
+  "days": 101,
+  "nasdaq_pct_per_bp": 0.01672
+ },
+ "share of bars in primary regime": 0.11,
+ "PASS": false,
+ "nasdaq_points_per_bp_primary": -0.28
+}

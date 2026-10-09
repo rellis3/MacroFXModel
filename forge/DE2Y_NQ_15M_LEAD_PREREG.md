@@ -49,3 +49,22 @@ before its expiry, ~Aug–Sep 2025) → 2026-03-31**, using Dec'25, Mar'26 and J
   (opposite-regime) subset may be much smaller, because the stock-rates sign looked positive in Oct 2025 – Feb 2026.
   Its size is reported, and a FAIL on a small primary sample will be described as underpowered, not as a refutation.
 - Test, statistic and pass rule unchanged.
+
+## Result (2026-10-09, run once): FAIL, with the primary sample underpowered as Amendment 1 warned
+
+`analysis/output/rate_diff_nq/de2y_lead/RESULTS.md`. Window 2025-09-01 → 2026-03-31 (Schatz Dec'25 / Mar'26 / Jun'26).
+
+| sample | corr (German 2y bar t−1 → Nasdaq bar t) | t | 95% | days |
+|---|---|---|---|---|
+| primary (stocks and yields moving opposite) | −0.006 | −0.19 | [−0.071, +0.058] | 16 |
+| full window | −0.008 | −0.54 | [−0.035, +0.020] | 147 |
+| move-together regime | −0.007 | −0.43 | [−0.037, +0.024] | 101 |
+
+- **The primary regime covered only 16 days** (11% of bars), so that test could not have detected the candidate's size
+  (interval ±0.065). As fixed in Amendment 1, this FAIL is underpowered, not a refutation.
+- **But the full window, 147 days, puts the lead at −0.008 [−0.035, +0.020].** That interval excludes the candidate's
+  −0.038, so in Sep 2025 – Mar 2026 there was no lead of the size found in Apr–Oct 2026.
+- **The regime classification works:** same bar −0.59 in the primary regime, +0.04 in the move-together regime.
+
+**Per the stopping rule, the rate-differential / Nasdaq lead question is closed.** The same-bar, regime-dependent link
+stays as context.
