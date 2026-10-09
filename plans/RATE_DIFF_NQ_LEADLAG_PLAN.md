@@ -72,3 +72,11 @@ The clean re-pull showed ICE ESTR ER3U6 trades a median 117 lots per 15 min (the
 continuous series), so C.OG's pair SR3U6 − ER3U6 is usable from 2025-10. It joins the exploration under the same rule:
 any non-zero lag beyond the scrambled band, or Granger p < 0.05, becomes a finalist (F8+) and is judged on the
 confirmation period exactly as F1–F7.
+
+**C.OG-pair finalists (explore numbers seen 2026-10-09, confirmation not yet run):**
+
+| # | claim | explore evidence |
+|---|---|---|
+| F8 | C.OG pair leads Nasdaq (Granger rate→price) at 15m | p 0.028 (price→rate p 0.000) |
+| F9 | C.OG pair move precedes Nasdaq by one 15-min bar (k = +1 > 0) | +0.025★ (k = −1 +0.026★, k = −2 +0.025★) |
+| F10 | C.OG pair up on day d → Nasdaq lower on day d+1 (daily k = +1 < 0) | −0.239★ |
