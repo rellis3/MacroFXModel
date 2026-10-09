@@ -249,6 +249,7 @@ tr.dim td{opacity:.42}
       <button class="btn" id="sortBtn">Walls: STRENGTH</button>
       <button class="btn" id="expBtn">⬇ Export lines</button>
       <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);cursor:pointer" title="Export the lines in raw CME/COMEX futures price terms instead of OANDA spot — to overlay on a futures chart. Adds the basis back. Default: spot."><input type="checkbox" id="futTerms" style="cursor:pointer"> futures terms</label>
+      <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);cursor:pointer" title="Index pairs (SPX500, NAS100, US2000, US30) take their walls, max pain, GEX flip and regime from the Cboe index-options chain (SPX/NDX/RUT/DJX, 15-min delayed). Everything Cboe has no equivalent for — expected move, charm/vanna, risk reversal, volume — stays CME, and every other pair is CME as before. Unticked = CME only. Display/export only: the bots always read CME."><input type="checkbox" id="cboeSrc" style="cursor:pointer"> Cboe (indices)</label>
       <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);cursor:pointer" title="Draw EVERY expiry's max-pain and call/put wall as lines (DTE-tagged, far ones faded), not just the primary + day set. For seeing the whole term structure on the chart."><input type="checkbox" id="allExp" style="cursor:pointer"> all expiries</label>
       <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);cursor:pointer" title="Only what the model actually analysed: the primary + day expiry walls, max pain, gamma/gex flips, plus the charm/vanna flips and expected-move band. Drops other-expiry walls, catch levels and anything flagged far, and orders lines by price so a strike with several things on it reads as one stack. Gold goes from ~30 lines to ~9. Overrides 'all expiries'."><input type="checkbox" id="todayOnly" style="cursor:pointer"> today only</label>
       <button class="btn" id="reanBtn" title="Re-derive every pair's levels from the OI data already stored (adds the day-expiry / latest compute) — no re-paste. Pinned to the saved basis, so LEVELS DO NOT MOVE: use Re-basis for that.">↻ Re-analyse all</button>
@@ -1835,7 +1836,8 @@ document.getElementById('expBtn').onclick=async()=>{
     const fut=document.getElementById('futTerms')?.checked ? '&terms=futures' : '';
     const allE=document.getElementById('allExp')?.checked ? '&allExpiry=1' : '';
     const tdy=document.getElementById('todayOnly')?.checked ? '&mode=today' : '';
-    const r=await fetch('/api/vol-forecast/zones?reach=1'+fut+allE+tdy,{cache:'no-store'});
+    const cbo=document.getElementById('cboeSrc')?.checked ? '&src=cboe' : '';
+    const r=await fetch('/api/vol-forecast/zones?reach=1'+fut+allE+tdy+cbo,{cache:'no-store'});
     const txt=await r.text();
     document.getElementById('zoomTitle').textContent='C+Z / OI export — paste into the TradingView indicator';
     document.getElementById('zoomBody').innerHTML='<button class="btn" id="cpBtn" style="margin-bottom:12px">Copy to clipboard</button>'

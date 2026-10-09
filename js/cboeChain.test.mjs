@@ -3,7 +3,8 @@
 // $-per-1% GEX formula on Cboe's own gamma, gamma vs OI walls, the flip scan, OTM
 // smiles, and the DJX ×100 scale onto the US30 CFD.
 //   node js/cboeChain.test.mjs
-import { parseCboeChain, cboeLadder, cboeSnapshotRow, CBOE_PAIRS } from './cboeChain.js';
+import { parseCboeChain, cboeLadder, cboeSnapshotRow, cboeOverlayInst, CBOE_PAIRS } from './cboeChain.js';
+import { buildOILevelText } from './oiLevelExport.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  → ' + e : ''}`); if (!c) fails++; };
@@ -81,6 +82,31 @@ console.log('[snapshot row]');
   const row = cboeSnapshotRow(b, { spot: 7801, basis: 14, callWall: 7900, putWall: 7700, gexFlip: 7750, maxPain: 7800, exposures: { gex: -5 } });
   ok('row carries Cboe levels and the CME levels side by side', row.levels.callWallGamma === b.levels.callWallGamma && row.cme.callWall === 7900 && row.cme.gex === -5);
   ok('top strikes capped at 10', row.topStrikes.length <= 10);
+}
+
+console.log('[export overlay — the Cboe tick]');
+{
+  const b = cboeLadder(parseCboeChain(chain()));
+  const cme = { pair: 'SPX500_USD', spot: 7801, basis: 14, savedAt: 'today', callWall: 7900, putWall: 7600, maxPain: 7700,
+    gexFlip: 7650, gammaFlip: 7650, exposures: { gex: -5, dex: 1 }, refMove: { move: 60 },
+    expectedMove: { upper: 7900, lower: 7700, pct: 1.3, dte: 1 }, riskReversal: { rr: 2, tilt: 'downside' },
+    callWalls: [{ strike: 7900, oi: 5000, tier: 'strong' }], putWalls: [{ strike: 7600, oi: 4000, tier: 'strong' }],
+    perExpiry: [{ dte: 30, maxPain: 7500, callWall: 8100, putWall: 7300 }], termStructure: [{ dte: 30, maxPain: 7500 }],
+    volumeMagnets: [{ strike: 7750, volume: 900 }] };
+  const ov = cboeOverlayInst(cme, b, { label: 'Cboe SPX' });
+  ok('walls, max pain, flip and net GEX come from Cboe', ov.callWall === b.levels.callWallGamma && ov.putWall === b.levels.putWallGamma
+    && ov.maxPain === b.levels.maxPain && ov.gexFlip === b.levels.gexFlip && ov.exposures.gex === b.levels.netGex);
+  ok('spot, basis, expected move, risk reversal, volume kept from CME', ov.spot === 7801 && ov.basis === 14
+    && ov.expectedMove === cme.expectedMove && ov.riskReversal === cme.riskReversal && ov.volumeMagnets === cme.volumeMagnets);
+  ok('CME other-expiry walls / term structure not mixed in', ov.perExpiry.length === 0 && ov.termStructure.length === 0 && ov.dayExpiry === null);
+  ok('headline walls carry a tier (survive the export size floor)', !!ov.callWalls[0]?.tier && !!ov.putWalls[0]?.tier);
+  ok('the CME entry itself is not modified', cme.callWall === 7900 && cme.perExpiry.length === 1);
+  const txt = buildOILevelText({ SPX500_USD: ov }, { generated: 'x' });
+  ok('export block names its source', /source Cboe SPX index options/.test(txt));
+  ok('export draws the Cboe call wall, not the CME one', txt.includes(`OI ${b.levels.callWallGamma.toFixed(2)} : call_wall`) && !txt.includes('OI 7900.00 : call_wall'));
+  const fut = buildOILevelText({ SPX500_USD: ov }, { generated: 'x', terms: 'futures' });
+  ok('futures terms add the CME basis to Cboe levels', fut.includes(`OI ${(b.levels.callWallGamma + 14).toFixed(2)} : call_wall`));
+  ok('no Cboe data → CME entry returned untouched', cboeOverlayInst(cme, null) === cme);
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

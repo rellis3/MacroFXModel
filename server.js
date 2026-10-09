@@ -224,7 +224,7 @@ import { levelExpectation } from './js/levelExpectation.js';   // per-level Reje
 import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
 import { buildOILevelText } from './js/oiLevelExport.js';
 import { oiGexLadder as _oiGexLadder } from './js/oi.js';
-import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _parseCboeChain, cboeLadder as _cboeLadder, cboeSnapshotRow as _cboeSnapshotRow } from './js/cboeChain.js';   // free delayed Cboe index-options chain (additive to CME; dashboard toggle + tracking)   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
+import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _parseCboeChain, cboeLadder as _cboeLadder, cboeSnapshotRow as _cboeSnapshotRow, cboeOverlayInst as _cboeOverlayInst } from './js/cboeChain.js';   // free delayed Cboe index-options chain (additive to CME; dashboard toggle + tracking)   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
 import { meetingProbabilities as _zqMeetingProbs } from './js/fedPathZq.js';
 import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE, OI_PRODUCT_SPEC as _OI_SPEC } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
 import { buildOIZones, explainNoZones, oiSizeCalibrationStats as _oiSizeCalibrationStats } from './js/oiZones.js';
@@ -22606,6 +22606,20 @@ app.get('/api/vol-forecast/zones', async (req, res) => {
         const rawC = await kv.get('oi_store_cmdty').catch(() => null);
         const cm = rawC ? (JSON.parse(rawC).data ?? JSON.parse(rawC)) : {};
         for (const [k, v] of Object.entries(cm || {})) if (!(k in store)) store[k] = v;
+      }
+      // '?src=cboe' (the export's Cboe tick): the index pairs take their walls / max pain /
+      // flips / GEX from the Cboe index-options chain; everything Cboe lacks stays CME (see
+      // cboeOverlayInst). Applied to this request's in-memory copy only — oi_store is never
+      // written, so the bots and the unticked export are unaffected. A pair whose Cboe fetch
+      // fails simply keeps its CME block. Done BEFORE P(touch), so reach is computed on the
+      // levels actually exported.
+      if (String(req.query.src || '') === 'cboe') {
+        await Promise.all(Object.keys(_CBOE_PAIRS).filter(p => store[p]).map(async p => {
+          try {
+            const r = await _cboeBuilt(p);
+            store[p] = _cboeOverlayInst(store[p], r.built, { label: 'Cboe ' + _CBOE_PAIRS[p].label, stale: r.stale });
+          } catch (e) { console.error('[export cboe]', p, e.message); }
+        }));
       }
       // COT rides along as a per-pair CONTEXT line only — it has no price coordinate, so
       // it is never emitted as an `OI {price}` level the indicator would draw.
