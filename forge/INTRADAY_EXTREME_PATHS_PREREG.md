@@ -221,3 +221,24 @@ Every model, feature set, horizon and scale tried is appended to the search ledg
   consistent with the known 20:00-22:00 UTC prior; flat-row indices and gold resolve down-first more often (48.4%, 47.2%).
 - **Cost:** at 2x the registered table, median cost/u is 0.11 (majors), 0.10 (indices), 0.17 (gold), 0.19 (crosses); 79% of cross rows exceed 0.15.
   The largest discovery CONT−REV gap in the main grid (~4pp of rows) is about a third of the majors' cost/u.
+
+## Stage 2 operational definitions (fixed 2026-10-09 BEFORE any Validation outcome was computed)
+Owner controls for Stage 2: hypotheses, thresholds, features and criteria are not changed in response to results; all results recorded;
+no new interactions or subgroup search; 2025 → 2026-08 is NOT a pristine holdout (used in earlier research) and the existing lockbox is untouched.
+- **Feature integrity** (`forge/iep_features.py`, `STAGE2_DATA.md`): cross-asset from same-minute event rows (leave-one-out, ≤ 15 min old) and
+  bond-CFD M15 bars usable only after they close; macro strictly before the session date — CBOE closes dated < d; FRED yields at their
+  **first-print** value from ALFRED vintages, usable only if first published before d (→ the yield of 2 business days earlier; only 2 of 2,250
+  DGS10 values were ever revised, by 1bp); CVOL settles dated < d; ForexFactory scheduled tags. Hand-checked across GMT and BST, including
+  2023-03-13 (the Friday 2y print, published on the Monday, is correctly excluded). Bond CFDs start 2018-01 (missing flag before).
+  Limitations: FF impact labels are the archive's; event features use the schedule only.
+- **Tests:** linear-probability effects in pp with date-clustered CR1 errors. Trend hypotheses report slope per step and the extreme contrast
+  (the size criterion). A7, A9, A10 combine their sub-tests by Bonferroni inside the hypothesis before Holm. A9: dollar agree =
+  o·s_usd·usdfac > 0 (USD instruments), risk agree = o·riskfac > 0. A10 = {VIX tercile, curve-slope tercile, tier1-vs-none} × {CONS, CONT|res}.
+  New tercile edges from discovery only (`stage2_edges_disc.json`: VIX 13.77 / 19.46, slope 0.33 / 0.83, IV÷σ 1.020 / 1.150; displacement by class × h).
+  Family B: each interaction on both CONT|res and CONS (12 Wald tests, BH-FDR 10%); prior-day replication = near (≤ 0.25σ) × pullback, alone at 0.05.
+- **Ladder:** three outcomes separately (CONT|res, CONS, the CONT/REV/CONS race). L0 instrument × hour frequencies (shrunk to class × hour);
+  L1 price (all distances in HAR-σ units — the σ is a scale, flagged); L2 + σ regime, σ level, IV÷σ, range used vs discovery HL p50, realised-so-far
+  vs expected; L3 + cross-asset; L4 + macro. L2 logistic, walk-forward yearly refits (train < year), GBM on L4 as a ceiling only. Skill vs the previous
+  layer with 5-day moving-block bootstrap; credit rule as section 6 (on Validation only here; Confirmation is not pristine and is not run in Stage 2).
+- **Cost gate:** the Stage 1 cost table (2x registered; estimated instruments flagged). A significant directional effect smaller than cost/u is a
+  research finding, not a trading edge.
