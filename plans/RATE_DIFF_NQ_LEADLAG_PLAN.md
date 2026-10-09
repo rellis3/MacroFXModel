@@ -80,3 +80,23 @@ confirmation period exactly as F1–F7.
 | F8 | C.OG pair leads Nasdaq (Granger rate→price) at 15m | p 0.028 (price→rate p 0.000) |
 | F9 | C.OG pair move precedes Nasdaq by one 15-min bar (k = +1 > 0) | +0.025★ (k = −1 +0.026★, k = −2 +0.025★) |
 | F10 | C.OG pair up on day d → Nasdaq lower on day d+1 (daily k = +1 < 0) | −0.239★ |
+
+## Diagnostic review (2026-10-09, written before any of these tests ran)
+
+Owner's brief: investigate whether a genuine relationship could be hidden by the data or by the first model
+specification. Every test below has a stated reason; nothing is added after results are seen. One family, BH-FDR
+across it, explore/confirm splits as listed.
+
+| # | check | why it could hide a relationship | design |
+|---|---|---|---|
+| T1 | Timestamps, time zones, DST, candle boundaries | A one-bar misalignment turns a lead into a "same bar" or the reverse | (a) OANDA NAS100 vs IBKR NQ 15m returns at lags −2..+2: the peak must be at 0; (b) the 50 largest 1-min Nasdaq moves: where the rate's largest move within ±3 min falls; (c) known release minutes (US CPI/NFP 12:30/13:30 UTC): both series must jump in the same minute; (d) same-bar correlation by week across US/UK DST changes |
+| T2 | Rate observations vs futures-implied vs traded | The measure could be the wrong one | TRADES vs MIDPOINT (done: identical); 15m change correlations between STIR, 2y bond-futures yields and fed funds futures (ZQ). If they share > 0.7 they carry the same information and no separate lead test is justified. Daily SOFR / €STR fixings change only at policy moves, so they cannot lead intraday (not tested intraday) |
+| T3 | Transformation and horizon | A level or slow signal could be invisible in 1-min changes and one year of data | DAILY US 2y (FRED DGS2) − German 2y (Bundesbank), 1997–2026, vs NASDAQ Composite. Transforms: level (Engle–Granger cointegration with the log Nasdaq level), 1-day change, 5- and 20-day momentum, 60-day z-score of the level. Horizons 1, 5, 20 days (HAC errors with overlap lags). Explore 1997–2011, confirm 2012–2026 |
+| T4 | Targets other than the return | A rate signal may forecast risk, not direction | On the same daily sample: next-day and next-5-day absolute return (controlled for Nasdaq's own recent volatility, HAR-style), direction (logistic, out-of-sample AUC on the confirm half), and daily range (OANDA NAS100 2018–2026, explore 2018–2021, confirm 2022–2026). Intraday (1-min data Apr–Oct): rate move magnitude → next-hour Nasdaq realised volatility and range, controlled for Nasdaq's own last hour and last day |
+| T5 | Regimes | An effect confined to one regime averages to nothing | Daily sample split by Nasdaq volatility tercile, Nasdaq trend (sign of the 50-day return), rate cycle (sign of the 6-month change in the US 2y) and announcement days (calendar_events.csv, 2014+: FOMC, CPI, NFP); the key transforms only (1-day change, 20-day momentum, z-score) |
+| T6 | Power | If the pipeline cannot find a small real lead, "no lead" means little | Inject a known one-bar lead into the real 15m and 1m data (Nasdaq move += b × the rate move one bar earlier, scaled to correlations 0.01, 0.02, 0.03, 0.05) and record how often the grid procedure (FDR + confirm) finds it, 50 runs each |
+
+**How the outcome will be classified:** insufficient data (T6 shows low power where the effect would plausibly be),
+unsuitable specification (T1/T2 fail, or a transform/horizon in T3–T4 replicates where changes did not), conditional
+(a regime in T5 replicates in confirm), or little predictive information (power adequate, specification checks pass,
+nothing replicates).
