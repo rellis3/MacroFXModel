@@ -108,6 +108,10 @@ a{color:var(--acc)}
 
 /* strike ladder (COG-style horizontal GEX / volume-gamma / OI chart) */
 .ltipbox{font:12px var(--mono);color:var(--tx3);padding:4px 2px 6px;min-height:22px}
+.lmode.lsrc.on{background:#4b8fd6;border-color:#4b8fd6}
+.lcmp{margin:0 0 10px;overflow-x:auto}
+.lcmp table{font-size:12.5px}
+.lcmp td,.lcmp th{padding:5px 9px}
 .ltipbox.on{color:var(--tx)}
 @media(max-width:700px){
   .wrap{padding:0 8px 60px}
@@ -970,7 +974,7 @@ function ladderRows(e,mode){
     return { rows:gp.map(r=>({strike:r.strike, segs:[{v:r.callOI||0,col:'var(--call)'},{v:-(r.putOI||0),col:'var(--put)'}],
       tip:`calls ${fOI(r.callOI)} · puts ${fOI(r.putOI)}`})), unit:'contracts (OI)',
       legend:[['var(--call)','Calls',fOI(e.totalCallOI)],['var(--put)','Puts',fOI(e.totalPutOI)]],
-      src:`primary expiry ${esc(e.primaryExpiry?.code||'')}${Number.isFinite(e.dte)?' · '+e.dte+' DTE':''}` };
+      src:e._src==='cboe'?'every expiry · Cboe':`primary expiry ${esc(e.primaryExpiry?.code||'')}${Number.isFinite(e.dte)?' · '+e.dte+' DTE':''}` };
   }
   const L=ladderData(e); if(!L) return null;
   if(mode==='vol'){
@@ -980,7 +984,7 @@ function ladderRows(e,mode){
       segs:V.split?[{v:V.call[i],col:'var(--call)'},{v:-V.put[i],col:'var(--put)'}]:[{v:V.gross[i],col:'var(--vol)'}],
       tip:`volume ${fOI(V.volume[i])} · ${V.split?'net vol-gamma '+fN(V.net[i]):'vol-gamma '+fN(V.gross[i])}`}):null).filter(Boolean);
     const tot=a=>a.reduce((x,y)=>x+y,0);
-    return { rows, unit:'volume × gamma', src:`today's volume, weighted at ${V.dte??'—'} DTE gamma`,
+    return { rows, unit:(L.units==='usd1pct'?'volume gamma · $ per 1% move':'volume × gamma'), src:e._src==='cboe'?'today\'s volume, every expiry at its own gamma':`today's volume, weighted at ${V.dte??'—'} DTE gamma`,
       legend:V.split?[['var(--call)','Call vol-γ',fN(tot(V.call))],['var(--put)','Put vol-γ',fN(tot(V.put))],['var(--vol)','Net',fN(tot(V.net))]]
         :[['var(--vol)','Vol-γ (gross — call/put split not stored)',fN(tot(V.gross))]] };
   }
@@ -988,7 +992,7 @@ function ladderRows(e,mode){
     const rows=L.strikes.map((k,i)=>{ const c=L.series.reduce((a,s)=>a+(s.call[i]||0),0), p=L.series.reduce((a,s)=>a+(s.put[i]||0),0);
       return {strike:k, segs:[{v:c,col:'var(--call)'},{v:-p,col:'var(--put)'}], tip:`call γ ${fN(c)} · put γ ${fN(p)} · net ${fN(c-p)}`}; });
     const tc=rows.reduce((a,r)=>a+r.segs[0].v,0), tp=rows.reduce((a,r)=>a-r.segs[1].v,0);
-    return { rows, stacked:true, unit:'GEX (OI)', src:`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
+    return { rows, stacked:true, unit:(L.units==='usd1pct'?'GEX · $ per 1% move':'GEX (OI)'), src:`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
       legend:[['var(--call)','Call GEX',fN(tc)],['var(--put)','Put GEX',fN(-tp)],['var(--tx2)','Net',fN(tc-tp)]] };
   }
   // gex / dex / charm / vanna: one stacked colour per expiry, same layout.
@@ -1000,7 +1004,7 @@ function ladderRows(e,mode){
   const rows=L.strikes.map((k,i)=>({strike:k,
     segs:ser.map((s,j)=>({v:val(s,i),col:LAD_COLS[s.rest?4:Math.min(j,3)]})),
     tip:ser.map(s=>`${s.label}: ${fN(val(s,i))}`).join(' · ')+` · total ${fN(ser.reduce((a,s)=>a+val(s,i),0))}`}));
-  return { rows, stacked:true, unit:G.unit, src:L.fallback?'single expiry — full matrix not available':`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
+  return { rows, stacked:true, unit:(L.units==='usd1pct'&&G.key==='net'?'net GEX · $ per 1% move':G.unit), src:L.fallback?'single expiry — full matrix not available':`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
     legend:ser.map((s,j)=>[LAD_COLS[s.rest?4:Math.min(j,3)], s.label+(s.code?' · '+esc(s.code):''), fN(tot(s))]) };
 }
 
@@ -1073,19 +1077,26 @@ function ladderSvg(e,big){
   s+=`<line class="axis" x1="${ZX}" y1="${TOP}" x2="${ZX}" y2="${H}"/>`;
 
   // IV smile overlay on its own top axis
-  if(LADIV && e.ivSmile && Array.isArray(e.ivSmile.strikes)){
-    const mn=win[win.length-1].strike, mx=win[0].strike, sm=e.ivSmile;
-    const pts=sm.strikes.map((k,i)=>({k,iv:sm.iv?.[i],pv:sm.ivPrior?.[i]})).filter(q=>q.k>=mn&&q.k<=mx&&q.iv>0).sort((a,b)=>b.k-a.k);
-    if(pts.length>=3){
+  // One smile per near expiry when the source has them (Cboe — the coloured curves on
+  // COG's chart), else the single stored CME smile with its prior settle dashed.
+  const smiles=(Array.isArray(e.ivSmiles)&&e.ivSmiles.length)?e.ivSmiles
+    :(e.ivSmile&&Array.isArray(e.ivSmile.strikes)?[{...e.ivSmile,single:true}]:[]);
+  if(LADIV && smiles.length){
+    const mn=win[win.length-1].strike, mx=win[0].strike;
+    const sets=smiles.map(sm=>sm.strikes.map((k,i)=>({k,iv:sm.iv?.[i],pv:sm.single?sm.ivPrior?.[i]:undefined}))
+      .filter(q=>q.k>=mn&&q.k<=mx&&q.iv>0).sort((a,b)=>b.k-a.k)).filter(p=>p.length>=3);
+    if(sets.length){
       // Floor the IV axis at 3 vol points wide. Auto-scaling a near-flat smile (gold read
       // 20.5-21.0%) stretched half a point of noise across the whole chart into zigzags
       // that looked like structure. A flat smile should look flat.
-      const all=pts.flatMap(q=>[q.iv,q.pv]).filter(v=>v>0), mid=(Math.min(...all)+Math.max(...all))/2,
+      const all=sets.flat().flatMap(q=>[q.iv,q.pv]).filter(v=>v>0), mid=(Math.min(...all)+Math.max(...all))/2,
         half=Math.max((Math.max(...all)-Math.min(...all))/2, 0.015), ilo=mid-half, ihi=mid+half, pad=half*0.08;
       const IX=v=>X0+(v-(ilo-pad))/((ihi-ilo+2*pad)||1)*(X1-X0);
-      const path=key=>pts.filter(q=>q[key]>0).map((q,i)=>(i?'L':'M')+IX(q[key]).toFixed(1)+' '+yAt(q.k)?.toFixed(1)).filter(t=>!/undefined/.test(t)).join(' ');
-      const pp=path('pv'); if(pp) s+=`<path d="${pp}" fill="none" stroke="var(--tx3)" stroke-width="1.2" stroke-dasharray="3 4"/>`;
-      s+=`<path d="${path('iv')}" fill="none" stroke="#7fd0ff" stroke-width="1.6" opacity=".9"/>`;
+      const path=(pts,key)=>pts.filter(q=>q[key]>0).map((q,i)=>(i?'L':'M')+IX(q[key]).toFixed(1)+' '+yAt(q.k)?.toFixed(1)).filter(t=>!/undefined/.test(t)).join(' ');
+      sets.forEach((pts,n)=>{
+        const pp=path(pts,'pv'); if(pp) s+=`<path d="${pp}" fill="none" stroke="var(--tx3)" stroke-width="1.2" stroke-dasharray="3 4"/>`;
+        const col=sets.length>1?LAD_COLS[Math.min(n,3)]:'#7fd0ff';
+        s+=`<path d="${path(pts,'iv')}" fill="none" stroke="${col}" stroke-width="1.6" opacity=".9"/>`; });
       s+=`<line class="axis" x1="${X0}" y1="${TOP-8}" x2="${X1}" y2="${TOP-8}"/>`
        + [ilo,(ilo+ihi)/2,ihi].map((v,i)=>`<text class="lbl" x="${IX(v)}" y="${TOP-13}" text-anchor="${i===0?'start':i===2?'end':'middle'}" style="font-size:10.5px;fill:#7fd0ff">${i===0?'IV ':''}${(v*100).toFixed(1)}%</text>`).join('');
     }
@@ -1095,7 +1106,7 @@ function ladderSvg(e,big){
   const lines=[...(LADMODE==='charm'?[[gf.charmFlip,'var(--warn)','CHARM FLIP',true]]:[]),
     ...(LADMODE==='vanna'?[[gf.vannaFlip,'#7fd0ff','VANNA FLIP',true]]:[]),
     [e.gexFlip,'var(--gam)','GEX FLIP',true],[e.maxPain,'var(--pain)','MAX PAIN',true],
-    [e.putWall,'var(--put)','PUT WALL',true],[e.callWall,'var(--call)','CALL WALL',true],[spot,'var(--tx)','SPOT',false]]
+    [e.putWall,'var(--put)',e._src==='cboe'?'γ PUT WALL':'PUT WALL',true],[e.callWall,'var(--call)',e._src==='cboe'?'γ CALL WALL':'CALL WALL',true],[spot,'var(--tx)','SPOT',false]]
     .map(([px,col,txt,dash])=>({px,col,txt,dash,y:yAt(px)})).filter(l=>l.y!=null).sort((a,b)=>a.y-b.y);
   let lastY=-1e9;
   lines.forEach(l=>{ l.ly=Math.max(l.y-4,lastY+13); lastY=l.ly;
@@ -1105,6 +1116,20 @@ function ladderSvg(e,big){
 }
 
 function chartLadder(e,big){
+  const cb=CBOE_PAIRS[SYM];
+  let srcBar='', cmp='';
+  if(cb){
+    const st=CBOE_DATA[SYM];
+    const stab=(v,t)=>`<button class="lmode lsrc${LADSRC===v?' on':''}" onclick="setLadSrc('${v}')">${t}</button>`;
+    srcBar=`<div class="lctl"><span class="muted" style="font-size:12px;margin-right:4px">Source</span>${stab('cme','CME '+cb.fut+' futures options')}${stab('cboe','Cboe '+cb.label+' index options')}
+      <span class="muted" style="font-size:11.5px;margin-left:6px">${st?.data?`Cboe as of ${hhmm(st.data.asOfMs)}${st.data.stale?' · <b style="color:var(--warn)">stale copy</b>':''} · ${cb.label} ${fx(st.data.spot,SYM)} (15-min delayed)`:st?.err?`<span style="color:var(--warn)">Cboe: ${esc(st.err)}</span>`:''}</span></div>`;
+    if(st?.data) cmp=cboeCompare(e,st.data,cb);
+    if(LADSRC==='cboe'){
+      if(!st?.data){ if(!st?.loading) loadCboe(SYM);
+        return `<div class="ladder" data-big="${big?1:0}">${srcBar}<div class="empty">${st?.err?'Cboe chain unavailable: '+esc(st.err):'Loading the Cboe '+cb.label+' chain…'}</div></div>`; }
+      e=cboeEntry(e,st.data);
+    } else if(!st) loadCboe(SYM);      // fetch quietly so the comparison is there
+  }
   const tab=(m,t)=>`<button class="lmode${LADMODE===m?' on':''}" onclick="setLadMode('${m}')">${t}</button>`;
   const R=ladderRows(e,LADMODE);
   const leg=(R&&R.legend||[]).map(([c,t,v])=>`<span class="lleg"><i style="background:${c}"></i>${t}<b>${v}</b></span>`).join('');
@@ -1116,7 +1141,7 @@ function chartLadder(e,big){
     vanna:'Vanna: how much the hedge changes for a <b>1-point move in implied vol</b>. Same convention: a bar to the <b>right</b> means dealers <b>buy</b> if IV <b>falls</b> (and sell if it rises); <b>left</b> is the reverse. Dormant while IV is flat — it matters on IV crush after an event or an IV spike in a selloff. Read it with the ATM IV change in Today\'s read. Blue dashes = vanna flip.',
     vol:'Today\'s traded volume weighted by gamma — where today\'s activity carries hedging weight. A busy strike with little open interest is a fresh fight, not an established wall.',
     oi:'Raw contracts, primary expiry. A tall bar is a lot of paper parked at a price — not proof dealers are hedging it. Near expiry, prefer the GEX view.'};
-  return `<div class="ladder" data-big="${big?1:0}">
+  return `<div class="ladder" data-big="${big?1:0}">${srcBar}${cmp}
     <div class="lctl">${tab('gex','Net GEX by expiry')}${tab('cp','Call / Put GEX')}${tab('dex','Delta')}${tab('charm','Charm')}${tab('vanna','Vanna')}${tab('vol','Volume gamma')}${tab('oi','Open interest')}
       ${R&&R.stacked?`<label class="liv" title="One bar per strike = the true net. Stacked bars on both sides of zero overstate a strike whose expiries (or calls/puts) offset."><input type="checkbox" ${LADNET?'checked':''} onchange="LADNET=this.checked;refreshLadders()"> Net only</label>`:''}
       <label class="liv" style="margin-left:${R&&R.stacked?'12px':'auto'}"><input type="checkbox" ${LADIV?'checked':''} onchange="LADIV=this.checked;refreshLadders()"> IV smile</label></div>
@@ -1128,6 +1153,70 @@ function chartLadder(e,big){
 function refreshLadders(){ const e=STORE[SYM]; if(!e) return;
   document.querySelectorAll('.ladder').forEach(el=>{ el.outerHTML=chartLadder(e, el.dataset.big==='1'); }); }
 function setLadMode(m){ LADMODE=m; refreshLadders(); }
+
+// ── Cboe index options (SPX/NDX/RUT/DJX) as a second, additive source ──────────
+// A COPY of js/cboeChain.js CBOE_PAIRS' display fields (this page is a classic script).
+// The CME entry is never modified: the Cboe view is a separate object built on top of it,
+// so the page's other panels, the export and every bot keep reading CME exactly as before.
+const CBOE_PAIRS = {
+  'SPX500_USD':{label:'SPX',fut:'ES'}, 'NAS100_USD':{label:'NDX',fut:'NQ'},
+  'US2000_USD':{label:'RUT',fut:'RTY'}, 'US30_USD':{label:'DJX',fut:'YM'},
+};
+let LADSRC='cme';
+const CBOE_DATA={};   // pair -> { data, err, loading, at }
+async function loadCboe(pair){
+  const st=CBOE_DATA[pair]=CBOE_DATA[pair]||{};
+  if(st.loading||(st.data&&Date.now()-st.at<5*60e3)) return;
+  st.loading=true;
+  try{
+    const r=await fetch('/api/cboe-chain?pair='+encodeURIComponent(pair),{cache:'no-store'});
+    const j=await r.json();
+    if(!j.ok) throw new Error(j.error||('HTTP '+r.status));
+    st.data=j; st.err=null; st.at=Date.now();
+  }catch(err){ st.err=err.message; }
+  st.loading=false;
+  if(pair===SYM) refreshLadders();
+}
+function setLadSrc(v){ LADSRC=v; refreshLadders(); }
+// The CME entry with the ladder-facing fields swapped for Cboe's. Strikes are index
+// levels, which the CFD tracks closely; the FUTURES display toggle adds the CME basis,
+// which puts Cboe's levels in futures terms.
+function cboeEntry(e,c){
+  const L=c.levels||{};
+  return {...e, _src:'cboe', spot:c.spot, gexLadder:c.ladder, gexProfile:c.oiProfile,
+    callWall:L.callWallGamma, putWall:L.putWallGamma, gexFlip:L.gexFlip, maxPain:L.maxPain,
+    gexFlips:L.flips||[], exposures:{...(e.exposures||{}), gex:L.netGex},
+    ivSmile:null, ivSmiles:c.smiles||[], greeksFlow:null, dayExpiry:null,
+    totalCallOI:(c.oiProfile||[]).reduce((a,r)=>a+r.callOI,0), totalPutOI:(c.oiProfile||[]).reduce((a,r)=>a+r.putOI,0)};
+}
+// Gamma call/put wall over the nearest three expiries of a ladder (COG's 0/1/2 DTE).
+function _nearGammaWalls(L){
+  if(!L||!Array.isArray(L.series)||!L.strikes) return {c:null,p:null};
+  const ser=L.series.filter(s=>!s.rest).slice(0,3);
+  let bc=-1,vc=0,bp=-1,vp=0;
+  L.strikes.forEach((k,i)=>{ const c=ser.reduce((a,s)=>a+(s.call?.[i]||0),0), p=ser.reduce((a,s)=>a+(s.put?.[i]||0),0);
+    if(c>vc){vc=c;bc=i;} if(p>vp){vp=p;bp=i;} });
+  return {c:bc<0?null:L.strikes[bc], p:bp<0?null:L.strikes[bp]};
+}
+// Side-by-side levels: CME (ES/NQ/RTY/YM options) vs Cboe (SPX/NDX/RUT/DJX options), both
+// in CFD terms, plus Cboe's in futures terms (+ the CME basis). Where they agree the level
+// has two books behind it; where they don't, the gap is worth knowing before trading it.
+function cboeCompare(e,c,cb){
+  const L=c.levels||{}, cg=_nearGammaWalls(e.gexLadder), b=Number.isFinite(e.basis)?e.basis:null;
+  const f=v=>Number.isFinite(v)?fx(v,SYM):'—', fut=v=>(Number.isFinite(v)&&b!=null)?fx(v+b,SYM):'—';
+  const gap=(a,v)=>(Number.isFinite(a)&&Number.isFinite(v))?`<span class="muted"> ${(v-a)>=0?'+':''}${(v-a).toFixed(dp(SYM)>2?4:1)}</span>`:'';
+  const cmeReg=e.exposures?.gex>0?'PIN':e.exposures?.gex<0?'BREAKOUT':'—';
+  const row=(k,a,v,hint)=>`<tr><td>${k}${hint?`<span class="muted" style="font-size:11px"> ${hint}</span>`:''}</td><td>${f(a)}</td><td>${f(v)}${gap(a,v)}</td><td class="muted">${fut(v)}</td></tr>`;
+  return `<div class="lcmp"><table><thead><tr><th>Level</th><th>CME ${cb.fut} opts</th><th>Cboe ${cb.label} opts</th><th>Cboe in ${cb.fut} terms</th></tr></thead><tbody>`
+    + row('γ call wall',cg.c,L.callWallGamma,'0–2 DTE')
+    + row('γ put wall',cg.p,L.putWallGamma,'0–2 DTE')
+    + row('OI call wall',e.callWall,L.callWallOI)
+    + row('OI put wall',e.putWall,L.putWallOI)
+    + row('GEX flip',e.gexFlip,L.gexFlip)
+    + row('Max pain',e.dayExpiry?.maxPain??e.maxPain,L.maxPain,'nearest')
+    + `<tr><td>Regime</td><td>${cmeReg}</td><td>${esc(L.regime||'—')}</td><td class="muted">${b==null?'no basis stored':'basis '+(b>=0?'+':'')+b.toFixed(2)}</td></tr>`
+    + `</tbody></table><div class="muted" style="font-size:11.5px;margin-top:4px">Both columns in ${nm(SYM)} CFD terms. CME OI walls are the analysed expiry; Cboe OI walls are every expiry. The CFD tracks the cash index, so Cboe needs no basis on the CFD — add the CME basis for ${cb.fut} futures. Recorded daily for comparison (/api/cboe-snapshots).</div></div>`;
+}
 // Tap-to-read: phones have no hover, so the per-row <title> is unreachable there.
 function ladTip(el){ const box=el.closest('.ladder')?.querySelector('.ltipbox'); if(box){ box.textContent=el.dataset.tip; box.classList.add('on'); } }
 // Redraw when the window crosses the phone breakpoint (rotate / resize) — the layout is
