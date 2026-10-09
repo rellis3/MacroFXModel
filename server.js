@@ -223,7 +223,8 @@ import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oi
 import { levelExpectation } from './js/levelExpectation.js';   // per-level Reject/Break/Magnet reading
 import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
 import { buildOILevelText } from './js/oiLevelExport.js';
-import { oiGexLadder as _oiGexLadder } from './js/oi.js';   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
+import { oiGexLadder as _oiGexLadder } from './js/oi.js';
+import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _parseCboeChain, cboeLadder as _cboeLadder, cboeSnapshotRow as _cboeSnapshotRow } from './js/cboeChain.js';   // free delayed Cboe index-options chain (additive to CME; dashboard toggle + tracking)   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
 import { meetingProbabilities as _zqMeetingProbs } from './js/fedPathZq.js';
 import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE, OI_PRODUCT_SPEC as _OI_SPEC } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
 import { buildOIZones, explainNoZones, oiSizeCalibrationStats as _oiSizeCalibrationStats } from './js/oiZones.js';
@@ -21626,6 +21627,94 @@ app.get('/api/oi-store', async (req, res) => {
     }
     res.json({ data: store });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── CBOE INDEX OPTIONS (SPX / NDX / RUT / DJX) ─────────────────────────────────
+// A SECOND, ADDITIVE source next to the CME futures-options pipeline: Cboe's free
+// delayed-quotes chain (the index book COG-style GEX charts are built on). Nothing
+// here reads or writes oi_store — CME stays the source for every bot and export.
+//
+// Fetched ON DEMAND (the dashboard toggle) and by the gated `cboeSnapshot` job only:
+// never at boot and never from the health check (/api/config), so Cboe being slow or
+// down cannot fail a deploy. 5-minute cache, one in-flight fetch per symbol, and a
+// failed fetch serves the last good copy marked stale rather than an error.
+const _CBOE_TTL_MS = 5 * 60_000;
+const _cboeCache = new Map();      // sym -> { at, built, err }
+const _cboeInflight = new Map();   // sym -> Promise
+async function _cboeBuilt(pair, { force = false } = {}) {
+  const cfg = _CBOE_PAIRS[pair];
+  if (!cfg) throw new Error(`no Cboe index for ${pair}`);
+  const hit = _cboeCache.get(cfg.sym);
+  if (!force && hit?.built && Date.now() - hit.at < _CBOE_TTL_MS) return { ...hit, stale: false };
+  if (_cboeInflight.has(cfg.sym)) return _cboeInflight.get(cfg.sym);
+  const p = (async () => {
+    try {
+      const r = await fetch(_cboeUrl(cfg.sym), { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' },
+        redirect: 'follow', signal: AbortSignal.timeout(25_000) });
+      if (!r.ok) throw new Error(`Cboe ${r.status}`);
+      const built = _cboeLadder(_parseCboeChain(await r.json()), { scale: cfg.scale });
+      if (!built) throw new Error('Cboe chain empty or unparseable');
+      const row = { at: Date.now(), built, err: null };
+      _cboeCache.set(cfg.sym, row);
+      return { ...row, stale: false };
+    } catch (e) {
+      if (hit?.built) { hit.err = e.message; return { ...hit, stale: true }; }
+      throw e;
+    } finally { _cboeInflight.delete(cfg.sym); }
+  })();
+  _cboeInflight.set(cfg.sym, p);
+  return p;
+}
+
+app.get('/api/cboe-chain', async (req, res) => {
+  const pair = String(req.query.pair || '');
+  const cfg = _CBOE_PAIRS[pair];
+  if (!cfg) return res.status(400).json({ ok: false, error: `no Cboe index for ${pair}`, pairs: Object.keys(_CBOE_PAIRS) });
+  try {
+    const r = await _cboeBuilt(pair);
+    res.json({ ok: true, pair, index: cfg.label, fut: cfg.fut, scale: cfg.scale, stale: r.stale, error: r.err || null,
+      fetchedAt: r.at, ...r.built });
+  } catch (e) { res.status(502).json({ ok: false, pair, error: e.message }); }
+});
+
+// Tracking record: one row per index per US trading day, Cboe's levels next to the CME
+// entry's for the same pair, so the two sources can be compared over time before
+// either is trusted for anything. Rows are refreshed at most every 2 h through the
+// session (the last write of the day is the closest to the close). Analysis only.
+const _CBOE_SNAP_KEY = 'cboe_snap_v1';
+let _cboeSnapLastMs = 0;
+async function _cboeSnapshotTick() {
+  const now = new Date(), wd = now.getUTCDay(), h = now.getUTCHours();
+  if (wd === 0 || wd === 6 || h < 14 || h >= 21) return;           // US cash session (UTC, approx.)
+  if (Date.now() - _cboeSnapLastMs < 2 * 60 * 60_000) return;
+  _cboeSnapLastMs = Date.now();
+  let cme = {};
+  try { const raw = await kv.get('oi_store'); cme = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {}; } catch { cme = {}; }
+  let book = {};
+  try { const raw = await kv.get(_CBOE_SNAP_KEY); book = raw ? (JSON.parse(raw).data ?? {}) : {}; } catch { book = {}; }
+  const day = now.toISOString().slice(0, 10);
+  let wrote = 0;
+  for (const pair of Object.keys(_CBOE_PAIRS)) {
+    try {
+      const r = await _cboeBuilt(pair, { force: true });
+      if (r.stale) continue;                                          // never record a stale copy as today's
+      const row = _cboeSnapshotRow(r.built, cme[pair]);
+      if (!row) continue;
+      (book[pair] = book[pair] || {})[day] = row;
+      wrote++;
+    } catch (e) { console.error('[cboe-snapshot]', pair, e.message); }
+  }
+  if (wrote) await kv.put(_CBOE_SNAP_KEY, JSON.stringify({ data: book, timestamp: Date.now() }));
+}
+svcInterval('cboeSnapshot', () => _cboeSnapshotTick().catch(e => console.error('[cboe-snapshot]', e.message)), 30 * 60_000);
+
+app.get('/api/cboe-snapshots', async (req, res) => {
+  try {
+    const raw = await kv.get(_CBOE_SNAP_KEY);
+    const book = raw ? (JSON.parse(raw).data ?? {}) : {};
+    const pair = String(req.query.pair || '');
+    res.json({ ok: true, data: pair ? { [pair]: book[pair] || {} } : book });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ── WHERE THE NIGHTLY SWEEP WRITES ───────────────────────────────────────────
