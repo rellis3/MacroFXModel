@@ -154,7 +154,7 @@ export const SERVICES = [
     cadence: 'every 5 min', cost: 'low', lean: true, on: true,
     feeds: '/api/yield-shape-regime -> yield-shape-regime.html. Reads Yahoo ^TNX (once/day) and the level-atlas live M1 cache; writes yield_shape_regime_v1. Off = the record stops.' },
   { id: 'cboeSnapshot', where: 'server', label: 'Cboe index-options snapshot (SPX/NDX/RUT/DJX vs CME, for tracking)',
-    cadence: 'checks every 30 min, US session weekdays; refreshes each index\'s day row at most every 2 h (4 Cboe fetches, 1 KV write per refresh)', cost: 'low', lean: false, on: true,
+    cadence: 'checks every 30 min, US session weekdays; refreshes each index\'s day row at most every 2 h (4 Cboe fetches, 1 KV write per refresh)', cost: 'low', lean: true, on: true,
     feeds: '/api/cboe-snapshots (the CME-vs-Cboe comparison record). Fetches the free delayed Cboe chain; writes cboe_snap_v1. Analysis only — no bot reads it. Off = the record stops; /api/cboe-chain (the dashboard toggle) still works on demand.' },
   { id: 'dailySnapshot', where: 'server', label: 'Daily snapshot (one row per day of what the page thought)',
     cadence: 'hourly, overwrites the current UTC day\'s row', cost: 'low', lean: false, on: true,
