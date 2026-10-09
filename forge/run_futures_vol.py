@@ -36,6 +36,14 @@ def build_daily(root: str) -> pd.DataFrame:
     if cache.exists() and cache.stat().st_mtime >= src.stat().st_mtime:
         return pd.read_parquet(cache)
     d = pd.read_parquet(src, columns=["timestamp", "open", "high", "low", "close", "volume"])
+    out = daily_from_bars(d)
+    out.to_parquet(cache)
+    return out
+
+
+def daily_from_bars(d: pd.DataFrame) -> pd.DataFrame:
+    """1-minute bars (columns timestamp[UTC], open, high, low, close, volume) -> London 00:00-22:00 daily table."""
+    d = d.copy()
     lt = d["timestamp"].dt.tz_convert("Europe/London")
     d["date"] = lt.dt.tz_localize(None).dt.normalize()
     d["m"] = lt.dt.hour * 60 + lt.dt.minute
@@ -59,9 +67,7 @@ def build_daily(root: str) -> pd.DataFrame:
     out["jshare"] = (np.maximum(out["rv5"] - out["bv5"], 0) / out["rv5"]).fillna(0.0)
     med = out["volume"].rolling(20).median().shift(1)
     out["vsurp"] = np.log(out["volume"] / med)
-    out = out.set_index("date")
-    out.to_parquet(cache)
-    return out
+    return out.set_index("date")
 
 
 # ── causal expanding-OLS HAR forecasts ───────────────────────────────────────────────────────

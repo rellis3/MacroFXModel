@@ -85,3 +85,29 @@ Pooled HL p75 exceed-rate: control 0.256, B2 0.256.
 - The size is unchanged from Step 1: a real ~1.5% lower ladder loss, not a new edge. It is cheap to get: the CFD M1
   bars we already hold can compute 5-minute RV, so this may not even need futures data. **Untested:** whether the same
   5-minute-RV HAR run on the CFD M1 bars (no futures) captures the same gain. If it does, the live path needs no bridge.
+
+---
+
+# Step 2b result — does the gain need futures? (pre-reg: Step 2b, committed before the run)
+
+*`python -m forge.run_cfd_rv`. Same CFD rows, arms {B0 live, B2 futures 5-min RV, B4 = identical 5-min-RV HAR on the CFD
+M1 bars}.*
+
+| comparison | pooled ratio | 95% CI | halves | roots better |
+|---|---|---|---|---|
+| B4 (CFD 5-min RV) vs B0 (live) | **0.9832** | [0.9772, 0.9889] | 0.9810 / 0.9855 | 12 / 12 |
+| B2 (futures) vs B0 (re-run, common rows) | 0.9848 | [0.9787, 0.9907] | 0.9819 / 0.9880 | 12 / 12 |
+| **B2 (futures) vs B4 (CFD)** | **1.0016** | [0.9990, 1.0040] | 1.0009 / 1.0026 | 3 / 12 |
+
+B4 vs B0 passes the same four rules (HL p75 exceed-rate 0.262).
+
+**Verdict: futures add nothing beyond CFD intraday data for this forecast.** The 1.5% gain comes from using 5-minute
+realised variance instead of daily Garman-Klass variance. The CFD M1 bars already held produce it (slightly better, 0.983
+vs 0.985); the futures series is statistically indistinguishable (B2/B4 interval spans 1). **The bridge is not needed
+for this improvement.** The live path needs a 5-minute realised-variance history per instrument, not futures.
+
+## What the futures data is still for
+
+Anything the CFD feed cannot give: real traded volume (tested: no range information at the daily level, Step 1 C3),
+term structure / calendar spreads, true futures prices for the OI-basis problem, and (once real-time) order flow and
+depth. This study does not test those.
