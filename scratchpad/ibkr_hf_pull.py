@@ -177,12 +177,27 @@ def do_fridays(ib, weeks=26):
         print(f"  {c.localSymbol} -> stir_1m/{path.name}: +{got:,} Friday bars")
 
 
+def do_u6(ib, weeks=6):
+    """1-min MIDPOINT for SR3U6 (C.OG's contract), 1-week requests ending Saturday 00:00 UTC (whole weeks, Fridays included)."""
+    c = resolve(ib, "SOFR3", "CME", "USD", "202609", False)
+    if c is None:
+        return
+    path = M1 / f"{fname(c)}.parquet"
+    sat = (NOW + timedelta(days=(5 - NOW.weekday()) % 7)).replace(hour=0, minute=0, second=0, microsecond=0)
+    for w in range(weeks):
+        df = hist(ib, c, sat - timedelta(weeks=w), "1 W", "1 min", "MIDPOINT")
+        if df is not None:
+            save_merge(path, df)
+    n = len(pd.read_parquet(path, columns=["time"])) if path.exists() else 0
+    print(f"  {c.localSymbol} -> stir_1m/{path.name}: {n:,} bars")
+
+
 if __name__ == "__main__":
     steps = sys.argv[1:] or ["clean", "mid15", "m1"]
     ib = IB()
     ib.RequestTimeout = 20
     ib.connect(HOST, PORT, clientId=CID, timeout=15, readonly=True)
     for s in steps:
-        {"clean": do_clean, "mid15": do_mid15, "m1": do_m1, "fridays": do_fridays}[s](ib)
+        {"clean": do_clean, "mid15": do_mid15, "m1": do_m1, "fridays": do_fridays, "u6": do_u6}[s](ib)
     ib.disconnect()
     print("done")
