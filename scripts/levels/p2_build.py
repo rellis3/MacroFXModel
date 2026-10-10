@@ -39,7 +39,8 @@ def build(sym):
     fh = pd.read_csv(FH / f"{FH_NAME.get(sym, sym)}.csv", usecols=["date", "oos", "pit_sig_daily"] + [f"pit_{s}_{r}" for s in ("oh", "ol") for r in ("p50", "p75", "p90")]).set_index("date")
     cls = cls_of(sym)
     hs = hour_shares(cls)
-    rows, races = [], []
+    races = []
+    cols = {k: [] for k in ['date', 'h', 'family', 'price', 'dist', 't_min', 'used', 'D', 'sig', 'oos', 'v05', 'v1', 'v2', 'v4', 'vend']}
     for d, m, o, h, l, c, sig, rel in sessions(sym):
         if d not in regd or d not in fh.index:
             continue
@@ -77,12 +78,14 @@ def build(sym):
             idx = np.flatnonzero(elig)
             if not len(idx):
                 continue
-            # nearest 3 per family per side
-            keep = []
-            dfm = pd.DataFrame({"i": idx, "fam": fam[idx], "side": np.sign(dist[idx]), "ad": np.abs(dist[idx])})
-            for _, g in dfm.groupby(["fam", "side"]):
-                keep += g.nsmallest(3, "ad").i.tolist()
-            keep = np.array(sorted(keep))
+            # nearest 3 per family per side (vectorised rank within (family, side))
+            fcode = np.unique(fam, return_inverse=True)[1]
+            key = fcode[idx] * 2 + (dist[idx] > 0)
+            order = np.lexsort((np.abs(dist[idx]), key))
+            ks = key[order]
+            starts = np.r_[0, np.flatnonzero(np.diff(ks)) + 1]
+            rank = np.arange(len(ks)) - np.repeat(starts, np.diff(np.r_[starts, len(ks)]))
+            keep = np.sort(idx[order[rank < 3]])
             s0 = dec + 1
             H, Lw = h[s0:e22], l[s0:e22]
             cmax, cmin = np.maximum.accumulate(H), np.minimum.accumulate(Lw)
@@ -92,8 +95,11 @@ def build(sym):
             t_min = np.where(ti < len(H), mins[np.minimum(ti, len(H) - 1)], np.nan)
             v = {k: hs[hh:hh + int(k)].sum() if k >= 1 else hs[hh] * k for k in (0.5, 1, 2, 4)}
             v["end"] = hs[hh:22].sum()
-            for j, i in enumerate(keep):
-                rows.append((d, hh, fam[i], px[i], dist[i], t_min[j], (hi - lo) / unit, (P0 - O) / unit, s, f.oos, v[0.5], v[1], v[2], v[4], v["end"]))
+            n = len(keep)
+            cols["date"].append(np.full(n, d)); cols["h"].append(np.full(n, hh)); cols["family"].append(fam[keep]); cols["price"].append(px[keep])
+            cols["dist"].append(dist[keep]); cols["t_min"].append(t_min); cols["used"].append(np.full(n, (hi - lo) / unit)); cols["D"].append(np.full(n, (P0 - O) / unit))
+            cols["sig"].append(np.full(n, s)); cols["oos"].append(np.full(n, f.oos)); cols["v05"].append(np.full(n, v[0.5])); cols["v1"].append(np.full(n, v[1]))
+            cols["v2"].append(np.full(n, v[2])); cols["v4"].append(np.full(n, v[4])); cols["vend"].append(np.full(n, v["end"]))
             # race: nearest eligible above and below across all families
             ab = keep[up]
             bl = keep[~up]
@@ -106,7 +112,7 @@ def build(sym):
                 tb = tb if tb < len(H) else 10**9
                 res = "neither" if ta == tb == 10**9 else ("amb" if ta == tb else ("up" if ta < tb else "down"))
                 races.append((d, hh, fam[ia], fam[ib], dist[ia], -dist[ib], res, (hi - lo) / unit, (P0 - O) / unit, s, f.oos, v["end"]))
-    L = pd.DataFrame(rows, columns=["date", "h", "family", "price", "dist", "t_min", "used", "D", "sig", "oos", "v05", "v1", "v2", "v4", "vend"])
+    L = pd.DataFrame({k: np.concatenate(v) if v else np.array([]) for k, v in cols.items()})
     R = pd.DataFrame(races, columns=["date", "h", "fam_up", "fam_dn", "a", "b", "res", "used", "D", "sig", "oos", "vend"])
     for X in (L, R):
         X["inst"] = sym
@@ -119,6 +125,6 @@ def build(sym):
 
 if __name__ == "__main__":
     syms = sys.argv[1:] or [s for s in JOBS if (REG / f"{s}.csv").exists()]
-    with Pool(min(8, len(syms))) as p:
+    with Pool(min(6, len(syms))) as p:
         for r in p.imap_unordered(build, syms):
             print(r, flush=True)

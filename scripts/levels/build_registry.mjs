@@ -11,7 +11,6 @@
 // Output data/levels/registry/<SYM>.csv: inst,date,source,kind,price  (data/ is gitignored).
 //   node scripts/levels/build_registry.mjs [fileKey:SYM ...]
 import fs from 'fs';
-import { loadM1ForPair } from '../../js/volBacktestM1Engine.js';
 import { bucketM1IntoSessions } from '../../js/forecastAnalyser.js';
 import { sessionConfluenceLevels } from '../../js/rangeLineAnalyser.js';
 import { collectLevels } from '../../js/levelSources.js';
@@ -30,8 +29,16 @@ function lowerBound(a, x) { let lo = 0, hi = a.length; while (lo < hi) { const m
 
 for (const [key, SYM] of JOBS) {
   const t0 = Date.now();
-  const packed = await loadM1ForPair(key);
-  const pip = pipSize(SYM);
+  // M1 from the flat binary written by scripts/levels/m1_to_bin.py (same parquet loadM1ForPair reads; JS parquet decoding
+  // needs ~2 GB and ~4 min per instrument, which exhausted memory with several builders in parallel).
+  const buf = fs.readFileSync(`data/levels/m1bin/${SYM}.bin`);
+  const n = buf.readInt32LE(0);
+  const ab = buf.buffer.slice(buf.byteOffset + 4, buf.byteOffset + buf.length);
+  const times = new Int32Array(ab, 0, n);
+  const f64 = new Float64Array(ab.slice(4 * n));
+  const packed = { n, times, opens: f64.subarray(0, n), highs: f64.subarray(n, 2 * n), lows: f64.subarray(2 * n, 3 * n), closes: f64.subarray(3 * n, 4 * n), volumes: f64.subarray(4 * n, 5 * n) };
+  // instrumentRegistry lacks some crosses (e.g. CADCHF): standard FX pip fallback, recorded in the inventory.
+  let pip; try { pip = pipSize(SYM); } catch { pip = SYM.endsWith('JPY') ? 0.01 : 0.0001; console.warn(`${SYM}: pip from fallback ${pip}`); }
   // NY-close daily bars: the precomputed research file (same bars as nyCloseDailyBars; computing them from M1 takes ~5 min/instrument).
   // `d` is the bar's closing (New York) date; endSec = 17:00 New York on that date.
   const nyFile = { US30: 'US30' }[SYM] ?? SYM;

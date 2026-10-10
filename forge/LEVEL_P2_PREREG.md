@@ -70,3 +70,14 @@
 **Stopping rules:**
 - **If M1 fails vs B1:** B1 is the reach model (with calibration monitoring), and Phase 2 stops adding features.
 - **If B1 fails calibration:** the class vol-time profile is recalibrated as a separate registered fix, not tuned here.
+
+## Results record (2026-10-11), detail in `analysis/output/level_p2/RESULTS.md`
+- **Reach (22:00) ACCEPTED:** M1 vs B1 +1.65% [1.14, 2.22] conf, +0.68% [0.40, 1.00] dev; calibration 5.65 → 0.89pp. Larger gains at shorter horizons (30 min +5.4%).
+- **Time ACCEPTED:** integrated Brier +2.58% [1.93, 3.28].
+- **Race NOT accepted:** +0.05% [−0.03, 0.12]; b ÷ (a + b) is already calibrated.
+- **Family invariance:** −0.01% [−0.03, 0.02], so the level family adds no reach information.
+- **Deviation:** none from the registered design.
+- **Process fixes before outcomes:**
+  - registry builder switched to precomputed NY-close bars and a binary M1 export (memory);
+  - the row builder's selection step was vectorised.
+  These are implementation changes, not definition changes.
