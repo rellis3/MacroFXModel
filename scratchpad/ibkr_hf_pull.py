@@ -264,7 +264,7 @@ def do_strip(ib, weeks=26):
     the first four quarterly contracts of each short-rate future, whole weeks ending Saturday 00:00 UTC. Resumable per
     ISO week like m1. Already held: SR3Z6, SR3H7, IZ6, ER3U6 (expired mid-Sep)."""
     specs = [("ER3", "ICEEU", "EUR", m, False) for m in ("202612", "202703", "202706", "202709")] + \
-            [("SOFR3", "CME", "USD", m, False) for m in ("202706", "202709")] + \
+            [("SOFR3", "CME", "USD", m, False) for m in ("202609", "202706", "202709")] + \
             [("I", "ICEEU", "EUR", m, False) for m in ("202703", "202706", "202709")]
     sat = (NOW + timedelta(days=(5 - NOW.weekday()) % 7)).replace(hour=0, minute=0, second=0, microsecond=0)
     for spec in specs:
