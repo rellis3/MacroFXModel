@@ -98,3 +98,21 @@ flat, then Nasdaq catches up; (B) a confirmed low/high in the spread (45 min con
     42 % vs 41 % at random bars.
   - Flagged, unregistered: C1 (his literal pair) +0.03..+0.09 in all nine confirm cells, none in explore.
 - Evidence ledger `stir-composite-nq`. Reopen only with ~a year more 1-min data (Apr 2027), not more cells.
+
+## Curve structure, hours-scale (2026-10-11)
+
+Owner's new direction: does the SHAPE of repricing across SOFR/€STR maturities (broad / front / deferred / steepen /
+flatten / twist, speed) carry advance information about Nasdaq return, realised vol and breakouts, beyond a single
+contract or two-contract spread? Pre-registered `forge/RATE_CURVE_STRUCTURE_PREREG.md`; harness
+`scripts/rate_curve/{build_bars,curve_structure}.py`; results `analysis/output/rate_curve_structure/RESULTS.md` + figs.
+
+- **Types identifiable, frequencies unstable:** EU BROAD 47 → 4 fires, US DEFERRED 38 → 155 between halves; the
+  repricing regime itself changed (spring parallel, late-summer back-end). Most explore survivors had < 15 confirm events.
+- **Structure beyond contract/spread: NO (powered).** Nested OOS sets on confirm: Nasdaq-only R²/AUC ≥ single contract ≈
+  spreads ≫ full structure (ret R² −0.11/−0.20, breakout AUC 0.56 vs 0.62; intervals below zero; walk-forward agrees).
+- **Leads:** same-bar −0.24..−0.34 both halves; a 15-min lead (EU level/slope −0.08) appears in confirm only.
+- **Event study:** 16/432 pass FDR in explore, 3 pass confirm on 21–24 events (broad US 1h repricing → next-hour
+  continuation +0.13 % and 2-h vol ×1.2–1.3; US−EU 4h flattening → next-hour vol ×0.7–0.8). Planted power check: none of
+  the registered sizes detectable → insufficient data; the three are large-effect small-n candidates → paper record only.
+- Ledger `rate-curve-structure`. Possible feature if it survives forward: a "broad US repricing last hour" vol-context
+  flag in the ratesRegime read. Nothing from strip/PCA/front-deferred earned a place.

@@ -1,0 +1,145 @@
+regime,type,curve,ret_E,ret_C,breakout_E,breakout_C,n_E,n_C,ret_stable,brk_stable
+stock-rates sign: TOGETHER,BROAD,US,,,,,,,False,False
+stock-rates sign: TOGETHER,FRONT,US,,,,,,,False,False
+stock-rates sign: TOGETHER,DEFERRED,US,,,,,,,False,False
+stock-rates sign: TOGETHER,STEEPEN,US,,,,,,,False,False
+stock-rates sign: TOGETHER,FLATTEN,US,,,,,,,False,False
+stock-rates sign: TOGETHER,TWIST,US,,,,,,,False,False
+stock-rates sign: TOGETHER,BROAD,EU,,,,,,,False,False
+stock-rates sign: TOGETHER,FRONT,EU,,,,,,,False,False
+stock-rates sign: TOGETHER,DEFERRED,EU,,,,,,,False,False
+stock-rates sign: TOGETHER,STEEPEN,EU,,,,,,,False,False
+stock-rates sign: TOGETHER,FLATTEN,EU,,,,,,,False,False
+stock-rates sign: TOGETHER,TWIST,EU,,,,,,,False,False
+stock-rates sign: TOGETHER,BROAD,DIFF,,,,,,,False,False
+stock-rates sign: TOGETHER,FRONT,DIFF,,,,,,,False,False
+stock-rates sign: TOGETHER,DEFERRED,DIFF,,,,,,,False,False
+stock-rates sign: TOGETHER,STEEPEN,DIFF,,,,,,,False,False
+stock-rates sign: TOGETHER,FLATTEN,DIFF,,,,,,,False,False
+stock-rates sign: TOGETHER,TWIST,DIFF,,,,,,,False,False
+stock-rates sign: stocks-vs-rates OPPOSITE,BROAD,US,0.00020625127475298654,-6.162700566170187e-05,0.07034265103697024,0.009223138653588925,50.0,16.0,False,True
+stock-rates sign: stocks-vs-rates OPPOSITE,FRONT,US,,,,,,,False,False
+stock-rates sign: stocks-vs-rates OPPOSITE,DEFERRED,US,-0.0005015245235352239,-0.0009927358970667527,-0.12521290451858536,-0.27278905646836227,18.0,82.0,True,True
+stock-rates sign: stocks-vs-rates OPPOSITE,STEEPEN,US,,,,,,,False,False
+stock-rates sign: stocks-vs-rates OPPOSITE,FLATTEN,US,,-0.0008039479904143952,,-0.14151215546405815,,17.0,False,False
+stock-rates sign: stocks-vs-rates OPPOSITE,TWIST,US,-0.000368429775992078,-0.0004033794423849102,,,17.0,20.0,True,False
+stock-rates sign: stocks-vs-rates OPPOSITE,BROAD,EU,0.0010283037297854254,,-0.09049068229636309,,48.0,,False,False
+stock-rates sign: stocks-vs-rates OPPOSITE,FRONT,EU,,,,,,,False,False
+stock-rates sign: stocks-vs-rates OPPOSITE,DEFERRED,EU,,-1.0911038897637674e-05,,-0.16303295890738667,,123.0,False,False
+stock-rates sign: stocks-vs-rates OPPOSITE,STEEPEN,EU,0.0005169915590331736,,0.001771222465541622,,63.0,,False,False
+stock-rates sign: stocks-vs-rates OPPOSITE,FLATTEN,EU,-0.00048125234471365914,,0.04324587684342185,,31.0,,False,False
+stock-rates sign: stocks-vs-rates OPPOSITE,TWIST,EU,,,,,,,False,False
+stock-rates sign: stocks-vs-rates OPPOSITE,BROAD,DIFF,0.00014334720422613047,,-0.16614857703320524,,57.0,,False,False
+stock-rates sign: stocks-vs-rates OPPOSITE,FRONT,DIFF,-0.00036655053338741084,,-0.06965734896302977,,24.0,,False,False
+stock-rates sign: stocks-vs-rates OPPOSITE,DEFERRED,DIFF,,-0.00039476498934393,,-0.02315637941870019,,83.0,False,False
+stock-rates sign: stocks-vs-rates OPPOSITE,STEEPEN,DIFF,0.00023569187485555506,,-0.09204540866452232,,67.0,,False,False
+stock-rates sign: stocks-vs-rates OPPOSITE,FLATTEN,DIFF,0.000566275644566179,-0.0010075750332351249,-0.23632401562969646,-0.07708638515593491,39.0,21.0,False,True
+stock-rates sign: stocks-vs-rates OPPOSITE,TWIST,DIFF,-0.0003887927881019268,0.00021351030219179652,-0.004439957658681992,0.02567050707464158,46.0,19.0,False,False
+Nasdaq vol tercile: high vol,BROAD,US,-0.0003213295210908057,,-0.08806718395759494,,26.0,,False,False
+Nasdaq vol tercile: high vol,FRONT,US,,,,,,,False,False
+Nasdaq vol tercile: high vol,DEFERRED,US,,0.0003017652725248491,,-0.2982625482625483,,28.0,False,False
+Nasdaq vol tercile: high vol,STEEPEN,US,,,,,,,False,False
+Nasdaq vol tercile: high vol,FLATTEN,US,,,,,,,False,False
+Nasdaq vol tercile: high vol,TWIST,US,,,,,,,False,False
+Nasdaq vol tercile: high vol,BROAD,EU,0.0005408660356455067,,0.06577896988855891,,26.0,,False,False
+Nasdaq vol tercile: high vol,FRONT,EU,,,,,,,False,False
+Nasdaq vol tercile: high vol,DEFERRED,EU,,0.00029651906701395534,,-0.19773344773344775,,54.0,False,False
+Nasdaq vol tercile: high vol,STEEPEN,EU,0.0009189106152315424,,0.15309705720664624,,37.0,,False,False
+Nasdaq vol tercile: high vol,FLATTEN,EU,0.00042449008422951184,,0.012894354503943495,,16.0,,False,False
+Nasdaq vol tercile: high vol,TWIST,EU,,,,,,,False,False
+Nasdaq vol tercile: high vol,BROAD,DIFF,-0.00033715494037395155,,-0.2683556454960565,,32.0,,False,False
+Nasdaq vol tercile: high vol,FRONT,DIFF,,,,,,,False,False
+Nasdaq vol tercile: high vol,DEFERRED,DIFF,,-0.0007171921482573395,,-0.11254826254826256,,20.0,False,False
+Nasdaq vol tercile: high vol,STEEPEN,DIFF,0.00017083088722375756,,-0.12103421692462796,,28.0,,False,False
+Nasdaq vol tercile: high vol,FLATTEN,DIFF,,,,,,,False,False
+Nasdaq vol tercile: high vol,TWIST,DIFF,-1.9275460549139645e-05,,-0.2371056454960565,,16.0,,False,False
+Nasdaq vol tercile: mid vol,BROAD,US,,,,,,,False,False
+Nasdaq vol tercile: mid vol,FRONT,US,,,,,,,False,False
+Nasdaq vol tercile: mid vol,DEFERRED,US,,-0.0015057573716282136,,-0.2654965211891208,,40.0,False,False
+Nasdaq vol tercile: mid vol,STEEPEN,US,,,,,,,False,False
+Nasdaq vol tercile: mid vol,FLATTEN,US,,,,,,,False,False
+Nasdaq vol tercile: mid vol,TWIST,US,,,,,,,False,False
+Nasdaq vol tercile: mid vol,BROAD,EU,0.0024148147622606864,,-0.269878223495702,,16.0,,False,False
+Nasdaq vol tercile: mid vol,FRONT,EU,,,,,,,False,False
+Nasdaq vol tercile: mid vol,DEFERRED,EU,,-0.0004679154408346875,,-0.08692509261769227,,49.0,False,False
+Nasdaq vol tercile: mid vol,STEEPEN,EU,-0.00016573560369174655,,-0.27803039740874547,,23.0,,False,False
+Nasdaq vol tercile: mid vol,FLATTEN,EU,,,,,,,False,False
+Nasdaq vol tercile: mid vol,TWIST,EU,,,,,,,False,False
+Nasdaq vol tercile: mid vol,BROAD,DIFF,,,,,,,False,False
+Nasdaq vol tercile: mid vol,FRONT,DIFF,,,,,,,False,False
+Nasdaq vol tercile: mid vol,DEFERRED,DIFF,,-0.00026472915501206547,,0.12339236769976802,,36.0,False,False
+Nasdaq vol tercile: mid vol,STEEPEN,DIFF,0.0005547388051016258,,-0.12783276895024748,,22.0,,False,False
+Nasdaq vol tercile: mid vol,FLATTEN,DIFF,0.001461143598781689,,-0.394878223495702,,16.0,,False,False
+Nasdaq vol tercile: mid vol,TWIST,DIFF,-0.00018413018074330266,,0.06762177650429801,,20.0,,False,False
+Nasdaq vol tercile: low vol,BROAD,US,,,,,,,False,False
+Nasdaq vol tercile: low vol,FRONT,US,,,,,,,False,False
+Nasdaq vol tercile: low vol,DEFERRED,US,,,,,,,False,False
+Nasdaq vol tercile: low vol,STEEPEN,US,,,,,,,False,False
+Nasdaq vol tercile: low vol,FLATTEN,US,,,,,,,False,False
+Nasdaq vol tercile: low vol,TWIST,US,,,,,,,False,False
+Nasdaq vol tercile: low vol,BROAD,EU,,,,,,,False,False
+Nasdaq vol tercile: low vol,FRONT,EU,,,,,,,False,False
+Nasdaq vol tercile: low vol,DEFERRED,EU,,0.00027868845988683334,,-0.10781166399143927,,20.0,False,False
+Nasdaq vol tercile: low vol,STEEPEN,EU,,,,,,,False,False
+Nasdaq vol tercile: low vol,FLATTEN,EU,,,,,,,False,False
+Nasdaq vol tercile: low vol,TWIST,EU,,,,,,,False,False
+Nasdaq vol tercile: low vol,BROAD,DIFF,0.000269292043039826,,-0.07349565687024617,,17.0,,False,False
+Nasdaq vol tercile: low vol,FRONT,DIFF,,,,,,,False,False
+Nasdaq vol tercile: low vol,DEFERRED,DIFF,,-0.00032931116925796446,,-0.1263301825099578,,27.0,False,False
+Nasdaq vol tercile: low vol,STEEPEN,DIFF,-7.036252583404653e-05,,-0.014672127458481454,,17.0,,False,False
+Nasdaq vol tercile: low vol,FLATTEN,DIFF,-0.00026665548937335377,,-0.13624075490946186,,15.0,,False,False
+Nasdaq vol tercile: low vol,TWIST,DIFF,,,,,,,False,False
+session: Asia,BROAD,US,,,,,,,False,False
+session: Asia,FRONT,US,,,,,,,False,False
+session: Asia,DEFERRED,US,,,,,,,False,False
+session: Asia,STEEPEN,US,,,,,,,False,False
+session: Asia,FLATTEN,US,,,,,,,False,False
+session: Asia,TWIST,US,,,,,,,False,False
+session: Asia,BROAD,EU,,,,,,,False,False
+session: Asia,FRONT,EU,,,,,,,False,False
+session: Asia,DEFERRED,EU,,,,,,,False,False
+session: Asia,STEEPEN,EU,,,,,,,False,False
+session: Asia,FLATTEN,EU,,,,,,,False,False
+session: Asia,TWIST,EU,,,,,,,False,False
+session: Asia,BROAD,DIFF,,,,,,,False,False
+session: Asia,FRONT,DIFF,,,,,,,False,False
+session: Asia,DEFERRED,DIFF,,,,,,,False,False
+session: Asia,STEEPEN,DIFF,,,,,,,False,False
+session: Asia,FLATTEN,DIFF,,,,,,,False,False
+session: Asia,TWIST,DIFF,,,,,,,False,False
+session: London,BROAD,US,,,,,,,False,False
+session: London,FRONT,US,,,,,,,False,False
+session: London,DEFERRED,US,,,,,,,False,False
+session: London,STEEPEN,US,,,,,,,False,False
+session: London,FLATTEN,US,,,,,,,False,False
+session: London,TWIST,US,,,,,,,False,False
+session: London,BROAD,EU,,,,,,,False,False
+session: London,FRONT,EU,,,,,,,False,False
+session: London,DEFERRED,EU,,6.323808203968239e-05,,-0.2069752281616688,,39.0,False,False
+session: London,STEEPEN,EU,-0.0003048628594952292,,-0.1944630124777183,,22.0,,False,False
+session: London,FLATTEN,EU,,,,,,,False,False
+session: London,TWIST,EU,,,,,,,False,False
+session: London,BROAD,DIFF,-0.00046202549391161085,,-0.10355392156862742,,16.0,,False,False
+session: London,FRONT,DIFF,,,,,,,False,False
+session: London,DEFERRED,DIFF,,-0.0001652780146744399,,0.15419693301049242,,35.0,False,False
+session: London,STEEPEN,DIFF,,,,,,,False,False
+session: London,FLATTEN,DIFF,0.0008721600402862369,,-0.2035539215686274,,15.0,,False,False
+session: London,TWIST,DIFF,,,,,,,False,False
+session: US,BROAD,US,2.0319210860598808e-05,-6.162700566170187e-05,0.03749944707391517,0.09878318584070794,47.0,16.0,False,True
+session: US,FRONT,US,,,,,,,False,False
+session: US,DEFERRED,US,-0.0005834218702500178,-0.0011684090711843846,-0.1350773850773851,-0.17604558128257974,18.0,73.0,True,True
+session: US,STEEPEN,US,,,,,,,False,False
+session: US,FLATTEN,US,,,,,,,False,False
+session: US,TWIST,US,,,,,,,False,False
+session: US,BROAD,EU,0.001121460574928923,,-0.1795218295218295,,40.0,,False,False
+session: US,FRONT,EU,,,,,,,False,False
+session: US,DEFERRED,EU,,-4.533741647567913e-05,,-0.08276443320691113,,84.0,False,False
+session: US,STEEPEN,EU,0.0009579866128776823,,0.07901475584402418,,41.0,,False,False
+session: US,FLATTEN,EU,-0.00041866491879143867,,0.03158928158928165,,18.0,,False,False
+session: US,TWIST,EU,,,,,,,False,False
+session: US,BROAD,DIFF,0.0003822404860803097,,-0.22952182952182953,,40.0,,False,False
+session: US,FRONT,DIFF,-1.0127162467218167e-05,,-0.10583761899551375,,19.0,,False,False
+session: US,DEFERRED,DIFF,,-0.0005620992417070999,,-0.10955014749262537,,48.0,False,False
+session: US,STEEPEN,DIFF,0.0001622516793993495,,-0.0713251082103541,,61.0,,False,False
+session: US,FLATTEN,DIFF,0.0003750978972411427,-0.0008341438931083189,-0.2878551628551628,-0.06371681415929203,24.0,15.0,False,True
+session: US,TWIST,DIFF,-0.00026663005187051034,0.000337463671930327,-0.031134732747636007,0.09878318584070794,31.0,16.0,False,False

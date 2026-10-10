@@ -15,7 +15,7 @@ from pathlib import Path
 OUT = Path("analysis/output/rate_curve_structure"); B = pd.read_parquet(OUT / "bars15.parquet"); G = B.index
 DAY = pd.Series(G.date, index=G); HOUR = G.hour.to_numpy(); rng = np.random.default_rng(20261011)
 T = lambda s: pd.Timestamp(s, tz="UTC")
-EXPL = ((G > T("2026-04-13")) & (G <= T("2026-07-18"))).to_numpy(); CONF = ((G > T("2026-07-20")) & (G <= T("2026-10-10"))).to_numpy()
+EXPL = np.asarray((G > T("2026-04-13")) & (G <= T("2026-07-18"))); CONF = np.asarray((G > T("2026-07-20")) & (G <= T("2026-10-10")))
 Q = ["U6", "Z6", "H7", "M7", "U7"]; WS = {"1h": 4, "4h": 16}; HS = {"15m": 1, "1h": 4, "2h": 8, "4h": 16}
 US = B[[f"S_{q}" for q in Q]].set_axis(Q, axis=1) * 100; EU = B[[f"E_{q}" for q in Q]].set_axis(Q, axis=1) * 100   # bp
 NQ = B["NQ"]; L = []
@@ -264,7 +264,7 @@ months = pd.period_range("2026-06", "2026-10", freq="M")
 for t, kind in (("ret", "ridge"), ("relvol", "ridge"), ("breakout", "logit")):
     tgt = TARGETS[t]["1h"] if t != "relvol" else np.log(TARGETS[t]["1h"]); PA, PD, Y = [], [], []
     for mth in months:
-        tr = (G < T(str(mth.start_time.date()))).to_numpy() & (G > T("2026-04-13")).to_numpy(); te = ((G >= T(str(mth.start_time.date()))) & (G < T(str((mth + 1).start_time.date())))).to_numpy()
+        tr = np.asarray(G < T(str(mth.start_time.date()))) & np.asarray(G > T("2026-04-13")); te = np.asarray((G >= T(str(mth.start_time.date()))) & (G < T(str((mth + 1).start_time.date()))))
         if te.sum() == 0 or tr.sum() < 500: continue
         pa, ya, mu = fit_score(A_COLS, tgt, kind, tr, te); pdd, _, _ = fit_score(DD_COLS, tgt, kind, tr, te); pdd = pdd.reindex(pa.index)
         PA.append(pa); PD.append(pdd); Y.append(ya)
@@ -302,4 +302,4 @@ big = RG.dropna(subset=["ret_E", "ret_C"]).assign(absE=lambda d: d.ret_E.abs()).
 L += ["Largest explore effects by regime and what confirm did with them (signed 1h return after the event, %):", "", big.assign(ret_E=lambda d: d.ret_E * 100, ret_C=lambda d: d.ret_C * 100)[["regime", "type", "curve", "n_E", "ret_E", "n_C", "ret_C", "ret_stable"]].round(3).to_markdown(index=False), ""]
 fig, ax = plt.subplots(figsize=(8, 4)); stab[["ret_same_sign", "brk_same_sign"]].plot.barh(ax=ax); ax.axvline(0.5, color="k", lw=0.5); ax.set_xlim(0, 1); ax.set_title("Sign stability explore→confirm by regime"); plt.tight_layout(); plt.savefig(OUT / "fig6_regimes.png", dpi=100); plt.close()
 
-(OUT / "RESULTS.md").write_text("\n".join(L), encoding="utf-8"); print("\n".join(L))
+(OUT / "RESULTS.md").write_text("\n".join(L), encoding="utf-8"); print("written", OUT / "RESULTS.md")   # console is cp1252
