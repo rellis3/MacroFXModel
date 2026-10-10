@@ -120,3 +120,7 @@ contract or two-contract spread? Pre-registered `forge/RATE_CURVE_STRUCTURE_PRER
   unsigned repricing size per contract, dispersion, front share, spread-vs-outright, US–EU co-movement (20 features) vs a
   9-feature Nasdaq vol baseline. Realised-vol gain +0.008 (1h) / +0.004 (2h) R², intervals straddle zero on confirm and
   walk-forward; |return| and return worse. Keep rule not met → stopped. The rates–Nasdaq book is closed on our data.
+- **Reconstruction from first principles (2026-10-11)** `analysis/output/cog_video_0918/RECONSTRUCTION.md`: his line
+  digitised through Tue 22 Sep; 60 affine candidates; best = SOFR U6 − €STR Z6 ×11.85 − 5.48 (0.12 units/bp, change
+  corr 0.20) — but Tuesday falsifies every rate-based candidate (8 bp curve move → 0.04 units; +0.40 jump on 0 bp).
+  Formula NOT identified; four questions for C.OG listed. No new predictive test follows.
