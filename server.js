@@ -111,7 +111,8 @@ import { voteDecision as _laVoteDecision, priceBarrierTrade as _laPriceBarrierTr
 import { matchLiveContext as _laMatchLiveContext } from './js/levelAtlasReport.js';
 import { rungLevelsForLadder as _laRungLevelsForLadder, RUNGS as _LA_RUNGS } from './js/levelAtlasEngine.js';
 import { forecastSigma as _laForecastSigma } from './js/forecastSigma.js';
-import { buildLadder as _laBuildLadder } from './js/forecastLadder.js';
+import { buildLadder as _laBuildLadder, paramsFor as _ipsParamsFor } from './js/forecastLadder.js';
+import { createIpsShadow } from './js/intradayProbShadowRoutes.js';
 import { LADDER_PARAMS as _LA_LADDER_PARAMS } from './js/forecastLadderParams.js';
 import { costForPair as _laCostForPair } from './js/perLineStrategy.js';
 import { assetClass as _assetClassOf } from './js/instrumentRegistry.js';
@@ -26844,6 +26845,24 @@ const paperRecord = createPaperRecord({
 });
 paperRecord.mount(app);
 svcInterval('paperRecord', () => svcRun('paperRecord', () => paperRecord.tick('scheduled')), 5 * 60_000);
+
+// ── S1 shadow: time-aware intraday probabilities (forge/VF3_SHADOW_P1_PREREG.md) ──────────────────────────────────
+// Prospective, read-only forward log: at each London hour 02-20 the page's current path-stats / "x% to median" numbers
+// beside the frozen time-aware challenger, written ONCE to R2 shadow/ips_v1/<date>/<HH>.json; outcomes after 22:10 London.
+// Nothing live reads it (no page, bot or plan). Writes only from the Railway deployment (same rule as the service-stats
+// flush), so a local `node server.js` never writes into the record.
+const _ipsWrites = !!(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_SERVICE_ID || process.env.RAILWAY_PROJECT_ID);
+const ipsShadow = createIpsShadow({
+  getJSON: _r2GetJSON,
+  putJSON: (k, v) => (_ipsWrites ? _r2PutJSON(k, v) : Promise.resolve(false)),
+  fetchM1: (inst, from, to) => fetchOandaCandleRange(inst, 'M1', from, to),
+  getForecast: () => forecastState.latest,
+  instruments: VOL_INSTRUMENTS,
+  oosFor: name => _ipsParamsFor(name, VOL_INSTRUMENTS.find(i => i.name === name)?.assetClass ?? 'fx')?.oos_exceed ?? null,
+  codeCommit: process.env.RAILWAY_GIT_COMMIT_SHA ?? null,
+});
+ipsShadow.mount(app);
+svcInterval('ipsShadow', () => svcRun('ipsShadow', () => ipsShadow.tick('scheduled')), 5 * 60_000);
 
 // ── Yield-shape regime signal (yield-shape-regime.html) ───────────────────────
 // Forward test of the day-clustered in-sync/turn result (analysis/yield_shape_regime_dayclustered.py, 2026-10-02):

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intraday Probability Shadow</title>
+<link rel="stylesheet" href="./css/index.css">
+<style>
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', system-ui, sans-serif; margin: 0; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 4px 0 2px; }
+  .sub { color: var(--text3); font-size: 12px; margin-bottom: 14px; }
+  .band { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin: 12px 0; }
+  .band h2 { font-size: 13px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: .04em; }
+  .band.validated h2 { color: var(--blue); }
+  .band.explore { opacity: .75; } .band.explore h2 { color: var(--amber); }
+  .band.unsupported h2 { color: var(--red); }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; font-family: 'DM Mono', monospace; }
+  th, td { padding: 4px 6px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  .muted { color: var(--text3); }
+  select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Intraday Probability Shadow (S1)</h1>
+  <div class="sub">Read-only forward test, registered in <code>forge/VF3_SHADOW_P1_PREREG.md</code>. Nothing on Vol Forecast V3, the bots or trade selection reads this. Numbers here are <b>interim — not a decision</b>; the registered evaluation is one look at 60 valid sessions.
+    &nbsp;Date <input type="date" id="d"> &nbsp;Checkpoint <select id="cp"></select> <span id="meta" class="muted"></span></div>
+
+  <section class="band validated">
+    <h2>Under prospective test: page display vs time-aware challenger</h2>
+    <div class="muted" style="font-size:12px;margin-bottom:6px">Range-to-line: probability the day's high−low reaches the line by 22:00 London, for lines not yet reached. "Card" = what the V3 card shows today; "challenger" = frozen hour × range-consumed table with a fixed level correction.</div>
+    <div class="scroll"><table id="t2"></table></div>
+    <div class="muted" style="font-size:12px;margin:10px 0 6px">Next line: after the first touch of an export O-H/O-L line, probability the next line on that side is touched by 22:00. "Path stats" = the page's static ratio.</div>
+    <div class="scroll"><table id="t1"></table></div>
+  </section>
+
+  <section class="band explore">
+    <h2>Exploratory, not validated, not used in any number above</h2>
+    <div style="font-size:12px">Release-day width (NFP/CPI) runs wider than the chosen ladder's lines; a σ-level correction tested null (VF3 Stage C P2). Gold band read: ~3/4 of its lift is distance and time left (IEP-TIME). Consolidation (2-hour) shadow: frozen, prospective test pending.</div>
+  </section>
+
+  <section class="band unsupported">
+    <h2>Not supported</h2>
+    <div style="font-size:12px">No directional forecast: no model beat 50/50 out of sample. Up/down first-touch shares are ~50% at every session and weekday. Late-session reversal reversed between periods. Earlier-session highs/lows behave like placebo levels.</div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const pc = v => v == null ? '<span class="muted">—</span>' : (v * 100).toFixed(0) + '%';
+let data = null;
+function render() {
+  const cp = data?.checkpoints?.[$('cp').value];
+  $('meta').textContent = data ? `model ${String(data.model_version).slice(0, 10)}… · ${Object.keys(data.checkpoints || {}).length} checkpoints logged${data.outcomes ? ' · outcomes in' : ''}` : '';
+  const rows = Object.entries(cp?.instruments ?? {});
+  $('t2').innerHTML = '<tr><th>Instrument</th><th>Range so far</th><th>COG median: card</th><th>challenger</th><th>Export p50: card</th><th>challenger</th><th>Outcome H−L</th></tr>' +
+    rows.map(([n, r]) => !r.ok ? `<tr><td>${n}</td><td colspan="6" class="muted">${r.why ?? ''}</td></tr>` :
+      `<tr><td>${n}</td><td>${r.run_hl_pct.toFixed(2)}%</td><td>${pc(r.T2?.L_A?.display)}</td><td>${pc(r.T2?.L_A?.chal_fixed)}</td><td>${pc(r.T2?.L_B?.display)}</td><td>${pc(r.T2?.L_B?.chal_fixed)}</td>` +
+      `<td>${data.outcomes?.instruments?.[n]?.hl_pct != null ? data.outcomes.instruments[n].hl_pct.toFixed(2) + '%' : '<span class="muted">pending</span>'}</td></tr>`).join('');
+  const ev = rows.flatMap(([n, r]) => (r.T1 ?? []).map(e => ({ n, ...e })));
+  $('t1').innerHTML = '<tr><th>Instrument</th><th>Step</th><th>Touch (London hour)</th><th>Path stats</th><th>challenger</th></tr>' +
+    (ev.length ? ev.map(e => `<tr><td>${e.n}</td><td>${e.step}</td><td>${String(e.touch_hour).padStart(2, '0')}:xx</td><td>${pc(e.display)}</td><td>${pc(e.chal_fixed)}</td></tr>`).join('')
+               : '<tr><td colspan="5" class="muted">No first touches in this checkpoint\'s hour.</td></tr>');
+}
+async function load(date) {
+  const r = await fetch('/api/ips-shadow' + (date ? `?date=${date}` : ''));
+  data = await r.json();
+  $('d').value = data.date;
+  const keys = Object.keys(data.checkpoints || {}).sort();
+  $('cp').innerHTML = keys.map(k => `<option value="${k}">${k}:00</option>`).join('') || '<option>none yet</option>';
+  if (keys.length) $('cp').value = keys.at(-1);
+  render();
+}
+$('d').onchange = e => load(e.target.value);
+$('cp').onchange = render;
+load().catch(e => { $('meta').textContent = 'load failed: ' + e.message; });
+</script>
+</body>
+</html>
