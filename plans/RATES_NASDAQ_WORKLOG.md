@@ -116,3 +116,7 @@ contract or two-contract spread? Pre-registered `forge/RATE_CURVE_STRUCTURE_PRER
   the registered sizes detectable → insufficient data; the three are large-effect small-n candidates → paper record only.
 - Ledger `rate-curve-structure`. Possible feature if it survives forward: a "broad US repricing last hour" vol-context
   flag in the ratesRegime read. Nothing from strip/PCA/front-deferred earned a place.
+- **Addendum A (2026-10-11), magnitude-only vol test** (`scripts/rate_curve/vol_from_repricing.py`, `ADDENDUM_A.md`):
+  unsigned repricing size per contract, dispersion, front share, spread-vs-outright, US–EU co-movement (20 features) vs a
+  9-feature Nasdaq vol baseline. Realised-vol gain +0.008 (1h) / +0.004 (2h) R², intervals straddle zero on confirm and
+  walk-forward; |return| and return worse. Keep rule not met → stopped. The rates–Nasdaq book is closed on our data.
