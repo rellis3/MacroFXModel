@@ -67,3 +67,21 @@ prior days; PCA weights, thresholds and model fits come from explore only; event
 
 Script `scripts/rate_curve/curve_structure.py`; output `analysis/output/rate_curve_structure/RESULTS.md` + figures;
 ledger id `rate-curve-structure`.
+
+## Addendum A (2026-10-11, after the main result, before any addendum number): magnitude-only vol test
+
+Owner's refinement: not direction — does the *size and distribution* of repricing across contracts forecast how much
+Nasdaq moves? The main run's vol result (spreads +0.03 R², interval straddling zero; full set overfit) used signed
+factors and 63 features. This addendum fixes a small unsigned set and a stronger baseline.
+
+- **Features (per bar, from data ≤ t; W = 1 h and 4 h):** |z| of each contract's outright change (5 SOFR + 5 €STR);
+  mean |z| per curve; dispersion = std of the ten |z|; front share per curve; mean |z| of the four month-to-month
+  spread changes per curve (outright vs curve repricing); co-movement = sign(US level)·sign(EU level)·min(|z|). 18
+  features at W=1h plus the two curve means at 4h = 20.
+- **Baseline:** log trailing realised vol over 1 h, 4 h and 1 day, |return 1 h|, hour sin/cos, session dummies (9).
+- **Targets:** log forward realised vol, log |forward return| and signed return at 15 m, 1 h, 2 h.
+- **Models:** ridge (α=10) on standardised features; explore→confirm split and monthly walk-forward (Jun–Oct, refit on
+  all prior data). Skill = OOS R² of baseline+rates minus baseline, day-block bootstrap 95 %. Regime split of the gain
+  by trailing-vol tercile and session.
+- **Keep rule (owner's):** gain > 0 with the interval above zero on confirm AND on walk-forward, same sign in ≥ 2 of 3
+  vol terciles. Then a shadow record before any use in the vol forecast or sizing. Otherwise document and stop.
