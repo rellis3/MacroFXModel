@@ -264,5 +264,12 @@ first script left uncomputed; no new test).
 - **Cost gate:** the largest directional cell gaps (≈ 4-8pp of resolved rows) are below cost/u (≈ 10pp majors/indices, 17-19pp gold/crosses, 2x table;
   16 crosses + NZDUSD + US2000 estimated). One post-hoc decile figure (L4, indices, bottom decile REV−CONT 11.8pp vs cost 10.0pp) is a single number
   out of 32 shown, from a model that does not beat 50/50: not an edge.
+- **Stage 3 clarification (2026-10-10, before Stage 3 is run):** Family C's "3 outcomes" are CONT|res (direction), CONS (size) and S2 extension
+  (new extreme ≥ 0.25u beyond E within H) — three distinct questions; cells = class × regime × hour band (asia, london, overlap, ny, late) × displacement
+  tercile; each cell's share vs its class pooled share on Validation, date-clustered z, BH-FDR 10% over all eligible cells (≥ 200 sessions); global
+  permutation test of max |z| (outcomes shuffled across sessions within instrument × hour, 200 draws); empirical-Bayes shrinkage toward class × band.
+  Late stratum: H = 1 h, 1.0u, CONT|res vs 50% and CONS, by class (the known 20-22 UTC prior). The registered "Confirmation" step for survivors is run
+  on 2025-01 → 2026-08-20 but labelled **non-independent** (that period was explored in earlier research); the forward block remains the only
+  independent test. Companion registration for time/session/weekday questions: `forge/IEP_TIME_PREREG.md`.
 - **Deviations / issues:** (1) A10 verdict line corrected as above; (2) the ladder's elapsed-variance share omits the 00:00-01:00 slot (rv_ratio feature
   only); (3) direction credited against L0 by the registered rule but disclosed against the constant; (4) late stratum and Family C not run (Stage 3).
