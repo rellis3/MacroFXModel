@@ -259,12 +259,43 @@ def do_schatz_hist(ib):
         print(f"  {c.localSymbol} (exp {exp.date()}) -> stir_1m_hist/{path.name}: {n:,} bars, front window {start.date()} -> {stop.date()}")
 
 
+def do_strip(ib, weeks=26):
+    """The curve for the composite spreads (C.OG video 2026-10-10, analysis/output/cog_video_0918/): 1-min MIDPOINT for
+    the first four quarterly contracts of each short-rate future, whole weeks ending Saturday 00:00 UTC. Resumable per
+    ISO week like m1. Already held: SR3Z6, SR3H7, IZ6, ER3U6 (expired mid-Sep)."""
+    specs = [("ER3", "ICEEU", "EUR", m, False) for m in ("202612", "202703", "202706", "202709")] + \
+            [("SOFR3", "CME", "USD", m, False) for m in ("202706", "202709")] + \
+            [("I", "ICEEU", "EUR", m, False) for m in ("202703", "202706", "202709")]
+    sat = (NOW + timedelta(days=(5 - NOW.weekday()) % 7)).replace(hour=0, minute=0, second=0, microsecond=0)
+    for spec in specs:
+        c = resolve(ib, *spec)
+        if c is None:
+            continue
+        path = M1 / f"{fname(c)}.parquet"
+        done = set()
+        if path.exists():
+            have = pd.to_datetime(pd.read_parquet(path, columns=["time"]).time)
+            done = set(have.dt.strftime("%G-%V"))
+        got = 0
+        for w in range(weeks):
+            end = sat - timedelta(weeks=w)
+            if (end - timedelta(days=3)).strftime("%G-%V") in done:
+                continue
+            df = hist(ib, c, end, "1 W", "1 min", "MIDPOINT")
+            if df is None:
+                continue
+            save_merge(path, df)
+            got += len(df)
+        n = len(pd.read_parquet(path, columns=["time"])) if path.exists() else 0
+        print(f"  {c.localSymbol} -> stir_1m/{path.name}: +{got:,} bars, {n:,} total")
+
+
 if __name__ == "__main__":
     steps = sys.argv[1:] or ["clean", "mid15", "m1"]
     ib = IB()
     ib.RequestTimeout = 20
     ib.connect(HOST, PORT, clientId=CID, timeout=15, readonly=True)
     for s in steps:
-        {"clean": do_clean, "mid15": do_mid15, "m1": do_m1, "fridays": do_fridays, "u6": do_u6, "2y": do_2y, "schatz_hist": do_schatz_hist}[s](ib)
+        {"clean": do_clean, "mid15": do_mid15, "m1": do_m1, "fridays": do_fridays, "u6": do_u6, "2y": do_2y, "schatz_hist": do_schatz_hist, "strip": do_strip}[s](ib)
     ib.disconnect()
     print("done")
