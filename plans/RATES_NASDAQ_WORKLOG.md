@@ -76,3 +76,25 @@ Every test was pre-registered before it ran (forge/ or plans/), committed, and l
 - **Where to see it:** `/api/rates-regime`; the rates.html card "Who is driving Nasdaq — rates, or not?"; KV
   `rates_regime_v1` holds the daily history (the forward record: does the band persist?).
 - **Check on the research data:** 2026-10-07 gives −0.41, −0.063% per bp, strong-opposite.
+
+## Composite spreads, hours-scale (2026-10-10)
+
+Source: C.OG's video "Macro Variable Context Relevance" (16-23 Sep 2026) and his Discord note that the line is SOFR vs
+ICE €STR built in Python. Two claims the 1-60 min grid never covered: (A) the spread drifts for hours while Nasdaq is
+flat, then Nasdaq catches up; (B) a confirmed low/high in the spread (45 min confirmation) precedes a Nasdaq turn.
+
+- **Rebuild of his week** (`scripts/rate_diff_nq/cog_video_0918*.py`, `analysis/output/cog_video_0918/`): Friday's
+  spread low at 15:15 UTC, Nasdaq low 16:00; Monday's spreads +1 to +5 bp through Nasdaq's flat spell, from the euro
+  leg falling. His axis (7.7-8.5) and a Tuesday-midday jump match no construction we can build.
+- **Data:** IBKR 1-min strip added to `stir_1m/` (€STR Z6 H7 M7 U7, SOFR U6 back to April, M7 U7, Euribor H7 M7 U7);
+  `scratchpad/ibkr_hf_pull.py strip`. The U6 contracts are live until Dec 2026 (I had wrongly said they'd expired).
+- **Pre-registered** `forge/STIR_COMPOSITE_NQ_PREREG.md` (commit 8892496b, before any composite existed): five
+  constructions, H-A 45 cells, H-B 20 cells, explore Apr-Jul / confirm Jul-Oct with the video week removed, planted
+  power check first. Nasdaq = CME NQ front, because the OANDA 1-min file after 2026-08-20 is the intraday-paths lockbox.
+- **Result** (`analysis/output/rate_diff_nq/composite/RESULTS.md`): both FAIL in explore.
+  - H-A: 0/45, largest |corr| 0.065; planted 0.03/0.05/0.08 all undetectable, detection starts ~0.20 → **insufficient
+    data** (overlapping 8 h windows on 57 days ≈ 60 independent observations).
+  - H-B: 0/20 with power 10/10 at +0.05 %/event → **genuinely nothing**; raw "Nasdaq turned after the spread turned"
+    42 % vs 41 % at random bars.
+  - Flagged, unregistered: C1 (his literal pair) +0.03..+0.09 in all nine confirm cells, none in explore.
+- Evidence ledger `stir-composite-nq`. Reopen only with ~a year more 1-min data (Apr 2027), not more cells.

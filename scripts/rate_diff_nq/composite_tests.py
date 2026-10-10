@@ -132,7 +132,7 @@ def ha_cells(C, nq, win, plant=None):
                     ok = np.isfinite(Dv) & np.isfinite(fwd)
                     fwd[ok] += plant[3] * np.nanstd(fwd[ok]) * (Dv[ok] - Dv[ok].mean()) / Dv[ok].std()
                 r, t, n, nd = clustered(np.where(win, Dv, np.nan), fwd)
-                rows.append(dict(construction=name, L=L, H=H, corr=r, t=t, p=2 * norm.sf(abs(t)) if np.isfinite(t) else np.nan, bars=n, days=nd))
+                rows.append(dict(construction=name, L=L, H=H, rho=r, t=t, p=2 * norm.sf(abs(t)) if np.isfinite(t) else np.nan, bars=n, days=nd))
     return pd.DataFrame(rows)
 
 
@@ -237,20 +237,20 @@ def main():
     ea = ha_cells(C, nq, wE); ea["fdr"] = bh(ea.p)
     ca = ha_cells(C, nq, wCx); cf = ha_cells(C, nq, wC)
     ea.to_csv(OUT / "ha_explore.csv", index=False); ca.to_csv(OUT / "ha_confirm_exvideo.csv", index=False); cf.to_csv(OUT / "ha_confirm_full.csv", index=False)
-    heat(ea, "corr", "L", "H", "H-A explore: corr(divergence, forward NQ return)", OUT / "ha_explore.png")
-    heat(ca, "corr", "L", "H", "H-A confirm (video week removed)", OUT / "ha_confirm.png")
+    heat(ea, "rho", "L", "H", "H-A explore: corr(divergence, forward NQ return)", OUT / "ha_explore.png")
+    heat(ca, "rho", "L", "H", "H-A confirm (video week removed)", OUT / "ha_confirm.png")
     L.append("## H-A divergence catch-up (45 cells)\n")
-    L.append(f"Explore: {int(ea.fdr.sum())} of 45 pass BH-FDR 10%. Largest |corr| {ea.corr.abs().max():.3f}. Days {ea.days.max()}.\n")
+    L.append(f"Explore: {int(ea.fdr.sum())} of 45 pass BH-FDR 10%. Largest |corr| {ea.rho.abs().max():.3f}. Days {ea.days.max()}.\n")
     L.append("| construction | L h | H h | explore corr | t | confirm-ex-video corr | t | one-sided p (sign fixed) | confirm full corr |\n|---|---|---|---|---|---|---|---|---|")
     surv = ea[ea.fdr]
     for _, r in surv.iterrows():
         c = ca[(ca.construction == r.construction) & (ca.L == r.L) & (ca.H == r.H)].iloc[0]; f = cf[(cf.construction == r.construction) & (cf.L == r.L) & (cf.H == r.H)].iloc[0]
-        p1 = norm.sf(np.sign(r.corr) * c.t) if np.isfinite(c.t) else np.nan
-        L.append(f"| {r.construction} | {r.L} | {r.H} | {r.corr:+.3f} | {r.t:+.2f} | {c.corr:+.3f} | {c.t:+.2f} | {p1:.3f} | {f.corr:+.3f} |")
-    ha_pass = any(norm.sf(np.sign(r.corr) * ca[(ca.construction == r.construction) & (ca.L == r.L) & (ca.H == r.H)].iloc[0].t) < 0.05 for _, r in surv.iterrows())
+        p1 = norm.sf(np.sign(r.rho) * c.t) if np.isfinite(c.t) else np.nan
+        L.append(f"| {r.construction} | {r.L} | {r.H} | {r.rho:+.3f} | {r.t:+.2f} | {c.rho:+.3f} | {c.t:+.2f} | {p1:.3f} | {f.rho:+.3f} |")
+    ha_pass = any(norm.sf(np.sign(r.rho) * ca[(ca.construction == r.construction) & (ca.L == r.L) & (ca.H == r.H)].iloc[0].t) < 0.05 for _, r in surv.iterrows())
     L.append(f"\n**H-A: {'PASS' if ha_pass else 'FAIL'}** (survivors in explore: {len(surv)}).\n")
-    L.append("All explore cells (corr / t):\n\n" + ea.pivot_table(index="construction", columns=["L", "H"], values="corr").round(3).to_markdown() + "\n")
-    L.append("All confirm-ex-video cells (corr):\n\n" + ca.pivot_table(index="construction", columns=["L", "H"], values="corr").round(3).to_markdown() + "\n")
+    L.append("All explore cells (corr / t):\n\n" + ea.pivot_table(index="construction", columns=["L", "H"], values="rho").round(3).to_markdown() + "\n")
+    L.append("All confirm-ex-video cells (corr):\n\n" + ca.pivot_table(index="construction", columns=["L", "H"], values="rho").round(3).to_markdown() + "\n")
 
     # ---- H-B ----
     eb = hb_cells(C, nq, wE); eb["fdr"] = bh(eb.p_scramble) if "p_scramble" in eb else False
@@ -272,7 +272,7 @@ def main():
         L.append("All explore cells (mean signed % / scramble p / raw lead fraction):\n\n" + eb[["construction", "K", "H", "events", "mean_pct", "p_scramble", "lead_frac"]].round(3).to_markdown(index=False) + "\n")
         L.append("All confirm-ex-video cells:\n\n" + cb[["construction", "K", "H", "events", "mean_pct", "net_pct", "p_scramble", "lead_frac"]].round(3).to_markdown(index=False) + "\n")
     # Euribor robustness (not scored)
-    ee = ha_cells(CE, nq, wE); L.append("## Robustness: Euribor legs, explore H-A corr (not scored)\n\n" + ee.pivot_table(index="construction", columns=["L", "H"], values="corr").round(3).to_markdown() + "\n")
+    ee = ha_cells(CE, nq, wE); L.append("## Robustness: Euribor legs, explore H-A corr (not scored)\n\n" + ee.pivot_table(index="construction", columns=["L", "H"], values="rho").round(3).to_markdown() + "\n")
     (OUT / "RESULTS.md").write_text("\n".join(L), encoding="utf-8")
     print("\n".join(L))
 
