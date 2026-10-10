@@ -120,3 +120,16 @@ Date-block intervals as Stage B (block 20).
   - (a) the point-in-time research reconstruction (`pit_*`, Stage B Part 1);
   - (b) the as-shipped **incumbent COG lines** on pre-open archive records (Stage B Part 2).
 - **Proposed single final confirmation plan** (to be registered separately when the shadow goes live): the forward block plus the first 60 valid prospective sessions, scored once, for the one decision that matters most: whether the chosen ladder and the P1-corrected intraday probabilities beat the production export and the current displays out of sample. HAR-800 is excluded on that window (lockbox).
+
+## Results record (2026-10-10), detail in `analysis/output/vf3_stage_c/RESULTS.md`
+- **P1, not accepted as registered** (all three endpoints fail only the ≤ 3pp calibration rule; Holm p = 0.003):
+  - T1: +7.1% [6.0, 8.3], calibration 4.1pp;
+  - T2-L_B: +27.8% [25.9, 29.6], calibration 6.6pp;
+  - T2-L_A: +40.5% [36.9, 43.8], calibration 6.7pp.
+  - Every year, class and instrument positive. The cause is level drift of tables frozen on pre-2022 data.
+- **P2, null (not accepted):**
+  - S + E: overall 1.000 [0.999, 1.001], NFP + CPI 1.001 [0.996, 1.006], NFP HL p75 31.4 → 31.6%;
+  - SI + E: overall 1.000, NFP + CPI 0.997 [0.983, 1.014];
+  - folds 2–3 of 6.
+- **P3:** E2-hour within 0.07% of M0 + hour → freeze E2-hour. Both are about 5.3–5.5pp off in the worst calibration decile on 2022–24.
+- **Lockbox:** the as-shipped production ladder has no history before 2026-08-21, so it was not scored; the forward block was not used.

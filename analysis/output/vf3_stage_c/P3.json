@@ -1,0 +1,22 @@
+{
+ "n_test": 500679,
+ "brier_full(M0+hour, IV)": 0.23252,
+ "brier_reduced(E2-hour, no IV)": 0.23269,
+ "reduced_vs_full_skill_%": {
+  "brier": -0.072,
+  "brier_ci": [
+   -0.141,
+   -0.005
+  ],
+  "logloss": -0.059,
+  "logloss_ci": [
+   -0.109,
+   -0.009
+  ]
+ },
+ "abs_diff_%_of_full": 0.072,
+ "calib_full_pp": 5.53,
+ "calib_reduced_pp": 5.26,
+ "rule": "freeze E2-hour if within 0.2% Brier of M0+hour",
+ "decision": "freeze E2-hour (reduced)"
+}

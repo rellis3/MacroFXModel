@@ -1,0 +1,3716 @@
+{
+ "T1": {
+  "dev": {
+   "vs_display": {
+    "n": 39869,
+    "dates": 778,
+    "realised%": 46.8,
+    "display%": 46.1,
+    "chal%": 47.0,
+    "skill%": 8.3,
+    "ci%": [
+     7.56,
+     9.01
+    ],
+    "p_one_sided": 0.000999000999000999,
+    "calib_display_pp": 7.9,
+    "calib_chal_pp": 2.4
+   },
+   "vs_clim": {
+    "n": 39869,
+    "dates": 778,
+    "realised%": 46.8,
+    "clim%": 46.9,
+    "chal%": 47.0,
+    "skill%": 7.17,
+    "ci%": [
+     6.41,
+     7.95
+    ],
+    "p_one_sided": 0.000999000999000999,
+    "calib_clim_pp": 0.4,
+    "calib_chal_pp": 2.4
+   },
+   "by_year": {
+    "2022": 8.63,
+    "2023": 7.92,
+    "2024": 8.34
+   }
+  },
+  "conf": {
+   "vs_display": {
+    "n": 20802,
+    "dates": 424,
+    "realised%": 45.5,
+    "display%": 46.2,
+    "chal%": 47.3,
+    "skill%": 7.12,
+    "ci%": [
+     5.95,
+     8.28
+    ],
+    "p_one_sided": 0.000999000999000999,
+    "calib_display_pp": 3.5,
+    "calib_chal_pp": 4.1
+   },
+   "vs_clim": {
+    "n": 20802,
+    "dates": 424,
+    "realised%": 45.5,
+    "clim%": 47.0,
+    "chal%": 47.3,
+    "skill%": 7.21,
+    "ci%": [
+     6.03,
+     8.35
+    ],
+    "p_one_sided": 0.000999000999000999,
+    "calib_clim_pp": 2.6,
+    "calib_chal_pp": 4.1
+   },
+   "by_year": {
+    "2025": 6.9,
+    "2026": 7.48
+   },
+   "p_holm": 0.002997002997002997,
+   "accept": {
+    "skill>=2%_and_holm<0.05": 1.0,
+    "vs_clim_lb>0": 1.0,
+    "calib<=3pp": false,
+    "positive_every_year": true,
+    "no_class_failing": true
+   },
+   "ACCEPTED": false
+  },
+  "conf_breakdown": {
+   "klass": {
+    "fx_crosses": {
+     "n": 12195,
+     "skill%": 7.42,
+     "ci%": [
+      6.07,
+      8.59
+     ],
+     "realised%": 44.9,
+     "display%": 45.8,
+     "chal%": 48.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "fx_majors": {
+     "n": 4286,
+     "skill%": 6.39,
+     "ci%": [
+      4.11,
+      8.83
+     ],
+     "realised%": 45.6,
+     "display%": 47.0,
+     "chal%": 46.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "gold": {
+     "n": 641,
+     "skill%": 8.82,
+     "ci%": [
+      4.8,
+      12.64
+     ],
+     "realised%": 48.8,
+     "display%": 45.1,
+     "chal%": 49.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "indices": {
+     "n": 3680,
+     "skill%": 6.66,
+     "ci%": [
+      4.11,
+      8.93
+     ],
+     "realised%": 46.7,
+     "display%": 46.8,
+     "chal%": 42.2,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "session": {
+    "asia": {
+     "n": 5167,
+     "skill%": 6.08,
+     "ci%": [
+      2.88,
+      9.04
+     ],
+     "realised%": 59.9,
+     "display%": 47.5,
+     "chal%": 61.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "late": {
+     "n": 1003,
+     "skill%": 49.4,
+     "ci%": [
+      34.79,
+      65.43
+     ],
+     "realised%": 12.6,
+     "display%": 44.4,
+     "chal%": 15.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "london": {
+     "n": 6432,
+     "skill%": 1.45,
+     "ci%": [
+      -0.44,
+      3.11
+     ],
+     "realised%": 52.8,
+     "display%": 46.5,
+     "chal%": 54.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "ny": {
+     "n": 2004,
+     "skill%": 23.44,
+     "ci%": [
+      14.21,
+      31.42
+     ],
+     "realised%": 22.4,
+     "display%": 44.9,
+     "chal%": 24.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "overlap": {
+     "n": 6196,
+     "skill%": 3.1,
+     "ci%": [
+      1.72,
+      4.58
+     ],
+     "realised%": 38.7,
+     "display%": 45.5,
+     "chal%": 40.9,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "inst": {
+    "AUDCAD": {
+     "n": 613,
+     "skill%": 7.74,
+     "ci%": [
+      3.79,
+      11.11
+     ],
+     "realised%": 42.6,
+     "display%": 48.2,
+     "chal%": 48.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDCHF": {
+     "n": 625,
+     "skill%": 6.65,
+     "ci%": [
+      2.05,
+      10.48
+     ],
+     "realised%": 44.6,
+     "display%": 42.3,
+     "chal%": 50.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDJPY": {
+     "n": 633,
+     "skill%": 1.3,
+     "ci%": [
+      -1.8,
+      4.75
+     ],
+     "realised%": 43.9,
+     "display%": 45.7,
+     "chal%": 51.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDNZD": {
+     "n": 609,
+     "skill%": 8.58,
+     "ci%": [
+      5.18,
+      12.41
+     ],
+     "realised%": 44.0,
+     "display%": 50.0,
+     "chal%": 52.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDUSD": {
+     "n": 619,
+     "skill%": 7.43,
+     "ci%": [
+      3.53,
+      11.9
+     ],
+     "realised%": 46.0,
+     "display%": 48.5,
+     "chal%": 48.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "CADCHF": {
+     "n": 594,
+     "skill%": 2.9,
+     "ci%": [
+      -1.44,
+      7.21
+     ],
+     "realised%": 42.3,
+     "display%": 44.5,
+     "chal%": 45.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "CADJPY": {
+     "n": 634,
+     "skill%": 5.97,
+     "ci%": [
+      2.14,
+      10.2
+     ],
+     "realised%": 44.6,
+     "display%": 44.2,
+     "chal%": 49.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "CHFJPY": {
+     "n": 588,
+     "skill%": 6.91,
+     "ci%": [
+      3.22,
+      10.49
+     ],
+     "realised%": 44.6,
+     "display%": 46.6,
+     "chal%": 49.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "DE30": {
+     "n": 618,
+     "skill%": 6.37,
+     "ci%": [
+      2.62,
+      10.31
+     ],
+     "realised%": 47.1,
+     "display%": 46.2,
+     "chal%": 48.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "DOW": {
+     "n": 639,
+     "skill%": 4.46,
+     "ci%": [
+      -0.12,
+      8.31
+     ],
+     "realised%": 46.0,
+     "display%": 45.5,
+     "chal%": 38.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURAUD": {
+     "n": 600,
+     "skill%": 6.55,
+     "ci%": [
+      1.8,
+      11.18
+     ],
+     "realised%": 44.2,
+     "display%": 44.4,
+     "chal%": 50.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURCAD": {
+     "n": 614,
+     "skill%": 10.2,
+     "ci%": [
+      6.49,
+      14.21
+     ],
+     "realised%": 42.8,
+     "display%": 40.0,
+     "chal%": 44.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURCHF": {
+     "n": 609,
+     "skill%": 7.45,
+     "ci%": [
+      3.14,
+      11.53
+     ],
+     "realised%": 44.2,
+     "display%": 46.0,
+     "chal%": 47.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURGBP": {
+     "n": 591,
+     "skill%": 7.65,
+     "ci%": [
+      3.31,
+      11.96
+     ],
+     "realised%": 46.0,
+     "display%": 44.6,
+     "chal%": 46.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURJPY": {
+     "n": 620,
+     "skill%": 7.88,
+     "ci%": [
+      3.37,
+      11.76
+     ],
+     "realised%": 46.1,
+     "display%": 45.4,
+     "chal%": 50.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURNZD": {
+     "n": 587,
+     "skill%": 8.79,
+     "ci%": [
+      4.65,
+      13.14
+     ],
+     "realised%": 44.8,
+     "display%": 43.8,
+     "chal%": 50.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURUSD": {
+     "n": 606,
+     "skill%": 5.15,
+     "ci%": [
+      0.41,
+      9.19
+     ],
+     "realised%": 43.4,
+     "display%": 45.0,
+     "chal%": 46.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPAUD": {
+     "n": 616,
+     "skill%": 8.67,
+     "ci%": [
+      4.87,
+      12.27
+     ],
+     "realised%": 44.5,
+     "display%": 47.8,
+     "chal%": 49.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPCAD": {
+     "n": 626,
+     "skill%": 9.1,
+     "ci%": [
+      6.16,
+      11.65
+     ],
+     "realised%": 45.2,
+     "display%": 45.2,
+     "chal%": 45.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPCHF": {
+     "n": 607,
+     "skill%": 9.45,
+     "ci%": [
+      5.0,
+      13.31
+     ],
+     "realised%": 46.5,
+     "display%": 46.9,
+     "chal%": 47.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPJPY": {
+     "n": 611,
+     "skill%": 6.73,
+     "ci%": [
+      2.46,
+      10.53
+     ],
+     "realised%": 47.8,
+     "display%": 47.4,
+     "chal%": 50.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPNZD": {
+     "n": 617,
+     "skill%": 11.39,
+     "ci%": [
+      8.17,
+      14.72
+     ],
+     "realised%": 48.0,
+     "display%": 49.6,
+     "chal%": 50.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPUSD": {
+     "n": 608,
+     "skill%": 5.98,
+     "ci%": [
+      2.68,
+      9.12
+     ],
+     "realised%": 47.2,
+     "display%": 47.6,
+     "chal%": 46.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "GOLD": {
+     "n": 641,
+     "skill%": 8.82,
+     "ci%": [
+      4.71,
+      12.82
+     ],
+     "realised%": 48.8,
+     "display%": 45.1,
+     "chal%": 49.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "NQ": {
+     "n": 604,
+     "skill%": 10.08,
+     "ci%": [
+      5.67,
+      13.9
+     ],
+     "realised%": 44.9,
+     "display%": 45.1,
+     "chal%": 40.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDCAD": {
+     "n": 603,
+     "skill%": 10.66,
+     "ci%": [
+      7.46,
+      14.38
+     ],
+     "realised%": 47.6,
+     "display%": 49.9,
+     "chal%": 49.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDJPY": {
+     "n": 598,
+     "skill%": 3.63,
+     "ci%": [
+      -0.93,
+      8.37
+     ],
+     "realised%": 43.0,
+     "display%": 43.4,
+     "chal%": 50.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDUSD": {
+     "n": 606,
+     "skill%": 7.46,
+     "ci%": [
+      4.04,
+      11.18
+     ],
+     "realised%": 46.5,
+     "display%": 49.7,
+     "chal%": 49.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "SPX500": {
+     "n": 607,
+     "skill%": 8.61,
+     "ci%": [
+      2.59,
+      13.81
+     ],
+     "realised%": 47.0,
+     "display%": 47.0,
+     "chal%": 39.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "UK100": {
+     "n": 598,
+     "skill%": 5.26,
+     "ci%": [
+      0.14,
+      9.6
+     ],
+     "realised%": 47.7,
+     "display%": 49.9,
+     "chal%": 46.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "US2000": {
+     "n": 614,
+     "skill%": 5.41,
+     "ci%": [
+      1.22,
+      9.37
+     ],
+     "realised%": 47.9,
+     "display%": 47.0,
+     "chal%": 39.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDCAD": {
+     "n": 644,
+     "skill%": 5.01,
+     "ci%": [
+      0.34,
+      9.57
+     ],
+     "realised%": 45.8,
+     "display%": 47.2,
+     "chal%": 42.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDCHF": {
+     "n": 621,
+     "skill%": 8.14,
+     "ci%": [
+      4.16,
+      13.16
+     ],
+     "realised%": 46.4,
+     "display%": 46.6,
+     "chal%": 45.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDJPY": {
+     "n": 582,
+     "skill%": 5.48,
+     "ci%": [
+      0.74,
+      10.37
+     ],
+     "realised%": 43.8,
+     "display%": 44.1,
+     "chal%": 49.9,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "step": {
+    "OH p50->p75": {
+     "n": 7060,
+     "skill%": 8.07,
+     "ci%": [
+      6.64,
+      9.45
+     ],
+     "realised%": 49.2,
+     "display%": 48.9,
+     "chal%": 50.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "OH p75->p90": {
+     "n": 3477,
+     "skill%": 7.58,
+     "ci%": [
+      4.91,
+      10.13
+     ],
+     "realised%": 39.9,
+     "display%": 40.6,
+     "chal%": 39.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "OL p50->p75": {
+     "n": 6956,
+     "skill%": 6.27,
+     "ci%": [
+      4.6,
+      7.75
+     ],
+     "realised%": 47.6,
+     "display%": 49.1,
+     "chal%": 50.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "OL p75->p90": {
+     "n": 3309,
+     "skill%": 6.39,
+     "ci%": [
+      3.39,
+      9.33
+     ],
+     "realised%": 38.9,
+     "display%": 40.1,
+     "chal%": 41.3,
+     "FAIL(ci<0)": 0.0
+    }
+   }
+  },
+  "dev_breakdown": {
+   "klass": {
+    "fx_crosses": {
+     "n": 23223,
+     "skill%": 9.27,
+     "ci%": [
+      8.33,
+      10.11
+     ],
+     "realised%": 46.5,
+     "display%": 45.8,
+     "chal%": 49.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "fx_majors": {
+     "n": 8137,
+     "skill%": 8.62,
+     "ci%": [
+      7.17,
+      9.94
+     ],
+     "realised%": 46.8,
+     "display%": 46.9,
+     "chal%": 46.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "gold": {
+     "n": 1205,
+     "skill%": 8.43,
+     "ci%": [
+      5.58,
+      10.66
+     ],
+     "realised%": 48.0,
+     "display%": 45.2,
+     "chal%": 45.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "indices": {
+     "n": 7304,
+     "skill%": 4.84,
+     "ci%": [
+      3.07,
+      6.61
+     ],
+     "realised%": 47.6,
+     "display%": 46.6,
+     "chal%": 41.3,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "session": {
+    "asia": {
+     "n": 8255,
+     "skill%": 9.9,
+     "ci%": [
+      7.45,
+      12.38
+     ],
+     "realised%": 61.8,
+     "display%": 47.6,
+     "chal%": 61.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "late": {
+     "n": 1898,
+     "skill%": 45.79,
+     "ci%": [
+      33.86,
+      57.48
+     ],
+     "realised%": 14.2,
+     "display%": 44.8,
+     "chal%": 16.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "london": {
+     "n": 12938,
+     "skill%": 3.93,
+     "ci%": [
+      2.82,
+      5.08
+     ],
+     "realised%": 54.0,
+     "display%": 46.5,
+     "chal%": 54.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "ny": {
+     "n": 3342,
+     "skill%": 24.77,
+     "ci%": [
+      20.31,
+      28.86
+     ],
+     "realised%": 21.8,
+     "display%": 44.7,
+     "chal%": 24.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "overlap": {
+     "n": 13436,
+     "skill%": 3.18,
+     "ci%": [
+      2.45,
+      3.94
+     ],
+     "realised%": 41.5,
+     "display%": 45.4,
+     "chal%": 41.2,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "inst": {
+    "AUDCAD": {
+     "n": 1173,
+     "skill%": 6.64,
+     "ci%": [
+      4.03,
+      9.37
+     ],
+     "realised%": 46.8,
+     "display%": 47.9,
+     "chal%": 49.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDCHF": {
+     "n": 1202,
+     "skill%": 9.82,
+     "ci%": [
+      6.67,
+      12.99
+     ],
+     "realised%": 46.8,
+     "display%": 42.1,
+     "chal%": 50.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDJPY": {
+     "n": 1185,
+     "skill%": 7.98,
+     "ci%": [
+      5.14,
+      10.89
+     ],
+     "realised%": 46.7,
+     "display%": 45.5,
+     "chal%": 51.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDNZD": {
+     "n": 1132,
+     "skill%": 10.18,
+     "ci%": [
+      7.43,
+      12.47
+     ],
+     "realised%": 45.4,
+     "display%": 50.0,
+     "chal%": 51.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDUSD": {
+     "n": 1162,
+     "skill%": 7.5,
+     "ci%": [
+      4.33,
+      10.12
+     ],
+     "realised%": 47.5,
+     "display%": 48.2,
+     "chal%": 48.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "CADCHF": {
+     "n": 1156,
+     "skill%": 8.77,
+     "ci%": [
+      6.62,
+      11.32
+     ],
+     "realised%": 43.5,
+     "display%": 44.5,
+     "chal%": 45.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "CADJPY": {
+     "n": 1155,
+     "skill%": 10.22,
+     "ci%": [
+      7.69,
+      12.75
+     ],
+     "realised%": 46.8,
+     "display%": 44.4,
+     "chal%": 48.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "CHFJPY": {
+     "n": 1067,
+     "skill%": 9.86,
+     "ci%": [
+      7.19,
+      12.5
+     ],
+     "realised%": 47.5,
+     "display%": 46.5,
+     "chal%": 50.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "DE30": {
+     "n": 1279,
+     "skill%": 6.19,
+     "ci%": [
+      3.37,
+      9.22
+     ],
+     "realised%": 49.3,
+     "display%": 46.1,
+     "chal%": 48.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "DOW": {
+     "n": 1263,
+     "skill%": 3.11,
+     "ci%": [
+      0.04,
+      6.21
+     ],
+     "realised%": 47.1,
+     "display%": 45.3,
+     "chal%": 37.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURAUD": {
+     "n": 1192,
+     "skill%": 9.19,
+     "ci%": [
+      6.15,
+      12.11
+     ],
+     "realised%": 46.6,
+     "display%": 44.5,
+     "chal%": 50.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURCAD": {
+     "n": 1248,
+     "skill%": 11.24,
+     "ci%": [
+      8.76,
+      13.62
+     ],
+     "realised%": 47.6,
+     "display%": 39.7,
+     "chal%": 45.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURCHF": {
+     "n": 1139,
+     "skill%": 10.05,
+     "ci%": [
+      7.67,
+      12.4
+     ],
+     "realised%": 47.5,
+     "display%": 46.3,
+     "chal%": 47.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURGBP": {
+     "n": 1200,
+     "skill%": 9.24,
+     "ci%": [
+      7.13,
+      11.26
+     ],
+     "realised%": 47.7,
+     "display%": 44.8,
+     "chal%": 47.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURJPY": {
+     "n": 1088,
+     "skill%": 10.09,
+     "ci%": [
+      7.36,
+      12.96
+     ],
+     "realised%": 44.8,
+     "display%": 45.8,
+     "chal%": 49.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURNZD": {
+     "n": 1151,
+     "skill%": 6.91,
+     "ci%": [
+      4.05,
+      9.73
+     ],
+     "realised%": 46.1,
+     "display%": 43.9,
+     "chal%": 51.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURUSD": {
+     "n": 1142,
+     "skill%": 6.88,
+     "ci%": [
+      4.26,
+      9.34
+     ],
+     "realised%": 47.7,
+     "display%": 44.6,
+     "chal%": 45.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPAUD": {
+     "n": 1089,
+     "skill%": 8.69,
+     "ci%": [
+      6.28,
+      10.97
+     ],
+     "realised%": 46.7,
+     "display%": 47.7,
+     "chal%": 50.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPCAD": {
+     "n": 1186,
+     "skill%": 8.69,
+     "ci%": [
+      6.73,
+      10.95
+     ],
+     "realised%": 46.4,
+     "display%": 45.1,
+     "chal%": 45.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPCHF": {
+     "n": 1177,
+     "skill%": 11.03,
+     "ci%": [
+      8.44,
+      13.44
+     ],
+     "realised%": 46.2,
+     "display%": 47.0,
+     "chal%": 47.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPJPY": {
+     "n": 1144,
+     "skill%": 11.21,
+     "ci%": [
+      8.63,
+      14.11
+     ],
+     "realised%": 46.4,
+     "display%": 47.7,
+     "chal%": 49.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPNZD": {
+     "n": 1209,
+     "skill%": 8.34,
+     "ci%": [
+      6.05,
+      10.85
+     ],
+     "realised%": 47.0,
+     "display%": 49.7,
+     "chal%": 50.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPUSD": {
+     "n": 1190,
+     "skill%": 8.2,
+     "ci%": [
+      5.65,
+      10.68
+     ],
+     "realised%": 48.4,
+     "display%": 47.6,
+     "chal%": 45.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "GOLD": {
+     "n": 1205,
+     "skill%": 8.43,
+     "ci%": [
+      5.84,
+      10.84
+     ],
+     "realised%": 48.0,
+     "display%": 45.2,
+     "chal%": 45.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "NQ": {
+     "n": 1181,
+     "skill%": 2.56,
+     "ci%": [
+      -0.58,
+      5.67
+     ],
+     "realised%": 48.0,
+     "display%": 45.0,
+     "chal%": 37.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDCAD": {
+     "n": 1167,
+     "skill%": 8.93,
+     "ci%": [
+      6.33,
+      11.12
+     ],
+     "realised%": 46.4,
+     "display%": 50.1,
+     "chal%": 48.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDJPY": {
+     "n": 1163,
+     "skill%": 8.14,
+     "ci%": [
+      4.89,
+      11.38
+     ],
+     "realised%": 46.8,
+     "display%": 43.2,
+     "chal%": 51.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDUSD": {
+     "n": 1190,
+     "skill%": 8.54,
+     "ci%": [
+      6.09,
+      10.75
+     ],
+     "realised%": 45.6,
+     "display%": 49.5,
+     "chal%": 48.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "SPX500": {
+     "n": 1223,
+     "skill%": 1.57,
+     "ci%": [
+      -1.65,
+      4.94
+     ],
+     "realised%": 49.1,
+     "display%": 47.0,
+     "chal%": 37.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "UK100": {
+     "n": 1154,
+     "skill%": 11.74,
+     "ci%": [
+      9.2,
+      14.56
+     ],
+     "realised%": 45.9,
+     "display%": 49.4,
+     "chal%": 48.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "US2000": {
+     "n": 1204,
+     "skill%": 4.02,
+     "ci%": [
+      0.98,
+      7.05
+     ],
+     "realised%": 46.1,
+     "display%": 46.9,
+     "chal%": 38.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDCAD": {
+     "n": 1209,
+     "skill%": 9.5,
+     "ci%": [
+      6.79,
+      12.31
+     ],
+     "realised%": 46.1,
+     "display%": 47.1,
+     "chal%": 42.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDCHF": {
+     "n": 1141,
+     "skill%": 9.53,
+     "ci%": [
+      7.17,
+      11.72
+     ],
+     "realised%": 45.4,
+     "display%": 46.7,
+     "chal%": 45.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDJPY": {
+     "n": 1103,
+     "skill%": 10.24,
+     "ci%": [
+      7.09,
+      13.43
+     ],
+     "realised%": 47.1,
+     "display%": 44.0,
+     "chal%": 49.2,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "step": {
+    "OH p50->p75": {
+     "n": 13209,
+     "skill%": 7.41,
+     "ci%": [
+      6.42,
+      8.4
+     ],
+     "realised%": 50.1,
+     "display%": 49.0,
+     "chal%": 50.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "OH p75->p90": {
+     "n": 6620,
+     "skill%": 11.54,
+     "ci%": [
+      9.72,
+      13.12
+     ],
+     "realised%": 40.2,
+     "display%": 40.8,
+     "chal%": 39.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "OL p50->p75": {
+     "n": 13325,
+     "skill%": 6.3,
+     "ci%": [
+      5.2,
+      7.53
+     ],
+     "realised%": 50.4,
+     "display%": 49.1,
+     "chal%": 50.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "OL p75->p90": {
+     "n": 6715,
+     "skill%": 10.99,
+     "ci%": [
+      9.04,
+      12.8
+     ],
+     "realised%": 39.8,
+     "display%": 40.0,
+     "chal%": 41.0,
+     "FAIL(ci<0)": 0.0
+    }
+   }
+  },
+  "t7_comparator": {
+   "dev": {
+    "challenger_vs_t7": {
+     "n": 5963,
+     "dates": 776,
+     "realised%": 50.9,
+     "t7%": 44.7,
+     "chal%": 46.8,
+     "skill%": 1.13,
+     "ci%": [
+      0.25,
+      1.92
+     ],
+     "p_one_sided": 0.005994005994005994,
+     "calib_t7_pp": 14.8,
+     "calib_chal_pp": 8.9
+    },
+    "display_vs_t7": {
+     "n": 5963,
+     "dates": 776,
+     "realised%": 50.9,
+     "t7%": 44.7,
+     "display%": 49.3,
+     "skill%": -3.49,
+     "ci%": [
+      -5.41,
+      -1.53
+     ],
+     "p_one_sided": 1.0,
+     "calib_t7_pp": 14.8,
+     "calib_display_pp": 11.4
+    }
+   },
+   "conf": {
+    "challenger_vs_t7": {
+     "n": 3052,
+     "dates": 422,
+     "realised%": 48.0,
+     "t7%": 45.7,
+     "chal%": 47.6,
+     "skill%": 1.17,
+     "ci%": [
+      0.15,
+      2.23
+     ],
+     "p_one_sided": 0.015984015984015984,
+     "calib_t7_pp": 10.5,
+     "calib_chal_pp": 3.3
+    },
+    "display_vs_t7": {
+     "n": 3052,
+     "dates": 422,
+     "realised%": 48.0,
+     "t7%": 45.7,
+     "display%": 49.2,
+     "skill%": -6.38,
+     "ci%": [
+      -9.16,
+      -3.33
+     ],
+     "p_one_sided": 1.0,
+     "calib_t7_pp": 10.5,
+     "calib_display_pp": 7.5
+    }
+   }
+  }
+ },
+ "T2_L_B": {
+  "dev": {
+   "vs_display": {
+    "n": 403390,
+    "dates": 779,
+    "realised%": 39.0,
+    "display%": 55.3,
+    "chal%": 39.0,
+    "skill%": 25.27,
+    "ci%": [
+     24.03,
+     26.58
+    ],
+    "p_one_sided": 0.000999000999000999,
+    "calib_display_pp": 38.7,
+    "calib_chal_pp": 2.9
+   },
+   "vs_clim": {
+    "n": 403390,
+    "dates": 779,
+    "realised%": 39.0,
+    "clim%": 39.5,
+    "chal%": 39.0,
+    "skill%": 12.82,
+    "ci%": [
+     11.84,
+     13.74
+    ],
+    "p_one_sided": 0.000999000999000999,
+    "calib_clim_pp": NaN,
+    "calib_chal_pp": 2.9
+   },
+   "by_year": {
+    "2022": 23.51,
+    "2023": 25.78,
+    "2024": 26.44
+   }
+  },
+  "conf": {
+   "vs_display": {
+    "n": 223477,
+    "dates": 424,
+    "realised%": 34.8,
+    "display%": 55.5,
+    "chal%": 38.9,
+    "skill%": 27.8,
+    "ci%": [
+     25.87,
+     29.62
+    ],
+    "p_one_sided": 0.000999000999000999,
+    "calib_display_pp": 35.3,
+    "calib_chal_pp": 6.6
+   },
+   "vs_clim": {
+    "n": 223477,
+    "dates": 424,
+    "realised%": 34.8,
+    "clim%": 39.5,
+    "chal%": 38.9,
+    "skill%": 15.76,
+    "ci%": [
+     14.37,
+     17.16
+    ],
+    "p_one_sided": 0.000999000999000999,
+    "calib_clim_pp": NaN,
+    "calib_chal_pp": 6.6
+   },
+   "by_year": {
+    "2025": 28.22,
+    "2026": 27.11
+   },
+   "p_holm": 0.002997002997002997,
+   "accept": {
+    "skill>=2%_and_holm<0.05": 1.0,
+    "vs_clim_lb>0": 1.0,
+    "calib<=3pp": false,
+    "positive_every_year": true,
+    "no_class_failing": true
+   },
+   "ACCEPTED": false
+  },
+  "conf_breakdown": {
+   "klass": {
+    "fx_crosses": {
+     "n": 130835,
+     "skill%": 31.73,
+     "ci%": [
+      29.96,
+      33.32
+     ],
+     "realised%": 32.6,
+     "display%": 57.2,
+     "chal%": 40.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "fx_majors": {
+     "n": 47020,
+     "skill%": 27.4,
+     "ci%": [
+      24.92,
+      29.8
+     ],
+     "realised%": 34.7,
+     "display%": 55.3,
+     "chal%": 38.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "gold": {
+     "n": 6084,
+     "skill%": 25.44,
+     "ci%": [
+      20.84,
+      29.61
+     ],
+     "realised%": 40.4,
+     "display%": 59.2,
+     "chal%": 42.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "indices": {
+     "n": 39538,
+     "skill%": 13.78,
+     "ci%": [
+      9.29,
+      18.02
+     ],
+     "realised%": 41.4,
+     "display%": 49.6,
+     "chal%": 34.3,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "session": {
+    "asia": {
+     "n": 70066,
+     "skill%": -0.59,
+     "ci%": [
+      -1.14,
+      -0.08
+     ],
+     "realised%": 45.3,
+     "display%": 48.7,
+     "chal%": 50.5,
+     "FAIL(ci<0)": 1.0
+    },
+    "late": {
+     "n": 16223,
+     "skill%": 86.69,
+     "ci%": [
+      84.65,
+      88.41
+     ],
+     "realised%": 5.5,
+     "display%": 58.4,
+     "chal%": 6.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "london": {
+     "n": 65256,
+     "skill%": 8.31,
+     "ci%": [
+      6.58,
+      10.05
+     ],
+     "realised%": 41.2,
+     "display%": 55.8,
+     "chal%": 46.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "ny": {
+     "n": 26704,
+     "skill%": 70.22,
+     "ci%": [
+      67.19,
+      73.1
+     ],
+     "realised%": 13.9,
+     "display%": 62.7,
+     "chal%": 15.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "overlap": {
+     "n": 45228,
+     "skill%": 29.92,
+     "ci%": [
+      26.39,
+      33.2
+     ],
+     "realised%": 32.2,
+     "display%": 60.2,
+     "chal%": 35.2,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "inst": {
+    "AUDCAD": {
+     "n": 6489,
+     "skill%": 31.13,
+     "ci%": [
+      26.6,
+      35.3
+     ],
+     "realised%": 33.2,
+     "display%": 58.8,
+     "chal%": 41.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDCHF": {
+     "n": 6351,
+     "skill%": 32.35,
+     "ci%": [
+      28.49,
+      36.13
+     ],
+     "realised%": 33.9,
+     "display%": 58.6,
+     "chal%": 42.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDJPY": {
+     "n": 6278,
+     "skill%": 31.25,
+     "ci%": [
+      27.34,
+      34.42
+     ],
+     "realised%": 34.3,
+     "display%": 60.7,
+     "chal%": 43.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDNZD": {
+     "n": 6323,
+     "skill%": 33.58,
+     "ci%": [
+      29.32,
+      37.06
+     ],
+     "realised%": 30.3,
+     "display%": 62.2,
+     "chal%": 44.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDUSD": {
+     "n": 6543,
+     "skill%": 26.86,
+     "ci%": [
+      22.08,
+      31.2
+     ],
+     "realised%": 36.4,
+     "display%": 58.6,
+     "chal%": 41.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "CADCHF": {
+     "n": 6913,
+     "skill%": 29.93,
+     "ci%": [
+      25.24,
+      34.5
+     ],
+     "realised%": 30.5,
+     "display%": 51.4,
+     "chal%": 35.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "CADJPY": {
+     "n": 6492,
+     "skill%": 29.98,
+     "ci%": [
+      25.0,
+      33.75
+     ],
+     "realised%": 34.7,
+     "display%": 58.0,
+     "chal%": 41.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "CHFJPY": {
+     "n": 6706,
+     "skill%": 33.24,
+     "ci%": [
+      29.02,
+      36.48
+     ],
+     "realised%": 29.2,
+     "display%": 56.5,
+     "chal%": 39.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "DE30": {
+     "n": 6383,
+     "skill%": 30.28,
+     "ci%": [
+      25.67,
+      34.51
+     ],
+     "realised%": 36.6,
+     "display%": 54.4,
+     "chal%": 38.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "DOW": {
+     "n": 6753,
+     "skill%": 5.54,
+     "ci%": [
+      -1.34,
+      12.2
+     ],
+     "realised%": 44.3,
+     "display%": 46.7,
+     "chal%": 31.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURAUD": {
+     "n": 6397,
+     "skill%": 32.61,
+     "ci%": [
+      27.96,
+      36.43
+     ],
+     "realised%": 33.5,
+     "display%": 59.3,
+     "chal%": 42.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURCAD": {
+     "n": 6839,
+     "skill%": 25.33,
+     "ci%": [
+      20.21,
+      30.16
+     ],
+     "realised%": 36.1,
+     "display%": 52.2,
+     "chal%": 35.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURCHF": {
+     "n": 6629,
+     "skill%": 30.4,
+     "ci%": [
+      26.18,
+      34.36
+     ],
+     "realised%": 34.9,
+     "display%": 54.3,
+     "chal%": 38.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURGBP": {
+     "n": 6716,
+     "skill%": 31.82,
+     "ci%": [
+      27.74,
+      36.35
+     ],
+     "realised%": 32.4,
+     "display%": 52.0,
+     "chal%": 35.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURJPY": {
+     "n": 6411,
+     "skill%": 33.63,
+     "ci%": [
+      28.74,
+      37.6
+     ],
+     "realised%": 32.4,
+     "display%": 59.1,
+     "chal%": 42.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURNZD": {
+     "n": 6540,
+     "skill%": 34.25,
+     "ci%": [
+      29.86,
+      37.78
+     ],
+     "realised%": 30.0,
+     "display%": 60.7,
+     "chal%": 42.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURUSD": {
+     "n": 6854,
+     "skill%": 29.48,
+     "ci%": [
+      24.96,
+      33.63
+     ],
+     "realised%": 32.6,
+     "display%": 53.7,
+     "chal%": 36.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPAUD": {
+     "n": 6566,
+     "skill%": 34.48,
+     "ci%": [
+      30.0,
+      38.34
+     ],
+     "realised%": 30.0,
+     "display%": 58.3,
+     "chal%": 41.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPCAD": {
+     "n": 6733,
+     "skill%": 21.6,
+     "ci%": [
+      16.2,
+      26.5
+     ],
+     "realised%": 38.8,
+     "display%": 51.0,
+     "chal%": 35.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPCHF": {
+     "n": 6660,
+     "skill%": 33.65,
+     "ci%": [
+      29.71,
+      37.66
+     ],
+     "realised%": 31.8,
+     "display%": 52.9,
+     "chal%": 36.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPJPY": {
+     "n": 6401,
+     "skill%": 31.27,
+     "ci%": [
+      27.25,
+      35.51
+     ],
+     "realised%": 32.9,
+     "display%": 57.2,
+     "chal%": 40.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPNZD": {
+     "n": 6391,
+     "skill%": 35.75,
+     "ci%": [
+      32.02,
+      39.01
+     ],
+     "realised%": 30.7,
+     "display%": 61.1,
+     "chal%": 43.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPUSD": {
+     "n": 6742,
+     "skill%": 27.72,
+     "ci%": [
+      23.0,
+      32.32
+     ],
+     "realised%": 36.0,
+     "display%": 53.9,
+     "chal%": 37.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "GOLD": {
+     "n": 6084,
+     "skill%": 25.44,
+     "ci%": [
+      20.99,
+      29.95
+     ],
+     "realised%": 40.4,
+     "display%": 59.2,
+     "chal%": 42.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "NQ": {
+     "n": 6635,
+     "skill%": 7.8,
+     "ci%": [
+      1.4,
+      14.6
+     ],
+     "realised%": 41.6,
+     "display%": 48.6,
+     "chal%": 33.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDCAD": {
+     "n": 6503,
+     "skill%": 31.36,
+     "ci%": [
+      26.89,
+      34.88
+     ],
+     "realised%": 32.8,
+     "display%": 59.1,
+     "chal%": 41.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDJPY": {
+     "n": 6497,
+     "skill%": 35.54,
+     "ci%": [
+      32.09,
+      38.8
+     ],
+     "realised%": 29.2,
+     "display%": 61.2,
+     "chal%": 43.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDUSD": {
+     "n": 6498,
+     "skill%": 30.41,
+     "ci%": [
+      26.0,
+      34.17
+     ],
+     "realised%": 33.3,
+     "display%": 58.4,
+     "chal%": 41.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "SPX500": {
+     "n": 6701,
+     "skill%": 3.9,
+     "ci%": [
+      -2.4,
+      10.64
+     ],
+     "realised%": 42.2,
+     "display%": 47.9,
+     "chal%": 33.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "UK100": {
+     "n": 6375,
+     "skill%": 25.84,
+     "ci%": [
+      19.39,
+      30.46
+     ],
+     "realised%": 39.8,
+     "display%": 53.7,
+     "chal%": 38.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "US2000": {
+     "n": 6691,
+     "skill%": 6.2,
+     "ci%": [
+      -0.24,
+      13.03
+     ],
+     "realised%": 43.5,
+     "display%": 46.9,
+     "chal%": 32.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDCAD": {
+     "n": 6950,
+     "skill%": 18.75,
+     "ci%": [
+      12.7,
+      24.14
+     ],
+     "realised%": 39.6,
+     "display%": 52.5,
+     "chal%": 36.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDCHF": {
+     "n": 6777,
+     "skill%": 26.42,
+     "ci%": [
+      21.41,
+      30.85
+     ],
+     "realised%": 35.8,
+     "display%": 53.9,
+     "chal%": 37.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDJPY": {
+     "n": 6656,
+     "skill%": 31.88,
+     "ci%": [
+      28.37,
+      35.01
+     ],
+     "realised%": 29.2,
+     "display%": 56.2,
+     "chal%": 39.9,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "cterc": {
+    "low": {
+     "n": 56379,
+     "skill%": 0.38,
+     "ci%": [
+      -0.14,
+      0.88
+     ],
+     "realised%": 33.3,
+     "display%": 38.9,
+     "chal%": 39.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "mid": {
+     "n": 101000,
+     "skill%": 19.9,
+     "ci%": [
+      17.54,
+      22.35
+     ],
+     "realised%": 32.3,
+     "display%": 50.6,
+     "chal%": 36.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "high": {
+     "n": 66098,
+     "skill%": 50.21,
+     "ci%": [
+      47.82,
+      52.56
+     ],
+     "realised%": 39.9,
+     "display%": 77.2,
+     "chal%": 41.7,
+     "FAIL(ci<0)": 0.0
+    }
+   }
+  },
+  "dev_breakdown": {
+   "klass": {
+    "fx_crosses": {
+     "n": 234436,
+     "skill%": 30.65,
+     "ci%": [
+      29.59,
+      31.87
+     ],
+     "realised%": 35.8,
+     "display%": 57.3,
+     "chal%": 40.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "fx_majors": {
+     "n": 85407,
+     "skill%": 25.59,
+     "ci%": [
+      23.33,
+      27.71
+     ],
+     "realised%": 38.2,
+     "display%": 54.9,
+     "chal%": 38.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "gold": {
+     "n": 11604,
+     "skill%": 18.49,
+     "ci%": [
+      14.84,
+      22.15
+     ],
+     "realised%": 46.1,
+     "display%": 54.9,
+     "chal%": 39.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "indices": {
+     "n": 71943,
+     "skill%": 7.33,
+     "ci%": [
+      4.65,
+      9.79
+     ],
+     "realised%": 48.8,
+     "display%": 49.4,
+     "chal%": 34.1,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "session": {
+    "asia": {
+     "n": 128785,
+     "skill%": 0.49,
+     "ci%": [
+      0.12,
+      0.83
+     ],
+     "realised%": 49.7,
+     "display%": 47.3,
+     "chal%": 49.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "late": {
+     "n": 27633,
+     "skill%": 85.64,
+     "ci%": [
+      83.93,
+      87.33
+     ],
+     "realised%": 6.2,
+     "display%": 60.8,
+     "chal%": 6.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "london": {
+     "n": 119930,
+     "skill%": 4.83,
+     "ci%": [
+      3.78,
+      5.93
+     ],
+     "realised%": 46.0,
+     "display%": 55.1,
+     "chal%": 46.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "ny": {
+     "n": 45878,
+     "skill%": 68.5,
+     "ci%": [
+      66.19,
+      70.77
+     ],
+     "realised%": 15.3,
+     "display%": 64.8,
+     "chal%": 16.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "overlap": {
+     "n": 81164,
+     "skill%": 25.06,
+     "ci%": [
+      22.95,
+      27.4
+     ],
+     "realised%": 36.1,
+     "display%": 61.2,
+     "chal%": 36.0,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "inst": {
+    "AUDCAD": {
+     "n": 11678,
+     "skill%": 28.86,
+     "ci%": [
+      25.69,
+      31.81
+     ],
+     "realised%": 38.1,
+     "display%": 60.0,
+     "chal%": 42.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDCHF": {
+     "n": 11291,
+     "skill%": 31.89,
+     "ci%": [
+      28.64,
+      34.63
+     ],
+     "realised%": 37.9,
+     "display%": 61.1,
+     "chal%": 44.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDJPY": {
+     "n": 11312,
+     "skill%": 33.61,
+     "ci%": [
+      30.85,
+      36.22
+     ],
+     "realised%": 33.0,
+     "display%": 61.0,
+     "chal%": 43.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDNZD": {
+     "n": 11484,
+     "skill%": 35.37,
+     "ci%": [
+      32.39,
+      37.72
+     ],
+     "realised%": 30.3,
+     "display%": 63.0,
+     "chal%": 44.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDUSD": {
+     "n": 11934,
+     "skill%": 28.93,
+     "ci%": [
+      26.2,
+      32.21
+     ],
+     "realised%": 37.4,
+     "display%": 59.5,
+     "chal%": 42.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "CADCHF": {
+     "n": 12432,
+     "skill%": 25.65,
+     "ci%": [
+      21.95,
+      29.48
+     ],
+     "realised%": 38.3,
+     "display%": 52.5,
+     "chal%": 36.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "CADJPY": {
+     "n": 11772,
+     "skill%": 27.96,
+     "ci%": [
+      24.8,
+      31.0
+     ],
+     "realised%": 35.6,
+     "display%": 56.3,
+     "chal%": 39.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "CHFJPY": {
+     "n": 11827,
+     "skill%": 36.11,
+     "ci%": [
+      33.67,
+      38.62
+     ],
+     "realised%": 27.9,
+     "display%": 55.3,
+     "chal%": 39.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "DE30": {
+     "n": 11196,
+     "skill%": 24.98,
+     "ci%": [
+      21.53,
+      28.05
+     ],
+     "realised%": 46.0,
+     "display%": 56.1,
+     "chal%": 40.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "DOW": {
+     "n": 12361,
+     "skill%": -4.06,
+     "ci%": [
+      -8.25,
+      -0.17
+     ],
+     "realised%": 53.0,
+     "display%": 46.7,
+     "chal%": 31.4,
+     "FAIL(ci<0)": 1.0
+    },
+    "EURAUD": {
+     "n": 11214,
+     "skill%": 31.64,
+     "ci%": [
+      28.78,
+      34.45
+     ],
+     "realised%": 38.2,
+     "display%": 60.8,
+     "chal%": 44.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURCAD": {
+     "n": 12046,
+     "skill%": 21.03,
+     "ci%": [
+      17.12,
+      24.53
+     ],
+     "realised%": 45.4,
+     "display%": 52.9,
+     "chal%": 37.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURCHF": {
+     "n": 11998,
+     "skill%": 29.77,
+     "ci%": [
+      26.4,
+      33.16
+     ],
+     "realised%": 36.2,
+     "display%": 52.4,
+     "chal%": 36.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURGBP": {
+     "n": 11779,
+     "skill%": 28.89,
+     "ci%": [
+      25.35,
+      31.93
+     ],
+     "realised%": 40.5,
+     "display%": 53.8,
+     "chal%": 38.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURJPY": {
+     "n": 11730,
+     "skill%": 33.34,
+     "ci%": [
+      30.5,
+      35.93
+     ],
+     "realised%": 31.2,
+     "display%": 55.7,
+     "chal%": 39.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURNZD": {
+     "n": 11455,
+     "skill%": 32.57,
+     "ci%": [
+      29.46,
+      35.48
+     ],
+     "realised%": 36.6,
+     "display%": 61.1,
+     "chal%": 44.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURUSD": {
+     "n": 12319,
+     "skill%": 25.84,
+     "ci%": [
+      22.09,
+      29.72
+     ],
+     "realised%": 38.0,
+     "display%": 52.2,
+     "chal%": 36.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPAUD": {
+     "n": 11809,
+     "skill%": 33.91,
+     "ci%": [
+      30.88,
+      36.45
+     ],
+     "realised%": 31.5,
+     "display%": 58.2,
+     "chal%": 41.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPCAD": {
+     "n": 12309,
+     "skill%": 25.72,
+     "ci%": [
+      22.39,
+      29.59
+     ],
+     "realised%": 39.3,
+     "display%": 52.1,
+     "chal%": 35.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPCHF": {
+     "n": 11902,
+     "skill%": 29.52,
+     "ci%": [
+      25.96,
+      32.95
+     ],
+     "realised%": 37.6,
+     "display%": 53.1,
+     "chal%": 37.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPJPY": {
+     "n": 11664,
+     "skill%": 31.29,
+     "ci%": [
+      28.54,
+      33.83
+     ],
+     "realised%": 33.5,
+     "display%": 56.2,
+     "chal%": 40.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPNZD": {
+     "n": 11311,
+     "skill%": 33.25,
+     "ci%": [
+      30.25,
+      35.81
+     ],
+     "realised%": 35.8,
+     "display%": 61.1,
+     "chal%": 44.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPUSD": {
+     "n": 12254,
+     "skill%": 23.56,
+     "ci%": [
+      20.0,
+      27.08
+     ],
+     "realised%": 41.1,
+     "display%": 53.4,
+     "chal%": 37.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "GOLD": {
+     "n": 11604,
+     "skill%": 18.49,
+     "ci%": [
+      14.85,
+      22.22
+     ],
+     "realised%": 46.1,
+     "display%": 54.9,
+     "chal%": 39.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "NQ": {
+     "n": 12472,
+     "skill%": 0.49,
+     "ci%": [
+      -4.2,
+      5.19
+     ],
+     "realised%": 49.6,
+     "display%": 46.9,
+     "chal%": 31.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDCAD": {
+     "n": 12027,
+     "skill%": 28.76,
+     "ci%": [
+      25.66,
+      31.93
+     ],
+     "realised%": 37.6,
+     "display%": 60.2,
+     "chal%": 42.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDJPY": {
+     "n": 11396,
+     "skill%": 34.11,
+     "ci%": [
+      31.24,
+      36.63
+     ],
+     "realised%": 31.6,
+     "display%": 61.3,
+     "chal%": 43.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDUSD": {
+     "n": 11995,
+     "skill%": 25.74,
+     "ci%": [
+      22.46,
+      28.79
+     ],
+     "realised%": 40.1,
+     "display%": 59.3,
+     "chal%": 42.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "SPX500": {
+     "n": 12409,
+     "skill%": -2.17,
+     "ci%": [
+      -6.65,
+      2.44
+     ],
+     "realised%": 50.2,
+     "display%": 47.0,
+     "chal%": 31.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "UK100": {
+     "n": 11213,
+     "skill%": 26.77,
+     "ci%": [
+      23.26,
+      29.94
+     ],
+     "realised%": 41.5,
+     "display%": 55.3,
+     "chal%": 39.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "US2000": {
+     "n": 12292,
+     "skill%": -0.99,
+     "ci%": [
+      -5.36,
+      3.2
+     ],
+     "realised%": 51.5,
+     "display%": 45.7,
+     "chal%": 30.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDCAD": {
+     "n": 12540,
+     "skill%": 15.91,
+     "ci%": [
+      11.99,
+      19.91
+     ],
+     "realised%": 44.5,
+     "display%": 52.9,
+     "chal%": 36.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDCHF": {
+     "n": 12488,
+     "skill%": 27.63,
+     "ci%": [
+      24.45,
+      31.21
+     ],
+     "realised%": 35.9,
+     "display%": 52.5,
+     "chal%": 36.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDJPY": {
+     "n": 11877,
+     "skill%": 31.6,
+     "ci%": [
+      28.65,
+      34.66
+     ],
+     "realised%": 30.3,
+     "display%": 55.1,
+     "chal%": 39.2,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "cterc": {
+    "low": {
+     "n": 109868,
+     "skill%": 0.05,
+     "ci%": [
+      -0.29,
+      0.37
+     ],
+     "realised%": 42.8,
+     "display%": 38.9,
+     "chal%": 39.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "mid": {
+     "n": 174005,
+     "skill%": 14.68,
+     "ci%": [
+      13.03,
+      16.36
+     ],
+     "realised%": 36.2,
+     "display%": 50.6,
+     "chal%": 37.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "high": {
+     "n": 119517,
+     "skill%": 50.9,
+     "ci%": [
+      49.17,
+      52.54
+     ],
+     "realised%": 39.4,
+     "display%": 77.3,
+     "chal%": 40.9,
+     "FAIL(ci<0)": 0.0
+    }
+   }
+  }
+ },
+ "T2_L_A": {
+  "dev": {
+   "vs_display": {
+    "n": 435362,
+    "dates": 779,
+    "realised%": 26.4,
+    "display%": 51.2,
+    "chal%": 26.3,
+    "skill%": 34.13,
+    "ci%": [
+     31.64,
+     36.33
+    ],
+    "p_one_sided": 0.000999000999000999,
+    "calib_display_pp": 44.1,
+    "calib_chal_pp": 3.5
+   },
+   "vs_clim": {
+    "n": 435362,
+    "dates": 779,
+    "realised%": 26.4,
+    "clim%": 27.0,
+    "chal%": 26.3,
+    "skill%": 12.39,
+    "ci%": [
+     11.15,
+     13.8
+    ],
+    "p_one_sided": 0.000999000999000999,
+    "calib_clim_pp": NaN,
+    "calib_chal_pp": 3.5
+   },
+   "by_year": {
+    "2022": 29.15,
+    "2023": 35.19,
+    "2024": 38.27
+   }
+  },
+  "conf": {
+   "vs_display": {
+    "n": 241451,
+    "dates": 424,
+    "realised%": 22.2,
+    "display%": 51.0,
+    "chal%": 26.1,
+    "skill%": 40.46,
+    "ci%": [
+     36.9,
+     43.78
+    ],
+    "p_one_sided": 0.000999000999000999,
+    "calib_display_pp": 42.1,
+    "calib_chal_pp": 6.7
+   },
+   "vs_clim": {
+    "n": 241451,
+    "dates": 424,
+    "realised%": 22.2,
+    "clim%": 27.0,
+    "chal%": 26.1,
+    "skill%": 15.24,
+    "ci%": [
+     13.4,
+     17.15
+    ],
+    "p_one_sided": 0.000999000999000999,
+    "calib_clim_pp": NaN,
+    "calib_chal_pp": 6.7
+   },
+   "by_year": {
+    "2025": 41.14,
+    "2026": 39.34
+   },
+   "p_holm": 0.002997002997002997,
+   "accept": {
+    "skill>=2%_and_holm<0.05": 1.0,
+    "vs_clim_lb>0": 1.0,
+    "calib<=3pp": false,
+    "positive_every_year": true,
+    "no_class_failing": true
+   },
+   "ACCEPTED": false
+  },
+  "conf_breakdown": {
+   "klass": {
+    "fx_crosses": {
+     "n": 141485,
+     "skill%": 43.23,
+     "ci%": [
+      39.83,
+      46.53
+     ],
+     "realised%": 21.8,
+     "display%": 52.9,
+     "chal%": 27.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "fx_majors": {
+     "n": 49889,
+     "skill%": 37.9,
+     "ci%": [
+      33.58,
+      42.19
+     ],
+     "realised%": 24.6,
+     "display%": 52.1,
+     "chal%": 27.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "gold": {
+     "n": 6557,
+     "skill%": 34.75,
+     "ci%": [
+      27.67,
+      41.91
+     ],
+     "realised%": 29.0,
+     "display%": 54.3,
+     "chal%": 30.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "indices": {
+     "n": 43520,
+     "skill%": 33.46,
+     "ci%": [
+      26.57,
+      40.62
+     ],
+     "realised%": 19.6,
+     "display%": 42.7,
+     "chal%": 18.8,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "session": {
+    "asia": {
+     "n": 70593,
+     "skill%": 9.54,
+     "ci%": [
+      7.14,
+      12.31
+     ],
+     "realised%": 30.0,
+     "display%": 45.7,
+     "chal%": 35.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "late": {
+     "n": 20475,
+     "skill%": 89.7,
+     "ci%": [
+      87.36,
+      91.63
+     ],
+     "realised%": 3.4,
+     "display%": 51.6,
+     "chal%": 3.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "london": {
+     "n": 67808,
+     "skill%": 24.02,
+     "ci%": [
+      20.38,
+      27.76
+     ],
+     "realised%": 27.1,
+     "display%": 51.1,
+     "chal%": 32.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "ny": {
+     "n": 32576,
+     "skill%": 77.1,
+     "ci%": [
+      73.65,
+      80.09
+     ],
+     "realised%": 9.0,
+     "display%": 56.4,
+     "chal%": 9.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "overlap": {
+     "n": 49999,
+     "skill%": 44.84,
+     "ci%": [
+      40.7,
+      48.99
+     ],
+     "realised%": 20.9,
+     "display%": 54.4,
+     "chal%": 23.4,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "inst": {
+    "AUDCAD": {
+     "n": 7097,
+     "skill%": 45.23,
+     "ci%": [
+      39.45,
+      50.45
+     ],
+     "realised%": 21.8,
+     "display%": 54.8,
+     "chal%": 29.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDCHF": {
+     "n": 7107,
+     "skill%": 46.25,
+     "ci%": [
+      40.93,
+      51.96
+     ],
+     "realised%": 20.6,
+     "display%": 54.0,
+     "chal%": 28.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDJPY": {
+     "n": 7131,
+     "skill%": 46.58,
+     "ci%": [
+      40.47,
+      51.1
+     ],
+     "realised%": 20.3,
+     "display%": 55.4,
+     "chal%": 30.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDNZD": {
+     "n": 6976,
+     "skill%": 51.58,
+     "ci%": [
+      47.27,
+      55.11
+     ],
+     "realised%": 15.0,
+     "display%": 56.9,
+     "chal%": 31.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDUSD": {
+     "n": 7091,
+     "skill%": 38.17,
+     "ci%": [
+      31.62,
+      44.52
+     ],
+     "realised%": 25.5,
+     "display%": 54.8,
+     "chal%": 29.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "CADCHF": {
+     "n": 7305,
+     "skill%": 37.51,
+     "ci%": [
+      30.75,
+      44.71
+     ],
+     "realised%": 23.0,
+     "display%": 48.9,
+     "chal%": 23.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "CADJPY": {
+     "n": 7196,
+     "skill%": 44.85,
+     "ci%": [
+      38.63,
+      50.4
+     ],
+     "realised%": 20.5,
+     "display%": 52.8,
+     "chal%": 27.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "CHFJPY": {
+     "n": 7030,
+     "skill%": 44.16,
+     "ci%": [
+      38.4,
+      49.53
+     ],
+     "realised%": 22.7,
+     "display%": 54.2,
+     "chal%": 29.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "DE30": {
+     "n": 7244,
+     "skill%": 49.45,
+     "ci%": [
+      42.85,
+      55.62
+     ],
+     "realised%": 15.8,
+     "display%": 46.4,
+     "chal%": 21.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "DOW": {
+     "n": 7427,
+     "skill%": 35.66,
+     "ci%": [
+      24.01,
+      46.58
+     ],
+     "realised%": 15.3,
+     "display%": 38.6,
+     "chal%": 15.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURAUD": {
+     "n": 6926,
+     "skill%": 45.93,
+     "ci%": [
+      40.6,
+      51.04
+     ],
+     "realised%": 21.8,
+     "display%": 55.0,
+     "chal%": 30.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURCAD": {
+     "n": 7308,
+     "skill%": 34.23,
+     "ci%": [
+      27.09,
+      41.71
+     ],
+     "realised%": 24.3,
+     "display%": 48.9,
+     "chal%": 23.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURCHF": {
+     "n": 7114,
+     "skill%": 35.68,
+     "ci%": [
+      28.33,
+      42.76
+     ],
+     "realised%": 25.5,
+     "display%": 49.3,
+     "chal%": 24.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURGBP": {
+     "n": 7147,
+     "skill%": 42.14,
+     "ci%": [
+      35.07,
+      49.1
+     ],
+     "realised%": 21.3,
+     "display%": 48.4,
+     "chal%": 23.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURJPY": {
+     "n": 7037,
+     "skill%": 46.01,
+     "ci%": [
+      40.65,
+      51.03
+     ],
+     "realised%": 20.1,
+     "display%": 53.3,
+     "chal%": 28.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURNZD": {
+     "n": 6924,
+     "skill%": 43.48,
+     "ci%": [
+      37.2,
+      48.87
+     ],
+     "realised%": 23.2,
+     "display%": 56.3,
+     "chal%": 31.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURUSD": {
+     "n": 7229,
+     "skill%": 41.36,
+     "ci%": [
+      34.21,
+      48.1
+     ],
+     "realised%": 22.2,
+     "display%": 50.8,
+     "chal%": 25.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPAUD": {
+     "n": 6930,
+     "skill%": 43.87,
+     "ci%": [
+      38.42,
+      49.12
+     ],
+     "realised%": 22.7,
+     "display%": 54.4,
+     "chal%": 29.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPCAD": {
+     "n": 7163,
+     "skill%": 29.57,
+     "ci%": [
+      21.6,
+      37.62
+     ],
+     "realised%": 27.9,
+     "display%": 48.4,
+     "chal%": 23.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPCHF": {
+     "n": 7124,
+     "skill%": 43.39,
+     "ci%": [
+      37.24,
+      49.53
+     ],
+     "realised%": 21.1,
+     "display%": 48.8,
+     "chal%": 23.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPJPY": {
+     "n": 6989,
+     "skill%": 42.32,
+     "ci%": [
+      36.07,
+      47.55
+     ],
+     "realised%": 22.5,
+     "display%": 52.2,
+     "chal%": 27.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPNZD": {
+     "n": 6939,
+     "skill%": 48.87,
+     "ci%": [
+      44.07,
+      53.21
+     ],
+     "realised%": 19.5,
+     "display%": 55.8,
+     "chal%": 30.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPUSD": {
+     "n": 7087,
+     "skill%": 34.55,
+     "ci%": [
+      27.72,
+      40.98
+     ],
+     "realised%": 26.8,
+     "display%": 50.9,
+     "chal%": 25.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "GOLD": {
+     "n": 6557,
+     "skill%": 34.75,
+     "ci%": [
+      27.56,
+      41.08
+     ],
+     "realised%": 29.0,
+     "display%": 54.3,
+     "chal%": 30.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "NQ": {
+     "n": 7096,
+     "skill%": 19.3,
+     "ci%": [
+      8.88,
+      29.44
+     ],
+     "realised%": 28.2,
+     "display%": 45.8,
+     "chal%": 21.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDCAD": {
+     "n": 7007,
+     "skill%": 42.65,
+     "ci%": [
+      36.76,
+      48.15
+     ],
+     "realised%": 23.0,
+     "display%": 55.2,
+     "chal%": 29.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDJPY": {
+     "n": 7035,
+     "skill%": 46.42,
+     "ci%": [
+      40.83,
+      50.61
+     ],
+     "realised%": 19.8,
+     "display%": 56.1,
+     "chal%": 30.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDUSD": {
+     "n": 6995,
+     "skill%": 40.91,
+     "ci%": [
+      35.27,
+      46.54
+     ],
+     "realised%": 24.2,
+     "display%": 55.3,
+     "chal%": 30.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "SPX500": {
+     "n": 7397,
+     "skill%": 33.21,
+     "ci%": [
+      20.86,
+      45.18
+     ],
+     "realised%": 16.0,
+     "display%": 39.6,
+     "chal%": 17.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "UK100": {
+     "n": 7517,
+     "skill%": 55.22,
+     "ci%": [
+      46.74,
+      63.2
+     ],
+     "realised%": 9.8,
+     "display%": 40.8,
+     "chal%": 17.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "US2000": {
+     "n": 6839,
+     "skill%": 10.4,
+     "ci%": [
+      1.43,
+      20.58
+     ],
+     "realised%": 33.9,
+     "display%": 45.4,
+     "chal%": 20.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDCAD": {
+     "n": 7334,
+     "skill%": 32.74,
+     "ci%": [
+      25.52,
+      40.74
+     ],
+     "realised%": 25.1,
+     "display%": 48.9,
+     "chal%": 23.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDCHF": {
+     "n": 7149,
+     "skill%": 36.77,
+     "ci%": [
+      30.41,
+      43.07
+     ],
+     "realised%": 25.3,
+     "display%": 50.9,
+     "chal%": 25.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDJPY": {
+     "n": 7004,
+     "skill%": 40.45,
+     "ci%": [
+      35.24,
+      45.54
+     ],
+     "realised%": 23.2,
+     "display%": 53.6,
+     "chal%": 29.3,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "cterc": {
+    "low": {
+     "n": 75197,
+     "skill%": 16.75,
+     "ci%": [
+      13.23,
+      20.42
+     ],
+     "realised%": 19.1,
+     "display%": 37.3,
+     "chal%": 24.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "mid": {
+     "n": 110465,
+     "skill%": 37.94,
+     "ci%": [
+      33.77,
+      42.02
+     ],
+     "realised%": 19.6,
+     "display%": 47.8,
+     "chal%": 23.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "high": {
+     "n": 55789,
+     "skill%": 58.4,
+     "ci%": [
+      55.19,
+      61.45
+     ],
+     "realised%": 31.6,
+     "display%": 75.6,
+     "chal%": 32.3,
+     "FAIL(ci<0)": 0.0
+    }
+   }
+  },
+  "dev_breakdown": {
+   "klass": {
+    "fx_crosses": {
+     "n": 253242,
+     "skill%": 38.83,
+     "ci%": [
+      36.53,
+      41.0
+     ],
+     "realised%": 25.7,
+     "display%": 53.6,
+     "chal%": 28.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "fx_majors": {
+     "n": 89954,
+     "skill%": 30.51,
+     "ci%": [
+      27.25,
+      33.82
+     ],
+     "realised%": 29.6,
+     "display%": 52.1,
+     "chal%": 27.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "gold": {
+     "n": 12469,
+     "skill%": 27.41,
+     "ci%": [
+      21.24,
+      32.63
+     ],
+     "realised%": 30.8,
+     "display%": 51.2,
+     "chal%": 26.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "indices": {
+     "n": 79697,
+     "skill%": 21.4,
+     "ci%": [
+      16.85,
+      26.37
+     ],
+     "realised%": 24.1,
+     "display%": 42.2,
+     "chal%": 18.1,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "session": {
+    "asia": {
+     "n": 129498,
+     "skill%": 3.92,
+     "ci%": [
+      2.32,
+      5.75
+     ],
+     "realised%": 34.9,
+     "display%": 44.6,
+     "chal%": 34.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "late": {
+     "n": 35250,
+     "skill%": 88.09,
+     "ci%": [
+      86.42,
+      89.51
+     ],
+     "realised%": 4.3,
+     "display%": 53.7,
+     "chal%": 4.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "london": {
+     "n": 124114,
+     "skill%": 15.06,
+     "ci%": [
+      12.32,
+      17.69
+     ],
+     "realised%": 32.0,
+     "display%": 50.6,
+     "chal%": 32.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "ny": {
+     "n": 56505,
+     "skill%": 74.64,
+     "ci%": [
+      72.41,
+      77.12
+     ],
+     "realised%": 10.4,
+     "display%": 58.5,
+     "chal%": 10.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "overlap": {
+     "n": 89995,
+     "skill%": 37.24,
+     "ci%": [
+      34.58,
+      40.13
+     ],
+     "realised%": 25.0,
+     "display%": 55.7,
+     "chal%": 24.5,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "inst": {
+    "AUDCAD": {
+     "n": 12627,
+     "skill%": 37.74,
+     "ci%": [
+      33.21,
+      42.03
+     ],
+     "realised%": 27.9,
+     "display%": 56.4,
+     "chal%": 31.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDCHF": {
+     "n": 12557,
+     "skill%": 42.88,
+     "ci%": [
+      38.62,
+      46.94
+     ],
+     "realised%": 25.0,
+     "display%": 56.6,
+     "chal%": 31.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDJPY": {
+     "n": 12395,
+     "skill%": 42.43,
+     "ci%": [
+      38.62,
+      46.4
+     ],
+     "realised%": 23.8,
+     "display%": 55.6,
+     "chal%": 31.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDNZD": {
+     "n": 12557,
+     "skill%": 47.32,
+     "ci%": [
+      43.67,
+      49.95
+     ],
+     "realised%": 19.8,
+     "display%": 57.2,
+     "chal%": 31.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "AUDUSD": {
+     "n": 12654,
+     "skill%": 36.34,
+     "ci%": [
+      31.43,
+      40.77
+     ],
+     "realised%": 29.1,
+     "display%": 56.4,
+     "chal%": 31.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "CADCHF": {
+     "n": 13044,
+     "skill%": 30.27,
+     "ci%": [
+      25.07,
+      35.62
+     ],
+     "realised%": 28.8,
+     "display%": 49.9,
+     "chal%": 24.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "CADJPY": {
+     "n": 12667,
+     "skill%": 37.43,
+     "ci%": [
+      32.1,
+      42.86
+     ],
+     "realised%": 24.4,
+     "display%": 51.3,
+     "chal%": 27.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "CHFJPY": {
+     "n": 12507,
+     "skill%": 43.84,
+     "ci%": [
+      39.72,
+      48.23
+     ],
+     "realised%": 21.9,
+     "display%": 52.3,
+     "chal%": 27.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "DE30": {
+     "n": 13407,
+     "skill%": 48.45,
+     "ci%": [
+      43.63,
+      52.84
+     ],
+     "realised%": 16.0,
+     "display%": 45.9,
+     "chal%": 21.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "DOW": {
+     "n": 13617,
+     "skill%": 23.92,
+     "ci%": [
+      15.07,
+      32.55
+     ],
+     "realised%": 18.5,
+     "display%": 37.6,
+     "chal%": 14.7,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURAUD": {
+     "n": 12361,
+     "skill%": 39.96,
+     "ci%": [
+      35.36,
+      44.12
+     ],
+     "realised%": 27.9,
+     "display%": 57.6,
+     "chal%": 32.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURCAD": {
+     "n": 12933,
+     "skill%": 23.03,
+     "ci%": [
+      16.72,
+      28.15
+     ],
+     "realised%": 33.0,
+     "display%": 49.4,
+     "chal%": 24.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURCHF": {
+     "n": 12794,
+     "skill%": 35.53,
+     "ci%": [
+      29.83,
+      40.94
+     ],
+     "realised%": 26.0,
+     "display%": 49.1,
+     "chal%": 24.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURGBP": {
+     "n": 12922,
+     "skill%": 39.15,
+     "ci%": [
+      34.54,
+      44.11
+     ],
+     "realised%": 25.3,
+     "display%": 50.5,
+     "chal%": 24.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURJPY": {
+     "n": 12454,
+     "skill%": 40.8,
+     "ci%": [
+      36.15,
+      45.53
+     ],
+     "realised%": 24.2,
+     "display%": 52.0,
+     "chal%": 28.0,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURNZD": {
+     "n": 12612,
+     "skill%": 41.63,
+     "ci%": [
+      37.33,
+      45.02
+     ],
+     "realised%": 26.2,
+     "display%": 57.9,
+     "chal%": 32.4,
+     "FAIL(ci<0)": 0.0
+    },
+    "EURUSD": {
+     "n": 12846,
+     "skill%": 25.38,
+     "ci%": [
+      19.56,
+      30.58
+     ],
+     "realised%": 32.0,
+     "display%": 50.2,
+     "chal%": 25.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPAUD": {
+     "n": 12399,
+     "skill%": 42.79,
+     "ci%": [
+      38.95,
+      47.02
+     ],
+     "realised%": 26.3,
+     "display%": 57.6,
+     "chal%": 32.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPCAD": {
+     "n": 12963,
+     "skill%": 27.62,
+     "ci%": [
+      22.32,
+      33.29
+     ],
+     "realised%": 30.7,
+     "display%": 49.7,
+     "chal%": 24.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPCHF": {
+     "n": 12832,
+     "skill%": 35.67,
+     "ci%": [
+      29.58,
+      40.74
+     ],
+     "realised%": 26.6,
+     "display%": 49.7,
+     "chal%": 24.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPJPY": {
+     "n": 12591,
+     "skill%": 42.08,
+     "ci%": [
+      37.83,
+      46.16
+     ],
+     "realised%": 22.4,
+     "display%": 51.7,
+     "chal%": 27.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPNZD": {
+     "n": 12763,
+     "skill%": 44.71,
+     "ci%": [
+      41.33,
+      48.66
+     ],
+     "realised%": 23.2,
+     "display%": 56.9,
+     "chal%": 31.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "GBPUSD": {
+     "n": 12945,
+     "skill%": 30.36,
+     "ci%": [
+      25.37,
+      35.23
+     ],
+     "realised%": 30.0,
+     "display%": 50.9,
+     "chal%": 25.5,
+     "FAIL(ci<0)": 0.0
+    },
+    "GOLD": {
+     "n": 12469,
+     "skill%": 27.41,
+     "ci%": [
+      21.79,
+      32.69
+     ],
+     "realised%": 30.8,
+     "display%": 51.2,
+     "chal%": 26.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "NQ": {
+     "n": 13033,
+     "skill%": -2.39,
+     "ci%": [
+      -9.34,
+      4.65
+     ],
+     "realised%": 36.1,
+     "display%": 43.4,
+     "chal%": 18.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDCAD": {
+     "n": 12788,
+     "skill%": 37.69,
+     "ci%": [
+      32.78,
+      42.1
+     ],
+     "realised%": 27.0,
+     "display%": 55.9,
+     "chal%": 30.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDJPY": {
+     "n": 12476,
+     "skill%": 42.56,
+     "ci%": [
+      38.34,
+      46.61
+     ],
+     "realised%": 23.2,
+     "display%": 55.7,
+     "chal%": 31.1,
+     "FAIL(ci<0)": 0.0
+    },
+    "NZDUSD": {
+     "n": 12764,
+     "skill%": 35.37,
+     "ci%": [
+      31.16,
+      39.67
+     ],
+     "realised%": 28.7,
+     "display%": 56.0,
+     "chal%": 30.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "SPX500": {
+     "n": 13476,
+     "skill%": 13.87,
+     "ci%": [
+      6.61,
+      22.67
+     ],
+     "realised%": 22.9,
+     "display%": 38.8,
+     "chal%": 15.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "UK100": {
+     "n": 13512,
+     "skill%": 55.87,
+     "ci%": [
+      50.4,
+      61.28
+     ],
+     "realised%": 10.4,
+     "display%": 43.2,
+     "chal%": 18.9,
+     "FAIL(ci<0)": 0.0
+    },
+    "US2000": {
+     "n": 12652,
+     "skill%": -6.54,
+     "ci%": [
+      -14.02,
+      0.61
+     ],
+     "realised%": 42.3,
+     "display%": 44.9,
+     "chal%": 19.6,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDCAD": {
+     "n": 13191,
+     "skill%": 18.29,
+     "ci%": [
+      12.34,
+      24.8
+     ],
+     "realised%": 34.5,
+     "display%": 50.3,
+     "chal%": 25.2,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDCHF": {
+     "n": 13019,
+     "skill%": 31.34,
+     "ci%": [
+      25.99,
+      36.61
+     ],
+     "realised%": 28.2,
+     "display%": 50.0,
+     "chal%": 24.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "USDJPY": {
+     "n": 12535,
+     "skill%": 36.17,
+     "ci%": [
+      31.8,
+      40.61
+     ],
+     "realised%": 24.7,
+     "display%": 51.4,
+     "chal%": 27.5,
+     "FAIL(ci<0)": 0.0
+    }
+   },
+   "cterc": {
+    "low": {
+     "n": 141749,
+     "skill%": 5.55,
+     "ci%": [
+      3.15,
+      8.19
+     ],
+     "realised%": 26.5,
+     "display%": 37.2,
+     "chal%": 24.8,
+     "FAIL(ci<0)": 0.0
+    },
+    "mid": {
+     "n": 189926,
+     "skill%": 30.59,
+     "ci%": [
+      27.57,
+      33.53
+     ],
+     "realised%": 23.5,
+     "display%": 48.1,
+     "chal%": 24.3,
+     "FAIL(ci<0)": 0.0
+    },
+    "high": {
+     "n": 103687,
+     "skill%": 57.81,
+     "ci%": [
+      55.63,
+      59.75
+     ],
+     "realised%": 31.5,
+     "display%": 75.9,
+     "chal%": 31.9,
+     "FAIL(ci<0)": 0.0
+    }
+   }
+  }
+ }
+}
