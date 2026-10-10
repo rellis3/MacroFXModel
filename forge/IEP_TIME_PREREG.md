@@ -112,4 +112,23 @@ smallest feature set recommended for prospective shadow evaluation. No productio
 ## Variant log
 | # | Variant | Added | Status |
 |---|---|---|---|
-| 1 | as above | 2026-10-10 | frozen before any outcome computed |
+| 1 | as above | 2026-10-10 | run 2026-10-10 (record below) |
+
+## Results record (2026-10-10) — test block 2022-2024, 527,799 rows, 778 dates
+`python -m forge.iep_time` → `TIME.md`, `time.json`; `python -m forge.iep_time_check` → `TIME_CHECK.md`; sensitivity `forge/iep_time_h4_sensitivity.py`.
+- **T (beyond M0):** hour adds to CONS (+1.05% Brier [0.85, 1.26], Holm 0.024, all years and classes) — **credited**. Session +0.29% CONS, hour +0.19% EXP,
+  session +0.12% EXP: CI > 0 but below 0.3% (not credited). Nothing adds to EXT75 / OPP75 band attainment (all |skill| < 0.1%). Weekday credited nowhere
+  (EXP +0.34% [−0.05, 0.80]). DST-mismatch weeks removed: unchanged. Descriptive: CONS vs M0 by hour is +7 to +9pp at 02-04, −8 to −12pp at 06-08,
+  −7 to −8pp at 13-14, +5 to +7pp at 19-20 (stable in all years); EXT75 vs M0 within ±1.2pp at every hour; Monday EXT75 −3.8pp, EXP −6.0pp, CONS +3.0pp.
+- **H2 session carry: null.** Asia / London extremes vs ±0.15σ placebo levels: all 8 diffs within ±2pp, Holm 1.0. Earlier-session extremes are not levels.
+- **H4 GOLD band read:** T7's numbers replicate out of sample on the export lines (10:00: 50.8% vs 18.8%), but the distance-matched baseline is 42.9% —
+  about three quarters of the lift is geometry (the target is closer). GOLD extension beyond geometry +6.0pp [0.3, 11.7], Holm 0.078 (null; 2024-driven).
+  Hour band null (Holm 0.083). Weekday Holm 0.005: Mon −11.0pp, Fri +19.0pp beyond geometry (60-74 dates per day; Monday matches the known weekday σ bias).
+  **H4d all instruments: +4.17pp [3.11, 5.23], Holm < 0.001, +4.2/+3.9/+4.2 by year, 33 of 34 instruments positive — passes as registered.**
+  Sensitivity (not a test): finer distance control +3.14 ± 1.13; adding range used +2.37 to +2.53 ± 1.15 — real but small once the day's realised range is known.
+- **X (residual after M0, BH 10%):** pass: session × extension state on CONS (max 19.7pp) and on EXT75 (max 1.0pp: below the size bar), tier1-event × session
+  on CONS (overlap on tier1 days 27.9% vs 43.4% otherwise; NY 41.5% vs 53.7%) and on EXP; stable in all years. Null: session × range used on EXT75,
+  weekday × regime on CONS and EXP.
+- **D:** New York clock vs London clock on h 12-18: log loss +0.04% [0.004, 0.091], Brier n.s., Bonferroni p 0.12 — no evidence the NY clock is better.
+- **Daily (reused result confirmed on the export, out of sample):** HL p75 exceeded Mon 19.3% ±3.0, Tue 24.7, Wed 26.1, Thu 29.4 ±3.4, Fri 26.7 (target 25).
+- **Stage 3 (IEP registration):** see the IEP prereg Stage 3 record.

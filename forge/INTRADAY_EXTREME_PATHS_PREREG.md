@@ -271,5 +271,11 @@ first script left uncomputed; no new test).
   Late stratum: H = 1 h, 1.0u, CONT|res vs 50% and CONS, by class (the known 20-22 UTC prior). The registered "Confirmation" step for survivors is run
   on 2025-01 → 2026-08-20 but labelled **non-independent** (that period was explored in earlier research); the forward block remains the only
   independent test. Companion registration for time/session/weekday questions: `forge/IEP_TIME_PREREG.md`.
+- **Stage 3 record (2026-10-10)** — `python -m forge.iep_stage3` → `STAGE3.md`, `stage3_cells.csv`. Family C: 268 eligible cell × outcome tests,
+  106 pass BH-FDR 10%, but the registered **global permutation test (outcomes shuffled within instrument × hour) finds no structure beyond the clock:**
+  max |z| p = 0.83 (CONT), 0.34 (CONS), 0.91 (S2). The survivors are hour-band structure measured against a class baseline that ignores the clock;
+  the 7 directional survivors (|eff| 5-9pp) re-read on 2025-26 (non-independent): none with an interval excluding 0, signs mixed. Late stratum, Validation:
+  crosses 44.9% (−5.1 ±2.3), majors 45.5% (−4.5 ±3.7), gold 49.0%, indices 52.6%; on 2025-26 (non-independent) the sign **reverses** (crosses 51.2%,
+  majors 55.5%, indices 54.8%). Late-day reversal is not stable: unsupported as a rule.
 - **Deviations / issues:** (1) A10 verdict line corrected as above; (2) the ladder's elapsed-variance share omits the 00:00-01:00 slot (rv_ratio feature
   only); (3) direction credited against L0 by the registered rule but disclosed against the constant; (4) late stratum and Family C not run (Stage 3).
