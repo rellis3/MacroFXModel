@@ -130,6 +130,23 @@ Also present, information only: carry drift (FX), jump-diffusion chips, implied-
 | Overlap with the causal builder (`forecast_history`, to 2026-08-20) | **None for the ladder** (archive ladder starts 08-21). The overlap 06-11 → 08-20 covers only incumbent fields, which the builder does not compute |
 | Ladder params history | `forecastLadderParams.js` regenerated 2026-09-29. Archived ladders before and after that date come from different parameter files; the version is not recorded in the archive record |
 
+**Archive vs the causal builder: the one overlapping session (2026-08-21), added 2026-10-10.** The builder's functions (`forecastSigma` on NY-close bars from local M1, `buildLadder`) can rebuild 2026-08-21 without any forward data, because that session's forecast uses bars through 2026-08-20.
+
+| Rebuilt with | Result vs the archived production ladder (21 instruments) |
+|---|---|
+| **Today's** params (what the builder's `live_*` columns use) | σ differs by −29% to +12%. Event multipliers and widths differ too |
+| **The params live that morning** (git `d3a2454f`, generated 2026-08-20) | **17/21 identical** (σ, event multiplier, every rung within 0.01pp). NQ +1.3% (production NQ=F futures vs builder OANDA CFD). DE30 / UK100 / US30 / US2000 archive σ 5–23% **below** the rebuild, because production built the ladder on Yahoo cash bars until 2026-10-07 (fault 2) |
+
+**Causes, in order of size:**
+1. **Parameter version.** `forecastLadderParams.js` changed on 2026-08-21 (`cf266651`, refit on the London 00–22 session) and 2026-09-29 (`77f6ef2b`, SPX/DOW keys). Estimators changed (for example EURUSD yz_30 → yz_10, GBPJPY yz_30 → ewma_094), widths changed, and the "none" multipliers rose from ~0.90 to ~0.95. **The builder's `live_*` columns apply today's params backwards and are therefore not "as shipped"**; its `pit_*` columns use the walk-forward fold specs, which are the honest research record but are also not what was shipped.
+2. **Index bar source** before 2026-10-07 (Yahoo cash, too low).
+3. **NQ** futures vs CFD (small).
+4. **Event tags.** The builder's calendar proxy ends 2026-07-02, so the builder tags later sessions "unknown" (×1.0) while production used the live ForexFactory tag (for example "none", ×0.86–0.95). For scoring after 2026-07-02, the builder has no event conditioning unless the tags are supplied.
+
+**Consequence for source choice:**
+- **Research baseline:** the builder's `pit_*`.
+- **"Production as shipped":** the archive, restricted to records written before the open, or a rebuild using the **param version committed at each date** plus the production bar source and event tag. These two agree exactly where both are possible.
+
 **Proposed use (for decision, §9):**
 - The archive is the record of *what production showed*. It is **not** a substitute for the causal builder when scoring.
 - Use archive records only where `computed_at` precedes the open, and only for (a) checking that the builder reproduces production, and (b) a "production as shipped" track.
