@@ -100,6 +100,15 @@ A session-aware forecast specification (expected range, range consumed, consolid
 they change by hour, session and weekday) built only from components classed as demonstrated or as reused validated results, with the
 smallest feature set recommended for prospective shadow evaluation. No production change.
 
+## Clarifications before analysis (2026-10-10, after the build checks, before any outcome is computed)
+- Orientation o = sign(D) for every row (flat rows included), so EXT/OPP outcomes exist on all rows.
+- Family X tests the interaction on the **residual y − p(M0)** (walk-forward M0 prediction), because section 6 judges findings against the
+  M0-matched baseline; the raw-outcome Wald is reported beside it, not tested.
+- Family T / D training rows are a seeded random sample of at most 300,000 rows per fit (speed); test rows are complete.
+- Family D counts as two tests (CONS, EXT75), Bonferroni × 2 inside the family.
+- Build checks (`TIME_BUILD_CHECKS.md`): IEP and export running OH agree to 0.00005pp at p99; first-touch vs running-extreme mismatch ≤ 0.009%;
+  same-minute double touches of both p75 lines 0.002% of rows.
+
 ## Variant log
 | # | Variant | Added | Status |
 |---|---|---|---|
