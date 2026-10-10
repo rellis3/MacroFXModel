@@ -72,3 +72,9 @@
 ## Not used
 - The forward block (`data/m1_forward/`, sessions 2026-08-21 → the day before go-live) is **not** scored here. It is reserved for the single final confirmation plan (VF3 Stage C prereg, lockbox section).
 - HAR-800 is never scored on that window.
+
+## Go-live (2026-10-10)
+- Deployed in commit `92a4d5e3` (Railway deployment `64c85eeb`, SUCCESS).
+- `/api/ips-shadow` serves model `f35c5f68cd16c226…`; service `ipsShadow` is registered, enabled and started.
+- **First prospective session: 2026-10-12** (Monday; first checkpoint 02:00 London). The 60-valid-session count starts there.
+- No checkpoint exists before go-live, so no retrospective record was created.
