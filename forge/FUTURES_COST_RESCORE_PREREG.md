@@ -53,3 +53,22 @@ Already tested: the cost-phase widths 0.20 and 0.30 (gross falls to +0.05R and �
 4. It still holds at **1.5× the futures cost** (the cost model is thin).
 
 **Pre-stated restriction:** if the rule fails overall but the six index futures alone pass items 1–4, that subset is reported as a **hypothesis for the forward paper record**, labelled post-hoc. It is not a pass.
+
+## Results record (2026-10-11), `scripts/line_touch_wide/futures_rescore.py` -> `analysis/output/line_touch_wide_scan/futures_rescore.json`
+- **Reconstruction exact:** 584 trades, gross +0.1922R. The 12 futures instruments hold 385 of them, gross +0.172R.
+- **All 12: FAIL.**
+
+  | Cost | Cost (R) | Net (R) | 95% interval | Halves | Instruments positive |
+  |---|---|---|---|---|---|
+  | Futures | 0.225 | −0.053 | [−0.18, +0.08] | −0.095 / −0.015 | 4 of 12 |
+  | 2× CFD table | 0.263 | −0.091 | — | — | — |
+  | Futures ×1.5 | — | −0.166 | [−0.29, −0.03] | — | — |
+
+- **Index six (post-hoc subset): also fails items 1–3.**
+  - Futures cost 0.115R; net +0.074 [−0.16, +0.29]; halves +0.185 / −0.008; 3 of 6 instruments positive.
+  - The positive mean comes from DE30 (n = 19, +0.95R gross) and NQ (+0.24).
+  - **Not carried forward as a hypothesis**, because it fails the pre-stated items.
+- **Why futures don't rescue it:**
+  - FX futures cost **more** in R than the CFD table: 6J 0.31R vs 0.15R, 6B 0.47R vs 0.32R. The reasons are the 2-tick round trip and the commission on a ~5-pip R.
+  - Index futures are 40–65% cheaper, but the index gross is uneven: DOW, US2000 and SPX are ≤ +0.08R gross.
+- **Conclusion:** the effect is gross-real, but no available venue makes it pay. The cost lever is closed for the line-touch fade. The VWAP fade was excluded by arithmetic.

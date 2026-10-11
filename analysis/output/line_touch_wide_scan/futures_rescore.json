@@ -1,0 +1,225 @@
+{
+ "reconstruction": {
+  "n": 584,
+  "gross": 0.19220475136447193
+ },
+ "commission_usd_rt": 4.0,
+ "all12": {
+  "table2x": {
+   "n": 385,
+   "gross": 0.1718,
+   "mean_cost_R": 0.2626,
+   "net": -0.0908,
+   "ci95": [
+    -0.2147,
+    0.0409
+   ],
+   "half1": -0.141,
+   "half2": -0.0453,
+   "inst_pos": 4,
+   "inst_traded": 12,
+   "pass": false
+  },
+  "futures": {
+   "n": 385,
+   "gross": 0.1718,
+   "mean_cost_R": 0.225,
+   "net": -0.0532,
+   "ci95": [
+    -0.1776,
+    0.0783
+   ],
+   "half1": -0.0954,
+   "half2": -0.015,
+   "inst_pos": 4,
+   "inst_traded": 12,
+   "pass": false
+  },
+  "futures_x1.5": {
+   "n": 385,
+   "gross": 0.1718,
+   "mean_cost_R": 0.3375,
+   "net": -0.1657,
+   "ci95": [
+    -0.2885,
+    -0.033
+   ],
+   "half1": -0.2131,
+   "half2": -0.1229,
+   "inst_pos": 4,
+   "inst_traded": 12,
+   "pass": false
+  },
+  "PASS": false
+ },
+ "index6": {
+  "table2x": {
+   "n": 162,
+   "gross": 0.1895,
+   "mean_cost_R": 0.2113,
+   "net": -0.0218,
+   "ci95": [
+    -0.2583,
+    0.187
+   ],
+   "half1": 0.071,
+   "half2": -0.0907,
+   "inst_pos": 3,
+   "inst_traded": 6,
+   "pass": false
+  },
+  "futures": {
+   "n": 162,
+   "gross": 0.1895,
+   "mean_cost_R": 0.1154,
+   "net": 0.0741,
+   "ci95": [
+    -0.1567,
+    0.2865
+   ],
+   "half1": 0.1849,
+   "half2": -0.0081,
+   "inst_pos": 3,
+   "inst_traded": 6,
+   "pass": false
+  },
+  "futures_x1.5": {
+   "n": 162,
+   "gross": 0.1895,
+   "mean_cost_R": 0.1731,
+   "net": 0.0164,
+   "ci95": [
+    -0.1964,
+    0.2345
+   ],
+   "half1": 0.1162,
+   "half2": -0.0577,
+   "inst_pos": 3,
+   "inst_traded": 6,
+   "pass": false
+  },
+  "PASS": false
+ },
+ "per_instrument": [
+  {
+   "pair": "audusd",
+   "n": 31,
+   "gross": 0.575,
+   "R_px": 0.0004,
+   "cost_table2_R": 0.3796,
+   "cost_fut_R": 0.3796,
+   "net_fut": 0.1954,
+   "breakeven_cost_px": 0.0002
+  },
+  {
+   "pair": "de30",
+   "n": 19,
+   "gross": 0.9503,
+   "R_px": 16.8759,
+   "cost_table2_R": 0.1407,
+   "cost_fut_R": 0.0806,
+   "net_fut": 0.8698,
+   "breakeven_cost_px": 16.038
+  },
+  {
+   "pair": "dow",
+   "n": 32,
+   "gross": -0.1056,
+   "R_px": 27.382,
+   "cost_table2_R": 0.1523,
+   "cost_fut_R": 0.1066,
+   "net_fut": -0.2122,
+   "breakeven_cost_px": -2.8912
+  },
+  {
+   "pair": "eurusd",
+   "n": 36,
+   "gross": -0.2491,
+   "R_px": 0.0005,
+   "cost_table2_R": 0.2446,
+   "cost_fut_R": 0.2691,
+   "net_fut": -0.5183,
+   "breakeven_cost_px": -0.0001
+  },
+  {
+   "pair": "gbpusd",
+   "n": 32,
+   "gross": 0.2697,
+   "R_px": 0.0005,
+   "cost_table2_R": 0.3229,
+   "cost_fut_R": 0.4736,
+   "net_fut": -0.2039,
+   "breakeven_cost_px": 0.0001
+  },
+  {
+   "pair": "gold",
+   "n": 49,
+   "gross": 0.1206,
+   "R_px": 2.0305,
+   "cost_table2_R": 0.2637,
+   "cost_fut_R": 0.2215,
+   "net_fut": -0.1009,
+   "breakeven_cost_px": 0.2449
+  },
+  {
+   "pair": "nq",
+   "n": 33,
+   "gross": 0.2393,
+   "R_px": 19.9191,
+   "cost_table2_R": 0.1019,
+   "cost_fut_R": 0.0607,
+   "net_fut": 0.1786,
+   "breakeven_cost_px": 4.7661
+  },
+  {
+   "pair": "spx",
+   "n": 29,
+   "gross": 0.0764,
+   "R_px": 3.8292,
+   "cost_table2_R": 0.2624,
+   "cost_fut_R": 0.1627,
+   "net_fut": -0.0862,
+   "breakeven_cost_px": 0.2927
+  },
+  {
+   "pair": "uk100",
+   "n": 16,
+   "gross": 0.4368,
+   "R_px": 6.4124,
+   "cost_table2_R": 0.3124,
+   "cost_fut_R": 0.2054,
+   "net_fut": 0.2314,
+   "breakeven_cost_px": 2.801
+  },
+  {
+   "pair": "us2000",
+   "n": 33,
+   "gross": -0.0327,
+   "R_px": 2.5657,
+   "cost_table2_R": 0.3248,
+   "cost_fut_R": 0.1137,
+   "net_fut": -0.1463,
+   "breakeven_cost_px": -0.0839
+  },
+  {
+   "pair": "usdchf",
+   "n": 47,
+   "gross": 0.243,
+   "R_px": 0.0004,
+   "cost_table2_R": 0.4012,
+   "cost_fut_R": 0.2503,
+   "net_fut": -0.0072,
+   "breakeven_cost_px": 0.0001
+  },
+  {
+   "pair": "usdjpy",
+   "n": 28,
+   "gross": 0.0224,
+   "R_px": 0.101,
+   "cost_table2_R": 0.1494,
+   "cost_fut_R": 0.3111,
+   "net_fut": -0.2888,
+   "breakeven_cost_px": 0.0023
+  }
+ ]
+}
