@@ -79,3 +79,18 @@ No shift turns any candidate into his series.
 any of 23 rate and bond futures or of Nasdaq at 15-minute resolution. What remains possible: a different data source
 with sparse updates (the flats and 0.3–0.5 jumps on no market move), a nonlinear or windowed normalisation that
 decouples bar-to-bar changes from the input, or an input that is not a market price. Only his formula resolves it.
+
+## 7. Addendum (2026-10-11, later still): scheduled inputs, trade-based bars, non-rate inputs
+
+- **Jump clock.** His largest 15-min moves cluster at 11:45–13:15 UTC (Tue +0.16 / +0.25 / +0.20, Mon +0.19, Thu +0.16);
+  mean |move| by hour peaks at 13:00 UTC. That window holds the SOFR publication (08:00 ET) and US releases.
+- **Daily fixings as a leg (FRED SOFR, ECB €STR, `fixings/`).** Both fixings stepped once mid-month (€STR +25 bp on
+  16 Sep, SOFR +23 bp on 17 Sep) and were flat for the rest of the week — so the Mon/Tue 12:00 jumps are **not**
+  fixing updates (published change 0 bp on both days).
+- **Trade-based bars** (15-min TRADES for SR3U6 / ER3U6): change corr 0.10 (pair) / 0.18 (−€STR); our trade bars are
+  flat 61–76 % of the time vs his 31 %, so his line is *more* active than a trade-only series, not less.
+- **Non-rate inputs** (OANDA 15-min): EURUSD change corr 0.09, German 10y bond CFD 0.22, US 2y CFD 0.21, SPX 0.11,
+  NAS100 0.12; best at any lag within ±2 h: 0.24. On Tue 11:45–12:00 none moved more than 0.05 %.
+
+**Net:** scheduled fixings, trade sampling and the obvious FX / bond / equity inputs are all excluded as the source of
+his bar-to-bar moves. Everything tested from our side is now in §2, §6 and §7; the formula remains unidentified.
