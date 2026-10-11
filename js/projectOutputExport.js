@@ -26,17 +26,15 @@ function header(horizon, ev = EV) {
   const c = ev.daily_vs_weekly;
   if (horizon === 'weekly') return [
     '**★ PROJECT OUTPUT — WEEKLY LINES (Forecast Weekly · Reverting)**',
-    `Why weekly: outcomes sit closer to the line (spread of realised ÷ forecast ${c.sd_log.daily_median} daily → ${c.sd_log.weekly_median} weekly, tighter on ${Math.round(c.sd_log.weekly_better_share * 100)}% of instruments)`,
-    `and one spread costs ${(c.cost_share_of_median_range.daily_median * 100).toFixed(1)}% of a typical day's range vs ${(c.cost_share_of_median_range.weekly_median * 100).toFixed(1)}% of a week's. Forecast skill is the same (R² ${c.r2.daily_median} vs ${c.r2.weekly_median}).`,
+    `Why weekly: outcomes sit closer to the line (spread of realised ÷ forecast ${c.sd_log.daily_median.toFixed(2)} daily → ${c.sd_log.weekly_median.toFixed(2)} weekly, tighter on ${Math.round(c.sd_log.weekly_better_share * 100)}% of instruments)`,
+    `and one spread costs ${(c.cost_share_of_median_range.daily_median * 100).toFixed(1)}% of a typical day's range vs ${(c.cost_share_of_median_range.weekly_median * 100).toFixed(1)}% of a week's. Forecast skill is the same (R² ${c.r2.daily_median.toFixed(2)} vs ${c.r2.weekly_median.toFixed(2)}).`,
     'Lines are size, not direction: which side gets hit first is the distance ratio, and what happens at a line is ~50/50 (no validated edge).',
-    '',
   ];
   return [
     '**★ PROJECT OUTPUT — DAILY LINES (chosen: persistence + IV)**',
     'The best of every daily forecast tested (VF3 Stage B, point-in-time 2020-08 → 2026-08: pinball 0.960 of the production export where IV exists, 0.977 elsewhere).',
     'Known misses: NFP/CPI days run ~6pp past the p75 line; GBPCAD and US2000 lines run tight, UK100 and DE30 wide (see each Track record).',
     'Live reach odds for every level (30 min → 22:00) and which-first: level-scenarios.html. After a touch is ~50/50 — no direction is claimed.',
-    '',
   ];
 }
 
