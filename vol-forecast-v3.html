@@ -680,6 +680,11 @@
 .vf-exp-item:hover:not(:disabled) { background: var(--s2); color: var(--blue); }
 .vf-exp-item:disabled { opacity: 0.38; cursor: default; }
 .vf-exp-sep { height: 1px; background: var(--border); margin: 3px 4px; }
+/* "★ Project output" group — the project's validated lines, boxed at the top of the menu. */
+.vf-exp-projbox { display: flex; flex-direction: column; gap: 3px; margin-bottom: 4px; padding: 4px 0 4px; border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--amber, #e0a32e) 55%, transparent); background: color-mix(in srgb, var(--amber, #e0a32e) 9%, transparent); }
+.vf-exp-proj { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: .08em; color: var(--amber, #e0a32e); padding: 2px 10px 1px; cursor: help; }
+.vf-exp-projitem { color: var(--text); font-weight: 700; }
 /* "Archived" group — retired exports kept one click away rather than deleted.
    Collapsed by default so the live Forecast/COG families stay the short list. */
 .vf-exp-head {
@@ -940,10 +945,15 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
     <div class="vf-exp-dd" id="vfExpDropdown">
       <button class="v2-tool-btn" id="vfExpPillBtn" onclick="toggleExpDropdown(event)" disabled>⬇ Export ▾</button>
       <div class="vf-exp-menu">
+        <div class="vf-exp-projbox">
+        <div class="vf-exp-proj" title="The project's validated lines. Each paste is the existing export, unchanged (indicators read it as before), plus a header and an out-of-sample Track record line per instrument.">★ PROJECT OUTPUT</div>
+        <button class="vf-exp-item vf-exp-projitem" id="vfProjDailyBtn" onclick="closeExpDropdown();exportProjectOutput('daily')" disabled title="Chosen daily lines (persistence + IV) with each instrument's out-of-sample track record: how often each line was actually reached, 2020-08 to 2026-08, point-in-time (VF3 Stage B). Same rows as Forecast · chosen ★.">★ Project output · daily <span style="font-size:9px;opacity:.55">chosen lines + track record</span></button>
+        <button class="vf-exp-item vf-exp-projitem" id="vfProjWeeklyBtn" onclick="closeExpDropdown();exportProjectOutput('weekly')" disabled title="Forecast Weekly · Reverting with each instrument's test-window track record (forge/HORIZON_REVERSION_PREREG.md). Weekly outcomes sit closer to the lines than daily and spread costs ~2.4x less of the move; forecast skill is the same.">★ Project output · weekly <span style="font-size:9px;opacity:.55">reverting lines + track record</span></button>
         <button class="vf-exp-item" id="vfPersistBtn"    onclick="closeExpDropdown();exportPersist()"                disabled title="The ONE daily forecast picked head-to-head over all five (forge/FORECAST_PICK_PREREG.md, walk-forward 2020-2026): the Forecast's σ nudged each morning for regime, recent range misses and weekday, plus implied vol on the 13 instruments that have it (USD majors, gold, indices). 0.964 of the plain Forecast where IV exists, 0.980 elsewhere; fixes the plain lines running tight after calm and wide after busy spells. Scored daily against plain in the forward scorecard. Same paste format as Forecast.">⬇ Forecast · chosen ★ <span style="font-size:9px;opacity:.55">persistence + IV · daily</span></button>
+        <button class="vf-exp-item" id="vfLadderWkRevBtn" onclick="closeExpDropdown();exportLadder('weekly_rev')"   disabled title="Same paste format as Forecast Weekly (same indicator), but σ fades back to its 250-day level across the week/month instead of √-time scaling. Passed its pre-registered test 2026-10-05 (forge/HORIZON_REVERSION_PREREG.md): bands right after calm AND after stress, not just on average.">⬇ Forecast Weekly · Reverting <span style="font-size:9px;opacity:.55">σ fades back · test</span></button>
+        </div>
         <button class="vf-exp-item" id="vfLadderBtn"     onclick="closeExpDropdown();exportLadder('daily')"          disabled>⬇ Forecast <span style="font-size:9px;opacity:.55">plain · production p50/75/90</span></button>
         <button class="vf-exp-item" id="vfLadderWkBtn"   onclick="closeExpDropdown();exportLadder('weekly')"         disabled>⬇ Forecast Weekly <span style="font-size:9px;opacity:.55">5-day + 20-day in one</span></button>
-        <button class="vf-exp-item" id="vfLadderWkRevBtn" onclick="closeExpDropdown();exportLadder('weekly_rev')"   disabled title="Same paste format as Forecast Weekly (same indicator), but σ fades back to its 250-day level across the week/month instead of √-time scaling. Passed its pre-registered test 2026-10-05 (forge/HORIZON_REVERSION_PREREG.md): bands right after calm AND after stress, not just on average.">⬇ Forecast Weekly · Reverting <span style="font-size:9px;opacity:.55">σ fades back · test</span></button>
         <button class="vf-exp-item" id="vfLadderSessBtn" onclick="closeExpDropdown();exportLadder('daily',true)"     disabled>⬇ Forecast + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
         <div class="vf-exp-sep"></div>
         <button class="vf-exp-item" id="vfCogBtn"        onclick="closeExpDropdown();exportCog()"                    disabled>⬇ COG <span style="font-size:9px;opacity:.55">reverse-eng</span></button>
@@ -1744,7 +1754,7 @@ function loadForecast(date) {
       }
 
       // Enable export/tools buttons
-      ['vfLadderBtn','vfIvLadderBtn','vfIvAdjBtn','vfPersistBtn','vfLadderWkBtn','vfLadderWkRevBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn',
+      ['vfLadderBtn','vfIvLadderBtn','vfIvAdjBtn','vfPersistBtn','vfProjDailyBtn','vfProjWeeklyBtn','vfLadderWkBtn','vfLadderWkRevBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn',
        // Archived group — everything that needs only the forecast payload
        'vfExportBtn','vfExtendedBtn','vfExportV2Btn','vfCalibratedBtn','vfCalExtBtn','vfCogV2Btn'].forEach(id => {
         const el = document.getElementById(id);
@@ -2699,6 +2709,22 @@ async function exportIvAdj() {
 }
 
 // The chosen daily forecast (persistence + IV; forge/FORECAST_PICK_PREREG.md), server-built, same paste format.
+// ★ Project output: the chosen daily / weekly-reverting lines with their out-of-sample track record (server-built, display only).
+async function exportProjectOutput(horizon) {
+  const btn = document.getElementById(horizon === 'weekly' ? 'vfProjWeeklyBtn' : 'vfProjDailyBtn');
+  _btnLabel(btn); btn.textContent = '… building'; btn.disabled = true;
+  try {
+    const r = await fetch(`/api/vol-forecast/project-output/export?horizon=${horizon}`);
+    const text = await r.text();
+    if (!r.ok) { btn.textContent = r.status === 202 ? '… not ready' : '✗ failed'; setTimeout(() => _btnRestore(btn), 2600); return; }
+    btn.disabled = false;
+    const date = (currentForecast && currentForecast.session_date) || 'latest';
+    _emitCalibrated(btn.id, text, `project-output-${horizon}-${date}.txt`);
+  } catch (e) {
+    btn.textContent = '✗ failed';
+    setTimeout(() => _btnRestore(btn), 2600);
+  }
+}
 async function exportPersist() {
   const btn = document.getElementById('vfPersistBtn');
   _btnLabel(btn); btn.textContent = '… building'; btn.disabled = true;

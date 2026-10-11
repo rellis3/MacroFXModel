@@ -1,0 +1,38 @@
+{
+ "r2": {
+  "daily_median": 0.1322,
+  "weekly_median": 0.1255,
+  "weekly_better_share": 0.357,
+  "n": 28
+ },
+ "corr": {
+  "daily_median": 0.4038,
+  "weekly_median": 0.4115,
+  "weekly_better_share": 0.393,
+  "n": 28
+ },
+ "sd_log": {
+  "daily_median": 0.4585,
+  "weekly_median": 0.3804,
+  "weekly_better_share": 0.964,
+  "n": 28
+ },
+ "p90_over_p50": {
+  "daily_median": 1.6859,
+  "weekly_median": 1.6492,
+  "weekly_better_share": 0.765,
+  "n": 34
+ },
+ "p75_exceed": {
+  "daily_median": 0.2379,
+  "weekly_median": 0.218,
+  "weekly_better_share": null,
+  "n": 34
+ },
+ "cost_share_of_median_range": {
+  "daily_median": 0.0214,
+  "weekly_median": 0.009,
+  "weekly_better_share": 1.0,
+  "n": 17
+ }
+}
