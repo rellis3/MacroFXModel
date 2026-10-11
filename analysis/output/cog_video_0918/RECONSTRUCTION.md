@@ -58,3 +58,24 @@ A natural-constant map (b = ±1, ±10, ±100; a = 0 or 100) was found for **none
   a month, hours-scale catch-up and confirmed turns, curve shape, magnitude → vol): nothing replicates beyond same-bar
   co-movement. Because the formula is **not identified**, the reconstruction creates **no new testable hypothesis**;
   a new test is warranted only if his disclosed formula differs materially from the 60 constructions above.
+
+## 6. Addendum (2026-10-11, later): transformed futures PRICE, bond futures, and a time-zone shift — all tested
+
+**Affine price maps.** A short-rate future's price is 100 − rate, so every "inverted / offset / rescaled price" of the
+14 STIR contracts is already one of the 60 affine candidates in §2. None fits.
+
+**Bond futures prices** (new pull, 1-min, 14–25 Sep: Bund, Bobl, Buxl, Schatz, ZT, ZN, ZF, ZB, UB; `cog_line_bonds.csv`).
+Duration gives a ~0.05–0.1 price move per bp with no scaling, so a bond price minus a constant was the natural
+candidate for his 0.1-units-per-bp scale. Result: Bobl matches the **level** (0.86; Bobl − 104.13 has RMSE 0.10) but
+bar-to-bar only 0.07; best bar-to-bar of any bond or bond spread is 0.14 (Bund − Buxl). On Tue 22 Sep 08:30–10:00 UTC
+every bond price rose 0.10–0.40 (Bobl +0.28, ZN +0.38); his line −0.05. All offsets unnatural (−104.1, −124.1, −97.9…).
+
+**Time-zone / import shift.** Cross-correlation of his 15-min changes with each candidate's at shifts of −8 h … +8 h
+(−€STR Z6, SOFR U6 − €STR Z6, his stated pair, −German 2y, US−DE 2y, Bobl, Bund, ZN, Nasdaq): the largest |corr| at any
+shift is **0.27** (ZN at −3 h); level correlations peak at 0 to −1 h (our calibration slack) and fall away smoothly.
+No shift turns any candidate into his series.
+
+**Conclusion of §6:** his line is not an affine transform — with any offset, scale, inversion or fixed time shift — of
+any of 23 rate and bond futures or of Nasdaq at 15-minute resolution. What remains possible: a different data source
+with sparse updates (the flats and 0.3–0.5 jumps on no market move), a nonlinear or windowed normalisation that
+decouples bar-to-bar changes from the input, or an input that is not a market price. Only his formula resolves it.
