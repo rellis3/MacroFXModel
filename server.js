@@ -113,6 +113,7 @@ import { rungLevelsForLadder as _laRungLevelsForLadder, RUNGS as _LA_RUNGS } fro
 import { forecastSigma as _laForecastSigma } from './js/forecastSigma.js';
 import { buildLadder as _laBuildLadder, paramsFor as _ipsParamsFor } from './js/forecastLadder.js';
 import { createIpsShadow } from './js/intradayProbShadowRoutes.js';
+import { createLevelScenarioShadow } from './js/levelScenarioShadowRoutes.js';
 import { LADDER_PARAMS as _LA_LADDER_PARAMS } from './js/forecastLadderParams.js';
 import { costForPair as _laCostForPair } from './js/perLineStrategy.js';
 import { assetClass as _assetClassOf } from './js/instrumentRegistry.js';
@@ -26863,6 +26864,22 @@ const ipsShadow = createIpsShadow({
 });
 ipsShadow.mount(app);
 svcInterval('ipsShadow', () => svcRun('ipsShadow', () => ipsShadow.tick('scheduled')), 5 * 60_000);
+
+// ── S3 shadow: level scenarios (forge/LEVEL_SCENARIO_SHADOW_PREREG.md) ─────────────────────────────────────────────────
+// Write-once forward log of the frozen Phase 2 reach model at 03/07/10/13/16 London: every eligible level's reach probabilities
+// and the nearest-above/below race, outcomes after 22:10. The page (level-scenarios.html) computes live in the browser; nothing
+// live reads the log. Writes only from Railway (same rule as S1).
+const levelScenarioShadow = createLevelScenarioShadow({
+  getJSON: _r2GetJSON,
+  putJSON: (k, v) => (_ipsWrites ? _r2PutJSON(k, v) : Promise.resolve(false)),
+  fetchM1: (inst, from, to) => fetchOandaCandleRange(inst, 'M1', from, to),
+  getForecast: () => forecastState.latest,
+  getConfluence: async () => { const raw = await kv.get('range_line_confluence'); const p = raw ? JSON.parse(raw) : null; return p?.data ?? p; },
+  instruments: VOL_INSTRUMENTS,
+  codeCommit: process.env.RAILWAY_GIT_COMMIT_SHA ?? null,
+});
+levelScenarioShadow.mount(app);
+svcInterval('levelScenarioShadow', () => svcRun('levelScenarioShadow', () => levelScenarioShadow.tick('scheduled')), 5 * 60_000);
 
 // ── Yield-shape regime signal (yield-shape-regime.html) ───────────────────────
 // Forward test of the day-clustered in-sync/turn result (analysis/yield_shape_regime_dayclustered.py, 2026-10-02):

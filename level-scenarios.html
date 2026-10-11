@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Level Scenarios</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+#sApp { padding: 0 24px 40px; width: 100%; box-sizing: border-box; max-width: 1280px; margin: 0 auto; }
+.s-h { display: flex; align-items: center; gap: 14px; padding: 16px 0 10px; border-bottom: 1.5px solid var(--border); flex-wrap: wrap; }
+.s-title { font-size: 17px; font-weight: 700; color: var(--text); } .s-sub { font-size: 10.5px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.s-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.s-btn { background: none; border: 1.5px solid var(--border); border-radius: 20px; padding: 3px 11px; cursor: pointer; font-size: 11px; color: var(--text2); text-decoration: none; font-family: 'DM Sans', sans-serif; }
+.s-btn:hover, .s-btn.on { border-color: var(--blue); color: var(--blue); }
+.s-note { margin: 12px 0; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--s1); font-size: 11.5px; color: var(--text2); line-height: 1.55; }
+.s-note b { color: var(--text); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 10px 0; }
+.card { border: 1px solid var(--border); border-radius: 10px; background: var(--s1); padding: 10px 12px; }
+.card .k { font-size: 10.5px; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; }
+.card .v { font-size: 18px; font-weight: 700; color: var(--text); font-family: 'DM Mono', monospace; margin-top: 2px; }
+.card .d { font-size: 11px; color: var(--text2); margin-top: 3px; line-height: 1.45; }
+.bar { height: 8px; border-radius: 4px; background: var(--red); overflow: hidden; margin-top: 6px; }
+.bar > div { height: 100%; background: var(--green); }
+table.s-t { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--s1); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+table.s-t th, table.s-t td { padding: 5px 8px; border-bottom: 1px solid var(--border); text-align: right; font-family: 'DM Mono', monospace; color: var(--text2); white-space: nowrap; }
+table.s-t th { color: var(--text3); font-weight: 500; font-size: 10.5px; position: sticky; top: 0; background: var(--s1); }
+table.s-t td.l, table.s-t th.l { text-align: left; }
+tr.now td { background: color-mix(in srgb, var(--blue) 14%, transparent); color: var(--text); font-weight: 700; }
+tr.off td { color: var(--text3); opacity: .6; }
+td.p { position: relative; }
+td.p span { position: relative; z-index: 1; }
+td.p i { position: absolute; left: 0; top: 2px; bottom: 2px; background: color-mix(in srgb, var(--blue) 22%, transparent); border-radius: 2px; }
+.muted { color: var(--text3); }
+.wrap { overflow-x: auto; }
+@media (max-width: 900px) { #sApp { padding: 0 12px 40px; } }
+</style>
+</head>
+<body class="dark">
+<div id="sApp">
+  <div class="s-h">
+    <div><div class="s-title">Level Scenarios</div>
+      <div class="s-sub">read-only shadow · reach, which-first, time · not wired to any bot · <span id="sUpdated">loading…</span></div></div>
+    <div class="s-right"><button class="s-btn" id="sRefresh">↻ Refresh</button></div>
+  </div>
+  <div class="s-note">
+    <b>What this shows.</b> For every level on the chart, the chance price <b>reaches it</b> within 30 min, 1 h, 2 h, 4 h and by 22:00 London, and for the nearest level above vs below,
+    <b>which is touched first</b>. Reach comes from the Level Engine Phase 2 model (frozen, fitted before 2022): distance in σ over the vol-time left in the day, range used, which side price has
+    moved to, the hour and the asset class. Validated 2022–2026: Brier skill over plain geometry +1.7% (by 22:00) to +5.4% (30 min), calibration within 1pp. Which-first is the distance ratio b ÷ (a + b);
+    nothing beat it. <b>Where a level came from does not change its reach chance</b> (tested across 13 level families), so pivots, fibs, round numbers and forecast lines are all scored by the same rule.
+    <b>What happens after the touch is ~50/50</b>: rejection vs continuation has no validated edge (every level family tested null), so this page never gives a direction.
+    <br><span class="muted">Evidence: forge/LEVEL_P2_PREREG.md · analysis/output/level_p2/RESULTS.md · shadow record forge/LEVEL_SCENARIO_SHADOW_PREREG.md. Hour term = the latest fitted checkpoint (03/07/10/13/16 London);
+    the vol-time window is the live minute. Levels inside today's range, closer than 0.05σ or beyond 3σ are outside the model and greyed. Refreshes every 60 s.</span>
+  </div>
+  <div class="chips" id="sChips"></div>
+  <div class="cards" id="sCards"></div>
+  <div class="wrap"><table class="s-t"><thead><tr>
+    <th class="l">Level</th><th class="l">Source</th><th>Distance σ</th><th>Distance</th>
+    <th>30 min</th><th>1 h</th><th>2 h</th><th>4 h</th><th>By 22:00</th><th title="plain geometry, for comparison">Geometry 22:00</th><th title="half of the touches that happen today come by this time">Half of touches by</th><th>After touch</th>
+  </tr></thead><tbody id="sBody"><tr><td colspan="12" class="muted" style="text-align:center;padding:24px">loading…</td></tr></tbody></table></div>
+</div>
+<script type="module">
+import { sessionState, londonParts } from './js/intradayRange.js';
+import { scenarios, buildLevels, HORIZONS, END_MIN } from './js/levelReach.js';
+import { REACH_MODEL_VERSION } from './js/levelReachParams.js';
+
+const OANDA_SYM = {
+  EURUSD:'EUR/USD', GBPUSD:'GBP/USD', USDJPY:'USD/JPY', AUDUSD:'AUD/USD', USDCAD:'USD/CAD', USDCHF:'USD/CHF', NZDUSD:'NZD/USD',
+  EURJPY:'EUR/JPY', GBPJPY:'GBP/JPY', EURGBP:'EUR/GBP', AUDJPY:'AUD/JPY', CADJPY:'CAD/JPY', NZDJPY:'NZD/JPY', EURAUD:'EUR/AUD', EURCHF:'EUR/CHF',
+  GOLD:'XAU/USD', NQ:'NAS100_USD', SPX500:'SPX500_USD', US30:'US30_USD', US2000:'US2000_USD', UK100:'UK100_GBP', DE30:'DE30_EUR',
+};
+const ORDER = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'];
+const INDICES = new Set(['NQ', 'SPX500', 'US30', 'US2000', 'UK100', 'DE30']);
+const digits = n => /JPY/.test(n) ? 3 : n === 'GOLD' ? 2 : INDICES.has(n) ? 1 : 5;
+const pipOf = n => /JPY/.test(n) ? 0.01 : n === 'GOLD' ? 1 : INDICES.has(n) ? 1 : 0.0001;
+const fmt = (n, v) => (v == null || !Number.isFinite(v)) ? '—' : v.toFixed(digits(n));
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const pct = p => p == null ? '<td class="muted">—</td>' : `<td class="p"><i style="width:${Math.round(p * 100)}%"></i><span>${p < 0.005 ? '<1' : Math.round(p * 100)}%</span></td>`;
+const SRC = { ladder: 'forecast ladder', open: "today's open", asia: 'Asia range', london: 'London range' };
+let sym = (() => { try { return localStorage.getItem('levelScenarios.sym') || 'EURUSD'; } catch { return 'EURUSD'; } })();
+let cache = { forecast: null, conf: null, at: 0 };
+
+// "Half of today's touches by": interpolate the survival curve to half of P(by 22:00).
+function halfBy(p, londonMin) {
+  if (!p?.end || p.end < 0.02) return '—';
+  const pts = [[0, 0], ...HORIZONS.filter(([hz]) => hz !== 'end').map(([hz, m]) => [Math.min(m, END_MIN - londonMin), p[hz]]), [END_MIN - londonMin, p.end]];
+  const half = p.end / 2;
+  for (let i = 1; i < pts.length; i++) if (pts[i][1] >= half) {
+    const [m0, q0] = pts[i - 1], [m1, q1] = pts[i];
+    const m = m0 + (q1 > q0 ? (half - q0) / (q1 - q0) : 0) * (m1 - m0);
+    const t = londonMin + m;
+    return `${String(Math.floor(t / 60) % 24).padStart(2, '0')}:${String(Math.round(t % 60) % 60).padStart(2, '0')}`;
+  }
+  return '—';
+}
+
+async function shared() {
+  if (Date.now() - cache.at < 5 * 60_000 && cache.forecast) return cache;
+  const [f, c] = await Promise.all([fetch('/api/vol-forecast').then(r => r.json()), fetch('/api/range-line-bot/confluence').then(r => r.ok ? r.json() : null).catch(() => null)]);
+  cache = { forecast: f, conf: c?.confluence ?? null, at: Date.now() };
+  return cache;
+}
+
+function levelsFor(name, st, bars, fc, conf, nowHour) {
+  const ci = conf?.instruments?.[name.toLowerCase()];
+  const day = bars.filter(b => londonParts(b.t).date === st.date && londonParts(b.t).hour < 22);
+  const levels = buildLevels({ open: st.open, bars: day, hourOf: b => londonParts(b.t).hour, nowHour, ladderFlat: fc?.ladder_flat, confLevels: ci?.levels });
+  return { levels, confDate: ci?.date ?? null };
+}
+
+async function render() {
+  $('sUpdated').textContent = 'loading…';
+  const { forecast, conf } = await shared();
+  const names = ORDER.filter(n => forecast?.instruments?.[n] && OANDA_SYM[n]);
+  if (!names.includes(sym)) sym = names[0];
+  $('sChips').innerHTML = names.map(n => `<button class="s-btn${n === sym ? ' on' : ''}" data-s="${n}">${n}</button>`).join('');
+  $('sChips').querySelectorAll('button').forEach(b => b.onclick = () => { sym = b.dataset.s; try { localStorage.setItem('levelScenarios.sym', sym); } catch {} render().catch(err); });
+  const fc = forecast.instruments[sym];
+  const r = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(OANDA_SYM[sym])}&incomplete=1`);
+  const data = await r.json().catch(() => ({}));
+  const sig = fc?.ladder?.sigma_daily_pct;
+  if (!r.ok || !data?.values?.length || !(sig > 0)) { $('sBody').innerHTML = `<tr><td colspan="12" class="muted">no bars or σ for ${sym}</td></tr>`; $('sCards').innerHTML = ''; return; }
+  const bars = [...data.values].reverse().map(b => ({ t: b.t, open: +b.open, high: +b.high, low: +b.low, close: +b.close }));
+  const st = sessionState(bars);
+  const lp = londonParts(Date.now() / 1000);
+  const londonMin = lp.date === st.date ? Math.floor(lp.hour * 60) : END_MIN;   // no bars today yet (weekend / before the open) = no session
+  const { levels, confDate } = levelsFor(sym, st, bars, fc, conf, londonMin / 60);
+  const sc = scenarios({ sym, open: st.open, price: st.now.close, high: st.now.high, low: st.now.low, sigmaDailyPct: sig, londonMin }, levels);
+  const unit = sig / 100 * st.open, pip = pipOf(sym);
+  if (!sc.ok) { $('sCards').innerHTML = `<div class="card"><div class="k">Status</div><div class="d">${esc(sc.why)}</div></div>`; $('sBody').innerHTML = ''; return; }
+  const race = sc.race;
+  const el = sc.levels.filter(l => l.eligible);
+  const best = side => el.filter(l => l.side === side).sort((a, b) => Math.abs(a.dist) - Math.abs(b.dist))[0];
+  const ua = best('above'), ub = best('below');
+  $('sCards').innerHTML = `
+    <div class="card"><div class="k">${sym} · ${lp.date}</div><div class="v">${fmt(sym, st.now.close)}</div>
+      <div class="d">open ${fmt(sym, st.open)} · σ ${sig.toFixed(3)}% (${(unit / pip).toFixed(1)} ${INDICES.has(sym) || sym === 'GOLD' ? 'pts' : 'pips'}) · range used ${sc.used.toFixed(2)}σ · move from open ${sc.D >= 0 ? '+' : ''}${sc.D.toFixed(2)}σ</div></div>
+    <div class="card"><div class="k">Which first (nearest above vs below)</div>
+      ${race ? `<div class="v">${Math.round(race.pUpFirst * 100)}% ↑ / ${Math.round((1 - race.pUpFirst) * 100)}% ↓</div>
+      <div class="bar"><div style="width:${(race.pUpFirst * 100).toFixed(1)}%"></div></div>
+      <div class="d">↑ ${fmt(sym, race.up)} (${race.a.toFixed(2)}σ) vs ↓ ${fmt(sym, race.down)} (${race.b.toFixed(2)}σ). Distance ratio b ÷ (a + b), the validated answer; ~5% of days touch neither by 22:00.</div>`
+      : '<div class="d">needs an eligible level on both sides</div>'}</div>
+    <div class="card"><div class="k">Nearest above</div><div class="v">${ua ? Math.round(ua.p.end * 100) + '%' : '—'}</div>
+      <div class="d">${ua ? `${esc(ua.label)} ${fmt(sym, ua.price)} · ${ua.dist.toFixed(2)}σ · 1 h ${Math.round(ua.p['60'] * 100)}% · half of touches by ${halfBy(ua.p, londonMin)}` : 'none eligible'}</div></div>
+    <div class="card"><div class="k">Nearest below</div><div class="v">${ub ? Math.round(ub.p.end * 100) + '%' : '—'}</div>
+      <div class="d">${ub ? `${esc(ub.label)} ${fmt(sym, ub.price)} · ${Math.abs(ub.dist).toFixed(2)}σ · 1 h ${Math.round(ub.p['60'] * 100)}% · half of touches by ${halfBy(ub.p, londonMin)}` : 'none eligible'}</div></div>
+    <div class="card"><div class="k">After a touch</div><div class="v">≈ 50 / 50</div>
+      <div class="d">Rejection vs continuation: no validated edge for any level family. Use reach and timing for targets, stops and standing aside, not for direction.</div></div>`;
+  // merge duplicate prices (several sources at one level) for the table
+  const rows = [];
+  for (const l of sc.levels) {
+    const prev = rows.at(-1);
+    if (prev && Math.abs(prev.price - l.price) < pip * 0.5) { prev.labels.add(SRC[l.family] ?? l.label); continue; }
+    rows.push({ ...l, labels: new Set([SRC[l.family] ? (l.family === 'ladder' ? l.label : SRC[l.family] + (l.label && l.family !== 'open' ? ' ' + l.label.split(' ').pop() : '')) : l.label]) });
+  }
+  let html = '', placed = false;
+  const nowRow = `<tr class="now"><td class="l">${fmt(sym, st.now.close)}</td><td class="l">◀ price now · H ${fmt(sym, st.now.high)} · L ${fmt(sym, st.now.low)}</td><td colspan="10" class="l">model hour ${sc.h == null ? '—' : String(sc.h).padStart(2, '0') + ':00'} · ${String(Math.floor(londonMin / 60)).padStart(2, '0')}:${String(londonMin % 60).padStart(2, '0')} London</td></tr>`;
+  for (const l of rows) {
+    if (!placed && l.price < st.now.close) { html += nowRow; placed = true; }
+    const dist = `${l.dist >= 0 ? '+' : ''}${(l.dist * unit / pip).toFixed(INDICES.has(sym) || sym === 'GOLD' ? 1 : 1)}`;
+    html += `<tr class="${l.eligible ? '' : 'off'}"><td class="l">${fmt(sym, l.price)}</td><td class="l">${esc([...l.labels].join(' · '))}</td><td>${l.dist >= 0 ? '+' : ''}${l.dist.toFixed(2)}</td><td>${dist}</td>`
+      + (l.eligible ? HORIZONS.map(([hz]) => pct(l.p[hz])).join('') + `<td>${Math.round(l.geo_end * 100)}%</td><td>${halfBy(l.p, londonMin)}</td><td class="muted">≈50/50</td>`
+                    : `<td colspan="8" class="l muted">${esc(l.why)}</td>`) + '</tr>';
+  }
+  if (!placed) html += nowRow;
+  $('sBody').innerHTML = html;
+  const age = confDate ? `structural levels as of ${confDate}` : 'no structural levels for this instrument (forecast ladder + session refs only)';
+  $('sUpdated').textContent = `updated ${new Date().toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' })} London · ${age} · model ${REACH_MODEL_VERSION}`;
+}
+const err = e => { $('sUpdated').textContent = `Error: ${e.message}`; };
+$('sRefresh').onclick = () => { cache.at = 0; render().catch(err); };
+render().catch(err);
+setInterval(() => render().catch(() => {}), 60_000);
+</script>
+</body>
+</html>
