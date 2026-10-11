@@ -94,3 +94,28 @@ decouples bar-to-bar changes from the input, or an input that is not a market pr
 
 **Net:** scheduled fixings, trade sampling and the obvious FX / bond / equity inputs are all excluded as the source of
 his bar-to-bar moves. Everything tested from our side is now in §2, §6 and §7; the formula remains unidentified.
+
+## 8. Addendum (2026-10-11): "the right series, sampled at his pull times"
+
+Hypothesis (owner): his Python pulls on its own schedule and TradingView holds the value between pulls, so bar-to-bar
+tests fail by construction. Test: at each bar where his line steps (|Δ| ≥ 0.03: 75 steps; ≥ 0.06: 30 steps), compare
+his step with each candidate's cumulative change since his previous step — his own steps reveal his schedule.
+
+| candidate (change since previous step) | corr, 75 steps | corr, 30 steps | scale b (units/bp) |
+|---|---|---|---|
+| −€STR Sep26 (his stated euro leg) | 0.30 | 0.44 | 0.12 / 0.21 |
+| −€STR Dec26 | 0.31 | 0.42 | 0.05 / 0.07 |
+| SOFR Sep26 − €STR Sep26 (his stated pair) | 0.33 | 0.40 | 0.12 / 0.19 |
+| SOFR Sep26 − €STR Dec26 | 0.37 | 0.47 | 0.06 / 0.09 |
+| −German 2y | 0.22 | 0.26 | 0.02 |
+| OLS on all 16 legs, same intervals (in-sample ceiling) | **0.49** | 0.74 (16 params on 30 points) | — |
+
+- 91–97 % of his steps have *some* rate movement ≥ 0.5 bp behind them (7 of 75 have none), so the inputs are not
+  disconnected from rates — but no single leg or pair accounts for more than ~0.4–0.5 of his step sizes, the fitted
+  scale drifts by 2× between step thresholds, and the Tuesday 12:00 step (+0.25) has 0 bp behind it on every leg.
+- The sampling hypothesis raises agreement from 0.10–0.26 (bar-to-bar) to 0.3–0.5 (step-aligned). It is the best
+  explanation found, and still not a reconstruction: at most a quarter to a half of the variance of his steps.
+
+**Conclusion of §8.** Consistent with his line being built from these legs, pulled irregularly, with a transform or
+weighting we cannot see; not consistent with any single pair at a fixed scale. The question to him narrows to: *what
+is the exact formula, and how often does the script pull?*
