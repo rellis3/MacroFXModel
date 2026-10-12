@@ -103,7 +103,22 @@ and Unicode maths (f* = μ/σ², Xₜ₋₁). Only about 10 decks load MathJax.
 | Chain | `.sl-chain` > `.sl-chain-link(.shock/.concept/.end)` + `.sl-chain-arrow` |
 | Desk stamp | DESK-wrapped `.sl-stamp.untested/null/underpowered/validated/context` [`data-evidence` `data-evidence-date`] > `.sl-stamp-tag` |
 
+## Sizing
+
+The reference deck is about 15 slides with a 5-question quiz. For a short deck (8–10 slides), keep the title, the
+core idea, one interactive slide, "where this needs qualifying", the quiz (3 questions), and recap + teaser on the
+last slide. Cut extra story and origin slides first.
+
+## Formulas in decks
+
+There's no `tl-eq-break` equivalent. Write the formula in Unicode inside a `.sl-quote` or `.sl-box`, then explain
+each term with an `.sl-row` of `.sl-box` items. Avoid inline styles.
+
 ## Conventions
+
+- The title-slide kicker "Lesson N · Category" uses the same N as the lesson's hub card (`tl-card-num`).
+- Write the `sl-fullnote` to match what the full lesson actually contains. Don't copy "a live calculator, and a
+  6-question self-test" unless it does.
 
 - After the title slide, kickers run "Section 1…N". The episode slide is "Section N · It actually happened";
   whiteboard slides are "▶ Watch it".

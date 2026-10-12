@@ -30,8 +30,10 @@ reference pair.**
    python3 .claude/skills/theory-lab-lessons/scripts/check_lesson.py --ci theory-lab/lessons/<slug>.html theory-lab/lessons/<slug>-micro.html
    ```
    This runs the style-guide §8 checks (tag balance, `node --check` on inline scripts, links resolve, every `tl-*` class
-   is in `theory.css` and every `sl-*` class in `deck.css`), then the node tests from `.github/workflows/theory-lab.yml`
-   plus `deskStrip`.
+   is in `theory.css` and every `sl-*` class in `deck.css`), deck structure checks (required ids, slide order, deck.js
+   not deferred, quiz markup), the `deskStrip` leak test, and with `--ci` the other tests from
+   `.github/workflows/theory-lab.yml`. Then open the deck in Chromium (Playwright) and click through the slides,
+   sliders and quiz, checking for console errors. The checks can't tell you whether it actually works.
 
 ## House rules that matter most
 

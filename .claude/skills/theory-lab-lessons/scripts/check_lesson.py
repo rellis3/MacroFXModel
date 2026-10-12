@@ -7,7 +7,9 @@ Usage (from the repo root):
 
 Per file: tag balance, `node --check` on inline scripts, relative hrefs resolve,
 every tl-* class exists in theory.css and every sl-* class in deck.css (or a local <style>).
---ci also runs the node tests that .github/workflows/theory-lab.yml runs, plus deskStrip.
+-micro decks also get structural checks (required ids, data-slide order, deck.js not deferred, quiz markup).
+The deskStrip leak test always runs (it scans the repo's lessons, so it only sees files inside the repo);
+--ci adds the other node tests that .github/workflows/theory-lab.yml runs.
 Exit code 1 if anything fails.
 """
 import os
@@ -89,6 +91,31 @@ def check_classes(s, theory, deck):
     return issues
 
 
+def check_deck(s):
+    """Structural checks for -micro decks (deck.js wiring)."""
+    if 'id="deck"' not in s:
+        return []
+    issues = []
+    for i in ["sl-count", "sl-total", "sl-prev", "sl-next", "sl-progress", "sl-viewport"]:
+        if f'id="{i}"' not in s:
+            issues.append(f"deck: missing required id {i}")
+    nums = [int(n) for n in re.findall(r'<section class="sl-slide[^"]*" data-slide="(\d+)"', s)]
+    if nums != list(range(1, len(nums) + 1)):
+        issues.append(f"deck: data-slide not 1..N in order: {nums}")
+    if len(re.findall(r'class="sl-slide active"', s)) != 1:
+        issues.append("deck: exactly one slide (the first) should be 'sl-slide active'")
+    if re.search(r'<script[^>]*src="[^"]*deck\.js"[^>]*\b(defer|async)\b', s):
+        issues.append("deck: deck.js must be a plain script, not defer/async")
+    if "deck.js" not in s:
+        issues.append("deck: deck.js not loaded")
+    for q in re.findall(r'<div class="sl-quiz-q".*?(?=<div class="sl-quiz-q"|</section>)', s, re.S):
+        if 'data-correct="true"' not in q:
+            issues.append("deck: a quiz question has no option with data-correct=\"true\"")
+        if re.search(r'<(?!button)\w+[^>]*class="sl-quiz-opt', q):
+            issues.append("deck: quiz options must be <button class=\"sl-quiz-opt\">")
+    return issues
+
+
 def main(argv):
     ci = "--ci" in argv
     files = [a for a in argv if not a.startswith("--")]
@@ -100,7 +127,7 @@ def main(argv):
     failed = False
     for path in files:
         s = open(path, encoding="utf-8").read()
-        issues = check_tags(s) + check_scripts(s) + check_links(path, s) + check_classes(s, theory, deck)
+        issues = check_tags(s) + check_scripts(s) + check_links(path, s) + check_classes(s, theory, deck) + check_deck(s)
         if issues:
             failed = True
             print(f"✗ {path}")
@@ -108,8 +135,10 @@ def main(argv):
                 print(f"    {i}")
         else:
             print(f"✓ {path}")
-    if ci:
-        for t in CI_TESTS:
+    # deskStrip always runs: a DESK leak is the easiest failure to miss
+    tests = CI_TESTS if ci else ["js/deskStrip.test.mjs"]
+    if tests:
+        for t in tests:
             if not os.path.exists(t):
                 print(f"- skip {t} (missing)")
                 continue
