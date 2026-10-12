@@ -9,7 +9,7 @@ full result; check it before quoting numbers.
 |---|---|---|---|
 | V1 hard 4-way gate conjunction | broken by design | zero trades in a 2-year synthetic backtest → replaced by a blended score (`cogThreshold1Gate.js`), then the V2 state machine | `cog/lessons/cog-gate-system.html` |
 | QMR price-based gates | **DEAD** (2026-07-29) | edge was a free-hour artifact; honest Sharpe 0.36 at 46% DD | `cog-replication/DECISIONS.md` |
-| Net liquidity as standalone daily direction | null | dirAlpha −0.011, t −0.14, n 521 | `cog-replication/README.md` |
+| Net liquidity as standalone daily direction | null | dirAlpha −0.011, t −0.14, n 521 | `cog-replication/README.md` (this result is current; other parts of that README are stale) |
 | **G2**: GEX → next-day NQ range | **REAL** (range only, no direction) | +0.176 (p 0.0008), +0.315 vol-matched; 4/4 specs, 6/6 years; survives event-day confound; long gamma = quiet is the reliable side. FX cross-match mixed → NQ only | `oi_research_book/GEX_RANGE_BROWNIAN_RESULTS.md`, `G3_AND_EVENTDAY_RESULTS.md`, `GEX_FX_CROSSMATCH_RESULTS.md` |
 | **G3**: OI wall magnet direction | **NULL** | 48.8% OOS on 615 days, IC +0.061 (p 0.34), placebo 49.9% | `oi_research_book/G3_AND_EVENTDAY_RESULTS.md` |
 | **G1**: net-liquidity tide (2026-09-25) | **NULL** | 448 episodes; OOS hit 51.9/49.5/51.5% at 1/5/20d; 20d IC +0.194 IS → −0.026 OOS (sign flip, QE-era artifact); both buckets positive fwd returns; credit veto adds nothing; FLOW IS-trap 54.2% → 50.5% | `cog-replication/G1_RESULTS.md`, `g1_results.json` |
@@ -21,7 +21,7 @@ full result; check it before quoting numbers.
 |---|---|---|---|
 | Can we reproduce his lines? | **yes** | HL p50 = raw Feller; p75 and OC ~5–7% tighter than theory | `cog/lessons/cog-reverse-engineering.html`, `js/cogReverseEngineer.js` |
 | Can we rebuild his σ from price? | **no** | scale his/ours EURUSD 1.25, GOLD 1.15, NQ 0.98; day-to-day corr ~0.5 FX/gold, ~0.1 NQ; level tracks CME CVOL | `MD files/COG_GAP_FINDINGS.md` |
-| Fade at his line vs our Feller bands (paired, costed, OOS) | **NULL** | not a better tradeable fade | `js/cogFadeEngine.js`, `js/cogLevelPoc.js` |
+| Fade at his line vs our Feller bands (paired, costed, OOS) | **NULL** | not a better tradeable fade than our bands, OOS (no standalone results doc; the record is the lesson's takeaway) | engines `js/cogFadeEngine.js`, `js/cogLevelPoc.js`; record `cog/lessons/cog-reverse-engineering.html` (red takeaway) |
 | Setups A/B × 5 direction rules (10y, Holm) | **nothing passes** | A mean R −0.066 (best rule −0.047); B −0.201, 86.7% stopped | `analysis/output/cog_setups/RESULTS.md` |
 | 12 FRED spreads × 4 reads × sign × setup (192 choices) | **FAIL** | OOS −0.033R = no filter; beats placebo only 63% | `forge/COG_SPREAD_DIRECTION_PREREG.md`, `analysis/output/cog_yield_dir/RESULTS.md` |
 | Direction study book S1–S7 | thin information | vote ladder −0.019R (all agree) to −0.082R (all disagree): a veto, not an entry; bond CFDs are the wrong rates instrument | `plans/STUDY_BOOK_2026-10-08.md` |

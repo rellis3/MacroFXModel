@@ -58,21 +58,34 @@ Raw material **not yet converted**: `micro learning bank.md` (course outline), `
 
 ## Adding a snippet (`education/cog-snippets.md`)
 
-One numbered entry per snippet, newest at the bottom:
+One numbered entry per snippet, newest at the bottom. Match entry 1's layout:
 
 ```markdown
 ## N. <Title> (#channel, YYYY-MM-DD)
 
-**Context:** who asked, what about.
+**Context:** who asked whom, about what. Tag every speaker (C.OG / Jordan (CT) / Husky / …).
 
-![](cog_snippets/YYYY-MM-DD-<slug>.png)
+![<alt>](cog_snippets/YYYY-MM-DD-<slug>.png)
 
-> the message or table exactly as posted
+**The table as posted:**            <!-- if there is one -->
 
-**Reading the table / Why …** — our explanation, kept separate. Mark our own steps ("this last step is ours").
+**<Speaker>'s question:** "…"
 
-**How it maps to this repo:** built / not built, with paths.
+**C.OG's response (verbatim):**
+
+> the message exactly as posted, line breaks kept
+
+### Reading the table / Why it works     <!-- our explanation, kept separate; mark our steps ("this last step is ours") -->
+
+### How it maps to this repo            <!-- built / not built, with paths and any verdict from references/verdicts.md -->
 ```
+
+- **Verbatim or nothing.** The file keeps the original words. If the user only paraphrases ("Jordan said he fades
+  the p75"), ask for the message text or a screenshot before adding an entry. Don't invent a quote.
+- **Whose material is it?** Messages from the C.OG Discord go here whoever posted them, with the speaker tagged. A
+  member's own trading *method* (Jordan's reconstructed systems) belongs in `education/jordan_*`; link it from the
+  snippet rather than mixing it in.
+- If the snippet touches something already tested, say so in "How it maps to this repo" with the verdict.
 
 A longer C.OG video gets its own `education/<topic>-notes.md`, linked from the snippets file header. Long course
 material goes in `micro learning bank.md`.

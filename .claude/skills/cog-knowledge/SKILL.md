@@ -39,7 +39,7 @@ additions explicitly ("this last step is ours").
 
 **As of 2026-10-11, the shadow has no validated directional layer and must not be called a replication**
 (`cog-replication/DECISIONS.md`, 2026-09-25). Treat `DECISIONS.md` as authoritative over `cog-replication/README.md`,
-which is stale.
+which is stale. The summary below is a snapshot; check `DECISIONS.md` for entries newer than its date.
 
 - Reproduced: his forecast lines are constant × σ_daily (HL p50 1.56, HL p75 1.93, OC p50 0.74, OC p75 1.24).
 - Real: **G2**, where GEX predicts next-day **range** on NQ only (no direction).
@@ -48,7 +48,8 @@ which is stale.
 
 The full ledger with numbers and source files is in `references/verdicts.md`. Read it before proposing a test.
 
-**Do-not-reopen list:** QMR, the G3 magnet, and the three gates. Reopen one only with a genuinely new mechanism and its own
+**Do-not-reopen list:** QMR, and any of the three gates *as a direction signal* (G1 tide, G3 magnet, G2 GEX). G2's
+**range** effect on NQ is real and stays in use. Reopen one only with a genuinely new mechanism and its own
 pre-registration. If the user asks for one of these, tell them the prior verdict and source first, then ask what's new.
 
 ## Reference files (read the one you need)
