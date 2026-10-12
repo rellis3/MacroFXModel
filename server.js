@@ -227,6 +227,7 @@ import { levelExpectation } from './js/levelExpectation.js';   // per-level Reje
 import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
 import { buildOILevelText } from './js/oiLevelExport.js';
 import { oiGexLadder as _oiGexLadder } from './js/oi.js';
+import { emptyBook as _oiShadowEmptyBook, syncPlan as _oiShadowSyncPlan, stepBar as _oiShadowStepBar, summarize as _oiShadowSummarize } from './js/oiShadowExec.js';   // CME-vs-Cboe OI plan paper-trader (forward test, no orders)
 import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _parseCboeChain, cboeLadder as _cboeLadder, cboeSnapshotRow as _cboeSnapshotRow, cboeOverlayInst as _cboeOverlayInst, cfdCashOffset as _cfdCashOffset, cboeShift as _cboeShift, cashRefTime as _cashRefTime } from './js/cboeChain.js';   // free delayed Cboe index-options chain (additive to CME; dashboard toggle + tracking)   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
 import { meetingProbabilities as _zqMeetingProbs } from './js/fedPathZq.js';
 import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE, OI_PRODUCT_SPEC as _OI_SPEC } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
@@ -18357,6 +18358,10 @@ async function _oiAccumulateTradeLog() {
         open_price: c.open_price, close_price: c.close_price, profit: c.profit,
         reason: c.reason, time_open: c.time_open, time_close: c.time_close,
         mfe_pips: c.mfe_pips ?? null, mae_pips: c.mae_pips ?? null,
+        // R and the stop it is measured against (the bot reports both) and the broker-clock
+        // offset — so the log can be scored in R, in UTC, like the shadow books.
+        r: Number.isFinite(c.r) ? c.r : null, sl_at_entry: c.sl_at_entry ?? null, tp_at_entry: c.tp_at_entry ?? null,
+        tz_offset_sec: c.tz_offset_sec ?? null, comment: c.comment ?? null,
         date: _rlSessionDate(c.time_open),
         zone_id: f?.zone_id ?? null, features: f ?? null,
       });
@@ -19042,15 +19047,21 @@ function _oiGexMedianAbs(hist, key, useDay = false) {
   const mid = Math.floor(vals.length / 2);
   return vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
 }
-async function _refreshOIBotZones() {
+// Options exist for the Cboe SHADOW plan only (_refreshOIBotZonesCboe): it hands in a
+// store of Cboe-overlaid entries and writes a different key. Called with no arguments
+// (every live caller) this is byte-for-byte the live producer: oi_store in, oi_bot_zones out.
+async function _refreshOIBotZones({ storeOverride = null, outKey = 'oi_bot_zones', strategy = 'oi-bot', noHistory = false } = {}) {
   try {
     const [oiRaw, cfgRaw, histRaw, calibRaw] = await Promise.all([
-      kv.get('oi_store').catch(() => null), kv.get('oi_bot_config').catch(() => null), kv.get('oi_history').catch(() => null),
+      storeOverride ? null : kv.get('oi_store').catch(() => null), kv.get('oi_bot_config').catch(() => null),
+      noHistory ? null : kv.get('oi_history').catch(() => null),
       kv.get('oi_hold_calibration').catch(() => null),
     ]);
-    if (!oiRaw) return 0;
-    const store = JSON.parse(oiRaw).data ?? JSON.parse(oiRaw);
+    if (!storeOverride && !oiRaw) return 0;
+    const store = storeOverride || (JSON.parse(oiRaw).data ?? JSON.parse(oiRaw));
     const cfg = { ...OI_BOT_CFG_DEFAULTS, ...(cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {}) };
+    // oi_history is CME's (its wall-stability, flip drift and the GEX median that sets
+    // conviction are all in CME units/strikes) — a Cboe book must not be judged by it.
     const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
     // Hold-score calibration: once the forward-test has resolved enough wall touches,
     // the fitted component weights auto-apply here — no config change needed
@@ -19171,7 +19182,10 @@ async function _refreshOIBotZones() {
       // Falls back to the primary's own refMove when the day expiry has no spot (should
       // not happen if dayEx exists, but a fallback here is cheap and this must never
       // silently become 0/null and switch every distance check off).
-      const dayRefMoveObj = dayEx ? _oiRefMoveForDTE(inst, key, dayEx.dte) : null;
+      // A Cboe shadow entry has no day set (its book IS the near expiries) but its CME
+      // refMove is the primary's — scale to the traded DTE the same way (shadowRefMoveDte).
+      const dayRefMoveObj = dayEx ? _oiRefMoveForDTE(inst, key, dayEx.dte)
+        : (Number.isFinite(inst.shadowRefMoveDte) ? _oiRefMoveForDTE(inst, key, inst.shadowRefMoveDte) : null);
       const _dayRefMove = dayRefMoveObj?.move ?? inst.refMove?.move ?? null;
       // Absolute stop-buffer floor, per instrument (price units, 0/absent = off). refMove
       // shrinking for the day book is correct for reach/trigger checks but can undercut
@@ -19232,6 +19246,8 @@ async function _refreshOIBotZones() {
         // (each pair is pasted separately, so staleness is per-pair, not per-plan) and let
         // the bot gate on the CHAIN's age as well as the plan's.
         oiSavedAtMs: Number.isFinite(inst.savedAtMs) ? inst.savedAtMs : null,
+        ...(inst.oiSource ? { oiSource: inst.oiSource } : {}),            // Cboe shadow: which book built it
+        ...(inst.shadowChainKey ? { chainKey: inst.shadowChainKey } : {}), // Cboe shadow: one-shot scope (the Cboe day)
         refMove: _dayRefMove,                                      // shipped for the executor's approach-velocity read — same day-scaled value the planner used, not the primary's
         refMoveSource: dayRefMoveObj?.source ?? inst.refMove?.source ?? null,
         farExpiry,   // the far primary book (null unless a nearer day expiry was traded instead)
@@ -19240,14 +19256,14 @@ async function _refreshOIBotZones() {
         ivDynamics: inst.ivDynamics ?? null, riskReversal: inst.riskReversal ?? null };
       if (stale) console.warn(`[oi-bot] ${key}: ${stale} — skipping (no zones)`);
     }
-    await kv.put('oi_bot_zones', JSON.stringify({ data: { strategy: 'oi-bot', generatedAt: new Date().toISOString(), instruments, skipped }, timestamp: Date.now() }));
+    await kv.put(outKey, JSON.stringify({ data: { strategy, generatedAt: new Date().toISOString(), instruments, skipped }, timestamp: Date.now() }));
     const total = Object.values(instruments).reduce((a, v) => a + v.zoneCount, 0);
-    console.log(`[oi-bot] zones refreshed · ${Object.keys(instruments).length} instruments · ${total} zones`);
+    console.log(`[oi-bot] ${outKey} refreshed · ${Object.keys(instruments).length} instruments · ${total} zones`);
     return Object.keys(instruments).length;
   } catch (e) { console.error('[oi-bot] zones refresh failed:', e.message); return 0; }
 }
-svcInterval('oiBot', _refreshOIBotZones, 10 * 60_000);
-setTimeout(_refreshOIBotZones, 60_000);
+svcInterval('oiBot', () => _refreshOIBotZones(), 10 * 60_000);
+setTimeout(() => _refreshOIBotZones(), 60_000);
 
 // ── volatility_bot_v2 (Level Atlas Vote Portfolio) plan producer ─────────────
 // Replaces `volatility_bot` (retired, left running until the owner stops it —
@@ -21697,11 +21713,11 @@ app.get('/api/oi-store', async (req, res) => {
 const _CBOE_TTL_MS = 5 * 60_000;
 const _cboeCache = new Map();      // sym -> { at, built, err }
 const _cboeInflight = new Map();   // sym -> Promise
-async function _cboeBuilt(pair, { force = false } = {}) {
+async function _cboeBuilt(pair, { force = false, ttlMs = _CBOE_TTL_MS } = {}) {
   const cfg = _CBOE_PAIRS[pair];
   if (!cfg) throw new Error(`no Cboe index for ${pair}`);
   const hit = _cboeCache.get(cfg.sym);
-  if (!force && hit?.built && Date.now() - hit.at < _CBOE_TTL_MS) return { ...hit, stale: false };
+  if (!force && hit?.built && Date.now() - hit.at < ttlMs) return { ...hit, stale: false };
   if (_cboeInflight.has(cfg.sym)) return _cboeInflight.get(cfg.sym);
   const p = (async () => {
     try {
@@ -21772,7 +21788,7 @@ const _CBOE_SNAP_KEY = 'cboe_snap_v1';
 let _cboeSnapLastMs = 0;
 async function _cboeSnapshotTick() {
   const now = new Date(), wd = now.getUTCDay(), h = now.getUTCHours();
-  if (wd === 0 || wd === 6 || h < 14 || h >= 21) return;           // US cash session (UTC, approx.)
+  if (wd === 0 || wd === 6 || h < 13 || h >= 21) return;           // 13:00 UTC = before the US open (the kept `open` row), to the close
   if (Date.now() - _cboeSnapLastMs < 2 * 60 * 60_000) return;
   _cboeSnapLastMs = Date.now();
   let cme = {};
@@ -21787,6 +21803,19 @@ async function _cboeSnapshotTick() {
       if (r.stale) continue;                                          // never record a stale copy as today's
       const row = _cboeSnapshotRow(r.built, cme[pair]);
       if (!row) continue;
+      // The full gamma-ranked wall lists (what a Cboe plan would trade), not just the top.
+      try {
+        const ov = _cboeOverlayInst(cme[pair] || { spot: r.built.spot }, r.built);
+        const w = a => (a || []).map(x => [x.strike, x.gex, x.tier || null]);
+        row.walls = { call: w(ov.callWalls), put: w(ov.putWalls) };
+      } catch { /* walls are extra detail — the row stands without them */ }
+      // The FIRST row of the day is kept as `open` and never overwritten: the later rows
+      // track the close, and a replay of the session needs what was known BEFORE it (the
+      // GEX walls move with spot through the day; only the first copy is hindsight-free).
+      const prev = book[pair]?.[day];
+      // (A day already started before this field existed has no first copy: null, not a
+      // later row passed off as the open.) `open.asOf` says when the kept copy was taken.
+      row.open = prev ? (prev.open ?? null) : { ...row };
       (book[pair] = book[pair] || {})[day] = row;
       wrote++;
     } catch (e) { console.error('[cboe-snapshot]', pair, e.message); }
@@ -21801,6 +21830,170 @@ app.get('/api/cboe-snapshots', async (req, res) => {
     const book = raw ? (JSON.parse(raw).data ?? {}) : {};
     const pair = String(req.query.pair || '');
     res.json({ ok: true, data: pair ? { [pair]: book[pair] || {} } : book });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── CBOE SHADOW PLAN + SHADOW EXECUTOR (forward test, no orders) ─────────────
+// Question: would the OI bot trade better on Cboe's index-options levels than on CME's?
+// Two pieces, both writing their own keys and never oi_store / oi_bot_zones:
+//   1. _refreshOIBotZonesCboe — the SAME planner (_refreshOIBotZones → buildOIZones) run
+//      on CME entries whose level fields are replaced by Cboe's (cboeOverlayInst: walls,
+//      max pain, flips, regime). Index pairs only (Cboe has no gold/DAX). → oi_bot_zones_cboe
+//   2. _oiShadowTick — js/oiShadowExec.js (a port of the bot's engine rules) paper-trades
+//      BOTH plans on OANDA 1-minute bars, so CME and Cboe are scored by one simulator.
+//      The live MT5 trades (oi_bot_trade_log) sit beside them on /api/oi-bot/cboe-shadow.
+// Forward only: it never backfills (the current plan on past bars would be hindsight),
+// and a gap longer than 30 min (restart, outage) is skipped and recorded, not replayed.
+const _OI_CBOE_PLAN_KEY = 'oi_bot_zones_cboe';
+const _OI_SHADOW_KEY = 'oi_shadow_v1';
+const _OI_SHADOW_INDEX = { spx: 'SPX500_USD', nq: 'NAS100_USD', rut: 'US2000_USD', dow: 'US30_USD' };
+const _OI_SHADOW_GAP_MS = 30 * 60_000;
+
+function _usCashSessionNow(ms = Date.now()) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hourCycle: 'h23',
+    hour: '2-digit', minute: '2-digit', weekday: 'short' }).formatToParts(new Date(ms)).map(x => [x.type, x.value]));
+  const m = +p.hour * 60 + +p.minute;
+  return !['Sat', 'Sun'].includes(p.weekday) && m >= 9 * 60 + 30 && m <= 16 * 60 + 15;
+}
+// New York calendar date of the session a Cboe quote describes (its close when after hours).
+function _cboeSessionDay(asOfMs) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(_cashRefTime(asOfMs)));
+}
+
+let _oiCboePlanAt = 0;
+async function _refreshOIBotZonesCboe() {
+  const raw = await kv.get('oi_store').catch(() => null);
+  if (!raw) return 0;
+  const cme = JSON.parse(raw).data ?? JSON.parse(raw);
+  // In the cash session Cboe moves every few minutes; outside it Cboe serves the close,
+  // so one fetch an hour is plenty (4 chains, a few MB each).
+  const ttlMs = _usCashSessionNow() ? _CBOE_TTL_MS : 60 * 60_000;
+  const store = {};
+  for (const pair of Object.values(_OI_SHADOW_INDEX)) {
+    if (!cme[pair] || !_CBOE_PAIRS[pair]) continue;
+    try {
+      const r = await _cboeBuilt(pair, { ttlMs });
+      if (!r?.built) continue;
+      const inst = _cboeOverlayInst(cme[pair], r.built, { stale: r.stale });
+      store[pair] = { ...inst,
+        // One-shot zone state resets on a new CME paste OR a new Cboe session (Cboe's OI
+        // and its 0-DTE book change at the US open, not at the CME paste).
+        shadowChainKey: `${cme[pair].savedAtMs ?? 'na'}|cboe ${_cboeSessionDay(r.built.asOfMs)}`,
+        shadowRefMoveDte: Math.max(1, Number.isFinite(inst.dte) ? inst.dte : 1) };
+    } catch (e) { console.error('[oi-shadow] Cboe', pair, e.message); }
+  }
+  if (!Object.keys(store).length) return 0;
+  _oiCboePlanAt = Date.now();
+  return _refreshOIBotZones({ storeOverride: store, outKey: _OI_CBOE_PLAN_KEY, strategy: 'oi-bot-cboe-shadow', noHistory: true });
+}
+
+async function _oandaM1Since(pair, fromMs) {
+  const url = `${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(pair)}/candles?granularity=M1&price=M&count=500&from=${encodeURIComponent(new Date(fromMs).toISOString())}`;
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(15_000) });
+  if (!r.ok) throw new Error(`OANDA ${r.status}`);
+  const j = await r.json();
+  return (j.candles || []).filter(c => c.complete && c.mid)
+    .map(c => ({ t: new Date(c.time).getTime(), o: +c.mid.o, h: +c.mid.h, l: +c.mid.l, c: +c.mid.c }));
+}
+
+const _kvJson = async k => { const raw = await kv.get(k).catch(() => null); if (!raw) return null; const j = JSON.parse(raw); return j.data ?? j; };
+
+async function _oiShadowTick() {
+  if (!process.env.OANDA_KEY) return;
+  if (Date.now() - _oiCboePlanAt >= 10 * 60_000) {
+    try { await _refreshOIBotZonesCboe(); } catch (e) { console.error('[oi-shadow] Cboe plan', e.message); }
+  }
+  const [state0, cmePlan, cboePlan] = await Promise.all([_kvJson(_OI_SHADOW_KEY), _kvJson('oi_bot_zones'), _kvJson(_OI_CBOE_PLAN_KEY)]);
+  const state = state0 || { startedAt: Date.now(), books: {}, lastT: {}, lastPx: {}, gaps: [] };
+  for (const src of ['cme', 'cboe']) state.books[src] = state.books[src] || _oiShadowEmptyBook();
+  const plans = { cme: cmePlan, cboe: cboePlan };
+  const keys = Object.keys(_OI_SHADOW_INDEX);
+  const now = Date.now();
+  // 1. Bars since the last processed minute, per instrument.
+  const barsBy = {};
+  for (const k of keys) {
+    let from = state.lastT[k] != null ? state.lastT[k] + 60e3 : now - 6 * 60e3;
+    if (now - from > _OI_SHADOW_GAP_MS) {
+      if (state.lastT[k] != null) state.gaps.push({ instrument: k, from: state.lastT[k], to: now - 6 * 60e3 });
+      from = now - 6 * 60e3;
+    }
+    try { barsBy[k] = await _oandaM1Since(_OI_SHADOW_INDEX[k], from); } catch (e) { barsBy[k] = []; console.error('[oi-shadow] M1', k, e.message); }
+  }
+  // 2. Adopt the current plans (priming at the last price seen), then step every bar in
+  //    TIME order across instruments so the correlated-group cap sees the real book.
+  for (const src of ['cme', 'cboe']) {
+    const plan = plans[src], book = state.books[src];
+    for (const k of keys) {
+      const slice = plan?.instruments?.[k];
+      const px = state.lastPx[k] ?? barsBy[k][0]?.o;
+      if (slice) _oiShadowSyncPlan(book, k, slice, slice.chainKey ?? slice.oiSavedAtMs ?? plan.generatedAt, px);
+      else if (book.sessions[k]) book.sessions[k].zones = [];            // instrument dropped from the plan: exits only
+    }
+  }
+  const steps = keys.flatMap(k => barsBy[k].map(b => ({ k, b }))).sort((x, y) => x.b.t - y.b.t || (x.k < y.k ? -1 : 1));
+  for (const { k, b } of steps) {
+    const pip = (() => { try { return _pipSize(k) || 0; } catch { return 0; } })();
+    for (const src of ['cme', 'cboe']) _oiShadowStepBar(state.books[src], k, b, { pip, isIndex: true, indexSet: keys });
+    state.lastT[k] = b.t; state.lastPx[k] = b.c;
+  }
+  for (const src of ['cme', 'cboe']) {
+    const bk = state.books[src];
+    if (bk.closed.length > 3000) bk.closed.splice(0, bk.closed.length - 3000);
+  }
+  if (state.gaps.length > 200) state.gaps.splice(0, state.gaps.length - 200);
+  state.updatedAt = now;
+  await kv.put(_OI_SHADOW_KEY, JSON.stringify({ data: state, timestamp: now }));
+}
+svcInterval('oiCboeShadow', () => _oiShadowTick().catch(e => console.error('[oi-shadow]', e.message)), 5 * 60_000);
+svcTimeout('oiCboeShadow', () => _oiShadowTick().catch(e => console.error('[oi-shadow]', e.message)), 90_000);
+
+// The comparison: per UTC day (by entry time), the live account's index trades next to
+// the CME and Cboe shadow books, plus each plan's current zones. Read-only.
+app.get('/api/oi-bot/cboe-shadow', async (req, res) => {
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 180);
+    const since = Date.now() - days * 86400e3;
+    const [state, cmePlan, cboePlan, liveLog, status] = await Promise.all([_kvJson(_OI_SHADOW_KEY), _kvJson('oi_bot_zones'),
+      _kvJson(_OI_CBOE_PLAN_KEY), _kvJson('oi_bot_trade_log'), _kvJson('oi_bot_status')]);
+    const keys = Object.keys(_OI_SHADOW_INDEX);
+    const keyOf = sym => { try { return resolveKey(sym); } catch { return String(sym || '').toLowerCase(); } };
+    // Log rows written before tz_offset_sec was kept carry broker-clock epochs too: use the
+    // broker's current offset for them (exact except across a DST change).
+    const tzNow = [...(status?.today_closed_trades || []), ...(status?.mt5_positions || [])].find(t => Number.isFinite(t.tz_offset_sec))?.tz_offset_sec ?? 0;
+    // Live: the durable log, plus today's closes the 10-min roll-up may not have taken yet.
+    const seen = new Set();
+    const live = [...(Array.isArray(liveLog) ? liveLog : []), ...(status?.today_closed_trades || [])].flatMap(t => {
+      const id = t.position_id ?? t.ticket; if (id != null && seen.has(id)) return []; seen.add(id);
+      const k = t.key || keyOf(t.symbol);
+      if (!keys.includes(k) || !t.time_open) return [];
+      // MT5 stamps broker-clock epochs; tz_offset_sec restores UTC (today's status rows).
+      const tz = Number.isFinite(t.tz_offset_sec) ? t.tz_offset_sec : tzNow;
+      const openT = (t.time_open - tz) * 1000;
+      if (openT < since) return [];
+      const up = String(t.direction).toUpperCase() === 'BUY';
+      const pts = Number.isFinite(t.close_price) && Number.isFinite(t.open_price) ? (up ? 1 : -1) * (t.close_price - t.open_price) : null;
+      const risk = Number.isFinite(t.sl_at_entry) ? Math.abs(t.open_price - t.sl_at_entry) : null;
+      const r = Number.isFinite(t.r) ? t.r : (risk > 0 && pts != null ? +(pts / risk).toFixed(3) : null);
+      return [{ instrument: k, side: up ? 'buy' : 'sell', entry: t.open_price, exit: t.close_price, openT,
+        closeT: t.time_close ? (t.time_close - tz) * 1000 : null, reason: t.reason, pts, r, profit: t.profit ?? null,
+        zoneId: (String(t.comment || '').match(/\[([^\]~]+)/) || [])[1] || t.zone_id || null }];
+    }).sort((a, b) => a.openT - b.openT);
+    const book = src => {
+      const b = state?.books?.[src] || _oiShadowEmptyBook();
+      const closed = b.closed.filter(t => t.openT >= since);
+      return { open: b.open, closed, byDay: _oiShadowSummarize(closed) };
+    };
+    const planView = p => p ? { generatedAt: p.generatedAt, instruments: Object.fromEntries(keys.filter(k => p.instruments?.[k]).map(k => {
+      const v = p.instruments[k];
+      return [k, { spot: v.spot, regime: v.regime, maxPain: v.maxPain, dte: v.dte, oiSource: v.oiSource ?? 'CME',
+        zones: (v.zones || []).map(z => ({ mode: z.mode, side: z.side, level: z.level, entry: z.entry, sl: z.sl, tp1: z.tp1 })),
+        diag: v.diag ?? null }];
+    })) } : null;
+    res.json({ ok: true, days, startedAt: state?.startedAt ?? null, updatedAt: state?.updatedAt ?? null, gaps: state?.gaps ?? [],
+      notes: 'Shadow books: same simulator for both plans (OANDA M1 mid, no spread/slippage, stop-first on ambiguous bars, one ticket per zone at TP1, no event blackouts or DD lockout). Live = the MT5 account (real fills, scale-out legs as separate rows).',
+      live: { trades: live, byDay: _oiShadowSummarize(live) },
+      shadow: { cme: book('cme'), cboe: book('cboe') },
+      plans: { cme: planView(cmePlan), cboe: planView(cboePlan) } });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
