@@ -60,7 +60,6 @@ import { buildLadderExportText, buildSessionAddendum }               from './js/
 import { buildIvLadderExportText }                                    from './js/ivLadderExport.js';
 import { buildIvAdjExportText, buildIvAdjInstruments }                from './js/forecastLadderIvAdj.js';
 import { buildPersistExportText, buildPersistInstruments }            from './js/forecastLadderPersist.js';
-import { annotateProjectOutput }                                     from './js/projectOutputExport.js';
 import { scoreSession, scoreWeek, summarise as summariseScorecard, verdicts as scorecardVerdicts } from './js/forecastScorecard.js';
 import { londonParts as _lrLondonParts }                              from './js/intradayRange.js';
 import { sessionState as _sjSession }                                 from './js/intradayRange.js';
@@ -22240,27 +22239,6 @@ app.get('/api/vol-forecast/persist-ladder/export', async (_req, res) => {
     res.set('X-Persist-Adjusted', adjusted.map(a => `${a.name}:${a.adj}:${a.form}`).join(',') || 'none');
     res.set('X-Persist-Skipped', skipped.map(s => `${s.name}:${s.reason}`).join(',').replace(/[^ -~]/g, '') || 'none');
     res.type('text/plain').send(text);
-  } catch (e) {
-    res.status(500).type('text/plain').send(`Error: ${e.message}`);
-  }
-});
-// GET /api/vol-forecast/project-output/export?horizon=daily|weekly
-// "★ Project output" — the chosen daily lines (persistence + IV) or Forecast Weekly · Reverting, text unchanged, plus a header and one
-// out-of-sample "Track record" line per instrument (js/projectOutputExport.js; numbers from js/projectOutputEvidence.js). Display only.
-app.get('/api/vol-forecast/project-output/export', async (req, res) => {
-  if (!forecastState.latest) return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
-  const horizon = String(req.query.horizon) === 'weekly' ? 'weekly' : 'daily';
-  try {
-    let text;
-    if (horizon === 'weekly') {
-      if (!Object.values(forecastState.latest.instruments ?? {}).some(f => f?.ladder_weekly_rev))
-        return res.status(202).type('text/plain').send('Weekly reverting ladder not present on the cached forecast — hit ↻ Refresh to recompute.');
-      text = buildLadderExportText(forecastState.latest, 'weekly_rev');
-    } else {
-      const ohlc = await ensureOhlcCache();
-      text = buildPersistExportText(forecastState.latest, ohlc, VOL_INSTRUMENTS, await _persistIvByName(ohlc)).text;
-    }
-    res.type('text/plain').send(annotateProjectOutput(text, horizon));
   } catch (e) {
     res.status(500).type('text/plain').send(`Error: ${e.message}`);
   }
