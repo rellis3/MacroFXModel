@@ -188,3 +188,37 @@ export function driverAlignment(changes = {}, dead = 0.15) {
     : up ? 'Risk-on tilt' : 'Risk-off tilt';
   return { up, down, neutral, total: entries.length, label };
 }
+
+/**
+ * Equities vs credit over the last `days` observations — Lesson 6's lead
+ * divergence ("equities rallying + credit widening: credit is often right at
+ * turning points").
+ *
+ * `spx` = ascending [{date, value}] index closes; `hy` = ascending
+ * [{date, value}] HY OAS in percent points (FRED BAMLH0A0HYM2). Each series is
+ * measured over its OWN last `days` observations, so a lagging FRED print does
+ * not shift the equity window.
+ *
+ * Returns { spxPct, hyBp, state } where state is:
+ *   'divergent'  — equities up ≥ minEqPct while HY widened ≥ minHyBp
+ *   'confirming' — both point the same way (risk-on or risk-off)
+ *   'quiet'      — either leg inside its threshold
+ * or null when either series is too short. Thresholds are descriptive cut-offs,
+ * not fitted or tested here.
+ */
+export function equityCreditDivergence(spx, hy, { days = 20, minEqPct = 2, minHyBp = 25 } = {}) {
+  const chg = (pts, pct) => {
+    const v = (pts ?? []).map(p => Number(p?.value)).filter(Number.isFinite);
+    if (v.length < days + 1) return null;
+    const a = v[v.length - 1 - days], b = v[v.length - 1];
+    return pct ? (a > 0 ? (b / a - 1) * 100 : null) : (b - a) * 100;   // OAS % → bp
+  };
+  const spxPct = chg(spx, true), hyBp = chg(hy, false);
+  if (spxPct == null || hyBp == null) return null;
+  const eqUp = spxPct >= minEqPct, eqDn = spxPct <= -minEqPct;
+  const crWide = hyBp >= minHyBp, crTight = hyBp <= -minHyBp;
+  const state = eqUp && crWide ? 'divergent'
+    : (eqUp && crTight) || (eqDn && crWide) ? 'confirming'
+    : 'quiet';
+  return { spxPct: +spxPct.toFixed(2), hyBp: Math.round(hyBp), state };
+}

@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {
   logReturns, realisedVolSeries, percentileOf, volDirection, volRegimeLabel,
   normaliseFromStart, lastFinite, usdStrengthSeries, driverAlignment, marketToneScore,
+  equityCreditDivergence,
 } from './crossAssetCore.js';
 
 const approx = (a, b, tol = 1e-6) => assert.ok(Math.abs(a - b) < tol, `${a} !== ${b}`);
@@ -198,4 +199,32 @@ test('a two-way row abstains rather than voting for balance', () => {
 test('the extremes are reachable', () => {
   assert.equal(marketToneScore(1, ['on', 'on']).score, 100);
   assert.equal(marketToneScore(-1, ['off', 'off']).score, 0);
+});
+
+// ── equities vs credit ──────────────────────────────────────────────────────
+
+const ser = vals => vals.map((value, i) => ({ date: `2026-01-${String(i + 1).padStart(2, '0')}`, value }));
+const ramp = (from, to, n = 21) => Array.from({ length: n }, (_, i) => from + (to - from) * i / (n - 1));
+
+test('equities up while HY widens is the divergence', () => {
+  const r = equityCreditDivergence(ser(ramp(100, 104)), ser(ramp(3.0, 3.4)));
+  assert.equal(r.state, 'divergent');
+  approx(r.spxPct, 4, 1e-9);
+  assert.equal(r.hyBp, 40);
+});
+
+test('equities up with credit tightening confirms', () => {
+  assert.equal(equityCreditDivergence(ser(ramp(100, 104)), ser(ramp(3.4, 3.0))).state, 'confirming');
+  assert.equal(equityCreditDivergence(ser(ramp(104, 100)), ser(ramp(3.0, 3.4))).state, 'confirming');
+});
+
+test('a leg inside its threshold is quiet, and short history is null', () => {
+  assert.equal(equityCreditDivergence(ser(ramp(100, 101)), ser(ramp(3.0, 3.4))).state, 'quiet');
+  assert.equal(equityCreditDivergence(ser(ramp(100, 104, 10)), ser(ramp(3.0, 3.4))), null);
+});
+
+test('each leg uses its own last observations', () => {
+  // HY series longer than SPX: only its final 21 points count.
+  const hy = ser([9, 9, 9, ...ramp(3.0, 3.4)]);
+  assert.equal(equityCreditDivergence(ser(ramp(100, 104)), hy).hyBp, 40);
 });

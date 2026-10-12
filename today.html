@@ -3380,15 +3380,49 @@ function macroDivergences() {
   }
 
   // 3) Bonds have stopped hedging equities. The single most useful sizing fact on the
-  //    board when it is true, and invisible if you only look at levels.
+  //    board when it is true, and invisible if you only look at levels. Read from the
+  //    real SPY/TLT 20-day return correlation (/api/risk-flags `stock_bond_corr`,
+  //    evidence 'stock-bond-flip'). This used to fire off correlationRegime() -- the
+  //    mean |rho| across FX pair-combinations -- which is a clustering read, not a
+  //    stock-bond one; that read is now item 4 under its own name.
+  const sb = (riskFlags?.flags ?? []).find(f => f.key === 'stock_bond_corr');
+  if (sb?.on === true && Number.isFinite(sb.value)) {
+    out.push({
+      id: 'stockBond',
+      title: 'Bonds are not hedging stocks',
+      detail: `The 20-day SPY/TLT return correlation is +${sb.value.toFixed(2)} — stocks and bonds are moving together.`,
+      teach: 'In a growth scare bonds rally as equities fall, so a mixed book hedges itself. In an inflation regime they fall together and that hedge disappears — which is why the same portfolio can be far riskier than its history suggests without a single position changing. Since 2008 such episodes have lasted a median 5 sessions (p75 17); what follows them is untested here. This is a sizing instruction, not a direction call.',
+      severity: 'medium',
+    });
+  }
+
+  // 4) Everything moving as one -- the cross-pair clustering read. Same sizing
+  //    consequence as 3, different measurement: the mean |rho| across the tracked FX
+  //    pair-combinations against each combination's own history.
   const creg = correlationRegime();
   if (creg && creg.state === 'HIGH') {
     out.push({
-      id: 'stockBond',
+      id: 'clustering',
       title: 'Diversification is thinner than it looks',
-      detail: `Mean absolute correlation across the board is ${creg.mean.toFixed(2)}${creg.z != null ? `, ${creg.z >= 0 ? '+' : ''}${creg.z.toFixed(2)} standard deviations above normal` : ''}.`,
-      teach: 'In a growth scare bonds rally as equities fall, so a mixed book hedges itself. In an inflation regime they fall together and that hedge disappears — which is why the same portfolio can be far riskier than its history suggests without a single position changing. This is a sizing instruction, not a direction call.',
+      detail: `Mean absolute correlation across ${creg.nPairs} tracked pair-combinations is ${creg.mean.toFixed(2)}${creg.z != null ? `, ${creg.z >= 0 ? '+' : ''}${creg.z.toFixed(2)} standard deviations above normal` : ''}.`,
+      teach: 'When markets cluster, several "different" setups are really one position. Size the basket, not each trade, and expect historical hedges to hedge less than they did. This is a sizing instruction, not a direction call.',
       severity: 'medium',
+    });
+  }
+
+  // 5) Equities rallying while credit widens (Lesson 6's lead divergence): credit
+  //    investors are pricing risk the equity market is ignoring, and credit has
+  //    tended to be right at turning points. SPX daily closes from the chain loader,
+  //    HY OAS from FRED history. Thresholds are descriptive (js/crossAssetCore.js
+  //    equityCreditDivergence) -- untested here, a reason to investigate.
+  const ec = window.crossAssetBrick?.equityCreditDivergence?.(commodityDrivers?.series?.spx, fredHist?.hy);
+  if (ec?.state === 'divergent') {
+    out.push({
+      id: 'equityCredit',
+      title: 'Stocks up, credit widening',
+      detail: `Over 20 sessions the S&P 500 is +${ec.spxPct}% while high-yield spreads are +${ec.hyBp}bp wider.`,
+      teach: 'Equity and credit investors usually agree: tighter spreads with rising stocks. When stocks rally while spreads widen, credit — the skeptical, downside-focused market — is pricing risk the equity rally is ignoring. Historically credit is often the one that is right at turning points (it led equities in March 2023). Untested on this desk: a reason to check what credit sees, not a short signal.',
+      severity: 'high',
     });
   }
   return out;
@@ -8747,6 +8781,18 @@ function booksCardHtml() {
     // the same engines with the teaching stripped out -- a monitoring surface for
     // when you already know what a real yield is and just want the board's state
     row('terminal.html', '📈', 'Terminal', 'the whole board at density, no explanation', 'risk gauges, cross-asset matrix, momentum shapes, positioning and event risk on one screen'); })();
+  // stocks, bonds and credit -- the equity side of the capital structure, read against
+  // the two markets Lesson 6 says to check it with: is the bond hedge working (SPY/TLT
+  // 20d correlation from /api/risk-flags) and does credit agree with the equity tape
+  // (20-session S&P vs HY OAS, js/crossAssetCore.js equityCreditDivergence).
+  (() => {
+    const sb = (riskFlags?.flags ?? []).find(f => f.key === 'stock_bond_corr');
+    const ec = window.crossAssetBrick?.equityCreditDivergence?.(commodityDrivers?.series?.spx, fredHist?.hy);
+    const parts = [];
+    if (Number.isFinite(sb?.value)) parts.push(`stocks/bonds ρ <b>${sb.value >= 0 ? '+' : ''}${sb.value.toFixed(2)}</b> ${sb.value > 0 ? '(hedge off)' : '(hedging)'}`);
+    if (ec) parts.push(`S&amp;P ${ec.spxPct >= 0 ? '+' : ''}${ec.spxPct}% vs HY ${ec.hyBp >= 0 ? '+' : ''}${ec.hyBp}bp over 20d${ec.state === 'divergent' ? ' — <b>credit disagrees</b>' : ec.state === 'confirming' ? ' — credit agrees' : ''}`);
+    row('system-credit-equity.html', '🏦', 'Stocks, bonds &amp; credit', parts.length ? parts.join(' · ') : 'is the bond hedge working, does credit agree with stocks', 'the equity tape checked against bonds and high-yield credit; the credit-equity book behind it');
+  })();
   // the week, scored
   const wm = weekMap; const loudW = wm ? Object.values(wm.series).filter(x => !x.hidden && Math.abs(x.latest?.z ?? 0) >= 2).sort((a, b) => Math.abs(b.latest.z) - Math.abs(a.latest.z)) : [];
   row('weekmap.html', '🗺', 'The week, scored', wm ? (loudW.length ? `unusual this week: ${esc0(loudW.slice(0, 3).map(x => `${x.label} z ${x.latest.z >= 0 ? '+' : ''}${x.latest.z.toFixed(1)}`).join(', '))}; the rest ordinary` : 'an ordinary week on every series') : 'every macro series scored against its own history', 'this week in each series’ distribution, and the weeks that sat like this');
