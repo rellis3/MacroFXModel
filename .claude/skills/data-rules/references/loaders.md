@@ -7,6 +7,7 @@ Use these rather than writing a new loader. Each one has burned someone before; 
 | Helper | Where | Notes |
 |---|---|---|
 | `loadM1ForPair(pairKey, m1Dir)` | `js/volBacktestM1Engine.js:1532` | Order: R2 decoded snapshot (`m1-decoded/`) → raw R2 `m1/{key}_m1.parquet` → local `VolRangeForecaster/data/m1` → Google Drive, then **always merges** R2 `m1-tail/{key}.json`. Returns `{n, times (Int32 epoch s), opens, highs, lows, closes, volumes}`. Reads OHLCV as `r[0..4]` and time as the **last** column (the BAM trap). Some index files have BigInt volumes. |
+| `loadM1ForPairLocal(pairKey, m1Dir)` | `js/localM1Loader.js:62` | Local parquet only (no R2, no tail, so no lockbox leak). Finds the time column with `findTimeColumn` (searches from the right for a plausible epoch) and throws rather than return a 1970 axis. Prefer it for offline research |
 | `bucketM1IntoSessions(packed, boundaryHour = 22)` | `js/forecastAnalyser.js:402` | Returns `Map(date → bars[])`. **Pass `'Europe/London'`**; the default is a 22:00-UTC broker day. |
 | `nyCloseDailyBars(packed)` | `js/voteAtlasV4Lines.js:59` | `[{key, endSec, open, high, low, close, n}]`, 17:00 New York. `endSec` is when the bar becomes usable. Keep `n >= 60`. |
 | `londonMidnightSec(now)` | `js/volBacktestEngine.js:120` (not exported) | UTC epoch of the latest 00:00 London. |
@@ -28,6 +29,7 @@ Use these rather than writing a new loader. Each one has burned someone before; 
 
 ## General loading habits
 
+- Python parquet reads need `pyarrow` (not installed in a fresh cloud container; `pip install pyarrow`).
 - Read CSVs with `utf-8-sig` (BOM) and explicit date formats. CBOE dates are MM/DD/YYYY.
 - Resample a faster series down to the slower series' release cadence, not the other way.
 - Cross-asset values must be ≤ 15 min old with no forward fill. M15 bars are stamped at their open and are usable only

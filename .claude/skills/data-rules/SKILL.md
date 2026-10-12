@@ -13,8 +13,9 @@ fault: record it there, then fix the code.
 ## Before writing any analysis: the checklist
 
 1. **Session = London calendar date.** The open is the first M1 bar at/after 00:00 Europe/London (23:00 UTC in BST,
-   00:00 UTC in GMT). The research window is 00:00–22:00 London (`london22`). Weekends are excluded, and Sunday-evening
-   bars belong to Monday.
+   00:00 UTC in GMT). The research window is 00:00–22:00 London (`london22`). Weekends are excluded. DATA_SPEC says
+   Sunday-evening bars belong to Monday; in Python `london22` they simply fall outside the window (London hour ≥ 22)
+   and are dropped.
    - JS: `bucketM1IntoSessions(packed, 'Europe/London')`. **The default argument is 22 (a UTC-hour broker day), not
      London. Always pass `'Europe/London'`.**
    - Python: `forge.vol.load_daily(pair, session="london22")`. Its index is the session *start* in naive UTC, so a BST
@@ -28,8 +29,9 @@ fault: record it there, then fix the code.
    published before the session). Calendar tags after coverage are `unknown` and excluded, never imputed. Full-sample
    statistics (variance, z-scores, weights) are lookahead.
 5. **Respect the lockbox.** Sessions after **2026-08-21** are the H-A holdout (`forge/LOCKBOX_PROTOCOL.md`). Don't score
-   on them. The JS loader `loadM1ForPair` merges the nightly R2 tail when credentials exist, so truncate explicitly
-   (`end='2026-08-21'` in Python; filter by time in JS).
+   on them. The JS loader `loadM1ForPair` merges the nightly R2 tail when credentials exist, so truncate explicitly.
+   In Python, `load_daily(end=...)` cuts M1 at **midnight UTC**, which in BST leaves a ~1-hour stub of the last London
+   session. Pass `end='2026-08-22'` and then keep London dates ≤ 2026-08-21. In JS, filter by London session date.
 6. **Costs on, MAE from the real M1 path, and count what was dropped.** Silently dropping unresolved trades is a
    lookahead selection bias.
 7. **Correct for search breadth.** Cross-instrument σ errors correlate ~0.47 (~2.1 independent forecasts a day, not 28).
@@ -37,7 +39,11 @@ fault: record it there, then fix the code.
 8. **Check the data first.** Run `node scripts/data_integrity.mjs` (→ `analysis/output/data_integrity/REPORT.md`) and
    say what's stale. The local M1 cache ends ~2026-08-21 and may not be present in a cloud session (see
    `references/sources.md`).
-9. **On a null result, assume code failure first:** audit alignment, lookahead, indexing, types and NaN before calling
+9. **Scale the ceremony to the question.** A quick exploratory look needs items 1–6 and a plain "exploratory, not
+   pre-registered" label on the answer. Anything that might change a live system or be banked as a verdict needs a
+   prereg, the integrity check and a ledger entry (`references/lookahead-and-oos.md`). Item 2 applies whenever σ
+   is involved.
+10. **On a null result, assume code failure first:** audit alignment, lookahead, indexing, types and NaN before calling
    it null. **On a strong result, check concentration** before believing it.
 
 ## Never
