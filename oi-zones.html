@@ -123,6 +123,13 @@
     <div class="sec-h">📕 Closed today <span class="n" id="closedN"></span></div>
     <div class="card" id="closedWrap"><div class="empty" id="closedEmpty">—</div></div>
   </div>
+
+  <!-- CME vs Cboe shadow: the same planner on Cboe's levels, paper-traded beside the
+       CME plan by one simulator, with the live account's index trades alongside. -->
+  <div class="sec">
+    <div class="sec-h">🧪 CME vs Cboe levels — shadow test <span class="n" id="shadowN"></span></div>
+    <div class="card" id="shadowWrap"><div class="empty">Loading…</div></div>
+  </div>
 </div>
 
 <script>
@@ -222,6 +229,55 @@ async function load(){
   } else $('botState').textContent = 'bot offline (no status)';
   render();
   loadCalibBanner();     // fire-and-forget — the hold-score calibration status strip
+  loadShadow();          // fire-and-forget — the CME-vs-Cboe shadow comparison
+}
+
+// ── CME vs Cboe shadow ────────────────────────────────────────────────────────
+// /api/oi-bot/cboe-shadow: per day, the live MT5 index trades, then the CME plan and the
+// Cboe plan each paper-traded by the SAME simulator (so their difference is the levels,
+// not the execution). Indices only — Cboe has no gold/DAX.
+let _shadow = null;
+async function loadShadow(){
+  try { const r = await fetch('/api/oi-bot/cboe-shadow?days=30'); _shadow = await r.json(); }
+  catch(e){ _shadow = { ok:false, error:e.message }; }
+  renderShadow();
+}
+function renderShadow(){
+  const w = $('shadowWrap'), S = _shadow;
+  if(!S || !S.ok){ w.innerHTML = `<div class="empty">Shadow unavailable${S?.error?': '+S.error:''}.</div>`; return; }
+  const L = S.live.byDay, C = S.shadow.cme.byDay, B = S.shadow.cboe.byDay;
+  const days = [...new Set([...Object.keys(L), ...Object.keys(C), ...Object.keys(B)])].sort().reverse();
+  const cell = x => x ? `<td class="mono ${x.r>0?'pos':x.r<0?'neg':''}" style="white-space:nowrap">${x.n} · ${x.r>0?'+':''}${x.r.toFixed(2)}R</td>` : '<td class="mono muted">—</td>';
+  const tot = by => Object.values(by).reduce((a,x) => ({ n:a.n+x.n, r:a.r+x.r }), { n:0, r:0 });
+  const started = S.startedAt ? new Date(S.startedAt).toISOString().slice(0,16).replace('T',' ')+'Z' : 'not yet';
+  $('shadowN').textContent = days.length ? `${days.length} day${days.length>1?'s':''}` : '';
+  const dayRows = days.map(d => `<tr><td class="mono">${d}</td>${cell(L[d])}${cell(C[d])}${cell(B[d])}</tr>`).join('');
+  const T = [tot(L), tot(C), tot(B)].map(x => x.n ? x : null);
+  // Selected instrument: both plans' zones + the shadow trades on it.
+  const k = _inst, d = meta(k).digits;
+  const zl = p => { const v = S.plans?.[p]?.instruments?.[k];
+    if(!v) return `<span class="muted">${['spx','nq','rut','dow'].includes(k) ? 'no plan yet' : 'indices only — pick NAS100 / SPX500 / US2000 / US30'}</span>`;
+    return `<span class="muted">${v.regime||''} · pin ${fmt(v.maxPain,d)}</span> ` + ((v.zones||[]).map(z =>
+      `<span class="badge ${z.side==='buy'?'b-buy':'b-sell'}" title="${z.mode} ${z.side} · SL ${fmt(z.sl,d)} · TP ${fmt(z.tp1,d)}">${z.mode} ${fmt(z.level,d)}</span>`).join(' ') || '<span class="muted">no zones</span>'); };
+  const tr = [...S.shadow.cme.closed.map(t => ({...t, src:'CME'})), ...S.shadow.cboe.closed.map(t => ({...t, src:'Cboe'})),
+    ...S.shadow.cme.open.map(t => ({...t, src:'CME', reason:'open'})), ...S.shadow.cboe.open.map(t => ({...t, src:'Cboe', reason:'open'}))]
+    .filter(t => t.instrument === k).sort((a,b) => b.openT - a.openT).slice(0, 30);
+  const tm = ms => ms ? new Date(ms).toISOString().slice(5,16).replace('T',' ') : '';
+  const trRows = tr.map(t => `<tr><td>${t.src}</td><td><span class="badge ${t.dirUp?'b-buy':'b-sell'}">${t.mode} ${t.side}</span></td>
+    <td class="mono">${fmt(t.entry,d)}</td><td class="mono">${fmt(t.sl,d)}</td><td class="mono">${fmt(t.tp,d)}</td>
+    <td class="mono">${t.exit!=null?fmt(t.exit,d):'—'}</td><td>${t.reason||''}</td>
+    <td class="mono ${t.r>0?'pos':t.r<0?'neg':''}">${t.r!=null?(t.r>0?'+':'')+t.r.toFixed(2):'—'}</td><td class="mono">${tm(t.openT)}</td></tr>`).join('');
+  w.innerHTML = `
+    <div class="muted" style="margin-bottom:8px;line-height:1.5">Same planner, two sets of levels: <b>CME</b> (what the bot trades) and <b>Cboe</b> index options (shadow only — no orders).
+      Both are paper-traded by one simulator on OANDA 1-minute bars, so the gap between them is the levels. Live = your MT5 index trades (real fills).
+      Recording since ${started}. Judge it after ~25 sessions, not on a day.</div>
+    <table><thead><tr><th>Day (UTC)</th><th>Live MT5</th><th>CME shadow</th><th>Cboe shadow</th></tr></thead>
+      <tbody>${dayRows || '<tr><td colspan="4" class="empty">No trades recorded yet — the shadow books fill from the next session.</td></tr>'}</tbody>
+      ${days.length ? `<tfoot><tr><th>Total</th>${T.map(cell).join('')}</tr></tfoot>` : ''}</table>
+    <div style="margin-top:14px;font-weight:600;font-size:13px">${meta(k).display} — plans now</div>
+    <div style="font-size:12px;line-height:2;margin-top:4px"><b>CME</b> ${zl('cme')}<br><b>Cboe</b> ${zl('cboe')}</div>
+    ${tr.length ? `<div style="margin-top:12px;overflow-x:auto"><table><thead><tr><th>Plan</th><th>Zone</th><th>Entry</th><th>SL</th><th>TP</th><th>Exit</th><th>Result</th><th>R</th><th>Opened</th></tr></thead><tbody>${trRows}</tbody></table></div>` : ''}
+    <div class="muted" style="margin-top:10px;font-size:11px">${S.notes||''}</div>`;
 }
 
 // ── Hold-score calibration banner ─────────────────────────────────────────────
@@ -509,7 +565,7 @@ function focusZone(el){
   $('chart')?.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
-$('instSel').addEventListener('change', e => { _inst = e.target.value; _focusZid = null; try{localStorage.setItem('oiInst',_inst);}catch{} render(); });
+$('instSel').addEventListener('change', e => { _inst = e.target.value; _focusZid = null; try{localStorage.setItem('oiInst',_inst);}catch{} render(); if(_shadow) renderShadow(); });
 $('gran').addEventListener('change', () => drawChart());
 load();
 setInterval(load, 60_000);
