@@ -1,0 +1,226 @@
+//@version=6
+indicator("OI Bot Trades", overlay=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500)
+
+// =====================================================
+// HOW TO USE
+// =====================================================
+// 1. On oi-zones.html click ⬇ TradingView (or open /api/oi-bot/trades-export).
+//    It copies the zones the OI bot is trading today, for every pair it trades.
+// 2. Paste the block into this indicator's input. Paste the SAME block on every chart:
+//    each chart draws only its own pair (same ticker mapping as the
+//    Confluence Zones indicator).
+// 3. Each zone is drawn as a position box, like TradingView's long/short tool,
+//    to the RIGHT of the last bar, one beside the next so they never overlap:
+//      • thick line   = entry (green = BUY, red = SELL)
+//      • red box      = entry → stop loss
+//      • teal box     = entry → take profit (TP1); dashed teal line = TP2 (runner)
+//      • dotted line  = the entry level carried back over the chart
+//    Label: side, mode, entry / SL / TP, reward:risk and the zone's state:
+//      armed  — waiting for price to reach it
+//      open   — the bot holds a position on it now (orange outline)
+//      done   — traded today and closed (dimmed)
+//      primed — skipped: price was already past it when the plan loaded (dimmed)
+// 4. MAX-PAIN zones ("@mkt") are not limit levels: they fire at the live price
+//    while price is still stretched away from the pin, and the bot re-anchors the
+//    stop at that price. The box shows the plan's numbers from when it was built.
+//
+// PRICES ARE CFD (OANDA) TERMS — what the bot trades. On a futures chart (NQ1!,
+// ES1!, GC1! …) the boxes sit off by the futures basis; the table warns you.
+// The block is a snapshot: re-copy it each morning, or after the plan changes
+// (the header shows when the plan was built).
+
+// =====================================================
+// INPUTS — TICKER MAPPING (match your chart symbols)
+// =====================================================
+goldChart  = input.string("XAUUSD",    "Gold chart ticker",   group="Symbol Mapping")
+nqChart    = input.string("NAS100USD", "NQ chart ticker",     group="Symbol Mapping")
+spxChart   = input.string("SPX500USD", "SPX500 chart ticker", group="Symbol Mapping")
+de30Chart  = input.string("GER40",     "DE30 chart ticker",   group="Symbol Mapping")
+us30Chart  = input.string("US30USD",   "US30 chart ticker",   group="Symbol Mapping")
+us2kChart  = input.string("US2000USD", "US2000 chart ticker", group="Symbol Mapping")
+
+tzText = input.text_area(
+     title  = "Paste OI BOT TRADES block (⬇ TradingView on oi-zones)",
+     defval =
+"──── OI BOT TRADES ────────────────────────\n" +
+"Generated: 2026-10-13 08:00 UTC · plan CME · built 07:56 UTC\n" +
+"\n" +
+"GOLD\n" +
+"· spot 4190.53 · regime PIN · DTE 4 · pin 4176.16\n" +
+"TZ SELL fade 4225.00 4225.00 4230.00 4200.00 4176.16 armed 5.0\n" +
+"TZ BUY fade 4150.00 4150.00 4145.00 4176.16 - armed 5.2"
+)
+
+// =====================================================
+// INPUTS — LAYOUT / COLOURS
+// =====================================================
+offsetBars    = input.int(5,    "Gap after the last bar (bars)", minval=0, maxval=200, group="Layout")
+boxBars       = input.int(12,   "Box width (bars)",              minval=2, maxval=100, group="Layout")
+gapBars       = input.int(3,    "Space between boxes (bars)",    minval=0, maxval=50,  group="Layout")
+maxDistPct    = input.float(3.0, "Only draw zones within this % of price", minval=0.1, step=0.5, group="Layout",
+     tooltip="Far zones (walls the bot will not reach today) are counted in the table but not drawn, so they don't stretch the chart.")
+showDone      = input.bool(true, "Show done / skipped zones (dimmed)", group="Layout")
+showBackLine  = input.bool(true, "Carry the entry level back over the chart", group="Layout")
+backBars      = input.int(80,   "…bars back",                    minval=5, maxval=2000, group="Layout")
+showTable     = input.bool(true, "Show summary table",           group="Layout")
+
+colBuy   = input.color(color.lime,                  "Buy entry",          group="Colours")
+colSell  = input.color(color.red,                   "Sell entry",         group="Colours")
+colTP    = input.color(color.new(color.teal, 70),   "Target box",         group="Colours")
+colSL    = input.color(color.new(color.red, 75),    "Stop box",           group="Colours")
+colOpen  = input.color(color.orange,                "Open trade outline", group="Colours")
+colDim   = input.color(color.new(color.gray, 82),   "Done / skipped box", group="Colours")
+
+// =====================================================
+// TICKER → BLOCK NAME (same names as the Confluence Zones indicator / OI export)
+// =====================================================
+f_normaliseTicker(t, goldT, nqT, spxT, de30T, us30T, us2kT) =>
+    r = t
+    tU = str.upper(t)
+    if tU == str.upper(goldT) or tU == "XAUUSD" or tU == "GOLD" or tU == "GC1!"
+        r := "GOLD"
+    else if tU == str.upper(nqT) or tU == "NQ1!" or tU == "NQ" or tU == "NASDAQ100" or tU == "NAS100USD" or tU == "NAS100" or tU == "US100" or tU == "USTECH100"
+        r := "NQ"
+    else if tU == str.upper(spxT) or tU == "SPX500USD" or tU == "SPX500" or tU == "US500" or tU == "SP500" or tU == "ES1!" or tU == "SP1!"
+        r := "SPX500"
+    else if tU == str.upper(de30T) or tU == "GER40" or tU == "GER30" or tU == "DE30EUR" or tU == "DE30USD" or tU == "DE30" or tU == "DE40" or tU == "FDAX1!"
+        r := "DE30"
+    else if tU == str.upper(us30T) or tU == "US30USD" or tU == "US30" or tU == "DJIA" or tU == "DJI30" or tU == "YM1!"
+        r := "US30"
+    else if tU == str.upper(us2kT) or tU == "US2000USD" or tU == "US2000" or tU == "RTY1!" or tU == "RUT"
+        r := "US2000"
+    r
+
+// =====================================================
+// DRAWING STATE — cleared and redrawn on the last bar
+// =====================================================
+var box[]   tzBoxes  = array.new_box()
+var line[]  tzLines  = array.new_line()
+var label[] tzLabels = array.new_label()
+var table   tzTable  = table.new(position.top_right, 1, 6, bgcolor=color.new(color.black, 25), border_width=1)
+
+f_clear() =>
+    if array.size(tzBoxes) > 0
+        for i = 0 to array.size(tzBoxes) - 1
+            box.delete(array.get(tzBoxes, i))
+    array.clear(tzBoxes)
+    if array.size(tzLines) > 0
+        for i = 0 to array.size(tzLines) - 1
+            line.delete(array.get(tzLines, i))
+    array.clear(tzLines)
+    if array.size(tzLabels) > 0
+        for i = 0 to array.size(tzLabels) - 1
+            label.delete(array.get(tzLabels, i))
+    array.clear(tzLabels)
+
+f_px(v) => na(v) ? "-" : str.tostring(v, format.mintick)
+
+if barstate.islast
+    f_clear()
+    sym   = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, us30Chart, us2kChart)
+    symUp = str.upper(sym)
+    rows  = str.split(tzText, "\n")
+    n     = array.size(rows)
+
+    bool   inBlk     = false
+    bool   found     = false
+    string hdr       = ""
+    string generated = ""
+    int    k         = 0      // boxes drawn so far (sets the x offset)
+    int    nArmed    = 0
+    int    nFar      = 0
+    int    nHidden   = 0
+
+    if n > 0
+        for i = 0 to n - 1
+            raw = str.trim(array.get(rows, i))
+            up  = str.upper(raw)
+            if str.length(raw) == 0
+                inBlk := false
+                continue
+            if str.startswith(up, "GENERATED")
+                generated := raw
+                continue
+            if str.startswith(raw, "─")
+                continue
+            isZone = str.startswith(up, "TZ ")
+            isHdr  = str.startswith(raw, "·")
+            if not isZone and not isHdr
+                // A block name line ("NQ", "GOLD", "EURUSD" …).
+                inBlk := up == symUp
+                if inBlk
+                    found := true
+                continue
+            if not inBlk
+                continue
+            if isHdr
+                hdr := raw
+                continue
+            p = str.split(raw, " ")
+            if array.size(p) < 10
+                continue
+            side  = array.get(p, 1)
+            mode  = array.get(p, 2)
+            entry = str.tonumber(array.get(p, 4))
+            sl    = str.tonumber(array.get(p, 5))
+            tp    = str.tonumber(array.get(p, 6))
+            tp2   = str.tonumber(array.get(p, 7))
+            state = array.get(p, 8)
+            rr    = array.get(p, 9)
+            if na(entry) or na(sl)
+                continue
+            dim = state == "done" or state == "primed"
+            if state == "armed" or state == "open"
+                nArmed += 1
+            if dim and not showDone
+                nHidden += 1
+                continue
+            if math.abs(entry - close) / close * 100 > maxDistPct
+                nFar += 1
+                continue
+            x1 = bar_index + offsetBars + k * (boxBars + gapBars)
+            x2 = x1 + boxBars
+            if x2 - bar_index > 490      // TradingView draws at most ~500 bars into the future
+                nFar += 1
+                continue
+            k += 1
+            isBuy    = side == "BUY"
+            entryCol = dim ? color.gray : (isBuy ? colBuy : colSell)
+            // Stop box and target box, TradingView position-tool style.
+            array.push(tzBoxes, box.new(left=x1, top=math.max(entry, sl), right=x2, bottom=math.min(entry, sl),
+                 xloc=xloc.bar_index, border_color=color.new(color.red, dim ? 85 : 55), bgcolor=dim ? colDim : colSL))
+            if not na(tp)
+                array.push(tzBoxes, box.new(left=x1, top=math.max(entry, tp), right=x2, bottom=math.min(entry, tp),
+                     xloc=xloc.bar_index, border_color=color.new(color.teal, dim ? 85 : 50), bgcolor=dim ? colDim : colTP))
+            if not na(tp2)
+                array.push(tzLines, line.new(x1, tp2, x2, tp2, xloc=xloc.bar_index, color=color.new(color.teal, dim ? 70 : 20),
+                     style=line.style_dashed, width=1))
+            array.push(tzLines, line.new(x1, entry, x2, entry, xloc=xloc.bar_index, color=entryCol, width=2))
+            if showBackLine and not dim
+                array.push(tzLines, line.new(bar_index - backBars, entry, x1, entry, xloc=xloc.bar_index,
+                     color=color.new(entryCol, 55), style=line.style_dotted, width=1))
+            if state == "open"
+                hi = math.max(entry, sl, na(tp) ? entry : tp)
+                lo = math.min(entry, sl, na(tp) ? entry : tp)
+                array.push(tzBoxes, box.new(left=x1, top=hi, right=x2, bottom=lo, xloc=xloc.bar_index,
+                     border_color=colOpen, border_width=2, bgcolor=color.new(color.black, 100)))
+            // Label beyond the target end of the box (above a buy, below a sell).
+            yEnd = isBuy ? math.max(entry, sl, na(tp) ? entry : tp) : math.min(entry, sl, na(tp) ? entry : tp)
+            txt  = side + " " + mode + (mode == "maxpain" ? " @mkt" : "") +
+                 "\nE " + f_px(entry) + "\nSL " + f_px(sl) + "\nTP " + f_px(tp) +
+                 (na(tp2) ? "" : " / " + f_px(tp2)) + "\n" + rr + "R · " + state
+            array.push(tzLabels, label.new(x1 + math.floor(boxBars / 2), yEnd, txt, xloc=xloc.bar_index,
+                 style=isBuy ? label.style_label_down : label.style_label_up, size=size.small,
+                 color=color.new(entryCol, dim ? 75 : 25), textcolor=color.white))
+
+    if showTable
+        isFut = str.endswith(syminfo.ticker, "!")
+        table.cell(tzTable, 0, 0, "OI Bot Trades · " + syminfo.ticker + " → " + sym, text_color=color.white, text_size=size.small)
+        table.cell(tzTable, 0, 1, found ? (hdr == "" ? "(no header)" : hdr) : "no block for this chart in the paste",
+             text_color=found ? color.silver : color.orange, text_size=size.small)
+        table.cell(tzTable, 0, 2, "live zones " + str.tostring(nArmed) + " · drawn " + str.tostring(k) +
+             " · too far " + str.tostring(nFar) + (nHidden > 0 ? " · hidden " + str.tostring(nHidden) : ""),
+             text_color=color.silver, text_size=size.small)
+        table.cell(tzTable, 0, 3, generated == "" ? "no 'Generated' line" : generated, text_color=color.gray, text_size=size.tiny)
+        table.cell(tzTable, 0, 4, isFut ? "⚠ futures chart: zones are CFD prices (off by the basis)" : "",
+             text_color=color.orange, text_size=size.tiny)

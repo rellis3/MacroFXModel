@@ -83,6 +83,7 @@
     <span class="price" id="price">—</span>
     <span class="spacer"></span>
     <span class="muted" id="botState">—</span>
+    <button id="tvBtn" onclick="copyTrades()" title="Copy today's bot zones for the 'OI Bot Trades' TradingView indicator (pine/OI Bot Trades.pine): paste into its input — it draws each zone as an entry / stop / target box on the chart">⬇ TradingView</button>
     <button id="refreshBtn" onclick="load()">↺</button>
     <a href="bot-config.html#oi" class="gz-btn">Config</a>
     <a href="index.html" class="gz-btn">← Dashboard</a>
@@ -230,6 +231,19 @@ async function load(){
   render();
   loadCalibBanner();     // fire-and-forget — the hold-score calibration status strip
   loadShadow();          // fire-and-forget — the CME-vs-Cboe shadow comparison
+}
+
+// ── ⬇ TradingView: the bot's zones as the block pine/OI Bot Trades.pine draws ──
+async function copyTrades(){
+  const btn = $('tvBtn'), was = btn.textContent;
+  try {
+    const r = await fetch('/api/oi-bot/trades-export');
+    const txt = await r.text();
+    if(!r.ok) throw new Error(txt);
+    try { await navigator.clipboard.writeText(txt); btn.textContent = '✓ copied'; }
+    catch { window.prompt('Copy this block into the OI Bot Trades indicator:', txt); }
+  } catch(e){ btn.textContent = '✗ failed'; console.error(e); }
+  setTimeout(() => { btn.textContent = was; }, 2000);
 }
 
 // ── CME vs Cboe shadow ────────────────────────────────────────────────────────
