@@ -152,3 +152,29 @@ is the exact formula, and how often does the script pull?*
   unknown scale/offset, probably smoothed. Direction and shape are reproduced; **bar-by-bar is not** (15-min 0.26–0.38,
   0.5–0.76 at 1–4 h), the contract months are not pinned (Dec26 Euribor/€STR fit slightly better than I2!'s Nov26), and
   the scale/offset/smoothing are unknown. Not an exact reconstruction.
+
+## 10. The formula, identified (2026-10-13) — zero fitted parameters
+
+Sweeping every input of his pasted indicator (EUR leg × USD leg × data timeframe × price source × EMA × lead; 508,032
+configurations, selected on Thu–Fri and tested on Mon–Tue, with a placebo of his line rolled a day out of alignment:
+placebo holdout median −0.03, real +0.39) and then applying **round constants with nothing fitted**:
+
+> **plot = (SOFR rate − Euribor rate), in basis points, × 0.1 + 1.445** — Pine inputs: `inBps` ON, `invert` ON, scale **0.1**,
+> offset **1.445 (the script's default)**; EUR leg **ICE Euribor Mar27 (IH7)**; USD leg **CME SOFR Sep26 (SR3U6)**.
+
+| | RMSE (his units) | bias | level corr | 15-min change corr |
+|---|---|---|---|---|
+| **SR3U6 − IH7 (Mar27)**, 1h data, hl2, EMA 1 | **0.060** | −0.006 | 0.955 | 0.47 (15-min data, hl2, EMA 5: 0.51) |
+| next best pair (SR3V6 − IM7) | 0.103 | +0.045 | 0.915 | 0.49 |
+| SR3U6 − IX6 (Nov26, what `I2!` is if serial months are listed) | 4.33 | −4.33 | 0.59 | 0.00 |
+| SR3U6 − IZ6 (Dec26) / IG7 (Feb27) / IM7 (Jun27) | ≥ 0.5 (absolute level off) | | 0.8–0.9 | |
+
+- **The absolute level is what pins the months.** The spread runs 64–71 bp, so × 0.1 + 1.445 gives 7.8–8.5, which is the
+  7.5–8.5 range in the video. Only SR3U6 − IH7 lands there; Nov26 is 43 bp off. So TradingView's `I2!` was **Mar27**
+  that week (Euribor continuous running through quarterly months: `I1!` = Dec26, `I2!` = Mar27), not a serial month.
+- **What 7.5 → 8.0 means:** the SOFR Sep26 − Euribor Mar27 spread widening by **5 bp** (1 unit = 10 bp; the line is the
+  spread plus a constant, so it is a rate spread, not a z-score or a price).
+- **Not pinned:** data timeframe / price source / EMA (1h hl2 EMA 1–3, 1h ohlc4 EMA 1–3, 15m hl2 EMA 5 all fit within
+  0.003 RMSE); bar-by-bar at 15 min is 0.47–0.52, limited by timing slack in the digitised axis (±1 bar) and unseen
+  smoothing. Trade prices fit slightly worse than midpoint on the extra legs.
+- **Retracts** the earlier "formula not identified" and "unknown scale/offset" statements; supersedes §9's candidate list.
