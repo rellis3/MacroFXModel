@@ -1,5 +1,13 @@
 # C.OG's blue "SOFR–€STR" line: reconstruction from first principles (2026-10-11)
 
+> **CORRECTION (2026-10-13) — read this first.** §1's "Tuesday 22 Sep falsifies every rate-based candidate" and the
+> conclusions built on it (§2 "fails Tuesday", §5, §6 and the "not a function of these contracts" statements) were
+> **wrong**. The Tuesday segment of his line came from a wide video frame whose time axis I had fitted (15.3 px/h)
+> instead of anchoring to the crosshair label "Mon 21 Sep 14:15" visible in that frame. With the anchored axis, his line
+> and his legs (SOFR Sep26 − Euribor I2!) move together on Tuesday as on every other day (§9). The earlier ±8 h shift
+> scans could not reveal this, because the error sat in only one segment.
+
+
 Evidence: the line digitised from his video frames (17 Sep 00:00 → 22 Sep 13:15 UTC, 258 15-min bars; calibration
 checked against the chart clock and the crosshair tooltips, ≈ ±1 bar; the Tuesday segment spliced from a wider frame,
 RMSE 0.11 on 120 overlapping bars). Candidates: every affine map a + b·x of 60 constructions from our IBKR 1-min data
@@ -119,3 +127,28 @@ his step with each candidate's cumulative change since his previous step — his
 **Conclusion of §8.** Consistent with his line being built from these legs, pulled irregularly, with a transform or
 weighting we cannot see; not consistent with any single pair at a fixed scale. The question to him narrows to: *what
 is the exact formula, and how often does the script pull?*
+
+
+## 9. Correction and result with the anchored time axis (2026-10-13)
+
+- **What was wrong:** Tuesday's timing (see the correction box). Re-digitised with the label anchor (`cog_line_redigitise.py`):
+  two independent digitisations of the same stretch agree at level 1.00 and 15-min change 0.96, so digitising is not the
+  limit; the time axis was.
+- **His exact legs, inverted (his `invert` option: SOFR Sep26 − Euribor I2! = IX6), corrected line, 255 chart bars:**
+
+| horizon of changes | his legs (midpoint) | SOFR − Euribor Dec26 | SOFR − €STR Dec26 |
+|---|---|---|---|
+| level | +0.84 | +0.88 | +0.87 |
+| 15 min | +0.26 (EMA 13: +0.45) | +0.34 | +0.38 |
+| 1 h | +0.52 | +0.61 | +0.62 |
+| 2 h | +0.56 | +0.62 | +0.60 |
+| 4 h | +0.60 | +0.69 | +0.76 |
+
+  Trade-based bars (TradingView's price type) fit slightly better than midpoint: level +0.87, 15-min +0.33. Fitted
+  scale ≈ 0.14–0.16 units per bp, offset ≈ −5 to −10 (default 0.2 / 1.445 do not apply).
+- **Tuesday:** his line rises 8.23 → 8.73 between 08:00 and 10:00 UTC while SOFR − I2! widens 112.0 → 113.3 bp: the
+  same morning move our data shows, not a jump on nothing.
+- **Conclusion:** the blue line is very probably SOFR − EUR (Euribor-family) short-rate spread, inverted, rescaled by an
+  unknown scale/offset, probably smoothed. Direction and shape are reproduced; **bar-by-bar is not** (15-min 0.26–0.38,
+  0.5–0.76 at 1–4 h), the contract months are not pinned (Dec26 Euribor/€STR fit slightly better than I2!'s Nov26), and
+  the scale/offset/smoothing are unknown. Not an exact reconstruction.

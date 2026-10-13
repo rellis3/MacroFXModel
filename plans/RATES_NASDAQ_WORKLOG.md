@@ -122,5 +122,7 @@ contract or two-contract spread? Pre-registered `forge/RATE_CURVE_STRUCTURE_PRER
   walk-forward; |return| and return worse. Keep rule not met → stopped. The rates–Nasdaq book is closed on our data.
 - **Reconstruction from first principles (2026-10-11)** `analysis/output/cog_video_0918/RECONSTRUCTION.md`: his line
   digitised through Tue 22 Sep; 60 affine candidates; best = SOFR U6 − €STR Z6 ×11.85 − 5.48 (0.12 units/bp, change
-  corr 0.20) — but Tuesday falsifies every rate-based candidate (8 bp curve move → 0.04 units; +0.40 jump on 0 bp).
+  corr 0.20) — [RETRACTED 2026-10-13: the Tuesday 'falsification' was my time-axis error, see RECONSTRUCTION.md §9; corrected: his legs inverted fit level 0.84, 1–4 h changes 0.5–0.76].
   Formula NOT identified; four questions for C.OG listed. No new predictive test follows.
+
+- **2026-10-13 correction:** wide-frame time axis re-anchored to the crosshair label; Tuesday agrees with the data. His line ≈ SOFR − Euribor-family spread (inverted, rescaled, smoothed?); direction/shape reproduced, bar-by-bar 0.26-0.38 at 15 min. Digitisation noise floor level 1.00 / change 0.96.
