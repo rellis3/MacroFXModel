@@ -3339,6 +3339,63 @@ function dataConflictHtml() {
 // These are the most informative states on the board and the easiest to miss, because
 // nothing looks individually wrong — each series is just doing its own thing. The
 // signal is in the RELATIONSHIP failing.
+// ── Coherence, the transition lean, rate vol (Lesson 6) ──────────────────────
+// Three reads the cross-asset lesson asks for and the board did not have, all
+// built from data this page already loads (FRED history, the chain's daily
+// closes, /api/risk-flags). Maths in js/crossAssetCore.js; every cut-off there is
+// descriptive and untested on this desk -- these say what the board looks like,
+// not what happens next.
+
+// Copper/gold, by date: rising = growth optimism (copper bid), falling = defensive.
+function _copperGold() {
+  const cu = commodityDrivers?.series?.copper, au = commodityDrivers?.series?.gold;
+  if (!cu?.length || !au?.length) return null;
+  const g = new Map(au.map(p => [p.date, p.value]));
+  return cu.filter(p => g.get(p.date) > 0).map(p => ({ date: p.date, value: p.value / g.get(p.date) }));
+}
+
+// "Are the markets telling one story?" -- each market's 20-session move votes
+// risk-on or risk-off. Rates are deliberately NOT a leg: falling yields are
+// risk-on in a disinflation (Q4 2023) and risk-off in a growth scare (SVB), so
+// their vote depends on the regime this score is trying to read.
+function coherenceRead() {
+  const CA = window.crossAssetBrick; if (!CA?.coherenceScore) return null;
+  const ch = CA.seriesChange, fh = fredHist ?? {};
+  const mv = riskFlags?.move;
+  return CA.coherenceScore([
+    { name: 'stocks', change: ch(commodityDrivers?.series?.spx, 20, 'pct'), riskOnWhen: 'up', dead: 1 },
+    { name: 'HY credit', change: ch(fh.hy, 20, 'bp'), riskOnWhen: 'down', dead: 10 },
+    { name: 'IG credit', change: ch(fh.ig, 20, 'bp'), riskOnWhen: 'down', dead: 4 },
+    { name: 'equity vol', change: ch(fh.vix, 20, 'abs'), riskOnWhen: 'down', dead: 1.5 },
+    { name: 'rate vol', change: mv?.chg20 ?? null, riskOnWhen: 'down', dead: 5 },
+    { name: 'the dollar', change: ch(fh.dxy, 20, 'pct'), riskOnWhen: 'down', dead: 0.5 },
+    { name: 'copper/gold', change: ch(_copperGold(), 20, 'pct'), riskOnWhen: 'up', dead: 2 },
+  ]);
+}
+function coherenceLine() {
+  const c = coherenceRead(); if (!c || c.score == null) return '';
+  const cls = c.state === 'high' ? (c.story === 'risk-off' ? 'off' : 'on') : 'mix';
+  const word = c.state === 'high' ? `high — one story: ${c.story}` : c.state === 'moderate' ? `moderate — leaning ${c.story}` : 'low — the markets disagree';
+  const so = c.state === 'high' ? 'aligned markets: the lesson\'s "trends tend to persist" state; conviction can be higher'
+    : c.state === 'low' ? 'conflicting stories: someone is wrong, or a transition is under way — investigate, size down'
+    : 'partly aligned: the dissenters are where to look';
+  const tip = `Seven markets, each voting on its 20-session move (stocks up, credit and vol down, dollar down, copper/gold up = risk-on). ${c.on} risk-on, ${c.off} risk-off, ${c.quiet} too quiet to vote. Score = |on − off| ÷ voting. Rates are left out on purpose: whether falling yields are good or bad news depends on the regime. Lesson 6 framework; cut-offs untested on this desk — context, not a signal.`;
+  return `<div class="riskverdict" style="margin-top:3px" title="${esc0(tip)}">Coherence: <b class="tone ${cls}" style="font-weight:800">${c.score}% ${esc0(word)}</b><span class="muted"> · ${c.on} on / ${c.off} off${c.dissent.length ? ` · dissent: ${esc0(c.dissent.join(', '))}` : ''} — ${esc0(so)}</span></div>`;
+}
+
+// Where the daily tells point on Lesson 6's transition table (curve shape,
+// breakevens, credit, vol, commodities over 20 sessions). The monthly regime
+// label stays the regime; this is the early read on which way it may move.
+function transitionReadNow() {
+  const CA = window.crossAssetBrick; if (!CA?.transitionLean) return null;
+  const ch = CA.seriesChange, fh = fredHist ?? {};
+  const oil = ch(commodityDrivers?.series?.oil, 20, 'pct'), cu = ch(commodityDrivers?.series?.copper, 20, 'pct');
+  const cmd = oil != null && cu != null ? (oil + cu) / 2 : oil ?? cu;
+  return CA.transitionLean({
+    d2y: ch(fh.us2y, 20, 'bp'), d10y: ch(fh.us10y, 20, 'bp'), dBei: ch(fh.bei, 20, 'bp'),
+    dHy: ch(fh.hy, 20, 'bp'), dVix: ch(fh.vix, 20, 'abs'), dCommodity: cmd,
+  });
+}
 function macroDivergences() {
   const by = _macroMovedByKey();
   const out = [];
@@ -3380,14 +3437,61 @@ function macroDivergences() {
   }
 
   // 3) Bonds have stopped hedging equities. The single most useful sizing fact on the
-  //    board when it is true, and invisible if you only look at levels.
+  //    board when it is true, and invisible if you only look at levels. Read from the
+  //    real SPY/TLT 20-day return correlation (/api/risk-flags `stock_bond_corr`,
+  //    evidence 'stock-bond-flip'). This used to fire off correlationRegime() -- the
+  //    mean |rho| across FX pair-combinations -- which is a clustering read, not a
+  //    stock-bond one; that read is now item 4 under its own name.
+  const sb = (riskFlags?.flags ?? []).find(f => f.key === 'stock_bond_corr');
+  if (sb?.on === true && Number.isFinite(sb.value)) {
+    out.push({
+      id: 'stockBond',
+      title: 'Bonds are not hedging stocks',
+      detail: `The 20-day SPY/TLT return correlation is +${sb.value.toFixed(2)} — stocks and bonds are moving together.`,
+      teach: 'In a growth scare bonds rally as equities fall, so a mixed book hedges itself. In an inflation regime they fall together and that hedge disappears — which is why the same portfolio can be far riskier than its history suggests without a single position changing. Since 2008 such episodes have lasted a median 5 sessions (p75 17); what follows them is untested here. This is a sizing instruction, not a direction call.',
+      severity: 'medium',
+    });
+  }
+
+  // 4) Everything moving as one -- the cross-pair clustering read. Same sizing
+  //    consequence as 3, different measurement: the mean |rho| across the tracked FX
+  //    pair-combinations against each combination's own history.
   const creg = correlationRegime();
   if (creg && creg.state === 'HIGH') {
     out.push({
-      id: 'stockBond',
+      id: 'clustering',
       title: 'Diversification is thinner than it looks',
-      detail: `Mean absolute correlation across the board is ${creg.mean.toFixed(2)}${creg.z != null ? `, ${creg.z >= 0 ? '+' : ''}${creg.z.toFixed(2)} standard deviations above normal` : ''}.`,
-      teach: 'In a growth scare bonds rally as equities fall, so a mixed book hedges itself. In an inflation regime they fall together and that hedge disappears — which is why the same portfolio can be far riskier than its history suggests without a single position changing. This is a sizing instruction, not a direction call.',
+      detail: `Mean absolute correlation across ${creg.nPairs} tracked pair-combinations is ${creg.mean.toFixed(2)}${creg.z != null ? `, ${creg.z >= 0 ? '+' : ''}${creg.z.toFixed(2)} standard deviations above normal` : ''}.`,
+      teach: 'When markets cluster, several "different" setups are really one position. Size the basket, not each trade, and expect historical hedges to hedge less than they did. This is a sizing instruction, not a direction call.',
+      severity: 'medium',
+    });
+  }
+
+  // 5) Equities rallying while credit widens (Lesson 6's lead divergence): credit
+  //    investors are pricing risk the equity market is ignoring, and credit has
+  //    tended to be right at turning points. SPX daily closes from the chain loader,
+  //    HY OAS from FRED history. Thresholds are descriptive (js/crossAssetCore.js
+  //    equityCreditDivergence) -- untested here, a reason to investigate.
+  const ec = window.crossAssetBrick?.equityCreditDivergence?.(commodityDrivers?.series?.spx, fredHist?.hy);
+  if (ec?.state === 'divergent') {
+    out.push({
+      id: 'equityCredit',
+      title: 'Stocks up, credit widening',
+      detail: `Over 20 sessions the S&P 500 is +${ec.spxPct}% while high-yield spreads are +${ec.hyBp}bp wider.`,
+      teach: 'Equity and credit investors usually agree: tighter spreads with rising stocks. When stocks rally while spreads widen, credit — the skeptical, downside-focused market — is pricing risk the equity rally is ignoring. Historically credit is often the one that is right at turning points (it led equities in March 2023). Untested on this desk: a reason to check what credit sees, not a short signal.',
+      severity: 'high',
+    });
+  }
+  // 6) Rate vol up, equity vol calm. MOVE in the top fifth of its year while VIX
+  //    sits under 20: bond-market uncertainty the equity market is not pricing.
+  //    March 2023 ran this way round -- MOVE spiked first.
+  const mv = riskFlags?.move, vixNow = fred?.vix?.value;
+  if (mv && mv.pct1y >= 80 && Number.isFinite(vixNow) && vixNow < 20) {
+    out.push({
+      id: 'moveLeads',
+      title: 'Rate vol high, equity vol calm',
+      detail: `MOVE is ${Math.round(mv.level)} (${(n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'))(mv.pct1y)} percentile of its year) while VIX is ${vixNow.toFixed(1)}.`,
+      teach: 'The bond market is paying up for protection while the equity market is not. When the stress is a rates or duration story, rate volatility tends to move first — in March 2023 MOVE spiked before VIX. Untested on this desk: a reason to check what bonds are worried about, not a call that equities will follow.',
       severity: 'medium',
     });
   }
@@ -5031,6 +5135,7 @@ function renderMarketRead() {
         ${policyPricedLine()}
         ${seasonalityLine()}
         ${correlationRegimeLine()}
+        ${coherenceLine()}
         ${risk.gpr ? `<div class="riskverdict" style="margin-top:3px" title="Caldara &amp; Iacoviello's Geopolitical Risk Index (Federal Reserve Board) — counts geopolitical-tension language across 10 major newspapers. The source republishes this file weekly (Mondays), not daily, so freshness is checked against that cadence, not a daily one. Shown as a 30-day smoothed level, z-scored against its own trailing 2-year history. Genuinely global and currency-agnostic — not derived from anything else on this page. Context, not a backtested rule.">Geopolitical risk: ${risk.gpr.stale ? `<b class="tone off" style="font-weight:800">⚠ stale</b><span class="muted"> · last update ${risk.gpr.asOfDate} (${risk.gpr.daysStale}d ago) — the weekly pull may have failed, check /api/gpr/refresh-status</span>` : `<b class="tone ${risk.gpr.z > 0.75 ? 'off' : risk.gpr.z < -0.5 ? 'on' : 'mix'}" style="font-weight:800">${risk.gpr.z > 0.75 ? 'elevated' : risk.gpr.z < -0.5 ? 'subdued' : 'normal'}</b><span class="muted"> · z ${risk.gpr.z >= 0 ? '+' : ''}${risk.gpr.z} · ${risk.gpr.trend}${risk.gpr.asOfDate ? ` · as of ${risk.gpr.asOfDate}` : ''}</span>`}</div>` : ''}
       </div>
     </div>
@@ -6262,6 +6367,8 @@ function buildMacro() {
     let body = `Corporate bond investors are the market's early-warning system — they carry the downside of a bad economy, so they get nervous <b>before</b> stocks do. The extra yield they demand over government bonds (the “spread”) is <b>${cg.hyBps} bps</b>, ${lvlWord}`;
     body += cg.pct != null ? ` (${cg.pct}th percentile of the last few months). ` : '. ';
     body += `It has been <b>${dirWord}</b>${cg.d5 != null ? ` (${cg.d5 >= 0 ? '+' : ''}${cg.d5} bps over ~a week)` : ''}${cg.widening > 0 && cg.accel > 0 ? ' and the move is <b>speeding up</b>' : cg.widening < 0 && cg.accel < 0 ? ' and easing quickly' : ''}.`;
+    { const igS = fredHist?.ig, igNow = igS?.at(-1)?.value, ig20 = window.crossAssetBrick?.seriesChange?.(igS, 20, 'bp');
+      if (Number.isFinite(igNow)) body += ` Investment-grade spreads are <b>${Math.round(igNow * 100)} bps</b>${ig20 != null ? ` (${ig20 >= 0 ? '+' : ''}${Math.round(ig20)} over 20 sessions)` : ''}${ig20 != null && cg.d5 != null && Math.abs(ig20) >= 4 ? (Math.sign(ig20) === Math.sign(cg.widening || 0) ? ' — moving with high yield, so the read is broad' : ' — moving against high yield, so the move is confined to the riskiest credit') : ''}.`; }
     if (cg.qNow != null) body += ` The riskiest borrowers (CCC-rated) are being treated ${cg.qDir > 0 ? '<b>more</b> harshly' : cg.qDir < 0 ? '<b>less</b> harshly' : 'about the same'} vs safer high-yield — the sharpest read on risk appetite.`;
     const so = cg.widening > 0
       ? `Spreads widening is a <b>warning</b>: credit stress often <b>leads equity volatility and risk-off moves</b>. Headwind for <b>NAS100 / SPX500</b>, and it tends to <b>weigh on EUR/USD</b> (a risk proxy) while helping the safe-haven yen, franc and gold.`
@@ -6426,6 +6533,7 @@ function renderRegimeLine() {
     ${tilt.length ? ` In this backdrop since 2007: ${esc0(tilt.join(', '))}; the rest no tilt.` : ' No market carries a tilt in this backdrop on our data.'}
     ${widest ? ` Ranges run ${widest.r >= 1.1 ? 'wider' : widest.r <= 0.9 ? 'narrower' : 'about normal'} here.` : ''}
     ${n.watchFor ? ` The usual next move is <b>${esc0(W[n.watchFor.to].toLowerCase())}</b>; its tell is ${esc0(n.watchFor.tells)}.` : ''}
+    ${(() => { const tl = transitionReadNow(); if (!tl) return ''; const sh = tl.shape ? ` Curve over 20 sessions: ${esc0(tl.shape)}${tl.curveBp != null ? ` (2s10s ${tl.curveBp >= 0 ? '+' : ''}${tl.curveBp}bp)` : ''}.` : ''; return tl.lean ? `${sh} <span title="Lesson 6's regime-transition table read from 20-session moves in the curve, breakevens, credit, VIX and oil/copper. Two of three tells needed. Describes where the daily tells point; the monthly label above stays the regime. Untested on this desk.">Daily tells lean <b>→ ${esc0(W[tl.lean].toLowerCase())}</b> (${esc0(tl.tells.join(', '))}).</span>` : `${sh} Daily tells: no clear lean.`; })()}
     <a href="regime.html" target="_blank" style="margin-left:6px;font-size:11px">the table →</a></div>`;
 }
 function renderDeskWatch() {
@@ -8710,6 +8818,8 @@ function renderSidebar() {
     <div class="side-card"><h3>Volatility Outlook</h3>${lsVolTermLine()}
       <div class="volout-row"><span>VIX</span><b>${risk.vix != null ? fmtN(risk.vix, 1) : '–'}${risk.vix != null ? (risk.vix > 20 ? ' (jittery)' : ' (calm)') : ''}</b></div>
       ${risk.vix != null && risk.vix3m != null ? `<div class="volout-row"><span>Term structure</span><b>${risk.vix > risk.vix3m ? 'Backwardated' : 'Contango'}</b></div>` : ''}
+      ${riskFlags?.move ? `<div class="volout-row" title="ICE BofA MOVE index (Treasury option implied vol) — the bond market's VIX. Percentile of its own last year. In March 2023 MOVE spiked before VIX: when the stress is a rates story, rate vol moves first. As of ${esc0(riskFlags.move.asOf)}."><span>MOVE (rate vol)</span><b>${fmtN(riskFlags.move.level, 0)} · ${(n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'))(riskFlags.move.pct1y)} pct${riskFlags.move.chg5 != null ? ` · ${riskFlags.move.chg5 >= 0 ? '+' : ''}${riskFlags.move.chg5} 5d` : ''}</b></div>` : ''}
+      ${riskFlags?.move?.vixRatio != null ? `<div class="volout-row" title="Rate vol relative to equity vol. High = bond uncertainty outpacing equity uncertainty — Lesson 6's macro-stress tell. Read it against its own history, not a fixed line."><span>MOVE / VIX</span><b>${riskFlags.move.vixRatio.toFixed(1)}×</b></div>` : ''}
       <div class="volout-row"><span>σ building</span><b>${rs.filter(r => r.d.cone_5d != null && r.d.vol_pct != null && (r.d.cone_5d - r.d.vol_pct) >= 15).length} pairs</b></div>
       <div class="volout-row"><span>σ cooling</span><b>${rs.filter(r => r.d.cone_5d != null && r.d.vol_pct != null && (r.d.cone_5d - r.d.vol_pct) <= -15).length} pairs</b></div>
     </div>
@@ -8747,6 +8857,20 @@ function booksCardHtml() {
     // the same engines with the teaching stripped out -- a monitoring surface for
     // when you already know what a real yield is and just want the board's state
     row('terminal.html', '📈', 'Terminal', 'the whole board at density, no explanation', 'risk gauges, cross-asset matrix, momentum shapes, positioning and event risk on one screen'); })();
+  // stocks, bonds and credit -- the equity side of the capital structure, read against
+  // the two markets Lesson 6 says to check it with: is the bond hedge working (SPY/TLT
+  // 20d correlation from /api/risk-flags) and does credit agree with the equity tape
+  // (20-session S&P vs HY OAS, js/crossAssetCore.js equityCreditDivergence).
+  (() => {
+    const sb = (riskFlags?.flags ?? []).find(f => f.key === 'stock_bond_corr');
+    const ec = window.crossAssetBrick?.equityCreditDivergence?.(commodityDrivers?.series?.spx, fredHist?.hy);
+    const parts = [];
+    if (Number.isFinite(sb?.value)) parts.push(`stocks/bonds ρ <b>${sb.value >= 0 ? '+' : ''}${sb.value.toFixed(2)}</b> ${sb.value > 0 ? '(hedge off)' : '(hedging)'}`);
+    if (ec) parts.push(`S&amp;P ${ec.spxPct >= 0 ? '+' : ''}${ec.spxPct}% vs HY ${ec.hyBp >= 0 ? '+' : ''}${ec.hyBp}bp over 20d${ec.state === 'divergent' ? ' — <b>credit disagrees</b>' : ec.state === 'confirming' ? ' — credit agrees' : ''}`);
+    const igNow = fredHist?.ig?.at(-1)?.value; if (Number.isFinite(igNow)) parts.push(`IG ${Math.round(igNow * 100)}bp`);
+    const coh = coherenceRead(); if (coh?.score != null) parts.push(`coherence <b>${coh.score}%</b> ${esc0(coh.story)}`);
+    row('system-credit-equity.html', '🏦', 'Stocks, bonds &amp; credit', parts.length ? parts.join(' · ') : 'is the bond hedge working, does credit agree with stocks', 'the equity tape checked against bonds and high-yield credit; the credit-equity book behind it');
+  })();
   // the week, scored
   const wm = weekMap; const loudW = wm ? Object.values(wm.series).filter(x => !x.hidden && Math.abs(x.latest?.z ?? 0) >= 2).sort((a, b) => Math.abs(b.latest.z) - Math.abs(a.latest.z)) : [];
   row('weekmap.html', '🗺', 'The week, scored', wm ? (loudW.length ? `unusual this week: ${esc0(loudW.slice(0, 3).map(x => `${x.label} z ${x.latest.z >= 0 ? '+' : ''}${x.latest.z.toFixed(1)}`).join(', '))}; the rest ordinary` : 'an ordinary week on every series') : 'every macro series scored against its own history', 'this week in each series’ distribution, and the weeks that sat like this');
@@ -11910,7 +12034,7 @@ const DRIVERS = {
   AUDJPY: { a: 'au10y', b: 'jp10y', label: 'AU–JP 10y', sign: +1 },
   CADJPY: { a: 'ca10y', b: 'jp10y', label: 'CA–JP 10y', sign: +1 },
 };
-const FREDHIST_KEYS = 'us10y,us2y,us30y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,bei,vix,vix3m,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets,sofr,iorb,ioer,tp10,fy10';
+const FREDHIST_KEYS = 'us10y,us2y,us30y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,bei,vix,vix3m,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets,sofr,iorb,ioer,tp10,fy10,ig';   // ig = IG OAS (BAMLC0A0CM), beside HY
 
 async function getFredHist() {
   if (fredHist) return fredHist;

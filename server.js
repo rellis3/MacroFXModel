@@ -14919,6 +14919,24 @@ async function _stockBondCorr() {
   return { corr: spearman(spyRet, tltRet), n: spyRet.length, asOf: win[win.length - 1] };
 }
 
+// MOVE index (ICE BofA Treasury option vol, Yahoo ^MOVE) -- the bond market's VIX.
+// Lesson 6: "MOVE led VIX" in March 2023; rate vol tends to move first when the
+// stress is a rates/duration story. Context only: level, its 1-year percentile, the
+// 5- and 20-session change, and a short history for a sparkline. Not a risk flag
+// (it does not vote on the CALM/CAUTION/RISK_OFF level), so adding it changes no
+// existing read. Cached with the risk-flags payload.
+async function _moveIndex() {
+  const toUnix = Math.floor(Date.now() / 1000);
+  const m = await fetchYahooOHLC('^MOVE', toUnix - 400 * 86400);
+  const pts = [...m.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([date, v]) => ({ date, value: +v.close.toFixed(2) }));
+  if (pts.length < 30) return null;
+  const vals = pts.map(p => p.value), last = vals[vals.length - 1];
+  const yr = vals.slice(-252);
+  const pct = Math.round(yr.filter(v => v <= last).length / yr.length * 100);
+  const chg = n => vals.length > n ? +(last - vals[vals.length - 1 - n]).toFixed(1) : null;
+  return { level: last, pct1y: pct, chg5: chg(5), chg20: chg(20), asOf: pts[pts.length - 1].date, hist: pts.slice(-60) };
+}
+
 async function computeRiskFlags() {
   const age = Date.now() - _RISK_FLAGS_CACHE.fetchedAt;
   if (_RISK_FLAGS_CACHE.data && age < _RISK_FLAGS_TTL) return _RISK_FLAGS_CACHE.data;
@@ -14939,6 +14957,8 @@ async function computeRiskFlags() {
   const [hyHist, jpyHist] = await Promise.all([hist('hy'), hist('usd_jpy')]);
   let cvol = null;
   try { cvol = await _getCvol(); } catch { /* flag reports unavailable */ }
+  let move = null;
+  try { move = await _moveIndex(); } catch (e) { console.warn('[risk-flags] MOVE failed:', e.message); }
   let sbCorr = null;
   try { sbCorr = await _stockBondCorr(); } catch (e) { console.warn('[risk-flags] stock-bond corr failed:', e.message); }
 
@@ -14994,6 +15014,7 @@ async function computeRiskFlags() {
   const data = {
     computed_at: new Date().toISOString(),
     flags, active, available: known.length, total: flags.length, level,
+    move: move ? { ...move, vixRatio: vix ? +(move.level / vix).toFixed(2) : null } : null,
     note: active >= 3 ? 'Three or more risk flags active — the lesson rule says cut gross exposure, expect correlated moves.'
         : active === 2 ? 'Two risk flags active — risk appetite is fragile, correlations may tighten.'
         : 'Cross-asset risk backdrop calm — pair-specific drivers dominate.',
@@ -35890,6 +35911,7 @@ const _FRED_DASH_SERIES = {
   ca_short: 'IRSTCI01CAM156N', ch_short: 'IR3TIB01CHM156N',
   wti: 'DCOILWTICO', walcl: 'WALCL', tga: 'WTREGEN', rrp: 'RRPONTSYD',
   nzd_usd: 'DEXUSNZ', hy_bb: 'BAMLH0A1HYBB', hy_ccc: 'BAMLH0A3HYC',
+  ig: 'BAMLC0A0CM',   // IG OAS -- credit is no longer HY-only (Lesson 6, Tier 3)
 };
 const _FRED_DASH_KV     = 'fred_data_v3';
 const _FRED_DASH_CRIT   = ['vix', 'us10y', 'hy', 'nfci'];
@@ -35904,7 +35926,7 @@ const _FREDHISTORY_SERIES = {
   // the label's meaning.
   us2y: 'DGS2', us5y: 'DGS5', us10y: 'DGS10', us30y: 'DGS30', dxy: 'DTWEXBGS',
   tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE', vix: 'VIXCLS', vix3m: 'VXVCLS',
-  hy: 'BAMLH0A0HYM2', usd_jpy: 'DEXJPUS',
+  hy: 'BAMLH0A0HYM2', ig: 'BAMLC0A0CM', usd_jpy: 'DEXJPUS',   // ig = investment-grade OAS beside HY
   sofr: 'SOFR', rrp: 'RRPONTSYD',   // repo rate + reverse-repo facility usage (macro-change strip)
   iorb: 'IORB', ioer: 'IOER',       // the Fed's floor, for the chain's funding node (SOFR − floor)
   tp10: 'THREEFYTP10', fy10: 'THREEFY10',   // ACM 10Y term premium + fitted yield: the 10Y card's split into term premium vs expected Fed path

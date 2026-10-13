@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {
   logReturns, realisedVolSeries, percentileOf, volDirection, volRegimeLabel,
   normaliseFromStart, lastFinite, usdStrengthSeries, driverAlignment, marketToneScore,
+  equityCreditDivergence, seriesChange, coherenceScore, transitionLean,
 } from './crossAssetCore.js';
 
 const approx = (a, b, tol = 1e-6) => assert.ok(Math.abs(a - b) < tol, `${a} !== ${b}`);
@@ -198,4 +199,96 @@ test('a two-way row abstains rather than voting for balance', () => {
 test('the extremes are reachable', () => {
   assert.equal(marketToneScore(1, ['on', 'on']).score, 100);
   assert.equal(marketToneScore(-1, ['off', 'off']).score, 0);
+});
+
+// ── equities vs credit ──────────────────────────────────────────────────────
+
+const ser = vals => vals.map((value, i) => ({ date: `2026-01-${String(i + 1).padStart(2, '0')}`, value }));
+const ramp = (from, to, n = 21) => Array.from({ length: n }, (_, i) => from + (to - from) * i / (n - 1));
+
+test('equities up while HY widens is the divergence', () => {
+  const r = equityCreditDivergence(ser(ramp(100, 104)), ser(ramp(3.0, 3.4)));
+  assert.equal(r.state, 'divergent');
+  approx(r.spxPct, 4, 1e-9);
+  assert.equal(r.hyBp, 40);
+});
+
+test('equities up with credit tightening confirms', () => {
+  assert.equal(equityCreditDivergence(ser(ramp(100, 104)), ser(ramp(3.4, 3.0))).state, 'confirming');
+  assert.equal(equityCreditDivergence(ser(ramp(104, 100)), ser(ramp(3.0, 3.4))).state, 'confirming');
+});
+
+test('a leg inside its threshold is quiet, and short history is null', () => {
+  assert.equal(equityCreditDivergence(ser(ramp(100, 101)), ser(ramp(3.0, 3.4))).state, 'quiet');
+  assert.equal(equityCreditDivergence(ser(ramp(100, 104, 10)), ser(ramp(3.0, 3.4))), null);
+});
+
+test('each leg uses its own last observations', () => {
+  // HY series longer than SPX: only its final 21 points count.
+  const hy = ser([9, 9, 9, ...ramp(3.0, 3.4)]);
+  assert.equal(equityCreditDivergence(ser(ramp(100, 104)), hy).hyBp, 40);
+});
+
+// ── coherence ───────────────────────────────────────────────────────────────
+
+test('seriesChange modes', () => {
+  const s = ser([1.0, 1.1, 1.2]);
+  approx(seriesChange(s, 2, 'bp'), 20);
+  approx(seriesChange(s, 2, 'pct'), 20);
+  assert.equal(seriesChange(s, 5), null);
+});
+
+test('every market telling one story scores 100', () => {
+  const r = coherenceScore([
+    { name: 'equities', change: 4, riskOnWhen: 'up', dead: 1 },
+    { name: 'credit', change: -30, riskOnWhen: 'down', dead: 10 },
+    { name: 'vol', change: -5, riskOnWhen: 'down', dead: 1.5 },
+    { name: 'dollar', change: -1, riskOnWhen: 'down', dead: 0.5 },
+  ]);
+  assert.equal(r.score, 100); assert.equal(r.story, 'risk-on'); assert.equal(r.state, 'high');
+  assert.deepEqual(r.dissent, []);
+});
+
+test('a dissenter lowers the score and is named; quiet legs abstain', () => {
+  const r = coherenceScore([
+    { name: 'equities', change: 4, riskOnWhen: 'up', dead: 1 },
+    { name: 'credit', change: 30, riskOnWhen: 'down', dead: 10 },
+    { name: 'vol', change: -5, riskOnWhen: 'down', dead: 1.5 },
+    { name: 'dollar', change: -1, riskOnWhen: 'down', dead: 0.5 },
+    { name: 'copper/gold', change: 0.1, riskOnWhen: 'up', dead: 2 },
+    { name: 'missing', change: null, riskOnWhen: 'up' },
+  ]);
+  assert.equal(r.score, 50); assert.deepEqual(r.dissent, ['credit']); assert.equal(r.quiet, 1);
+});
+
+test('fewer than three voting legs gives no score', () => {
+  assert.equal(coherenceScore([{ name: 'a', change: 5, riskOnWhen: 'up' }, { name: 'b', change: 5, riskOnWhen: 'up' }]).score, null);
+});
+
+// ── transition lean ─────────────────────────────────────────────────────────
+
+test('bull flattening + credit blowout + vol spike leans deflation', () => {
+  const r = transitionLean({ d2y: -20, d10y: -40, dBei: -15, dHy: 80, dVix: 8 });
+  assert.equal(r.lean, 'deflation'); assert.equal(r.shape, 'bull flattening');
+});
+
+test('bull steepening + tighter credit + stable breakevens leans goldilocks', () => {
+  const r = transitionLean({ d2y: -40, d10y: -20, dBei: 2, dHy: -30, dVix: -2 });
+  assert.equal(r.lean, 'goldilocks'); assert.equal(r.tells.length, 3);
+});
+
+test('rising breakevens + commodities + bear steepening leans reflation', () => {
+  assert.equal(transitionLean({ d2y: 5, d10y: 25, dBei: 20, dHy: 0, dCommodity: 8 }).lean, 'reflation');
+});
+
+test('one tell, or a tie, is no lean', () => {
+  assert.equal(transitionLean({ d2y: 0, d10y: 0, dBei: 0, dHy: 0 }).lean, null);
+  assert.equal(transitionLean({}).lean, null);
+});
+
+test('bear flattening + sticky breakevens + wider credit leans stagflation; a bull flattener does not count', () => {
+  assert.equal(transitionLean({ d2y: 30, d10y: 10, dBei: 5, dHy: 40, dVix: 1 }).lean, 'stagflation');
+  const r = transitionLean({ d2y: -20, d10y: -40, dBei: 0, dHy: 40, dVix: 1 });
+  assert.equal(r.scores.stagflation, 2);   // breakevens holding + credit, NOT the flattener
+  assert.equal(r.lean, null);              // ties deflation (bull flattening + credit) -> no lean
 });

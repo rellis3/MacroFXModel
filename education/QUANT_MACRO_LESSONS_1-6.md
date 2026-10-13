@@ -1562,6 +1562,59 @@ structural flows.)*
   Rising → risk assets tend to benefit; falling → headwinds. *"Not mechanical —
   a condition, not a signal."*
 
+**Tier 2 — rates & curve (first market to price macro shifts):**
+| Series | Source / code | What it shows |
+|---|---|---|
+| 2Y Treasury yield | FRED `DGS2` (daily) | Most sensitive to Fed expectations; drives FX and front-end positioning |
+| 10Y Treasury yield | FRED `DGS10` (daily) | Growth + inflation + term premium; equity valuations, mortgages |
+| 2s10s spread | FRED `T10Y2Y` (daily) | Curve shape; negative = inverted = recession signal; watch direction as much as level |
+| 10Y real yield (TIPS) | FRED `DFII10` (daily) | Key driver for gold, growth stocks, long-duration assets |
+| 10Y breakeven | FRED `T10YIE` (daily) | Rising = reflation/stagflation risk |
+| MOVE index | Bloomberg `MOVE Index` (daily) | Bond-market VIX; elevated MOVE often precedes equity vol spikes |
+
+**Tier 3 — credit & risk appetite (credit typically leads equity at turning points):**
+| Series | Source / code | What it shows |
+|---|---|---|
+| IG credit spread | FRED `BAMLC0A0CM` (daily) | IG OAS; quality risk appetite |
+| HY credit spread | FRED `BAMLH0A0HYM2` (daily) | HY OAS; the key risk-appetite gauge; widening = risk-off, often leads equity |
+| CDX IG | Bloomberg `CDX.NA.IG` (daily) | Tradeable IG index, more liquid than cash bonds |
+| CDX HY | Bloomberg `CDX.NA.HY` (daily) | Correlated with equities but often leads at turning points |
+| EM sovereign spread | FRED `BAMLEMCBPIOAS` (daily) | Global risk appetite / dollar funding stress |
+| TED spread | FRED `TEDRATE` (daily) | Interbank stress; less relevant post-LIBOR, concept still matters |
+
+**Tier 4 — FX & global flows (the dollar is the most important):**
+| Series | Source / code | What it shows |
+|---|---|---|
+| Broad dollar | FRED `DTWEXBGS` (daily) | Strong USD = headwind for EM, commodities, US multinational earnings |
+| EUR/USD | FRED `DEXUSEU` (daily) | Fed vs ECB divergence; weak EUR = Europe struggling |
+| USD/JPY | FRED `DEXJPUS` (daily) | Carry barometer; JPY strength = risk-off / carry unwind; watch BoJ intervention |
+| AUD/USD | FRED `DEXUSAL` (daily) | Risk currency, China proxy; weakness = global growth / commodity-demand fears |
+| EUR/USD basis swap | Bloomberg `EUBS3 Curncy` (daily) | Widening = dollar funding stress; blowout = crisis (March 2020) |
+| EM FX index | Bloomberg `FXJPEMCS` (daily) | EM FX weakness often leads broader risk-off |
+
+**Tier 5 — volatility surface:**
+| Series | Source / code | What it shows |
+|---|---|---|
+| VIX | FRED `VIXCLS` (daily) | Low = complacency; spike = panic |
+| VIX term structure | CBOE `VIX`, `VIX3M`, `VIX6M` (daily) | Normal = contango; inverted/backwardation = near-term fear |
+| VVIX | CBOE `VVIX` (daily) | Uncertainty about uncertainty; can spike before VIX |
+| Skew | CBOE `SKEW` (daily) | Tail-hedging demand; crash-fear indicator |
+| MOVE index | Bloomberg (daily) | Often leads VIX at macro turning points (preceded March 2023) |
+| MOVE/VIX ratio | derived (daily) | High = bond uncertainty outpacing equity — macro stress signal |
+
+**Tier 6 — commodities & real assets:**
+| Series | Source / code | What it shows |
+|---|---|---|
+| WTI crude | FRED `DCOILWTICO` (daily) | Demand proxy / inflation input; rising = reflation, crashing = growth fear or glut |
+| Copper | FRED `PCOPPUSDM` (monthly; daily via futures) | "Dr. Copper" — global manufacturing / China lead |
+| Gold | FRED `GOLDAMGBD228NLBM` (daily) | Inverse real-yield proxy; fear hedge; inflation hedge in some regimes |
+| Copper/gold ratio | derived (daily) | Rising = growth optimism; falling = defensive |
+| Bloomberg Commodity Index | Bloomberg `BCOM` (daily) | Broad basket; trend reflects global growth/inflation |
+| Natural gas | FRED `DHHNGSP` (daily) | Seasonal/regional; European TTF matters for EU inflation |
+
+*(Note: FRED discontinued `TEDRATE` (LIBOR) and the LBMA gold series
+`GOLDAMGBD228NLBM` — verify availability before wiring either into a pipeline.)*
+
 **Building a data pipeline (steps from the lesson):**
 1. Data ingestion — automated pulls (FRED, Bloomberg, alternatives; Python/R/
    APIs).
@@ -1600,6 +1653,17 @@ tests. **Critical finding:** lead-lag relationships are often strongest at
 regime turning points and weakest during stable trends — the signal is most
 valuable precisely when it's hardest to trust, which is where systematic
 testing beats discretion.
+
+**Section 4 summary (as given):** information flows through markets in
+sequence — *Rates → FX → Credit → Equities*; lead-lag reflects market
+structure (who participates, how fast they process); confirmation builds
+conviction (more asset classes agreeing = higher confidence); divergences
+require investigation (mispricing, transition, or missing information).
+- *Note:* the lesson orders the cascade two ways — Section 1/Key Takeaways say
+  Rates → Credit → FX → Equities; Section 4 says Rates → FX → Credit →
+  Equities. The case studies show the order varies by episode (SVB: credit
+  first; Q4 2023: credit then FX) — treat the order as an empirical,
+  testable lead-lag question, not a fixed rule.
 
 ## 6.5 Correlation regimes
 

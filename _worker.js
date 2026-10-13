@@ -1350,6 +1350,7 @@ export default {
           bei:      'T10YIE',   // 10Y breakeven inflation — gold model breakeven decomp
           vix:      'VIXCLS',   // VIX — safe haven / regime confidence
           hy:       'BAMLH0A0HYM2', // HY credit spreads — safe haven signal
+          ig:       'BAMLC0A0CM',   // IG credit spreads — investment-grade OAS beside HY
           de10y:    'IRLTLT01DEM156N',
           gb10y:    'IRLTLT01GBM156N',
           jp10y:    'IRLTLT01JPM156N',

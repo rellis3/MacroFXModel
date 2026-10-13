@@ -188,3 +188,125 @@ export function driverAlignment(changes = {}, dead = 0.15) {
     : up ? 'Risk-on tilt' : 'Risk-off tilt';
   return { up, down, neutral, total: entries.length, label };
 }
+
+/**
+ * Equities vs credit over the last `days` observations — Lesson 6's lead
+ * divergence ("equities rallying + credit widening: credit is often right at
+ * turning points").
+ *
+ * `spx` = ascending [{date, value}] index closes; `hy` = ascending
+ * [{date, value}] HY OAS in percent points (FRED BAMLH0A0HYM2). Each series is
+ * measured over its OWN last `days` observations, so a lagging FRED print does
+ * not shift the equity window.
+ *
+ * Returns { spxPct, hyBp, state } where state is:
+ *   'divergent'  — equities up ≥ minEqPct while HY widened ≥ minHyBp
+ *   'confirming' — both point the same way (risk-on or risk-off)
+ *   'quiet'      — either leg inside its threshold
+ * or null when either series is too short. Thresholds are descriptive cut-offs,
+ * not fitted or tested here.
+ */
+export function equityCreditDivergence(spx, hy, { days = 20, minEqPct = 2, minHyBp = 25 } = {}) {
+  const chg = (pts, pct) => {
+    const v = (pts ?? []).map(p => Number(p?.value)).filter(Number.isFinite);
+    if (v.length < days + 1) return null;
+    const a = v[v.length - 1 - days], b = v[v.length - 1];
+    return pct ? (a > 0 ? (b / a - 1) * 100 : null) : (b - a) * 100;   // OAS % → bp
+  };
+  const spxPct = chg(spx, true), hyBp = chg(hy, false);
+  if (spxPct == null || hyBp == null) return null;
+  const eqUp = spxPct >= minEqPct, eqDn = spxPct <= -minEqPct;
+  const crWide = hyBp >= minHyBp, crTight = hyBp <= -minHyBp;
+  const state = eqUp && crWide ? 'divergent'
+    : (eqUp && crTight) || (eqDn && crWide) ? 'confirming'
+    : 'quiet';
+  return { spxPct: +spxPct.toFixed(2), hyBp: Math.round(hyBp), state };
+}
+
+/**
+ * Change over the last `n` observations of an ascending [{date, value}] series.
+ * mode 'pct' → percent change; 'bp' → (b − a) × 100 (a % series into basis
+ * points); 'abs' → b − a. Null when the series is too short.
+ */
+export function seriesChange(pts, n = 20, mode = 'abs') {
+  const v = (pts ?? []).map(p => Number(p?.value)).filter(Number.isFinite);
+  if (v.length < n + 1) return null;
+  const a = v[v.length - 1 - n], b = v[v.length - 1];
+  if (mode === 'pct') return a > 0 ? (b / a - 1) * 100 : null;
+  return mode === 'bp' ? (b - a) * 100 : b - a;
+}
+
+/**
+ * Cross-asset coherence — Lesson 6: "are the markets telling one story?"
+ *
+ * `legs` = [{ name, change, riskOnWhen: 'up' | 'down', dead }]. Each leg votes
+ * risk-on (+1) or risk-off (−1) when its change is beyond ±dead in the stated
+ * direction, and abstains inside the dead band or when it has no data.
+ *
+ * score = |on − off| / voting × 100 — 100 means every market that moved told
+ * the same story, 0 means they split evenly. Fewer than 3 voting legs → no
+ * score (two markets agreeing is not a board). The cut-offs are descriptive,
+ * untested here: high coherence is the lesson's "trends tend to persist"
+ * state, low is its "someone is wrong, or a transition — size down".
+ */
+export function coherenceScore(legs = []) {
+  const votes = [];
+  for (const l of legs) {
+    const c = l?.change;
+    if (c == null || !Number.isFinite(c)) continue;
+    const dead = l.dead ?? 0;
+    if (Math.abs(c) <= dead) { votes.push({ name: l.name, vote: 0 }); continue; }
+    const up = c > 0;
+    votes.push({ name: l.name, vote: (up === (l.riskOnWhen === 'up')) ? 1 : -1 });
+  }
+  const on = votes.filter(v => v.vote > 0), off = votes.filter(v => v.vote < 0);
+  const voting = on.length + off.length;
+  if (voting < 3) return { score: null, story: 'not enough movement', on: on.length, off: off.length, quiet: votes.length - voting, dissent: [], votes };
+  const net = on.length - off.length;
+  const score = Math.round(Math.abs(net) / voting * 100);
+  const story = net > 0 ? 'risk-on' : net < 0 ? 'risk-off' : 'split';
+  const dissent = (net > 0 ? off : net < 0 ? on : []).map(v => v.name);
+  const state = score >= 70 ? 'high' : score >= 40 ? 'moderate' : 'low';
+  return { score, story, state, on: on.length, off: off.length, quiet: votes.length - voting, dissent, votes };
+}
+
+/**
+ * Which regime transition the daily tells are leaning toward — Lesson 6's
+ * "regime transition signals" table, read from 20-session changes.
+ *
+ * Input (all optional, basis points except vix in points and commodity in %):
+ *   { d2y, d10y, dBei, dHy, dVix, dCommodity }
+ * Curve: steepening if 10Y − 2Y widened > `curveDead`bp, flattening if it
+ * narrowed; bull if the average of the two yields fell > `levelDead`bp, bear
+ * if it rose.
+ *
+ * Each candidate has three tells; a lean needs ≥ 2 of 3 and a unique best.
+ * This is a description of where the tells point, not a forecast; the
+ * monthly regime label stays the regime.
+ */
+export function transitionLean(d = {}, { curveDead = 5, levelDead = 5, beiDead = 10, hyDead = 15, vixDead = 3, cmdDead = 3 } = {}) {
+  const fin = x => x != null && Number.isFinite(x);
+  const curve = fin(d.d2y) && fin(d.d10y) ? d.d10y - d.d2y : null;
+  const level = fin(d.d2y) && fin(d.d10y) ? (d.d2y + d.d10y) / 2 : null;
+  const steep = curve != null && curve > curveDead, flat = curve != null && curve < -curveDead;
+  const bull = level != null && level < -levelDead, bear = level != null && level > levelDead;
+  const shape = curve == null ? null : `${bull ? 'bull ' : bear ? 'bear ' : ''}${steep ? 'steepening' : flat ? 'flattening' : 'curve unchanged'}`;
+  const beiUp = fin(d.dBei) && d.dBei > beiDead, beiStable = fin(d.dBei) && Math.abs(d.dBei) <= beiDead;
+  const beiNotFalling = fin(d.dBei) && d.dBei >= -beiDead / 2;
+  const hyTight = fin(d.dHy) && d.dHy < -hyDead / 3, hyWide = fin(d.dHy) && d.dHy > hyDead;
+  const vixSpike = fin(d.dVix) && d.dVix > vixDead;
+  const cmdUp = fin(d.dCommodity) && d.dCommodity > cmdDead;
+  const C = {
+    goldilocks: [[bull && steep, 'bull steepening'], [hyTight, 'credit tightening'], [beiStable, 'breakevens stable']],
+    reflation: [[beiUp, 'breakevens rising'], [cmdUp, 'commodities breaking out'], [bear && steep, 'bear steepening']],
+    // "Curve flattening from the short end" = BEAR flattening: the 2Y rising and
+    // rising faster than the 10Y. A bull flattener (both falling) is deflation's tell.
+    stagflation: [[beiNotFalling, 'breakevens holding up'], [flat && fin(d.d2y) && fin(d.d10y) && d.d2y > 0 && d.d2y > d.d10y, 'flattening from the short end'], [hyWide, 'credit widening']],
+    deflation: [[bull && flat, 'bull flattening'], [hyWide, 'credit widening'], [vixSpike, 'vol spiking']],
+  };
+  const scored = Object.entries(C).map(([k, tells]) => ({ k, hit: tells.filter(t => t[0]).map(t => t[1]) }))
+    .sort((a, b) => b.hit.length - a.hit.length);
+  const best = scored[0], next = scored[1];
+  const lean = best.hit.length >= 2 && best.hit.length > next.hit.length ? best.k : null;
+  return { lean, tells: lean ? best.hit : [], shape, curveBp: curve == null ? null : Math.round(curve), scores: Object.fromEntries(scored.map(s => [s.k, s.hit.length])) };
+}
