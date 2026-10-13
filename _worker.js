@@ -1069,6 +1069,7 @@ export default {
             'chain_read_v1',
             'eod_review_v1',
             'daily_snapshot_v1',
+            'global_read_v1',
             'paper_record_v1',
             'forecast_scorecard_v1',
             'signal_journal_v1',

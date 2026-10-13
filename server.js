@@ -184,6 +184,8 @@ import { scanBoard as _msScanBoard, scanLinks as _msScanLinks, boardFreshness as
 import { marketState as _mtMarketState, sectorBoard as _mtSectorBoard } from './js/marketState.js';
 import { buildQuestion as _buildQuestion, DRILL_SERIES as _DRILL_SERIES, GENERATOR_SERIES as _GEN_SERIES, DRILL_WINDOW as _DRILL_WINDOW } from './js/marketDrill.js';
 import { plannedInWindow } from './js/endOfDay.js';
+import { buildGlobalRead as _buildGlobalRead, recordRow as _grRecordRow, attachRealised as _grAttachRealised, scoreRecord as _grScoreRecord } from './js/globalReadCore.js';
+import { assembleGlobalReadInput as _grAssemble, GLOBAL_READ_ENDPOINTS as _GR_ENDPOINTS } from './js/globalReadInputs.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { ratesRegimeRead as _ratesRegimeRead, alertText as _ratesRegimeAlert, attributionLine as _ratesRegimeAttrib } from './js/ratesRegime.js';
 import { computeFrozenSigma as _vwapFrozenSigmaCore, computeStretchSnapshot as _vwapStretchSnapshot } from './js/vwapStretchCore.js';
@@ -3899,6 +3901,63 @@ app.post('/api/desk-watch/tick', async (req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 svcInterval('deskWatch', () => _deskWatchTick().catch(e => console.error('[desk-watch]', e.message)), _WATCH_EVERY_MS);
+
+// ── Global Read (js/globalReadCore.js + js/globalReadInputs.js) ─────────────
+// One read from every engine on this page: environment, scenarios, per-market
+// behaviour, direction only where a tested input is active, the agreement
+// table, data problems, invalidation. Weights come from the Evidence Book
+// (tier × IC × n_eff shrink × freshness), never from vote counts. Reads the
+// routes this server already serves (no upstream fetch of its own; /api/cot is
+// skipped because it hits CFTC on every call). Design + pre-registration:
+// MD files/GLOBAL_DECISION_ENGINE.md. The forward record (global_read_v1) gets
+// one row per London session from the first run in the 07:00 London hour, scored from
+// the daily-read score of the same lines.
+const _GR_KV = 'global_read_v1';
+const _GR_EVERY_MS = 15 * 60_000;
+const _GR_SKIP = new Set(['cot']);
+let _grLatest = null, _grRunning = false, _grError = null;
+async function _loadGrStore() { try { const raw = await kv.get(_GR_KV); return raw ? JSON.parse(raw) : { days: [] }; } catch { return { days: [] }; } }
+async function _globalReadTick() {
+  if (_grRunning) return _grLatest;
+  _grRunning = true;
+  try {
+    const D = {};
+    await Promise.all(_GR_ENDPOINTS.filter(p => !_GR_SKIP.has(p)).map(async p => {
+      try { const r = await fetch(`http://127.0.0.1:${PORT}/api/${p}`, { signal: AbortSignal.timeout(60_000) }); D[p] = r.ok ? await r.json() : null; }
+      catch { D[p] = null; }
+    }));
+    const read = _buildGlobalRead(_grAssemble(D, { skip: [..._GR_SKIP] }));
+    delete read.registry;
+    _grLatest = read; _grError = null;
+    // the forward record
+    const store = await _loadGrStore(); let changed = false;
+    const lonHour = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }).format(new Date());
+    const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date());
+    const dow = new Date().getUTCDay();
+    // only the 07:00-07:59 London read counts (pre-registered); a day the server missed stays missing
+    if (lonHour === 7 && dow !== 0 && dow !== 6 && !store.days.some(r => r.day === day)) { store.days.push(_grRecordRow(read, day)); changed = true; }
+    const scored = D['daily-read']?.days ?? {};
+    for (const row of store.days.slice(-10)) if (scored[row.day]?.score?.rows && _grAttachRealised(row, scored[row.day].score.rows)) changed = true;
+    if (changed) { store.days = store.days.slice(-180); await kv.put(_GR_KV, JSON.stringify(store)); }
+    return read;
+  } catch (e) { _grError = e.message; console.error('[global-read]', e.message); return _grLatest; }
+  finally { _grRunning = false; }
+}
+app.get('/api/global-read', async (req, res) => {
+  try {
+    if (!_grLatest || req.query.refresh === '1') await _globalReadTick();
+    if (!_grLatest) return res.status(503).json({ ok: false, error: _grError ?? 'global read not built yet' });
+    res.json({ ok: true, ..._grLatest, error: _grError });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/global-read/record', async (req, res) => {
+  try {
+    const store = await _loadGrStore(); const n = Math.min(180, Math.max(1, parseInt(req.query.days ?? '60', 10) || 60));
+    res.json({ ok: true, summary: _grScoreRecord(store.days), rows: store.days.slice(-n) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('globalRead', () => _globalReadTick().catch(e => console.error('[global-read]', e.message)), _GR_EVERY_MS);
+svcTimeout('globalRead', () => _globalReadTick().catch(e => console.error('[global-read]', e.message)), 120_000);
 
 // ── Rates vs Nasdaq regime (js/ratesRegime.js) ───────────────────────────────
 // Context only: "are rates driving Nasdaq right now?" (rolling 20-day same-bar link between the US 2y bond CFD and

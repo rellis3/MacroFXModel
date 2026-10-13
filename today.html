@@ -1268,6 +1268,26 @@
   .qtile .qt-ic{font-size:15px;margin-bottom:2px}
   .qtile .qt-t{font-size:11px;font-weight:700;color:var(--text);line-height:1.3}
   .qtile .qt-s{font-size:9.5px;color:var(--text3);line-height:1.3}
+  .gr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:6px 0 10px}
+  .gr-tile{border:1px solid var(--border);border-radius:10px;padding:8px 10px;cursor:help}
+  .gr-tile .v{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
+  .gr-tile .l,.gr-h{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700}
+  .gr-tile .s{font-size:10.5px;color:var(--text3)}
+  .gr-h{margin:12px 0 4px}
+  .gr-tbl{width:100%;border-collapse:collapse;font-size:12px}
+  .gr-tbl th{text-align:left;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);font-weight:700;padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap}
+  .gr-tbl td{padding:5px 6px;border-bottom:1px solid var(--border);vertical-align:top;white-space:normal}
+  .gr-tbl td.gr-plan{min-width:300px}
+  .gr-tbl tr.click{cursor:pointer}
+  .gr-tbl tr.click:hover td{background:var(--card2)}
+  .gr-num{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .gr-ag{display:inline-block;min-width:18px;text-align:center;font-size:11px;font-weight:700}
+  .gr-ag.up{color:var(--bull)}
+  .gr-ag.dn{color:var(--bear)}
+  .gr-ag.w0{opacity:.35}
+  .gr-list{margin:2px 0 0 16px;padding:0;font-size:12px}
+  .gr-list li{margin:3px 0}
+  .gr-scroll{overflow-x:auto}
 </style>
 </head>
 <body>
@@ -1325,6 +1345,7 @@
   <div class="dashgrid">
     <div class="main-col">
       <div class="mbrief" id="mbrief" style="display:none"></div>
+      <div class="mread" id="globalRead" data-focus="Global read" style="display:none"></div>
 
       <!-- The end-of-day read: this morning's published numbers against what the
            day actually did. Additive; nothing above or below it changes. Hidden
@@ -1419,6 +1440,10 @@
   </div>
   <div class="dr-pane" id="drPane-now" role="tabpanel" aria-labelledby="drTab-now" hidden>
   <div id="drByt"></div>
+<div class="dr-sec" id="drGlobalSec" data-seckey="globalread" style="display:none">
+    <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>🧭 Global Read — this market</span> <span class="chip neu" style="font-size:9px" id="drGlobalStance"></span></h3>
+    <div class="dr-sec-body"><div id="drGlobal"></div></div>
+</div>
 <div class="dr-sec" id="drChartSec" data-seckey="chart">
     <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev v" title="validated — an out-of-sample result stands behind it">✓</i>Today vs forecast — M5</span> <span class="muted" id="drChartNote"></span><button class="chart-resize" id="drChartResetBtn" onclick="resetDrawerChartZoom()" title="Reset zoom/pan back to auto-fit">⟲</button><button class="chart-resize" id="drChartBtn" onclick="resizeDrawerChart()" title="Taller / shorter chart">⤢</button></h3>
     <div class="dr-sec-body">
@@ -2340,6 +2365,7 @@ async function loadGate() {
   loadIntlYields();   // gilt / bund / JGB gap chips on the chain
   loadCrack();        // crude & the crack card + chain node
   loadDeskWatch();                                                 // early-warning strip (server-side engine)
+  loadGlobalRead(); setInterval(loadGlobalRead, 15 * 60_000);     // the Global Read: every engine, weighted by its evidence
   loadLedgerSummary();                                             // yesterday, scored
   setTimeout(() => loadTimelineData().catch(() => {}), 2500);      // the look-back / look-forward strip
   setTimeout(() => loadNowcast(), 3000);                           // the third number on a release line
@@ -6162,7 +6188,7 @@ function openCcyDrawer(ccy) {
   }
 
   const cachedAi = _ccyAiCache[ccy];
-  $('ccyBody').innerHTML = `
+  $('ccyBody').innerHTML = `${globalReadCcyHtml(ccy)}
     <div class="dr-sec">
       <h3 class="help" title="A macro read of this CURRENCY on its own terms — not as one leg of a pair. Answers what has actually happened, what the market expects next, and which single instrument expresses a view on it most cleanly. AI OPINION — a reasoned synthesis of the sections below, not a backtested signal.">
         Currency read <span class="chip warn" style="font-size:9px">AI · not backtested</span>
@@ -6551,6 +6577,113 @@ function renderDeskWatch() {
       ${firing.length ? `<div class="dw-grid">${firing.map(row).join('')}</div>` : '<div class="muted" style="font-size:12px">No tested or described condition is firing. The rows below are the measured chain; the watch speaks when one of them changes state.</div>'}
       ${log ? `<div class="dw-h">Last transitions</div>${log}` : ''}
       <div class="mread-precise" style="margin-top:8px">✓ a finding from the evidence book: pre-registered, tested on this desk's data, about RANGE and never direction. ~ a described state: what changed, not what follows. Each fire is scored five sessions later with the realised range so the book keeps its own forward record.</div>`)}`;
+}
+// ── 🧭 Global Read: every engine on this page, combined by its evidence ──────
+// Server-side synthesis (js/globalReadCore.js via /api/global-read, every 15 min).
+// Each input is weighted by P(real | evidence tier) × predictive value × n_eff
+// shrink × freshness; direction is combined with a family correlation matrix
+// (never a vote count); range comes from the combined-range joint fit. Shown at
+// the page's three levels: global (state + scenarios), currency, pair. Design and
+// the pre-registered forward test: MD files/GLOBAL_DECISION_ENGINE.md.
+let globalRead = null;
+async function loadGlobalRead() {
+  try { const r = await jget('/api/global-read'); if (r?.ok) { globalRead = r; renderGlobalRead(); render(); } } catch { /* panel stays hidden */ }
+}
+const _grPct = x => x == null ? '—' : `${Math.round(x * 100)}%`;
+const _grStanceChip = (s, extra = '') => s ? `<span class="chip ${s === 'FOLLOW BREAKS' ? 'warn' : s === 'TAKE PROFIT AT LINES' ? 'range' : 'neu'}"${extra}>${esc0(s)}</span>` : '';
+function _grDirChip(d) {
+  if (!d || !d.nLive || Math.abs(d.pUp - 0.5) < 0.04) return `<span class="chip dim" title="${esc0(d?.label ?? 'no tested directional input is active')}">no tested direction</span>`;
+  const up = d.pUp > 0.5;
+  return `<span class="chip ${up ? 'bull' : 'bear'}" title="${esc0(d.label)}">${up ? '▲' : '▼'} ${Math.round(Math.max(d.pUp, 1 - d.pUp) * 100)}%</span>`;
+}
+const _grAg = x => `<span class="gr-ag ${x.s > 0 ? 'up' : x.s < 0 ? 'dn' : ''} ${x.e > 0 ? '' : 'w0'}">${x.s > 0 ? '▲' : x.s < 0 ? '▼' : '0'}</span>`;
+const _GR_AXES = { risk: ['Risk appetite', 'risk-on', 'risk-off'], usd: ['Dollar', 'stronger', 'weaker'], rates: ['Rates', 'tightening', 'easing'], vol: ['Volatility', 'elevated', 'compressed'], credit: ['Credit', 'stress', 'easing'] };
+function renderGlobalRead() {
+  const el = $('globalRead'); if (!el) return;
+  const g = globalRead; if (!g?.cards) { el.style.display = 'none'; return; }
+  const c = g.conviction ?? {};
+  const tile = (l, v, s, title) => `<div class="gr-tile" title="${esc0(title)}"><div class="l">${l}</div><div class="v">${v}<span style="font-size:11px;font-weight:600">/100</span></div><div class="s">${s}</div></div>`;
+  const axes = Object.entries(g.axes ?? {}).map(([k, a]) => {
+    const [name, pos, neg] = _GR_AXES[k] ?? [k, '+', '−'];
+    const word = Math.abs(a.score) < 0.15 ? 'neutral' : a.score > 0 ? pos : neg;
+    return `<tr><td><b>${name}</b></td><td class="gr-num">${a.score > 0 ? '+' : ''}${a.score} · ${word}</td><td class="gr-num">${a.agree}</td><td class="muted">${esc0(a.inputs.map(i => i.text).join(' · '))}</td></tr>`;
+  }).join('');
+  const scen = (g.scenarios ?? []).map(s => `<li><b>${esc0(s.name)}</b> — ${s.p != null ? `<b>${_grPct(s.p)}</b>` : 'probability not measured'} <span class="muted">(${esc0(s.pWhy)})</span><br>${esc0(s.text)}</li>`).join('');
+  const ccys = Object.values(g.currencies ?? {}).map(x => `<tr class="click" onclick="openCcyDrawer('${x.ccy}')"><td><b>${x.ccy}</b></td><td class="gr-num">${_grPct(x.rangePressure)}</td><td>${esc0(x.directionView)}</td><td class="muted">${esc0(x.notes.join(' · '))}</td></tr>`).join('');
+  const pairs = (g.ranked ?? []).map(rk => {
+    const k = g.cards[rk.sym];
+    return `<tr class="click" onclick="openDrawer('${rk.sym}')"><td><b>${esc0(dispName(rk.sym))}</b></td><td>${_grStanceChip(k.plan?.stance)}</td><td class="gr-num">${_grPct(k.range?.pAbove75)}</td><td class="gr-num">${k.range?.mult != null ? `×${k.range.mult}` : '—'}</td><td>${_grDirChip(k.direction)}</td><td class="muted gr-plan" style="font-size:11.5px">${esc0(k.plan?.lines ?? '')}</td></tr>`;
+  }).join('');
+  const fams = [];
+  for (const k of Object.values(g.cards)) for (const x of (k.direction?.shown ?? [])) if (!fams.find(f => f.id === x.id)) fams.push({ id: x.id, label: x.label, tier: x.tier });
+  const agRows = Object.values(g.cards).filter(k => k.direction?.shown?.length).map(k => `<tr><td><b>${esc0(dispName(k.sym))}</b></td>${fams.map(f => {
+    const x = k.direction.shown.find(y => y.id === f.id);
+    return x ? `<td title="${esc0(`${x.label}: ${x.note ?? ''} · weight ${x.e}`)}">${_grAg(x)}</td>` : '<td class="muted">·</td>';
+  }).join('')}</tr>`).join('');
+  const dq = g.dataQuality ?? {};
+  const probs = [...(dq.issues ?? []).map(i => `${esc0(i.problem)}${i.where ? ` <span class="muted">(${esc0(i.where)})</span>` : ''}`), ...(dq.feeds ?? []).map(f => `feed ${esc0(f.id)}: ${esc0(f.state)}`)];
+  el.style.display = 'block';
+  el.innerHTML = `<div class="sec-hd-row"><span class="sec-title">🧭 Global Read — every engine, weighted by its evidence <span style="font-weight:400;letter-spacing:0;text-transform:none">· ${g.meta?.asOf ? new Date(g.meta.asOf).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''} · <a href="/api/global-read/record" target="_blank">forward record →</a></span></span>${secChev('globalRead')}</div>
+  ${secBody('globalRead', `
+    <div style="font-size:13.5px;line-height:1.45;margin:2px 0 6px"><b>${esc0(g.headline)}</b></div>
+    <div class="gr-grid">
+      ${tile('Range conviction', c.range ?? 0, 'how far today sits from a normal day', 'Mean distance of P(range beyond p75) from the 25% design rate across markets, × the evidence tier (0.8) × data quality. From the combined-range joint fit (test pinball 0.90 indices, 0.94 FX + gold).')}
+      ${tile('Direction conviction', c.direction ?? 0, 'only tested inputs count', 'Largest |P(up) − 50%| across markets, × data quality. Only the 2Y yield-spread sleeve and the post-FOMC drift carry weight; every other directional read is shown below at weight 0 because it tested null.')}
+      ${tile('Data quality', c.dataQuality ?? 0, `${probs.length} problem${probs.length === 1 ? '' : 's'} flagged`, 'Starts at 100: dead or stale feeds −5, lagging −2, each failed cross-check or missing route −4. Scales both convictions.')}
+    </div>
+    <div class="gr-h">Global — the state (coincident description, not a forecast)</div>
+    <div class="gr-scroll"><table class="gr-tbl"><tr><th>axis</th><th>reading</th><th>agree</th><th>made of</th></tr>${axes}</table></div>
+    <div class="gr-h">Scenarios</div><ul class="gr-list">${scen}</ul>
+    <div class="gr-h">Currencies — pairs rolled up (click for the currency)</div>
+    <div class="gr-scroll"><table class="gr-tbl"><tr><th>ccy</th><th title="Mean P(range beyond p75) across its pairs; 25% is normal">range pressure</th><th>direction</th><th>state</th></tr>${ccys}</table></div>
+    <div class="gr-h">Pairs — ranked by clarity: what the evidence says to do (click for the pair)</div>
+    <div class="gr-scroll"><table class="gr-tbl"><tr><th>market</th><th>stance</th><th title="P(today's high-low beyond the ladder's p75); 25% is a normal day">beyond p75</th><th title="Expected range vs the plain ladder">range ×</th><th>direction</th><th>plan</th></tr>${pairs}</table></div>
+    <div class="gr-h">Signal agreement — every directional input; faded where its evidence gives it no weight (hover a cell for the reading)</div>
+    <div class="gr-scroll"><table class="gr-tbl" style="font-size:11px"><tr><th>pair</th>${fams.map(f => `<th title="evidence: ${esc0(f.tier ?? '')}">${esc0(f.label)}</th>`).join('')}</tr>${agRows}</table></div>
+    <div class="gr-h">What would change this read</div><ul class="gr-list">${(g.invalidation ?? []).map(x => `<li>${esc0(x)}</li>`).join('')}</ul>
+    <details style="margin-top:8px"><summary class="gr-h" style="display:inline;cursor:pointer">Data problems (${probs.length})</summary><ul class="gr-list">${probs.map(p => `<li>${p}</li>`).join('')}</ul></details>
+    <details style="margin-top:4px"><summary class="gr-h" style="display:inline;cursor:pointer">Context — read, not weighted (${(g.context ?? []).length})</summary><ul class="gr-list">${(g.context ?? []).map(x => `<li>${esc0(x)}</li>`).join('')}</ul></details>
+    <div class="mread-precise" style="margin-top:8px">Weight = P(real | evidence tier) × predictive value × sample-size shrink × freshness. A null is read and shown, never dropped by hand; it just carries no weight. Day-level continuation vs reversal is a banked coin flip (49.0%), so the read names the range regime and leaves continuation to the intraday rules. Scored daily against the 07:00 London read (MD files/GLOBAL_DECISION_ENGINE.md §6).</div>`)}`;
+}
+// pair card: one tier row
+function _globalTier(r) {
+  const k = globalRead?.cards?.[r.name]; if (!k) return '';
+  const p = k.range?.pAbove75;
+  return `<div class="tier"><span class="lbl">read</span>${_grStanceChip(k.plan?.stance, ` title="${esc0(`${k.plan?.lines ?? ''} ${k.plan?.direction ?? ''}`)}"`)}${p != null ? `<span class="chip dim" title="Global Read: P(today's high-low beyond the ladder's p75). 25% is a normal day.">p75+ ${_grPct(p)}</span>` : ''}${_grDirChip(k.direction)}</div>`;
+}
+// currency drawer: its pairs and its own readings
+function globalReadCcyHtml(ccy) {
+  const x = globalRead?.currencies?.[ccy]; if (!x) return '';
+  const s = x.state ?? {};
+  const f = (l, v) => v == null || v === '' ? '' : `<tr><td>${l}</td><td class="gr-num">${esc0(String(v))}</td></tr>`;
+  const legs = x.pairs.map(p => { const k = globalRead.cards[p]; return k ? `<tr class="click" onclick="closeCcyDrawer(); openDrawer('${p}')"><td><b>${esc0(dispName(p))}</b></td><td>${_grStanceChip(k.plan?.stance)}</td><td class="gr-num">${_grPct(k.range?.pAbove75)}</td><td>${_grDirChip(k.direction)}</td></tr>` : ''; }).join('');
+  return `<div class="dr-sec"><h3 class="help" title="The Global Read rolled up to this currency: range pressure is the mean P(range beyond p75) of its pairs; direction maps the pairs' tested P(up) into currency space, so it is never stronger than the tested pair inputs. The readings below are state, shown at weight 0 unless tested.">🧭 Global Read — ${ccy}</h3><div class="dr-sec-body">
+    <div style="font-size:12.5px;margin-bottom:6px">Range pressure <b>${_grPct(x.rangePressure)}</b> (25% normal) · direction: <b>${esc0(x.directionView)}</b>${x.notes.length ? ` · ${esc0(x.notes.join(' · '))}` : ''}</div>
+    ${legs ? `<table class="gr-tbl"><tr><th>pair</th><th>stance</th><th>beyond p75</th><th>direction</th></tr>${legs}</table>` : ''}
+    <div class="gr-h">Its own readings (state, weight 0 unless tested)</div>
+    <table class="gr-tbl">
+    ${f('20-day move', s.move20Pct != null ? `${s.move20Pct > 0 ? '+' : ''}${s.move20Pct}%` : null)}
+    ${f('Macro scorecard', s.macroScore)}
+    ${f('Surprise index', s.surprise ? `${s.surprise.score ?? '—'}${s.surprise.stale ? ' (stale)' : ''}` : null)}
+    ${f('Central bank', s.cb ? `${s.cb.regime} ${s.cb.score} (${s.cb.meeting})` : null)}
+    ${f('COT speculators', s.cot ? `${s.cot.specPct}th percentile` : null)}
+    ${f('Real 10Y', s.realYield != null ? `${s.realYield}%` : null)}
+    ${f('Curve slope', s.curveSlope != null ? `${s.curveSlope}pp` : null)}
+    ${f('2Y spread z vs USD', s.spreadZ)}
+    </table>
+  </div></div>`;
+}
+// pair drawer: the plan, the range drivers, every direction input with its weight
+function renderDrawerGlobal(r) {
+  const sec = $('drGlobalSec'), el = $('drGlobal'); const k = globalRead?.cards?.[r.name];
+  if (!sec || !el || !k) { if (sec) sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  $('drGlobalStance').textContent = k.plan?.stance ?? '';
+  const drv = (k.range?.drivers ?? []).map(d => `${esc0(d.why)} ×${d.mult}`).join(' · ') || 'no conditioner active';
+  const ins = (k.direction?.shown ?? []).map(x => `<tr><td>${esc0(x.label)}</td><td>${_grAg(x)}</td><td class="gr-num">${x.e}</td><td class="muted">${esc0(x.tier ?? '')}</td><td class="muted">${esc0(x.note ?? '')}</td></tr>`).join('');
+  el.innerHTML = `<div style="font-size:12.5px;line-height:1.5"><b>${esc0(k.plan?.lines ?? '')}</b><br>${esc0(k.plan?.direction ?? '')}</div>
+    <div class="gr-h">Range</div><div style="font-size:12px">P(beyond p75) <b>${_grPct(k.range?.pAbove75)}</b> · expected high-low ×${k.range?.mult ?? '—'} the ladder (${k.range?.expectedHl ?? '—'}% vs ${k.range?.hlP50 ?? '—'}%) · ${drv}</div>
+    ${ins ? `<div class="gr-h">Direction inputs — P(up) ${_grPct(k.direction.pUp)}</div><div class="gr-scroll"><table class="gr-tbl" style="font-size:11.5px"><tr><th>input</th><th>says</th><th>weight</th><th>evidence</th><th>reading</th></tr>${ins}</table></div>` : ''}`;
 }
 function renderMacro() {
   const el = $('macro');
@@ -8174,7 +8307,7 @@ function eventRangeChip(r) {
   }
   return '';
 }
-function pairChipsHtml(r) { return _dayTier(r) + _leanTier(r) + _clockTier(r); }
+function pairChipsHtml(r) { return _globalTier(r) + _dayTier(r) + _leanTier(r) + _clockTier(r); }
 
 // ── The ledger: post what the board rendered, once per UTC day ───────────────
 // The direction tag is assembled here from seven sources and exists nowhere else,
@@ -9914,6 +10047,7 @@ async function openDrawer(name) {
   loadCrowdFor(r.d.sym).then(() => { try { $('drSpine').innerHTML = drSpineHtml(r); $('drStatus').innerHTML = drStatusHtml(r); $('drByt').innerHTML = beforeYouTradeHtml(r); } catch {} }).catch(() => {});
   try { renderDrawerOutlook(r); } catch (e) { $('drOutlookSec').style.display = 'none'; }
   try { renderDrawerEvidence(r); } catch (e) { const s = $('drEvidenceSec'); if (s) s.style.display = 'none'; }
+  try { renderDrawerGlobal(r); } catch (e) { const s = $('drGlobalSec'); if (s) s.style.display = 'none'; }
   setDrTab(_drTab);
   // Sections hide themselves as their loaders resolve or fail, so tab states
   // can only be judged once those have had a chance to settle.
