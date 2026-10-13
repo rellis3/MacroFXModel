@@ -141,7 +141,7 @@ const chk = (cond, problem) => { if (cond) checks.push({ problem }); };
 chk((D.cot?.errors ?? []).length, `COT live feed: ${D.cot.errors.join(', ')} (FX legs missing; cot-extremes weekly copy used)`);
 chk(D['hmm5m-v2'] && !Object.keys(D['hmm5m-v2']).length, 'intraday HMM (5m/1h) serve {} — the HMM services are OFF by owner default (SVC_HMM5M_V2/SVC_HMM1H); not a fault, but the input is absent');
 const fomcDoc = D['fomc/latest']?.meetingDate;
-chk(fomcDoc && lastFomc && fomcDoc !== lastFomc, `FOMC text feed's latest meeting ${fomcDoc} ≠ scorecard's ${lastFomc}`);
+chk(fomcDoc && lastFomc && fomcDoc !== lastFomc, `/api/fomc/latest returns ${fomcDoc}, scorecard's last FOMC is ${lastFomc} (history route is current)`);
 const staleSurprise = Object.entries(D['econ-surprise']?.byCcy ?? {}).filter(([, v]) => v.staleOnly).map(([c]) => c);
 chk(staleSurprise.length, `econ-surprise has no recent prints for ${staleSurprise.join(', ')}`);
 const hmmLabels = new Set(Object.values(hmm).map(x => x.regime));

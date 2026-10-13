@@ -41,7 +41,7 @@ Every live input, by family, with the job the evidence allows it.
 | macro state | macro scorecard (`/api/macro-scorecard`) | G | state only | null (macro-direction) | 2 stale dims (GBP rateDiff 285d) |
 | macro state | quadrant (`/api/regime`) | G | state only | context | Goldilocks, 5 months |
 | macro state | econ surprise (`/api/econ-surprise`) | G | range (size, via event book) | validated for size, untested for direction | **6 of 8 currencies have no recent prints** |
-| macro state | nowcast, Fed path, CB tone, Beige Book | G | state only | null / context | Fed path 5d old; FOMC text feed stuck at June |
+| macro state | nowcast, Fed path, CB tone, Beige Book | G | state only | null / context | Fed path 5d old; `/api/fomc/latest` returns June (history is current) |
 | price state | daily HMM (`/api/hmm/regimes`) | C | state (variance label) | untested for direction | **all 20 instruments RANGE**: no information today |
 | price state | intraday HMM 5m/1h | C | state | untested | off by owner default (`SVC_HMM5M_V2`/`SVC_HMM1H`), serves `{}` |
 | price state | page lean / direction tag | C | nothing | null (forward ledger h1 41% [35,48]) | shown, weight 0 |
@@ -264,7 +264,8 @@ All of them are about where price stops, not which way it goes.
 1. COT live FX feed returns HTTP 403; only the weekly copy (2026-10-06) is available.
 2. Intraday HMM (`/api/hmm5m-v2`, `/api/hmm1h-v2`) serve `{}`. The services are OFF by owner
    default (CLAUDE.md, Live deployment), so this is not a fault, but the input is absent from the read.
-3. FOMC text feed's latest meeting is 2026-06-17; the scorecard's is 2026-09-16.
+3. `/api/fomc/latest` returns the 2026-06-17 meeting, while `/api/fomc/history` (which today.html
+   reads) already has 07-29 and 09-16. Only the `latest` route is wrong.
 4. Econ surprise: AUD, GBP, CHF, EUR, JPY and NZD have no recent prints (several last
    printed in March–April 2025).
 5. Daily HMM labels all 20 instruments RANGE. It is a variance label, and today it carries
