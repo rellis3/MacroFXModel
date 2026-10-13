@@ -76,3 +76,15 @@
   - 14 of 34 instruments with the same sign.
 - **Every tolerance × barrier cell is within ±0.9pp** with an interval spanning 0.
 - **Trade (fade, 1R at 0.25σ, 21 instruments with cost):** gross −0.02R, net −0.19R. Continuation is net −0.14R.
+
+## Holdout record (2026-10-13), `analysis/output/vol_asia_fib/hold.json`: FAIL (null)
+- **Primary (0.05σ, b = 0.25σ):**
+  - fade share **50.3% confluent vs 50.3% other**, diff +0.05pp [−0.8, +1.0];
+  - placebo band [−0.6, +0.6];
+  - 19 of 34 instruments with the same sign.
+  - Items 1–4 all fail.
+- **All 9 cells within ±1pp.** The largest is 0.10σ / 0.25σ at +1.0pp [−0.2, +2.4], just above its placebo 95th percentile (+0.97). Discovery had the opposite sign (−0.9), so it is not a finding.
+- **Trade:** fade net −0.13R [−0.15, −0.12], continuation net −0.12R. The confluent minus non-confluent interval spans 0.
+- **Code check:** a EURUSD row recomputed by hand matches the stored distance exactly (2024-03-14, −0.5 multiple, 0.0571σ). Breakdowns by rung, side, hour and class are all 48–51% for both groups.
+- **Unregistered lead:** at confluent lines, gold fades less (disc 47.5% vs 51.8%; hold 48.9% vs 52.0%; n about 800–1,000 confluent per block). Same sign in both blocks, but it was not registered. It needs its own preregistration before it means anything.
+- **OI layer:** not started, per the rule (price confluence failed).

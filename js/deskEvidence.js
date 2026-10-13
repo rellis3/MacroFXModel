@@ -688,6 +688,12 @@ export const DESK_EVIDENCE = [
     use: 'Do not build a fade / continue chooser from these confluences on either line: the lift they give is about what chance gives and none survives spread. The moving line does not unlock them. Use the full-day map for expectations (how far, how long, how often the extreme is in) and the existing finding that the clock and the price pullback from the extreme carry the information. Phase 2 (FVG, Fibonacci, round numbers) not run.',
   },
   {
+    id: 'vol-asia-fib-confluence', domain: 'price', verdict: 'null', date: '2026-10-13', doc: 'forge/VOL_ASIA_FIB_CONFLUENCE_PREREG.md',
+    claim: 'A daily vol line (O-H / O-L p50, p75, p90) that falls within a few pips of an Asia-range fib extension rung (the -2, 3 ... multiples of the 00:00-06:00 body range) gets a stronger reaction (fade or continue) than the same line without it',
+    result: 'Null, pre-registered. 125k first touches (06:00-22:00) of point-in-time vol lines, 34 instruments, 2016-2026. Confluence within 0.05 sigma happens on 54% of lines (a randomly shifted Asia grid: 49%) because the grid is dense. Fade-before-through at 0.25 sigma: discovery (<2022) 49.5% confluent vs 49.9% other, holdout (2022-26) 50.3% vs 50.3%, diff +0.05pp [-0.8, +1.0], inside the placebo band; 19/34 instruments same sign. All 9 tolerance x barrier cells within +-1pp. Fade trade 1R: net -0.13R holdout (continue -0.12R). Unregistered lead: gold continues ~3-4pp more at confluent lines in BOTH blocks (n ~800-1000), needs its own prereg.',
+    use: 'Do not treat an Asia-fib extension landing on a vol line as a reason to expect a bounce or a break: price behaves the same as at the line alone (a coin flip at symmetric distances). The vol line still tells you how far the day is likely to go; the fib adds nothing to what happens there.',
+  },
+  {
     id: 'extreme-in-probability', domain: 'volatility', verdict: 'validated', date: '2026-10-08', doc: 'forge/LIVE_RANGE_SHADOW_PREREG.md',
     instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX', 'DE30'],
     claim: 'The chance that the running high (or low) is already the day’s final one can be read from the hour, the range used and how far price has pulled back from that extreme',
