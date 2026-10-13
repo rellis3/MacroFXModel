@@ -103,3 +103,15 @@
 - **Gold passes only if** A1 is beyond its placebo 95th percentile (fade lower) in BOTH blocks **and** A2's chance probability is < 5%.
 - **If it passes:** a prospective forward log on gold (live, no trades), with one look at 300 confluent touches.
 - **If it fails:** the lead is closed as chance.
+
+### Addendum A result (2026-10-13), `analysis/output/vol_asia_fib/addendum_a.json`: gold lead FAILS and is closed
+- **A1, gold vs its own placebo:**
+  - discovery −4.29pp, 3rd percentile of placebo (beyond the 95% line);
+  - holdout −3.16pp, **13th percentile (not beyond)**.
+  - A1 fails.
+- **A2, look-elsewhere:** under the placebo, at least one of the 34 instruments shows a same-sign ≥ 3.1pp difference in both blocks **60%** of the time. Gold being one such instrument is unremarkable. A2 fails.
+- **Side observation:**
+  - Four instruments are block-consistent: GOLD −, CADCHF −, AUDJPY +, EURCAD +. The placebo averages 0.84 such instruments, and 0 of 100 draws reached 4.
+  - The signs are mixed, and per-instrument differences correlate only 0.14 between blocks across all 34.
+  - Read: some instrument-level variation beyond the placebo, with no common direction and weak persistence. Not a rule; not pursued.
+- **Decision:** no gold forward log. The confluence study is closed.
