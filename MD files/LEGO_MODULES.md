@@ -8194,3 +8194,22 @@ Guard: `js/dataFeeds.test.mjs` fails if server.js or any js/ module fetches a ho
 claims, if a feed lists an endpoint the server does not serve, if a health id has no
 producing row, or if a `series` key matches no catalogue row. "Where used" is never
 hand-written — the server scans every root page and js/ module once per boot.
+
+### 1bi. Global Read — the synthesis layer (2026-10-13)
+
+One read from every live engine: environment, scenarios, per-market behaviour and
+direction, the agreement table, data problems and invalidation. Weights come from the
+evidence (tier × IC × n_eff shrink × freshness), not from votes. A banked null is read
+and shown at weight 0, never hand-dropped. Design and pre-registration:
+`MD files/GLOBAL_DECISION_ENGINE.md`.
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Global Read core** | `js/globalReadCore.js` | pure: `REGISTRY` (every input: question, timing, tier, IC, evidence id), `TIER_P`, `effectiveIc`, `freshness`, `combineDirection` (β = R⁻¹e, P(up) = Φ(ŷ/√(1−R²))), `rangeView` (the **combined-range joint coefficients**, centred as in the fit, on `ladder_flat`; no event re-application), `behaviourOf`, `stateAxes`/`environmentLabel`, `dataQuality`, `scenarios`, `conviction`, `buildGlobalRead` | `scripts/global_read.mjs` | built, `js/globalReadCore.test.mjs` (11); research prototype, no route/page yet |
+| **Live driver** | `scripts/global_read.mjs` | read-only: fetches ~28 production routes (or `--dir` saved JSON), normalises them, runs the core, prints the read / `--json` | owner, CLI | built |
+
+Known drift: `RANGE_COEF` copies the joint coefficients from
+`analysis/output/combined_range/RESULTS.md`, and the direction ICs copy numbers from
+`js/deskEvidence.js` prose. Both should be generated from the Evidence Book once it
+carries numeric fields (design doc §7 step 1). That same change retires deskWatch's
+hard-coded effect copies.
