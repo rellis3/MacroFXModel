@@ -88,3 +88,18 @@
 - **Code check:** a EURUSD row recomputed by hand matches the stored distance exactly (2024-03-14, −0.5 multiple, 0.0571σ). Breakdowns by rung, side, hour and class are all 48–51% for both groups.
 - **Unregistered lead:** at confluent lines, gold fades less (disc 47.5% vs 51.8%; hold 48.9% vs 52.0%; n about 800–1,000 confluent per block). Same sign in both blocks, but it was not registered. It needs its own preregistration before it means anything.
 - **OI layer:** not started, per the rule (price confluence failed).
+
+## Addendum A (registered 2026-10-13, before running): is the gold lead beyond chance?
+**The problem:** the lead was found in breakdowns of data that has already been read. Re-scoring the same data cannot confirm it. The only unseen M1 (the forward block from 2026-08-21, about 35 sessions, about 80 gold confluent touches) has a standard error of about 6pp, so it cannot settle a 3–4pp effect. It also stays reserved.
+
+**Check A1, gold's own placebo:** gold's confluent-minus-other fade difference (0.05σ, b = 0.25σ) in each block, against its 100 random-phase placebo differences. Report the percentile.
+
+**Check A2, look-elsewhere:**
+- For each of the 100 placebo draws, compute every instrument's difference in both blocks.
+- Count instruments whose difference has the same sign in both blocks with |diff| ≥ 3.1pp in each (gold's weaker block).
+- Report P(at least one instrument does that under the placebo), and the real count.
+
+**Decision:**
+- **Gold passes only if** A1 is beyond its placebo 95th percentile (fade lower) in BOTH blocks **and** A2's chance probability is < 5%.
+- **If it passes:** a prospective forward log on gold (live, no trades), with one look at 300 confluent touches.
+- **If it fails:** the lead is closed as chance.
