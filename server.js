@@ -227,6 +227,7 @@ import { levelExpectation } from './js/levelExpectation.js';   // per-level Reje
 import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
 import { buildOILevelText } from './js/oiLevelExport.js';
 import { oiGexLadder as _oiGexLadder } from './js/oi.js';
+import { buildTradesText as _oiTradesText } from './js/oiTradesExport.js';   // OI bot zones → TradingView block (pine/OI Bot Trades.pine)
 import { emptyBook as _oiShadowEmptyBook, syncPlan as _oiShadowSyncPlan, stepBar as _oiShadowStepBar, summarize as _oiShadowSummarize } from './js/oiShadowExec.js';   // CME-vs-Cboe OI plan paper-trader (forward test, no orders)
 import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _parseCboeChain, cboeLadder as _cboeLadder, cboeSnapshotRow as _cboeSnapshotRow, cboeOverlayInst as _cboeOverlayInst, cfdCashOffset as _cfdCashOffset, cboeShift as _cboeShift, cashRefTime as _cashRefTime } from './js/cboeChain.js';   // free delayed Cboe index-options chain (additive to CME; dashboard toggle + tracking)   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
 import { meetingProbabilities as _zqMeetingProbs } from './js/fedPathZq.js';
@@ -21970,6 +21971,18 @@ svcTimeout('oiCboeShadow', () => _oiShadowTick().catch(e => console.error('[oi-s
 
 // The comparison: per UTC day (by entry time), the live account's index trades next to
 // the CME and Cboe shadow books, plus each plan's current zones. Read-only.
+// The zones the OI bot is trading, as the text block pine/OI Bot Trades.pine draws as
+// position boxes (entry / stop / target, with each zone's live state from oi_bot_status).
+// ?src=cboe exports the Cboe shadow plan instead (what the shadow would trade). Read-only.
+app.get('/api/oi-bot/trades-export', async (req, res) => {
+  try {
+    const cboe = String(req.query.src || '') === 'cboe';
+    const [plan, status] = await Promise.all([_kvJson(cboe ? _OI_CBOE_PLAN_KEY : 'oi_bot_zones'), cboe ? null : _kvJson('oi_bot_status')]);
+    if (!plan?.instruments) return res.status(404).type('text/plain').send('No OI bot plan yet.');
+    res.type('text/plain').send(_oiTradesText(plan, status, { source: cboe ? 'Cboe shadow (no orders)' : 'CME' }));
+  } catch (e) { res.status(500).type('text/plain').send(`Export failed: ${e.message}`); }
+});
+
 app.get('/api/oi-bot/cboe-shadow', async (req, res) => {
   try {
     const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 180);
@@ -21982,9 +21995,14 @@ app.get('/api/oi-bot/cboe-shadow', async (req, res) => {
     // broker's current offset for them (exact except across a DST change).
     const tzNow = [...(status?.today_closed_trades || []), ...(status?.mt5_positions || [])].find(t => Number.isFinite(t.tz_offset_sec))?.tz_offset_sec ?? 0;
     // Live: the durable log, plus today's closes the 10-min roll-up may not have taken yet.
-    const seen = new Set();
-    const live = [...(Array.isArray(liveLog) ? liveLog : []), ...(status?.today_closed_trades || [])].flatMap(t => {
-      const id = t.position_id ?? t.ticket; if (id != null && seen.has(id)) return []; seen.add(id);
+    // One row per position: the status copy (which carries r / stop / broker offset) is
+    // laid over the log copy, which for trades logged before those fields existed has none.
+    const byId = new Map(); const noId = [];
+    for (const t of [...(Array.isArray(liveLog) ? liveLog : []), ...(status?.today_closed_trades || [])]) {
+      const id = t.position_id ?? t.ticket;
+      if (id == null) noId.push(t); else byId.set(id, { ...(byId.get(id) || {}), ...t });
+    }
+    const live = [...byId.values(), ...noId].flatMap(t => {
       const k = t.key || keyOf(t.symbol);
       if (!keys.includes(k) || !t.time_open) return [];
       // MT5 stamps broker-clock epochs; tz_offset_sec restores UTC (today's status rows).

@@ -133,6 +133,8 @@ const bar = (i, o, h, l, c) => ({ t: T0 + i * 60e3, o, h, l, c });
   const d = s['2026-10-12'];
   ok('summary per day: n, wins, losses, R', d.n === 3 && d.wins === 2 && d.losses === 1 && near(d.r, 0.5));
   ok('summary per instrument', d.byInstr.nq.n === 2 && near(d.byInstr.nq.pts, -2));
+  const s2 = summarize([{ openT: T0, instrument: 'nq', r: null, pts: 5 }, { openT: T0, instrument: 'nq', r: -1, pts: -3 }])['2026-10-12'];
+  ok('a trade without R counts by points, never as 0R', s2.n === 2 && s2.rN === 1 && s2.wins === 1 && s2.losses === 1 && near(s2.r, -1));
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
