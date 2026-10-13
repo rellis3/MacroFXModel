@@ -31,7 +31,7 @@ full result; check it before quoting numbers.
 | Question | Verdict | Key numbers | Source |
 |---|---|---|---|
 | Rates lead Nasdaq (12+ tests, 1m to 1M) | **no lead replicates** | same-bar only | `plans/RATES_NASDAQ_WORKLOG.md` |
-| Reconstruct "C.OG's blue line" (SOFR vs €STR) | **not identified** | 60 affine candidates: level corr ~0.8 but Δ corr ≤ 0.30 (≤ 0.38 any linear mix); Tue 22 Sep falsifies every rate-based candidate; step-aligned to his pull times 0.3–0.5, all-legs ceiling 0.49 | `analysis/output/cog_video_0918/RECONSTRUCTION.md` |
+| Reconstruct "C.OG's blue line" (SOFR vs €STR; **legs are SOFR + ICE Euribor I2! per C.OG 2026-10-13**: exact default pair IX6 vs SR3U6 also fits no better — level 0.78, Δ 0.13, step-aligned 0.27) | **not identified** | 60 affine candidates: level corr ~0.8 but Δ corr ≤ 0.30 (≤ 0.38 any linear mix); Tue 22 Sep falsifies every rate-based candidate; step-aligned to his pull times 0.3–0.5, all-legs ceiling 0.49 | `analysis/output/cog_video_0918/RECONSTRUCTION.md` |
 | His trade days vs our rates gap | descriptive only | n = 8 | `analysis/output/rates_residual/COG_DAYS.md` |
 
 ## Forward log (live agreement with COG)

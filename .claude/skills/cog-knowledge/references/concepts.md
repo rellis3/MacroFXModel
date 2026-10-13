@@ -62,7 +62,7 @@ choice, **not a validated improvement**. `bandMode:'feller'` reverts it. (`MD fi
 
 ## C.OG's blue line
 
-A SOFR-vs-€STR spread indicator from his video "Macro Variable Context Relevance" (16–23 Sep 2026), built in Python
+A SOFR-vs-**Euribor (ICE I2!)** spread indicator (C.OG confirmed the legs 2026-10-13; earlier notes here said €STR — that was our inference) from his video "Macro Variable Context Relevance" (16–23 Sep 2026), built in Python
 and imported into TradingView. Not reconstructed (see verdicts). Notes:
 `education/macro-variable-context-relevance-notes.md`.
 

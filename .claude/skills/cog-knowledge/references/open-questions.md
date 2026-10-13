@@ -4,7 +4,7 @@ When one of these is answered, move it to the right reference file with the date
 
 ## Questions for C.OG (the blue line)
 
-1. The exact tickers and contract months.
+1. ~~The exact tickers and contract months.~~ **Answered 2026-10-13 (C.OG, Discord): "Try sofr and i2! — that's three month euribor futures, provided by ice."** His shared Pine (`C.OG — Euribor vs SOFR Rate Spread`) defaults: EUR leg `ICEEUR:I2!` (2nd listed Euribor, serial months, rolls monthly; = IX6 Nov26 on 17–22 Sep), USD leg `CME:SR3U2026`, spread = EUR rate − USD rate, manual map spread×0.2 + 1.445 (≈1.2, NOT 7.5–8.5) or rolling auto-fit to the chart's high/low, optional EMA, `t + N days` plot offset, `request.security` on a user-chosen data timeframe (default D, lookahead off, fixnan). He never said ESTR is used — that was our inference from his Discord wording.
 2. The formula and units (why does it sit at 7.5–8.5?).
 3. The vendor and pull frequency (is it forward-filled?).
 4. The timezone of the timestamps.
