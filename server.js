@@ -21982,9 +21982,14 @@ app.get('/api/oi-bot/cboe-shadow', async (req, res) => {
     // broker's current offset for them (exact except across a DST change).
     const tzNow = [...(status?.today_closed_trades || []), ...(status?.mt5_positions || [])].find(t => Number.isFinite(t.tz_offset_sec))?.tz_offset_sec ?? 0;
     // Live: the durable log, plus today's closes the 10-min roll-up may not have taken yet.
-    const seen = new Set();
-    const live = [...(Array.isArray(liveLog) ? liveLog : []), ...(status?.today_closed_trades || [])].flatMap(t => {
-      const id = t.position_id ?? t.ticket; if (id != null && seen.has(id)) return []; seen.add(id);
+    // One row per position: the status copy (which carries r / stop / broker offset) is
+    // laid over the log copy, which for trades logged before those fields existed has none.
+    const byId = new Map(); const noId = [];
+    for (const t of [...(Array.isArray(liveLog) ? liveLog : []), ...(status?.today_closed_trades || [])]) {
+      const id = t.position_id ?? t.ticket;
+      if (id == null) noId.push(t); else byId.set(id, { ...(byId.get(id) || {}), ...t });
+    }
+    const live = [...byId.values(), ...noId].flatMap(t => {
       const k = t.key || keyOf(t.symbol);
       if (!keys.includes(k) || !t.time_open) return [];
       // MT5 stamps broker-clock epochs; tz_offset_sec restores UTC (today's status rows).

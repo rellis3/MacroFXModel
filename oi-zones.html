@@ -247,8 +247,9 @@ function renderShadow(){
   if(!S || !S.ok){ w.innerHTML = `<div class="empty">Shadow unavailable${S?.error?': '+S.error:''}.</div>`; return; }
   const L = S.live.byDay, C = S.shadow.cme.byDay, B = S.shadow.cboe.byDay;
   const days = [...new Set([...Object.keys(L), ...Object.keys(C), ...Object.keys(B)])].sort().reverse();
-  const cell = x => x ? `<td class="mono ${x.r>0?'pos':x.r<0?'neg':''}" style="white-space:nowrap">${x.n} · ${x.r>0?'+':''}${x.r.toFixed(2)}R</td>` : '<td class="mono muted">—</td>';
-  const tot = by => Object.values(by).reduce((a,x) => ({ n:a.n+x.n, r:a.r+x.r }), { n:0, r:0 });
+  // R only over the trades that carry one (older live log rows have no stop → no R).
+  const cell = x => x ? `<td class="mono ${x.r>0?'pos':x.r<0?'neg':''}" style="white-space:nowrap">${x.n} · ${x.wins}W/${x.losses}L · ${x.rN ? (x.r>0?'+':'')+x.r.toFixed(2)+'R'+(x.rN<x.n?` <span class="muted">(R on ${x.rN})</span>`:'') : '<span class="muted">no R</span>'}</td>` : '<td class="mono muted">—</td>';
+  const tot = by => Object.values(by).reduce((a,x) => ({ n:a.n+x.n, rN:a.rN+(x.rN??x.n), wins:a.wins+x.wins, losses:a.losses+x.losses, r:a.r+x.r }), { n:0, rN:0, wins:0, losses:0, r:0 });
   const started = S.startedAt ? new Date(S.startedAt).toISOString().slice(0,16).replace('T',' ')+'Z' : 'not yet';
   $('shadowN').textContent = days.length ? `${days.length} day${days.length>1?'s':''}` : '';
   const dayRows = days.map(d => `<tr><td class="mono">${d}</td>${cell(L[d])}${cell(C[d])}${cell(B[d])}</tr>`).join('');

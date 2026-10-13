@@ -254,9 +254,13 @@ export function summarize(closed, dayOf = t => new Date(t).toISOString().slice(0
   const by = {};
   for (const tr of closed || []) {
     const d = dayOf(tr.openT);
-    const r = by[d] || (by[d] = { n: 0, wins: 0, losses: 0, r: 0, byInstr: {} });
-    r.n++; if ((tr.r ?? 0) > 0) r.wins++; else if ((tr.r ?? 0) < 0) r.losses++;
-    r.r = +(r.r + (tr.r || 0)).toFixed(3);
+    // rN = trades that carry an R. Older live log rows have no stop recorded, so no R:
+    // they count in n and win/loss (by points) but are not summed as 0R.
+    const r = by[d] || (by[d] = { n: 0, rN: 0, wins: 0, losses: 0, r: 0, byInstr: {} });
+    const hasR = Number.isFinite(tr.r), sign = hasR ? tr.r : (tr.pts ?? 0);
+    r.n++; if (hasR) r.rN++;
+    if (sign > 0) r.wins++; else if (sign < 0) r.losses++;
+    r.r = +(r.r + (hasR ? tr.r : 0)).toFixed(3);
     const bi = r.byInstr[tr.instrument] || (r.byInstr[tr.instrument] = { n: 0, r: 0, pts: 0 });
     bi.n++; bi.r = +(bi.r + (tr.r || 0)).toFixed(3); bi.pts = +(bi.pts + (tr.pts || 0)).toFixed(4);
   }
