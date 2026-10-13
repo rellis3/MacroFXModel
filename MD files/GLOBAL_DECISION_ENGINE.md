@@ -1,9 +1,10 @@
 # Global Decision Engine: one read from every model
 
-*Written 2026-10-13. Prototype: `js/globalReadCore.js` (pure, 11 tests in
-`js/globalReadCore.test.mjs`) driven by `scripts/global_read.mjs`, which reads the live
-production API. Research + prototype only: no server route, page, export or bot changes yet.
-§7 is the build plan and §6 the pre-registered test that decides whether it ships.*
+*Written 2026-10-13. Core: `js/globalReadCore.js` (pure) plus `js/globalReadInputs.js`
+(the one normalise step), tested in `js/globalReadCore.test.mjs`. Live on today.html since
+the same day (§7): the server job `globalRead` builds the read every 15 minutes and serves
+`/api/global-read`; the CLI `scripts/global_read.mjs` runs the identical code against
+production. §6 is the pre-registered test that decides whether it stays.*
 
 ## 0. The question this engine answers
 
@@ -297,9 +298,15 @@ All of them are about where price stops, not which way it goes.
 
 **Pre-registration (locked with this commit; bars do not move once the record starts).**
 
-- **Record.** `scripts/global_read.mjs --json`, run once per London session at 07:00 UTC,
-  stored and scored at the 22:00 close (§7 step 2). No conclusions below 30 sessions. Halves
-  must be sign-stable.
+- **Record.** The server job's first read in the 07:00 London hour, one row per weekday
+  session in KV `global_read_v1`, scored from the daily-read score of the same session (the
+  same ladder lines: realised H-L, the band it reached, open-to-close). Served at
+  `/api/global-read/record` with the R1/R2/D1 summary computed by `scoreRecord`. A day the
+  server missed at 07:00 stays missing; no late rows. No conclusions below 30 sessions.
+  Halves must be sign-stable.
+  - *Amendment, 2026-10-13, before any row existed:* the record moved from "the CLI at 07:00
+    UTC" to the server job at 07:00 London, so it runs without anyone pressing anything.
+    The bars below did not change.
 
 | target | engine output | baseline | PASS | FAIL |
 |---|---|---|---|---|
@@ -338,17 +345,26 @@ combined-range.
    entries: `effect`, `ic`, `n`, `n_eff`, `horizon`, `question`, `timing`. Generate
    `REGISTRY` from them, so banking a verdict re-weights the engine.
    - deskWatch's hard-coded effect copies move to the same source.
-2. **Server job + store.**
-   - `svcInterval('globalRead')` at 07:00 and 22:15 UTC calls the same normalise step as
-     the script, in-process, with no HTTP self-calls.
-   - Stores `global_read_v1:{date}` in KV and serves `/api/global-read` and
-     `/api/global-read/record`.
-   - A scorer at 22:30 fills realised H-L, the p75 hit and direction per card.
-     `releaseScorecard` and `range-calls` are the templates.
+2. **Server job + store. Done 2026-10-13.**
+   - `svcInterval('globalRead')` every 15 minutes (plus once 2 minutes after boot). It reads
+     this server's own routes over 127.0.0.1, the same pattern as the OI basis refresh;
+     `/api/cot` is skipped because it hits CFTC on every call.
+   - `/api/global-read` serves the latest read; `?refresh=1` rebuilds it.
+   - `global_read_v1` (in `_CF_EXACT` and the worker's `PERMANENT_KEYS`) holds one row per
+     session. Realised values come from the daily-read score, so no second scorer exists.
+   - `/api/global-read/record` returns the rows and the R1/R2/D1 verdict.
 3. **Fix the inputs that §5 found broken.** COT 403, FOMC feed, the
    non-US surprise fills, OI parse guards, a live `all_down` job, and the 2.75 entry.
    Each is small and each raises the data-quality weight.
-4. **One page.** `global-read.html`, or the top block of `today.html`/`daily-plan.html`:
+4. **One page. Done 2026-10-13, on today.html at the page's three levels:**
+   - **global:** the 🧭 Global Read panel at the top of the main column;
+   - **currency:** a Global Read section at the top of each currency drawer (its pairs, range
+     pressure, currency-space direction, its own readings);
+   - **pair:** a `read` row on every pair card (stance, P beyond p75, direction) and a
+     section first in the pair drawer's Now tab (the plan, the range drivers, every
+     direction input with its weight).
+
+   The panel carries:
    - environment line and the five axes;
    - scenarios with probabilities and their sources;
    - the clarity-ranked market table;
@@ -372,8 +388,7 @@ combined-range.
 
 ## 8. Decisions for the owner
 
-- Ship the server job and store (§7 step 2) so the forward record starts? It is the
-  pre-condition for everything in §6.
-- Where does the read live: a new `global-read.html`, or the top of `today.html`?
+- *(Decided 2026-10-13: the read lives on today.html, global → currency → pair; the server
+  job and the record ship with it.)*
 - Align the live yield-spread entry to the validated 2.75, or pre-register 2.0 as a
   separate test?

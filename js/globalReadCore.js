@@ -140,7 +140,7 @@ export function effectiveIc({ tier, ic, n_eff }, fresh = 1) {
 // only inputs with weight (so a null that disagrees is shown, not counted).
 export function combineDirection(signals) {
   const live = signals.filter(x => x.e > 0 && x.s !== 0);
-  const shown = signals.map(x => ({ id: x.id, family: x.family, s: r2(x.s), e: r3(x.e) }));
+  const shown = signals.map(x => ({ id: x.id, label: x.label ?? REG[x.id]?.label ?? x.id, family: x.family, tier: x.tier ?? REG[x.id]?.tier ?? null, s: r2(x.s), e: r3(x.e), note: x.note ?? null }));
   if (!live.length) return { pUp: 0.5, r2: 0, yhat: 0, beta: [], agreement: null, nLive: 0, shown };
   const R = live.map(a => live.map(b => (a === b ? 1 : a.family === b.family ? RHO_SAME : RHO_CROSS)));
   const e = live.map(x => x.e), s = live.map(x => x.s);
@@ -160,16 +160,16 @@ export function rangeView(row, flags = {}) {
   const cls = classOf(row.sym), C = RANGE_COEF[cls];
   const drivers = []; let m = 1;
   const add = (id, mult, why) => { if (mult && Math.abs(mult - 1) > 0.001) { m *= mult; drivers.push({ id, mult: r3(mult), why }); } };
-  const flag = (id, key, on, why) => { if (on == null) return; const [mu, freq] = C[key]; add(id, Math.pow(mu, (on ? 1 : 0) - freq), on ? why : `not ${why}`); };
+  const flag = (id, key, on, why) => { if (on == null) return; const [mu, freq] = C[key]; add(id, Math.pow(mu, (on ? 1 : 0) - freq), `${why}: ${on ? 'yes' : 'no'}`); };
   if (Number.isFinite(row.ratio) && row.ratio > 0) {
     const centre = Array.isArray(row.edges) && row.edges.length === 2 ? Math.sqrt(row.edges[0] * row.edges[1]) : 1;
     add('iv-sigma', Math.pow(row.ratio / centre, C.iv_exp), `IV÷σ ${r2(row.ratio)} vs its usual ${r2(centre)}`);
   }
   flag('vix-term', 'vix_inv', flags.vixInv, 'VIX ≥ VIX3M');
-  flag('vix-term', 'front_dear', flags.frontDear, 'front of the VIX curve dear');
-  flag('vix-term', 'front_calm', flags.frontCalm, 'front of the VIX curve calm');
-  flag('all-down', 'all_down', flags.allDown, 'all six indices closed down');
-  if (cls === 'index') flag('nq-dw', 'nq_dw', flags.nqDownWeek, 'NAS100 down ≥1% on the week');
+  flag('vix-term', 'front_dear', flags.frontDear, 'VIX front dear');
+  flag('vix-term', 'front_calm', flags.frontCalm, 'VIX front calm');
+  flag('all-down', 'all_down', flags.allDown, 'all six indices down');
+  if (cls === 'index') flag('nq-dw', 'nq_dw', flags.nqDownWeek, 'NAS100 down-week');
   if (flags.gexShortNq && row.sym === 'NQ') add('gex', GEX_SHORT_NQ, 'NQ dealers short gamma');
   // The ladder's lines already carry the event multiplier (forecastLadder.buildLadder), so it is not re-applied.
   const p50 = row.lines?.hl_p50, p75 = row.lines?.hl_p75;
@@ -178,7 +178,7 @@ export function rangeView(row, flags = {}) {
     const sd = Math.log(p75 / p50) / 0.6745;   // the ladder's own log-dispersion
     pAbove75 = 1 - normCdf(0.6745 - Math.log(m) / sd);
   }
-  return { sym: row.sym, cls, mult: r3(m), hlP50: p50 ?? null, expectedHl: p50 ? r3(p50 * m) : null, pAbove75: r3(pAbove75), drivers };
+  return { sym: row.sym, cls, mult: r3(m), hlP50: p50 ?? null, hlP75: p75 ?? null, expectedHl: p50 ? r3(p50 * m) : null, pAbove75: r3(pAbove75), drivers };
 }
 
 // Behaviour from the range view (and the validated intraday rules, as text).
@@ -263,7 +263,9 @@ export function instrumentCard(sym, { row, flags, dirSignals = [], tag, hmmRange
   const dirLabel = dir.nLive === 0 ? 'no tested directional input is active'
     : Math.abs(dir.pUp - 0.5) < 0.04 ? `active inputs net to ~50/50${dir.agreement == null ? ' (one weak input)' : ` (agreement ${dir.agreement})`}`
     : `${dir.pUp > 0.5 ? 'UP' : 'DOWN'} ${Math.round(Math.max(dir.pUp, 1 - dir.pUp) * 100)}% (R² ${dir.r2}, ${dir.nLive} input${dir.nLive > 1 ? 's' : ''})`;
-  return { sym, range: rv, behaviour: bh, direction: { ...dir, label: dirLabel }, clarity };
+  const card = { sym, range: rv, behaviour: bh, direction: { ...dir, label: dirLabel }, clarity };
+  card.plan = tradePlan(card);
+  return card;
 }
 
 // ── 9. Scenarios: persistence as the base case, measured base rates for the rest
@@ -279,7 +281,7 @@ export function scenarios({ envLabel, ax, persist = {}, eventsDue = [] }) {
     pWhy: 'unconditional base rate (VIX ≥ VIX3M first day, n=86 since 2008). Credit widening may raise it; that conditional is untested.',
     text: 'VIX curve inverts → tested next-5-session range: SPX +0.76, NQ +0.82, USDJPY +0.44, gold +0.43 ATR (vix-inversion). Direction is not part of the finding.' });
   if (eventsDue.length) out.push({ name: 'Event: a scheduled print reprices the day', p: null, pWhy: 'size is tested (event-impact-map); direction is not',
-    text: eventsDue.map(e => `${e.label}: ~${e.mult}× an ordinary half-hour`).join('; ') });
+    text: eventsDue.map(e => `${e.label}. Tested next-session range: ${(e.effects ?? []).map(x => `${x.inst} +${x.effAtr} ATR`).join(', ') || 'size not measured for these pairs'} (surprise-size). The 22:00 ladder rebuild carries the event multiplier, so the next read's lines already include it.`).join(' ') });
   if (persist.macroMonthly != null) out.push({ name: 'Slow: macro quadrant', p: r2(persist.macroMonthly), pWhy: 'historical monthly persistence of the current quadrant', text: 'quadrant is a monthly, lagging description; it sets context only' });
   return out;
 }
@@ -301,17 +303,123 @@ export function conviction(cards, dq) {
   };
 }
 
-// ── 11. The whole read ─────────────────────────────────────────────────────
+// ── 11. The trade plan: what the evidence says to DO with each market ──────
+// Management guidance from the behaviour label (the validated range facts) and
+// a direction line only when a tested input is active. It never invents an
+// entry signal: level fades and follows at the lines are banked nulls on their
+// own (Evidence Book, "lines are waypoints, not walls"), so the plan says how to
+// treat the lines, not that the lines are an edge.
+export function tradePlan(card) {
+  const b = card.behaviour?.label ?? 'unknown', p = card.range?.pAbove75, d = card.direction;
+  const pct = p == null ? '?' : `${Math.round(p * 100)}%`;
+  let stance, lines;
+  if (b === 'expansion') { stance = 'FOLLOW BREAKS'; lines = `Wide day likely (beyond p75 ${pct} vs 25% normal). Breaks of p50/p75 tend to run to the next line: follow early, don't fade, trail behind the last line broken.`; }
+  else if (/exhaustion|contained/.test(b)) { stance = 'TAKE PROFIT AT LINES'; lines = `Capped day likely (beyond p75 ${pct}). Expect price to stall before p75/p90: take profit at the line, don't chase breakouts. Reversal odds at the outer lines are still ~50/50, so this is not a fade signal.`; }
+  else if (b === 'unknown') { stance = 'NO READ'; lines = 'No IV÷σ row for this instrument today, so no range view.'; }
+  else { stance = 'NO EDGE AT LINES'; lines = `Normal day (beyond p75 ${pct}). A touch is close to a coin flip either way. Let the intraday rules decide: a fast start (≥ 0.6 ATR by 09:00 London) means a wider rest of day${/^(EURUSD|GOLD)$/.test(card.sym) ? '; this market reverts more in the 20–22 UTC hour' : ''}.`; }
+  const active = (d?.shown ?? []).filter(x => x.e > 0 && x.s !== 0);
+  const dirLine = active.length && Math.abs(d.pUp - 0.5) >= 0.04
+    ? `Tested bias ${d.pUp > 0.5 ? 'UP' : 'DOWN'} ${Math.round(Math.max(d.pUp, 1 - d.pUp) * 100)}% from ${active.map(x => x.label).join(' + ')} (${active.map(x => x.note).filter(Boolean).join('; ')}). Size by volatility; the view ends when its input switches off.`
+    : 'No tested direction today: any position is a both-sides or management decision, not a directional bet.';
+  return { stance, lines, direction: dirLine };
+}
+
+// ── 12. Currency tier: the pair cards rolled up, plus each currency's own state
+// A currency's "range pressure" is the mean P(>p75) of its pairs; its direction
+// is the pair P(up)s mapped into currency space (base: p, quote: 1−p), so it is
+// exactly as strong as the tested pair inputs and no stronger. The rest are its
+// own readings, shown as state.
+export function currencyTier(currencies = {}, cards = {}) {
+  const out = {};
+  for (const [c, info] of Object.entries(currencies)) {
+    const legs = Object.values(cards).filter(k => k.sym.length === 6 && (k.sym.startsWith(c) || k.sym.endsWith(c)));
+    const ps = legs.map(k => k.range?.pAbove75).filter(Number.isFinite);
+    const dirs = legs.map(k => (k.sym.startsWith(c) ? k.direction.pUp : 1 - k.direction.pUp));
+    const pStrong = dirs.length ? dirs.reduce((a, b) => a + b, 0) / dirs.length : 0.5;
+    const notes = [];
+    if (info.dollarShare != null && c !== 'USD') notes.push(info.dollarShare >= 0.6 ? `${Math.round(info.dollarShare * 100)}% of its pair is the dollar: a USD story` : `own story: only ${Math.round(info.dollarShare * 100)}% dollar`);
+    if (info.vr4h != null) notes.push(info.vr4h < 0.85 ? `intraday moves give back (VR4h ${info.vr4h})` : info.vr4h > 1.1 ? `intraday moves persist (VR4h ${info.vr4h})` : `intraday persistence normal (VR4h ${info.vr4h})`);
+    if (info.surprise?.stale) notes.push('surprise index stale');
+    if (info.macroStale?.length) notes.push(`scorecard has stale dims (${info.macroStale.join(', ')})`);
+    out[c] = {
+      ccy: c, pairs: legs.map(k => k.sym), rangePressure: ps.length ? r3(ps.reduce((a, b) => a + b, 0) / ps.length) : null,
+      pStronger: r3(pStrong), directionView: Math.abs(pStrong - 0.5) < 0.04 ? 'no tested view' : `${pStrong > 0.5 ? 'stronger' : 'weaker'} ${Math.round(Math.max(pStrong, 1 - pStrong) * 100)}%`,
+      state: info, notes,
+    };
+  }
+  return out;
+}
+
+// ── 13. The whole read ─────────────────────────────────────────────────────
 export function buildGlobalRead(input) {
-  const { obs = {}, rows = [], flags = {}, dir = {}, tags = {}, hmm = {}, health = [], checks = [], persist = {}, eventsDue = [], context = [], invalidation = [] } = input;
+  const { obs = {}, rows = [], flags = {}, dir = {}, tags = {}, hmm = {}, health = [], checks = [], persist = {}, eventsDue = [], context = [], invalidation = [], currencies = {}, meta = {} } = input;
   const dq = dataQuality({ health, checks });
   const ax = stateAxes(obs);
   const envLabel = environmentLabel(ax);
   const cards = {};
   for (const row of rows) cards[row.sym] = instrumentCard(row.sym, { row, flags, dirSignals: dir[row.sym] ?? [], tag: tags[row.sym], hmmRange: hmm[row.sym] === 'RANGE' });
   for (const sym of Object.keys(dir)) if (!cards[sym]) cards[sym] = instrumentCard(sym, { row: null, flags, dirSignals: dir[sym] });
-  const ranked = Object.values(cards).sort((a, b) => b.clarity - a.clarity).map(c => ({ sym: c.sym, clarity: c.clarity, behaviour: c.behaviour.label, direction: c.direction.label }));
-  return { envLabel, axes: ax, scenarios: scenarios({ envLabel, ax, persist, eventsDue }), cards, ranked, conviction: conviction(cards, dq), dataQuality: dq, context, invalidation, registry: REGISTRY };
+  const ranked = Object.values(cards).sort((a, b) => b.clarity - a.clarity).map(c => ({ sym: c.sym, clarity: c.clarity, behaviour: c.behaviour.label, stance: c.plan.stance, direction: c.direction.label }));
+  const conv = conviction(cards, dq);
+  const top = ranked.filter(r => r.clarity >= 0.2).slice(0, 3);
+  const headline = `${envLabel}. ${top.length ? `Clearest: ${top.map(r => `${r.sym} ${r.stance.toLowerCase()}`).join(', ')}.` : 'No market stands out today.'} ${conv.direction < 10 ? 'No tested directional view is active.' : ''}`.trim();
+  return { headline, envLabel, axes: ax, scenarios: scenarios({ envLabel, ax, persist, eventsDue }), cards, ranked, currencies: currencyTier(currencies, cards),
+    conviction: conv, dataQuality: dq, context, invalidation, flags, meta, registry: REGISTRY };
 }
 
 export { REG };
+
+// ── 14. The forward record (MD files/GLOBAL_DECISION_ENGINE.md §6) ─────────
+// One compact row per London session, written at the first run after 07:00
+// London, then filled from the daily-read score (the same lines, the same
+// realised session) once the session is scored. Pure, so the test is too.
+export function recordRow(read, day) {
+  const cards = {};
+  for (const c of Object.values(read.cards ?? {})) cards[c.sym] = {
+    mult: c.range?.mult ?? null, hlP50: c.range?.hlP50 ?? null, hlP75: c.range?.hlP75 ?? null, pAbove75: c.range?.pAbove75 ?? null,
+    behaviour: c.behaviour?.label ?? null, stance: c.plan?.stance ?? null, pUp: c.direction?.pUp ?? 0.5, nLive: c.direction?.nLive ?? 0, clarity: c.clarity,
+    realisedHl: null, beyondP75: null, oc: null,
+  };
+  return { day, at: read.meta?.asOf ?? new Date().toISOString(), headline: read.headline, conviction: read.conviction, cards };
+}
+// scoreRows: daily-read's score.rows for that day ({ sym, hl, oc, band }; band ≥ 2 = beyond p75).
+export function attachRealised(row, scoreRows = []) {
+  let changed = false;
+  for (const s of scoreRows) {
+    const c = row.cards?.[s.sym]; if (!c || c.realisedHl != null || !Number.isFinite(s.hl)) continue;
+    c.realisedHl = s.hl; c.beyondP75 = Number.isFinite(s.band) ? s.band >= 2 : null; c.oc = Number.isFinite(s.oc) ? s.oc : null; changed = true;
+  }
+  return changed;
+}
+const pinball = (q, y, tau) => (y >= q ? tau * (y - q) : (1 - tau) * (q - y));
+export function scoreRecord(rows = [], { floor = 30 } = {}) {
+  const obs = rows.flatMap(r => Object.entries(r.cards ?? {}).map(([sym, c]) => ({ day: r.day, sym, ...c, conv: r.conviction?.range ?? null }))).filter(o => o.realisedHl != null);
+  const sessions = new Set(obs.map(o => o.day)).size;
+  // R1: engine quantiles (ladder × multiplier) vs the plain ladder
+  const byInst = {};
+  for (const o of obs) {
+    if (!(o.hlP50 > 0 && o.hlP75 > 0 && o.mult > 0)) continue;
+    const b = (byInst[o.sym] ??= { eng: 0, plain: 0, n: 0 });
+    b.eng += pinball(o.hlP50 * o.mult, o.realisedHl, 0.5) + pinball(o.hlP75 * o.mult, o.realisedHl, 0.75);
+    b.plain += pinball(o.hlP50, o.realisedHl, 0.5) + pinball(o.hlP75, o.realisedHl, 0.75); b.n++;
+  }
+  const ratios = Object.values(byInst).filter(b => b.plain > 0).map(b => b.eng / b.plain).sort((a, b) => a - b);
+  const R1 = { instruments: ratios.length, medianRatio: ratios.length ? r3(ratios[Math.floor(ratios.length / 2)]) : null, betterShare: ratios.length ? r2(ratios.filter(x => x < 1).length / ratios.length) : null };
+  // R2: P(beyond p75) vs the constant 25%
+  const b2 = obs.filter(o => o.pAbove75 != null && o.beyondP75 != null);
+  const brier = b2.length ? b2.reduce((a, o) => a + (o.pAbove75 - (o.beyondP75 ? 1 : 0)) ** 2, 0) / b2.length : null;
+  const base = b2.length ? b2.reduce((a, o) => a + (0.25 - (o.beyondP75 ? 1 : 0)) ** 2, 0) / b2.length : null;
+  const rate = xs => (xs.length ? r3(xs.filter(o => o.beyondP75).length / xs.length) : null);
+  const R2 = { n: b2.length, brierSkill: brier != null && base ? r3(1 - brier / base) : null,
+    expansionRate: rate(b2.filter(o => o.behaviour === 'expansion')), containedRate: rate(b2.filter(o => /contained|exhaustion/.test(o.behaviour ?? ''))) };
+  // D1: direction calls only where the engine made one
+  const calls = obs.filter(o => o.nLive > 0 && Math.abs(o.pUp - 0.5) >= 0.04 && o.oc != null && o.oc !== 0);
+  const bd = calls.length ? calls.reduce((a, o) => a + (o.pUp - (o.oc > 0 ? 1 : 0)) ** 2, 0) / calls.length : null;
+  const D1 = { n: calls.length, hits: calls.filter(o => (o.pUp > 0.5) === (o.oc > 0)).length, brierSkill: bd != null ? r3(1 - bd / 0.25) : null };
+  const verdict = sessions < floor ? `too early: ${sessions} of ${floor} sessions` : [
+    R1.medianRatio == null ? 'R1 n/a' : R1.medianRatio < 0.97 && R1.betterShare >= 0.6 ? 'R1 PASS' : R1.medianRatio >= 1 ? 'R1 FAIL' : 'R1 between bars',
+    R2.brierSkill == null ? 'R2 n/a' : R2.brierSkill > 0 && R2.expansionRate != null && R2.containedRate != null && R2.expansionRate - R2.containedRate >= 0.10 ? 'R2 PASS' : R2.brierSkill <= 0 ? 'R2 FAIL' : 'R2 between bars',
+    D1.n < floor ? `D1 too few calls (${D1.n})` : D1.brierSkill > 0 ? 'D1 PASS' : 'D1 FAIL',
+  ].join(' · ');
+  return { sessions, observations: obs.length, R1, R2, D1, verdict };
+}

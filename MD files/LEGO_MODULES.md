@@ -8205,8 +8205,11 @@ and shown at weight 0, never hand-dropped. Design and pre-registration:
 
 | Brick | File | Owns | Consumers | Status |
 |---|---|---|---|---|
-| **Global Read core** | `js/globalReadCore.js` | pure: `REGISTRY` (every input: question, timing, tier, IC, evidence id), `TIER_P`, `effectiveIc`, `freshness`, `combineDirection` (β = R⁻¹e, P(up) = Φ(ŷ/√(1−R²))), `rangeView` (the **combined-range joint coefficients**, centred as in the fit, on `ladder_flat`; no event re-application), `behaviourOf`, `stateAxes`/`environmentLabel`, `dataQuality`, `scenarios`, `conviction`, `buildGlobalRead` | `scripts/global_read.mjs` | built, `js/globalReadCore.test.mjs` (11); research prototype, no route/page yet |
-| **Live driver** | `scripts/global_read.mjs` | read-only: fetches ~28 production routes (or `--dir` saved JSON), normalises them, runs the core, prints the read / `--json` | owner, CLI | built |
+| **Global Read core** | `js/globalReadCore.js` | pure: `REGISTRY` (every input: question, timing, tier, IC, evidence id), `TIER_P`, `effectiveIc`, `freshness`, `combineDirection` (β = R⁻¹e, P(up) = Φ(ŷ/√(1−R²))), `rangeView` (the **combined-range joint coefficients**, centred as in the fit, on `ladder_flat`; no event re-application), `behaviourOf`, `stateAxes`/`environmentLabel`, `dataQuality`, `scenarios`, `conviction`, `buildGlobalRead` | `scripts/global_read.mjs`, `server.js` | built, `js/globalReadCore.test.mjs` (15); also owns `tradePlan`, `currencyTier`, `recordRow`/`attachRealised`/`scoreRecord` |
+| **Input assembly** | `js/globalReadInputs.js` | pure: `GLOBAL_READ_ENDPOINTS`, `assembleGlobalReadInput(D, {now, skip})`: the one normalise step from route payloads to the core's input (flags, state obs, per-pair direction inputs, currency readings, data-quality cross-checks, invalidation, context) | `server.js` (`globalRead` job), `scripts/global_read.mjs` | built, covered by `js/globalReadCore.test.mjs` |
+| **Server job + routes** | `server.js` | `_globalReadTick` (every 15 min, own routes over 127.0.0.1, `/api/cot` skipped), `/api/global-read`, `/api/global-read/record`; KV `global_read_v1` (07:00 London row per session, filled from the daily-read score) | `today.html` | built |
+| **today.html integration** | `today.html` | `renderGlobalRead` (panel), `_globalTier` (card row), `globalReadCcyHtml` (currency drawer), `renderDrawerGlobal` (pair drawer) | the page | built |
+| **Live driver** | `scripts/global_read.mjs` | read-only: fetches the production routes (or `--dir` saved JSON), runs the same assembly + core, prints the read / `--json` | owner, CLI | built |
 
 Known drift: `RANGE_COEF` copies the joint coefficients from
 `analysis/output/combined_range/RESULTS.md`, and the direction ICs copy numbers from

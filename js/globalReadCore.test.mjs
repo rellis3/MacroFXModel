@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { combineDirection, effectiveIc, freshness, rangeView, behaviourOf, stateAxes, environmentLabel, buildGlobalRead, normCdf, solve, TIER_P } from './globalReadCore.js';
+import { tradePlan, currencyTier, recordRow, attachRealised, scoreRecord, combineDirection, effectiveIc, freshness, rangeView, behaviourOf, stateAxes, environmentLabel, buildGlobalRead, normCdf, solve, TIER_P } from './globalReadCore.js';
+import { assembleGlobalReadInput } from './globalReadInputs.js';
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 
 t('normCdf and solve are sane', () => {
@@ -79,6 +80,53 @@ t('buildGlobalRead ranks by clarity and reports separate range / direction convi
   assert.ok(r.cards.USDJPY.direction.pUp > 0.55);
   assert.ok(r.conviction.direction > 0 && r.conviction.range > 0 && r.conviction.dataQuality < 100);
   assert.equal(r.scenarios[0].p, 0.91);
+});
+
+t('trade plan: stance follows behaviour; direction line only with an active tested input', () => {
+  const exp = tradePlan({ sym: 'GBPUSD', behaviour: { label: 'expansion' }, range: { pAbove75: 0.35 }, direction: { pUp: 0.5, shown: [] } });
+  assert.equal(exp.stance, 'FOLLOW BREAKS'); assert.match(exp.direction, /No tested direction/);
+  const cap = tradePlan({ sym: 'EURUSD', behaviour: { label: 'exhaustion (capped)' }, range: { pAbove75: 0.15 }, direction: { pUp: 0.5, shown: [] } });
+  assert.equal(cap.stance, 'TAKE PROFIT AT LINES'); assert.match(cap.lines, /not a fade signal/);
+  const two = tradePlan({ sym: 'NQ', behaviour: { label: 'two-way' }, range: { pAbove75: 0.26 }, direction: { pUp: 0.5, shown: [] } });
+  assert.doesNotMatch(two.lines, /20–22 UTC/);
+  const ys = tradePlan({ sym: 'USDJPY', behaviour: { label: 'two-way' }, range: { pAbove75: 0.25 }, direction: { pUp: 0.6, shown: [{ id: 'yield-spread', label: '2Y yield-spread sleeve', s: 1, e: 0.25, note: 'z 2.9' }] } });
+  assert.match(ys.direction, /UP 60% from 2Y yield-spread sleeve/);
+});
+
+t('currency tier maps pair direction into currency space and averages range pressure', () => {
+  const cards = { EURUSD: { sym: 'EURUSD', range: { pAbove75: 0.15 }, direction: { pUp: 0.6 } }, USDJPY: { sym: 'USDJPY', range: { pAbove75: 0.35 }, direction: { pUp: 0.5 } } };
+  const t2 = currencyTier({ USD: { dollarShare: null }, EUR: { dollarShare: 0.79 } }, cards);
+  assert.equal(t2.EUR.pStronger, 0.6); assert.equal(t2.USD.pStronger, 0.45); assert.equal(t2.USD.rangePressure, 0.25);
+  assert.match(t2.EUR.notes[0], /USD story/);
+});
+
+t('record: row → realised from the daily-read score → R1/R2/D1 summary', () => {
+  const read = { headline: 'h', conviction: { range: 10 }, meta: { asOf: '2026-10-13T07:05:00Z' }, cards: {
+    GBPUSD: { sym: 'GBPUSD', range: { mult: 1.2, hlP50: 0.4, hlP75: 0.54, pAbove75: 0.36 }, behaviour: { label: 'expansion' }, plan: { stance: 'FOLLOW BREAKS' }, direction: { pUp: 0.5, nLive: 0 }, clarity: 0.4 },
+    EURUSD: { sym: 'EURUSD', range: { mult: 0.85, hlP50: 0.6, hlP75: 0.79, pAbove75: 0.14 }, behaviour: { label: 'contained' }, plan: { stance: 'TAKE PROFIT AT LINES' }, direction: { pUp: 0.6, nLive: 1 }, clarity: 0.3 } } };
+  const rows = [];
+  for (let i = 0; i < 31; i++) {
+    const row = recordRow(read, `2026-09-${String(i + 1).padStart(2, '0')}`);
+    assert.ok(attachRealised(row, [{ sym: 'GBPUSD', hl: 0.6, oc: 0.1, band: 2 }, { sym: 'EURUSD', hl: 0.5, oc: 0.2, band: 0 }]));
+    assert.equal(attachRealised(row, [{ sym: 'GBPUSD', hl: 0.9, oc: 0.1, band: 3 }]), false);    // never overwritten
+    rows.push(row);
+  }
+  const sc = scoreRecord(rows);
+  assert.equal(sc.sessions, 31); assert.ok(sc.R1.medianRatio < 1); assert.equal(sc.R2.expansionRate, 1); assert.equal(sc.R2.containedRate, 0);
+  assert.ok(sc.R2.brierSkill > 0); assert.equal(sc.D1.n, 31); assert.ok(sc.D1.brierSkill > 0); assert.match(sc.verdict, /R1 PASS · R2 PASS · D1 PASS/);
+  assert.match(scoreRecord(rows.slice(0, 5)).verdict, /too early: 5 of 30/);
+});
+
+t('input assembly survives every route missing, and reads a firing tested input', () => {
+  const empty = buildGlobalRead(assembleGlobalReadInput({}, { now: Date.parse('2026-10-13T08:00:00Z') }));
+  assert.equal(Object.keys(empty.cards).length, 7); assert.equal(empty.conviction.direction, 0);
+  const D = {
+    'yield-spread/plan': { plan: { entryThreshold: 2.75, signals: { usdjpy: { z: 3.1, inverted: false, asOf: '2026-10-12' } } } },
+    'daily-read': { days: { '2026-10-13': { setup: { at: '2026-10-12T22:09:00Z', rows: [{ sym: 'USDJPY', ratio: 0.88, edges: [1.044, 1.182], lines: { hl_p50: 0.59, hl_p75: 0.79 }, tag: 'exhaust' }] } } } },
+  };
+  const r = buildGlobalRead(assembleGlobalReadInput(D, { now: Date.parse('2026-10-13T08:00:00Z') }));
+  assert.ok(r.cards.USDJPY.direction.pUp > 0.55); assert.match(r.cards.USDJPY.plan.direction, /UP/); assert.equal(r.cards.USDJPY.plan.stance, 'TAKE PROFIT AT LINES');
+  assert.ok(r.currencies.JPY.pStronger < 0.45);
 });
 
 console.log(`globalReadCore: ${n} tests passed`);
