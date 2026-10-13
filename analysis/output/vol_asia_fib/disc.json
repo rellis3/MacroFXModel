@@ -1,0 +1,680 @@
+{
+ "block": "disc",
+ "dates": [
+  "2016-05-23",
+  "2021-12-31"
+ ],
+ "n_dates": 1455,
+ "grid": {
+  "tol0.03_b0.15": {
+   "tol": 0.03,
+   "b": 0.15,
+   "rows": 70003,
+   "resolved": 66912,
+   "unresolved": 1167,
+   "ambiguous": 1924,
+   "confluence_rate": 0.3345,
+   "placebo_confluence_rate": 0.3048,
+   "fade_share_confluent": 0.5007,
+   "fade_share_other": 0.504,
+   "n_conf": 22353,
+   "diff": -0.0033,
+   "ci95": [
+    -0.0108,
+    0.0046
+   ],
+   "placebo_p05_p95": [
+    -0.0072,
+    0.0052
+   ],
+   "placebo_mean": -0.0017,
+   "adj_logit_coef_conf": -0.0076,
+   "instruments_same_sign": "18/34",
+   "by_instrument": {
+    "AUDCAD": 0.0373,
+    "AUDCHF": 0.054,
+    "AUDJPY": 0.0204,
+    "AUDNZD": -0.0402,
+    "AUDUSD": -0.0177,
+    "CADCHF": 0.063,
+    "CADJPY": -0.0351,
+    "CHFJPY": -0.031,
+    "DE30": 0.007,
+    "EURAUD": -0.0313,
+    "EURCAD": 0.0384,
+    "EURCHF": -0.007,
+    "EURGBP": 0.017,
+    "EURJPY": -0.0452,
+    "EURNZD": -0.0127,
+    "EURUSD": 0.0368,
+    "GBPAUD": -0.0004,
+    "GBPCAD": -0.0284,
+    "GBPCHF": 0.023,
+    "GBPJPY": 0.0019,
+    "GBPNZD": -0.035,
+    "GBPUSD": 0.0171,
+    "GOLD": -0.0596,
+    "NQ": -0.0369,
+    "NZDCAD": 0.0425,
+    "NZDJPY": 0.0021,
+    "NZDUSD": 0.0015,
+    "SPX500": -0.0007,
+    "UK100": -0.0136,
+    "US2000": -0.0166,
+    "US30": 0.0197,
+    "USDCAD": -0.0379,
+    "USDCHF": -0.0268,
+    "USDJPY": 0.0137
+   }
+  },
+  "tol0.03_b0.25": {
+   "tol": 0.03,
+   "b": 0.25,
+   "rows": 70003,
+   "resolved": 65278,
+   "unresolved": 3903,
+   "ambiguous": 822,
+   "confluence_rate": 0.3345,
+   "placebo_confluence_rate": 0.3048,
+   "fade_share_confluent": 0.4945,
+   "fade_share_other": 0.4982,
+   "n_conf": 21735,
+   "diff": -0.0037,
+   "ci95": [
+    -0.0115,
+    0.0044
+   ],
+   "placebo_p05_p95": [
+    -0.0098,
+    0.0026
+   ],
+   "placebo_mean": -0.0034,
+   "adj_logit_coef_conf": -0.0083,
+   "instruments_same_sign": "19/34",
+   "by_instrument": {
+    "AUDCAD": 0.0081,
+    "AUDCHF": 0.0451,
+    "AUDJPY": 0.0191,
+    "AUDNZD": -0.0126,
+    "AUDUSD": -0.0369,
+    "CADCHF": 0.0256,
+    "CADJPY": -0.0068,
+    "CHFJPY": -0.0084,
+    "DE30": 0.0538,
+    "EURAUD": -0.039,
+    "EURCAD": 0.0237,
+    "EURCHF": 0.0129,
+    "EURGBP": -0.0401,
+    "EURJPY": -0.0101,
+    "EURNZD": 0.0105,
+    "EURUSD": -0.0195,
+    "GBPAUD": 0.0268,
+    "GBPCAD": -0.0241,
+    "GBPCHF": 0.0099,
+    "GBPJPY": -0.0053,
+    "GBPNZD": -0.006,
+    "GBPUSD": 0.0306,
+    "GOLD": -0.0338,
+    "NQ": -0.0497,
+    "NZDCAD": 0.029,
+    "NZDJPY": -0.0303,
+    "NZDUSD": -0.0071,
+    "SPX500": 0.0041,
+    "UK100": -0.0105,
+    "US2000": 0.0148,
+    "US30": 0.0257,
+    "USDCAD": -0.0143,
+    "USDCHF": -0.0305,
+    "USDJPY": -0.0154
+   }
+  },
+  "tol0.03_b0.5": {
+   "tol": 0.03,
+   "b": 0.5,
+   "rows": 70003,
+   "resolved": 51519,
+   "unresolved": 18306,
+   "ambiguous": 178,
+   "confluence_rate": 0.3345,
+   "placebo_confluence_rate": 0.3048,
+   "fade_share_confluent": 0.4856,
+   "fade_share_other": 0.4886,
+   "n_conf": 16965,
+   "diff": -0.0029,
+   "ci95": [
+    -0.0121,
+    0.0071
+   ],
+   "placebo_p05_p95": [
+    -0.0069,
+    0.0053
+   ],
+   "placebo_mean": -0.0005,
+   "adj_logit_coef_conf": -0.0115,
+   "instruments_same_sign": "19/34",
+   "by_instrument": {
+    "AUDCAD": 0.025,
+    "AUDCHF": 0.011,
+    "AUDJPY": -0.0227,
+    "AUDNZD": -0.0056,
+    "AUDUSD": -0.0639,
+    "CADCHF": 0.0035,
+    "CADJPY": -0.0237,
+    "CHFJPY": -0.0095,
+    "DE30": 0.0211,
+    "EURAUD": 0.0292,
+    "EURCAD": 0.0238,
+    "EURCHF": 0.0352,
+    "EURGBP": 0.0006,
+    "EURJPY": -0.0032,
+    "EURNZD": -0.0093,
+    "EURUSD": -0.0202,
+    "GBPAUD": -0.0102,
+    "GBPCAD": -0.0055,
+    "GBPCHF": 0.0194,
+    "GBPJPY": -0.0375,
+    "GBPNZD": 0.0076,
+    "GBPUSD": 0.0193,
+    "GOLD": 0.0022,
+    "NQ": -0.0584,
+    "NZDCAD": 0.0206,
+    "NZDJPY": -0.016,
+    "NZDUSD": -0.0053,
+    "SPX500": 0.0216,
+    "UK100": -0.0272,
+    "US2000": -0.0132,
+    "US30": -0.0164,
+    "USDCAD": 0.0092,
+    "USDCHF": -0.0206,
+    "USDJPY": -0.0132
+   }
+  },
+  "tol0.05_b0.15": {
+   "tol": 0.05,
+   "b": 0.15,
+   "rows": 70003,
+   "resolved": 66912,
+   "unresolved": 1167,
+   "ambiguous": 1924,
+   "confluence_rate": 0.5453,
+   "placebo_confluence_rate": 0.4945,
+   "fade_share_confluent": 0.503,
+   "fade_share_other": 0.5028,
+   "n_conf": 36426,
+   "diff": 0.0002,
+   "ci95": [
+    -0.0079,
+    0.0084
+   ],
+   "placebo_p05_p95": [
+    -0.0073,
+    0.0051
+   ],
+   "placebo_mean": -0.0014,
+   "adj_logit_coef_conf": 0.0084,
+   "instruments_same_sign": "19/34",
+   "by_instrument": {
+    "AUDCAD": 0.0077,
+    "AUDCHF": 0.027,
+    "AUDJPY": 0.0141,
+    "AUDNZD": -0.0275,
+    "AUDUSD": 0.0107,
+    "CADCHF": 0.0007,
+    "CADJPY": 0.013,
+    "CHFJPY": -0.0082,
+    "DE30": 0.0263,
+    "EURAUD": -0.028,
+    "EURCAD": 0.0332,
+    "EURCHF": 0.0265,
+    "EURGBP": 0.0618,
+    "EURJPY": -0.0098,
+    "EURNZD": 0.0118,
+    "EURUSD": 0.0445,
+    "GBPAUD": 0.0104,
+    "GBPCAD": 0.022,
+    "GBPCHF": 0.0164,
+    "GBPJPY": -0.0334,
+    "GBPNZD": -0.0195,
+    "GBPUSD": 0.0051,
+    "GOLD": -0.058,
+    "NQ": -0.0213,
+    "NZDCAD": 0.0201,
+    "NZDJPY": -0.0037,
+    "NZDUSD": -0.0059,
+    "SPX500": 0.0063,
+    "UK100": -0.0322,
+    "US2000": -0.0022,
+    "US30": -0.0118,
+    "USDCAD": -0.0299,
+    "USDCHF": 0.0128,
+    "USDJPY": -0.0069
+   }
+  },
+  "tol0.05_b0.25": {
+   "tol": 0.05,
+   "b": 0.25,
+   "rows": 70003,
+   "resolved": 65278,
+   "unresolved": 3903,
+   "ambiguous": 822,
+   "confluence_rate": 0.5453,
+   "placebo_confluence_rate": 0.4945,
+   "fade_share_confluent": 0.4952,
+   "fade_share_other": 0.4991,
+   "n_conf": 35476,
+   "diff": -0.0039,
+   "ci95": [
+    -0.0117,
+    0.0041
+   ],
+   "placebo_p05_p95": [
+    -0.0098,
+    0.0022
+   ],
+   "placebo_mean": -0.004,
+   "adj_logit_coef_conf": -0.006,
+   "instruments_same_sign": "14/34",
+   "by_instrument": {
+    "AUDCAD": -0.0188,
+    "AUDCHF": 0.0423,
+    "AUDJPY": 0.041,
+    "AUDNZD": -0.0248,
+    "AUDUSD": -0.0317,
+    "CADCHF": -0.0407,
+    "CADJPY": 0.0162,
+    "CHFJPY": 0.0111,
+    "DE30": 0.037,
+    "EURAUD": -0.0246,
+    "EURCAD": 0.0374,
+    "EURCHF": 0.0251,
+    "EURGBP": 0.0094,
+    "EURJPY": 0.005,
+    "EURNZD": -0.0047,
+    "EURUSD": -0.008,
+    "GBPAUD": 0.0015,
+    "GBPCAD": 0.0077,
+    "GBPCHF": 0.0098,
+    "GBPJPY": -0.0463,
+    "GBPNZD": 0.0008,
+    "GBPUSD": 0.005,
+    "GOLD": -0.0429,
+    "NQ": -0.0627,
+    "NZDCAD": 0.0217,
+    "NZDJPY": 0.0064,
+    "NZDUSD": 0.0027,
+    "SPX500": -0.0003,
+    "UK100": -0.0257,
+    "US2000": 0.0177,
+    "US30": -0.0032,
+    "USDCAD": 0.0095,
+    "USDCHF": 0.0001,
+    "USDJPY": -0.0296
+   }
+  },
+  "tol0.05_b0.5": {
+   "tol": 0.05,
+   "b": 0.5,
+   "rows": 70003,
+   "resolved": 51519,
+   "unresolved": 18306,
+   "ambiguous": 178,
+   "confluence_rate": 0.5453,
+   "placebo_confluence_rate": 0.4945,
+   "fade_share_confluent": 0.4875,
+   "fade_share_other": 0.4878,
+   "n_conf": 27774,
+   "diff": -0.0003,
+   "ci95": [
+    -0.0093,
+    0.0094
+   ],
+   "placebo_p05_p95": [
+    -0.0071,
+    0.005
+   ],
+   "placebo_mean": -0.0008,
+   "adj_logit_coef_conf": -0.0009,
+   "instruments_same_sign": "15/34",
+   "by_instrument": {
+    "AUDCAD": 0.0116,
+    "AUDCHF": 0.002,
+    "AUDJPY": 0.014,
+    "AUDNZD": -0.058,
+    "AUDUSD": -0.0648,
+    "CADCHF": -0.0413,
+    "CADJPY": -0.0256,
+    "CHFJPY": 0.017,
+    "DE30": 0.0591,
+    "EURAUD": 0.0379,
+    "EURCAD": 0.0328,
+    "EURCHF": 0.0161,
+    "EURGBP": 0.0284,
+    "EURJPY": -0.0394,
+    "EURNZD": -0.0167,
+    "EURUSD": 0.0127,
+    "GBPAUD": 0.005,
+    "GBPCAD": 0.0284,
+    "GBPCHF": 0.0342,
+    "GBPJPY": -0.033,
+    "GBPNZD": 0.0224,
+    "GBPUSD": 0.0102,
+    "GOLD": -0.01,
+    "NQ": -0.0294,
+    "NZDCAD": 0.0115,
+    "NZDJPY": 0.023,
+    "NZDUSD": 0.0256,
+    "SPX500": -0.005,
+    "UK100": -0.0116,
+    "US2000": -0.0048,
+    "US30": -0.0365,
+    "USDCAD": 0.0223,
+    "USDCHF": -0.0202,
+    "USDJPY": -0.0369
+   }
+  },
+  "tol0.1_b0.15": {
+   "tol": 0.1,
+   "b": 0.15,
+   "rows": 70003,
+   "resolved": 66912,
+   "unresolved": 1167,
+   "ambiguous": 1924,
+   "confluence_rate": 0.8638,
+   "placebo_confluence_rate": 0.7758,
+   "fade_share_confluent": 0.5019,
+   "fade_share_other": 0.5091,
+   "n_conf": 57722,
+   "diff": -0.0073,
+   "ci95": [
+    -0.0186,
+    0.0043
+   ],
+   "placebo_p05_p95": [
+    -0.0043,
+    0.0057
+   ],
+   "placebo_mean": 0.0009,
+   "adj_logit_coef_conf": -0.017,
+   "instruments_same_sign": "18/34",
+   "by_instrument": {
+    "AUDCAD": -0.0124,
+    "AUDCHF": 0.0225,
+    "AUDJPY": 0.0374,
+    "AUDNZD": 0.0001,
+    "AUDUSD": 0.0235,
+    "CADCHF": 0.0258,
+    "CADJPY": -0.0157,
+    "CHFJPY": -0.0145,
+    "DE30": -0.0373,
+    "EURAUD": -0.0547,
+    "EURCAD": 0.0626,
+    "EURCHF": -0.0212,
+    "EURGBP": 0.0166,
+    "EURJPY": -0.0444,
+    "EURNZD": -0.0274,
+    "EURUSD": 0.0798,
+    "GBPAUD": -0.0801,
+    "GBPCAD": 0.1017,
+    "GBPCHF": 0.0235,
+    "GBPJPY": 0.0086,
+    "GBPNZD": -0.0395,
+    "GBPUSD": 0.002,
+    "GOLD": -0.0132,
+    "NQ": -0.0459,
+    "NZDCAD": 0.0024,
+    "NZDJPY": -0.0289,
+    "NZDUSD": 0.0235,
+    "SPX500": 0.0034,
+    "UK100": -0.0384,
+    "US2000": -0.0409,
+    "US30": -0.0218,
+    "USDCAD": -0.0223,
+    "USDCHF": 0.0546,
+    "USDJPY": -0.0057
+   }
+  },
+  "tol0.1_b0.25": {
+   "tol": 0.1,
+   "b": 0.25,
+   "rows": 70003,
+   "resolved": 65278,
+   "unresolved": 3903,
+   "ambiguous": 822,
+   "confluence_rate": 0.8638,
+   "placebo_confluence_rate": 0.7758,
+   "fade_share_confluent": 0.4957,
+   "fade_share_other": 0.5048,
+   "n_conf": 56292,
+   "diff": -0.009,
+   "ci95": [
+    -0.0219,
+    0.003
+   ],
+   "placebo_p05_p95": [
+    -0.0102,
+    0.0002
+   ],
+   "placebo_mean": -0.005,
+   "adj_logit_coef_conf": -0.0214,
+   "instruments_same_sign": "22/34",
+   "by_instrument": {
+    "AUDCAD": -0.0067,
+    "AUDCHF": 0.0068,
+    "AUDJPY": 0.0703,
+    "AUDNZD": -0.0013,
+    "AUDUSD": -0.0264,
+    "CADCHF": -0.0403,
+    "CADJPY": -0.0109,
+    "CHFJPY": -0.0243,
+    "DE30": -0.0059,
+    "EURAUD": -0.0421,
+    "EURCAD": -0.0061,
+    "EURCHF": -0.0022,
+    "EURGBP": -0.0432,
+    "EURJPY": -0.0107,
+    "EURNZD": -0.0498,
+    "EURUSD": 0.0249,
+    "GBPAUD": -0.0705,
+    "GBPCAD": -0.0231,
+    "GBPCHF": 0.0396,
+    "GBPJPY": -0.0428,
+    "GBPNZD": 0.005,
+    "GBPUSD": -0.0399,
+    "GOLD": -0.0271,
+    "NQ": -0.0362,
+    "NZDCAD": 0.0167,
+    "NZDJPY": 0.0065,
+    "NZDUSD": 0.0149,
+    "SPX500": 0.0181,
+    "UK100": -0.0163,
+    "US2000": -0.025,
+    "US30": -0.0122,
+    "USDCAD": 0.0317,
+    "USDCHF": 0.0211,
+    "USDJPY": 0.015
+   }
+  },
+  "tol0.1_b0.5": {
+   "tol": 0.1,
+   "b": 0.5,
+   "rows": 70003,
+   "resolved": 51519,
+   "unresolved": 18306,
+   "ambiguous": 178,
+   "confluence_rate": 0.8638,
+   "placebo_confluence_rate": 0.7758,
+   "fade_share_confluent": 0.4863,
+   "fade_share_other": 0.4956,
+   "n_conf": 44285,
+   "diff": -0.0093,
+   "ci95": [
+    -0.0238,
+    0.0052
+   ],
+   "placebo_p05_p95": [
+    -0.0064,
+    0.0049
+   ],
+   "placebo_mean": -0.0,
+   "adj_logit_coef_conf": -0.042,
+   "instruments_same_sign": "19/34",
+   "by_instrument": {
+    "AUDCAD": -0.026,
+    "AUDCHF": -0.0011,
+    "AUDJPY": 0.0217,
+    "AUDNZD": -0.029,
+    "AUDUSD": -0.0372,
+    "CADCHF": -0.0733,
+    "CADJPY": 0.004,
+    "CHFJPY": -0.0096,
+    "DE30": -0.0294,
+    "EURAUD": 0.0066,
+    "EURCAD": -0.0529,
+    "EURCHF": -0.0774,
+    "EURGBP": 0.071,
+    "EURJPY": -0.0494,
+    "EURNZD": -0.0724,
+    "EURUSD": 0.0242,
+    "GBPAUD": -0.0841,
+    "GBPCAD": -0.0149,
+    "GBPCHF": 0.0316,
+    "GBPJPY": -0.0242,
+    "GBPNZD": 0.005,
+    "GBPUSD": -0.0174,
+    "GOLD": -0.0088,
+    "NQ": 0.0097,
+    "NZDCAD": 0.0083,
+    "NZDJPY": 0.0062,
+    "NZDUSD": 0.0418,
+    "SPX500": -0.0121,
+    "UK100": 0.0145,
+    "US2000": -0.0368,
+    "US30": -0.0445,
+    "USDCAD": 0.031,
+    "USDCHF": 0.047,
+    "USDJPY": 0.0153
+   }
+  }
+ },
+ "breakdown_primary": {
+  "rung": {
+   "p50": {
+    "fade_conf": 0.491,
+    "fade_other": 0.5,
+    "n_conf": 21774
+   },
+   "p75": {
+    "fade_conf": 0.499,
+    "fade_other": 0.497,
+    "n_conf": 10076
+   },
+   "p90": {
+    "fade_conf": 0.512,
+    "fade_other": 0.501,
+    "n_conf": 3626
+   }
+  },
+  "side": {
+   "-1": {
+    "fade_conf": 0.496,
+    "fade_other": 0.497,
+    "n_conf": 17816
+   },
+   "1": {
+    "fade_conf": 0.494,
+    "fade_other": 0.501,
+    "n_conf": 17660
+   }
+  },
+  "hb": {
+   "06-10": {
+    "fade_conf": 0.495,
+    "fade_other": 0.498,
+    "n_conf": 11207
+   },
+   "10-14": {
+    "fade_conf": 0.487,
+    "fade_other": 0.498,
+    "n_conf": 10814
+   },
+   "14-18": {
+    "fade_conf": 0.501,
+    "fade_other": 0.497,
+    "n_conf": 11157
+   },
+   "18-22": {
+    "fade_conf": 0.505,
+    "fade_other": 0.52,
+    "n_conf": 2298
+   }
+  },
+  "cls": {
+   "cross": {
+    "fade_conf": 0.506,
+    "fade_other": 0.503,
+    "n_conf": 19923
+   },
+   "gold": {
+    "fade_conf": 0.475,
+    "fade_other": 0.518,
+    "n_conf": 1047
+   },
+   "index": {
+    "fade_conf": 0.467,
+    "fade_other": 0.477,
+    "n_conf": 6929
+   },
+   "major": {
+    "fade_conf": 0.496,
+    "fade_other": 0.5,
+    "n_conf": 7577
+   }
+  },
+  "far": {
+   "far (|mult|>=3 or <=-2)": {
+    "fade_conf": 0.497,
+    "fade_other": 0.51,
+    "n_conf": 10607
+   },
+   "near": {
+    "fade_conf": 0.494,
+    "fade_other": 0.497,
+    "n_conf": 24869
+   }
+  }
+ },
+ "trade_primary": {
+  "fade": {
+   "direction": "fade",
+   "n": 24231,
+   "mean_cost_R": 0.1658,
+   "gross_R": -0.0212,
+   "net_R": -0.187,
+   "net_ci95": [
+    -0.2015,
+    -0.172
+   ],
+   "net_other_R": -0.176,
+   "conf_minus_other_ci95": [
+    -0.0295,
+    0.0078
+   ]
+  },
+  "continue": {
+   "direction": "continue",
+   "n": 24231,
+   "mean_cost_R": 0.1658,
+   "gross_R": 0.0212,
+   "net_R": -0.1446,
+   "net_ci95": [
+    -0.16,
+    -0.129
+   ],
+   "net_other_R": -0.1646,
+   "conf_minus_other_ci95": [
+    0.0004,
+    0.0386
+   ]
+  }
+ }
+}

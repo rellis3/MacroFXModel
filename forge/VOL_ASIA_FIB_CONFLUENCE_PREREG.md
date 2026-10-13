@@ -66,3 +66,13 @@
 ## OI layer (forward only)
 **If the price confluence passes:** a live log records, each session, which confluent lines also sit within the tolerance of a call wall, put wall or gamma strike (oi_store), and scores the reaction prospectively.
 **If it fails:** OI alone cannot be tested on history; the OI wall placebo of 2026-09-23 already found walls no better than their neighbours.
+
+## Discovery record (2026-10-13, written before the holdout was read)
+`analysis/output/vol_asia_fib/disc.json`: 34 instruments, sessions before 2022.
+- **Confluence is common by construction:** at 0.05σ, **54.5%** of touched lines sit on an extension rung (placebo grid 49.4%); at 0.10σ, 86%. The Asia grid's spacing (about 0.2σ) makes coincidence the normal case.
+- **Primary (0.05σ, b = 0.25σ):**
+  - fade share 49.5% at confluent lines vs 49.9% at the rest, diff **−0.4pp** [−1.2, +0.4];
+  - inside the placebo band [−1.0, +0.2];
+  - 14 of 34 instruments with the same sign.
+- **Every tolerance × barrier cell is within ±0.9pp** with an interval spanning 0.
+- **Trade (fade, 1R at 0.25σ, 21 instruments with cost):** gross −0.02R, net −0.19R. Continuation is net −0.14R.
