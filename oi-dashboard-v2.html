@@ -37,7 +37,16 @@ h1 b{color:var(--acc)} h1 small{color:var(--tx3);font-size:11px;letter-spacing:.
 .card .sub{color:var(--tx3);font-size:12.5px;margin-bottom:10px;max-width:980px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:1200px){.row{grid-template-columns:1fr}}
-#terrain{width:100%;height:560px;display:block;border-radius:10px;cursor:crosshair}
+.lwrow{display:flex;gap:10px;align-items:stretch}
+#lw{position:relative;flex:1;min-width:0;height:560px;background:#080b10;border-radius:10px;overflow:hidden}
+#lw>canvas#bg{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+#lw>div{position:relative;z-index:1}
+#curve{width:clamp(110px,17%,230px);height:560px;border-radius:10px;background:#080b10}
+@media(max-width:700px){#lw,#curve{height:420px}}
+.zt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}.zt th{color:var(--tx3);font-weight:500;text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px}
+.zt td{padding:6px 8px;border-top:1px solid var(--line)}.zt .bar{display:inline-block;height:7px;border-radius:4px}.zt .spotrow td{color:var(--acc);background:rgba(240,176,74,.07)}
+.tb{display:flex;gap:3px;height:54px}.tb .seg{border-radius:6px;display:flex;flex-direction:column;justify-content:center;align-items:center;font:12px var(--mono);min-width:34px}.tb .seg b{font-weight:600}.tb .seg span{font-size:10.5px;opacity:.85}
+details.xp>summary{cursor:pointer;font-size:13px;letter-spacing:.14em;text-transform:uppercase;list-style:none}details.xp[open]>summary{margin-bottom:14px}
 svg text{font-family:var(--mono)}
 #tip{position:fixed;pointer-events:none;background:rgba(10,13,18,.96);border:1px solid var(--line2);border-radius:8px;padding:8px 11px;font:12px/1.45 var(--mono);color:var(--tx);z-index:9;display:none;max-width:320px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
 #tip b{color:var(--acc)}
@@ -61,35 +70,43 @@ svg text{font-family:var(--mono)}
   <div class="stats" id="stats"></div>
 
   <div class="card">
-    <h2><em>01</em> Gamma terrain <span style="margin-left:auto;font-size:11px;color:var(--tx3);letter-spacing:.06em;text-transform:none">move the mouse over it</span></h2>
-    <div class="sub">Price candles trading across the dealers' gamma landscape. <b>How to read it:</b> the glowing bands behind the candles are zones of dealer gamma, smoothed so you see zones rather than individual strikes. <b style='color:rgb(70,184,122)'>Green zone</b> = dealers lean against moves, so price tends to stall and pin there. <b style='color:rgb(232,97,95)'>Red zone</b> = dealers push with the move, so price tends to speed up through it. Brighter = more gamma; the biggest zones are named on the right. The curve on the right is the <b>whole book's total gamma if price were at that level</b>: where it crosses zero is the regime flip, and it is the real one, recomputed at every price.</div>
-    <div style="display:flex;gap:6px;justify-content:flex-end;margin:-6px 0 8px"><span class="pill on" id="tSm">Smooth zones</span><span class="pill" id="tRaw">Raw strikes</span></div>
-    <canvas id="terrain"></canvas>
-    <div class="legend"><span><i style="background:rgb(var(--long))"></i>long gamma — pins</span><span><i style="background:rgb(var(--short))"></i>short gamma — amplifies</span><span><i style="background:var(--vio)"></i>GEX flip</span><span><i style="background:#d9c04a"></i>max pain</span><span><i style="background:#fff"></i>spot</span></div>
+    <h2><em>01</em> Live gamma terrain
+      <span class="tgl"><span class="pill" data-tf="M5">5m</span><span class="pill on" data-tf="M15">15m</span><span class="pill" data-tf="H1">1h</span></span></h2>
+    <div class="sub"><b>How to read it:</b> a live TradingView chart (updates every 10 s, scroll and zoom as normal). The glowing bands behind the candles are zones of dealer gamma. <b style="color:rgb(70,184,122)">Green</b> = dealers lean against moves, so price tends to stall and pin. <b style="color:rgb(232,97,95)">Red</b> = dealers push with the move, so price tends to speed up through it. Brighter = more gamma; the biggest zones are named. The curve on the right is the <b>whole book's gamma if price were at that level</b> — where it crosses zero is the flip.</div>
+    <div class="lwrow"><div id="lw"><canvas id="bg"></canvas></div><canvas id="curve"></canvas></div>
+    <div class="legend"><span><i style="background:rgb(var(--long))"></i>long gamma — pins</span><span><i style="background:rgb(var(--short))"></i>short gamma — speeds up</span><span><i style="background:var(--vio)"></i>GEX flip</span><span><i style="background:#d9c04a"></i>max pain</span></div>
   </div>
 
   <div class="row">
+    <div class="card"><h2><em>02</em> Zones near price</h2><div class="sub">The biggest gamma zones above and below spot, read off the chart above.</div><div id="zones"></div></div>
+    <div class="card"><h2><em>03</em> When the gamma expires</h2><div id="timebar"></div></div>
+  </div>
+
+  <details class="card xp"><summary>Experiments — expiry map · gamma mountains · strike × expiry heat <span style="color:var(--tx3)">(denser, optional)</span></summary>
+  <div class="row">
     <div class="card">
-      <h2><em>02</em> Expiry map</h2>
+      <h2><em>A</em> Expiry map</h2>
       <div class="sub">Price up the side, <b>time to expiry</b> across on a true scale. Bubble area = share of the whole book's gamma. Shows how <i>soon</i> each pile bites.</div>
       <svg id="map" width="100%" viewBox="0 0 700 600"></svg>
     </div>
     <div class="card">
-      <h2><em>03</em> Gamma mountains</h2>
+      <h2><em>B</em> Gamma mountains</h2>
       <div class="sub">One ridge per expiry (nearest at the front), gamma along the price axis — peaks up are long gamma, dips are short. Same scale on every ridge, so a flat far-month ridge is genuinely small.</div>
       <svg id="mtn" width="100%" viewBox="0 0 700 600"></svg>
     </div>
   </div>
 
   <div class="card">
-    <h2><em>04</em> Strike × expiry heat</h2>
+    <h2><em>C</em> Strike × expiry heat</h2>
     <div class="sub">Every cell is one strike in one expiry; the number is its share of the whole book's gamma. Bars on the right/top show each strike's and each expiry's total.</div>
     <svg id="heat" width="100%" viewBox="0 0 1500 640"></svg>
   </div>
+  </details>
   <div id="note" class="legend"></div>
 </div>
 <div id="tip"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <script type="module">
 import { oiMatrixExpiryLegs, oiContractSize, oiFlatVol } from './js/oi.js';
 import { bsGamma } from './js/gammaGreeks.js';
@@ -99,7 +116,7 @@ const NAMES = {'XAU/USD':'GOLD','NAS100_USD':'NQ','SPX500_USD':'SPX','US2000_USD
 const OANDA = {'XAU/USD':'XAU_USD','NAS100_USD':'NAS100_USD','SPX500_USD':'SPX500_USD','US2000_USD':'US2000_USD','US30_USD':'US30_USD','EUR/USD':'EUR_USD','GBP/USD':'GBP_USD','USD/JPY':'USD_JPY','AUD/USD':'AUD_USD','USD/CAD':'USD_CAD','USD/CHF':'USD_CHF'};
 const INVERTED = new Set(['USD/JPY','USD/CAD','USD/CHF']);
 const LONG='70,184,122', SHORT='232,97,95';
-let STORE = {}, SYM = 'NAS100_USD', NEAR = true, CANDLES = {}, CUR = null;
+let STORE = {}, SYM = 'NAS100_USD', NEAR = true, CUR = null;
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const dp = (sym) => /JPY/.test(sym) ? 3 : /USD$|EUR|GBP|AUD|CAD|CHF/.test(sym) && !/XAU|NAS|SPX|US30|US2000/.test(sym) ? 5 : 1;
@@ -150,104 +167,129 @@ function gexCurve(sym, e, lo, hi, n = 150){
   } catch (err) { return null; }
 }
 
-async function candles(sym){
-  if (CANDLES[sym]) return CANDLES[sym];
-  try {
-    const r = await fetch('/api/oanda_ohlc5m?symbol=' + OANDA[sym] + '&granularity=H1&incomplete=1');
-    const j = await r.json();
-    CANDLES[sym] = (j.values || []).slice(0, 130).reverse().map(v => ({ t: v.t, o: +v.open, h: +v.high, l: +v.low, c: +v.close }));
-  } catch (_) { CANDLES[sym] = []; }
-  return CANDLES[sym];
+// ── 01 LIVE terrain: TradingView lightweight-charts candles + gamma backdrop + gamma-vs-price curve ───────────────
+// The candles are a real, live chart (polled every 10 s, scroll/zoom/crosshair all native). The coloured backdrop and the
+// curve beside it are painted on canvases that are re-mapped to the chart's own price scale every frame, so they stay glued
+// to the right prices while you pan and zoom.
+let LW = null, FIELD = [], PEAKS = [], CURVE = null, TF = 'M15', _bgSig = '', _poll = null;
+
+function lwInit(){
+  if (LW) return LW;
+  const host = $('#lw');
+  const chart = LightweightCharts.createChart(host, { autoSize: true,
+    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#a8b1bd', fontSize: 12 },
+    grid: { vertLines: { color: 'rgba(255,255,255,.035)' }, horzLines: { color: 'rgba(255,255,255,.035)' } },
+    rightPriceScale: { borderColor: '#2a323d', scaleMargins: { top: .08, bottom: .08 } },
+    timeScale: { borderColor: '#2a323d', timeVisible: true, secondsVisible: false, rightOffset: 8 },
+    crosshair: { mode: 0 } });
+  const series = chart.addCandlestickSeries({ upColor: '#46b87a', downColor: '#e8615f', borderVisible: false, wickUpColor: '#46b87a', wickDownColor: '#e8615f' });
+  LW = { chart, series, lines: [] };
+  host.addEventListener('mousemove', ev => { if (!CUR) return; const r = host.getBoundingClientRect(); const p = series.coordinateToPrice(ev.clientY - r.top); if (p == null) return hideTip();
+    const near = FIELD.length ? FIELD.reduce((b, f) => Math.abs(f.P - p) < Math.abs(b.P - p) ? f : b) : null;
+    let g = ''; if (CURVE) { const c = CURVE.reduce((b, c) => Math.abs(c.P - p) < Math.abs(b.P - p) ? c : b); const v = NEAR && c.near != null ? c.near : c.all; g = `<br>whole book at this price: <b>${v >= 0 ? 'LONG gamma — dealers fade moves' : 'SHORT gamma — dealers chase moves'}</b>`; }
+    showTip(ev, `<b>${px(p)}</b> · ${((p / CUR.spot - 1) * 100).toFixed(2)}% from OI spot${near ? `<br>zone here: ${near.v >= 0 ? 'long-gamma (pin)' : 'short-gamma (speeds up)'}` : ''}${g}`); });
+  host.addEventListener('mouseleave', hideTip);
+  // keep the backdrop + curve glued to the price scale (also catches autoscale changes when a new candle arrives)
+  const loop = () => { paintBackdrop(); requestAnimationFrame(loop); }; requestAnimationFrame(loop);
+  return LW;
 }
 
-// ── 01 terrain ──────────────────────────────────────────────────────────────────────────
-let TERR = null, TERR_PEAKS = [], RAW = false;
-async function drawTerrain(){
-  const D = CUR; const cv = $('#terrain'); const ctx = cv.getContext('2d');
-  const dpr = devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
-  cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = '#080b10'; ctx.fillRect(0, 0, W, H);
-  if (!D || !D.L) { ctx.fillStyle = '#6b7585'; ctx.font = '14px monospace'; ctx.fillText('No gamma ladder stored for this pair', 30, 40); return; }
-  const cs = await candles(SYM); if (D !== CUR) return;
-  let lo = D.spot - 1.3 * D.rm, hi = D.spot + 1.3 * D.rm;
-  for (const c of cs) { if (c.l > D.spot - 2.5 * D.rm) lo = Math.min(lo, c.l); if (c.h < D.spot + 2.5 * D.rm) hi = Math.max(hi, c.h); }
-  const padT = 18, padB = 26, PW = Math.floor(W * 0.72), gx0 = PW + 54, gx1 = W - 14;
-  const Y = p => padT + (hi - p) / (hi - lo) * (H - padT - padB);
-  const P = y => hi - (y - padT) / (H - padT - padB) * (hi - lo);
-  // heat wallpaper: net gamma per strike (selected expiries), soft-edged, fading toward the left
-  const ks = D.L.strikes, vals = ks.map((k, i) => D.use.reduce((a, j) => a + (D.ser[j].net[i] || 0), 0));
-  const off = document.createElement('canvas'); off.width = PW * dpr; off.height = H * dpr; const oc = off.getContext('2d'); oc.setTransform(dpr, 0, 0, dpr, 0, 0);
-  // SMOOTH FIELD (default): every strike is a spike, and neighbouring strikes often flip sign (calls at one, puts at the next) —
-  // drawn raw that is a barcode. Spread each strike's gamma over price with a gaussian and the zones that matter appear as
-  // continuous bands. "Raw strikes" shows the individual strikes for anyone who wants them.
-  const NR = 260; let field = [];
-  if (RAW) {
-    const mx = pctl(ks.map((k, i) => (k >= lo && k <= hi) ? Math.abs(vals[i]) : 0), 0.9) || 1;
-    oc.filter = 'blur(2px)';
-    for (let i = 0; i < ks.length; i++) { const k = ks[i]; if (k < lo - (hi - lo) * .05 || k > hi + (hi - lo) * .05) continue;
-      const up = i + 1 < ks.length ? (ks[i] + ks[i + 1]) / 2 : k, dn = i > 0 ? (ks[i] + ks[i - 1]) / 2 : k;
-      const a = Math.min(1, Math.pow(Math.abs(vals[i]) / mx, 0.6)); if (a < 0.03) continue;
-      oc.fillStyle = `rgba(${vals[i] >= 0 ? LONG : SHORT},${(0.16 + 0.78 * a).toFixed(3)})`; oc.fillRect(0, Y(up), PW, Math.max(1.5, Y(dn) - Y(up))); }
-  } else {
-    const sg = (hi - lo) * 0.018;                       // ~1.8% of the visible range
-    for (let r = 0; r < NR; r++) { const P0 = lo + (hi - lo) * r / (NR - 1); let v = 0;
-      for (let i = 0; i < ks.length; i++) { const d = (ks[i] - P0) / sg; if (d > 4 || d < -4) continue; v += vals[i] * Math.exp(-d * d / 2); }
-      field.push({ P: P0, v }); }
-    const m = pctl(field.map(f => Math.abs(f.v)), 0.93) || 1;
-    const rh = (H - padT - padB) / NR + 0.6;
-    field.forEach(f => { const a = Math.min(1, Math.pow(Math.abs(f.v) / m, 0.7)); if (a < 0.04) return;
-      oc.fillStyle = `rgba(${f.v >= 0 ? LONG : SHORT},${(0.10 + 0.62 * a).toFixed(3)})`; oc.fillRect(0, Y(f.P) - rh / 2, PW, rh); });
-    // name the biggest zones so the picture reads without a legend: local maxima of |field|
-    const peaks = []; for (let r = 2; r < field.length - 2; r++) { const f = field[r]; if (Math.abs(f.v) > m * 0.55 && Math.abs(f.v) >= Math.abs(field[r - 1].v) && Math.abs(f.v) >= Math.abs(field[r + 1].v) && Math.abs(f.v) >= Math.abs(field[r - 2].v) && Math.abs(f.v) >= Math.abs(field[r + 2].v)) peaks.push(f); }
-    peaks.sort((x, y) => Math.abs(y.v) - Math.abs(x.v)); const keepP = []; for (const f of peaks) if (keepP.every(g => Math.abs(g.P - f.P) > (hi - lo) * 0.06) && keepP.length < 5) keepP.push(f);
-    TERR_PEAKS = keepP;
-  }
-  oc.filter = 'none'; oc.globalCompositeOperation = 'destination-in';
-  const gr = oc.createLinearGradient(0, 0, PW, 0); gr.addColorStop(0, 'rgba(0,0,0,.50)'); gr.addColorStop(1, 'rgba(0,0,0,1)'); oc.fillStyle = gr; oc.fillRect(0, 0, PW, H);
-  ctx.drawImage(off, 0, 0, PW, H);
-  if (!RAW) (TERR_PEAKS || []).forEach(f => { ctx.font = '600 10.5px ui-monospace,Consolas,monospace'; ctx.textAlign = 'right'; ctx.fillStyle = f.v >= 0 ? `rgba(${LONG},.95)` : `rgba(${SHORT},.95)`; ctx.fillText((f.v >= 0 ? 'pin zone ' : 'short-gamma zone ') + px(f.P), PW - 64, Y(f.P) + 4); });
-  // grid + price axis
-  const step = (() => { const raw = (hi - lo) / 7, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p; return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p; })();
-  ctx.font = '11px ui-monospace,Consolas,monospace'; ctx.textAlign = 'right';
-  for (let p = Math.ceil(lo / step) * step; p <= hi; p += step) { ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.beginPath(); ctx.moveTo(0, Y(p)); ctx.lineTo(PW, Y(p)); ctx.stroke(); ctx.fillStyle = '#6b7585'; ctx.fillText(px(p), PW - 6, Y(p) - 3); }
-  // candles
-  const n = cs.length, cw = PW / (n + 4);
-  cs.forEach((c, i) => { const x = (i + 1) * cw, up = c.c >= c.o, col = up ? '70,184,122' : '232,97,95';
-    ctx.strokeStyle = `rgba(${col},.95)`; ctx.fillStyle = `rgba(${col},${up ? .85 : .9})`; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x, Y(c.h)); ctx.lineTo(x, Y(c.l)); ctx.stroke();
-    const y1 = Y(Math.max(c.o, c.c)), y2 = Y(Math.min(c.o, c.c)); ctx.fillRect(x - cw * .36, y1, cw * .72, Math.max(1.5, y2 - y1)); });
-  // glowing levels
-  const lines = [[D.mp, '#d9c04a', 'max pain', [6, 5]], [D.flip, '#a487f0', 'GEX flip', [2, 0]], [D.cw, 'rgb(232,97,95)', 'call wall', [6, 5]], [D.pw, 'rgb(70,184,122)', 'put wall', [6, 5]], [D.spot, '#ffffff', 'spot', [0, 0]]];
-  let lastLy = -1e9;
-  lines.filter(l => Number.isFinite(l[0]) && l[0] >= lo && l[0] <= hi).sort((a, b) => Y(a[0]) - Y(b[0])).forEach(([p, col, t, dash]) => {
-    ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = 10; ctx.strokeStyle = col; ctx.lineWidth = t === 'spot' ? 1.5 : 1.2; ctx.setLineDash(dash[0] ? dash : []); ctx.beginPath(); ctx.moveTo(0, Y(p)); ctx.lineTo(PW, Y(p)); ctx.stroke(); ctx.restore();
-    const ly = Math.max(Y(p) - 4, lastLy + 13); lastLy = ly; ctx.fillStyle = col; ctx.textAlign = 'left'; ctx.font = '600 11px ui-monospace,Consolas,monospace'; ctx.fillText(t + ' ' + px(p), 8, ly); });
-  // right gutter: total gamma if price were here
-  const cur = gexCurve(SYM, D.e, lo, hi);
-  let curvePts = null;
-  ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.strokeRect(gx0 - 6, padT, gx1 - gx0 + 12, H - padT - padB);
-  ctx.fillStyle = '#6b7585'; ctx.textAlign = 'center'; ctx.font = '10.5px ui-monospace,Consolas,monospace'; ctx.fillText('gamma if price were here', (gx0 + gx1) / 2, 12);
-  if (cur) { const key = (NEAR && cur[0].near != null) ? 'near' : 'all'; let m = 0; cur.forEach(c => m = Math.max(m, Math.abs(c[key]))); m = m || 1;
-    const zx = (gx0 + gx1) / 2, X = v => zx + v / m * (gx1 - gx0) / 2 * 0.95;
-    ctx.save(); ctx.beginPath(); cur.forEach((c, i) => { const x = X(c[key]), y = Y(c.P); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.lineTo(zx, Y(cur[cur.length - 1].P)); ctx.lineTo(zx, Y(cur[0].P)); ctx.closePath();
-    const g = ctx.createLinearGradient(gx0, 0, gx1, 0); g.addColorStop(0, `rgba(${SHORT},.55)`); g.addColorStop(.5, 'rgba(255,255,255,.04)'); g.addColorStop(1, `rgba(${LONG},.55)`); ctx.fillStyle = g; ctx.fill(); ctx.restore();
-    ctx.save(); ctx.shadowColor = '#fff'; ctx.shadowBlur = 8; ctx.strokeStyle = '#e8edf5'; ctx.lineWidth = 1.6; ctx.beginPath(); cur.forEach((c, i) => { const x = X(c[key]), y = Y(c.P); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke(); ctx.restore();
-    ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(zx, padT); ctx.lineTo(zx, H - padB); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = `rgba(${SHORT},.9)`; ctx.textAlign = 'left'; ctx.fillText('short', gx0, H - 8); ctx.fillStyle = `rgba(${LONG},.9)`; ctx.textAlign = 'right'; ctx.fillText('long', gx1, H - 8);
-    curvePts = { cur, key };
-    // spot marker on the curve
-    const sp = cur.reduce((b, c) => Math.abs(c.P - D.spot) < Math.abs(b.P - D.spot) ? c : b); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(X(sp[key]), Y(sp.P), 4.5, 0, 7); ctx.fill();
-  } else { ctx.fillStyle = '#6b7585'; ctx.textAlign = 'center'; ctx.fillText('n/a for this pair', (gx0 + gx1) / 2, H / 2); }
-  TERR = { lo, hi, padT, padB, H, W, PW, Y, P, vals, ks, curvePts, cs };
+async function loadCandlesTF(sym, tf){
+  try {
+    const r = await fetch('/api/oanda_ohlc5m?symbol=' + OANDA[sym] + '&granularity=' + tf + '&incomplete=1');
+    const j = await r.json();
+    const seen = new Set();
+    return (j.values || []).map(v => ({ time: +v.t, open: +v.open, high: +v.high, low: +v.low, close: +v.close }))
+      .sort((a, b) => a.time - b.time).filter(c => !seen.has(c.time) && seen.add(c.time));
+  } catch (_) { return []; }
 }
-$('#terrain').addEventListener('mousemove', ev => {
-  if (!TERR || !CUR) return; const r = $('#terrain').getBoundingClientRect(), y = ev.clientY - r.top; const p = TERR.P(y);
-  if (p < TERR.lo || p > TERR.hi) return hideTip();
-  const i = TERR.ks.reduce((b, k, j) => Math.abs(k - p) < Math.abs(TERR.ks[b] - p) ? j : b, 0); const v = TERR.vals[i];
-  let g = ''; if (TERR.curvePts) { const c = TERR.curvePts.cur.reduce((b, c) => Math.abs(c.P - p) < Math.abs(b.P - p) ? c : b); g = `<br>whole book here: <b>${c[TERR.curvePts.key] >= 0 ? 'LONG gamma (pins)' : 'SHORT gamma (amplifies)'}</b>`; }
-  showTip(ev, `<b>${px(p)}</b> · ${((p / CUR.spot - 1) * 100).toFixed(2)}% from spot<br>nearest strike ${px(TERR.ks[i])}: ${v >= 0 ? 'long' : 'short'} gamma ${(Math.abs(v) / (CUR.total / 100)).toFixed(2)}% of book${g}`);
-});
-$('#terrain').addEventListener('mouseleave', hideTip);
+
+function buildField(){
+  const D = CUR; FIELD = []; PEAKS = []; CURVE = null; _bgSig = '';
+  if (!D || !D.L) return;
+  const ks = D.L.strikes, vals = ks.map((k, i) => D.use.reduce((a, j) => a + (D.ser[j].net[i] || 0), 0));
+  const lo = D.spot - 3 * D.rm, hi = D.spot + 3 * D.rm, sg = D.rm * 0.05, NR = 420;
+  for (let r = 0; r < NR; r++) { const P = lo + (hi - lo) * r / (NR - 1); let v = 0;
+    for (let i = 0; i < ks.length; i++) { const d = (ks[i] - P) / sg; if (d > 4 || d < -4) continue; v += vals[i] * Math.exp(-d * d / 2); }
+    FIELD.push({ P, v }); }
+  const m = pctl(FIELD.map(f => Math.abs(f.v)), 0.93) || 1; FIELD.m = m;
+  const pk = []; for (let r = 3; r < FIELD.length - 3; r++) { const f = FIELD[r], a = Math.abs(f.v);
+    if (a > m * 0.5 && [-3, -2, -1, 1, 2, 3].every(d => a >= Math.abs(FIELD[r + d].v))) pk.push(f); }
+  pk.sort((x, y) => Math.abs(y.v) - Math.abs(x.v)); for (const f of pk) if (PEAKS.every(g => Math.abs(g.P - f.P) > D.rm * 0.15) && PEAKS.length < 10) PEAKS.push(f);
+  CURVE = gexCurve(SYM, D.e, lo, hi, 180);
+}
+
+function paintBackdrop(){
+  if (!LW || !CUR || !FIELD.length) return;
+  const host = $('#lw'), bg = $('#bg'), cu = $('#curve'); const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return;
+  const S = LW.series, y0 = S.priceToCoordinate(CUR.spot), y1 = S.priceToCoordinate(CUR.spot + CUR.rm);
+  const sig = [w, h, y0 && y0.toFixed(1), y1 && y1.toFixed(1), LW.chart.priceScale('right').width(), cu.clientWidth, NEAR].join('|');
+  if (sig === _bgSig) return; _bgSig = sig;
+  const dpr = devicePixelRatio || 1;
+  // backdrop
+  bg.width = w * dpr; bg.height = h * dpr; const c = bg.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const plotW = w - LW.chart.priceScale('right').width(), m = FIELD.m;
+  const off = document.createElement('canvas'); off.width = plotW * dpr; off.height = h * dpr; const oc = off.getContext('2d'); oc.setTransform(dpr, 0, 0, dpr, 0, 0);
+  for (let r = 0; r < FIELD.length; r++) { const f = FIELD[r], y = S.priceToCoordinate(f.P), yn = S.priceToCoordinate(FIELD[Math.min(FIELD.length - 1, r + 1)].P); if (y == null || yn == null) continue;
+    if (y < -10 || y > h + 10) continue; const a = Math.min(1, Math.pow(Math.abs(f.v) / m, 0.7)); if (a < 0.04) continue;
+    oc.fillStyle = `rgba(${f.v >= 0 ? LONG : SHORT},${(0.10 + 0.55 * a).toFixed(3)})`; oc.fillRect(0, Math.min(y, yn) - 0.5, plotW, Math.abs(yn - y) + 1.2); }
+  oc.globalCompositeOperation = 'destination-in'; const gr = oc.createLinearGradient(0, 0, plotW, 0); gr.addColorStop(0, 'rgba(0,0,0,.55)'); gr.addColorStop(1, 'rgba(0,0,0,1)'); oc.fillStyle = gr; oc.fillRect(0, 0, plotW, h);
+  c.drawImage(off, 0, 0, plotW, h);
+  c.font = '600 11px ui-monospace,Consolas,monospace'; c.textAlign = 'right';
+  PEAKS.slice(0, 6).forEach(f => { const y = S.priceToCoordinate(f.P); if (y == null || y < 14 || y > h - 14) return; const t = (f.v >= 0 ? 'PIN ZONE ' : 'SPEEDS UP ') + px(f.P); c.lineWidth = 4; c.strokeStyle = 'rgba(6,8,12,.92)'; c.strokeText(t, plotW - 10, y + 4); c.fillStyle = f.v >= 0 ? 'rgb(120,230,164)' : 'rgb(255,140,138)'; c.fillText(t, plotW - 10, y + 4); });
+  // gamma-vs-price curve
+  cu.width = cu.clientWidth * dpr; cu.height = h * dpr; const k = cu.getContext('2d'); k.setTransform(dpr, 0, 0, dpr, 0, 0); const cw = cu.clientWidth;
+  k.strokeStyle = 'rgba(255,255,255,.08)'; k.strokeRect(0.5, 0.5, cw - 1, h - 1);
+  k.fillStyle = '#6b7585'; k.font = '10.5px ui-monospace,Consolas,monospace'; k.textAlign = 'center'; k.fillText('gamma if price were here', cw / 2, 13);
+  if (!CURVE) { k.fillText('n/a for this pair', cw / 2, h / 2); return; }
+  const key = (NEAR && CURVE[0].near != null) ? 'near' : 'all'; let mx = 0; CURVE.forEach(p => mx = Math.max(mx, Math.abs(p[key]))); mx = mx || 1;
+  const zx = cw / 2, X = v => zx + v / mx * (cw / 2) * 0.92;
+  const pts = CURVE.map(p => ({ x: X(p[key]), y: S.priceToCoordinate(p.P) })).filter(p => p.y != null);
+  if (pts.length > 2) {
+    k.save(); k.beginPath(); pts.forEach((p, i) => i ? k.lineTo(p.x, p.y) : k.moveTo(p.x, p.y)); k.lineTo(zx, pts[pts.length - 1].y); k.lineTo(zx, pts[0].y); k.closePath();
+    const g = k.createLinearGradient(0, 0, cw, 0); g.addColorStop(0, `rgba(${SHORT},.55)`); g.addColorStop(.5, 'rgba(255,255,255,.04)'); g.addColorStop(1, `rgba(${LONG},.55)`); k.fillStyle = g; k.fill(); k.restore();
+    k.save(); k.shadowColor = '#fff'; k.shadowBlur = 8; k.strokeStyle = '#e8edf5'; k.lineWidth = 1.6; k.beginPath(); pts.forEach((p, i) => i ? k.lineTo(p.x, p.y) : k.moveTo(p.x, p.y)); k.stroke(); k.restore();
+    k.strokeStyle = 'rgba(255,255,255,.25)'; k.setLineDash([3, 4]); k.beginPath(); k.moveTo(zx, 18); k.lineTo(zx, h - 4); k.stroke(); k.setLineDash([]);
+    const sp = CURVE.reduce((b, p) => Math.abs(p.P - CUR.spot) < Math.abs(b.P - CUR.spot) ? p : b), sy = S.priceToCoordinate(sp.P);
+    if (sy != null) { k.fillStyle = '#fff'; k.beginPath(); k.arc(X(sp[key]), sy, 4.5, 0, 7); k.fill(); }
+    k.font = '10.5px ui-monospace,Consolas,monospace'; k.fillStyle = `rgba(${SHORT},.9)`; k.textAlign = 'left'; k.fillText('short', 6, h - 8); k.fillStyle = `rgba(${LONG},.9)`; k.textAlign = 'right'; k.fillText('long', cw - 6, h - 8);
+  }
+}
+
+function setLevels(){
+  const D = CUR; LW.lines.forEach(l => LW.series.removePriceLine(l)); LW.lines = [];
+  if (!D) return;
+  [[D.flip, '#a487f0', 'GEX flip', 0], [D.mp, '#d9c04a', 'max pain', 2], [D.cw, 'rgb(232,97,95)', 'call wall', 2], [D.pw, 'rgb(70,184,122)', 'put wall', 2]].forEach(([p, color, title, ls]) => {
+    if (Number.isFinite(p) && Math.abs(p - D.spot) < 3 * D.rm) LW.lines.push(LW.series.createPriceLine({ price: p, color, lineWidth: 1, lineStyle: ls, axisLabelVisible: true, title })); });
+}
+
+async function drawTerrain(){
+  if (!window.LightweightCharts) { $('#lw').innerHTML = '<div class="err">TradingView chart library did not load.</div>'; return; }
+  lwInit(); buildField(); setLevels();
+  const D = CUR; if (!D || !D.L) return;
+  const rows = await loadCandlesTF(SYM, TF); if (D !== CUR) return;
+  LW.series.setData(rows); LW.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, rows.length - 220), to: rows.length + 8 });
+  clearInterval(_poll);
+  _poll = setInterval(async () => { const r = await loadCandlesTF(SYM, TF); if (!r.length || D !== CUR) return; r.slice(-3).forEach(b => LW.series.update(b)); }, 10000);
+  _bgSig = '';
+  zonesPanel(); timeBar();
+}
+
+// ── readable summaries under the chart ────────────────────────────────────────────────────
+function zonesPanel(){
+  const D = CUR, el = $('#zones'); if (!D || !PEAKS.length) { el.innerHTML = '<div class="sub">No gamma zones for this pair.</div>'; return; }
+  const ks = D.L.strikes, sg = D.rm * 0.05, mx = Math.max(...PEAKS.map(f => Math.abs(f.v)));
+  const src = P => { let best = null, bv = 0; D.ser.forEach(s => { let t = 0; ks.forEach((k, i) => { if (Math.abs(k - P) <= sg * 2) t += Math.abs(s.net[i] || 0); }); if (t > bv) { bv = t; best = s; } }); return best ? (best.rest ? 'later' : best.dte + ' DTE') : '—'; };
+  const above = PEAKS.filter(f => f.P > D.spot).sort((a, b) => a.P - b.P).slice(0, 3), below = PEAKS.filter(f => f.P <= D.spot).sort((a, b) => b.P - a.P).slice(0, 3);
+  const row = f => `<tr><td>${px(f.P)}</td><td>${((f.P / D.spot - 1) * 100).toFixed(2)}%</td><td style="color:rgb(${f.v >= 0 ? LONG : SHORT})">${f.v >= 0 ? 'PIN zone' : 'SPEEDS UP'}</td><td><span class="bar" style="width:${Math.max(6, Math.abs(f.v) / mx * 70)}px;background:rgb(${f.v >= 0 ? LONG : SHORT})"></span></td><td>${src(f.P)}</td></tr>`;
+  el.innerHTML = `<table class="zt"><tr><th>level</th><th>from spot</th><th>what it does</th><th>strength</th><th>mostly from</th></tr>`
+    + above.reverse().map(row).join('') + `<tr class="spotrow"><td colspan="5">▶ OI spot ${px(D.spot)}</td></tr>` + below.map(row).join('') + `</table>`;
+}
+function timeBar(){
+  const D = CUR, el = $('#timebar'); if (!D || !D.L) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="tb">` + D.ser.map((s, j) => `<div class="seg" style="flex:${Math.max(D.share[j], 2)};background:${D.nearUse.includes(j) ? 'rgba(240,176,74,.75)' : 'rgba(110,122,140,.45)'}"><b>${s.rest ? 'later' : s.dte + 'd'}</b><span>${D.share[j].toFixed(0)}%</span></div>`).join('') + `</div>`
+    + `<div class="sub" style="margin-top:8px">How much of the book's gamma expires when. Amber = within 3 days: <b>${D.nearShare.toFixed(0)}%</b> of the total. The more amber, the more today's dealer hedging is driven by contracts that are about to expire.</div>`;
+}
 
 // ── 02 expiry map ───────────────────────────────────────────────────────────────────────
 function drawMap(){
@@ -362,10 +404,8 @@ async function refresh(){
   await drawTerrain();
 }
 $('#mNear').onclick = () => { NEAR = true; $('#mNear').classList.add('on'); $('#mAll').classList.remove('on'); refresh(); };
-$('#tSm').onclick = () => { RAW = false; $('#tSm').classList.add('on'); $('#tRaw').classList.remove('on'); drawTerrain(); };
-$('#tRaw').onclick = () => { RAW = true; $('#tRaw').classList.add('on'); $('#tSm').classList.remove('on'); drawTerrain(); };
 $('#mAll').onclick = () => { NEAR = false; $('#mAll').classList.add('on'); $('#mNear').classList.remove('on'); refresh(); };
-addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(drawTerrain, 150); });
+document.querySelectorAll('[data-tf]').forEach(b => b.onclick = () => { TF = b.dataset.tf; document.querySelectorAll('[data-tf]').forEach(x => x.classList.toggle('on', x === b)); drawTerrain(); });
 
 (async () => {
   try {
