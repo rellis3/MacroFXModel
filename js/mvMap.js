@@ -69,7 +69,7 @@ const pos = key => {
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /** Short labels — "Investment-grade OAS" does not fit in a 92px node. */
-const SHORT = {
+export const SHORT = {
   us2y: '2-year', tips: 'Real 10y', bei: 'Breakevens', jgbgap: 'JGB gap', bundgap: 'Bund gap',
   giltgap: 'Gilt gap', vix: 'VIX', ovx: 'Oil vol', hy: 'High yield', ccc: 'CCC', dxy: 'Dollar',
   usdjpy: 'USD/JPY', eurusd: 'EUR/USD', gbpusd: 'GBP/USD', audusd: 'AUD/USD', usdcad: 'USD/CAD',
@@ -118,7 +118,13 @@ export const ROLE = {
  * same threshold the findings use, or the map will colour a link amber that the page
  * never mentions.
  */
-export function buildMap(links = [], board = [], { apartZ = 3.1 } = {}) {
+export function buildMap(links = [], board = [], { apartZ = 3.1, sel = null } = {}) {
+  // `sel` is {what:'node'|'link', id} -- the thing the reader has open in the card under
+  // the map. It is passed IN rather than toggled with a DOM class after render because
+  // renderMap() rebuilds the whole svg from innerHTML on every draw, which would wipe a
+  // class set from outside and leave the card open with nothing on the map lit up.
+  const selNode = sel?.what === 'node' ? sel.id : null;
+  const selLink = sel?.what === 'link' ? sel.id : null;
   const byKey = Object.fromEntries(board.map(b => [b.key, b]));
   const drawn = links.filter(l => pos(l.a) && pos(l.b));
 
@@ -143,7 +149,10 @@ export function buildMap(links = [], board = [], { apartZ = 3.1 } = {}) {
     // the label sits at the arc's midpoint, upright, on its own plate so it stays
     // readable where lines cross
     const lx = 0.25 * A.x + 0.5 * cx + 0.25 * B.x, ly = 0.25 * A.y + 0.5 * cy + 0.25 * B.y;
-    return `<g class="mmEg ${cls}" onclick="mapPick('link','${esc(L.id)}')">
+    // a selected NODE lights its own lines too, or clicking a box dims away the very
+    // thing the box is there to show you -- what it is connected to
+    const onSel = selLink === L.id ? ' sel' : selNode && (L.a === selNode || L.b === selNode) ? ' lit' : '';
+    return `<g class="mmEg ${cls}${onSel}" onclick="mapPick('link','${esc(L.id)}')">
       <title>${esc(L.labelA)} → ${esc(L.labelB)} — ${
         L.weak ? 'too loose to mean anything' : apart ? 'come apart today' : 'holding'} (${Math.abs(L.corr).toFixed(2)})${lab ? ' · ' + esc(lab) : ''}</title>
       <path class="mmE ${cls}" d="M${A.x},${A.y} Q${cx.toFixed(0)},${cy.toFixed(0)} ${qx.toFixed(0)},${qy.toFixed(0)}"
@@ -154,6 +163,13 @@ export function buildMap(links = [], board = [], { apartZ = 3.1 } = {}) {
   }).join('');
 
   const touched = new Set(drawn.flatMap(l => [l.a, l.b]));
+  // when a LINK is open, light both its ends too -- the card names two markets and the
+  // reader should not have to trace an arc back to find which boxes they are
+  const selL = selLink ? drawn.find(l => l.id === selLink) : null;
+  const selLinkEnds = new Set(selL ? [selL.a, selL.b] : []);
+  // ...and, for a selected node, its neighbours: "what does a move here arrive at" is
+  // the question the map exists to answer, so the answer must not be dimmed out
+  if (selNode) for (const l of drawn) { if (l.a === selNode) selLinkEnds.add(l.b); else if (l.b === selNode) selLinkEnds.add(l.a); }
   const nodes = Object.keys(LAYOUT).filter(k => touched.has(k)).map(k => {
     const p = pos(k), b = byKey[k];
     const z = Math.abs(b?.z ?? 0);
@@ -164,7 +180,7 @@ export function buildMap(links = [], board = [], { apartZ = 3.1 } = {}) {
     const val = b ? (b.kind === 'price' ? `${b.change > 0 ? '+' : ''}${b.change.toFixed(1)}%`
       : b.kind === 'rate' || b.kind === 'gap' ? `${b.change > 0 ? '+' : ''}${Math.round(b.change)}bp`
       : `${b.change > 0 ? '+' : ''}${b.change.toFixed(1)}`) : '';
-    return `<g class="mmN${hot}" onclick="mapPick('node','${esc(k)}')" tabindex="0">
+    return `<g class="mmN${hot}${selNode === k ? ' sel' : ''}${sel && selNode !== k && selLinkEnds.has(k) ? ' lit' : ''}" onclick="mapPick('node','${esc(k)}')" tabindex="0">
       <rect x="${p.x - RX}" y="${p.y - RY}" width="${RX * 2}" height="${RY * 2}" rx="8"
         class="mmBox" stroke-width="${ring}"/>
       <rect x="${p.x - RX}" y="${p.y - RY + 3}" width="3" height="${RY * 2 - 6}" rx="1.5"

@@ -14788,7 +14788,19 @@ async function _buildDataHealth() {
   try { const k = _rates.series ? Object.keys(_rates.series)[0] : null; push('rates', 'Rates complex (FRED)', k ? lastOf(_rates.series[k]) : null, 1, { refreshEveryH: 6 }); } catch { push('rates', 'Rates complex (FRED)', null, 1, { refreshEveryH: 6 }); }
   try { const k = _chapters.data?.series ? Object.keys(_chapters.data.series)[0] : null; push('chapters', 'Chapter series (FRED)', k ? lastOf(_chapters.data.series[k]) : null, 1, { refreshEveryH: 24 }); } catch { push('chapters', 'Chapter series (FRED)', null, 1, { refreshEveryH: 24 }); }
   push('nowcast', 'Nowcasts (Cleveland/GDPNow)', _nowcast.at || null, 7, { market: false, refreshEveryH: 24 });
-  push('regime', 'Currency regime table', _macroRegime.at || null, 30, { market: false, refreshEveryH: 24 });
+  // The regime row reported _macroRegime.at -- the moment the server last REBUILT the
+  // table, not the date of the newest data in it. So it read "0.0 months behind" every
+  // time anything triggered a refetch, and a build that silently stopped producing new
+  // months would still have shown `fresh`. Its siblings above all pass a DATA date;
+  // this one was the exception. The history is monthly (`m: "2026-09"`), and a month's
+  // data is complete at its END, so date it there -- dating it to the 1st would overstate
+  // the age by up to a month and flag a perfectly current monthly series as late.
+  try {
+    const hm = _macroRegime.history?.at?.(-1)?.m ?? null;
+    const mm = /^(\d{4})-(\d{2})$/.exec(String(hm ?? ''));
+    const eom = mm ? new Date(Date.UTC(+mm[1], +mm[2], 0)).toISOString().slice(0, 10) : null;
+    push('regime', 'Currency regime table', eom, 30, { market: false, refreshEveryH: 24, builtAt: _macroRegime.at || null });
+  } catch { push('regime', 'Currency regime table', null, 30, { market: false, refreshEveryH: 24 }); }
 
   // CVOL: each leg on its own, because that is where the dead one hid
   try {

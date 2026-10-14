@@ -451,6 +451,46 @@
   .mmT{fill:var(--text);font-size:10.5px;font-weight:700}
   .mmV{fill:var(--text3);font-size:9.5px;font-weight:600;font-variant-numeric:tabular-nums}
   .mmV.up{fill:var(--bull)} .mmV.dn{fill:var(--red)}
+  /* SELECTION. A click on the map used to scroll you to the list underneath, which
+     meant every question you asked of the picture took the picture off the screen --
+     and the picture is the thing that answers "what is upstream of what". The answer
+     now opens in a card BESIDE the map with the node or line lit up, the way the
+     chain board on today.html works, so you keep the shape in view while you read. */
+  .mmN.sel .mmBox{stroke:var(--blue);stroke-width:2.6}
+  .mmN.sel .mmT{fill:var(--blue)}
+  .mmN.lit .mmBox{stroke:var(--blue);stroke-width:2}
+  .mmEg.sel .mmE{opacity:1;stroke-width:6}
+  .mmEg.sel .mmL{fill:var(--text)}
+  .mmEg.sel .mmE.hold{stroke:var(--blue)}
+  /* dim everything that is NOT the selection, so one relationship stands out of twenty */
+  .mapwrap.has-sel .mmN:not(.sel):not(.lit){opacity:.42}
+  .mapwrap.has-sel .mmEg:not(.sel):not(.lit){opacity:.22}
+  .mmEg.lit .mmE{opacity:1;stroke-width:4.5}
+  .mmEg.lit .mmL{fill:var(--text2)}
+  /* the card. On a wide screen it sits to the RIGHT of the map and the map keeps its
+     own horizontal scroll; below 1100px it drops under, still without moving the page. */
+  .maprow{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:start}
+  .maprow.open{grid-template-columns:minmax(0,1fr) 330px}
+  @media (max-width:1180px){ .maprow.open{grid-template-columns:minmax(0,1fr)} }
+  .mapcard{border:1px solid var(--border);border-left:3px solid var(--blue);background:var(--card2);
+           border-radius:0 10px 10px 0;padding:11px 13px;font-size:12px;line-height:1.55;color:var(--text2);
+           position:sticky;top:10px;max-height:calc(100vh - 30px);overflow-y:auto}
+  .mapcard b{color:var(--text)}
+  .mapcard .h{display:block;font-size:13.5px;font-weight:700;color:var(--text);margin-right:38px}
+  .mapcard .role{font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-top:1px}
+  .mapcard .x{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--text3);font-size:11px}
+  .mapcard .legs{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:7px;font-size:11.5px;color:var(--text3)}
+  .mapcard .legs b.up{color:var(--bull)} .mapcard .legs b.dn{color:var(--red)}
+  .mapcard .sect{margin-top:8px}
+  .mapcard .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+  .mapcard .chip{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;cursor:pointer;
+                 border:1px solid var(--border2);background:var(--card);color:var(--text2);line-height:1.5}
+  .mapcard .chip:hover{border-color:var(--blue);color:var(--text)}
+  .mapcard .chip.apart{border-color:var(--amber);color:var(--amber)}
+  .mapcard .chip.hold{border-color:var(--bull);color:var(--bull)}
+  .mapcard .chip.loose{opacity:.6}
+  .mapcard .foot{margin-top:9px;font-size:11px;color:var(--text3)}
+  .mapcard .foot a{color:var(--blue)}
   .mmkey{display:flex;gap:16px;flex-wrap:wrap;margin-top:9px;font-size:11px;color:var(--text3);align-items:center}
   .mmkey i{display:inline-block;width:22px;height:0;border-top-width:3px;border-top-style:solid;
            margin-right:6px;vertical-align:middle}
@@ -641,7 +681,7 @@
     <div class="card s12" data-panel="p-wire">
       <h2>How this market is wired today</h2>
       <div class="sub">Every relationship, ranked by how far apart the two markets are <b>today</b> against three years of how they actually moved. The bar is the real strength of the link — a loose one has nothing to break.</div>
-      <div id="wireMap"></div>
+      <div class="maprow" id="maprow"><div id="wireMap"></div><div id="mapExp"></div></div>
       <div id="impactBox"></div>
       <div id="wire">Scoring the relationships…</div>
       <div class="srcbox" data-p="wire"></div>
@@ -731,7 +771,7 @@ import * as ReplayDrill from './js/replayDrill.js';
 window.replayDrillBrick = ReplayDrill;
 import { dualLine, levelLine, histogram, spark } from './js/mvChart.js';
 import { analogues, keysFor } from './js/analogue.js';
-import { buildMap } from './js/mvMap.js';
+import { buildMap, SHORT, ROLE, EDGE_LABEL } from './js/mvMap.js';
 import { impactBoard, VERDICTS } from './js/impact.js';
 import { deskRead, TERMS } from './js/deskRead.js';
 import { explainMove } from './js/explainMove.js';
@@ -862,20 +902,33 @@ function renderWire() {
   if (WSEL) renderWireExp();
 }
 
-function renderWireExp() {
-  const box = $('wireExp'), L = LINKZ.find(x => x.id === WSEL);
-  if (!box) return;
-  if (!L) { box.innerHTML = ''; return; }
-  const apart = !L.weak && Math.abs(L.z) >= 1.8;
+/**
+ * The verdict on one relationship, in words.
+ *
+ * Lifted out of renderWireExp because the map card now says the same thing about the
+ * same link. Two copies of this paragraph would have drifted the first time either was
+ * edited, and the page would have told you a link was holding in one panel and come
+ * apart in the other.
+ */
+function linkApart(L) { return !L.weak && Math.abs(L.z) >= 1.8; }
+function linkVerdictHtml(L) {
+  const apart = linkApart(L);
   // A link nobody should lean on says so first -- the alternative is a page that
   // presents a 0.05 correlation with the same confidence as a 0.9 one.
-  const verdict = L.weak
+  return L.weak
     ? `<b>These two have not actually moved together.</b> Over the last three years the relationship measures ${L.corr.toFixed(2)}, which is close enough to nothing that there is no link here to break. Whatever they are doing today, it is not evidence about this mechanism.`
     : !L.agrees
       ? `<b>Over this sample they have been the wrong way round.</b> The textbook says ${L.expect > 0 ? 'together' : 'opposite'}; the last three years say ${L.corr > 0 ? 'together' : 'opposite'} (${L.corr.toFixed(2)}). Something other than the stated mechanism has been driving both legs.`
       : apart
         ? `<b>Today they are further apart than on ${Math.round(L.pct * 100)}% of the last three years.</b> They normally move ${L.corr > 0 ? 'together' : 'in opposite directions'} (${Math.abs(L.corr).toFixed(2)}).`
         : `<b>Holding.</b> They normally move ${L.corr > 0 ? 'together' : 'in opposite directions'} (${Math.abs(L.corr).toFixed(2)}), and today's gap is ordinary — bigger than only ${Math.round(L.pct * 100)}% of the last three years.`;
+}
+
+function renderWireExp() {
+  const box = $('wireExp'), L = LINKZ.find(x => x.id === WSEL);
+  if (!box) return;
+  if (!L) { box.innerHTML = ''; return; }
+  const apart = linkApart(L), verdict = linkVerdictHtml(L);
   box.innerHTML = `<div class="exp"><span class="x" onclick="selWire('${esc(L.id)}')">close ✕</span>
     <span class="h">${esc(L.labelA)} → ${esc(L.labelB)}</span>
     <div class="legs"><span>${esc(L.labelA)} <b class="${L.moveA > 0 ? 'up' : 'dn'}">${esc(fmtUnitJs(L.moveA, L.kindA))}</b></span>
@@ -1528,9 +1581,9 @@ function renderLearn() {
  * between a legend and an explanation.
  */
 function renderMap() {
-  if (!LINKZ.length) { $('wireMap').innerHTML = ''; return; }
-  const m = buildMap(LINKZ, SCORED, { apartZ: 3.1 });
-  $('wireMap').innerHTML = `<div class="mapwrap">${m.svg}</div>
+  if (!LINKZ.length) { $('wireMap').innerHTML = ''; $('mapExp').innerHTML = ''; return; }
+  const m = buildMap(LINKZ, SCORED, { apartZ: 3.1, sel: MSEL });
+  $('wireMap').innerHTML = `<div class="mapwrap${MSEL ? ' has-sel' : ''}">${m.svg}</div>
     <div class="mmkey">
       <span class="kh"><i></i><b>${m.counts.hold} holding</b></span>
       <span class="ka"><i></i><b>${m.counts.apart} come apart today</b></span>
@@ -1538,14 +1591,84 @@ function renderMap() {
       <span>Thicker line = they actually move together more</span>
       <span>Amber box = that market’s own move is rare</span>
       <span>Left → right is roughly cause → effect</span>
+      <span class="muted">Click any box or line for what it is and what it is doing</span>
     </div>`;
+  renderMapExp();
 }
 
-/** A click on the map goes to the same detail the list and the board already show. */
+/**
+ * What a click on the map does.
+ *
+ * It used to scroll you to the row in the list below, or to the tile on the board --
+ * which answered the question and took the map off the screen to do it. The map is the
+ * only thing on this page that shows what sits UPSTREAM of what, and that shape is the
+ * reason to look at it; losing it to read one sentence is a bad trade. So the answer now
+ * opens in a card beside the map with the thing you clicked lit up and everything else
+ * dimmed, exactly like the chain board on today.html. Clicking the same thing again
+ * closes it, Escape closes it, and the links to the full row and the board tile are still
+ * there as an explicit next step rather than something that happens to you.
+ */
+let MSEL = null;
 window.mapPick = (what, id) => {
-  if (what === 'link') { const el = document.getElementById('wire'); selWire(id); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-  else selTile(id);
+  MSEL = (MSEL && MSEL.what === what && MSEL.id === id) ? null : { what, id };
+  renderMap();
 };
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && MSEL) { MSEL = null; renderMap(); } });
+
+/** One market: what it is, what it did, and every link on the map that touches it. */
+function mapNodeCard(k) {
+  const s = SCORED.find(x => x.key === k);
+  const name = s?.label ?? SHORT[k] ?? k;
+  const touching = LINKZ.filter(L => L.a === k || L.b === k);
+  const word = L => L.weak ? 'loose' : linkApart(L) ? 'apart' : 'hold';
+  const T = s ? tierOf(s.z) : { cls: '', word: '' };
+  const pctWord = !s ? '' : s.pct >= 0.95 ? 'the top 5%' : s.pct >= 0.8 ? 'the top fifth'
+    : s.pct <= 0.05 ? 'the bottom 5%' : s.pct <= 0.2 ? 'the bottom fifth' : 'the ordinary middle';
+  const apartN = touching.filter(L => !L.weak && linkApart(L)).length;
+  return `<div class="mapcard"><span class="x" onclick="mapPick('node','${esc(k)}')">close ✕</span>
+    <span class="h">${esc(name)}</span>
+    <div class="role">${esc(ROLE[k] ?? '')}</div>
+    ${s ? `<div class="sect">${esc(fmtLevel(s))} · <b class="${s.change > 0 ? 'up' : 'dn'}">${esc(fmtChange(s))}</b> over twenty sessions</div>
+    <div class="sect">${esc(s.what ?? '')}</div>
+    <div class="sect">That move sits in <b>${pctWord}</b> of this market’s own twenty-session moves over three years <span class="muted">(z ${s.z >= 0 ? '+' : ''}${s.z.toFixed(1)}${esc(T.word)}, ${s.n} windows)</span>.</div>`
+    : '<div class="sect muted">No scored reading for this market today.</div>'}
+    <div class="sect"><b>What it is wired to</b>${apartN ? ` — <span style="color:var(--amber)">${apartN} come apart today</span>` : touching.length ? ' — all holding or too loose to judge' : ''}
+      <div class="chips">${touching.length
+        ? touching.map(L => { const other = L.a === k ? L.b : L.a, w = word(L);
+            return `<span class="chip ${w}" onclick="mapPick('link','${esc(L.id)}')" title="${esc(EDGE_LABEL[L.id] ?? '')}">${esc(SHORT[other] ?? other)}${EDGE_LABEL[L.id] ? ' · ' + esc(EDGE_LABEL[L.id]) : ''}</span>`; }).join('')
+        : '<span class="muted">Nothing on this map connects to it.</span>'}</div></div>
+    <div class="foot">${s ? `<a href="#" onclick="selTile('${esc(k)}');document.getElementById('board').scrollIntoView({behavior:'smooth',block:'center'});return false">open it on the board ↓</a> · ` : ''}<a href="evidence.html" target="_blank">what this desk has tested →</a></div>
+  </div>`;
+}
+
+/** One relationship: the same verdict the list gives, without leaving the picture. */
+function mapLinkCard(id) {
+  const L = LINKZ.find(x => x.id === id);
+  if (!L) return '';
+  const apart = linkApart(L), lab = EDGE_LABEL[L.id];
+  return `<div class="mapcard"><span class="x" onclick="mapPick('link','${esc(L.id)}')">close ✕</span>
+    <span class="h">${esc(L.labelA)} → ${esc(L.labelB)}</span>
+    ${lab ? `<div class="role">${esc(lab)}</div>` : ''}
+    <div class="legs"><span>${esc(L.labelA)} <b class="${L.moveA > 0 ? 'up' : 'dn'}">${esc(fmtUnitJs(L.moveA, L.kindA))}</b></span>
+      <span>${esc(L.labelB)} <b class="${L.moveB > 0 ? 'up' : 'dn'}">${esc(fmtUnitJs(L.moveB, L.kindB))}</b></span>
+      <span class="muted">twenty sessions</span></div>
+    <div class="sect">${esc(L.normally)}</div>
+    <div class="sect">${linkVerdictHtml(L)}</div>
+    ${apart ? `<div class="sect"><b>So what do you go and look at?</b> ${esc(L.apart)}</div>` : ''}
+    <div class="sect muted" style="font-size:11px">${apart ? 'This does not say which of the two is wrong, and it does not say the gap closes — tested here (S5), neither leg is reliably the one that corrects. ' : ''}Twenty-session windows overlap, so read the percentage rather than treating it as a one-in-forty event.</div>
+    <div class="sect"><b>Either end</b><div class="chips">
+      <span class="chip" onclick="mapPick('node','${esc(L.a)}')">${esc(SHORT[L.a] ?? L.labelA)}</span>
+      <span class="chip" onclick="mapPick('node','${esc(L.b)}')">${esc(SHORT[L.b] ?? L.labelB)}</span></div></div>
+    <div class="foot"><a href="#" onclick="selWire('${esc(L.id)}');document.getElementById('wire').scrollIntoView({behavior:'smooth',block:'center'});return false">the full row below ↓</a></div>
+  </div>`;
+}
+
+function renderMapExp() {
+  const box = $('mapExp'), row = $('maprow');
+  if (!box) return;
+  row?.classList.toggle('open', !!MSEL);
+  box.innerHTML = !MSEL ? '' : MSEL.what === 'node' ? mapNodeCard(MSEL.id) : mapLinkCard(MSEL.id);
+}
 
 /**
  * How loud a tile should be.
