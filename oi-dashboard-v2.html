@@ -46,6 +46,11 @@ h1 b{color:var(--acc)} h1 small{color:var(--tx3);font-size:11px;letter-spacing:.
 .zt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}.zt th{color:var(--tx3);font-weight:500;text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px}
 .zt td{padding:6px 8px;border-top:1px solid var(--line)}.zt .bar{display:inline-block;height:7px;border-radius:4px}.zt .spotrow td{color:var(--acc);background:rgba(240,176,74,.07)}
 .tb{display:flex;gap:3px;height:54px}.tb .seg{border-radius:6px;display:flex;flex-direction:column;justify-content:center;align-items:center;font:12px var(--mono);min-width:34px}.tb .seg b{font-weight:600}.tb .seg span{font-size:10.5px;opacity:.85}
+#brief .bgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}#brief .bgrid>.card:first-child{grid-column:1/-1}#brief .bgrid>.card:last-child{grid-column:1/-1}
+@media(max-width:1200px){#brief .bgrid{grid-template-columns:1fr}}
+.pb{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.pb i{display:inline-block;height:7px;border-radius:4px;min-width:2px}.pb b{font-weight:600;font-size:12px}
+.bp{margin-bottom:0}.dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:8px}
+.minis{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}.mini{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:130px}.mini .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)}.mini .v{font:600 18px var(--mono)}.mini .n{font-size:11.5px;color:var(--tx3)}
 details.xp>summary{cursor:pointer;font-size:13px;letter-spacing:.14em;text-transform:uppercase;list-style:none}details.xp[open]>summary{margin-bottom:14px}
 svg text{font-family:var(--mono)}
 #tip{position:fixed;pointer-events:none;background:rgba(10,13,18,.96);border:1px solid var(--line2);border-radius:8px;padding:8px 11px;font:12px/1.45 var(--mono);color:var(--tx);z-index:9;display:none;max-width:320px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
@@ -61,13 +66,16 @@ svg text{font-family:var(--mono)}
   <header>
     <h1><b>◆</b> OI Lab<small>V2 · PLAYGROUND — the same data, drawn differently</small></h1>
     <div class="sp"></div>
-    <div class="tgl" title="Which expiries feed the terrain, curves and mountains">
+    <div class="tgl"><span class="pill on" id="vBrief">Brief</span><span class="pill" id="vLab">Gamma lab</span></div>
+    <div class="tgl" id="nearTgl" style="display:none" title="Which expiries feed the terrain and curves">
       <span class="pill on" id="mNear">Near expiries (≤3 DTE)</span><span class="pill" id="mAll">Whole book</span>
     </div>
     <a class="btn" href="oi-dashboard.html">Classic dashboard</a>
   </header>
   <div class="rail" id="rail"></div>
-  <div class="stats" id="stats"></div>
+  <div class="stats" id="stats" style="display:none"></div>
+  <div id="brief"></div>
+  <div id="labView" style="display:none">
 
   <div class="card">
     <h2><em>01</em> Live gamma terrain
@@ -104,13 +112,14 @@ svg text{font-family:var(--mono)}
     <svg id="heat" width="100%" viewBox="0 0 1500 640"></svg>
   </div>
   </details>
+  </div>
   <div id="note" class="legend"></div>
 </div>
 <div id="tip"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <script type="module">
-import { oiMatrixExpiryLegs, oiContractSize, oiFlatVol } from './js/oi.js';
+import { oiMatrixExpiryLegs, oiContractSize, oiFlatVol, parseOIMatrix } from './js/oi.js';
 import { bsGamma } from './js/gammaGreeks.js';
 
 const $ = s => document.querySelector(s);
@@ -118,7 +127,7 @@ const NAMES = {'XAU/USD':'GOLD','NAS100_USD':'NQ','SPX500_USD':'SPX','US2000_USD
 const OANDA = {'XAU/USD':'XAU_USD','NAS100_USD':'NAS100_USD','SPX500_USD':'SPX500_USD','US2000_USD':'US2000_USD','US30_USD':'US30_USD','EUR/USD':'EUR_USD','GBP/USD':'GBP_USD','USD/JPY':'USD_JPY','AUD/USD':'AUD_USD','USD/CAD':'USD_CAD','USD/CHF':'USD_CHF'};
 const INVERTED = new Set(['USD/JPY','USD/CAD','USD/CHF']);
 const LONG='70,184,122', SHORT='232,97,95';
-let STORE = {}, SYM = 'NAS100_USD', NEAR = true, CUR = null;
+let STORE = {}, SYM = 'NAS100_USD', NEAR = true, CUR = null, VIEW = 'brief';
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const dp = (sym) => /JPY/.test(sym) ? 3 : /USD$|EUR|GBP|AUD|CAD|CHF/.test(sym) && !/XAU|NAS|SPX|US30|US2000/.test(sym) ? 5 : 1;
@@ -356,6 +365,181 @@ async function drawAhead(){
   $('#aheadNote').innerHTML = `Probabilities are calibrated against a reliability curve fitted on <b>${esc(cal.source || 'EUR/USD')}</b> (out-of-sample error ±${cal.oosErrPp ?? '?'}pp) — treat them as approximate on other instruments. ${(() => { const far = walls.filter(w => !shown.includes(w)).sort((a, b) => Math.abs(a.price - anchor) - Math.abs(b.price - anchor)).slice(0, 5); return far.length ? '<br>Out of reach in this window (not drawn): ' + far.map(w => `${w.types.map(t => NAMEL[t] || t).join('+')} ${px(w.price)} (${(w.calibrated * 100).toFixed(0)}%)`).join(' · ') : ''; })()}`;
 }
 
+// ═══ THE BRIEF — six panels in the order a trader asks the questions ═══════════════════════════════════════════════
+// 1 how far can price plausibly go today · 2 which levels will it actually reach · 3 where do options flows stabilise or add volatility
+// 4 is the options market calmer or more nervous · 5 is positioning building or unwinding · 6 what changed overnight, and where.
+let HIST = null, DAILY = {}, BTAB = { iv: 'term', pos: 'pc' }, _brTok = 0;
+const median = a => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : null; };
+const fmtMove = v => (Math.abs(v) >= 100 ? Math.round(v).toLocaleString() : v.toFixed(Math.abs(v) >= 10 ? 1 : 2));
+
+async function getHist(){ if (HIST) return HIST; try { const r = await fetch('/api/kv/get?key=oi_history'); const j = await r.json(); HIST = j.data ?? {}; } catch (_) { HIST = {}; } return HIST; }
+async function getDaily(sym){ if (DAILY[sym]) return DAILY[sym];
+  try { const r = await fetch('/api/oanda_ohlc5m?symbol=' + OANDA[sym] + '&granularity=D'); const j = await r.json();
+    DAILY[sym] = (j.values || []).map(v => ({ t: +v.t, o: +v.open, h: +v.high, l: +v.low, c: +v.close })).sort((a, b) => a.t - b.t); } catch (_) { DAILY[sym] = []; }
+  return DAILY[sym]; }
+async function getReach(sym, h){ const key = sym + '|' + h; if (!REACHC[key] || Date.now() - REACHC[key].at > 120000) { try { const r = await fetch(`/api/oi-reachability?pair=${encodeURIComponent(sym)}&h=${h}`); REACHC[key] = { j: await r.json(), at: Date.now() }; } catch (_) { return null; } } return REACHC[key].j; }
+
+const card = (n, title, body, extra = '') => `<div class="card bp"><h2><em>${n}</em> ${title}${extra}</h2>${body}</div>`;
+const tabs = (grp, opts) => `<span class="tgl">${opts.map(([k, t]) => `<span class="pill${BTAB[grp] === k ? ' on' : ''}" data-bt="${grp}:${k}">${t}</span>`).join('')}</span>`;
+
+async function drawBrief(){
+  const D = CUR, el = $('#brief'), tok = ++_brTok; if (!D) { el.innerHTML = ''; return; }
+  const e = D.e, sym = SYM;
+  const [hist, daily, r1, r4, r8] = await Promise.all([getHist(), getDaily(sym), getReach(sym, 12), getReach(sym, 48), getReach(sym, 96)]); if (tok !== _brTok) return;
+  const em = e.expectedMove, dayMove = em ? (Number.isFinite(em.daily) ? em.daily : em.move) : null;      // straddle-implied typical move, scaled to one day
+  const sig = dayMove ? dayMove * 1.2533 : null;                                                           // typical |move| = 0.8σ  →  σ = move / 0.8
+  const dly = daily.slice(-9), ydy = dly.length >= 2 ? dly[dly.length - 2] : null, tdy = dly[dly.length - 1];
+  const ranges5 = dly.slice(-6, -1).map(d => d.h - d.l), med5 = median(ranges5);
+  const px0 = tdy ? tdy.c : D.spot, chg = ydy && tdy ? px0 - ydy.c : null;
+  const H = hist[sym] ? Object.keys(hist[sym]).sort().map(d => ({ d, ...hist[sym][d] })) : [];
+  const pcNow = e.pcRatio, pcPrev = H.length >= 2 ? H[H.length - 2].pcRatio : null;
+  const ivd = e.ivDynamics, rr = e.riskReversal;
+  const nerv = ivd && Number.isFinite(ivd.atmChg) ? ivd.atmChg > 0.3 : null;
+  const cc = e.totalCallChg, pcg = e.totalPutChg, tc = e.totalCallOI, tp = e.totalPutOI;
+  const pctC = tc ? cc / tc * 100 : null, pctP = tp ? pcg / tp * 100 : null, pctT = (tc + tp) ? (cc + pcg) / (tc + tp) * 100 : null;
+  // ── header chips
+  const chip = (k, v, n, extra = '') => `<div class="stat" ${extra}><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n}</div></div>`;
+  let html = `<div class="stats">`
+    + chip('Price (latest daily close)', px(px0), chg != null ? `<span style="color:${chg >= 0 ? `rgb(${LONG})` : `rgb(${SHORT})`}">${chg >= 0 ? '+' : ''}${fmtMove(chg)} (${(chg / (px0 - chg) * 100).toFixed(2)}%) on the day</span>` : '')
+    + chip('Typical move today', dayMove ? '± ' + fmtMove(dayMove) : '—', dayMove ? `from the options straddle · 68% ±${fmtMove(sig)} · 95% ±${fmtMove(sig * 1.96)}` : 'no straddle stored')
+    + chip('IV (ATM, front)', ivd ? ivd.atmIV.toFixed(1) + '%' : '—', ivd && Number.isFinite(ivd.atmChg) ? `<span style="color:${ivd.atmChg > 0 ? 'var(--acc)' : 'var(--cy)'}">${ivd.atmChg > 0 ? '▲' : '▼'} ${Math.abs(ivd.atmChg).toFixed(2)}% vs yesterday</span>` : '')
+    + chip('Options sentiment', nerv == null ? '—' : `<span style="color:${nerv ? 'var(--acc)' : 'var(--cy)'}">${nerv ? 'MORE NERVOUS' : 'CALMER'}</span>`, `P/C ${pcPrev != null ? pcPrev.toFixed(2) + ' → ' : ''}${Number.isFinite(pcNow) ? (+pcNow).toFixed(2) : '—'}${rr ? ' · skew ' + (rr.tilt || '') : ''}`)
+    + chip('Positioning (Δ OI)', pctT == null ? '—' : `<span style="color:${pctT >= 0 ? `rgb(${LONG})` : `rgb(${SHORT})`}">${pctT >= 0 ? 'BUILDING' : 'UNWINDING'}</span>`, pctT == null ? '' : `calls ${pctC >= 0 ? '+' : ''}${pctC.toFixed(1)}% · puts ${pctP >= 0 ? '+' : ''}${pctP.toFixed(1)}%`)
+    + `</div><div class="bgrid">`;
+
+  // ── 1 plausible range
+  const spanH = sig ? sig * 1.96 * 1.25 : 1; const lo = px0 - spanH, hi = px0 + spanH, W1 = 1000, RX = x => 30 + (x - lo) / (hi - lo) * (W1 - 60);
+  let s1 = '';
+  if (sig) {
+    s1 = `<svg viewBox="0 0 1000 190" width="100%">`
+      + `<rect x="${RX(px0 - sig * 1.96)}" y="62" width="${RX(px0 + sig * 1.96) - RX(px0 - sig * 1.96)}" height="34" rx="6" fill="rgba(92,200,255,.18)"/>`
+      + `<rect x="${RX(px0 - sig)}" y="62" width="${RX(px0 + sig) - RX(px0 - sig)}" height="34" rx="6" fill="rgba(92,200,255,.42)"/>`
+      + `<rect x="${RX(px0 - dayMove)}" y="62" width="${RX(px0 + dayMove) - RX(px0 - dayMove)}" height="34" rx="6" fill="none" stroke="#fff" stroke-dasharray="3 3" opacity=".7"/>`
+      + (ydy ? `<rect x="${RX(Math.max(lo, ydy.l))}" y="112" width="${Math.max(2, RX(Math.min(hi, ydy.h)) - RX(Math.max(lo, ydy.l)))}" height="16" rx="4" fill="rgba(160,170,185,.5)"/><text x="${RX(Math.max(lo, ydy.l))}" y="146" fill="#a8b1bd" font-size="11.5">yesterday's actual range ${fmtMove(ydy.h - ydy.l)} (${px(ydy.l)} – ${px(ydy.h)})</text>` : '')
+      + (med5 ? `<line x1="${RX(px0 - med5 / 2)}" x2="${RX(px0 - med5 / 2)}" y1="56" y2="102" stroke="#f0b04a" stroke-dasharray="4 3"/><line x1="${RX(px0 + med5 / 2)}" x2="${RX(px0 + med5 / 2)}" y1="56" y2="102" stroke="#f0b04a" stroke-dasharray="4 3"/><text x="${RX(px0 + med5 / 2) + 6}" y="52" fill="#f0b04a" font-size="11.5">5-day median realised range ${fmtMove(med5)}</text>` : '')
+      + `<line x1="${RX(px0)}" x2="${RX(px0)}" y1="50" y2="102" stroke="#fff" stroke-width="2"/><text x="${RX(px0)}" y="40" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">${px(px0)}</text>`
+      + [[px0 - sig * 1.96, '95%'], [px0 - sig, '68%'], [px0 + sig, '68%'], [px0 + sig * 1.96, '95%']].map(([v, t]) => `<text x="${RX(v)}" y="164" text-anchor="middle" fill="#7fd0ff" font-size="12">${t}</text><text x="${RX(v)}" y="180" text-anchor="middle" fill="#a8b1bd" font-size="11.5">${px(v)}</text>`).join('')
+      + `</svg><div class="sub" style="margin:4px 0 0">Blue = the range the options market is pricing for today (dark 68%, light 95%); the white dashed box is the straddle's own "typical move". Grey = what price really did yesterday; amber = the median of the last five days. <b>If the amber lines sit well inside the blue, options are priced richer than recent reality, and vice versa.</b></div>`;
+  } else s1 = '<div class="sub">No option straddle stored for this pair.</div>';
+  html += card(1, "Today's plausible range", s1);
+
+  // ── 2 key levels + touch probabilities
+  const lv = new Map(); const addR = (R, k) => (R?.walls || []).forEach(w => { const key = Math.round(w.price * 2) / 2; const g = lv.get(key) || { price: w.price, types: [], p: {}, raw: {} }; if (!g.types.includes(w.type)) g.types.push(w.type); g.p[k] = Math.max(g.p[k] || 0, w.calibrated); g.raw[k] = Math.max(g.raw[k] || 0, w.raw || 0); lv.set(key, g); });
+  addR(r1, 1); addR(r4, 4); addR(r8, 8);
+  // A level reached within 1h is by definition reached within 4h and 8h. The three runs use separate simulations AND separate calibration
+  // curves (the 4h/8h curve flat-tops near 59%), so the raw outputs can come back non-monotonic (e.g. 67% at 1h, 59% at 4h). Enforce the logic.
+  lv.forEach(g => { g.p[4] = Math.max(g.p[4] || 0, g.p[1] || 0); g.p[8] = Math.max(g.p[8] || 0, g.p[4] || 0); });
+  const tier = pr => { const all = [...(e.callWalls || []), ...(e.putWalls || [])]; const w = all.filter(x => Math.abs(x.strike - pr) <= Math.max(1, pr * 0.0002)).sort((a, b) => (b.oi || 0) - (a.oi || 0))[0]; return w ? ({ strong: 3, moderate: 2, weak: 1 }[w.tier] || 0) : 0; };
+  const TCOL = { call_wall: '232,97,95', put_wall: '70,184,122', max_pain: '217,192,74', gamma_flip: '164,135,240', gex_flip: '164,135,240' };
+  const TNAME = { call_wall: 'Call wall', put_wall: 'Put wall', max_pain: 'Max pain', gamma_flip: 'Gamma flip', gex_flip: 'GEX flip' };
+  const rows = [...lv.values()].filter(g => (g.p[8] || 0) >= 0.05).sort((a, b) => b.price - a.price).slice(0, 12);
+  const pbar = (p, raw) => { if (p == null) return '—'; const capped = raw >= 0.95 && p < 0.7;
+    return `<span class="pb" title="calibrated ${(p * 100).toFixed(0)}% · raw model ${(raw * 100).toFixed(0)}%${capped ? ' — the calibration curve caps out here, real chance is likely higher' : ''}"><i style="width:${Math.round(p * 46)}px;background:${p >= .5 ? 'rgb(70,184,122)' : p >= .25 ? '#f0b04a' : '#56606f'}"></i><b>${(p * 100).toFixed(0)}%${capped ? '⚠' : ''}</b></span>`; };
+  let spotDone = false, t2 = `<table class="zt"><tr><th>level</th><th>type</th><th>from price</th><th>strength</th><th>1 h</th><th>4 h</th><th>8 h</th></tr>`;
+  rows.forEach(g => { if (!spotDone && g.price < D.spot) { spotDone = true; t2 += `<tr class="spotrow"><td colspan="7">▶ price ${px(D.spot)}</td></tr>`; }
+    const c = TCOL[g.types[0]] || '160,170,185', ti = tier(g.price), dd = g.price - D.spot;
+    t2 += `<tr><td>${px(g.price)}</td><td><i class="dot" style="background:rgb(${c})"></i>${g.types.map(t => TNAME[t] || t).join(' + ')}</td><td>${dd >= 0 ? '+' : ''}${fmtMove(dd)} <span style="color:var(--tx3)">(${(dd / D.spot * 100).toFixed(2)}%)</span></td><td>${ti ? '■'.repeat(ti) + '<span style="opacity:.25">' + '■'.repeat(3 - ti) + '</span>' : '—'}</td><td>${pbar(g.p[1], g.raw[1])}</td><td>${pbar(g.p[4], g.raw[4])}</td><td>${pbar(g.p[8], g.raw[8])}</td></tr>`; });
+  t2 += `</table><div class="sub" style="margin:8px 0 0"><b>Why so many low numbers:</b> a 1–8 hour window only reaches levels that are close to price, so most walls honestly score near 0%. The table lists levels with at least 5% chance by the 8-hour mark; everything else is too far to matter today.<br><b>⚠ Known weakness:</b> the probability is calibrated on EUR/USD, and its 4–8 hour curve flat-tops near 59% — so a level sitting right on top of price can show ~59% when the raw simulation says ~99%. Hover a number to see both. The columns are forced to rise with time (touching within 1 h means touching within 8 h).</div>`;
+  html += card(2, 'Key levels &amp; touch probabilities', rows.length ? t2 : '<div class="sub">No levels with a meaningful touch chance in the next 8 hours — everything is too far from price to matter today.</div>');
+
+  // ── 3 gamma structure
+  html += card(3, 'Options structure (gamma exposure)', `<svg id="bstruct" width="100%" viewBox="0 0 700 470"></svg><div class="legend"><span><i style="background:rgb(var(--long))"></i>positive GEX — stabilising</span><span><i style="background:rgb(var(--short))"></i>negative GEX — more volatile</span><span><i style="background:#fff"></i>total gamma if price were here</span></div>`);
+
+  // ── 4 implied volatility
+  html += card(4, 'Implied volatility', `<svg id="biv" width="100%" viewBox="0 0 700 300"></svg><div id="bivn" class="sub" style="margin:4px 0 0"></div>`, tabs('iv', [['term', 'Term structure'], ['smile', 'Skew (by strike)']]));
+  // ── 5 positioning
+  html += card(5, 'Positioning &amp; sentiment', `<svg id="bpos" width="100%" viewBox="0 0 700 300"></svg><div id="bposn" class="sub" style="margin:4px 0 0"></div>`, tabs('pos', [['pc', 'Put/call ratio'], ['oi', 'Total OI']]));
+  // ── 6 overnight changes
+  html += card(6, 'Overnight changes (Δ OI)', `<svg id="bchg" width="100%" viewBox="0 0 1000 300"></svg><div id="bchgn" class="sub" style="margin:4px 0 0"></div>`);
+  html += `</div><div class="card bp"><h2>Reading this</h2><div class="sub" style="max-width:1100px;margin:0">
+    <b>1</b> how far price can plausibly go today (options-implied) against what it really did lately · <b>2</b> which levels are reachable and how soon · <b>3</b> where dealer hedging tends to dampen or amplify moves · <b>4</b> whether options are pricing more or less nervousness than yesterday · <b>5</b> whether positioning is building or unwinding · <b>6</b> exactly which strikes the overnight change happened at.
+    These are descriptions of positioning and option prices, not signals — in your own tests wall and flip levels did not beat placebo levels, while the implied range and touch model are the better-supported parts.</div></div>`;
+  el.innerHTML = html;
+  el.querySelectorAll('[data-bt]').forEach(b => b.onclick = () => { const [g, k] = b.dataset.bt.split(':'); BTAB[g] = k; drawBrief(); });
+  drawStruct(); drawIVp(); drawPos(H, pcNow); drawChg(pctC, pctP, pctT, cc, pcg);
+}
+
+function drawStruct(){
+  const D = CUR, svg = $('#bstruct'); if (!svg || !D || !D.L) return;
+  const NB = 30, rg = (D.e.expectedMove?.daily || D.rm) * 2.4, lo = D.spot - rg, hi = D.spot + rg, bw = (hi - lo) / NB, W = 700, H = 470, T = 12, B = 34, L = 66, R = 150;
+  const tot = new Array(NB).fill(0); D.L.strikes.forEach((k, i) => { if (k < lo || k >= hi) return; const b = Math.floor((k - lo) / bw); D.use.forEach(j => tot[b] += (D.ser[j].net[i] || 0)); });
+  const m = pctl(tot.map(Math.abs), 0.95) || 1, zx = L + (W - L - R) / 2, half = (W - L - R) / 2 * 0.95, Y = p => T + (hi - p) / (hi - lo) * (H - T - B), rh = (H - T - B) / NB;
+  let h = `<line x1="${zx}" x2="${zx}" y1="${T}" y2="${H - B}" stroke="rgba(255,255,255,.25)"/>`;
+  for (let b = 0; b < NB; b++) { const v = Math.max(-1, Math.min(1, tot[b] / m)) * half; if (!tot[b]) continue; h += `<rect x="${v >= 0 ? zx : zx + v}" y="${Y(lo + (b + 1) * bw) + 1}" width="${Math.abs(v)}" height="${Math.max(2, rh - 2)}" fill="rgba(${tot[b] >= 0 ? LONG : SHORT},.7)"/>`; }
+  const st = (() => { const raw = (hi - lo) / 7, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p; return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p; })();
+  for (let p = Math.ceil(lo / st) * st; p <= hi; p += st) h += `<text x="${L - 8}" y="${Y(p) + 4}" text-anchor="end" fill="#6b7585" font-size="11.5">${px(p)}</text>`;
+  if (CURVE) { const key = (NEAR && CURVE[0].near != null) ? 'near' : 'all'; const cm = Math.max(...CURVE.map(c => Math.abs(c[key]))) || 1;
+    const pts = CURVE.filter(c => c.P >= lo && c.P <= hi).map(c => `${(zx + c[key] / cm * half).toFixed(1)},${Y(c.P).toFixed(1)}`);
+    if (pts.length > 2) h += `<polyline points="${pts.join(' ')}" fill="none" stroke="#fff" stroke-width="2.2" style="filter:drop-shadow(0 0 4px #fff)"/>`; }
+  const ls = [[D.cw, '232,97,95', 'Call wall'], [D.pw, '232,97,95', 'Put wall'], [D.spot, '255,255,255', 'Spot'], [D.flip, '164,135,240', 'Gamma flip'], [D.mp, '217,192,74', 'Max pain']].filter(l => Number.isFinite(l[0]) && l[0] > lo && l[0] < hi).sort((a, b) => Y(a[0]) - Y(b[0]));
+  let last = -1e9; ls.forEach(([p, c, t]) => { h += `<line x1="${L}" x2="${W - R + 8}" y1="${Y(p)}" y2="${Y(p)}" stroke="rgb(${c})" stroke-dasharray="${t === 'Spot' ? '' : '6 4'}" opacity=".9"/>`; const y = Math.max(Y(p) + 4, last + 14); last = y; h += `<text x="${W - R + 14}" y="${y}" fill="rgb(${c})" font-size="12">${t} ${px(p)}</text>`; });
+  h += `<text x="${zx - half / 2}" y="${H - 10}" text-anchor="middle" fill="rgb(${SHORT})" font-size="11.5">negative · more volatile</text><text x="${zx + half / 2}" y="${H - 10}" text-anchor="middle" fill="rgb(${LONG})" font-size="11.5">positive · stabilising</text>`;
+  svg.innerHTML = h;
+}
+
+function drawIVp(){
+  const D = CUR, svg = $('#biv'), note = $('#bivn'); if (!svg) return; const e = D.e, W = 700, H = 300, L = 48, R = 20, T = 14, B = 36;
+  let series = [], xl = [], xs = null, title = '';
+  if (BTAB.iv === 'term') {
+    const pts = (e.ivTermStructure?.points || []).filter(p => p.iv > 0 && p.dte <= 400).sort((a, b) => a.dte - b.dte);
+    if (pts.length < 2) { svg.innerHTML = ''; note.textContent = 'No ATM IV term structure stored.'; return; }
+    const X = d => L + Math.log(1 + d) / Math.log(1 + pts[pts.length - 1].dte) * (W - L - R);
+    series = [{ name: 'Today', col: '#f0a04b', pts: pts.map(p => [X(p.dte), p.iv]) }, { name: 'Yesterday', col: '#5cc8ff', pts: pts.filter(p => Number.isFinite(p.ivChg) && p.iv - p.ivChg > p.iv * 0.5).map(p => [X(p.dte), p.iv - p.ivChg]) }];
+    xl = [1, 2, 7, 30, 90, 365].filter(d => d <= pts[pts.length - 1].dte).map(d => [X(d), d >= 30 ? Math.round(d / 30) + 'M' : d + 'D']);
+    note.textContent = 'ATM implied vol for each expiry. Today above yesterday along the whole curve = the market is paying more for protection everywhere; a steeper front end = an event is expected soon.';
+  } else {
+    const sm = e.ivSmile; if (!sm || !sm.strikes?.length) { svg.innerHTML = ''; note.textContent = 'No per-strike smile stored.'; return; }
+    const rg = (e.expectedMove?.daily || D.rm) * 4, ix = sm.strikes.map((k, i) => i).filter(i => Math.abs(sm.strikes[i] - D.spot) <= rg).sort((a, b) => sm.strikes[a] - sm.strikes[b]);
+    const X = k => L + (k - (D.spot - rg)) / (2 * rg) * (W - L - R);
+    series = [{ name: 'Today', col: '#f0a04b', pts: ix.map(i => [X(sm.strikes[i]), sm.iv[i] * 100]) }, { name: 'Yesterday', col: '#5cc8ff', pts: ix.filter(i => sm.ivPrior?.[i] > 0).map(i => [X(sm.strikes[i]), sm.ivPrior[i] * 100]) }];
+    xl = [[X(D.spot - rg * .8), 'OTM puts'], [X(D.spot), 'spot'], [X(D.spot + rg * .8), 'OTM calls']];
+    note.textContent = 'IV by strike for the walls\' expiry (' + (Number.isFinite(e.dte) ? Math.round(e.dte) + ' DTE' : 'primary') + '). A higher left side means people are paying up for downside protection.';
+  }
+  const all = series.flatMap(s => s.pts.map(p => p[1])); if (!all.length) { svg.innerHTML = ''; return; }
+  const lo = Math.min(...all) * 0.96, hi = Math.max(...all) * 1.04, Y = v => T + (hi - v) / (hi - lo) * (H - T - B);
+  let h = ''; for (let i = 0; i <= 4; i++) { const v = lo + (hi - lo) * i / 4; h += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="#151b23"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end" fill="#6b7585" font-size="11">${v.toFixed(1)}%</text>`; }
+  xl.forEach(([x, t]) => h += `<text x="${x}" y="${H - 12}" text-anchor="middle" fill="#6b7585" font-size="11.5">${t}</text>`);
+  series.slice().reverse().forEach(s => { if (s.pts.length > 1) h += `<polyline points="${s.pts.map(p => p[0].toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ')}" fill="none" stroke="${s.col}" stroke-width="2.2"/>` + s.pts.map(p => `<circle cx="${p[0]}" cy="${Y(p[1])}" r="2.6" fill="${s.col}"/>`).join(''); });
+  h += series.map((s, i) => `<text x="${L + 10}" y="${H - 44 - i * 15}" fill="${s.col}" font-size="12">— ${s.name}</text>`).join('');
+  svg.innerHTML = h;
+}
+
+function drawPos(H, pcNow){
+  const svg = $('#bpos'), note = $('#bposn'); if (!svg) return; const W = 700, Hh = 300, L = 44, R = 20, T = 14, B = 34;
+  const rows = H.slice(-40); if (rows.length < 3) { svg.innerHTML = ''; note.textContent = 'Not enough history archived yet.'; return; }
+  const val = BTAB.pos === 'pc' ? r => r.pcRatio : r => (r.totalCallOI || 0) + (r.totalPutOI || 0);
+  const ys = rows.map(val).filter(Number.isFinite); const lo = Math.min(...ys) * 0.95, hi = Math.max(...ys) * 1.05, X = i => L + i / (rows.length - 1) * (W - L - R), Y = v => T + (hi - v) / (hi - lo) * (Hh - T - B);
+  let h = ''; for (let i = 0; i <= 3; i++) { const v = lo + (hi - lo) * i / 3; h += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="#151b23"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end" fill="#6b7585" font-size="11">${BTAB.pos === 'pc' ? v.toFixed(2) : Math.round(v / 1000) + 'k'}</text>`; }
+  if (BTAB.pos === 'pc') h += `<line x1="${L}" x2="${W - R}" y1="${Y(1)}" y2="${Y(1)}" stroke="rgba(255,255,255,.2)" stroke-dasharray="4 4"/>`;
+  h += `<polyline points="${rows.map((r, i) => Number.isFinite(val(r)) ? X(i).toFixed(1) + ',' + Y(val(r)).toFixed(1) : '').filter(Boolean).join(' ')}" fill="none" stroke="#f0a04b" stroke-width="2"/>`;
+  [0, Math.floor(rows.length / 2), rows.length - 1].forEach(i => h += `<text x="${X(i)}" y="${Hh - 10}" text-anchor="${i === 0 ? 'start' : i === rows.length - 1 ? 'end' : 'middle'}" fill="#6b7585" font-size="11">${rows[i].d.slice(5)}</text>`);
+  const last = rows[rows.length - 1], prev = rows[rows.length - 2];
+  h += `<circle cx="${X(rows.length - 1)}" cy="${Y(val(last))}" r="4" fill="#f0a04b"/>`;
+  svg.innerHTML = h;
+  note.innerHTML = BTAB.pos === 'pc' ? `Today <b>${Number.isFinite(pcNow) ? (+pcNow).toFixed(2) : '—'}</b>${prev && Number.isFinite(prev.pcRatio) ? ` · yesterday <b>${prev.pcRatio.toFixed(2)}</b>` : ''}. Above 1 = more puts than calls (hedging / downside demand); the dashed line is 1.0. A rising line means protection is being added.`
+    : 'Total open contracts (calls + puts) over the archived days. A rising line means positions are being added; a falling one means they are closing.';
+}
+
+function drawChg(pctC, pctP, pctT, cc, pcg){
+  const D = CUR, svg = $('#bchg'), note = $('#bchgn'); if (!svg) return; const e = D.e;
+  let m = null; try { m = e.rawChg ? parseOIMatrix(e.rawChg, { signed: true, mode: 'aggregate' }) : null; } catch (_) { m = null; }
+  const box = (k, v, n, c) => `<div class="mini"><div class="k">${k}</div><div class="v" style="color:${c}">${v}</div><div class="n">${n}</div></div>`;
+  const col = v => v == null ? 'var(--tx2)' : v >= 0 ? `rgb(${LONG})` : `rgb(${SHORT})`;
+  note.innerHTML = `<div class="minis">${box('Call OI', pctC == null ? '—' : (pctC >= 0 ? '+' : '') + pctC.toFixed(1) + '%', (cc >= 0 ? '+' : '') + cc, col(pctC))}${box('Put OI', pctP == null ? '—' : (pctP >= 0 ? '+' : '') + pctP.toFixed(1) + '%', (pcg >= 0 ? '+' : '') + pcg, col(pctP))}${box('Total OI', pctT == null ? '—' : (pctT >= 0 ? '+' : '') + pctT.toFixed(1) + '%', (cc + pcg >= 0 ? '+' : '') + (cc + pcg), col(pctT))}</div>`;
+  if (!m || !m.strikes.length) { svg.innerHTML = '<text x="500" y="150" text-anchor="middle" fill="#6b7585" font-size="14">No per-strike change data stored for this pair.</text>'; return; }
+  const basis = Number.isFinite(e.basis) ? e.basis : 0, sh = k => INVERTED.has(SYM) ? 1 / k - basis : k - basis;
+  const rg = (e.expectedMove?.daily || D.rm) * 2.6, lo = D.spot - rg, hi = D.spot + rg, NB = 36, bw = (hi - lo) / NB; const C = new Array(NB).fill(0), P = new Array(NB).fill(0);
+  m.strikes.forEach((k, i) => { const p = sh(k); if (!(p >= lo && p < hi)) return; const b = Math.floor((p - lo) / bw); C[b] += m.calls[i] || 0; P[b] += m.puts[i] || 0; });
+  const W = 1000, Hh = 300, L = 60, R = 14, T = 14, B = 34, vmax = Math.max(1, ...C, ...P), vmin = Math.min(0, ...C, ...P), Y = v => T + (vmax - v) / (vmax - vmin) * (Hh - T - B), X = b => L + b / NB * (W - L - R), bwid = (W - L - R) / NB;
+  let h = `<line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="rgba(255,255,255,.3)"/>`;
+  [vmax, vmax / 2, 0, vmin / 2, vmin].filter((v, i, a) => a.indexOf(v) === i).forEach(v => h += `<text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end" fill="#6b7585" font-size="11">${v > 0 ? '+' : ''}${Math.round(v)}</text>`);
+  for (let b = 0; b < NB; b++) { const x = X(b); if (C[b]) h += `<rect x="${x + 1}" y="${Math.min(Y(C[b]), Y(0))}" width="${bwid / 2 - 1}" height="${Math.abs(Y(C[b]) - Y(0))}" fill="rgb(${LONG})"/>`; if (P[b]) h += `<rect x="${x + bwid / 2}" y="${Math.min(Y(P[b]), Y(0))}" width="${bwid / 2 - 1}" height="${Math.abs(Y(P[b]) - Y(0))}" fill="rgb(${SHORT})"/>`; }
+  for (let i = 0; i <= 4; i++) { const p = lo + rg * 2 * i / 4; h += `<text x="${L + (p - lo) / (hi - lo) * (W - L - R)}" y="${Hh - 10}" text-anchor="middle" fill="#6b7585" font-size="11">${px(p)}</text>`; }
+  const sx = L + (D.spot - lo) / (hi - lo) * (W - L - R); h += `<line x1="${sx}" x2="${sx}" y1="${T}" y2="${Hh - B}" stroke="#fff" stroke-dasharray="3 3"/>`;
+  h += `<text x="${W - R}" y="${T + 12}" text-anchor="end" fill="rgb(${LONG})" font-size="12">■ calls</text><text x="${W - R - 60}" y="${T + 12}" text-anchor="end" fill="rgb(${SHORT})" font-size="12">■ puts</text>`;
+  svg.innerHTML = h;
+}
+
 // ── readable summaries under the chart ────────────────────────────────────────────────────
 function zonesPanel(){
   const D = CUR, el = $('#zones'); if (!D || !PEAKS.length) { el.innerHTML = '<div class="sub">No gamma zones for this pair.</div>'; return; }
@@ -453,10 +637,15 @@ function rail(){
 }
 
 async function refresh(){
-  CUR = derive(SYM); rail(); stats(); drawBars(); drawHeat(); drawAhead();
+  CUR = derive(SYM); rail();
+  if (VIEW === 'brief') { buildField(); await drawBrief(); return; }
+  stats(); drawBars(); drawHeat(); drawAhead();
   $('#note').innerHTML = `<span>Source: oi_store (${esc(STORE[SYM]?.savedAt || '')}) · candles: OANDA H1 · colours are the platform's own sign convention (calls − puts, dealers long calls / short puts). Analysis views, not signals — wall and flip effects did not beat placebo levels in your own tests.</span>`;
   await drawTerrain();
 }
+function setView(v){ VIEW = v; $('#vBrief').classList.toggle('on', v === 'brief'); $('#vLab').classList.toggle('on', v === 'lab');
+  $('#brief').style.display = v === 'brief' ? '' : 'none'; $('#labView').style.display = v === 'lab' ? '' : 'none'; $('#stats').style.display = v === 'lab' ? '' : 'none'; $('#nearTgl').style.display = v === 'lab' ? '' : 'none'; refresh(); }
+$('#vBrief').onclick = () => setView('brief'); $('#vLab').onclick = () => setView('lab');
 $('#mNear').onclick = () => { NEAR = true; $('#mNear').classList.add('on'); $('#mAll').classList.remove('on'); refresh(); };
 $('#mAll').onclick = () => { NEAR = false; $('#mAll').classList.add('on'); $('#mNear').classList.remove('on'); refresh(); };
 document.querySelectorAll('[data-ah]').forEach(b => b.onclick = () => { AH = +b.dataset.ah; document.querySelectorAll('[data-ah]').forEach(x => x.classList.toggle('on', x === b)); drawAhead(); });
