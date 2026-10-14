@@ -428,6 +428,12 @@
   .mmE.apart{stroke:var(--amber);opacity:.95}
   .mmE.loose{stroke:var(--text3);opacity:.3;stroke-dasharray:3 5}
   .mmEg{cursor:pointer}
+  /* a wide invisible twin of each line, so a 2px wire is still easy to hit */
+  .mmHit{fill:none;stroke:transparent;stroke-width:14;pointer-events:stroke}
+  /* hovering one wire quiets the other nineteen -- the cheapest way to follow a line
+     across a dense map is to make everything else stop competing for a moment */
+  .mmap:has(.mmEg:hover) .mmEg:not(:hover){opacity:.18}
+  .mmap:has(.mmEg:hover) .mmN{opacity:.55}
   .mmEg:hover .mmE{opacity:1;stroke-width:6}
   .mmEg:hover .mmL{fill:var(--text)}
   /* the mechanism, written on the line -- with a plate behind it so it survives a crossing */
@@ -1591,6 +1597,7 @@ function renderMap() {
       <span>Thicker line = they actually move together more</span>
       <span>Amber box = that market’s own move is rare</span>
       <span>Left → right is roughly cause → effect</span>
+      <span>Lines run in lanes — one never passes through a box it is not connected to</span>
       <span class="muted">Click any box or line for what it is and what it is doing</span>
     </div>`;
   renderMapExp();
