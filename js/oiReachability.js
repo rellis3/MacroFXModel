@@ -48,6 +48,25 @@
  */
 
 import { intradayCone, intradaySamplePaths, intradayReachability } from './forecastPathCore.js';
+import { REACH_CALIB_DATA } from './oiReachCalibData.js';
+
+// ── 2026-10-15 RE-FIT (analysis/reach_calibration_study.mjs → js/oiReachCalibData.js) ─────────────────────────────
+// The header above describes the ORIGINAL map: EUR/USD only, fitted on targets 0.5-2.0 sigma from price. Two problems showed up live:
+//   1. A level 0.05% from price (well inside 0.5 sigma — the walls that matter intraday) was outside the fit; the map flat-topped
+//      at 68% (1h) / 59% (4h), so a level sitting on price scored 59%. On a test set that INCLUDES near-price targets the shipped map
+//      was WORSE than no calibration at all (EUR/USD 1h: 6.95pp vs 3.76pp raw).
+//   2. The 1h and 4h maps disagreed at the top, so a 4h probability could come out below the 1h one for the same level.
+// The new curves are fitted per INSTRUMENT (or per asset class where one instrument's own curve is no better out of sample) and per
+// horizon (1h / 4h / 8h), on targets from 0.02 to 3 sigma, time-split train/test. `calibForHorizon(H, pair)` picks them; the old
+// EUR/USD maps remain below only as the fallback for an instrument/horizon the study did not cover.
+const _H_LABEL = { 12: '1h', 48: '4h', 96: '8h' };
+const _CLASS_OF = { eurusd: 'fx', gbpusd: 'fx', usdjpy: 'fx', audusd: 'fx', usdcad: 'fx', usdchf: 'fx', gold: 'gold', nq: 'index', spx: 'index', us2000: 'index', us30: 'index', de30: 'index', uk100: 'index' };
+const _ALIAS = { xauusd: 'gold', nas100usd: 'nq', spx500usd: 'spx', us2000usd: 'us2000', rut: 'us2000', us30usd: 'us30', dow: 'us30', dax: 'de30', de30usd: 'de30', uk100gbp: 'uk100', ftse: 'uk100' };
+export function calibKeyFor(pair) {
+  if (!pair) return null;
+  const k = String(pair).toLowerCase().replace(/[^a-z0-9]/g, '');
+  return _ALIAS[k] || k;
+}
 
 // Piecewise-linear reliability map, fitted on EUR/USD M5 Feb–Apr 2026 (H=12), verified
 // on May–Jul. [rawPredicted, realisedFrequency]. Monotonic by construction.
@@ -74,9 +93,18 @@ export const CALIB_BY_HORIZON = [
   { bars: 12, label: '1h',  curve: REACH_CALIB,     oosErrPp: 1.7 },
   { bars: 48, label: '4h',  curve: REACH_CALIB_H48, oosErrPp: 3.4 },
 ];
-export function calibForHorizon(H) {
+export function calibForHorizon(H, pair = null) {
+  const key = calibKeyFor(pair), D = REACH_CALIB_DATA;
+  const Hn = [12, 48, 96].slice().sort((a, b) => Math.abs(a - H) - Math.abs(b - H))[0];
+  const label = _H_LABEL[Hn];
+  const own = key && D?.instruments?.[key]?.[Hn];
+  if (own?.curve?.length) return { bars: Hn, label, curve: own.curve, oosErrPp: own.oosErrPp, exact: Hn === H, source: `${key}-m5-${label}`, fit: own.source };
+  const cls = _CLASS_OF[key], cc = cls && D?.classes?.[cls]?.[Hn];
+  if (cc?.curve?.length) return { bars: Hn, label, curve: cc.curve, oosErrPp: null, exact: Hn === H, source: `${cls}-class-m5-${label}`, fit: 'class' };
+  const pc = D?.pooled?.[Hn];
+  if (pc?.curve?.length) return { bars: Hn, label, curve: pc.curve, oosErrPp: null, exact: Hn === H, source: `pooled-m5-${label}`, fit: 'pooled' };
   const c = CALIB_BY_HORIZON.slice().sort((a, b) => Math.abs(a.bars - H) - Math.abs(b.bars - H))[0];
-  return { ...c, exact: c.bars === H };
+  return { ...c, exact: c.bars === H, source: `eurusd-m5-${c.label}`, fit: 'legacy' };
 }
 // Enforce non-decreasing. A fitted curve can wobble in a thin top bin (44 samples at
 // H=48); a map that goes DOWN would say a stronger raw signal is less likely to touch.
@@ -135,7 +163,7 @@ export function wallReachability(ctx, i, walls, horizonBars, opts = {}) {
   if (!ctx || !Array.isArray(walls) || !walls.length) return [];
   const anchor = ctx.bars?.[i - 1]?.close;
   if (!(anchor > 0)) return [];
-  const cal = calibForHorizon(horizonBars);
+  const cal = calibForHorizon(horizonBars, opts.instrument);
   const out = [];
   for (const w of walls) {
     if (!Number.isFinite(w?.price) || w.price <= 0) continue;
@@ -150,7 +178,7 @@ export function wallReachability(ctx, i, walls, horizonBars, opts = {}) {
       distFrac: +((w.price - anchor) / anchor).toFixed(6),
       // Which measured curve was applied, whether it was measured AT this horizon, and
       // how wrong that curve was out of sample — so a caller can show the error bar.
-      calibSource: `eurusd-m5-${cal.label}`, calibExact: cal.exact, calibOosErrPp: cal.oosErrPp,
+      calibSource: cal.source, calibExact: cal.exact, calibOosErrPp: cal.oosErrPp,
     });
   }
   return out.sort((a, b) => Math.abs(a.distFrac) - Math.abs(b.distFrac));

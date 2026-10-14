@@ -5,7 +5,7 @@
 // (a "94%" touches 68% of the time). These assertions pin the correction's SHAPE, so a
 // future change to the cone cannot quietly reintroduce the over-confidence.
 
-import { REACH_CALIB, calibrateTouch, wallReachability, firstTouchRace, visitDensity } from './oiReachability.js';
+import { REACH_CALIB, calibrateTouch, wallReachability, firstTouchRace, visitDensity, calibForHorizon, calibKeyFor } from './oiReachability.js';
 import { buildIntradayContext } from './forecastPathCore.js';
 
 let fails = 0;
@@ -78,9 +78,18 @@ console.log('[wall reachability]');
     const near = rows.find(r => r.label === 'near call'), far = rows.find(r => r.label === 'far call');
     return near.calibrated > far.calibrated;
   })(), rows.map(r => r.label + ':' + r.calibrated).join(' '));
-  ok('calibrated never exceeds the ceiling', rows.every(r => r.calibrated <= 0.69));
+  ok('calibrated stays a valid probability', rows.every(r => r.calibrated >= 0 && r.calibrated <= 1));
   ok('side is labelled correctly', rows.find(r => r.label === 'near put').side === 'down');
-  ok('provenance of the correction is recorded', rows.every(r => r.calibSource === 'eurusd-m5-1h' && r.calibExact === true && r.calibOosErrPp === 1.7));
+  ok('provenance of the correction is recorded (no instrument → pooled fit)', rows.every(r => /^pooled-m5-1h$/.test(r.calibSource) && r.calibExact === true));
+  // 2026-10-15 re-fit: per-instrument curves, near-price region covered, no 69% ceiling
+  const gold = wallReachability(ctx, i, walls, 12, { instrument: 'XAU/USD' });
+  ok('an instrument gets ITS curve (XAU/USD → gold class/own, with an OOS error on record)', gold.every(r => /^gold-/.test(r.calibSource) && Number.isFinite(r.calibOosErrPp)), gold[0]?.calibSource + ' ' + gold[0]?.calibOosErrPp);
+  ok('an unknown instrument falls back to the pooled curve, never throws', wallReachability(ctx, i, walls, 12, { instrument: 'XYZ/ABC' }).every(r => /^pooled-/.test(r.calibSource)));
+  const c1 = calibForHorizon(12, 'NAS100_USD'), c4 = calibForHorizon(48, 'NAS100_USD'), c8 = calibForHorizon(96, 'NAS100_USD');
+  ok('1h/4h/8h curves exist for an instrument and report their horizon', c1.label === '1h' && c4.label === '4h' && c8.label === '8h' && c1.exact && c4.exact && c8.exact);
+  ok('a raw ~99% (level on top of price) is no longer capped at the old 59-68%', calibrateTouch(0.99, c4.curve) > 0.85 && calibrateTouch(0.99, c1.curve) > 0.85, calibrateTouch(0.99, c1.curve).toFixed(3) + ' / ' + calibrateTouch(0.99, c4.curve).toFixed(3));
+  ok('calibration is monotone in raw for every shipped curve', [c1, c4, c8].every(c => c.curve.every((k, j) => j === 0 || k[1] >= c.curve[j - 1][1] - 1e-9)));
+  ok('calibKeyFor normalises store names and registry keys', calibKeyFor('XAU/USD') === 'gold' && calibKeyFor('NAS100_USD') === 'nq' && calibKeyFor('rut') === 'us2000' && calibKeyFor('EUR/USD') === 'eurusd');
   ok('empty / junk input → []', wallReachability(ctx, i, [], 12).length === 0
     && wallReachability(null, i, walls, 12).length === 0);
 }

@@ -444,6 +444,20 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
       oiOut.sort((a, b) => b.price - a.price);
       for (const o of oiOut) lines.push(o.line);
     }
+    // REACH SUMMARY (human-only line — the indicator ignores anything not starting "OI "). The per-level P(touch) token already rides
+    // on each line; this answers "which of these lines is actually in play" in one place, so the sheet can be read top-down:
+    // likely (>=50%), possible (20-49%), and how many levels sit beyond reach. Probabilities are the calibrated per-instrument ones
+    // (js/oiReachability.js); the window is whatever reachH the export was asked for (default 4h).
+    if (rp) {
+      const seenK = new Set(), items = [];
+      for (const l of levels) { const lab = rp[l.price.toFixed(6)]; const m = lab && /^(\d+)%/.exec(lab); if (!m) continue;
+        const k = l.type + '@' + l.price.toFixed(dp); if (seenK.has(k)) continue; seenK.add(k); items.push({ pct: +m[1], l }); }
+      const nm = t => String(t).replace('_', ' ');
+      const fmt = a => a.sort((x, y) => y.pct - x.pct).slice(0, 4).map(x => `${nm(x.l.type)} ${px(x.l.price).toFixed(dp)} (${x.pct}%)`).join(' · ');
+      const likely = items.filter(x => x.pct >= 50), possible = items.filter(x => x.pct >= 20 && x.pct < 50);
+      const beyond = levels.filter(l => ['call_wall', 'put_wall', 'max_pain'].includes(l.type) && !rp[l.price.toFixed(6)]).length;
+      lines.push(`· in play: ${likely.length ? 'LIKELY ' + fmt(likely) : 'nothing likely'}${possible.length ? ' | POSSIBLE ' + fmt(possible) : ''}${beyond ? ` | ${beyond} wall/max-pain levels beyond reach` : ''}`);
+    }
     lines.push('');
     emitted++;
   }

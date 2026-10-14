@@ -8614,7 +8614,7 @@ app.get('/api/oi-reachability', async (req, res) => {
     if (Number.isFinite(inst.maxPain)) walls.push({ price: inst.maxPain, type: 'max_pain', label: 'max pain' });
     if (!walls.length) return res.json({ ok: false, error: 'no tiered near-money walls for this pair' });
 
-    const rows = _oiWallReach(ctx, i, walls, H, { nPaths: 400 });
+    const rows = _oiWallReach(ctx, i, walls, H, { nPaths: 400, instrument: key });
     const up = rows.filter(r => r.price > anchor).sort((a, b) => a.price - b.price)[0]?.price || 0;
     const dn = rows.filter(r => r.price < anchor).sort((a, b) => b.price - a.price)[0]?.price || 0;
     const race = (up || dn) ? _oiFirstTouch(ctx, i, up, dn, H, { nPaths: 400 }) : null;
@@ -8628,13 +8628,13 @@ app.get('/api/oi-reachability', async (req, res) => {
       p50Up: +st.p50Up.toFixed(8), p50Dn: +st.p50Dn.toFixed(8),
       p75Up: +st.p75Up.toFixed(8), p75Dn: +st.p75Dn.toFixed(8),
     })) : null;
-    const cal = _oiCalibFor(H);
+    const cal = _oiCalibFor(H, key);
 
     res.json({ ok: true, pair: key, horizonBars: H, horizonMin: H * 5, anchor,
       bars: bars.length, asOf: Date.now(),
-      calibration: { source: `eurusd-m5-${cal.label}`, exact: cal.exact, oosErrPp: cal.oosErrPp,
+      calibration: { source: cal.source, fit: cal.fit, exact: cal.exact, oosErrPp: cal.oosErrPp,
         curve: cal.curve,
-        note: 'Raw MC touch probability is over-confident — a raw 94% touches about 68% of the time. These are CALIBRATED against a reliability curve fitted on EUR/USD M5 and verified out of sample (9.4pp -> 1.7pp at 1h). The curve is returned so the correction is auditable.' },
+        note: 'Touch probabilities are CALIBRATED: the raw Monte-Carlo number is mapped through a reliability curve fitted per instrument (or asset class) and per horizon on 2026-02..08 M5 history, targets 0.02-3 sigma from price, scored on a time-ordered held-out 40% (oosErrPp). Curve returned so the correction is auditable. Replaces the EUR/USD-only map (2026-10-15).' },
       walls: rows, race, density,
       cone: envelope ? { anchorTime: cone.anchorTime, anchor: cone.anchor, steps: envelope } : null });
   } catch (e) {
@@ -21723,7 +21723,7 @@ app.get('/api/oi-today', async (req, res) => {
           open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
         if (bars.length < 400) return null;
         const ctx = _fpBuildCtx(bars, {});
-        const rows = _oiWallReach(ctx, bars.length, levels.map(l => ({ price: l.price, type: l.type })), H, { nPaths: 300 });
+        const rows = _oiWallReach(ctx, bars.length, levels.map(l => ({ price: l.price, type: l.type })), H, { nPaths: 300, instrument: pair });
         const m = {};
         for (const r of rows) {
           const lab = _oiReachLabel(r, 5);
@@ -23087,7 +23087,7 @@ app.get('/api/vol-forecast/zones', async (req, res) => {
             time: Math.floor(new Date(c.time).getTime() / 1000), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
           if (bars.length < 400) return null;
           const ctx = _fpBuildCtx(bars, {});
-          const rows = _oiWallReach(ctx, bars.length, levels.map(l => ({ price: l.price, type: l.type })), H, { nPaths: 300 });
+          const rows = _oiWallReach(ctx, bars.length, levels.map(l => ({ price: l.price, type: l.type })), H, { nPaths: 300, instrument: k });
           const m = {};
           for (const r of rows) { const lab = _oiReachLabel(r, 5); if (lab) m[r.price.toFixed(6)] = lab; }
           return Object.keys(m).length ? m : null;
