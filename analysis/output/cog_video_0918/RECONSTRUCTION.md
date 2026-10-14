@@ -197,3 +197,28 @@ and comparing with his line:
 with `Projection (t + days)` set to 0, or with a version of the indicator without the shift. Consequence for the claim: what he
 shows as "the macro line moving first" is not produced by a plot shift; it is the formula's own timing (hourly data and
 smoothing make it lag, not lead, the underlying quotes).
+
+## 12. Final match (2026-10-14): all four open items closed
+
+Steps taken: (1) trade prices (what TradingView plots) pulled for Euribor Mar27 and used for both legs; (2) his line re-traced from
+**every** video frame with its **own axis calibrated by OCR of the chart's tick labels** (time ticks residual 1–5 min per frame; value
+axis from the 8.x labels or regressed to the consensus); (3) bar-time labelling and Pine higher-timeframe semantics tested.
+
+- **Noise floor of the target:** across 21 frame pairs, level corr 0.995, 15-min change corr median **0.84**; between-frame sd of the
+  line 0.003 units (95th pct 0.021). 333 consensus bars (seen in ≥ 2 frames), 16 Sep 20:15 → 22 Sep 19:30 UTC.
+- **Best configuration (zero fitted constants):** plot = (SOFR Sep26 − Euribor Mar27, bp, **trade prices**, 15-min data, close) → EMA 2
+  → × 0.1 + 1.445, with each value **plotted at its bar-OPEN time** (TradingView's labelling; our bars are labelled by close, so
+  the formula series shifts one 15-min bar earlier).
+
+| | RMSE | bias | level corr | 15-min change corr |
+|---|---|---|---|---|
+| bar-close labels | 0.071 | +0.007 | 0.943 | 0.203 |
+| **bar-open labels (TradingView)** | **0.060** | +0.005 | **0.959** | **0.608** |
+| Thu–Fri only | | | 0.983 | 0.697 |
+| **Mon–Tue only** | | | **0.992** | **0.839 = the noise floor** |
+| changes over 2 h | | | | 0.98 |
+
+- **What mattered:** the one-bar labelling convention (0.20 → 0.61) and trade prices over midpoint (0.57 → 0.61). Higher-timeframe
+  semantics (last closed bar vs developing bar) and the 15/30/60-min data timeframe are **indistinguishable** (identical scores), as are
+  EMA 1–3 and source close/ohlc4/hl2 to within 0.05: those settings remain unpinned and do not need to be.
+- **Verdict:** the line is reproduced to the limit the video allows. Remaining differences are inside the digitising noise floor.

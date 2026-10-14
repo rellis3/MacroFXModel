@@ -31,7 +31,7 @@ full result; check it before quoting numbers.
 | Question | Verdict | Key numbers | Source |
 |---|---|---|---|
 | Rates lead Nasdaq (12+ tests, 1m to 1M) | **no lead replicates** | same-bar only | `plans/RATES_NASDAQ_WORKLOG.md` |
-| Reconstruct "C.OG's blue line" | **IDENTIFIED 2026-10-13** | plot = (SOFR Sep26 − Euribor **Mar27** [TV `I2!`, quarterly continuous]) in bp × **0.1** + **1.445** (inBps on, invert on, default offset); zero fitted parameters: RMSE 0.060 units, bias −0.006, level corr 0.955; 7.5→8.0 = 5 bp; data tf/source/EMA not pinned (1h hl2 EMA1–3 etc.); 15-min Δ corr 0.47–0.52 | `analysis/output/cog_video_0918/RECONSTRUCTION.md` §10 |
+| Reconstruct "C.OG's blue line" | **REPRODUCED 2026-10-14** | plot = (SOFR Sep26 − Euribor Mar27, bp, trade prices, 15m, close) → EMA 2 → ×0.1 + 1.445, plotted at bar-OPEN time; zero fitted constants; RMSE 0.060 units, level 0.96 (0.98–0.99 within periods), 15-min Δ corr 0.61 (Mon–Tue 0.84 = noise floor of the digitised target), 2 h Δ 0.98; 7.5→8.0 = +5 bp; lead offset 0 (the one-day lead was not used) | `analysis/output/cog_video_0918/RECONSTRUCTION.md` §10–12 |
 | His trade days vs our rates gap | descriptive only | n = 8 | `analysis/output/rates_residual/COG_DAYS.md` |
 
 ## Forward log (live agreement with COG)
