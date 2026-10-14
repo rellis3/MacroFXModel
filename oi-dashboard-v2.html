@@ -82,22 +82,15 @@ svg text{font-family:var(--mono)}
     <div class="card"><h2><em>03</em> When the gamma expires</h2><div id="timebar"></div></div>
   </div>
 
-  <details class="card xp"><summary>Experiments — expiry map · gamma mountains · strike × expiry heat <span style="color:var(--tx3)">(denser, optional)</span></summary>
-  <div class="row">
-    <div class="card">
-      <h2><em>A</em> Expiry map</h2>
-      <div class="sub">Price up the side, <b>time to expiry</b> across on a true scale. Bubble area = share of the whole book's gamma. Shows how <i>soon</i> each pile bites.</div>
-      <svg id="map" width="100%" viewBox="0 0 700 600"></svg>
-    </div>
-    <div class="card">
-      <h2><em>B</em> Gamma mountains</h2>
-      <div class="sub">One ridge per expiry (nearest at the front), gamma along the price axis — peaks up are long gamma, dips are short. Same scale on every ridge, so a flat far-month ridge is genuinely small.</div>
-      <svg id="mtn" width="100%" viewBox="0 0 700 600"></svg>
-    </div>
+  <div class="card">
+    <h2><em>04</em> Gamma by price level</h2>
+    <div class="sub"><b>The simple version.</b> One row per price band, highest price at the top. The <b>wide faint bar</b> is the whole book's gamma in that band: <span style="color:rgb(70,184,122)">right/green</span> = dealers lean against moves there (price tends to stall), <span style="color:rgb(232,97,95)">left/red</span> = dealers push with the move (price tends to speed up). The <b>slim bright bar</b> is the part of that gamma that expires within 3 days. A long bar with a long bright centre = a big zone that is about to matter. Hover a row for numbers.</div>
+    <svg id="bars" width="100%" viewBox="0 0 1000 640"></svg>
   </div>
 
+  <details class="card xp"><summary>Experiments — strike × expiry heat <span style="color:var(--tx3)">(denser, optional)</span></summary>
   <div class="card">
-    <h2><em>C</em> Strike × expiry heat</h2>
+    <h2><em>A</em> Strike × expiry heat</h2>
     <div class="sub">Every cell is one strike in one expiry; the number is its share of the whole book's gamma. Bars on the right/top show each strike's and each expiry's total.</div>
     <svg id="heat" width="100%" viewBox="0 0 1500 640"></svg>
   </div>
@@ -291,58 +284,31 @@ function timeBar(){
     + `<div class="sub" style="margin-top:8px">How much of the book's gamma expires when. Amber = within 3 days: <b>${D.nearShare.toFixed(0)}%</b> of the total. The more amber, the more today's dealer hedging is driven by contracts that are about to expire.</div>`;
 }
 
-// ── 02 expiry map ───────────────────────────────────────────────────────────────────────
-function drawMap(){
-  const D = CUR, svg = $('#map'); if (!D || !D.L) { svg.innerHTML = ''; return; }
-  const W = 700, H = 600, L = 62, R = 24, T = 36, B = 46, lo = D.spot - 1.5 * D.rm, hi = D.spot + 1.5 * D.rm;
-  const mxX = Math.log(1 + 60), X = d => L + Math.log(1 + Math.min(d, 60)) / mxX * (W - L - R), Y = p => T + (hi - p) / (hi - lo) * (H - T - B);
-  const pts = []; D.ser.forEach((s, j) => D.idx.forEach(i => { const k = D.L.strikes[i]; if (k < lo || k > hi) return; const v = s.net[i] || 0, sh = Math.abs(v) / D.total * 100; if (sh >= 0.3) pts.push({ k, d: s.dteN, rest: s.rest, v, sh, j }); }));
-  const mx = Math.max(...pts.map(p => p.sh), 1);
-  let h = `<defs><radialGradient id="gL"><stop offset="0" stop-color="rgb(${LONG})" stop-opacity=".95"/><stop offset="1" stop-color="rgb(${LONG})" stop-opacity=".25"/></radialGradient>
-    <radialGradient id="gS"><stop offset="0" stop-color="rgb(${SHORT})" stop-opacity=".95"/><stop offset="1" stop-color="rgb(${SHORT})" stop-opacity=".25"/></radialGradient>
-    <filter id="glow"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
-  h += `<rect x="${X(0)}" y="${T}" width="${X(3.2) - X(0)}" height="${H - T - B}" fill="rgba(240,176,74,.07)" rx="6"/>`;
-  const stp = Math.pow(10, Math.floor(Math.log10((hi - lo) / 6))) * 1; const st = ((hi - lo) / 6 / stp < 1.5 ? 1 : (hi - lo) / 6 / stp < 3.5 ? 2 : (hi - lo) / 6 / stp < 7.5 ? 5 : 10) * stp;
-  for (let p = Math.ceil(lo / st) * st; p <= hi; p += st) h += `<line x1="${L}" x2="${W - R}" y1="${Y(p)}" y2="${Y(p)}" stroke="#171d26"/><text x="${L - 8}" y="${Y(p) + 4}" text-anchor="end" fill="#6b7585" font-size="11">${px(p)}</text>`;
-  D.ser.forEach((s, j) => { const x = X(s.dteN), near = D.nearUse.includes(j); h += `<line x1="${x}" x2="${x}" y1="${T}" y2="${H - B}" stroke="#222a35" stroke-dasharray="2 5"/><text x="${x}" y="${H - B + 17}" text-anchor="middle" fill="${near ? '#f0b04a' : '#a8b1bd'}" font-size="11.5">${s.rest ? 'later' : s.dte + 'd'}</text><text x="${x}" y="${H - B + 31}" text-anchor="middle" fill="#6b7585" font-size="10">${D.share[j].toFixed(0)}%</text>`; });
-  [[D.spot, '#fff', 'spot', 0], [D.mp, '#d9c04a', 'max pain', 1], [D.flip, '#a487f0', 'GEX flip', 1]].forEach(([p, c, t, d]) => { if (!Number.isFinite(p) || p < lo || p > hi) return; h += `<line x1="${L}" x2="${W - R}" y1="${Y(p)}" y2="${Y(p)}" stroke="${c}" stroke-width="1.2"${d ? ' stroke-dasharray="6 4"' : ''} opacity=".85"/><text x="${W - R}" y="${Y(p) - 4}" text-anchor="end" fill="${c}" font-size="11">${t} ${px(p)}</text>`; });
-  pts.sort((a, b) => b.sh - a.sh);
-  pts.slice().reverse().forEach(p => { const r = 3 + Math.sqrt(p.sh / mx) * 25; h += `<circle cx="${X(p.d)}" cy="${Y(p.k)}" r="${r.toFixed(1)}" fill="url(#${p.v >= 0 ? 'gL' : 'gS'})" stroke="rgb(${p.v >= 0 ? LONG : SHORT})" stroke-width="1" filter="url(#glow)" data-t="${esc(`<b>${px(p.k)}</b> · ${p.rest ? 'later expiries' : p.d + ' DTE'}<br>${p.v >= 0 ? 'long' : 'short'} gamma · ${p.sh.toFixed(2)}% of the book`)}"/>`; });
-  pts.slice(0, 8).forEach(p => { const r = 3 + Math.sqrt(p.sh / mx) * 25; h += `<text x="${X(p.d) + r + 5}" y="${Y(p.k) + 4}" fill="#eef1f5" font-size="11" paint-order="stroke" stroke="#0d1117" stroke-width="3">${px(p.k)} · ${p.sh.toFixed(1)}%</text>`; });
-  svg.innerHTML = h;
-  svg.querySelectorAll('circle').forEach(c => { c.onmousemove = ev => showTip(ev, c.dataset.t); c.onmouseleave = hideTip; });
-}
-
-// ── 03 gamma mountains (ridgeline) ───────────────────────────────────────────────────────
-function drawMtn(){
-  const D = CUR, svg = $('#mtn'); if (!D || !D.L) { svg.innerHTML = ''; return; }
-  const W = 700, H = 600, L = 20, R = 20, T = 28, B = 40, lo = D.spot - 1.5 * D.rm, hi = D.spot + 1.5 * D.rm;
-  const X = p => L + (p - lo) / (hi - lo) * (W - L - R);
-  const sers = D.ser.map((s, j) => ({ s, j })).filter(o => !o.s.rest).slice(0, 5);
-  const rest = D.ser.findIndex(s => s.rest); if (rest >= 0) sers.push({ s: D.ser[rest], j: rest });
-  // Strikes are discrete spikes; the mountain is the shape they make together. Bin onto a fixed grid and smooth.
-  const NB = 90, bw = (hi - lo) / NB, kern = [.06, .24, .4, .24, .06];
-  const prof = sers.map(o => { const b = new Array(NB).fill(0);
-    D.L.strikes.forEach((k, i) => { if (k < lo || k >= hi) return; b[Math.min(NB - 1, Math.floor((k - lo) / bw))] += (o.s.net[i] || 0); });
-    return b.map((_, i) => kern.reduce((a, w, d) => a + w * (b[i + d - 2] || 0), 0)); });
-  const gmax = pctl(prof.flat().map(Math.abs), 0.97) || 1;
-  const n = sers.length, band = (H - T - B - 70) / n, amp = band * 1.7;
-  let h = '';
-  sers.slice().reverse().forEach((o, rr) => {
-    const k = sers.length - 1 - rr, base = T + (rr + 1) * band - 4, y = prof[k], near = D.nearUse.includes(o.j);
-    const path = sign => { let d = `M${X(lo)} ${base}`;
-      y.forEach((v, i) => { const vv = Math.max(-1.2, Math.min(1.2, v / gmax)), c = sign > 0 ? Math.max(0, vv) : Math.min(0, vv); d += ` L${X(lo + (i + .5) * bw).toFixed(1)} ${(base - c * amp).toFixed(1)}`; });
-      return d + ` L${X(hi)} ${base} Z`; };
-    const t = esc(`<b>${o.s.rest ? 'later expiries' : o.s.dte + ' DTE'}</b><br>${D.share[o.j].toFixed(1)}% of the book's gamma`);
-    h += `<g data-t="${t}"><path d="${path(1)}" fill="rgba(${LONG},${near ? .55 : .3})" stroke="rgb(${LONG})" stroke-width="1.2"/>`
-      + `<path d="${path(-1)}" fill="rgba(${SHORT},${near ? .55 : .3})" stroke="rgb(${SHORT})" stroke-width="1.2"/>`
-      + `<line x1="${L}" x2="${W - R}" y1="${base}" y2="${base}" stroke="rgba(255,255,255,.18)"/>`
-      + `<text x="${L + 2}" y="${base - band * .72}" fill="${near ? '#f0b04a' : '#a8b1bd'}" font-size="12">${o.s.rest ? 'later' : o.s.dte + ' DTE'} · ${D.share[o.j].toFixed(0)}%</text></g>`;
-  });
-  [[D.spot, '#fff', 'spot'], [D.flip, '#a487f0', 'flip'], [D.mp, '#d9c04a', 'max pain']].forEach(([p, c, t], i) => { if (!Number.isFinite(p) || p < lo || p > hi) return;
-    h += `<line x1="${X(p)}" x2="${X(p)}" y1="${T}" y2="${H - B}" stroke="${c}" stroke-width="1.2" stroke-dasharray="${t === 'spot' ? '' : '5 4'}" opacity=".85"/><text x="${X(p)}" y="${H - B + 14 + i * 12}" text-anchor="middle" fill="${c}" font-size="11">${t}</text>`; });
-  h += `<text x="${L}" y="${H - 6}" fill="#6b7585" font-size="11">${px(lo)}</text><text x="${W - R}" y="${H - 6}" text-anchor="end" fill="#6b7585" font-size="11">${px(hi)}</text>`;
-  svg.innerHTML = h;
+// ── 04 gamma by price level: a plain diverging bar chart ────────────────────────────────────────────────────────────
+// One row per price bucket. Wide faint bar = the WHOLE book's net gamma in that bucket (right/green = pins, left/red = speeds up).
+// Slim bright bar = the part of it that expires within 3 days. Replaces the expiry map and the gamma mountains.
+function drawBars(){
+  const D = CUR, svg = $('#bars'); if (!D || !D.L) { svg.innerHTML = ''; return; }
+  const NB = 26, lo = D.spot - 1.6 * D.rm, hi = D.spot + 1.6 * D.rm, bw = (hi - lo) / NB;
+  const tot = new Array(NB).fill(0), nr = new Array(NB).fill(0);
+  D.L.strikes.forEach((k, i) => { if (k < lo || k >= hi) return; const b = Math.floor((k - lo) / bw);
+    D.ser.forEach((s, j) => { const v = s.net[i] || 0; tot[b] += v; if (D.nearUse.includes(j)) nr[b] += v; }); });
+  const m = pctl(tot.map(Math.abs).concat(nr.map(Math.abs)), 0.95) || 1;
+  const W = 1000, rowH = 22, T = 34, L = 150, R = 30, H = T + NB * rowH + 14, zx = L + (W - L - R) / 2, half = (W - L - R) / 2 * 0.96;
+  const bx = v => Math.max(-1, Math.min(1, v / m)) * half;
+  let h = `<text x="${zx - half / 2}" y="18" text-anchor="middle" fill="rgb(${SHORT})" font-size="12">◄ speeds price up</text><text x="${zx + half / 2}" y="18" text-anchor="middle" fill="rgb(${LONG})" font-size="12">pins / slows price ►</text>`;
+  h += `<line x1="${zx}" x2="${zx}" y1="${T - 6}" y2="${H - 10}" stroke="rgba(255,255,255,.3)"/>`;
+  for (let r = 0; r < NB; r++) { const b = NB - 1 - r, y = T + r * rowH, p0 = lo + b * bw, p1 = p0 + bw, mid = (p0 + p1) / 2;
+    const hasSpot = D.spot >= p0 && D.spot < p1, hasFlip = Number.isFinite(D.flip) && D.flip >= p0 && D.flip < p1, hasMP = Number.isFinite(D.mp) && D.mp >= p0 && D.mp < p1;
+    const t = esc(`<b>${px(p0)} – ${px(p1)}</b><br>whole book: ${tot[b] >= 0 ? 'pins' : 'speeds up'} (${(Math.abs(tot[b]) / D.total * 100).toFixed(1)}% of book)<br>expiring within 3 days: ${nr[b] === 0 ? 'none' : (nr[b] >= 0 ? 'pins' : 'speeds up') + ' (' + (Math.abs(nr[b]) / D.total * 100).toFixed(1) + '%)'}`);
+    h += `<g data-t="${t}"><rect x="0" y="${y}" width="${W}" height="${rowH}" fill="${hasSpot ? 'rgba(240,176,74,.09)' : 'transparent'}"/>`
+      + `<text x="${L - 10}" y="${y + rowH * .66}" text-anchor="end" fill="${hasSpot ? '#f0b04a' : '#a8b1bd'}" font-size="12" font-weight="${hasSpot ? 700 : 400}">${px(mid)}</text>`
+      + `<rect x="${tot[b] >= 0 ? zx : zx + bx(tot[b])}" y="${y + 3}" width="${Math.abs(bx(tot[b]))}" height="${rowH - 6}" rx="3" fill="rgba(${tot[b] >= 0 ? LONG : SHORT},.32)" stroke="rgba(${tot[b] >= 0 ? LONG : SHORT},.7)"/>`
+      + `<rect x="${nr[b] >= 0 ? zx : zx + bx(nr[b])}" y="${y + 7}" width="${Math.abs(bx(nr[b]))}" height="${rowH - 14}" rx="2" fill="rgb(${nr[b] >= 0 ? LONG : SHORT})"/>`
+      + (hasSpot ? `<text x="${W - R}" y="${y + rowH * .66}" text-anchor="end" fill="#f0b04a" font-size="12">◄ spot ${px(D.spot)}</text>` : '')
+      + (hasFlip ? `<text x="${W - R}" y="${y + rowH * .66}" text-anchor="end" fill="#a487f0" font-size="12" dx="${hasSpot ? -150 : 0}">GEX flip ${px(D.flip)}</text>` : '')
+      + (hasMP ? `<text x="${W - R}" y="${y + rowH * .66}" text-anchor="end" fill="#d9c04a" font-size="12" dx="${hasSpot || hasFlip ? -310 : 0}">max pain ${px(D.mp)}</text>` : '') + `</g>`; }
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = h;
   svg.querySelectorAll('g[data-t]').forEach(g => { g.onmousemove = ev => showTip(ev, g.dataset.t); g.onmouseleave = hideTip; });
 }
 
@@ -399,7 +365,7 @@ function rail(){
 }
 
 async function refresh(){
-  CUR = derive(SYM); rail(); stats(); drawMap(); drawMtn(); drawHeat();
+  CUR = derive(SYM); rail(); stats(); drawBars(); drawHeat();
   $('#note').innerHTML = `<span>Source: oi_store (${esc(STORE[SYM]?.savedAt || '')}) · candles: OANDA H1 · colours are the platform's own sign convention (calls − puts, dealers long calls / short puts). Analysis views, not signals — wall and flip effects did not beat placebo levels in your own tests.</span>`;
   await drawTerrain();
 }
