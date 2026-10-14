@@ -2187,6 +2187,26 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             const commNets = sorted.map(r => { const net = (amL(r) - amS(r)) + (dlL(r) - dlS(r)); return inst.flip ? -net : net; });
             const oiSer    = sorted.map(r => pi(r.open_interest_all ?? r.open_interest));
             const h = a => a.slice(1);
+            // THE PARTICIPANT SPLIT. `commNets` above adds asset managers and dealers into one
+            // number, and the page then labels the other side "Speculators". That hides the
+            // distinction the TFF report exists to make. Asset managers are real money, mostly
+            // hedging, and are structurally short most FX futures; leveraged funds are the
+            // fast, discretionary side. They routinely sit on OPPOSITE sides, and a one-number
+            // read cannot tell you which of them is stretched.
+            //
+            // Live example, AUD on the 2026-10-06 report: leveraged funds net +54,133 (long,
+            // 84th percentile of three years) while asset managers were net -101,428 (short,
+            // and the most short in TWENTY YEARS as a share of open interest). Collapsed, that
+            // reads as "the market is net short". Split, it is a crowded LONG by the fast money
+            // against a record real-money short. Those imply opposite things, and the merged
+            // field could not say which was which.
+            //
+            // Flipped like specNets so every leg speaks in the same currency direction.
+            // Additive: specNet and commNet are untouched, so nothing downstream moves.
+            const amNets  = sorted.map(r => (inst.flip ? -1 : 1) * (amL(r) - amS(r)));
+            const dlNets  = sorted.map(r => (inst.flip ? -1 : 1) * (dlL(r) - dlS(r)));
+            const amShare = amNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
+            const dlShare = dlNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
             // CROWDING = net position as a SHARE of open interest, then ranked.
             //
             // `specPct` alone ranks the RAW contract count over the window, which conflates
@@ -2206,6 +2226,20 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
               specPct: eh ? pctRank(h(specNets), specNets[0]) : null, commPct: eh ? pctRank(h(commNets), commNets[0]) : null,
               specNet: specNets[0], commNet: commNets[0],
               specZ: eh ? zScore(h(specNets), specNets[0]) : null, commZ: eh ? zScore(h(commNets), commNets[0]) : null,
+              // The two halves of commNet, each ranked on its OWN history -- the only way an
+              // asset-manager short at a twenty-year extreme shows up as one.
+              amNet: amNets[0], dlNet: dlNets[0],
+              amShare: amShare[0] != null ? +(amShare[0] * 100).toFixed(2) : null,
+              dlShare: dlShare[0] != null ? +(dlShare[0] * 100).toFixed(2) : null,
+              amSharePct: (eh && amShare[0] != null) ? pctRank(clean(h(amShare)), amShare[0]) : null,
+              dlSharePct: (eh && dlShare[0] != null) ? pctRank(clean(h(dlShare)), dlShare[0]) : null,
+              amShareZ:   (eh && amShare[0] != null) ? zScore(clean(h(amShare)), amShare[0]) : null,
+              amShareChg4w: (amShare[0] != null && amShare[4] != null) ? +((amShare[0] - amShare[4]) * 100).toFixed(3) : null,
+              // "The two sides are pulling apart" needs its own number, because it is exactly
+              // what a single collapsed column can never show. Positive = fast money and real
+              // money moved FURTHER apart over the last month.
+              splitChg4w: (specShare[0] != null && specShare[4] != null && amShare[0] != null && amShare[4] != null)
+                ? +(((specShare[0] - amShare[0]) - (specShare[4] - amShare[4])) * 100).toFixed(3) : null,
               // OI-normalised. `*Share` is the signed fraction of OI (as %), `*SharePct`
               // its percentile over the same window, `specShareZ` the z of that share.
               specShare: specShare[0] != null ? +(specShare[0] * 100).toFixed(2) : null,
@@ -2244,6 +2278,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
                 commNet: commNets.slice().reverse(),
                 oi: oiSer.slice().reverse(),
                 specShare: specShare.map(v => (v == null ? null : +(v * 100).toFixed(3))).reverse(),
+                amShare:   amShare.map(v => (v == null ? null : +(v * 100).toFixed(3))).reverse(),
               },
             });
           }
