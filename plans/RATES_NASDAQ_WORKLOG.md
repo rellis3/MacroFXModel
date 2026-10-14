@@ -138,3 +138,5 @@ Built so the line can be drawn on a TradingView plan without intraday SOFR/Eurib
 (tracked; `data/` is gitignored). Data runs 15 Sep - 9 Oct until the next refresh. The Pine file has not been compiled by me.
 
 - **2026-10-14 C.OG on his chart:** raw indicator, no smoothing or adjustment, Nasdaq on a separate tab. Pasted-data indicator default smoothing -> 1 (raw): RMSE 0.061, level 0.958, 15m change 0.56 (Mon-Tue 0.82 vs 0.84 floor). The 'time shift' is the one-bar labelling convention (0.56 right, 0.22 one bar off). RECONSTRUCTION.md s13.
+
+- **2026-10-14 trend-state test** (`forge/COG_TREND_STATE_PREREG.md`, `cog_trend_state.py`, `TREND_STATE.md`): fuzzy causal zig-zag states for line and Nasdaq. Same-time state corr +0.15/+0.23 (fine); no lead beats the scramble band; 'line turns while Nasdaq has not' 9/36 pass explore, 0 confirm (pooled +10.6pp -> +4.1pp, 13/24 same sign). Ledger `cog-trend-state`.

@@ -962,6 +962,13 @@ export const DESK_EVIDENCE = [
     instruments: ['NQ'],
   },
   {
+    id: 'cog-trend-state', domain: 'macro', verdict: 'null', date: '2026-10-14', doc: 'forge/COG_TREND_STATE_PREREG.md',
+    claim: "Not the size but the DIRECTION of C.OG's line: when it turns from a down-trend to an up-trend (a fuzzy, causal zig-zag state, three coarseness levels), Nasdaq undergoes a matching trend shift, directly or shifted forward from 1 h to 48 h",
+    result: 'Direct agreement is real and stable, a lead is not. State cross-correlation at the same time: +0.15 / +0.23 (explore / confirm, fine trends), +0.11 / +0.10 (medium), +0.16 / +0.05 (coarse). No lead (line state at t vs Nasdaq state at t + 1..48 h) exceeds the day-shift scramble band in explore, for any of the three trend scales (peak lead correlation 0.16, 0.12, 0.15 against family-wise 95% bands of 0.17, 0.25, 0.35). Event version, the line turns to a direction while Nasdaq is still in the opposite trend (36 cells, 30 with enough events): 9 pass FDR in explore (fine trends: Nasdaq turns the same way within 1-8 h an extra 9-19 percentage points of the time), 0 confirm; pooled over 1-8 h the extra chance falls from +10.6 pp in explore to +4.1 pp in confirm, same sign in 13 of 24 cells (coin flip). Resolution: 38-85 events per cell, smallest detectable difference 9-16 pp at 1-8 h; the 24-48 h cells are uninformative because Nasdaq flips within a day almost every time at fine trend scale.',
+    use: 'The line turning does not announce a Nasdaq turn beyond what happens anyway; the state-level link is the same same-hour co-movement the size tests found. The explore-half excess at fine trend scale (the shape of what C.OG shows) shrinks by 60% out of sample and is not distinguishable from chance with this many events; reopen with about a year more 1-minute data.',
+    instruments: ['NQ'],
+  },
+  {
     id: 'rate-diff-xsmom', domain: 'macro', verdict: 'null', date: '2026-10-08', doc: 'forge/RATE_XSMOM_PREREG.md',
     claim: "C.OG's suggestion: cross-sectional momentum in short-term rate differentials (rank 9 currencies vs USD by the 3-month change in their 3-month-rate gap, long top third / short bottom third), and NASDAQ only while US short rates fall",
     result: 'FX FAIL: +0.95% a year, Sharpe 0.13, 1976-2026 (1976-2014 +0.081%/month [-0.110, +0.276]; 2015-2026 +0.073%); alpha over carry and FX momentum t +0.81; look-backs 1/6/12 no better in both periods. Same code ranking by rate LEVEL (carry) earns +5.0%/yr, Sharpe 0.54, 1976-2014 (interval above 0), so the construction works. NASDAQ rule FAIL: Sharpe 0.24 vs buy-and-hold 0.35, worse in both periods (in the market 46%); US-minus-others version worse (-0.25 [-0.46, -0.04]).',
