@@ -62,7 +62,8 @@ svg text{font-family:var(--mono)}
 
   <div class="card">
     <h2><em>01</em> Gamma terrain <span style="margin-left:auto;font-size:11px;color:var(--tx3);letter-spacing:.06em;text-transform:none">move the mouse over it</span></h2>
-    <div class="sub">Price candles trading across the dealers' gamma landscape. The coloured bands behind the candles are the net gamma sitting at each strike (green = long gamma, dealers fade moves · red = short gamma, dealers chase them) — brighter means more. The curve on the right is the <b>whole book's total gamma if price were at that level</b>: where it crosses zero is the regime flip, and it is the real one, recomputed at every price.</div>
+    <div class="sub">Price candles trading across the dealers' gamma landscape. <b>How to read it:</b> the glowing bands behind the candles are zones of dealer gamma, smoothed so you see zones rather than individual strikes. <b style='color:rgb(70,184,122)'>Green zone</b> = dealers lean against moves, so price tends to stall and pin there. <b style='color:rgb(232,97,95)'>Red zone</b> = dealers push with the move, so price tends to speed up through it. Brighter = more gamma; the biggest zones are named on the right. The curve on the right is the <b>whole book's total gamma if price were at that level</b>: where it crosses zero is the regime flip, and it is the real one, recomputed at every price.</div>
+    <div style="display:flex;gap:6px;justify-content:flex-end;margin:-6px 0 8px"><span class="pill on" id="tSm">Smooth zones</span><span class="pill" id="tRaw">Raw strikes</span></div>
     <canvas id="terrain"></canvas>
     <div class="legend"><span><i style="background:rgb(var(--long))"></i>long gamma — pins</span><span><i style="background:rgb(var(--short))"></i>short gamma — amplifies</span><span><i style="background:var(--vio)"></i>GEX flip</span><span><i style="background:#d9c04a"></i>max pain</span><span><i style="background:#fff"></i>spot</span></div>
   </div>
@@ -160,7 +161,7 @@ async function candles(sym){
 }
 
 // ── 01 terrain ──────────────────────────────────────────────────────────────────────────
-let TERR = null;
+let TERR = null, TERR_PEAKS = [], RAW = false;
 async function drawTerrain(){
   const D = CUR; const cv = $('#terrain'); const ctx = cv.getContext('2d');
   const dpr = devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
@@ -175,16 +176,36 @@ async function drawTerrain(){
   const P = y => hi - (y - padT) / (H - padT - padB) * (hi - lo);
   // heat wallpaper: net gamma per strike (selected expiries), soft-edged, fading toward the left
   const ks = D.L.strikes, vals = ks.map((k, i) => D.use.reduce((a, j) => a + (D.ser[j].net[i] || 0), 0));
-  const mx = pctl(ks.map((k, i) => (k >= lo && k <= hi) ? Math.abs(vals[i]) : 0), 0.9) || 1;   // 90th percentile: a couple of spikes must not wash out the rest
   const off = document.createElement('canvas'); off.width = PW * dpr; off.height = H * dpr; const oc = off.getContext('2d'); oc.setTransform(dpr, 0, 0, dpr, 0, 0);
-  oc.filter = 'blur(2.5px)';
-  for (let i = 0; i < ks.length; i++) { const k = ks[i]; if (k < lo - (hi - lo) * .05 || k > hi + (hi - lo) * .05) continue;
-    const up = i + 1 < ks.length ? (ks[i] + ks[i + 1]) / 2 : k, dn = i > 0 ? (ks[i] + ks[i - 1]) / 2 : k;
-    const a = Math.min(1, Math.pow(Math.abs(vals[i]) / mx, 0.6)); if (a < 0.03) continue;
-    oc.fillStyle = `rgba(${vals[i] >= 0 ? LONG : SHORT},${(0.16 + 0.78 * a).toFixed(3)})`; oc.fillRect(0, Y(up), PW, Math.max(1.5, Y(dn) - Y(up))); }
+  // SMOOTH FIELD (default): every strike is a spike, and neighbouring strikes often flip sign (calls at one, puts at the next) —
+  // drawn raw that is a barcode. Spread each strike's gamma over price with a gaussian and the zones that matter appear as
+  // continuous bands. "Raw strikes" shows the individual strikes for anyone who wants them.
+  const NR = 260; let field = [];
+  if (RAW) {
+    const mx = pctl(ks.map((k, i) => (k >= lo && k <= hi) ? Math.abs(vals[i]) : 0), 0.9) || 1;
+    oc.filter = 'blur(2px)';
+    for (let i = 0; i < ks.length; i++) { const k = ks[i]; if (k < lo - (hi - lo) * .05 || k > hi + (hi - lo) * .05) continue;
+      const up = i + 1 < ks.length ? (ks[i] + ks[i + 1]) / 2 : k, dn = i > 0 ? (ks[i] + ks[i - 1]) / 2 : k;
+      const a = Math.min(1, Math.pow(Math.abs(vals[i]) / mx, 0.6)); if (a < 0.03) continue;
+      oc.fillStyle = `rgba(${vals[i] >= 0 ? LONG : SHORT},${(0.16 + 0.78 * a).toFixed(3)})`; oc.fillRect(0, Y(up), PW, Math.max(1.5, Y(dn) - Y(up))); }
+  } else {
+    const sg = (hi - lo) * 0.018;                       // ~1.8% of the visible range
+    for (let r = 0; r < NR; r++) { const P0 = lo + (hi - lo) * r / (NR - 1); let v = 0;
+      for (let i = 0; i < ks.length; i++) { const d = (ks[i] - P0) / sg; if (d > 4 || d < -4) continue; v += vals[i] * Math.exp(-d * d / 2); }
+      field.push({ P: P0, v }); }
+    const m = pctl(field.map(f => Math.abs(f.v)), 0.93) || 1;
+    const rh = (H - padT - padB) / NR + 0.6;
+    field.forEach(f => { const a = Math.min(1, Math.pow(Math.abs(f.v) / m, 0.7)); if (a < 0.04) return;
+      oc.fillStyle = `rgba(${f.v >= 0 ? LONG : SHORT},${(0.10 + 0.62 * a).toFixed(3)})`; oc.fillRect(0, Y(f.P) - rh / 2, PW, rh); });
+    // name the biggest zones so the picture reads without a legend: local maxima of |field|
+    const peaks = []; for (let r = 2; r < field.length - 2; r++) { const f = field[r]; if (Math.abs(f.v) > m * 0.55 && Math.abs(f.v) >= Math.abs(field[r - 1].v) && Math.abs(f.v) >= Math.abs(field[r + 1].v) && Math.abs(f.v) >= Math.abs(field[r - 2].v) && Math.abs(f.v) >= Math.abs(field[r + 2].v)) peaks.push(f); }
+    peaks.sort((x, y) => Math.abs(y.v) - Math.abs(x.v)); const keepP = []; for (const f of peaks) if (keepP.every(g => Math.abs(g.P - f.P) > (hi - lo) * 0.06) && keepP.length < 5) keepP.push(f);
+    TERR_PEAKS = keepP;
+  }
   oc.filter = 'none'; oc.globalCompositeOperation = 'destination-in';
   const gr = oc.createLinearGradient(0, 0, PW, 0); gr.addColorStop(0, 'rgba(0,0,0,.50)'); gr.addColorStop(1, 'rgba(0,0,0,1)'); oc.fillStyle = gr; oc.fillRect(0, 0, PW, H);
   ctx.drawImage(off, 0, 0, PW, H);
+  if (!RAW) (TERR_PEAKS || []).forEach(f => { ctx.font = '600 10.5px ui-monospace,Consolas,monospace'; ctx.textAlign = 'right'; ctx.fillStyle = f.v >= 0 ? `rgba(${LONG},.95)` : `rgba(${SHORT},.95)`; ctx.fillText((f.v >= 0 ? 'pin zone ' : 'short-gamma zone ') + px(f.P), PW - 64, Y(f.P) + 4); });
   // grid + price axis
   const step = (() => { const raw = (hi - lo) / 7, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p; return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p; })();
   ctx.font = '11px ui-monospace,Consolas,monospace'; ctx.textAlign = 'right';
@@ -341,6 +362,8 @@ async function refresh(){
   await drawTerrain();
 }
 $('#mNear').onclick = () => { NEAR = true; $('#mNear').classList.add('on'); $('#mAll').classList.remove('on'); refresh(); };
+$('#tSm').onclick = () => { RAW = false; $('#tSm').classList.add('on'); $('#tRaw').classList.remove('on'); drawTerrain(); };
+$('#tRaw').onclick = () => { RAW = true; $('#tRaw').classList.add('on'); $('#tSm').classList.remove('on'); drawTerrain(); };
 $('#mAll').onclick = () => { NEAR = false; $('#mAll').classList.add('on'); $('#mNear').classList.remove('on'); refresh(); };
 addEventListener('resize', () => { clearTimeout(window._rz); window._rz = setTimeout(drawTerrain, 150); });
 
