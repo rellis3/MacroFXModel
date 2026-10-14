@@ -186,6 +186,19 @@ export const DESK_EVIDENCE = [
     use: 'The position book is descriptive only.',
   },
   {
+    // Pre-registered 2026-08-21 with the design frozen BEFORE any COT history was
+    // fetched, and deliberately TWO-SIDED: hedging pressure predicts follow, crowding
+    // predicts fade, and picking one first would have been choosing a theory over
+    // evidence. It had a verdict since 2026-08-22 and lived only in BACKTEST_INDEX Q17
+    // -- so the ledger, which is what every page and prompt cites, did not know the one
+    // registered test this desk has run on COT positioning. Banked here 2026-10-14.
+    id: 'cot-positioning-factor', domain: 'positioning', verdict: 'null', date: '2026-08-22',
+    doc: 'MD files/COT_POSITIONING_FACTOR_TEST.md',
+    claim: 'Speculative positioning, as a share of open interest and ranked against its own history, carries information about forward returns (two-sided: follow or fade)',
+    result: 'CFTC TFF + disaggregated, 8 instruments, 899 scored weeks each, 3,576 OOS rows 2018-2026. Pooled OOS rank-IC -0.0317 (~1.7 sigma), p=0.0936 against a p<0.05 bar: FAIL. Both OOS halves share the sign and 8/8 instruments qualified, so two of three checks passed and significance did not. Per instrument the spread is wide and the ends disagree: GBP -0.228, GOLD +0.117, and AUD +0.004 -- nothing. Two flaws found while reading the result (the block bootstrap resampled neighbouring INSTRUMENTS rather than consecutive weeks, and the 7 FX legs are largely one USD trade) BOTH flatter the signal, so the null is robust to them.',
+    use: 'Never write that crowded positioning predicts which way a market goes: the one registered test says it does not, and it says so for AUD at +0.004 specifically. Positioning is a read on WHO HOLDS WHAT and therefore who has to act if they are wrong -- it is not a direction signal, and the companion result (crowded-bond-short-fomc) found crowded shorts into a scheduled event got PAID rather than squeezed. Show it as context next to a release; never as a lean.',
+  },
+  {
     id: 'approach-speed', domain: 'price', verdict: 'null', date: '2026-09-12', doc: 'MD files/APPROACH_SPEED_CONTROL_TEST.md',
     claim: 'Price arriving slowly at a level dwells there',
     result: 'It dwells identically at random non-level prices. The level does no work; what survives is unconditional tape-speed persistence.',
@@ -1052,6 +1065,7 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'cot-positioning-factor':  { n: '3,576 OOS rows, 8 instruments', note: 'pooled rank-IC -0.0317, p=0.0936 vs a p<0.05 bar; AUD leg +0.004; both known flaws flatter the signal' },
   // Verified by reading the entry on 2026-10-03.
   'gex-range':               { n: '793 NQ days',               note: 'p 0.0008, +0.315 vol-matched, 4/4 specs, 6/6 years, event-day confound closed' },
   'news-asymmetry':          { n: '656 releases 2016-26',      note: 'the entry states "Null, and well powered"' },
