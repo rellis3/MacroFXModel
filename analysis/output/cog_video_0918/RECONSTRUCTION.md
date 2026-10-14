@@ -222,3 +222,15 @@ axis from the 8.x labels or regressed to the consensus); (3) bar-time labelling 
   semantics (last closed bar vs developing bar) and the 15/30/60-min data timeframe are **indistinguishable** (identical scores), as are
   EMA 1–3 and source close/ohlc4/hl2 to within 0.05: those settings remain unpinned and do not need to be.
 - **Verdict:** the line is reproduced to the limit the video allows. Remaining differences are inside the digitising noise floor.
+
+## 13. What C.OG said about his chart (Discord, 2026-10-14) and the raw check
+
+Stated by C.OG (tier 2): "I have two trading view tabs open and have Nasdaq on one and the raw indicator with no smoothing or adjustment etc on the
+second tab. When you do that you'll be able to match it perfectly." (Context: Rich could not get a rebuilt line to map exactly because of time shifts.)
+
+- **Smoothing: off.** His indicator tab is raw. Raw (EMA 1) on trade prices, 15-min close, bar-open labelling: RMSE 0.061, level 0.958, 15-min change corr **0.56**
+  (Thu–Fri 0.59, Mon–Tue **0.82** against a 0.84 noise floor); EMA 2 scored 0.61, within noise. The pasted-data indicator now defaults to smoothing 1.
+- **No forward shift:** consistent with §11 (lead 0). A line overlaid on the Nasdaq chart with his script's default +1 day offset would appear shifted by a day.
+- **The "time shift" Rich hit is the one-bar labelling convention (§12):** TradingView draws a bar's value at its OPEN time; a series stamped at bar CLOSE sits one
+  bar late. Raw, trades, 15-min close: change corr 0.56 at the right alignment, 0.22 one bar off, about 0 at two or more bars. The Rates export is already stamped at bar open.
+- **Two tabs vs one chart:** a separate pane in the same chart shares the Nasdaq time axis exactly, so it is equivalent to his two linked tabs.

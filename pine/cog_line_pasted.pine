@@ -18,7 +18,9 @@ indicator("C.OG Line - pasted data", shorttitle="COG line", overlay=false)
 // 4. A grey status box (top right) always shows what was parsed. If it says
 //    "No data", the paste did not arrive; if it shows a data range, the line is
 //    drawn wherever your chart's bars fall inside that range.
-// 5. "Offset the line" moves it right (+) or left (-) in chart bars (96 = one
+// 5. Smoothing is OFF by default: C.OG says his own chart shows the raw indicator with no
+//    smoothing or adjustment. Leave Offset at 0 to match his video.
+//    "Offset the line" moves it right (+) or left (-) in chart bars (96 = one
 //    day on a 15-minute chart). C.OG's script defaults to +1 day; his video used 0.
 // Use a 15-minute chart: the data is one value per 15-minute bar.
 // =====================================================================
@@ -27,7 +29,7 @@ data    = input.text_area("", "Pasted data (Rates page > C.OG line > Copy for Tr
 showAs  = input.string("C.OG units (bp x scale + offset)", "Show", options=["C.OG units (bp x scale + offset)", "Spread (bp)"], group="Display")
 scale   = input.float(0.1, "Scale", step=0.01, group="Mapping")
 offs    = input.float(1.445, "Offset", step=0.001, group="Mapping")
-smooth  = input.int(2, "Smoothing (EMA, bars; 1 = off)", minval=1, group="Mapping")
+smooth  = input.int(1, "Smoothing (EMA, bars; 1 = off = raw, as C.OG runs it)", minval=1, group="Mapping")
 shift   = input.int(0, "Offset the line (chart bars, + right / - left)", minval=-500, maxval=500, group="Offset")
 onPrice = input.bool(false, "Also draw on the price pane (rescaled to the visible range)", group="Overlay")
 fitLen  = input.int(250, "Rescale look-back (bars)", minval=10, group="Overlay")

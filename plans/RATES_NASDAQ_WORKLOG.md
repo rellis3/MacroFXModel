@@ -136,3 +136,5 @@ Built so the line can be drawn on a TradingView plan without intraday SOFR/Eurib
 `/api/cog-line/indicator`, a Rates-page card (`#clcard`), `pine/cog_line_pasted.pine` (pasted data, EMA, offset input), `scripts/rates_line/build_cog_line.py` and
 `refresh_cog_line.py` (laptop, TWS open: `python scripts/rates_line/refresh_cog_line.py --days 14 --commit`). Series file `analysis/output/cog_line/cog_line_15m.json`
 (tracked; `data/` is gitignored). Data runs 15 Sep - 9 Oct until the next refresh. The Pine file has not been compiled by me.
+
+- **2026-10-14 C.OG on his chart:** raw indicator, no smoothing or adjustment, Nasdaq on a separate tab. Pasted-data indicator default smoothing -> 1 (raw): RMSE 0.061, level 0.958, 15m change 0.56 (Mon-Tue 0.82 vs 0.84 floor). The 'time shift' is the one-bar labelling convention (0.56 right, 0.22 one bar off). RECONSTRUCTION.md s13.

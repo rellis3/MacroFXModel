@@ -33,3 +33,5 @@ When one of these is answered, move it to the right reference file with the date
   absent `data/` folder, and still calls the work a replication. Use `DECISIONS.md`.
 
 Fix these only when asked, or when touching the file anyway, and then remove the line here.
+
+**2026-10-14 (C.OG, Discord, tier 2):** his chart is two TradingView tabs, Nasdaq on one and "the raw indicator with no smoothing or adjustment" on the other; "you'll be able to match it perfectly". Smoothing = none, forward shift = 0. Unanswered still: his data timeframe, and the exact settings of the Python-built version in the video.
