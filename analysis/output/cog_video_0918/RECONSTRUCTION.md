@@ -178,3 +178,22 @@ placebo holdout median −0.03, real +0.39) and then applying **round constants 
   0.003 RMSE); bar-by-bar at 15 min is 0.47–0.52, limited by timing slack in the digitised axis (±1 bar) and unseen
   smoothing. Trade prices fit slightly worse than midpoint on the extra legs.
 - **Retracts** the earlier "formula not identified" and "unknown scale/offset" statements; supersedes §9's candidate list.
+
+## 11. The indicator's lead offset (his `t + N days` input, default 1 day) — tested (2026-10-14)
+
+The sweep in §10 only covered lead shifts of ±4 chart bars. The script's default is `leadDays = 1` (plot offset 96 chart
+bars on a 15-min chart), so the 24-hour offset was tested separately, shifting the identified formula forward by N chart bars
+and comparing with his line:
+
+| lead | RMSE (units) | level corr | 15-min change corr |
+|---|---|---|---|
+| **0 (none)** | **0.060** | **+0.95** | **+0.47** |
+| 0.25 d (24 bars) | 0.190 | +0.54 | +0.09 |
+| 0.5 d | 0.244 | +0.26 | −0.06 |
+| 1 d (the default) | 0.334 | −0.14 | +0.03 |
+| 1.5 d / 2 d / 3 d | 0.36 / 0.42 / 0.49 | +0.10 / +0.40 / +0.40 | −0.09 / +0.06 / +0.01 |
+
+**His displayed line has no lead offset: it sits on the formula at the same timestamps (lead 0).** The video was recorded
+with `Projection (t + days)` set to 0, or with a version of the indicator without the shift. Consequence for the claim: what he
+shows as "the macro line moving first" is not produced by a plot shift; it is the formula's own timing (hourly data and
+smoothing make it lag, not lead, the underlying quotes).
