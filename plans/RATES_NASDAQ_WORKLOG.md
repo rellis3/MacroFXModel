@@ -126,3 +126,5 @@ contract or two-contract spread? Pre-registered `forge/RATE_CURVE_STRUCTURE_PRER
   Formula NOT identified; four questions for C.OG listed. No new predictive test follows.
 
 - **2026-10-13 correction:** wide-frame time axis re-anchored to the crosshair label; Tuesday agrees with the data. His line ≈ SOFR − Euribor-family spread (inverted, rescaled, smoothed?); direction/shape reproduced, bar-by-bar 0.26-0.38 at 15 min. Digitisation noise floor level 1.00 / change 0.96.
+
+- **2026-10-14 exact-pair lead test** (`forge/COG_EXACT_PAIR_LEAD_PREREG.md`, `cog_exact_pair_lead.py`): C.OG's identified line (SOFR Sep26 − Euribor Mar27, bp×0.1+1.445) vs NQ hourly: 0/8 lead cells in explore; same-hour link +0.22/+0.16 (1h) stable; planted-lead power only at ρ≥0.12. Ledger `cog-exact-pair-lead`. Reconstruction closed (RECONSTRUCTION.md §10); prediction null stands.

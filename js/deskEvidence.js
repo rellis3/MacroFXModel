@@ -948,6 +948,13 @@ export const DESK_EVIDENCE = [
     instruments: ['NQ'],
   },
   {
+    id: 'cog-exact-pair-lead', domain: 'macro', verdict: 'null', date: '2026-10-14', doc: 'forge/COG_EXACT_PAIR_LEAD_PREREG.md',
+    claim: "C.OG's identified line - (SOFR Sep26 - Euribor Mar27) in bp x 0.1 + 1.445, reproduced from our own futures data with zero fitted parameters (RMSE 0.06 units, level corr 0.955) - leads Nasdaq over 1 h to 24 h",
+    result: 'No lead. Hourly line (1h hl2) vs CME NQ, explore Apr-Jul / confirm Jul-Oct, 8 cells (1h and 4h change x 1/2/4/24 h ahead): 0 of 8 reach |t| 2.5 in explore (explore rho -0.04 to -0.01; confirm +0.05 to +0.17, t 0.9-1.3, wrong sign for a carry-over). The line level vs its 5-day mean predicts nothing over 24 h (rho -0.005 / -0.129). The same-hour link is real and stable: +0.22 (t 3.8) explore, +0.16 (t 3.1) confirm at 1 h; +0.24 / +0.18 at 4 h - the spread widening (SOFR up vs Euribor Mar27, i.e. European rate path repricing lower) goes with Nasdaq UP in the same hour. Power: planted leads of 0.03 / 0.05 / 0.08 not detected, 0.12 detected, so the null rules out a large lead only.',
+    use: 'The line C.OG displays is a faithful rate-spread display; it moves WITH Nasdaq in the same hour and does not lead it on our data. The identification closes the reconstruction question; the hypothesis behind it stays where the earlier lead tests left it. Reopen only with about a year more 1-minute data.',
+    instruments: ['NQ'],
+  },
+  {
     id: 'rate-diff-xsmom', domain: 'macro', verdict: 'null', date: '2026-10-08', doc: 'forge/RATE_XSMOM_PREREG.md',
     claim: "C.OG's suggestion: cross-sectional momentum in short-term rate differentials (rank 9 currencies vs USD by the 3-month change in their 3-month-rate gap, long top third / short bottom third), and NASDAQ only while US short rates fall",
     result: 'FX FAIL: +0.95% a year, Sharpe 0.13, 1976-2026 (1976-2014 +0.081%/month [-0.110, +0.276]; 2015-2026 +0.073%); alpha over carry and FX momentum t +0.81; look-backs 1/6/12 no better in both periods. Same code ranking by rate LEVEL (carry) earns +5.0%/yr, Sharpe 0.54, 1976-2014 (interval above 0), so the construction works. NASDAQ rule FAIL: Sharpe 0.24 vs buy-and-hold 0.35, worse in both periods (in the market 46%); US-minus-others version worse (-0.25 [-0.46, -0.04]).',
