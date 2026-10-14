@@ -41,3 +41,11 @@ A family PASSES if a cell survives both. Power first: planted leads of ρ = 0.03
 at ρ = 0.08 is "genuinely nothing"; otherwise "insufficient data". No cells added after the first number.
 
 Script `scripts/rate_diff_nq/cog_video_claims.py`; output `analysis/output/cog_video_0918/VIDEO_CLAIMS.md`; ledger `cog-video-claims`.
+
+## Deviations recorded at run time (2026-10-14)
+1. **Look-ahead bug found and fixed before any result was recorded.** The first run used the bar-OPEN-labelled line (how TradingView draws it,
+   one bar early) against close-labelled Nasdaq, which gave the line one bar of future information (a fake 15-min "lead", rho 0.175, t 4.9). All
+   predictive tests use the **close-labelled** line (information available at the bar's close); the open-labelled line is used only for the
+   descriptive case studies. No cells, windows or horizons changed.
+2. **F2 K = 96 (24 h swing) returned no events:** the rolling 96-bar window needs 96 consecutive bars with both legs present and the data are present
+   57 % of the time. Those 6 + 6 cells are empty, not null.
