@@ -49,6 +49,7 @@
 
   <div class="card"><h2>Now, in words</h2><div id="now">Loading…</div></div>
   <div class="card"><h2>Who is driving Nasdaq — rates, or not?</h2><div id="rr">Loading…</div></div>
+  <div class="card" id="clcard"><h2>C.OG line: SOFR vs Euribor, with a TradingView export</h2><div id="cl">Loading…</div></div>
   <div class="two">
     <div class="card"><h2>The curve — 2, 10 and 30 years, three years back</h2><div id="chCurve"></div></div>
     <div class="card"><h2>The slopes — 2s10s and 2s30s</h2><div id="chSlope"></div></div>
@@ -212,6 +213,52 @@ async function main() {
       <div class="lg"><span><i style="border-color:${col}"></i>rolling 20-day link at each day's close</span><span>solid lines ±0.30 = strong · dashed ±0.15 = moderate</span></div>
       <div class="sub">How to read it: below zero, Nasdaq falls when yields rise in the same 15 minutes (rates in charge; good news is bad news); above zero they rise together (growth-driven); near zero, rate news barely moves Nasdaq. The sign flipped in March 2026. ${d.lastAlert ? `Last alert ${esc(d.lastAlert.at.slice(0, 16).replace('T', ' '))} UTC.` : ''} <b>Context, not a signal:</b> testing found no lead of rates over Nasdaq at any horizon (Evidence Book: rate-diff-nq-leadlag); this says which regime the market is in and how much of a move was rates, after the fact. Updated ${esc((d.updatedAt ?? '').slice(0, 16).replace('T', ' '))} UTC from OANDA's US 2-year bond CFD and NAS100.</div>`;
   }).catch(() => { document.getElementById('rr').textContent = 'not loaded'; });
+
+  // C.OG's SOFR-vs-Euribor line (js/cogLine.js via /api/cog-line): the same line he shows, drawn from data we hold, plus a paste-in export for TradingView
+  (function cogLineCard() {
+    const el = document.getElementById('cl'); let days = 10;
+    const copy = async (url, btn) => {
+      const old = btn.textContent;
+      try { const txt = await (await fetch(url)).text(); try { await navigator.clipboard.writeText(txt); btn.textContent = 'Copied ✓'; } catch { const ta = document.getElementById('clta'); ta.hidden = false; ta.value = txt; ta.select(); btn.textContent = 'Select and copy below'; } }
+      catch (e) { btn.textContent = 'Failed: ' + e.message; }
+      setTimeout(() => { btn.textContent = old; }, 2600);
+    };
+    const draw = d => {
+      if (!d?.ok || !d.bars?.length) { el.innerHTML = `<div class="sub">No line data yet${d?.error ? ` (${esc(d.error)})` : ''}.</div>`; return; }
+      const b = d.bars, last = b[b.length - 1], dayAgo = b.find(r => r.t >= last.t - 86400) ?? b[0];
+      const W = 760, H = 190, L = 34, R = 10, T = 10, Bm = 20, t0 = b[0].t, t1 = last.t;
+      const lo = Math.min(...b.map(r => r.units)), hi = Math.max(...b.map(r => r.units)), pad = (hi - lo) * 0.08 || 0.05;
+      const x = t => L + (t - t0) / Math.max(1, t1 - t0) * (W - L - R), y = v => T + (hi + pad - v) / (hi - lo + 2 * pad) * (H - T - Bm);
+      let path = '', prev = null; b.forEach(r => { path += `${prev && r.t - prev > 3 * 900 ? 'M' : (prev ? 'L' : 'M')}${x(r.t).toFixed(1)},${y(r.units).toFixed(1)} `; prev = r.t; });
+      const grid = [0, 1, 2, 3].map(i => { const v = lo - pad + (hi - lo + 2 * pad) * i / 3; return `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--border)"/><text x="${L - 4}" y="${y(v) + 3}" text-anchor="end">${v.toFixed(2)}</text>`; }).join('');
+      const dayTicks = []; for (let t = Math.ceil(t0 / 86400) * 86400; t <= t1; t += 86400) dayTicks.push(t);
+      const step = Math.max(1, Math.ceil(dayTicks.length / 8));
+      const xl = dayTicks.filter((_, i) => i % step === 0).map(t => `<line x1="${x(t)}" x2="${x(t)}" y1="${T}" y2="${H - Bm}" stroke="var(--border)" stroke-dasharray="2 3"/><text x="${x(t)}" y="${H - 6}" text-anchor="middle">${new Date(t * 1000).toISOString().slice(5, 10)}</text>`).join('');
+      const chg = last.units - dayAgo.units, stale = d.stale;
+      el.innerHTML = `<div class="lead">${last.units.toFixed(2)} <span style="font-weight:500;color:var(--text2)">in his units · SOFR − Euribor ${last.bp.toFixed(1)} bp</span></div>
+        <div class="tiles">
+          <div class="tile"><div class="k">24 h change</div><div class="v">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}</div><div class="d">${chg >= 0 ? '+' : ''}${(chg * 10).toFixed(1)} bp</div></div>
+          <div class="tile"><div class="k">Range shown</div><div class="v">${lo.toFixed(2)}–${hi.toFixed(2)}</div><div class="d">${days} days · ${d.nBars} bars</div></div>
+          <div class="tile"><div class="k">Data as of</div><div class="v" style="font-size:14px;color:${stale ? 'var(--red)' : 'var(--text)'}">${esc(String(d.asOf).slice(0, 16).replace('T', ' '))}Z</div><div class="d">${stale ? 'older than 3 days: refresh from the laptop' : 'from the last deploy'}</div></div>
+        </div>
+        <svg class="ch" viewBox="0 0 ${W} ${H}">${grid}${xl}<path d="${path}" fill="none" stroke="var(--blue)" stroke-width="1.8"/></svg>
+        <div class="lg"><span><i style="border-color:var(--blue)"></i>(SOFR Sep26 − Euribor Mar27) in bp × 0.1 + 1.445 · 15-minute bars · 1 unit = 10 bp</span></div>
+        <div class="sub" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
+          <label>Days <select id="cldays" style="background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 6px">${[3, 5, 10, 20, 30].map(n => `<option ${n === days ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+          <button class="hbtn" id="clcopy">Copy for TradingView</button><button class="hbtn" id="clind">Copy indicator code</button>
+          <a class="hbtn" href="/api/cog-line/export?days=${days}" target="_blank">Open the export text</a></div>
+        <textarea id="clta" hidden readonly style="width:100%;height:90px;margin-top:8px;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:6px;font:11px monospace"></textarea>
+        <details style="margin-top:8px"><summary class="sub" style="cursor:pointer">How to put it on a TradingView chart (no intraday SOFR/Euribor feed needed)</summary>
+          <div class="sub">1) Press <b>Copy indicator code</b>, then in TradingView open the Pine editor, paste, and <b>Add to chart</b> (once). 2) On a <b>15-minute</b> chart, press <b>Copy for TradingView</b> here, open the indicator's settings and paste into <b>Pasted data</b>. 3) <b>Offset the line</b> moves it right (+) or left (−) in 15-minute bars; 96 is one day (his script defaults to +1 day, his video used 0). 4) The data ends where this page's data ends; the indicator warns in red when the chart is newer.<br><br>
+          <b>Refreshing the data:</b> the two futures only come from Interactive Brokers, so run on the laptop with TWS open: <code>python scripts/rates_line/refresh_cog_line.py --days 14 --commit</code>. That pulls the latest bars, rebuilds the series and pushes it; this page updates after the deploy.</div></details>
+        <div class="sub">What it is and is not: his line is a rate spread (the United States front end against the euro front end), rebuilt to within 0.06 units of the line in his video. It moves with Nasdaq over the same 15 minutes to 4 hours (correlation about +0.2) and does <b>not</b> lead it from 15 minutes to 48 hours on April–October data. Context, not a signal.</div>`;
+      document.getElementById('cldays').onchange = e => { days = +e.target.value; load(); };
+      document.getElementById('clcopy').onclick = e => copy(`/api/cog-line/export?days=${days}`, e.target);
+      document.getElementById('clind').onclick = e => copy('/api/cog-line/indicator', e.target);
+    };
+    const load = () => fetch(`/api/cog-line?days=${days}`).then(r => r.json()).then(draw).catch(() => { el.textContent = 'not loaded'; });
+    load();
+  })();
   const ids = ['yields-to-fx-direction', 'spread-leads-fx-hours', 'yield-spread-sleeve', 'priced-in-direction', 'fed-two-moves', 'front-end-shock', 'oil-breakevens-lag', 'real-yield-gold', 'crowded-bond-short-fomc', 'post-fomc-usd-drift', 'fomc-leadup-surprise-table'];
   const rows = DESK_EVIDENCE.filter(e => ids.includes(e.id) || (e.domain === 'macro' && /yield|curve|rate|fed|fomc|breakeven|real/i.test(e.claim)));
   const seen = new Set(); document.getElementById('ev').innerHTML = rows.filter(e => !seen.has(e.id) && seen.add(e.id)).map(e => `<div class="ev"><span class="v ${e.verdict}">${e.verdict === 'validated' ? 'validated' : e.verdict === 'null' ? 'null' : e.verdict === 'underpowered' ? 'underpowered' : 'base rate'}</span><span><b>${esc(e.claim)}.</b> ${esc(e.result.length > 260 ? e.result.slice(0, 257) + '…' : e.result)} <i style="color:var(--text3)">— ${esc(e.use.length > 160 ? e.use.slice(0, 157) + '…' : e.use)}</i></span></div>`).join('');

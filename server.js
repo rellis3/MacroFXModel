@@ -188,6 +188,7 @@ import { buildGlobalRead as _buildGlobalRead, recordRow as _grRecordRow, attachR
 import { assembleGlobalReadInput as _grAssemble, GLOBAL_READ_ENDPOINTS as _GR_ENDPOINTS } from './js/globalReadInputs.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { ratesRegimeRead as _ratesRegimeRead, alertText as _ratesRegimeAlert, attributionLine as _ratesRegimeAttrib } from './js/ratesRegime.js';
+import { sliceDays as _cogSlice, toBars as _cogBars, exportText as _cogExport } from './js/cogLine.js';   // C.OG rate-spread line: analysis/output/cog_line/cog_line_15m.json
 import { computeFrozenSigma as _vwapFrozenSigmaCore, computeStretchSnapshot as _vwapStretchSnapshot } from './js/vwapStretchCore.js';
 import { expectedRanges as _expectedRanges, formatDigest as _formatDigest } from './js/digest.js';
 import { eventImpact as _eventImpact } from './js/eventImpactMap.js';   // the book's size per family and pair, for the digest's prints line   // the 07:00 digest and the one forecast the desk makes (range), scored at the close
@@ -4003,6 +4004,34 @@ app.get('/api/rates-regime', async (_req, res) => {
                lines: s?.ok ? { today: _ratesRegimeAttrib(s.today, 'Today'), lastHour: _ratesRegimeAttrib(s.lastHour, 'Last hour') } : null,
                lastTick: _rrLast.at ? new Date(_rrLast.at).toISOString() : null, error: _rrLast.error ?? null });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── C.OG rate-spread line (js/cogLine.js) ────────────────────────────────────────
+// (SOFR rate - Euribor rate) in bp, 15-minute bars, identified from his video (analysis/output/cog_video_0918/RECONSTRUCTION.md). The series is built on the laptop from
+// IBKR (scripts/rates_line/refresh_cog_line.py, TWS open) and committed, so Railway serves whatever the last deploy holds; no live IBKR here. Read-only.
+//   GET /api/cog-line?days=10            JSON: bars [{t (epoch s, bar OPEN), bp, units}], asOf, legs, formula
+//   GET /api/cog-line/export?days=10     the text block pine/cog_line_pasted.pine reads (paste into the indicator's "Pasted data")
+//   GET /api/cog-line/indicator          the Pine source
+const _COG_LINE_PATH = path.join(__dirname, 'analysis', 'output', 'cog_line', 'cog_line_15m.json');
+let _cogLineCache = { mtime: 0, series: null };
+function _cogLineSeries() {
+  const st = fs.statSync(_COG_LINE_PATH);
+  if (st.mtimeMs !== _cogLineCache.mtime) _cogLineCache = { mtime: st.mtimeMs, series: JSON.parse(fs.readFileSync(_COG_LINE_PATH, 'utf8')) };
+  return _cogLineCache.series;
+}
+const _cogDays = q => Math.min(Math.max(parseInt(q, 10) || 10, 1), 60);
+app.get('/api/cog-line', (req, res) => {
+  try {
+    const ser = _cogLineSeries(), sl = _cogSlice(ser, _cogDays(req.query.days)), bars = _cogBars(sl);
+    res.json({ ok: true, asOf: ser.asOf, stale: Date.now() - Date.parse(ser.asOf) > 3 * 86400e3, formula: ser.formula, legs: ser.legs, from: sl.from, to: sl.to, nBars: bars.length, bars });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/cog-line/export', (req, res) => {
+  try { res.type('text/plain').send(_cogExport(_cogLineSeries(), _cogDays(req.query.days))); }
+  catch (e) { res.status(500).type('text/plain').send(`Export failed: ${e.message}`); }
+});
+app.get('/api/cog-line/indicator', (_req, res) => {
+  try { res.type('text/plain').send(fs.readFileSync(path.join(__dirname, 'pine', 'cog_line_pasted.pine'), 'utf8')); }
+  catch (e) { res.status(500).type('text/plain').send(`Indicator unavailable: ${e.message}`); }
 });
 app.post('/api/rates-regime/tick', async (req, res) => {
   try { res.json({ ok: true, ...(await _ratesRegimeTick({ silent: req.query.silent === '1' })) }); }

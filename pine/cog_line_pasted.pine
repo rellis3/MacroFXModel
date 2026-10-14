@@ -1,0 +1,87 @@
+//@version=5
+indicator("C.OG Line - pasted data", shorttitle="COG line", overlay=false, max_labels_count=10)
+
+// =====================================================================
+// WHAT THIS IS
+// C.OG's SOFR vs Euribor line, drawn from DATA YOU PASTE IN, so it needs no
+// intraday SOFR / Euribor feed on your TradingView plan.
+//   line (bp)  = SOFR rate - Euribor rate  (CME SOFR Sep26 minus ICE Euribor I2!)
+//   line units = bp * 0.1 + 1.445          (his scale and default offset)
+// Identified and checked against his video in
+// analysis/output/cog_video_0918/RECONSTRUCTION.md.
+//
+// HOW TO USE
+// 1. Open the Rates page (rates.html), card "C.OG line".
+// 2. Pick the number of days and press "Copy for TradingView".
+// 3. On a 15-minute chart, add this indicator, open its settings and paste the
+//    copied text into "Pasted data".
+// 4. "Offset the line" moves it right (+, later) or left (-, earlier) in chart bars.
+//    One 15-minute bar per step; 96 = one day. C.OG's own default was +1 day,
+//    but his video ran with 0.
+// 5. The data ends where the export ends. A red note appears when your chart
+//    runs past it: refresh the page's data and copy again.
+// Use a 15-minute chart: the data is one value per 15-minute bar.
+// =====================================================================
+
+data    = input.text_area("", "Pasted data (Rates page > C.OG line > Copy for TradingView)", group="Data")
+showAs  = input.string("C.OG units (bp x scale + offset)", "Show", options=["C.OG units (bp x scale + offset)", "Spread (bp)"], group="Display")
+scale   = input.float(0.1, "Scale", step=0.01, group="Mapping")
+offs    = input.float(1.445, "Offset", step=0.001, group="Mapping")
+smooth  = input.int(2, "Smoothing (EMA, bars; 1 = off)", minval=1, group="Mapping")
+shift   = input.int(0, "Offset the line (chart bars, + right / - left)", minval=-500, maxval=500, group="Offset")
+onPrice = input.bool(false, "Also draw on the price pane (rescaled to the visible range)", group="Overlay")
+fitLen  = input.int(250, "Rescale look-back (bars)", minval=10, group="Overlay")
+lineCol = input.color(color.blue, "Line colour", group="Style")
+lineW   = input.int(2, "Line width", minval=1, maxval=4, group="Style")
+
+// ---- parse the pasted block once ----------------------------------------
+var float[] vals = array.new_float()
+var float t0 = na
+var float stepS = 900.0
+var string fromS = "-"
+var string toS = "-"
+var string asofS = "-"
+if barstate.isfirst
+    lines = str.split(data, "\n")
+    for i = 0 to array.size(lines) - 1
+        ln = str.replace_all(array.get(lines, i), "\r", "")
+        if str.startswith(ln, "t0=")
+            t0 := str.tonumber(str.substring(ln, 3))
+        else if str.startswith(ln, "step=")
+            stepS := str.tonumber(str.substring(ln, 5))
+        else if str.startswith(ln, "from=")
+            fromS := str.substring(ln, 5)
+        else if str.startswith(ln, "to=")
+            toS := str.substring(ln, 3)
+        else if str.startswith(ln, "asof=")
+            asofS := str.substring(ln, 5)
+        else if str.startswith(ln, "d=")
+            parts = str.split(str.substring(ln, 2), ",")
+            for j = 0 to array.size(parts) - 1
+                p = array.get(parts, j)
+                array.push(vals, str.length(p) == 0 ? na : str.tonumber(p) / 10.0)
+
+// ---- value for this bar (data is stored at each 15-minute bar's OPEN time) --
+barSec = time / 1000.0
+idx = na(t0) ? -1 : math.floor((barSec - t0) / stepS + 0.0001)
+raw = (idx >= 0 and idx < array.size(vals)) ? array.get(vals, idx) : na
+v = showAs == "Spread (bp)" ? raw : raw * scale + offs
+sm = smooth > 1 ? ta.ema(v, smooth) : v
+
+plot(sm, "C.OG line", color=lineCol, linewidth=lineW, offset=shift)
+
+// ---- optional: the same line rescaled onto the price pane --------------------
+sHi = ta.highest(sm, fitLen)
+sLo = ta.lowest(sm, fitLen)
+pHi = ta.highest(high, fitLen)
+pLo = ta.lowest(low, fitLen)
+fitted = (na(sHi) or sHi == sLo) ? na : pLo + (sm - sLo) / (sHi - sLo) * (pHi - pLo)
+plot(fitted, "C.OG line on price (rescaled)", color=color.new(lineCol, 20), linewidth=lineW, offset=shift, force_overlay=true, display=onPrice ? display.all : display.none)
+
+// ---- data-range note -------------------------------------------------------
+dataEnd = na(t0) ? na : t0 + (array.size(vals) - 1) * stepS
+var table info = table.new(position.top_right, 1, 2, bgcolor=color.new(color.gray, 85))
+if barstate.islast
+    table.cell(info, 0, 0, na(t0) ? "No data pasted: paste the block from the Rates page" : "data " + fromS + " to " + toS + " (as of " + asofS + ")", text_color=color.gray, text_size=size.small)
+    stale = not na(dataEnd) and time / 1000.0 > dataEnd + 7200
+    table.cell(info, 0, 1, stale ? "Chart is newer than the pasted data: refresh and copy again" : "", text_color=color.red, text_size=size.small)
