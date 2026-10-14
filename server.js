@@ -188,7 +188,7 @@ import { buildGlobalRead as _buildGlobalRead, recordRow as _grRecordRow, attachR
 import { assembleGlobalReadInput as _grAssemble, GLOBAL_READ_ENDPOINTS as _GR_ENDPOINTS } from './js/globalReadInputs.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { ratesRegimeRead as _ratesRegimeRead, alertText as _ratesRegimeAlert, attributionLine as _ratesRegimeAttrib } from './js/ratesRegime.js';
-import { sliceDays as _cogSlice, toBars as _cogBars, exportText as _cogExport } from './js/cogLine.js';   // C.OG rate-spread line: analysis/output/cog_line/cog_line_15m.json
+import { sliceDays as _cogSlice, toBars as _cogBars, exportText as _cogExport, mergeSeries as _cogMerge } from './js/cogLine.js';   // C.OG rate-spread line: analysis/output/cog_line/cog_line_15m.json
 import { computeFrozenSigma as _vwapFrozenSigmaCore, computeStretchSnapshot as _vwapStretchSnapshot } from './js/vwapStretchCore.js';
 import { expectedRanges as _expectedRanges, formatDigest as _formatDigest } from './js/digest.js';
 import { eventImpact as _eventImpact } from './js/eventImpactMap.js';   // the book's size per family and pair, for the digest's prints line   // the 07:00 digest and the one forecast the desk makes (range), scored at the close
@@ -4013,20 +4013,30 @@ app.get('/api/rates-regime', async (_req, res) => {
 //   GET /api/cog-line/indicator          the Pine source
 const _COG_LINE_PATH = path.join(__dirname, 'analysis', 'output', 'cog_line', 'cog_line_15m.json');
 let _cogLineCache = { mtime: 0, series: null };
-function _cogLineSeries() {
+function _cogLineFile() {
   const st = fs.statSync(_COG_LINE_PATH);
   if (st.mtimeMs !== _cogLineCache.mtime) _cogLineCache = { mtime: st.mtimeMs, series: JSON.parse(fs.readFileSync(_COG_LINE_PATH, 'utf8')) };
   return _cogLineCache.series;
 }
+// The laptop pushes its latest bars to KV cog_line_live_v1 (POST /api/kv/set, same route as the fed-funds feed); they are laid over the committed file.
+let _cogLive = { raw: null, at: 0 };
+async function _cogLineSeries() {
+  const base = _cogLineFile();
+  if (Date.now() - _cogLive.at > 20_000) {
+    try { const raw = await kv.get('cog_line_live_v1'); const p = raw ? JSON.parse(raw) : null; _cogLive = { raw: p?.data ?? p ?? null, at: Date.now() }; }
+    catch { _cogLive = { ..._cogLive, at: Date.now() }; }
+  }
+  return _cogLive.raw ? _cogMerge(base, _cogLive.raw) : base;
+}
 const _cogDays = q => Math.min(Math.max(parseInt(q, 10) || 10, 1), 60);
-app.get('/api/cog-line', (req, res) => {
+app.get('/api/cog-line', async (req, res) => {
   try {
-    const ser = _cogLineSeries(), sl = _cogSlice(ser, _cogDays(req.query.days)), bars = _cogBars(sl);
-    res.json({ ok: true, asOf: ser.asOf, stale: Date.now() - Date.parse(ser.asOf) > 3 * 86400e3, formula: ser.formula, legs: ser.legs, from: sl.from, to: sl.to, nBars: bars.length, bars });
+    const ser = await _cogLineSeries(), sl = _cogSlice(ser, _cogDays(req.query.days)), bars = _cogBars(sl);
+    res.json({ ok: true, asOf: ser.asOf, stale: Date.now() - Date.parse(ser.asOf) > 3 * 86400e3, formula: ser.formula, legs: ser.legs, live: !!ser.live, from: sl.from, to: sl.to, nBars: bars.length, bars });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-app.get('/api/cog-line/export', (req, res) => {
-  try { res.type('text/plain').send(_cogExport(_cogLineSeries(), _cogDays(req.query.days))); }
+app.get('/api/cog-line/export', async (req, res) => {
+  try { res.type('text/plain').send(_cogExport(await _cogLineSeries(), _cogDays(req.query.days))); }
   catch (e) { res.status(500).type('text/plain').send(`Export failed: ${e.message}`); }
 });
 app.get('/api/cog-line/indicator', (_req, res) => {

@@ -51,3 +51,19 @@ export function parseExport(text) {
   const d = m('d'); if (d == null) return null;
   return { t0: Number(m('t0')), step: Number(m('step')), bp: d.split(',').map(s => (s === '' ? null : Number(s) / 10)) };
 }
+
+/** Lay pushed bars (the laptop's latest pull) over the committed series. Pushed values win; empty pushed bars never erase a value. Returns `base` unchanged
+ *  when the push does not line up (different step, off the 15-minute grid, or an absurd length), so a bad push cannot corrupt the page. */
+export function mergeSeries(base, inc) {
+  if (!base || !inc || !Array.isArray(inc.bp) || !inc.bp.length) return base;
+  if (inc.step !== base.step || !Number.isFinite(inc.t0) || (inc.t0 - base.t0) % base.step !== 0) return base;
+  const step = base.step, t0 = Math.min(base.t0, inc.t0);
+  const end = Math.max(base.t0 + (base.bp.length - 1) * step, inc.t0 + (inc.bp.length - 1) * step), n = (end - t0) / step + 1;
+  if (!(n > 0) || n > 40000) return base;
+  const bp = new Array(n).fill(null);
+  base.bp.forEach((v, i) => { if (v != null) bp[(base.t0 - t0) / step + i] = v; });
+  inc.bp.forEach((v, i) => { if (Number.isFinite(v) && Math.abs(v) < 1000) bp[(inc.t0 - t0) / step + i] = v; });
+  let last = n - 1; while (last >= 0 && bp[last] == null) last--;
+  return { ...base, t0, bp, nBars: n, nValid: bp.filter(v => v != null).length, live: true,
+           asOf: last >= 0 ? new Date((t0 + last * step) * 1000).toISOString() : base.asOf, pushedAt: inc.pushedAt ?? null };
+}
