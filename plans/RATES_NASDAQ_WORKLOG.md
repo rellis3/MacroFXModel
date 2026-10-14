@@ -130,3 +130,9 @@ contract or two-contract spread? Pre-registered `forge/RATE_CURVE_STRUCTURE_PRER
 - **2026-10-14 exact-pair lead test** (`forge/COG_EXACT_PAIR_LEAD_PREREG.md`, `cog_exact_pair_lead.py`): C.OG's identified line (SOFR Sep26 − Euribor Mar27, bp×0.1+1.445) vs NQ hourly: 0/8 lead cells in explore; same-hour link +0.22/+0.16 (1h) stable; planted-lead power only at ρ≥0.12. Ledger `cog-exact-pair-lead`. Reconstruction closed (RECONSTRUCTION.md §10); prediction null stands.
 
 - **2026-10-14 video claims** (`forge/COG_VIDEO_CLAIMS_PREREG.md`, `cog_video_claims.py`, `VIDEO_CLAIMS.md`): his two setups and a continuous lead, 15 min–48 h, direction + volatility: 0 confirmed (F1 0/24 + 0/21, F2 1/18→0, F3 0/18); same-window link +0.17..+0.23 stable; weak consistent divergence→8h drift (+0.12 both halves, t 1.7–1.9). A one-bar look-ahead in my first run (open-labelled line) faked a 15-min lead and was fixed before recording. Ledger `cog-video-claims`.
+
+## C.OG line on the Rates page + TradingView export (2026-10-14)
+Built so the line can be drawn on a TradingView plan without intraday SOFR/Euribor feeds: `js/cogLine.js` (+test), `GET /api/cog-line`, `/api/cog-line/export`,
+`/api/cog-line/indicator`, a Rates-page card (`#clcard`), `pine/cog_line_pasted.pine` (pasted data, EMA, offset input), `scripts/rates_line/build_cog_line.py` and
+`refresh_cog_line.py` (laptop, TWS open: `python scripts/rates_line/refresh_cog_line.py --days 14 --commit`). Series file `analysis/output/cog_line/cog_line_15m.json`
+(tracked; `data/` is gitignored). Data runs 15 Sep - 9 Oct until the next refresh. The Pine file has not been compiled by me.
