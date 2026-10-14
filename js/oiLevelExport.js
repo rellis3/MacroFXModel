@@ -4,10 +4,12 @@
 // `Confluence Zones Indicator.pine`. (It began as a standalone indicator/export;
 // that was retired 2026-07 in favour of one combined overlay.)
 //
-// SINGLE SOURCE OF TRUTH: level extraction is NOT re-implemented here. It reuses
-// the `oiStoreToLevels` brick (js/oiConfluence.js) — the exact same converter the
-// OI bot and `/api/oi-levels` use — so the pasted levels are bit-identical to what
-// the bots trade off. This module only *formats* those levels for the indicator.
+// LEVEL EXTRACTION is NOT re-implemented here. It reuses the `oiStoreToLevels` brick
+// (js/oiConfluence.js), the converter `/api/oi-levels` and the confluence bots use. The OI
+// BOT does NOT trade off this list: it plans zones with `buildOIZones` (js/oiZones.js) on
+// the single near-dated "day" book only, ranking walls its own way (nearest-bracketing for
+// fades, OI×durability for breaks, up to 4 per side), so only ~2/3 of its wall zones appear
+// on the `today` sheet (audit 2026-10-14). This module only *formats* levels for the indicator.
 //
 // Output line format (per pair block):
 //   OI 1.10000 : call_wall t3      (resistance ceiling — heavy call OI above)
@@ -33,7 +35,7 @@
 // appear (the store simply has no entry for them) — no invented numbers.
 
 import { oiStoreToLevels } from './oiConfluence.js';
-import { levelExpectation } from './levelExpectation.js';
+import { levelExpectation, gammaBandAt } from './levelExpectation.js';
 import { levelHeat } from './levelHeat.js';
 import { wallHoldScore } from './oiZones.js';
 import { gammaFlip, distanceToFlip, rolloffSummary } from './gammaFlow.js';
@@ -223,8 +225,26 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     if (cotLine) lines.push(cotLine);
     // Gamma-flow context (human-only — the indicator ignores non-"OI " lines):
     // distance-to-flip vol read + a per-expiry roll-off block. No new data.
-    const flip = Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : gammaFlip(gexProfile);
+    // THE FLIP IN THIS HEADER MUST BE THE ONE THE REGIME WORD USES. `gammaFlip` is the sign
+    // change of the per-STRIKE call-minus-put profile — not where dealers flip between long and
+    // short gamma — and it agreed with the net-GEX sign (what the bot trades) on only 71% of
+    // 616 archived instrument-days (55-65% on gold/GBP/CHF/US30/SPX). The true zero-gamma
+    // crossings (gexFlips: total GEX re-evaluated at candidate prices) agree 98%. So read the
+    // crossing nearest spot from the SAME book as the regime tint (day expiry when present),
+    // and only fall back to the strike-profile flip for entries stored without crossings.
+    const _hdrDay = inst.dayExpiry && typeof inst.dayExpiry === 'object' ? inst.dayExpiry : null;
+    const _hdrFlips = (_hdrDay && Array.isArray(_hdrDay.gexFlips) && _hdrDay.gexFlips.length) ? _hdrDay.gexFlips
+      : (!_hdrDay && Array.isArray(inst.gexFlips) && inst.gexFlips.length) ? inst.gexFlips : null;
+    const _trueFlip = _hdrFlips && Number.isFinite(inst.spot)
+      ? _hdrFlips.filter(f => Number.isFinite(f?.price)).reduce((m, f) => (!m || Math.abs(f.price - inst.spot) < Math.abs(m.price - inst.spot)) ? f : m, null)?.price ?? null
+      : null;
+    const flip = Number.isFinite(_trueFlip) ? _trueFlip
+      : (_hdrDay && Number.isFinite(_hdrDay.gammaFlip)) ? _hdrDay.gammaFlip
+      : (Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : gammaFlip(gexProfile));
     const dist = distanceToFlip(inst.spot, flip);          // no ATR here → % based
+    // `distanceToFlip` calls "above the flip" long-gamma, which is only right for a flip that
+    // goes short→long going UP. With real crossings use the band AT SPOT instead.
+    if (dist && _hdrFlips) { const b = gammaBandAt(inst.spot, _hdrFlips, {}); if (b) dist.side = b === 'long' ? 'positive' : 'negative'; }
     if (dist) lines.push(`· flip ${px(flip).toFixed(dp)} · spot ${dist.pct >= 0 ? '+' : ''}${dist.pct}% → ${dist.side === 'positive' ? '+gamma (pin/dampen)' : dist.side === 'negative' ? '−gamma (breakout)' : 'at flip'}${dist.near ? ' · NEAR flip (unstable)' : ''}`);
     // Full-book cross-check: the flip/regime line above is ONE expiry's own gamma. Blending
     // every expiry into one number is the wrong read for a trade closing in a day or two — a
@@ -324,7 +344,7 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
       // is the type, a 't'-prefixed token the tier, and everything after is invisible to
       // an un-updated indicator. Order: (1) expectation, (2) heat, (3) P(touch).
       const ex = levelExpectation(l, isDay(l)
-        ? { spot: inst.spot, gammaFlip: dayEx.gammaFlip, refMove: inst.refMove?.move }
+        ? { spot: inst.spot, gexFlips: dayEx.gexFlips, gammaFlip: dayEx.gammaFlip, refMove: inst.refMove?.move }
         : { spot: inst.spot, gexFlips: inst.gexFlips, gammaFlip: inst.gammaFlip, refMove: inst.refMove?.move });
       // `today` drops far levels (beyond ~2.5x the expected move): context in the full
       // export, noise on a chart of the session ahead.

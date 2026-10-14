@@ -19080,6 +19080,10 @@ const OI_BOT_CFG_DEFAULTS = {
   reactNodes: null,                  // per-type react-entry weights {walls,gammaFlip,gexFlip,vannaFlip,volMagnets}
   volMagnetMinShare: 0.25,           // a magnet needs ≥ this share of the strongest magnet's volume to be a node
   holdScore: true,                   // wall hold-score (react-vs-blow-through) stamped on zones, sizes fades
+  minBookOI: 500,                    // traded book must hold ≥ this many contracts in its walls (calls+puts), else no
+                                     // zones. US30/YM options are ~125 contracts in total — a "wall" there is 5 lots (2026-10-14 audit). 0 = off.
+  maxReachMult: 3,                   // drop (don't just trim) any strike-anchored zone whose entry is > this × refMove
+                                     // from spot — SPX break-sells were armed 25-32× away. 0 = off (old: flag + ×0.7 trim only).
   maxSizeFactor: 2.0,                // aggregate cap on the FINAL sizeFactor (every multiplier applied) —
                                      // without it max_lot silently became the real sizing model on any
                                      // zone whose favourable reads compounded past it. 0 = uncapped.
@@ -19287,7 +19291,11 @@ async function _refreshOIBotZones({ storeOverride = null, outKey = 'oi_bot_zones
       // the same registry key everything else here uses (resolveKey → 'gold', 'nq', ...).
       const MIN_STOP_ABS = { gold: 15 };     // $15 floor on gold's SL buffer; unset = unfloored
       const droppedZones = [];               // planner-side drops (minRR / spacing) — legible blanks
-      const zones = stale ? [] : buildOIZones(tradeInst, inst.spot, { ...cfg, pip, stability, change, fallbackTpR,
+      // Thin-book gate: a wall is only a level if real paper sits there. Counts the traded book's own walls.
+      const _bookOI = [...(tradeInst.callWalls || []), ...(tradeInst.putWalls || [])].reduce((a, w) => a + (w?.oi || 0), 0);
+      const thin = (cfg.minBookOI ?? 0) > 0 && _bookOI < cfg.minBookOI
+        ? `traded book has only ${Math.round(_bookOI)} contracts in its walls (< ${cfg.minBookOI}) — too thin to trust, no zones` : null;
+      const zones = (stale || thin) ? [] : buildOIZones(tradeInst, inst.spot, { ...cfg, pip, stability, change, fallbackTpR,
         gexMedianAbs, holdWeights, collectDrops: droppedZones, minStopAbs: MIN_STOP_ABS[key] ?? 0,
         nearFlip: !!dist?.near, regimeWarning: drift?.toward ? `flip migrating toward spot (${drift.fromDate}→${drift.toDate}) — regime change loading` : null,
         // expMove is the PRIMARY expiry's straddle band, and reachFlag() prefers it over
@@ -19313,7 +19321,8 @@ async function _refreshOIBotZones({ storeOverride = null, outKey = 'oi_bot_zones
       // When an in-universe instrument yields no zones, say why (flat regime / no
       // strong walls / walls out of range) — so a blank plan is legibly intentional.
       let diag = null;
-      if (!stale && zones.length === 0) {
+      if (thin) diag = thin;
+      else if (!stale && zones.length === 0) {
         try { diag = explainNoZones(tradeInst, inst.spot, { ...cfg, pip, gexMedianAbs }); } catch { diag = null; }
       }
       // Far/primary expiry kept as context on the plan (the user still wants to SEE the
@@ -21356,7 +21365,7 @@ app.post('/api/oi/reanalyse', async (req, res) => {
       try {
         const r = await _oiBuildEntry({
           pair, rawOI,
-          rawChg: inst.rawChg || '', rawVol: inst.rawVol || '', rawIV: inst.rawIV || '', rawIVTerm: inst.rawIVTerm || '',
+          rawChg: inst.rawChg || '', rawVol: inst.rawVol || '', rawIV: inst.rawIV || '', rawIVTerm: inst.rawIVTerm || '', rawIVExtra: inst.rawIVExtra || null,
           dteRaw:     Number.isFinite(inst.dte)     ? inst.dte     : NaN,
           spotRaw:    Number.isFinite(inst.spot)    ? inst.spot    : NaN,
           futuresRaw: Number.isFinite(inst.futures) ? inst.futures : NaN,

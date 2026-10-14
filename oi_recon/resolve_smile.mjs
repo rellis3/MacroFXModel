@@ -13,7 +13,7 @@
 // output). A second copy of that logic in Python would be free to drift from the
 // one the dashboard uses, and the two would disagree about which chain is right.
 import { readFileSync } from 'fs';
-import { resolveSmileExpiry, parseOIMatrix } from '../js/oi.js';
+import { resolveSmileExpiry, parseOIMatrix, parseSettlementTermStructure } from '../js/oi.js';
 
 const [oiPath, termPath] = process.argv.slice(2);
 if (!oiPath) {
@@ -42,3 +42,15 @@ if (hint?.tableAsOf) {
 }
 // Machine-readable line for a fetcher to consume.
 console.log('\nRESOLVED_CODE=' + (hint?.code || ''));
+
+// EXTRA near-expiry smiles. The dashboard draws the nearest expiries' IV curves (the 0/1/2 DTE
+// lines on COG's GEX-by-strike charts); the primary smile above is usually the far monthly and
+// reads nearly flat. Names the (up to) 3 shortest-DTE expiries that actually carry open
+// interest, other than the primary, from the Settlements term table. Absent table → none.
+let near = [];
+try {
+  const rows = parseSettlementTermStructure(rawIVTerm) || [];
+  near = rows.filter(r => r.symbol && r.iv > 0 && ((r.oiCall || 0) + (r.oiPut || 0)) > 0 && r.dte >= 0 && r.symbol !== hint?.code)
+    .sort((a, b) => a.dte - b.dte).slice(0, 3).map(r => r.symbol);
+} catch { /* optional */ }
+console.log('NEAR_CODES=' + near.join(','));

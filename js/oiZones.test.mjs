@@ -889,6 +889,14 @@ console.log('[Implied-move TP cap + max-pain guard-wall ladder (2026-09-27)]');
   ok('cap below minRR → zone dropped, with the reason recorded',
      !tight.some(x => x.mode === 'fade' && x.side === 'sell') && drops.some(d => /minRR/.test(d.reason ?? d.why ?? JSON.stringify(d))), JSON.stringify(drops[0]));
 
+  // Hard reach cap: the 4300 wall is 100 away; refMove 20 → 5×. maxReachMult 3 drops it, recorded; 0 keeps it.
+  const rd = [];
+  const farCap = buildOIZones(pin, 4200, { ...cfg, refMove: 20, slBufferRefFrac: 0, maxReachMult: 3, collectDrops: rd });
+  ok('maxReachMult drops a zone 5× the reference move away', !farCap.some(x => x.mode === 'fade' && x.level === 4300), JSON.stringify(farCap.map(x => x.level)));
+  ok('…and records why', rd.some(d => /too far to arm/.test(d.reason)), JSON.stringify(rd[0]));
+  const farOff = buildOIZones(pin, 4200, { ...cfg, refMove: 20, slBufferRefFrac: 0, maxReachMult: 0 });
+  ok('maxReachMult 0 → old behaviour (zone kept)', farOff.some(x => x.mode === 'fade' && x.level === 4300));
+
   // Max pain: tp1 stays the pin (engine caps against LIVE price) and the whole guard ladder ships.
   const mpInst = { ...base, exposures: { gex: 5000 }, expiries: { OG3: { dte: 1, maxPain: 4200 } },
     callWalls: [{ strike: 4300, oi: 9000, tier: 'strong', mult: 3.2 }, { strike: 4270, oi: 8500, tier: 'strong', mult: 3.1 },

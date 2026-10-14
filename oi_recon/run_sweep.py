@@ -222,6 +222,17 @@ def _chain_pass(ctx, page, prod: str, res: dict, d: Path) -> None:
     path = pull_chain(ctx, page, prod, code)
     if path:
         res[Path(path).name] = path
+    # Extra near-expiry smiles (dashboard curves). Strictly optional: any failure here is logged and
+    # swallowed so it can never cost the primary chain or the four matrices already captured.
+    for xc in re.findall(r'[A-Z0-9]+', (re.search(r'NEAR_CODES=([A-Z0-9,]*)', r.stdout or '') or [None, ''])[1]):
+        if xc == code:
+            continue
+        try:
+            xp = pull_chain(ctx, page, prod, xc, suffix=f'_{xc}')
+            if xp:
+                res[Path(xp).name] = xp
+        except Exception as e:                           # noqa: BLE001
+            print(f'  chain      extra smile {xc} failed ({type(e).__name__}) - skipped')
 
 
 def _report(results: dict, products: list, views: list, d: Path,

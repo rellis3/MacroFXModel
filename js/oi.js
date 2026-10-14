@@ -43,7 +43,7 @@ function _trimStoreForLocal(store, { rawText = false, profile = false } = {}) {
   const out = {};
   for (const [k, v] of Object.entries(store)) {
     const c = { ...v };
-    if (rawText) { delete c.rawOI; delete c.rawChg; delete c.rawVol; delete c.rawIV; delete c.rawIVTerm; }
+    if (rawText) { delete c.rawOI; delete c.rawChg; delete c.rawVol; delete c.rawIV; delete c.rawIVTerm; delete c.rawIVExtra; }
     if (profile) {
       delete c.gexProfile; delete c.ivSmile;
       // The near-dated set's per-strike profile is the same "rebuildable" bulk — drop it
@@ -1936,7 +1936,7 @@ export function oiFmtChg(n) {
 // a partial entry does not error, it just makes oiStoreToLevels return nothing and
 // the bots see a pair with no OI levels.
 export async function buildOIEntry({
-  pair, rawOI, rawChg = '', rawVol = '', rawIV = '', rawIVTerm = '',
+  pair, rawOI, rawChg = '', rawVol = '', rawIV = '', rawIVTerm = '', rawIVExtra = null,
   expiryLabel = '', dteRaw = NaN, spotRaw = NaN, futuresRaw = NaN,
   numLevels = 8, minOI = 20,
   manualFutures = false, swapCP = undefined, greekVol = 'smile',   // swapCP: undefined = inverted-pair default (flip ON); false forces OFF
@@ -2271,6 +2271,33 @@ export async function buildOIEntry({
     haveSmile: !!greeksFlow,
     rawIV,
   });
+
+  // ── Per-expiry smiles for the NEAR expiries (render-only) ───────────────────────
+  // `rawIV` is ONE expiry's chain — the one the walls sit on, which for most books is the
+  // far monthly (gold 41 DTE). A far smile is nearly flat; the near-dated ones (0/1/2 DTE) are
+  // what dealers actually hedge and are strongly curved — they are the coloured curves on COG's
+  // GEX-by-strike charts. The nightly sweep now also captures the nearest expiries' chains
+  // (`rawIVExtra` = { <QuikStrike code>: tsv }); each is parsed with the SAME parser and shifted
+  // to spot terms exactly like the primary smile. Nothing downstream (greeks, walls, bot) reads this.
+  let ivSmiles = null;
+  if (rawIVExtra && typeof rawIVExtra === 'object') {
+    const _sh = (k) => !Number.isFinite(k) ? null : (basis === 0 ? k : (futuresIsInverted(pair) ? 1 / k - basis : k - basis));
+    const out = [];
+    for (const [code, raw] of Object.entries(rawIVExtra)) {
+      try {
+        const p = parseIVSettlement(_priceScale !== 1 ? oiScaleRawPrices(raw, 'chain', _priceScale) : raw);
+        if (!p || p.strikes.length < 3) continue;
+        const ks = p.strikes.map(_sh);
+        const ord = ks.map((k, i) => i).filter(i => Number.isFinite(ks[i])).sort((a, b) => ks[a] - ks[b]);
+        if (ord.length < 3) continue;
+        out.push({ code: p.expiryCode || code, dte: Number.isFinite(p.dte) ? p.dte : null,
+          label: Number.isFinite(p.dte) ? `${Math.round(p.dte)} DTE` : code,
+          strikes: ord.map(i => ks[i]), iv: ord.map(i => p.iv[i]) });
+      } catch { /* one bad chain never costs the rest */ }
+    }
+    out.sort((a, b) => (a.dte ?? 1e9) - (b.dte ?? 1e9));
+    if (out.length) ivSmiles = out;
+  }
 
   // ── Greek vol source — v1 (flat) vs v2 (pasted IV smile) ────────────────────
   // v1 'flat' = the fixed per-class vol (oiFlatVol). v2 'smile' = the per-strike IV you
@@ -2620,6 +2647,7 @@ export async function buildOIEntry({
     ivDynamics: ivDyn,       // ATM IV change + skew steepening (tail-hedge demand)
     riskReversal: ivRR,      // OTM put−call IV skew (directional sentiment tilt)
     ivSmile,                 // per-strike IV (+ prior) for the smile-curve viz — render-only
+    ivSmiles,                // near-expiry smiles [{code,dte,label,strikes,iv}] (spot terms) — render-only; null until the sweep captured extras
     ivTermStructure: ivTerm, // ATM IV across expiries (from the "Settlements" per-expiry paste)
     ivPasteHint,             // which expiry (code+date) to grab for the per-strike SMILE box
     callWall: _cwHead?.strike ?? 0, putWall: _pwHead?.strike ?? 0,
@@ -2642,6 +2670,7 @@ export async function buildOIEntry({
     volCP,            // [[strike, callVol, putVol]] spot-terms, pair-terms — the volume-gamma ladder's call/put split
     rawIV: _src.rawIV && _src.rawIV.trim() ? _src.rawIV : null,   // QuikStrike IV settlement paste (for charm/vanna re-parse on reopen)
     rawIVTerm: _src.rawIVTerm && _src.rawIVTerm.trim() ? _src.rawIVTerm : null,   // "Settlements" term-structure paste (re-parse on reopen)
+    rawIVExtra: rawIVExtra && typeof rawIVExtra === 'object' && Object.keys(rawIVExtra).length ? rawIVExtra : null,   // near-expiry chains {code: tsv} (re-parse on reanalyse)
     priceScale: _priceScale,   // CME → OANDA price units applied at parse (1 = none; grains 0.01)
   };
 

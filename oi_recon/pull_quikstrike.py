@@ -1241,7 +1241,7 @@ def _chain_normalised(tsv: str, title: str) -> str:
     return (title + "\n" + body) if title else body
 
 
-def pull_chain(ctx, page, product: str, code: str) -> str | None:
+def pull_chain(ctx, page, product: str, code: str, suffix: str = '') -> str | None:
     """PASS 2: the per-strike IV smile for ONE expiry -> <SYM>_rawIV.tsv.
 
     Charm, vanna and skew need a per-STRIKE chain, and the four matrix views do
@@ -1294,7 +1294,8 @@ def pull_chain(ctx, page, product: str, code: str) -> str | None:
     if wide > 14:
         print(f'  {"":<8}    normalised {wide} columns -> 14 (extra volatility '
               'groups were shifting OPEN INTEREST out of the parser range)')
-    fn = d / f'{safe_name(product)}_rawIV.tsv'
+    # suffix '' = the primary chain (rawIV); '_<CODE>' = an extra near-expiry chain for the dashboard's smile curves.
+    fn = d / f'{safe_name(product)}_rawIV{suffix}.tsv'
     _atomic(fn, tsv)
     print(f'  chain    -> {fn.name}  [{why}, expiry {code}]')
     print(f'  {"":<8}    {shape_line(shape(tsv))}  {grade_line(grade(tsv))}')

@@ -84,6 +84,11 @@ a{color:var(--acc)}
 .rd-reg{font-size:13px;letter-spacing:.11em;text-transform:uppercase;font-weight:600;margin-bottom:8px}
 .rd-say{font-size:14px;line-height:1.62;color:var(--tx2);margin-top:6px;max-width:104ch}
 .rd-say b{color:var(--tx);font-weight:600}
+.rd-more>summary{cursor:pointer;list-style:none;padding:11px 17px;border-top:1px solid var(--line);color:var(--tx2);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;display:flex;gap:10px;align-items:center}
+.rd-more>summary::-webkit-details-marker{display:none}
+.rd-more>summary::before{content:'▸';color:var(--acc);transition:transform .15s}
+.rd-more[open]>summary::before{transform:rotate(90deg)}
+.rd-more .rd-sum{margin-left:auto;color:var(--tx3);font-family:var(--mono);text-transform:none;letter-spacing:0}
 .rd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:1px;background:var(--line)}
 .rd{background:var(--bg2);padding:13px 16px}
 .rd-h{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);display:flex;align-items:center;gap:7px}
@@ -324,7 +329,7 @@ const HELP = {
   callwall:['Call wall','The strike with the most call options above price — a <b>ceiling other people have already sold into</b>.','<b>The theory:</b> as price rises toward it the dealers who sold those calls must buy to stay hedged, and at the strike that buying stops, so rallies should stall there. <b>The data does not support it as a trading level</b> — see below.','<b>Tested, and it does not hold as a wall effect</b> (oi_research_book/WALL_PLACEBO_PREREG.md, 7 instruments, 6yr CME data): touches of the call wall turn back ~62% of the time within 15min, but the neighbouring strikes and arbitrary prices do exactly the same (15-min break rate 38.0% wall vs 38.7% neighbours vs 36.5% arbitrary). That stall is how any touched level behaves. Wall size did not predict outcome either. Treat it as a location, not an edge.'],
   putwall:['Put wall','The strike with the most put options below price — a <b>floor other people have already bought protection at</b>.','<b>The theory:</b> as price falls toward it dealers must sell to stay hedged, and at the strike that selling stops, so falls should stall there. <b>The data does not support it as a trading level</b> — see below.','<b>Tested, and it does not hold as a wall effect</b> (oi_research_book/WALL_PLACEBO_PREREG.md, 7 instruments): touches of the put wall turn back ~60% of the time within 15min, but neighbouring strikes and arbitrary prices do the same (15-min break rate 40.1% wall vs 38.1% neighbours vs 38.3% arbitrary — the wall breaks slightly MORE). Wall size did not predict outcome either. Treat it as a location, not an edge.'],
   maxpain:['Max pain','The price where the most options expire worthless, so the people who sold them make the most money.','Price tends to <b>drift toward it as expiry approaches</b>, and the pull is only real in the last day or two — more than about five days out, ignore it. Even close in, only trade it if the pin is <b>near enough to reach today</b>. A magnet three days of movement away is not a target.','<b>Tested</b> on 6yr EUR/USD CME data: the naive "price drifts to the biggest strike" read (p=0.0002) evaporated once compared to a matched control strike starting the same distance from spot (p=0.17) — most likely a distance-matching artifact, not real magnetism. The "last day or two" framing above is this page\'s working assumption, not a confirmed effect on this data.'],
-  gflip:['Gamma flip','The same calm-versus-jumpy border as the GEX flip, but read off the per-strike chart — the rougher of the two.','Above it moves get damped and ranges hold. Below it moves get amplified and trends run. When the two flips disagree, trust the GEX flip.','<b>Tested</b> on 6yr EUR/USD CME data: no significant volatility difference above vs below this level was found, at daily or intraday resolution. Same caveat as the GEX flip below.'],
+  gflip:['Gamma flip','A rougher cousin of the GEX flip: where the per-strike call-minus-put gamma changes sign. It is NOT the dealer zero-gamma level — measured on 616 archived days its side agreed with the net-GEX regime only 71% of the time, against 98% for the GEX flip. Use the GEX flip for the calm-versus-jumpy border.','Above it moves get damped and ranges hold. Below it moves get amplified and trends run. When the two flips disagree, trust the GEX flip.','<b>Tested</b> on 6yr EUR/USD CME data: no significant volatility difference above vs below this level was found, at daily or intraday resolution. Same caveat as the GEX flip below.'],
   gexflip:['GEX flip','The price where dealers switch from <b>calming</b> the market to <b>stirring it up</b>.','Above it, fade extremes. Below it, follow breaks. If price is sitting close to it the regime is fragile and can switch on you intraday, so trade smaller until price picks a side. Where this and the gamma flip disagree, trust this one.','<b>Tested</b> on 6yr EUR/USD CME data (oi_research_book/, using a comparable realized-vol-based proxy — no real IV field exists to compute true dealer gamma): next-day and intraday realized volatility showed no significant difference above vs below this level (p=0.45–0.93 across 4 separate tests). The damped/amplified framing above is this page\'s working theory, not a measured effect on this data — treat it as context, not confirmation.'],
   charm:['Charm flip','Where <b>time-decay</b> driven hedging reverses. Charm is how delta changes as time passes.','This is the mechanism that pins price to big strikes into expiry. Negligible until the last day or two, then it dominates.'],
   vanna:['Vanna flip','Where <b>volatility-driven</b> hedging reverses. Vanna is how delta changes when implied vol moves.','Dormant until IV moves. Classic use: after an event IV collapses, and if dealers are positioned right that forces buying with no news at all.'],
@@ -936,6 +941,16 @@ function renderRail(){
 // money, rising into the wings; where the line bends up hardest is where the market is
 // paying most for protection.
 let LADMODE = 'gex', LADIV = true, LADNET = false;
+// NEAR-EXPIRY VIEW (default on). COG's GEX-by-strike charts sum only the three nearest expiries
+// (0/1/2 DTE) because gamma per contract scales ~1/sqrt(T): the monthly's paper is huge but barely
+// hedged today. Stacking every expiry buried the strike pattern that matters under far-month bars.
+// Off = the full book. Persisted so the choice survives reloads.
+let LADNEAR = (()=>{ try{ return localStorage.getItem('oi.ladNear')!=='0'; }catch(_){ return true; } })();
+const NEAR_MAX_DTE = 3;
+const nearSeries = ser => { const all=(ser||[]).filter(x=>!x.rest);
+  const n=all.filter(x=>Number.isFinite(x.dte)&&x.dte<=NEAR_MAX_DTE).slice(0,3);
+  return n.length?n:all.slice(0,Math.min(3,all.length)); };   // nothing within 3 DTE → the nearest few, whatever they are
+function setLadNear(v){ LADNEAR=!!v; try{ localStorage.setItem('oi.ladNear',v?'1':'0'); }catch(_){ } refreshLadders(); }
 // Phone layout: the SVG is drawn on a 1000-unit-wide viewBox and scaled to fit, so on a
 // ~380px phone every label shrinks to ~40% and is unreadable. Below this width the ladder
 // is redrawn on a narrow viewBox (text stays near its real size) with fewer, taller rows.
@@ -990,14 +1005,15 @@ function ladderRows(e,mode){
         :[['var(--vol)','Vol GEX (gross — call/put split not stored)',fN(tot(V.gross))]] };
   }
   if(mode==='cp'){
-    const rows=L.strikes.map((k,i)=>{ const c=L.series.reduce((a,s)=>a+(s.call[i]||0),0), p=L.series.reduce((a,s)=>a+(s.put[i]||0),0);
+    const cpSer=LADNEAR?nearSeries(L.series):L.series;
+    const rows=L.strikes.map((k,i)=>{ const c=cpSer.reduce((a,s)=>a+(s.call[i]||0),0), p=cpSer.reduce((a,s)=>a+(s.put[i]||0),0);
       return {strike:k, segs:[{v:c,col:'var(--call)'},{v:-p,col:'var(--put)'}], tip:`call GEX ${fN(c)} · put GEX ${fN(p)} · net ${fN(c-p)}`}; });
     const tc=rows.reduce((a,r)=>a+r.segs[0].v,0), tp=rows.reduce((a,r)=>a-r.segs[1].v,0);
-    return { rows, stacked:true, unit:(L.units==='usd1pct'?'GEX · $ per 1% move':'GEX (OI)'), src:`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
+    return { rows, stacked:true, unit:(L.units==='usd1pct'?'GEX · $ per 1% move':'GEX (OI)'), src:LADNEAR?`nearest ${cpSer.length} expir${cpSer.length===1?'y':'ies'} (${cpSer.map(x=>x.label).join(' · ')})`:`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
       legend:[['var(--call)','Call GEX',fN(tc)],['var(--put)','Put GEX',fN(-tp)],['var(--tx2)','Net',fN(tc-tp)]] };
   }
   // gex / dex / charm / vanna: one stacked colour per expiry, same layout.
-  const G=LAD_GREEK[mode]||LAD_GREEK.gex, ser=L.series;
+  const G=LAD_GREEK[mode]||LAD_GREEK.gex, ser=LADNEAR?nearSeries(L.series):L.series;
   if(G.key!=='net' && !ser.some(s=>Array.isArray(s[G.key]))) return { rows:[], unit:'', legend:[], src:'',
     empty:'This view needs the per-expiry ladder from the server.<br>Reload once the server is updated.' };
   const val=(s,i)=>(s[G.key]&&s[G.key][i])||0;
@@ -1005,7 +1021,7 @@ function ladderRows(e,mode){
   const rows=L.strikes.map((k,i)=>({strike:k,
     segs:ser.map((s,j)=>({v:val(s,i),col:LAD_COLS[s.rest?4:Math.min(j,3)]})),
     tip:ser.map(s=>`${s.label}: ${fN(val(s,i))}`).join(' · ')+` · total ${fN(ser.reduce((a,s)=>a+val(s,i),0))}`}));
-  return { rows, stacked:true, unit:(L.units==='usd1pct'&&G.key==='net'?'net GEX · $ per 1% move':G.unit), src:L.fallback?'single expiry — full matrix not available':`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
+  return { rows, stacked:true, unit:(L.units==='usd1pct'&&G.key==='net'?'net GEX · $ per 1% move':G.unit), src:L.fallback?'single expiry — full matrix not available':(LADNEAR&&ser.length<L.series.length?`nearest ${ser.length} of ${L.nExpiries} expiries`:`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`),
     legend:ser.map((s,j)=>[LAD_COLS[s.rest?4:Math.min(j,3)], s.label+(s.code?' · '+esc(s.code):''), fN(tot(s))]) };
 }
 
@@ -1033,7 +1049,7 @@ function ladderSvg(e,big){
   let pos=0,neg=0;
   win.forEach(r=>{ let p=0,n=0; r.segs.forEach(s=>{ if(s.v>0)p+=s.v; else n-=s.v; }); pos=Math.max(pos,p); neg=Math.max(neg,n); });
   pos=Math.max(pos,neg*0.08,1e-12); neg=Math.max(neg,pos*0.08);
-  const rowH=big?15:ph?19:Math.max(11,Math.min(15,Math.floor(680/win.length))), L0=ph?64:96, W=ph?420:1000, RP=ph?8:18, TOP=LADIV?30:10;
+  const rowH=big?15:ph?19:Math.max(11,Math.min(15,Math.floor(680/win.length))), L0=ph?64:96, W=ph?420:1000, RP=ph?8:18, TOP=LADIV?44:10;
   const H=TOP+win.length*rowH, X0=L0, X1=W-RP;
   const X=v=>X0+(v+neg)/(pos+neg)*(X1-X0), ZX=X(0);
   // Strike → y, interpolated between row centres (rows are discrete, lines are prices).
@@ -1080,8 +1096,12 @@ function ladderSvg(e,big){
   // IV smile overlay on its own top axis
   // One smile per near expiry when the source has them (Cboe — the coloured curves on
   // COG's chart), else the single stored CME smile with its prior settle dashed.
-  const smiles=(Array.isArray(e.ivSmiles)&&e.ivSmiles.length)?e.ivSmiles
-    :(e.ivSmile&&Array.isArray(e.ivSmile.strikes)?[{...e.ivSmile,single:true}]:[]);
+  const prim=(e.ivSmile&&Array.isArray(e.ivSmile.strikes))?{...e.ivSmile,single:true,label:(Number.isFinite(e.dte)?Math.round(e.dte)+' DTE':'primary'),dte:e.dte}:null;
+  const nearSm=(Array.isArray(e.ivSmiles)&&e.ivSmiles.length)?e.ivSmiles.slice(0,3):null;
+  // Near-dated curves when captured (Cboe always; CME once the nightly sweep stores them); the
+  // primary (walls') expiry's smile is shown on its own only as the fallback — it is usually the
+  // far monthly and reads nearly flat, which is why it never looked like COG's curves.
+  const smiles=nearSm?(e._src!=='cboe'&&!LADNEAR&&prim?[...nearSm,prim]:nearSm):(prim?[prim]:[]);
   if(LADIV && smiles.length){
     const mn=win[win.length-1].strike, mx=win[0].strike;
     const sets=smiles.map(sm=>sm.strikes.map((k,i)=>({k,iv:sm.iv?.[i],pv:sm.single?sm.ivPrior?.[i]:undefined}))
@@ -1094,10 +1114,18 @@ function ladderSvg(e,big){
         half=Math.max((Math.max(...all)-Math.min(...all))/2, 0.015), ilo=mid-half, ihi=mid+half, pad=half*0.08;
       const IX=v=>X0+(v-(ilo-pad))/((ihi-ilo+2*pad)||1)*(X1-X0);
       const path=(pts,key)=>pts.filter(q=>q[key]>0).map((q,i)=>(i?'L':'M')+IX(q[key]).toFixed(1)+' '+yAt(q.k)?.toFixed(1)).filter(t=>!/undefined/.test(t)).join(' ');
+      const _ser=(ladderData(e)||{}).series||[];
+      const smLab=smiles.filter(sm=>sm.strikes.filter(k=>k>=mn&&k<=mx).length>=3);
       sets.forEach((pts,n)=>{
         const pp=path(pts,'pv'); if(pp) s+=`<path d="${pp}" fill="none" stroke="var(--tx3)" stroke-width="1.2" stroke-dasharray="3 4"/>`;
-        const col=sets.length>1?LAD_COLS[Math.min(n,3)]:'#7fd0ff';
-        s+=`<path d="${path(pts,'iv')}" fill="none" stroke="${col}" stroke-width="1.6" opacity=".9"/>`; });
+        // Colour = the SAME colour that expiry's bars wear in the ladder (match on DTE), so a curve and its bars read as one thing.
+        const sm=smLab[n]; const j=sm&&Number.isFinite(sm.dte)?_ser.findIndex(x=>Number.isFinite(x.dte)&&Math.abs(x.dte-sm.dte)<=0.6):-1;
+        const col=sets.length>1?LAD_COLS[Math.min(j>=0?j:n,3)]:'#7fd0ff';
+        if(sm) sm._col=col;
+        s+=`<path d="${path(pts,'iv')}" fill="none" stroke="${col}" stroke-width="1.6" opacity=".9"${sm&&sm.single&&sets.length>1?' stroke-dasharray="5 3"':''}/>`; });
+      // curve legend, top-right: which expiry each IV curve is
+      if(smLab.some(sm=>sm.label)) s+=`<text class="lbl" x="${X1}" y="${TOP-30}" text-anchor="end" style="font-size:10.5px;paint-order:stroke;stroke:var(--bg2);stroke-width:3px">`
+        + smLab.filter(sm=>sm.label).map(sm=>`<tspan fill="${sm._col||'#7fd0ff'}" dx="14">IV curve ${esc(sm.label)}${sm.single?' (wall expiry)':''}</tspan>`).join('') + '</text>';
       s+=`<line class="axis" x1="${X0}" y1="${TOP-8}" x2="${X1}" y2="${TOP-8}"/>`
        + [ilo,(ilo+ihi)/2,ihi].map((v,i)=>`<text class="lbl" x="${IX(v)}" y="${TOP-13}" text-anchor="${i===0?'start':i===2?'end':'middle'}" style="font-size:10.5px;fill:#7fd0ff">${i===0?'IV ':''}${(v*100).toFixed(1)}%</text>`).join('');
     }
@@ -1155,7 +1183,8 @@ function chartLadder(e,big){
     oi:'Raw contracts, primary expiry. A tall bar is a lot of paper parked at a price — not proof dealers are hedging it. Near expiry, prefer the GEX view.'};
   return `<div class="ladder" data-big="${big?1:0}">${srcBar}${cmp}
     <div class="lctl">${tab('gex','Net GEX by expiry')}${tab('cp','Call / Put GEX')}${tab('dex','Delta')}${tab('charm','Charm')}${tab('vanna','Vanna')}${tab('vol','Volume gamma')}${tab('oi','Open interest')}
-      ${R&&R.stacked?`<label class="liv" title="One bar per strike = the true net. Stacked bars on both sides of zero overstate a strike whose expiries (or calls/puts) offset."><input type="checkbox" ${LADNET?'checked':''} onchange="LADNET=this.checked;refreshLadders()"> Net only</label>`:''}
+      ${R&&R.stacked?`<label class="liv" title="Sum only the nearest expiries (up to three, within 3 DTE) — how COG draws it (0/1/2 DTE). Gamma per contract scales ~1/√T, so the far months' bars are mostly paper, not hedging. Untick for the whole book."><input type="checkbox" ${LADNEAR?'checked':''} onchange="setLadNear(this.checked)"> Near expiries (≤3 DTE)</label>`:''}
+      ${R&&R.stacked?`<label class="liv" style="margin-left:12px" title="One bar per strike = the true net. Stacked bars on both sides of zero overstate a strike whose expiries (or calls/puts) offset."><input type="checkbox" ${LADNET?'checked':''} onchange="LADNET=this.checked;refreshLadders()"> Net only</label>`:''}
       <label class="liv" style="margin-left:${R&&R.stacked?'12px':'auto'}"><input type="checkbox" ${LADIV?'checked':''} onchange="LADIV=this.checked;refreshLadders()"> IV smile</label></div>
     <div class="llegend">${leg}${R&&R.src?`<span class="muted" style="margin-left:auto">${R.src}</span>`:''}</div>
     <div class="ltipbox">Tap a row for its numbers</div>
@@ -1238,31 +1267,45 @@ window.addEventListener('resize', ()=>{ clearTimeout(_ladResizeT); _ladResizeT=s
   const now=ladPhone(); if(now!==_ladWasPhone){ _ladWasPhone=now; refreshLadders(); } },150); });
 
 function chartSmile(e,big){
-  const sm=e.ivSmile;
-  if(!sm||!Array.isArray(sm.strikes)||!sm.strikes.length)
+  // One curve per captured expiry: the near-dated ones (0-2 DTE, the lines on COG's charts) when the
+  // sweep stored them, plus the primary smile (the expiry the walls sit on — usually the far monthly,
+  // which is why a lone smile here looks flat). Strikes are windowed to ±3 reference moves so the
+  // far wings don't flatten the part of the curve that matters.
+  const prim=(e.ivSmile&&Array.isArray(e.ivSmile.strikes)&&e.ivSmile.strikes.length)
+    ?{...e.ivSmile,single:true,dte:e.dte,label:(Number.isFinite(e.dte)?Math.round(e.dte)+' DTE':'primary')+' · wall expiry'}:null;
+  const nearSm=(Array.isArray(e.ivSmiles)?e.ivSmiles:[]).slice(0,3);
+  const curves=[...nearSm,...(prim?[prim]:[])];
+  if(!curves.length)
     return '<div class="empty">No per-strike implied vol stored.<br>Paste the <b>per-strike chain</b> into the smile box to draw this.</div>';
-  const pts=sm.strikes.map((k,i)=>({k,iv:sm.iv?.[i],pv:sm.ivPrior?.[i]})).filter(p=>p.iv>0).sort((a,b)=>a.k-b.k);
-  if(pts.length<3) return '<div class="empty">Smile has too few valid points.</div>';
+  const rm=e.refMove?.move, spot=e.spot;
+  const win=(rm>0&&Number.isFinite(spot))?[spot-3*rm,spot+3*rm]:[-Infinity,Infinity];
+  const ser=(ladderData(e)||{}).series||[];
+  const sets=curves.map((c,n)=>{
+    const pts=c.strikes.map((k,i)=>({k,iv:c.iv?.[i],pv:c.single?c.ivPrior?.[i]:undefined})).filter(p=>p.iv>0&&p.k>=win[0]&&p.k<=win[1]).sort((a,b)=>a.k-b.k);
+    const j=Number.isFinite(c.dte)?ser.findIndex(x=>Number.isFinite(x.dte)&&Math.abs(x.dte-c.dte)<=0.6):-1;
+    return {c,pts,col:curves.length>1?(c.single&&j<0?'#7fd0ff':LAD_COLS[Math.min(j>=0?j:n,3)]):'var(--vol)'};
+  }).filter(x=>x.pts.length>=3);
+  if(!sets.length) return '<div class="empty">Smile has too few valid points near price.</div>';
   const W=1000,H=big?420:250,P=48;
-  const mn=pts[0].k,mx=pts[pts.length-1].k;
-  const all=pts.flatMap(p=>[p.iv,p.pv]).filter(v=>v>0);
+  const allK=sets.flatMap(x=>x.pts.map(p=>p.k)), mn=Math.min(...allK), mx=Math.max(...allK);
+  const all=sets.flatMap(x=>x.pts.flatMap(p=>[p.iv,p.pv])).filter(v=>v>0);
   const lo=Math.min(...all),hi=Math.max(...all);
   const X=v=>P+(v-mn)/(mx-mn||1)*(W-2*P), Y=v=>H-P-(v-lo)/((hi-lo)||1)*(H-1.8*P);
-  const path=key=>pts.filter(p=>p[key]>0).map((p,i)=>(i?'L':'M')+X(p.k)+' '+Y(p[key])).join(' ');
+  const path=(pts,key)=>pts.filter(p=>p[key]>0).map((p,i)=>(i?'L':'M')+X(p.k).toFixed(1)+' '+Y(p[key]).toFixed(1)).join(' ');
   let s=`<svg viewBox="0 0 ${W} ${H}">`;
   for(let i=0;i<=4;i++){const y=P*0.75+i*(H-1.8*P)/4; s+=`<line class="gl" x1="${P}" y1="${y}" x2="${W-P}" y2="${y}"/>`;}
-  const pp=path('pv'); if(pp) s+=`<path d="${pp}" fill="none" stroke="var(--tx3)" stroke-width="1.6" stroke-dasharray="4 4"/>`;
-  s+=`<path d="${path('iv')}" fill="none" stroke="var(--vol)" stroke-width="2.4"/>`;
-  if(Number.isFinite(e.spot)&&e.spot>=mn&&e.spot<=mx)
-    s+=`<line class="spotline" x1="${X(e.spot)}" y1="${P*0.6}" x2="${X(e.spot)}" y2="${H-P}"/>`
-     + `<text class="lbl" x="${X(e.spot)+5}" y="${P*0.6+13}" style="fill:var(--acc)">spot</text>`;
+  sets.forEach(x=>{ const pp=path(x.pts,'pv'); if(pp) s+=`<path d="${pp}" fill="none" stroke="var(--tx3)" stroke-width="1.4" stroke-dasharray="4 4"/>`;
+    s+=`<path d="${path(x.pts,'iv')}" fill="none" stroke="${x.col}" stroke-width="2.4"${x.c.single&&sets.length>1?' stroke-dasharray="7 4"':''}/>`; });
+  if(Number.isFinite(spot)&&spot>=mn&&spot<=mx)
+    s+=`<line class="spotline" x1="${X(spot)}" y1="${P*0.6}" x2="${X(spot)}" y2="${H-P}"/>`
+     + `<text class="lbl" x="${X(spot)+5}" y="${P*0.6+13}" style="fill:var(--acc)">spot</text>`;
   s+=`<text class="lbl" x="${P}" y="${H-P+21}">${fx(show(mn,e),SYM)}</text>`
    + `<text class="lbl" x="${W-P}" y="${H-P+21}" text-anchor="end">${fx(show(mx,e),SYM)}</text>`
    + `<text class="lbl" x="${P-9}" y="${P*0.75+4}" text-anchor="end">${(hi*100).toFixed(1)}%</text>`
-   + `<text class="lbl" x="${P-9}" y="${H-P+4}" text-anchor="end">${(lo*100).toFixed(1)}%</text>`
-   + `<text class="lbl" x="${W-P}" y="${P*0.5}" text-anchor="end" style="fill:var(--vol)">&mdash; today</text>`
-   + `<text class="lbl" x="${W-P}" y="${P*0.5+17}" text-anchor="end" style="fill:var(--tx3)">&middot;&middot; prior settle</text></svg>`;
-  return s+`<div class="note">Vol is lowest at the money and rises at both wings — the market pays up for tail protection. A steeper LEFT wing means demand for downside puts.</div>`;
+   + `<text class="lbl" x="${P-9}" y="${H-P+4}" text-anchor="end">${(lo*100).toFixed(1)}%</text>`;
+  sets.forEach((x,n)=>{ s+=`<text class="lbl" x="${W-P}" y="${P*0.5+n*17}" text-anchor="end" style="fill:${x.col}">&mdash; ${esc(x.c.label||'smile')}</text>`; });
+  const only=!nearSm.length;
+  return s+`</svg><div class="note">Vol is lowest at the money and rises at both wings — the market pays up for tail protection. A steeper LEFT wing means demand for downside puts.${only?` <b>This is the ${esc(prim?.label||'')} smile only</b> — the expiry the walls sit on, usually the far month, so it reads flat. Near-expiry (0–2 DTE) curves, the ones COG draws, appear here once the nightly sweep has stored them.`:''}</div>`;
 }
 
 function chartTerm(e,big){
@@ -1349,7 +1392,7 @@ function levelStrip(e){
     ['call wall', e.callWall, 'var(--call)', fOI(e.callWallOI)+' OI', 'callwall'],
     ['put wall',  e.putWall,  'var(--put)',  fOI(e.putWallOI)+' OI', 'putwall'],
     ['max pain',  e.maxPain,  'var(--pain)', 'drifts here by expiry', 'maxpain'],
-    ['gamma flip',e.gammaFlip,'var(--vol)',  'above = calm · below = jumpy', 'gflip'],
+    ['gamma flip',e.gammaFlip,'var(--vol)',  'rough strike-profile cross · trust GEX flip', 'gflip'],
     ['GEX flip',  e.gexFlip,  'var(--gam)',  'the calm / jumpy border', 'gexflip'],
     // charm/vanna are blank without a per-strike IV smile — say WHY on the card
     // instead of a bare "—" next to a greek symbol (the #1 "is it broken?" question).
@@ -1551,6 +1594,8 @@ function touchZoneRead(e, S, dist, lvl){
     nearer ? ('A touch means within '+TOUCH_PIPS+'p. Walls turn price back no more often than any other level (placebo test, 2026-09-23), so this is location context, not a signal.'+daysNote(nearer[3],nearer[2])) : '');
 }
 
+function _rdOpen(){ try{ return localStorage.getItem('oi.rdOpen')==='1'; }catch(_){ return false; } }
+function _rdSet(v){ try{ localStorage.setItem('oi.rdOpen',v?'1':'0'); }catch(_){ } }
 function todaysRead(e){
   if(!e) return '';
   const S=e.spot, ex=e.exposures||{}, gex=Number.isFinite(ex.gex)?ex.gex:null;
@@ -1760,7 +1805,11 @@ function todaysRead(e){
        : ''));
 
   return '<div class="p c12 todayread"><h3><span class="grow">Today’s read — '+esc(nm(SYM))+'</span></h3>'
-    + '<div class="body">'+top+'<div class="rd-grid">'+sub.join('')+'</div></div></div>';
+    + '<div class="body">'+top
+    // The ten check-cards are reference reading, not the first thing to see: tuck them behind a
+    // toggle (remembered) so the headline + the ladder sit together on one screen.
+    + '<details class="rd-more"'+(_rdOpen()?' open':'')+' ontoggle="_rdSet(this.open)"><summary>Ten-point check &mdash; ladder, gamma, IV, walls, flow, term, expiry, volume, full book<span class="rd-sum">'
+    + sub.length+' reads</span></summary><div class="rd-grid">'+sub.join('')+'</div></details></div></div>';
 }
 
 function render(){
@@ -1770,9 +1819,13 @@ function render(){
   if(!e){ document.getElementById('main').innerHTML='<div class="empty">No OI stored for this instrument.</div>'; return; }
   document.getElementById('sub').textContent =
     nm(SYM)+' · '+(e.primaryExpiry?.code||'no expiry code')+' · '+(e.numRows||0)+' strikes · saved '+ageOf(e).txt+' ago';
-  document.getElementById('main').innerHTML = '<div id="statHead">'+priceBar(e)+diagBar(e)+levelStrip(e)+todaysRead(e)+'</div><div class="grid">'
+  document.getElementById('main').innerHTML = '<div id="statHead">'+priceBar(e)+diagBar(e)+levelStrip(e)+'</div><div class="grid">'
+    // Order: the ladder (the chart you actually read) goes straight under the level strip, then the
+    // written read that explains it, then walls / IV / term / expiry detail. Today's read used to
+    // sit above the ladder and pushed it ~1100px down the page.
     + panel('c8','ladder','Strike ladder — GEX · volume gamma · OI','ladder',chartLadder)
     + panel('c4','flow','Positioning and flow','flow',flowPanel,true)
+    + todaysRead(e)
     + panel('c6','cw','Call walls — resistance','walls',x=>wallTable(x,'call'),true)
     + panel('c6','pw','Put walls — support','walls',x=>wallTable(x,'put'),true)
     + panel('c4','smile','IV smile','smile',chartSmile)

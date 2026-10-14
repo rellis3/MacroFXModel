@@ -301,6 +301,13 @@ export function buildOIZones(inst, price, cfg = {}) {
     // BEFORE the minRR gate, so a trade that cannot reach minRR inside the implied move
     // is dropped (or, for max pain, skipped by the engine at fire time). 0 = off.
     tpCapRefMult = 1.0,
+    // ── hard reach cap (2026-10-14) ─────────────────────────────────────────
+    // reachFlag() only FLAGS and trims ×reachTrim an entry beyond the implied move. Live plan
+    // 2026-10-14 still armed SPX break-sells 17% and 22% below spot (25-32× the day move) and
+    // RUT fade-buys 6.6% away, each at ~0.3 size with a 5pt stop. Beyond maxReachMult × refMove
+    // the zone is dropped (recorded in collectDrops), not just trimmed. maxpain enters at spot
+    // so it never trips this. 0 = off (default here; the producer sets it).
+    maxReachMult = 0,
     // ── smaller trade levels (sub-tier walls, graded in — not gated out) ────
     subTierTrade = false,          // walls BELOW minTier become fade zones at subTierSize — but only
                                    // WITH CONFLUENCE (a volume magnet / flip / multi-expiry persistence
@@ -566,6 +573,11 @@ export function buildOIZones(inst, price, cfg = {}) {
       if (c1 !== tp1) rationale = `${rationale} · TP ${+(+tp1).toFixed(6)} capped at ${tpCapRefMult}× implied move → ${+c1.toFixed(6)}`;
       tp1 = c1;
       tp2 = (c2 != null && tp1 != null && Math.abs(c2 - tp1) < 1e-9) ? null : c2;   // both capped → one target
+    }
+    if (maxReachMult > 0 && z.mode !== 'maxpain' && Number.isFinite(refMove) && refMove > 0
+        && Math.abs(z.entry - price) > maxReachMult * refMove) {
+      _drop(z, `entry ${(Math.abs(z.entry - price) / refMove).toFixed(1)}× the reference move from spot (> ${maxReachMult}×) — too far to arm`);
+      return;
     }
     // Minimum reward:risk. TP1 to max pain (or the nearest ladder node) can sit a
     // handful of pips from the entry while the SL sits a full buffer behind the wall

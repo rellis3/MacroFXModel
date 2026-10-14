@@ -86,6 +86,17 @@ const stems = [...new Set(readdirSync(dir)
   .filter(f => /_(rawOI|rawChg|rawVol|rawIVTerm|rawIV)\.tsv$/.test(f))
   .map(f => f.replace(/_(rawOI|rawChg|rawVol|rawIVTerm|rawIV)\.tsv$/, '')))];
 
+// Near-expiry smile chains the sweep captured beyond the primary one: <stem>_rawIV_<CODE>.tsv.
+// Optional by design — absent files simply mean no near-expiry curves on the dashboard.
+const rdExtra = (stem) => {
+  const out = {};
+  const pre = `${stem}_rawIV_`;
+  for (const f of readdirSync(dir)) {
+    if (!f.startsWith(pre) || !f.endsWith('.tsv')) continue;
+    try { const t = readFileSync(join(dir, f), 'utf8'); if (t.trim()) out[f.slice(pre.length, -4)] = t; } catch { /* skip */ }
+  }
+  return Object.keys(out).length ? out : null;
+};
 const rd = (stem, box) => { try { return readFileSync(join(dir, `${stem}_${box}.tsv`), 'utf8'); } catch { return ''; } };
 
 // WHICH SETTLEMENT each capture is serving, recorded by the sweep from QuikStrike's
@@ -161,7 +172,7 @@ for (const stem of stems.sort()) {
     const prior = priorStore[sym] || null;        // yesterday in the SAME series (see above)
     r = await buildOIEntry({
       pair: sym, rawOI, rawChg: rd(stem, 'rawChg'), rawVol: rd(stem, 'rawVol'),
-      rawIV: rd(stem, 'rawIV'), rawIVTerm: rd(stem, 'rawIVTerm'), baseUrl: base,
+      rawIV: rd(stem, 'rawIV'), rawIVTerm: rd(stem, 'rawIVTerm'), rawIVExtra: rdExtra(stem), baseUrl: base,
       numLevels: settings?.numLevels, minOI: settings?.minOI,
       swapCP: !!settings?.cpSwapped,   // the inverted-pair call/put flip is a per-pair choice
       priorEntry: prior,               // carries the per-expiry history forward
