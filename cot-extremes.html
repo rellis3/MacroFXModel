@@ -377,6 +377,23 @@ primer: { title:'Start here', html:
 + '<li><b>Small traders</b> — everyone below the reporting threshold. Treated as noise and not shown on this page.</li>'
 + '</ul>'
 
++ '<p><b>For the currencies, that three-bucket story is too coarse</b>, and it matters. The CFTC files FX under a '
++ 'different report (Traders in Financial Futures) which splits the non-hedger side into <b>leveraged funds</b> — the '
++ 'fast, discretionary money, the ones who unwind in a hurry — and <b>asset managers</b>, real money that is mostly '
++ 'hedging and sits structurally short most FX futures. They routinely hold <i>opposite</i> positions, so a single '
++ '"speculators" column cannot tell you which of them is stretched.</p>'
++ '<p>The Aussie on the 2026-10-06 report is the example that made this page split them. Leveraged funds were net '
++ '<b>long</b> +54,133 at the 84th percentile of their own three years; asset managers were net <b>short</b> -101,428, '
++ 'near their most short in twenty years as a share of open interest. Added together that reads "net short AUD". Split, '
++ 'it is a crowded long by the fast money against a record real-money short, and the two had pulled 27.6pp apart in a '
++ 'month. Those are opposite readings of who is exposed. The <b>AM net</b>, <b>AM pct</b> and <b>4w split</b> columns '
++ 'in the table below are that split; they are blank for metals and energy, which are filed under a different report '
++ 'with no asset-manager category at all.</p>'
++ '<p><b>And none of it says which way price goes.</b> This desk pre-registered exactly that question — two-sided, so '
++ 'neither theory could claim the answer in advance — and it failed: pooled out-of-sample rank-IC -0.03 at p=0.09 over '
++ '3,576 rows, with the Aussie leg at +0.004. A companion test found crowded shorts into a scheduled event were '
++ '<i>paid</i>, not squeezed, across 84 meetings. Read positioning as who has to act if they are wrong. Never as a lean.</p>'
+
 + '<p><b>The four words you need.</b></p>'
 + '<div class="lsn-j">'
 + '<div><b>Net position</b> — longs minus shorts. If speculators hold 100,000 long contracts and 40,000 short, their '
@@ -1294,6 +1311,9 @@ function allTable(){
   const rows=(DATA.instruments||[]).slice().sort((a,b)=>(pctOf(b)??0)-(pctOf(a)??0));
   return '<table><thead><tr><th>Market</th><th>Grp</th><th>Pct'+h('pct')+'</th><th>Z'+h('z')+'</th>'
     +'<th>Spec net'+h('spec')+'</th><th>% of OI</th><th>Comm'+h('comm')+'</th>'
+    +'<th title="Asset managers: real money, mostly hedging. Blank for metals and energy, which have no such category.">AM net</th>'
+    +'<th title="Where that asset-manager position sits in its OWN history — the only way an extreme on this leg shows up as one.">AM pct</th>'
+    +'<th title="How far the fast money and the real money moved APART over four weeks, in points of open interest. A single speculators column can never show this.">4w split</th>'
     +'<th>OI</th><th>OI pct'+h('oi')+'</th><th>Wk chg'+h('wk')+'</th><th>L/S'+h('gross')+'</th></tr></thead><tbody>'
     + rows.map(x=>{const p=pctOf(x);
       return '<tr class="clk '+(SEL===x.sym?'sel':'')+'" onclick="pick(\''+esc(x.sym)+'\')">'
@@ -1301,6 +1321,9 @@ function allTable(){
         +'<td style="color:'+colFor(p)+'"><b>'+(p??'—')+'</b></td><td class="muted">'+(zOf(x)??'—')+'</td>'
         +'<td>'+fN(x.specNet)+'</td><td class="muted">'+(x.specShare!=null?x.specShare+'%':'—')+'</td>'
         +'<td class="muted">'+(cOf(x)??'—')+'</td>'
+        +'<td'+(x.amNet!=null&&x.amNet<0?' style="color:var(--short)"':x.amNet!=null?' style="color:var(--long)"':' class="muted"')+'>'+(x.amNet!=null?fN(x.amNet):'—')+'</td>'
+        +'<td class="muted">'+(x.amSharePct??'—')+'</td>'
+        +'<td class="muted">'+(x.splitChg4w!=null?(x.splitChg4w>0?'+':'')+x.splitChg4w.toFixed(1):'—')+'</td>'
         +'<td class="muted">'+fN(x.openInterest)+'</td><td class="muted">'+(x.oiPct??'—')+'</td>'
         +'<td style="color:'+(x.weeklyChg>0?'var(--long)':x.weeklyChg<0?'var(--short)':'var(--tx3)')+'">'+sgn(x.weeklyChg)+fN(x.weeklyChg)+'</td>'
         +'<td class="muted">'+(x.grossRatio??'—')+'</td></tr>';}).join('')
