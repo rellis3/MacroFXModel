@@ -1,0 +1,2048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<title>OI Analytics v2</title>
+<style>
+/* ── Deliberately NOT the neon-card look: a dense analyst sheet. One accent
+     (amber) for structure, red/green only where direction has meaning, and
+     everything on a strict 12-col grid so numbers line up down the page. ── */
+:root{
+  --bg:#0b0d10; --bg2:#111419; --bg3:#161a20; --line:#232830; --line2:#2e343d;
+  --tx:#eef1f5; --tx2:#a8b1bd; --tx3:#71798a;
+  --acc:#e0a339; --call:#e8615f; --put:#46b87a; --pain:#d9c04a;
+  --gam:#9b7de0; --vol:#4b9fd6; --warn:#e08a3c; --ok:#3fae6d;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);
+  font:15px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--acc)}
+.wrap{max-width:1680px;margin:0 auto;padding:0 22px 80px}
+
+/* header */
+.top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+  padding:16px 0 12px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.top h1{margin:0;font-size:22px;font-weight:650;letter-spacing:.14em;text-transform:uppercase}
+.top h1 span{color:var(--acc)}
+.top .sub{color:var(--tx2);font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.top .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+.btn{background:var(--bg3);border:1px solid var(--line2);color:var(--tx2);
+  padding:9px 15px;border-radius:5px;cursor:pointer;font-size:13px;font-family:var(--mono)}
+.btn:hover{border-color:var(--acc);color:var(--tx)}
+
+/* instrument rail */
+.rail{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px}
+.rail button{background:transparent;border:1px solid var(--line);color:var(--tx3);
+  padding:10px 16px;border-radius:5px;cursor:pointer;font-family:var(--mono);font-size:14px;
+  display:flex;gap:7px;align-items:center}
+.rail button:hover{border-color:var(--line2);color:var(--tx2)}
+.rail button.on{border-color:var(--acc);color:var(--acc);background:rgba(224,163,57,.07)}
+.rail button.stale{opacity:.45}
+.rail .dot{width:5px;height:5px;border-radius:50%;background:var(--ok)}
+.rail .dot.old{background:var(--warn)}
+.rail .dot.none{background:var(--tx3)}
+.rail .rail-sep{flex-basis:100%;font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin:6px 0 0}
+
+/* price bar — the CFD vs futures reconciliation the whole thing hangs off */
+.pricebar{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
+  background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-bottom:6px}
+.pricebar>div{background:var(--bg2);padding:14px 17px}
+.pricebar .k{font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--tx3)}
+.pricebar .v{font-family:var(--mono);font-size:25px;margin-top:2px}
+.pricebar .n{font-size:12px;color:var(--tx3);margin-top:1px;font-family:var(--mono)}
+.pricebar .drift{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-family:var(--mono);margin-top:4px}
+.pricebar .drift .dot{width:6px;height:6px;border-radius:50%;background:var(--tx3);display:inline-block}
+.pricebar .drift .dot.flat{background:var(--tx3)}
+.pricebar .stamp{font-size:11px;color:var(--tx3);font-family:var(--mono);margin-top:4px}
+.pricebar .stamp b{color:var(--acc);font-weight:600}
+
+/* diagnostics — the point of the page: never lose the provenance again */
+.diag{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px}
+.chip{font-family:var(--mono);font-size:12px;padding:6px 11px;border-radius:3px;
+  border:1px solid var(--line2);color:var(--tx2);background:var(--bg2)}
+.chip b{color:var(--tx);font-weight:600}
+.chip.warn{border-color:var(--warn);color:var(--warn)}
+.chip.bad{border-color:var(--call);color:var(--call)}
+.chip.good{border-color:var(--ok);color:var(--ok)}
+
+/* level strip */
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:1px;
+  background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-bottom:18px}
+.lv{background:var(--bg2);padding:13px 16px;border-top:3px solid transparent}
+.lv .k{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)}
+.lv .v{font-family:var(--mono);font-size:24px;margin-top:3px}
+.lv .f{font-family:var(--mono);font-size:12px;color:var(--tx3);margin-top:1px}
+.lv .d{font-family:var(--mono);font-size:12px;color:var(--tx2);margin-top:1px}
+
+/* Today's read - the plain-English summary strip above the panels */
+.todayread{margin-bottom:18px}
+.todayread .body{padding:0}
+.rd-top{padding:16px 18px;border-bottom:1px solid var(--line)}
+.rd-reg{font-size:13px;letter-spacing:.11em;text-transform:uppercase;font-weight:600;margin-bottom:8px}
+.rd-say{font-size:14px;line-height:1.62;color:var(--tx2);margin-top:6px;max-width:104ch}
+.rd-say b{color:var(--tx);font-weight:600}
+.rd-more>summary{cursor:pointer;list-style:none;padding:11px 17px;border-top:1px solid var(--line);color:var(--tx2);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;display:flex;gap:10px;align-items:center}
+.rd-more>summary::-webkit-details-marker{display:none}
+.rd-more>summary::before{content:'▸';color:var(--acc);transition:transform .15s}
+.rd-more[open]>summary::before{transform:rotate(90deg)}
+.rd-more .rd-sum{margin-left:auto;color:var(--tx3);font-family:var(--mono);text-transform:none;letter-spacing:0}
+.rd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:1px;background:var(--line)}
+.rd{background:var(--bg2);padding:13px 16px}
+.rd-h{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);display:flex;align-items:center;gap:7px}
+.rdot{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
+.rd-v{font-size:14.5px;color:var(--tx);margin-top:5px;line-height:1.45}
+.rd-v b{font-family:var(--mono);font-weight:600}
+.rd-d{font-size:12.5px;color:var(--tx3);margin-top:5px;line-height:1.55}
+.rd-d b{color:var(--tx2)}
+@media(max-width:760px){.rd-grid{grid-template-columns:1fr}}
+
+/* panels */
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:18px}
+.p{background:var(--bg2);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.p>h3{margin:0;padding:13px 17px;font-size:13px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--tx2);border-bottom:1px solid var(--line);background:var(--bg3);
+  display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.p>h3 em{font-style:normal;color:var(--tx3);font-size:9.5px;letter-spacing:.04em;text-transform:none}
+.p .body{padding:16px 17px}
+.c12{grid-column:span 12}.c8{grid-column:span 8}.c6{grid-column:span 6}
+.c4{grid-column:span 4}.c5{grid-column:span 5}.c7{grid-column:span 7}
+@media(max-width:1250px){.c8,.c6,.c4,.c5,.c7{grid-column:span 12}}
+
+/* strike ladder (COG-style horizontal GEX / volume-gamma / OI chart) */
+.ltipbox{font:12px var(--mono);color:var(--tx3);padding:4px 2px 6px;min-height:22px}
+.lmode.lsrc.on{background:#4b8fd6;border-color:#4b8fd6}
+.lcmp{margin:0 0 10px;overflow-x:auto}
+.lcmp table{font-size:12.5px}
+.lcmp td,.lcmp th{padding:5px 9px}
+.ltipbox.on{color:var(--tx)}
+@media(max-width:700px){
+  .wrap{padding:0 8px 60px}
+  /* The whole page used to be ~1000px wide on a phone (header buttons don't wrap, tables
+     don't shrink), so the browser zoomed everything out to ~40%. Keep it at screen width. */
+  .top .right{margin-left:0;flex-wrap:wrap}
+  .p .body{overflow-x:auto}
+  .p .body{padding:12px 8px}
+  .lctl{gap:4px}
+  .lmode{padding:5px 8px;font-size:11.5px}
+  .liv{margin-left:0!important;margin-right:10px}
+  .llegend{gap:6px 12px;font-size:11.5px;padding:6px 8px}
+  .llegend .muted{margin-left:0!important;width:100%}
+  .ltipbox{font-size:12.5px}
+}
+.lctl{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.lmode{background:transparent;border:1px solid var(--line2);color:var(--tx3);border-radius:4px;
+  padding:5px 11px;font:12px var(--mono);cursor:pointer}
+.lmode:hover{color:var(--tx);border-color:var(--acc)}
+.lmode.on{color:var(--bg);background:var(--acc);border-color:var(--acc)}
+.liv{margin-left:auto;font-size:12px;color:var(--tx2);display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.llegend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font:12px var(--mono);color:var(--tx2);
+  padding:7px 10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);margin-bottom:8px}
+.lleg{display:inline-flex;align-items:center;gap:7px}
+.lleg i{width:12px;height:12px;border-radius:2px;display:inline-block}
+.lleg b{color:var(--tx);font-weight:600}
+
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:14px}
+th{text-align:right;padding:9px 13px;color:var(--tx2);font-weight:600;font-size:11.5px;
+  letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+td{padding:8px 13px;border-bottom:1px solid rgba(35,40,48,.5);text-align:right}
+tr:last-child td{border-bottom:0}
+.bar{height:13px;border-radius:1px;display:inline-block;vertical-align:middle}
+.muted{color:var(--tx3)}
+.tag{font-size:9px;padding:1px 5px;border-radius:2px;border:1px solid currentColor;margin-left:5px}
+
+svg{display:block;width:100%;height:auto;overflow:visible}
+.axis{stroke:var(--line2);stroke-width:1}
+.gl{stroke:var(--line);stroke-width:1;stroke-dasharray:2 3}
+.lbl{fill:var(--tx2);font-family:var(--mono);font-size:12px}
+.spotline{stroke:var(--acc);stroke-width:1;stroke-dasharray:3 3}
+.empty{color:var(--tx3);padding:36px 18px;text-align:center;font-size:14px;line-height:1.7}
+.note{color:var(--tx2);font-size:13px;line-height:1.66;margin-top:13px;border-left:2px solid var(--line2);padding-left:13px}
+
+/* help — every metric explains itself inline, no hunting for a legend */
+.h{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;
+  border-radius:50%;border:1px solid var(--line2);color:var(--tx3);font-size:10px;
+  margin-left:7px;cursor:help;position:relative;flex:none;font-style:normal;font-weight:700}
+.h:hover{border-color:var(--acc);color:var(--acc)}
+.h .tip{display:none;position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);
+  width:340px;max-width:78vw;background:#05070a;border:1px solid var(--acc);border-radius:7px;
+  padding:13px 15px;font-size:13.5px;line-height:1.62;color:var(--tx);z-index:70;
+  box-shadow:0 14px 36px rgba(0,0,0,.75);text-align:left;font-weight:400;letter-spacing:0;
+  text-transform:none;white-space:normal}
+.h:hover .tip{display:block}
+.h .tip b{color:var(--acc)}
+.h .tip em{color:var(--tx2);font-style:normal;display:block;margin-top:8px;font-size:12.5px}
+.p>h3 .grow{flex:1;display:flex;align-items:center}
+.p>h3 .zoom{background:none;border:1px solid var(--line2);color:var(--tx3);cursor:pointer;
+  border-radius:4px;padding:4px 10px;font-size:11.5px;font-family:var(--mono);letter-spacing:0;text-transform:none}
+.p>h3 .zoom:hover{border-color:var(--acc);color:var(--acc)}
+.p .body.flush{padding:6px 0 2px}
+tr.dim td{opacity:.42}
+.pill{font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid currentColor;margin-left:7px}
+#zoom{display:none;position:fixed;inset:0;background:rgba(4,6,9,.94);z-index:200;padding:34px;overflow:auto}
+#zoom.open{display:block}
+#zoomBox{max-width:1500px;margin:0 auto;background:var(--bg2);border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+#zoomBox h3{margin:0;padding:16px 20px;font-size:16px;background:var(--bg3);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:12px}
+#zoomBox h3 .grow{flex:1}
+#zoomBody{padding:24px 22px}
+#zoomBody svg{min-height:400px}
+
+/* price chart + toolbar */
+#pxWrap{background:var(--bg2);border:1px solid var(--line);border-radius:7px;margin-bottom:18px;overflow:hidden}
+#pxWrap>h3{margin:0;padding:13px 17px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--tx);border-bottom:1px solid var(--line);background:var(--bg3);
+  display:flex;align-items:center;gap:8px;font-weight:600}
+#pxChartWrap{position:relative;height:430px;width:100%}
+#pxChart{height:430px;width:100%}
+/* GEX regime-band overlay: translucent horizontal price zones (PIN green / BREAKOUT red)
+   above the candle canvas but non-interactive, so candles show through the tint. */
+#pxBands{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.pxBand{position:absolute;left:0;right:0;pointer-events:none}
+/* Overlay for status/errors. Deliberately a SIBLING of #pxChart, never inside it - text
+   written into the chart host destroys the canvas and leaves a dead chart. */
+#pxMsg{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  pointer-events:none;background:rgba(18,22,28,.86)}
+#pxMsg .empty{pointer-events:auto;text-align:center}
+#pxMsg .btn{margin-left:10px}
+.pxage{margin-left:10px;font-size:11px;color:#7c8794;align-self:center;white-space:nowrap}
+.ctl{display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:11px 17px;
+  border-bottom:1px solid var(--line);background:#0f1319}
+.tfs{display:flex;gap:5px}
+.tfb{padding:5px 12px;font-size:12px}
+.ltogs{display:flex;gap:7px;flex-wrap:wrap}
+.ltog{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12.5px;color:var(--tx3);
+  border:1px solid var(--line);border-radius:5px;padding:5px 11px;user-select:none}
+.ltog.on{color:var(--tx);border-color:var(--line2)}
+.ltog .sw{width:12px;height:12px;border-radius:3px;border:1.5px solid;display:inline-block;flex:none}
+
+/* Tooltips live in a BODY-LEVEL layer positioned by JS. As children of a panel they were
+   clipped by its overflow and painted underneath the panel above — unreadable exactly
+   where the page is densest. Nothing can clip a fixed element at the top of the stack. */
+#tip{display:none;position:fixed;z-index:900;width:350px;max-width:80vw;background:#05070a;
+  border:1px solid var(--acc);border-radius:7px;padding:13px 15px;font-size:13.5px;line-height:1.62;
+  color:var(--tx);box-shadow:0 16px 40px rgba(0,0,0,.8);pointer-events:none}
+#tip b{color:var(--acc)}
+#tip em{color:var(--tx2);font-style:normal;display:block;margin-top:8px;font-size:12.5px}
+/* 4th HELP slot: what actually happened when this claim was tested on real history,
+   not the textbook mechanism above it — kept visually separate on purpose (a dashed
+   rule + a label), so a reader never mistakes theory for a measured result. */
+#tip .tested{display:block;margin-top:9px;padding-top:8px;border-top:1px dashed var(--line2);
+  font-size:12px;line-height:1.55;color:var(--tx2)}
+#tip .tested b{color:var(--tx)}
+
+/* The reachability panel stacks a table, a race, a histogram and a curve. Stacked it ran
+   about five times the height of every other pane; as columns it matches them. */
+.rgrid{display:grid;grid-template-columns:1.35fr .95fr .8fr;gap:20px;align-items:start}
+@media(max-width:1250px){.rgrid{grid-template-columns:1fr}}
+.rgrid h4{margin:0 0 8px;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--tx2);font-weight:600}
+.rgrid .note{font-size:12px;margin-top:9px}
+.rgrid svg{max-height:190px}
+/* ── v2 dense layout ───────────────────────────────────────────────────────── */
+.wrap{max-width:1760px}
+.c3{grid-column:span 3}
+.v2top{display:grid;grid-template-columns:minmax(260px,.85fr) minmax(380px,1.5fr) minmax(300px,1fr);gap:14px;margin-bottom:14px}
+.v2row{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px;margin-bottom:14px;align-items:start}
+#v2px{display:flex;flex-direction:column;gap:14px;min-width:0}
+.v2row #pxWrap{margin-bottom:0}
+.v2row #pxChartWrap,.v2row #pxChart{height:560px}
+#v2walls{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:1250px){#v2walls{grid-template-columns:1fr}}
+@media(max-width:1250px){.v2top,.v2row{grid-template-columns:1fr}}
+.v2c{background:var(--bg2);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.v2c>h3{margin:0;padding:11px 16px;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:650;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:baseline}
+.v2c>h3 small{color:var(--tx3);font-weight:400;letter-spacing:.04em;text-transform:none;margin-left:auto;font-size:11.5px}
+.v2c .bd{padding:12px 16px}
+.v2px-big{font:600 40px/1.05 var(--mono);letter-spacing:-.01em}
+.v2kv{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 14px;margin-top:12px}
+.v2kv .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)}
+.v2kv .v{font:14px var(--mono);margin-top:1px}
+.v2regime{display:inline-block;font:650 12px var(--mono);letter-spacing:.08em;padding:3px 9px;border-radius:3px;border:1px solid}
+.v2regime.pin{color:var(--put);border-color:var(--put);background:rgba(70,184,122,.08)}
+.v2regime.brk{color:var(--call);border-color:var(--call);background:rgba(232,97,95,.08)}
+.v2regime.neu{color:var(--tx2);border-color:var(--line2)}
+.v2bul{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;margin-top:10px}
+@media(max-width:1500px){.v2bul{grid-template-columns:1fr}}
+.v2bul>div{font-size:12.5px;line-height:1.45;color:var(--tx2);display:flex;gap:8px}
+.v2bul i{flex:0 0 7px;height:7px;border-radius:50%;margin-top:6px}
+.v2bul b{color:var(--tx);font-weight:600}
+.v2bul span.l{color:var(--tx3);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;display:block}
+.v2read{font-size:13px;line-height:1.5;color:var(--tx2)}
+.v2read p{margin:5px 0}
+.v2c .flowtab{max-height:340px;overflow:auto}
+.v2more>summary{cursor:pointer;color:var(--tx2);font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:8px 2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <h1><span>◆</span> OI Analytics <span style="font-size:12px;letter-spacing:.1em;color:var(--tx3)">v2</span></h1>
+    <div class="sub" id="sub">loading…</div>
+    <div class="right">
+      <button class="btn" id="unitBtn">Showing: SPOT-ADJ</button>
+      <button class="btn" id="sortBtn">Walls: STRENGTH</button>
+      <button class="btn" id="expBtn">⬇ Export lines</button>
+      <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);cursor:pointer" title="Export the lines in raw CME/COMEX futures price terms instead of OANDA spot — to overlay on a futures chart. Adds the basis back. Default: spot."><input type="checkbox" id="futTerms" style="cursor:pointer"> futures terms</label>
+      <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);cursor:pointer" title="Index pairs (SPX500, NAS100, US2000, US30) take their walls, max pain, GEX flip and regime from the Cboe index-options chain (SPX/NDX/RUT/DJX, 15-min delayed). Everything Cboe has no equivalent for — expected move, charm/vanna, risk reversal, volume — stays CME, and every other pair is CME as before. Unticked = CME only. Display/export only: the bots always read CME."><input type="checkbox" id="cboeSrc" style="cursor:pointer"> Cboe (indices)</label>
+      <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);cursor:pointer" title="Draw EVERY expiry's max-pain and call/put wall as lines (DTE-tagged, far ones faded), not just the primary + day set. For seeing the whole term structure on the chart."><input type="checkbox" id="allExp" style="cursor:pointer"> all expiries</label>
+      <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);cursor:pointer" title="Only what the model actually analysed: the primary + day expiry walls, max pain, gamma/gex flips, plus the charm/vanna flips and expected-move band. Drops other-expiry walls, catch levels and anything flagged far, and orders lines by price so a strike with several things on it reads as one stack. Gold goes from ~30 lines to ~9. Overrides 'all expiries'."><input type="checkbox" id="todayOnly" style="cursor:pointer"> today only</label>
+      <button class="btn" id="reanBtn" title="Re-derive every pair's levels from the OI data already stored (adds the day-expiry / latest compute) — no re-paste. Pinned to the saved basis, so LEVELS DO NOT MOVE: use Re-basis for that.">↻ Re-analyse all</button>
+      <button class="btn" id="rebasisBtn" title="Re-fetch the live futures+spot pair and rebuild every level off the CURRENT basis. Every level is strike − basis, and the basis drifts intraday (measured 2.1 → 6.6 pips in one session), so levels built at 00:36 are wrong by mid-morning. This moves them. Also re-plans the OI bot's zones, same as Re-analyse.">⟳ Re-basis (live)</button>
+      <button class="btn" id="reload">Reload</button>
+      <a class="btn" href="cot-extremes.html" style="text-decoration:none">COT positioning</a>
+      <a class="btn" href="oi-dashboard.html" style="text-decoration:none" title="The original layout, unchanged">Classic layout</a>
+      <a class="btn" href="index.html" style="text-decoration:none">Dashboard</a>
+    </div>
+  </div>
+
+  <!-- OI-bot hold-score calibration state (collecting → what happens & why · active
+       → fitted weights auto-applied). The "don't forget the calibration" strip. -->
+  <div id="calibBanner" style="display:none;margin:8px 0;border-radius:8px;padding:8px 12px;font-size:12px;line-height:1.5"></div>
+
+  <div class="rail" id="rail"></div>
+  <div id="v2top" class="v2top"></div>
+  <div class="v2row"><div id="v2px"><div id="pxWrap"><h3><span class="grow">Price with OI levels</span></h3><div id="ctlHost"></div><div id="pxChartWrap"><div id="pxChart"></div><div id="pxBands"></div><div id="pxMsg"></div></div></div><div id="v2walls"></div></div><div id="v2lad"></div></div>
+  <div id="main"></div>
+</div>
+
+<div id="tip"></div>
+
+<div id="zoom"><div id="zoomBox">
+  <h3><span class="grow" id="zoomTitle"></span><button class="btn" onclick="closeZoom()">Close ✕</button></h3>
+  <div id="zoomBody"></div>
+</div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// Data: the KV `oi_store` record written by the OI modal. Read-only — this page
+// computes nothing the analyser doesn't already store, so a number here and a
+// number in the bot can never disagree. Everything it needs is on the record.
+// ─────────────────────────────────────────────────────────────────────────────
+const FRIENDLY = {
+  'XAU/USD':'GOLD','NAS100_USD':'NQ','SPX500_USD':'SPX500','DE30_USD':'DAX',
+  'UK100_GBP':'FTSE','US30_USD':'US30','US2000_USD':'RUS2K',
+};
+// Commodities (the secondary pull, KV oi_store_cmdty). A COPY of js/oi.js OI_PRODUCT_SPEC's
+// display fields — this page is a classic script and cannot import it; js/oiCommodity.test.mjs
+// fails if the two drift. [label, dp, pip, OANDA candle symbol]
+const CMDTY = {
+  'XAG/USD':['SILVER',3,0.01,'XAG_USD'], 'XCU/USD':['COPPER',4,0.001,'XCU_USD'],
+  'XPT/USD':['PLATINUM',2,0.1,'XPT_USD'], 'XPD/USD':['PALLADIUM',2,0.1,'XPD_USD'],
+  'WTICO_USD':['WTI',2,0.01,'WTICO_USD'], 'BCO_USD':['BRENT',2,0.01,'BCO_USD'],
+  'NATGAS_USD':['NATGAS',3,0.001,'NATGAS_USD'], 'SOYBN_USD':['SOYBEANS',4,0.01,'SOYBN_USD'],
+  'CORN_USD':['CORN',4,0.01,'CORN_USD'], 'WHEAT_USD':['WHEAT',4,0.01,'WHEAT_USD'],
+};
+let STORE = {}, SYM = null, SPOTADJ = true, SORT = 'strength', PANELS = {};
+
+const nm  = k => CMDTY[k]?.[0] || FRIENDLY[k] || k;
+const dp  = k => CMDTY[k] ? CMDTY[k][1] : /JPY/i.test(k) ? 3 : (/XAU/.test(k) || /_/.test(k)) ? 2 : 5;
+const pip = k => CMDTY[k] ? CMDTY[k][2] : /JPY/i.test(k) ? 0.01 : /XAU/.test(k) ? 0.1 : /_/.test(k) ? 1 : 0.0001;
+const fx  = (v,k) => Number.isFinite(v) ? v.toFixed(dp(k)) : '—';
+const fOI = n => !Number.isFinite(n) ? '—' : Math.abs(n)>=1e6 ? (n/1e6).toFixed(1)+'M'
+                : Math.abs(n)>=1000 ? (n/1000).toFixed(1)+'K' : String(Math.round(n));
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// Stored levels are SPOT-adjusted (strike − basis). Toggle back to raw futures
+// strikes so a level can be checked against the CME ladder directly.
+const show = (v,e) => (!Number.isFinite(v)) ? NaN : (SPOTADJ ? v : v + (e.basis||0));
+
+// Every explanation on the page lives here so the vocabulary stays consistent. Written
+// for someone learning the structure, not as a reminder for someone who already knows.
+const HELP = {
+  cfd:['CFD spot','The price <b>your broker</b> quotes — what you actually trade. Option strikes are NOT quoted here; they are quoted in futures terms, which is why the basis exists.'],
+  fut:['CME futures','The <b>futures contract</b> the options are written on. Fetched live at the moment you press Analyse.','Amber means it fell back to a settlement price, which can be a day stale.'],
+  basis:['Basis','<b>Futures minus spot.</b> Options are struck on the future, you trade the spot, so every level must be shifted by this to be drawable on your chart.','It comes from carry (the interest-rate differential). It only means anything if both prices were read at the same instant — that is what "both legs same instant" confirms.'],
+  refmove:['Reference move','The yardstick everything else is measured against — how far price could plausibly travel by expiry.','A wall ten reference moves away is abandoned paper, not a level. <b>Careful:</b> this is measured to the <b>main</b> expiry, so for a same-day trade it overstates what is reachable. For intraday use the &ldquo;what is realistic today&rdquo; line in Today&rsquo;s read at the top of the page.'],
+  expiry:['Expiry','Which option expiry these levels come from. Different expiries pin at different prices, so the label matters.','Chosen automatically as the nearest expiry with real near-the-money open interest.'],
+  saved:['Saved','When you last pressed Analyse. Open interest updates once a day, so a stale save means stale levels.'],
+  callwall:['Call wall','The strike with the most call options above price — a <b>ceiling other people have already sold into</b>.','<b>The theory:</b> as price rises toward it the dealers who sold those calls must buy to stay hedged, and at the strike that buying stops, so rallies should stall there. <b>The data does not support it as a trading level</b> — see below.','<b>Tested, and it does not hold as a wall effect</b> (oi_research_book/WALL_PLACEBO_PREREG.md, 7 instruments, 6yr CME data): touches of the call wall turn back ~62% of the time within 15min, but the neighbouring strikes and arbitrary prices do exactly the same (15-min break rate 38.0% wall vs 38.7% neighbours vs 36.5% arbitrary). That stall is how any touched level behaves. Wall size did not predict outcome either. Treat it as a location, not an edge.'],
+  putwall:['Put wall','The strike with the most put options below price — a <b>floor other people have already bought protection at</b>.','<b>The theory:</b> as price falls toward it dealers must sell to stay hedged, and at the strike that selling stops, so falls should stall there. <b>The data does not support it as a trading level</b> — see below.','<b>Tested, and it does not hold as a wall effect</b> (oi_research_book/WALL_PLACEBO_PREREG.md, 7 instruments): touches of the put wall turn back ~60% of the time within 15min, but neighbouring strikes and arbitrary prices do the same (15-min break rate 40.1% wall vs 38.1% neighbours vs 38.3% arbitrary — the wall breaks slightly MORE). Wall size did not predict outcome either. Treat it as a location, not an edge.'],
+  maxpain:['Max pain','The price where the most options expire worthless, so the people who sold them make the most money.','Price tends to <b>drift toward it as expiry approaches</b>, and the pull is only real in the last day or two — more than about five days out, ignore it. Even close in, only trade it if the pin is <b>near enough to reach today</b>. A magnet three days of movement away is not a target.','<b>Tested</b> on 6yr EUR/USD CME data: the naive "price drifts to the biggest strike" read (p=0.0002) evaporated once compared to a matched control strike starting the same distance from spot (p=0.17) — most likely a distance-matching artifact, not real magnetism. The "last day or two" framing above is this page\'s working assumption, not a confirmed effect on this data.'],
+  gflip:['Gamma flip','A rougher cousin of the GEX flip: where the per-strike call-minus-put gamma changes sign. It is NOT the dealer zero-gamma level — measured on 616 archived days its side agreed with the net-GEX regime only 71% of the time, against 98% for the GEX flip. Use the GEX flip for the calm-versus-jumpy border.','Above it moves get damped and ranges hold. Below it moves get amplified and trends run. When the two flips disagree, trust the GEX flip.','<b>Tested</b> on 6yr EUR/USD CME data: no significant volatility difference above vs below this level was found, at daily or intraday resolution. Same caveat as the GEX flip below.'],
+  gexflip:['GEX flip','The price where dealers switch from <b>calming</b> the market to <b>stirring it up</b>.','Above it, fade extremes. Below it, follow breaks. If price is sitting close to it the regime is fragile and can switch on you intraday, so trade smaller until price picks a side. Where this and the gamma flip disagree, trust this one.','<b>Tested</b> on 6yr EUR/USD CME data (oi_research_book/, using a comparable realized-vol-based proxy — no real IV field exists to compute true dealer gamma): next-day and intraday realized volatility showed no significant difference above vs below this level (p=0.45–0.93 across 4 separate tests). The damped/amplified framing above is this page\'s working theory, not a measured effect on this data — treat it as context, not confirmation.'],
+  charm:['Charm flip','Where <b>time-decay</b> driven hedging reverses. Charm is how delta changes as time passes.','This is the mechanism that pins price to big strikes into expiry. Negligible until the last day or two, then it dominates.'],
+  vanna:['Vanna flip','Where <b>volatility-driven</b> hedging reverses. Vanna is how delta changes when implied vol moves.','Dormant until IV moves. Classic use: after an event IV collapses, and if dealers are positioned right that forces buying with no news at all.'],
+  expmove:['Expected move','The range the options market itself expects price to stay inside by expiry.','Use it as a reality check on take-profits. A target outside this band is one the option market is pricing as unlikely — if your TP sits there, you are betting against their own pricing.'],
+  ladder:['Strike ladder','Every strike near price, highest at the top, with four views of the same book. <b>Net GEX by expiry</b>: dealer gamma per strike, one colour per expiry — right of zero is call-dominated (dealers lean against moves, ranges hold), left is put-dominated (they push moves along). <b>Call / Put GEX</b>: the same gamma split by side. <b>Volume gamma</b>: today&rsquo;s traded volume weighted by gamma — where today&rsquo;s activity is. <b>Open interest</b>: raw contracts, calls right, puts left. <b>Delta / Charm / Vanna</b>: the same book through the other greeks, stacked by expiry — the hedge already on (delta), the hedge change from time passing (charm, per day) and from implied vol moving (vanna, per vol point).','<b>The IV line</b> (top axis) is the implied-vol smile across strikes: lowest at the money, rising into the wings. On the COG version of this chart there is one such line per expiry; a near-dated smile curls up hardest because short-dated wings are the most expensive. A wing bending up sharply = protection on that side is being bid. Dashed = previous settle.','Near expiry the 0/1-DTE colours dominate per contract: a big far-month bar can matter less than a small near-dated one at the money.'],
+  smile:['IV smile','What the options market is <b>bracing for</b> — not direction, but how much movement, and which side people are paying up to protect. <b>Blue is today, grey is the previous settlement.</b> Blue below grey means the market expects a calmer day than it did yesterday.','Use it to decide <b>how far to trust your signal</b>, never to pick a side. Calm or falling: trade normally. Rising sharply — especially with the left wing steepening, meaning downside protection is getting expensive — is the market buying umbrellas. If your signal is long, that is a reason to go smaller or wait, not to reverse.'],
+  term:['ATM IV term structure','At-the-money implied vol across <b>expiries</b> — the market vol forecast by horizon.','<b>Upward sloping</b> is normal: more time, more uncertainty. <b>Inverted</b> (near-dated higher) means an event is expected soon and short-dated levels break more easily.'],
+  flow:['Positioning and flow','Aggregate reads on how the option book is positioned and how that changed since yesterday.','These describe the <b>character</b> of the market — whether moves get damped or amplified, whether positioning is being built or unwound. They are context, not entry signals.'],
+  netgex:['Net GEX','One number for whether dealers are <b>calming</b> the market or <b>stirring it up</b>.','<b>Positive</b>: they lean against moves, so ranges hold — buying dips and selling rallies into the levels is what works. <b>Negative</b>: they push moves along, so breaks run — do not fade them, trade with the move.'],
+  netdex:['Net DEX','Total dealer delta exposure — how much underlying they must hold to stay hedged.'],
+  pc:['Put/call ratio','How many puts are open for every call — a rough gauge of whether the crowd is <b>hedged or chasing</b>.','Below 0.7 is call-heavy (crowd leaning long); above 1.3 is put-heavy (hedged or scared). Extremes can be contrarian, but in a strong trend they persist for weeks — never trade this on its own.'],
+  skew:['OI skew','<b>Where</b> positioning sits rather than how much. Negative = puts stacked below (downside hedged). Positive = calls stacked above.'],
+  conc:['Concentration','Whether the open interest is piled into a few strikes or spread thinly across many.','<b>Concentrated</b> means a handful of levels dominate, so price respects them and fading into them works. <b>Dispersed</b> means nothing is really defended — expect levels to hold less well and give breakouts more room.'],
+  cex:['CEX (charm)','How hard time-decay is pulling price toward the big strikes.','Only meaningful in the last day or two before expiry — that is when it produces pinning. A big number with weeks left on the clock is not telling you anything.'],
+  vex:['VEX (vanna)','Which way dealers are forced to trade if implied vol moves.','Dormant while IV is flat. The classic case: after an event IV collapses and, if dealers are positioned right, that alone forces them to buy — a rally with no news behind it.'],
+  rr:['Risk reversal','Whether people are paying more to bet on a <b>rise</b> or to protect against a <b>fall</b>.','Downside tilt: protection against a fall is the expensive side — mild caution if you are long. Upside tilt: upside bets are the expensive side — mild caution if you are short. It is a lean, never a signal on its own.'],
+  atmiv:['ATM IV change','Whether the options market expects <b>more or less</b> movement than it did yesterday.','Falling: calmer, trade your signal normally. Rising sharply: something is making people nervous — go smaller or wait for confirmation, rather than reversing.'],
+  volpc:['Volume P/C','Today <b>traded</b> put/call ratio, versus the resting open-interest ratio. When they diverge, today flow disagrees with existing positioning.'],
+  oichg:['OI change','Contracts added or removed since yesterday. <b>Building</b> = new money committing. <b>Closing</b> = positions unwinding, so the level is losing its backing.'],
+  walls:['Wall tables','Every strike with meaningful open interest on that side — the ceilings above price and the floors below it.','<b>Strength</b> is how big the strike is versus its neighbours, so a big number in a quiet area beats a big number in a busy one. <b>&times; nearby</b> is that multiple. <b>Careful near expiry:</b> these rank by contracts held, and within a day or two of expiry the biggest piles sit at strikes nobody is hedging any more. When the traded expiry is close, use the gamma-ranked levels in Today&rsquo;s read instead.'],
+  perexp:['Per-expiry structure','Where each expiry pins, so you can see whether near and far horizons agree.','If a nearby expiry and a distant one pin at very different prices, expect the level to shift once the near one expires.'],
+  reach:['Reachability','The chance price <b>touches</b> each wall within the horizon, from a Monte Carlo over the volatility cone. A wick counts.','The raw model is over-confident — a raw 94% only touches about 68% of the time — so these are CORRECTED against a reliability curve fitted on real EUR/USD data and verified out of sample to about 2pp. The curve is shown beside the numbers so you can see how much correction was applied. It says nothing about whether a wall then HOLDS.'],
+  volmag:['Volume magnets','Strikes with the heaviest <b>volume traded today</b>, as opposed to resting open interest.','Volume is activity, open interest is commitment. A strike busy today with little open interest is a fresh fight, not an established wall.'],
+  fullbook:['Full-book GEX','Net dealer gamma summed across <b>every expiry</b>, each option weighted by its own gamma (which embeds its DTE and IV) — the whole-book view, versus the single-expiry Net GEX the walls and traded regime use.','The per-expiry rows show which expiry is driving the book (a near-dated contract counts far more per unit of OI, since gamma explodes toward expiry). Analysis only — the bot trades the single-expiry regime, not this. Needs a multi-expiry paste; per-expiry vol uses each expiry\'s ATM IV when the settlements table is pasted, else a flat guess.'],
+};
+const h = k => HELP[k] ? `<i class="h" data-k="${k}">?</i>` : '';
+const pips = (v,sp,k) => (Number.isFinite(v)&&Number.isFinite(sp)) ? ((v-sp)/pip(k)) : NaN;
+// Short clock stamp, e.g. "07:07" — for the "updated" / "since" readouts on the card.
+const hhmm = ms => Number.isFinite(ms) ? new Date(ms).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '—';
+// Browser mirror of oiRegimeBands (js/oi.js): PIN/BREAKOUT bands from the stored gex crossings
+// (already basis-shifted). Kept tiny + input-identical to the canonical brick — the export/
+// indicator will consume the brick directly later. Each band's regime = the crossing's own dir.
+function regimeBands(e, lo, hi){
+  const flips=(e.gexFlips||[]).filter(f=>Number.isFinite(f?.price)&&f.price>lo&&f.price<hi).sort((a,b)=>a.price-b.price);
+  const net=e.exposures?.gex ?? e.gex ?? 0;
+  let reg = flips.length ? (flips[0].dir==='long->short'?'pin':'breakout') : (net>0?'pin':net<0?'breakout':'neutral');
+  const bands=[]; let cur=lo;
+  for(const f of flips){ bands.push({lo:cur,hi:f.price,regime:reg}); reg=f.dir==='long->short'?'breakout':'pin'; cur=f.price; }
+  bands.push({lo:cur,hi,regime:reg});
+  return bands;
+}
+// The regime band that contains a price (for the "spot is in a PIN zone" read). null if none.
+function regimeAt(e, px, lo, hi){
+  const b=regimeBands(e,lo,hi).find(b=>px>=b.lo&&px<=b.hi); return b?b.regime:null;
+}
+// How far live spot has walked from where TODAY's levels were anchored (inst.daySpot @ daySpotAt).
+// The 15-min basis control keeps inst.spot live; daySpot is fixed at the day's first analyse, so
+// this reads "price is +18p / 0.12% from the levels' reference" — how in-play today's walls are.
+function driftBadge(e){
+  if(!Number.isFinite(e.spot)||!Number.isFinite(e.daySpot)||!e.daySpot) return '';
+  const dp=(e.spot-e.daySpot)/pip(SYM), pct=(e.spot-e.daySpot)/e.daySpot*100, since=hhmm(e.daySpotAt);
+  if(Math.abs(dp)<0.5) return `<span class="drift"><span class="dot flat"></span>flat since ${since}</span>`;
+  const up=dp>0, col=up?'var(--call)':'var(--put)';
+  return `<span class="drift" style="color:${col}">${up?'▲':'▼'} ${dp>=0?'+':''}${dp.toFixed(0)}p · ${pct>=0?'+':''}${pct.toFixed(2)}% since ${since}</span>`;
+}
+
+// ── zoom: any panel can be opened full-screen ──
+function openZoom(key){
+  const e=STORE[SYM], p=PANELS[key]; if(!p) return;
+  document.getElementById('zoomTitle').innerHTML=p.title;
+  document.getElementById('zoomBody').innerHTML=p.render(e,true);
+  document.getElementById('zoom').classList.add('open');
+}
+function closeZoom(){ document.getElementById('zoom').classList.remove('open'); }
+// Registered by hand: this panel fetches asynchronously rather than rendering from the
+// stored record, so it does not go through panel().
+PANELS['reach'] = { title: 'Reachability \u2014 will price get there?', render: (e,big) => reachPanel(e,big) };
+function panel(cls,key,title,helpKey,render,flush){
+  PANELS[key]={title,render};
+  const e=STORE[SYM];
+  return `<div class="p ${cls}"><h3><span class="grow">${title}${h(helpKey)}</span>`
+    + `<button class="zoom" onclick="openZoom('${key}')">&#10530; Enlarge</button></h3>`
+    + `<div class="body${flush?' flush':''}">${render(e,false)}</div></div>`;
+}
+
+// ── PRICE CHART with every OI level drawn on it ──────────────────────────────
+// Same library and candle feed the OI-bot page uses (`/api/oanda_ohlc5m`), so a level
+// here sits exactly where it sits there. Each level TYPE can be switched off, because
+// with walls, flips, max pain, the expected-move band and volume magnets all on at once
+// the chart is unreadable — which is the whole complaint this answers.
+const OANDA_SYM = {'EUR/USD':'EUR_USD','GBP/USD':'GBP_USD','USD/JPY':'USD_JPY','AUD/USD':'AUD_USD',
+  'XAU/USD':'XAU_USD','USD/CAD':'USD_CAD','USD/CHF':'USD_CHF','NAS100_USD':'NAS100_USD',
+  'SPX500_USD':'SPX500_USD','US30_USD':'US30_USD','US2000_USD':'US2000_USD','DE30_USD':'DE30_EUR','UK100_GBP':'UK100_GBP',
+  ...Object.fromEntries(Object.entries(CMDTY).map(([k,v])=>[k,v[3]]))};
+
+// Which level types the chart can draw, their colour, and whether they start visible.
+// Walls default ON (they're the tradeable levels); the greek flips default OFF because
+// they are context and four extra dotted lines drown the walls out.
+const LINE_TYPES = [
+  {k:'call_wall', label:'Call walls',   col:'#e8615f', on:true,  style:0},
+  {k:'put_wall',  label:'Put walls',    col:'#46b87a', on:true,  style:0},
+  {k:'max_pain',  label:'Max pain',     col:'#ddc551', on:true,  style:2},
+  {k:'gex_flip',  label:'GEX flip',     col:'#a68ae8', on:true,  style:1},
+  {k:'gamma_flip',label:'Gamma flip',   col:'#54a8de', on:false, style:1},
+  {k:'charm_flip',label:'Charm flip',   col:'#e8963c', on:false, style:1},
+  {k:'vanna_flip',label:'Vanna flip',   col:'#a68ae8', on:false, style:1},
+  {k:'exp_move',  label:'Expected move',col:'#8aa0b4', on:true,  style:1},
+  {k:'oi_volume', label:'Volume magnets',col:'#54a8de',on:false, style:1},
+];
+let LINES_ON = Object.fromEntries(LINE_TYPES.map(t=>[t.k,t.on]));
+let _chart=null, _series=null, _priceLines=[], _candleCache={}, _tf='H1';
+// Candle refresh. The chart used to be a one-shot render with a permanent cache, so it
+// silently showed stale bars for as long as the tab stayed open ("frozen, not refreshing").
+// It polls the SAME feed index.html uses (/api/oanda_ohlc5m) - there was never a second
+// live feed to adopt, only a missing timer.
+const _TF_POLL={M5:30_000,M15:60_000,M30:60_000,H1:180_000,H4:300_000,D:600_000};
+let _pollTimer=null, _lastCandleAt=0, _chartToken=0, _pollFails=0;
+let _coneSeries=[], CONE_ON=true, BANDS_ON=true, _bandsSubbed=false;
+
+// Every level the chart can draw, from the stored record. Walls come from the same
+// near-money selection the export uses, so the chart never shows a level the indicator
+// would have filtered out.
+function chartLevels(e){
+  const out=[], rm=e.refMove?.move;
+  const nearOK = s => !(rm>0) || Math.abs(s-e.spot) <= 2.5*rm;
+  const add=(price,type,label)=>{ if(Number.isFinite(price)&&price>0) out.push({price,type,label}); };
+  ((e.callWalls)||[]).filter(w=>w.tier&&nearOK(w.strike)).slice(0,4)
+    .forEach(w=>add(w.strike,'call_wall',`call ${fOI(w.oi)}`));
+  ((e.putWalls)||[]).filter(w=>w.tier&&nearOK(w.strike)).slice(0,4)
+    .forEach(w=>add(w.strike,'put_wall',`put ${fOI(w.oi)}`));
+  add(e.maxPain,'max_pain','max pain');
+  add(e.gexFlip,'gex_flip','GEX flip');
+  add(e.gammaFlip,'gamma_flip','gamma flip');
+  add(e.greeksFlow?.charmFlip,'charm_flip','charm');
+  add(e.greeksFlow?.vannaFlip,'vanna_flip','vanna');
+  add(e.expectedMove?.upper,'exp_move','exp move ↑');
+  add(e.expectedMove?.lower,'exp_move','exp move ↓');
+  (e.volumeMagnets||[]).slice(0,3).forEach(v=>add(v.strike,'oi_volume',`vol ${fOI(v.volume)}`));
+  return out;
+}
+
+function drawLines(){
+  const e=STORE[SYM]; if(!_series||!e) return;
+  _priceLines.forEach(l=>{ try{_series.removePriceLine(l);}catch(_){} });
+  _priceLines=[];
+  const LSty = window.LightweightCharts ? LightweightCharts.LineStyle : {Solid:0,Dotted:1,Dashed:2};
+  const styleOf = n => n===0?LSty.Solid : n===2?LSty.Dashed : LSty.Dotted;
+  chartLevels(e).forEach(lv=>{
+    const t=LINE_TYPES.find(x=>x.k===lv.type); if(!t||!LINES_ON[lv.type]) return;
+    // Chart shows SPOT prices (the candles are spot), so always plot the spot-adjusted
+    // value regardless of the page's futures/spot toggle — a futures level drawn on a
+    // spot chart would sit in the wrong place by exactly the basis.
+    try{
+      _priceLines.push(_series.createPriceLine({
+        price: lv.price, color: t.col, lineWidth: lv.type.endsWith('_wall')?2:1,
+        lineStyle: styleOf(t.style), axisLabelVisible: true, title: lv.label,
+      }));
+    }catch(_){}
+  });
+}
+
+// Draw the volatility cone forward from the last candle: P50 dotted, P75 dashed, plus
+// the drift centre. This is the SAME cone the touch probabilities are computed from — the
+// route returns it rather than the page rebuilding one, so the picture and the percentages
+// can never disagree about how wide the distribution is.
+function drawCone(){
+  _coneSeries.forEach(sr=>{ try{_chart.removeSeries(sr);}catch(_){} });
+  _coneSeries=[];
+  if(!CONE_ON || !_chart || !REACH?.ok || !REACH.cone?.steps?.length) return;
+  const LSty = window.LightweightCharts ? LightweightCharts.LineStyle : {Solid:0,Dotted:1,Dashed:2};
+  const defs=[
+    {k:'p75Up',col:'#e0a339',w:1,st:LSty.Dashed},
+    {k:'p50Up',col:'#46b87a',w:1,st:LSty.Dotted},
+    {k:'center',col:'#54a8de',w:2,st:LSty.Solid},
+    {k:'p50Dn',col:'#46b87a',w:1,st:LSty.Dotted},
+    {k:'p75Dn',col:'#e0a339',w:1,st:LSty.Dashed},
+  ];
+  // The cone's own step times are M5; the chart may be on H1+. Keep only steps that fall
+  // strictly after the last candle so the lines start at the edge and fan out, rather
+  // than doubling back over history.
+  const lastT = (_candleCache[(OANDA_SYM[SYM]||'')+'|'+_tf]?.rows||[]).slice(-1)[0]?.time || 0;
+  const steps = REACH.cone.steps.filter(st=>st.time>lastT);
+  if(!steps.length) return;
+  for(const d of defs){
+    try{
+      const sr=_chart.addLineSeries({color:d.col,lineWidth:d.w,lineStyle:d.st,
+        priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+      sr.setData(steps.map(st=>({time:st.time,value:st[d.k]})));
+      _coneSeries.push(sr);
+    }catch(_){}
+  }
+}
+
+// GEX regime bands as translucent horizontal price zones over the candles. Positions each
+// band via priceToCoordinate (clamped to the pane when a boundary is off-screen). Same local
+// PIN/BREAKOUT read as the GEX-by-strike panel, now against live price. Repositioned on every
+// render/poll + on pan/zoom (visible-range change).
+function drawBands(){
+  const host=document.getElementById('pxBands'); const e=STORE[SYM];
+  if(!host) return;
+  host.innerHTML='';
+  if(!BANDS_ON || !_series || !e) return;
+  const rm=e.refMove?.move;
+  if(!(e.spot>0)) return;
+  // Band boundaries are stored in SPOT terms; the chart candles are spot, so use spot values
+  // (the page's futures/spot toggle only relabels the level readouts, the candles stay spot).
+  const lo=rm>0?e.spot-4*rm:e.spot*0.96, hi=rm>0?e.spot+4*rm:e.spot*1.04;
+  const bands=regimeBands(e,lo,hi);
+  const H=host.clientHeight||0; if(!H) return;
+  for(const b of bands){
+    if(b.regime==='neutral') continue;
+    let yT=_series.priceToCoordinate(b.hi), yB=_series.priceToCoordinate(b.lo);
+    if(yT==null) yT=(b.hi>e.spot)?0:H;          // off the top of the pane → clamp to top, else bottom
+    if(yB==null) yB=(b.lo>e.spot)?0:H;
+    const top=Math.max(0,Math.min(yT,yB)), bot=Math.min(H,Math.max(yT,yB));
+    if(bot-top<1) continue;
+    const rgb=b.regime==='pin'?'70,184,122':'232,97,95';
+    const d=document.createElement('div');
+    d.className='pxBand'; d.style.top=top+'px'; d.style.height=(bot-top)+'px';
+    d.style.background=`rgba(${rgb},0.07)`;
+    host.appendChild(d);
+  }
+  // Subscribe once so pan/zoom reflows the bands (vertical autoscale is covered by the poll).
+  if(!_bandsSubbed && _chart){ try{ _chart.timeScale().subscribeVisibleTimeRangeChange(()=>drawBands()); _bandsSubbed=true; }catch(_){} }
+}
+
+async function loadCandles(force){
+  const os=OANDA_SYM[SYM]; if(!os) return null;
+  const key=os+'|'+_tf;
+  // TTL, not a permanent cache. Half the poll interval so a manual re-render between polls
+  // still gets fresh bars, but rapid pair-flipping doesn't hammer OANDA.
+  const ttl=(_TF_POLL[_tf]||60_000)/2;
+  const hit=_candleCache[key];
+  if(!force && hit && (Date.now()-hit.at)<ttl) return hit.rows;
+  // incomplete=1 keeps the still-forming bar so the last candle moves live rather than
+  // only when the bar closes.
+  const r=await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(os)}&granularity=${_tf}&incomplete=1`,{cache:'no-store'});
+  if(!r.ok){
+    let why=''; try{ why=(await r.json()).error||''; }catch(_){}
+    throw new Error(why||('HTTP '+r.status));
+  }
+  const j=await r.json();
+  const rows=(j.values||[]).map(v=>({
+    time: Number(v.t), open:+v.open, high:+v.high, low:+v.low, close:+v.close,
+  })).filter(c=>Number.isFinite(c.time)&&Number.isFinite(c.close)).sort((a,b)=>a.time-b.time);
+  _candleCache[key]={rows,at:Date.now()};
+  _lastCandleAt=Date.now();
+  return rows;
+}
+
+// Status text goes in a SIBLING overlay, never into #pxChart. Writing innerHTML into the
+// chart's own host element destroys the Lightweight-Charts canvas while `_chart` still
+// points at it, leaving a zombie that silently swallows every later setData - which is
+// exactly why one failed timeframe (M15 and H4 both 400'd server-side) wedged the chart
+// until F5.
+function chartMsg(html){
+  const m=document.getElementById('pxMsg'); if(!m) return;
+  m.innerHTML = html ? `<div class="empty">${html}</div>` : '';
+  m.style.display = html ? 'flex' : 'none';
+}
+
+async function mountChart(force){
+  const el=document.getElementById('pxChart');
+  if(!el) return;
+  if(!window.LightweightCharts){ chartMsg('Chart library did not load.'); return; }
+  if(!_chart){
+    _chart=LightweightCharts.createChart(el,{
+      layout:{background:{color:'#12161c'},textColor:'#a8b1bd',fontSize:12},
+      grid:{vertLines:{color:'#1d232b'},horzLines:{color:'#1d232b'}},
+      rightPriceScale:{borderColor:'#333b46',scaleMargins:{top:.12,bottom:.12}},
+      timeScale:{borderColor:'#333b46',timeVisible:true,secondsVisible:false},
+      crosshair:{mode:LightweightCharts.CrosshairMode.Normal},
+      autoSize:true,
+    });
+    _series=_chart.addCandlestickSeries({upColor:'#46b87a',downColor:'#e8615f',
+      borderUpColor:'#46b87a',borderDownColor:'#e8615f',wickUpColor:'#46b87a',wickDownColor:'#e8615f'});
+  }
+  // Guard against a slow fetch for a pair the user already navigated away from landing on
+  // the chart after a newer one (switching pairs quickly used to interleave responses).
+  const token=++_chartToken;
+  chartMsg('');
+  try{
+    const rows=await loadCandles(force);
+    if(token!==_chartToken) return;                       // superseded by a later switch
+    if(!rows||!rows.length){ chartMsg('No candles for this instrument.'); return; }
+    _series.setData(rows);
+    // Only auto-fit on the FIRST paint for a given pair/timeframe; refitting on every poll
+    // would yank the view back while you are looking at it.
+    if(force!=='poll') _chart.timeScale().fitContent();
+    drawLines();
+    drawCone();
+    drawBands();
+    _pollFails=0;
+    paintAge();
+  }catch(err){
+    if(token!==_chartToken) return;
+    chartMsg(`Candles failed: ${esc(err.message)} <button class="btn" id="pxRetry">Retry</button>`);
+    const rb=document.getElementById('pxRetry');
+    if(rb) rb.onclick=()=>mountChart(true);
+    _pollFails++;
+  }finally{
+    // ALWAYS reschedule (unless superseded). Scheduling only on success meant one transient
+    // network blip stopped the chart refreshing for the rest of the session - i.e. the exact
+    // "it looks frozen" symptom this polling was added to remove. Backs off on repeated
+    // failures so a persistently dead endpoint isn't hammered at the base interval.
+    if(token===_chartToken) schedulePoll();
+  }
+}
+
+// "Updated Ns ago" beside the timeframe buttons. Without it there is no way to tell a live
+// chart from a stalled one by looking at it - a stale chart and a quiet market look
+// identical, which is what made the original behaviour so confusing. Turns red once the
+// data is well past its expected refresh.
+function paintAge(){
+  const el=document.getElementById('pxAge'); if(!el) return;
+  if(!_lastCandleAt){ el.textContent=''; return; }
+  const sec=Math.round((Date.now()-_lastCandleAt)/1000);
+  el.textContent = sec<60 ? `updated ${sec}s ago` : `updated ${Math.round(sec/60)}m ago`;
+  el.style.color = sec > (_TF_POLL[_tf]||60000)/1000*2.5 ? '#e8615f' : '';
+}
+setInterval(paintAge, 5000);
+
+// Poll the candle feed so the chart stays live. Paused while the tab is hidden (no point
+// burning OANDA calls against a chart nobody is looking at) and resumed on focus with an
+// immediate refresh, so coming back to the tab never shows a stale bar.
+function schedulePoll(){
+  clearTimeout(_pollTimer);
+  if(document.hidden) return;
+  const base=_TF_POLL[_tf]||60_000;
+  const wait=_pollFails ? Math.min(base*Math.pow(2,Math.min(_pollFails,4)), 10*60_000) : base;
+  _pollTimer=setTimeout(()=>mountChart('poll'), wait);
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden) clearTimeout(_pollTimer); else mountChart('poll');
+});
+
+function chartToolbar(){
+  const tf=['M5','M15','M30','H1','H4','D'].map(t=>`<button class="btn tfb ${t===_tf?'on':''}" data-tf="${t}">${t}</button>`).join('');
+  const toggles=LINE_TYPES.map(t=>`<label class="ltog ${LINES_ON[t.k]?'on':''}" data-lk="${t.k}">
+    <span class="sw" style="background:${LINES_ON[t.k]?t.col:'transparent'};border-color:${t.col}"></span>${t.label}</label>`).join('');
+  const cone=`<label class="ltog ${CONE_ON?'on':''}" id="coneTog"><span class="sw" style="background:${CONE_ON?'#54a8de':'transparent'};border-color:#54a8de"></span>Vol cone</label>`;
+  const bnds=`<label class="ltog ${BANDS_ON?'on':''}" id="bandTog" title="Shade the chart by LOCAL gamma regime — PIN (green, ranges hold) vs BREAKOUT (red, breaks run) — resolved by price zone from the zero-gamma crossings, not one net-GEX tint."><span class="sw" style="background:${BANDS_ON?'#46b87a':'transparent'};border-color:#46b87a"></span>Regime bands</label>`;
+  return `<div class="ctl"><div class="tfs">${tf}<span id="pxAge" class="pxage"></span></div><div class="ltogs">${toggles}${cone}${bnds}</div></div>`;
+}
+
+function wireChartToolbar(){
+  document.querySelectorAll('.tfb').forEach(b=>b.onclick=()=>{
+    if(_tf===b.dataset.tf) return;
+    _tf=b.dataset.tf; clearTimeout(_pollTimer); render();
+  });
+  const ct=document.getElementById('coneTog');
+  if(ct) ct.onclick=()=>{ CONE_ON=!CONE_ON; ct.classList.toggle('on',CONE_ON);
+    ct.querySelector('.sw').style.background=CONE_ON?'#54a8de':'transparent';
+    if(CONE_ON && !REACH?.ok) loadReach(); else drawCone(); };
+  const bt=document.getElementById('bandTog');
+  if(bt) bt.onclick=()=>{ BANDS_ON=!BANDS_ON; bt.classList.toggle('on',BANDS_ON);
+    bt.querySelector('.sw').style.background=BANDS_ON?'#46b87a':'transparent'; drawBands(); };
+  document.querySelectorAll('.ltog').forEach(l=>l.onclick=()=>{
+    LINES_ON[l.dataset.lk]=!LINES_ON[l.dataset.lk];
+    const t=LINE_TYPES.find(x=>x.k===l.dataset.lk);
+    l.classList.toggle('on',LINES_ON[l.dataset.lk]);
+    l.querySelector('.sw').style.background=LINES_ON[l.dataset.lk]?t.col:'transparent';
+    drawLines();
+  });
+}
+
+
+// Delegated hover, so re-rendering the page never loses the tooltips.
+(function(){
+  const tipEl = () => document.getElementById('tip');
+  document.addEventListener('mouseover', ev => {
+    const ic = ev.target.closest && ev.target.closest('.h'); if(!ic) return;
+    const d = HELP[ic.dataset.k]; if(!d) return;
+    const t = tipEl();
+    t.innerHTML = `<b>${d[0]}</b><br>${d[1]}` + (d[2] ? `<em>${d[2]}</em>` : '') + (d[3] ? `<span class="tested">${d[3]}</span>` : '');
+    t.style.display = 'block';
+    const r = ic.getBoundingClientRect(), tr = t.getBoundingClientRect();
+    let left = r.left + r.width/2 - tr.width/2;
+    left = Math.max(10, Math.min(left, window.innerWidth - tr.width - 10));
+    // Prefer above; flip below when there isn't room, so it is never cut off.
+    const top = (r.top - tr.height - 10 < 8) ? r.bottom + 10 : r.top - tr.height - 10;
+    t.style.left = left + 'px'; t.style.top = top + 'px';
+  });
+  document.addEventListener('mouseout', ev => {
+    if (ev.target.closest && ev.target.closest('.h')) tipEl().style.display = 'none';
+  });
+})();
+
+// ── REACHABILITY panel ───────────────────────────────────────────────────────
+// Fetched on demand (it runs a Monte Carlo server-side, so it is not part of the page
+// load). Shows the CALIBRATED probability that price touches each wall, the first-touch
+// race, and the reliability curve the correction came from — the curve is on screen next
+// to the numbers deliberately, because a probability shown without its accuracy invites
+// exactly the over-trust the raw version would have earned.
+let REACH = null, REACH_H = 12, REACH_BUSY = false;
+
+async function loadReach(){
+  if(REACH_BUSY) return; REACH_BUSY = true;
+  const host = document.getElementById('reachBody');
+  if(host) host.innerHTML = '<div class="empty">Running Monte Carlo…</div>';
+  try{
+    const r = await fetch(`/api/oi-reachability?pair=${encodeURIComponent(SYM)}&h=${REACH_H}`,{cache:'no-store'});
+    REACH = await r.json();
+  }catch(err){ REACH = {ok:false, error:err.message}; }
+  REACH_BUSY = false;
+  const h2 = document.getElementById('reachBody');
+  if(h2) h2.innerHTML = reachPanel(STORE[SYM], false);
+  drawCone();   // the fetch is what supplies the envelope
+}
+
+function reachPanel(e, big){
+  if(!REACH) return `<div class="empty">Probability that price TOUCHES each wall, from the volatility cone.<br>
+    <button class="btn" style="margin-top:12px" onclick="loadReach()">Run for ${esc(nm(SYM))}</button></div>`;
+  if(!REACH.ok) return `<div class="empty">Could not compute: ${esc(REACH.error||'unknown')}<br>
+    <button class="btn" style="margin-top:12px" onclick="loadReach()">Retry</button></div>`;
+  if(REACH.pair && norm(REACH.pair)!==norm(SYM))
+    return `<div class="empty">Loaded for ${esc(REACH.pair)}, not ${esc(nm(SYM))}.<br>
+      <button class="btn" style="margin-top:12px" onclick="loadReach()">Run for ${esc(nm(SYM))}</button></div>`;
+
+  const c=REACH.calibration||{}, race=REACH.race, d=REACH.density;
+  const hsel=[12,48].map(hh=>`<button class="btn ${hh===REACH_H?'on':''}" onclick="REACH_H=${hh};loadReach()">${hh===12?'1h':'4h'}</button>`).join('');
+
+  // Reliability curve: predicted (x) vs realised (y). The diagonal is perfect.
+  let curveSvg='';
+  if(Array.isArray(c.curve)&&c.curve.length>1){
+    const W=340,Hh=big?300:190,P=30;
+    const X=v=>P+v*(W-2*P), Y=v=>Hh-P-v*(Hh-1.6*P);
+    curveSvg=`<svg viewBox="0 0 ${W} ${Hh}" style="max-width:${W}px">
+      <line x1="${X(0)}" y1="${Y(0)}" x2="${X(1)}" y2="${Y(1)}" stroke="var(--tx3)" stroke-width="1" stroke-dasharray="3 3"/>
+      <path d="${c.curve.map((p,i)=>(i?'L':'M')+X(p[0])+' '+Y(p[1])).join(' ')}" fill="none" stroke="var(--acc)" stroke-width="2"/>
+      ${c.curve.map(p=>`<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="2.5" fill="var(--acc)"/>`).join('')}
+      <text class="lbl" x="${P}" y="${Hh-8}">raw 0%</text>
+      <text class="lbl" x="${W-P}" y="${Hh-8}" text-anchor="end">raw 100%</text>
+      <text class="lbl" x="${P-6}" y="${Y(1)+4}" text-anchor="end">100%</text>
+      <text class="lbl" x="${P-6}" y="${Y(0)+4}" text-anchor="end">0%</text>
+    </svg>
+    <div class="note">Amber = what the model's raw number actually delivers. Grey diagonal = a perfect model.
+      It sags far below the diagonal at the top: <b>raw 94% really means about 68%</b>. The numbers below are
+      already corrected by this curve, so read them as-is. Correction verified out of sample to
+      <b>±${c.oosErrPp}pp</b>${c.exact?'':' (curve measured at a different horizon — treat as approximate)'}.</div>`;
+  }
+
+  const bar = p => {
+    const w=Math.round(p*100);
+    const col = p>=0.5?'var(--call)':p>=0.25?'var(--warn)':'var(--tx3)';
+    return `<span class="bar" style="width:${w}px;background:${col};opacity:.75"></span>`;
+  };
+  const rows=(REACH.walls||[]).map(w=>{
+    const mins=Number.isFinite(w.medBarsToTouch)?(w.medBarsToTouch*5):null;
+    const col=w.type==='call_wall'?'var(--call)':w.type==='put_wall'?'var(--put)':'var(--pain)';
+    return `<tr><td style="color:${col}">${fx(w.price,SYM)}</td>
+      <td class="muted">${esc((w.type||'').replace('_',' '))}</td>
+      <td><b>${(w.calibrated*100).toFixed(0)}%</b></td>
+      <td style="width:110px">${bar(w.calibrated)}</td>
+      <td class="muted">${(w.raw*100).toFixed(0)}%</td>
+      <td class="muted">${mins!=null?(mins<60?mins+'m':(mins/60).toFixed(1)+'h'):'—'}</td></tr>`;
+  }).join('');
+
+  const raceHtml = race ? `<table style="margin-top:6px"><tbody>
+    <tr><td class="muted">Reaches the wall ABOVE first</td><td><b>${(race.upFirst*100).toFixed(0)}%</b></td>
+      <td class="muted">${race.medBarsUp!=null?'median '+(race.medBarsUp*5)+'m':''}</td></tr>
+    <tr><td class="muted">Reaches the wall BELOW first</td><td><b>${(race.downFirst*100).toFixed(0)}%</b></td>
+      <td class="muted">${race.medBarsDown!=null?'median '+(race.medBarsDown*5)+'m':''}</td></tr>
+    <tr><td class="muted">Touches neither</td><td><b>${(race.neither*100).toFixed(0)}%</b></td><td></td></tr>
+    </tbody></table>
+    <div class="note">Which wall price gets to FIRST — not the same as two separate touch odds, which carry no
+      ordering and can sum past 100%. These are raw path frequencies: the single-barrier calibration above does
+      not transfer to a race, so treat them as relative, not exact.</div>` : '';
+
+  // Visit density — where paths DWELL. The well-posed version of "most touched path",
+  // which is degenerate here: under a driftless cone the modal path is flat, always.
+  let densHtml='';
+  if(d&&d.bins?.length){
+    const rowsD=d.bins.slice().reverse();
+    const Wd=300, rh=big?9:6;
+    densHtml=`<svg viewBox="0 0 ${Wd} ${rowsD.length*rh+16}" style="margin-top:4px">
+      ${rowsD.map((b,i)=>`<rect x="0" y="${i*rh}" width="${(b.rel*(Wd-70)).toFixed(1)}" height="${rh-1}"
+        fill="${Math.abs(b.mid-d.anchor)<d.binWidth?'var(--acc)':'var(--vol)'}" opacity=".8"/>`).join('')}
+      <text class="lbl" x="${Wd-66}" y="10">${fx(d.hi,SYM)}</text>
+      <text class="lbl" x="${Wd-66}" y="${rowsD.length*rh}">${fx(d.lo,SYM)}</text>
+    </svg>
+    <div class="note">Time the ${d.nPaths} simulated paths spend at each price. Amber band = spot. Mass piles up
+      around spot, which is why a single "most likely path" is not a real thing — the modal path in a driftless
+      cone is flat for every instrument, every time.</div>`;
+  }
+
+  return `<div style="display:flex;gap:9px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+      <span class="muted" style="font-size:12.5px">Horizon</span>${hsel}
+      <span class="muted" style="font-size:12px;margin-left:auto">${REACH.bars} bars · ${REACH.horizonMin}min ahead</span>
+      <button class="btn" onclick="loadReach()">↻</button></div>
+    <div class="rgrid">
+      <div><h4>Probability of touch</h4>
+        <table><thead><tr><th>Wall</th><th>Type</th><th>P(touch)</th><th></th><th>raw</th><th>median</th></tr></thead>
+        <tbody>${rows}</tbody></table>
+        <div class="note"><b>P(touch)</b> is the chance price trades at that level at least once within the
+          horizon — a wick counts. It says nothing about whether the wall then HOLDS.</div>
+        ${raceHtml}</div>
+      <div><h4>Where paths dwell</h4>${densHtml}</div>
+      <div><h4>Is the probability trustworthy?</h4>${curveSvg}</div>
+    </div>`;
+}
+const norm = x => String(x||'').toLowerCase().replace(/[/_]/g,'');
+
+// Wall persistence (day-count) context for the live wall-touch read. `/api/oi-history`
+// with NO pair filter returns `stability` (oiWallStability's daysPresent/fresh/established
+// per current wall) for every archived pair in one call -- the per-pair-filtered variant
+// of this same endpoint drops `stability` from its response, so this must stay unfiltered.
+// Best-effort: a pair with no archived history yet (or a fetch failure) just gets no
+// day-count, same as it showed before this existed.
+let OI_HIST = {};
+async function load(){
+  // /api/oi-store = the KV oi_store with each gexProfile self-healed (rebuilt from the
+  // stored raw paste if the localStorage quota-trim shed it), so the strike ladder
+  // and gamma-flip never come up blank for a trimmed pair. Falls back to the raw KV key.
+  let r = await fetch('/api/oi-store?cmdty=1',{cache:'no-store'});   // cmdty=1: + oi_store_cmdty
+  if(!r.ok) r = await fetch('/api/kv/get?key=oi_store',{cache:'no-store'});
+  if(!r.ok) throw new Error('KV '+r.status);
+  const j = await r.json();
+  STORE = j.data || j.value || {};
+  try {
+    const hr = await fetch('/api/oi-history',{cache:'no-store'});
+    if(hr.ok) OI_HIST = await hr.json();
+  } catch(e) { /* day-count context is optional, never blocks the main load */ }
+}
+
+// How many consecutive archived days (oi_history) this exact strike has been the
+// call/put wall -- an established level (many days) reads differently from one that
+// appeared overnight. tolPrice mirrors oiWallStability's own matching band.
+function wallDaysPresent(pair, strike, kind){
+  const stab = OI_HIST && OI_HIST.pairs && OI_HIST.pairs[pair] && OI_HIST.pairs[pair].stability;
+  if(!Array.isArray(stab) || !Number.isFinite(strike)) return null;
+  const tol = Math.abs(strike)*0.001;
+  const hit = stab.find(function(w){ return w && w.kind===kind && Number.isFinite(w.strike) && Math.abs(w.strike-strike)<=tol; });
+  return hit ? hit.daysPresent : null;
+}
+
+function ageOf(e){
+  if(!e?.savedAtMs) return {h:null,cls:'none',txt:'no data'};
+  const h=(Date.now()-e.savedAtMs)/36e5;
+  return {h, cls: h<12?'':(h<36?'old':'old'), txt: h<1?Math.round(h*60)+'m':Math.round(h)+'h'};
+}
+
+// WHICH SESSION'S BOOK is on screen — the tile that would have made a five-day
+// staleness obvious in one glance.
+//
+// "Saved 3h ago" answers when WE wrote the entry, and that is not the same question
+// as which settlement the numbers are from. On 2026-09-09 both were true at once:
+// saved at 06:17 that morning, holding the 04/09 book. Everything on this page —
+// walls, max pain, GEX — was four sessions out of date behind a badge that said
+// three hours. `oiAsOf` is the exchange's own answer, carried through from the
+// capture (oi_recon/asof_check.py), so the page can state it rather than imply it.
+//
+// Judged in WEEKDAYS against the save date, not hours: a Monday morning entry
+// legitimately holds Friday's book, and an hours-based rule would flag every Monday
+// while missing a Wednesday holding Friday. 2+ weekdays behind is a real gap. The
+// nightly gate is the authority on this (it can see both of the vendor's views, and
+// refuses to publish); this tile is so a human never has to take the pipeline's word.
+function bookTile(e){
+  const asOf = e?.oiAsOf;
+  if(asOf === undefined) return '';                    // entry pre-dates as-of tracking
+  if(!asOf) return `<div><div class="k">Book as-of</div><div class="v old" style="font-size:13px">unknown</div>
+      <div class="n">capture reported no settlement date</div></div>`;
+  const [y,m,d] = String(asOf).split('-').map(Number);
+  const book = new Date(Date.UTC(y, m-1, d));
+  // Compare against the day we SAVED, not against now — an entry read at midnight
+  // must not start flagging itself just because the clock rolled over.
+  const savedMs = e.savedAtMs || Date.now();
+  const sd = new Date(savedMs);
+  const saved = new Date(Date.UTC(sd.getFullYear(), sd.getMonth(), sd.getDate()));
+  let lag = 0;
+  for(let t = book.getTime(); t < saved.getTime(); ){
+    t += 864e5;
+    const wd = new Date(t).getUTCDay();
+    if(wd >= 1 && wd <= 5) lag++;
+  }
+  const stale = lag >= 2;
+  return `<div><div class="k">Book as-of</div>
+      <div class="v${stale?' old':''}" style="font-size:13px">${esc(asOf)}</div>
+      <div class="n">${stale ? `⚠ ${lag} sessions behind the save` : 'the settlement these levels are from'}</div></div>`;
+}
+
+function renderRail(){
+  // Existing instruments first, then the commodities under their own label.
+  const keys=Object.keys(STORE).filter(k=>!CMDTY[k]);
+  const ckeys=Object.keys(STORE).filter(k=>CMDTY[k]);
+  const btn = k=>{
+    const a=ageOf(STORE[k]);
+    return `<button class="${k===SYM?'on':''} ${a.h>36?'stale':''}" data-k="${esc(k)}">
+      <span class="dot ${a.cls}"></span>${esc(nm(k))}<span class="muted">${a.txt}</span></button>`;
+  };
+  document.getElementById('rail').innerHTML = keys.map(btn).join('')
+    + (ckeys.length ? `<span class="muted rail-sep" title="Commodities — page and export only; no bot trades these">Commodities</span>` + ckeys.map(btn).join('') : '');
+  document.querySelectorAll('#rail button').forEach(b=>b.onclick=()=>{
+    if(SYM===b.dataset.k) return;
+    // Cancel any in-flight poll for the OLD pair before switching, so its response can't
+    // land on the new pair's chart.
+    clearTimeout(_pollTimer); _chartToken++;
+    SYM=b.dataset.k; render();
+  });
+}
+
+// ── STRIKE LADDER ────────────────────────────────────────────────────────────
+// One horizontal chart, strikes down the side (highest at the top, like a DOM), that
+// replaces the old separate "OI by strike" and "Net GEX by strike" panels. Four views
+// of the same ladder:
+//   gex  — net dealer gamma per strike, STACKED BY EXPIRY (0/1/2 DTE … each its own
+//          colour), so you can see which horizon a bar comes from. Near expiry the
+//          0/1-DTE contracts carry most of the gamma, and the single-expiry profile hid them.
+//   cp   — the same gamma split into call gamma (right) and put gamma (left), all expiries.
+//   vol  — VOLUME gamma: today's traded volume weighted by gamma — where today's activity
+//          carries hedging weight, vs the resting book above.
+//   oi   — raw contracts per strike (primary expiry): calls right, puts left.
+// `e.gexLadder` is built server-side on read (js/oi.js oiGexLadder) from the stored raw
+// matrix; when it is missing (KV fallback path) the gex/cp views fall back to the stored
+// single-expiry gexProfile as one series.
+//
+// The IV overlay is the stored per-strike IV SMILE on its own top axis — the curved lines
+// on the COG version of this chart are the same thing, one smile per expiry. Low at the
+// money, rising into the wings; where the line bends up hardest is where the market is
+// paying most for protection.
+let LADMODE = 'gex', LADIV = true, LADNET = false;
+// NEAR-EXPIRY VIEW (default on). COG's GEX-by-strike charts sum only the three nearest expiries
+// (0/1/2 DTE) because gamma per contract scales ~1/sqrt(T): the monthly's paper is huge but barely
+// hedged today. Stacking every expiry buried the strike pattern that matters under far-month bars.
+// Off = the full book. Persisted so the choice survives reloads.
+let LADNEAR = (()=>{ try{ return localStorage.getItem('oi.ladNear')!=='0'; }catch(_){ return true; } })();
+const NEAR_MAX_DTE = 3;
+const nearSeries = ser => { const all=(ser||[]).filter(x=>!x.rest);
+  const n=all.filter(x=>Number.isFinite(x.dte)&&x.dte<=NEAR_MAX_DTE).slice(0,3);
+  return n.length?n:all.slice(0,Math.min(3,all.length)); };   // nothing within 3 DTE → the nearest few, whatever they are
+function setLadNear(v){ LADNEAR=!!v; try{ localStorage.setItem('oi.ladNear',v?'1':'0'); }catch(_){ } refreshLadders(); }
+// Phone layout: the SVG is drawn on a 1000-unit-wide viewBox and scaled to fit, so on a
+// ~380px phone every label shrinks to ~40% and is unreadable. Below this width the ladder
+// is redrawn on a narrow viewBox (text stays near its real size) with fewer, taller rows.
+const LAD_PHONE_PX = 700;
+const ladPhone = () => window.matchMedia('(max-width:'+LAD_PHONE_PX+'px)').matches;   // media query, not innerWidth: a page wider than the screen zooms out and inflates innerWidth
+// Stacking signed segments outward from zero makes a strike whose expiries DISAGREE look
+// bigger than it is: +5 (0 DTE) and −4 (monthly) draws 9 units of bar for a net of +1.
+// So every mixed-sign row gets a white tick at its TRUE net, and "Net only" collapses
+// each row to one bar (coloured by the expiry that dominates it).
+// Which per-expiry field each stacked view reads, and its axis unit.
+const LAD_GREEK = {
+  gex:  { key:'net',   unit:'net GEX (OI)' },
+  dex:  { key:'dex',   unit:'delta exposure (DEX)' },
+  charm:{ key:'charm', unit:'charm · delta change per day' },
+  vanna:{ key:'vanna', unit:'vanna · delta change per 1 vol pt' },
+};
+const LAD_COLS = ['#f0a04b','#5fbf8f','#4b8fd6','#b48ce8','#5d6878'];
+const fN = n => { if(!Number.isFinite(n)) return '—'; const a=Math.abs(n), s=n<0?'−':'';
+  return a>=1e12?s+(a/1e12).toFixed(2)+'T':a>=1e9?s+(a/1e9).toFixed(2)+'B':a>=1e6?s+(a/1e6).toFixed(1)+'M':a>=1e3?s+(a/1e3).toFixed(1)+'K':s+a.toFixed(a<10?2:0); };
+
+function ladderData(e){
+  const L=e.gexLadder;
+  if(L && Array.isArray(L.strikes) && L.strikes.length>=2 && Array.isArray(L.series) && L.series.length) return L;
+  const gp=(e.gexProfile||[]).filter(r=>Number.isFinite(r.strike)&&Number.isFinite(r.netGex));
+  if(gp.length<2) return null;
+  const s=gp.slice().sort((a,b)=>a.strike-b.strike);
+  return { strikes:s.map(r=>r.strike), fallback:true, vol:null, nExpiries:1,
+    series:[{ label:(Number.isFinite(e.dte)?e.dte+' DTE':'primary'), dte:e.dte??null, code:e.primaryExpiry?.code??null,
+      call:s.map(r=>r.callGex||0), put:s.map(r=>r.putGex||0), net:s.map(r=>r.netGex), total:s.reduce((a,r)=>a+r.netGex,0) }] };
+}
+
+// Rows for the current mode: [{strike, segs:[{v,col,label}], tip}] — segs signed, stacked
+// outward from zero (positives right, negatives left), each in its own colour.
+function ladderRows(e,mode){
+  if(mode==='oi'){
+    const gp=(e.gexProfile||[]).filter(r=>Number.isFinite(r.strike)&&(r.callOI||r.putOI));
+    return { rows:gp.map(r=>({strike:r.strike, segs:[{v:r.callOI||0,col:'var(--call)'},{v:-(r.putOI||0),col:'var(--put)'}],
+      tip:`calls ${fOI(r.callOI)} · puts ${fOI(r.putOI)}`})), unit:'contracts (OI)',
+      legend:[['var(--call)','Calls',fOI(e.totalCallOI)],['var(--put)','Puts',fOI(e.totalPutOI)]],
+      src:e._src==='cboe'?'every expiry · Cboe':`primary expiry ${esc(e.primaryExpiry?.code||'')}${Number.isFinite(e.dte)?' · '+e.dte+' DTE':''}` };
+  }
+  const L=ladderData(e); if(!L) return null;
+  if(mode==='vol'){
+    const V=L.vol; if(!V) return { rows:[], unit:'', legend:[], src:'',
+      empty:'No per-strike volume stored.<br>Paste the <b>Volume</b> view with the OI and press Analyse.' };
+    const rows=L.strikes.map((k,i)=>V.volume[i]>0?({strike:k,
+      segs:V.split?[{v:V.call[i],col:'var(--call)'},{v:-V.put[i],col:'var(--put)'}]:[{v:V.gross[i],col:'var(--vol)'}],
+      tip:`volume ${fOI(V.volume[i])} · ${V.split?'net vol-gamma '+fN(V.net[i]):'vol-gamma '+fN(V.gross[i])}`}):null).filter(Boolean);
+    const tot=a=>a.reduce((x,y)=>x+y,0);
+    return { rows, unit:(L.units==='usd1pct'?'volume gamma · $ per 1% move':'volume × gamma'), src:e._src==='cboe'?'today\'s volume, every expiry at its own gamma':`today's volume, weighted at ${V.dte??'—'} DTE gamma`,
+      legend:V.split?[['var(--call)','Call vol GEX',fN(tot(V.call))],['var(--put)','Put vol GEX',fN(tot(V.put))],['var(--vol)','Net',fN(tot(V.net))]]
+        :[['var(--vol)','Vol GEX (gross — call/put split not stored)',fN(tot(V.gross))]] };
+  }
+  if(mode==='cp'){
+    const cpSer=LADNEAR?nearSeries(L.series):L.series;
+    const rows=L.strikes.map((k,i)=>{ const c=cpSer.reduce((a,s)=>a+(s.call[i]||0),0), p=cpSer.reduce((a,s)=>a+(s.put[i]||0),0);
+      return {strike:k, segs:[{v:c,col:'var(--call)'},{v:-p,col:'var(--put)'}], tip:`call GEX ${fN(c)} · put GEX ${fN(p)} · net ${fN(c-p)}`}; });
+    const tc=rows.reduce((a,r)=>a+r.segs[0].v,0), tp=rows.reduce((a,r)=>a-r.segs[1].v,0);
+    return { rows, stacked:true, unit:(L.units==='usd1pct'?'GEX · $ per 1% move':'GEX (OI)'), src:LADNEAR?`nearest ${cpSer.length} expir${cpSer.length===1?'y':'ies'} (${cpSer.map(x=>x.label).join(' · ')})`:`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`,
+      legend:[['var(--call)','Call GEX',fN(tc)],['var(--put)','Put GEX',fN(-tp)],['var(--tx2)','Net',fN(tc-tp)]] };
+  }
+  // gex / dex / charm / vanna: one stacked colour per expiry, same layout.
+  const G=LAD_GREEK[mode]||LAD_GREEK.gex, ser=LADNEAR?nearSeries(L.series):L.series;
+  if(G.key!=='net' && !ser.some(s=>Array.isArray(s[G.key]))) return { rows:[], unit:'', legend:[], src:'',
+    empty:'This view needs the per-expiry ladder from the server.<br>Reload once the server is updated.' };
+  const val=(s,i)=>(s[G.key]&&s[G.key][i])||0;
+  const tot=s=>G.key==='net'?s.total:(s.totals?.[G.key] ?? (s[G.key]||[]).reduce((a,b)=>a+b,0));
+  const rows=L.strikes.map((k,i)=>({strike:k,
+    segs:ser.map((s,j)=>({v:val(s,i),col:LAD_COLS[s.rest?4:Math.min(j,3)]})),
+    tip:ser.map(s=>`${s.label}: ${fN(val(s,i))}`).join(' · ')+` · total ${fN(ser.reduce((a,s)=>a+val(s,i),0))}`}));
+  return { rows, stacked:true, unit:(L.units==='usd1pct'&&G.key==='net'?'net GEX · $ per 1% move':G.unit), src:L.fallback?'single expiry — full matrix not available':(LADNEAR&&ser.length<L.series.length?`nearest ${ser.length} of ${L.nExpiries} expiries`:`${L.nExpiries} expir${L.nExpiries===1?'y':'ies'}`),
+    legend:ser.map((s,j)=>[LAD_COLS[s.rest?4:Math.min(j,3)], s.label+(s.code?' · '+esc(s.code):''), fN(tot(s))]) };
+}
+
+function niceStep(span,n){ const raw=span/Math.max(1,n), p=Math.pow(10,Math.floor(Math.log10(raw||1))), f=raw/p;
+  return (f<1.5?1:f<3.5?2:f<7.5?5:10)*p; }
+
+function ladderSvg(e,big){
+  const R=ladderRows(e,LADMODE);
+  if(!R) return '<div class="empty">No per-strike data stored.<br>Press <b>Analyse</b> on this pair to populate it.</div>';
+  if(R.empty) return `<div class="empty">${R.empty}</div>`;
+  const spot=e.spot, rm=e.refMove?.move;
+  const lo=rm>0?spot-4*rm:-Infinity, hi=rm>0?spot+4*rm:Infinity;
+  let win=R.rows.filter(r=>r.strike>=lo&&r.strike<=hi&&r.segs.some(s=>s.v));
+  if(win.length<6) win=R.rows.filter(r=>r.segs.some(s=>s.v));
+  if(!win.length) return '<div class="empty">Every strike near price is empty in this view.</div>';
+  // Nearest-to-spot survive the cap; the sort after is only for the top-down axis.
+  const ph=!big&&ladPhone();
+  const cap=big?140:(ph?34:56);
+  if(win.length>cap) win=win.slice().sort((a,b)=>Math.abs(a.strike-spot)-Math.abs(b.strike-spot)).slice(0,cap);
+  win.sort((a,b)=>b.strike-a.strike);
+  if(LADNET && R.stacked) win=win.map(r=>{ const net=r.segs.reduce((a,g)=>a+g.v,0);
+    const dom=r.segs.filter(g=>Math.sign(g.v)===Math.sign(net)).sort((a,b)=>Math.abs(b.v)-Math.abs(a.v))[0];
+    return {...r, segs:[{v:net,col:dom?dom.col:'var(--tx3)'}]}; });
+
+  let pos=0,neg=0;
+  win.forEach(r=>{ let p=0,n=0; r.segs.forEach(s=>{ if(s.v>0)p+=s.v; else n-=s.v; }); pos=Math.max(pos,p); neg=Math.max(neg,n); });
+  pos=Math.max(pos,neg*0.08,1e-12); neg=Math.max(neg,pos*0.08);
+  const rowH=big?15:ph?19:Math.max(11,Math.min(15,Math.floor(680/win.length))), L0=ph?64:96, W=ph?420:(big?1000:720), RP=ph?8:18, TOP=LADIV?44:10;
+  const H=TOP+win.length*rowH, X0=L0, X1=W-RP;
+  const X=v=>X0+(v+neg)/(pos+neg)*(X1-X0), ZX=X(0);
+  // Strike → y, interpolated between row centres (rows are discrete, lines are prices).
+  const yAt=px=>{ if(!Number.isFinite(px)) return null;
+    for(let i=0;i<win.length-1;i++){ const a=win[i].strike,b=win[i+1].strike;
+      if(px<=a&&px>=b){ const t=(a-px)/((a-b)||1); return TOP+(i+t)*rowH+rowH/2; } }
+    return null; };
+  let s=`<svg viewBox="0 0 ${W} ${H+34}" style="max-height:none">`;
+
+  // PIN / BREAKOUT tint behind the bars (gex views): the local regime between zero-gamma
+  // crossings, same bands the old Net GEX chart shaded.
+  if(LADMODE==='gex'||LADMODE==='cp'){
+    const mn=win[win.length-1].strike, mx=win[0].strike;
+    regimeBands(e,mn,mx).forEach(b=>{ if(b.regime==='neutral') return;
+      const y1=yAt(Math.min(b.hi,mx))??TOP, y2=yAt(Math.max(b.lo,mn))??H;
+      if(y2>y1) s+=`<rect x="${X0}" y="${y1}" width="${X1-X0}" height="${y2-y1}" fill="${b.regime==='pin'?'var(--put)':'var(--call)'}" opacity=".07"/>`; });
+  }
+  // x grid + tick labels
+  const st=niceStep(pos+neg,ph?3:6);
+  for(let v=-Math.floor(neg/st)*st; v<=pos+1e-9; v+=st){ const x=X(v);
+    s+=`<line class="gl" x1="${x}" y1="${TOP}" x2="${x}" y2="${H}"/>`
+     + `<text class="lbl" x="${x}" y="${H+16}" text-anchor="middle" style="font-size:10.5px;fill:var(--tx3)">${LADMODE==='oi'?fOI(v):fN(v)}</text>`; }
+  s+=`<text class="lbl" x="${(X0+X1)/2}" y="${H+31}" text-anchor="middle" style="font-size:10.5px;fill:var(--tx2);letter-spacing:.08em">${esc(R.unit).toUpperCase()}</text>`;
+
+  // rows: strike label + stacked segments + hover target
+  const every=rowH>=11?1:2, fs=Math.min(ph?12:11.5,rowH-1.5);
+  win.forEach((r,i)=>{
+    const y=TOP+i*rowH, bh=Math.max(2,rowH-2.5);
+    if(i%every===0) s+=`<text class="lbl" x="${L0-8}" y="${y+rowH/2+fs*0.36}" text-anchor="end" style="font-size:${fs}px;fill:var(--tx2)">${fx(show(r.strike,e),SYM)}</text>`;
+    let p=0,n=0;
+    r.segs.forEach(g=>{ if(!g.v) return;
+      const a=g.v>0?p:-n-(-g.v), b=g.v>0?p+g.v:-n;   // [a,b] in value space
+      if(g.v>0) p+=g.v; else n+=-g.v;
+      const x1=X(Math.min(a,b)), x2=X(Math.max(a,b));
+      if(x2-x1>0.3) s+=`<rect x="${x1}" y="${y+1}" width="${x2-x1}" height="${bh}" fill="${g.col}" opacity=".88"/>`; });
+    // Bars on both sides of zero: mark where the row actually nets out.
+    if(R.stacked && p>0 && n>0){ const nx=X(p-n);
+      s+=`<rect x="${nx-1.5}" y="${y-0.5}" width="3" height="${bh+3}" fill="var(--tx)" stroke="var(--bg2)" stroke-width="1"/>`; }
+    const tipTxt=`${fx(show(r.strike,e),SYM)} — ${r.tip}`;
+    s+=`<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent" style="cursor:pointer" data-tip="${esc(tipTxt)}" onclick="ladTip(this)"><title>${esc(tipTxt)}</title></rect>`;
+  });
+  s+=`<line class="axis" x1="${ZX}" y1="${TOP}" x2="${ZX}" y2="${H}"/>`;
+
+  // IV smile overlay on its own top axis
+  // One smile per near expiry when the source has them (Cboe — the coloured curves on
+  // COG's chart), else the single stored CME smile with its prior settle dashed.
+  const prim=(e.ivSmile&&Array.isArray(e.ivSmile.strikes))?{...e.ivSmile,single:true,label:(Number.isFinite(e.dte)?Math.round(e.dte)+' DTE':'primary'),dte:e.dte}:null;
+  const nearSm=(Array.isArray(e.ivSmiles)&&e.ivSmiles.length)?e.ivSmiles.slice(0,3):null;
+  // Near-dated curves when captured (Cboe always; CME once the nightly sweep stores them); the
+  // primary (walls') expiry's smile is shown on its own only as the fallback — it is usually the
+  // far monthly and reads nearly flat, which is why it never looked like COG's curves.
+  const smiles=nearSm?(e._src!=='cboe'&&!LADNEAR&&prim?[...nearSm,prim]:nearSm):(prim?[prim]:[]);
+  if(LADIV && smiles.length){
+    const mn=win[win.length-1].strike, mx=win[0].strike;
+    const sets=smiles.map(sm=>sm.strikes.map((k,i)=>({k,iv:sm.iv?.[i],pv:sm.single?sm.ivPrior?.[i]:undefined}))
+      .filter(q=>q.k>=mn&&q.k<=mx&&q.iv>0).sort((a,b)=>b.k-a.k)).filter(p=>p.length>=3);
+    if(sets.length){
+      // Floor the IV axis at 3 vol points wide. Auto-scaling a near-flat smile (gold read
+      // 20.5-21.0%) stretched half a point of noise across the whole chart into zigzags
+      // that looked like structure. A flat smile should look flat.
+      const all=sets.flat().flatMap(q=>[q.iv,q.pv]).filter(v=>v>0), mid=(Math.min(...all)+Math.max(...all))/2,
+        half=Math.max((Math.max(...all)-Math.min(...all))/2, 0.015), ilo=mid-half, ihi=mid+half, pad=half*0.08;
+      const IX=v=>X0+(v-(ilo-pad))/((ihi-ilo+2*pad)||1)*(X1-X0);
+      const path=(pts,key)=>pts.filter(q=>q[key]>0).map((q,i)=>(i?'L':'M')+IX(q[key]).toFixed(1)+' '+yAt(q.k)?.toFixed(1)).filter(t=>!/undefined/.test(t)).join(' ');
+      const _ser=(ladderData(e)||{}).series||[];
+      const smLab=smiles.filter(sm=>sm.strikes.filter(k=>k>=mn&&k<=mx).length>=3);
+      sets.forEach((pts,n)=>{
+        const pp=path(pts,'pv'); if(pp) s+=`<path d="${pp}" fill="none" stroke="var(--tx3)" stroke-width="1.2" stroke-dasharray="3 4"/>`;
+        // Colour = the SAME colour that expiry's bars wear in the ladder (match on DTE), so a curve and its bars read as one thing.
+        const sm=smLab[n]; const j=sm&&Number.isFinite(sm.dte)?_ser.findIndex(x=>Number.isFinite(x.dte)&&Math.abs(x.dte-sm.dte)<=0.6):-1;
+        const col=sets.length>1?LAD_COLS[Math.min(j>=0?j:n,3)]:'#7fd0ff';
+        if(sm) sm._col=col;
+        s+=`<path d="${path(pts,'iv')}" fill="none" stroke="${col}" stroke-width="1.6" opacity=".9"${sm&&sm.single&&sets.length>1?' stroke-dasharray="5 3"':''}/>`; });
+      // curve legend, top-right: which expiry each IV curve is
+      if(smLab.some(sm=>sm.label)) s+=`<text class="lbl" x="${X1}" y="${TOP-30}" text-anchor="end" style="font-size:10.5px;paint-order:stroke;stroke:var(--bg2);stroke-width:3px">`
+        + smLab.filter(sm=>sm.label).map(sm=>`<tspan fill="${sm._col||'#7fd0ff'}" dx="14">IV curve ${esc(sm.label)}${sm.single?' (wall expiry)':''}</tspan>`).join('') + '</text>';
+      s+=`<line class="axis" x1="${X0}" y1="${TOP-8}" x2="${X1}" y2="${TOP-8}"/>`
+       + [ilo,(ilo+ihi)/2,ihi].map((v,i)=>`<text class="lbl" x="${IX(v)}" y="${TOP-13}" text-anchor="${i===0?'start':i===2?'end':'middle'}" style="font-size:10.5px;fill:#7fd0ff">${i===0?'IV ':''}${(v*100).toFixed(1)}%</text>`).join('');
+    }
+  }
+  // price lines — labels stacked so levels a few points apart don't print over each other
+  const gf=e.greeksFlow||{};
+  const lines=[...(LADMODE==='charm'?[[gf.charmFlip,'var(--warn)','CHARM FLIP',true]]:[]),
+    ...(LADMODE==='vanna'?[[gf.vannaFlip,'#7fd0ff','VANNA FLIP',true]]:[]),
+    [e.gexFlip,'var(--gam)','GEX FLIP',true],[e.maxPain,'var(--pain)','MAX PAIN',true],
+    [e.putWall,'var(--put)',e._src==='cboe'?'GEX PUT WALL':'OI PUT WALL',true],[e.callWall,'var(--call)',e._src==='cboe'?'GEX CALL WALL':'OI CALL WALL',true],
+    // CME: the gamma-ranked walls next to the OI-ranked ones — the strike with the most
+    // call (put) gamma over the nearest three expiries, which is how COG picks its call
+    // wall. Near expiry the two disagree (gamma piles up at the money, OI sits far out).
+    // Skipped when it lands on the OI wall, so one strike never carries two labels.
+    ...(e._src!=='cboe'?(()=>{ const g=_nearGammaWalls(e.gexLadder);
+      // Same strike within float noise (the ladder rounds strikes; the stored walls don't).
+      const same=(x,y)=>Number.isFinite(x)&&Number.isFinite(y)&&Math.abs(x-y)<=Math.abs(y)*1e-7;
+      return [
+      ...(g.c!=null&&!same(g.c,e.callWall)?[[g.c,'var(--call)','GEX CALL WALL',false]]:[]),
+      ...(g.p!=null&&!same(g.p,e.putWall)?[[g.p,'var(--put)','GEX PUT WALL',false]]:[])]; })():[]),
+    [spot,'var(--tx)','SPOT',false]]
+    .map(([px,col,txt,dash])=>({px,col,txt,dash,y:yAt(px)})).filter(l=>l.y!=null).sort((a,b)=>a.y-b.y);
+  let lastY=-1e9;
+  lines.forEach(l=>{ l.ly=Math.max(l.y-4,lastY+13); lastY=l.ly;
+ s+=`<line x1="${ph?X0:Math.max(0,X0-90)}" y1="${l.y}" x2="${X1}" y2="${l.y}" stroke="${l.col}" stroke-width="${l.dash?1.2:1.6}"${l.dash?' stroke-dasharray="6 4"':''}/>`; });
+  lines.forEach(l=>{ s+=`<text class="lbl" x="${X0+6}" y="${l.ly}" style="fill:${l.col};font-size:11.5px;font-weight:600;paint-order:stroke;stroke:var(--bg2);stroke-width:3.5px">${l.txt} ${fx(show(l.px,e),SYM)}</text>`; });
+  return s+'</svg>';
+}
+
+function chartLadder(e,big){
+  const cb=CBOE_PAIRS[SYM];
+  let srcBar='', cmp='';
+  if(cb){
+    const st=CBOE_DATA[SYM];
+    const stab=(v,t)=>`<button class="lmode lsrc${LADSRC===v?' on':''}" onclick="setLadSrc('${v}')">${t}</button>`;
+    srcBar=`<div class="lctl"><span class="muted" style="font-size:12px;margin-right:4px">Source</span>${stab('cme','CME '+cb.fut+' futures options')}${stab('cboe','Cboe '+cb.label+' index options')}
+      <span class="muted" style="font-size:11.5px;margin-left:6px">${st?.data?`Cboe as of ${hhmm(st.data.asOfMs)}${st.data.stale?' · <b style="color:var(--warn)">stale copy</b>':''} · ${cb.label} ${fx(st.data.indexSpot,SYM)} (15-min delayed) · ${Number.isFinite(st.data.cfdOffset)?`CFD−cash ${st.data.cfdOffset>=0?'+':''}${st.data.cfdOffset.toFixed(2)} applied`:'<span style="color:var(--warn)">CFD−cash not measured — levels are cash-index</span>'}`:st?.err?`<span style="color:var(--warn)">Cboe: ${esc(st.err)}</span>`:''}</span></div>`;
+    if(st?.data) cmp=cboeCompare(e,st.data,cb);
+    if(LADSRC==='cboe'){
+      if(!st?.data){ if(!st?.loading) loadCboe(SYM);
+        return `<div class="ladder" data-big="${big?1:0}">${srcBar}<div class="empty">${st?.err?'Cboe chain unavailable: '+esc(st.err):'Loading the Cboe '+cb.label+' chain…'}</div></div>`; }
+      e=cboeEntry(e,st.data);
+    } else if(!st) loadCboe(SYM);      // fetch quietly so the comparison is there
+  }
+  const tab=(m,t)=>`<button class="lmode${LADMODE===m?' on':''}" onclick="setLadMode('${m}')">${t}</button>`;
+  const R=ladderRows(e,LADMODE);
+  const leg=(R&&R.legend||[]).map(([c,t,v])=>`<span class="lleg"><i style="background:${c}"></i>${t}<b>${v}</b></span>`).join('');
+  const notes={
+    gex:'Each colour is one expiry\'s net dealer gamma; right of zero = call-dominated (dealers lean against moves), left = put-dominated (they chase). The nearest expiries carry the most gamma per contract, so a short bar in the far-month colour can matter less than it looks. Green tint = PIN zone, red tint = BREAKOUT zone.',
+    cp:'Call gamma right, put gamma left, every expiry summed. Where both are big the strike is contested; where one side dominates, that side\'s hedging sets the behaviour.',
+    dex:'Delta exposure: how much of the underlying the option book is long (right) or short (left) per strike, by expiry. It is the hedge already on — big bars are where hedges get unwound if price moves through, or as the options expire.',
+    charm:'Charm: how much the hedge changes <b>per day from time passing alone</b>, price and vol unchanged. On this page\'s convention (dealers long calls, short puts): a bar to the <b>right</b> means dealers must <b>sell</b> as the day passes, to the <b>left</b> they must <b>buy</b>. Tiny weeks out, dominant in the last 1–2 days — so watch the 0–1 DTE colours, not the far month. Amber dashes = charm flip.',
+    vanna:'Vanna: how much the hedge changes for a <b>1-point move in implied vol</b>. Same convention: a bar to the <b>right</b> means dealers <b>buy</b> if IV <b>falls</b> (and sell if it rises); <b>left</b> is the reverse. Dormant while IV is flat — it matters on IV crush after an event or an IV spike in a selloff. Read it with the ATM IV change in Today\'s read. Blue dashes = vanna flip.',
+    vol:'Today\'s traded volume weighted by gamma — where today\'s activity carries hedging weight. A busy strike with little open interest is a fresh fight, not an established wall.',
+    oi:'Raw contracts, primary expiry. A tall bar is a lot of paper parked at a price — not proof dealers are hedging it. Near expiry, prefer the GEX view.'};
+  return `<div class="ladder" data-big="${big?1:0}">${srcBar}${cmp}
+    <div class="lctl">${tab('gex','Net GEX by expiry')}${tab('cp','Call / Put GEX')}${tab('dex','Delta')}${tab('charm','Charm')}${tab('vanna','Vanna')}${tab('vol','Volume gamma')}${tab('oi','Open interest')}
+      ${R&&R.stacked?`<label class="liv" title="Sum only the nearest expiries (up to three, within 3 DTE) — how COG draws it (0/1/2 DTE). Gamma per contract scales ~1/√T, so the far months' bars are mostly paper, not hedging. Untick for the whole book."><input type="checkbox" ${LADNEAR?'checked':''} onchange="setLadNear(this.checked)"> Near expiries (≤3 DTE)</label>`:''}
+      ${R&&R.stacked?`<label class="liv" style="margin-left:12px" title="One bar per strike = the true net. Stacked bars on both sides of zero overstate a strike whose expiries (or calls/puts) offset."><input type="checkbox" ${LADNET?'checked':''} onchange="LADNET=this.checked;refreshLadders()"> Net only</label>`:''}
+      <label class="liv" style="margin-left:${R&&R.stacked?'12px':'auto'}"><input type="checkbox" ${LADIV?'checked':''} onchange="LADIV=this.checked;refreshLadders()"> IV smile</label></div>
+    <div class="llegend">${leg}${R&&R.src?`<span class="muted" style="margin-left:auto">${R.src}</span>`:''}</div>
+    <div class="ltipbox">Tap a row for its numbers</div>
+    ${ladderSvg(e,big)}
+    <div class="note">${notes[LADMODE]}${R&&R.stacked&&!LADNET?' <b>White tick</b> = the row\'s true net where bars sit on both sides of zero (they partly cancel, so the bar overstates the strike).':''} Walls: <b>dashed</b> = most contracts (OI), <b>solid</b> = biggest GEX (gamma exposure) over the nearest 3 expiries — where hedging concentrates; COG\'s call wall. Hover or tap a row for the numbers. <span class="muted">Tested on this repo's data: wall touches and the GEX flip did not beat placebo levels — read this as where positioning sits, not as an edge.</span></div></div>`;
+}
+function refreshLadders(){ const e=STORE[SYM]; if(!e) return;
+  document.querySelectorAll('.ladder').forEach(el=>{ el.outerHTML=chartLadder(e, el.dataset.big==='1'); }); }
+function setLadMode(m){ LADMODE=m; refreshLadders(); }
+
+// ── Cboe index options (SPX/NDX/RUT/DJX) as a second, additive source ──────────
+// A COPY of js/cboeChain.js CBOE_PAIRS' display fields (this page is a classic script).
+// The CME entry is never modified: the Cboe view is a separate object built on top of it,
+// so the page's other panels, the export and every bot keep reading CME exactly as before.
+const CBOE_PAIRS = {
+  'SPX500_USD':{label:'SPX',fut:'ES'}, 'NAS100_USD':{label:'NDX',fut:'NQ'},
+  'US2000_USD':{label:'RUT',fut:'RTY'}, 'US30_USD':{label:'DJX',fut:'YM'},
+};
+let LADSRC='cme';
+const CBOE_DATA={};   // pair -> { data, err, loading, at }
+async function loadCboe(pair){
+  const st=CBOE_DATA[pair]=CBOE_DATA[pair]||{};
+  if(st.loading||(st.data&&Date.now()-st.at<5*60e3)) return;
+  st.loading=true;
+  try{
+    const r=await fetch('/api/cboe-chain?pair='+encodeURIComponent(pair),{cache:'no-store'});
+    const j=await r.json();
+    if(!j.ok) throw new Error(j.error||('HTTP '+r.status));
+    st.data=j; st.err=null; st.at=Date.now();
+  }catch(err){ st.err=err.message; }
+  st.loading=false;
+  if(pair===SYM) refreshLadders();
+}
+function setLadSrc(v){ LADSRC=v; refreshLadders(); }
+// The CME entry with the ladder-facing fields swapped for Cboe's. Strikes are index
+// levels, which the CFD tracks closely; the FUTURES display toggle adds the CME basis,
+// which puts Cboe's levels in futures terms.
+function cboeEntry(e,c){
+  const L=c.levels||{};
+  return {...e, _src:'cboe', spot:c.spot, gexLadder:c.ladder, gexProfile:c.oiProfile,
+    callWall:L.callWallGamma, putWall:L.putWallGamma, gexFlip:L.gexFlip, maxPain:L.maxPain,
+    gexFlips:L.flips||[], exposures:{...(e.exposures||{}), gex:L.netGex},
+    ivSmile:null, ivSmiles:c.smiles||[], greeksFlow:null, dayExpiry:null,
+    totalCallOI:(c.oiProfile||[]).reduce((a,r)=>a+r.callOI,0), totalPutOI:(c.oiProfile||[]).reduce((a,r)=>a+r.putOI,0)};
+}
+// Gamma call/put wall over the nearest three expiries of a ladder (COG's 0/1/2 DTE).
+function _nearGammaWalls(L){
+  if(!L||!Array.isArray(L.series)||!L.strikes) return {c:null,p:null};
+  const ser=L.series.filter(s=>!s.rest).slice(0,3);
+  let bc=-1,vc=0,bp=-1,vp=0;
+  L.strikes.forEach((k,i)=>{ const c=ser.reduce((a,s)=>a+(s.call?.[i]||0),0), p=ser.reduce((a,s)=>a+(s.put?.[i]||0),0);
+    if(c>vc){vc=c;bc=i;} if(p>vp){vp=p;bp=i;} });
+  return {c:bc<0?null:L.strikes[bc], p:bp<0?null:L.strikes[bp]};
+}
+// Side-by-side levels: CME (ES/NQ/RTY/YM options) vs Cboe (SPX/NDX/RUT/DJX options), both
+// in CFD terms, plus Cboe's in futures terms (+ the CME basis). Where they agree the level
+// has two books behind it; where they don't, the gap is worth knowing before trading it.
+function cboeCompare(e,c,cb){
+  const L=c.levels||{}, cg=_nearGammaWalls(e.gexLadder), b=Number.isFinite(e.basis)?e.basis:null;
+  const f=v=>Number.isFinite(v)?fx(v,SYM):'—', fut=v=>(Number.isFinite(v)&&b!=null)?fx(v+b,SYM):'—';
+  const gap=(a,v)=>(Number.isFinite(a)&&Number.isFinite(v))?`<span class="muted"> ${(v-a)>=0?'+':''}${(v-a).toFixed(dp(SYM)>2?4:1)}</span>`:'';
+  const cmeReg=e.exposures?.gex>0?'PIN':e.exposures?.gex<0?'BREAKOUT':'—';
+  const row=(k,a,v,hint)=>`<tr><td>${k}${hint?`<span class="muted" style="font-size:11px"> ${hint}</span>`:''}</td><td>${f(a)}</td><td>${f(v)}${gap(a,v)}</td><td class="muted">${fut(v)}</td></tr>`;
+  return `<div class="lcmp"><table><thead><tr><th>Level</th><th>CME ${cb.fut} opts</th><th>Cboe ${cb.label} opts</th><th>Cboe in ${cb.fut} terms</th></tr></thead><tbody>`
+    + row('GEX call wall',cg.c,L.callWallGamma,'0–2 DTE')
+    + row('GEX put wall',cg.p,L.putWallGamma,'0–2 DTE')
+    + row('OI call wall',e.callWall,L.callWallOI)
+    + row('OI put wall',e.putWall,L.putWallOI)
+    + row('GEX flip',e.gexFlip,L.gexFlip)
+    + row('Max pain',e.dayExpiry?.maxPain??e.maxPain,L.maxPain,'nearest')
+    + `<tr><td>Regime</td><td>${cmeReg}</td><td>${esc(L.regime||'—')}</td><td class="muted">${b==null?'no basis stored':'basis '+(b>=0?'+':'')+b.toFixed(2)}</td></tr>`
+    + `</tbody></table><div class="muted" style="font-size:11.5px;margin-top:4px">Both columns in ${nm(SYM)} CFD terms. CME OI walls are the analysed expiry; Cboe OI walls are every expiry. Cboe strikes are cash-index levels, moved onto the CFD by the CFD−cash gap measured at Cboe's own quote time${Number.isFinite(c.cfdOffset)?` (${c.cfdOffset>=0?'+':''}${c.cfdOffset.toFixed(2)})`:' (not measured — shown uncorrected)'}; the last column adds the CME basis for ${cb.fut} futures. Recorded daily for comparison (/api/cboe-snapshots).</div></div>`;
+}
+// Tap-to-read: phones have no hover, so the per-row <title> is unreachable there.
+function ladTip(el){ const box=el.closest('.ladder')?.querySelector('.ltipbox'); if(box){ box.textContent=el.dataset.tip; box.classList.add('on'); } }
+// Redraw when the window crosses the phone breakpoint (rotate / resize) — the layout is
+// chosen at draw time, so without this a rotated phone keeps the wrong one.
+let _ladWasPhone = ladPhone(), _ladResizeT = null;
+window.addEventListener('resize', ()=>{ clearTimeout(_ladResizeT); _ladResizeT=setTimeout(()=>{
+  const now=ladPhone(); if(now!==_ladWasPhone){ _ladWasPhone=now; refreshLadders(); } },150); });
+
+function chartSmile(e,big){
+  // One curve per captured expiry: the near-dated ones (0-2 DTE, the lines on COG's charts) when the
+  // sweep stored them, plus the primary smile (the expiry the walls sit on — usually the far monthly,
+  // which is why a lone smile here looks flat). Strikes are windowed to ±3 reference moves so the
+  // far wings don't flatten the part of the curve that matters.
+  const prim=(e.ivSmile&&Array.isArray(e.ivSmile.strikes)&&e.ivSmile.strikes.length)
+    ?{...e.ivSmile,single:true,dte:e.dte,label:(Number.isFinite(e.dte)?Math.round(e.dte)+' DTE':'primary')+' · wall expiry'}:null;
+  const nearSm=(Array.isArray(e.ivSmiles)?e.ivSmiles:[]).slice(0,3);
+  const curves=[...nearSm,...(prim?[prim]:[])];
+  if(!curves.length)
+    return '<div class="empty">No per-strike implied vol stored.<br>Paste the <b>per-strike chain</b> into the smile box to draw this.</div>';
+  const rm=e.refMove?.move, spot=e.spot;
+  const win=(rm>0&&Number.isFinite(spot))?[spot-3*rm,spot+3*rm]:[-Infinity,Infinity];
+  const ser=(ladderData(e)||{}).series||[];
+  const sets=curves.map((c,n)=>{
+    const pts=c.strikes.map((k,i)=>({k,iv:c.iv?.[i],pv:c.single?c.ivPrior?.[i]:undefined})).filter(p=>p.iv>0&&p.k>=win[0]&&p.k<=win[1]).sort((a,b)=>a.k-b.k);
+    const j=Number.isFinite(c.dte)?ser.findIndex(x=>Number.isFinite(x.dte)&&Math.abs(x.dte-c.dte)<=0.6):-1;
+    return {c,pts,col:curves.length>1?(c.single&&j<0?'#7fd0ff':LAD_COLS[Math.min(j>=0?j:n,3)]):'var(--vol)'};
+  }).filter(x=>x.pts.length>=3);
+  if(!sets.length) return '<div class="empty">Smile has too few valid points near price.</div>';
+  const W=1000,H=big?420:250,P=48;
+  const allK=sets.flatMap(x=>x.pts.map(p=>p.k)), mn=Math.min(...allK), mx=Math.max(...allK);
+  const all=sets.flatMap(x=>x.pts.flatMap(p=>[p.iv,p.pv])).filter(v=>v>0);
+  const lo=Math.min(...all),hi=Math.max(...all);
+  const X=v=>P+(v-mn)/(mx-mn||1)*(W-2*P), Y=v=>H-P-(v-lo)/((hi-lo)||1)*(H-1.8*P);
+  const path=(pts,key)=>pts.filter(p=>p[key]>0).map((p,i)=>(i?'L':'M')+X(p.k).toFixed(1)+' '+Y(p[key]).toFixed(1)).join(' ');
+  let s=`<svg viewBox="0 0 ${W} ${H}">`;
+  for(let i=0;i<=4;i++){const y=P*0.75+i*(H-1.8*P)/4; s+=`<line class="gl" x1="${P}" y1="${y}" x2="${W-P}" y2="${y}"/>`;}
+  sets.forEach(x=>{ const pp=path(x.pts,'pv'); if(pp) s+=`<path d="${pp}" fill="none" stroke="var(--tx3)" stroke-width="1.4" stroke-dasharray="4 4"/>`;
+    s+=`<path d="${path(x.pts,'iv')}" fill="none" stroke="${x.col}" stroke-width="2.4"${x.c.single&&sets.length>1?' stroke-dasharray="7 4"':''}/>`; });
+  if(Number.isFinite(spot)&&spot>=mn&&spot<=mx)
+    s+=`<line class="spotline" x1="${X(spot)}" y1="${P*0.6}" x2="${X(spot)}" y2="${H-P}"/>`
+     + `<text class="lbl" x="${X(spot)+5}" y="${P*0.6+13}" style="fill:var(--acc)">spot</text>`;
+  s+=`<text class="lbl" x="${P}" y="${H-P+21}">${fx(show(mn,e),SYM)}</text>`
+   + `<text class="lbl" x="${W-P}" y="${H-P+21}" text-anchor="end">${fx(show(mx,e),SYM)}</text>`
+   + `<text class="lbl" x="${P-9}" y="${P*0.75+4}" text-anchor="end">${(hi*100).toFixed(1)}%</text>`
+   + `<text class="lbl" x="${P-9}" y="${H-P+4}" text-anchor="end">${(lo*100).toFixed(1)}%</text>`;
+  sets.forEach((x,n)=>{ s+=`<text class="lbl" x="${W-P}" y="${P*0.5+n*17}" text-anchor="end" style="fill:${x.col}">&mdash; ${esc(x.c.label||'smile')}</text>`; });
+  const only=!nearSm.length;
+  return s+`</svg><div class="note">Vol is lowest at the money and rises at both wings — the market pays up for tail protection. A steeper LEFT wing means demand for downside puts.${only?` <b>This is the ${esc(prim?.label||'')} smile only</b> — the expiry the walls sit on, usually the far month, so it reads flat. Near-expiry (0–2 DTE) curves, the ones COG draws, appear here once the nightly sweep has stored them.`:''}</div>`;
+}
+
+function chartTerm(e,big){
+  const ts=e.ivTermStructure&&e.ivTermStructure.points;
+  if(!ts||ts.length<2) return '<div class="empty">No IV term structure stored.<br>Paste the <b>Settlements</b> table to draw this.</div>';
+  const d=ts.filter(p=>p.iv>0).sort((a,b)=>a.dte-b.dte);
+  if(d.length<2) return '<div class="empty">Too few expiries with vol.</div>';
+  const W=1000,H=big?380:240,P=48;
+  const mn=d[0].dte,mx=d[d.length-1].dte, lo=Math.min(...d.map(p=>p.iv)), hi=Math.max(...d.map(p=>p.iv));
+  const X=v=>P+(Math.log(1+v-mn)/(Math.log(1+mx-mn)||1))*(W-2*P), Y=v=>H-P-(v-lo)/((hi-lo)||1)*(H-1.8*P);
+  let s=`<svg viewBox="0 0 ${W} ${H}">`;
+  for(let i=0;i<=3;i++){const y=P*0.75+i*(H-1.8*P)/3; s+=`<line class="gl" x1="${P}" y1="${y}" x2="${W-P}" y2="${y}"/>`;}
+  s+=`<path d="${d.map((p,i)=>(i?'L':'M')+X(p.dte)+' '+Y(p.iv)).join(' ')}" fill="none" stroke="var(--vol)" stroke-width="2.4"/>`;
+  d.forEach(p=>{ s+=`<circle cx="${X(p.dte)}" cy="${Y(p.iv)}" r="${big?4:3}" fill="var(--vol)"/>`;
+    if(big) s+=`<text class="lbl" x="${X(p.dte)}" y="${Y(p.iv)-12}" text-anchor="middle">${p.dte}d</text>`;});
+  s+=`<text class="lbl" x="${P-9}" y="${P*0.75+4}" text-anchor="end">${hi.toFixed(1)}%</text>`
+   + `<text class="lbl" x="${P-9}" y="${H-P+4}" text-anchor="end">${lo.toFixed(1)}%</text>`
+   + `<text class="lbl" x="${P}" y="${H-P+21}">${mn} DTE</text>`
+   + `<text class="lbl" x="${W-P}" y="${H-P+21}" text-anchor="end">${mx} DTE</text>`
+   + `<text class="lbl" x="${W/2}" y="${H-P+21}" text-anchor="middle" style="fill:var(--tx3)">days to expiry &rarr;</text></svg>`;
+  const sh=e.ivTermStructure.shape||'—';
+  return s+`<div class="note"><b>${esc(sh)}</b> — front ${e.ivTermStructure.front?.iv}% to back ${e.ivTermStructure.back?.iv}%. `
+    +(sh==='inverted'
+      ?'Near-dated vol above far-dated: an event is expected soon, and short-dated levels break more easily.'
+      :'Rising with horizon is normal — more time means more uncertainty.')+'</div>';
+}
+
+function priceBar(e){
+  const b=e.basis, pv=pip(SYM);
+  const src={
+    manual:'you typed it',
+    'live-yahoo':'live feed at Analyse',
+    'live-cfd-proxy':'CFD proxy — no futures feed',
+    'iv-title-live':'live, from the IV title',
+    'heatmap-header-settle':'SETTLE — not live',
+    field:'left over in the field',
+  }[e.futuresSource] || 'unknown';
+  const weak = e.futuresSource==='heatmap-header-settle' || e.futuresSource==='field' || e.futuresSource==='live-cfd-proxy';
+  const staleCls = weak ? 'v" style="color:var(--warn)' : 'v';
+  const paired = e.spotSource==='live-paired';
+  return `<div class="pricebar">
+    <div><div class="k">CFD spot</div><div class="v"${paired?'':' style="color:var(--warn)"'}>${fx(e.spot,SYM)}</div>
+      <div class="n">${paired?'paired with futures':esc(e.spotSource||'field at save')}</div>
+      ${driftBadge(e)}</div>
+    <div><div class="k">CME futures</div><div class="${staleCls}">${fx(e.futures,SYM)}</div>
+      <div class="n">${esc(e.futuresSymbol?e.futuresSymbol+' · ':'')}${esc(src)}</div></div>
+    <div><div class="k">Basis</div><div class="v">${Number.isFinite(b)?(b>=0?'+':'')+ (b/pv).toFixed(1)+'p':'—'}</div>
+      <div class="n">${paired?'both legs same instant ✓':'legs NOT paired ⚠'}</div>
+      ${e.basisAt?`<div class="stamp">updated <b>${hhmm(e.basisAt)}</b></div>`:''}</div>
+    <div><div class="k">Reference move</div><div class="v">${e.refMove?fx(e.refMove.move,SYM):'—'}</div>
+      <div class="n">${esc(e.refMove?.source||'—')}${e.refMove&&e.spot?' · ±'+(e.refMove.move/e.spot*100).toFixed(2)+'%':''}</div></div>
+    <div><div class="k">Expiry</div><div class="v">${esc(e.primaryExpiry?.code||'—')}</div>
+      <div class="n">${Number.isFinite(e.dte)?e.dte+' DTE':'no DTE'} · ${fOI(e.primaryExpiry?.nearOI)} near-money</div></div>
+    <div><div class="k">Saved</div><div class="v" style="font-size:13px">${esc((e.savedAt||'—').split(', ')[1]||e.savedAt||'—')}</div>
+      <div class="n">${esc((e.savedAt||'').split(',')[0]||'')}</div></div>
+    ${bookTile(e)}
+  </div>`;
+}
+
+// The provenance strip. This exists because levels used to look identical whether
+// the pipeline was healthy or silently mangling data — every field here is one that
+// was wrong at some point without anything on screen saying so.
+function diagBar(e){
+  const c=[];
+  const pe=e.primaryExpiry||{};
+  c.push(`<span class="chip ${pe.anchorValid===false?'bad':'good'}">anchor <b>${pe.anchorValid===false?'INVALID':'ok'}</b></span>`);
+  c.push(`<span class="chip ${pe.scoredOn==='totalOI'?'warn':''}">expiry by <b>${esc(pe.scoredOn||'—')}</b></span>`);
+  c.push(`<span class="chip">strikes <b>${e.numRows??'—'}</b></span>`);
+  c.push(`<span class="chip ${e.spotSource==='live-paired'?'good':'warn'}">basis legs <b>${e.spotSource==='live-paired'?'paired':'UNPAIRED'}</b></span>`);
+  c.push(`<span class="chip ${/^live-(yahoo|cfd)/.test(e.futuresSource||'')?'good':'warn'}">futures <b>${esc(e.futuresSymbol||e.futuresSource||'—')}</b>${
+    Number.isFinite(e.futuresStale)&&Math.abs(e.futuresStale)>0?' ('+(e.futuresStale/pip(SYM)).toFixed(0)+'p stale)':''}</span>`);
+  c.push(`<span class="chip ${e.refMove?.source==='flat-vol'?'warn':'good'}">move <b>${esc(e.refMove?.source||'—')}</b></span>`);
+  c.push(`<span class="chip ${e.greeksFlow?'good':''}">greeks <b>${e.greeksFlow?e.greeksFlow.source+' · '+e.greeksFlow.dteDays+'d':'none'}</b></span>`);
+  if(e.greekVolMode) c.push(`<span class="chip ${(e.greekVolSource==='smile'||e.greekVolSource==='atm-iv')?'good':(e.greekVolMode==='smile'?'warn':'')}">gamma vol <b>${e.greekVolMode==='smile'?'v2 · '+esc(e.greekVolSource||'flat'):'v1 · flat'}</b></span>`);
+  if(/JPY|CAD|CHF/.test(SYM)) c.push(`<span class="chip ${e.cpSwapped?'warn':''}">C/P <b>${e.cpSwapped?'flipped to pair terms':'as quoted (6J/6C/6S)'}</b></span>`);
+  if(e.dataWarning) c.push(`<span class="chip bad">⚠ ${esc(e.dataWarning)}</span>`);
+  return `<div class="diag">${c.join('')}</div>`;
+}
+
+function levelStrip(e){
+  // 5th field = HELP glossary key → renders the same "?" explainer chip the panels use,
+  // right on the cards you actually look at (positive/negative GEX, the flips, charm/vanna).
+  const rows=[
+    ['call wall', e.callWall, 'var(--call)', fOI(e.callWallOI)+' OI', 'callwall'],
+    ['put wall',  e.putWall,  'var(--put)',  fOI(e.putWallOI)+' OI', 'putwall'],
+    ['max pain',  e.maxPain,  'var(--pain)', 'drifts here by expiry', 'maxpain'],
+    ['gamma flip',e.gammaFlip,'var(--vol)',  'rough strike-profile cross · trust GEX flip', 'gflip'],
+    ['GEX flip',  e.gexFlip,  'var(--gam)',  'the calm / jumpy border', 'gexflip'],
+    // charm/vanna are blank without a per-strike IV smile — say WHY on the card
+    // instead of a bare "—" next to a greek symbol (the #1 "is it broken?" question).
+    ['charm flip',e.greeksFlow?.charmFlip,'var(--warn)', e.greeksFlow?'pins price into expiry':'needs IV smile', 'charm'],
+    ['vanna flip',e.greeksFlow?.vannaFlip,'var(--gam)',  e.greeksFlow?'kicks in when IV moves':'needs IV smile', 'vanna'],
+    ['exp move ↑',e.expectedMove?.upper,'var(--tx2)', e.expectedMove?'±'+e.expectedMove.pct+'%':'', 'expmove'],
+    ['exp move ↓',e.expectedMove?.lower,'var(--tx2)', e.expectedMove?.dte?('to '+e.expectedMove.dte+'d'):'', 'expmove'],
+  ];
+  return `<div class="levels">${rows.map(([k,v,c,n,hk])=>{
+    const sv=show(v,e), d=Number.isFinite(v)&&Number.isFinite(e.spot)?((v-e.spot)/pip(SYM)):NaN;
+    return `<div class="lv" style="border-top-color:${Number.isFinite(sv)?c:'transparent'}">
+      <div class="k">${k}${hk?h(hk):''}</div>
+      <div class="v" style="color:${Number.isFinite(sv)?c:'var(--tx3)'}">${Number.isFinite(sv)?fx(sv,SYM):'—'}</div>
+      <div class="f">${Number.isFinite(v)?(SPOTADJ?'fut '+fx(v+(e.basis||0),SYM):'spot '+fx(v,SYM)):''}</div>
+      <div class="d">${Number.isFinite(d)?(d>=0?'+':'')+d.toFixed(0)+'p · ':''}${n||''}</div></div>`;
+  }).join('')}</div>`;
+}
+
+// Walls, sortable by STRENGTH or by NEAREST. Those are different questions: the biggest
+// wall is not necessarily the one price reaches first, and the near one is the one that
+// can actually interact with a trade today. Rows beyond 2.5 reference moves are dimmed
+// and tagged "far" rather than hidden — the export filters them out, but seeing them
+// here is how you tell an illiquid chain from a filtered one.
+function wallTable(e,side){
+  let list=((side==='call'?e.callWalls:e.putWalls)||[]).slice();
+  if(!list.length) return '<div class="empty">No walls on this side.<br>Either the expiry is illiquid or nothing clears the strength bar.</div>';
+  const rm=e.refMove?.move;
+  const isFar=r=>rm>0?Math.abs(r.strike-e.spot)>2.5*rm:false;
+  list = (SORT==='proximity')
+    ? list.sort((a,b)=>Math.abs(a.strike-e.spot)-Math.abs(b.strike-e.spot))
+    : list.sort((a,b)=>(b.oi||0)-(a.oi||0));
+  list=list.slice(0,12);
+  const mx=Math.max(...list.map(w=>w.oi||0),1), col=(side==='call')?'var(--call)':'var(--put)';
+  const body=list.map(w=>{
+    const d=pips(w.strike,e.spot,SYM), far=isFar(w);
+    return `<tr class="${far?'dim':''}"><td>${fx(show(w.strike,e),SYM)}${far?'<span class="pill muted">far</span>':''}</td>`
+      + `<td>${fOI(w.oi)}</td>`
+      + `<td style="width:110px"><span class="bar" style="width:${(w.oi/mx*95).toFixed(0)}px;background:${col};opacity:.7"></span></td>`
+      + `<td class="${w.tier?'':'muted'}">${esc(w.tier||'—')}</td><td class="muted">${w.mult??'—'}</td>`
+      + `<td style="color:${w.chg>0?'var(--put)':w.chg<0?'var(--call)':'var(--tx3)'}">${w.chg?(w.chg>0?'+':'')+fOI(w.chg):'—'}</td>`
+      + `<td class="muted">${Number.isFinite(d)?(d>=0?'+':'')+d.toFixed(0)+'p':'—'}</td></tr>`;
+  }).join('');
+  return `<table><thead><tr><th>Strike</th><th>Contracts</th><th></th><th>Strength</th><th>&times; nearby</th><th>vs yest</th><th>From price</th></tr></thead>`
+    + `<tbody>${body}</tbody></table>`
+    + `<div class="note">Sorted by <b>${SORT==='proximity'?'distance from price':'strength'}</b> — switch with the Walls button in the header. Dimmed <b>far</b> rows sit beyond 2.5 reference moves and are excluded from the chart export.</div>`;
+}
+
+function flowPanel(e){
+  const g=e.greeksFlow, rr=e.riskReversal, iv=e.ivDynamics, vf=e.volFlow, cn=e.concentration;
+  const row=(k,hk,v,n)=>`<tr><td class="muted">${k}${h(hk)}</td><td>${v}</td><td class="muted" style="text-align:left">${n||''}</td></tr>`;
+  return `<table><tbody>`
+    + row('Net GEX','netgex', e.exposures?fOI(e.exposures.gex):'—', e.exposures?.gex>0?'dealers damp moves &middot; fade extremes':'dealers amplify &middot; don&rsquo;t fade breaks')
+    + row('Net DEX','netdex', e.exposures?fOI(e.exposures.dex):'—','')
+    + row('P/C ratio','pc', Number.isFinite(e.pcRatio)?e.pcRatio.toFixed(2):'—', e.pcRatio>1.3?'heavy hedging':e.pcRatio<0.7?'call-heavy':'balanced')
+    + row('OI skew','skew', e.skew?e.skew.score:'—', esc(e.skew?.read||''))
+    + row('Concentration','conc', cn?`${cn.top5Pct}% / ${cn.top10Pct}%`:'—', cn?esc(cn.read)+' (top 5 / top 10)':'')
+    + row('CEX (charm)','cex', g?fOI(g.cex):'—','pull toward big strikes near expiry')
+    + row('VEX (vanna)','vex', g?fOI(g.vex):'—', esc(g?.vanna?.state||''))
+    + row('Risk reversal','rr', rr?rr.rr:'—', esc(rr?.tilt?rr.tilt+' tilt':''))
+    + row('ATM IV change','atmiv', iv?.atmChg!=null?iv.atmChg+'%':'—', iv?.atmChg==null?'vs yesterday':(iv.atmChg<0?'calmer than yesterday':'more nervous than yesterday'))
+    + row('Volume P/C','volpc', vf?vf.volPcRatio:'—', vf?.divergence?'today&rsquo;s trading disagrees with the positions already held':'')
+    + row('Call OI change','oichg', fOI(e.totalCallChg), e.totalCallChg>0?'building':'closing')
+    + row('Put OI change','oichg', fOI(e.totalPutChg), e.totalPutChg>0?'building':'closing')
+    + `</tbody></table>`;
+}
+
+function fullBookPanel(e){
+  const fb=e.fullBook;
+  if(!fb) return '<div class="empty">Full-book GEX needs a multi-expiry matrix.<br>Paste the full strike-by-expiry heatmap to populate this.</div>';
+  const isPin=fb.gex>0, col=c=>c?'var(--ok)':'var(--call)';
+  const single=e.exposures?.gex, singlePin=single>0;
+  const agree=(!Number.isFinite(single))?null:(isPin===singlePin);
+  const rows=(fb.byExpiry||[]).slice(0,6), mx=Math.max(...rows.map(r=>Math.abs(r.gex)),1);
+  const r=(k,v,n)=>`<tr><td class="muted">${k}</td><td>${v}</td><td class="muted" style="text-align:left">${n||''}</td></tr>`;
+  return `<table><tbody>`
+    + r('Full-book regime',`<b style="color:${col(isPin)}">${fb.regime}</b>`,`${fb.nExpiries} expiries · ${fb.volSource==='atm-iv'?'per-expiry ATM IV':'flat vol'}`)
+    + r('Full-book GEX',fOI(fb.gex),isPin?'dealers damp moves &middot; fade extremes':'dealers amplify &middot; don&rsquo;t fade breaks')
+    + r('Gamma flip',fb.flip?fx(show(fb.flip,e),SYM):'—','whole-book zero-gamma')
+    + r('vs single-expiry',`<b style="color:${col(singlePin)}">${!Number.isFinite(single)?'—':(singlePin?'PIN':'BREAKOUT')}</b>`,
+        agree==null?'':(agree?'agree':'⚠ DISAGREE — other expiries pull against the traded column'))
+    + `</tbody></table>`
+    + `<div class="note" style="margin:8px 0 4px">Which expiry drives the book</div><table><tbody>`
+    + rows.map(x=>{const p=x.gex>0; return `<tr><td>${x.dte==null?'—':x.dte+' DTE'}</td>`
+        + `<td style="color:${col(p)}">${p?'+':'−'}${x.sharePct}%</td>`
+        + `<td style="width:110px"><span class="bar" style="width:${(Math.abs(x.gex)/mx*96).toFixed(0)}px;background:${col(p)};opacity:.75"></span></td></tr>`;}).join('')
+    + `</tbody></table>`
+    + `<div class="note">Every strike across every expiry, each weighted by its own gamma (DTE + IV). Analysis view — the bot trades the single-expiry regime above, not this.</div>`;
+}
+
+function termTable(e){
+  const ts=(e.termStructure||[]).slice().sort((a,b)=>a.dte-b.dte);
+  if(!ts.length) return '<div class="empty">No per-expiry structure.<br>Paste the full strike-by-expiry matrix to populate this.</div>';
+  return `<table><thead><tr><th>DTE</th><th>Max pain</th><th>Call wall</th><th>Put wall</th><th>Total OI</th></tr></thead><tbody>`
+    + ts.map(r=>`<tr${r.dte===e.dte?' style="color:var(--acc)"':''}><td>${r.dte}</td><td>${fx(show(r.maxPain,e),SYM)}</td>`
+      + `<td>${r.callWall?fx(show(r.callWall,e),SYM):'—'}</td><td>${r.putWall?fx(show(r.putWall,e),SYM):'—'}</td>`
+      + `<td>${fOI(r.totalOI)}</td></tr>`).join('')
+    + `</tbody></table><div class="note">The amber row is the expiry your headline levels come from. These walls are unfiltered, so far-out strikes can appear here.</div>`;
+}
+
+function volumePanel(e){
+  const v=e.volumeMagnets||[];
+  if(!v.length) return '<div class="empty">No volume magnets.<br>Either no volume was pasted, or its strikes fell outside the option ladder and were rejected.</div>';
+  const mx=Math.max(...v.map(x=>x.volume||0),1);
+  return `<table><thead><tr><th>Strike</th><th>Volume</th><th></th><th>Dist</th></tr></thead><tbody>`
+    + v.slice(0,10).map(x=>{const d=pips(x.strike,e.spot,SYM);
+      return `<tr><td>${fx(show(x.strike,e),SYM)}</td><td>${fOI(x.volume)}</td>`
+        + `<td style="width:100px"><span class="bar" style="width:${(x.volume/mx*88).toFixed(0)}px;background:var(--vol);opacity:.7"></span></td>`
+        + `<td class="muted">${Number.isFinite(d)?(d>=0?'+':'')+d.toFixed(0)+'p':'—'}</td></tr>`;}).join('')
+    + `</tbody></table>`;
+}
+
+// ── TODAY'S READ ──────────────────────────────────────────────────────────────
+// The page shows ~33 numbers across 10 panels and never says what they add up to.
+// This is the plain-English answer to "what is this book telling me today", with one
+// sub-read per panel so every number below is already interpreted before you scroll to
+// it. Nothing here is a second opinion — it reads the same stored fields the panels do
+// and says them in English.
+//
+// Traffic lights are deliberately NOT directional. Green = nothing here argues against
+// your plan. Amber = something is changing. Red = this contradicts a trade you might be
+// about to take. Direction comes from your own system; this says how far to trust it.
+
+function _rd(light, panel, headline, detail){
+  const col = light==='ok' ? 'var(--ok)' : light==='warn' ? 'var(--warn)'
+            : light==='bad' ? 'var(--call)' : 'var(--tx3)';
+  return '<div class="rd"><div class="rd-h"><span class="rdot" style="background:'+col+'"></span>'+panel+'</div>'
+    + '<div class="rd-v">'+headline+'</div>'+(detail?'<div class="rd-d">'+detail+'</div>':'')+'</div>';
+}
+
+// The levels that ACTUALLY matter: ranked by dealer gamma, not raw open interest.
+// At 30 DTE the two agree. At 1-2 DTE they do not — gamma collapses into a spike at the
+// money while the big open interest is still parked at strikes that are now worthless,
+// so an OI-ranked wall list points at levels nothing is hedging. Measured on gold at
+// 1 DTE: the wall table said 5143/5133/4943, the gamma said 4643/4693/4743 — no overlap.
+// Prefer the traded (day) expiry's profile when there is one; that is the book in play.
+function _gammaLevels(e, n){
+  const day = (e.dayExpiry && Array.isArray(e.dayExpiry.gexProfile) && e.dayExpiry.gexProfile.length)
+    ? e.dayExpiry : null;
+  const gp = (day ? day.gexProfile : e.gexProfile) || [];
+  const rows = gp.filter(function(r){ return r && Number.isFinite(r.strike) && Number.isFinite(r.netGex) && r.netGex!==0; });
+  if(!rows.length || !Number.isFinite(e.spot)) return { src:null, rows:[] };
+  const rm = (e.refMove && e.refMove.move>0) ? e.refMove.move : Math.abs(e.spot)*0.02;
+  const near = rows.filter(function(r){ return Math.abs(r.strike-e.spot) <= 1.5*rm; });
+  const pick = (near.length?near:rows).slice()
+    .sort(function(a,b){ return Math.abs(b.netGex)-Math.abs(a.netGex); }).slice(0, n||3);
+  return { src: day ? ('the '+day.dte+'DTE book') : ((e.dte!=null) ? ('the '+e.dte+'DTE book') : 'the primary book'), rows: pick };
+}
+
+// Originally the live application of oi_research_book/RESEARCH_BOOK.md Part 9b/12's
+// "one clustering-verified finding" (call ~68%/61%, put ~63%/58% rejection in
+// 15-60 min). WITHDRAWN 2026-09-23: a placebo (WALL_PLACEBO_PREREG.md) showed any
+// touched level rejects at the same rate, so the read below is location only. TOUCH_PIPS matches the study's own
+// touch-detection buffer (~2 pips) so "AT WALL" here means the same thing it
+// meant in the backtest, not a looser live redefinition of it.
+const TOUCH_PIPS = 2;
+// How many consecutive archived days a strike has held as the wall reads as
+// its own signal (Part 4: 88-95% persistence day/day is a population average;
+// THIS wall's own count is the specific instance) -- established (5+) vs.
+// fresh (appeared in the last day or so) is exactly the distinction the
+// research draws between a level the market has actually defended and one
+// that just showed up.
+function daysNote(kind, strike){
+  const d = wallDaysPresent(SYM, strike, kind);
+  if(d==null) return '';
+  return d>=5 ? ' Established: day '+d+' as this wall.'
+       : d<=1 ? ' Fresh: appeared in the last archived day — less track record behind it yet.'
+              : ' Day '+d+' as this wall.';
+}
+function touchZoneRead(e, S, dist, lvl){
+  const cw = e.callWall, pw = e.putWall;
+  const dCw = Math.abs(dist(cw)), dPw = Math.abs(dist(pw));
+  const atCall = Number.isFinite(dCw) && dCw <= TOUCH_PIPS;
+  const atPut  = Number.isFinite(dPw) && dPw <= TOUCH_PIPS;
+  // WITHDRAWN AS AN EDGE 2026-09-23 (oi_research_book/WALL_PLACEBO_PREREG.md). The
+  // ~60-68% "rejection" replicated on 7 instruments, but the SAME detector run on the
+  // neighbouring listed strikes and on arbitrary off-grid prices, same days, gives the
+  // same rate (15-min break: wall 38.0% vs neighbours 38.7% vs arbitrary 36.5%, calls;
+  // puts 40.1 / 38.1 / 38.3). It is touch mechanics + short-horizon mean reversion,
+  // true of any level — so the panel still says you are AT the wall, but no longer
+  // presents the base rate as evidence the wall matters.
+  const NOTE = ' Price turns back from ANY touched level roughly 60% of the time over '
+    + '15 minutes — neighbouring strikes and arbitrary prices do the same as the wall '
+    + '(7-instrument placebo test, 2026-09-23). Context only, not an edge on its own.';
+  if(atCall){
+    return _rd('off','Live wall-touch read',
+      '🎯 <b>AT CALL WALL</b> ('+lvl(cw)+')',
+      'The max-OI call strike.'+daysNote('call',cw)+NOTE);
+  }
+  if(atPut){
+    return _rd('off','Live wall-touch read',
+      '🎯 <b>AT PUT WALL</b> ('+lvl(pw)+')',
+      'The max-OI put strike.'+daysNote('put',pw)+NOTE);
+  }
+  const nearer = (Number.isFinite(dCw)&&Number.isFinite(dPw)) ? (dCw<dPw?['call wall',dCw,cw,'call']:['put wall',dPw,pw,'put'])
+    : Number.isFinite(dCw) ? ['call wall',dCw,cw,'call'] : Number.isFinite(dPw) ? ['put wall',dPw,pw,'put'] : null;
+  return _rd('off','Live wall-touch read',
+    nearer ? 'Not currently at a wall — nearest is the '+nearer[0]+' ('+lvl(nearer[2])+'), '+Math.round(nearer[1])+'p away'
+           : 'No wall levels stored',
+    nearer ? ('A touch means within '+TOUCH_PIPS+'p. Walls turn price back no more often than any other level (placebo test, 2026-09-23), so this is location context, not a signal.'+daysNote(nearer[3],nearer[2])) : '');
+}
+
+function _rdOpen(){ try{ return localStorage.getItem('oi.rdOpen')==='1'; }catch(_){ return false; } }
+function _rdSet(v){ try{ localStorage.setItem('oi.rdOpen',v?'1':'0'); }catch(_){ } }
+function todaysRead(e){
+  if(!e) return '';
+  const S=e.spot, ex=e.exposures||{}, gex=Number.isFinite(ex.gex)?ex.gex:null;
+  const lvl  = function(v){ return Number.isFinite(v) ? fx(show(v,e),SYM) : '—'; };
+  const dist = function(v){ return (Number.isFinite(v)&&Number.isFinite(S)) ? ((v-S)/pip(SYM)) : NaN; };
+  const dtxt = function(v){ const d=dist(v); return Number.isFinite(d)?((d>=0?'+':'')+d.toFixed(0)+'p'):''; };
+  const age = ageOf(e);
+  const pin = gex>0, brk = gex<0;
+
+  // One day's plausible move, 1 sigma. Front ATM IV is the market's own answer; fall back
+  // to scaling the reference move down from its own horizon. Everything below is measured
+  // against this, because "how far is it" is the wrong question — "can price get there
+  // today" is the one that decides whether a level is a target or wallpaper.
+  const dayMove = (function(){
+    const fiv = e.ivTermStructure && e.ivTermStructure.front && e.ivTermStructure.front.iv;
+    if(Number.isFinite(fiv) && fiv>0 && Number.isFinite(S)) return S*(fiv/100)*Math.sqrt(1/365);
+    const rmv = (e.refMove && e.refMove.move>0) ? e.refMove.move : null;
+    const dte = (Number.isFinite(e.dte) && e.dte>0) ? e.dte : null;
+    return (rmv && dte) ? rmv*Math.sqrt(1/dte) : null;
+  })();
+  const xday = function(v){
+    return (dayMove && Number.isFinite(v) && Number.isFinite(S)) ? Math.abs(v-S)/dayMove : NaN; };
+  const reachTxt = function(v){
+    const x = xday(v);
+    if(!Number.isFinite(x)) return '';
+    return x<=1 ? 'reachable today'
+         : x<=2 ? x.toFixed(1)+'x today — a stretch'
+                : x.toFixed(1)+'x today — not in play';
+  };
+  const dayDte = (e.dayExpiry && Number.isFinite(e.dayExpiry.dte)) ? e.dayExpiry.dte : null;
+
+  // ── headline ───────────────────────────────────────────────────────────────
+  const glAll = _gammaLevels(e,6);
+  // Drop gamma levels price cannot plausibly reach today. A strike 5x the day's move away
+  // is real structure, but it is not a level you can trade against between now and the
+  // close, and listing it next to one 20 points away implies they are comparable.
+  const glIn  = glAll.rows.filter(function(r){ return !Number.isFinite(xday(r.strike)) || xday(r.strike)<=2; });
+  const gl    = { src: glAll.src, rows: (glIn.length?glIn:glAll.rows).slice(0,3) };
+  const glCut = glAll.rows.length - glIn.length;
+  const glTxt = gl.rows.length
+    ? gl.rows.map(function(r){
+        const x = xday(r.strike);
+        return '<b>'+fx(show(r.strike,e),SYM)+'</b> ('+dtxt(r.strike)
+          + ((Number.isFinite(x) && x>1) ? ', '+x.toFixed(1)+'x today' : '')+')'; }).join(' · ')
+    : 'none resolvable';
+  const verdict = (gex==null) ? 'No net GEX stored, so the regime is unknown.'
+    : pin  ? 'Dealers are <b>damping</b> moves. Ranges tend to hold, and fading extremes into the levels below is the behaviour that fits.'
+    : brk  ? 'Dealers are <b>amplifying</b> moves. Breaks tend to run, so do not fade them — the levels below are launchpads, not brick walls.'
+           : 'Net GEX is flat. No clear damping or amplifying regime today.';
+  const regTxt = (gex==null) ? 'REGIME UNKNOWN' : pin ? 'PIN — moves get damped'
+    : brk ? 'BREAKOUT — moves get amplified' : 'NEUTRAL';
+  const regCol = (gex==null) ? 'var(--tx3)' : pin ? 'var(--ok)' : brk ? 'var(--call)' : 'var(--tx2)';
+
+  let top = '<div class="rd-top">'
+    + '<div class="rd-reg" style="color:'+regCol+'">'+regTxt+'</div>'
+    + '<div class="rd-say">'+verdict+'</div>';
+  if(dayMove){
+    top += '<div class="rd-say"><b>What is realistic today:</b> roughly <b>'+fx(show(S-dayMove,e),SYM)+'</b>'
+      + ' to <b>'+fx(show(S+dayMove,e),SYM)+'</b> — about '+Math.round(dayMove/pip(SYM))+'p either side of spot,'
+      + ' from the front-month implied vol. Anything outside that band is background, not a target for today.</div>';
+  }
+  top += '<div class="rd-say">The levels that actually matter today, ranked by <b>dealer gamma</b> rather than'
+      + ' raw open interest, from '+(gl.src||'—')+': '+glTxt+'.'
+      + ' That is where hedging is concentrated, so that is where price is most likely to react.'
+      + (glCut>0 ? ' ('+glCut+' more carry gamma but sit too far out to reach today.)' : '')+'</div>';
+  if(age && age.h>30) top += '<div class="rd-say" style="color:var(--warn)">⚠ This chain was pasted '+age.txt
+    + ' ago. Open interest updates once a day — re-paste before trading these levels.</div>';
+  top += '</div>';
+
+  const sub = [];
+
+  // ── open interest by strike ────────────────────────────────────────────────
+  const gp = (e.gexProfile||[]).filter(function(r){ return r && Number.isFinite(r.strike); });
+  const rm = (e.refMove && e.refMove.move>0) ? e.refMove.move : null;
+  if(gp.length){
+    const biggest = gp.slice().sort(function(a,b){
+      return ((b.callOI||0)+(b.putOI||0)) - ((a.callOI||0)+(a.putOI||0)); })[0];
+    const far = rm ? Math.abs(biggest.strike-S) > 1.5*rm : false;
+    // Does the biggest pile of contracts coincide with where dealers actually hedge?
+    // Those agree at long DTE and come apart near expiry, and which it is changes
+    // whether this panel is showing you a level or a pile of dead paper.
+    const isGamma = gl.rows.some(function(r){ return Math.abs(r.strike-biggest.strike) < 1e-6; });
+    const bx = xday(biggest.strike);
+    const outOfPlay = Number.isFinite(bx) && bx>2;
+    sub.push(_rd(outOfPlay?'warn':isGamma?'ok':'warn','Strike ladder — OI',
+      'Heaviest strike is <b>'+lvl(biggest.strike)+'</b> ('+dtxt(biggest.strike)+')'
+        + (reachTxt(biggest.strike) ? ' — '+reachTxt(biggest.strike) : ''),
+      (outOfPlay ? 'Price would need '+bx.toFixed(1)+' normal days to get there, so it is not a level you can trade against today. '
+        : far ? 'That is a long way from price — big open interest out there is mostly abandoned paper, not a level for today. '
+           : '')
+      + (isGamma
+          ? 'It is also one of the top gamma strikes, so the crowd and the hedging agree: this is a real level.'
+          : 'But the hedging is concentrated elsewhere ('
+            + (gl.rows.length ? gl.rows.map(function(r){ return fx(show(r.strike,e),SYM); }).join(' · ') : 'see above')
+            + '). Where dealers must hedge beats where the contracts are parked — trust those.')));
+  } else {
+    sub.push(_rd('off','Strike ladder — OI','No per-strike data','Press Analyse to store the full ladder.'));
+  }
+
+  // ── net GEX by strike ──────────────────────────────────────────────────────
+  const flip = Number.isFinite(e.gexFlip) ? e.gexFlip : e.gammaFlip;
+  const nearFlip = (Number.isFinite(flip) && rm) ? Math.abs(flip-S) < 0.5*rm : false;
+  sub.push(_rd(gex==null?'off':nearFlip?'warn':'ok','Strike ladder — GEX',
+    gex==null ? 'No GEX stored'
+      : (pin?'Positive':brk?'Negative':'Flat')+' — flip at <b>'+lvl(flip)+'</b> ('+dtxt(flip)+')',
+    !Number.isFinite(flip) ? 'No crossing found in range.'
+      : nearFlip ? 'Price is sitting on the boundary, so the regime can flip either way today. Treat the read above as provisional and size smaller.'
+      : (S>flip ? 'Price is above the flip, on the damping side. ' : 'Price is below the flip, on the amplifying side. ')
+        + (Number.isFinite(xday(flip))
+            ? (xday(flip)>2 ? 'The crossing is '+xday(flip).toFixed(1)+'x a normal day away, so the regime above is solid — it will not flip on you intraday.'
+                            : 'The crossing is only '+xday(flip).toFixed(1)+'x a normal day away, so a decent move could flip the regime today.')
+            : '')));
+
+  // ── IV smile ───────────────────────────────────────────────────────────────
+  const iv=e.ivDynamics, rr=e.riskReversal;
+  const ch = (iv && Number.isFinite(iv.atmChg)) ? iv.atmChg : null;
+  sub.push(_rd(ch==null?'off':(ch>1?'bad':ch>0?'warn':'ok'),'IV smile',
+    ch==null ? 'No IV pasted'
+      : 'Options expect <b>'+(ch<0?'less':'more')+'</b> movement than yesterday ('+(ch>0?'+':'')+ch+'%)',
+    (ch==null ? 'Paste the IV smile to light this up.'
+      : (ch<0 ? 'Nothing here argues against your plan — the market is not bracing for a storm.'
+              : 'People are paying up for protection. If your signal is long, that is a reason to go smaller or wait, not to reverse.'))
+    + ((rr && rr.tilt==='downside')
+        ? ' People are also paying more to protect against a <b>fall</b> than to bet on a rise — a mild caution if you are long.'
+        : (rr && rr.tilt==='upside')
+          ? ' People are also paying more to bet on a <b>rise</b> than to protect against a fall — a mild caution if you are short.'
+          : '')));
+
+  // ── live wall-touch read ─────────────────────────────────────────────────────
+  // The one finding in oi_research_book/ that survived its own hardest test (a
+  // clustering-corrected significance check, not just a raw event count — see
+  // RESEARCH_BOOK.md Part 9b/12): a real touch of a wall rejects most of the
+  // time in the next 15-60 minutes, then decays fast. This only fires when
+  // price is CURRENTLY within touch distance right now — it says nothing at
+  // any other distance, which is the whole point of a horizon-specific effect.
+  // The study lagged the wall to the PRIOR day's confirmed level to avoid
+  // lookahead; this reads today's live e.callWall/putWall instead, which
+  // Part 4's own persistence stats (88-95% unchanged day/day) say is almost
+  // always the same strike in practice — noted below rather than hidden.
+  sub.push(touchZoneRead(e, S, dist, lvl));
+
+  // ── walls ──────────────────────────────────────────────────────────────────
+  const cw=e.callWall, pw=e.putWall;
+  const boxed = Number.isFinite(cw)&&Number.isFinite(pw)&&S>pw&&S<cw;
+  sub.push(_rd((Number.isFinite(cw)||Number.isFinite(pw))?'ok':'off','Call / put walls',
+    boxed ? 'Boxed between <b>'+lvl(pw)+'</b> and <b>'+lvl(cw)+'</b>'
+          : 'Resistance '+lvl(cw)+' · support '+lvl(pw),
+    (boxed ? 'Price is inside the range these two defend. In a PIN regime that range tends to hold; in BREAKOUT expect one side to give.'
+           : 'Price is outside the wall pair, so the nearer one is behind it and no longer defending this side.')
+    + ((dayDte!=null && dayDte<=2)
+        ? ' <b>Careful:</b> at ' + dayDte + ' DTE these tables rank by raw open interest, which points at strikes with almost no gamma left. Trust the gamma-ranked levels at the top instead.'
+        : '')));
+
+  // ── positioning and flow ───────────────────────────────────────────────────
+  const pc=e.pcRatio, sk=e.skew;
+  const build = (Number.isFinite(e.totalCallChg)?e.totalCallChg:0) + (Number.isFinite(e.totalPutChg)?e.totalPutChg:0);
+  sub.push(_rd(Number.isFinite(pc)?'ok':'off','Positioning and flow',
+    Number.isFinite(pc) ? 'P/C '+pc.toFixed(2)+' — '+(pc>1.3?'heavy hedging':pc<0.7?'call-heavy':'balanced')
+      + ((sk && sk.read && sk.read!=='balanced') ? ' · '+esc(sk.read) : '') : 'No positioning data',
+    build>0 ? 'Open interest is <b>building</b> — new money is committing, so these levels are firming.'
+    : build<0 ? 'Open interest is <b>closing</b> — positions are unwinding, so these levels are losing their backing.'
+              : 'No meaningful change since yesterday.'));
+
+  // ── term structure ─────────────────────────────────────────────────────────
+  const its = e.ivTermStructure;
+  const inv = !!(its && its.shape==='inverted');
+  const slope = (its && Number.isFinite(its.slope)) ? its.slope : null;
+  sub.push(_rd(its?(inv?'warn':'ok'):'off','ATM IV term structure',
+    its ? (inv ? '<b>Inverted</b> — near-dated vol above far-dated'
+               : 'Upward sloping — normal')
+            + (slope!=null ? ' ('+(slope>0?'+':'')+slope.toFixed(2)+')' : '')
+        : 'No IV term structure',
+    its ? (inv ? 'The market is pricing something soon. Short-dated levels break more easily than usual today, so treat near-expiry walls as weaker than they look.'
+               : 'No event premium in the front. Levels behave normally.')
+        : 'Paste the settlements table to populate this.'));
+
+  // ── per-expiry ─────────────────────────────────────────────────────────────
+  const pe = Array.isArray(e.perExpiry) ? e.perExpiry.filter(function(r){ return r && Number.isFinite(r.maxPain); }) : [];
+  if(pe.length>1){
+    const nr = pe[0];
+    const prim = pe.filter(function(r){ return r.dte===e.dte; })[0] || pe[pe.length-1];
+    const gap = Math.abs(nr.maxPain-prim.maxPain);
+    const disagree = rm ? gap > 0.5*rm : false;
+    sub.push(_rd(disagree?'warn':'ok','Per-expiry structure',
+      'Traded expiry pins '+lvl(nr.maxPain)+' · main book '+lvl(prim.maxPain),
+      disagree ? 'These disagree by '+Math.round(gap/pip(SYM))+'p about where price belongs. Expect the pin to move once the near expiry rolls off, so do not lean on it.'
+               : 'The expiry you trade and the main book agree, so the pin is structural rather than a one-day artifact.'));
+  } else {
+    sub.push(_rd('off','Per-expiry structure','Single expiry only','Paste the full strike-by-expiry matrix to compare horizons.'));
+  }
+
+  // ── volume magnets ─────────────────────────────────────────────────────────
+  const vm = (e.volumeMagnets||[]).filter(function(v){ return v && Number.isFinite(v.strike); });
+  const vmOut = vm.length && Number.isFinite(xday(vm[0].strike)) && xday(vm[0].strike)>2;
+  sub.push(_rd(vm.length?(vmOut?'warn':'ok'):'off','Volume magnets',
+    vm.length ? 'Busiest strike today <b>'+lvl(vm[0].strike)+'</b> ('+dtxt(vm[0].strike)+')'
+      + (reachTxt(vm[0].strike) ? ' — '+reachTxt(vm[0].strike) : '') : 'No volume pasted',
+    vm.length ? 'Volume is what traded today; open interest is what is still held. A busy strike with little open interest is a fresh fight, not an established level.' : ''));
+
+  // ── full-book GEX ──────────────────────────────────────────────────────────
+  const fb = e.fullBook;
+  const agree = (fb && Number.isFinite(fb.gex) && gex!=null) ? ((fb.gex>0)===(gex>0)) : null;
+  sub.push(_rd(fb?(agree?'ok':'warn'):'off','Full-book GEX',
+    fb ? (fb.gex>0?'Positive':'Negative')+' across all expiries' : 'Needs a multi-expiry paste',
+    fb ? (agree ? 'Agrees with the single-expiry regime above — the read is consistent across the whole book.'
+                : '<b>Disagrees</b> with the single-expiry regime above. The expiry you trade leans one way and the wider book the other, so treat the regime as low-confidence.')
+       : ''));
+
+  return '<div class="p c12 todayread"><h3><span class="grow">Today’s read — '+esc(nm(SYM))+'</span></h3>'
+    + '<div class="body">'+top
+    // The ten check-cards are reference reading, not the first thing to see: tuck them behind a
+    // toggle (remembered) so the headline + the ladder sit together on one screen.
+    + '<details class="rd-more"'+(_rdOpen()?' open':'')+' ontoggle="_rdSet(this.open)"><summary>Ten-point check &mdash; ladder, gamma, IV, walls, flow, term, expiry, volume, full book<span class="rd-sum">'
+    + sub.length+' reads</span></summary><div class="rd-grid">'+sub.join('')+'</div></details></div></div>';
+}
+
+function v2Cards(e){
+  const S=e.spot, rm=e.refMove?.move, ex=e.exposures||{}, gex=Number.isFinite(ex.gex)?ex.gex:null;
+  const lvl=v=>Number.isFinite(v)?fx(show(v,e),SYM):'—';
+  const age=ageOf(e);
+  // The regime the OI BOT trades is the near-dated day book's; the headline read below is the primary (walls) book's.
+  // They disagree about a third of days, so the badge names which book it is and shows the other one beside it.
+  const dEx=e.dayExpiry&&Number.isFinite(e.dayExpiry.exposures?.gex)?e.dayExpiry:null;
+  const rOf=g=>g==null?null:g>0?'PIN':'BREAKOUT';
+  const tradedG=dEx?dEx.exposures.gex:gex;
+  const regime=tradedG==null?['neu','NO READ']:tradedG>0?['pin','PIN · dealers long gamma']:['brk','BREAKOUT · dealers short gamma'];
+  const regimeNote=dEx?`${Math.round(dEx.dte)} DTE day book (what the bot trades)${rOf(gex)!==rOf(tradedG)?` · <b style="color:var(--warn)">primary ${Number.isFinite(e.dte)?Math.round(e.dte)+' DTE ':''}book says ${rOf(gex)}</b>`:' · primary book agrees'}`:'single book';
+  const readBook=`headline = ${Number.isFinite(e.dte)?Math.round(e.dte)+' DTE ':''}primary book`;
+  const fb=e.fullBook, agree=(fb&&Number.isFinite(fb.gex)&&gex!=null)?((fb.gex>0)===(gex>0)):null;
+  // card 1 — price & key numbers
+  const c1=`<div class="v2c"><h3>Price &amp; range<small>saved ${age.txt} ago</small></h3><div class="bd">
+    <div class="v2px-big">${fx(S,SYM)}</div>
+    <div style="margin-top:6px"><span class="v2regime ${regime[0]}">${regime[1]}</span><div style="font-size:11.5px;color:var(--tx3);margin-top:5px">${regimeNote}</div></div>
+    <div class="v2kv">
+      <div><div class="k">Realistic range today</div><div class="v">${rm?lvl(S-rm)+' – '+lvl(S+rm):'—'}</div></div>
+      <div><div class="k">Reference move</div><div class="v">${rm?fx(rm,SYM)+' · ±'+(rm/S*100).toFixed(2)+'%':'—'}</div></div>
+      <div><div class="k">CME futures</div><div class="v">${fx(e.futures,SYM)}</div></div>
+      <div><div class="k">Basis</div><div class="v">${Number.isFinite(e.basis)?(e.basis>=0?'+':'')+(e.basis/pip(SYM)).toFixed(1)+'p':'—'}</div></div>
+      <div><div class="k">Walls expiry</div><div class="v">${esc(e.primaryExpiry?.code||'—')} · ${Number.isFinite(e.dte)?e.dte+' DTE':'—'}</div></div>
+      <div><div class="k">Book check</div><div class="v" style="color:${agree==null?'var(--tx3)':agree?'var(--ok)':'var(--warn)'}">${agree==null?'single expiry':agree?'full book agrees':'full book DISAGREES'}</div></div>
+    </div></div></div>`;
+  // card 2 — today's read: headline + one line per check, parsed from the existing read so the numbers cannot drift from classic
+  const t=document.createElement('div'); t.innerHTML=todaysRead(e);
+  const bodyEl=t.querySelector('.body');
+  const topHtml=[...(bodyEl?bodyEl.children:[])].filter(n=>!n.classList.contains('rd-more')).map(n=>n.outerHTML).join('');
+  const bullets=[...t.querySelectorAll('.rd')].map(n=>{
+    const dot=n.querySelector('.rdot'); const col=dot?dot.style.background:'var(--tx3)';
+    return `<div><i style="background:${col}"></i><div><span class="l">${n.querySelector('.rd-h')?.textContent||''}</span>${n.querySelector('.rd-v')?.innerHTML||''}</div></div>`;
+  }).join('');
+  const c2=`<div class="v2c"><h3>Today's read — ${esc(nm(SYM))}<small>${readBook}</small></h3><div class="bd"><div class="v2read">${topHtml}</div><div class="v2bul">${bullets}</div></div></div>`;
+  // card 3 — market state: the positioning table
+  const c3=`<div class="v2c"><h3>Market state<small>${readBook}</small></h3><div class="flowtab">${flowPanel(e)}</div></div>`;
+  return c1+c2+c3;
+}
+
+function render(){
+  const e=STORE[SYM]; renderRail();
+  document.getElementById('unitBtn').textContent='Showing: '+(SPOTADJ?'SPOT-ADJ':'FUTURES');
+  document.getElementById('sortBtn').textContent='Walls: '+(SORT==='strength'?'STRENGTH':'NEAREST');
+  if(!e){ document.getElementById('main').innerHTML='<div class="empty">No OI stored for this instrument.</div>'; document.getElementById('v2top').innerHTML=''; document.getElementById('v2lad').innerHTML=''; return; }
+  document.getElementById('sub').textContent =
+    nm(SYM)+' · '+(e.primaryExpiry?.code||'no expiry code')+' · '+(e.numRows||0)+' strikes · saved '+ageOf(e).txt+' ago';
+  // Dense layout: three summary cards, price chart beside the ladder, then the level strip and the detail panels.
+  document.getElementById('v2top').innerHTML = v2Cards(e);
+  document.getElementById('v2lad').innerHTML = panel('c12','ladder','Strike ladder — GEX · volume gamma · OI','ladder',chartLadder);
+  document.getElementById('v2walls').innerHTML = panel('','cw','Call walls — resistance','walls',x=>wallTable(x,'call'),true)
+    + panel('','pw','Put walls — support','walls',x=>wallTable(x,'put'),true);
+  document.getElementById('main').innerHTML = '<div id="statHead">'+levelStrip(e)+diagBar(e)
+    + '<details class="v2more"><summary>Price &amp; basis provenance</summary>'+priceBar(e)+'</details></div><div class="grid">'
+    + panel('c4','vol','Volume magnets','volmag',volumePanel,true)
+    + panel('c4','smile','IV smile','smile',chartSmile)
+    + panel('c4','term','ATM IV term structure','term',chartTerm)
+    + panel('c4','perexp','Per-expiry structure','perexp',termTable,true)
+    + panel('c4','fullbook','Full-book GEX — all expiries','fullbook',fullBookPanel,true)
+    + '<div class="p c12"><h3><span class="grow">Reachability — will price get there?'
+      + h('reach') + '</span>'
+      + '<button class="zoom" onclick="openZoom(\'reach\')">&#10530; Enlarge</button></h3>'
+      + '<div class="body" id="reachBody">' + reachPanel(e,false) + '</div></div>'
+    + '</div>';
+  document.getElementById('ctlHost').innerHTML = chartToolbar();
+  wireChartToolbar();
+  mountChart();
+}
+
+document.getElementById('unitBtn').onclick=()=>{SPOTADJ=!SPOTADJ;render();};
+document.getElementById('sortBtn').onclick=()=>{SORT=(SORT==='strength')?'proximity':'strength';render();};
+document.getElementById('reload').onclick=()=>boot();
+// Re-derive every stored pair's levels from the OI already in KV (adds day-expiry / latest
+// compute) via the headless re-analyse endpoint — no re-paste.
+//
+// TWO BUTTONS, BECAUSE THEY DO DIFFERENT THINGS and one of them looks like it should do
+// both. "Re-analyse" is PINNED to the saved futures/spot, so it enriches the entry and the
+// level prices come back identical — deliberate, because the OI chain really is yesterday's
+// and a re-analyse should not make stale data look fresh. But the BASIS is a separate
+// question from the CHAIN: every level is `strike − basis`, and the basis drifts intraday
+// (EUR/USD measured +0.00021 at 08:39, +0.00066 by mid-afternoon — 4.5 pips on every line).
+// So "Re-basis" re-fetches the live futures+spot pair and rebuilds off the current one.
+// Both write oi_store and re-plan the OI bot's zones; only the second moves the prices.
+async function _oiRerun(btnId, live) {
+  const b = document.getElementById(btnId); const was = b.textContent;
+  b.disabled = true; b.textContent = live ? 're-basing…' : 're-analysing…';
+  try {
+    const r = await fetch('/api/oi/reanalyse' + (live ? '?live=1' : ''), { method: 'POST' });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'failed');
+    const withDay = (j.reanalysed || []).filter(x => x.dayExpiry != null).length;
+    b.textContent = live ? `✓ ${j.count} pairs re-based` : `✓ ${j.count} pairs · ${withDay} with day levels`;
+    await boot();
+    setTimeout(() => { b.textContent = was; b.disabled = false; }, 3500);
+  } catch (err) {
+    b.textContent = 'failed: ' + err.message; b.disabled = false;
+    setTimeout(() => { b.textContent = was; }, 4000);
+  }
+}
+document.getElementById('reanBtn').onclick = () => _oiRerun('reanBtn', false);
+document.getElementById('rebasisBtn').onclick = () => _oiRerun('rebasisBtn', true);
+document.getElementById('zoom').addEventListener('click',ev=>{ if(ev.target.id==='zoom') closeZoom(); });
+document.addEventListener('keydown',ev=>{ if(ev.key==='Escape') closeZoom(); });
+
+// The same C+Z / OI paste block the vol-forecast page produces, reachable from here so
+// the TradingView lines can be grabbed without leaving the analysis.
+document.getElementById('expBtn').onclick=async()=>{
+  const b=document.getElementById('expBtn'); const was=b.textContent; b.textContent='fetching + P(touch)…';
+  try{
+    // '?reach=1' opts this export into the live calibrated P(touch) per level (one OANDA M5
+    // fetch + Monte-Carlo per pair). It is slower than the plain zones pull, so it lives on
+    // this OI-focused button rather than the vol-forecast pages, which stay fast.
+    const fut=document.getElementById('futTerms')?.checked ? '&terms=futures' : '';
+    const allE=document.getElementById('allExp')?.checked ? '&allExpiry=1' : '';
+    const tdy=document.getElementById('todayOnly')?.checked ? '&mode=today' : '';
+    const cbo=document.getElementById('cboeSrc')?.checked ? '&src=cboe' : '';
+    const r=await fetch('/api/vol-forecast/zones?reach=1'+fut+allE+tdy+cbo,{cache:'no-store'});
+    const txt=await r.text();
+    document.getElementById('zoomTitle').textContent='C+Z / OI export — paste into the TradingView indicator';
+    document.getElementById('zoomBody').innerHTML='<button class="btn" id="cpBtn" style="margin-bottom:12px">Copy to clipboard</button>'
+      + '<textarea readonly style="width:100%;height:60vh;background:#05070a;color:var(--tx);border:1px solid var(--line2);'
+      + 'border-radius:6px;padding:14px;font:13px/1.55 var(--mono)">'+esc(txt)+'</textarea>';
+    document.getElementById('zoom').classList.add('open');
+    document.getElementById('cpBtn').onclick=()=>{
+      try{ navigator.clipboard.writeText(txt); document.getElementById('cpBtn').textContent='Copied ✓'; }
+      catch(_){ document.getElementById('cpBtn').textContent='Select the text and copy manually'; }
+    };
+  }catch(err){ alert('Export failed: '+err.message); }
+  b.textContent=was;
+};
+
+async function boot(){
+  document.getElementById('sub').textContent='loading…';
+  try{
+    await load();
+    const keys=Object.keys(STORE);
+    if(!keys.length){ document.getElementById('sub').textContent='no OI data in KV'; return; }
+    if(!SYM||!STORE[SYM]) SYM=keys.includes('XAU/USD')?'XAU/USD':keys[0];
+    render();
+  }catch(err){ document.getElementById('sub').textContent='load failed: '+err.message; }
+}
+boot();
+
+// ── OI-store live refresh (2026-09-21) ────────────────────────────────────────
+// The candles already poll (_TF_POLL above); the OI LEVELS drawn over them — walls, max
+// pain, gamma/GEX flip, basis, the CFD spot/CME futures numbers — did not, so this page
+// could sit showing whatever was here at last Reload while the live basis moved on
+// underneath it (server.js's _refreshOIBasis recomputes that every 5 min now). Someone
+// watching this chart to see what the bot is about to trade is as real a consumer of
+// that freshness as the bot itself.
+//
+// Deliberately NOT a call to render(): render() tears down and rebuilds the whole
+// 12-panel grid and re-fits the chart's zoom every time, which would yank the view out
+// from under anyone actually looking at it. Only the stat header (#statHead) and the
+// chart's own price-line/band overlays are refreshed — same scope tradeoff the chart's
+// own candle poll already makes (mountChart('poll') skips fitContent for the same
+// reason). The OI-by-strike/GEX/wall-table panels stay as of the last manual Reload.
+let _storePollTimer=null;
+async function pollOIStore(){
+  clearTimeout(_storePollTimer);
+  if(!document.hidden){
+    try{
+      await load();
+      const e=STORE[SYM], head=document.getElementById('statHead');
+      if(head && e) head.innerHTML = priceBar(e)+diagBar(e)+levelStrip(e)+todaysRead(e);
+      drawLines(); drawCone(); drawBands();
+    }catch(_){ /* leave the last good read on screen */ }
+  }
+  _storePollTimer=setTimeout(pollOIStore, 75_000);
+}
+_storePollTimer=setTimeout(pollOIStore, 75_000);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) pollOIStore(); });
+
+// ── OI-bot hold-score calibration banner ─────────────────────────────────────
+// The hold-score's component weights (per-strike GEX · OI flow · persistence ·
+// wall multiple) start as theory priors and can ONLY be calibrated by the forward
+// test (no historical OI exists). This strip keeps that impossible to forget:
+// collecting → progress + what happens at the threshold and why; active → the
+// fitted weights are already auto-applied to the bot's plan producer.
+(async function(){
+  const el = document.getElementById('calibBanner'); if(!el) return;
+  try{
+    const r = await fetch('/api/oi-bot/hold-calibration');
+    const j = await r.json();
+    if(!j || !j.status) return;
+    const active = j.status === 'active';
+    el.style.display = 'block';
+    el.style.background = active ? 'rgba(38,166,154,.10)' : 'rgba(244,196,48,.08)';
+    el.style.border = `1px solid ${active ? 'rgba(38,166,154,.35)' : 'rgba(244,196,48,.30)'}`;
+    const n = j.n || 0, need = j.needed || 30, pct = Math.min(100, Math.round(n / need * 100));
+    const bar = `<span style="display:inline-block;vertical-align:middle;width:110px;height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin:0 8px;overflow:hidden"><span style="display:block;height:100%;width:${pct}%;background:${active?'#26a69a':'#f4c430'}"></span></span>`;
+    el.innerHTML = active
+      ? `<b style="color:#26a69a">🧪 OI-bot hold-score calibration ACTIVE (${n} trades)</b><br>${j.explain || ''}`
+      : `<b style="color:#f4c430">🧪 OI-bot hold-score calibration: collecting ${n}/${need}</b>${bar}<br>${j.explain || ''}`;
+  }catch(e){ /* banner is best-effort */ }
+})();
+
+</script>
+</body>
+</html>
