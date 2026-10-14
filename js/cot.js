@@ -34,9 +34,28 @@ function extremesToCotData(instruments) {
       levShort,
       levNetChg:   inst.weeklyChg   ?? null,
       levPct:      oi > 0 ? +(sn / oi * 100).toFixed(1) : null,
-      amNet:       inst.commNet     ?? null,
+      // ASSET MANAGERS, ACTUALLY. This read `inst.commNet`, which is asset managers
+      // PLUS dealers added together -- so the COT card's "Asset Managers" row, the gold
+      // panel and the AI prompt were all shown a combined number under the asset-manager
+      // label, with "Dealers" permanently blank beside it. The two categories routinely
+      // sit on OPPOSITE sides (AUD on 2026-10-06: asset managers -101,428, dealers
+      // +28,965, which nets to -72,463 and describes neither of them), so the combined
+      // figure was not a worse version of asset managers, it was a different quantity.
+      //
+      // The worker now emits the true split. TFF instruments take it; the disaggregated
+      // ones (metals, energy) have no asset-manager category at all -- their commercial
+      // side is producers and merchants -- so they keep the old field and the old
+      // behaviour rather than being silently relabelled here. `commNet` is carried
+      // through so that mislabelling can be fixed on its own terms later.
+      amNet:       (inst.group === 'metals' || inst.group === 'energy')
+                     ? (inst.commNet ?? null) : (inst.amNet ?? inst.commNet ?? null),
       amNetChg:    null,
-      dealerNet:   null,
+      dealerNet:   inst.dlNet ?? null,
+      commNet:     inst.commNet ?? null,
+      amShare:     inst.amShare     ?? null,
+      amSharePct:  inst.amSharePct  ?? null,
+      // how far the fast money and the real money moved APART over four weeks
+      splitChg4w:  inst.splitChg4w  ?? null,
       grossRatio:  gr,
       openInterest: oi,
       crowdingPct: oi > 0 ? +(Math.abs(sn) / oi * 100).toFixed(1) : 0,
@@ -204,11 +223,11 @@ export function renderCOTCard(sym) {
 
   <div class="cot-cat-row">
     <span class="cot-cat-lbl">${amLabel}</span>
-    <span class="cot-cat-net ${d.amNet > 0 ? 'long' : 'short'}">${fmtChg(d.amNet)} <span style="font-size:10px;color:var(--text3)">(${fmtChg(d.amNetChg)} wk)</span></span>
+    <span class="cot-cat-net ${d.amNet > 0 ? 'long' : 'short'}">${fmtChg(d.amNet)}${d.amNetChg != null ? ` <span style="font-size:10px;color:var(--text3)">(${fmtChg(d.amNetChg)} wk)</span>` : ''}</span>
   </div>
   <div class="cot-cat-row">
     <span class="cot-cat-lbl">${dealerLabel}</span>
-    <span class="cot-cat-net ${d.dealerNet > 0 ? 'long' : 'short'}">${fmtChg(d.dealerNet)} <span style="font-size:10px;color:var(--text3)">(${fmtChg(d.dealerNetChg)} wk)</span></span>
+    <span class="cot-cat-net ${d.dealerNet > 0 ? 'long' : 'short'}">${fmtChg(d.dealerNet)}${d.dealerNetChg != null ? ` <span style="font-size:10px;color:var(--text3)">(${fmtChg(d.dealerNetChg)} wk)</span>` : ''}</span>
   </div>
 
   ${crowded ? `<div class="cot-crowding">⚠ Spec positioning at ${d.crowdingPct}% of OI — watch for crowded-trade unwind risk</div>` : ''}
@@ -281,6 +300,13 @@ export function cotSnapshotForAI(sym) {
     grossRatio:   d.grossRatio,
     crowdingPct:  d.crowdingPct,
     openInterest: d.openInterest,
+    // The participant split, so the brief can say WHICH side is stretched instead of
+    // "speculators". Each leg is ranked on its own history. The ledger entry
+    // `cot-positioning-factor` travels with every prompt and says what this does not
+    // support: it is a read on who has to act, never on which way price goes.
+    specSharePct: d.specSharePct,
+    amSharePct:   d.amSharePct,
+    splitChg4w:   d.splitChg4w,
   };
 }
 
