@@ -248,6 +248,11 @@ const _CF_EXACT = new Set([
   'oi_bot_config',              // OI bot settings (universe, regime toggles, FX opt-in) — must survive redeploys
   'oi_bot_credentials',         // OI bot MT5 credentials — must survive redeploys
   'oi_bot_zones',               // OI bot daily zone plan (per-instrument regime-switch trades) — keep last good plan across a redeploy; the worker's /api/kv/get serves it to the executor
+  'cboe_snap_v1',               // Cboe-vs-CME daily level snapshots (incl. the kept pre-open row): a forward record for the
+                                // Cboe placebo test — not re-derivable (Cboe serves no history). Must also be in _worker.js PERMANENT_KEYS.
+  'oi_shadow_v1',               // CME-vs-Cboe OI plan shadow books (paper trades, forward only — never backfilled); losing it
+                                // restarts the comparison. Must also be in _worker.js PERMANENT_KEYS.
+  // (oi_bot_zones_cboe stays local: the shadow job rebuilds it every 10 min.)
   'oi_bot_trade_log',           // OI resolved closed-trade log (deduped, capped) — give-back/MFE history; same durability need as range_line_trade_log
   'oi_hold_calibration',        // OI hold-score calibration (collecting/active + fitted weights) — derived from oi_bot_trade_log but persisted so the plan producer/banner never see a blank right after a redeploy
   'oi_bot_state',               // OI bot one-shot state (entered zones + features per plan) — survives BOT restarts via KV; keep across redeploys so a same-day server bounce can't double-enter

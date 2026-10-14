@@ -1076,6 +1076,9 @@ export default {
             'daily_read_v1',
             'surface_lab_v1',
             'desk_watch_v1',
+            // Cboe-vs-CME forward records (kv.js _CF_EXACT): the daily snapshots and the
+            // shadow paper-trade books. Neither can be rebuilt once the day has passed.
+            'cboe_snap_v1', 'oi_shadow_v1',
             // oi_auto_target decides whether the nightly sweep feeds the live bots. If it
             // expired it would silently revert to the shadow default, and a fortnight of
             // intended-live captures would land nowhere the bots read.
