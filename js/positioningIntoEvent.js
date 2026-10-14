@@ -129,6 +129,25 @@ export const ordinal = n => {
 const sideOf = share => (share == null ? null : share > 0 ? 'long' : share < 0 ? 'short' : 'flat');
 
 /**
+ * Is this leg crowded, trimmed, or neither?
+ *
+ * A percentile on its own cannot tell the difference. Net LONG at the 10th percentile and
+ * net SHORT at the 10th percentile are both "low", and they mean opposite things: the
+ * first is the smallest long in three years, the second is a crowded short. The sign says
+ * which side the position is on; the percentile says how far that is from normal; only
+ * together do they say whether there is anything to unwind.
+ */
+export function extremeOf(leg = {}, hi = 80, lo = 20) {
+  const { share, pct } = leg;
+  if (share == null || pct == null) return { crowded: null, trimmed: null };
+  if (share > 0 && pct >= hi) return { crowded: 'long', trimmed: null };
+  if (share < 0 && pct <= lo) return { crowded: 'short', trimmed: null };
+  if (share > 0 && pct <= lo) return { crowded: null, trimmed: 'long' };
+  if (share < 0 && pct >= hi) return { crowded: null, trimmed: 'short' };
+  return { crowded: null, trimmed: null };
+}
+
+/**
  * One currency's book: who holds what, how far from normal, and what is scheduled.
  *
  * `cot` is one row of /api/cot-extremes (it needs the participant split -- amShare and
@@ -144,10 +163,17 @@ export function bookFor(cot, events = [], { nowMs = Date.now(), horizonH = 96 } 
   // CROWDED is about the fast money, because they are the ones who unwind in a hurry.
   // Ranked on share of open interest, not raw contracts: 50,000 net long means different
   // things in a big book and a small one, and open interest itself moves a lot.
-  const crowded = fast.pct == null ? null
-    : fast.pct >= CROWD_HI ? 'long' : fast.pct <= CROWD_LO ? 'short' : null;
-  const stretched = real.pct == null ? null
-    : real.pct >= STRETCH_HI ? 'long' : real.pct <= STRETCH_LO ? 'short' : null;
+  //
+  // THE SIGN AND THE PERCENTILE MUST AGREE. Reading the percentile alone called GBP a
+  // "crowded short" on 2026-10-14 while leveraged funds were net LONG +12,432 — long, but
+  // the least long in three years. That is not a crowded short and not a crowded long: it
+  // is a position that has been TRIMMED, and it means the opposite thing. There is very
+  // little left to unwind, where a crowded book has a great deal. Both readings are kept,
+  // and they are never conflated.
+  const fastX = extremeOf(fast, CROWD_HI, CROWD_LO);
+  const realX = extremeOf(real, STRETCH_HI, STRETCH_LO);
+  const crowded = fastX.crowded, trimmed = fastX.trimmed;
+  const stretched = realX.crowded, realTrimmed = realX.trimmed;
   const split = cot.splitChg4w ?? null;
   const diverging = split != null && Math.abs(split) >= SPLIT_PP;
 
@@ -162,9 +188,9 @@ export function bookFor(cot, events = [], { nowMs = Date.now(), horizonH = 96 } 
     // null for USD on purpose: a US release is not one pair's event, it lands on all of
     // them, and naming EURUSD here would quietly suggest otherwise.
     instrument: ccy === 'USD' ? null : HEADLINE_INSTRUMENT[CCY_COUNTRY[ccy]] ?? null,
-    fast, real, dealer, split, diverging, crowded, stretched,
+    fast, real, dealer, split, diverging, crowded, stretched, trimmed, realTrimmed,
     events: due,
-    exposure: exposureLine({ ccy, fast, real, crowded, stretched, split, diverging, next: due[0] ?? null }),
+    exposure: exposureLine({ ccy, fast, real, crowded, trimmed, stretched, realTrimmed, split, diverging, next: due[0] ?? null }),
   };
 }
 
@@ -176,15 +202,25 @@ export function bookFor(cot, events = [], { nowMs = Date.now(), horizonH = 96 } 
  * starts saying which way price goes it is contradicting `cot-positioning-factor`, so it
  * never does, and `verdictLine()` below ships alongside it to say so out loud.
  */
-export function exposureLine({ ccy, fast, real, crowded, stretched, split, diverging, next } = {}) {
-  if (!crowded && !stretched && !diverging) return null;
+export function exposureLine({ ccy, fast, real, crowded, trimmed, stretched, realTrimmed, split, diverging, next } = {}) {
+  if (!crowded && !trimmed && !stretched && !realTrimmed && !diverging) return null;
   const bits = [];
+  if (trimmed) {
+    // The opposite of crowded, and worth saying out loud: the position has already been
+    // cut, so there is little left to be forced out of.
+    bits.push(`Leveraged funds hold their smallest ${trimmed.toUpperCase()} in three years`
+      + (fast && fast.pct != null ? ` (${ordinal(fast.pct)} percentile)` : '')
+      + ` — the crowd has already left this one, so there is little left to unwind`);
+  }
   if (crowded) {
     const pct = fast && fast.pct != null ? ` (${ordinal(fast.pct)} percentile of their own three years)` : '';
     const what = crowded === 'long'
       ? `a disappointing ${ccy} number leaves them holding the position that has to be sold`
       : `a strong ${ccy} number leaves them holding the position that has to be bought back`;
     bits.push(`Leveraged funds are crowded ${crowded.toUpperCase()}${pct} — ${what}`);
+  }
+  if (realTrimmed && real && real.pct != null) {
+    bits.push(`asset managers hold their smallest ${realTrimmed.toUpperCase()} in three years (${ordinal(real.pct)} percentile)`);
   }
   if (stretched && real && real.side) {
     // "sits LONG at the bottom of its own range" is true (long, but less long than usual)

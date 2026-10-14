@@ -1031,6 +1031,38 @@
   .mood-line{display:flex;align-items:baseline;gap:6px;font-size:12.5px;font-weight:700;justify-content:center;margin-top:8px;flex-wrap:wrap}
   .mood-line .mood-detail{font-size:10px;font-weight:600;color:var(--text3);white-space:normal;text-align:center;flex-basis:100%}
   /* Today's Calendar — moved off the main column's #gate chip strip. */
+  /* ── positioning into the releases ──────────────────────────────────────── */
+  .pie-lead{font-size:11px;color:var(--text3);line-height:1.5;margin-bottom:7px}
+  .pie-row{border-top:1px solid var(--border);padding:7px 0 8px}
+  .pie-row:first-of-type{border-top:0}
+  .pie-row.crowded{border-left:2px solid var(--amber);padding-left:8px;margin-left:-2px}
+  .pie-h{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;font-size:12.5px;margin-bottom:4px}
+  .pie-h b{font-size:13px;letter-spacing:.02em}
+  .pie-all{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--blue)}
+  .pie-flag{font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--amber);
+            border:1px solid var(--amber);border-radius:999px;padding:0 6px}
+  /* trimmed is the OPPOSITE of crowded, so it must not borrow the crowded colour */
+  .pie-flag.trimmed{color:var(--text3);border-color:var(--border2);cursor:help}
+  .pie-leg{display:grid;grid-template-columns:86px minmax(0,1fr) auto auto;gap:7px;align-items:baseline;
+           font-size:11px;padding:1.5px 0;font-variant-numeric:tabular-nums}
+  .pie-who{color:var(--text3);font-size:10.5px}
+  .pie-leg b.up{color:var(--bull)} .pie-leg b.dn{color:var(--red)}
+  .pie-pct{font-size:9.5px;font-weight:800;color:var(--text3);border:1px solid var(--border2);
+           border-radius:4px;padding:0 4px;min-width:30px;text-align:center}
+  .pie-pct.hot{color:var(--amber);border-color:var(--amber)}
+  .pie-split{font-size:10.5px;color:var(--text3);margin:3px 0 4px;cursor:help}
+  .pie-split b{color:var(--text2);font-variant-numeric:tabular-nums}
+  .pie-ev{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;font-size:11px;padding:2px 0 2px 8px;
+          border-left:2px solid var(--border)}
+  .pie-t{color:var(--text3);font-size:10px;min-width:62px;font-variant-numeric:tabular-nums}
+  .pie-name{font-weight:600}
+  .pie-tilt{font-size:9.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+  .pie-tilt.up{color:var(--bull)} .pie-tilt.dn{color:var(--red)} .pie-tilt.hold{color:var(--text3)}
+  .pie-none{font-size:10.5px;padding-left:8px}
+  .pie-exp{font-size:11px;line-height:1.55;color:var(--text2);margin-top:5px;padding:5px 8px;
+           background:var(--bg3);border-radius:6px}
+  .pie-verdict{font-size:10.5px;line-height:1.5;color:var(--text3);margin-top:9px;padding-top:7px;
+               border-top:1px dashed var(--border2);cursor:help}
   .cal-row{display:flex;align-items:baseline;gap:8px;font-size:11.5px;padding:5px 0;border-bottom:1px solid var(--border)}
   .cal-row:last-child{border-bottom:none}
   .cal-row.past{opacity:.5}
@@ -2840,6 +2872,69 @@ function renderGate() {
       ${callButtonsHtml(e)}${cd}
     </div>`;
   }).join('') + (medCount ? `<div class="muted" style="padding-top:4px">+${medCount} medium-impact</div>` : '') + scorecardsHtml();
+}
+
+/**
+ * Positioning into the releases — who is holding what, and which number tests them.
+ *
+ * The COT book and the calendar are both already on the page and have never been put
+ * next to each other. Apart, one is a table of net positions and the other a list of
+ * times. Together they answer the question that actually matters on a release morning:
+ * when this prints, who is holding the position that has to move?
+ *
+ * It does NOT say which way. `cot-positioning-factor` pre-registered that question and
+ * failed (rank-IC -0.03 at p=0.09 over 3,576 rows; the AUD leg was +0.004), and
+ * `crowded-bond-short-fomc` found crowded shorts into a scheduled event got PAID rather
+ * than squeezed over 84 meetings. The caveat is printed in the panel, not buried here,
+ * because this is exactly the panel a reader would otherwise turn into a lean.
+ *
+ * Costs nothing extra: loadGate already fetches both feeds.
+ */
+function renderPositioningIntoEvent() {
+  const el = $('posIntoEvent'); if (!el) return;
+  const B = window.posEventBrick;
+  if (!B) { el.innerHTML = '<div class="muted">Loading…</div>'; return; }
+  if (!cot || !events) { el.innerHTML = '<div class="muted">Waiting for the COT book and the calendar.</div>'; return; }
+
+  // events carry `time` as "YYYY-MM-DD HH:MM:SS" UTC; the engine wants epoch ms.
+  const evs = (events ?? []).map(e => ({
+    ...e, ms: e.ms ?? (e.time ? new Date(e.time.replace(' ', 'T') + 'Z').getTime() : null),
+  })).filter(e => e.ms != null);
+  const board = B.positioningBoard(Object.values(cot), evs, { nowMs: Date.now(), horizonH: 96 });
+
+  const hh = ms => new Date(ms).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  const pctChip = (pct, side) => pct == null ? '' :
+    `<span class="pie-pct ${pct >= 80 || pct <= 20 ? 'hot' : ''}">${esc0(B.ordinal(pct))}</span>`;
+  const legRow = (name, leg, help) => `<div class="pie-leg" title="${esc0(help)}">
+      <span class="pie-who">${esc0(name)}</span>
+      <b class="${leg.side === 'long' ? 'up' : leg.side === 'short' ? 'dn' : ''}">${leg.net == null ? '–' : (leg.net > 0 ? '+' : '') + leg.net.toLocaleString()}</b>
+      <span class="muted">${leg.share == null ? '' : (leg.share > 0 ? '+' : '') + leg.share.toFixed(1) + '% of OI'}</span>
+      ${pctChip(leg.pct, leg.side)}</div>`;
+  const evRow = e => `<div class="pie-ev">
+      <span class="pie-t">${esc0(hh(e.ms))}</span>
+      <span class="pie-name">${esc0(e.event.length > 30 ? e.event.slice(0, 29) + '…' : e.event)}</span>
+      ${e.estimate != null ? `<span class="muted">${esc0(e.estimate)} vs ${esc0(e.prev ?? '–')}</span>` : '<span class="muted">no consensus</span>'}
+      ${e.tilt ? `<span class="pie-tilt ${e.tilt}">${e.tilt === 'up' ? 'stronger expected' : e.tilt === 'dn' ? 'softer expected' : 'no change expected'}</span>` : ''}
+    </div>`;
+  const card = (r, isUsd) => `<div class="pie-row ${r.crowded ? 'crowded' : ''}">
+      <div class="pie-h"><b>${esc0(r.ccy)}</b>${r.instrument ? ` <span class="muted">${esc0(r.instrument)}</span>` : ''}
+        ${isUsd ? '<span class="pie-all">lands on every pair</span>' : ''}
+        ${r.crowded ? `<span class="pie-flag">fast money crowded ${esc0(r.crowded)}</span>` : ''}
+        ${r.trimmed ? `<span class="pie-flag trimmed" title="Net ${esc0(r.trimmed)}, but the smallest in three years — the opposite of crowded. There is little left to be forced out of.">smallest ${esc0(r.trimmed)} in 3yr</span>` : ''}</div>
+      ${legRow('Leveraged funds', r.fast, 'The fast, discretionary side — the ones who unwind in a hurry. Ranked as a share of open interest against their own three years.')}
+      ${legRow('Asset managers', r.real, 'Real money, mostly hedging, and structurally short most FX futures. Ranked on its own history, which is the only way an extreme here shows up as one.')}
+      ${r.split != null ? `<div class="pie-split" title="How far the fast money and the real money moved APART over four weeks. A single collapsed &quot;speculators&quot; column can never show this.">sides ${r.split > 0 ? 'apart' : 'together'} <b>${r.split > 0 ? '+' : ''}${r.split.toFixed(1)}pp</b> in 4w</div>` : ''}
+      ${r.events.length ? r.events.map(evRow).join('') : '<div class="muted pie-none">Nothing high-impact scheduled in the next four days.</div>'}
+      ${r.exposure ? `<div class="pie-exp">${esc0(r.exposure)}</div>` : ''}
+    </div>`;
+
+  const shown = board.rows.filter(r => r.crowded || r.trimmed || r.events.length || r.diverging).slice(0, 4);
+  el.innerHTML =
+    `<div class="pie-lead">Who holds what, and which number is about to test them.</div>`
+    + (board.usd ? card(board.usd, true) : '')
+    + (shown.length ? shown.map(r => card(r, false)).join('')
+       : '<div class="muted">No book is crowded and nothing high-impact is scheduled.</div>')
+    + `<div class="pie-verdict" title="${esc0(B.EVIDENCE_IDS.join(' · '))}">${esc0(board.verdict)}</div>`;
 }
 
 // ══ Daily-check zoom levels ══════════════════════════════════════════════════
@@ -8946,6 +9041,8 @@ function renderSidebar() {
 
     <div class="side-card"><h3>Today's Calendar</h3><div id="calList"><div class="muted">Loading…</div></div><div id="calWatch"></div></div>
 
+    <div class="side-card"><h3>Positioning into the releases</h3><div id="posIntoEvent"><div class="muted">Loading…</div></div></div>
+
     <div class="side-card"><h3>Risk State</h3><div id="riskList"><div class="muted">Loading…</div></div></div>
 
     <div class="side-card"><h3>Volatility Outlook</h3>${lsVolTermLine()}
@@ -9847,6 +9944,7 @@ function render() {
   renderSidebar();
   renderMacroMoved();
   renderGate();
+  try { renderPositioningIntoEvent(); } catch (e) { const t = $('posIntoEvent'); if (t) t.innerHTML = '<div class="muted">Positioning panel unavailable.</div>'; }
   renderRiskFlags();
   renderSinceYesterday();
   renderWeekly();
@@ -13377,6 +13475,15 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
 <script type="module">
   import * as DeskEvidence from './js/deskEvidence.js';
   window.deskEvidenceBrick = DeskEvidence;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- Positioning into the releases (js/positioningIntoEvent.js): the COT book joined to
+     the calendar. Pure; both feeds are already fetched by loadGate, so this costs no
+     extra request. It states who is exposed and REFUSES to state a direction, because
+     the registered test of that failed (cot-positioning-factor). -->
+<script type="module">
+  import * as PosEvent from './js/positioningIntoEvent.js';
+  window.posEventBrick = PosEvent;
   try { window.render?.(); } catch (e) {}
 </script>
 <!-- The end-of-day read (js/endOfDay.js): the morning snapshot scored against the

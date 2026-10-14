@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   newsKind, parseFigure, consensusTilt, bookFor, positioningBoard,
-  exposureLine, verdictLine, INVERTED_KINDS, ordinal,
+  exposureLine, verdictLine, INVERTED_KINDS, ordinal, extremeOf,
 } from './positioningIntoEvent.js';
 
 // The real AUD book, 2026-10-06 report, and the real calendar rows for that week. Using
@@ -173,18 +173,47 @@ test('percentiles get real ordinals', () => {
   assert.ok(!/\d+th percentile of their own three years\)[\s\S]*61th/.test(b.exposure));
 });
 
-test('a real-money leg long at a LOW percentile does not read as a contradiction', () => {
+test('a real-money leg long at a LOW percentile reads as TRIMMED, not stretched', () => {
   // EUR on 2026-10-06: asset managers net LONG (+21.8% of OI) but at the 0th percentile
-  // of their own range. "Sits LONG at the bottom of its range" is true and unreadable.
+  // of their own range. That is the smallest long in three years -- not a stretched one.
   const EUR = { sym: 'EUR', group: 'fx', specNet: -44261, specShare: -5.1, specSharePct: 12,
                 amNet: 189881, amShare: 21.8, amSharePct: 0, splitChg4w: 3.2 };
   const b = bookFor(EUR, [], { nowMs: NOW });
   assert.equal(b.real.side, 'long');
-  assert.equal(b.stretched, 'short');
-  assert.match(b.exposure, /net LONG at the 0th percentile/);
+  assert.equal(b.stretched, null, 'long at the 0th percentile is not a stretched long');
+  assert.equal(b.realTrimmed, 'long');
+  assert.match(b.exposure, /asset managers hold their smallest LONG in three years \(0th percentile\)/);
   assert.ok(!/LONG at the bottom/.test(b.exposure), 'the contradictory phrasing must be gone');
-  // fast money short, real money long -> genuinely opposed, so say so
-  assert.match(b.exposure, /opposite side of the fast money/);
+  // the fast money IS genuinely crowded short here: net short AND at a low percentile
+  assert.equal(b.crowded, 'short');
+});
+
+test('the sign and the percentile must AGREE before anything is called crowded', () => {
+  // Found live: GBP on 2026-10-14 was called a "crowded short" while leveraged funds were
+  // net LONG +12,432 -- long, but the least long in three years. Opposite meaning: a
+  // trimmed book has little left to unwind, a crowded one has a great deal.
+  const GBP = { sym: 'GBP', group: 'fx', specNet: 12432, specShare: 4.7, specSharePct: 10,
+                amNet: -145442, amShare: -54.7, amSharePct: 0, splitChg4w: 15.3 };
+  const b = bookFor(GBP, [], { nowMs: NOW });
+  assert.equal(b.fast.side, 'long');
+  assert.equal(b.crowded, null, 'net LONG can never be called a crowded SHORT');
+  assert.equal(b.trimmed, 'long');
+  assert.match(b.exposure, /smallest LONG in three years/);
+  assert.match(b.exposure, /little left to unwind/);
+  assert.ok(!/crowded SHORT/.test(b.exposure));
+  assert.ok(!/has to be bought back/.test(b.exposure), 'there is no crowded short to buy back');
+  // the asset-manager leg here IS a genuine extreme: net short at the 0th percentile
+  assert.equal(b.stretched, 'short');
+});
+
+test('extremeOf covers all four corners of sign x percentile', () => {
+  assert.deepEqual(extremeOf({ share: 16.5, pct: 84 }), { crowded: 'long', trimmed: null });
+  assert.deepEqual(extremeOf({ share: -5.1, pct: 12 }), { crowded: 'short', trimmed: null });
+  assert.deepEqual(extremeOf({ share: 4.7, pct: 10 }), { crowded: null, trimmed: 'long' });
+  assert.deepEqual(extremeOf({ share: -54.7, pct: 92 }), { crowded: null, trimmed: 'short' });
+  assert.deepEqual(extremeOf({ share: 2, pct: 50 }), { crowded: null, trimmed: null });
+  assert.deepEqual(extremeOf({ share: null, pct: 84 }), { crowded: null, trimmed: null });
+  assert.deepEqual(extremeOf({ share: 16.5, pct: null }), { crowded: null, trimmed: null });
 });
 
 test("the USD row names no pair, because a US release is not one pair's event", () => {
