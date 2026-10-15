@@ -1328,6 +1328,109 @@
 <!-- ── Command Hub ────────────────────────────────────────────────────────── -->
 <div id="commandHub"></div>
 <script src="js/commandHub.js"></script>
+<!-- Model picker. One control for the SIX paid jobs this page actually calls, because
+     that is the question being asked here ("what is writing my brief?"), not the
+     nine-row routing table on bot-config.html, which stays for finer control.
+
+     Two things it is careful about, both of which a plain dropdown would get wrong:
+
+     1. It is a SERVER setting, not a browser one. Routing lives in KV so the bots and
+        every other page follow it too, and so it survives a deploy. The tooltip says so
+        rather than letting the control imply it is per-tab.
+     2. It reports MIXED honestly. If the six jobs are not all on one provider -- which
+        is the normal state once you have moved the cheap ones -- a dropdown showing a
+        single name would be a lie, so it shows "Mixed" and the table on bot-config.html
+        is where you see which is which.
+
+     The amber dot is the one that matters: three of these six hand the model ~34k tokens
+     of tested findings and ask it to respect every one, and that is where a cheaper model
+     fails silently. Moving those off Anthropic flags it and points at the A/B check. -->
+<script>
+(function () {
+  // the jobs THIS page calls, in the order they appear on it
+  const TODAY_TASKS = ['brief', 'chain', 'eod-review', 'pair', 'currency', 'explain'];
+  const $ = id => document.getElementById(id);
+  let CFG = null;
+
+  async function load() {
+    try {
+      const d = await fetch('/api/ai-config').then(r => r.json());
+      if (!d || !d.ok) return;
+      CFG = d;
+      render();
+      $('hdrModel').style.display = '';
+    } catch { /* the page works without it; stay hidden rather than show a broken control */ }
+  }
+
+  function render() {
+    const sel = $('aiModelSel');
+    const mine = CFG.tasks.filter(t => TODAY_TASKS.includes(t.id));
+    const providers = CFG.providers.filter(p => p.configured);
+    const used = [...new Set(mine.map(t => t.provider))];
+    const mixed = used.length > 1;
+
+    sel.innerHTML =
+      (mixed ? '<option value="" selected>Mixed \u2014 see AI Models tab</option>' : '')
+      + providers.map(p =>
+          '<option value="' + p.id + '"' + (!mixed && used[0] === p.id ? ' selected' : '') + '>'
+          + '\ud83e\udde0 ' + p.label + '</option>').join('')
+      + (providers.length < 2
+          ? '<option value="" disabled>\u2014 add DEEPSEEK_KEY / MOONSHOT_KEY in Railway</option>' : '');
+    sel.disabled = providers.length < 2 && !mixed;
+
+    const risky = mine.filter(t => t.ledger && t.provider !== 'anthropic');
+    const warn = $('aiModelWarn');
+    if (risky.length) {
+      warn.textContent = '\u26a0';
+      warn.style.color = 'var(--amber)';
+      warn.title = risky.map(t => t.label).join(', ')
+        + (risky.length > 1
+            ? ' hand the model this desk\u2019s tested findings and ask '
+            : ' hands the model this desk\u2019s tested findings and asks ')
+        + 'it to respect them. That is where a '
+        + 'cheaper model fails silently \u2014 fluent prose that contradicts something already '
+        + 'falsified here. Run the comparison on bot-config.html \u2192 AI Models before trusting it.';
+      warn.style.display = '';
+    } else warn.style.display = 'none';
+
+    sel.title = (mixed
+      ? 'These six jobs are not all on one model. '
+      : 'All six of this page\u2019s paid jobs run on ' + (providers.find(p => p.id === used[0]) || {}).label + '. ')
+      + 'Changes here are a SERVER setting stored in KV \u2014 it applies everywhere, not just this tab, '
+      + 'and survives a deploy. Per-job control is on bot-config.html \u2192 AI Models.';
+  }
+
+  // Attached in start(), NOT at script scope: this <script> sits above the header it
+  // controls, so the element does not exist yet when the file runs and addEventListener
+  // on null would throw and take the rest of this IIFE with it.
+  async function onChange() {
+    const provider = this.value;
+    if (!provider) { render(); return; }
+    this.disabled = true;
+    try {
+      const tasks = {};
+      for (const t of TODAY_TASKS) tasks[t] = provider;
+      const r = await fetch('/api/ai-config', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tasks }),
+      }).then(x => x.json());
+      if (!r.ok) throw new Error(r.error || 'failed');
+      await load();
+    } catch (e) {
+      alert('Could not change the model: ' + e.message);
+      await load();
+    } finally { this.disabled = false; }
+  }
+
+  function start() {
+    const sel = $('aiModelSel');
+    if (!sel) return;                 // header not on this page; nothing to do
+    sel.addEventListener('change', onChange);
+    load();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+</script>
 <script src="js/scratchpad.js"></script>
 <script src="js/siteApiMap.js"></script>
 <script src="js/dataMap.js"></script>
@@ -1351,6 +1454,13 @@
   <button class="fchip" id="outlookHzBtn-monthly" onclick="setOutlookHorizon('monthly')">20-Day</button>
 </div>
 <style>
+  /* the model picker in the header */
+  .hmodel{display:inline-flex;align-items:center;gap:5px}
+  .hmodel select{background:var(--card2);color:var(--text);border:1px solid var(--border2);border-radius:6px;
+                 padding:4px 7px;font:inherit;font-size:11.5px;cursor:pointer;max-width:190px}
+  .hmodel select:hover{border-color:var(--blue)}
+  .hmodel select:disabled{cursor:default;opacity:.75}
+  .hmodel-warn{font-size:12px;cursor:help;line-height:1}
   .outlook-hz{display:flex;align-items:center;gap:5px;padding:6px 10px}
   .outlook-hz .lbl{font-size:11px;color:var(--text3);margin-right:2px}
 </style>
@@ -1362,6 +1472,10 @@
   <span class="spacer"></span>
   <span class="stamp" id="hdrStamp"></span>
   <button class="hbtn" onclick="loadAll(true)">⟳ Refresh</button>
+  <span class="hmodel" id="hdrModel" style="display:none">
+    <select id="aiModelSel" title="Which AI model runs this page's six paid jobs: the morning brief, the macro chain read, the end-of-day review, the pair and currency analyses, and the Explain buttons."></select>
+    <span class="hmodel-warn" id="aiModelWarn" style="display:none" title=""></span>
+  </span>
   <button class="hbtn" onclick="openMarketPicture()" title="One view — the picture, where it points, where it does not, and the record behind it. Copyable.">📋 Picture</button>
   <button class="hbtn" onclick="openSiteMap()" title="Site map — all pages with descriptions">🗺 Site Map</button>
   <button class="hbtn" onclick="openApiMap()" title="API map — every backend endpoint, what it does, who calls it">🔌 API Map</button>
