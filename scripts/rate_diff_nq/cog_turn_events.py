@@ -8,7 +8,8 @@ import numpy as np, pandas as pd
 from scipy import stats
 import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt
 ROOT = Path(__file__).resolve().parents[2]; OUTD = ROOT / 'analysis' / 'output' / 'cog_video_0918'
-ap = argparse.ArgumentParser(); ap.add_argument('--placebo', type=int, default=200); ARGS = ap.parse_args()
+ap = argparse.ArgumentParser(); ap.add_argument('--placebo', type=int, default=200); ap.add_argument('--own-only', action='store_true', help='Amendment B: controls exclude only bars near their OWN event'); ARGS = ap.parse_args()
+SUF = '_ownctrl' if ARGS.own_only else ''
 rng = np.random.default_rng(11)
 
 # ---------------------------------------------------------------- data (research series only: bp, close-labelled, no display transforms)
@@ -141,7 +142,7 @@ def boot(df, col, bcol, B=2000):
 # ---------------------------------------------------------------- run
 PAT = ['A0', 'A1', 'A3', 'A2', 'A2m', 'A4']
 FAM, ZL, EVL = families(X, 0.75)
-blocked = block_mask([c for (c, e, d) in FAM['A0']]); POOL = ctrl_pool(blocked)
+blocked = np.zeros(N, bool) if ARGS.own_only else block_mask([c for (c, e, d) in FAM['A0']]); POOL = ctrl_pool(blocked)
 print({k: len(v) for k, v in FAM.items()}, 'line events k=.75; video-week excluded from pooled stats', flush=True)
 
 # 1) event-study table, primary k, all horizons, by half
@@ -155,7 +156,7 @@ for p in PAT:
                 m, lo, hi, p1, n, nd = boot(sub, col, bcol, B=1000 if hf == 'ALL' else 2000)
                 raw = float(sub[col].astype(float).mean()) if len(sub) else np.nan
                 rows.append(dict(pattern=p, H_bars=h, half=hf, metric=metric, n=n, days=nd, event_mean=raw, matched_diff=m, ci_lo=lo, ci_hi=hi, p_one_sided=p1))
-ET = pd.DataFrame(rows); ET.to_csv(OUTD / 'turn_events_table.csv', index=False)
+ET = pd.DataFrame(rows); ET.to_csv(OUTD / f'turn_events_table{SUF}.csv', index=False)
 
 # 2) lead: turn-to-turn timing
 def lead_stats(evl):
@@ -281,7 +282,7 @@ verdict = 'robust predictive relationship' if VERD.robust.any() else ('condition
 EXP = []
 for k in (0.5, 0.75, 1.0, 1.5, 2.5):
     Fk, _, _ = families(X, k, with_div=False)
-    pool_k = ctrl_pool(block_mask([c for (c, e, d) in Fk['A0']]))
+    pool_k = ctrl_pool(np.zeros(N, bool) if ARGS.own_only else block_mask([c for (c, e, d) in Fk['A0']]))
     for p in ('A0', 'A1', 'A3', 'A2', 'A2m'):
         df = effect_table(Fk[p], pool_k, PH); m, lo, hi, p1, n, nd = boot(df, 'ret', 'b_ret', B=800); EXP.append(dict(k=k, pattern=p, n=n, days=nd, diff_ret=m, ci_lo=lo, ci_hi=hi, p1=p1))
 EXP = pd.DataFrame(EXP)
@@ -301,7 +302,7 @@ def fig_video():
     for (c, e, d) in EVN:
         if c in ws or e in ws: ax[1].plot(G[e], Y[e], marker='^' if d == 1 else 'v', color='#6b5bb3', ms=7, alpha=.8)
     ax[0].set_title('Line turning points (triangle = when the high/low happened, circle = when it could first be known; green/red/amber = Nasdaq favourable/adverse/neither within 2 h by the +-u race). Purple triangles = Nasdaq turns.')
-    ax[1].set_xlabel('UTC'); plt.tight_layout(); plt.savefig(OUTD / 'turn_events_video_week.png', dpi=110); plt.close()
+    ax[1].set_xlabel('UTC'); plt.tight_layout(); plt.savefig(OUTD / f'turn_events_video_week{SUF}.png', dpi=110); plt.close()
 def fig_paths():
     fig, axs = plt.subplots(1, 3, figsize=(16, 4.6), sharey=False)
     for ax_, (title, evs) in zip(axs, (('All confirmed line turns (A0)', FAM['A0']), ('Up-turn while Nasdaq down (A1)', FAM['A1']), ('Up-turn while Nasdaq consolidating (A2)', FAM['A2']))):
@@ -317,7 +318,7 @@ def fig_paths():
         mp, mb = np.nanmean(P, 0), np.nanmean(B, 0); se = np.nanstd(P - B, 0) / np.sqrt(len(P))
         ax_.plot(x, mp, color='#3b6fd4', label=f'after line turn (n={len(P)})'); ax_.plot(x, mb, color='#999', label='matched random bars'); ax_.fill_between(x, mp - mb - 1.96 * se + mb, mp - mb + 1.96 * se + mb, color='#3b6fd4', alpha=.15)
         ax_.axvline(0, color='k', lw=.6); ax_.set_title(title); ax_.set_xlabel('hours from confirmation'); ax_.legend(fontsize=8)
-    axs[0].set_ylabel('Nasdaq cumulative return (%), signed by hypothesised direction'); plt.tight_layout(); plt.savefig(OUTD / 'turn_events_paths.png', dpi=110); plt.close()
+    axs[0].set_ylabel('Nasdaq cumulative return (%), signed by hypothesised direction'); plt.tight_layout(); plt.savefig(OUTD / f'turn_events_paths{SUF}.png', dpi=110); plt.close()
 def fig_forest():
     fig, ax = plt.subplots(figsize=(9, 5)); y = 0; labs = []
     for p in ('A0', 'A1', 'A3', 'A2', 'A2m', 'A4'):
@@ -326,7 +327,7 @@ def fig_forest():
             if r is None or not np.isfinite(r.matched_diff): y += 1; continue
             ax.errorbar(r.matched_diff, y, xerr=[[r.matched_diff - r.ci_lo], [r.ci_hi - r.matched_diff]], fmt='o', color=col, ms=4); labs.append((y, f'{p} {hf} (n={int(r.n)})')); y += 1
         y += 1
-    ax.axvline(0, color='k', lw=.7); ax.set_yticks([a for a, _ in labs]); ax.set_yticklabels([b for _, b in labs], fontsize=7); ax.invert_yaxis(); ax.set_xlabel('Nasdaq signed return 2 h after confirmation, minus matched baseline (%), 95% day-block CI'); plt.tight_layout(); plt.savefig(OUTD / 'turn_events_forest.png', dpi=110); plt.close()
+    ax.axvline(0, color='k', lw=.7); ax.set_yticks([a for a, _ in labs]); ax.set_yticklabels([b for _, b in labs], fontsize=7); ax.invert_yaxis(); ax.set_xlabel('Nasdaq signed return 2 h after confirmation, minus matched baseline (%), 95% day-block CI'); plt.tight_layout(); plt.savefig(OUTD / f'turn_events_forest{SUF}.png', dpi=110); plt.close()
 fig_video(); fig_paths(); fig_forest()
 
 # ---------------------------------------------------------------- examples
@@ -382,6 +383,6 @@ txt += ['### The video week (16-23 Sep 2026) - every confirmed line turn, descri
         '### Limits (stated, not hidden)', '- Only the pinned pair has deep history, so contract-month robustness is NOT tested; other pairs hold two weeks.',
         '- No period is untouched: earlier studies in this repository saw these dates for the combined line. The honest untouched test is the forward record from 2026-10-15.',
         '- MFE/MAE use 15-minute closes (no intra-bar high/low in the Nasdaq series).', '- Strata are session x volatility tercile by the line-turn confirm time.', '- Release exclusion uses a fixed 08:30/10:00 ET (all weekdays) and 14:00 ET (FOMC days) rule, not an event vendor calendar.']
-(OUTD / 'TURN_EVENTS.md').write_text('\n'.join(txt), encoding='utf-8')
-pd.concat([pd.DataFrame(dict(pattern=p, confirm=[str(G[c]) for c, e, d in FAM[p]], extreme=[str(G[e]) for c, e, d in FAM[p]], d=[d for c, e, d in FAM[p]])) for p in PAT]).to_csv(OUTD / 'turn_events_all.csv', index=False)
+(OUTD / f'TURN_EVENTS{SUF}.md').write_text('\n'.join(txt), encoding='utf-8')
+pd.concat([pd.DataFrame(dict(pattern=p, confirm=[str(G[c]) for c, e, d in FAM[p]], extreme=[str(G[e]) for c, e, d in FAM[p]], d=[d for c, e, d in FAM[p]])) for p in PAT]).to_csv(OUTD / f'turn_events_all{SUF}.csv', index=False)
 print('VERDICT:', verdict); print(VERD.to_string()); print(COND.to_string() if len(COND) else 'no conditional cells')

@@ -43,7 +43,7 @@ def vtable(evs, pool, mask_fn=lambda c: True):
 EV = []
 for (c, e, d) in line_events(X, 0.75)[1]:
     if np.isfinite(Y[c]): EV.append((c, e, d))
-blocked = block_mask([c for c, e, d in EV]); VP = vpool(blocked)
+blocked = np.zeros(N, bool) if ARGS.own_only else block_mask([c for c, e, d in EV]); VP = vpool(blocked)
 T0 = vtable(EV, VP); T1 = vtable(EV, VP, mask_fn=lambda c: not near_release(c))
 def summ(T, label):
     out = []
@@ -97,4 +97,4 @@ txt = ['# COG-TURN-EVENTS Addendum A results', '', f'Registered in forge/COG_TUR
        '### Move share (favourable + adverse) and direction share (favourable / (favourable + adverse)): event minus volatility-matched controls', md(S), '',
        '### Incremental volatility test (log |Nasdaq move| over next 2 h on its own trailing range, trailing move, 20-day RMS, hour dummies, plus the line-turn dummy)', md(INC), '',
        'OOS R2 row: coef_s column = without the dummy, t column = with the dummy.']
-(OUTD / 'TURN_EVENTS_ADDENDUM_A.md').write_text('\n'.join(txt), encoding='utf-8'); print('\n'.join(txt))
+(OUTD / f'TURN_EVENTS_ADDENDUM_A{SUF}.md').write_text('\n'.join(txt), encoding='utf-8'); print('\n'.join(txt))
