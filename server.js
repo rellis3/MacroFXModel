@@ -830,7 +830,7 @@ document.getElementById('f').addEventListener('submit', async (e) => {
 // serif gradient wordmark, glowing pill input, teal CTA — for the education
 // zone's login page specifically. The main dashboard keeps the plain form above.
 function authLoginPageEducation(next, error) {
-  return `<!doctype html><html><head><meta charset="utf-8"><title>Sign in — Education Hub</title>
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Sign in — Theory Lab</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   *{box-sizing:border-box}
@@ -868,7 +868,7 @@ function authLoginPageEducation(next, error) {
   <div class="tag"><span class="ln"></span>PRIVATE QUANTITATIVE &amp; MACRO INSIGHTS<span class="ln r"></span></div>
   <div class="card">
     <div class="restricted">RESTRICTED ACCESS</div>
-    <h1>The <em>Education</em> Bank</h1>
+    <h1>The <em>Theory</em> Lab</h1>
     <p class="sub">Every lesson, framework, and walkthrough — held behind a single key.</p>
     ${error ? `<div class="err">Incorrect password.</div>` : ''}
     <form id="f">

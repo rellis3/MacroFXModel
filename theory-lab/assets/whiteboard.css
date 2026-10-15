@@ -54,8 +54,10 @@
 .wb-gap{fill:currentColor;stroke:none}
 .wb-dot-c{fill:currentColor;stroke:#11141c;stroke-width:2}
 .wb-bar{fill:currentColor;fill-opacity:.85;stroke:currentColor;stroke-width:1.5}
-.wb-dim{opacity:.32;transition:opacity .35s}
+.wb-dim{opacity:.42;transition:opacity .35s}
 .wb-gone{opacity:0;transition:opacity .3s}
+/* while earlier steps are replayed (whiteboard.js go()), nothing may animate */
+.wb-instant *{transition:none !important;animation:none !important}
 .wb-t-chalk{color:#e8eaf2}.wb-t-blue{color:var(--blue)}.wb-t-green{color:var(--green)}.wb-t-red{color:var(--red)}.wb-t-amber{color:var(--amber)}.wb-t-purple{color:var(--purple)}
 .wb-flash{animation:wb-flash .9s ease}
 @keyframes wb-flash{0%{filter:none}30%{filter:drop-shadow(0 0 7px currentColor) brightness(1.4)}100%{filter:none}}
