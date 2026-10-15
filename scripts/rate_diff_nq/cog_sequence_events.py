@@ -133,7 +133,7 @@ if ok.any(): kp[o[:np.max(np.where(ok)[0]) + 1]] = True
 SEL['fdr'] = kp
 top = SEL[(SEL.ctx == 'all') & (SEL.H == 8)].sort_values('t', ascending=False)
 topfdr = SEL[SEL.fdr & (SEL.H == 8)].sort_values('t', ascending=False).drop_duplicates('spec').head(3).spec.tolist()
-FROZEN = [sname(PRIMARY)] + [x for x in topfdr if x != sname(PRIMARY)]
+FROZEN = [sname(PRIMARY)] + ([x for x in topfdr if x != sname(PRIMARY)] if os.environ.get('COG_SEQ_GRID') == '1' else [])      # matched-pairs registration: grid only for the best-looking pair
 print('frozen:', FROZEN, 'FDR cells in-sample:', int(SEL.fdr.sum()), 'of', len(SEL), flush=True)
 
 # ------------------------------------------------------------------ frozen evaluation on validation and OOS
@@ -306,7 +306,7 @@ def fig_lag():
     ax[0].axhline(0, color='k', lw=.6); ax[0].set_xticks(range(5)); ax[0].set_xticklabels(labs); ax[0].set_ylabel('Nasdaq signed return minus matched baseline (%)'); ax[0].set_title('Primary sequence: what Nasdaq does in each lag window after confirmation'); ax[0].legend(fontsize=7)
     cum = [0]; sub = prim[prim.half.isin(['VAL', 'OOS'])]
     for a, b in BUCK: cum.append(cum[-1] + (sub[f'bk{a}_{b}'] - sub[f'b_bk{a}_{b}']).mean())
-    ax[1].plot([0, 1, 2, 4, 8, 16], cum, marker='o', color='#6b5bb3'); ax[1].axhline(0, color='k', lw=.6); ax[1].set_xlabel('hours after confirmation'); ax[1].set_title('Cumulative signed excess return (validation + out-of-sample)'); plt.tight_layout(); plt.savefig(OUTD / 'sequence_events_lag.png', dpi=105); plt.close()
+    ax[1].plot([0, 1, 2, 4, 8, 16], cum, marker='o', color='#6b5bb3'); ax[1].axhline(0, color='k', lw=.6); ax[1].set_xlabel('hours after confirmation'); ax[1].set_title('Cumulative signed excess return (validation + out-of-sample)'); plt.tight_layout(); plt.savefig(OUTD / f'sequence_events_lag{TAG}.png', dpi=105); plt.close()
 def fig_video():
     a, b = pd.Timestamp('2026-09-16', tz='UTC'), pd.Timestamp('2026-09-24', tz='UTC'); w = np.where((G >= a) & (G < b))[0]
     fig, ax = plt.subplots(2, 1, figsize=(15, 8), sharex=True); ax[0].plot(G[w], X[w], color='#3b6fd4', lw=1.3); ax[1].plot(G[w], Y[w], color='#222', lw=1.1); ax[0].set_ylabel('line (bp)'); ax[1].set_ylabel('Nasdaq (log)')
@@ -316,7 +316,7 @@ def fig_video():
             ax[0].plot(G[e], X[e], marker='^' if d == 1 else 'v', color=col, ms=9); ax[0].plot(G[t1], X[t1], marker='s', color=col, ms=5, mfc='none'); ax[0].plot(G[t2], X[t2], marker='o', color=col, ms=6)
             ax[0].plot([G[e], G[t2]], [X[e], X[t2]], color=col, lw=.6, ls=':'); ax[1].axvline(G[t2], color=col, lw=.8, ls=':')
             if np.isfinite(Y[t2]): ax[1].plot(G[t2], Y[t2], marker='o', color=col, ms=5)
-    ax[0].set_title('Primary sequence in the video week: triangle = direction change (when it happened), square = trigger (first retrace), filled circle = confirmation (the only moment a signal exists); green up / red down'); plt.tight_layout(); plt.savefig(OUTD / 'sequence_events_video_week.png', dpi=105); plt.close()
+    ax[0].set_title('Primary sequence in the video week: triangle = direction change (when it happened), square = trigger (first retrace), filled circle = confirmation (the only moment a signal exists); green up / red down'); plt.tight_layout(); plt.savefig(OUTD / f'sequence_events_video_week{TAG}.png', dpi=105); plt.close()
 fig_lag(); fig_video()
 VIDEO_EV = []
 for (t2, e, t1, d) in confirm(X, BASE_LINE, S1[PRIMARY['k1']], PRIMARY['typ'], PRIMARY['par'], PRIMARY['W']):
@@ -349,6 +349,6 @@ txt = ['# COG-SEQUENCE-EVENTS results', '', 'Run once per forge/COG_SEQUENCE_EVE
        f'- **C2, surrogate tree** (depth 3, fitted on validation (M1 - M0), scored on out-of-sample): fidelity R-squared {fid:+.3f}. Rules:', '```', rules, '```', '- **C3, stability by quarter**', fm(C3), '', '- **C4, complexity ablation** (reporting only; nothing selected from it)', fm(ABL), '',
        '## The video week, every primary-spec sequence (descriptive, not used in any statistic)', fm(VIDEO_EV) if len(VIDEO_EV) else '_none_', '', '## Figures', '`sequence_events_lag.png` (lag profile), `sequence_events_video_week.png`.', '',
        '## Limits (stated, not hidden)', '- Only the pinned pair has deep history: contract-month robustness is untestable until the Dec-2026 roll.', '- No untouched sample exists for the combined line; the forward record from 2026-10-15 is the untouched test.', '- Stage-2 types are a fixed family chosen before data; other confirmations are possible and untested.', '- MFE/MAE style outcomes use 15-minute closes; costs are assumptions.']
-(OUTD / 'SEQUENCE_EVENTS.md').write_text('\n'.join(txt), encoding='utf-8')
-SEL.to_csv(OUTD / 'sequence_events_grid_insample.csv', index=False); EVT.to_csv(OUTD / 'sequence_events_frozen.csv', index=False)
+(OUTD / f'SEQUENCE_EVENTS{TAG}.md').write_text('\n'.join(txt), encoding='utf-8')
+SEL.to_csv(OUTD / f'sequence_events_grid_insample{TAG}.csv', index=False); EVT.to_csv(OUTD / f'sequence_events_frozen{TAG}.csv', index=False)
 print('VERDICT:', verdict, '|', vol_verdict, VOLG); print(VER.to_string()); print(C1, C1b, fid); print(ABL.to_string())

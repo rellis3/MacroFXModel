@@ -9,7 +9,9 @@ from scipy import stats
 import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt
 ROOT = Path(__file__).resolve().parents[2]; OUTD = ROOT / 'analysis' / 'output' / 'cog_video_0918'
 ap = argparse.ArgumentParser(); ap.add_argument('--placebo', type=int, default=200); ap.add_argument('--own-only', action='store_true', help='Amendment B: controls exclude only bars near their OWN event'); ARGS = ap.parse_args()
-SUF = '_ownctrl' if ARGS.own_only else ''
+import os
+PAIR_US = os.environ.get('COG_US', 'CME_SR3U6'); PAIR_EU = os.environ.get('COG_EU', 'ICEEU_IH7'); MODE = os.environ.get('COG_MODE', 'spread'); TAG = os.environ.get('COG_TAG', ''); COG_END = os.environ.get('COG_END', '')
+SUF = ('_ownctrl' if ARGS.own_only else '') + TAG
 rng = np.random.default_rng(11)
 
 # ---------------------------------------------------------------- data (research series only: bp, close-labelled, no display transforms)
@@ -19,11 +21,16 @@ def r15(p):
     g = ld(p)['close'].resample('15min', label='right', closed='right'); l, n = g.last(), g.count(); l[n < 5] = np.nan; return 100 - l
 DEEP = ROOT / 'analysis' / 'output' / 'stir_1m_deep'
 G = pd.date_range('2024-04-15', '2026-10-09 23:45', freq='15min', tz='UTC'); N = len(G)
-us, eu = r15(DEEP / 'CME_SR3U6.parquet').reindex(G), r15(DEEP / 'ICEEU_IH7.parquet').reindex(G)
 dayv = G.date; ser_day = pd.Series(dayv, index=G)
 dist = lambda s: s.groupby(dayv).agg(lambda v: v.dropna().nunique())
-ds, de = dist(us), dist(eu); good = np.array([ds.get(d, 0) >= 3 and de.get(d, 0) >= 3 for d in dayv])
-X = (((us - eu) * 100).where(good)).to_numpy()
+if MODE == 'spread':
+    us, eu = r15(DEEP / f'{PAIR_US}.parquet').reindex(G), r15(DEEP / f'{PAIR_EU}.parquet').reindex(G)
+    ds, de = dist(us), dist(eu); good = np.array([ds.get(d, 0) >= 3 and de.get(d, 0) >= 3 for d in dayv])
+    X = (((us - eu) * 100).where(good)).to_numpy()            # raw: ((100 - price_US) - (100 - price_EU)) x 100, in bp; no scale, offset, inversion, smoothing or plot lead
+else:                                                           # a single leg alone: its own rate in bp
+    leg = r15(DEEP / f'{PAIR_US if MODE == "us" else PAIR_EU}.parquet').reindex(G); us = eu = leg
+    dl = dist(leg); good = np.array([dl.get(d, 0) >= 3 for d in dayv]); X = ((leg * 100).where(good)).to_numpy()
+if COG_END: X[np.asarray(G > pd.Timestamp(COG_END, tz='UTC') + pd.Timedelta(days=1))] = np.nan      # window cut at the earlier of the legs' last-trade dates
 cfd = pd.read_parquet(ROOT / 'VolRangeForecaster' / 'data' / 'm1' / 'nq_m1.parquet')['close']; cfd.index = pd.to_datetime(cfd.index, utc=True)
 cl = np.log(cfd.resample('15min', label='right', closed='right').last()).reindex(G)
 fut = pd.read_parquet(ROOT / 'analysis' / 'output' / 'rate_curve_structure' / 'bars15.parquet')['NQ']; fut.index = pd.to_datetime(fut.index, utc=True); fut = fut.reindex(G)

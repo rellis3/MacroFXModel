@@ -163,4 +163,4 @@ txt = ['# COG-SHAPE-AGNOSTIC results', '', 'Run once per forge/COG_SHAPE_AGNOSTI
        '### Economic check: top 5% of |prediction| out of sample, net of cost (0.5 / 1.0 / 2.0 bp)', fm(ECO), '',
        '### Reading the table', '- IC_gain near zero with a CI straddling it means the line\'s shape adds nothing a Nasdaq-only model does not already have.', '- A positive gain that does not exceed the shifted-line placebo is the model fitting noise it can find in any series with the same statistics.',
        '- Limits: only the pinned pair has deep history; no untouched sample exists for the combined line (the forward record from 2026-10-15 is the untouched test); trees are not tuned, so a better-tuned model could do slightly better, but it cannot turn a zero into a result without a tuning step that would itself need an untouched sample.']
-(OUTD / 'SHAPE_AGNOSTIC.md').write_text('\n'.join(txt), encoding='utf-8'); print('VERDICT:', verdict); print(V.to_string()); print(RES.to_string())
+(OUTD / f'SHAPE_AGNOSTIC{TAG}.md').write_text('\n'.join(txt), encoding='utf-8'); print('VERDICT:', verdict); print(V.to_string()); print(RES.to_string())
