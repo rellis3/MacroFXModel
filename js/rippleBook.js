@@ -19,8 +19,9 @@ export const RIPPLE_BUCKETS = [
   { id: 'd2_7', label: '2–7 DTE', max: 7 },
   { id: 'd8_45', label: '8–45 DTE', max: 45 },
   { id: 'd46p', label: '46+ DTE', max: Infinity },
+  { id: 'unk', label: 'unknown DTE', max: NaN },     // a leg with no DTE is not guessed into a bucket
 ];
-const bucketOf = dte => RIPPLE_BUCKETS.find(b => !(Number.isFinite(dte)) || dte <= b.max) || RIPPLE_BUCKETS[RIPPLE_BUCKETS.length - 1];
+const bucketOf = dte => (Number.isFinite(dte) ? RIPPLE_BUCKETS.find(b => dte <= b.max) : null) || RIPPLE_BUCKETS[RIPPLE_BUCKETS.length - 1];
 
 // opts: mult, flatSigma, windowFrac (strikes kept within ±frac of spot), nodes (how many top |net| strikes), plus gexLadder's.
 export function rippleBook(legs, spot, { mult = 1, flatSigma = 0.2, windowFrac = 0.12, nodes = 6 } = {}) {
@@ -45,7 +46,7 @@ export function rippleBook(legs, spot, { mult = 1, flatSigma = 0.2, windowFrac =
   }
   const pick = (arr, f) => arr.reduce((m, r) => (m == null || f(r) > f(m) ? r : m), null);
   const above = rows.filter(r => r.strike > spot), below = rows.filter(r => r.strike < spot);
-  const wall = (r, side) => r && { strike: r.strike, side, gamma: side === 'call' ? r.call : r.put, driver: r.driver, share: r.share };
+  const wall = (r, side) => r && (side === 'call' ? r.call : r.put) > 0 && { strike: r.strike, side, gamma: side === 'call' ? r.call : r.put, driver: r.driver, share: r.share };
   const walls = { call: wall(pick(above, r => r.call), 'call'), put: wall(pick(below, r => r.put), 'put') };
   const top = [...rows].sort((a, b) => Math.abs(b.net) - Math.abs(a.net)).slice(0, nodes)
     .map(r => ({ strike: r.strike, net: r.net, sign: r.net >= 0 ? 'long' : 'short', driver: r.driver, share: r.share }));

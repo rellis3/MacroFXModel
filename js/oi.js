@@ -5,6 +5,7 @@ import { gammaFlip, distanceToFlip } from './gammaFlow.js';
 import { charmVannaExposure, gexFlipPrice, gexFlipCrossings } from './gammaGreeks.js';
 import { fullBookGex } from './fullBookGex.js';
 import { gexLadder } from './gexLadder.js';
+import { rippleBook } from './rippleBook.js';
 import { expectedMove, expectedMoveFromStraddle, ivTermStructure, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
 import { lessonLinkHTML } from './lessonLinks.js';
 
@@ -1476,6 +1477,15 @@ export function rebuildGexProfile(inst) {
 // flipped into pair terms for inverted pairs exactly as the single-expiry profile is.
 // Falls back to one series from gexProfile for a simple (non-matrix) paste.
 export function oiGexLadder(inst) {
+  const b = oiBookLegs(inst);
+  if (!b) return null;
+  const basis = Number.isFinite(inst.basis) ? inst.basis : 0, inverted = futuresIsInverted(inst.pair || '');
+  return _gexLadderFromBook(inst, b, basis, inverted);
+}
+
+// The whole book as per-expiry legs in pair terms, each with its own ATM IV — the one input both the
+// strike ladder and the ripple book are built from, so they can never describe different books.
+export function oiBookLegs(inst) {
   if (!inst || !(inst.spot > 0)) return null;
   const pair = inst.pair || '';
   const spot = inst.spot, flat = oiFlatVol(pair), mult = oiContractSize(pair);
@@ -1496,6 +1506,17 @@ export function oiGexLadder(inst) {
   }
   for (const l of legs) l.sigma = atmFor(l.dte);
   const near = legs.slice().sort((a, b) => (a.dte ?? 1e9) - (b.dte ?? 1e9))[0];
+  return { legs, near, spot, flat, mult, pts };
+}
+
+// Ripple view of a stored entry: per-strike gamma split by DTE bucket, ripple walls, top nodes (see rippleBook.js).
+export function oiRippleBook(inst) {
+  const b = oiBookLegs(inst);
+  return b ? rippleBook(b.legs, b.spot, { mult: b.mult, flatSigma: b.flat }) : null;
+}
+
+function _gexLadderFromBook(inst, b, basis, inverted) {
+  const { legs, near, spot, flat, mult, pts } = b;
   let vol = null;
   if (Array.isArray(inst.volCP) && inst.volCP.length) {
     vol = { strikes: inst.volCP.map(r => r[0]), calls: inst.volCP.map(r => r[1]), puts: inst.volCP.map(r => r[2]) };

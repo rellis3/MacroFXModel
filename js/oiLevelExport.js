@@ -39,7 +39,8 @@ import { levelExpectation, gammaBandAt } from './levelExpectation.js';
 import { levelHeat } from './levelHeat.js';
 import { wallHoldScore } from './oiZones.js';
 import { gammaFlip, distanceToFlip, rolloffSummary } from './gammaFlow.js';
-import { rebuildGexProfile, oiFuturesTermsPrice, oiBandSelect, oiRegimeBands, OI_PRODUCT_SPEC, oiSpec } from './oi.js';
+import { rebuildGexProfile, oiFuturesTermsPrice, oiBandSelect, oiRegimeBands, OI_PRODUCT_SPEC, oiSpec, oiRippleBook } from './oi.js';
+import { RIPPLE_BUCKETS } from './rippleBook.js';
 
 // Canonical chart-ticker per oi_store key. Mirrors the Confluence-Zones indicator's
 // normalisation targets so the same chart symbols the user already uses resolve here
@@ -266,6 +267,22 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
         + (agree == null ? '' : agree ? ' — AGREES with the traded expiry'
                                        : ' — ⚠ DISAGREES with the traded expiry (other expiries pull the other way, treat the regime as low-confidence)'));
     }
+    // RIPPLE (human-only — the indicator ignores non-"OI " lines): the heaviest-gamma strike each side
+    // across EVERY expiry, with the DTE buckets that make it up. A level reads very differently when it is
+    // 80% tomorrow's expiry (a spike that disappears) vs 80% 60-DTE (a plateau that stays). Measurement only:
+    // oi_research_book/RIPPLE_BOOK_RESULTS.md found ripple walls react like any listed strike.
+    try {
+      const rp = oiRippleBook(inst);
+      if (rp && (rp.walls.call || rp.walls.put)) {
+        const mix = w => {
+          const ranked = RIPPLE_BUCKETS.filter(b => w.share[b.id] > 0).sort((a, b) => w.share[b.id] < w.share[a.id] ? 1 : -1);
+          const big = ranked.filter(b => w.share[b.id] >= 0.1);
+          return (big.length ? big : ranked.slice(0, 1)).map(b => `${Math.round(w.share[b.id] * 100)}% ${b.label}`).join(' + ');
+        };
+        const one = (w, tag) => w ? `${tag} ${px(w.strike).toFixed(dp)} (${mix(w)})` : null;
+        lines.push(`· ripple (${rp.nExpiries} expiries, each at its own DTE): ${[one(rp.walls.call, 'call wall'), one(rp.walls.put, 'put wall')].filter(Boolean).join(' · ')}`);
+      }
+    } catch (_) { /* ripple is context; never block the export */ }
     // GEX regime BANDS (spot terms unless futures): the LOCAL PIN/BREAKOUT map so the indicator
     // can shade WHERE the book pins vs breaks — the net-GEX sign the regime word uses is a
     // whole-book average that hides short-gamma pockets. Emits the base regime (below the lowest

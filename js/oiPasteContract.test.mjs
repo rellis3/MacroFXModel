@@ -399,6 +399,7 @@ console.log('[downstream wiring — export, indicator, bot]');
   ok('gex_flip carries the right price', lv.find(l => l.type === 'gex_flip')?.price === 4099.13);
 
   const txt = buildOILevelText({ 'XAU/USD': inst }, { generated: 'test' });
+  console.log('  ripple line:', txt.split(String.fromCharCode(10)).filter(l => l.includes('ripple (')).join(' | ') || '(none: entry has no per-expiry book)');
   // The line now carries a terse expectation after a ' . ' marker, so this is no
   // longer end-anchored — but the TYPE TOKEN must still be exactly what the Pine
   // parser reads, which is the actual contract. Asserted the way the indicator
