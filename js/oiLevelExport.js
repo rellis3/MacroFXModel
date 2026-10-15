@@ -361,12 +361,12 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     // futures-terms echo in the tier text — only when the conversion is a plain basis shift (inverted pairs like USD/JPY convert to nonsense; skip those)
     const _fOk = !futuresTerms && Number.isFinite(inst.basis) && inst.basis !== 0 && inst.spot > 0 && Math.abs(oiFuturesTermsPrice(inst.spot, inst) / inst.spot - 1) < 0.05;
     const _fmtFutT = _fOk ? (p => oiFuturesTermsPrice(p, inst).toFixed(dp)) : null;
-    if (tiers && _lad && _lad.open > 0 && _lad.sigmaPct > 0 && inst.spot > 0) {
-      const legs = ladderLegs(_lad.ladder, _lad.open);
+    if (tiers && _lad && _lad.sigmaPct > 0 && inst.spot > 0 && (_lad.open > 0 || Array.isArray(_lad.legs))) {
+      const legs = Array.isArray(_lad.legs) ? _lad.legs : ladderLegs(_lad.ladder, _lad.open);   // a caller can hand in a richer leg set (ladder + IV ladder + CZ zones)
       tierSet = buildTiers({ spot: inst.spot, sigma: inst.spot * _lad.sigmaPct / 100, levels, legs });
       for (const z of [...tierSet.below, ...tierSet.above]) for (const m of z.members) if (m.ref) zoneOf.set(m.ref, z);
     }
-    const _zoneTouch = z => { if (!rp) return null; for (const m of z.members) { const t = m.ref && rp[m.ref.price.toFixed(6)]; if (t) return t; } return null; };
+    const _zoneTouch = z => { if (!rp) return null; for (const m of z.members) { const t = rp[m.price.toFixed(6)]; if (t) return t; } return null; };
     for (const l of levels) {
       const tier = Number.isFinite(l.tier) && l.tier > 0 ? ` t${l.tier}` : '';
       // DTE tag ("14dte") after the tier when a level carries one — present only in
@@ -479,7 +479,7 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     if (tierSet) {
       for (const z of [...tierSet.below, ...tierSet.above]) {
         const d = describeZone(z, { fmt: _fmtT, fmtFut: _fmtFutT, touch: _zoneTouch(z) });
-        for (const m of z.members) if (m.kind === 'ladder') emitOI(m.price, `OI ${px(m.price).toFixed(dp)} : ${m.type} . ${d} . ${zoneTag(z)}`);
+        for (const m of z.members) if (m.kind !== 'oi') emitOI(m.price, `OI ${px(m.price).toFixed(dp)} : ${m.type} . ${d} . ${zoneTag(z)}`);
       }
     }
     if (today) {

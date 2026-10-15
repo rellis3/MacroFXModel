@@ -19,12 +19,26 @@ const RUNG_LABEL = { p50: 'median', p75: '75th-pct', p90: '90th-pct' };
 export const TIER_OI_TYPES = new Set(Object.keys(SRC_LABEL));
 
 // ladder = { oh:{p50,p75,p90}, ol:{...} } in percent of the open. Returns [{ price, kind:'ladder', type:'fcst_p50_lo', label:'forecast median low' }].
-export function ladderLegs(ladder, open) {
+// opts.prefix/name relabel the same shape for another ladder (the IV-adjusted one: { prefix:'ivadj', name:'IV-adj' }).
+export function ladderLegs(ladder, open, { prefix = 'fcst', name = 'forecast' } = {}) {
   if (!ladder || !(open > 0)) return [];
   const out = [];
   for (const r of ['p50', 'p75', 'p90']) {
-    if (Number.isFinite(ladder.oh?.[r])) out.push({ price: open * (1 + ladder.oh[r] / 100), kind: 'ladder', type: `fcst_${r}_hi`, label: `forecast ${RUNG_LABEL[r]} high` });
-    if (Number.isFinite(ladder.ol?.[r])) out.push({ price: open * (1 - ladder.ol[r] / 100), kind: 'ladder', type: `fcst_${r}_lo`, label: `forecast ${RUNG_LABEL[r]} low` });
+    if (Number.isFinite(ladder.oh?.[r])) out.push({ price: open * (1 + ladder.oh[r] / 100), kind: 'ladder', type: `${prefix}_${r}_hi`, label: `${name} ${RUNG_LABEL[r]} high` });
+    if (Number.isFinite(ladder.ol?.[r])) out.push({ price: open * (1 - ladder.ol[r] / 100), kind: 'ladder', type: `${prefix}_${r}_lo`, label: `${name} ${RUNG_LABEL[r]} low` });
+  }
+  return out;
+}
+
+// Confluence Zones clusters ([{price, count, types}], js/confluenceZoneExport.js) as tier sources. The vol_m / vol_75 types are the forecast
+// again (already a source via the ladder), so they are dropped here rather than counted twice; a cluster with nothing else left is skipped.
+const CZ_LABEL = { sr: 'swing S/R', fib: 'fib', d_open: 'prior open', vwap: 'prior pivot', poc: 'POC', npoc: 'naked POC', w_piv: 'weekly pivot', round: 'round number' };
+export function czLegs(zones) {
+  const out = [];
+  for (const z of zones || []) {
+    const ts = (z.types || []).filter(t => CZ_LABEL[t]);
+    if (!ts.length || !Number.isFinite(z.price)) continue;
+    out.push({ price: z.price, kind: 'cz', type: `cz_${ts.join('+')}`, label: ts.map(t => CZ_LABEL[t]).join(' + ') });
   }
   return out;
 }

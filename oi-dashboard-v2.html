@@ -77,6 +77,7 @@ svg text{font-family:var(--mono)}
     <div class="tgl" id="nearTgl" title="Which expiries feed the terrain and curves">
       <span class="pill on" id="mNear">Near expiries (≤3 DTE)</span><span class="pill" id="mAll">Whole book</span>
     </div>
+    <button class="btn" id="tiersBtn" title="OI levels + forecast ladder + IV-adjusted ladder + Confluence Zones grouped into distance-ranked tiers. A SEPARATE export: paste it instead of the OI section of the normal export.">Tiers export</button>
     <a class="btn" href="oi-dashboard.html">Classic dashboard</a>
   </header>
   <div class="rail" id="rail"></div>
@@ -131,6 +132,16 @@ svg text{font-family:var(--mono)}
   <div id="note" class="legend"></div>
 </div>
 <div id="tip"></div>
+<div id="tiersModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:20;padding:4vh 4vw">
+  <div class="card" style="height:100%;display:flex;flex-direction:column;gap:10px;margin:0">
+    <div style="display:flex;gap:10px;align-items:center"><b>OI tiers export</b>
+      <label class="pill" style="cursor:pointer"><input type="checkbox" id="tiersToday" checked style="margin-right:6px">today only</label>
+      <label class="pill" style="cursor:pointer"><input type="checkbox" id="tiersFut" style="margin-right:6px">futures terms</label>
+      <button class="btn" id="tiersGo">Refresh</button><button class="btn" id="tiersCopy">Copy</button><span style="flex:1"></span><button class="btn" id="tiersClose">Close</button></div>
+    <div class="legend" style="margin:0">Separate from the normal export: paste this <b>instead of</b> its OI section. Tier = distance from spot (nearer is reached first); "confluence" lists sources in the same zone and is descriptive only.</div>
+    <textarea id="tiersTxt" readonly style="flex:1;background:#05070a;color:var(--tx);border:1px solid var(--line2);border-radius:6px;padding:14px;font:13px/1.55 var(--mono)"></textarea>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <script type="module">
@@ -693,6 +704,12 @@ async function refresh(){
   await drawTerrain();     // builds the gamma field + curve the brief's structure panel reads
   drawBrief();
 }
+async function loadTiers(){ const ta = $('#tiersTxt'); ta.value = 'fetching… (OANDA M5 + P(touch), ~10–20 s)';
+  try { const r = await fetch('/api/oi-tiers/export?' + ($('#tiersToday').checked ? 'mode=today' : 'mode=full') + ($('#tiersFut').checked ? '&terms=futures' : ''), { cache: 'no-store' }); ta.value = await r.text(); }
+  catch (e) { ta.value = 'Export failed: ' + e.message; } }
+$('#tiersBtn').onclick = () => { $('#tiersModal').style.display = 'block'; loadTiers(); };
+$('#tiersGo').onclick = loadTiers; $('#tiersClose').onclick = () => { $('#tiersModal').style.display = 'none'; };
+$('#tiersCopy').onclick = () => { try { navigator.clipboard.writeText($('#tiersTxt').value); $('#tiersCopy').textContent = 'Copied ✓'; setTimeout(() => $('#tiersCopy').textContent = 'Copy', 1500); } catch (_) { $('#tiersTxt').select(); } };
 $('#mNear').onclick = () => { NEAR = true; $('#mNear').classList.add('on'); $('#mAll').classList.remove('on'); refresh(); };
 $('#mAll').onclick = () => { NEAR = false; $('#mAll').classList.add('on'); $('#mNear').classList.remove('on'); refresh(); };
 document.querySelectorAll('[data-ah]').forEach(b => b.onclick = () => { AH = +b.dataset.ah; document.querySelectorAll('[data-ah]').forEach(x => x.classList.toggle('on', x === b)); drawAhead(); });
