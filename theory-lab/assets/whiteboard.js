@@ -112,9 +112,10 @@
   }
 
   function drawOn(path, ms, anim) {
+    if (!anim) return;   // measuring forces a style pass, so never do it while replaying
     var len = 0;
     try { len = path.getTotalLength(); } catch (e) { len = 0; }
-    if (!len || !anim) return;
+    if (!len) return;
     ms = T(ms);
     path.style.strokeDasharray = len + ' ' + len;
     path.style.strokeDashoffset = len;
@@ -240,7 +241,14 @@
     var b = this; b.token++;
     var tok = b.token;
     b.reset();
-    for (var k = 0; k < i; k++) b.steps[k].do.forEach(function (op) { b.op(op, false, tok); });
+    // Earlier steps are redrawn in their end state. With transitions switched off while they
+    // are, a line an earlier step dimmed or hid can't flash back on and fade out again.
+    // A jump that doesn't animate (a step dot, ◀) draws step i the same way.
+    var live = anim && !REDUCED, upto = live ? i : i + 1;
+    b.svg.classList.add('wb-instant');
+    for (var k = 0; k < Math.min(upto, b.steps.length); k++) b.steps[k].do.forEach(function (op) { b.op(op, false, tok); });
+    b.svg.getBoundingClientRect(); getComputedStyle(b.layer).opacity;
+    b.svg.classList.remove('wb-instant');
     b.idx = i;
     b.dots.forEach(function (d, j) { d.classList.toggle('on', j <= i); d.classList.toggle('cur', j === i); });
     if (i < 0) { b.cap.textContent = b.cfg.intro || 'Press play to watch it build.'; return Promise.resolve(true); }
@@ -248,7 +256,7 @@
     b.cap.innerHTML = '<span class="wb-n">' + (i + 1) + '/' + b.steps.length + '</span> ';
     b.cap.appendChild(document.createTextNode(s.cap || ''));
     if (b.speak) b.say(s.cap);
-    var live = anim && !REDUCED;
+    if (!live) return Promise.resolve(true);
     var chain = Promise.resolve(true);
     s.do.forEach(function (op) {
       chain = chain.then(function (ok) {
