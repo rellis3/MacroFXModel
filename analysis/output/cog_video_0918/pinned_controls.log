@@ -1,0 +1,11 @@
+first bar 2024-04-15 00:15:00+00:00; holdout days with data 504; days removed by the quality screen 224
+
+## Controls for P2 (exploratory, run after the registered result)
+
+### holdout (before 2026-04-13)
+C1 (baseline matched on Nasdaq's trailing 1 h move in the event direction, quintiles): pooled excess +5.7 pp, SE 1.0, z +5.98 (registered, unmatched: see P2 above).
+C2 (mean signed Nasdaq move after any line flip, vs hour-matched random bars): 1h: -0.003% (z -0.7, n 2597); 2h: +0.002% (z +0.0, n 2495); 4h: +0.002% (z +0.1, n 2422); 8h: -0.011% (z -0.4, n 2214)
+
+### April-October 2026 (earlier sample)
+C1 (baseline matched on Nasdaq's trailing 1 h move in the event direction, quintiles): pooled excess +6.9 pp, SE 1.6, z +4.20 (registered, unmatched: see P2 above).
+C2 (mean signed Nasdaq move after any line flip, vs hour-matched random bars): 1h: +0.021% (z +1.6, n 545); 2h: +0.024% (z +1.4, n 530); 4h: +0.037% (z +1.5, n 511); 8h: +0.019% (z +0.5, n 469)

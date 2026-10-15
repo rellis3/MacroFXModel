@@ -1,0 +1,10 @@
+bars 17280; line present 57%; NQ present 67%; both 57%
+written
+Traceback (most recent call last):
+  File "C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_video_claims.py", line 122, in <module>
+    open(OUT + 'VIDEO_CLAIMS.md', 'w', encoding='utf-8').write('\n'.join(OUTL)); print('written'); print('\n'.join(OUTL[-12:]))
+                                                                                                   ~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\python314\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 275: character maps to <undefined>

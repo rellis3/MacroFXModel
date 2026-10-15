@@ -1,0 +1,405 @@
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_diff_nq\cog_param_sweep.py:33: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  o['hl2'] = (o.high + o.low) / 2; o['ohlc4'] = o[['open', 'high', 'low', 'close']].mean(1); return o
+legs built: 1050 series in 20s; contracts missing: []
+real sweep: 508,032 configurations in 92s
+placebo sweep done in 97s
+
+=== REAL: top 15 by EXPLORE (Thu-Fri) bar-by-bar corr, with HOLDOUT (Mon-Tue) alongside ===
+type eur   usd    tf src  ema  shift    lvE  scoreE    lvH  scoreH
+ mid IU7 SR3X6 30min low    5      0 -0.863   0.426 -0.860   0.241
+ mid IU7 SR3X6 30min low    6      0 -0.867   0.425 -0.850   0.234
+ mid IU7 SR3X6 30min low    4      0 -0.856   0.424 -0.870   0.250
+ mid IM7 SR3X6 30min low    5      0 -0.869   0.420 -0.871   0.247
+ mid IM7 SR3X6 30min low    6      0 -0.876   0.420 -0.861   0.244
+ mid IM7 SR3X6 30min low    4      0 -0.861   0.418 -0.881   0.251
+ mid IU7 SR3X6 30min low    8      0 -0.871   0.418 -0.832   0.220
+ mid IU7 SR3X6 30min low    3      0 -0.847   0.417 -0.881   0.259
+ mid IM7 SR3V6 30min low    2      0 -0.844   0.417 -0.921   0.175
+ mid IM7 SR3V6 30min low    3      0 -0.858   0.415 -0.913   0.188
+ mid IM7 SR3X6 30min low    8      0 -0.884   0.415 -0.841   0.236
+ mid IH7 SR3V6 30min low    5      0 -0.900   0.413 -0.884   0.275
+ mid IH7 SR3X6 30min low    8      0 -0.892   0.413 -0.811   0.298
+ mid IH7 SR3X6 30min low    6      0 -0.886   0.413 -0.833   0.317
+ mid IU7 SR3V6 30min low    2      0 -0.838   0.413 -0.905   0.198
+
+=== PLACEBO (his line rolled ~1 day): top 5 by explore, with holdout ===
+type eur   usd    tf  src  ema  shift   lvE  scoreE   lvH  scoreH
+ mid IZ6 SR3X6 30min open    1     -1 0.102   0.371 0.409  -0.075
+ mid IZ6 SR3V6 30min open    1     -1 0.052   0.363 0.301  -0.073
+ trd IV6 SR3U6    1h open    2     -2 0.081   0.357 0.390  -0.010
+ trd IV6 SR3U6    1h open    1     -2 0.094   0.357 0.371  -0.034
+ trd IV6 SR3U6    1h open    3     -2 0.066   0.335 0.406   0.004
+REAL: of top-200-by-explore, holdout bar-by-bar median +0.39, share >= 0.3: 54%; best single holdout over ALL configs +0.79; best explore +0.43
+PLACEBO: of top-200-by-explore, holdout bar-by-bar median -0.03, share >= 0.3: 0%; best single holdout over ALL configs +0.41; best explore +0.37
+
+=== REAL: top 12 by the WORSE of the two halves (needs to work in both) ===
+type eur   usd    tf   src  ema  shift    lvE  scoreE    lvH  scoreH
+ mid IM7 SR3V6 15min ohlc4    8      0 -0.882   0.411 -0.914   0.583
+ mid IM7 SR3V6 15min ohlc4    6      0 -0.878   0.411 -0.934   0.619
+ mid IU7 SR3V6 15min ohlc4    8      0 -0.860   0.409 -0.906   0.574
+ mid IM7 SR3V6 15min ohlc4    5      0 -0.874   0.408 -0.943   0.641
+ mid IU7 SR3V6 15min ohlc4    6      0 -0.860   0.408 -0.927   0.614
+ mid IM7 SR3V6 15min ohlc4   10      0 -0.881   0.408 -0.893   0.552
+ mid IU7 SR3V6 15min ohlc4   10      0 -0.856   0.405 -0.884   0.541
+ mid IH7 SR3X6 30min   hl2    5      0 -0.860   0.404 -0.875   0.522
+ mid IU7 SR3V6 15min ohlc4    5      0 -0.857   0.404 -0.937   0.638
+ mid IH7 SR3X6 30min   hl2    4      0 -0.850   0.403 -0.886   0.546
+ mid IM7 SR3V6 15min ohlc4    4      0 -0.866   0.403 -0.952   0.666
+ mid IH7 SR3X6 30min   hl2    6      0 -0.866   0.403 -0.864   0.501
+
+marginals (best explore score per option, with its holdout):
+  tf: 15min: +0.41/+0.58; 1D: +0.13/-0.12; 1h: +0.40/+0.57; 1min: +0.39/+0.55; 30min: +0.43/+0.24; 4h: +0.30/-0.09; 5min: +0.38/+0.55
+  src: close: +0.38/-0.02; high: +0.37/+0.04; hl2: +0.40/+0.52; low: +0.43/+0.24; ohlc4: +0.41/+0.58; open: +0.36/+0.03
+  ema: 1.0: +0.41/+0.17; 2.0: +0.42/+0.17; 3.0: +0.42/+0.26; 4.0: +0.42/+0.25; 5.0: +0.43/+0.24; 6.0: +0.42/+0.23; 8.0: +0.42/+0.22; 10.0: +0.41/+0.28; 13.0: +0.40/+0.26; 15.0: +0.40/+0.24; 20.0: +0.38/+0.20; 21.0: +0.38/+0.19; 25.0: +0.37/+0.17; 30.0: +0.36/-0.37; 40.0: +0.34/-0.37; 50.0: +0.33/-0.37
+  eur: IF7: +0.40/+0.15; IG7: +0.39/+0.61; IH7: +0.41/+0.28; IM7: +0.42/+0.25; IU7: +0.43/+0.24; IV6: +0.38/-0.02; IX6: +0.37/+0.03; IZ6: +0.37/+0.58
+  usd: SR3H7: +0.38/-0.02; SR3M7: +0.31/+0.25; SR3N6: +0.38/+0.65; SR3Q6: +0.39/+0.61; SR3U6: +0.38/+0.65; SR3V6: +0.42/+0.17; SR3X6: +0.43/+0.24; SR3Z6: +0.36/+0.59
+  type: mid: +0.43/+0.24; trd: +0.34/-0.14
+  shift: -4.0: +0.34/+0.11; -3.0: +0.32/+0.19; -2.0: +0.34/+0.13; -1.0: +0.40/-0.32; 0.0: +0.43/+0.24; 1.0: +0.29/+0.33; 2.0: +0.32/+0.30; 3.0: +0.38/-0.02; 4.0: +0.26/-0.04

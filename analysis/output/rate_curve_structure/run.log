@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\scripts\rate_curve\curve_structure.py", line 305, in <module>
+    (OUT / "RESULTS.md").write_text("\n".join(L), encoding="utf-8"); print("\n".join(L))
+                                                                     ~~~~~^^^^^^^^^^^^^^
+  File "c:\python314\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2212' in position 19666: character maps to <undefined>

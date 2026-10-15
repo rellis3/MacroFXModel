@@ -1,0 +1,11 @@
+  ER3Z6 -> stir_1m/ICEEU_ER3Z6.parquet: +156,000 bars, 154,800 total
+  ER3H7 -> stir_1m/ICEEU_ER3H7.parquet: +156,000 bars, 154,800 total
+  ER3M7 -> stir_1m/ICEEU_ER3M7.parquet: +156,000 bars, 154,800 total
+  ER3U7 -> stir_1m/ICEEU_ER3U7.parquet: +156,000 bars, 154,800 total
+  SR3U6 -> stir_1m/CME_SR3U6.parquet: +129,900 bars, 168,266 total
+  SR3M7 -> stir_1m/CME_SR3M7.parquet: +177,960 bars, 175,680 total
+  SR3U7 -> stir_1m/CME_SR3U7.parquet: +177,960 bars, 175,680 total
+  IH7 -> stir_1m/ICEEU_IH7.parquet: +156,000 bars, 154,800 total
+  IM7 -> stir_1m/ICEEU_IM7.parquet: +156,000 bars, 154,800 total
+  IU7 -> stir_1m/ICEEU_IU7.parquet: +156,000 bars, 154,800 total
+done

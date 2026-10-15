@@ -1,0 +1,120 @@
+//@version=5
+indicator("C.OG - Euribor vs SOFR Rate Spread", shorttitle="C.OG STIR", overlay=true)
+
+// ------------------------------------------------------------
+// INPUTS
+// ------------------------------------------------------------
+gSym   = "Contracts"
+eurSym  = input.symbol("ICEEUR:I2!", "EUR leg (Euribor)", group=gSym,
+     tooltip="ICE 3M Euribor. I1! = front listed contract, I2! = second. Note Euribor lists SERIAL months, so I2! rolls monthly. Alternatives: EUREX:FST31! (ESTR, thin), or a dated contract e.g. ICEEUR:IZ2026.")
+usdMode = input.string("Custom", "USD leg (SOFR)", group=gSym,
+     options=["SR31! (front quarterly)", "SR32! (second quarterly)", "Custom"],
+     tooltip="Continuous tickers roll automatically on expiry, so you never end up on a dead contract like SR3Z2025. Pick Custom to pin a dated contract.")
+usdCust = input.symbol("CME:SR3U2026", "Custom SOFR contract", group=gSym,
+     tooltip="Only used when USD leg = Custom. Format: CME:SR3<month><year>, e.g. CME:SR3H2027.")
+usdSym  = usdMode == "SR31! (front quarterly)" ? "CME:SR31!" : usdMode == "SR32! (second quarterly)" ? "CME:SR32!" : usdCust
+tfIn    = input.timeframe("D", "Data timeframe", group=gSym)
+srcSel  = input.string("close", "Price source", options=["close","open","high","low","hl2","ohlc4"], group=gSym)
+
+gCalc  = "Calculation"
+asRate  = input.bool(true,  "Convert price -> implied rate (100 - price)", group=gCalc,
+     tooltip="ON: spread = (100-Euribor px) - (100-SOFR px) = EUR rate - USD rate. OFF: raw price difference (sign is reversed).")
+invert  = input.bool(false, "Invert sign (SOFR - Euribor)", group=gCalc)
+inBps   = input.bool(false, "Express in basis points", group=gCalc)
+smooth  = input.int(1, "Smoothing (EMA length, 1 = off)", minval=1, group=gCalc)
+
+gMap   = "Overlay mapping"
+mapMode = input.string("Manual", "Mapping", options=["Manual","Auto-fit"], group=gMap,
+     tooltip="Manual: spread*scale + offset (same as the yield script). Auto-fit: rescales the spread into the chart's high/low range over the lookback.")
+scale   = input.float(0.2,   "Scale",  step=0.01,  group=gMap)
+offset  = input.float(1.445, "Offset", step=0.001, group=gMap)
+fitLen  = input.int(250, "Auto-fit lookback (chart bars)", minval=10, group=gMap)
+
+gLead  = "Lead"
+leadDays = input.float(1.0, "Projection (t + days)", minval=0, step=0.25, group=gLead,
+     tooltip="Shift the spread forward by this many days: 1 = t+1, 1.5 = t+1.5, 2 = t+2 ... Fractional days only resolve on intraday charts (on a daily chart 1.5 rounds to 2 bars; use 6H or lower for quarter-day steps).")
+
+gVis   = "Display"
+lineCol = input.color(color.blue, "Line colour", group=gVis)
+lineW   = input.int(2, "Line width", minval=1, maxval=4, group=gVis)
+showLbl = input.bool(true, "Show value label", group=gVis)
+
+// ------------------------------------------------------------
+// DATA
+// ------------------------------------------------------------
+f_src() =>
+    switch srcSel
+        "open"  => open
+        "high"  => high
+        "low"   => low
+        "hl2"   => hl2
+        "ohlc4" => ohlc4
+        => close
+
+eurPx = request.security(eurSym, tfIn, f_src(),
+     gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true)
+usdPx = request.security(usdSym, tfIn, f_src(),
+     gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true)
+
+// Carry last print across session/holiday mismatches (Eurex vs CME hours differ)
+eurPx := fixnan(eurPx)
+usdPx := fixnan(usdPx)
+
+// ------------------------------------------------------------
+// SPREAD  (rate terms: positive = EUR rate above USD rate)
+// ------------------------------------------------------------
+eurLeg = asRate ? 100.0 - eurPx : eurPx
+usdLeg = asRate ? 100.0 - usdPx : usdPx
+
+rawSpread = eurLeg - usdLeg
+rawSpread := invert ? -rawSpread : rawSpread
+rawSpread := inBps  ? rawSpread * 100.0 : rawSpread
+smoothed  = ta.ema(rawSpread, smooth)
+rawSpread := smooth > 1 ? smoothed : rawSpread
+
+// ------------------------------------------------------------
+// MAP ONTO PRICE SCALE
+// ------------------------------------------------------------
+// Auto-fit stats (computed unconditionally so ta.* stays consistent)
+sHi = ta.highest(rawSpread, fitLen)
+sLo = ta.lowest(rawSpread, fitLen)
+pHi = ta.highest(high, fitLen)
+pLo = ta.lowest(low,  fitLen)
+
+manualVal = rawSpread * scale + offset
+autoVal   = (sHi == sLo or na(sHi)) ? na : pLo + (rawSpread - sLo) / (sHi - sLo) * (pHi - pLo)
+plotVal   = mapMode == "Manual" ? manualVal : autoVal
+
+// ------------------------------------------------------------
+// LEAD (shift plot forward by N days, measured in CHART bars)
+// ------------------------------------------------------------
+chartMin = timeframe.in_seconds() / 60.0            // chart timeframe, not the data timeframe
+leadBars = math.max(0, math.round(leadDays * 1440.0 / chartMin))
+
+// ------------------------------------------------------------
+// PLOTS
+// ------------------------------------------------------------
+plot(plotVal,   "C.OG (mapped)", color=lineCol, linewidth=lineW, offset=leadBars)
+plot(rawSpread, "Spread (raw)",  display=display.data_window)
+plot(eurLeg,   "EUR leg",      display=display.data_window)
+plot(usdLeg,   "USD leg",      display=display.data_window)
+
+// ------------------------------------------------------------
+// LABEL / DIAGNOSTICS
+// ------------------------------------------------------------
+var label lbl = na
+if barstate.islast
+    label.delete(lbl)
+    bad = na(eurPx) or na(usdPx)
+    if bad
+        lbl := label.new(bar_index, close,
+             "C.OG: no data for " + (na(eurPx) ? eurSym : usdSym) + "\nCheck symbol / data subscription",
+             style=label.style_label_left, color=color.new(color.red, 10), textcolor=color.white, size=size.small)
+    else if showLbl
+        unit = inBps ? " bp" : " %"
+        fmt  = inBps ? "#" : "#.###"
+        txt  = (invert ? "SOFR-EUR: " : "EUR-SOFR: ") + str.tostring(rawSpread, fmt) + unit +
+               "\nEUR " + str.tostring(eurLeg, "#.###") + "  SOFR " + str.tostring(usdLeg, "#.###") +
+               "\nt+" + str.tostring(leadDays, "#.##") + "d (" + str.tostring(leadBars) + " bars)"
+        lbl := label.new(bar_index + leadBars, plotVal, txt,
+             style=label.style_label_left, color=color.new(lineCol, 20), textcolor=color.white, size=size.small)
