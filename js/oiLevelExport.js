@@ -358,7 +358,9 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     let tierSet = null; const zoneOf = new Map();
     const _lad = tiers && ladderByPair ? ladderByPair[pair] : null;
     const _fmtT = p => px(p).toFixed(dp);
-    const _fmtFutT = (!futuresTerms && Number.isFinite(inst.basis) && inst.basis !== 0) ? (p => oiFuturesTermsPrice(p, inst).toFixed(dp)) : null;
+    // futures-terms echo in the tier text — only when the conversion is a plain basis shift (inverted pairs like USD/JPY convert to nonsense; skip those)
+    const _fOk = !futuresTerms && Number.isFinite(inst.basis) && inst.basis !== 0 && inst.spot > 0 && Math.abs(oiFuturesTermsPrice(inst.spot, inst) / inst.spot - 1) < 0.05;
+    const _fmtFutT = _fOk ? (p => oiFuturesTermsPrice(p, inst).toFixed(dp)) : null;
     if (tiers && _lad && _lad.open > 0 && _lad.sigmaPct > 0 && inst.spot > 0) {
       const legs = ladderLegs(_lad.ladder, _lad.open);
       tierSet = buildTiers({ spot: inst.spot, sigma: inst.spot * _lad.sigmaPct / 100, levels, legs });

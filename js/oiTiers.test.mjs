@@ -24,5 +24,7 @@ ok('description reads like a desk note', txt === 'Tier 1 — shallow, forecast m
 ok('single-source zone is not called confluence', !/confluence/.test(describeZone(t.above[t.above.length - 1], { fmt: p => p.toFixed(0) })));
 ok('chart tag is short', zoneTag(near.below[0]) === 'T1v shallow');
 ok('degenerate input gives empty tiers', buildTiers({ spot: 0, sigma: 1 }).below.length === 0 && buildTiers({ spot, sigma: 0 }).above.length === 0);
+const chain = buildTiers({ spot, sigma, levels: [4130, 4135, 4140, 4145, 4150].map(price => ({ price, type: 'put_wall' })), legs: [] });
+ok('a chain of levels 5 apart is not merged into one wide zone (span cap 0.3σ)', chain.below.every(z => z.hi - z.lo <= 0.3 * sigma + 1e-9) && chain.below.length > 1, chain.below.map(z => z.hi - z.lo).join(','));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

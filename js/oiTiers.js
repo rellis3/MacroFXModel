@@ -31,9 +31,9 @@ export function ladderLegs(ladder, open) {
 
 const character = d => (d < 0.5 ? 'shallow' : d < 1 ? 'mid' : d < 1.6 ? 'deep' : 'tail');
 
-// opts: spot, sigma (price points of one day's σ), levels (OI levels [{price,type,tier?,dte?}]), ladderLegs, radius (σ fraction, default .15), maxTiers (per side, default 4)
+// opts: spot, sigma (price points of one day's σ), levels (OI levels [{price,type,tier?,dte?}]), legs (ladderLegs), radius (σ fraction, default .15), maxSpan (widest zone, σ, default .3), maxTiers (per side, default 4)
 // Returns { below:[zone], above:[zone] } nearest first; zone = { n, side, lo, hi, mid, dist, character, members:[{price,type,kind,label,ref}] }.
-export function buildTiers({ spot, sigma, levels = [], legs = [], radius = 0.15, maxTiers = 4 } = {}) {
+export function buildTiers({ spot, sigma, levels = [], legs = [], radius = 0.15, maxSpan = 0.3, maxTiers = 4 } = {}) {
   if (!(spot > 0) || !(sigma > 0)) return { below: [], above: [] };
   const members = [
     ...levels.filter(l => Number.isFinite(l?.price) && TIER_OI_TYPES.has(l.type)).map(l => ({ price: l.price, type: l.type, kind: 'oi', label: SRC_LABEL[l.type], ref: l })),
@@ -43,7 +43,8 @@ export function buildTiers({ spot, sigma, levels = [], legs = [], radius = 0.15,
     const arr = members.filter(m => (side === 'below' ? m.price < spot : m.price > spot)).sort((a, b) => Math.abs(a.price - spot) - Math.abs(b.price - spot));
     const zones = [];
     for (const m of arr) {
-      const z = zones.find(z => m.price >= z.lo - radius * sigma && m.price <= z.hi + radius * sigma);
+      // join a zone only if the member is within `radius` of it AND the zone stays narrower than `maxSpan` σ — no single-linkage chains
+      const z = zones.find(z => m.price >= z.lo - radius * sigma && m.price <= z.hi + radius * sigma && Math.max(z.hi, m.price) - Math.min(z.lo, m.price) <= maxSpan * sigma);
       if (z) { z.members.push(m); z.lo = Math.min(z.lo, m.price); z.hi = Math.max(z.hi, m.price); }
       else zones.push({ lo: m.price, hi: m.price, members: [m] });
     }
