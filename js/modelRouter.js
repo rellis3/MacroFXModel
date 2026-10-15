@@ -94,6 +94,7 @@ export const TASK_CLASS = {
   'eod-review':   { ledger: 'brief', label: 'End-of-day review' },
   // reasoning over desk data, no ledger
   'pair':         { ledger: null,    label: 'Pair analysis' },
+  'cot':          { ledger: null,    label: 'COT positioning analysis' },
   'currency':     { ledger: null,    label: 'Currency analysis' },
   'explain':      { ledger: null,    label: 'Explain a reading' },
   // summarising supplied text — the cheap jobs

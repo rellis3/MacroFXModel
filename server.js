@@ -5826,7 +5826,7 @@ RULES:
 Respond with ONLY valid JSON, no markdown:
 {"headline":"one-sentence front-page read of this week's positioning","verdict":"STRETCHED|PATCHY|QUIET|CALM","weeklyTheme":"2-4 sentences on the dominant theme this week — is this one macro position wearing several costumes, or unrelated idiosyncratic crowding","themes":[{"theme":"short theme name","markets":["symbols from the list above, that belong to this theme"],"read":"2-3 sentences: what's happening across these markets together and how this positioning is likely to act this week — not a restatement of each market's own percentile"}],"tradeIdeas":[{"market":"symbol","direction":"LONG|SHORT","thesis":"fade the crowd|ride the flow|event-driven","confidence":"LOW|MEDIUM|HIGH","rationale":"2-3 sentences citing the specific data behind it","invalidation":"what would prove this wrong"}],"riskWarnings":["short warnings, max 3, specific to this week"],"tldr":"one-line bottom line for the week"}`;
 
-  const antRes = await callModel({ task: 'brief', maxTokens: 16000,
+  const antRes = await callModel({ task: 'cot', maxTokens: 16000,
     system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim strictly in the provided data; never invent levels, catalysts, or figures.',
     prompt: prompt });
   const antData = antRes;
