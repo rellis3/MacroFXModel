@@ -4245,6 +4245,27 @@ app.get('/api/cog-line/indicator', (_req, res) => {
   try { res.type('text/plain').send(fs.readFileSync(path.join(__dirname, 'pine', 'cog_line_pasted.pine'), 'utf8')); }
   catch (e) { res.status(500).type('text/plain').send(`Indicator unavailable: ${e.message}`); }
 });
+// Live read: the line's trend and Nasdaq's (the same adaptive zig-zag as forge/COG_TREND_STATE_PREREG.md), whether they agree, and the last hour's attribution at the two-year link.
+// Line = the 120-day pinned-pair window (cog_line_pinned_recent.json) with the laptop's pushed bars laid over it; Nasdaq = OANDA NAS100 M15. Context, not a signal.
+const _COG_RECENT_PATH = path.join(__dirname, 'analysis', 'output', 'cog_line', 'cog_line_pinned_recent.json');
+const _COG_HIST_PATH = path.join(__dirname, 'analysis', 'output', 'cog_line', 'cog_line_history.json');
+const _cogJsonCache = new Map();
+function _cogJson(p) { const st = fs.statSync(p), c = _cogJsonCache.get(p); if (c && c.m === st.mtimeMs) return c.v; const v = JSON.parse(fs.readFileSync(p, 'utf8')); _cogJsonCache.set(p, { m: st.mtimeMs, v }); return v; }
+let _cogReadCache = { at: 0, v: null };
+app.get('/api/cog-line/read', async (_req, res) => {
+  try {
+    if (_cogReadCache.v && Date.now() - _cogReadCache.at < 5 * 60_000) return res.json(_cogReadCache.v);
+    if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set');
+    const recent = _cogJson(_COG_RECENT_PATH), live = await _cogLivePush(), line = live ? _cogMerge(recent, live) : recent, hist = _cogJson(_COG_HIST_PATH);
+    const nq = await fetchIntraday('NAS100_USD', 'M15', { from: new Date(Date.now() - 75 * 86400e3).toISOString().slice(0, 10) });
+    const v = { ..._cogRead({ line, nq, history: hist, now: Math.floor(Date.now() / 1000) }), live: !!live };
+    _cogReadCache = { at: Date.now(), v }; res.json(v);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/cog-line/history', (_req, res) => {
+  try { res.set('Cache-Control', 'public, max-age=3600'); res.json(_cogJson(_COG_HIST_PATH)); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.post('/api/rates-regime/tick', async (req, res) => {
   try { res.json({ ok: true, ...(await _ratesRegimeTick({ silent: req.query.silent === '1' })) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -4341,27 +4362,6 @@ it BEFORE any market folklore, and say "tested here" when you do.
 HOW TO WRITE IT (style):
 - Open with ONE sentence that names what is actually driving today. Provocative, plain, specific. Not a summary.
 - Name the competing stories as THINGS, each with its legs, and say which is dominant, which is overshadowed, which is reloading in the background: e.g. "the war trade (energy up, dollar up)", "the debasement trade (gold, silver, bitcoin up, dollar down)", "the rate shock", "the AI/financing trade". Name a story ONLY when at least two of its legs are measured in the snapshot and point the same way; a leg that the chain marks QUIET (inside its noise floor) does not count as a leg. Do not invent a story the numbers do not show.
-// Live read: the line's trend and Nasdaq's (the same adaptive zig-zag as forge/COG_TREND_STATE_PREREG.md), whether they agree, and the last hour's attribution at the two-year link.
-// Line = the 120-day pinned-pair window (cog_line_pinned_recent.json) with the laptop's pushed bars laid over it; Nasdaq = OANDA NAS100 M15. Context, not a signal.
-const _COG_RECENT_PATH = path.join(__dirname, 'analysis', 'output', 'cog_line', 'cog_line_pinned_recent.json');
-const _COG_HIST_PATH = path.join(__dirname, 'analysis', 'output', 'cog_line', 'cog_line_history.json');
-const _cogJsonCache = new Map();
-function _cogJson(p) { const st = fs.statSync(p), c = _cogJsonCache.get(p); if (c && c.m === st.mtimeMs) return c.v; const v = JSON.parse(fs.readFileSync(p, 'utf8')); _cogJsonCache.set(p, { m: st.mtimeMs, v }); return v; }
-let _cogReadCache = { at: 0, v: null };
-app.get('/api/cog-line/read', async (_req, res) => {
-  try {
-    if (_cogReadCache.v && Date.now() - _cogReadCache.at < 5 * 60_000) return res.json(_cogReadCache.v);
-    if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set');
-    const recent = _cogJson(_COG_RECENT_PATH), live = await _cogLivePush(), line = live ? _cogMerge(recent, live) : recent, hist = _cogJson(_COG_HIST_PATH);
-    const nq = await fetchIntraday('NAS100_USD', 'M15', { from: new Date(Date.now() - 75 * 86400e3).toISOString().slice(0, 10) });
-    const v = { ..._cogRead({ line, nq, history: hist, now: Math.floor(Date.now() / 1000) }), live: !!live };
-    _cogReadCache = { at: Date.now(), v }; res.json(v);
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
-app.get('/api/cog-line/history', (_req, res) => {
-  try { res.set('Cache-Control', 'public, max-age=3600'); res.json(_cogJson(_COG_HIST_PATH)); }
-  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
 - Chain it: "High oil keeps inflation elevated, that keeps rates elevated, and now the market cares about X." Second and third order. Every step must be a measured number from the snapshot or a HOLDING link.
 - The tell is the break: "Normally an oil shock sends the dollar through the roof. Today the dollar is down 0.7% into it. That means..." Use the BROKEN links and the flagged divergences for this. A QUIET link is not evidence of anything; do not chain through it.
 - Front end versus long end: the 2-year is the vote on what the central bank does next; the 10- and 30-year are the vote on inflation and credibility. Say which end is moving and what that says.
