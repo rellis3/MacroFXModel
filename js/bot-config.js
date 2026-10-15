@@ -6699,7 +6699,7 @@ const OIV_DEFAULTS = {
   subTierTrade: false, subTierSize: 0.4, minZoneSpacing: 0.05, volMagnetMinShare: 0.25,
   reactNodes: { walls: 1.0, gammaFlip: 0.8, gexFlip: 0.8, vannaFlip: 0.6, volMagnets: 0.6 },
   // OI-Vol selection (server: OI_VOL_CFG_OVERRIDES) — reachable levels only
-  selectBy: 'reach', maxReachMult: 3, minTouchP: 0.10, touchHorizon: '8h',
+  bookMode: 'near', nearBookDays: 3, selectBy: 'reach', maxReachMult: 3, minTouchP: 0.10, touchHorizon: '8h',
   // execution (the bot)
   paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
   touch_tol_pips: 2, max_spread_pips: null, tick_secs: 3, status_secs: 30, plan_secs: 600,
@@ -6773,6 +6773,8 @@ function renderOiVolForm() {
   set('oiv_approach_trim', _oivCfg.approach_trim ?? OIV_DEFAULTS.approach_trim);
   chk('oiv_scale_out', _oivCfg.scale_out ?? false);
   chk('oiv_be_at_tp1', _oivCfg.be_at_tp1 ?? true);
+  set('oiv_book_mode', _oivCfg.bookMode ?? OIV_DEFAULTS.bookMode);
+  set('oiv_near_book_days', _oivCfg.nearBookDays ?? OIV_DEFAULTS.nearBookDays);
   set('oiv_select_by', _oivCfg.selectBy ?? OIV_DEFAULTS.selectBy);
   set('oiv_max_reach_mult', _oivCfg.maxReachMult ?? OIV_DEFAULTS.maxReachMult);
   set('oiv_min_touch_p', _oivCfg.minTouchP ?? OIV_DEFAULTS.minTouchP);
@@ -6863,6 +6865,8 @@ function readOiVolForm() {
   _oivCfg.approach_trim = num('oiv_approach_trim', OIV_DEFAULTS.approach_trim);
   _oivCfg.scale_out = !!document.getElementById('oiv_scale_out')?.checked;
   _oivCfg.be_at_tp1 = !!document.getElementById('oiv_be_at_tp1')?.checked;
+  _oivCfg.bookMode = document.getElementById('oiv_book_mode')?.value || OIV_DEFAULTS.bookMode;
+  _oivCfg.nearBookDays = Math.round(num('oiv_near_book_days', OIV_DEFAULTS.nearBookDays));
   _oivCfg.selectBy = document.getElementById('oiv_select_by')?.value || OIV_DEFAULTS.selectBy;
   _oivCfg.maxReachMult = num('oiv_max_reach_mult', OIV_DEFAULTS.maxReachMult);
   _oivCfg.minTouchP = num('oiv_min_touch_p', OIV_DEFAULTS.minTouchP);
@@ -6888,8 +6892,43 @@ function readOiVolForm() {
   _oivCfg.tg_token = (document.getElementById('oiv_tg_token')?.value || '').trim();
   _oivCfg.tg_chat_id = (document.getElementById('oiv_tg_chat_id')?.value || '').trim();
 }
+// The OI-Vol bot is only comparable to the OI bot if everything EXCEPT the reach/selection options matches. So a first open (no saved
+// oi_vol_bot_config yet) seeds the form from the live OI bot's settings, and "Copy settings from OI bot" re-seeds on demand. Paper mode,
+// kill switch and Telegram are NOT copied — the variant stays paper, and alerts stay off until you choose.
+const OIV_OWN_KEYS = ['bookMode', 'nearBookDays', 'selectBy', 'maxReachMult', 'minTouchP', 'touchHorizon'];
+const OIV_NOT_COPIED = ['paper_mode', 'kill_switch', 'tg_enabled', 'tg_token', 'tg_chat_id'];
+let _oivLiveCfg = null;
+async function _oivSeed() {
+  _oivLiveCfg = (await kvGet('oi_bot_config')) || null;
+  const c = { ...OIV_DEFAULTS, ...(_oivLiveCfg || {}) };
+  OIV_OWN_KEYS.forEach(k => { c[k] = OIV_DEFAULTS[k]; });
+  OIV_NOT_COPIED.forEach(k => { c[k] = OIV_DEFAULTS[k]; });
+  c.paper_mode = true; c.kill_switch = false;
+  return c;
+}
 async function loadOiVolConfig() {
-  try { const stored = await kvGet('oi_vol_bot_config'); if (stored) _oivCfg = { ...OIV_DEFAULTS, ...stored }; renderOiVolForm(); } catch (e) {}
+  try {
+    const stored = await kvGet('oi_vol_bot_config');
+    if (stored) { _oivCfg = { ...OIV_DEFAULTS, ...stored }; _oivLiveCfg = (await kvGet('oi_bot_config')) || null; }
+    else { _oivCfg = await _oivSeed(); const n = document.getElementById('oivSeedNote'); if (n) n.style.display = ''; }
+    renderOiVolForm(); renderOiVolDiff();
+  } catch (e) {}
+}
+async function copyOiVolFromOi() {
+  _oivCfg = await _oivSeed(); renderOiVolForm(); renderOiVolDiff();
+  const el = document.getElementById('oivSaveStatus'); if (el) { el.textContent = 'Copied from the OI bot (paper stays on) — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+// What differs from the live OI bot, apart from the variant's own options — so an audit difference can't hide a settings difference.
+function renderOiVolDiff() {
+  const el = document.getElementById('oivDiffList'); if (!el) return;
+  readOiVolForm();
+  if (!_oivLiveCfg) { el.textContent = 'OI bot settings not found — nothing to compare.'; return; }
+  const skip = new Set([...OIV_OWN_KEYS, 'tg_enabled', 'tg_token', 'tg_chat_id', 'paper_mode', 'kill_switch']);
+  const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  const rows = Object.keys(OIV_DEFAULTS).filter(k => !skip.has(k) && _oivLiveCfg[k] !== undefined && !same(_oivCfg[k], _oivLiveCfg[k]));
+  el.innerHTML = rows.length
+    ? rows.map(k => `<code>${k}</code>: OI bot <b>${JSON.stringify(_oivLiveCfg[k])}</b> → OI-Vol <b style="color:#f59e0b">${JSON.stringify(_oivCfg[k])}</b>`).join(' &nbsp;·&nbsp; ')
+    : '<span style="color:var(--green)">Identical to the OI bot apart from the reach / selection options.</span>';
 }
 async function saveOiVolConfig() {
   readOiVolForm();
@@ -7028,7 +7067,7 @@ async function loadOiVolAudit() {
     if (pos) pos.innerHTML = ptab('OI bot open positions', a.positions.oi) + ptab('OI-Vol bot open positions', a.positions.vol);
   } catch (e) { if (sum) sum.textContent = 'Audit unavailable: ' + e.message; }
 }
-window.loadOiVolAudit = loadOiVolAudit;
+window.loadOiVolAudit = loadOiVolAudit; window.copyOiVolFromOi = copyOiVolFromOi; window.renderOiVolDiff = renderOiVolDiff;
 
 loadOiVolConfig();
 loadOiVolCreds();

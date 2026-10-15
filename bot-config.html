@@ -6062,11 +6062,25 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
     </div>
 
 
+    <!-- settings parity with the OI bot -->
+    <div class="card" style="border-left:3px solid #4dd0e1">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:600;color:#4dd0e1">Settings parity with the OI bot</span>
+        <button onclick="copyOiVolFromOi()" style="background:#4dd0e1;border:none;border-radius:6px;color:#06302b;font-weight:700;padding:5px 12px;cursor:pointer;font-size:11px">Copy settings from OI bot</button>
+        <button onclick="renderOiVolDiff()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 9px;font-size:11px;cursor:pointer">Re-check</button>
+      </div>
+      <div id="oivSeedNote" class="bot-banner-sub" style="display:none;margin-top:6px;color:#f59e0b">Nothing saved for OI-Vol yet - the form below was filled from the live OI bot's settings (paper mode on, alerts off). <b>Click Save All to create it</b>; until then the plan uses the OI bot's settings and the Python bot uses its own built-in defaults (smaller size, no symbol map).</div>
+      <div class="bot-banner-sub" style="margin-top:6px">The comparison is only fair if everything else matches. Differences from the OI bot (excluding the reach/selection options below):</div>
+      <div id="oivDiffList" class="bot-banner-sub" style="margin-top:4px;line-height:1.9"></div>
+    </div>
+
     <!-- OI-Vol selection options -->
     <div class="card">
       <div style="font-size:12px;font-weight:600;color:#4dd0e1;margin-bottom:6px">Reachable-level selection (what makes this bot different)</div>
       <div class="bot-banner-sub" style="margin-bottom:8px">The OI bot ranks break candidates by strength and then drops the far ones, so near walls can be crowded out. Here the unreachable ones are removed <i>first</i> and the nearest fill the slots, then a calibrated touch-probability gate applies. Saved to <code>oi_vol_bot_config</code>; the server re-plans every 10 minutes.</div>
       <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <label style="font-size:11px">Book traded<br><select id="oiv_book_mode" style="margin-top:3px"><option value="near">all expiries up to N days (aggregate)</option><option value="day">single day expiry (OI bot rule)</option></select></label>
+        <label style="font-size:11px">...N days<br><input id="oiv_near_book_days" type="number" step="1" min="1" max="10" style="width:70px;margin-top:3px"></label>
         <label style="font-size:11px">Break selection<br><select id="oiv_select_by" style="margin-top:3px"><option value="reach">nearest reachable first</option><option value="strength">by strength (OI bot rule)</option></select></label>
         <label style="font-size:11px">Max reach (× day ref move)<br><input id="oiv_max_reach_mult" type="number" step="0.5" min="0" style="width:90px;margin-top:3px"></label>
         <label style="font-size:11px">Min touch probability (0–1)<br><input id="oiv_min_touch_p" type="number" step="0.05" min="0" max="1" style="width:90px;margin-top:3px"></label>

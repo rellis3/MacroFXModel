@@ -19271,14 +19271,17 @@ function _oiNearBook(inst, pair, maxDte) {
 }
 async function _refreshOIBotZones({ storeOverride = null, outKey = 'oi_bot_zones', strategy = 'oi-bot', noHistory = false, cfgKey = 'oi_bot_config', variant = null } = {}) {
   try {
-    const [oiRaw, cfgRaw, histRaw, calibRaw] = await Promise.all([
+    const [oiRaw, cfgRaw, histRaw, calibRaw, liveCfgRaw] = await Promise.all([
       storeOverride ? null : kv.get('oi_store').catch(() => null), kv.get(cfgKey).catch(() => null),
       noHistory ? null : kv.get('oi_history').catch(() => null),
       kv.get('oi_hold_calibration').catch(() => null),
+      variant === 'vol' ? kv.get('oi_bot_config').catch(() => null) : null,   // the OI-Vol plan starts from the LIVE OI bot's settings so the two plans differ only where intended
     ]);
     if (!storeOverride && !oiRaw) return 0;
     const store = storeOverride || (JSON.parse(oiRaw).data ?? JSON.parse(oiRaw));
-    const cfg = { ...OI_BOT_CFG_DEFAULTS, ...(variant === 'vol' ? OI_VOL_CFG_OVERRIDES : {}), ...(cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {}) };
+    const _liveOi = (variant === 'vol' && liveCfgRaw) ? (JSON.parse(liveCfgRaw).data ?? JSON.parse(liveCfgRaw)) : {};
+    // layering for the variant: server defaults <- the live OI bot's saved settings <- OI-Vol's own overrides <- its OWN saved config (bot-config OI-Vol tab)
+    const cfg = { ...OI_BOT_CFG_DEFAULTS, ...(variant === 'vol' ? { ..._liveOi, ...OI_VOL_CFG_OVERRIDES } : {}), ...(cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {}) };
     // oi_history is CME's (its wall-stability, flip drift and the GEX median that sets
     // conviction are all in CME units/strikes) — a Cboe book must not be judged by it.
     const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};

@@ -169,6 +169,23 @@ def _broker_sym(pair: str) -> str:
         return pair.upper()
 
 
+# Settings for the OI-Vol bot. Its own saved config (bot-config -> OI-Vol tab, key oi_vol_bot_config) wins. Until that exists it runs on the LIVE
+# OI bot's settings so the two bots differ only in the plan they trade — never on this file's smaller built-in defaults. What is NOT inherited:
+# paper mode (stays paper), the kill switch, and Telegram credentials.
+_NOT_INHERITED = ("paper_mode", "kill_switch", "tg_enabled", "tg_token", "tg_chat_id")
+
+
+def load_cfg(kv, previous: dict | None = None) -> dict:
+    own = kv.get_json("oi_vol_bot_config")
+    if own:
+        return _deep_merge(DEFAULT_CFG, own)
+    live = kv.get_json("oi_bot_config") or {}
+    inherited = {k: v for k, v in live.items() if k not in _NOT_INHERITED}
+    if inherited:
+        return _deep_merge(DEFAULT_CFG, inherited)
+    return _deep_merge(DEFAULT_CFG, previous or {})
+
+
 def _deep_merge(base: dict, over: dict) -> dict:
     out = dict(base)
     for k, v in (over or {}).items():
@@ -552,7 +569,7 @@ def build_status(cfg, broker, plan, paper, sessions, closed=None):
 def run(base_url: str, force_live: bool) -> None:
     kv = KvClient(base_url)
     try:
-        cfg = _deep_merge(DEFAULT_CFG, kv.get_json("oi_vol_bot_config") or {})
+        cfg = load_cfg(kv)
     except Exception as e:
         log.error(f"could not reach dashboard at {base_url} to read config: {e} — exiting")
         return
@@ -755,7 +772,7 @@ def run(base_url: str, force_live: bool) -> None:
         # (b) Config + status — medium.
         if nowt - last_status >= cfg.get("status_secs", 30):
             try:
-                cfg = _deep_merge(DEFAULT_CFG, kv.get_json("oi_vol_bot_config") or cfg)
+                cfg = load_cfg(kv, cfg)
                 _apply_broker_symbols(cfg)
                 _apply_paper_spreads(broker, cfg)
                 guard.sync_cfg(cfg)
