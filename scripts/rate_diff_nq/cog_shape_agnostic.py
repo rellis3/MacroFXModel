@@ -147,10 +147,14 @@ verdicts = []
 for tn in TARG:
     ok = all(row(tn, hf).ci_lo > 0 for hf in ('VAL', 'OOS')); real = row(tn, 'VAL+OOS').IC_gain; pl = np.array([v for v in PL.get(tn, []) if np.isfinite(v)])
     beats = bool(len(pl) > 20 and real > np.percentile(pl, 95)) if tn in PL else None
-    verdicts.append(dict(target=tn, both_halves_CI_above_zero=ok, beats_placebo95=beats, real_gain_val_oos=real, placebo_mean=pl.mean() if len(pl) else np.nan, placebo_p95=np.percentile(pl, 95) if len(pl) else np.nan))
+    if tn.startswith('vol'): econ = 'volatility context (no trade)'; econ_ok = True
+    else:
+        r_ = ECO[(ECO.target == tn) & (ECO.model == 'M1 (with line)') & (np.isclose(ECO.cost_bp, 1.0))]; econ_ok = bool(len(r_) and r_.iloc[0].net_lo > 0); econ = 'net lower bound at 1.0 bp: ' + (f'{r_.iloc[0].net_lo:+.4f}%' if len(r_) else 'not computed')
+    verdicts.append(dict(target=tn, both_halves_CI_above_zero=ok, beats_placebo95=beats, real_gain_val_oos=real, placebo_mean=pl.mean() if len(pl) else np.nan, placebo_p95=np.percentile(pl, 95) if len(pl) else np.nan, economic_gate=econ, economic_ok=econ_ok))
 V = pd.DataFrame(verdicts)
-found = V[(V.both_halves_CI_above_zero) & (V.beats_placebo95 == True)]
-verdict = 'a repeatable shape exists (see importance table for which)' if len(found) else 'no shape-agnostic evidence'
+stat = V[(V.both_halves_CI_above_zero) & (V.beats_placebo95 == True)]
+found = stat[stat.economic_ok]
+verdict = ('a repeatable shape exists (see importance table for which)' if len(found) else ('statistical signal without economic significance: context only, no trade (' + ', '.join(stat.target) + ')' if len(stat) else 'no shape-agnostic evidence'))
 fm = lambda d: d.to_markdown(index=False, floatfmt='.4f')
 txt = ['# COG-SHAPE-AGNOSTIC results', '', 'Run once per forge/COG_SHAPE_AGNOSTIC_PREREG.md. Gradient-boosted trees, fixed hyper-parameters, walk-forward by quarter (validation 2025-04 to 2025-12, out-of-sample 2026-01 to 2026-10-09), purged. M0 = Nasdaq-only; M1 = M0 + the line\'s multi-scale shape + divergence.', '',
        f'## Verdict (registered rule): **{verdict}**', '', f'Features: M0 {M0.shape[1]}, M1 {M1.shape[1]} (line shape: {len(LF.columns)}, divergence: {len(DV.columns)}). Placebo draws: {len(PL["dir_16"])}.', '',
