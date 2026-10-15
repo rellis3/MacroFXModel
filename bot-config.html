@@ -502,6 +502,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="liquiditygate" onclick="switchTab('liquiditygate')" style="color:#22d3ee" id="lgTabBtn">💧 Liquidity Gate</button>
     <button class="tab-btn" data-tab="positions" onclick="switchTab('positions')" style="color:#10b981" id="posTabBtn">📊 Positions</button>
     <button class="tab-btn" data-tab="analogml" onclick="switchTab('analogml')" style="color:#a78bfa" id="amlTabBtn">🔮 AnalogML</button>
+    <button class="tab-btn" data-tab="aimodels" onclick="switchTab('aimodels')" style="color:#e879f9" id="aiTabBtn">🧠 AI Models</button>
   </div>
 
   <!-- ═══════════════════════ TAB: TELEGRAM BOT ═══════════════════════ -->
@@ -7512,6 +7513,72 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
 
   </div><!-- /tab-poshedgebot -->
 
+  <!-- ═════════════════════ TAB: AI MODELS ═════════════════════ -->
+  <div class="tab-pane" id="tab-aimodels">
+    <div class="bot-banner" style="border-left:3px solid #e879f9">
+      <b>Which model runs which job</b> &mdash; and what it is costing.
+      <div style="font-size:12px;color:var(--t3);margin-top:6px;line-height:1.6">
+        API keys live in Railway and are never shown here. This page only chooses
+        <b>routing</b>, which is stored in KV and survives a deploy.
+        <br>Routing is <b>per task</b> on purpose. Summarising one news article and writing
+        the morning brief are not the same job: the brief hands the model ~34k tokens of
+        tested findings and asks it to respect every one of them, and that is exactly where
+        a cheaper model degrades first &mdash; <b>silently</b>. Tasks that carry the ledger
+        are marked.
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Providers</h3>
+      <div id="aiProviders" class="muted">Loading&hellip;</div>
+      <div style="font-size:11.5px;color:var(--t3);margin-top:8px;line-height:1.6">
+        To add one, set its key in Railway and redeploy. Model ids and output caps are
+        overridable too (<code>MODEL_DEEPSEEK_ID</code>, <code>MODEL_DEEPSEEK_MAXOUT</code>
+        &hellip;) because vendors rename models faster than code gets edited. Set
+        <code>PRICE_&lt;PROVIDER&gt;_IN</code> / <code>_OUT</code> to see money below
+        &mdash; without them only token counts are shown, because a made-up rate in a cost
+        report gets quoted later as if it were measured.
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Routing</h3>
+      <div id="aiTasks" class="muted">Loading&hellip;</div>
+      <div style="margin-top:12px">
+        <button class="btn" onclick="aiSaveRouting()">Save routing</button>
+        <button class="btn secondary" onclick="aiLoadConfig()">Reload</button>
+        <span id="aiSaveMsg" style="margin-left:10px;font-size:12px"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Usage since this instance started</h3>
+      <div id="aiStats" class="muted">Loading&hellip;</div>
+    </div>
+
+    <div class="card">
+      <h3>Check a cheaper model before trusting it</h3>
+      <div style="font-size:12.5px;color:var(--t3);line-height:1.6;margin-bottom:10px">
+        Replays the <b>last real prompt</b> for a task through another provider and compares
+        the answers. A toy prompt proves nothing about a job that carries the ledger, so this
+        uses the real one &mdash; run the task once first. One cheap call per check; the
+        expensive answer was already paid for.
+        <br><b>Structural</b> failures (fenced, truncated, unparseable JSON) are loud and
+        retryable. <b>Ledger</b> flags are the silent kind: sentences that forecast something
+        this desk has tested and falsified. The screen is crude, but it is the <i>same</i>
+        crude screen on both answers, so the gap between them is real.
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Task</span>
+        <select id="aiAbTask" style="width:230px"></select>
+        <span class="form-lbl" style="margin-left:12px">Against</span>
+        <select id="aiAbProvider" style="width:160px"></select>
+        <button class="btn" style="margin-left:10px" onclick="aiRunAb()">Run comparison</button>
+      </div>
+      <div id="aiAbOut" style="margin-top:12px"></div>
+    </div>
+  </div><!-- /tab-aimodels -->
+
 </div><!-- /page -->
 
 <!-- Effective-number-of-bets brick (single source of truth in js/diversificationCore.js,
@@ -7520,6 +7587,151 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
   import { effectiveBetsPCA, effectiveBetsWeighted, effectiveBetsEntropy }
     from './js/diversificationCore.js';
   window.divCore = { effectiveBetsPCA, effectiveBetsWeighted, effectiveBetsEntropy };
+</script>
+<!-- AI model routing: which model runs which job, what it costs, and a check on whether a
+     cheaper one is safe. Standalone and classic (not a module) so a throw in here cannot
+     take out any other inline script on this page. -->
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = v => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const n = v => (v == null ? '\u2014' : Number(v).toLocaleString());
+  let CFG = null;
+
+  async function aiLoadConfig() {
+    try {
+      const d = await fetch('/api/ai-config').then(r => r.json());
+      if (!d.ok) throw new Error(d.error || 'failed');
+      CFG = d;
+      renderProviders(d); renderTasks(d); renderStats(d.stats); fillAb(d);
+    } catch (e) {
+      $('aiProviders').innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>';
+    }
+  }
+
+  function renderProviders(d) {
+    $('aiProviders').innerHTML = '<table style="width:100%;font-size:12.5px;border-collapse:collapse">'
+      + '<tr style="color:var(--t3);text-align:left"><th>Provider</th><th>Key</th><th>Status</th><th>Model</th><th>Caching</th><th>Price set</th></tr>'
+      + d.providers.map(p => '<tr style="border-top:1px solid var(--s3)">'
+        + '<td style="padding:5px 0"><b>' + esc(p.label) + '</b></td>'
+        + '<td><code style="font-size:11px">' + esc(p.keyEnv) + '</code></td>'
+        + '<td style="color:' + (p.configured ? 'var(--good)' : 'var(--t3)') + '">'
+        + (p.configured ? 'configured' : 'not set') + '</td>'
+        + '<td class="muted">' + esc(p.model || 'default') + '</td>'
+        + '<td class="muted">' + (p.explicitCache ? 'explicit' : 'automatic') + '</td>'
+        + '<td class="muted">' + (p.priced ? 'yes' : 'no') + '</td></tr>').join('')
+      + '</table>';
+  }
+
+  function renderTasks(d) {
+    const opts = chosen => d.providers.filter(x => x.configured)
+      .map(x => '<option value="' + esc(x.id) + '"' + (chosen === x.id ? ' selected' : '') + '>' + esc(x.label) + '</option>').join('');
+    $('aiTasks').innerHTML = '<table style="width:100%;font-size:12.5px;border-collapse:collapse">'
+      + '<tr style="color:var(--t3);text-align:left"><th>Job</th><th>Carries ledger</th><th>Runs on</th><th>Model</th><th></th></tr>'
+      + d.tasks.map(t => '<tr style="border-top:1px solid var(--s3)">'
+        + '<td style="padding:6px 0"><b>' + esc(t.label) + '</b></td>'
+        + '<td>' + (t.ledger
+            ? '<span style="color:#e0a93b;font-weight:700" title="This job hands the model the evidence ledger and asks it to respect every finding. A cheaper model degrades here silently.">yes, ' + esc(t.ledger) + '</span>'
+            : '<span class="muted">no</span>') + '</td>'
+        + '<td><select data-ai-task="' + esc(t.id) + '" style="width:140px">'
+        + '<option value="">default (' + esc(d.defaultProvider) + ')</option>' + opts(t.chosen) + '</select></td>'
+        + '<td class="muted">' + esc(t.model) + '</td>'
+        + '<td style="color:var(--bad);font-size:11px">' + (t.fellBack ? esc(t.why) : '') + '</td></tr>').join('')
+      + '</table>';
+  }
+
+  function renderStats(st) {
+    if (!st || !st.calls) { $('aiStats').innerHTML = '<span class="muted">No model calls yet on this instance.</span>'; return; }
+    const rows = Object.entries(st.byTask).map(([id, b]) =>
+      '<tr style="border-top:1px solid var(--s3)"><td style="padding:4px 0">' + esc(id) + '</td>'
+      + '<td>' + b.n + '</td><td>' + n(b.in) + '</td><td>' + n(b.out) + '</td>'
+      + '<td style="color:' + (b.cacheRead ? 'var(--good)' : 'var(--t3)') + '">' + n(b.cacheRead) + '</td>'
+      + '<td>' + (b.truncated || 0) + '</td><td>' + (b.errors || 0) + '</td>'
+      + '<td>' + (b.priced ? '$' + b.usd.toFixed(4) : '<span class="muted">\u2014</span>') + '</td></tr>').join('');
+    $('aiStats').innerHTML = '<table style="width:100%;font-size:12.5px;border-collapse:collapse">'
+      + '<tr style="color:var(--t3);text-align:left"><th>Job</th><th>Calls</th><th>In</th><th>Out</th><th>Cached in</th><th>Truncated</th><th>Errors</th><th>Cost</th></tr>'
+      + rows + '</table>'
+      + '<div style="font-size:11.5px;color:var(--t3);margin-top:8px">'
+      + st.calls + ' calls held in memory (resets on deploy). Cache hit rate across all input tokens: <b>'
+      + (st.cacheHitRate == null ? '\u2014' : Math.round(st.cacheHitRate * 100) + '%') + '</b>. '
+      + (st.priced ? '' : 'Costs show as a dash until PRICE_* env vars are set: tokens are measured, money would be guessed.')
+      + '</div>';
+  }
+
+  function fillAb(d) {
+    $('aiAbTask').innerHTML = d.tasks.map(t =>
+      '<option value="' + esc(t.id) + '">' + esc(t.label) + (t.ledger ? ' (ledger)' : '') + '</option>').join('');
+    const others = d.providers.filter(p => p.configured);
+    $('aiAbProvider').innerHTML = others.length
+      ? others.map(p => '<option value="' + esc(p.id) + '">' + esc(p.label) + '</option>').join('')
+      : '<option value="">no second provider configured</option>';
+  }
+
+  async function aiSaveRouting() {
+    const tasks = {};
+    document.querySelectorAll('[data-ai-task]').forEach(sel => {
+      if (sel.value) tasks[sel.getAttribute('data-ai-task')] = sel.value;
+    });
+    $('aiSaveMsg').textContent = 'Saving...';
+    try {
+      const r = await fetch('/api/ai-config', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tasks }),
+      }).then(x => x.json());
+      if (!r.ok) throw new Error(r.error || 'failed');
+      $('aiSaveMsg').innerHTML = '<span style="color:var(--good)">Saved. Stored in KV, so it survives a deploy.</span>';
+      aiLoadConfig();
+    } catch (e) { $('aiSaveMsg').innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
+  }
+
+  async function aiRunAb() {
+    const task = $('aiAbTask').value, provider = $('aiAbProvider').value;
+    if (!provider) { $('aiAbOut').innerHTML = '<span class="muted">Set a second provider key in Railway first.</span>'; return; }
+    $('aiAbOut').innerHTML = '<span class="muted">Running the real prompt through ' + esc(provider) + '...</span>';
+    try {
+      const d = await fetch('/api/ai-ab', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task, provider }),
+      }).then(x => x.json());
+      if (!d.ok) {
+        $('aiAbOut').innerHTML = '<div style="color:var(--bad)">' + esc(d.error) + '</div>'
+          + (d.how ? '<div class="muted" style="margin-top:4px">' + esc(d.how) + '</div>' : '');
+        return;
+      }
+      const side = x => '<div style="flex:1;min-width:220px;border:1px solid var(--s3);border-radius:8px;padding:9px">'
+        + '<b>' + esc(x.label) + '</b>'
+        + '<div class="muted" style="font-size:11.5px;margin-top:3px">' + n(x.chars) + ' chars'
+        + (x.ms ? ' \u00b7 ' + (x.ms / 1000).toFixed(1) + 's' : '')
+        + ' \u00b7 in ' + n(x.usage && x.usage.in) + ' / out ' + n(x.usage && x.usage.out)
+        + (x.cost && x.cost.priced ? ' \u00b7 $' + x.cost.usd.toFixed(4) : '') + '</div>'
+        + '<div style="margin-top:6px;font-size:12px;color:' + (x.structural.ok ? 'var(--good)' : 'var(--bad)') + '">'
+        + (x.structural.ok ? 'JSON structurally fine' : esc(x.structural.problems.join('; '))) + '</div>'
+        + (x.truncated ? '<div style="color:var(--bad);font-size:12px">truncated at the cap</div>' : '')
+        + (x.clamped ? '<div style="color:#e0a93b;font-size:12px">output clamped to the provider cap</div>' : '')
+        + '</div>';
+      const flags = (label, list) => !list.length ? ''
+        : '<div style="margin-top:8px"><b style="font-size:12.5px">' + esc(label) + ' \u2014 ' + list.length + ' flagged</b>'
+          + list.slice(0, 6).map(f => '<div style="border-left:2px solid #e0a93b;padding:4px 8px;margin-top:5px;font-size:12px;line-height:1.5">'
+            + '<i>\u201c' + esc(f.sentence) + '\u201d</i><div class="muted" style="font-size:11px;margin-top:3px">'
+            + 'vs <b>' + esc(f.id) + '</b>: ' + esc(f.prohibition) + '</div></div>').join('') + '</div>';
+      const A = d.audit.flags[d.a.label] || [], B = d.audit.flags[d.b.label] || [];
+      $('aiAbOut').innerHTML =
+        '<div style="display:flex;gap:10px;flex-wrap:wrap">' + side(d.a) + side(d.b) + '</div>'
+        + '<div style="margin-top:10px;padding:8px 10px;background:var(--s2);border-radius:8px;font-size:12.5px;line-height:1.55">'
+        + esc(d.audit.verdict) + '</div>'
+        + '<div class="muted" style="font-size:11.5px;margin-top:6px">' + esc(d.caveat) + '</div>'
+        + flags(d.a.label, A) + flags(d.b.label, B);
+    } catch (e) { $('aiAbOut').innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
+  }
+
+  window.aiLoadConfig = aiLoadConfig;
+  window.aiSaveRouting = aiSaveRouting;
+  window.aiRunAb = aiRunAb;
+  // Load when the tab is first opened rather than on every page load. This page already
+  // fires a lot of requests at boot and the model config is not one of the urgent ones.
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-tab="aimodels"]');
+    if (b && !CFG) setTimeout(aiLoadConfig, 0);
+  });
+})();
 </script>
 <script type="module" src="js/bot-config.js?v=2"></script>
 <!-- Classic (not module) and BEFORE the inline script below, which reads

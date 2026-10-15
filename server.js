@@ -3521,6 +3521,8 @@ function _aiAnyKey() {
 // actually hitting", which is the question a model-switch config is useless without.
 const _modelCalls = [];
 const _MODEL_CALL_KEEP = 300;
+/** The last real prompt+answer per task. Memory only; never persisted. */
+const _lastCall = {};
 function _recordModelCall(row) {
   _modelCalls.push({ at: Date.now(), ...row });
   if (_modelCalls.length > _MODEL_CALL_KEEP) _modelCalls.splice(0, _modelCalls.length - _MODEL_CALL_KEEP);
@@ -3584,6 +3586,13 @@ async function callModel({ task = 'misc', system = '', standing = '', prompt = '
     task, provider: r.provider, model: r.model, ok: true, usage: out.usage,
     truncated: out.truncated, clamped: req.clamped, ms: Date.now() - started,
   });
+  // Keep the last REAL call of each task, prompt and answer both. This is what makes the
+  // A/B check honest: comparing two models on a toy prompt proves nothing about a job
+  // that hands the model 34k tokens of ledger and a strict JSON contract. Replaying the
+  // actual last prompt costs one cheap call and compares against an answer already paid
+  // for. In memory only -- it holds the full prompt and has no business in KV.
+  _lastCall[task] = { system, standing, prompt, maxTokens, at: Date.now(),
+                      provider: r.provider, model: r.model, text: out.text, usage: out.usage };
   return {
     ...out, provider: r.provider, model: r.model, label: P.label, clamped: req.clamped,
     // COMPATIBILITY SHIM, and it earns its keep. Several call sites read the raw reply
@@ -3636,6 +3645,89 @@ app.get('/api/ai-config', async (_req, res) => {
     });
   } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
+// ── /api/ai-ab ─ is the cheap model actually good enough on THIS job? ─────────
+//
+// Replays the last REAL prompt for a task through a second provider and compares the two
+// answers. Three things come back, and they answer different questions:
+//
+//   structural  did it return parseable JSON at all? Loud, retryable, and the way a
+//               cheaper model fails FIRST.
+//   ledger      did it contradict something this desk has tested? Silent, and the way a
+//               cheaper model fails WORST. js/modelAudit.js screens for it.
+//   cost        tokens both ways, money only where a price is configured.
+//
+// The audit is a screen and not a judge, and says so. What makes it usable is that the
+// SAME crude screen runs over both answers: whatever its error rate, the error applies
+// equally, so a model tripping it three times as often is genuinely worse at respecting
+// the ledger. One cheap call per run -- the expensive answer was already paid for.
+app.post('/api/ai-ab', async (req, res) => {
+  try {
+    const { task = 'brief', provider } = req.body ?? {};
+    if (!AI_TASKS[task]) return res.status(400).json({ error: `unknown task: ${task}` });
+    if (!AI_PROVIDERS[provider]) return res.status(400).json({ error: `unknown provider: ${provider}` });
+    if (!process.env[AI_PROVIDERS[provider].keyEnv]) {
+      return res.status(503).json({ error: `${AI_PROVIDERS[provider].keyEnv} is not set in the environment` });
+    }
+    const base = _lastCall[task];
+    if (!base) {
+      return res.status(409).json({
+        error: `no ${task} call has run yet on this instance`,
+        how: `Run the ${AI_TASKS[task].label} once, then come back — the comparison replays the real prompt, not a stand-in.`,
+      });
+    }
+    const cfg = _aiConfig();
+    const r = aiResolveTask(task, { ...cfg, tasks: { ...cfg.tasks, [task]: provider }, provider });
+    const P = AI_PROVIDERS[r.provider];
+    const reqB = aiBuildRequest({
+      provider: r.provider, model: r.model, system: base.system, standing: base.standing,
+      prompt: base.prompt, maxTokens: base.maxTokens, maxOutput: r.maxOutput, cache: cfg.cache,
+    });
+    const t0 = Date.now();
+    const httpRes = await fetch(reqB.url, {
+      method: 'POST', headers: aiAuthHeaders(reqB, process.env[P.keyEnv]), body: JSON.stringify(reqB.body),
+    });
+    if (!httpRes.ok) {
+      const body = (await httpRes.text().catch(() => '')).slice(0, 300);
+      return res.status(502).json({ error: `${P.label} ${httpRes.status}${body ? ': ' + body : ''}` });
+    }
+    const outB = aiReadResponse(r.provider, await httpRes.json());
+    const ms = Date.now() - t0;
+    _recordModelCall({ task, provider: r.provider, model: r.model, ok: true, usage: outB.usage,
+                       truncated: outB.truncated, clamped: reqB.clamped, ms, ab: true });
+
+    const { compareOutputs, structuralCheck } = await import('./js/modelAudit.js');
+    const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
+    const needJson = /JSON only/i.test(base.system ?? '');
+    const aLabel = `${base.provider}:${base.model}`, bLabel = `${r.provider}:${r.model}`;
+    const audit = compareOutputs({ a: base.text, b: outB.text, aLabel, bLabel }, DESK_EVIDENCE);
+
+    res.json({
+      ok: true, task, label: AI_TASKS[task].label, ledger: AI_TASKS[task].ledger ?? null,
+      a: { label: aLabel, provider: base.provider, model: base.model, at: base.at,
+           chars: (base.text ?? '').length, usage: base.usage,
+           cost: aiCostOf(base.provider, base.usage ?? {}, cfg.prices),
+           structural: structuralCheck(base.text, { requireJson: needJson }) },
+      b: { label: bLabel, provider: r.provider, model: r.model, ms,
+           chars: (outB.text ?? '').length, usage: outB.usage, truncated: outB.truncated,
+           clamped: reqB.clamped,
+           cost: aiCostOf(r.provider, outB.usage ?? {}, cfg.prices),
+           structural: structuralCheck(outB.text, { requireJson: needJson }) },
+      audit,
+      answers: { [aLabel]: (base.text ?? '').slice(0, 6000), [bLabel]: (outB.text ?? '').slice(0, 6000) },
+      caveat: AI_TASKS[task].ledger
+        ? 'This task hands the model the evidence ledger. Read the flagged sentences before switching it.'
+        : 'This task carries no ledger, so a structural pass is most of what matters here.',
+    });
+  } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
+});
+app.get('/api/ai-ab/ready', (_req, res) => {
+  res.json({ ok: true, tasks: Object.keys(AI_TASKS).map(t => ({
+    task: t, label: AI_TASKS[t].label, ledger: AI_TASKS[t].ledger ?? null,
+    ready: !!_lastCall[t], at: _lastCall[t]?.at ?? null,
+    promptChars: _lastCall[t] ? (_lastCall[t].prompt ?? '').length + (_lastCall[t].standing ?? '').length : null,
+  })) });
+});
+
 app.post('/api/ai-config', async (req, res) => {
   try {
     const { tasks, provider, cache } = req.body ?? {};
