@@ -19796,15 +19796,19 @@ svcInterval('oiBot', _refreshOIVolBotZones, 10 * 60_000);
 // (which, unlike the archive, has weeklies/dailies). Judgeable at >=400 dates per oi_research_book/RIPPLE_BOOK_PREREG.md.
 const _OI_RIPPLE_LOG_CAP = 600;
 async function _refreshOIRippleShadow() {
-  const n = await _refreshOIBotZones({ outKey: 'oi_ripple_shadow_zones', strategy: 'oi-ripple-shadow', cfgKey: 'oi_vol_bot_config', variant: 'vol', cfgPatch: { bookMode: 'gamma' } });
+  // The shadow is always the OTHER book from the one OI-Vol is trading, so the log keeps three distinct arms: OI bot (day book), OI-Vol (whatever
+  // bookMode it is set to), shadow (the opposite: 'near' when OI-Vol trades the ripple, 'gamma' otherwise).
+  const J = async k => { const raw = await kv.get(k).catch(() => null); if (!raw) return null; const j = JSON.parse(raw); return j.data ?? j; };
+  const volMode = (await J('oi_vol_bot_config'))?.bookMode ?? OI_VOL_CFG_OVERRIDES.bookMode;
+  const shadowMode = volMode === 'gamma' ? 'near' : 'gamma';
+  const n = await _refreshOIBotZones({ outKey: 'oi_ripple_shadow_zones', strategy: 'oi-ripple-shadow', cfgKey: 'oi_vol_bot_config', variant: 'vol', cfgPatch: { bookMode: shadowMode } });
   try {
-    const J = async k => { const raw = await kv.get(k).catch(() => null); if (!raw) return null; const j = JSON.parse(raw); return j.data ?? j; };
     const [oiP, volP, rpP, logRaw] = await Promise.all([J('oi_bot_zones'), J('oi_vol_bot_zones'), J('oi_ripple_shadow_zones'), J('oi_ripple_log')]);
     const date = new Date().toISOString().slice(0, 10);
     const slim = P => Object.fromEntries(Object.entries(P?.instruments || {}).map(([k, v]) => [k,
       { spot: v.spot ?? null, regime: v.regime ?? null, dte: v.dte ?? null, zones: (v.zones || []).map(z => [z.mode, z.side, +(+z.level).toPrecision(8), z.entry != null ? +(+z.entry).toPrecision(8) : null]) }]));
     const log = logRaw && typeof logRaw === 'object' ? logRaw : { rows: {} };
-    log.rows[date] = { at: new Date().toISOString(), oi: slim(oiP), vol: slim(volP), ripple: slim(rpP) };
+    log.rows[date] = { at: new Date().toISOString(), volMode, shadowMode, oi: slim(oiP), vol: slim(volP), ripple: slim(rpP) };
     const dates = Object.keys(log.rows).sort();
     for (const d of dates.slice(0, Math.max(0, dates.length - _OI_RIPPLE_LOG_CAP))) delete log.rows[d];
     await kv.put('oi_ripple_log', JSON.stringify({ data: log, timestamp: Date.now() }));
