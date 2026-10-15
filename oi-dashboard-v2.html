@@ -49,6 +49,7 @@ h1 b{color:var(--acc)} h1 small{color:var(--tx3);font-size:11px;letter-spacing:.
 #brief .bgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}#brief .bgrid>.card:first-child{grid-column:1/-1}#brief .bgrid>.card:last-child{grid-column:1/-1}
 @media(max-width:1200px){#brief .bgrid{grid-template-columns:1fr}}
 .pb{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.pb i{display:inline-block;height:7px;border-radius:4px;min-width:2px}.pb b{font-weight:600;font-size:12px}
+.sech{font-size:13px;letter-spacing:.16em;text-transform:uppercase;margin:26px 0 12px;display:flex;flex-direction:column;gap:3px}.sech em{font-style:normal;color:var(--acc);margin-right:8px}.sech span{font-size:12px;letter-spacing:.02em;text-transform:none;color:var(--tx3);font-weight:400}
 .bp{margin-bottom:0}.dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:8px}
 .minis{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}.mini{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:130px}.mini .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)}.mini .v{font:600 18px var(--mono)}.mini .n{font-size:11.5px;color:var(--tx3)}
 details.xp>summary{cursor:pointer;font-size:13px;letter-spacing:.14em;text-transform:uppercase;list-style:none}details.xp[open]>summary{margin-bottom:14px}
@@ -66,16 +67,14 @@ svg text{font-family:var(--mono)}
   <header>
     <h1><b>◆</b> OI Lab<small>V2 · PLAYGROUND — the same data, drawn differently</small></h1>
     <div class="sp"></div>
-    <div class="tgl"><span class="pill on" id="vBrief">Brief</span><span class="pill" id="vLab">Gamma lab</span></div>
-    <div class="tgl" id="nearTgl" style="display:none" title="Which expiries feed the terrain and curves">
+    <div class="tgl" id="nearTgl" title="Which expiries feed the terrain and curves">
       <span class="pill on" id="mNear">Near expiries (≤3 DTE)</span><span class="pill" id="mAll">Whole book</span>
     </div>
     <a class="btn" href="oi-dashboard.html">Classic dashboard</a>
   </header>
   <div class="rail" id="rail"></div>
-  <div class="stats" id="stats" style="display:none"></div>
-  <div id="brief"></div>
-  <div id="labView" style="display:none">
+  <div class="stats" id="stats"></div>
+  <div id="labView">
 
   <div class="card">
     <h2><em>01</em> Live gamma terrain
@@ -105,6 +104,9 @@ svg text{font-family:var(--mono)}
     <svg id="bars" width="100%" viewBox="0 0 1000 640"></svg>
   </div>
 
+  <h2 class="sech"><em>06</em> The brief — six questions, in order <span>how far can price go · which levels will be reached · where hedging calms or amplifies · is the market calmer or more nervous · is positioning building · what changed overnight</span></h2>
+  <div id="brief"></div>
+
   <details class="card xp"><summary>Experiments — strike × expiry heat <span style="color:var(--tx3)">(denser, optional)</span></summary>
   <div class="card">
     <h2><em>A</em> Strike × expiry heat</h2>
@@ -127,7 +129,7 @@ const NAMES = {'XAU/USD':'GOLD','NAS100_USD':'NQ','SPX500_USD':'SPX','US2000_USD
 const OANDA = {'XAU/USD':'XAU_USD','NAS100_USD':'NAS100_USD','SPX500_USD':'SPX500_USD','US2000_USD':'US2000_USD','US30_USD':'US30_USD','EUR/USD':'EUR_USD','GBP/USD':'GBP_USD','USD/JPY':'USD_JPY','AUD/USD':'AUD_USD','USD/CAD':'USD_CAD','USD/CHF':'USD_CHF'};
 const INVERTED = new Set(['USD/JPY','USD/CAD','USD/CHF']);
 const LONG='70,184,122', SHORT='232,97,95';
-let STORE = {}, SYM = 'NAS100_USD', NEAR = true, CUR = null, VIEW = 'brief';
+let STORE = {}, SYM = 'NAS100_USD', NEAR = true, CUR = null;
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const dp = (sym) => /JPY/.test(sym) ? 3 : /USD$|EUR|GBP|AUD|CAD|CHF/.test(sym) && !/XAU|NAS|SPX|US30|US2000/.test(sym) ? 5 : 1;
@@ -638,14 +640,11 @@ function rail(){
 
 async function refresh(){
   CUR = derive(SYM); rail();
-  if (VIEW === 'brief') { buildField(); await drawBrief(); return; }
   stats(); drawBars(); drawHeat(); drawAhead();
   $('#note').innerHTML = `<span>Source: oi_store (${esc(STORE[SYM]?.savedAt || '')}) · candles: OANDA H1 · colours are the platform's own sign convention (calls − puts, dealers long calls / short puts). Analysis views, not signals — wall and flip effects did not beat placebo levels in your own tests.</span>`;
-  await drawTerrain();
+  await drawTerrain();     // builds the gamma field + curve the brief's structure panel reads
+  drawBrief();
 }
-function setView(v){ VIEW = v; $('#vBrief').classList.toggle('on', v === 'brief'); $('#vLab').classList.toggle('on', v === 'lab');
-  $('#brief').style.display = v === 'brief' ? '' : 'none'; $('#labView').style.display = v === 'lab' ? '' : 'none'; $('#stats').style.display = v === 'lab' ? '' : 'none'; $('#nearTgl').style.display = v === 'lab' ? '' : 'none'; refresh(); }
-$('#vBrief').onclick = () => setView('brief'); $('#vLab').onclick = () => setView('lab');
 $('#mNear').onclick = () => { NEAR = true; $('#mNear').classList.add('on'); $('#mAll').classList.remove('on'); refresh(); };
 $('#mAll').onclick = () => { NEAR = false; $('#mAll').classList.add('on'); $('#mNear').classList.remove('on'); refresh(); };
 document.querySelectorAll('[data-ah]').forEach(b => b.onclick = () => { AH = +b.dataset.ah; document.querySelectorAll('[data-ah]').forEach(x => x.classList.toggle('on', x === b)); drawAhead(); });
