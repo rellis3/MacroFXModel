@@ -5793,6 +5793,21 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
       <div class="bot-banner-sub" style="margin:0"><b style="color:#f59e0b">Forward-test, not proven edge.</b> Dealer-gamma is real for gold + indices, weak for spot FX (CME OI partial, OTC dominates) — hence FX is off by default. We hold no historical OI, so this can only be paper/forward-tested. Run paper, judge it on the OI forward-test before risking a cent.</div>
     </div>
 
+    <!-- TradingView export: both bots, one indicator -->
+    <div class="card oiExportCard" style="border-left:3px solid #4dd0e1">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:600;color:#4dd0e1">TradingView export - OI bot &amp; OI-Vol bot</span>
+        <button onclick="oiExportCopy('oi', this)" style="background:#4dd0e1;border:none;border-radius:6px;color:#06302b;font-weight:700;padding:5px 12px;cursor:pointer;font-size:11px">Copy OI bot</button>
+        <button onclick="oiExportCopy('vol', this)" style="background:#80deea;border:none;border-radius:6px;color:#06302b;font-weight:700;padding:5px 12px;cursor:pointer;font-size:11px">Copy OI-Vol bot</button>
+        <button onclick="oiExportCopy('both', this)" style="background:transparent;border:1px solid #4dd0e1;border-radius:6px;color:#4dd0e1;font-weight:700;padding:5px 12px;cursor:pointer;font-size:11px">Copy both (one paste)</button>
+        <a href="/api/oi-bot/trades-export" target="_blank" style="font-size:11px;color:var(--text3)">open OI</a>
+        <a href="/api/oi-vol-bot/trades-export" target="_blank" style="font-size:11px;color:var(--text3)">open OI-Vol</a>
+        <span class="oiExportStatus" style="font-size:11px;color:var(--text3)"></span>
+      </div>
+      <div class="bot-banner-sub" style="margin-top:6px">Paste into the <b>OI Bot Trades</b> indicator (<code>pine/OI Bot Trades.pine</code>) - the same indicator draws either bot, or both pasted together: OI-Vol zones get a dashed aqua outline, a VOL prefix and a "reach %" (chance of touching the entry within 8h). Same block on every chart; each chart draws only its own pair. Re-copy after the plan changes (it rebuilds every 10 minutes).</div>
+      <textarea class="oiExportOut" readonly rows="6" placeholder="The copied block appears here" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px;background:var(--s2);color:var(--text2);border:1px solid var(--border);border-radius:6px;padding:6px"></textarea>
+    </div>
+
     <!-- Live status -->
     <div class="card" style="padding:0">
       <div style="display:flex;align-items:center;gap:10px;padding:14px 16px 8px">
@@ -6099,6 +6114,21 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
         <thead><tr style="color:var(--text3);text-align:left"><th style="padding:6px 10px">status</th><th style="padding:6px 10px">zone</th><th style="padding:6px 10px;text-align:right">level</th><th style="padding:6px 10px;text-align:right">OI entry</th><th style="padding:6px 10px;text-align:right">OI SL</th><th style="padding:6px 10px;text-align:right">OI TP1</th><th style="padding:6px 10px;text-align:right">Vol entry</th><th style="padding:6px 10px;text-align:right">Vol SL</th><th style="padding:6px 10px;text-align:right">touch 1h/4h/8h</th><th style="padding:6px 10px">fired</th><th style="padding:6px 10px">why different</th></tr></thead>
         <tbody id="oivAuditBody"></tbody></table></div>
       <div id="oivAuditPos" style="display:flex;gap:16px;flex-wrap:wrap;padding:12px 16px"></div>
+    </div>
+
+    <!-- TradingView export: both bots, one indicator -->
+    <div class="card oiExportCard" style="border-left:3px solid #4dd0e1">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:600;color:#4dd0e1">TradingView export - OI bot &amp; OI-Vol bot</span>
+        <button onclick="oiExportCopy('oi', this)" style="background:#4dd0e1;border:none;border-radius:6px;color:#06302b;font-weight:700;padding:5px 12px;cursor:pointer;font-size:11px">Copy OI bot</button>
+        <button onclick="oiExportCopy('vol', this)" style="background:#80deea;border:none;border-radius:6px;color:#06302b;font-weight:700;padding:5px 12px;cursor:pointer;font-size:11px">Copy OI-Vol bot</button>
+        <button onclick="oiExportCopy('both', this)" style="background:transparent;border:1px solid #4dd0e1;border-radius:6px;color:#4dd0e1;font-weight:700;padding:5px 12px;cursor:pointer;font-size:11px">Copy both (one paste)</button>
+        <a href="/api/oi-bot/trades-export" target="_blank" style="font-size:11px;color:var(--text3)">open OI</a>
+        <a href="/api/oi-vol-bot/trades-export" target="_blank" style="font-size:11px;color:var(--text3)">open OI-Vol</a>
+        <span class="oiExportStatus" style="font-size:11px;color:var(--text3)"></span>
+      </div>
+      <div class="bot-banner-sub" style="margin-top:6px">Paste into the <b>OI Bot Trades</b> indicator (<code>pine/OI Bot Trades.pine</code>) - the same indicator draws either bot, or both pasted together: OI-Vol zones get a dashed aqua outline, a VOL prefix and a "reach %" (chance of touching the entry within 8h). Same block on every chart; each chart draws only its own pair. Re-copy after the plan changes (it rebuilds every 10 minutes).</div>
+      <textarea class="oiExportOut" readonly rows="6" placeholder="The copied block appears here" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px;background:var(--s2);color:var(--text2);border:1px solid var(--border);border-radius:6px;padding:6px"></textarea>
     </div>
 
     <!-- Live status -->

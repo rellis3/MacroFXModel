@@ -7074,6 +7074,29 @@ loadOiVolCreds();
 loadOiVolLiveStatus();
 
 
+
+// ── TradingView export for BOTH bots (one indicator: pine/OI Bot Trades.pine) ─────────────────────────────────────
+// Same block format for each bot; the block title ("OI BOT TRADES" / "OI-VOL BOT TRADES") tells the indicator which bot a zone belongs to,
+// so the two blocks can be pasted one after the other. The card is rendered in both the OI Gamma and the OI-Vol tab (class-based, no ids).
+const OI_EXPORT_URLS = { oi: '/api/oi-bot/trades-export', vol: '/api/oi-vol-bot/trades-export', both: '/api/oi-bot/trades-export?bot=both' };
+async function oiExportCopy(which, btn) {
+  const stat = document.querySelectorAll('.oiExportStatus'), out = document.querySelectorAll('.oiExportOut');
+  const say = (t, c) => stat.forEach(e => { e.textContent = t; e.style.color = c || 'var(--text3)'; });
+  try {
+    say('Fetching…');
+    const r = await fetch(OI_EXPORT_URLS[which], { cache: 'no-store' });
+    const text = await r.text();
+    if (!r.ok) { say(text || ('Error ' + r.status), 'var(--amber)'); return; }
+    out.forEach(e => { e.value = text; });
+    let copied = false;
+    try { await navigator.clipboard.writeText(text); copied = true; } catch (e) { /* fall back to select-all below */ }
+    if (!copied) { const ta = out[0]; if (ta) { ta.focus(); ta.select(); try { copied = document.execCommand('copy'); } catch (e) {} } }
+    const zones = (text.match(/^TZ /gm) || []).length;
+    say(copied ? `Copied ✓ (${zones} zones)` : `Ready (${zones} zones) — press Ctrl+C in the box`, copied ? '#4dd0e1' : 'var(--amber)');
+  } catch (e) { say('Error: ' + e.message, 'var(--red)'); }
+}
+window.oiExportCopy = oiExportCopy;
+
 // ═══════════════════════════ YIELD-SPREAD BOT ═══════════════════════════════════
 // Yield-spread z-score mean-reversion. Config → yield_spread_config; the server
 // producer computes the daily z into yield_spread_plan; the bot pushes yield_spread_status.

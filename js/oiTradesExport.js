@@ -63,11 +63,14 @@ function zoneState(z, line, positions) {
  * status  — `oi_bot_status` (optional): its `lines` say which zones fired / were primed and
  *           `mt5_positions` which are open now. Without it every zone reads "armed".
  * opts.source  — shown in the header ('CME' / 'Cboe shadow').
+ * opts.title   — the block title; 'OI BOT TRADES' (default) or 'OI-VOL BOT TRADES'. The indicator reads it to tell the two bots apart.
+ *                 Every zone line may end with an optional `pt:NN` token (calibrated chance of touching the entry within 8h) — only the OI-Vol
+ *                 plan carries it; the indicator shows it when present and an older indicator simply ignores it.
  * opts.generated — header timestamp (defaults to now).
  */
-export function buildTradesText(plan, status = null, { source = 'CME', generated = null } = {}) {
+export function buildTradesText(plan, status = null, { source = 'CME', generated = null, title = 'OI BOT TRADES' } = {}) {
   const ts = d => new Date(d).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
-  const out = ['──── OI BOT TRADES ────────────────────────',
+  const out = [`──── ${title} ${'─'.repeat(Math.max(4, 40 - title.length - 6))}`,
     `Generated: ${ts(generated ?? Date.now())} · plan ${source}${plan?.generatedAt ? ` · built ${ts(plan.generatedAt).slice(11)}` : ''}`];
   const inst = plan?.instruments || {};
   const lines = Array.isArray(status?.lines) ? status.lines : [];
@@ -86,7 +89,8 @@ export function buildTradesText(plan, status = null, { source = 'CME', generated
       if (!Number.isFinite(entry) || !Number.isFinite(sl)) continue;
       const rr = tp != null && Math.abs(entry - sl) > 0 ? (Math.abs(tp - entry) / Math.abs(entry - sl)).toFixed(1) : '-';
       out.push(['TZ', String(z.side).toUpperCase(), z.mode, num(z.level, d), num(entry, d), num(sl, d),
-        num(tp, d), z.tp1 != null && z.tp2 != null ? num(z.tp2, d) : '-', zoneState(z, line, mine), rr].join(' '));
+        num(tp, d), z.tp1 != null && z.tp2 != null ? num(z.tp2, d) : '-', zoneState(z, line, mine), rr,
+        ...(Number.isFinite(z?.pTouch?.p8) ? [`pt:${Math.round(z.pTouch.p8 * 100)}`] : [])].join(' '));
     }
   }
   return out.join('\n');

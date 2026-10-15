@@ -15,6 +15,9 @@ indicator("OI Bot Trades", overlay=true, max_boxes_count=500, max_lines_count=50
 //      • red box      = entry → stop loss
 //      • teal box     = entry → take profit (TP1); dashed teal line = TP2 (runner)
 //      • dotted line  = the entry level carried back over the chart
+//    TWO BOTS, ONE INDICATOR: paste the OI bot block, the OI-Vol bot block, or BOTH (one after the other). The block title
+//    ('OI BOT TRADES' / 'OI-VOL BOT TRADES') says which bot each zone belongs to. OI-Vol zones get a dashed aqua outline and a
+//    'VOL' prefix on their label, plus 'reach NN%' (calibrated chance of touching the entry within 8h) when the export carries it.
 //    Label: side, mode, entry / SL / TP, reward:risk and the zone's state:
 //      armed  — waiting for price to reach it
 //      open   — the bot holds a position on it now (orange outline)
@@ -60,6 +63,8 @@ gapBars       = input.int(3,    "Space between boxes (bars)",    minval=0, maxva
 maxDistPct    = input.float(3.0, "Only draw zones within this % of price", minval=0.1, step=0.5, group="Layout",
      tooltip="Far zones (walls the bot will not reach today) are counted in the table but not drawn, so they don't stretch the chart.")
 showDone      = input.bool(true, "Show done / skipped zones (dimmed)", group="Layout")
+showOiBot     = input.bool(true, "Show OI bot zones",     group="Layout")
+showVolBot    = input.bool(true, "Show OI-Vol bot zones", group="Layout")
 showBackLine  = input.bool(true, "Carry the entry level back over the chart", group="Layout")
 backBars      = input.int(80,   "…bars back",                    minval=5, maxval=2000, group="Layout")
 showTable     = input.bool(true, "Show summary table",           group="Layout")
@@ -70,6 +75,7 @@ colTP    = input.color(color.new(color.teal, 70),   "Target box",         group=
 colSL    = input.color(color.new(color.red, 75),    "Stop box",           group="Colours")
 colOpen  = input.color(color.orange,                "Open trade outline", group="Colours")
 colDim   = input.color(color.new(color.gray, 82),   "Done / skipped box", group="Colours")
+colVol   = input.color(color.aqua,                  "OI-Vol bot outline", group="Colours")
 
 // =====================================================
 // TICKER → BLOCK NAME (same names as the Confluence Zones indicator / OI export)
@@ -128,6 +134,8 @@ if barstate.islast
     string generated = ""
     int    k         = 0      // boxes drawn so far (sets the x offset)
     int    nArmed    = 0
+    int    nArmedV   = 0
+    string curBot    = "O"    // which bot the block we are inside belongs to: "O" = OI bot, "V" = OI-Vol bot
     int    nFar      = 0
     int    nHidden   = 0
 
@@ -142,6 +150,7 @@ if barstate.islast
                 generated := raw
                 continue
             if str.startswith(raw, "─")
+                curBot := str.contains(up, "OI-VOL") ? "V" : "O"
                 continue
             isZone = str.startswith(up, "TZ ")
             isHdr  = str.startswith(raw, "·")
@@ -167,11 +176,18 @@ if barstate.islast
             tp2   = str.tonumber(array.get(p, 7))
             state = array.get(p, 8)
             rr    = array.get(p, 9)
+            ptTok = array.size(p) > 10 ? array.get(p, 10) : ""
+            isVol = curBot == "V"
             if na(entry) or na(sl)
+                continue
+            if (isVol and not showVolBot) or (not isVol and not showOiBot)
                 continue
             dim = state == "done" or state == "primed"
             if state == "armed" or state == "open"
-                nArmed += 1
+                if isVol
+                    nArmedV += 1
+                else
+                    nArmed += 1
             if dim and not showDone
                 nHidden += 1
                 continue
@@ -204,11 +220,18 @@ if barstate.islast
                 lo = math.min(entry, sl, na(tp) ? entry : tp)
                 array.push(tzBoxes, box.new(left=x1, top=hi, right=x2, bottom=lo, xloc=xloc.bar_index,
                      border_color=colOpen, border_width=2, bgcolor=color.new(color.black, 100)))
+            else if isVol and not dim
+                // OI-Vol bot zone that is still waiting: a dashed aqua outline marks it as the OI-Vol bot's
+                hiV = math.max(entry, sl, na(tp) ? entry : tp)
+                loV = math.min(entry, sl, na(tp) ? entry : tp)
+                array.push(tzBoxes, box.new(left=x1, top=hiV, right=x2, bottom=loV, xloc=xloc.bar_index,
+                     border_color=colVol, border_width=1, border_style=line.style_dashed, bgcolor=color.new(color.black, 100)))
             // Label beyond the target end of the box (above a buy, below a sell).
             yEnd = isBuy ? math.max(entry, sl, na(tp) ? entry : tp) : math.min(entry, sl, na(tp) ? entry : tp)
-            txt  = side + " " + mode + (mode == "maxpain" ? " @mkt" : "") +
+            reachTxt = str.startswith(ptTok, "pt:") ? " · reach " + str.substring(ptTok, 3) + "%" : ""
+            txt  = (isVol ? "VOL " : "") + side + " " + mode + (mode == "maxpain" ? " @mkt" : "") +
                  "\nE " + f_px(entry) + "\nSL " + f_px(sl) + "\nTP " + f_px(tp) +
-                 (na(tp2) ? "" : " / " + f_px(tp2)) + "\n" + rr + "R · " + state
+                 (na(tp2) ? "" : " / " + f_px(tp2)) + "\n" + rr + "R · " + state + reachTxt
             array.push(tzLabels, label.new(x1 + math.floor(boxBars / 2), yEnd, txt, xloc=xloc.bar_index,
                  style=isBuy ? label.style_label_down : label.style_label_up, size=size.small,
                  color=color.new(entryCol, dim ? 75 : 25), textcolor=color.white))
@@ -218,7 +241,7 @@ if barstate.islast
         table.cell(tzTable, 0, 0, "OI Bot Trades · " + syminfo.ticker + " → " + sym, text_color=color.white, text_size=size.small)
         table.cell(tzTable, 0, 1, found ? (hdr == "" ? "(no header)" : hdr) : "no block for this chart in the paste",
              text_color=found ? color.silver : color.orange, text_size=size.small)
-        table.cell(tzTable, 0, 2, "live zones " + str.tostring(nArmed) + " · drawn " + str.tostring(k) +
+        table.cell(tzTable, 0, 2, "live zones OI " + str.tostring(nArmed) + " · OI-Vol " + str.tostring(nArmedV) + " · drawn " + str.tostring(k) +
              " · too far " + str.tostring(nFar) + (nHidden > 0 ? " · hidden " + str.tostring(nHidden) : ""),
              text_color=color.silver, text_size=size.small)
         table.cell(tzTable, 0, 3, generated == "" ? "no 'Generated' line" : generated, text_color=color.gray, text_size=size.tiny)

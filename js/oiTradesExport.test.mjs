@@ -40,5 +40,20 @@ ok('missing tp2 is "-"', tz('EURUSD')[0][7] === '-');
 ok('an instrument with no zones says so on its header line', rows[rows.indexOf('GOLD') + 1].includes('no zones'));
 ok('without status every zone is armed', buildTradesText(plan).split('\n').filter(r => r.startsWith('TZ ')).every(r => r.split(' ')[8] === 'armed'));
 
+// ── OI-Vol bot block: same format, own title, optional pt:NN touch-odds token ──
+{
+  const vplan = { generatedAt: '2026-10-15T08:24:00Z', instruments: { nq: { spot: 29640, regime: 'BREAKOUT', dte: 1, maxPain: 30217, zones: [
+    { mode: 'break', side: 'buy', level: 29817, entry: 29876, sl: 29793, tp1: 30017, tp2: null, pTouch: { p1: 0.01, p4: 0.2, p8: 0.43 } },
+    { mode: 'break', side: 'sell', level: 29517, entry: 29458, sl: 29541, tp1: 29317, tp2: null } ] } } };
+  const vt = buildTradesText(vplan, null, { generated: Date.UTC(2026, 9, 15, 8, 30), title: 'OI-VOL BOT TRADES' });
+  const vrows = vt.split('\n');
+  ok('OI-Vol block has its own title line', /^──── OI-VOL BOT TRADES ─+$/.test(vrows[0]), vrows[0]);
+  ok('default title is unchanged (the existing indicator header)', /^──── OI BOT TRADES ─+$/.test(rows[0]), rows[0]);
+  const z = vrows.filter(r => r.startsWith('TZ '));
+  ok('a zone carrying touch odds ends with pt:NN (8h, whole percent)', z[0].endsWith(' armed 1.7 pt:43'), z[0]);
+  ok('a zone without them keeps the original 10 fields', z[1].split(' ').length === 10, z[1]);
+  ok('both blocks pasted together keep each title (indicator switches bot on it)', (vt + '\n\n' + txt).split('\n').filter(r => r.startsWith('────')).length === 2);
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

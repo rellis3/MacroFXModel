@@ -22242,13 +22242,33 @@ svcTimeout('oiCboeShadow', () => _oiShadowTick().catch(e => console.error('[oi-s
 // The zones the OI bot is trading, as the text block pine/OI Bot Trades.pine draws as
 // position boxes (entry / stop / target, with each zone's live state from oi_bot_status).
 // ?src=cboe exports the Cboe shadow plan instead (what the shadow would trade). Read-only.
+// One text block per bot, same line format, so ONE indicator draws either (or both pasted together — the block title tells it which bot a zone belongs to).
+//   /api/oi-bot/trades-export              the OI bot (default)
+//   /api/oi-bot/trades-export?bot=vol      the OI-Vol bot        (same as /api/oi-vol-bot/trades-export)
+//   /api/oi-bot/trades-export?bot=both     both blocks, OI first then OI-Vol
+async function _oiTradesBlock(which) {
+  const vol = which === 'vol';
+  const [plan, status] = await Promise.all([_kvJson(vol ? 'oi_vol_bot_zones' : 'oi_bot_zones'), _kvJson(vol ? 'oi_vol_bot_status' : 'oi_bot_status')]);
+  if (!plan?.instruments) return null;
+  return _oiTradesText(plan, status, { source: 'CME', title: vol ? 'OI-VOL BOT TRADES' : 'OI BOT TRADES' });
+}
 app.get('/api/oi-bot/trades-export', async (req, res) => {
   try {
     const cboe = String(req.query.src || '') === 'cboe';
+    const bot = String(req.query.bot || 'oi');
+    if (!cboe && (bot === 'vol' || bot === 'both')) {
+      const blocks = (await Promise.all((bot === 'both' ? ['oi', 'vol'] : ['vol']).map(_oiTradesBlock))).filter(Boolean);
+      if (!blocks.length) return res.status(404).type('text/plain').send('No plan yet.');
+      return res.type('text/plain').send(blocks.join('\n\n'));
+    }
     const [plan, status] = await Promise.all([_kvJson(cboe ? _OI_CBOE_PLAN_KEY : 'oi_bot_zones'), cboe ? null : _kvJson('oi_bot_status')]);
     if (!plan?.instruments) return res.status(404).type('text/plain').send('No OI bot plan yet.');
     res.type('text/plain').send(_oiTradesText(plan, status, { source: cboe ? 'Cboe shadow (no orders)' : 'CME' }));
   } catch (e) { res.status(500).type('text/plain').send(`Export failed: ${e.message}`); }
+});
+app.get('/api/oi-vol-bot/trades-export', async (_req, res) => {
+  try { const t = await _oiTradesBlock('vol'); if (!t) return res.status(404).type('text/plain').send('No OI-Vol plan yet.'); res.type('text/plain').send(t); }
+  catch (e) { res.status(500).type('text/plain').send(`Export failed: ${e.message}`); }
 });
 
 app.get('/api/oi-bot/cboe-shadow', async (req, res) => {
