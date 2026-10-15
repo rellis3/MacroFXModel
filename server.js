@@ -21,6 +21,9 @@ import { promisify }       from 'util';
 import * as kv           from './kv.js';
 import worker, { COT_KV } from './_worker.js';
 import { rankIC, blockBootstrapIC, spearman } from './js/statsCore.js';
+import { PROVIDERS as AI_PROVIDERS, buildRequest as aiBuildRequest, authHeaders as aiAuthHeaders,
+         readResponse as aiReadResponse, resolveTask as aiResolveTask, configFromEnv as aiConfigFromEnv,
+         costOf as aiCostOf, TASK_CLASS as AI_TASKS } from './js/modelRouter.js';
 import { cotFactorSeries, qualifies, COT_FACTOR_UNIVERSE, COT_DATASETS, COT_WINDOW_WEEKS, MIN_WEEKS_QUALIFY } from './js/cotFactorCore.js';
 import { refreshAllPairs } from './levels.js';
 import { fitHMM, hmmSignalScore } from './hmm.js';
@@ -3462,6 +3465,201 @@ function _firstJsonObject(txt) {
   }
   throw new Error('unbalanced JSON object in model reply');
 }
+// ── one call path for every model call on this server ────────────────────────
+//
+// Sixteen call sites each had their own fetch, their own headers and their own hardcoded
+// `claude-opus-5`. They are all the same shape -- text in, JSON text out -- so they are
+// all this function now. What that buys, in order of how much it matters:
+//
+//   1. The model is CONFIG. Changing it, or sending the cheap jobs somewhere cheaper, is
+//      a Railway environment variable rather than fourteen edits.
+//   2. The ledger can be CACHED. ~34k tokens of evidence rides on the brief and the chain
+//      read, unchanged between calls, and was re-sent and re-billed every time. A cache
+//      only hits on a stable prefix, so `standing` is passed separately and leads.
+//   3. Every call is COUNTED. _modelCalls below is what makes "the cheap one is fine"
+//      checkable instead of a hunch.
+//
+// Behaviour is deliberately unchanged on the default path: with provider=anthropic and no
+// `standing`, js/modelRouter.js emits exactly the body these sites used to hand-build.
+let _aiCfgCache = { at: 0, cfg: null };
+// Runtime routing override, read from KV. The environment sets the default; this is the
+// flick-a-switch layer, so trying a cheaper model on one task does not need a deploy and
+// backing it out does not need one either. Keys NEVER live here -- those stay in Railway.
+const _AI_ROUTING_KV = 'ai_routing_v1';
+let _aiOverride = { at: 0, tasks: {}, provider: null, cache: null };
+async function _loadAiOverride() {
+  try {
+    const raw = await kv.get(_AI_ROUTING_KV);
+    const d = raw ? (JSON.parse(raw)?.data ?? JSON.parse(raw)) : null;
+    _aiOverride = {
+      at: Date.now(),
+      tasks: (d && typeof d.tasks === 'object') ? d.tasks : {},
+      provider: d?.provider ?? null,
+      cache: typeof d?.cache === 'boolean' ? d.cache : null,
+    };
+  } catch { _aiOverride = { at: Date.now(), tasks: {}, provider: null, cache: null }; }
+  _aiCfgCache = { at: 0, cfg: null };
+  return _aiOverride;
+}
+function _aiConfig() {
+  if (!_aiCfgCache.cfg || Date.now() - _aiCfgCache.at > 60_000) {
+    const base = aiConfigFromEnv(process.env);
+    _aiCfgCache = { at: Date.now(), cfg: {
+      ...base,
+      provider: _aiOverride.provider ?? base.provider,
+      cache: _aiOverride.cache ?? base.cache,
+      tasks: { ...base.tasks, ..._aiOverride.tasks },
+    } };
+  }
+  return _aiCfgCache.cfg;
+}
+/** Is ANY provider usable? The old per-handler guards asked only about ANT_KEY. */
+function _aiAnyKey() {
+  return Object.values(_aiConfig().keys).some(Boolean);
+}
+// A ring buffer, not a database. Enough to answer "what did today cost and is the cache
+// actually hitting", which is the question a model-switch config is useless without.
+const _modelCalls = [];
+const _MODEL_CALL_KEEP = 300;
+function _recordModelCall(row) {
+  _modelCalls.push({ at: Date.now(), ...row });
+  if (_modelCalls.length > _MODEL_CALL_KEEP) _modelCalls.splice(0, _modelCalls.length - _MODEL_CALL_KEEP);
+}
+function modelCallStats() {
+  const cfg = _aiConfig();
+  const byTask = {}, byProvider = {};
+  for (const c of _modelCalls) {
+    const t = byTask[c.task] ??= { n: 0, in: 0, out: 0, cacheRead: 0, cacheWrite: 0, truncated: 0, errors: 0, usd: 0, priced: false };
+    const p = byProvider[c.provider] ??= { n: 0, in: 0, out: 0, cacheRead: 0, cacheWrite: 0, usd: 0, priced: false };
+    const cost = aiCostOf(c.provider, c.usage ?? {}, cfg.prices);
+    for (const b of [t, p]) {
+      b.n++; b.in += cost.in; b.out += cost.out; b.cacheRead += cost.cacheRead; b.cacheWrite += cost.cacheWrite;
+      if (cost.priced) { b.priced = true; b.usd = +(b.usd + cost.usd).toFixed(5); }
+    }
+    if (c.truncated) t.truncated++;
+    if (c.ok === false) t.errors++;
+    t.provider = c.provider; t.model = c.model;
+  }
+  const inTok = Object.values(byProvider).reduce((a, b) => a + b.in, 0);
+  const cached = Object.values(byProvider).reduce((a, b) => a + b.cacheRead, 0);
+  return {
+    calls: _modelCalls.length, byTask, byProvider,
+    cacheHitRate: inTok > 0 ? +(cached / (inTok || 1)).toFixed(3) : null,
+    priced: Object.values(byProvider).some(b => b.priced),
+    since: _modelCalls[0]?.at ?? null,
+  };
+}
+
+/**
+ * Make one model call. Throws with `.status` set so the existing handlers keep their
+ * 502/503 behaviour.
+ *
+ * `standing` is content identical on every call of this task (the evidence ledger). Pass
+ * it here rather than gluing it into `prompt`: it becomes the cached prefix, and that is
+ * where the saving comes from.
+ */
+async function callModel({ task = 'misc', system = '', standing = '', prompt = '', maxTokens = 4000, temperature = null } = {}) {
+  const cfg = _aiConfig();
+  const r = aiResolveTask(task, cfg);
+  const P = AI_PROVIDERS[r.provider];
+  const key = process.env[P.keyEnv];
+  if (!key) { const e = new Error(`${P.keyEnv} not configured`); e.status = 503; throw e; }
+  const req = aiBuildRequest({
+    provider: r.provider, model: r.model, system, standing, prompt,
+    maxTokens, maxOutput: r.maxOutput, cache: cfg.cache, temperature,
+  });
+  const started = Date.now();
+  const httpRes = await fetch(req.url, {
+    method: 'POST', headers: aiAuthHeaders(req, key), body: JSON.stringify(req.body),
+  });
+  if (!httpRes.ok) {
+    const body = (await httpRes.text().catch(() => '')).slice(0, 300);
+    const e = new Error(`${P.label} ${httpRes.status}${body ? ': ' + body : ''}`);
+    e.status = 502; e.provider = r.provider;
+    _recordModelCall({ task, provider: r.provider, model: r.model, ok: false, httpStatus: httpRes.status, ms: Date.now() - started });
+    throw e;
+  }
+  const out = aiReadResponse(r.provider, await httpRes.json());
+  _recordModelCall({
+    task, provider: r.provider, model: r.model, ok: true, usage: out.usage,
+    truncated: out.truncated, clamped: req.clamped, ms: Date.now() - started,
+  });
+  return {
+    ...out, provider: r.provider, model: r.model, label: P.label, clamped: req.clamped,
+    // COMPATIBILITY SHIM, and it earns its keep. Several call sites read the raw reply
+    // downstream -- `_antText(j)` again, or `j.stop_reason === 'max_tokens'` to decide
+    // whether to retry. Rather than rewrite that logic at each one (and risk changing a
+    // retry rule while moving it), the returned object still answers to those shapes.
+    // `stop_reason` is NORMALISED: an OpenAI-shaped provider signals a hit cap with
+    // finish_reason 'length', and a downstream check for 'max_tokens' would quietly stop
+    // retrying the moment the provider changed.
+    stop_reason: out.truncated ? 'max_tokens' : (out.stopReason ?? 'end_turn'),
+    content: [{ type: 'text', text: out.text }],
+    ok: true,
+  };
+}
+
+// ── /api/ai-config ─ what model is running what, and what it has cost ──────────
+//
+// Read-only on GET, and it returns BOOLEANS for which keys exist, never a key. A config
+// screen that leaks the thing it is configuring is the obvious way to get this wrong.
+//
+// POST sets the per-task routing in KV, so trying a cheaper model on the headline
+// summaries is a toggle rather than a deploy -- and backing it out is a toggle too. The
+// cost numbers alongside are the point: without them "the cheap one seemed fine" is a
+// feeling. Token counts are always real; money appears only where a PRICE_* env var has
+// been set, because a made-up rate in a cost report gets quoted later as measured.
+app.get('/api/ai-config', async (_req, res) => {
+  try {
+    if (Date.now() - _aiOverride.at > 60_000) await _loadAiOverride();
+    const cfg = _aiConfig();
+    const tasks = Object.entries(AI_TASKS).map(([id, t]) => {
+      const r = aiResolveTask(id, cfg);
+      return {
+        id, label: t.label, ledger: t.ledger ?? null, cheapSafe: !!t.cheapSafe,
+        provider: r.provider, model: r.model, maxOutput: r.maxOutput,
+        fellBack: r.fellBack, why: r.why,
+        chosen: _aiOverride.tasks[id] ?? cfg.tasks[id] ?? null,
+      };
+    });
+    res.json({
+      ok: true,
+      providers: Object.entries(AI_PROVIDERS).map(([id, P]) => ({
+        id, label: P.label, keyEnv: P.keyEnv, configured: !!cfg.keys[id],
+        explicitCache: !!P.explicitCache,
+        model: (cfg.models?.[id]?.id) ?? null,
+        priced: !!cfg.prices?.[id],
+      })),
+      defaultProvider: cfg.provider, cache: cfg.cache, tasks,
+      stats: modelCallStats(),
+      note: 'Keys are set in Railway and are never returned here. Routing set below is stored in KV and survives a deploy.',
+    });
+  } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
+});
+app.post('/api/ai-config', async (req, res) => {
+  try {
+    const { tasks, provider, cache } = req.body ?? {};
+    const clean = {};
+    for (const [k, v] of Object.entries(tasks ?? {})) {
+      if (!AI_TASKS[k]) continue;
+      if (v === null || v === '') continue;                 // null = fall back to env
+      if (!AI_PROVIDERS[v]) return res.status(400).json({ error: `unknown provider: ${v}` });
+      clean[k] = v;
+    }
+    if (provider != null && provider !== '' && !AI_PROVIDERS[provider]) {
+      return res.status(400).json({ error: `unknown provider: ${provider}` });
+    }
+    const payload = {
+      tasks: clean,
+      provider: provider === '' ? null : (provider ?? null),
+      cache: typeof cache === 'boolean' ? cache : null,
+    };
+    await kv.put(_AI_ROUTING_KV, JSON.stringify({ data: payload, timestamp: Date.now() }));
+    await _loadAiOverride();
+    res.json({ ok: true, applied: payload });
+  } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
+});
+
 function _antText(data) {
   const blocks = Array.isArray(data?.content) ? data.content : [];
   for (const b of blocks) if (b?.type === 'text' && typeof b.text === 'string') return b.text;
@@ -4135,8 +4333,8 @@ ${s.events || '  nothing high-impact scheduled'}
 HEADLINES (Yahoo, last few hours; may be thin or stale)
 ${hl || '  none available'}
 
-TESTED ON THIS DESK (pre-registered, paired-control tests on this desk's own data; lean on these BEFORE any market folklore)
-${s.evidence || _evidenceForPrompt()}
+THE TESTED-FINDINGS LEDGER IS IN YOUR SYSTEM INSTRUCTIONS, above this snapshot. Lean on
+it BEFORE any market folklore, and say "tested here" when you do.
 
 === END SNAPSHOT ===
 
@@ -4224,8 +4422,7 @@ Respond with a single valid JSON object, no markdown:
 List every term a beginner would stumble on (8-14 terms). Do not list plain words.`;
 }
 app.post('/api/explain', async (req, res) => {
-  const key = process.env.ANT_KEY;
-  if (!key) return res.status(503).json({ error: 'ANT_KEY not configured' });
+  if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
   try {
     const { item, ctx } = req.body ?? {};
     if (!item?.kind) return res.status(400).json({ error: 'Missing item' });
@@ -4234,25 +4431,17 @@ app.post('/api/explain', async (req, res) => {
     const hit = _explainCache.get(ck);
     if (hit && Date.now() - hit.at < _EXPLAIN_TTL_MS) return res.json({ ok: true, cached: true, explain: hit.data });
     const prompt = buildExplainPrompt(item, ctx);
-    const antRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-opus-5',
-        max_tokens: 3000,
-        system: 'You explain macro markets to a beginner in plain words. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-    if (!antRes.ok) return res.status(502).json({ error: `Anthropic ${antRes.status}` });
-    const j = await antRes.json();
+    const antRes = await callModel({ task: 'explain', maxTokens: 3000,
+      system: 'You explain macro markets to a beginner in plain words. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
+      prompt: prompt });
+    const j = antRes;
     const txt = _antText(j);
     const explain = _parseModelJson(txt, 'explain');
     if (!explain) return res.status(502).json({ error: 'model did not return parseable JSON' });
     if (_explainCache.size > 200) _explainCache.clear();
     _explainCache.set(ck, { at: Date.now(), data: explain });
     res.json({ ok: true, cached: false, explain });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
 
 // ── The paid end-of-day review ──────────────────────────────────────────────
@@ -4307,8 +4496,7 @@ app.get('/api/eod-review', async (_req, res) => {
 });
 
 app.post('/api/eod-review', express.json({ limit: '256kb' }), async (req, res) => {
-  const key = process.env.ANT_KEY;
-  if (!key) return res.status(503).json({ error: 'ANT_KEY not configured' });
+  if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
   try {
     const { snapshot } = req.body ?? {};
     if (!snapshot?.asOf) return res.status(400).json({ error: 'Missing snapshot' });
@@ -4326,20 +4514,15 @@ app.post('/api/eod-review', express.json({ limit: '256kb' }), async (req, res) =
     // run came back truncated at the cap with no review at all. The short form keeps
     // every entry and drops each one's counts and intervals: a model told not to
     // contradict a finding needs the claim and the use, not the methodology.
+    // The short ledger is still passed INTO the prompt builder, which weaves it into its
+    // own sections; splitting it out would mean rewriting that builder's structure for a
+    // smaller prize (~17k tokens, one call a day). Left as it is, deliberately.
     const prompt = buildEodReviewPrompt(snapshot, _evidenceBrief());
     const ask = async (maxTokens) => {
-      const r = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({
-          model: 'claude-opus-5',
-          max_tokens: maxTokens,
-          system: 'You are a former macro trader writing an end-of-day review for one reader who is learning to read markets. The session is finished; you are looking back at it, never forward. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
-          messages: [{ role: 'user', content: prompt }],
-        }),
-      });
-      if (!r.ok) return { httpError: r.status };
-      const j = await r.json();
+      const r = await callModel({ task: 'eod-review', maxTokens: maxTokens,
+        system: 'You are a former macro trader writing an end-of-day review for one reader who is learning to read markets. The session is finished; you are looking back at it, never forward. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
+        prompt: prompt });
+      const j = r;
       return { j, review: _parseModelJson(_antText(j), 'eod-review') };
     };
     let out = await ask(8000);
@@ -4360,7 +4543,7 @@ app.post('/api/eod-review', express.json({ limit: '256kb' }), async (req, res) =
     _eodReviewCache = { at: Date.now(), data, key: ck };
     _persistEodReview(data).catch(e => console.warn('[eod-review] persist failed:', e.message));
     res.json({ ok: true, cached: false, ageMin: 0, stale: false, ...data });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
 
 // Free read of whatever is cached -- no model call. The page shows this on load
@@ -4376,8 +4559,7 @@ app.get('/api/chain-read', async (_req, res) => {
     earlier: history.map(h => ({ generatedAt: h.generatedAt, hook: h.read?.hook ?? null })) });
 });
 app.post('/api/chain-read', async (req, res) => {
-  const key = process.env.ANT_KEY;
-  if (!key) return res.status(503).json({ error: 'ANT_KEY not configured' });
+  if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
   try {
     const { snapshot } = req.body ?? {};
     if (!snapshot) return res.status(400).json({ error: 'Missing snapshot' });
@@ -4390,18 +4572,17 @@ app.post('/api/chain-read', async (req, res) => {
     let headlines = [];
     try { headlines = await _fetchYahooHeadlines(); } catch { /* prompt tolerates absence */ }
     const prompt = buildChainReadPrompt(snapshot, headlines);
-    const antRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-opus-5',
-        max_tokens: 4000,
-        system: 'You are a former fixed-income trader explaining the macro tape after the close. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-    if (!antRes.ok) return res.status(502).json({ error: `Anthropic ${antRes.status}` });
-    const j = await antRes.json();
+    const antRes = await callModel({ task: 'chain', maxTokens: 4000,
+    // THE LEDGER AS STANDING CONTENT. ~34k tokens, identical on every call of this task,
+    // and it used to sit in the MIDDLE of a prompt whose opening paragraphs are today's
+    // snapshot -- so it was re-sent and re-billed every time and no cache could ever hit,
+    // because a cache only hits on a stable PREFIX. Moving it in front of the volatile
+    // half is the whole saving. It also belongs here on the merits: standing instruction
+    // is what a system prompt is for, and the snapshot is the only thing that changes.
+    standing: _evidenceForPrompt(),
+      system: 'You are a former fixed-income trader explaining the macro tape after the close. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
+      prompt: prompt });
+    const j = antRes;
     const txt = _antText(j);
     const read = _parseModelJson(txt, 'chain-read');
     if (!read) return res.status(502).json({ error: `model did not return parseable JSON${j.stop_reason === 'max_tokens' ? ' (response truncated at the token cap)' : ''} -- press re-read once more` });
@@ -4409,33 +4590,24 @@ app.post('/api/chain-read', async (req, res) => {
     _chainReadCache = { at: Date.now(), data, key: ck };
     _persistChainRead(data).catch(e => console.warn('[chain-read] persist failed:', e.message));
     res.json({ ok: true, cached: false, fresh: true, ageMin: 0, ...data });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
 
 app.post('/api/currency-analysis', async (req, res) => {
-  const key = process.env.ANT_KEY;
-  if (!key) return res.status(503).json({ error: 'ANT_KEY not configured' });
+  if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
   try {
     const { ccy, snapshot, mode } = req.body ?? {};
     if (!ccy || !snapshot) return res.status(400).json({ error: 'Missing ccy or snapshot' });
     const prompt = buildCurrencyPrompt(ccy, snapshot, mode === 'desk' ? 'desk' : 'teach');
-    const antRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-opus-5',
-        max_tokens: 16000,
-        system: 'You are a professional FX macro strategist. You ALWAYS respond with valid complete JSON only — no markdown, no backticks, no text before or after the JSON object. JSON must be fully closed.',
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-    if (!antRes.ok) return res.status(502).json({ error: `Anthropic ${antRes.status}` });
-    const j = await antRes.json();
+    const antRes = await callModel({ task: 'currency', maxTokens: 16000,
+      system: 'You are a professional FX macro strategist. You ALWAYS respond with valid complete JSON only — no markdown, no backticks, no text before or after the JSON object. JSON must be fully closed.',
+      prompt: prompt });
+    const j = antRes;
     const txt = _antText(j);
     const analysis = _parseModelJson(txt, 'currency-analysis');
     if (!analysis) return res.status(502).json({ error: 'model did not return parseable JSON' });
     res.json({ ok: true, ccy, analysis, generatedAt: new Date().toISOString() });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
 
 app.post('/api/analysis', async (req, res) => {
@@ -4452,20 +4624,9 @@ app.post('/api/analysis', async (req, res) => {
 
     const prompt = buildAnalysisPrompt(pair, s);
 
-    const antRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-5',
-        max_tokens: 16000,
-        system: 'You are a professional FX/futures desk analyst. You ALWAYS respond with valid complete JSON only — no markdown, no backticks, no text before or after the JSON object. Keep each string value to 1-2 sentences max. Arrays max 3 items. JSON must be fully closed.',
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
+    const antRes = await callModel({ task: 'pair', maxTokens: 16000,
+      system: 'You are a professional FX/futures desk analyst. You ALWAYS respond with valid complete JSON only — no markdown, no backticks, no text before or after the JSON object. Keep each string value to 1-2 sentences max. Arrays max 3 items. JSON must be fully closed.',
+      prompt: prompt });
 
     if (!antRes.ok) {
       const errTxt = await antRes.text();
@@ -4498,8 +4659,7 @@ app.post('/api/analysis', async (req, res) => {
 
 // ── Historical analysis synthesis — sends statistical summary to Claude ────────
 app.post('/api/analysis-historical', async (req, res) => {
-  const key = process.env.ANT_KEY;
-  if (!key) return res.status(503).json({ error: 'ANT_KEY not configured' });
+  if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY)' });
 
   const { summary } = req.body ?? {};
   if (!summary) return res.status(400).json({ error: 'Missing summary' });
@@ -4554,20 +4714,9 @@ Rules for your response:
 
 
   try {
-    const antRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-opus-5',
-        max_tokens: 2000,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-    if (!antRes.ok) {
-      const err = await antRes.text();
-      return res.status(502).json({ error: `Anthropic error ${antRes.status}: ${err.slice(0, 300)}` });
-    }
-    const antData = await antRes.json();
+    const antRes = await callModel({ task: 'misc', maxTokens: 2000,
+      prompt: prompt });
+    const antData = antRes;
     const raw   = _antText(antData);
     const clean = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
     let parsed;
@@ -5205,8 +5354,8 @@ ${scorecardLines ? `\n=== MACRO SCORECARD -- this project's own cross-engine ran
 === TODAY'S SCHEDULED ECONOMIC EVENTS ===
 ${bigEvents}
 
-=== TESTED ON THIS DESK (pre-registered, paired-control tests on this desk's own data -- use these BEFORE any market folklore; say "tested here" when you do) ===
-${_evidenceForPrompt()}
+THE TESTED-FINDINGS LEDGER IS IN YOUR SYSTEM INSTRUCTIONS, above this snapshot. Lean on
+it BEFORE any market folklore, and say "tested here" when you do.
 
 === REAL HEADLINES (Yahoo Finance) ===
 ${heads}
@@ -5235,12 +5384,11 @@ STRUCTURE RULES — this is read every morning before the open, so length is a c
 
 Respond with ONLY valid JSON, no markdown:
 {"verdict":["regime in plain words","the one thing that changed","the one thing to watch"],"headline":"one-sentence front-page read, plain-English so-what first","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","theme":"2-3 plain-spoken sentences on what's driving markets today, jargon glossed","dollar":"1-2 sentences on the USD","rates":"1-2 sentences on yields/curve","risk":"1-2 sentences on the risk mood (VIX/credit)","complex":"1-2 sentences: what it means for the FX majors + gold/indices","watch":["1-3 things to watch"],"byAsset":[{"asset":"USD|EUR|JPY|GBP|Gold|Stocks|Oil","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}],"pairsOutlook":[{"pair":"EURUSD|GBPUSD|USDJPY|USDCHF|USDCAD|AUDUSD|NZDUSD|XAUUSD|NAS100|SPX500|WTI","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line citing the data behind it"}],"boardTradeOfDay":{"pair":"one of the eleven instruments above, or null if nothing clears the bar","direction":"LONG|SHORT","confidence":"LOW|MEDIUM|HIGH","rationale":"2-3 sentences citing specific data points, or why nothing clears the bar"},"tldr":"one-line bottom line"}`;
-  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-opus-5', max_tokens: 16000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim in the provided data/headlines; never invent events or figures.', messages: [{ role: 'user', content: prompt }] }),
-  });
-  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
-  const antData = await antRes.json();
+  const antRes = await callModel({ task: 'brief', maxTokens: 16000,
+    system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim in the provided data/headlines; never invent events or figures.',
+    standing: _evidenceForPrompt(),
+    prompt: prompt });
+  const antData = antRes;
   if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
   const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   // The model occasionally appends a sentence after the closing brace ("Unexpected
@@ -5567,17 +5715,10 @@ RULES:
 Respond with ONLY valid JSON, no markdown:
 {"headline":"one-sentence front-page read of this week's positioning","verdict":"STRETCHED|PATCHY|QUIET|CALM","weeklyTheme":"2-4 sentences on the dominant theme this week — is this one macro position wearing several costumes, or unrelated idiosyncratic crowding","themes":[{"theme":"short theme name","markets":["symbols from the list above, that belong to this theme"],"read":"2-3 sentences: what's happening across these markets together and how this positioning is likely to act this week — not a restatement of each market's own percentile"}],"tradeIdeas":[{"market":"symbol","direction":"LONG|SHORT","thesis":"fade the crowd|ride the flow|event-driven","confidence":"LOW|MEDIUM|HIGH","rationale":"2-3 sentences citing the specific data behind it","invalidation":"what would prove this wrong"}],"riskWarnings":["short warnings, max 3, specific to this week"],"tldr":"one-line bottom line for the week"}`;
 
-  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({
-      model: 'claude-opus-5', max_tokens: 16000,
-      system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim strictly in the provided data; never invent levels, catalysts, or figures.',
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
-  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 300)}`);
-  const antData = await antRes.json();
+  const antRes = await callModel({ task: 'brief', maxTokens: 16000,
+    system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim strictly in the provided data; never invent levels, catalysts, or figures.',
+    prompt: prompt });
+  const antData = antRes;
   if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
   const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   const analysis = JSON.parse(clean);
@@ -5815,14 +5956,12 @@ async function _serverSnapshotFor(name, sym) {
   return snap;
 }
 async function _buildPairAnalysis(name, sym) {
-  const key = process.env.ANT_KEY; if (!key) throw new Error('ANT_KEY not configured');
+  if (!_aiAnyKey()) throw new Error('no model provider configured');
   const snapshot = await _serverSnapshotFor(name, sym);
-  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-opus-5', max_tokens: 16000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Keep each string value to 1-2 sentences. Arrays max 3 items.', messages: [{ role: 'user', content: buildAnalysisPrompt(_aiPairName(name, sym), snapshot) }] }),
-  });
-  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}`);
-  const antData = await antRes.json();
+  const antRes = await callModel({ task: 'pair', maxTokens: 16000,
+    system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Keep each string value to 1-2 sentences. Arrays max 3 items.',
+    prompt: buildAnalysisPrompt(_aiPairName(name, sym), snapshot) });
+  const antData = antRes;
   const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   const analysis = JSON.parse(clean);
   await kv.put(_aiKvKey(name, sym), JSON.stringify({ data: { analysis, generatedAt: new Date().toISOString(), pair: name }, timestamp: Date.now() })).catch(() => {});
@@ -5979,12 +6118,10 @@ Also score five separate dimensions, each 0.0 (no signal of this in the text) to
 Respond with ONLY valid JSON, no markdown:
 {"headline":"one-sentence front-page read, plain-English so-what first","hawkishScore":-1.0 to 1.0 (negative=dovish, positive=hawkish, 0=neutral),"regime":"HAWKISH|DOVISH|NEUTRAL|MIXED","confidence":"LOW|MEDIUM|HIGH (how confident YOU are in this read, not the Committee's tone)","dimensions":{"inflationConcern":0.0-1.0,"laborConcern":0.0-1.0,"growthConcern":0.0-1.0,"financialStabilityConcern":0.0-1.0,"committeeConfidence":0.0-1.0},"summary":"2-3 plain-spoken sentences","whatChanged":"1-2 sentences on what's different from last time, grounded ONLY in the wording changes above — say plainly if there was no material change","voteNote":"1 sentence on what the vote/dissent split implies for the policy debate, or null if no vote data was given","keyQuotes":[{"quote":"short verbatim excerpt from the text above, under 30 words","why":"why this line matters","asset":"USD|Rates|Equities|Gold","lean":"BULLISH|BEARISH|NEUTRAL"}] (max 5, ranked most market-moving first),"byAsset":[{"asset":"USD|Rates|Equities|Gold|FX majors","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}]}`;
 
-  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-opus-5', max_tokens: 16000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
-  });
-  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
-  const antData = await antRes.json();
+  const antRes = await callModel({ task: 'doc-summary', maxTokens: 16000,
+    system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.',
+    prompt: prompt });
+  const antData = antRes;
   if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
   const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   const analysis = JSON.parse(clean);
@@ -6579,12 +6716,10 @@ Also score five separate dimensions, each 0.0 (no signal of this in the text) to
 Respond with ONLY valid JSON, no markdown:
 {"headline":"one-sentence front-page read, plain-English so-what first","hawkishScore":-1.0 to 1.0 (negative=dovish, positive=hawkish, 0=neutral),"regime":"HAWKISH|DOVISH|NEUTRAL|MIXED","confidence":"LOW|MEDIUM|HIGH (how confident YOU are in this read)","dimensions":{"inflationConcern":0.0-1.0,"growthConcern":0.0-1.0,"financialStabilityConcern":0.0-1.0,"fragmentationConcern":0.0-1.0,"committeeConfidence":0.0-1.0},"summary":"2-3 plain-spoken sentences","whatChanged":"1-2 sentences on what's different from last time, grounded ONLY in the wording changes above — say plainly if there was no material change","keyQuotes":[{"quote":"short verbatim excerpt from the text above, under 30 words","why":"why this line matters","asset":"EUR|Bunds|Peripheral spreads|Equities","lean":"BULLISH|BEARISH|NEUTRAL"}] (max 5, ranked most market-moving first),"byAsset":[{"asset":"EUR|Bunds|Peripheral spreads|Equities|FX majors","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}]}`;
 
-  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-opus-5', max_tokens: 16000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
-  });
-  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
-  const antData = await antRes.json();
+  const antRes = await callModel({ task: 'doc-summary', maxTokens: 16000,
+    system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.',
+    prompt: prompt });
+  const antData = antRes;
   if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
   const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   const analysis = JSON.parse(clean);
@@ -6776,12 +6911,10 @@ Also score five separate dimensions, each 0.0 (no signal of this in the text) to
 Respond with ONLY valid JSON, no markdown:
 {"headline":"one-sentence front-page read, plain-English so-what first","hawkishScore":-1.0 to 1.0 (negative=dovish, positive=hawkish, 0=neutral),"regime":"HAWKISH|DOVISH|NEUTRAL|MIXED","confidence":"LOW|MEDIUM|HIGH (how confident YOU are in this read)","dimensions":{"inflationConcern":0.0-1.0,"laborConcern":0.0-1.0,"growthConcern":0.0-1.0,"financialStabilityConcern":0.0-1.0,"committeeConfidence":0.0-1.0},"summary":"2-3 plain-spoken sentences","whatChanged":"1-2 sentences on what's different from last time, grounded ONLY in the wording changes above — say plainly if there was no material change","voteNote":"1 sentence on what the vote split implies for the policy debate, or null if no vote data was given","keyQuotes":[{"quote":"short verbatim excerpt from the text above, under 30 words","why":"why this line matters","asset":"GBP|Gilts|Equities","lean":"BULLISH|BEARISH|NEUTRAL"}] (max 5, ranked most market-moving first),"byAsset":[{"asset":"GBP|Gilts|Equities|FX majors","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}]}`;
 
-  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-opus-5', max_tokens: 16000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
-  });
-  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
-  const antData = await antRes.json();
+  const antRes = await callModel({ task: 'doc-summary', maxTokens: 16000,
+    system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.',
+    prompt: prompt });
+  const antData = antRes;
   if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
   const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   const analysis = JSON.parse(clean);
@@ -6943,12 +7076,10 @@ Also score five separate dimensions, each 0.0 (no signal of this in the text) to
 Respond with ONLY valid JSON, no markdown:
 {"headline":"one-sentence front-page read, plain-English so-what first","hawkishScore":-1.0 to 1.0 (negative=dovish, positive=hawkish, 0=neutral),"regime":"HAWKISH|DOVISH|NEUTRAL|MIXED","confidence":"LOW|MEDIUM|HIGH (how confident YOU are in this read)","dimensions":{"inflationConcern":0.0-1.0,"laborConcern":0.0-1.0,"growthConcern":0.0-1.0,"financialStabilityConcern":0.0-1.0,"committeeConfidence":0.0-1.0},"summary":"2-3 plain-spoken sentences","whatChanged":"1-2 sentences on what's different from last time, grounded ONLY in the wording changes above — say plainly if there was no material change","voteNote":"1 sentence on what the vote split/dissent implies for the policy debate, or null if no vote data was given","keyQuotes":[{"quote":"short verbatim excerpt from the text above, under 30 words","why":"why this line matters","asset":"JPY|JGBs|Equities","lean":"BULLISH|BEARISH|NEUTRAL"}] (max 5, ranked most market-moving first),"byAsset":[{"asset":"JPY|JGBs|Equities|FX majors","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}]}`;
 
-  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-opus-5', max_tokens: 16000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
-  });
-  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
-  const antData = await antRes.json();
+  const antRes = await callModel({ task: 'doc-summary', maxTokens: 16000,
+    system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.',
+    prompt: prompt });
+  const antData = antRes;
   if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
   const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   const analysis = JSON.parse(clean);
@@ -7126,12 +7257,10 @@ Also score five separate dimensions, each 0.0 (no signal of this in the text) to
 Respond with ONLY valid JSON, no markdown:
 {"headline":"one-sentence front-page read, plain-English so-what first","hawkishScore":-1.0 to 1.0 (negative=dovish, positive=hawkish, 0=neutral),"regime":"HAWKISH|DOVISH|NEUTRAL|MIXED","confidence":"LOW|MEDIUM|HIGH (how confident YOU are in this read)","dimensions":{"inflationConcern":0.0-1.0,"laborConcern":0.0-1.0,"growthConcern":0.0-1.0,"financialStabilityConcern":0.0-1.0,"regionalBreadth":0.0-1.0},"summary":"2-3 plain-spoken sentences","whatChanged":"1-2 sentences on what's different from the prior Beige Book, grounded ONLY in the wording changes above — say plainly if there was no material change","keyQuotes":[{"quote":"short verbatim excerpt from the text above, under 30 words","why":"why this line matters","asset":"USD|Rates|Equities","lean":"BULLISH|BEARISH|NEUTRAL"}] (max 5, ranked most market-moving first, prefer quotes that name a specific District when possible),"byAsset":[{"asset":"USD|Rates|Equities|FX majors","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}]}`;
 
-  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-opus-5', max_tokens: 16000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
-  });
-  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
-  const antData = await antRes.json();
+  const antRes = await callModel({ task: 'doc-summary', maxTokens: 16000,
+    system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.',
+    prompt: prompt });
+  const antData = antRes;
   if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
   const clean = (_antText(antData)).replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   const analysis = JSON.parse(clean);
@@ -8539,15 +8668,8 @@ Reply in this exact format (use ** for bold headers):
 **FEEL** — 1–2 sentences of trader instinct on this setup`;
 
   try {
-    const antRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 700,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
+    const antRes = await callModel({ task: 'misc', maxTokens: 700,
+      prompt: prompt });
 
     if (!antRes.ok) {
       const err = await antRes.text();
@@ -22013,7 +22135,7 @@ app.get('/api/oi-store', async (req, res) => {
       }
     }
     res.json({ data: store });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
 
 // ── CBOE INDEX OPTIONS (SPX / NDX / RUT / DJX) ─────────────────────────────────
@@ -34351,7 +34473,7 @@ app.post('/api/hedge-signals/ack', (req, res) => {
     sig.ack_time = new Date().toISOString();
     fs.writeFileSync(HEDGE_SIGNALS_PATH, JSON.stringify(data, null, 2));
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
 
 app.get('/api/hedge-signals/tg-config', async (_req, res) => {

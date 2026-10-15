@@ -1178,6 +1178,14 @@ export default {
             // re-sent its Telegram result — the "same message every few minutes on
             // a quiet Saturday" bug (found 2026-09-12).
             'level_engine_fwd_log', 'level_engine_bot_state',
+            // Which model runs which task. It passes isAllowedKVKey on the 'ai_' PREFIX
+            // (so reads and writes work) but a prefix is deliberately NOT added to
+            // PERMANENT_PREFIXES below -- most ai_* keys are caches that SHOULD expire.
+            // Without this exact entry the routing config would carry the 48h TTL and a
+            // deliberate switch to a cheaper model would silently revert itself two days
+            // later, which is the exact failure CLAUDE.md documents. Keys are never
+            // stored here; they stay in Railway's environment.
+            'ai_routing_v1',
           ]);
           // PERMANENT_KEYS is exact-match, which cannot express a key that
           // rotates (one per day). vmlog_* is the VuManChu forward-validation
