@@ -50,6 +50,13 @@ h1 b{color:var(--acc)} h1 small{color:var(--tx3);font-size:11px;letter-spacing:.
 @media(max-width:1200px){#brief .bgrid{grid-template-columns:1fr}}
 .pb{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.pb i{display:inline-block;height:7px;border-radius:4px;min-width:2px}.pb b{font-weight:600;font-size:12px}
 .sech{font-size:13px;letter-spacing:.16em;text-transform:uppercase;margin:26px 0 12px;display:flex;flex-direction:column;gap:3px}.sech em{font-style:normal;color:var(--acc);margin-right:8px}.sech span{font-size:12px;letter-spacing:.02em;text-transform:none;color:var(--tx3);font-weight:400}
+/* chart sizing: single-column charts were stretching to the full card width and getting very tall (the gamma-by-price bars ran ~1000px). Cap them. */
+#bars{max-width:720px;display:block}
+#ahead{max-width:940px;display:block}
+#heat{max-width:1100px;display:block}
+#bchg{max-width:860px;display:block}
+#brief .bgrid>.card:first-child svg{max-width:1000px;display:block}
+#bstruct,#biv,#bpos{max-height:380px}
 .bp{margin-bottom:0}.dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:8px}
 .minis{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}.mini{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:130px}.mini .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)}.mini .v{font:600 18px var(--mono)}.mini .n{font-size:11.5px;color:var(--tx3)}
 details.xp>summary{cursor:pointer;font-size:13px;letter-spacing:.14em;text-transform:uppercase;list-style:none}details.xp[open]>summary{margin-bottom:14px}
@@ -568,7 +575,7 @@ function drawBars(){
   D.L.strikes.forEach((k, i) => { if (k < lo || k >= hi) return; const b = Math.floor((k - lo) / bw);
     D.ser.forEach((s, j) => { const v = s.net[i] || 0; tot[b] += v; if (D.nearUse.includes(j)) nr[b] += v; }); });
   const m = pctl(tot.map(Math.abs).concat(nr.map(Math.abs)), 0.95) || 1;
-  const W = 1000, rowH = 22, T = 34, L = 150, R = 30, H = T + NB * rowH + 14, zx = L + (W - L - R) / 2, half = (W - L - R) / 2 * 0.96;
+  const W = 1000, rowH = 20, T = 34, L = 150, R = 30, H = T + NB * rowH + 14, zx = L + (W - L - R) / 2, half = (W - L - R) / 2 * 0.96;
   const bx = v => Math.max(-1, Math.min(1, v / m)) * half;
   let h = `<text x="${zx - half / 2}" y="18" text-anchor="middle" fill="rgb(${SHORT})" font-size="12">◄ speeds price up</text><text x="${zx + half / 2}" y="18" text-anchor="middle" fill="rgb(${LONG})" font-size="12">pins / slows price ►</text>`;
   h += `<line x1="${zx}" x2="${zx}" y1="${T - 6}" y2="${H - 10}" stroke="rgba(255,255,255,.3)"/>`;
