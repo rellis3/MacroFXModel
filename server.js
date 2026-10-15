@@ -4256,7 +4256,7 @@ app.get('/api/cog-line/read', async (_req, res) => {
   try {
     if (_cogReadCache.v && Date.now() - _cogReadCache.at < 5 * 60_000) return res.json(_cogReadCache.v);
     if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set');
-    const recent = _cogJson(_COG_RECENT_PATH), live = await _cogLivePush(), line = live ? _cogMerge(recent, live) : recent, hist = _cogJson(_COG_HIST_PATH);
+    const recent = _cogJson(_COG_RECENT_PATH), live = await _cogLivePush(), line = _cogMerge(recent, await _cogLineSeries()), hist = _cogJson(_COG_HIST_PATH);
     const nq = await fetchIntraday('NAS100_USD', 'M15', { from: new Date(Date.now() - 75 * 86400e3).toISOString().slice(0, 10) });
     const v = { ..._cogRead({ line, nq, history: hist, now: Math.floor(Date.now() / 1000) }), live: !!live };
     _cogReadCache = { at: Date.now(), v }; res.json(v);
