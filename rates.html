@@ -235,7 +235,7 @@ async function main() {
       const step = Math.max(1, Math.ceil(dayTicks.length / 8));
       const xl = dayTicks.filter((_, i) => i % step === 0).map(t => `<line x1="${x(t)}" x2="${x(t)}" y1="${T}" y2="${H - Bm}" stroke="var(--border)" stroke-dasharray="2 3"/><text x="${x(t)}" y="${H - 6}" text-anchor="middle">${new Date(t * 1000).toISOString().slice(5, 10)}</text>`).join('');
       const chg = last.units - dayAgo.units, stale = d.stale;
-      el.innerHTML = `<div class="lead">${last.units.toFixed(2)} <span style="font-weight:500;color:var(--text2)">in his units · SOFR − Euribor ${last.bp.toFixed(1)} bp</span></div>
+      el.innerHTML = `<div id="clread"></div><div class="lead">${last.units.toFixed(2)} <span style="font-weight:500;color:var(--text2)">in his units · SOFR − Euribor ${last.bp.toFixed(1)} bp</span></div>
         <div class="tiles">
           <div class="tile"><div class="k">24 h change</div><div class="v">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}</div><div class="d">${chg >= 0 ? '+' : ''}${(chg * 10).toFixed(1)} bp</div></div>
           <div class="tile"><div class="k">Range shown</div><div class="v">${lo.toFixed(2)}–${hi.toFixed(2)}</div><div class="d">${days} days · ${d.nBars} bars</div></div>
@@ -251,11 +251,47 @@ async function main() {
         <details style="margin-top:8px"><summary class="sub" style="cursor:pointer">How to put it on a TradingView chart (no intraday SOFR/Euribor feed needed)</summary>
           <div class="sub">1) Press <b>Copy indicator code</b>, then in TradingView open the Pine editor, paste, and <b>Add to chart</b> (once). 2) On a <b>15-minute</b> chart, press <b>Copy for TradingView</b> here, open the indicator's settings and paste into <b>Pasted data</b>. 3) <b>Offset the line</b> moves it right (+) or left (−) in 15-minute bars; 96 is one day (his script defaults to +1 day, his video used 0). 4) The data ends where this page's data ends; the indicator warns in red when the chart is newer.<br><br>
           <b>Keeping it current:</b> the two futures only come from Interactive Brokers, so a script on the laptop pulls them and pushes the newest bars here (no redeploy). Double-click <code>scripts/rates_line/run_cog_line.bat</code> to refresh once, or add it to Task Scheduler every 30 minutes (steps are in the file). TWS or IB Gateway must be open and logged in. If the laptop was off, the next run fills the gap from IBKR's 1-minute history, so nothing is lost.</div></details>
+        <div id="clhist"></div>
         <div class="sub">What it is and is not: his line is a rate spread (the United States front end against the euro front end), rebuilt to within 0.06 units of the line in his video. It moves with Nasdaq over the same 15 minutes to 4 hours (correlation about +0.2) and does <b>not</b> lead it from 15 minutes to 48 hours on April–October data. Context, not a signal.</div>`;
       document.getElementById('cldays').onchange = e => { days = +e.target.value; load(); };
       document.getElementById('clcopy').onclick = e => copy(`/api/cog-line/export?days=${days}`, e.target);
       document.getElementById('clind').onclick = e => copy('/api/cog-line/indicator', e.target);
+      loadRead(); loadHist();
     };
+    const chipHtml = (t, col) => `<span style="font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:${col};border:1px solid ${col};border-radius:4px;padding:1px 6px">${t}</span>`;
+    const loadRead = () => fetch('/api/cog-line/read').then(r => r.json()).then(r => {
+      const box = document.getElementById('clread'); if (!box) return;
+      if (!r || !r.ok) { box.innerHTML = `<div class="sub" style="margin-bottom:8px">Live read unavailable: ${esc((r && (r.reason || r.error)) || 'no data')}</div>`; return; }
+      const since = t => new Date(t * 1000).toISOString().slice(5, 16).replace('T', ' ') + 'Z', col = r.agree ? 'var(--bull)' : 'var(--amber)';
+      const sg = v => (v >= 0 ? '+' : '') + v;
+      box.innerHTML = `<div class="lead">${chipHtml(r.agree ? 'trends agree' : 'trends disagree', col)} <span style="font-weight:500;color:var(--text2)">Live read, ${esc(String(r.asOf).slice(0, 16).replace('T', ' '))}Z${r.stale ? ' (line data is old: refresh from the laptop)' : ''}</span></div>
+        <div class="tiles">
+          <div class="tile"><div class="k">C.OG line trend</div><div class="v" style="color:${r.line.state > 0 ? 'var(--bull)' : 'var(--bear)'}">${r.line.dir}</div><div class="d">since ${since(r.line.since)} · ${r.line.bp.toFixed(1)} bp</div></div>
+          <div class="tile"><div class="k">Nasdaq trend</div><div class="v" style="color:${r.nasdaq.state > 0 ? 'var(--bull)' : 'var(--bear)'}">${r.nasdaq.dir}</div><div class="d">since ${since(r.nasdaq.since)}</div></div>
+          <div class="tile"><div class="k">Last hour: line to Nasdaq</div><div class="v" style="font-size:15px">${r.lastHour ? sg(r.lastHour.lineBp) + ' bp, ' + sg(r.lastHour.nqPct) + '%' : 'n/a'}</div><div class="d">link implies ${r.lastHour && r.lastHour.impliedPct != null ? sg(r.lastHour.impliedPct) + '%' : 'n/a'}</div></div>
+          <div class="tile"><div class="k">20-day same-hour link</div><div class="v">${r.link.corr20 != null ? sg(+r.link.corr20.toFixed(2)) : 'n/a'}</div><div class="d">two-year: ${r.link.corr1h != null ? '+' + r.link.corr1h.toFixed(2) : 'n/a'}</div></div>
+        </div>
+        <div class="sub" style="margin-bottom:10px">${(r.lines || []).map(esc).join('<br>')}</div>`;
+    }).catch(() => { const box = document.getElementById('clread'); if (box) box.innerHTML = '<div class="sub">Live read not loaded.</div>'; });
+    const loadHist = () => fetch('/api/cog-line/history').then(r => r.json()).then(h => {
+      const box = document.getElementById('clhist'); if (!box || !h || !h.days || !h.days.length) return;
+      const D = h.days, W = 760, T = 10, Bm = 20, L = 38, R = 44, H1 = 150, H2 = 100, n = D.length, x = i => L + i * (W - L - R) / Math.max(1, n - 1);
+      const scale = (vals, hh) => { const v = vals.filter(q => q != null), lo = Math.min(...v), hi = Math.max(...v), pad = (hi - lo) * 0.06 || 1; return { lo: lo - pad, hi: hi + pad, y: q => T + (hi + pad - q) / (hi - lo + 2 * pad) * (hh - T - Bm) }; };
+      const line = (key, sc) => { let d = '', pen = false; D.forEach((r, i) => { if (r[key] == null) { pen = false; return; } d += (pen ? 'L' : 'M') + x(i).toFixed(1) + ',' + sc.y(r[key]).toFixed(1) + ' '; pen = true; }); return d; };
+      const sb = scale(D.map(r => r.bp), H1), sn = scale(D.map(r => r.nq), H1), sc = scale([-0.4, 0.7], H2);
+      const ticks = D.map((r, i) => [i, r.d]).filter(([i, d]) => d.slice(8, 10) === '01' && ['01', '04', '07', '10'].includes(d.slice(5, 7)));
+      const xl = ticks.map(([i, d]) => `<line x1="${x(i)}" x2="${x(i)}" y1="${T}" y2="${H1 - Bm}" stroke="var(--border)" stroke-dasharray="2 3"/><text x="${x(i)}" y="${H1 - 6}" text-anchor="middle">${d.slice(0, 7)}</text>`).join('');
+      const cs = D.filter(r => r.c != null), below = cs.filter(r => r.c < 0).length / Math.max(1, cs.length), k = h.constants || {};
+      box.innerHTML = `<div class="sub" style="margin-top:12px"><b>${n} days of history</b> (2024-04 to ${esc(D[n - 1].d)}): the line against Nasdaq, and how steady the same-hour link has been.</div>
+        <svg class="ch" viewBox="0 0 ${W} ${H1}">${xl}<text x="${L - 4}" y="${sb.y(sb.hi) + 10}" text-anchor="end" style="fill:var(--blue)">${Math.round(sb.hi)}bp</text><text x="${L - 4}" y="${sb.y(sb.lo) - 2}" text-anchor="end" style="fill:var(--blue)">${Math.round(sb.lo)}bp</text>
+          <text x="${W - R + 4}" y="${sn.y(sn.hi) + 10}">${Math.round(sn.hi).toLocaleString()}</text><text x="${W - R + 4}" y="${sn.y(sn.lo) - 2}">${Math.round(sn.lo).toLocaleString()}</text>
+          <path d="${line('nq', sn)}" fill="none" stroke="var(--text3)" stroke-width="1.2"/><path d="${line('bp', sb)}" fill="none" stroke="var(--blue)" stroke-width="1.6"/></svg>
+        <div class="lg"><span><i style="border-color:var(--blue)"></i>SOFR Sep26 minus Euribor Mar27 (bp, daily close, left axis)</span><span><i style="border-color:var(--text3)"></i>Nasdaq (right axis)</span></div>
+        <svg class="ch" viewBox="0 0 ${W} ${H2}"><line x1="${L}" x2="${W - R}" y1="${sc.y(0)}" y2="${sc.y(0)}" stroke="var(--text3)"/><text x="${L - 4}" y="${sc.y(0) + 3}" text-anchor="end">0</text><text x="${L - 4}" y="${sc.y(0.5) + 3}" text-anchor="end">+0.5</text><line x1="${L}" x2="${W - R}" y1="${sc.y(0.5)}" y2="${sc.y(0.5)}" stroke="var(--border)" stroke-dasharray="2 3"/>
+          <path d="${line('c', sc)}" fill="none" stroke="var(--purple)" stroke-width="1.6"/></svg>
+        <div class="lg"><span><i style="border-color:var(--purple)"></i>rolling 20-day correlation of the line's 1-hour change with Nasdaq's 1-hour return</span></div>
+        <div class="sub">Over the whole history: correlation <b>${k.corr1h != null ? '+' + k.corr1h.toFixed(2) : 'n/a'}</b>, so 1 bp of widening goes with <b>${k.betaPctPerBp != null ? '+' + k.betaPctPerBp.toFixed(3) : 'n/a'}%</b> on Nasdaq in the same hour, and the line explains about <b>${k.r2 != null ? (k.r2 * 100).toFixed(0) : 'n/a'}%</b> of an hour's variance. The link is not steady: it has been below zero on <b>${(below * 100).toFixed(0)}%</b> of days.</div>`;
+    }).catch(() => { const box = document.getElementById('clhist'); if (box) box.textContent = ''; });
     const load = () => fetch(`/api/cog-line?days=${days}`).then(r => r.json()).then(draw).catch(() => { el.textContent = 'not loaded'; });
     load();
   })();

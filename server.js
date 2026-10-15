@@ -188,7 +188,8 @@ import { buildGlobalRead as _buildGlobalRead, recordRow as _grRecordRow, attachR
 import { assembleGlobalReadInput as _grAssemble, GLOBAL_READ_ENDPOINTS as _GR_ENDPOINTS } from './js/globalReadInputs.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { ratesRegimeRead as _ratesRegimeRead, alertText as _ratesRegimeAlert, attributionLine as _ratesRegimeAttrib } from './js/ratesRegime.js';
-import { sliceDays as _cogSlice, toBars as _cogBars, exportText as _cogExport, mergeSeries as _cogMerge } from './js/cogLine.js';   // C.OG rate-spread line: analysis/output/cog_line/cog_line_15m.json
+import { sliceDays as _cogSlice, toBars as _cogBars, exportText as _cogExport, mergeSeries as _cogMerge } from './js/cogLine.js';
+import { cogLineRead as _cogRead } from './js/cogLineRead.js';   // live trend read for the C.OG line card (js/cogLineRead.js)   // C.OG rate-spread line: analysis/output/cog_line/cog_line_15m.json
 import { computeFrozenSigma as _vwapFrozenSigmaCore, computeStretchSnapshot as _vwapStretchSnapshot } from './js/vwapStretchCore.js';
 import { expectedRanges as _expectedRanges, formatDigest as _formatDigest } from './js/digest.js';
 import { eventImpact as _eventImpact } from './js/eventImpactMap.js';   // the book's size per family and pair, for the digest's prints line   // the 07:00 digest and the one forecast the desk makes (range), scored at the close
@@ -4020,13 +4021,16 @@ function _cogLineFile() {
 }
 // The laptop pushes its latest bars to KV cog_line_live_v1 (POST /api/kv/set, same route as the fed-funds feed); they are laid over the committed file.
 let _cogLive = { raw: null, at: 0 };
-async function _cogLineSeries() {
-  const base = _cogLineFile();
+async function _cogLivePush() {
   if (Date.now() - _cogLive.at > 20_000) {
     try { const raw = await kv.get('cog_line_live_v1'); const p = raw ? JSON.parse(raw) : null; _cogLive = { raw: p?.data ?? p ?? null, at: Date.now() }; }
     catch { _cogLive = { ..._cogLive, at: Date.now() }; }
   }
-  return _cogLive.raw ? _cogMerge(base, _cogLive.raw) : base;
+  return _cogLive.raw;
+}
+async function _cogLineSeries() {
+  const base = _cogLineFile(), live = await _cogLivePush();
+  return live ? _cogMerge(base, live) : base;
 }
 const _cogDays = q => Math.min(Math.max(parseInt(q, 10) || 10, 1), 60);
 app.get('/api/cog-line', async (req, res) => {
@@ -4139,6 +4143,27 @@ ${s.evidence || _evidenceForPrompt()}
 HOW TO WRITE IT (style):
 - Open with ONE sentence that names what is actually driving today. Provocative, plain, specific. Not a summary.
 - Name the competing stories as THINGS, each with its legs, and say which is dominant, which is overshadowed, which is reloading in the background: e.g. "the war trade (energy up, dollar up)", "the debasement trade (gold, silver, bitcoin up, dollar down)", "the rate shock", "the AI/financing trade". Name a story ONLY when at least two of its legs are measured in the snapshot and point the same way; a leg that the chain marks QUIET (inside its noise floor) does not count as a leg. Do not invent a story the numbers do not show.
+// Live read: the line's trend and Nasdaq's (the same adaptive zig-zag as forge/COG_TREND_STATE_PREREG.md), whether they agree, and the last hour's attribution at the two-year link.
+// Line = the 120-day pinned-pair window (cog_line_pinned_recent.json) with the laptop's pushed bars laid over it; Nasdaq = OANDA NAS100 M15. Context, not a signal.
+const _COG_RECENT_PATH = path.join(__dirname, 'analysis', 'output', 'cog_line', 'cog_line_pinned_recent.json');
+const _COG_HIST_PATH = path.join(__dirname, 'analysis', 'output', 'cog_line', 'cog_line_history.json');
+const _cogJsonCache = new Map();
+function _cogJson(p) { const st = fs.statSync(p), c = _cogJsonCache.get(p); if (c && c.m === st.mtimeMs) return c.v; const v = JSON.parse(fs.readFileSync(p, 'utf8')); _cogJsonCache.set(p, { m: st.mtimeMs, v }); return v; }
+let _cogReadCache = { at: 0, v: null };
+app.get('/api/cog-line/read', async (_req, res) => {
+  try {
+    if (_cogReadCache.v && Date.now() - _cogReadCache.at < 5 * 60_000) return res.json(_cogReadCache.v);
+    if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not set');
+    const recent = _cogJson(_COG_RECENT_PATH), live = await _cogLivePush(), line = live ? _cogMerge(recent, live) : recent, hist = _cogJson(_COG_HIST_PATH);
+    const nq = await fetchIntraday('NAS100_USD', 'M15', { from: new Date(Date.now() - 75 * 86400e3).toISOString().slice(0, 10) });
+    const v = { ..._cogRead({ line, nq, history: hist, now: Math.floor(Date.now() / 1000) }), live: !!live };
+    _cogReadCache = { at: Date.now(), v }; res.json(v);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/cog-line/history', (_req, res) => {
+  try { res.set('Cache-Control', 'public, max-age=3600'); res.json(_cogJson(_COG_HIST_PATH)); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 - Chain it: "High oil keeps inflation elevated, that keeps rates elevated, and now the market cares about X." Second and third order. Every step must be a measured number from the snapshot or a HOLDING link.
 - The tell is the break: "Normally an oil shock sends the dollar through the roof. Today the dollar is down 0.7% into it. That means..." Use the BROKEN links and the flagged divergences for this. A QUIET link is not evidence of anything; do not chain through it.
 - Front end versus long end: the 2-year is the vote on what the central bank does next; the 10- and 30-year are the vote on inflation and credibility. Say which end is moving and what that says.
