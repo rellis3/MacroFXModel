@@ -1352,14 +1352,35 @@
   const $ = id => document.getElementById(id);
   let CFG = null;
 
+  /**
+   * A control that cannot say why it is broken is a bad control.
+   *
+   * This used to hide itself and swallow every error, so a failure showed the reader
+   * nothing at all -- no dropdown, no message, nothing to report back. Now it is always
+   * on screen, says what went wrong in the control itself, and puts the detail in the
+   * console behind a searchable prefix.
+   */
+  function fail(where, err) {
+    const msg = (err && err.message) ? err.message : String(err ?? 'unknown');
+    console.error('[ai-model-picker] ' + where + ':', err);
+    const sel = $('aiModelSel');
+    if (!sel) return;
+    sel.innerHTML = '<option>\u26a0 model picker: ' + where + '</option>';
+    sel.disabled = true;
+    sel.title = 'The picker could not ' + where + '. ' + msg
+      + '\n\nOpen the browser console and look for [ai-model-picker] for the full error. '
+      + 'The per-job table on bot-config.html \u2192 AI Models is the fallback and does the same thing.';
+  }
+
   async function load() {
+    let d;
     try {
-      const d = await fetch('/api/ai-config').then(r => r.json());
-      if (!d || !d.ok) return;
-      CFG = d;
-      render();
-      $('hdrModel').style.display = '';
-    } catch { /* the page works without it; stay hidden rather than show a broken control */ }
+      const r = await fetch('/api/ai-config');
+      if (!r.ok) return fail('reach /api/ai-config', new Error('HTTP ' + r.status));
+      d = await r.json();
+    } catch (e) { return fail('reach /api/ai-config', e); }
+    if (!d || !d.ok) return fail('read the config', new Error(d && d.error ? d.error : 'no ok flag'));
+    try { CFG = d; render(); } catch (e) { return fail('draw the options', e); }
   }
 
   function render() {
@@ -1423,7 +1444,7 @@
 
   function start() {
     const sel = $('aiModelSel');
-    if (!sel) return;                 // header not on this page; nothing to do
+    if (!sel) { console.warn('[ai-model-picker] no #aiModelSel on this page \u2014 stale cached HTML?'); return; }
     sel.addEventListener('change', onChange);
     load();
   }
@@ -1472,8 +1493,8 @@
   <span class="spacer"></span>
   <span class="stamp" id="hdrStamp"></span>
   <button class="hbtn" onclick="loadAll(true)">⟳ Refresh</button>
-  <span class="hmodel" id="hdrModel" style="display:none">
-    <select id="aiModelSel" title="Which AI model runs this page's six paid jobs: the morning brief, the macro chain read, the end-of-day review, the pair and currency analyses, and the Explain buttons."></select>
+  <span class="hmodel" id="hdrModel">
+    <select id="aiModelSel" title="Which AI model runs this page's six paid jobs: the morning brief, the macro chain read, the end-of-day review, the pair and currency analyses, and the Explain buttons."><option>🧠 …</option></select>
     <span class="hmodel-warn" id="aiModelWarn" style="display:none" title=""></span>
   </span>
   <button class="hbtn" onclick="openMarketPicture()" title="One view — the picture, where it points, where it does not, and the record behind it. Copyable.">📋 Picture</button>

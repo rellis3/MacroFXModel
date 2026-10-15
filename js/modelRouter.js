@@ -42,6 +42,7 @@ export const PROVIDERS = {
     label: 'Anthropic',
     url: 'https://api.anthropic.com/v1/messages',
     keyEnv: 'ANT_KEY',
+    modelsUrl: 'https://api.anthropic.com/v1/models',
     wire: 'anthropic',
     // Explicit cache breakpoints, billed at a large discount on a hit.
     explicitCache: true,
@@ -50,6 +51,7 @@ export const PROVIDERS = {
     label: 'DeepSeek',
     url: 'https://api.deepseek.com/chat/completions',
     keyEnv: 'DEEPSEEK_KEY',
+    modelsUrl: 'https://api.deepseek.com/models',
     wire: 'openai',
     // DeepSeek caches context automatically; there is no breakpoint to send.
     explicitCache: false,
@@ -58,6 +60,7 @@ export const PROVIDERS = {
     label: 'Moonshot (Kimi)',
     url: 'https://api.moonshot.ai/v1/chat/completions',
     keyEnv: 'MOONSHOT_KEY',
+    modelsUrl: 'https://api.moonshot.ai/v1/models',
     wire: 'openai',
     explicitCache: false,
   },

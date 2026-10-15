@@ -3488,7 +3488,7 @@ let _aiCfgCache = { at: 0, cfg: null };
 // flick-a-switch layer, so trying a cheaper model on one task does not need a deploy and
 // backing it out does not need one either. Keys NEVER live here -- those stay in Railway.
 const _AI_ROUTING_KV = 'ai_routing_v1';
-let _aiOverride = { at: 0, tasks: {}, provider: null, cache: null };
+let _aiOverride = { at: 0, tasks: {}, models: {}, provider: null, cache: null };
 async function _loadAiOverride() {
   try {
     const raw = await kv.get(_AI_ROUTING_KV);
@@ -3496,18 +3496,25 @@ async function _loadAiOverride() {
     _aiOverride = {
       at: Date.now(),
       tasks: (d && typeof d.tasks === 'object') ? d.tasks : {},
+      models: (d && typeof d.models === 'object') ? d.models : {},
       provider: d?.provider ?? null,
       cache: typeof d?.cache === 'boolean' ? d.cache : null,
     };
-  } catch { _aiOverride = { at: Date.now(), tasks: {}, provider: null, cache: null }; }
+  } catch { _aiOverride = { at: Date.now(), tasks: {}, models: {}, provider: null, cache: null }; }
   _aiCfgCache = { at: 0, cfg: null };
   return _aiOverride;
 }
 function _aiConfig() {
   if (!_aiCfgCache.cfg || Date.now() - _aiCfgCache.at > 60_000) {
     const base = aiConfigFromEnv(process.env);
+    // A model pinned from the UI merges OVER the env default, per provider, so picking a
+    // specific model from the provider's own list does not need a redeploy either.
+    const models = { ...base.models };
+    for (const [prov, id] of Object.entries(_aiOverride.models ?? {})) {
+      if (id) models[prov] = { ...(models[prov] ?? {}), id };
+    }
     _aiCfgCache = { at: Date.now(), cfg: {
-      ...base,
+      ...base, models,
       provider: _aiOverride.provider ?? base.provider,
       cache: _aiOverride.cache ?? base.cache,
       tasks: { ...base.tasks, ..._aiOverride.tasks },
@@ -3662,6 +3669,50 @@ app.get('/api/ai-config', async (_req, res) => {
 // SAME crude screen runs over both answers: whatever its error rate, the error applies
 // equally, so a model tripping it three times as often is genuinely worse at respecting
 // the ledger. One cheap call per run -- the expensive answer was already paid for.
+// ── /api/ai-models ─ what does this provider actually offer? ──────────────
+//
+// The model ids in modelRouter.js are DEFAULTS and some of them are guesses -- vendors
+// rename faster than this repo gets edited, and a guess that has gone stale fails as an
+// unhelpful 404 from inside a model call. This asks the provider directly, so the config
+// screen offers the real list instead of asking anyone to trust a hardcoded string.
+//
+// Live call, cached five minutes. The key goes in the header and the ids come back; no
+// key is ever returned.
+const _aiModelsCache = new Map();
+app.get('/api/ai-models', async (req, res) => {
+  try {
+    const provider = String(req.query.provider ?? '');
+    const P = AI_PROVIDERS[provider];
+    if (!P) return res.status(400).json({ error: `unknown provider: ${provider}` });
+    const key = process.env[P.keyEnv];
+    if (!key) return res.status(503).json({ error: `${P.keyEnv} is not set` });
+    const hit = _aiModelsCache.get(provider);
+    if (hit && Date.now() - hit.at < 300_000) return res.json({ ok: true, cached: true, ...hit.data });
+
+    const headers = P.wire === 'anthropic'
+      ? { 'x-api-key': key, 'anthropic-version': '2023-06-01' }
+      : { Authorization: `Bearer ${key}` };
+    const r = await fetch(P.modelsUrl, { headers, signal: AbortSignal.timeout(20000) });
+    if (!r.ok) {
+      const body = (await r.text().catch(() => '')).slice(0, 200);
+      return res.status(502).json({ error: `${P.label} ${r.status}${body ? ': ' + body : ''}` });
+    }
+    const j = await r.json();
+    const list = (Array.isArray(j?.data) ? j.data : [])
+      .map(m => ({ id: m.id ?? m.name ?? null, label: m.display_name ?? m.id ?? null }))
+      .filter(m => m.id);
+    const cfg = _aiConfig();
+    const data = {
+      provider, label: P.label, models: list,
+      current: aiResolveTask('misc', { ...cfg, provider, tasks: { misc: provider } }).model,
+      pinned: _aiOverride.models?.[provider] ?? null,
+      envDefault: cfg.models?.[provider]?.id ?? null,
+    };
+    _aiModelsCache.set(provider, { at: Date.now(), data });
+    res.json({ ok: true, cached: false, ...data });
+  } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
+});
+
 app.post('/api/ai-ab', async (req, res) => {
   try {
     const { task = 'brief', provider } = req.body ?? {};
@@ -3732,7 +3783,14 @@ app.get('/api/ai-ab/ready', (_req, res) => {
 
 app.post('/api/ai-config', async (req, res) => {
   try {
-    const { tasks, provider, cache } = req.body ?? {};
+    const { tasks, provider, cache, models } = req.body ?? {};
+    const cleanModels = {};
+    for (const [prov, id] of Object.entries(models ?? {})) {
+      if (!AI_PROVIDERS[prov]) return res.status(400).json({ error: `unknown provider: ${prov}` });
+      if (id === null || id === '') continue;                  // empty = back to the env default
+      if (typeof id !== 'string' || id.length > 120) return res.status(400).json({ error: 'bad model id' });
+      cleanModels[prov] = id;
+    }
     const clean = {};
     for (const [k, v] of Object.entries(tasks ?? {})) {
       if (!AI_TASKS[k]) continue;
@@ -3745,6 +3803,7 @@ app.post('/api/ai-config', async (req, res) => {
     }
     const payload = {
       tasks: clean,
+      models: cleanModels,
       provider: provider === '' ? null : (provider ?? null),
       cache: typeof cache === 'boolean' ? cache : null,
     };

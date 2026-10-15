@@ -7531,6 +7531,7 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
     <div class="card">
       <h3>Providers</h3>
       <div id="aiProviders" class="muted">Loading&hellip;</div>
+      <div id="aiModelPick" style="margin-top:12px"></div>
       <div style="font-size:11.5px;color:var(--t3);margin-top:8px;line-height:1.6">
         To add one, set its key in Railway and redeploy. Model ids and output caps are
         overridable too (<code>MODEL_DEEPSEEK_ID</code>, <code>MODEL_DEEPSEEK_MAXOUT</code>
@@ -7603,10 +7604,67 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
       const d = await fetch('/api/ai-config').then(r => r.json());
       if (!d.ok) throw new Error(d.error || 'failed');
       CFG = d;
-      renderProviders(d); renderTasks(d); renderStats(d.stats); fillAb(d);
+      renderProviders(d); renderModelPick(d); renderTasks(d); renderStats(d.stats); fillAb(d);
     } catch (e) {
       $('aiProviders').innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>';
     }
+  }
+
+  // Which models each provider ACTUALLY offers, asked of the provider rather than
+  // hardcoded. The defaults in modelRouter.js are educated guesses and at least one will
+  // have been renamed by the time anyone reads this; a stale guess surfaces as an
+  // unhelpful 404 from inside a model call, which is a bad way to find out.
+  async function loadModelList(provider) {
+    const box = document.getElementById('aiModelsFor_' + provider);
+    if (!box) return;
+    box.innerHTML = '<span class="muted">asking ' + esc(provider) + '...</span>';
+    try {
+      const d = await fetch('/api/ai-models?provider=' + encodeURIComponent(provider)).then(r => r.json());
+      if (!d.ok) throw new Error(d.error || 'failed');
+      const sel = '<select id="aiModelSel_' + esc(provider) + '" style="width:260px">'
+        + '<option value="">default (' + esc(d.envDefault || d.current || 'built-in') + ')</option>'
+        + d.models.map(m => '<option value="' + esc(m.id) + '"'
+            + (d.pinned === m.id ? ' selected' : '') + '>' + esc(m.label || m.id) + '</option>').join('')
+        + '</select>';
+      box.innerHTML = sel
+        + ' <button class="btn secondary" style="padding:3px 9px;font-size:11.5px" '
+        + 'onclick="aiPinModel(\'' + esc(provider) + '\')">Use this</button>'
+        + '<div class="muted" style="font-size:11px;margin-top:4px">'
+        + d.models.length + ' models offered'
+        + (d.pinned ? ' \u00b7 pinned to <b>' + esc(d.pinned) + '</b>' : ' \u00b7 running <b>' + esc(d.current) + '</b>')
+        + '</div>';
+    } catch (e) {
+      box.innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'
+        + '<div class="muted" style="font-size:11px;margin-top:3px">'
+        + 'If the key is right, this provider may not expose a model list. Set <code>MODEL_'
+        + esc(provider.toUpperCase()) + '_ID</code> in Railway instead.</div>';
+    }
+  }
+
+  async function aiPinModel(provider) {
+    const sel = document.getElementById('aiModelSel_' + provider);
+    if (!sel) return;
+    try {
+      const r = await fetch('/api/ai-config', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ models: { [provider]: sel.value } }),
+      }).then(x => x.json());
+      if (!r.ok) throw new Error(r.error || 'failed');
+      await aiLoadConfig();
+      loadModelList(provider);
+    } catch (e) { alert('Could not pin that model: ' + e.message); }
+  }
+
+  function renderModelPick(d) {
+    const on = d.providers.filter(p => p.configured);
+    document.getElementById('aiModelPick').innerHTML = !on.length ? ''
+      : '<div style="font-size:12.5px;margin-bottom:6px"><b>Which model, within a provider</b>'
+      + ' <span class="muted">(asked of the provider, not hardcoded here)</span></div>'
+      + on.map(p => '<div style="display:flex;align-items:baseline;gap:8px;padding:4px 0;flex-wrap:wrap">'
+        + '<span style="min-width:110px;font-size:12px"><b>' + esc(p.label) + '</b></span>'
+        + '<span id="aiModelsFor_' + esc(p.id) + '"><button class="btn secondary" '
+        + 'style="padding:3px 9px;font-size:11.5px" onclick="loadModelList(\'' + esc(p.id) + '\')">'
+        + 'List models</button></span></div>').join('');
   }
 
   function renderProviders(d) {
@@ -7722,6 +7780,8 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
     } catch (e) { $('aiAbOut').innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
   }
 
+  window.loadModelList = loadModelList;
+  window.aiPinModel = aiPinModel;
   window.aiLoadConfig = aiLoadConfig;
   window.aiSaveRouting = aiSaveRouting;
   window.aiRunAb = aiRunAb;
