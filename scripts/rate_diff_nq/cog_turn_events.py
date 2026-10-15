@@ -392,4 +392,4 @@ txt += ['### The video week (16-23 Sep 2026) - every confirmed line turn, descri
         '- MFE/MAE use 15-minute closes (no intra-bar high/low in the Nasdaq series).', '- Strata are session x volatility tercile by the line-turn confirm time.', '- Release exclusion uses a fixed 08:30/10:00 ET (all weekdays) and 14:00 ET (FOMC days) rule, not an event vendor calendar.']
 (OUTD / f'TURN_EVENTS{SUF}.md').write_text('\n'.join(txt), encoding='utf-8')
 pd.concat([pd.DataFrame(dict(pattern=p, confirm=[str(G[c]) for c, e, d in FAM[p]], extreme=[str(G[e]) for c, e, d in FAM[p]], d=[d for c, e, d in FAM[p]])) for p in PAT]).to_csv(OUTD / f'turn_events_all{SUF}.csv', index=False)
-print('VERDICT:', verdict); print(VERD.to_string()); print(COND.to_string() if len(COND) else 'no conditional cells')
+VERD.to_csv(OUTD / f'turn_events_gates{SUF}.csv', index=False); INC.to_csv(OUTD / f'turn_events_incremental{SUF}.csv', index=False); pd.DataFrame({k: pd.Series(v) for k, v in PL.items()}).to_csv(OUTD / f'turn_events_placebo{SUF}.csv', index=False); print('VERDICT:', verdict); print(VERD.to_string()); print(COND.to_string() if len(COND) else 'no conditional cells')
