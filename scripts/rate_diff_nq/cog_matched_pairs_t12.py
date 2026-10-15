@@ -61,7 +61,7 @@ for k in HS:
             dif = np.array(dif); real = corr_from(a_) ** 2 - corr_from(b_) ** 2
             row.update({f'{hf}_R2_minus_P0': real, f'{hf}_R2_diff_ci_lo': np.percentile(dif, 2.5), f'{hf}_R2_diff_ci_hi': np.percentile(dif, 97.5), f'{hf}_p_better_than_P0': float((dif <= 0).mean()), f'{hf}_stab_minus_P0': stability(a_) - stability(b_)})
     T1.append(row)
-T1 = pd.DataFrame(T1); T1.to_csv(OUTD / 'matched_pairs_t1.csv', index=False)
+T1 = pd.DataFrame(T1); T1.to_csv(OUTD / f'matched_pairs_t1{TAG}.csv', index=False)
 
 # ------------------------------------------------------------------ T2: lead grid with day-clustered t, FDR, confirm; plus leg decomposition
 WS, HS_ = {'15m': 1, '1h': 4, '4h': 16}, {'15m': 1, '30m': 2, '1h': 4, '2h': 8, '4h': 16, '8h': 32, '24h': 96, '48h': 192}
@@ -96,7 +96,7 @@ for k, g_ in T2.groupby('candidate'):
     g_['p_VAL_oneside'] = stats.norm.sf(sg * g_.t_VAL); g_['p_OOS_oneside'] = stats.norm.sf(sg * g_.t_OOS)
     g_['confirmed'] = g_.fdr_IS & (np.sign(g_.beta_VAL) == sg) & (np.sign(g_.beta_OOS) == sg) & (g_.p_VAL_oneside < .05) & (g_.p_OOS_oneside < .05)
     out.append(g_)
-T2 = pd.concat(out); T2.to_csv(OUTD / 'matched_pairs_t2.csv', index=False)
+T2 = pd.concat(out); T2.to_csv(OUTD / f'matched_pairs_t2{TAG}.csv', index=False)
 # decomposition: every FDR-passing cell, plus the three largest in-sample |t| per candidate (Addendum A section 2)
 DEC = []
 for k, g_ in T2.groupby('candidate'):
@@ -121,5 +121,5 @@ for k, g_ in T2.groupby('candidate'):
         elif rec['bUS_IS'] * rec['bEU_IS'] > 0 and abs(tu) >= 1 and abs(te) >= 1: att = 'common level (both legs same sign)'
         else: att = 'unattributed'
         rec['attribution'] = att; DEC.append(rec)
-DEC = pd.DataFrame(DEC); DEC.to_csv(OUTD / 'matched_pairs_decomp.csv', index=False)
+DEC = pd.DataFrame(DEC); DEC.to_csv(OUTD / f'matched_pairs_decomp{TAG}.csv', index=False)
 print(T1.round(3).to_string()); print(T2.groupby('candidate').agg(cells=('t_IS', 'size'), fdr=('fdr_IS', 'sum'), confirmed=('confirmed', 'sum'), max_abs_t_IS=('t_IS', lambda v: v.abs().max())).to_string()); print(DEC.round(2).to_string())
