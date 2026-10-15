@@ -29,3 +29,9 @@ so history before 2026-04-13 is a clean holdout. The two patterns carried forwar
 - If P3 fails, nothing else is interpreted until the data are re-examined.
 
 Script `scripts/rate_diff_nq/cog_pinned_history.py`; output `analysis/output/cog_video_0918/PINNED_HISTORY.md`; ledger `cog-pinned-history`.
+
+## Amendment 1 (2026-10-15, made before any holdout outcome was computed)
+The registered screen ("fewer than 40 distinct 15-minute prices per leg per day") removed all 728 days: these contracts tick in quarter-basis-point steps and a normal day shows 7-12 distinct
+15-minute prices even in the April-October data that the earlier tests used. No outcome had been computed. The threshold is recalibrated on the already-seen April-October weekdays alone:
+**a day is dropped if either leg has fewer than 3 distinct 15-minute prices** (the 5th percentile of SOFR SR3U6 in April-October; Euribor IH7's is 7, so this is looser for it). Before April 2026
+the median is 8-14 distinct prices per weekday for SOFR and 5-13 for Euribor, so liquidity there is comparable to the earlier sample. The number of days the screen removes is still reported.
