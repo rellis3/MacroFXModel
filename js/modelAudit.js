@@ -81,7 +81,46 @@ const FORECAST = /\b(will|won'?t|expect(?:ed|s)?|should|likely|set to|poised|poi
 const DIRECTION = /\b(rise|rising|rally|rallies|higher|up(?:side)?|fall|falling|drop|lower|down(?:side)?|bullish|bearish|squeeze|break ?out|break ?down|reversal|revert|bounce|sell-?off|strengthen|weaken)\b/i;
 const HEDGE = /\b(null|untested|not tested|no edge|coin flip|context only|descriptive|never a direction|does not predict|not a (?:signal|lean|forecast)|tested here)\b/i;
 
-const sentences = text => String(text ?? '')
+/**
+ * The words the model actually wrote, with the wire format taken off.
+ *
+ * Every prompt on this desk demands a JSON object, so the raw reply is
+ * `{"verdict":["..."],"byAsset":[{"asset":"GBP","lean":"NEUTRAL","note":"..."}]}`. Screening
+ * THAT screens the format: the first live comparison flagged
+ * `"Factors cancel."},{"asset":"GBP","lean":"NEUTRAL","note":"Strong domestic demand..."`
+ * against "never a direction", which is a sentence boundary invented by a closing brace
+ * and a field name read as prose. Both models were flagged that way, so the comparison
+ * still ranked them fairly -- but each flag was noise, and a flag a person cannot act on
+ * is worse than no flag.
+ *
+ * So: parse it, walk it, and screen the STRING VALUES. Keys are skipped (they are schema,
+ * not claims) and values are joined with a full stop so the sentence splitter sees real
+ * boundaries instead of guessing at punctuation inside JSON. A reply that is not JSON --
+ * free prose, or JSON too broken to parse -- falls back to the raw text, because
+ * screening something is better than screening nothing.
+ */
+export function readableText(raw) {
+  const t = String(raw ?? '').trim();
+  if (!t) return '';
+  let obj = null;
+  try { obj = JSON.parse(t); } catch { /* try the first balanced object below */ }
+  if (obj == null) {
+    const i = t.indexOf('{'), j = t.lastIndexOf('}');
+    if (i >= 0 && j > i) { try { obj = JSON.parse(t.slice(i, j + 1)); } catch { /* give up */ } }
+  }
+  if (obj == null || typeof obj !== 'object') return t;
+  const out = [];
+  const walk = v => {
+    if (typeof v === 'string') { const s = v.trim(); if (s) out.push(s); return; }
+    if (Array.isArray(v)) { v.forEach(walk); return; }
+    if (v && typeof v === 'object') { Object.values(v).forEach(walk); }
+  };
+  walk(obj);
+  // a trailing stop so two adjacent values are never read as one run-on sentence
+  return out.map(s => (/[.!?]$/.test(s) ? s : s + '.')).join(' ');
+}
+
+const sentences = text => readableText(text)
   .replace(/\s+/g, ' ')
   .split(/(?<=[.!?])\s+(?=[A-Z("'‘“])/)
   .map(s => s.trim()).filter(Boolean);

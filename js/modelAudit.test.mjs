@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { prohibitions, claimTerms, auditText, compareOutputs, structuralCheck } from './modelAudit.js';
+import { prohibitions, claimTerms, auditText, compareOutputs, structuralCheck, readableText } from './modelAudit.js';
 import { DESK_EVIDENCE } from './deskEvidence.js';
 
 // A small hand-made ledger, so the behaviour tests do not move when the real one grows.
@@ -122,4 +122,47 @@ test('an empty or missing answer does not throw', () => {
   }
   assert.doesNotThrow(() => auditText('text', []));
   assert.doesNotThrow(() => compareOutputs({ a: '', b: '' }, []));
+});
+
+// ── the false positives the first live comparison produced ───────────────────
+
+test('the wire format is stripped before screening, so a brace is not a sentence', () => {
+  // Verbatim shape of what tripped the screen on 2026-10-16: a field name and a closing
+  // brace read as prose, producing a flag nobody could act on.
+  const reply = JSON.stringify({
+    verdict: ['MIXED tape', 'the dollar uptrend paused', 'watch the Fed Chair speech'],
+    byAsset: [
+      { asset: 'GBP', lean: 'NEUTRAL', note: 'Strong domestic demand and curve, offset by the weakest trade balance after JPY.' },
+      { asset: 'Gold', lean: 'NEUTRAL', note: 'Real yields up 12bps on the month and a firm dollar.' },
+    ],
+    watch: ['Fed Chair speech (today) - the only scheduled catalyst'],
+  });
+  const txt = readableText(reply);
+  assert.ok(!txt.includes('"'), 'no JSON punctuation should survive');
+  assert.ok(!txt.includes('byAsset') && !txt.includes('lean'), 'keys are schema, not claims');
+  assert.ok(txt.includes('Strong domestic demand'), 'the actual prose must survive');
+  assert.ok(txt.includes('MIXED tape'));
+  // and the whole reply, screened, raises nothing: none of it forecasts a tested-null
+  assert.equal(auditText(reply, DESK_EVIDENCE).counts.flagged, 0,
+    'a neutral, hedged brief must not be flagged on JSON punctuation alone');
+});
+
+test('a real violation inside a JSON field is still caught', () => {
+  const reply = JSON.stringify({
+    theme: 'Positioning is crowded long here, so the pair will rally hard as the squeeze '
+         + 'forces those shorts to cover.',
+  });
+  assert.ok(auditText(reply, LEDGER).counts.flagged >= 1,
+    'stripping the format must not stop the screen seeing the claim');
+});
+
+test('free prose and unparseable JSON fall back to the raw text', () => {
+  const prose = 'The dollar firmed overnight on a hot CPI print.';
+  assert.equal(readableText(prose), prose);
+  assert.equal(readableText('{"a":1'), '{"a":1', 'broken JSON is screened as-is, not dropped');
+  assert.equal(readableText(''), '');
+  assert.equal(readableText(null), '');
+  // commentary wrapped around a JSON object still yields the values
+  assert.ok(readableText('Here you go: {"note":"Gold is quiet."} hope that helps')
+    .includes('Gold is quiet'));
 });

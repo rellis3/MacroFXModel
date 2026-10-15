@@ -7818,7 +7818,13 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
         + '<b>' + esc(x.label) + '</b>'
         + '<div class="muted" style="font-size:11.5px;margin-top:3px">' + n(x.chars) + ' chars'
         + (x.ms ? ' \u00b7 ' + (x.ms / 1000).toFixed(1) + 's' : '')
-        + ' \u00b7 in ' + n(x.usage && x.usage.in) + ' / out ' + n(x.usage && x.usage.out)
+        // Anthropic reports cached input SEPARATELY from `in`, so showing `in` alone made a
+        // cached 47k prompt read as a 12k one -- as though the model had been handed a third
+        // of the job. Both numbers, and their sum, or the comparison is not like-for-like.
+        + ' \u00b7 in ' + n(x.usage && x.usage.in)
+        + ((x.usage && x.usage.cacheRead)
+            ? ' + ' + n(x.usage.cacheRead) + ' cached = ' + n((x.usage.in || 0) + x.usage.cacheRead) : '')
+        + ' / out ' + n(x.usage && x.usage.out)
         + (x.cost && x.cost.priced ? ' \u00b7 $' + x.cost.usd.toFixed(4) : '') + '</div>'
         + '<div style="margin-top:6px;font-size:12px;color:' + (x.structural.ok ? 'var(--good)' : 'var(--bad)') + '">'
         + (x.structural.ok ? 'JSON structurally fine' : esc(x.structural.problems.join('; '))) + '</div>'
@@ -7830,13 +7836,27 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
           + list.slice(0, 6).map(f => '<div style="border-left:2px solid #e0a93b;padding:4px 8px;margin-top:5px;font-size:12px;line-height:1.5">'
             + '<i>\u201c' + esc(f.sentence) + '\u201d</i><div class="muted" style="font-size:11px;margin-top:3px">'
             + 'vs <b>' + esc(f.id) + '</b>: ' + esc(f.prohibition) + '</div></div>').join('') + '</div>';
+      // "JSON present but unparseable" is a claim about text nobody can see. Show it.
+      // A structural verdict you cannot check is just an opinion with a tick next to it.
+      const answers = dd => {
+        const keys = Object.keys(dd.answers || {});
+        if (!keys.length) return '';
+        return '<details style="margin-top:10px"><summary style="cursor:pointer;font-size:12.5px">'
+          + 'What each model actually returned</summary>'
+          + keys.map(k => '<div style="margin-top:8px"><b style="font-size:12px">' + esc(k) + '</b>'
+            + '<pre style="white-space:pre-wrap;word-break:break-word;font-size:11px;line-height:1.45;'
+            + 'background:var(--s2);border-radius:6px;padding:8px;max-height:280px;overflow:auto;margin:4px 0 0">'
+            + esc(dd.answers[k]) + '</pre></div>').join('')
+          + '</details>';
+      };
       const A = d.audit.flags[d.a.label] || [], B = d.audit.flags[d.b.label] || [];
       $('aiAbOut').innerHTML =
         '<div style="display:flex;gap:10px;flex-wrap:wrap">' + side(d.a) + side(d.b) + '</div>'
         + '<div style="margin-top:10px;padding:8px 10px;background:var(--s2);border-radius:8px;font-size:12.5px;line-height:1.55">'
         + esc(d.audit.verdict) + '</div>'
         + '<div class="muted" style="font-size:11.5px;margin-top:6px">' + esc(d.caveat) + '</div>'
-        + flags(d.a.label, A) + flags(d.b.label, B);
+        + flags(d.a.label, A) + flags(d.b.label, B)
+        + answers(d);
     } catch (e) { $('aiAbOut').innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>'; }
   }
 
