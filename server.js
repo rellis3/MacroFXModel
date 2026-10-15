@@ -233,6 +233,7 @@ import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oi
 import { levelExpectation } from './js/levelExpectation.js';   // per-level Reject/Break/Magnet reading
 import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
 import { buildOILevelText } from './js/oiLevelExport.js';
+import { wallStrengthTier as _oiWallTier } from './js/oiConfluence.js';
 import { oiGexLadder as _oiGexLadder, computeExpiryLevels as _oiComputeExpiry, oiMatrixExpiryLegs as _oiMatrixLegs, oiFlatVol as _oiFlatVol } from './js/oi.js';
 import { buildTradesText as _oiTradesText } from './js/oiTradesExport.js';   // OI bot zones → TradingView block (pine/OI Bot Trades.pine)
 import { emptyBook as _oiShadowEmptyBook, syncPlan as _oiShadowSyncPlan, stepBar as _oiShadowStepBar, summarize as _oiShadowSummarize } from './js/oiShadowExec.js';   // CME-vs-Cboe OI plan paper-trader (forward test, no orders)
@@ -19448,6 +19449,7 @@ function _oiGexMedianAbs(hist, key, useDay = false) {
 const OI_VOL_CFG_OVERRIDES = {
   bookMode: 'near',           // 'near' = ALL expiries within nearBookDays aggregated into one book (the walls the export's today sheet shows);
                               // 'day' = the OI bot's single shortest-DTE expiry
+                              // 'gamma' = the RIPPLE book: every expiry (gammaBookDays), walls ranked by gamma at each contract's own DTE (default off)
   nearBookDays: 3,
   selectBy: 'reach',          // near, reachable walls fill the K slots (the OI bot ranks by strength and lets the far ones crowd them out)
   maxReachMult: 3,            // …and anything beyond 3× the day-scaled reference move is not armed
@@ -19488,7 +19490,7 @@ async function _oiZoneTouch(pair, zones) {
 // time-to-expiry and ATM vol — summing OI across expiries and then taking gamma at one T would be wrong). Same shape as `inst.dayExpiry`, so the
 // planner treats it as the traded book. Returns null when the matrix has no usable leg (caller falls back to the day expiry).
 const _OI_INVERTED = new Set(['USD/JPY', 'USD/CAD', 'USD/CHF']);
-function _oiNearBook(inst, pair, maxDte) {
+function _oiNearBook(inst, pair, maxDte, { wallBy = 'oi' } = {}) {
   try {
     if (!inst?.rawOI || !(inst.spot > 0)) return null;
     const basis = Number.isFinite(inst.basis) ? inst.basis : 0;
@@ -19519,13 +19521,32 @@ function _oiNearBook(inst, pair, maxDte) {
     const base = _oiComputeExpiry(rows.map(r => r.k), rows.map(r => r.c), rows.map(r => r.p), inst.spot, pair, { dte: Math.max(1, minDte), minOI: inst.minOI ?? 20, numLevels: 24 });   // 24 not 8: the aggregate's top-8-by-OI are the FAR walls — the near ones must stay in the candidate list for the reach selection
     if (!base) return null;
     const gexProfile = [...prof.values()].sort((a, b) => a.strike - b.strike);
+    // wallBy 'gamma' (the RIPPLE book): walls are the strikes carrying the most GAMMA, each contract at its own DTE + IV, not the most open
+    // interest — a 60-DTE strike with big OI can be a flat plateau while a 1-DTE strike with half the OI is the spike that actually hedges.
+    // w.oi stays the summed OI (the planner's min-OI floors read it); w.gex is the weight, and tier/mult are graded on gamma vs its neighbours.
+    if (wallBy === 'gamma' && gexProfile.length >= 3) {
+      const oiAt = new Map(rows.map(r => [r.k.toPrecision(10), r]));
+      const side = (field, oiKey) => {
+        const ranked = gexProfile.filter(r => (r[field] || 0) > 0).sort((a, b) => b[field] - a[field]).slice(0, 24);
+        const idx = new Map(gexProfile.map((r, i) => [r.strike, i]));
+        const ref = ranked[0]?.[field] ?? null;
+        return ranked.map(r => { const i = idx.get(r.strike);
+          const nb = [i - 2, i - 1, i + 1, i + 2].filter(j => gexProfile[j]).map(j => gexProfile[j][field] || 0);
+          const t = _oiWallTier(r[field], nb, { ref });
+          return { strike: r.strike, oi: oiAt.get(r.strike.toPrecision(10))?.[oiKey] ?? 0, gex: r[field], mult: t.multiple, tier: t.tier }; });
+      };
+      const cw = side('callGex', 'c'), pw = side('putGex', 'p');
+      const cwHead = cw.filter(w => w.strike >= inst.spot).sort((a, b) => a.strike - b.strike)[0] ?? cw[0] ?? null;
+      const pwHead = pw.filter(w => w.strike <= inst.spot).sort((a, b) => b.strike - a.strike)[0] ?? pw[0] ?? null;
+      base.callWalls = cw; base.putWalls = pw; base.callWall = cwHead?.strike ?? 0; base.putWall = pwHead?.strike ?? 0;
+    }
     return { ...base, dte: minDte, nLegs: legs.length, legDtes: legs.map(l => l.dte),
       exposures: { ...(base.exposures || {}), gex, dex }, gexProfile: gexProfile.length ? gexProfile : base.gexProfile,
       gammaFlip: gexProfile.length ? computeGammaFlip(gexProfile, inst.spot) : base.gammaFlip,
       regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : null };
   } catch (e) { console.warn('[oi-vol] near book failed:', e.message); return null; }
 }
-async function _refreshOIBotZones({ storeOverride = null, outKey = 'oi_bot_zones', strategy = 'oi-bot', noHistory = false, cfgKey = 'oi_bot_config', variant = null } = {}) {
+async function _refreshOIBotZones({ storeOverride = null, outKey = 'oi_bot_zones', strategy = 'oi-bot', noHistory = false, cfgKey = 'oi_bot_config', variant = null, cfgPatch = null } = {}) {
   try {
     const [oiRaw, cfgRaw, histRaw, calibRaw, liveCfgRaw] = await Promise.all([
       storeOverride ? null : kv.get('oi_store').catch(() => null), kv.get(cfgKey).catch(() => null),
@@ -19537,7 +19558,7 @@ async function _refreshOIBotZones({ storeOverride = null, outKey = 'oi_bot_zones
     const store = storeOverride || (JSON.parse(oiRaw).data ?? JSON.parse(oiRaw));
     const _liveOi = (variant === 'vol' && liveCfgRaw) ? (JSON.parse(liveCfgRaw).data ?? JSON.parse(liveCfgRaw)) : {};
     // layering for the variant: server defaults <- the live OI bot's saved settings <- OI-Vol's own overrides <- its OWN saved config (bot-config OI-Vol tab)
-    const cfg = { ...OI_BOT_CFG_DEFAULTS, ...(variant === 'vol' ? { ..._liveOi, ...OI_VOL_CFG_OVERRIDES } : {}), ...(cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {}) };
+    const cfg = { ...OI_BOT_CFG_DEFAULTS, ...(variant === 'vol' ? { ..._liveOi, ...OI_VOL_CFG_OVERRIDES } : {}), ...(cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {}), ...(cfgPatch || {}) };
     // oi_history is CME's (its wall-stability, flip drift and the GEX median that sets
     // conviction are all in CME units/strikes) — a Cboe book must not be judged by it.
     const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
@@ -19590,6 +19611,8 @@ async function _refreshOIBotZones({ storeOverride = null, outKey = 'oi_bot_zones
       // OI-Vol variant, bookMode 'near': trade the AGGREGATE of every expiry within nearBookDays (what the export's today sheet draws).
       let _nearBook = null;
       if (variant === 'vol' && cfg.bookMode === 'near') { _nearBook = _oiNearBook(inst, pair, cfg.nearBookDays ?? 3); if (_nearBook) dayEx = _nearBook; }
+      // bookMode 'gamma' = the RIPPLE book: every expiry up to gammaBookDays, walls ranked by gamma not OI (see _oiNearBook). Off unless chosen.
+      else if (variant === 'vol' && cfg.bookMode === 'gamma') { _nearBook = _oiNearBook(inst, pair, cfg.gammaBookDays ?? 400, { wallBy: 'gamma' }); if (_nearBook) dayEx = _nearBook; }
       const tradeInst = dayEx
         ? { ...inst, dte: dayEx.dte, maxPain: dayEx.maxPain, callWalls: dayEx.callWalls, putWalls: dayEx.putWalls,
             callWall: dayEx.callWall, putWall: dayEx.putWall, exposures: dayEx.exposures,
@@ -19767,6 +19790,29 @@ setTimeout(() => _refreshOIBotZones(), 60_000);
 // OI-Vol variant plan (paper-by-default bot; see OI_VOL_CFG_OVERRIDES). Own key, own config — never touches oi_bot_zones.
 const _refreshOIVolBotZones = () => _refreshOIBotZones({ outKey: 'oi_vol_bot_zones', strategy: 'oi-vol-bot', cfgKey: 'oi_vol_bot_config', variant: 'vol' });
 svcInterval('oiBot', _refreshOIVolBotZones, 10 * 60_000);
+// ── RIPPLE SHADOW (side by side, nothing reads it): the OI-Vol planner with bookMode 'gamma' (every expiry, walls ranked by gamma at each
+// contract's own DTE). Written to its own key, never traded. After each refresh today's three plans (OI, OI-Vol, ripple) are logged to
+// `oi_ripple_log` — one row per date, last refresh of the day wins — so the ripple-vs-short-book comparison accumulates forward on OUR capture
+// (which, unlike the archive, has weeklies/dailies). Judgeable at >=400 dates per oi_research_book/RIPPLE_BOOK_PREREG.md.
+const _OI_RIPPLE_LOG_CAP = 600;
+async function _refreshOIRippleShadow() {
+  const n = await _refreshOIBotZones({ outKey: 'oi_ripple_shadow_zones', strategy: 'oi-ripple-shadow', cfgKey: 'oi_vol_bot_config', variant: 'vol', cfgPatch: { bookMode: 'gamma' } });
+  try {
+    const J = async k => { const raw = await kv.get(k).catch(() => null); if (!raw) return null; const j = JSON.parse(raw); return j.data ?? j; };
+    const [oiP, volP, rpP, logRaw] = await Promise.all([J('oi_bot_zones'), J('oi_vol_bot_zones'), J('oi_ripple_shadow_zones'), J('oi_ripple_log')]);
+    const date = new Date().toISOString().slice(0, 10);
+    const slim = P => Object.fromEntries(Object.entries(P?.instruments || {}).map(([k, v]) => [k,
+      { spot: v.spot ?? null, regime: v.regime ?? null, dte: v.dte ?? null, zones: (v.zones || []).map(z => [z.mode, z.side, +(+z.level).toPrecision(8), z.entry != null ? +(+z.entry).toPrecision(8) : null]) }]));
+    const log = logRaw && typeof logRaw === 'object' ? logRaw : { rows: {} };
+    log.rows[date] = { at: new Date().toISOString(), oi: slim(oiP), vol: slim(volP), ripple: slim(rpP) };
+    const dates = Object.keys(log.rows).sort();
+    for (const d of dates.slice(0, Math.max(0, dates.length - _OI_RIPPLE_LOG_CAP))) delete log.rows[d];
+    await kv.put('oi_ripple_log', JSON.stringify({ data: log, timestamp: Date.now() }));
+  } catch (e) { console.warn('[oi-ripple] log failed:', e.message); }
+  return n;
+}
+svcInterval('oiBot', _refreshOIRippleShadow, 10 * 60_000);
+setTimeout(() => _refreshOIRippleShadow(), 150_000);
 setTimeout(() => _refreshOIVolBotZones(), 90_000);
 
 // ── volatility_bot_v2 (Level Atlas Vote Portfolio) plan producer ─────────────
@@ -21735,6 +21781,21 @@ app.get('/api/oi-vol-bot/zones', async (req, res) => {
   try { const raw = await kv.get('oi_vol_bot_zones').catch(() => null);
     res.json({ ok: true, ...(raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : { instruments: {} }) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// Ripple shadow plan + the forward log (dates accumulated, plans per date). Read-only; no bot trades these.
+app.get('/api/oi-ripple/zones', async (_req, res) => {
+  try { const raw = await kv.get('oi_ripple_shadow_zones').catch(() => null);
+    res.json({ ok: true, ...(raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : { instruments: {} }) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/oi-ripple/log', async (req, res) => {
+  try { const raw = await kv.get('oi_ripple_log').catch(() => null); const log = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : { rows: {} };
+    const dates = Object.keys(log.rows || {}).sort();
+    res.json({ ok: true, nDates: dates.length, from: dates[0] || null, to: dates[dates.length - 1] || null, judgeableAt: 400, rows: req.query.full ? log.rows : undefined });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/oi-ripple/refresh', async (_req, res) => {
+  try { res.json({ ok: true, instruments: await _refreshOIRippleShadow() }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/oi-vol-bot/zones/refresh', async (_req, res) => {
   try { const n = await _refreshOIVolBotZones(); res.json({ ok: true, instruments: n }); }
