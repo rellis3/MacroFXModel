@@ -38,6 +38,7 @@ window.POS_BOTS = [
   { key: 'volatility_ride_status',    label: 'Vol-Ride',    color: '#f0b64b', bg: '#2c2400', bd: '#8a6d0c', paper: true },
   { key: 'range_line_bot_status',     label: 'Range-Line',  color: '#4fd1c5', bg: '#06302b', bd: '#0f766e', paper: true },
   { key: 'oi_bot_status',             label: 'OI Gamma',    color: '#4dd0e1', bg: '#06282e', bd: '#0e7490', paper: true },
+  { key: 'oi_vol_bot_status',         label: 'OI-Vol',      color: '#80deea', bg: '#08262b', bd: '#0b6f7e', paper: true },
   { key: 'yield_spread_status',          label: 'YieldSpread',    color: '#f472b6', bg: '#2a0a1c', bd: '#9d1f5f', paper: true },
   { key: 'fib_atlas_bot_status',         label: 'Fib Atlas',      color: '#a78bfa', bg: '#1e1633', bd: '#6d28d9', paper: true },
   { key: 'fib_atlas_bot_v2_status',      label: 'Fib Atlas v2',   color: '#f472b6', bg: '#2b0f21', bd: '#a3286e', paper: true },

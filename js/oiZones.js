@@ -308,6 +308,12 @@ export function buildOIZones(inst, price, cfg = {}) {
     // the zone is dropped (recorded in collectDrops), not just trimmed. maxpain enters at spot
     // so it never trips this. 0 = off (default here; the producer sets it).
     maxReachMult = 0,
+    // ── candidate selection for BREAK zones (2026-10-15) ─────────────────────
+    // 'strength' (default, the live OI bot): the K strongest walls by OI x durability (x gamma weight) per side, THEN the reach cap
+    //   drops any that are too far — which leaves nothing when the strongest walls are far from price (NQ 2026-10-15: 8 zones → 1).
+    // 'reach' (the OI-Vol variant): drop walls whose entry is beyond maxReachMult x refMove FIRST, then rank the survivors NEAREST-first,
+    //   so the K slots go to levels price can actually get to today. Fades already rank nearest-first, so this only changes breaks.
+    selectBy = 'strength',
     // ── smaller trade levels (sub-tier walls, graded in — not gated out) ────
     subTierTrade = false,          // walls BELOW minTier become fade zones at subTierSize — but only
                                    // WITH CONFLUENCE (a volume magnet / flip / multi-expiry persistence
@@ -441,8 +447,11 @@ export function buildOIZones(inst, price, cfg = {}) {
   // spot, so the engine armed it to fire on a RALLY: a counter-trend short in a short-gamma
   // regime, the opposite of the mode's thesis (2026-09-30 gold plan: sells at 4209/4259 with
   // spot 4191). Call walls below spot mirrored it as dip-buys.
-  const breakCalls = _cap((Array.isArray(inst.callWalls) ? inst.callWalls : []).filter(w => tierOK(w) && w.strike > price).slice().sort((x, y) => breakStrength(y) - breakStrength(x)));
-  const breakPuts  = _cap((Array.isArray(inst.putWalls)  ? inst.putWalls  : []).filter(w => tierOK(w) && w.strike < price).slice().sort((x, y) => breakStrength(y) - breakStrength(x)));
+  const _byReach = selectBy === 'reach' && maxReachMult > 0 && Number.isFinite(refMove) && refMove > 0;
+  const _inReach = (w, dir) => !_byReach || Math.abs(w.strike + dir * brk - price) <= maxReachMult * refMove;
+  const _rankBreak = _byReach ? ((x, y) => Math.abs(x.strike - price) - Math.abs(y.strike - price)) : ((x, y) => breakStrength(y) - breakStrength(x));
+  const breakCalls = _cap((Array.isArray(inst.callWalls) ? inst.callWalls : []).filter(w => tierOK(w) && w.strike > price && _inReach(w, +1)).slice().sort(_rankBreak));
+  const breakPuts  = _cap((Array.isArray(inst.putWalls)  ? inst.putWalls  : []).filter(w => tierOK(w) && w.strike < price && _inReach(w, -1)).slice().sort(_rankBreak));
 
   const isLiquidating = (strike, kind) => avoidLiquidating &&
     (change?.events || []).some(e => e.type === 'liquidation' && e.kind === kind && Math.abs(e.strike - strike) <= tol);

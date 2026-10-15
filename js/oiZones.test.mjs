@@ -897,6 +897,15 @@ console.log('[Implied-move TP cap + max-pain guard-wall ladder (2026-09-27)]');
   const farOff = buildOIZones(pin, 4200, { ...cfg, refMove: 20, slBufferRefFrac: 0, maxReachMult: 0 });
   ok('maxReachMult 0 → old behaviour (zone kept)', farOff.some(x => x.mode === 'fade' && x.level === 4300));
 
+  // selectBy:'reach' — near walls fill the slots instead of being crowded out by far, stronger ones
+  const brkInst = { ...base, exposures: { gex: -5000 },
+    callWalls: [{ strike: 4900, oi: 9000, tier: 'strong', mult: 4 }, { strike: 4800, oi: 8000, tier: 'strong', mult: 4 }, { strike: 4700, oi: 7000, tier: 'strong', mult: 4 },
+                { strike: 4600, oi: 6000, tier: 'strong', mult: 4 }, { strike: 4230, oi: 900, tier: 'strong', mult: 3.2 }], putWalls: [] };
+  const bs = buildOIZones(brkInst, 4200, { ...cfg, refMove: 60, maxZonesPerSide: 4, maxReachMult: 3, minRR: 0 }).filter(x => x.mode === 'break');
+  ok('default selection ranks by strength: the near 4230 wall is crowded out, far ones dropped by the cap', !bs.some(x => x.level === 4230), JSON.stringify(bs.map(x => x.level)));
+  const br = buildOIZones(brkInst, 4200, { ...cfg, refMove: 60, maxZonesPerSide: 4, maxReachMult: 3, minRR: 0, selectBy: 'reach' }).filter(x => x.mode === 'break');
+  ok("selectBy 'reach' keeps the near wall and drops the unreachable ones", br.some(x => x.level === 4230) && !br.some(x => x.level >= 4600), JSON.stringify(br.map(x => x.level)));
+
   // Max pain: tp1 stays the pin (engine caps against LIVE price) and the whole guard ladder ships.
   const mpInst = { ...base, exposures: { gex: 5000 }, expiries: { OG3: { dte: 1, maxPain: 4200 } },
     callWalls: [{ strike: 4300, oi: 9000, tier: 'strong', mult: 3.2 }, { strike: 4270, oi: 8500, tier: 'strong', mult: 3.1 },

@@ -6677,6 +6677,364 @@ loadOiConfig();
 loadOiCreds();
 loadOiLiveStatus();
 
+// ── OI-VOL Bot config (clone of the OI Gamma tab: same fields, own KV keys; + reach/touch options and the LEVEL AUDIT) ── ───────────────────────────────────────────────────────
+// ONE config object (oi_vol_bot_config) with TWO disjoint readers: the camelCase
+// STRATEGY keys are read by the server plan producer (js/oivZones.js), the snake
+// EXECUTION keys by the Python bot (oi_vol_bot/oi_vol_bot.py). No key overlap.
+const OIV_DEFAULTS = {
+  // strategy (server plan producer)
+  minTier: 'strong', slBufferPips: 15, breakPips: 20, nearExpiryDTE: 2, extendedPips: 30,
+  fadeInPin: true, followBreaks: true, maxPainReversion: true, levelLadderTP: false,
+  reactAtLevels: false, reactMinTier: 'moderate', reactBreakoutTrim: 0.6,
+  requireEstablished: false, avoidLiquidating: true, maxZonesPerSide: 4,
+  secondaryTrim: 0.6, reachMult: 1.0, reachTrim: 0.7, maxReachPips: 0,   // PIN nearest-primary + reachability gate
+  persistenceWeight: 0.1, persistentDTE: 5,                              // across-expiry durability rank/size
+  pathBlockCheck: true, blockMinTier: 'moderate', blockTrim: 0.9,        // nearer-wall-in-the-path flag/trim
+  fallbackTpR: 0, fxFallbackTpR: 2.0,                                    // measured-move TP for wall-less trades
+  vannaBoost: 1.15, vannaTrim: 0.85, charmBoost: 1.2,                    // greek conditioners
+  fx_enabled: false, fx_pairs: [],
+  // strategy — 2026-08 quant-review additions (see MD files/OI_BOT_QUANT_REVIEW_2026-08.md)
+  slBufferRefFrac: 0.10, breakRefFrac: 0.15, extendedRefFrac: 0.25,   // distances = max(pips, frac × refMove)
+  minRR: 0.8, gexNeutralBand: 0.25, convictionSizing: true, holdScore: true, maxSizeFactor: 2.0,
+  subTierTrade: false, subTierSize: 0.4, minZoneSpacing: 0.05, volMagnetMinShare: 0.25,
+  reactNodes: { walls: 1.0, gammaFlip: 0.8, gexFlip: 0.8, vannaFlip: 0.6, volMagnets: 0.6 },
+  // OI-Vol selection (server: OI_VOL_CFG_OVERRIDES) — reachable levels only
+  selectBy: 'reach', maxReachMult: 3, minTouchP: 0.20, touchHorizon: '4h',
+  // execution (the bot)
+  paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
+  touch_tol_pips: 2, max_spread_pips: null, tick_secs: 3, status_secs: 30, plan_secs: 600,
+  stack_guard: true, stack_guard_pips: 10,   // refuse a 2nd same-dir entry within N pips of an open one (one bet, not two)
+  enabled_pairs: [], broker_symbols: {},
+  // execution — 2026-08 additions
+  max_open_risk_pct: 2.0, max_group_positions: { index: 2 }, plan_max_age_hours: 24,
+  break_hold_ticks: 2, approach_trim: 0.7, scale_out: false, be_at_tp1: true,
+  max_hold_hours: { fade: 48, break: 24, maxpain: 24, react: 24},   // per-mode time exits (0 = off)
+  // telegram entry alerts (blank token/chat → shared tg_config)
+  tg_enabled: false, tg_token: '', tg_chat_id: '',
+};
+const OIV_INDEX_KEYS = ['nq', 'spx', 'dax', 'dow', 'rut'];
+let _oivCfg = { ...OIV_DEFAULTS };
+
+function renderOiVolForm() {
+  const chk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+  const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+  chk('oiv_fx_enabled', _oivCfg.fx_enabled);
+  set('oiv_fx_pairs', (_oivCfg.fx_pairs ?? []).join(', '));
+  set('oiv_min_tier', _oivCfg.minTier ?? 'strong');
+  set('oiv_max_zones_per_side', _oivCfg.maxZonesPerSide ?? OIV_DEFAULTS.maxZonesPerSide);
+  chk('oiv_fade_in_pin', _oivCfg.fadeInPin ?? true);
+  chk('oiv_follow_breaks', _oivCfg.followBreaks ?? true);
+  chk('oiv_maxpain_reversion', _oivCfg.maxPainReversion ?? true);
+  chk('oiv_level_ladder_tp', _oivCfg.levelLadderTP ?? false);
+  chk('oiv_react_at_levels', _oivCfg.reactAtLevels ?? false);
+  set('oiv_react_min_tier', _oivCfg.reactMinTier ?? 'moderate');
+  set('oiv_react_breakout_trim', _oivCfg.reactBreakoutTrim ?? OIV_DEFAULTS.reactBreakoutTrim);
+  chk('oiv_avoid_liquidating', _oivCfg.avoidLiquidating ?? true);
+  chk('oiv_require_established', _oivCfg.requireEstablished);
+  set('oiv_sl_buffer_pips', _oivCfg.slBufferPips ?? OIV_DEFAULTS.slBufferPips);
+  set('oiv_break_pips', _oivCfg.breakPips ?? OIV_DEFAULTS.breakPips);
+  set('oiv_near_expiry_dte', _oivCfg.nearExpiryDTE ?? OIV_DEFAULTS.nearExpiryDTE);
+  set('oiv_extended_pips', _oivCfg.extendedPips ?? OIV_DEFAULTS.extendedPips);
+  set('oiv_sl_buffer_ref_frac', _oivCfg.slBufferRefFrac ?? OIV_DEFAULTS.slBufferRefFrac);
+  set('oiv_break_ref_frac', _oivCfg.breakRefFrac ?? OIV_DEFAULTS.breakRefFrac);
+  set('oiv_extended_ref_frac', _oivCfg.extendedRefFrac ?? OIV_DEFAULTS.extendedRefFrac);
+  set('oiv_min_rr', _oivCfg.minRR ?? OIV_DEFAULTS.minRR);
+  set('oiv_gex_neutral_band', _oivCfg.gexNeutralBand ?? OIV_DEFAULTS.gexNeutralBand);
+  chk('oiv_conviction_sizing', _oivCfg.convictionSizing ?? true);
+  chk('oiv_hold_score', _oivCfg.holdScore ?? true);
+  set('oiv_max_size_factor', _oivCfg.maxSizeFactor ?? OIV_DEFAULTS.maxSizeFactor);
+  set('oiv_min_zone_spacing', _oivCfg.minZoneSpacing ?? OIV_DEFAULTS.minZoneSpacing);
+  chk('oiv_sub_tier_trade', _oivCfg.subTierTrade ?? false);
+  set('oiv_sub_tier_size', _oivCfg.subTierSize ?? OIV_DEFAULTS.subTierSize);
+  set('oiv_vol_magnet_min_share', _oivCfg.volMagnetMinShare ?? OIV_DEFAULTS.volMagnetMinShare);
+  const rw = { ...OIV_DEFAULTS.reactNodes, ...(_oivCfg.reactNodes || {}) };
+  set('oiv_rw_walls', rw.walls); set('oiv_rw_gamma', rw.gammaFlip); set('oiv_rw_gex', rw.gexFlip);
+  set('oiv_rw_vanna', rw.vannaFlip); set('oiv_rw_vol', rw.volMagnets);
+  set('oiv_secondary_trim', _oivCfg.secondaryTrim ?? OIV_DEFAULTS.secondaryTrim);
+  set('oiv_reach_mult', _oivCfg.reachMult ?? OIV_DEFAULTS.reachMult);
+  set('oiv_reach_trim', _oivCfg.reachTrim ?? OIV_DEFAULTS.reachTrim);
+  set('oiv_max_reach_pips', _oivCfg.maxReachPips ?? OIV_DEFAULTS.maxReachPips);
+  set('oiv_persistence_weight', _oivCfg.persistenceWeight ?? OIV_DEFAULTS.persistenceWeight);
+  set('oiv_persistent_dte', _oivCfg.persistentDTE ?? OIV_DEFAULTS.persistentDTE);
+  chk('oiv_path_block_check', _oivCfg.pathBlockCheck ?? true);
+  set('oiv_block_min_tier', _oivCfg.blockMinTier ?? OIV_DEFAULTS.blockMinTier);
+  set('oiv_block_trim', _oivCfg.blockTrim ?? OIV_DEFAULTS.blockTrim);
+  set('oiv_fallback_tp_r', _oivCfg.fallbackTpR ?? OIV_DEFAULTS.fallbackTpR);
+  set('oiv_fx_fallback_tp_r', _oivCfg.fxFallbackTpR ?? OIV_DEFAULTS.fxFallbackTpR);
+  set('oiv_vanna_boost', _oivCfg.vannaBoost ?? OIV_DEFAULTS.vannaBoost);
+  set('oiv_vanna_trim', _oivCfg.vannaTrim ?? OIV_DEFAULTS.vannaTrim);
+  set('oiv_charm_boost', _oivCfg.charmBoost ?? OIV_DEFAULTS.charmBoost);
+  const mh = { ...OIV_DEFAULTS.max_hold_hours, ...(_oivCfg.max_hold_hours || {}) };
+  set('oiv_mh_fade', mh.fade); set('oiv_mh_break', mh.break); set('oiv_mh_maxpain', mh.maxpain); set('oiv_mh_react', mh.react);
+  set('oiv_max_open_risk_pct', _oivCfg.max_open_risk_pct ?? OIV_DEFAULTS.max_open_risk_pct);
+  set('oiv_group_index_cap', (_oivCfg.max_group_positions || {}).index ?? 0);
+  set('oiv_plan_max_age_hours', _oivCfg.plan_max_age_hours ?? OIV_DEFAULTS.plan_max_age_hours);
+  set('oiv_break_hold_ticks', _oivCfg.break_hold_ticks ?? OIV_DEFAULTS.break_hold_ticks);
+  set('oiv_approach_trim', _oivCfg.approach_trim ?? OIV_DEFAULTS.approach_trim);
+  chk('oiv_scale_out', _oivCfg.scale_out ?? false);
+  chk('oiv_be_at_tp1', _oivCfg.be_at_tp1 ?? true);
+  set('oiv_select_by', _oivCfg.selectBy ?? OIV_DEFAULTS.selectBy);
+  set('oiv_max_reach_mult', _oivCfg.maxReachMult ?? OIV_DEFAULTS.maxReachMult);
+  set('oiv_min_touch_p', _oivCfg.minTouchP ?? OIV_DEFAULTS.minTouchP);
+  set('oiv_touch_horizon', _oivCfg.touchHorizon ?? OIV_DEFAULTS.touchHorizon);
+  chk('oiv_paper_mode', _oivCfg.paper_mode ?? true);
+  chk('oiv_kill_switch', _oivCfg.kill_switch);
+  set('oiv_risk_pct', _oivCfg.risk_pct ?? OIV_DEFAULTS.risk_pct);
+  set('oiv_max_lot', _oivCfg.max_lot ?? OIV_DEFAULTS.max_lot);
+  set('oiv_max_open', _oivCfg.max_open ?? OIV_DEFAULTS.max_open);
+  set('oiv_touch_tol_pips', _oivCfg.touch_tol_pips ?? OIV_DEFAULTS.touch_tol_pips);
+  chk('oiv_stack_guard', _oivCfg.stack_guard ?? true);
+  set('oiv_stack_guard_pips', _oivCfg.stack_guard_pips ?? OIV_DEFAULTS.stack_guard_pips);
+  set('oiv_max_spread_pips', _oivCfg.max_spread_pips ?? '');
+  set('oiv_enabled_pairs', (_oivCfg.enabled_pairs ?? []).join(', '));
+  set('oiv_tick_secs', _oivCfg.tick_secs ?? OIV_DEFAULTS.tick_secs);
+  set('oiv_status_secs', _oivCfg.status_secs ?? OIV_DEFAULTS.status_secs);
+  set('oiv_plan_secs', _oivCfg.plan_secs ?? OIV_DEFAULTS.plan_secs);
+  const syms = _oivCfg.broker_symbols || {};
+  OIV_INDEX_KEYS.forEach(k => { const el = document.getElementById(`oiv_sym_${k}`); if (el) el.value = syms[k] ?? ''; });
+  chk('oiv_tg_enabled', _oivCfg.tg_enabled);
+  set('oiv_tg_token', _oivCfg.tg_token ?? '');
+  set('oiv_tg_chat_id', _oivCfg.tg_chat_id ?? '');
+}
+function readOiVolForm() {
+  const num = (id, d) => { const v = parseFloat(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
+  const list = id => (document.getElementById(id)?.value || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  _oivCfg.fx_enabled = !!document.getElementById('oiv_fx_enabled')?.checked;
+  _oivCfg.fx_pairs = list('oiv_fx_pairs');
+  _oivCfg.minTier = document.getElementById('oiv_min_tier')?.value || 'strong';
+  _oivCfg.maxZonesPerSide = Math.round(num('oiv_max_zones_per_side', OIV_DEFAULTS.maxZonesPerSide));
+  _oivCfg.fadeInPin = !!document.getElementById('oiv_fade_in_pin')?.checked;
+  _oivCfg.followBreaks = !!document.getElementById('oiv_follow_breaks')?.checked;
+  _oivCfg.maxPainReversion = !!document.getElementById('oiv_maxpain_reversion')?.checked;
+  _oivCfg.levelLadderTP = !!document.getElementById('oiv_level_ladder_tp')?.checked;
+  _oivCfg.reactAtLevels = !!document.getElementById('oiv_react_at_levels')?.checked;
+  _oivCfg.reactMinTier = document.getElementById('oiv_react_min_tier')?.value || 'moderate';
+  _oivCfg.reactBreakoutTrim = num('oiv_react_breakout_trim', OIV_DEFAULTS.reactBreakoutTrim);
+  _oivCfg.avoidLiquidating = !!document.getElementById('oiv_avoid_liquidating')?.checked;
+  _oivCfg.requireEstablished = !!document.getElementById('oiv_require_established')?.checked;
+  _oivCfg.slBufferPips = num('oiv_sl_buffer_pips', OIV_DEFAULTS.slBufferPips);
+  _oivCfg.breakPips = num('oiv_break_pips', OIV_DEFAULTS.breakPips);
+  _oivCfg.nearExpiryDTE = Math.round(num('oiv_near_expiry_dte', OIV_DEFAULTS.nearExpiryDTE));
+  _oivCfg.extendedPips = num('oiv_extended_pips', OIV_DEFAULTS.extendedPips);
+  _oivCfg.slBufferRefFrac = num('oiv_sl_buffer_ref_frac', OIV_DEFAULTS.slBufferRefFrac);
+  _oivCfg.breakRefFrac = num('oiv_break_ref_frac', OIV_DEFAULTS.breakRefFrac);
+  _oivCfg.extendedRefFrac = num('oiv_extended_ref_frac', OIV_DEFAULTS.extendedRefFrac);
+  _oivCfg.minRR = num('oiv_min_rr', OIV_DEFAULTS.minRR);
+  _oivCfg.gexNeutralBand = num('oiv_gex_neutral_band', OIV_DEFAULTS.gexNeutralBand);
+  _oivCfg.convictionSizing = !!document.getElementById('oiv_conviction_sizing')?.checked;
+  _oivCfg.holdScore = !!document.getElementById('oiv_hold_score')?.checked;
+  _oivCfg.maxSizeFactor = num('oiv_max_size_factor', OIV_DEFAULTS.maxSizeFactor);
+  _oivCfg.minZoneSpacing = num('oiv_min_zone_spacing', OIV_DEFAULTS.minZoneSpacing);
+  _oivCfg.subTierTrade = !!document.getElementById('oiv_sub_tier_trade')?.checked;
+  _oivCfg.subTierSize = num('oiv_sub_tier_size', OIV_DEFAULTS.subTierSize);
+  _oivCfg.volMagnetMinShare = num('oiv_vol_magnet_min_share', OIV_DEFAULTS.volMagnetMinShare);
+  _oivCfg.reactNodes = {
+    walls: num('oiv_rw_walls', OIV_DEFAULTS.reactNodes.walls),
+    gammaFlip: num('oiv_rw_gamma', OIV_DEFAULTS.reactNodes.gammaFlip),
+    gexFlip: num('oiv_rw_gex', OIV_DEFAULTS.reactNodes.gexFlip),
+    vannaFlip: num('oiv_rw_vanna', OIV_DEFAULTS.reactNodes.vannaFlip),
+    volMagnets: num('oiv_rw_vol', OIV_DEFAULTS.reactNodes.volMagnets),
+  };
+  _oivCfg.secondaryTrim = num('oiv_secondary_trim', OIV_DEFAULTS.secondaryTrim);
+  _oivCfg.reachMult = num('oiv_reach_mult', OIV_DEFAULTS.reachMult);
+  _oivCfg.reachTrim = num('oiv_reach_trim', OIV_DEFAULTS.reachTrim);
+  _oivCfg.maxReachPips = num('oiv_max_reach_pips', OIV_DEFAULTS.maxReachPips);
+  _oivCfg.persistenceWeight = num('oiv_persistence_weight', OIV_DEFAULTS.persistenceWeight);
+  _oivCfg.persistentDTE = Math.round(num('oiv_persistent_dte', OIV_DEFAULTS.persistentDTE));
+  _oivCfg.pathBlockCheck = !!document.getElementById('oiv_path_block_check')?.checked;
+  _oivCfg.blockMinTier = document.getElementById('oiv_block_min_tier')?.value || OIV_DEFAULTS.blockMinTier;
+  _oivCfg.blockTrim = num('oiv_block_trim', OIV_DEFAULTS.blockTrim);
+  _oivCfg.fallbackTpR = num('oiv_fallback_tp_r', OIV_DEFAULTS.fallbackTpR);
+  _oivCfg.fxFallbackTpR = num('oiv_fx_fallback_tp_r', OIV_DEFAULTS.fxFallbackTpR);
+  _oivCfg.vannaBoost = num('oiv_vanna_boost', OIV_DEFAULTS.vannaBoost);
+  _oivCfg.vannaTrim = num('oiv_vanna_trim', OIV_DEFAULTS.vannaTrim);
+  _oivCfg.charmBoost = num('oiv_charm_boost', OIV_DEFAULTS.charmBoost);
+  _oivCfg.max_hold_hours = {
+    fade: num('oiv_mh_fade', OIV_DEFAULTS.max_hold_hours.fade),
+    break: num('oiv_mh_break', OIV_DEFAULTS.max_hold_hours.break),
+    maxpain: num('oiv_mh_maxpain', OIV_DEFAULTS.max_hold_hours.maxpain),
+    react: num('oiv_mh_react', OIV_DEFAULTS.max_hold_hours.react),
+  };
+  _oivCfg.max_open_risk_pct = num('oiv_max_open_risk_pct', OIV_DEFAULTS.max_open_risk_pct);
+  const _gidx = Math.round(num('oiv_group_index_cap', 0));
+  _oivCfg.max_group_positions = _gidx > 0 ? { index: _gidx } : {};
+  _oivCfg.plan_max_age_hours = num('oiv_plan_max_age_hours', OIV_DEFAULTS.plan_max_age_hours);
+  _oivCfg.break_hold_ticks = Math.round(num('oiv_break_hold_ticks', OIV_DEFAULTS.break_hold_ticks));
+  _oivCfg.approach_trim = num('oiv_approach_trim', OIV_DEFAULTS.approach_trim);
+  _oivCfg.scale_out = !!document.getElementById('oiv_scale_out')?.checked;
+  _oivCfg.be_at_tp1 = !!document.getElementById('oiv_be_at_tp1')?.checked;
+  _oivCfg.selectBy = document.getElementById('oiv_select_by')?.value || OIV_DEFAULTS.selectBy;
+  _oivCfg.maxReachMult = num('oiv_max_reach_mult', OIV_DEFAULTS.maxReachMult);
+  _oivCfg.minTouchP = num('oiv_min_touch_p', OIV_DEFAULTS.minTouchP);
+  _oivCfg.touchHorizon = document.getElementById('oiv_touch_horizon')?.value || OIV_DEFAULTS.touchHorizon;
+  _oivCfg.paper_mode = !!document.getElementById('oiv_paper_mode')?.checked;
+  _oivCfg.kill_switch = !!document.getElementById('oiv_kill_switch')?.checked;
+  _oivCfg.risk_pct = num('oiv_risk_pct', OIV_DEFAULTS.risk_pct);
+  _oivCfg.max_lot = num('oiv_max_lot', OIV_DEFAULTS.max_lot);
+  _oivCfg.max_open = Math.round(num('oiv_max_open', OIV_DEFAULTS.max_open));
+  _oivCfg.touch_tol_pips = num('oiv_touch_tol_pips', OIV_DEFAULTS.touch_tol_pips);
+  _oivCfg.stack_guard = !!document.getElementById('oiv_stack_guard')?.checked;
+  _oivCfg.stack_guard_pips = num('oiv_stack_guard_pips', OIV_DEFAULTS.stack_guard_pips);
+  const ms = document.getElementById('oiv_max_spread_pips')?.value;
+  _oivCfg.max_spread_pips = (ms === '' || ms == null) ? null : (parseFloat(ms) || null);
+  _oivCfg.enabled_pairs = list('oiv_enabled_pairs');
+  _oivCfg.tick_secs = Math.round(num('oiv_tick_secs', OIV_DEFAULTS.tick_secs));
+  _oivCfg.status_secs = Math.round(num('oiv_status_secs', OIV_DEFAULTS.status_secs));
+  _oivCfg.plan_secs = Math.round(num('oiv_plan_secs', OIV_DEFAULTS.plan_secs));
+  const syms = {};
+  OIV_INDEX_KEYS.forEach(k => { const v = (document.getElementById(`oiv_sym_${k}`)?.value || '').trim(); if (v) syms[k] = v; });
+  _oivCfg.broker_symbols = syms;
+  _oivCfg.tg_enabled = !!document.getElementById('oiv_tg_enabled')?.checked;
+  _oivCfg.tg_token = (document.getElementById('oiv_tg_token')?.value || '').trim();
+  _oivCfg.tg_chat_id = (document.getElementById('oiv_tg_chat_id')?.value || '').trim();
+}
+async function loadOiVolConfig() {
+  try { const stored = await kvGet('oi_vol_bot_config'); if (stored) _oivCfg = { ...OIV_DEFAULTS, ...stored }; renderOiVolForm(); } catch (e) {}
+}
+async function saveOiVolConfig() {
+  readOiVolForm();
+  const el = document.getElementById('oivSaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try { await kvSet('oi_vol_bot_config', _oivCfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#4dd0e1'; setTimeout(() => { el.textContent = ''; }, 3000); }
+  } catch (e) { if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+function resetOiVolDefaults() {
+  _oivCfg = { ...OIV_DEFAULTS }; renderOiVolForm();
+  const el = document.getElementById('oivSaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+async function loadOiVolCreds() { try { _applyCredsToForm(await kvGet('oi_vol_bot_credentials'), 'oiv_', 'oiv_mt5_password'); } catch (e) {} }
+async function saveOiVolCreds() { await _saveCreds('oi_vol_bot_credentials', 'oiv_', 'oiv_mt5_password', 'oivCredsStatus'); }
+
+async function loadOiVolLiveStatus() {
+  const ageEl = document.getElementById('oivLiveAge'), modeEl = document.getElementById('oivLiveMode');
+  const balEl = document.getElementById('oivLiveBal'), openEl = document.getElementById('oivOpenN');
+  const uniEl = document.getElementById('oivUniN'), paEl = document.getElementById('oivPlanAge');
+  try {
+    const [st, planWrap] = await Promise.all([kvGet('oi_vol_bot_status'), kvGet('oi_vol_bot_zones')]);
+    if (paEl) paEl.textContent = planWrap?.generatedAt ? new Date(planWrap.generatedAt).toISOString().slice(0, 16).replace('T', ' ') + 'Z' : '—';
+    const body = document.getElementById('oivLinesBody');
+    // Prefer the bot's live lines; fall back to the plan itself so the table shows
+    // the planned zones even before the bot is running.
+    const rows = st?.lines || Object.entries(planWrap?.instruments || {}).map(([k, v]) =>
+      ({ instrument: k, regime: v.regime, spot: v.spot, maxPain: v.maxPain, zoneCount: v.zoneCount, stale: v.stale, entered: [], dayDriftPct: v.dayDriftPct }));
+    // Carry the plan's stale flag onto the bot's own lines too (status may omit it).
+    const _staleBy = Object.fromEntries(Object.entries(planWrap?.instruments || {}).map(([k, v]) => [k, v.stale]));
+    if (!st) { if (ageEl) ageEl.textContent = planWrap ? 'Bot not running — showing the plan' : 'Bot not running — no plan yet'; }
+    else {
+      if (ageEl)  { ageEl.textContent = st.running ? 'Running' : 'Idle'; ageEl.style.color = 'var(--text3)'; }
+      if (modeEl) { modeEl.textContent = st.mode === 'live' ? '🟢 LIVE' : '📄 PAPER'; modeEl.style.color = st.mode === 'live' ? 'var(--green)' : 'var(--amber)'; }
+      if (balEl)  balEl.textContent = st.balance != null ? `Balance ${st.balance}` : '';
+    }
+    if (openEl) openEl.textContent = (st?.mt5_positions || []).length;
+    if (uniEl)  uniEl.textContent  = rows.length;
+    if (body) {
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">No OI plan yet — paste the OI heatmap on index.html, then refresh the plan</td></tr>';
+      } else {
+        const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : (/^(nq|spx|dax|dow|rut|de30|us30|us2000|ftse|uk100)$/i.test(sym) ? 1 : (/gold|xau/i.test(sym) ? 2 : 5)));
+        const regCol = r => r === 'PIN' ? 'var(--green)' : r === 'BREAKOUT' ? 'var(--red)' : 'var(--text3)';
+        // Primed = zones the bot skipped because price had already passed their entry when the
+        // plan armed. Show the count + a hover with WHEN and how far past, so a "hit but no
+        // trade" is self-explaining (was invisible before). `past` is in the instrument's price
+        // units; `at` is epoch seconds from the bot.
+        const primedCell = (r) => {
+          const p = r.primed || [];
+          if (!p.length) return '<span style="color:var(--text3)">—</span>';
+          const tip = p.map(z => {
+            const t = z.at ? new Date(z.at * 1000).toISOString().slice(11, 19) + 'Z' : '?';
+            return `${z.zone_id}: primed ${t} @ ${z.price} — ${z.past} past entry ${z.entry}`;
+          }).join('\n').replace(/"/g, '');
+          return `<span title="${tip}" style="color:var(--amber);cursor:help">${p.length} ⓘ</span>`;
+        };
+        body.innerHTML = rows.map(r => {
+          const stale = r.stale || _staleBy[r.instrument];
+          return `<tr style="border-top:1px solid var(--border)"${stale ? ' title="' + String(stale).replace(/"/g, '') + '"' : ''}>
+          <td style="padding:6px 10px;font-weight:600">${r.instrument}${stale ? ' <span style="color:var(--amber);font-weight:400">⚠</span>' : ''}</td>
+          <td style="padding:6px 10px;color:${stale ? 'var(--amber)' : regCol(r.regime)}">${stale ? 'stale — re-paste' : (r.regime || '—')}</td>
+          <td style="padding:6px 10px;text-align:right">${d(r.instrument, r.spot)}</td>
+          <td style="padding:6px 10px;text-align:right">${d(r.instrument, r.maxPain)}</td>
+          <td style="padding:6px 10px;text-align:right;color:${r.dayDriftPct == null ? 'var(--text3)' : Math.abs(r.dayDriftPct) >= 1.5 ? 'var(--amber)' : 'var(--text3)'}">${r.dayDriftPct == null ? '—' : (r.dayDriftPct > 0 ? '+' : '') + r.dayDriftPct.toFixed(2) + '%'}</td>
+          <td style="padding:6px 10px;text-align:right">${stale ? '—' : (r.zoneCount ?? 0)}</td>
+          <td style="padding:6px 10px;color:var(--text3)">${(r.entered || []).length}</td>
+          <td style="padding:6px 10px">${primedCell(r)}</td>
+        </tr>`; }).join('');
+      }
+    }
+  } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
+}
+
+// Push the current OI plan to Telegram — one pretty message per chart (levels +
+// direction + SL/TP + why). Saves config first so a just-typed token/chat applies.
+async function pushOiVolLevels() {
+  const el = document.getElementById('oivPushStatus');
+  const set = (t, c) => { if (el) { el.textContent = t; el.style.color = c || 'var(--text3)'; } };
+  try {
+    await saveOiVolConfig();
+    set('Sending…');
+    const r = await fetch('/api/oi-bot/broadcast', { method: 'POST' });
+    const j = await r.json();
+    if (!j.ok) { set(`Error: ${j.error || 'failed'}`, 'var(--red)'); return; }
+    if (!j.sent) { set('No charts with planned levels yet — paste OI + refresh the plan first', 'var(--amber)'); return; }
+    set(`Sent ${j.sent} chart${j.sent === 1 ? '' : 's'} ✓`, '#4dd0e1');
+    setTimeout(() => set(''), 4000);
+  } catch (e) { set(`Error: ${e.message}`, 'var(--red)'); }
+}
+
+window.saveOiVolConfig = saveOiVolConfig; window.resetOiVolDefaults = resetOiVolDefaults;
+window.saveOiVolCreds = saveOiVolCreds; window.loadOiVolLiveStatus = loadOiVolLiveStatus;
+window.pushOiVolLevels = pushOiVolLevels;
+
+document.querySelector('.tab-btn[data-tab="oivolbot"]')?.addEventListener('click', () => { loadOiVolLiveStatus(); loadOiVolAudit(); });
+
+// ── LEVEL AUDIT: the OI bot's plan vs the OI-Vol plan, level by level ─────────────────────────────────────────
+// Server: GET /api/oi-vol-bot/audit. One row per planned level across BOTH plans — in both / only OI / only OI-Vol — with the reason a
+// level was left out, the OI-Vol touch odds, what has fired, and each bot's open MT5 positions.
+async function loadOiVolAudit() {
+  const sum = document.getElementById('oivAuditSummary'), body = document.getElementById('oivAuditBody'), pos = document.getElementById('oivAuditPos');
+  if (!body) return;
+  try {
+    const r = await fetch('/api/oi-vol-bot/audit', { cache: 'no-store' }); const a = await r.json();
+    if (!a.ok) throw new Error(a.error || 'failed');
+    const age = t => t ? Math.round((Date.now() - Date.parse(t)) / 60000) + ' min ago' : '—';
+    if (sum) sum.innerHTML = `<b>${a.summary.both}</b> levels in both · <b style="color:#f59e0b">${a.summary.oiOnly}</b> only the OI bot · <b style="color:#4dd0e1">${a.summary.volOnly}</b> only OI-Vol`
+      + ` &nbsp;|&nbsp; plans: OI ${age(a.generatedAt.oi)} · OI-Vol ${age(a.generatedAt.vol)} &nbsp;|&nbsp; OI-Vol selection: <code>${a.volConfig.selectBy}</code>, reach ≤ ${a.volConfig.maxReachMult}× ref move, touch ≥ ${Math.round((a.volConfig.minTouchP || 0) * 100)}% in ${a.volConfig.touchHorizon}`
+      + ` &nbsp;|&nbsp; bots: OI ${a.mode.oi || 'not running'} · OI-Vol ${a.mode.vol || 'not running'}`;
+    const d = (k, v) => v == null ? '—' : (+v).toFixed(/^(nq|spx|dax|dow|rut)$/i.test(k) ? 1 : /gold/i.test(k) ? 2 : 5);
+    const pct = v => v == null ? '—' : Math.round(v * 100) + '%';
+    const col = { both: 'var(--text3)', oiOnly: '#f59e0b', volOnly: '#4dd0e1' }, lab = { both: 'both', oiOnly: 'OI only', volOnly: 'OI-Vol only' };
+    const fired = (list, row) => (list || []).some(id => { const m = String(id).split('_'); return m[0] === row.mode && m[1] === row.side && Math.abs(parseFloat(m[m.length - 1]) - row.level) <= Math.abs(row.level) * 0.0006; });
+    let html = '';
+    for (const [k, v] of Object.entries(a.instruments)) {
+      const oi = v.oi, vo = v.vol;
+      html += `<tr style="background:var(--s2)"><td colspan="11" style="padding:8px 10px;font-weight:600">${k.toUpperCase()} <span style="font-weight:400;color:var(--text3)">spot ${d(k, v.spot)}</span>`
+        + ` &nbsp; OI: ${oi ? `${oi.regime || '—'} · ${oi.dte ?? '?'} DTE · ${oi.zones} zones` : 'no plan'}${oi?.diag ? ` <i style="color:#f59e0b">(${String(oi.diag).slice(0, 80)})</i>` : ''}`
+        + ` &nbsp; OI-Vol: ${vo ? `${vo.regime || '—'} · ${vo.dte ?? '?'} DTE · ${vo.zones} zones` : 'no plan'}${vo?.diag ? ` <i style="color:#f59e0b">(${String(vo.diag).slice(0, 80)})</i>` : ''}</td></tr>`;
+      for (const x of v.rows) {
+        html += `<tr style="border-top:1px solid var(--border)"><td style="padding:5px 10px;color:${col[x.status]};font-weight:600">${lab[x.status]}</td>`
+          + `<td style="padding:5px 10px">${x.mode} ${x.side}</td><td style="padding:5px 10px;text-align:right">${d(k, x.level)}</td>`
+          + `<td style="padding:5px 10px;text-align:right">${x.oi ? d(k, x.oi.entry) : '—'}</td><td style="padding:5px 10px;text-align:right">${x.oi ? d(k, x.oi.sl) : '—'}</td><td style="padding:5px 10px;text-align:right">${x.oi ? d(k, x.oi.tp1) : '—'}</td>`
+          + `<td style="padding:5px 10px;text-align:right">${x.vol ? d(k, x.vol.entry) : '—'}</td><td style="padding:5px 10px;text-align:right">${x.vol ? d(k, x.vol.sl) : '—'}</td>`
+          + `<td style="padding:5px 10px;text-align:right">${x.pTouch ? `${pct(x.pTouch.p1)} / ${pct(x.pTouch.p4)} / ${pct(x.pTouch.p8)}` : '—'}</td>`
+          + `<td style="padding:5px 10px">${fired(oi?.entered, x) ? '<span style="color:var(--green)" title="OI bot has fired this zone">OI ✓</span> ' : ''}${fired(vo?.entered, x) ? '<span style="color:#4dd0e1" title="OI-Vol bot has fired this zone">Vol ✓</span>' : ''}</td>`
+          + `<td style="padding:5px 10px;color:var(--text3);font-size:11px">${x.why || ''}</td></tr>`;
+      }
+      for (const dz of (vo?.dropped || [])) html += `<tr style="border-top:1px dashed var(--border);color:var(--text3)"><td style="padding:3px 10px">dropped (OI-Vol)</td><td style="padding:3px 10px">${dz.mode} ${dz.side}</td><td style="padding:3px 10px;text-align:right">${d(k, dz.level)}</td><td colspan="8" style="padding:3px 10px;font-size:11px">${dz.reason}</td></tr>`;
+    }
+    body.innerHTML = html || '<tr><td colspan="11" style="padding:14px;text-align:center;color:var(--text3)">No plans yet</td></tr>';
+    const ptab = (title, list) => `<div style="flex:1;min-width:320px"><div style="font-size:11px;font-weight:600;margin-bottom:4px">${title} (${list.length})</div>`
+      + (list.length ? `<table style="width:100%;font-size:11px;border-collapse:collapse">${list.map(p => `<tr style="border-top:1px solid var(--border)"><td style="padding:3px 6px">${p.symbol}</td><td>${p.direction}</td><td style="text-align:right">${p.lots}</td><td style="text-align:right">${p.open_price}</td><td style="text-align:right">${p.sl ?? '—'}</td><td style="text-align:right">${p.tp ?? '—'}</td><td style="text-align:right;color:${p.profit >= 0 ? 'var(--green)' : 'var(--red)'}">${p.profit}</td><td style="color:var(--text3)">${String(p.comment || '').slice(0, 28)}</td></tr>`).join('')}</table>` : '<div style="color:var(--text3);font-size:11px">none open</div>') + '</div>';
+    if (pos) pos.innerHTML = ptab('OI bot open positions', a.positions.oi) + ptab('OI-Vol bot open positions', a.positions.vol);
+  } catch (e) { if (sum) sum.textContent = 'Audit unavailable: ' + e.message; }
+}
+window.loadOiVolAudit = loadOiVolAudit;
+
+loadOiVolConfig();
+loadOiVolCreds();
+loadOiVolLiveStatus();
+
+
 // ═══════════════════════════ YIELD-SPREAD BOT ═══════════════════════════════════
 // Yield-spread z-score mean-reversion. Config → yield_spread_config; the server
 // producer computes the daily z into yield_spread_plan; the bot pushes yield_spread_status.

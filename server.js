@@ -229,7 +229,7 @@ import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oi
 import { levelExpectation } from './js/levelExpectation.js';   // per-level Reject/Break/Magnet reading
 import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
 import { buildOILevelText } from './js/oiLevelExport.js';
-import { oiGexLadder as _oiGexLadder } from './js/oi.js';
+import { oiGexLadder as _oiGexLadder, computeExpiryLevels as _oiComputeExpiry, oiMatrixExpiryLegs as _oiMatrixLegs, oiFlatVol as _oiFlatVol } from './js/oi.js';
 import { buildTradesText as _oiTradesText } from './js/oiTradesExport.js';   // OI bot zones → TradingView block (pine/OI Bot Trades.pine)
 import { emptyBook as _oiShadowEmptyBook, syncPlan as _oiShadowSyncPlan, stepBar as _oiShadowStepBar, summarize as _oiShadowSummarize } from './js/oiShadowExec.js';   // CME-vs-Cboe OI plan paper-trader (forward test, no orders)
 import { CBOE_PAIRS as _CBOE_PAIRS, cboeUrl as _cboeUrl, parseCboeChain as _parseCboeChain, cboeLadder as _cboeLadder, cboeSnapshotRow as _cboeSnapshotRow, cboeOverlayInst as _cboeOverlayInst, cfdCashOffset as _cfdCashOffset, cboeShift as _cboeShift, cashRefTime as _cashRefTime } from './js/cboeChain.js';   // free delayed Cboe index-options chain (additive to CME; dashboard toggle + tracking)   // per-expiry strike ladder for oi-dashboard (built on read, never stored)
@@ -19186,16 +19186,99 @@ function _oiGexMedianAbs(hist, key, useDay = false) {
 // Options exist for the Cboe SHADOW plan only (_refreshOIBotZonesCboe): it hands in a
 // store of Cboe-overlaid entries and writes a different key. Called with no arguments
 // (every live caller) this is byte-for-byte the live producer: oi_store in, oi_bot_zones out.
-async function _refreshOIBotZones({ storeOverride = null, outKey = 'oi_bot_zones', strategy = 'oi-bot', noHistory = false } = {}) {
+// The OI-VOL variant (2026-10-15): same planner, same store, same MT5 executor code — but it only arms levels price can actually
+// reach (selectBy 'reach', then a calibrated P(touch) gate) and records the touch odds on every zone. Runs as its own plan
+// (`oi_vol_bot_zones`) + config (`oi_vol_bot_config`) + bot, paper by default, so its levels can be audited against the live OI bot's.
+const OI_VOL_CFG_OVERRIDES = {
+  bookMode: 'near',           // 'near' = ALL expiries within nearBookDays aggregated into one book (the walls the export's today sheet shows);
+                              // 'day' = the OI bot's single shortest-DTE expiry
+  nearBookDays: 3,
+  selectBy: 'reach',          // near, reachable walls fill the K slots (the OI bot ranks by strength and lets the far ones crowd them out)
+  maxReachMult: 3,            // …and anything beyond 3× the day-scaled reference move is not armed
+  minTouchP: 0.20,            // calibrated chance price touches the ENTRY inside touchHorizon — below this the zone is dropped (0 = off)
+  touchHorizon: '4h',         // '1h' | '4h' | '8h'
+};
+const _OI_REACH_OA = { 'EUR/USD': 'EUR_USD', 'GBP/USD': 'GBP_USD', 'USD/JPY': 'USD_JPY', 'AUD/USD': 'AUD_USD', 'XAU/USD': 'XAU_USD',
+  'USD/CAD': 'USD_CAD', 'USD/CHF': 'USD_CHF', 'NAS100_USD': 'NAS100_USD', 'SPX500_USD': 'SPX500_USD', 'US30_USD': 'US30_USD', 'US2000_USD': 'US2000_USD' };
+const _oiTouchBars = {};   // oanda symbol -> { at, bars } (5 min) so six instruments × every plan refresh stay cheap
+async function _oiM5Bars(osym) {
+  const c = _oiTouchBars[osym]; if (c && Date.now() - c.at < 5 * 60_000) return c.bars;
+  if (!process.env.OANDA_KEY) return null;
+  const oB = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  const cr = await fetch(`${oB}/v3/instruments/${encodeURIComponent(osym)}/candles?granularity=M5&count=2000&price=M`,
+    { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(12_000) });
+  if (!cr.ok) return null;
+  const bars = ((await cr.json()).candles || []).filter(c => c.complete && c.mid)
+    .map(c => ({ time: Math.floor(new Date(c.time).getTime() / 1000), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
+  if (bars.length < 400) return null;
+  _oiTouchBars[osym] = { at: Date.now(), bars }; return bars;
+}
+// Calibrated P(touch) of each zone's ENTRY at 1h/4h/8h (made non-decreasing in time). Returns Map(zoneIndex -> {p1,p4,p8}) or null on any failure
+// (a missing probability is honest; a guessed one is not — the caller then applies NO gate).
+async function _oiZoneTouch(pair, zones) {
+  try {
+    const osym = _OI_REACH_OA[pair]; if (!osym || !zones.length) return null;
+    const bars = await _oiM5Bars(osym); if (!bars) return null;
+    const ctx = _fpBuildCtx(bars, {}), out = new Map();
+    const lv = zones.map((z, i) => ({ price: z.entry, type: z.mode, i }));
+    const byH = {};
+    for (const H of [12, 48, 96]) byH[H] = _oiWallReach(ctx, bars.length, lv.map(l => ({ price: l.price, type: l.type })), H, { nPaths: 200, instrument: pair });
+    lv.forEach((l, k) => { const g = H => byH[H].find(r => r.price === l.price)?.calibrated ?? 0;
+      const p1 = g(12), p4 = Math.max(g(48), p1), p8 = Math.max(g(96), p4); out.set(l.i, { p1: +p1.toFixed(3), p4: +p4.toFixed(3), p8: +p8.toFixed(3) }); });
+    return out;
+  } catch { return null; }
+}
+// ALL expiries within `maxDte` days as ONE book: walls + max pain from the summed open interest, net gamma summed leg by leg (each leg at its OWN
+// time-to-expiry and ATM vol — summing OI across expiries and then taking gamma at one T would be wrong). Same shape as `inst.dayExpiry`, so the
+// planner treats it as the traded book. Returns null when the matrix has no usable leg (caller falls back to the day expiry).
+const _OI_INVERTED = new Set(['USD/JPY', 'USD/CAD', 'USD/CHF']);
+function _oiNearBook(inst, pair, maxDte) {
+  try {
+    if (!inst?.rawOI || !(inst.spot > 0)) return null;
+    const basis = Number.isFinite(inst.basis) ? inst.basis : 0;
+    let legs = _oiMatrixLegs(inst.rawOI, { basis, inverted: _OI_INVERTED.has(pair), minOI: inst.minOI ?? 1 });
+    if (!legs) return null;
+    if (inst.cpSwapped) legs = legs.map(l => ({ ...l, calls: l.puts, puts: l.calls }));
+    legs = legs.filter(l => Number.isFinite(l.dte) && l.dte >= 0 && l.dte <= maxDte && l.strikes.length >= 2);
+    // Deep-tail strikes (SPX paste 2026-10-15 carried 22,892 lots at strike ~100 / ~2100 in the 2-DTE column) are not near-term walls, and summing
+    // expiries lets them take the top wall slots. Keep strikes within 35% of spot.
+    legs = legs.map(l => { const keep = l.strikes.map((k, i) => Math.abs(k / inst.spot - 1) <= 0.35 ? i : -1).filter(i => i >= 0);
+      return { ...l, strikes: keep.map(i => l.strikes[i]), calls: keep.map(i => l.calls[i]), puts: keep.map(i => l.puts[i]) }; }).filter(l => l.strikes.length >= 2);
+    if (!legs.length) return null;
+    const pts = (inst.ivTermStructure?.points || []).filter(p => p && p.iv > 0 && Number.isFinite(p.dte));
+    const flat = _oiFlatVol(pair);
+    const sigFor = d => pts.length ? pts.slice().sort((a, b) => Math.abs(a.dte - d) - Math.abs(b.dte - d))[0].iv / 100 : flat;
+    const sumOI = new Map(), prof = new Map(); let gex = 0, dex = 0, minDte = Infinity;
+    for (const l of legs) {
+      minDte = Math.min(minDte, l.dte);
+      l.strikes.forEach((k, i) => { const key = k.toPrecision(10); const r = sumOI.get(key) || { k, c: 0, p: 0 }; r.c += l.calls[i] || 0; r.p += l.puts[i] || 0; sumOI.set(key, r); });
+      const sg = sigFor(l.dte), lv = _oiComputeExpiry(l.strikes, l.calls, l.puts, inst.spot, pair, { dte: l.dte, minOI: inst.minOI ?? 20, numLevels: 8, sigmaFn: sg > 0 ? () => sg : null });
+      if (!lv) continue;
+      gex += lv.exposures?.gex || 0; dex += lv.exposures?.dex || 0;
+      for (const r of (lv.gexProfile || [])) { const key = r.strike.toPrecision(10); const a = prof.get(key) || { strike: r.strike, callOI: 0, putOI: 0, callGex: 0, putGex: 0, netGex: 0 };
+        a.callOI += r.callOI || 0; a.putOI += r.putOI || 0; a.callGex += r.callGex || 0; a.putGex += r.putGex || 0; a.netGex += r.netGex || 0; prof.set(key, a); }
+    }
+    const rows = [...sumOI.values()].sort((a, b) => a.k - b.k);
+    // walls / tiers / max pain off the SUMMED OI (the same brick the day set uses); gamma replaced by the leg-by-leg sums
+    const base = _oiComputeExpiry(rows.map(r => r.k), rows.map(r => r.c), rows.map(r => r.p), inst.spot, pair, { dte: Math.max(1, minDte), minOI: inst.minOI ?? 20, numLevels: 24 });   // 24 not 8: the aggregate's top-8-by-OI are the FAR walls — the near ones must stay in the candidate list for the reach selection
+    if (!base) return null;
+    const gexProfile = [...prof.values()].sort((a, b) => a.strike - b.strike);
+    return { ...base, dte: minDte, nLegs: legs.length, legDtes: legs.map(l => l.dte),
+      exposures: { ...(base.exposures || {}), gex, dex }, gexProfile: gexProfile.length ? gexProfile : base.gexProfile,
+      gammaFlip: gexProfile.length ? computeGammaFlip(gexProfile, inst.spot) : base.gammaFlip,
+      regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : null };
+  } catch (e) { console.warn('[oi-vol] near book failed:', e.message); return null; }
+}
+async function _refreshOIBotZones({ storeOverride = null, outKey = 'oi_bot_zones', strategy = 'oi-bot', noHistory = false, cfgKey = 'oi_bot_config', variant = null } = {}) {
   try {
     const [oiRaw, cfgRaw, histRaw, calibRaw] = await Promise.all([
-      storeOverride ? null : kv.get('oi_store').catch(() => null), kv.get('oi_bot_config').catch(() => null),
+      storeOverride ? null : kv.get('oi_store').catch(() => null), kv.get(cfgKey).catch(() => null),
       noHistory ? null : kv.get('oi_history').catch(() => null),
       kv.get('oi_hold_calibration').catch(() => null),
     ]);
     if (!storeOverride && !oiRaw) return 0;
     const store = storeOverride || (JSON.parse(oiRaw).data ?? JSON.parse(oiRaw));
-    const cfg = { ...OI_BOT_CFG_DEFAULTS, ...(cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {}) };
+    const cfg = { ...OI_BOT_CFG_DEFAULTS, ...(variant === 'vol' ? OI_VOL_CFG_OVERRIDES : {}), ...(cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {}) };
     // oi_history is CME's (its wall-stability, flip drift and the GEX median that sets
     // conviction are all in CME units/strikes) — a Cboe book must not be judged by it.
     const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
@@ -19244,7 +19327,10 @@ async function _refreshOIBotZones({ storeOverride = null, outKey = 'oi_bot_zones
       // its regime is the near-dated GEX sign (user's call). `pickNearExpiry` already
       // required real near-money OI, so this is never a thin/noisy front weekly. No day
       // expiry (single-expiry paste) → tradeInst IS inst, so nothing changes.
-      const dayEx = inst.dayExpiry && typeof inst.dayExpiry === 'object' ? inst.dayExpiry : null;
+      let dayEx = inst.dayExpiry && typeof inst.dayExpiry === 'object' ? inst.dayExpiry : null;
+      // OI-Vol variant, bookMode 'near': trade the AGGREGATE of every expiry within nearBookDays (what the export's today sheet draws).
+      let _nearBook = null;
+      if (variant === 'vol' && cfg.bookMode === 'near') { _nearBook = _oiNearBook(inst, pair, cfg.nearBookDays ?? 3); if (_nearBook) dayEx = _nearBook; }
       const tradeInst = dayEx
         ? { ...inst, dte: dayEx.dte, maxPain: dayEx.maxPain, callWalls: dayEx.callWalls, putWalls: dayEx.putWalls,
             callWall: dayEx.callWall, putWall: dayEx.putWall, exposures: dayEx.exposures,
@@ -19307,7 +19393,7 @@ async function _refreshOIBotZones({ storeOverride = null, outKey = 'oi_bot_zones
           return { active: false, note: `charm: ${cDte.toFixed(1)}DTE is not near expiry (charm is negligible past ~${nearDTE}DTE) — not applied` };
         return { active: true, note: `charm from the ${cDte.toFixed(1)}DTE smile (matches the traded expiry)` };
       })();
-      const gexMedianAbs = _oiGexMedianAbs(hist, key, !!dayEx);   // match the book being planned
+      const gexMedianAbs = _nearBook ? null : _oiGexMedianAbs(hist, key, !!dayEx);   // match the book being planned (no archived median exists for the aggregate near book → conviction/neutral band off for it)
       // DAY-SCALED refMove. oiRefMove() (the field on `inst`) is always measured to the
       // PRIMARY expiry, because that's what a paste's top-level dte/expectedMove describe.
       // Every structural distance downstream of refMove -- the stop buffer, the break-
@@ -19356,6 +19442,18 @@ async function _refreshOIBotZones({ storeOverride = null, outKey = 'oi_bot_zones
         vannaState: _vn && _vn.firing ? { state: _vn.state, firing: true } : null,
         charmActive: _charm.active,
         vannaNote: _vn && _vn.firing ? `vanna ${_vn.state} firing (IV ${_vn.ivFalling ? 'falling' : 'rising'}) — indices strong, gold/FX weak` : null });
+      // OI-VOL variant: stamp the calibrated touch odds on every zone and drop the ones price is unlikely to reach.
+      if (variant === 'vol' && zones.length) {
+        const tp = await _oiZoneTouch(pair, zones);
+        if (tp) {
+          const hKey = { '1h': 'p1', '4h': 'p4', '8h': 'p8' }[cfg.touchHorizon] || 'p4';
+          for (let zi = zones.length - 1; zi >= 0; zi--) { const t = tp.get(zi); zones[zi].pTouch = t;
+            if (cfg.minTouchP > 0 && zones[zi].mode !== 'maxpain' && t && t[hKey] < cfg.minTouchP) {
+              droppedZones.push({ mode: zones[zi].mode, side: zones[zi].side, level: zones[zi].level, entry: zones[zi].entry,
+                reason: `${(t[hKey] * 100).toFixed(0)}% chance of touching the entry within ${cfg.touchHorizon} (< ${(cfg.minTouchP * 100).toFixed(0)}%)` });
+              zones.splice(zi, 1); } }
+        } else droppedZones.push({ mode: '-', side: '-', level: null, entry: null, reason: 'touch odds unavailable (no OANDA bars) — NO touch gate applied this refresh' });
+      }
       const gex = tradeInst.exposures?.gex ?? 0;   // traded regime = near-dated when a day expiry is present
       // When an in-universe instrument yields no zones, say why (flat regime / no
       // strong walls / walls out of range) — so a blank plan is legibly intentional.
@@ -19405,6 +19503,10 @@ async function _refreshOIBotZones({ storeOverride = null, outKey = 'oi_bot_zones
 }
 svcInterval('oiBot', () => _refreshOIBotZones(), 10 * 60_000);
 setTimeout(() => _refreshOIBotZones(), 60_000);
+// OI-Vol variant plan (paper-by-default bot; see OI_VOL_CFG_OVERRIDES). Own key, own config — never touches oi_bot_zones.
+const _refreshOIVolBotZones = () => _refreshOIBotZones({ outKey: 'oi_vol_bot_zones', strategy: 'oi-vol-bot', cfgKey: 'oi_vol_bot_config', variant: 'vol' });
+svcInterval('oiBot', _refreshOIVolBotZones, 10 * 60_000);
+setTimeout(() => _refreshOIVolBotZones(), 90_000);
 
 // ── volatility_bot_v2 (Level Atlas Vote Portfolio) plan producer ─────────────
 // Replaces `volatility_bot` (retired, left running until the owner stops it —
@@ -21365,6 +21467,48 @@ app.get('/api/oi-bot/zones', async (req, res) => {
     const pair = (req.query.pair || '').toLowerCase();
     if (pair) { const k = (() => { try { return resolveKey(pair); } catch { return pair; } })() || pair; return res.json({ ok: true, ...vm, instruments: { [k]: vm.instruments?.[k] || null } }); }
     res.json({ ok: true, ...vm });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── OI-VOL bot: its own plan, and the LEVEL AUDIT against the live OI bot ─────────────────────────────────────
+app.get('/api/oi-vol-bot/zones', async (req, res) => {
+  try { const raw = await kv.get('oi_vol_bot_zones').catch(() => null);
+    res.json({ ok: true, ...(raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : { instruments: {} }) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/oi-vol-bot/zones/refresh', async (_req, res) => {
+  try { const n = await _refreshOIVolBotZones(); res.json({ ok: true, instruments: n }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// One row per planned level across BOTH plans: in both / only the OI bot / only the OI-Vol bot, with the reason a level was left out,
+// its calibrated touch odds, the regime + traded expiry each plan used, what has fired, and the open MT5 positions of each bot.
+app.get('/api/oi-vol-bot/audit', async (_req, res) => {
+  try {
+    const J = async k => { const raw = await kv.get(k).catch(() => null); if (!raw) return null; const j = JSON.parse(raw); return j.data ?? j; };
+    const [oiPlan, volPlan, oiSt, volSt, volCfg] = await Promise.all([J('oi_bot_zones'), J('oi_vol_bot_zones'), J('oi_bot_status'), J('oi_vol_bot_status'), J('oi_vol_bot_config')]);
+    const keys = [...new Set([...Object.keys(oiPlan?.instruments || {}), ...Object.keys(volPlan?.instruments || {})])];
+    const same = (a, b) => a.mode === b.mode && a.side === b.side && Math.abs(a.level - b.level) <= Math.max(1e-9, Math.abs(a.level) * 0.0005);
+    const instruments = {}; const sum = { both: 0, oiOnly: 0, volOnly: 0 };
+    for (const k of keys) {
+      const A = oiPlan?.instruments?.[k], B = volPlan?.instruments?.[k];
+      const az = (A?.zones || []), bz = (B?.zones || []);
+      const linesOf = st => (st?.lines || []).find(l => l.instrument === k);
+      const rows = [];
+      for (const a of az) { const b = bz.find(x => same(a, x));
+        if (b) { sum.both++; rows.push({ status: 'both', mode: a.mode, side: a.side, level: a.level, oi: { entry: a.entry, sl: a.sl, tp1: a.tp1, size: a.sizeFactor }, vol: { entry: b.entry, sl: b.sl, tp1: b.tp1, size: b.sizeFactor }, pTouch: b.pTouch || null }); }
+        else { sum.oiOnly++; const why = (B?.droppedZones || []).find(d => d.mode === a.mode && d.level != null && Math.abs(d.level - a.level) <= Math.abs(a.level) * 0.0005)?.reason || 'not selected by the OI-Vol ranking (nearer reachable levels took the slots)';
+          rows.push({ status: 'oiOnly', mode: a.mode, side: a.side, level: a.level, oi: { entry: a.entry, sl: a.sl, tp1: a.tp1, size: a.sizeFactor }, vol: null, why }); } }
+      for (const b of bz) if (!az.some(a => same(a, b))) { sum.volOnly++; rows.push({ status: 'volOnly', mode: b.mode, side: b.side, level: b.level, oi: null, vol: { entry: b.entry, sl: b.sl, tp1: b.tp1, size: b.sizeFactor }, pTouch: b.pTouch || null,
+        why: 'the OI bot ranks by strength, so this nearer wall was outside its top slots' }); }
+      rows.sort((x, y) => y.level - x.level);
+      instruments[k] = { spot: A?.spot ?? B?.spot ?? null,
+        oi: A ? { regime: A.regime, dte: A.dte, zones: az.length, stale: A.stale || null, diag: A.diag || null, entered: linesOf(oiSt)?.entered || [] } : null,
+        vol: B ? { regime: B.regime, dte: B.dte, zones: bz.length, stale: B.stale || null, diag: B.diag || null, entered: linesOf(volSt)?.entered || [], dropped: B.droppedZones || [] } : null,
+        rows };
+    }
+    res.json({ ok: true, generatedAt: { oi: oiPlan?.generatedAt || null, vol: volPlan?.generatedAt || null }, summary: sum, instruments,
+      positions: { oi: oiSt?.mt5_positions || [], vol: volSt?.mt5_positions || [] },
+      mode: { oi: oiSt?.mode || null, vol: volSt?.mode || null }, volConfig: { selectBy: volCfg?.selectBy ?? OI_VOL_CFG_OVERRIDES.selectBy, maxReachMult: volCfg?.maxReachMult ?? OI_VOL_CFG_OVERRIDES.maxReachMult,
+        minTouchP: volCfg?.minTouchP ?? OI_VOL_CFG_OVERRIDES.minTouchP, touchHorizon: volCfg?.touchHorizon ?? OI_VOL_CFG_OVERRIDES.touchHorizon } });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/oi-bot/zones/refresh', async (_req, res) => {

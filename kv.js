@@ -257,6 +257,11 @@ const _CF_EXACT = new Set([
   // (oi_bot_zones_cboe stays local: the shadow job rebuilds it every 10 min.)
   'oi_bot_trade_log',           // OI resolved closed-trade log (deduped, capped) — give-back/MFE history; same durability need as range_line_trade_log
   'oi_hold_calibration',        // OI hold-score calibration (collecting/active + fitted weights) — derived from oi_bot_trade_log but persisted so the plan producer/banner never see a blank right after a redeploy
+  'oi_vol_bot_config',          // OI-Vol bot settings (variant of the OI bot: reachable-level selection + touch gate) — must survive redeploys
+  'oi_vol_bot_credentials',     // OI-Vol bot MT5 credentials — must survive redeploys
+  'oi_vol_bot_zones',           // OI-Vol bot plan — keep last good plan across a redeploy (the worker's /api/kv/get serves it to the executor)
+  'oi_vol_bot_trade_log',       // OI-Vol resolved closed-trade log — forward record for the OI vs OI-Vol comparison
+  'oi_vol_bot_state',           // OI-Vol bot one-shot state — survives BOT restarts; same double-entry protection as oi_bot_state
   'oi_bot_state',               // OI bot one-shot state (entered zones + features per plan) — survives BOT restarts via KV; keep across redeploys so a same-day server bounce can't double-enter
   'volatility_bot_v2_config',      // Volatility V2 (Level Atlas Vote Portfolio) bot settings — must survive redeploys
   'volatility_bot_v2_credentials', // Volatility V2 MT5 credentials — must survive redeploys
