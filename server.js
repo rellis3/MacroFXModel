@@ -23556,7 +23556,7 @@ app.get('/api/vol-forecast/zones', async (req, res) => {
       // '?reach=1' so the default export stays fast (this fans out one OANDA fetch + a
       // Monte-Carlo per pair). Fail-safe + time-bounded: any pair that errors, or the whole
       // batch timing out, simply yields no touch labels — never a broken export.
-      let reachByPair = null;
+      let reachByPair = null; const _oiOpenByPair = {};
       if (String(req.query.reach || '') === '1' && process.env.OANDA_KEY) {
         const OA = { 'EUR/USD':'EUR_USD','GBP/USD':'GBP_USD','USD/JPY':'USD_JPY','AUD/USD':'AUD_USD',
           'XAU/USD':'XAU_USD','USD/CAD':'USD_CAD','USD/CHF':'USD_CHF','NAS100_USD':'NAS100_USD',
@@ -23576,6 +23576,12 @@ app.get('/api/vol-forecast/zones', async (req, res) => {
           const bars = (cj.candles || []).filter(c => c.complete && c.mid).map(c => ({
             time: Math.floor(new Date(c.time).getTime() / 1000), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
           if (bars.length < 400) return null;
+          // London-midnight open (the ladder's anchor), for ?tiers=1 — the newest 00:00 London bar's open.
+          try {
+            const f = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+            for (let i = bars.length - 1; i >= 0; i--) { const pp = f.formatToParts(new Date(bars[i].time * 1000)); const hh = pp.find(x => x.type === 'hour').value, mm = pp.find(x => x.type === 'minute').value;
+              if (hh === '00' && mm === '00') { _oiOpenByPair[k] = bars[i].open; break; } }
+          } catch { /* tiers fall back to none */ }
           const ctx = _fpBuildCtx(bars, {});
           const rows = _oiWallReach(ctx, bars.length, levels.map(l => ({ price: l.price, type: l.type })), H, { nPaths: 300, instrument: k });
           const m = {};
@@ -23606,7 +23612,18 @@ app.get('/api/vol-forecast/zones', async (req, res) => {
         const vol = fk && forecastState.latest?.instruments?.[fk]?.vol_annual;
         bandByPair[p] = _oiDayBand(Number.isFinite(vol) ? vol : null, p, { k: bandK });
       }
-      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot, reachByPair, terms, allExpiry, bandByPair, mode });
+      // `?tiers=1` (needs reach=1 for the London open): zones of OI levels + the forecast ladder ranked by distance, tier text carried in the
+      // slots the indicator already prints (no Pine change). See js/oiTiers.js for what a tier does and does not mean.
+      let ladderByPair = null; const tiers = String(req.query.tiers || '') === '1';
+      if (tiers) {
+        ladderByPair = {};
+        for (const p of Object.keys(store || {})) {
+          const fk = (() => { try { return _forecastKeyForPair(p); } catch { return null; } })();
+          const lad = fk && forecastState.latest?.instruments?.[fk]?.ladder;
+          if (lad && _oiOpenByPair[p] > 0) ladderByPair[p] = { open: _oiOpenByPair[p], ladder: lad, sigmaPct: lad.sigma_used_pct };
+        }
+      }
+      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot, reachByPair, terms, allExpiry, bandByPair, mode, tiers, ladderByPair });
       if (oiText && !oiText.includes('no OI data')) text += '\n\n' + oiText;
     } catch { /* OI is a bonus section — never fail the zones export over it */ }
     res.type('text/plain').send(text);

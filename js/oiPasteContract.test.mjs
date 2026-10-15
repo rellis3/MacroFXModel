@@ -405,6 +405,22 @@ console.log('[downstream wiring — export, indicator, bot]');
   // parser reads, which is the actual contract. Asserted the way the indicator
   // parses it (split on ' : ', then on spaces, token 0 = type, a 't'-prefixed
   // token 1 = tier) so a future annotation cannot silently shift the type.
+  // TIERS mode: same level lines (indicator parse unchanged), tier text in the heat/note slots, ladder legs as extra OI lines, human block last.
+  {
+    const NL = String.fromCharCode(10);
+    const lad = { 'XAU/USD': { open: 4075, sigmaPct: 1.1, ladder: { oh: { p50: 0.7, p75: 1.3, p90: 2.0 }, ol: { p50: 0.7, p75: 1.3, p90: 2.0 } } } };
+    const plain = buildOILevelText({ 'XAU/USD': inst }, { generated: 'test' });
+    const tt = buildOILevelText({ 'XAU/USD': inst }, { generated: 'test', tiers: true, ladderByPair: lad });
+    const oiL = t => t.split(NL).filter(l => l.startsWith('OI '));
+    const parsed = oiL(tt).map(l => { const p = l.split(' : '); return { n: p.length, typ: (p[1] || '').split(' ')[0] }; });
+    ok('tiers: every OI line still has exactly one " : " (Pine parse unchanged)', parsed.every(x => x.n === 2));
+    ok('tiers: original level types still lead their lines', ['gex_flip', 'call_wall', 'put_wall'].every(t => parsed.some(x => x.typ === t)));
+    ok('tiers: forecast legs appear as extra OI lines (fcst_*)', parsed.some(x => x.typ.startsWith('fcst_')));
+    ok('tiers: a wall line carries the tier tag in the heat slot', oiL(tt).some(l => /^OI .* : (call_wall|put_wall|gex_flip).* \. Tier \d .* \. T\d[v^] /.test(l)), oiL(tt).find(l => l.includes(' : gex_flip')));
+    ok('tiers: human TIERS block present, not an OI line', tt.split(NL).some(l => l.startsWith('· TIERS')) && !tt.split(NL).some(l => l.startsWith('OI ') && l.includes('TIERS')));
+    ok('tiers: off by default (plain export has no Tier text)', !/Tier \d/.test(plain));
+    console.log(tt.split(NL).filter(l => l.startsWith('·') && /TIERS|Tier/.test(l)).join(NL));
+  }
   ok('C+Z export carries gex_flip to the indicator', /^OI .* : gex_flip(\s|$)/m.test(txt), '');
   {
     const oiLines = txt.split('\n').filter(l => l.startsWith('OI '));

@@ -41,6 +41,7 @@ import { wallHoldScore } from './oiZones.js';
 import { gammaFlip, distanceToFlip, rolloffSummary } from './gammaFlow.js';
 import { rebuildGexProfile, oiFuturesTermsPrice, oiBandSelect, oiRegimeBands, OI_PRODUCT_SPEC, oiSpec, oiRippleBook } from './oi.js';
 import { RIPPLE_BUCKETS } from './rippleBook.js';
+import { buildTiers, describeZone, ladderLegs, zoneTag } from './oiTiers.js';
 
 // Canonical chart-ticker per oi_store key. Mirrors the Confluence-Zones indicator's
 // normalisation targets so the same chart symbols the user already uses resolve here
@@ -166,7 +167,7 @@ function fmtCot(c) {
 // the lines by PRICE rather than by type so that levels stacked at one strike sit
 // together in the text the way they sit on the chart. The Pine indicator reads the
 // lines identically in both modes; it is a filter, not a format.
-export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null, cot = null, reachByPair = null, terms = 'spot', allExpiry = false, bandByPair = null, mode = 'full' } = {}) {
+export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null, cot = null, reachByPair = null, terms = 'spot', allExpiry = false, bandByPair = null, mode = 'full', tiers = false, ladderByPair = null } = {}) {
   const today = mode === 'today';
   // bandByPair: { pair: bandFrac } — the day's trading band (from the vol forecast). When
   // present, the DEFAULT export shows every expiry's walls WITHIN the band + a catch level
@@ -351,6 +352,19 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     // endpoint (needs current bars); absent here in the pure/offline path.
     const rp = (reachByPair && reachByPair[pair]) ? reachByPair[pair] : null;
     const drawn = new Set();   // type@price of every detailed line drawn, so the per-expiry pass doesn't duplicate
+    // TIERS mode (opt-in, no Pine change): zones of OI levels + the forecast ladder ranked by DISTANCE from spot (see oiTiers.js). The tier text
+    // rides in slots the indicator already prints — the heat slot (chart label) and the note slot (table) — and ladder-only legs are emitted
+    // as extra OI lines of an unknown type, which the indicator draws grey with the same label. Header line says what a tier does and doesn't mean.
+    let tierSet = null; const zoneOf = new Map();
+    const _lad = tiers && ladderByPair ? ladderByPair[pair] : null;
+    const _fmtT = p => px(p).toFixed(dp);
+    const _fmtFutT = (!futuresTerms && Number.isFinite(inst.basis) && inst.basis !== 0) ? (p => oiFuturesTermsPrice(p, inst).toFixed(dp)) : null;
+    if (tiers && _lad && _lad.open > 0 && _lad.sigmaPct > 0 && inst.spot > 0) {
+      const legs = ladderLegs(_lad.ladder, _lad.open);
+      tierSet = buildTiers({ spot: inst.spot, sigma: inst.spot * _lad.sigmaPct / 100, levels, legs });
+      for (const z of [...tierSet.below, ...tierSet.above]) for (const m of z.members) if (m.ref) zoneOf.set(m.ref, z);
+    }
+    const _zoneTouch = z => { if (!rp) return null; for (const m of z.members) { const t = m.ref && rp[m.ref.price.toFixed(6)]; if (t) return t; } return null; };
     for (const l of levels) {
       const tier = Number.isFinite(l.tier) && l.tier > 0 ? ` t${l.tier}` : '';
       // DTE tag ("14dte") after the tier when a level carries one — present only in
@@ -366,8 +380,10 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
       // `today` drops far levels (beyond ~2.5x the expected move): context in the full
       // export, noise on a chart of the session ahead.
       if (today && ex?.far) continue;
-      const note  = ex ? ex.mid : '';
-      const heat  = heatOf.get(l) || '';
+      let note  = ex ? ex.mid : '';
+      let heat  = heatOf.get(l) || '';
+      const _z = zoneOf.get(l);
+      if (_z) { note = describeZone(_z, { fmt: _fmtT, fmtFut: _fmtFutT, touch: _zoneTouch(_z) }); heat = zoneTag(_z); }
       const touch = rp ? (rp[l.price.toFixed(6)] || '') : '';
       // `today` + P(touch) available: drop levels the session cannot reach. The
       // reachability model is the one calibrated number on the sheet (OOS 1.7pp), and a
@@ -457,9 +473,20 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
         lines.push(`OI ${px(c.price).toFixed(dp)} : ${c.type} ${c.dte}dte${c.catch ? ' catch' : ''}${tail}`);
       }
     }
+    // TIERS: forecast-ladder legs that landed in a tier become OI lines too (grey, unknown type), then the human-readable block.
+    if (tierSet) {
+      for (const z of [...tierSet.below, ...tierSet.above]) {
+        const d = describeZone(z, { fmt: _fmtT, fmtFut: _fmtFutT, touch: _zoneTouch(z) });
+        for (const m of z.members) if (m.kind === 'ladder') emitOI(m.price, `OI ${px(m.price).toFixed(dp)} : ${m.type} . ${d} . ${zoneTag(z)}`);
+      }
+    }
     if (today) {
       oiOut.sort((a, b) => b.price - a.price);
       for (const o of oiOut) lines.push(o.line);
+    }
+    if (tierSet && (tierSet.below.length || tierSet.above.length)) {
+      lines.push('· TIERS — ordered by distance from spot (nearer = reached first and more often; that is validated). "confluence" = sources landing in the same zone: descriptive only, not shown to add edge (forecast legs share one σ; gamma-on-ladder test found no extra reaction):');
+      for (const side of ['above', 'below']) for (const z of (side === 'above' ? tierSet.above.slice().reverse() : tierSet.below)) lines.push('·   ' + describeZone(z, { fmt: _fmtT, fmtFut: _fmtFutT, touch: _zoneTouch(z) }));
     }
     // REACH SUMMARY (human-only line — the indicator ignores anything not starting "OI "). The per-level P(touch) token already rides
     // on each line; this answers "which of these lines is actually in play" in one place, so the sheet can be read top-down:
