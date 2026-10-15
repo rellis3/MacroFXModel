@@ -6699,7 +6699,7 @@ const OIV_DEFAULTS = {
   subTierTrade: false, subTierSize: 0.4, minZoneSpacing: 0.05, volMagnetMinShare: 0.25,
   reactNodes: { walls: 1.0, gammaFlip: 0.8, gexFlip: 0.8, vannaFlip: 0.6, volMagnets: 0.6 },
   // OI-Vol selection (server: OI_VOL_CFG_OVERRIDES) — reachable levels only
-  selectBy: 'reach', maxReachMult: 3, minTouchP: 0.20, touchHorizon: '4h',
+  selectBy: 'reach', maxReachMult: 3, minTouchP: 0.10, touchHorizon: '8h',
   // execution (the bot)
   paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
   touch_tol_pips: 2, max_spread_pips: null, tick_secs: 3, status_secs: 30, plan_secs: 600,

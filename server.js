@@ -19195,8 +19195,8 @@ const OI_VOL_CFG_OVERRIDES = {
   nearBookDays: 3,
   selectBy: 'reach',          // near, reachable walls fill the K slots (the OI bot ranks by strength and lets the far ones crowd them out)
   maxReachMult: 3,            // …and anything beyond 3× the day-scaled reference move is not armed
-  minTouchP: 0.20,            // calibrated chance price touches the ENTRY inside touchHorizon — below this the zone is dropped (0 = off)
-  touchHorizon: '4h',         // '1h' | '4h' | '8h'
+  minTouchP: 0.10,            // calibrated chance price touches the ENTRY inside touchHorizon — below this the zone is dropped (0 = off). 20%/4h armed NOTHING on 2026-10-15 (every break entry sits >0.5% away), so the default is 10% over 8h
+  touchHorizon: '8h',         // '1h' | '4h' | '8h'
 };
 const _OI_REACH_OA = { 'EUR/USD': 'EUR_USD', 'GBP/USD': 'GBP_USD', 'USD/JPY': 'USD_JPY', 'AUD/USD': 'AUD_USD', 'XAU/USD': 'XAU_USD',
   'USD/CAD': 'USD_CAD', 'USD/CHF': 'USD_CHF', 'NAS100_USD': 'NAS100_USD', 'SPX500_USD': 'SPX500_USD', 'US30_USD': 'US30_USD', 'US2000_USD': 'US2000_USD' };
