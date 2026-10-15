@@ -111,6 +111,12 @@ svg text{font-family:var(--mono)}
     <svg id="bars" width="100%" viewBox="0 0 1000 640"></svg>
   </div>
 
+  <div class="card">
+    <h2><em>05b</em> What each level is made of — the ripple</h2>
+    <div class="sub"><b>Gamma depends on how soon the contract expires.</b> A contract expiring tomorrow is a tall narrow spike at its strike; one expiring in two months is a low wide plateau. Each bar is a price band, split by how far away the contracts are: <span style="color:#f0b04a">■ 0–1 DTE</span> <span style="color:#6fb6ff">■ 2–7</span> <span style="color:#7ad3a0">■ 8–45</span> <span style="color:#b79cf0">■ 46+</span>. A band that is mostly amber is a spike that disappears with tomorrow's expiry; one that is mostly purple stays. ▶ marks the heaviest-gamma strike each side of spot across <i>every</i> expiry, ◆ the wall the day-book bots use. <b>Measurement, not a signal:</b> in your own tests these walls reacted like any other strike.</div>
+    <svg id="ripple" width="100%" viewBox="0 0 1000 640"></svg>
+  </div>
+
   <h2 class="sech"><em>06</em> The brief — six questions, in order <span>how far can price go · which levels will be reached · where hedging calms or amplifies · is the market calmer or more nervous · is positioning building · what changed overnight</span></h2>
   <div id="brief"></div>
 
@@ -128,7 +134,7 @@ svg text{font-family:var(--mono)}
 
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <script type="module">
-import { oiMatrixExpiryLegs, oiContractSize, oiFlatVol, parseOIMatrix } from './js/oi.js';
+import { oiMatrixExpiryLegs, oiContractSize, oiFlatVol, parseOIMatrix, oiRippleBook } from './js/oi.js';
 import { bsGamma } from './js/gammaGreeks.js';
 
 const $ = s => document.querySelector(s);
@@ -593,6 +599,41 @@ function drawBars(){
   svg.querySelectorAll('g[data-t]').forEach(g => { g.onmousemove = ev => showTip(ev, g.dataset.t); g.onmouseleave = hideTip; });
 }
 
+// ── 05b ripple: each price band's |gamma| split by DTE bucket (rippleBook.js — same maths as the ladder) ────────────────
+const RB_COL = { d0_1: '#f0b04a', d2_7: '#6fb6ff', d8_45: '#7ad3a0', d46p: '#b79cf0', unk: '#8892a0' };
+function drawRipple(){
+  const D = CUR, svg = $('#ripple'); if (!D) { svg.innerHTML = ''; return; }
+  let R = null; try { R = oiRippleBook(D.e); } catch (_) {}
+  if (!R) { svg.setAttribute('viewBox', '0 0 1000 60'); svg.innerHTML = '<text x="500" y="34" text-anchor="middle" fill="#a8b1bd" font-size="13">No per-expiry book stored for this instrument.</text>'; return; }
+  const NB = 26, lo = D.spot - 1.6 * D.rm, hi = D.spot + 1.6 * D.rm, bw = (hi - lo) / NB;
+  const bands = Array.from({ length: NB }, () => ({ abs: {}, net: 0 }));
+  R.rows.forEach(r => { if (r.strike < lo || r.strike >= hi) return; const b = bands[Math.floor((r.strike - lo) / bw)];
+    for (const k in r.absByBucket) b.abs[k] = (b.abs[k] || 0) + r.absByBucket[k]; b.net += r.net; });
+  const tot = bands.map(b => Object.values(b.abs).reduce((a, c) => a + c, 0));
+  const m = pctl(tot, 0.95) || 1;
+  const W = 1000, rowH = 20, T = 30, L = 150, Rr = 190, H = T + NB * rowH + 14, span = W - L - Rr;
+  const inBand = (v, p0, p1) => Number.isFinite(v) && v >= p0 && v < p1;
+  const dayCw = D.e.dayExpiry?.callWall, dayPw = D.e.dayExpiry?.putWall;
+  let h = `<text x="${L}" y="16" fill="#a8b1bd" font-size="12">bar length = |gamma| in the band · colour = which expiries it comes from</text>`;
+  for (let r = 0; r < NB; r++) { const b = NB - 1 - r, y = T + r * rowH, p0 = lo + b * bw, p1 = p0 + bw, mid = (p0 + p1) / 2, hasSpot = D.spot >= p0 && D.spot < p1;
+    let x = L; const scale = Math.min(1, tot[b] / m) * span / (tot[b] || 1);
+    const parts = Object.keys(RB_COL).filter(k => (bands[b].abs[k] || 0) > 0);
+    let seg = '';
+    for (const k of parts) { const w = bands[b].abs[k] * scale; seg += `<rect x="${x}" y="${y + 3}" width="${w}" height="${rowH - 6}" fill="${RB_COL[k]}" opacity=".85"/>`; x += w; }
+    const tag = [];
+    if (inBand(R.walls.call?.strike, p0, p1)) tag.push('<tspan fill="#e8615f">▶ ripple call wall</tspan>');
+    if (inBand(R.walls.put?.strike, p0, p1)) tag.push('<tspan fill="#46b87a">▶ ripple put wall</tspan>');
+    if (inBand(dayCw, p0, p1)) tag.push('<tspan fill="#a8b1bd">◆ day-book call wall</tspan>');
+    if (inBand(dayPw, p0, p1)) tag.push('<tspan fill="#a8b1bd">◆ day-book put wall</tspan>');
+    const mix = parts.length && tot[b] ? parts.map(k => `${RIPPLE_LBL[k]} ${(bands[b].abs[k] / tot[b] * 100).toFixed(0)}%`).join(' · ') : 'no gamma';
+    h += `<g data-t="${esc(`<b>${px(p0)} – ${px(p1)}</b><br>${mix}<br>net: ${bands[b].net >= 0 ? 'pins' : 'speeds up'}`)}"><rect x="0" y="${y}" width="${W}" height="${rowH}" fill="${hasSpot ? 'rgba(240,176,74,.09)' : 'transparent'}"/>`
+      + `<text x="${L - 10}" y="${y + rowH * .66}" text-anchor="end" fill="${hasSpot ? '#f0b04a' : '#a8b1bd'}" font-size="12" font-weight="${hasSpot ? 700 : 400}">${px(mid)}</text>${seg}`
+      + `<text x="${Math.max(x, L) + 8}" y="${y + rowH * .66}" fill="#a8b1bd" font-size="11.5">${tag.join('  ')}</text></g>`; }
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = h;
+  svg.querySelectorAll('g[data-t]').forEach(g => { g.onmousemove = ev => showTip(ev, g.dataset.t); g.onmouseleave = hideTip; });
+}
+const RIPPLE_LBL = { d0_1: '0–1 DTE', d2_7: '2–7 DTE', d8_45: '8–45 DTE', d46p: '46+ DTE', unk: 'unknown DTE' };
+
 // ── 04 heat ─────────────────────────────────────────────────────────────────────────────
 function drawHeat(){
   const D = CUR, svg = $('#heat'); if (!D || !D.L) { svg.innerHTML = ''; return; }
@@ -647,7 +688,7 @@ function rail(){
 
 async function refresh(){
   CUR = derive(SYM); rail();
-  stats(); drawBars(); drawHeat(); drawAhead();
+  stats(); drawBars(); drawRipple(); drawHeat(); drawAhead();
   $('#note').innerHTML = `<span>Source: oi_store (${esc(STORE[SYM]?.savedAt || '')}) · candles: OANDA H1 · colours are the platform's own sign convention (calls − puts, dealers long calls / short puts). Analysis views, not signals — wall and flip effects did not beat placebo levels in your own tests.</span>`;
   await drawTerrain();     // builds the gamma field + curve the brief's structure panel reads
   drawBrief();
