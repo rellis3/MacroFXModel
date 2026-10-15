@@ -4329,6 +4329,23 @@ app.get('/api/cog-line', async (req, res) => {
     res.json({ ok: true, asOf: ser.asOf, stale: Date.now() - Date.parse(ser.asOf) > 3 * 86400e3, formula: ser.formula, legs: ser.legs, live: !!ser.live, from: sl.from, to: sl.to, nBars: bars.length, bars });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// Chart feed for the Rates card: the line plus Nasdaq (OANDA NAS100 M15 candles), both stamped by bar OPEN time so they overlay exactly
+let _cogChartCache = new Map();
+app.get('/api/cog-line/chart', async (req, res) => {
+  try {
+    const days = _cogDays(req.query.days), hit = _cogChartCache.get(days);
+    if (hit && Date.now() - hit.at < 2 * 60_000) return res.json(hit.v);
+    const ser = await _cogLineSeries(), sl = _cogSlice(ser, days), bars = _cogBars(sl);
+    if (!bars.length) return res.json({ ok: false, error: 'no line bars' });
+    let candles = [], nqError = null;
+    try {
+      const from = new Date((bars[0].t - 86400) * 1000).toISOString().slice(0, 10);
+      candles = (await fetchIntraday('NAS100_USD', 'M15', { from })).filter(b => b.time >= bars[0].t - 3600).map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close }));
+    } catch (e) { nqError = e.message; }
+    const v = { ok: true, asOf: ser.asOf, stale: Date.now() - Date.parse(ser.asOf) > 3 * 86400e3, bars, candles, nqError };
+    _cogChartCache.set(days, { at: Date.now(), v }); res.json(v);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.get('/api/cog-line/export', async (req, res) => {
   try { res.type('text/plain').send(_cogExport(await _cogLineSeries(), _cogDays(req.query.days))); }
   catch (e) { res.status(500).type('text/plain').send(`Export failed: ${e.message}`); }

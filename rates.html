@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rates &amp; Policy</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--border2:#3d444d;
     --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
@@ -241,8 +242,13 @@ async function main() {
           <div class="tile"><div class="k">Range shown</div><div class="v">${lo.toFixed(2)}–${hi.toFixed(2)}</div><div class="d">${days} days · ${d.nBars} bars</div></div>
           <div class="tile"><div class="k">Data as of</div><div class="v" style="font-size:14px;color:${stale ? 'var(--red)' : 'var(--text)'}">${esc(String(d.asOf).slice(0, 16).replace('T', ' '))}Z</div><div class="d">${stale ? 'older than 3 days: run the refresh on the laptop' : (d.live ? 'pushed from the laptop' : 'from the last deploy')}</div></div>
         </div>
-        <svg class="ch" viewBox="0 0 ${W} ${H}">${grid}${xl}<path d="${path}" fill="none" stroke="var(--blue)" stroke-width="1.8"/></svg>
-        <div class="lg"><span><i style="border-color:var(--blue)"></i>(SOFR Sep26 − Euribor Mar27) in bp × 0.1 + 1.445 · 15-minute bars · 1 unit = 10 bp</span></div>
+        <div class="sub" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0">
+          <button class="hbtn" id="cltL" aria-pressed="true"><span style="color:var(--blue)">&#9632;</span> His line</button>
+          <button class="hbtn" id="cltN" aria-pressed="true"><span style="color:var(--bull)">&#9632;</span> Nasdaq (OANDA M15)</button>
+          <span id="clrd" style="margin-left:auto;font:12px ui-monospace,monospace;color:var(--text3);font-variant-numeric:tabular-nums">hover the chart</span></div>
+        <div id="clmain" style="height:380px;border:1px solid var(--border);border-radius:8px"></div>
+        <div id="clsp" style="height:130px;margin-top:6px;border:1px solid var(--border);border-radius:8px"></div>
+        <div class="lg"><span><i style="border-color:var(--blue)"></i>(SOFR Sep26 &minus; Euribor Mar27) in bp &times; 0.1 + 1.445 &middot; 15-minute bars &middot; 1 unit = 10 bp &middot; lower panel = the spread in bp</span></div>
         <div class="sub" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
           <label>Days <select id="cldays" style="background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 6px">${[3, 5, 10, 20, 30].map(n => `<option ${n === days ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
           <button class="hbtn" id="clcopy">Copy for TradingView</button><button class="hbtn" id="clind">Copy indicator code</button>
@@ -256,7 +262,37 @@ async function main() {
       document.getElementById('cldays').onchange = e => { days = +e.target.value; load(); };
       document.getElementById('clcopy').onclick = e => copy(`/api/cog-line/export?days=${days}`, e.target);
       document.getElementById('clind').onclick = e => copy('/api/cog-line/indicator', e.target);
-      loadRead(); loadHist();
+      loadRead(); loadHist(); loadChart();
+    };
+    const loadChart = () => {
+      const m = document.getElementById('clmain'), sp = document.getElementById('clsp'); if (!m || !window.LightweightCharts) return;
+      const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim(), LC = window.LightweightCharts;
+      const base = { layout: { background: { color: css('--card') }, textColor: css('--text2'), fontSize: 11 }, grid: { vertLines: { color: css('--border') }, horzLines: { color: css('--border') } },
+        rightPriceScale: { borderColor: css('--border') }, timeScale: { borderColor: css('--border'), timeVisible: true, secondsVisible: false }, crosshair: { mode: 0 } };
+      const cm = LC.createChart(m, { ...base, width: m.clientWidth, height: 380, leftPriceScale: { visible: true, borderColor: css('--border') } });
+      const cs = LC.createChart(sp, { ...base, width: sp.clientWidth, height: 130 });
+      const sLine = cm.addLineSeries({ color: css('--blue'), lineWidth: 2, priceScaleId: 'left', priceLineVisible: false, lastValueVisible: true });
+      const sNq = cm.addCandlestickSeries({ upColor: css('--bull'), downColor: css('--bear'), borderVisible: false, wickUpColor: css('--bull'), wickDownColor: css('--bear'), priceScaleId: 'right' });
+      const sBp = cs.addLineSeries({ color: css('--purple'), lineWidth: 2, priceLineVisible: false });
+      let on = { L: true, N: true };
+      const tog = (id, key, series) => { const b = document.getElementById(id); b.onclick = () => { on[key] = !on[key]; series.applyOptions({ visible: on[key] }); b.style.opacity = on[key] ? 1 : .4; }; };
+      tog('cltL', 'L', sLine); tog('cltN', 'N', sNq);
+      fetch(`/api/cog-line/chart?days=${days}`).then(r => r.json()).then(d => {
+        if (!d.ok) { m.innerHTML = `<div class="sub" style="padding:10px">Chart unavailable: ${esc(d.error || '')}</div>`; return; }
+        const bars = d.bars; sLine.setData(bars.map(r => ({ time: r.t, value: +r.units.toFixed(3) }))); sBp.setData(bars.map(r => ({ time: r.t, value: r.bp })));
+        sNq.setData(d.candles || []); if (d.nqError) document.getElementById('clrd').textContent = 'Nasdaq not loaded: ' + d.nqError;
+        cm.timeScale().fitContent(); cs.timeScale().fitContent();
+        const byT = new Map(bars.map(r => [r.t, r])), nqT = new Map((d.candles || []).map(c => [c.time, c]));
+        let busy = false;
+        cm.timeScale().subscribeVisibleLogicalRangeChange(r => { if (r && !busy) { busy = true; cs.timeScale().setVisibleLogicalRange(r); busy = false; } });
+        cs.timeScale().subscribeVisibleLogicalRangeChange(r => { if (r && !busy) { busy = true; cm.timeScale().setVisibleLogicalRange(r); busy = false; } });
+        cm.subscribeCrosshairMove(p => {
+          const rd = document.getElementById('clrd'); if (!p.time) { rd.textContent = 'hover the chart'; return; }
+          const r = byT.get(p.time), c = nqT.get(p.time), t = new Date(p.time * 1000).toISOString().slice(5, 16).replace('T', ' ');
+          rd.innerHTML = `${t} UTC` + (r ? ` &middot; his ${r.units.toFixed(2)} &middot; spread ${r.bp.toFixed(1)} bp` : '') + (c ? ` &middot; NQ ${c.close.toFixed(0)}` : '');
+        });
+        new ResizeObserver(() => { cm.applyOptions({ width: m.clientWidth }); cs.applyOptions({ width: sp.clientWidth }); }).observe(m);
+      }).catch(() => { m.innerHTML = '<div class="sub" style="padding:10px">Chart not loaded.</div>'; });
     };
     const chipHtml = (t, col) => `<span style="font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:${col};border:1px solid ${col};border-radius:4px;padding:1px 6px">${t}</span>`;
     const loadRead = () => fetch('/api/cog-line/read').then(r => r.json()).then(r => {
