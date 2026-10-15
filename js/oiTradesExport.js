@@ -83,7 +83,10 @@ export function buildTradesText(plan, status = null, { source = 'CME', generated
       + (v.stale ? ' · STALE OI' : '') + (zones.length ? '' : ` · no zones${v.diag?.reason ? ` (${String(v.diag.reason).replace(/\s+/g, ' ').slice(0, 60)})` : ''}`));
     const line = lines.find(l => l.instrument === key) || null;
     const mine = positions.filter(p => { try { return resolveKey(p.symbol) === key; } catch { return false; } });
+    const matched = new Set();   // tickets of open positions that belong to a zone still in the plan
+    const tagOf = c => String(c || '').match(/\[([^\]~]+)/)?.[1] || null;
     for (const z of zones) {
+      for (const p of mine) { const t = tagOf(p.comment); if (t && (t === zoneId(z) || alreadyEntered(z, [t]))) matched.add(p); }
       const entry = Number(z.entry), sl = Number(z.sl);
       const tp = Number.isFinite(Number(z.tp1)) && z.tp1 != null ? Number(z.tp1) : Number.isFinite(Number(z.tp2)) && z.tp2 != null ? Number(z.tp2) : null;
       if (!Number.isFinite(entry) || !Number.isFinite(sl)) continue;
@@ -91,6 +94,20 @@ export function buildTradesText(plan, status = null, { source = 'CME', generated
       out.push(['TZ', String(z.side).toUpperCase(), z.mode, num(z.level, d), num(entry, d), num(sl, d),
         num(tp, d), z.tp1 != null && z.tp2 != null ? num(z.tp2, d) : '-', zoneState(z, line, mine), rr,
         ...(Number.isFinite(z?.pTouch?.p8) ? [`pt:${Math.round(z.pTouch.p8 * 100)}`] : [])].join(' '));
+    }
+    // OPEN TRADES WHOSE ZONE HAS LEFT THE PLAN. The plan is rebuilt every 10 minutes and drops a zone once price has passed it, but an open
+    // position stays until its broker stop / target is hit. Without this the chart showed the zones but not the live trade (2026-10-15: NQ
+    // buy at 29676.9 from a 29617.4 break zone that no longer existed). Drawn from the position itself, state `open`, mode/level from its tag.
+    for (const p of mine) {
+      if (matched.has(p)) continue;
+      const entry = Number(p.open_price); if (!Number.isFinite(entry)) continue;
+      const tg = tagOf(p.comment), parts = tg ? tg.split('_') : [];
+      const mode = parts[0] || 'trade', lvlTok = parseFloat(parts[parts.length - 1]), level = Number.isFinite(lvlTok) ? lvlTok : entry;
+      const slN = Number(p.sl), tpN = Number(p.tp);
+      const sl = Number.isFinite(slN) && slN > 0 ? slN : null, tp = Number.isFinite(tpN) && tpN > 0 ? tpN : null;
+      if (sl == null) continue;                              // nothing to draw a box against
+      const rr = tp != null && Math.abs(entry - sl) > 0 ? (Math.abs(tp - entry) / Math.abs(entry - sl)).toFixed(1) : '-';
+      out.push(['TZ', String(p.direction || '').toUpperCase(), mode, num(level, d), num(entry, d), num(sl, d), num(tp, d), '-', 'open', rr].join(' '));
     }
   }
   return out.join('\n');

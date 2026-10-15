@@ -55,5 +55,22 @@ ok('without status every zone is armed', buildTradesText(plan).split('\n').filte
   ok('both blocks pasted together keep each title (indicator switches bot on it)', (vt + '\n\n' + txt).split('\n').filter(r => r.startsWith('────')).length === 2);
 }
 
+// ── an open trade whose zone has left the plan is still drawn (state open, from the position itself) ──
+{
+  const oplan = { generatedAt: '2026-10-15T10:57:00Z', instruments: { nq: { spot: 29640, regime: 'BREAKOUT', dte: 1, maxPain: 30217, zones: [
+    { mode: 'break', side: 'buy', level: 29817.9, entry: 29876.7, sl: 29778.7, tp1: 30268.8, tp2: null } ] } } };
+  const ostatus = { lines: [{ instrument: 'nq', entered: ['break_buy_29617.4'], primed: [] }],
+    mt5_positions: [{ ticket: 43664348, symbol: 'US100', direction: 'BUY', lots: 2, open_price: 29676.9, sl: 29578.3, tp: 29817.4, comment: 'OI [break_buy_29617.4]' }] };
+  const ot = buildTradesText(oplan, ostatus, { generated: Date.UTC(2026, 9, 15, 11, 0) }).split('\n').filter(r => r.startsWith('TZ '));
+  ok('the planned zone is still listed, armed', ot.some(r => r.startsWith('TZ BUY break 29817.90 29876.70') && r.includes(' armed ')), ot.join(' | '));
+  ok('the open trade with no zone in the plan gets its own row', ot.some(r => r === 'TZ BUY break 29617.40 29676.90 29578.30 29817.40 - open 1.4'), ot.join(' | '));
+  const both = { instruments: { nq: { spot: 29640, regime: 'BREAKOUT', dte: 1, maxPain: 30217, zones: [
+    { mode: 'break', side: 'buy', level: 29617.4, entry: 29676.9, sl: 29578.3, tp1: 29817.4, tp2: null } ] } } };
+  const bt = buildTradesText(both, ostatus).split('\n').filter(r => r.startsWith('TZ '));
+  ok('a position whose zone IS still in the plan is not drawn twice', bt.length === 1 && bt[0].includes(' open '), bt.join(' | '));
+  const nosl = buildTradesText(oplan, { mt5_positions: [{ symbol: 'US100', direction: 'BUY', open_price: 29676.9, comment: 'OI [break_buy_29617.4]' }] }).split('\n').filter(r => r.startsWith('TZ '));
+  ok('a position with no stop is skipped rather than drawn wrongly', nosl.length === 1);
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);
