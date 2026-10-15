@@ -33,7 +33,7 @@ if MODE == 'spread':
 else:                                                           # a single leg alone: its own rate in bp
     leg = r15(DEEP / f'{PAIR_US if MODE == "us" else PAIR_EU}.parquet').reindex(G); us = eu = leg
     dl = dist(leg); good = np.array([dl.get(d, 0) >= 3 for d in dayv]); X = ((leg * 100).where(good)).to_numpy()
-if COG_END: X[np.asarray(G > pd.Timestamp(COG_END, tz='UTC') + pd.Timedelta(days=1))] = np.nan      # window cut at the earlier of the legs' last-trade dates
+if COG_END: X = X.copy(); X[np.asarray(G > pd.Timestamp(COG_END, tz='UTC') + pd.Timedelta(days=1))] = np.nan      # window cut at the earlier of the legs' last-trade dates
 cfd = pd.read_parquet(ROOT / 'VolRangeForecaster' / 'data' / 'm1' / 'nq_m1.parquet')['close']; cfd.index = pd.to_datetime(cfd.index, utc=True)
 if STRICT: cfd.index = cfd.index + pd.Timedelta(minutes=1)
 cl = np.log(cfd.resample('15min', label='right', closed='right').last()).reindex(G)
