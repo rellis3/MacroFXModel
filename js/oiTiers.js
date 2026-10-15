@@ -82,3 +82,6 @@ export function describeZone(z, { fmt, fmtFut = null, touch = null } = {}) {
 
 // short tag for the chart label (heat slot): "T2 mid"
 export const zoneTag = z => `T${z.n}${z.side === 'below' ? 'v' : '^'} ${z.character}`;
+
+// Short note for every exported line: "Tier 2 · 5 sources" (the full sentence appears once per zone in the TIERS block).
+export const shortZone = z => `Tier ${z.n} ${z.side === 'below' ? 'support' : 'resistance'} · ${new Set(z.members.map(m => m.label)).size} source${new Set(z.members.map(m => m.label)).size === 1 ? '' : 's'}`;

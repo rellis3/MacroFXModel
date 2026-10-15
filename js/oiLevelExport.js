@@ -41,7 +41,7 @@ import { wallHoldScore } from './oiZones.js';
 import { gammaFlip, distanceToFlip, rolloffSummary } from './gammaFlow.js';
 import { rebuildGexProfile, oiFuturesTermsPrice, oiBandSelect, oiRegimeBands, OI_PRODUCT_SPEC, oiSpec, oiRippleBook } from './oi.js';
 import { RIPPLE_BUCKETS } from './rippleBook.js';
-import { buildTiers, describeZone, ladderLegs, zoneTag } from './oiTiers.js';
+import { buildTiers, describeZone, shortZone, ladderLegs, zoneTag } from './oiTiers.js';
 
 // Canonical chart-ticker per oi_store key. Mirrors the Confluence-Zones indicator's
 // normalisation targets so the same chart symbols the user already uses resolve here
@@ -385,7 +385,7 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
       let note  = ex ? ex.mid : '';
       let heat  = heatOf.get(l) || '';
       const _z = zoneOf.get(l);
-      if (_z) { note = describeZone(_z, { fmt: _fmtT, fmtFut: _fmtFutT, touch: _zoneTouch(_z) }); heat = zoneTag(_z); }
+      if (_z) { note = shortZone(_z); heat = zoneTag(_z); }   // short on every line; the full sentence lives once, in the TIERS block (paste size: the indicator reads the whole paste as one text input)
       const touch = rp ? (rp[l.price.toFixed(6)] || '') : '';
       // `today` + P(touch) available: drop levels the session cannot reach. The
       // reachability model is the one calibrated number on the sheet (OOS 1.7pp), and a
@@ -478,7 +478,7 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     // TIERS: forecast-ladder legs that landed in a tier become OI lines too (grey, unknown type), then the human-readable block.
     if (tierSet) {
       for (const z of [...tierSet.below, ...tierSet.above]) {
-        const d = describeZone(z, { fmt: _fmtT, fmtFut: _fmtFutT, touch: _zoneTouch(z) });
+        const d = shortZone(z);
         for (const m of z.members) if (m.kind !== 'oi') emitOI(m.price, `OI ${px(m.price).toFixed(dp)} : ${m.type} . ${d} . ${zoneTag(z)}`);
       }
     }

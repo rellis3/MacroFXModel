@@ -416,7 +416,7 @@ console.log('[downstream wiring — export, indicator, bot]');
     ok('tiers: every OI line still has exactly one " : " (Pine parse unchanged)', parsed.every(x => x.n === 2));
     ok('tiers: original level types still lead their lines', ['gex_flip', 'call_wall', 'put_wall'].every(t => parsed.some(x => x.typ === t)));
     ok('tiers: forecast legs appear as extra OI lines (fcst_*)', parsed.some(x => x.typ.startsWith('fcst_')));
-    ok('tiers: a wall line carries the tier tag in the heat slot', oiL(tt).some(l => /^OI .* : (call_wall|put_wall|gex_flip).* \. Tier \d .* \. T\d[v^] /.test(l)), oiL(tt).find(l => l.includes(' : gex_flip')));
+    ok('tiers: a wall line carries the tier tag in the heat slot', oiL(tt).some(l => /^OI .* : (call_wall|put_wall|gex_flip).* \. Tier \d (support|resistance) · \d+ sources? . T\d[v^] /.test(l)), oiL(tt).find(l => l.includes(' : gex_flip')));
     ok('tiers: human TIERS block present, not an OI line', tt.split(NL).some(l => l.startsWith('· TIERS')) && !tt.split(NL).some(l => l.startsWith('OI ') && l.includes('TIERS')));
     ok('tiers: off by default (plain export has no Tier text)', !/Tier \d/.test(plain));
     console.log(tt.split(NL).filter(l => l.startsWith('·') && /TIERS|Tier/.test(l)).join(NL));
