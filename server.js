@@ -19498,7 +19498,9 @@ async function _refreshOIBotZones({ storeOverride = null, outKey = 'oi_bot_zones
         ivDynamics: inst.ivDynamics ?? null, riskReversal: inst.riskReversal ?? null };
       if (stale) console.warn(`[oi-bot] ${key}: ${stale} — skipping (no zones)`);
     }
-    await kv.put(outKey, JSON.stringify({ data: { strategy, generatedAt: new Date().toISOString(), instruments, skipped }, timestamp: Date.now() }));
+    const _cfgUsed = ['minTier', 'slBufferPips', 'breakPips', 'extendedPips', 'levelLadderTP', 'minRR', 'maxZonesPerSide', 'fx_enabled', 'fx_pairs', 'followBreaks', 'fadeInPin', 'maxPainReversion', 'reactAtLevels',
+      'bookMode', 'nearBookDays', 'selectBy', 'maxReachMult', 'minTouchP', 'touchHorizon'].reduce((o, k) => (cfg[k] !== undefined ? { ...o, [k]: cfg[k] } : o), {});
+    await kv.put(outKey, JSON.stringify({ data: { strategy, generatedAt: new Date().toISOString(), instruments, skipped, cfgUsed: _cfgUsed }, timestamp: Date.now() }));
     const total = Object.values(instruments).reduce((a, v) => a + v.zoneCount, 0);
     console.log(`[oi-bot] ${outKey} refreshed · ${Object.keys(instruments).length} instruments · ${total} zones`);
     return Object.keys(instruments).length;
@@ -21510,7 +21512,7 @@ app.get('/api/oi-vol-bot/audit', async (_req, res) => {
     }
     res.json({ ok: true, generatedAt: { oi: oiPlan?.generatedAt || null, vol: volPlan?.generatedAt || null }, summary: sum, instruments,
       positions: { oi: oiSt?.mt5_positions || [], vol: volSt?.mt5_positions || [] },
-      mode: { oi: oiSt?.mode || null, vol: volSt?.mode || null }, volConfig: { selectBy: volCfg?.selectBy ?? OI_VOL_CFG_OVERRIDES.selectBy, maxReachMult: volCfg?.maxReachMult ?? OI_VOL_CFG_OVERRIDES.maxReachMult,
+      mode: { oi: oiSt?.mode || null, vol: volSt?.mode || null }, cfgUsed: { vol: volPlan?.cfgUsed || null, oi: oiPlan?.cfgUsed || null }, volConfig: { selectBy: volCfg?.selectBy ?? OI_VOL_CFG_OVERRIDES.selectBy, maxReachMult: volCfg?.maxReachMult ?? OI_VOL_CFG_OVERRIDES.maxReachMult,
         minTouchP: volCfg?.minTouchP ?? OI_VOL_CFG_OVERRIDES.minTouchP, touchHorizon: volCfg?.touchHorizon ?? OI_VOL_CFG_OVERRIDES.touchHorizon } });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
