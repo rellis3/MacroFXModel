@@ -5772,7 +5772,8 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
   </div><!-- /tab-rangeline -->
 
   <!-- ══════════════════════════════════════════════════════ OI GAMMA TAB -->
-  <div class="tab-pane" id="tab-oibot">
+  <style>.oiApiBtn{background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text2);padding:3px 9px;font-size:11px;cursor:pointer;text-decoration:none;display:inline-block}.oiApiBtn:hover{border-color:#4dd0e1;color:#4dd0e1}</style>
+<div class="tab-pane" id="tab-oibot">
 
     <div class="bot-banner" style="background:rgba(77,208,225,0.08);border:1px solid rgba(77,208,225,0.28)">
       <div class="bot-banner-icon">🧲</div>
@@ -5803,6 +5804,16 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
         <a href="/api/oi-bot/trades-export" target="_blank" style="font-size:11px;color:var(--text3)">open OI</a>
         <a href="/api/oi-vol-bot/trades-export" target="_blank" style="font-size:11px;color:var(--text3)">open OI-Vol</a>
         <span class="oiExportStatus" style="font-size:11px;color:var(--text3)"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+        <span style="font-size:11px;color:var(--text3)">API:</span>
+        <button class="oiApiBtn" onclick="oiApiPost('/api/oi-bot/zones/refresh', this)" title="POST /api/oi-bot/zones/refresh - rebuild the OI bot plan now (otherwise every 10 min)">Rebuild OI plan</button>
+        <button class="oiApiBtn" onclick="oiApiPost('/api/oi-vol-bot/zones/refresh', this)" title="POST /api/oi-vol-bot/zones/refresh - rebuild the OI-Vol plan now (otherwise every 10 min)">Rebuild OI-Vol plan</button>
+        <a class="oiApiBtn" href="/api/oi-bot/zones" target="_blank" title="GET /api/oi-bot/zones">OI plan JSON</a>
+        <a class="oiApiBtn" href="/api/oi-vol-bot/zones" target="_blank" title="GET /api/oi-vol-bot/zones">OI-Vol plan JSON</a>
+        <a class="oiApiBtn" href="/api/oi-vol-bot/audit" target="_blank" title="GET /api/oi-vol-bot/audit - the level audit as JSON">Audit JSON</a>
+        <a class="oiApiBtn" href="/api/oi-bot/trades-export?bot=both" target="_blank" title="GET /api/oi-bot/trades-export?bot=both">Export: both</a>
+        <span class="oiApiStatus" style="font-size:11px;color:var(--text3)"></span>
       </div>
       <div class="bot-banner-sub" style="margin-top:6px">Paste into the <b>OI Bot Trades</b> indicator (<code>pine/OI Bot Trades.pine</code>) - the same indicator draws either bot, or both pasted together: OI-Vol zones get a dashed aqua outline, a VOL prefix and a "reach %" (chance of touching the entry within 8h). Same block on every chart; each chart draws only its own pair. Re-copy after the plan changes (it rebuilds every 10 minutes).</div>
       <textarea class="oiExportOut" readonly rows="6" placeholder="The copied block appears here" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px;background:var(--s2);color:var(--text2);border:1px solid var(--border);border-radius:6px;padding:6px"></textarea>
@@ -6127,6 +6138,16 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
         <a href="/api/oi-vol-bot/trades-export" target="_blank" style="font-size:11px;color:var(--text3)">open OI-Vol</a>
         <span class="oiExportStatus" style="font-size:11px;color:var(--text3)"></span>
       </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+        <span style="font-size:11px;color:var(--text3)">API:</span>
+        <button class="oiApiBtn" onclick="oiApiPost('/api/oi-vol-bot/zones/refresh', this)" title="POST /api/oi-vol-bot/zones/refresh - rebuild the OI bot plan now (otherwise every 10 min)">Rebuild OI plan</button>
+        <button class="oiApiBtn" onclick="oiApiPost('/api/oi-vol-bot/zones/refresh', this)" title="POST /api/oi-vol-bot/zones/refresh - rebuild the OI-Vol plan now (otherwise every 10 min)">Rebuild OI-Vol plan</button>
+        <a class="oiApiBtn" href="/api/oi-bot/zones" target="_blank" title="GET /api/oi-bot/zones">OI plan JSON</a>
+        <a class="oiApiBtn" href="/api/oi-vol-bot/zones" target="_blank" title="GET /api/oi-vol-bot/zones">OI-Vol plan JSON</a>
+        <a class="oiApiBtn" href="/api/oi-vol-bot/audit" target="_blank" title="GET /api/oi-vol-bot/audit - the level audit as JSON">Audit JSON</a>
+        <a class="oiApiBtn" href="/api/oi-bot/trades-export?bot=both" target="_blank" title="GET /api/oi-bot/trades-export?bot=both">Export: both</a>
+        <span class="oiApiStatus" style="font-size:11px;color:var(--text3)"></span>
+      </div>
       <div class="bot-banner-sub" style="margin-top:6px">Paste into the <b>OI Bot Trades</b> indicator (<code>pine/OI Bot Trades.pine</code>) - the same indicator draws either bot, or both pasted together: OI-Vol zones get a dashed aqua outline, a VOL prefix and a "reach %" (chance of touching the entry within 8h). Same block on every chart; each chart draws only its own pair. Re-copy after the plan changes (it rebuilds every 10 minutes).</div>
       <textarea class="oiExportOut" readonly rows="6" placeholder="The copied block appears here" style="width:100%;margin-top:6px;font-family:monospace;font-size:11px;background:var(--s2);color:var(--text2);border:1px solid var(--border);border-radius:6px;padding:6px"></textarea>
     </div>
@@ -6181,9 +6202,9 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
       <div class="bot-banner-sub" style="margin-bottom:8px">Run from the repo root. Paper mode is the default; go live only after a clean paper run + credentials below.</div>
       <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># 1) The server publishes today's plan from the OI store (paste the OI heatmap on index.html first).
 #    Force a refresh now:
-curl -X POST &lt;dashboard-url&gt;/api/oi-bot/zones/refresh
+curl -X POST &lt;dashboard-url&gt;/api/oi-vol-bot/zones/refresh
 #    check it landed:
-curl &lt;dashboard-url&gt;/api/oi-bot/zones
+curl &lt;dashboard-url&gt;/api/oi-vol-bot/zones
 
 # 2) Paper trade (default):
 python oi_vol_bot/oi_vol_bot.py --url &lt;dashboard-url&gt;

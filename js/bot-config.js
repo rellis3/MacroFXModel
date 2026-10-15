@@ -7097,6 +7097,21 @@ async function oiExportCopy(which, btn) {
 }
 window.oiExportCopy = oiExportCopy;
 
+// POST helper for the plan-rebuild buttons in the TradingView export card (status text appears next to the buttons in whichever tab is open).
+async function oiApiPost(url, btn) {
+  const st = document.querySelectorAll('.oiApiStatus'), say = (t, c) => st.forEach(e => { e.textContent = t; e.style.color = c || 'var(--text3)'; });
+  const was = btn ? btn.textContent : ''; if (btn) { btn.disabled = true; btn.textContent = 'Working…'; }
+  try {
+    const r = await fetch(url, { method: 'POST' }); const j = await r.json();
+    if (!j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    say(`Rebuilt ✓ (${j.instruments ?? '?'} instruments)`, '#4dd0e1');
+    if (typeof loadOiVolAudit === 'function') loadOiVolAudit();
+    if (typeof loadOiLiveStatus === 'function') loadOiLiveStatus();
+  } catch (e) { say('Error: ' + e.message, 'var(--red)'); }
+  if (btn) { btn.disabled = false; btn.textContent = was; }
+}
+window.oiApiPost = oiApiPost;
+
 // ═══════════════════════════ YIELD-SPREAD BOT ═══════════════════════════════════
 // Yield-spread z-score mean-reversion. Config → yield_spread_config; the server
 // producer computes the daily z into yield_spread_plan; the bot pushes yield_spread_status.
