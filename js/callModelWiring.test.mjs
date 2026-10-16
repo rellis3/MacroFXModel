@@ -91,3 +91,17 @@ test('no raw provider call survives anywhere in server.js', () => {
     assert.equal(hits, 0, `${host} appears ${hits}× in server.js — that call bypasses callModel`);
   }
 });
+
+test('no endpoint gates on ANT_KEY specifically any more', () => {
+  // These were the last place Anthropic was hardcoded. With a key set they are harmless,
+  // which is exactly why nine of them survived the conversion unnoticed -- and why the
+  // per-pair analysis would have 503'd on a DeepSeek-only setup while DeepSeek sat there
+  // configured and working. callModel resolves the provider for the task and throws if
+  // THAT one has no key, so asking about Anthropic is asking the wrong question.
+  const code = LINES
+    .map(l => l.replace(/\/\/.*$/, ''))          // the fix's own comments mention it
+    .join('\n');
+  const hits = [...code.matchAll(/process\.env\.ANT_KEY/g)].length;
+  assert.equal(hits, 1,
+    `process.env.ANT_KEY appears ${hits}× in live code; only the env audit should name it`);
+});

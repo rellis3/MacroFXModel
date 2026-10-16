@@ -4781,8 +4781,9 @@ app.post('/api/currency-analysis', async (req, res) => {
 });
 
 app.post('/api/analysis', async (req, res) => {
-  const key = process.env.ANT_KEY;
-  if (!key) return res.status(503).json({ error: 'ANT_KEY not configured — add it in Railway → Variables' });
+  // Was ANT_KEY-only. callModel picks the provider for this task and throws if THAT
+  // one has no key, so gating on Anthropic would 503 a working DeepSeek setup.
+  if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY in Railway)' });
 
   try {
     const { pair, snapshot: s } = req.body ?? {};
@@ -4954,8 +4955,9 @@ app.get('/api/macro-changes', async (_req, res) => {
 
 let _morningBriefRunning = false;
 async function _buildMorningBrief() {
-  const key = process.env.ANT_KEY;
-  if (!key) throw new Error('ANT_KEY not configured');
+  // Was ANT_KEY-only. callModel picks the provider for this task and throws if
+  // THAT one has no key, so gating on Anthropic would 503 a working DeepSeek setup.
+  if (!_aiAnyKey()) throw new Error('no model provider configured');
   const fredRaw = await kv.get(_FRED_DASH_KV).catch(() => null);
   // Stored shape is { d: series, t: epoch } — read .d, tolerate a legacy flat blob.
   const fred = fredRaw ? (() => { const p = JSON.parse(fredRaw); return p?.d ?? p; })() : {};
@@ -5775,8 +5777,9 @@ const _COT_CCY_TO_CC = Object.entries(_COT_CC_TO_CCY).reduce((m, [cc, ccy]) => (
 const _cotCcyOf = x => x.group === 'fx' ? x.sym : (['TU','TY','US'].includes(x.sym) ? 'USD' : null);
 
 async function _buildCotAnalysis() {
-  const key = process.env.ANT_KEY;
-  if (!key) throw new Error('ANT_KEY not configured');
+  // Was ANT_KEY-only. callModel picks the provider for this task and throws if
+  // THAT one has no key, so gating on Anthropic would 503 a working DeepSeek setup.
+  if (!_aiAnyKey()) throw new Error('no model provider configured');
   const raw = await kv.get(COT_KV.extremes);
   if (!raw) throw new Error('No COT data cached yet — load cot-extremes.html once (or hit Refresh CFTC) first.');
   const cd = JSON.parse(raw);
@@ -6136,7 +6139,7 @@ async function _buildPairAnalysis(name, sym) {
 }
 async function _runAutoBrief(reason = 'schedule') {
   const cfg = await _getAutoBriefCfg(); const log = [];
-  if (cfg.morningBrief && process.env.ANT_KEY) { try { await _buildMorningBrief(); log.push('morning-brief ✓'); } catch (e) { log.push('morning-brief ✗ ' + e.message); } }
+  if (cfg.morningBrief && _aiAnyKey()) { try { await _buildMorningBrief(); log.push('morning-brief ✓'); } catch (e) { log.push('morning-brief ✗ ' + e.message); } }
   for (const i of HR_INSTRUMENTS.filter(x => cfg.pairs?.[x.name])) {
     try { await _buildPairAnalysis(i.name, i.sym); log.push(i.name + ' ✓'); } catch (e) { log.push(i.name + ' ✗ ' + e.message); }
   }
@@ -6226,8 +6229,9 @@ async function _fomcGetRaw(kind, date) {
 }
 
 async function _buildFomcAnalysis(kind, meetingDate) {
-  const key = process.env.ANT_KEY;
-  if (!key) throw new Error('ANT_KEY not configured');
+  // Was ANT_KEY-only. callModel picks the provider for this task and throws if
+  // THAT one has no key, so gating on Anthropic would 503 a working DeepSeek setup.
+  if (!_aiAnyKey()) throw new Error('no model provider configured');
   const rawRec = await _fomcGetRaw(kind, meetingDate);
   if (!rawRec) throw new Error(`no raw ${kind} text captured for ${meetingDate} yet`);
   const { text, url } = rawRec;
@@ -6323,7 +6327,7 @@ async function _fomcAutoCheck(reason = 'schedule') {
       if (!r.ok) { if (!r.notYetPublished) log.push(`${rel.kind} ${rel.meetingDate} ✗ ${r.error || r.status}`); continue; }
       await kv.put(`fomc_raw_${rel.kind}_${rel.meetingDate}`, JSON.stringify({ text: r.text, url: r.url, tables: r.tables ?? null, fetchedAt: new Date().toISOString() }));
       log.push(`${rel.kind} ${rel.meetingDate} ✓ fetched`);
-      if (process.env.ANT_KEY) {
+      if (_aiAnyKey()) {
         try { await _buildFomcAnalysis(rel.kind, rel.meetingDate); log.push(`${rel.kind} ${rel.meetingDate} ✓ analysed`); }
         catch (e) { log.push(`${rel.kind} ${rel.meetingDate} analysis ✗ ${e.message}`); }
       }
@@ -6457,7 +6461,7 @@ async function _fomcBackfillJob(withLlm) {
   // Phase 2 (opt-in) — LLM analysis for meetings that have none. The engine
   // writes fomc_latest as a side effect; snapshot and restore it so a
   // historical backfill can never repoint the dashboard at a 2016 meeting.
-  if (withLlm && process.env.ANT_KEY) {
+  if (withLlm && _aiAnyKey()) {
     const latestSnapshot = await kv.get('fomc_latest').catch(() => null);
     let built = 0, failed = 0;
     for (const row of rows) {
@@ -6845,8 +6849,9 @@ async function _ecbGetRaw(kind, date) {
 }
 
 async function _buildEcbAnalysis(kind, meetingDate) {
-  const key = process.env.ANT_KEY;
-  if (!key) throw new Error('ANT_KEY not configured');
+  // Was ANT_KEY-only. callModel picks the provider for this task and throws if
+  // THAT one has no key, so gating on Anthropic would 503 a working DeepSeek setup.
+  if (!_aiAnyKey()) throw new Error('no model provider configured');
   const rawRec = await _ecbGetRaw(kind, meetingDate);
   if (!rawRec) throw new Error(`no raw ${kind} text captured for ${meetingDate} yet`);
   const { text, url } = rawRec;
@@ -6915,7 +6920,7 @@ async function _ecbAutoCheck(reason = 'schedule') {
       if (!r.ok) { if (!r.notYetPublished) log.push(`${rel.kind} ${rel.meetingDate} ✗ ${r.error || r.status}`); continue; }
       await kv.put(`ecb_raw_${rel.kind}_${rel.meetingDate}`, JSON.stringify({ text: r.text, url: r.url, fetchedAt: new Date().toISOString() }));
       log.push(`${rel.kind} ${rel.meetingDate} ✓ fetched`);
-      if (process.env.ANT_KEY) {
+      if (_aiAnyKey()) {
         try { await _buildEcbAnalysis(rel.kind, rel.meetingDate); log.push(`${rel.kind} ${rel.meetingDate} ✓ analysed`); }
         catch (e) { log.push(`${rel.kind} ${rel.meetingDate} analysis ✗ ${e.message}`); }
       }
@@ -7034,8 +7039,9 @@ async function _boeGetRaw(kind, date) {
 }
 
 async function _buildBoeAnalysis(kind, meetingDate) {
-  const key = process.env.ANT_KEY;
-  if (!key) throw new Error('ANT_KEY not configured');
+  // Was ANT_KEY-only. callModel picks the provider for this task and throws if
+  // THAT one has no key, so gating on Anthropic would 503 a working DeepSeek setup.
+  if (!_aiAnyKey()) throw new Error('no model provider configured');
   const rawRec = await _boeGetRaw(kind, meetingDate);
   if (!rawRec) throw new Error(`no raw ${kind} text captured for ${meetingDate} yet`);
   const { text, url } = rawRec;
@@ -7104,7 +7110,7 @@ async function _boeAutoCheck(reason = 'schedule') {
       if (!r.ok) { if (!r.notYetPublished) log.push(`${rel.kind} ${rel.meetingDate} ✗ ${r.error || r.status}`); continue; }
       await kv.put(`boe_raw_${rel.kind}_${rel.meetingDate}`, JSON.stringify({ text: r.text, url: r.url, fetchedAt: new Date().toISOString() }));
       log.push(`${rel.kind} ${rel.meetingDate} ✓ fetched`);
-      if (process.env.ANT_KEY) {
+      if (_aiAnyKey()) {
         try { await _buildBoeAnalysis(rel.kind, rel.meetingDate); log.push(`${rel.kind} ${rel.meetingDate} ✓ analysed`); }
         catch (e) { log.push(`${rel.kind} ${rel.meetingDate} analysis ✗ ${e.message}`); }
       }
@@ -7199,8 +7205,9 @@ async function _bojGetRaw(kind, date) {
 }
 
 async function _buildBojAnalysis(kind, meetingDate) {
-  const key = process.env.ANT_KEY;
-  if (!key) throw new Error('ANT_KEY not configured');
+  // Was ANT_KEY-only. callModel picks the provider for this task and throws if
+  // THAT one has no key, so gating on Anthropic would 503 a working DeepSeek setup.
+  if (!_aiAnyKey()) throw new Error('no model provider configured');
   const rawRec = await _bojGetRaw(kind, meetingDate);
   if (!rawRec) throw new Error(`no raw ${kind} text captured for ${meetingDate} yet`);
   const { text, url } = rawRec;
@@ -7269,7 +7276,7 @@ async function _bojAutoCheck(reason = 'schedule') {
       if (!r.ok) { if (!r.notYetPublished) log.push(`${rel.kind} ${rel.meetingDate} ✗ ${r.error || r.status}`); continue; }
       await kv.put(`boj_raw_${rel.kind}_${rel.meetingDate}`, JSON.stringify({ text: r.text, url: r.url, fetchedAt: new Date().toISOString() }));
       log.push(`${rel.kind} ${rel.meetingDate} ✓ fetched`);
-      if (process.env.ANT_KEY) {
+      if (_aiAnyKey()) {
         try { await _buildBojAnalysis(rel.kind, rel.meetingDate); log.push(`${rel.kind} ${rel.meetingDate} ✓ analysed`); }
         catch (e) { log.push(`${rel.kind} ${rel.meetingDate} analysis ✗ ${e.message}`); }
       }
@@ -7389,8 +7396,9 @@ async function _beigeBookGetRaw(date) {
 }
 
 async function _buildBeigeBookAnalysis(meetingDate) {
-  const key = process.env.ANT_KEY;
-  if (!key) throw new Error('ANT_KEY not configured');
+  // Was ANT_KEY-only. callModel picks the provider for this task and throws if
+  // THAT one has no key, so gating on Anthropic would 503 a working DeepSeek setup.
+  if (!_aiAnyKey()) throw new Error('no model provider configured');
   const rawRec = await _beigeBookGetRaw(meetingDate);
   if (!rawRec) throw new Error(`no raw beigebook text captured for ${meetingDate} yet`);
   const { text, url, fomcMeetingDate } = rawRec;
@@ -7450,7 +7458,7 @@ async function _beigeBookAutoCheck(reason = 'schedule') {
       if (!r.ok) { if (!r.notYetPublished) log.push(`${rel.meetingDate} ✗ ${r.error || r.status}`); continue; }
       await kv.put(`beigebook_raw_${rel.meetingDate}`, JSON.stringify({ text: r.text, url: r.url, fomcMeetingDate: rel.fomcMeetingDate, fetchedAt: new Date().toISOString() }));
       log.push(`${rel.meetingDate} ✓ fetched`);
-      if (process.env.ANT_KEY) {
+      if (_aiAnyKey()) {
         try { await _buildBeigeBookAnalysis(rel.meetingDate); log.push(`${rel.meetingDate} ✓ analysed`); }
         catch (e) { log.push(`${rel.meetingDate} analysis ✗ ${e.message}`); }
       }
@@ -8776,8 +8784,9 @@ app.get('/api/macro-scorecard', async (_req, res) => {
 
 // ── Backtest AI analysis — sends config + results to Claude, returns structured feedback ──
 app.post('/api/ai-backtest', async (req, res) => {
-  const key = process.env.ANT_KEY;
-  if (!key) return res.status(503).json({ error: 'ANT_KEY not configured in Railway Variables' });
+  // Was ANT_KEY-only. callModel picks the provider for this task and throws if THAT
+  // one has no key, so gating on Anthropic would 503 a working DeepSeek setup.
+  if (!_aiAnyKey()) return res.status(503).json({ error: 'no model provider configured (set ANT_KEY, DEEPSEEK_KEY or MOONSHOT_KEY in Railway)' });
 
   const { symbol, cfg, results } = req.body ?? {};
   if (!results) return res.status(400).json({ error: 'Missing results' });
