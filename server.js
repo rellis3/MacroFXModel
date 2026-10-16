@@ -29571,9 +29571,13 @@ const _compactLadder = e => ({
             nOos: e.hazard.nOos, oos: e.hazard.oos },
 });
 
-app.get('/api/exhaustion-ladder', (req, res) => {
+app.get('/api/exhaustion-ladder', async (req, res) => {
   const fp = _latestExhLadderFile();
-  if (!fp) return res.status(404).json({ ok: false, error: 'No exhaustion-ladder fit yet - POST /api/exhaustion-ladder/run to build one.' });
+  if (!fp) {
+    // the disk copy dies with every deploy; KV keeps the last fit (exhaustion_ladder_v1, a permanent key)
+    try { const raw = await kv.get('exhaustion_ladder_v1'); if (raw) { const data = JSON.parse(raw); return res.json({ ok: true, file: 'kv:exhaustion_ladder_v1', computedAt: data.builtAt ?? null, ...data }); } } catch { /* fall through */ }
+    return res.status(404).json({ ok: false, error: 'No exhaustion-ladder fit yet - POST /api/exhaustion-ladder/run to build one.' });
+  }
   try {
     const data = JSON.parse(fs.readFileSync(fp, 'utf8'));
     res.json({ ok: true, file: path.basename(fp), computedAt: fs.statSync(fp).mtime.toISOString(), ...data });
@@ -29615,6 +29619,7 @@ app.post('/api/exhaustion-ladder/run', express.json({ limit: '16kb' }), (req, re
         fs.mkdirSync(WBT_DATA_DIR, { recursive: true });
         fs.writeFileSync(path.join(WBT_DATA_DIR, `exhaustion_ladder_${new Date().toISOString().slice(0, 10)}.json`), JSON.stringify(payload));
       } catch (e) { log.push(`cache write failed: ${e?.message}`); }
+      try { await kv.put('exhaustion_ladder_v1', JSON.stringify(payload)); } catch (e) { log.push(`kv write failed: ${e?.message}`); }
       exhLadderJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...payload } });
     } catch (e) { exhLadderJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
   })();

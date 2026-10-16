@@ -34,7 +34,10 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
   // ── per-instrument rows (IV/σ, fitted ladder) ─────────────────────────────
   const dr = D['daily-read'];
   const drDay = dr?.days ? dr.days[Object.keys(dr.days).sort().at(-1)] : null;
-  const rows = drDay?.setup?.rows ?? [];
+  // The setup is frozen at ~22:55 the evening before; the vol forecast re-fits its ladder in the morning (NQ hl_p50
+  // 1.33 vs 1.46 on 2026-10-16), and the Day Read's 'used' and range map use the current one. Same lines everywhere.
+  const vfNow = D['vol-forecast']?.instruments ?? {};
+  const rows = (drDay?.setup?.rows ?? []).map(r => { const lf = vfNow[r.sym]?.ladder_flat; return lf?.hl_p50 > 0 && lf?.hl_p75 > 0 ? { ...r, lines: { ...r.lines, ...lf } } : r; });
   const tags = Object.fromEntries(rows.map(r => [r.sym, r.tag]));
 
   // ── range flags ───────────────────────────────────────────────────────────

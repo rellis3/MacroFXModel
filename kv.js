@@ -73,6 +73,7 @@ const _CF_EXACT = new Set([
                              // (forge/SIGNAL_JOURNAL_PREREG.md): a forward record. Must also be in _worker.js PERMANENT_KEYS.
   'paper_record_v1',         // rich-vol break paper record (paper-record.html): every flag and hypothetical trade since
                              // the record began; a forward test, not re-derivable. Must also be in _worker.js PERMANENT_KEYS.
+  'exhaustion_ladder_v1',    // the exhaustion-ladder fit: the disk file dies with every deploy
   'global_read_v1',          // the Global Read forward record: one row per London session (07:00 read + its scored
                              // outcome, MD files/GLOBAL_DECISION_ENGINE.md §6). Not re-derivable. Also in _worker.js PERMANENT_KEYS.
   'daily_snapshot_v1',       // one row per day of what the page THOUGHT: the brief's regime line, the chain
