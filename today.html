@@ -2725,6 +2725,9 @@ function creditGate() {
     nowValue:  fred.hy?.value,   prevValue: fred.hy?.prev,
     cccNow:    fred.hy_ccc?.value, cccPrev: fred.hy_ccc?.prev,
     bbNow:     fred.hy_bb?.value,  bbPrev:  fred.hy_bb?.prev,
+    // The percentile is over whatever history loaded: ~90 obs (4 months) here, which made 325bp read as the
+    // top of its range and 'stressed'. Below ~2 years of history only the absolute level (450bp) can say stressed.
+    ...(hist.length < 500 ? { stressPct: 101 } : {}),
   });
   if (!f) return null;
   return { hyNow: f.level, hyBps: f.levelBps, pct: f.pct, d1: f.d1, d5: f.d5,
@@ -5127,7 +5130,8 @@ function equitiesRisk(rs) {
   const strOf = c => cs.find(x => x.ccy === c)?.score ?? 0;
   const haven = (strOf('JPY') + strOf('CHF')) / 2 + (goldSig ?? 0) * 0.5;
   const equity = idx.length ? (up - dn) / idx.length : 0;
-  // Credit is a leading risk gate — widening/accelerating = stress ahead; tightening = all-clear.
+  // Credit gate: shown as context. As a leading risk gate it FAILED out of sample (credit-stress gate), so it no
+  // longer votes in the tone verdict below.
   const cg = creditGate();
   // Credit persistence (HMM) — is the current widening/tightening regime likely
   // to continue, via js/creditHmm.js's creditRegime() — a principled
@@ -5150,10 +5154,9 @@ function equitiesRisk(rs) {
   const creditStress = cg ? (cg.gate === 'RISK-OFF' ? 1 : cg.gate === 'CAUTION' ? 0.5 : 0) : 0;
   const creditEase   = cg && cg.gate === 'RISK-ON' ? 1 : 0;
   let tone, cls;
-  const volStress = volStressed() || creditStress >= 1;   // RISK_LEVELS — one table, shared with riskLight()
-  if (equity <= -0.34 && (haven > 0.05 || volStress || creditStress >= 1)) { tone = 'RISK-OFF'; cls = 'off'; }
-  else if (equity >= 0.34 && haven < 0.1 && !volStress && creditStress === 0) { tone = 'RISK-ON'; cls = 'on'; }
-  else if (creditStress >= 1 && equity < 0.34) { tone = 'CAUTION (credit widening)'; cls = 'mix'; }
+  const volStress = volStressed();   // RISK_LEVELS — one table, shared with riskLight(); credit no longer votes (failed OOS)
+  if (equity <= -0.34 && (haven > 0.05 || volStress)) { tone = 'RISK-OFF'; cls = 'off'; }
+  else if (equity >= 0.34 && haven < 0.1 && !volStress) { tone = 'RISK-ON'; cls = 'on'; }
   else { tone = 'MIXED / two-way'; cls = 'mix'; }
   // Liquidity Gate is reported alongside the verdict, not folded into tone/cls —
   // it's a newer, unvalidated context read (see liquidityGateRead's own header);
@@ -6730,7 +6733,8 @@ function buildMacro() {
   const cg = creditGate();
   if (cg) {
     const dirWord = cg.widening > 0 ? 'widening' : cg.widening < 0 ? 'tightening' : 'flat';
-    const lvlWord = cg.pct != null ? (cg.pct >= 80 ? 'historically high' : cg.pct <= 25 ? 'historically low (tight)' : 'around its normal range') : (cg.hyNow > 4.5 ? 'elevated' : 'contained');
+    // the percentile is over ~4 months of history: say so, and judge the LEVEL against the long-run 4.5% line
+    const lvlWord = `${cg.hyNow > 4.5 ? 'elevated' : 'contained'} by long-run standards${cg.pct != null ? ` (${cg.pct >= 80 ? 'near the top' : cg.pct <= 25 ? 'near the bottom' : 'mid-range'} of the last ~4 months)` : ''}`;
     let body = `Corporate bond investors are the market's early-warning system — they carry the downside of a bad economy, so they get nervous <b>before</b> stocks do. The extra yield they demand over government bonds (the “spread”) is <b>${cg.hyBps} bps</b>, ${lvlWord}`;
     body += cg.pct != null ? ` (${cg.pct}th percentile of the last few months). ` : '. ';
     body += `It has been <b>${dirWord}</b>${cg.d5 != null ? ` (${cg.d5 >= 0 ? '+' : ''}${cg.d5} bps over ~a week)` : ''}${cg.widening > 0 && cg.accel > 0 ? ' and the move is <b>speeding up</b>' : cg.widening < 0 && cg.accel < 0 ? ' and easing quickly' : ''}.`;
@@ -9329,7 +9333,7 @@ function renderSidebar() {
     const h = hot[0];
     takeaways.push(['📊', 'blue', `<b>${dispName(h.name)}</b> is today's most-watched pair${h.isProx ? ' — right at a key level' : h.ct?.level === 'EXTREME' ? ' — COT positioning is stretched' : ''}.`]);
   }
-  if (risk.credit?.gate) takeaways.push(['🛡', 'purple', `Credit gate reads <b>${esc0(risk.credit.gate)}</b>${risk.credit.wideningBps != null ? ` (${risk.credit.wideningBps > 0 ? '+' : ''}${risk.credit.wideningBps}bps)` : ''}.`]);
+  if (risk.credit?.gate) takeaways.push(['🛡', 'purple', `Credit gate (context; failed out of sample as a signal) reads <b>${esc0(risk.credit.gate)}</b>${risk.credit.wideningBps != null ? ` (${risk.credit.wideningBps > 0 ? '+' : ''}${risk.credit.wideningBps}bps)` : ''}.`]);
   if (risk.gpr?.stale) takeaways.push(['⚑', 'amber', `Geopolitical Risk data hasn't refreshed in ${risk.gpr.daysStale}+ days — the weekly pull may be behind.`]);
   const nextEv = nextHighImpact();
   if (nextEv) takeaways.push(['📅', 'blue', `Next high-impact release: ${nextEv}`]);
