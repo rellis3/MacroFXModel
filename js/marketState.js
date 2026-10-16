@@ -141,7 +141,8 @@ function conditions(ctx) {
       ],
     },
     'Risk is being sold': {
-      require: () => z('vix') >= 1.2 || z('hy') >= 1,
+      // stress in fear OR credit AND the index actually lower: it fired on '2 of 4' with the S&P up 1.3%
+      require: () => (z('vix') >= 1.2 || z('hy') >= 1) && (chgOf('spx') ?? 0) < 0,
       line: 'Money is leaving risk across several markets at once, not just in equities.',
       teach: 'A genuine risk-off move shows up in more than one place: credit widens, the fear price rises, defensives lead. When only one of those is true, the move is usually about that one market.',
       cond: [

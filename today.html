@@ -3188,7 +3188,13 @@ function renderWeekly() {
   rows.sort((a, b) => b.used - a.used);
   const most = rows[0], least = rows[rows.length - 1];
   const dispW = n => ({ GOLD: 'Gold', NQ: 'NAS100', SPX500: 'SPX500', DE30: 'DAX', UK100: 'FTSE', US30: 'DOW', US2000: 'RUS2000' }[n] ?? n.replace(/^([A-Z]{3})([A-Z]{3})$/, '$1/$2'));
-  const tone = avg >= 80 ? '<span class="chg-warn">stretched — the week has mostly played out</span>' : avg <= 40 ? 'plenty of room left in the week' : 'about mid-way through a normal week';
+  // Judge against how much of the week has ELAPSED: a range grows ~√time, so a typical week has used ~√(elapsed
+  // share) of its range at any point, and the median week ends at 100%. 81% on Friday afternoon is on pace, not
+  // 'mostly played out'. Trading week = Sun 22:00 UTC -> Fri 21:00 UTC.
+  const _wk = (() => { const n = new Date(), s0 = new Date(n); s0.setUTCDate(n.getUTCDate() - n.getUTCDay()); s0.setUTCHours(22, 0, 0, 0); if (s0 > n) s0.setUTCDate(s0.getUTCDate() - 7);
+    return Math.max(0.02, Math.min(1, (n - s0) / (119 * 3600e3))); })();
+  const expUsed = Math.round(100 * Math.sqrt(_wk)), pace = avg / expUsed;
+  const tone = pace >= 1.25 ? `<span class="chg-warn">ahead of a normal week</span> (about ${expUsed}% is typical by now)` : pace <= 0.75 ? `behind a normal week (about ${expUsed}% is typical by now) — room left` : `on pace for a normal week (about ${expUsed}% is typical by now)`;
   el.style.display = 'flex';
   el.innerHTML = `<span class="qk">This week</span><span class="qv">The average pair has used <b>~${avg}%</b> of a typical <b>week's</b> range — ${tone}. Most spent: <b>${dispW(most.name)}</b> (${Math.round(most.used)}%); most room left: <b>${dispW(least.name)}</b> (${Math.round(least.used)}%).</span>`;
 }
@@ -5564,9 +5570,15 @@ function outlookBoardNarrative(rs, key) {
         if (d.state === 'BUILDING') volBuild++; else if (d.state === 'COOLING') volCool++;
         continue;
       }
+      // In CURRENCY space: a pair's 'up' is the dollar DOWN on EURUSD and UP on USDJPY, so counting pair directions
+      // turned any dollar move into a 5-of-8 'theme' from the quoting alone. Count the dollar's side instead; pairs
+      // without a dollar leg (crosses, gold, indices) carry no dollar theme.
+      const cc = PAIR_CCY[r.name], usdSign = cc?.[0] === 'USD' ? 1 : cc?.[1] === 'USD' ? -1 : 0;
+      if (!usdSign) continue;
+      const sc = d.score * usdSign;
       const c = (byDriver[d.name] ??= { label: d.label, up: 0, down: 0, total: 0 });
       c.total++;
-      if (d.score > 0.15) c.up++; else if (d.score < -0.15) c.down++;
+      if (sc > 0.15) c.up++; else if (sc < -0.15) c.down++;
     }
   }
   if (!nRead) return '<div class="muted" style="font-size:11px">Not enough data for a read yet.</div>';
@@ -5586,8 +5598,8 @@ function outlookBoardNarrative(rs, key) {
     const label = OUTLOOK_NARRATIVE_LABEL[c.name] ?? c.label.toLowerCase();
     const capLabel = label.charAt(0).toUpperCase() + label.slice(1);
     const cnt = c.lean === 'up' ? c.up : c.down;
-    const dirWord = c.lean === 'up' ? 'higher' : 'lower';
-    return `${capLabel} is pulling ${cnt} of ${c.total} pairs ${dirWord} right now — if that keeps moving the same way, expect it to keep showing up pair after pair, not just one, and it's the board's dominant theme for as long as that lasts.`;
+    const dirWord = c.lean === 'up' ? 'stronger' : 'weaker';
+    return `${capLabel} reads the dollar ${dirWord} on ${cnt} of the ${c.total} dollar pairs — a context read built from untested drivers, not a forecast.`;
   };
   if (ranked[0]) sentences.push(say(ranked[0]));
   if (ranked[1]) {
@@ -5858,7 +5870,7 @@ async function renderDrawerTimeline(r) {
   const band20 = r.fc?.ladder_monthly?.oh?.p50 != null ? (r.fc.ladder_monthly.oh.p50 + r.fc.ladder_monthly.ol.p50) / 2 : null;
   const moveWord = (x, days) => { if (!x) return ''; const a = Math.abs(x.pct); const rel = band20 ? a / (band20 * (days === 5 ? 0.5 : 1)) : null; const size = rel == null ? '' : rel >= 1.3 ? 'a big move for it' : rel >= 0.6 ? 'an ordinary move' : 'a small move'; return `${dispName(r.name)} ${x.pct >= 0 ? 'rose' : 'fell'} <span class="${x.pct >= 0 ? 'up' : 'dn'}">${a.toFixed(2)}%</span>${size ? `, ${size}` : ''} <span class="muted" style="font-size:10px;font-weight:400">${fmtN(x.from, d.dp)} → ${fmtN(x.to, d.dp)}</span>`; };
   const leanWord = dir?.direction === 'up' || dir?.direction === 'down' ? `Leaning ${dir.direction}, ${dir.agree} of ${dir.total} reads agree` : 'No lean today';
-  const biasWord = o => !o?.bias || o.noRead ? 'No read' : o.bias === 'NEUTRAL' ? 'No lean either way' : `${o.bias === 'BULLISH' ? 'Leans up' : 'Leans down'}${o.confidence != null ? `, ${o.confidence}% confidence` : ''}`;
+  const biasWord = o => !o?.bias || o.noRead ? 'No read' : o.bias === 'NEUTRAL' ? 'No lean either way' : `${o.bias === 'BULLISH' ? 'Leans up' : 'Leans down'}${o.confidence != null ? `, agreement ${o.confidence}/100` : ''}`;
   const chainMine = (deskWatch?.log ?? []).filter(f => f.id.startsWith('chain-') && f.event === 'started').slice(0, 3).map(f => `<div class="tl-l"><span class="k">${f.at.slice(5, 10)}</span>${esc0(f.label)}</div>`).join('');
   box.innerHTML = _tlChart(closes, r.fc, d.dp) + `<div class="tl">
     ${col('', 'three weeks ago → last week', d20 ? moveWord(d20, 20) : '', _tlReleases(5, 21, ccys, 3, r.name).map(_tlRelLine).join('') + chainMine + led(5, 21))}
@@ -7444,7 +7456,11 @@ function cotFor(name) {
     const pairNet = m.flip ? -specNet : specNet;           // net in the PAIR's direction
     const oi = c.openInterest ?? 0;
     const crowd = oi > 0 ? Math.abs(specNet) / oi * 100 : (c.crowdingPct ?? 0);
-    const level = crowd >= 20 ? 'EXTREME' : crowd >= 10 ? 'ELEVATED' : null;
+    // Crowded against the instrument's OWN history (percentile), not a flat 20%-of-OI cut: gold sits above 20% of OI
+    // at its 32nd percentile because its structural spec length is large. Absolute share only as a fallback.
+    const pc = c.specPct;
+    const level = pc != null ? (pc >= 90 || pc <= 10 ? 'EXTREME' : pc >= 80 || pc <= 20 ? 'ELEVATED' : null)
+      : (crowd >= 20 ? 'EXTREME' : crowd >= 10 ? 'ELEVATED' : null);
     const zClip = Math.max(-1, Math.min(1, (c.specZ ?? 0) / 4));
     return { dir: pairNet > 0 ? 'long' : pairNet < 0 ? 'short' : 'flat', crowd, level,
       pct: oi > 0 ? Math.abs(specNet) / oi * 100 : null, z: c.specZ ?? null,
@@ -7832,7 +7848,7 @@ function renderDrawerOutlook(r) {
     if (!p) return `<div style="flex:1;min-width:260px"><h4 style="margin:0 0 6px">${o.horizonLabel}</h4><div class="muted">Not enough data for a read.</div></div>`;
     return `<div style="flex:1;min-width:260px">
       <h4 style="margin:0 0 6px">${o.horizonLabel}</h4>
-      <span class="chip ${o.noRead ? 'neu' : cls}" style="font-size:13px;padding:5px 10px" title="${o.noRead ? esc0(`No read: ${o.noReadWhy}. The confidence scale bottoms out at 5%, so a reading there is the clamp, not a measurement.`) : ''}">${o.noRead ? 'NO READ' : `${o.bias} · ${o.confidence}% confidence`}</span>
+      <span class="chip ${o.noRead ? 'neu' : cls}" style="font-size:13px;padding:5px 10px" title="${o.noRead ? esc0(`No read: ${o.noReadWhy}. The confidence scale bottoms out at 5%, so a reading there is the clamp, not a measurement.`) : ''}">${o.noRead ? 'NO READ' : `${o.bias} · ${o.confidence}/100 agreement`}</span>
       <div style="margin-top:6px;font-size:12.5px;line-height:1.5;color:var(--text2)">${p.headline}</div>
       ${sec('▲', 'POINTING UP', 'var(--bull)', p.upDrivers.length ? bulletList(p.upDrivers) : null)}
       ${sec('▼', 'POINTING DOWN', 'var(--bear)', p.downDrivers.length ? bulletList(p.downDrivers) : null)}
@@ -7866,7 +7882,7 @@ function outlookChip(r) {
   // A bias at the confidence floor with nothing agreeing is not worth a chip on a
   // 25-card grid — it reads as a signal at a glance and is the opposite of one.
   if (o.noRead) return '';
-  return `<span class="chip ${cls}" title="${o.horizonLabel} Outlook — CONTEXT composite, not a validated predictive signal (the yield-spread leg, when present, is the one exception — see its own tag below). ${driverTxt}.${evTxt}">🔭 ${o.horizonLabel} ${o.bias.toLowerCase()} · ${o.confidence}%</span>`;
+  return `<span class="chip ${cls}" title="${o.horizonLabel} Outlook — CONTEXT composite, not a validated predictive signal (the yield-spread leg, when present, is the one exception — see its own tag below). ${driverTxt}.${evTxt}">🔭 ${o.horizonLabel} ${o.bias.toLowerCase()} · ${o.confidence}/100</span>`;
 }
 // ── Direction tag ────────────────────────────────────────────────────────────
 // The plain question the cards never answered at a glance: is price aiming up
@@ -9518,7 +9534,7 @@ function renderDrawerEod(r) {
     ? ' <span class="muted" title="no session high/low for this pair, so this is |close − open| and understates a day that travelled and came back">(open to now — understated)</span>' : '';
 
   const standing = p.standing.length
-    ? line('still standing', '', p.standing.map(sx => `${esc0(sx.horizon)}: <b>${esc0(sx.bias.toLowerCase())}</b>${sx.confidence != null ? ` at ${sx.confidence}% confidence` : ''}`).join(' · ') + ' <span class="muted">— carried, not scored: a multi-day call cannot be answered on day one</span>')
+    ? line('still standing', '', p.standing.map(sx => `${esc0(sx.horizon)}: <b>${esc0(sx.bias.toLowerCase())}</b>${sx.confidence != null ? ` (agreement ${sx.confidence}/100)` : ''}`).join(' · ') + ' <span class="muted">— carried, not scored: a multi-day call cannot be answered on day one</span>')
     : '';
 
   const vcls = p.leanRight === null ? '' : p.unordered ? '' : p.leanRight ? 'hit' : 'miss';
@@ -13641,7 +13657,7 @@ function renderMorningBrief(r) {
   if (btod && /^(LONG|SHORT)$/i.test(btod.direction ?? '') && btod.pair) {
     const dirCls = /LONG/i.test(btod.direction) ? 'bull' : 'bear';
     boardTrade = `<div class="ai-trade" style="margin-top:0;margin-bottom:12px">
-      <div class="ai-trade-hd"><span class="chip ${dirCls}">${esc(btod.pair)} ${esc(btod.direction).toUpperCase()}</span><span class="muted" style="font-size:10.5px">Board trade of the day${btod.confidence ? ` · ${esc(btod.confidence)} confidence` : ''}</span></div>
+      <div class="ai-trade-hd"><span class="chip ${dirCls}">${esc(btod.pair)} ${esc(btod.direction).toUpperCase()}</span><span class="muted" style="font-size:10.5px">AI's idea of the day — untested: built on the macro composite, a banked null for direction${btod.confidence ? ` · it rates itself ${esc(btod.confidence).toLowerCase()}` : ''}</span></div>
       ${btod.rationale ? `<div class="ai-trade-rationale">${esc(btod.rationale)}</div>` : ''}
     </div>`;
   } else if (btod && btod.rationale) {
@@ -13654,7 +13670,7 @@ function renderMorningBrief(r) {
     const pct = Math.max(6, Math.min(100, Math.round(r.headlineCount / 30 * 100)));
     meters.push(`<div class="hero-meter"><span class="mk">Data Coverage</span><div class="hero-meter-bar"><i style="width:${pct}%;background:var(--blue)"></i></div><span class="mv">${r.headlineCount} headlines</span></div>`);
   }
-  if (btod?.confidence && /^(LOW|MEDIUM|HIGH)$/i.test(btod.confidence)) {
+  if (false && btod?.confidence && /^(LOW|MEDIUM|HIGH)$/i.test(btod.confidence)) {   // removed: a self-rated confidence on an untested idea is not a meter
     const pct = { LOW: 33, MEDIUM: 66, HIGH: 100 }[btod.confidence.toUpperCase()];
     const dirCol = /LONG/i.test(btod.direction ?? '') ? 'var(--bull)' : /SHORT/i.test(btod.direction ?? '') ? 'var(--bear)' : 'var(--amber)';
     meters.push(`<div class="hero-meter"><span class="mk">Trade Confidence</span><div class="hero-meter-bar"><i style="width:${pct}%;background:${dirCol}"></i></div><span class="mv">${esc(btod.confidence).toUpperCase()}</span></div>`);

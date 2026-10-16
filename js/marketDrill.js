@@ -119,9 +119,15 @@ export const GENERATORS = [
         // exists is most of what separates reading a number from pattern-matching one,
         // and every one of these was invisible until now.
         boundary: `The split has to clear 60/40 either way or the question is not asked at all. This one was ${Math.round(realShare * 100)}/${100 - Math.round(realShare * 100)}.`,
+        // Conditional on the SIGN of the move: the text was written for rising yields and read backwards on a fall
+        // (a 39bp drop explained as 'a tightening... gold's headwind').
         why: answer === 'real'
-          ? 'The move was the real yield, so this is a genuine tightening of financial conditions: it discounts future earnings harder, raises the bar for holding an asset that pays nothing, and usually supports the currency. Gold’s headwind.'
-          : 'The move was inflation pricing, not the real yield. Money did not get more expensive — the bond market simply expects it to be worth less. That is gold’s FRIEND, and it is why "yields up, gold down" is wrong about half the time.',
+          ? (d10 > 0
+            ? 'The move was the real yield, so this is a genuine tightening of financial conditions: it discounts future earnings harder, raises the bar for holding an asset that pays nothing, and usually supports the currency. Gold’s headwind.'
+            : 'The move was the real yield falling, so this is a genuine easing of financial conditions: future earnings are discounted less, holding an asset that pays nothing costs less, and the currency usually loses support. Gold’s tailwind.')
+          : (d10 > 0
+            ? 'The move was inflation pricing, not the real yield. Money did not get more expensive — the bond market simply expects it to be worth less. That is gold’s FRIEND, and it is why "yields up, gold down" is wrong about half the time.'
+            : 'The move was inflation pricing falling, not the real yield. Money did not get cheaper in real terms — the market expects less inflation. That is gold’s ENEMY even though yields fell, which is why "yields down, gold up" is wrong about half the time.'),
         principle: 'A nominal yield is the real yield plus expected inflation. Always ask which leg moved before you use a yield move for anything.',
         evidence: ['which-gold'],
       };
@@ -365,7 +371,8 @@ export function buildQuestion(bundle, { seed = 1, topics = null, only = null, ex
     try { q = g.make(bundle, i, rand); } catch { q = null; }
     if (!q) continue;
     const opts = q.options.length === 2 ? q.options : shuffle(q.options, rand);
-    return { id: `${g.id}@${dates[i]}`, gen: g.id, topic: g.topic, date: dates[i], seed, ...q, options: opts };
+    // the date goes in the stem: questions are drawn from any past day, and an undated one reads as today's market
+    return { id: `${g.id}@${dates[i]}`, gen: g.id, topic: g.topic, date: dates[i], seed, ...q, stem: `[${dates[i]}] ${q.stem}`, options: opts };
   }
   return null;
 }

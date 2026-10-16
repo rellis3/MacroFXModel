@@ -15470,10 +15470,10 @@ async function computeRiskFlags() {
           ? `EUR/USD implied vol ${fxIv.level}% (${fxIv.source}) — no 5y percentile wired, so this flag is OFF rather than guessed`
           : 'EUR/USD implied vol unavailable (EVZ retired 2025-03-11)' },
     { key: 'stock_bond_corr', label: 'Stock-bond correlation broken',
-      on: sbCorr != null ? sbCorr.corr > 0 : null,
+      on: sbCorr != null ? sbCorr.corr >= 0.3 : null,   // 20 obs: SE ~0.23, so a positive sign alone is noise
       value: sbCorr != null ? +sbCorr.corr.toFixed(2) : null,
       detail: sbCorr != null
-        ? `SPY/TLT 20d return correlation ${sbCorr.corr >= 0 ? '+' : ''}${sbCorr.corr.toFixed(2)} as of ${sbCorr.asOf} (flag > 0 — the usual negative hedge has flipped, an inflation-scare rather than growth-scare signature)`
+        ? `SPY/TLT 20d return correlation ${sbCorr.corr >= 0 ? '+' : ''}${sbCorr.corr.toFixed(2)} as of ${sbCorr.asOf} (flag at ≥ +0.3 — bonds are not hedging stocks; context only, it does not say why or what follows)`
         : 'SPY/TLT history unavailable' },
   ];
 

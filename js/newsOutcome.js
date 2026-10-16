@@ -118,7 +118,13 @@ export function scoreRelease(ev = {}, reaction = null, { invertKinds = ['unemp']
  */
 export const TALLY_MIN = 20;
 export function claimTally(rows = []) {
-  const scored = (Array.isArray(rows) ? rows : []).filter(r => r.claimHeld === true || r.claimHeld === false);
+  // One MOVE is one outcome: releases printed together on the same instrument (AU employment + unemployment rate)
+  // were each counted as a win off the same 23 pips. Collapse by (instrument, minute); a group counts once, and
+  // only when its rows agree on the verdict.
+  const all = (Array.isArray(rows) ? rows : []).filter(r => r.claimHeld === true || r.claimHeld === false);
+  const groups = new Map();
+  for (const r of all) { const k = r.instrument != null && r.ms != null ? `${r.instrument}|${Math.round(r.ms / 60000)}` : `${groups.size}|solo`; (groups.get(k) ?? groups.set(k, []).get(k)).push(r); }
+  const scored = [...groups.values()].filter(g => g.every(r => r.claimHeld === g[0].claimHeld)).map(g => g[0]);
   const right = scored.filter(r => r.claimHeld).length;
   const n = scored.length;
   return {

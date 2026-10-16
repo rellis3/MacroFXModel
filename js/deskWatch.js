@@ -172,9 +172,10 @@ export function evaluateTriggers(inp = {}) {
   }
   // ── described: stocks and bonds falling together ───────────────────────────
   if (stockBond && Number.isFinite(stockBond.corr)) {
-    const on = stockBond.corr >= 0.2;   // SPY vs TLT PRICE correlation positive = moving together
+    // 20 daily returns: the standard error of a correlation is ~0.23, so +0.2 is noise. +0.3 is the floor.
+    const on = stockBond.corr >= 0.3;   // SPY vs TLT PRICE correlation positive = moving together
     push({ id: 'stock-bond-together', kind: 'described', evidenceId: 'stock-bond-flip', label: 'Stocks and bonds moving together', firing: on, value: { corr: stockBond.corr },
-      detail: on ? `20-day SPY/TLT correlation is +${stockBond.corr.toFixed(2)} (as of ${stockBond.asOf}): stocks and bonds are moving together, so bonds are not hedging equities — the inflation-regime shape. Such episodes have lasted a median 5 sessions (p75 17) since 2008. A sizing fact, not a direction.` : `20-day SPY/TLT correlation is ${stockBond.corr.toFixed(2)}: bonds are hedging equities again.` });
+      detail: on ? `20-day SPY/TLT correlation is +${stockBond.corr.toFixed(2)} (as of ${stockBond.asOf}): stocks and bonds are moving together, so bonds are not hedging equities (context: the ledger says do not claim what follows, or why). Such episodes have lasted a median 5 sessions (p75 17) since 2008. A sizing fact, not a direction.` : `20-day SPY/TLT correlation is ${stockBond.corr.toFixed(2)}: bonds are hedging equities again.` });
   }
   // ── described: VIX and credit crossing levels ──────────────────────────────
   {
