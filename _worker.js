@@ -62,6 +62,7 @@ function isAllowedKVKey(key) {
     'oi_bot_config', 'oi_bot_credentials', 'oi_bot_status', 'oi_bot_zones', 'oi_bot_trades', 'oi_force_unlock',
     'oi_bot_state', 'oi_hold_calibration', 'oi_capture_freshness',
     'oi_ripple_log', 'oi_vol_bot_config', 'oi_vol_bot_credentials', 'oi_vol_bot_status', 'oi_vol_bot_zones', 'oi_vol_bot_trade_log', 'oi_vol_bot_state',
+    'oi_conf_bot_config', 'oi_conf_bot_credentials', 'oi_conf_bot_status', 'oi_conf_bot_zones', 'oi_conf_bot_trade_log', 'oi_conf_bot_state',
     'zq_path_v1',
     'cog_line_live_v1',
     'mpt_store_v1',
@@ -1119,7 +1120,8 @@ export default {
             // One-shot state (double-entry protection across bot restarts) + the
             // hold-score calibration — both must outlive the 48h market-data TTL.
             'oi_bot_state', 'oi_hold_calibration',
-            'oi_ripple_log', 'oi_vol_bot_config', 'oi_vol_bot_credentials', 'oi_vol_bot_zones', 'oi_vol_bot_trade_log', 'oi_vol_bot_state',   // OI-Vol bot (status deliberately NOT here — rewritten every ~30s)
+            'oi_ripple_log', 'oi_vol_bot_config', 'oi_vol_bot_credentials', 'oi_vol_bot_zones', 'oi_vol_bot_trade_log', 'oi_vol_bot_state',
+            'oi_conf_bot_config', 'oi_conf_bot_credentials', 'oi_conf_bot_zones', 'oi_conf_bot_trade_log', 'oi_conf_bot_state',   // OI-Conf bot (status not durable, like OI-Vol)   // OI-Vol bot (status deliberately NOT here — rewritten every ~30s)
             // Per-pair stale-capture streak (js/oiRawArchive.js oiFreshnessStreak) — a
             // 48h TTL here would reset the streak right as a real stale run was about
             // to cross tolerance, silently delaying the alert it exists to give.

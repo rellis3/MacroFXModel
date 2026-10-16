@@ -59,6 +59,7 @@ const BOTS = [
   ['range_line_bot_status', 'Range-Line'],
   ['oi_bot_status', 'OI Gamma'],
   ['oi_vol_bot_status', 'OI-Vol'],
+  ['oi_conf_bot_status', 'OI-Conf'],
   ['confluence_bot_status', 'Confluence'],
   ['yield_spread_status', 'Yield-Spread'],
   ['dyn_anchor_status', 'DynAnchor'],

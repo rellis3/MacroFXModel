@@ -235,6 +235,8 @@ import { levelHeat } from './js/levelHeat.js';                 // per-level deal
 import { buildOILevelText } from './js/oiLevelExport.js';
 import { wallStrengthTier as _oiWallTier } from './js/oiConfluence.js';
 import { ladderLegs as _tierLadderLegs, czLegs as _tierCzLegs } from './js/oiTiers.js';
+import { OI_CONF_DEFAULTS, volLines as _confVolLines, oiLevelList as _confOiLevels, findCoincidences as _confFind, buildConfZones as _confZones, confTolerance as _confTol } from './js/oiConf.js';
+import { sessionState as _irSessionState, reforecast as _irReforecast, morningLevels as _irMorning } from './js/intradayRange.js';
 import { oiGexLadder as _oiGexLadder, computeExpiryLevels as _oiComputeExpiry, oiMatrixExpiryLegs as _oiMatrixLegs, oiFlatVol as _oiFlatVol } from './js/oi.js';
 import { buildTradesText as _oiTradesText } from './js/oiTradesExport.js';   // OI bot zones → TradingView block (pine/OI Bot Trades.pine)
 import { emptyBook as _oiShadowEmptyBook, syncPlan as _oiShadowSyncPlan, stepBar as _oiShadowStepBar, summarize as _oiShadowSummarize } from './js/oiShadowExec.js';   // CME-vs-Cboe OI plan paper-trader (forward test, no orders)
@@ -19925,6 +19927,67 @@ svcInterval('oiBot', _refreshOIRippleShadow, 10 * 60_000);
 setTimeout(() => _refreshOIRippleShadow(), 150_000);
 setTimeout(() => _refreshOIVolBotZones(), 90_000);
 
+// ── OI-CONF bot: the plan is OI levels × volatility lines that COINCIDE (js/oiConf.js) ───────────────────────────────────────────
+// Rebuilt every minute because 6 of the 12 vol lines are dynamic (the hourly re-forecast's projected high/low moves with the day's range). A zone exists
+// only while an OI level and a vol line sit within tolerance (a fraction of the day's σ); it is anchored at the OI level so its zone_id is stable.
+// Own plan (`oi_conf_bot_zones`), config (`oi_conf_bot_config`), bot and MAGIC; paper by default. A forward experiment, not a validated edge.
+async function _refreshOIConfBotZones() {
+  try {
+    const [oiRaw, cfgRaw] = await Promise.all([kv.get('oi_store').catch(() => null), kv.get('oi_conf_bot_config').catch(() => null)]);
+    if (!oiRaw || !forecastState.latest) return 0;
+    const store = JSON.parse(oiRaw).data ?? JSON.parse(oiRaw);
+    const saved = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+    const cfg = { ...OI_CONF_DEFAULTS, ...saved };
+    const want = new Set((cfg.pairs || []).map(x => String(x).toLowerCase()));
+    const instruments = {}, skipped = {};
+    for (const [pair, inst] of Object.entries(store)) {
+      const key = (() => { try { return resolveKey(pair); } catch { return null; } })() || String(pair).toLowerCase().replace(/[/_]/g, '');
+      if (!want.has(key)) continue;
+      try {
+        const osym = _OI_REACH_OA[pair], fk = (() => { try { return _forecastKeyForPair(pair); } catch { return null; } })();
+        const fc = fk && forecastState.latest?.instruments?.[fk];
+        if (!osym || !fc?.ladder || !(inst?.spot > 0)) { skipped[key] = !osym ? 'no OANDA price feed mapped' : 'no forecast ladder'; continue; }
+        const raw = await _oiM5Bars(osym);
+        if (!raw) { skipped[key] = 'no M5 bars'; continue; }
+        const st = _irSessionState(raw.map(b => ({ t: b.time, open: b.open, high: b.high, low: b.low, close: b.close })));
+        if (!st) { skipped[key] = 'no bars in this London session yet'; continue; }
+        const sigPct = fc.ladder.sigma_daily_pct, sigmaPrice = st.open * sigPct / 100;
+        const stat = _irMorning(fc.ladder, st.open);
+        const cp = st.checkpoints.at(-1);
+        const rf = cp ? _irReforecast(cp, { instrument: fk, open: st.open, sigmaDailyPct: sigPct }) : null;
+        const pip = (() => { try { return _pipSize(key) || 0; } catch { return 0; } })();
+        const tol = _confTol(cfg, sigmaPrice, pip);
+        const oi = _confOiLevels(oiStoreToLevels(inst, { minTier: cfg.minTier, maxWalls: 5 }) || [], inst, cfg.oiTypes);
+        const vol = _confVolLines({ staticLevels: stat, dynamic: rf, rungs: cfg.rungs, useStatic: cfg.useStatic, useDynamic: cfg.useDynamic });
+        const { hits, near } = _confFind(oi, vol, tol);
+        const built = _confZones({ spot: inst.spot, sigmaPrice, hits, cfg, pipSize: pip });
+        let zones = built.zones;
+        const touch = zones.length ? await _oiZoneTouch(pair, zones) : null;
+        if (touch) zones.forEach((z, i) => { const t = touch.get(i); if (t) z.pTouch = t; });
+        const hKey = ({ '1h': 'p1', '4h': 'p4', '8h': 'p8' })[cfg.touchHorizon] || 'p4';
+        const dropped = [];
+        if (touch && cfg.minTouchP > 0) {
+          zones = zones.filter(z => { const p = z.pTouch?.[hKey]; if (p != null && p < cfg.minTouchP) { dropped.push({ mode: z.mode, side: z.side, level: z.level, reason: `touch ${Math.round(p * 100)}% in ${cfg.touchHorizon} < ${Math.round(cfg.minTouchP * 100)}%` }); return false; } return true; });
+        }
+        const slim = c => ({ oi: c.oi.type, oiPrice: c.oi.price, vol: c.vol.name, volKind: c.vol.kind, volPrice: c.vol.price, delta: +c.delta.toFixed(6) });
+        instruments[key] = {
+          spot: inst.spot, regime: inst.regime ?? null, dte: inst.dte ?? null, maxPain: inst.maxPain ?? null, zones, zoneCount: zones.length, stale: null, diag: zones.length ? null : `no OI level within ${+tol.toPrecision(4)} of a forecast line`,
+          oiSavedAtMs: Number.isFinite(inst.savedAtMs) ? inst.savedAtMs : null, refMove: inst.refMove ?? null, droppedZones: dropped,
+          confluence: { open: st.open, sigmaPrice: +sigmaPrice.toPrecision(6), tol: +tol.toPrecision(6), tolSigma: cfg.tolPips > 0 ? null : cfg.tolSigma, dynamicAtHour: rf?.h ?? null, dynamicCell: rf?.cell ?? null,
+            nOi: oi.length, volLines: vol.map(v => ({ name: v.name, kind: v.kind, price: +v.price.toPrecision(8) })), oiLevels: oi.map(o => ({ type: o.type, price: +o.price.toPrecision(8) })),
+            hits: hits.map(slim), near: near.map(slim), tooFar: built.tooFar, tooClose: built.tooClose },
+        };
+      } catch (e) { skipped[key] = `error: ${e.message}`; }
+    }
+    const _cfgUsed = ['tolSigma', 'tolPips', 'style', 'slSigma', 'tpR', 'maxArmSigma', 'minTier', 'rungs', 'useStatic', 'useDynamic', 'minSources', 'minTouchP', 'touchHorizon', 'pairs'].reduce((o, k) => ({ ...o, [k]: cfg[k] }), {});
+    await kv.put('oi_conf_bot_zones', JSON.stringify({ data: { strategy: 'oi-conf-bot', generatedAt: new Date().toISOString(), instruments, skipped, cfgUsed: _cfgUsed }, timestamp: Date.now() }));
+    return Object.keys(instruments).length;
+  } catch (e) { console.warn('[oi-conf] refresh failed:', e.message); return 0; }
+}
+svcInterval('oiBot', _refreshOIConfBotZones, 60_000);
+setTimeout(() => _refreshOIConfBotZones(), 120_000);
+
+
 // ── volatility_bot_v2 (Level Atlas Vote Portfolio) plan producer ─────────────
 // Replaces `volatility_bot` (retired, left running until the owner stops it —
 // not deleted). Same "server computes + freezes, bot only polls KV" contract
@@ -21907,6 +21970,32 @@ app.get('/api/oi-ripple/log', async (req, res) => {
 app.post('/api/oi-ripple/refresh', async (_req, res) => {
   try { res.json({ ok: true, instruments: await _refreshOIRippleShadow() }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── OI-Conf bot: plan, refresh, audit ────────────────────────────────────────────────────────────────────────────────────────────
+app.get('/api/oi-conf-bot/zones', async (_req, res) => {
+  try { const raw = await kv.get('oi_conf_bot_zones').catch(() => null);
+    res.json({ ok: true, ...(raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : { instruments: {} }) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/oi-conf-bot/zones/refresh', async (_req, res) => {
+  try { res.json({ ok: true, instruments: await _refreshOIConfBotZones() }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// Per instrument: the 12 forecast lines, the OI levels, every coincidence (and near-miss within 2× tolerance), the armed zones with touch odds, what has fired, plus
+// the bot's open MT5 positions. Read-only.
+app.get('/api/oi-conf-bot/audit', async (_req, res) => {
+  try {
+    const J = async k => { const raw = await kv.get(k).catch(() => null); if (!raw) return null; const j = JSON.parse(raw); return j.data ?? j; };
+    const [plan, st, cfg] = await Promise.all([J('oi_conf_bot_zones'), J('oi_conf_bot_status'), J('oi_conf_bot_config')]);
+    const instruments = {};
+    for (const [k, v] of Object.entries(plan?.instruments || {})) {
+      const line = (st?.lines || []).find(l => l.instrument === k);
+      instruments[k] = { spot: v.spot, zones: v.zones || [], dropped: v.droppedZones || [], diag: v.diag, confluence: v.confluence, entered: line?.entered || [], primed: line?.primed || [] };
+    }
+    res.json({ ok: true, generatedAt: plan?.generatedAt || null, mode: st?.mode || null, running: st?.running ?? null, skipped: plan?.skipped || {}, cfgUsed: plan?.cfgUsed || null,
+      savedConfig: cfg ? { tolSigma: cfg.tolSigma, tolPips: cfg.tolPips, style: cfg.style, paper_mode: cfg.paper_mode, kill_switch: cfg.kill_switch } : null,
+      instruments, positions: st?.mt5_positions || [] });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.post('/api/oi-vol-bot/zones/refresh', async (_req, res) => {
   try { const n = await _refreshOIVolBotZones(); res.json({ ok: true, instruments: n }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -22675,10 +22764,11 @@ svcTimeout('oiCboeShadow', () => _oiShadowTick().catch(e => console.error('[oi-s
 //   /api/oi-bot/trades-export?bot=vol      the OI-Vol bot        (same as /api/oi-vol-bot/trades-export)
 //   /api/oi-bot/trades-export?bot=both     both blocks, OI first then OI-Vol
 async function _oiTradesBlock(which) {
-  const vol = which === 'vol';
-  const [plan, status] = await Promise.all([_kvJson(vol ? 'oi_vol_bot_zones' : 'oi_bot_zones'), _kvJson(vol ? 'oi_vol_bot_status' : 'oi_bot_status')]);
+  const vol = which === 'vol', conf = which === 'conf';
+  const pre = conf ? 'oi_conf_bot' : vol ? 'oi_vol_bot' : 'oi_bot';
+  const [plan, status] = await Promise.all([_kvJson(pre + '_zones'), _kvJson(pre + '_status')]);
   if (!plan?.instruments) return null;
-  return _oiTradesText(plan, status, { source: 'CME', title: vol ? 'OI-VOL BOT TRADES' : 'OI BOT TRADES' });
+  return _oiTradesText(plan, status, { source: 'CME', title: conf ? 'OI-CONF BOT TRADES' : vol ? 'OI-VOL BOT TRADES' : 'OI BOT TRADES' });
 }
 app.get('/api/oi-bot/trades-export', async (req, res) => {
   try {
@@ -22693,6 +22783,10 @@ app.get('/api/oi-bot/trades-export', async (req, res) => {
     if (!plan?.instruments) return res.status(404).type('text/plain').send('No OI bot plan yet.');
     res.type('text/plain').send(_oiTradesText(plan, status, { source: cboe ? 'Cboe shadow (no orders)' : 'CME' }));
   } catch (e) { res.status(500).type('text/plain').send(`Export failed: ${e.message}`); }
+});
+app.get('/api/oi-conf-bot/trades-export', async (_req, res) => {
+  try { const t = await _oiTradesBlock('conf'); if (!t) return res.status(404).type('text/plain').send('No OI-Conf plan yet.'); res.type('text/plain').send(t); }
+  catch (e) { res.status(500).type('text/plain').send(`Export failed: ${e.message}`); }
 });
 app.get('/api/oi-vol-bot/trades-export', async (_req, res) => {
   try { const t = await _oiTradesBlock('vol'); if (!t) return res.status(404).type('text/plain').send('No OI-Vol plan yet.'); res.type('text/plain').send(t); }

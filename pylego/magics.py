@@ -37,6 +37,7 @@ MAGICS = {
     "YieldSpreadBot/yield_spread_bot.py":           20260012,  # yield-spread z mean-reversion (validated macro sleeve)
     "oi_bot/oi_bot.py":                       20260714,  # OI gamma zones (forward-testing/paper); was unregistered — value kept, positions already carry it
     "oi_vol_bot/oi_vol_bot.py":              20261015,  # OI-Vol variant of the OI bot (reachable-level plan, paper by default) — side-by-side audit
+    "oi_conf_bot/oi_conf_bot.py":            20261016,  # OI-Conf: trades only where an OI level and a vol-forecast line coincide (forward experiment, paper by default)
     "fib_atlas_bot/fib_atlas_bot.py":         20260831,  # Asia+Monday range-extension vote bot
     "volatility_bot_v2/volatility_bot_v2.py": 20260828,  # Vote Atlas (Level Atlas vote portfolio) -- was
                                                           # unregistered, caught by this test while adding motif_bot below

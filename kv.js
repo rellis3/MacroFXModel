@@ -264,6 +264,11 @@ const _CF_EXACT = new Set([
   'oi_vol_bot_zones',           // OI-Vol bot plan — keep last good plan across a redeploy (the worker's /api/kv/get serves it to the executor)
   'oi_vol_bot_trade_log',       // OI-Vol resolved closed-trade log — forward record for the OI vs OI-Vol comparison
   'oi_vol_bot_state',           // OI-Vol bot one-shot state — survives BOT restarts; same double-entry protection as oi_bot_state
+  'oi_conf_bot_config',         // OI-Conf bot settings (tolerance, SL/TP, universe, plus the shared executor settings) — must survive redeploys
+  'oi_conf_bot_credentials',    // OI-Conf bot MT5 credentials
+  'oi_conf_bot_zones',          // OI-Conf plan — keep last good plan across a redeploy
+  'oi_conf_bot_trade_log',      // OI-Conf resolved closed-trade log — the forward record for the experiment
+  'oi_conf_bot_state',          // OI-Conf one-shot state — survives BOT restarts
   'oi_bot_state',               // OI bot one-shot state (entered zones + features per plan) — survives BOT restarts via KV; keep across redeploys so a same-day server bounce can't double-enter
   'volatility_bot_v2_config',      // Volatility V2 (Level Atlas Vote Portfolio) bot settings — must survive redeploys
   'volatility_bot_v2_credentials', // Volatility V2 MT5 credentials — must survive redeploys
