@@ -1379,7 +1379,7 @@ export default {
           ca10y:    'IRLTLT01CAM156N',
           ch10y:    'IRLTLT01CHM156N',
           de_short: 'IRSTCI01DEM156N',
-          gb_short: 'IR3TIB01GBM156N',
+          gb_short: 'BOE_IUDBEDR_M',   // served from the server's KV copy (BoE Bank Rate); FRED would 400 on this id
           jp_short: 'IRSTCI01JPM156N',
           au_short: 'IR3TIB01AUM156N',
           ca_short: 'IRSTCI01CAM156N',

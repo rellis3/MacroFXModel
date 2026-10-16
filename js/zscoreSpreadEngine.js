@@ -8,6 +8,7 @@
 // => LONG, z < -threshold => SHORT. Only USDJPY's sign has been validated against
 // live results — every other pair's convention is unconfirmed, so
 // `opts.invert.<pairKey>` lets the UI flip any of them without a redeploy.
+import { isBoeSeries, fetchBoeSeries } from './boeSeries.js';
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 
 export const ZSCORE_PAIRS = {
@@ -23,7 +24,8 @@ export const ZSCORE_PAIRS = {
   },
   gbpusd: {
     label: 'GBPUSD', pairDisplay: 'GBP/USD',
-    baseSeries: 'GS2', quoteSeries: 'IR3TIB01GBM156N',
+    // BoE Bank Rate (monthly mean): IR3TIB01GBM156N stopped in 2026-01 (owner decision 2026-10-16)
+    baseSeries: 'GS2', quoteSeries: 'BOE_IUDBEDR_M',
     pip: 0.0001, defaultThreshold: 2.5,
   },
   audusd: {
@@ -115,6 +117,8 @@ export function _fredGovernorState() {
 }
 
 export async function fetchFredObservations(seriesId, fromDate, fredKey) {
+  // BoE IADB series under a pseudo id (js/boeSeries.js): same Map<date, value> shape for every caller
+  if (isBoeSeries(seriesId)) return new Map((await fetchBoeSeries(seriesId, fromDate)).map(p => [p.date, p.value]));
   const url = `https://api.stlouisfed.org/fred/series/observations`
             + `?series_id=${seriesId}&api_key=${fredKey}&file_type=json`
             + `&observation_start=${fromDate}&sort_order=asc`;

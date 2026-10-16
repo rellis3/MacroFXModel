@@ -175,6 +175,7 @@ import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeRelea
 import { INTL_YIELDS as _INTL_YIELDS } from './js/intlYields.js';   // gilts, JGBs, bunds daily, for the chain's gap chips
 import { crackHistory as _crackHistory, crackContext as _crackContext } from './js/crackSpread.js';
 import { BAND_REACH_PARAMS as _BAND_REACH_PARAMS } from './js/bandReachParams.js';   // T7b: the band clock and the Asia conditioner, for the digest's board   // the 3-2-1 refining margin (MD files/CRACK_SPREAD.md)
+import { isBoeSeries as _isBoeSeries, fetchBoeSeries as _fetchBoeSeries } from './js/boeSeries.js';
 import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending, revisionOf as _fredRevisionOf, policyActualFrom as _policyActual, onsSeries as _onsSeries, statcanSeries as _statcanSeries, jsonStatSeries as _jsonStatSeries } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
@@ -9927,6 +9928,7 @@ async function fetchYahooOHLC(ticker, fromUnix) {
 
 // Fetch a single FRED series via REST API
 async function fetchFredSeries(seriesId, fromDate, fredKey) {
+  if (_isBoeSeries(seriesId)) return new Map((await _fetchBoeSeries(seriesId, fromDate)).map(p => [p.date, p.value]));   // js/boeSeries.js
   const url = `https://api.stlouisfed.org/fred/series/observations`
             + `?series_id=${seriesId}&api_key=${fredKey}&file_type=json`
             + `&observation_start=${fromDate}&sort_order=asc`;
@@ -13246,7 +13248,7 @@ setTimeout(() => { if (process.env.FRED_KEY) _creditQualityPoller.tick().catch((
 // on the key, that currency is dropped with an availability note (graceful).
 const CARRY_UNIVERSE = [
   { ccy: 'EUR', inst: 'EUR_USD', pair: 'EUR_USD', invert: false, fred: 'IR3TIB01EZM156N' },
-  { ccy: 'GBP', inst: 'GBP_USD', pair: 'GBP_USD', invert: false, fred: 'IR3TIB01GBM156N' },
+  { ccy: 'GBP', inst: 'GBP_USD', pair: 'GBP_USD', invert: false, fred: 'BOE_IUDBEDR_M' },   // BoE Bank Rate: the OECD 3m GBP series died 2026-01
   { ccy: 'AUD', inst: 'AUD_USD', pair: 'AUD_USD', invert: false, fred: 'IR3TIB01AUM156N' },
   { ccy: 'NZD', inst: 'NZD_USD', pair: 'NZD_USD', invert: false, fred: 'IR3TIB01NZM156N' },
   { ccy: 'JPY', inst: 'USD_JPY', pair: 'JPY_USD', invert: true,  fred: 'IR3TIB01JPM156N' },
@@ -37007,7 +37009,7 @@ const _FRED_DASH_SERIES = {
   de10y: 'IRLTLT01DEM156N', gb10y: 'IRLTLT01GBM156N',
   jp10y: 'IRLTLT01JPM156N', au10y: 'IRLTLT01AUM156N',
   ca10y: 'IRLTLT01CAM156N', ch10y: 'IRLTLT01CHM156N',
-  de_short: 'IRSTCI01DEM156N', gb_short: 'IR3TIB01GBM156N',
+  de_short: 'IRSTCI01DEM156N', gb_short: 'BOE_IUDBEDR_M',   // BoE Bank Rate (js/boeSeries.js)
   jp_short: 'IRSTCI01JPM156N', au_short: 'IR3TIB01AUM156N',
   ca_short: 'IRSTCI01CAM156N', ch_short: 'IR3TIB01CHM156N',
   wti: 'DCOILWTICO', walcl: 'WALCL', tga: 'WTREGEN', rrp: 'RRPONTSYD',
@@ -37034,7 +37036,7 @@ const _FREDHISTORY_SERIES = {
   de10y: 'IRLTLT01DEM156N', gb10y: 'IRLTLT01GBM156N',
   jp10y: 'IRLTLT01JPM156N', au10y: 'IRLTLT01AUM156N',
   ca10y: 'IRLTLT01CAM156N', ch10y: 'IRLTLT01CHM156N',
-  de_short: 'IRSTCI01DEM156N', gb_short: 'IR3TIB01GBM156N',
+  de_short: 'IRSTCI01DEM156N', gb_short: 'BOE_IUDBEDR_M',   // BoE Bank Rate (js/boeSeries.js)
   jp_short: 'IRSTCI01JPM156N', au_short: 'IR3TIB01AUM156N',
   ca_short: 'IRSTCI01CAM156N', ch_short: 'IR3TIB01CHM156N',
 };
@@ -37077,7 +37079,9 @@ async function refreshFredHistory(retry = 0) {
         if (existing && _fredHistFresh(existing)) { skipped++; continue; }
         const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}` +
           `&api_key=${process.env.FRED_KEY}&file_type=json&sort_order=desc&limit=90`;
-        const r = await fetch(url);
+        const r = _isBoeSeries(id)
+          ? await (async () => { const pts = await _fetchBoeSeries(id, '2018-01-01'); return { ok: true, status: 200, json: async () => ({ observations: pts.reverse().slice(0, 90).map(p => ({ date: p.date, value: String(p.value) })) }) }; })()
+          : await fetch(url);
         if (!r.ok) { fail++; console.warn(`[FRED] fredhistory ${key}: HTTP ${r.status}`); }
         else {
           const d = await r.json();
@@ -37152,10 +37156,10 @@ async function refreshFredDashboard(retry = 0) {
   try {
     for (const [key, id] of Object.entries(_FRED_DASH_SERIES)) {
       try {
-        const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}` +
-          `&api_key=${process.env.FRED_KEY}&file_type=json&sort_order=desc&limit=5`;
-        const r = await fetch(url);
-        const d = await r.json();
+        const d = _isBoeSeries(id)
+          ? { observations: (await _fetchBoeSeries(id, new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10))).reverse().slice(0, 5).map(p => ({ date: p.date, value: String(p.value) })) }
+          : await (await fetch(`https://api.stlouisfed.org/fred/series/observations?series_id=${id}` +
+              `&api_key=${process.env.FRED_KEY}&file_type=json&sort_order=desc&limit=5`)).json();
         const valid = (d.observations || [])
           .filter(o => o.value && o.value !== '.')
           .map(o => ({ v: parseFloat(o.value), date: o.date }));

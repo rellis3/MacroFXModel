@@ -36,7 +36,7 @@ export const OANDA_SYMBOL = {
 export const FRED_ID = {
   us2y: 'DGS2', us10y: 'DGS10', tips: 'DFII10', bei: 'T10YIE', dxy: 'DTWEXBGS',
   de10y: 'IRLTLT01DEM156N', de_s: 'IRSTCI01DEM156N',
-  gb10y: 'IRLTLT01GBM156N', gb_s: 'IR3TIB01GBM156N',
+  gb10y: 'IRLTLT01GBM156N', gb_s: 'BOE_IUDBEDR_M',   // BoE Bank Rate via the server's fetchFredSeries (js/boeSeries.js)
   jp10y: 'IRLTLT01JPM156N', jp_s: 'IRSTCI01JPM156N',
   au10y: 'IRLTLT01AUM156N', au_s: 'IR3TIB01AUM156N',
   vix: 'VIXCLS', hy: 'BAMLH0A0HYM2',   // same series ids as server.js's risk-flags/credit-gate — no second copy

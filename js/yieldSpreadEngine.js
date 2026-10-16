@@ -237,7 +237,8 @@ export async function computeYieldSpreadSignals(opts = {}, pairKeys = Object.key
       const history = dates.slice(-histN).map(d => { const zi = zByDate.get(d); return { date: d, z: +zi.z.toFixed(3) }; });
       // Each leg's last RAW observation date: `asOf` is the forward-filled z series' end (always today), so a dead
       // leg (GBP's 3-month rate, last print 2026-01) looked current. Reported only; nothing here uses it.
-      const lastObs = a => (Array.isArray(a) ? a : []).reduce((m, o) => (o?.date && o.value != null && Number.isFinite(+o.value) && o.date > m ? o.date : m), '') || null;
+      const lastObs = a => { let m = ''; if (a instanceof Map) { for (const [d, v] of a) if (Number.isFinite(+v) && d > m) m = d; }
+        else for (const o of (Array.isArray(a) ? a : [])) if (o?.date && Number.isFinite(+o.value) && o.date > m) m = o.date; return m || null; };
       const legDates = { baseObsDate: lastObs(usRaw), quoteObsDate: lastObs(forRaw) };
       out[pairKey] = zInfo
         ? { z: +zInfo.z.toFixed(3), spread: +zInfo.spread.toFixed(4), asOf: lastDate, ...legDates, inverted, label: cfg.label, pairDisplay: cfg.pairDisplay, pip: cfg.pip, history }

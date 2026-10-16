@@ -30,7 +30,7 @@ import { fetchFredObservations } from './zscoreSpreadEngine.js';
 export const YIELD_CURVE_UNIVERSE = {
   USD: { short: 'GS2', long: 'GS10' },
   EUR: { short: 'IRSTCI01DEM156N', long: 'IRLTLT01DEM156N' },
-  GBP: { short: 'IR3TIB01GBM156N', long: 'IRLTLT01GBM156N' },
+  GBP: { short: 'BOE_IUDBEDR_M', long: 'IRLTLT01GBM156N' },   // BoE Bank Rate: the FRED 3m series died 2026-01
   JPY: { short: 'IRSTCI01JPM156N', long: 'IRLTLT01JPM156N' },
   AUD: { short: 'IR3TIB01AUM156N', long: 'IRLTLT01AUM156N' },
   CAD: { short: 'IRSTCI01CAM156N', long: 'IRLTLT01CAM156N' },
