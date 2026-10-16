@@ -29924,6 +29924,36 @@ async function _refreshCalFeed() {
             printed: _calPrinted(nas ?? [], { limit: 200 }), health, today } };   // two lists now; the actuals join reads these rows
   return _calFeed;
 }
+// The week ahead PAST this week. ForexFactory only lists the current week (the next-week file 404s), so the
+// week-ahead panel went empty Thursday to Sunday. Nasdaq publishes forward lists but no impact rating, and the two
+// vendors name releases differently, so 'high impact' is the release TYPE (rate decision, CPI, jobs, GDP, retail
+// sales, PMI) on the gate countries. Cached 6h.
+let _calAhead = { at: 0, rows: null };
+const _AHEAD_HIGH = /rate decision|interest rate|cash rate|bank rate|\bcpi\b|consumer price|inflation|nonfarm|non-farm|payroll|employment change|unemployment rate|\bgdp\b|retail sales|\bpmi\b|\bism\b/i;
+const _AHEAD_CC = { 'United States': 'US', 'Euro Zone': 'EU', Germany: 'DE', 'United Kingdom': 'GB', Japan: 'JP', Switzerland: 'CH', Australia: 'AU', 'New Zealand': 'NZ', Canada: 'CA' };
+app.get('/api/calendar-ahead', async (_req, res) => {
+  try {
+    if (!_calAhead.rows || Date.now() - _calAhead.at > 6 * 3600e3) {
+      const H = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
+      const rows = [];
+      for (let k = 1; k <= 9; k++) {
+        const d = new Date(Date.now() + k * 864e5).toISOString().slice(0, 10);
+        try {
+          const r = await fetch(`https://api.nasdaq.com/api/calendar/economicevents?date=${d}`, { headers: H, signal: AbortSignal.timeout(20_000) });
+          if (r.ok) for (const x of _calParseNasdaq(await r.json(), d)) {
+            const country = _AHEAD_CC[x.country];
+            if (country && !x.released && _AHEAD_HIGH.test(x.event) && x.ms > Date.now()) rows.push({ ms: x.ms, time: new Date(x.ms).toISOString().replace('T', ' ').slice(0, 19), country, event: x.event, impact: 'High', estimate: x.raw?.consensus?.trim() || null, prev: x.raw?.previous ?? null, source: 'nasdaq' });
+          }
+        } catch (e) { console.warn('[calendar-ahead]', d, e.message); }
+        await new Promise(r => setTimeout(r, 250));
+      }
+      _calAhead = { at: Date.now(), rows: rows.sort((a, b) => a.ms - b.ms) };
+    }
+    res.set('Cache-Control', 'public, max-age=1800');
+    res.json({ ok: true, at: new Date(_calAhead.at).toISOString(), rows: _calAhead.rows, note: 'Nasdaq forward lists; impact = release type, not a vendor rating' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/calendar-feed', async (_req, res) => {
   try {
     if (Date.now() - _calFeed.at > 30 * 60_000) await _refreshCalFeed();

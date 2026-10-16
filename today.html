@@ -2113,6 +2113,7 @@ let oiToday = null;      // /api/oi-today — EVERY OI level with its readings (
                          // a level and not enough to say anything about it.
 let hedgeAlerts = null;  // /api/hedge-alerts — last rolling corr + betas (dollar/rates/risk)
 let ism = null;          // /api/ism — growth-surprise proxy per currency (js/ismEngine.js: real composite for USD only; the other 7 are an OECD business-confidence proxy, explicitly NOT official PMI — see that file's header)
+let calAhead = null;     // /api/calendar-ahead — Nasdaq forward lists past ForexFactory's this-week file (week-ahead panel)
 let gpr = null;          // /api/gpr — Geopolitical Risk Index (Caldara & Iacoviello), global/currency-agnostic backdrop read; the one series here NOT on FRED (js/gprEngine.js)
 let macroMoved = null;   // /api/macro-changes — per-series 1d/5d/20d change rows (what moved)
 let riskFlags = null;    // /api/risk-flags — cross-asset risk-flag composite (zoom 0)
@@ -2606,6 +2607,7 @@ async function loadGate() {
   setInterval(() => loadCorrStatus().catch(() => {}), 15 * 60_000);
   setTimeout(() => loadNewsOutcomes().catch(() => {}), 6000);      // what the day's releases actually did
   setInterval(() => loadNewsOutcomes().catch(() => {}), 10 * 60_000);
+  jget('/api/calendar-ahead').then(r => { if (r?.ok) { calAhead = r.rows ?? []; render(); } }).catch(() => {});   // week ahead past FF's week
   jget('/api/gpr').then(r => { gpr = r?.ok ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { gpr = { down: true, error: e.message }; render(); });   // geopolitical risk line; a dead feed says so
   jget('/api/econ-surprise').then(r => { if (r?.ok) { econSurprise = r; render(); } }).catch(() => {});   // actual-vs-consensus surprise per currency
   jget('/api/macro-regime-fx').then(r => { if (r?.ok) { regimeFx = r; render(); } }).catch(() => {});   // regime-conditional FX base rates
@@ -4703,7 +4705,10 @@ function weekAheadRows(maxDays = 7) {
   if (!Array.isArray(events)) return [];
   const now = Date.now();
   const horizon = now + maxDays * 864e5;
-  const rows = events
+  // ForexFactory covers this week only; past its last event, take Nasdaq's forward lists (impact by release type)
+  const ffLast = Math.max(0, ...events.map(e => e.ms ?? _evUtcMs(e.time)).filter(Number.isFinite));
+  const ahead = (calAhead ?? []).filter(e => e.ms > ffLast);
+  const rows = [...events, ...ahead]
     .map(e => ({ ...e, ms: e.ms ?? _evUtcMs(e.time) }))
     .filter(e => !isNaN(e.ms) && e.ms > now && e.ms <= horizon)
     .filter(e => (e.impact ?? '').toLowerCase() === 'high')
