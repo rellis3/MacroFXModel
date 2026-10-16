@@ -6965,7 +6965,7 @@ function renderGlobalRead() {
 // RANGE side = tested (the fitted ladder + joint multipliers, Global Read). LEAN side = the
 // story arm (every direction read, nominal weight, family-aware): a SHADOW, scored forward as D2.
 // Intraday state (range used, the session so far, the next lines) is read live from the card's own row.
-const _DR_SHORT = { 'macro-state': 'Macro', 'price-state': 'Trend', events: 'Events', positioning: 'Positioning', rates: 'Yields', 'rates-rv': 'Spreads', risk: 'Credit/risk', intraday: 'Today so far' };
+const _DR_SHORT = { 'macro-state': 'Macro', 'price-state': 'Trend', events: 'Events', positioning: 'Positioning', rates: 'Yields', 'rates-rv': 'Spreads', risk: 'Credit/risk', intraday: 'Today so far', 'vol-surface': 'Vol curve' };
 function _drWhy(story) {
   // the reads collapse into at most three family chips, strongest first, with the net sign per family
   const fam = {};
@@ -7011,7 +7011,7 @@ function renderDayRead() {
     <div class="dr-head"><span class="dr-hook">${esc0(ch?.hook ?? g.headline ?? '')}</span></div>
     ${doms.length ? `<div class="dr-sub" style="margin-bottom:8px">The live stories: ${doms.map(esc0).join(' · ')}</div>` : ''}
     <div class="dr-grid">${tiles}</div>
-    <div class="dr-sub" style="margin-top:8px"><b>Day size</b> (wide / normal / capped) is tested. <b>Up / down</b> is a story lean, not validated: every read that points a way, family-weighted, scored each morning. ${esc0(recTxt)}. Full detail is in Global Read below.</div>`)}`;
+    <div class="dr-sub" style="margin-top:8px"><b>Day size</b> (wide / normal / capped) is tested. <b>Up / down</b> is a story lean, not validated: every read that points a way, family-weighted, scored each morning. ${esc0(recTxt)}${_drRecord?.summary?.D3?.n ? `; 10:00 re-read: ${_drRecord.summary.D3.hits}/${_drRecord.summary.D3.n} right on the move left` : ''}. Full detail is in Global Read below.</div>`)}`;
 }
 // pair card: one tier row
 function _globalTier(r) {

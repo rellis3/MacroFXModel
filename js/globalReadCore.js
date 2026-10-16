@@ -76,6 +76,8 @@ export const REGISTRY = [
   { id: 'dollar-tape', label: 'Dollar trend (20d)', family: 'price-state', question: 'direction', timing: 'lagging', horizon: 'days', tier: 'untested', ic: 0, evidence: 'untested as a day-direction read' },
   { id: 'risk-tone', label: 'Credit / risk tone', family: 'risk', question: 'direction', timing: 'coincident', horizon: 'days', tier: 'untested', ic: 0, evidence: 'credit-stress gate failed OOS; direction untested' },
   { id: 'today-tape', label: 'Today so far (open → now)', family: 'intraday', question: 'direction', timing: 'coincident', horizon: 'session', tier: 'untested', ic: 0, evidence: 'path-neutral lines, jump-momentum null; shown as a story read only' },
+  { id: 'real-yields', label: 'Real yield trend', family: 'rates', question: 'direction', timing: 'coincident', horizon: 'days', tier: 'untested', ic: 0, evidence: 'gold/NQ real-yield links tested quiet, not drivers (chain read)' },
+  { id: 'vix-tone', label: 'VIX curve tone', family: 'vol-surface', question: 'direction', timing: 'coincident', horizon: 'days', tier: 'untested', ic: 0, evidence: 'VIX curve validated for range only; direction untested' },
   { id: 'oi-walls', label: 'OI walls / max pain', family: 'positioning', question: 'direction', timing: 'coincident', horizon: 'session',
     tier: 'null', ic: 0, evidence: 'oi-max-pain, wall-placebo (null)' },
   // range — joint coefficients (forge/COMBINED_RANGE_PREREG.md, test pinball 0.90 / 0.94)
@@ -412,6 +414,20 @@ export function recordRow(read, day) {
   };
   return { day, at: read.meta?.asOf ?? new Date().toISOString(), headline: read.headline, conviction: read.conviction, cards };
 }
+// The 10:00 snapshot (D3): the story arm re-read mid-morning, with how far each market had already
+// moved from the open (session % at that moment). Scored on what is LEFT: the close-minus-snapshot move,
+// so the morning's move cannot flatter the call. Written once, the first run in the 10:00 London hour.
+// sessionInstruments: /api/vol-forecast/session .instruments ({ SYM: { oc } }).
+export function snapshotRow(read, sessionInstruments = {}) {
+  const out = {};
+  for (const c of Object.values(read.cards ?? {})) {
+    const st = c.direction?.story; if (!st?.nLive) continue;
+    const oc10 = sessionInstruments[c.sym]?.oc;
+    if (!Number.isFinite(oc10)) continue;
+    out[c.sym] = { pUpStory: st.pUp, nStory: st.nLive, oc10, at: read.meta?.asOf ?? null };
+  }
+  return out;
+}
 // scoreRows: daily-read's score.rows for that day ({ sym, hl, oc, band }; band ≥ 2 = beyond p75).
 export function attachRealised(row, scoreRows = []) {
   let changed = false;
@@ -423,7 +439,7 @@ export function attachRealised(row, scoreRows = []) {
 }
 const pinball = (q, y, tau) => (y >= q ? tau * (y - q) : (1 - tau) * (q - y));
 export function scoreRecord(rows = [], { floor = 30 } = {}) {
-  const obs = rows.flatMap(r => Object.entries(r.cards ?? {}).map(([sym, c]) => ({ day: r.day, sym, ...c, conv: r.conviction?.range ?? null }))).filter(o => o.realisedHl != null);
+  const obs = rows.flatMap(r => Object.entries(r.cards ?? {}).map(([sym, c]) => ({ day: r.day, sym, ...c, snap: r.snap10?.[sym] ?? null, conv: r.conviction?.range ?? null }))).filter(o => o.realisedHl != null);
   const sessions = new Set(obs.map(o => o.day)).size;
   // R1: engine quantiles (ladder × multiplier) vs the plain ladder
   const byInst = {};
@@ -451,11 +467,16 @@ export function scoreRecord(rows = [], { floor = 30 } = {}) {
   const bs = sc.length ? sc.reduce((a, o) => a + (o.pUpStory - (o.oc > 0 ? 1 : 0)) ** 2, 0) / sc.length : null;
   const D2 = { n: sc.length, hits: sc.filter(o => (o.pUpStory > 0.5) === (o.oc > 0)).length, hitRate: sc.length ? r3(sc.filter(o => (o.pUpStory > 0.5) === (o.oc > 0)).length / sc.length) : null,
     brierSkill: bs != null ? r3(1 - bs / 0.25) : null };
+  // D3: the 10:00 story, scored on the remaining move (close minus the 10:00 level, in % of the open)
+  const s3 = obs.filter(o => o.snap && o.oc != null && o.snap.nStory > 0 && Math.abs(o.snap.pUpStory - 0.5) >= 0.02 && (o.oc - o.snap.oc10) !== 0);
+  const hit3 = s3.filter(o => (o.snap.pUpStory > 0.5) === (o.oc - o.snap.oc10 > 0)).length;
+  const b3 = s3.length ? s3.reduce((a, o) => a + (o.snap.pUpStory - (o.oc - o.snap.oc10 > 0 ? 1 : 0)) ** 2, 0) / s3.length : null;
+  const D3 = { n: s3.length, hits: hit3, hitRate: s3.length ? r3(hit3 / s3.length) : null, brierSkill: b3 != null ? r3(1 - b3 / 0.25) : null };
   const verdict = sessions < floor ? `too early: ${sessions} of ${floor} sessions` : [
     R1.medianRatio == null ? 'R1 n/a' : R1.medianRatio < 0.97 && R1.betterShare >= 0.6 ? 'R1 PASS' : R1.medianRatio >= 1 ? 'R1 FAIL' : 'R1 between bars',
     R2.brierSkill == null ? 'R2 n/a' : R2.brierSkill > 0 && R2.expansionRate != null && R2.containedRate != null && R2.expansionRate - R2.containedRate >= 0.10 ? 'R2 PASS' : R2.brierSkill <= 0 ? 'R2 FAIL' : 'R2 between bars',
     D1.n < floor ? `D1 too few calls (${D1.n})` : D1.brierSkill > 0 ? 'D1 PASS' : 'D1 FAIL',
     D2.n < floor ? `D2 (story) too few calls (${D2.n})` : D2.brierSkill > 0 && (D1.brierSkill == null || D2.brierSkill > D1.brierSkill) ? 'D2 story beats D1' : 'D2 story FAIL',
   ].join(' · ');
-  return { sessions, observations: obs.length, R1, R2, D1, D2, verdict };
+  return { sessions, observations: obs.length, R1, R2, D1, D2, D3, verdict };
 }

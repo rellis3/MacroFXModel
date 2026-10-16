@@ -129,6 +129,30 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
     dir[pair] = xs;
   }
 
+  // gold and the two daily-read indices: story-only reads, same rules as the FX pairs (weight 0 in the tested arm)
+  {
+    const clip1 = v => Math.max(-1, Math.min(1, v));
+    const mk = sym => {
+      const xs = [], r = id => REG[id];
+      const add = (id, sv, note) => xs.push({ id, label: r(id).label, family: r(id).family, tier: r(id).tier, s: 0, e: 0, note, sStory: sv });
+      const ss = D['vol-forecast/session']?.instruments?.[sym];
+      if (ss?.oc != null && ss?.forecast?.oc_median > 0) add('today-tape', clip1(ss.oc / ss.forecast.oc_median), `session ${ss.oc > 0 ? '+' : ''}${ss.oc}% from the open so far`);
+      return { xs, add };
+    };
+    const g = mk('GOLD');
+    if (mc.tips?.deltas?.['20'] != null) g.add('real-yields', -clip1(mc.tips.deltas['20'] / 15), `real yield ${mc.tips.deltas['20'] > 0 ? '+' : ''}${mc.tips.deltas['20']}bp over 20d (gold falls when it rises)`);
+    if (obs.dxy20dPct != null) g.add('dollar-tape', -clip1(obs.dxy20dPct / 2), `broad dollar ${obs.dxy20dPct > 0 ? '+' : ''}${obs.dxy20dPct}% over 20d`);
+    if (obs.hy20dBp != null) g.add('risk-tone', 0.5 * clip1(obs.hy20dBp / 50), `HY spreads ${obs.hy20dBp > 0 ? '+' : ''}${obs.hy20dBp}bp over 20d (stress is mildly gold-positive)`);
+    dir.GOLD = g.xs;
+    for (const sym of ['NQ', 'US2000']) {
+      const q = mk(sym);
+      if (obs.hy20dBp != null) q.add('risk-tone', clip1(-obs.hy20dBp / 50), `HY spreads ${obs.hy20dBp > 0 ? '+' : ''}${obs.hy20dBp}bp over 20d`);
+      if (obs.vix != null && obs.vix3m != null) q.add('vix-tone', obs.vix >= obs.vix3m ? -1 : clip1((obs.vix3m - obs.vix) / obs.vix3m * 5), `VIX ${obs.vix} vs 3M ${obs.vix3m}`);
+      if (mc.us10y?.deltas?.['20'] != null) q.add('us-yields', -0.5 * clip1(mc.us10y.deltas['20'] / 25), `US 10Y ${mc.us10y.deltas['20'] > 0 ? '+' : ''}${mc.us10y.deltas['20']}bp over 20d`);
+      dir[sym] = q.xs;
+    }
+  }
+
   // ── currency tier: each currency's own readings (state, not forecast) ─────
   const fac = D['today-reads']?.currency?.factors?.byCcy ?? {};
   const pers = D['today-reads']?.currency?.persistence ?? {};

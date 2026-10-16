@@ -187,7 +187,7 @@ import { scanBoard as _msScanBoard, scanLinks as _msScanLinks, boardFreshness as
 import { marketState as _mtMarketState, sectorBoard as _mtSectorBoard } from './js/marketState.js';
 import { buildQuestion as _buildQuestion, DRILL_SERIES as _DRILL_SERIES, GENERATOR_SERIES as _GEN_SERIES, DRILL_WINDOW as _DRILL_WINDOW } from './js/marketDrill.js';
 import { plannedInWindow } from './js/endOfDay.js';
-import { buildGlobalRead as _buildGlobalRead, recordRow as _grRecordRow, attachRealised as _grAttachRealised, scoreRecord as _grScoreRecord } from './js/globalReadCore.js';
+import { buildGlobalRead as _buildGlobalRead, recordRow as _grRecordRow, snapshotRow as _grSnapshotRow, attachRealised as _grAttachRealised, scoreRecord as _grScoreRecord } from './js/globalReadCore.js';
 import { assembleGlobalReadInput as _grAssemble, GLOBAL_READ_ENDPOINTS as _GR_ENDPOINTS } from './js/globalReadInputs.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { ratesRegimeRead as _ratesRegimeRead, alertText as _ratesRegimeAlert, attributionLine as _ratesRegimeAttrib } from './js/ratesRegime.js';
@@ -4289,6 +4289,11 @@ async function _globalReadTick() {
     const dow = new Date().getUTCDay();
     // only the 07:00-07:59 London read counts (pre-registered); a day the server missed stays missing
     if (lonHour === 7 && dow !== 0 && dow !== 6 && !store.days.some(r => r.day === day)) { store.days.push(_grRecordRow(read, day)); changed = true; }
+    // the 10:00 London snapshot of the story arm (D3), once, onto today's existing row
+    if (lonHour === 10 && dow !== 0 && dow !== 6) {
+      const today = store.days.find(r => r.day === day);
+      if (today && !today.snap10) { const snap = _grSnapshotRow(read, D['vol-forecast/session']?.instruments ?? {}); if (Object.keys(snap).length) { today.snap10 = snap; changed = true; } }
+    }
     const scored = D['daily-read']?.days ?? {};
     for (const row of store.days.slice(-10)) if (scored[row.day]?.score?.rows && _grAttachRealised(row, scored[row.day].score.rows)) changed = true;
     if (changed) { store.days = store.days.slice(-180); await kv.put(_GR_KV, JSON.stringify(store)); }

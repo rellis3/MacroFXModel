@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { tradePlan, currencyTier, recordRow, attachRealised, scoreRecord, combineDirection, effectiveIc, freshness, rangeView, behaviourOf, stateAxes, environmentLabel, buildGlobalRead, storyDirection, normCdf, solve, TIER_P } from './globalReadCore.js';
+import { tradePlan, currencyTier, recordRow, snapshotRow, attachRealised, scoreRecord, combineDirection, effectiveIc, freshness, rangeView, behaviourOf, stateAxes, environmentLabel, buildGlobalRead, storyDirection, normCdf, solve, TIER_P } from './globalReadCore.js';
 import { assembleGlobalReadInput } from './globalReadInputs.js';
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 
@@ -119,7 +119,7 @@ t('record: row → realised from the daily-read score → R1/R2/D1 summary', () 
 
 t('input assembly survives every route missing, and reads a firing tested input', () => {
   const empty = buildGlobalRead(assembleGlobalReadInput({}, { now: Date.parse('2026-10-13T08:00:00Z') }));
-  assert.equal(Object.keys(empty.cards).length, 7); assert.equal(empty.conviction.direction, 0);
+  assert.equal(Object.keys(empty.cards).length, 10); assert.equal(empty.conviction.direction, 0);
   const D = {
     'yield-spread/plan': { plan: { entryThreshold: 2.75, signals: { usdjpy: { z: 3.1, inverted: false, asOf: '2026-10-12' } } } },
     'daily-read': { days: { '2026-10-13': { setup: { at: '2026-10-12T22:09:00Z', rows: [{ sym: 'USDJPY', ratio: 0.88, edges: [1.044, 1.182], lines: { hl_p50: 0.59, hl_p75: 0.79 }, tag: 'exhaust' }] } } } },
@@ -155,6 +155,19 @@ t('story-only reads: tape so far, US yields and credit tone enter the story arm 
   const r = buildGlobalRead(inp).cards.EURUSD;
   assert.equal(r.direction.nLive, 0); assert.ok(r.direction.story.reads.length >= 3);
   assert.ok(r.direction.story.reads.find(x => x.id === 'us-yields').s < 0);   // USD side: EURUSD falls when US yields rise
+});
+
+t('10:00 snapshot (D3) is scored on the move that is left, not the morning move', () => {
+  const read = { meta: { asOf: '2026-10-13T10:05:00Z' }, cards: { EURUSD: { sym: 'EURUSD', direction: { story: { pUp: 0.6, nLive: 4 } } }, GOLD: { sym: 'GOLD', direction: { story: { nLive: 0 } } } } };
+  const snap = snapshotRow(read, { EURUSD: { oc: 0.3 }, GOLD: { oc: 0.1 } });
+  assert.deepEqual(Object.keys(snap), ['EURUSD']);                  // no story, no snapshot
+  const cardsRow = day => ({ day, conviction: {}, snap10: snap, cards: { EURUSD: { hlP50: 0.4, hlP75: 0.5, mult: 1, realisedHl: 0.5, beyondP75: false, oc: 0.2, pUp: 0.5, nLive: 0, pUpStory: 0.5, nStory: 0 } } });
+  const rows = Array.from({ length: 31 }, (_, i) => cardsRow(`2026-09-${String(i + 1).padStart(2, '0')}`));
+  // close +0.2 but 0.3 had already happened by 10:00 → the remaining move is DOWN, so an UP call misses
+  const sc = scoreRecord(rows);
+  assert.equal(sc.D3.n, 31); assert.equal(sc.D3.hits, 0);
+  rows.forEach(r => { r.cards.EURUSD.oc = 0.6; });
+  assert.equal(scoreRecord(rows).D3.hits, 31);
 });
 
 console.log(`globalReadCore: ${n} tests passed`);
