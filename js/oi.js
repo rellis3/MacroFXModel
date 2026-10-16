@@ -1576,7 +1576,7 @@ export function oiReprojectBasis(inst, { newBasis, newSpot, newFutures } = {}) {
   if (Number.isFinite(newSpot))    out.spot = newSpot;
   if (Number.isFinite(newFutures)) out.futures = newFutures;
   if (Math.abs(d) < 1e-12) return out;   // futures/spot updated, no level move
-  const sh = (v) => Number.isFinite(v) ? v - d : v;
+  const sh = (v) => Number.isFinite(v) && v > 0 ? v - d : v;   // 0 = no level: never shift it into a fake price
   const shWalls = (a) => Array.isArray(a) ? a.map(w => ({ ...w, strike: sh(w.strike) })) : a;
   out.maxPain = sh(inst.maxPain); out.callWall = sh(inst.callWall); out.putWall = sh(inst.putWall);
   out.gammaFlip = sh(inst.gammaFlip); out.gexFlip = sh(inst.gexFlip);

@@ -1979,6 +1979,9 @@ WHAT IT IS NOT. Not direction — every sentence it produces is about range. Not
 'use strict';
 const $ = id => document.getElementById(id);
 const fmtN = (v, dp) => v == null ? '–' : Number(v).toFixed(dp);
+// 'HH:MM' stored as a UTC clock time -> the same moment on the UK clock (BST-aware), today's date
+const _ukHour = hhmm => { const m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm ?? '')); if (!m) return hhmm ?? '';
+  const t = new Date(); t.setUTCHours(+m[1], +m[2], 0, 0); return t.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }); };
 // Reads a theme variable's CURRENT value (light or dark, whichever body.light
 // says right now) — for the one place CSS can't reach: colors baked into the
 // Lightweight Charts canvas at creation time (textColor, grid lines).
@@ -3519,7 +3522,7 @@ function tradeGate(r) {
 
   // Hard blockers — any one of these makes a trade proposal indefensible.
   if (r.cost && !r.cost.tradeable) blockers.push('the instrument is not currently tradeable');
-  if (r.cost && r.cost.gate === 'fail') blockers.push(`spread is ${(r.cost.ofLevel * 100).toFixed(0)}% of the distance to the nearest level — past the point this desk measured the edge gone`);
+  if (r.cost && r.cost.gate === 'fail') blockers.push(`spread is ${(r.cost.ofRange * 100).toFixed(0)}% of the expected day range — past the 15% where this desk measured the edge gone`);
   const pf = priceFreshness();
   if (pf?.stale) blockers.push('the price feed is stale, so every level distance is measured against a frozen number');
   // A conflict blocks only the pairs the disagreeing number is load-bearing FOR. An
@@ -7372,7 +7375,8 @@ function costFor(r) {
     : (d.levels?.hl_med?.range_pts ?? null);
   const ofRange = (rangePips && rangePips > 0) ? q.spreadPips / rangePips : null;
   const ofLevel = (r.near?.pips > 0) ? q.spreadPips / r.near.pips : null;
-  const gate = ofLevel != null && ofLevel >= COST_GATE_LEVEL ? 'fail'
+  // ofLevel -> 1 as price reaches ANY line, so gating on it failed every card that was at a level
+  const gate = ofRange != null && ofRange >= COST_GATE_LEVEL ? 'fail'
     : (ofRange != null && ofRange >= COST_BAD_RANGE) ? 'bad'
     : (ofRange != null && ofRange >= COST_WARN_RANGE) ? 'warn' : 'ok';
   return {
@@ -7960,8 +7964,10 @@ function oiFor(name, sym) {
     ? (oiToday[lvlKey(name, sym)] ?? oiToday[sym] ?? oiToday[sym.replace('_', '/')]
        ?? Object.values(oiToday).find(x => norm2(x.pair) === norm2(sym)) ?? null)
     : null;
+  // a level more than 25% from spot is a parse/shift artefact (absent walls stored as 0, then re-based)
+  const real = v => (Number.isFinite(v) && v > 0 && !(inst.spot > 0 && Math.abs(v / inst.spot - 1) > 0.25)) ? v : null;
   return { inst, ageH, stale: ageH > OI_FRESH_H, gex, regime, change, today,
-    maxPain: inst.maxPain, callWall: inst.callWall, putWall: inst.putWall,
+    maxPain: real(inst.maxPain), callWall: real(inst.callWall), putWall: real(inst.putWall),
     callWallOI: inst.callWallOI, putWallOI: inst.putWallOI, pcRatio: inst.pcRatio };
 }
 
@@ -8018,7 +8024,9 @@ function _buildRows() {
       // ⚑ says "price is AT a level right now — this is a decision moment". Against a
       // frozen feed OR an ageing server snapshot that claim is about where price WAS,
       // which is worse than saying nothing.
-      const isProx = !priceStale && near != null && near.pips <= (PROX_LIMIT[d.ac] ?? 12);
+      const rngPips = hlMed && d.current_price ? d.current_price * hlMed / 100 / _pipSz(d) : null;
+      const proxLim = rngPips ? 0.10 * rngPips : (PROX_LIMIT[d.ac] ?? 12);   // within 10% of the day's expected range
+      const isProx = !priceStale && near != null && near.pips <= proxLim;
       const agr = agreement({ d, s });
       const ct = cotFor(name);
       const oi = oiFor(name, d.sym);
@@ -8077,7 +8085,7 @@ function renderHeader() {
   const n = $('hdrNews');
   if (brief.news_flag && (brief.news_mult ?? 1) > 1) {
     n.style.display = 'flex';
-    n.innerHTML = `⚠ ${brief.news_flag} — ranges scaled ×${brief.news_mult}`;
+    n.innerHTML = `⚠ ${brief.news_flag} today — the lines already carry the ladder's event adjustment`;
   } else n.style.display = 'none';
   const stamps = [];
   if (forecast?.computed_at) stamps.push(`forecast ${new Date(forecast.computed_at).toLocaleTimeString()}`);
@@ -8132,7 +8140,7 @@ function renderSummary() {
       <div class="s">instruments unusually jumpy (top 20% vs history)</div></div>
     <div class="stile" title="Is there major scheduled news today that could whip markets around? If so, consider waiting until it's out."><div class="k help">Event risk</div>
       <div class="v">${brief.news_flag ? '⚠' : '—'}</div>
-      <div class="s">${brief.news_flag ? `${brief.news_flag} (×${brief.news_mult})` : 'no high-impact flag on today'}</div></div>
+      <div class="s">${brief.news_flag ? `${brief.news_flag} (in the lines)` : 'no high-impact flag on today'}</div></div>
     ${(() => { const rl = riskLight(); return rl ? `<div class="stile" title="The overall market mood, from the 'fear gauge' (VIX) and how nervous credit markets are. Calm = risk-taking; Stress = defensive/risk-off.${esc0(rl.note || '')}"><div class="k help">Market mood</div>
       <div class="v" style="color:${rl.color}">${rl.icon} ${rl.label}</div>
       <div class="s">${rl.detail}</div></div>` : ''; })()}`;
@@ -8451,8 +8459,8 @@ function ladderHtml(r) {
   const pipSz = d.sym.includes('JPY') ? 0.01 : (d.ac === 'fx' ? 0.0001 : 1);
   const unit  = d.ac === 'fx' ? 'p' : 'pt';
   const dist = p => (px != null && p != null) ? `${Math.abs((p - px) / pipSz).toFixed(0)}${unit}` : '';
-  const hitT = l => l?.hit_pct != null ? `This level gets touched on about ${Math.round(l.hit_pct)} days out of 100${l.median_utc ? `, usually around ${l.median_utc} (UK time)` : ''}.` : '';
-  const hit  = l => l?.hit_pct != null ? `<span class="help" title="${hitT(l)}">hits ${Math.round(l.hit_pct)}%${l.median_utc ? ` · ~${l.median_utc}` : ''}</span>` : '';
+  const hitT = l => l?.hit_pct != null ? `This level gets touched on about ${Math.round(l.hit_pct)} days out of 100${l.median_utc ? `, usually in the hour from ${_ukHour(l.median_utc)} UK` : ''}.` : '';
+  const hit  = l => l?.hit_pct != null ? `<span class="help" title="${hitT(l)}">hits ${Math.round(l.hit_pct)}%${l.median_utc ? ` · ~${_ukHour(l.median_utc)}` : ''}</span>` : '';
   // plain-English meaning of each ladder rung
   const TAG_T = {
     'OH 75':  "A BIGGER daily high — where price reaches on the more volatile 1-day-in-4. A stretch target / where a strong move runs out.",
@@ -8666,7 +8674,7 @@ function yesterdayHtml() {
 async function loadLedgerSummary() { try { const j = await jget('/api/ledger'); if (j?.ok) { _ledgerSummary = j.summary; render(); } } catch { /* line stays hidden */ } }
 function _clockTier(r) {
   const d = r.d;
-  const news = d.news_flag ? `<span class="chip warn" title="A major scheduled release today (${d.news_flag}). Expected ranges are scaled ×${d.news_mult}.">⚠ ${d.news_flag} ×${d.news_mult}</span>` : '';
+  const news = d.news_flag ? `<span class="chip warn" title="A major scheduled release today (${d.news_flag}). The fitted lines already include the ladder's own event adjustment.">⚠ ${d.news_flag}</span>` : '';
   const ev = (() => { const e = nextPairEvent(r.name); if (!e) return ''; const hi = (e.impact ?? '').toLowerCase() === 'high'; if ((e.ms - Date.now()) > 14 * 3600e3) return ''; const nm = (e.event ?? '').length > 24 ? e.event.slice(0, 22) + '…' : (e.event ?? ''); return `<span class="chip ${hi ? 'warn' : 'neu'}" title="Next scheduled event that moves ${dispName(r.name)}: ${e.event} (${e.country}, ${e.impact}) at ${evtTime(e)} UK.">⏰ ${nm} ${evtTime(e)}</span>`; })();
   return `<div class="tier"><span class="lbl">clock</span>${news}${ev}${eventRangeChip(r)}${(!news && !ev) ? '<span class="quiet">nothing scheduled in the next 14h</span>' : ''}</div>`;
 }
@@ -8776,7 +8784,7 @@ function drSpineHtml(r) {
     d.vol_pct != null ? `vol P${Math.round(d.vol_pct)} of a year` : ''));
   // the two nearest ladder lines, one each way
   const rungs = [['oh_75', 'OH 75'], ['oh_med', 'OH med'], ['ol_med', 'OL med'], ['ol_75', 'OL 75']]
-    .map(([k, lbl]) => { const L = d.levels?.[k]; return L?.price == null ? null : { k, lbl, price: L.price, hit: L.hit_pct, when: L.median_utc, pct: L.pct, src: L.source, est: L.estimator }; })
+    .map(([k, lbl]) => { const L = d.levels?.[k]; return L?.price == null ? null : { k, lbl, price: L.price, hit: L.hit_pct, when: L.median_utc ? _ukHour(L.median_utc) + ' UK' : null, pct: L.pct, src: L.source, est: L.estimator }; })
     .filter(Boolean);
   const dist = v => px == null ? null : Math.abs(v - px) / _pipSz(d);
   const line = (L, arrow) => L ? `<b>${esc0(L.lbl)} ${fmtN(L.price, d.dp)}</b> <span class="muted">${arrow} ${Math.round(dist(L.price))}${unit} away${L.hit != null ? ` · reached on ${L.hit}% of days` : ''}${L.when ? `, typically ${L.when}` : ''}</span>` : '<span class="muted">—</span>';
@@ -8790,7 +8798,7 @@ function drSpineHtml(r) {
   const costTxt = c ? `<b class="${!c.tradeable || c.gate === 'fail' || c.gate === 'bad' ? 'dn' : c.gate === 'warn' ? 'amb' : ''}">${c.pips}${unit}</b>${c.ofRange != null ? ` = ${(c.ofRange * 100).toFixed(1)}% of today\u2019s range` : ''} <span class="muted">${!c.tradeable || c.gate === 'fail' || c.gate === 'bad' ? '\u2014 cost outruns the edge here' : c.gate === 'warn' ? '\u2014 borderline' : '\u2014 cheap'}</span>` : '<span class="muted">no spread read</span>';
   const e = (typeof nextPairEvent === 'function') ? nextPairEvent(r.name) : null;
   let clock = '<span class="muted">nothing scheduled</span>';
-  if (d.news_flag) clock = `<b class="amb">${esc0(d.news_flag)}</b> <span class="muted">today \u00b7 range \u00d7${d.news_mult}</span>`;
+  if (d.news_flag) clock = `<b class="amb">${esc0(d.news_flag)}</b> <span class="muted">today \u00b7 in the lines</span>`;
   else if (e) { const hrs = (e.ms - Date.now()) / 3600e3; const fam = (typeof _tlFam === 'function') ? _tlFam(e.event) : null;
     const bk = _tlImpact(e.country, e.event)?.instruments?.[r.name];
     clock = `<b>${esc0(e.event)}</b> <span class="muted">${hrs >= 0 ? `in ${hrs < 1 ? Math.round(hrs * 60) + ' min' : hrs.toFixed(hrs < 10 ? 1 : 0) + 'h'}` : `${Math.abs(hrs).toFixed(1)}h ago`}${bk ? ` \u00b7 ${bk.spike}\u00d7 an ordinary half-hour` : ''}</span>`; }
