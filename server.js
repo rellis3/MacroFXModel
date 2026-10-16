@@ -4185,11 +4185,33 @@ async function _watchInputs() {
   const fredSrc = { bei: 'bei', us2y: 'us2y', us10y: 'us10y', us30y: 'us30y', real: 'tips', dxy: 'dxy', vix: 'vix', hy: 'hy' };
   for (const [node, key] of Object.entries(fredSrc)) vals[node] = hist[key] ? _chainNodeDelta(hist[key], _CHAIN_NODES[node]) : null;
   for (const node of ['oil', 'gold', 'copper', 'audusd', 'usdcad', 'usdjpy', 'btc', 'nq', 'spx']) vals[node] = series[node] ? _chainNodeDelta(series[node], _CHAIN_NODES[node]) : null;
+  // The four nodes the page builds itself and this used to leave null, so six chain links could never fire here:
+  // funding (SOFR − the Fed floor), the crack spread, and the gilt/Bund/JGB − UST 10Y gaps. Same maths as today.html.
+  try {
+    const fh = {}; await Promise.all(['sofr', 'iorb', 'ioer'].map(async k => { try { const raw = await kv.get(`fredhistory_series_${k}`); if (raw) fh[k] = JSON.parse(raw); } catch { /* skip */ } }));
+    if (fh.sofr?.length && (fh.iorb?.length || fh.ioer?.length)) {
+      const fl = new Map([...(fh.ioer ?? []).map(p => [p.date, p.value]), ...(fh.iorb ?? []).map(p => [p.date, p.value])]);
+      let lastFloor = null; const spread = fh.sofr.map(p => { if (fl.has(p.date)) lastFloor = fl.get(p.date); return lastFloor == null ? null : { date: p.date, value: p.value - lastFloor }; }).filter(Boolean);
+      vals.funding = spread.length ? _chainNodeDelta(spread, _CHAIN_NODES.funding) : null;
+    }
+  } catch { vals.funding = null; }
+  const _local = async p => { try { const r = await fetch(`http://127.0.0.1:${PORT}/api/${p}`, { signal: AbortSignal.timeout(30_000) }); return r.ok ? await r.json() : null; } catch { return null; } };
+  try { const cr = await _local('crack'); if (Array.isArray(cr?.series) && cr.series.length) vals.crack = _chainNodeDelta(cr.series, _CHAIN_NODES.crack); } catch { /* unmeasured */ }
+  try {
+    const iy = (await _local('intl-yields'))?.series, ustBy = new Map((hist.us10y ?? []).map(p => [p.date, p.value]));
+    for (const [node, key] of [['giltgap', 'gb10y'], ['bundgap', 'de10y'], ['jgbgap', 'jp10y']]) {
+      const f = iy?.[key]; if (!Array.isArray(f) || !f.length || !ustBy.size) continue;
+      const gap = f.filter(p => ustBy.has(p.date)).map(p => ({ date: p.date, value: p.value - ustBy.get(p.date) }));
+      if (gap.length) vals[node] = _chainNodeDelta(gap, _CHAIN_NODES[node]);
+    }
+  } catch { /* unmeasured */ }
+  for (const node of ['gbpusd', 'eurusd']) if (vals[node] == null && series[node]) vals[node] = _chainNodeDelta(series[node], _CHAIN_NODES[node]);
   const chain = _evaluateChain(vals);
   let stockBond = null; try { stockBond = await _stockBondCorr(); } catch { /* optional */ }
   let events = []; try { const res = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY }); const now = Date.now(); events = (res.events ?? []).filter(e => e.ms > now - 3 * 3600e3 && e.ms < now + 48 * 3600e3); } catch { /* optional */ }
   const fomcDates = _fomcAllMeetings().map(m => m.date);
   let vwapStretch = {}; try { vwapStretch = await _fetchVwapStretchInputs(Date.now()); } catch (e) { console.warn(`[desk-watch] vwap-stretch: ${e.message}`); }
+  if (!Object.keys(vwapStretch).length) console.warn('[desk-watch] vwap-stretch: no pair has inputs (frozen sigma missing or no bars) -- its triggers are off this pass');
   return { fred, hist, series, chain, stockBond, events, fomcDates, vwapStretch, now: Date.now() };
 }
 // Score fires that are five sessions old: the realised range over the five
