@@ -4749,7 +4749,7 @@ app.post('/api/chain-read', async (req, res) => {
     // because a cache only hits on a stable PREFIX. Moving it in front of the volatile
     // half is the whole saving. It also belongs here on the merits: standing instruction
     // is what a system prompt is for, and the snapshot is the only thing that changes.
-    standing: _evidenceForPrompt(),
+      standing: _evidenceForPrompt(),
       system: 'You are a former fixed-income trader explaining the macro tape after the close. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
       prompt: prompt });
     const j = antRes;
@@ -4798,13 +4798,11 @@ app.post('/api/analysis', async (req, res) => {
       system: 'You are a professional FX/futures desk analyst. You ALWAYS respond with valid complete JSON only — no markdown, no backticks, no text before or after the JSON object. Keep each string value to 1-2 sentences max. Arrays max 3 items. JSON must be fully closed.',
       prompt: prompt });
 
-    if (!antRes.ok) {
-      const errTxt = await antRes.text();
-      console.error('[analysis] Anthropic error', antRes.status, errTxt.slice(0, 500));
-      return res.status(502).json({ error: `Anthropic API error ${antRes.status}: ${errTxt.slice(0, 400)}` });
-    }
-
-    const antData = await antRes.json();
+    // callModel throws on a provider error (with .status 502) rather than returning a
+    // Response, so there is no .ok to test and nothing to .json(). The old fetch plumbing
+    // that used to sit here survived the conversion because a BLANK LINE separated it from
+    // the call -- the cleanup walked forward from the fetch and stopped at the gap.
+    const antData = antRes;
 
     if (antData.stop_reason === 'max_tokens') {
       return res.status(502).json({ error: 'Response truncated (hit token limit) — please try again' });
@@ -8841,12 +8839,9 @@ Reply in this exact format (use ** for bold headers):
     const antRes = await callModel({ task: 'misc', maxTokens: 700,
       prompt: prompt });
 
-    if (!antRes.ok) {
-      const err = await antRes.text();
-      return res.status(502).json({ error: `Anthropic error ${antRes.status}: ${err.slice(0, 300)}` });
-    }
-
-    const antData = await antRes.json();
+    // Same leftover, same cause as /api/analysis above: callModel throws instead of
+    // returning a Response.
+    const antData = antRes;
     const text = (_antText(antData) || '(empty)');
     res.json({ ok: true, text });
   } catch (e) {
