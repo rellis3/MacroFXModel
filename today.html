@@ -1347,8 +1347,14 @@
      fails silently. Moving those off Anthropic flags it and points at the A/B check. -->
 <script>
 (function () {
-  // the jobs THIS page calls, in the order they appear on it
+  // The six jobs THIS page calls. Kept, but only to decide what the WARNING names --
+  // "Morning brief is on a cheaper model" is useful here, "Document summary is" is not.
   const TODAY_TASKS = ['brief', 'chain', 'eod-review', 'pair', 'currency', 'explain'];
+  // ...but the switch itself moves EVERY job. Moving only the six read as a trap: the
+  // per-pair analysis behind a card here is the SAME job as the one on desk.html and
+  // indexv2.html, and the COT read on cot-extremes.html is a seventh nobody would think
+  // to go and set separately. "The model this page is set to" has to mean the model, or
+  // it is a setting that quietly leaves four jobs behind.
   const $ = id => document.getElementById(id);
   let CFG = null;
 
@@ -1385,9 +1391,10 @@
 
   function render() {
     const sel = $('aiModelSel');
-    const mine = CFG.tasks.filter(t => TODAY_TASKS.includes(t.id));
+    const all = CFG.tasks;                                     // what the switch moves
+    const mine = all.filter(t => TODAY_TASKS.includes(t.id));  // what the warning names
     const providers = CFG.providers.filter(p => p.configured);
-    const used = [...new Set(mine.map(t => t.provider))];
+    const used = [...new Set(all.map(t => t.provider))];
     const mixed = used.length > 1;
 
     sel.innerHTML =
@@ -1415,10 +1422,12 @@
     } else warn.style.display = 'none';
 
     sel.title = (mixed
-      ? 'These six jobs are not all on one model. '
-      : 'All six of this page\u2019s paid jobs run on ' + (providers.find(p => p.id === used[0]) || {}).label + '. ')
-      + 'Changes here are a SERVER setting stored in KV \u2014 it applies everywhere, not just this tab, '
-      + 'and survives a deploy. Per-job control is on bot-config.html \u2192 AI Models.';
+      ? 'The ' + all.length + ' AI jobs are not all on one model \u2014 see bot-config.html \u2192 AI Models. '
+      : 'All ' + all.length + ' AI jobs run on ' + (providers.find(p => p.id === used[0]) || {}).label + '. ')
+      + 'Changing it here moves EVERY job, including the per-pair analysis on desk.html and '
+      + 'indexv2.html and the COT read on cot-extremes.html. It is a SERVER setting stored in '
+      + 'KV: it applies everywhere, not just this tab, and survives a deploy. Per-job control '
+      + 'is on bot-config.html \u2192 AI Models.';
   }
 
   // Attached in start(), NOT at script scope: this <script> sits above the header it
@@ -1430,7 +1439,7 @@
     this.disabled = true;
     try {
       const tasks = {};
-      for (const t of TODAY_TASKS) tasks[t] = provider;
+      for (const t of (CFG ? CFG.tasks : [])) tasks[t.id] = provider;
       const r = await fetch('/api/ai-config', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tasks }),
       }).then(x => x.json());
