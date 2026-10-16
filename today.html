@@ -1978,6 +1978,8 @@ WHAT IT IS NOT. Not direction — every sentence it produces is about range. Not
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
+// calendar 'YYYY-MM-DD HH:MM[:SS]' strings are UTC; never let the browser read them as local time
+const _evUtcMs = t => { if (t == null) return NaN; const x = String(t); return /[zZ]|[+-]\d\d:?\d\d$/.test(x) ? Date.parse(x) : Date.parse(x.replace(' ', 'T') + 'Z'); };
 const fmtN = (v, dp) => v == null ? '–' : Number(v).toFixed(dp);
 // 'HH:MM' stored as a UTC clock time -> the same moment on the UK clock (BST-aware), today's date
 const _ukHour = hhmm => { const m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm ?? '')); if (!m) return hhmm ?? '';
@@ -2050,7 +2052,7 @@ function pairEvents(name) {
   const cc = PAIR_NEWS_CC[name] ?? ['US'];
   return (events ?? [])
     .filter(e => cc.includes(e.country) && ['high', 'medium'].includes((e.impact ?? '').toLowerCase()))
-    .map(e => ({ ...e, ms: new Date(e.time).getTime() }))
+    .map(e => ({ ...e, ms: e.ms ?? _evUtcMs(e.time) }))
     .filter(e => !isNaN(e.ms))
     .sort((a, b) => a.ms - b.ms);
 }
@@ -2775,7 +2777,7 @@ function newsKind(name) {
   if (/rate decision|interest rate|policy rate|bank rate|rate statement|cash rate|refi rate|deposit rate/.test(n)) return 'rate';
   if (/\bcpi\b|\bppi\b|\bpce\b|inflation|price index|consumer prices|producer prices/.test(n)) return 'inflation';
   if (/unemployment rate|jobless rate/.test(n)) return 'unemp';
-  if (/jobless claims|initial claims|continuing claims/.test(n)) return 'claims';
+  if (/jobless claims|initial claims|continuing claims|unemployment claims/.test(n)) return 'claims';
   if (/nonfarm|non-farm|payroll|employment change|employment report|\bjobs\b/.test(n)) return 'jobs';
   if (/\bgdp\b|growth rate/.test(n)) return 'growth';
   if (/\bpmi\b|\bism\b|business climate|manufacturing|services|sentiment|confidence|zew|ifo|tankan/.test(n)) return 'survey';
@@ -3124,7 +3126,7 @@ function renderPositioningIntoEvent() {
 function _briefSnapshot(rs, cs) {
   const pairs = {};
   for (const r of rs) pairs[r.name] = {
-    r: r.d.regime ? (r.d.regime.label === 'TREND' ? 'T_' + r.d.regime.trend_dir : 'R') : '?',
+    r: r.d.regime ? (r.d.regime.label === 'TREND' ? (r.d.regime.trend_dir_confident ? 'T_' + (_trendDir(r.d.regime.trend_dir) ?? '?') : 'T_?') : 'R') : '?',   // trend_dir is BULL/BEAR; normalised to up/down
     cot: r.ct?.level ?? null, vol: r.d.vol_pct ?? null,
   };
   const ccy = {}; for (const c of cs) ccy[c.ccy] = +c.score.toFixed(2);
@@ -3148,7 +3150,7 @@ function renderSinceYesterday() {
   if (!base || gapH < 1) { el.style.display = 'none'; return; }   // too soon to be interesting
 
   const changes = [];
-  const rdesc = c => c === 'T_up' ? 'trending up' : c === 'T_down' ? 'trending down' : c === 'R' ? 'ranging' : 'unclear';
+  const rdesc = c => c === 'T_up' ? 'high-variance, drifting up' : c === 'T_down' ? 'high-variance, drifting down' : c === 'T_?' ? 'high-variance, no clear drift' : c === 'R' ? 'quiet' : 'unclear';   // the HMM splits on variance
   for (const r of rs) {
     const b = base.pairs[r.name]; if (!b) continue;
     const c = cur.pairs[r.name];
@@ -4693,7 +4695,7 @@ function weekAheadRows(maxDays = 7) {
   const now = Date.now();
   const horizon = now + maxDays * 864e5;
   const rows = events
-    .map(e => ({ ...e, ms: new Date(e.time).getTime() }))
+    .map(e => ({ ...e, ms: e.ms ?? _evUtcMs(e.time) }))
     .filter(e => !isNaN(e.ms) && e.ms > now && e.ms <= horizon)
     .filter(e => (e.impact ?? '').toLowerCase() === 'high')
     .filter(e => GATE_COUNTRIES.has(e.country))
@@ -5794,7 +5796,8 @@ function renderTimelinePanel() {
   // The lead sentences: what the numbers say, in one line each. Rates first because
   // they moved most; the dollar only when it did something.
   const ratesWord = (w) => { const y2 = mv('us2y', w), y10 = mv('us10y', w); if (y2 == null && y10 == null) return 'No rates data.'; const big = Math.max(Math.abs(y2 ?? 0), Math.abs(y10 ?? 0)); const dir = (y2 ?? y10) > 0 ? 'rose' : 'fell'; const lead = Math.abs(y2 ?? 0) > Math.abs(y10 ?? 0) ? 'the front end leading' : 'the long end leading'; return big < 8 ? `Rates went nowhere (2Y ${bp(y2)}, 10Y ${bp(y10)})` : `Rates ${big >= 25 ? dir + ' hard' : dir} (2Y ${bp(y2)}, 10Y ${bp(y10)}), ${lead}`; };
-  const dollarWord = (w) => { const v = mv('dxy', w); return v == null ? '' : Math.abs(v) < 0.5 ? '; the dollar barely moved' : `; the dollar ${v > 0 ? 'strengthened' : 'weakened'} ${Math.abs(v).toFixed(1)}%`; };
+  // the dxy row is the Fed broad index in POINTS (~120): turn the delta into a % of the level it started from
+  const dollarWord = (w) => { const d = mv('dxy', w), last = mm.dxy?.last; const v = d != null && last > d ? 100 * d / (last - d) : null; return v == null ? '' : Math.abs(v) < 0.4 ? '; the dollar barely moved' : `; the broad dollar ${v > 0 ? 'strengthened' : 'weakened'} ${Math.abs(v).toFixed(1)}%${mm.dxy?.lastDate ? ` (to ${String(mm.dxy.lastDate).slice(5)})` : ''}`; };
   const fearWord = (w) => { const v = mv('vix', w); return v == null ? '' : Math.abs(v) < 1.5 ? '' : `; fear ${v > 0 ? 'rose' : 'eased'} (VIX ${pt(v)})`; };
   const lead20 = `${ratesWord(20)}${dollarWord(20)}.`;
   const lead5 = `${ratesWord(5)}${dollarWord(5)}${fearWord(5)}.`;
@@ -6260,7 +6263,7 @@ function ccyPolicyHtml(ccy) {
   // Calendar rows carry `country` (a country code) and `time` — CC_TO_CCY is the
   // same mapping the news panel already uses, so EU/DE/FR all resolve to EUR.
   const evs = (events ?? [])
-    .map(e => ({ ...e, ms: new Date(e.time).getTime() }))
+    .map(e => ({ ...e, ms: e.ms ?? _evUtcMs(e.time) }))
     .filter(e => CC_TO_CCY[e.country] === ccy && !isNaN(e.ms) && e.ms >= now - 3 * 3600_000)
     .sort((a, b) => a.ms - b.ms).slice(0, 6);
   if (evs.length) {
@@ -6298,7 +6301,7 @@ function assembleCcySnapshot(ccy) {
   const cbT = (cbHist && window.outlookBrick) ? window.outlookBrick.describeCbTrend(cbHist) : null;
   const now = Date.now();
   const evs = (events ?? [])
-    .map(e => ({ ...e, ms: new Date(e.time).getTime() }))
+    .map(e => ({ ...e, ms: e.ms ?? _evUtcMs(e.time) }))
     .filter(e => CC_TO_CCY[e.country] === ccy && !isNaN(e.ms) && e.ms >= now - 3 * 3600_000)
     .sort((a, b) => a.ms - b.ms).slice(0, 6);
   const risk = equitiesRisk(rs);
@@ -7724,7 +7727,7 @@ function outlookInputsFor(r) {
     // The card's own existing HMM daily regime — already loaded for every
     // pair, zero new fetches. "Is price on a slope, and how cleanly" in the
     // simplest form this dashboard already computes.
-    priceTrend: r.d.regime ? { label: r.d.regime.label, trendDir: r.d.regime.trend_dir, trendProb: r.d.regime.trend_prob, reliable: r.d.regime.reliable } : null,
+    priceTrend: r.d.regime ? { label: r.d.regime.label, trendDir: r.d.regime.trend_dir_confident ? _trendDir(r.d.regime.trend_dir) : null, trendProb: r.d.regime.trend_prob, reliable: r.d.regime.reliable } : null,
     // GLD+IAU combined-AUM flow — GOLD-ONLY, no FX-pair equivalent exists
     // (there's no "ETF" for a currency pair the same way). Inflows = demand
     // for gold = bullish, same convention every other momentum driver here
@@ -8129,9 +8132,9 @@ function renderSummary() {
   const topUsed = rs.slice().sort((a, b) => (b.used ?? -1) - (a.used ?? -1))[0];
   const liveOk = rs.some(r => r.s);
   $('summary').innerHTML = `
-    <div class="stile" title="How many markets are trending (moving one way — go with them) vs ranging (bouncing sideways — fade the edges) right now."><div class="k help">Regime mix</div>
-      <div class="v">${trending.length} <span style="font-size:12px;font-weight:600;color:var(--text2)">trend</span> · ${rs.length - trending.length} <span style="font-size:12px;font-weight:600;color:var(--text2)">range</span></div>
-      <div class="s">${up}↑ / ${down}↓ trending of ${rs.length} instruments</div></div>
+    <div class="stile" title="The HMM's state per market: TREND is the high-variance state, RANGE the quiet one. It splits on VARIANCE, not direction; the arrows are only the confident drifts. Markets with no HMM fit are counted as 'no read', never as range."><div class="k help">Regime mix</div>
+      <div class="v">${trending.length} <span style="font-size:12px;font-weight:600;color:var(--text2)">high-var</span> · ${rs.filter(r => r.d.regime && r.d.regime.label !== 'TREND').length} <span style="font-size:12px;font-weight:600;color:var(--text2)">quiet</span></div>
+      <div class="s">${up}↑ / ${down}↓ · ${rs.filter(r => !r.d.regime).length} of ${rs.length} with no read</div></div>
     <div class="stile" title="How many markets have already used up most of a normal day's range. These are stretched — chasing them is risky."><div class="k help">Range consumed</div>
       <div class="v">${liveOk ? hot.length : '–'}</div>
       <div class="s">${liveOk ? `≥80% of expected range${topUsed?.used != null ? ` · max ${dispName(topUsed.name)} ${(100 * topUsed.used).toFixed(0)}%` : ''}` : 'live session feed unavailable'}</div></div>
@@ -9788,8 +9791,7 @@ function renderWiderMarket() {
         t.concentration.change < 0 ? 'the index is being carried by its largest names' : 'the median company is keeping up'}. <span class="muted">Tested here: it predicts nothing. Read it as what your index exposure IS, not as timing.</span></div>` : '';
 
   const sect = s.leader && s.laggard
-    ? `<div class="wm-r"><span class="k">sectors</span><b>${b.sectorsUp ?? s.up} of ${b.sectorsTotal ?? s.total}</b> rising. Best <b>${esc0(s.leader.label)}</b> ${num(s.leader.change)}%, worst <b>${esc0(s.laggard.label)}</b> ${num(s.laggard.change)}%${
-        b.spread != null ? ` — a ${num(b.spread)}-point spread` : ''}.</div>` : '';
+    ? `<div class="wm-r"><span class="k">sectors</span><b>${s.up} of ${s.total}</b> rising. Best <b>${esc0(s.leader.label)}</b> ${num(s.leader.change)}%, worst <b>${esc0(s.laggard.label)}</b> ${num(s.laggard.change)}% — a ${num(s.leader.change - s.laggard.change)}-point spread.</div>` : '';
 
   const rare = (w.rare ?? []).length
     ? `<div class="wm-r"><span class="k">unusual</span>${w.rare.map(r => `<b>${esc0(r.label)}</b> ${num(r.change)} (z ${num(r.z)})`).join(' · ')}</div>`

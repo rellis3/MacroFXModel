@@ -5618,7 +5618,8 @@ function _newsKindServer(name) {
   const n = String(name || '').toLowerCase();
   if (/rate decision|interest rate|policy rate|bank rate|rate statement|cash rate/.test(n)) return 'rate';
   if (/\bcpi\b|\bppi\b|\bpce\b|inflation|price index/.test(n)) return 'inflation';
-  if (/unemployment rate|jobless rate/.test(n)) return 'unemp';
+  // 'Unemployment Claims' (ForexFactory) / jobless claims: a higher print is weaker, same as the rate
+  if (/unemployment rate|jobless rate|unemployment claims|jobless claims|initial claims|continuing claims/.test(n)) return 'unemp';
   if (/nonfarm|non-farm|payroll|employment change|\bjobs\b/.test(n)) return 'jobs';
   if (/\bgdp\b|growth rate/.test(n)) return 'growth';
   if (/\bpmi\b|\bism\b|sentiment|confidence|zew|ifo/.test(n)) return 'survey';

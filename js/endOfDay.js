@@ -98,7 +98,12 @@ export function scorePair(name, morning, live, { high = null, low = null, rangeP
   const lean = String(morning.lean ?? '').toLowerCase();
   const committed = lean === 'up' || lean === 'down' || lean === 'bullish' || lean === 'bearish';
   const leanUp = lean === 'up' || lean === 'bullish';
-  const leanRight = committed ? ((move > 0) === leanUp) : null;
+  // Scored from the price the call was MADE at, not the London-midnight open: the plan is captured in the
+  // morning and its lean already uses the session so far, so the open-to-now move would credit the call
+  // with hours it had already seen (2026-10-16: 6/11 from the open, 3/11 from the call).
+  const callPx = Number.isFinite(morning.price) ? morning.price : null;
+  const moveFromCall = callPx != null ? (now - callPx) * mult : null;
+  const leanRight = committed && moveFromCall != null && moveFromCall !== 0 ? ((moveFromCall > 0) === leanUp) : null;
 
   const used = usedPct(realised, expected);
   // PRICE precision is not MOVE precision. `dp` is the decimals for the move in its own
