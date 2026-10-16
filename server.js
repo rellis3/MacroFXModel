@@ -29744,6 +29744,20 @@ app.post('/api/exhaustion-ladder/run', express.json({ limit: '16kb' }), (req, re
   res.json({ ok: true, jobId });
 });
 
+// Weekly refit (audit 2026-10-16: the fit only ever ran by hand, and lived on a disk every deploy wipes).
+async function _exhLadderMaybeRefit() {
+  try {
+    const raw = await kv.get('exhaustion_ladder_v1');
+    const built = raw ? Date.parse(JSON.parse(raw).builtAt ?? 0) : 0;
+    if (Date.now() - built < 7 * 864e5) return;
+    if ([...exhLadderJobs.values()].some(j => j.status === 'running')) return;
+    await fetch(`http://127.0.0.1:${PORT}/api/exhaustion-ladder/run`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    console.log('[exhaustion-ladder] weekly refit started');
+  } catch (e) { console.warn('[exhaustion-ladder] refit check failed:', e.message); }
+}
+svcInterval('exhaustionLadder', () => _exhLadderMaybeRefit(), 6 * 3600e3);
+svcTimeout('exhaustionLadder', () => _exhLadderMaybeRefit(), 15 * 60_000);
+
 app.get('/api/exhaustion-ladder/status/:jobId', (req, res) => {
   const job = exhLadderJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
