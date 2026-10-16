@@ -8153,14 +8153,18 @@ function renderSummary() {
 
 // ── Card rendering ────────────────────────────────────────────────────────────
 function regimeChip(d) {
+  // The HMM splits on VARIANCE: TREND is its high-variance state, RANGE the quiet one. The label is the Viterbi
+  // end-state and the % is the filtered probability; when they disagree (EURUSD 'RANGE' at 34%) say MIXED.
   const r = d.regime;
   if (!r) return `<span class="chip neu">NO REGIME</span>`;
+  const p = r.label === 'TREND' ? r.trend_prob : r.range_prob;
+  if (p != null && p < 50) return `<span class="chip neu" title="The HMM's labels disagree with its own probabilities (label ${r.label}, ${p}% for it). Read it as no clear variance state.">◆ MIXED</span>`;
   if (r.label === 'TREND') {
-    const upD = _trendDir(r.trend_dir) === 'up';
-    const t = `This market is trending ${upD ? 'higher' : 'lower'} — it's been moving mostly in one direction (${upD ? 'up' : 'down'}). ${r.trend_prob}% = how sure the model is. Trends are for going WITH the move.`;
-    return `<span class="chip ${upD ? 'bull' : 'bear'}" title="${t}">${upD ? '▲ TREND UP' : '▼ TREND DOWN'} ${r.trend_prob}%</span>`;
+    const dir = r.trend_dir_confident ? _trendDir(r.trend_dir) : null;
+    const t = `High-variance state (${r.trend_prob}%): moves have been larger than usual. The HMM splits on variance, not direction${dir ? `; its 10-day drift is ${dir}` : '; no confident drift'}. It is not a call to go with the move.`;
+    return `<span class="chip ${dir === 'up' ? 'bull' : dir === 'down' ? 'bear' : 'neu'}" title="${t}">${dir === 'up' ? '▲ ' : dir === 'down' ? '▼ ' : ''}HIGH-VAR ${r.trend_prob}%</span>`;
   }
-  return `<span class="chip range" title="This market is ranging — bouncing sideways between levels rather than going anywhere. ${r.range_prob}% sure. Ranges are for fading the edges (sell the top, buy the bottom).">↔ RANGE ${r.range_prob}%</span>`;
+  return `<span class="chip range" title="Quiet state (${r.range_prob}%): moves have been smaller than usual. A variance read, not a call to fade the edges (line fades fail net of cost on this desk).">↔ QUIET ${r.range_prob}%</span>`;
 }
 function sizeChip(d) {
   const r = d.regime;

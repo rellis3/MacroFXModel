@@ -4219,6 +4219,15 @@ async function _deskWatchTick(opts = {}) {
     const inputs = await _watchInputs();
     const states = _evaluateTriggers(inputs);
     const prevById = new Map(store.states.map(t => [t.id, t]));
+    // A trigger whose input failed this pass is ABSENT from `states`. Dropping it lost its state, so when the
+    // input came back the same condition 'started' again and re-sent the Telegram (stock-bond: 6 starts, 1 clear).
+    // Carry the last known state forward until the input answers again; unmeasured is not cleared.
+    { const seen = new Set(states.map(t => t.id));
+      for (const p of store.states) {
+        if (seen.has(p.id)) continue;
+        const since = p.carriedSince ?? new Date().toISOString();
+        if (Date.now() - Date.parse(since) < 72 * 3600e3) states.push({ ...p, carried: true, carriedSince: since });   // a retired trigger ages out
+      } }
     const nowIso = new Date().toISOString();
     for (const t of states) { const p = prevById.get(t.id); t.since = t.firing ? (p?.firing && p.since ? p.since : nowIso) : null; }
     const { started, stopped } = _diffStates(store.states, states);
