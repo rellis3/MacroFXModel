@@ -584,8 +584,11 @@ export function oiStoreToLevels(inst, { topWalls = null, minTier = "moderate", m
   // Walls carry their 3× strength `tier` so the bots can weight/gate by it — the
   // fix for "a strong wall should trade differently from a weak one". Non-wall
   // types (max_pain/gamma_flip/hvl/oi_volume) have no tier.
-  const push = (price, type, tier = null) => { if (Number.isFinite(price) && price > 0) out.push(tier ? { price: +price, type, tier } : { price: +price, type }); };
   const spot = inst?.spot, refMove = inst?.refMove?.move ?? null;
+  // A level more than 25% from spot is a parse/shift artefact, never a tradeable line (live 2026-10-16: NQ hvl 7331
+  // with spot 29700, SPX 62, DOW put wall 4.37). Bots and exports read this list, so it is filtered at the source.
+  const nearSpot = p => !(Number.isFinite(spot) && spot > 0) || Math.abs(p / spot - 1) <= 0.25;
+  const push = (price, type, tier = null) => { if (Number.isFinite(price) && price > 0 && nearSpot(price)) out.push(tier ? { price: +price, type, tier } : { price: +price, type }); };
   const wallOpts = { topWalls, minTier, maxWalls, minShare, spot, refMove, nearK };
   const cw = Array.isArray(inst.callWalls) ? inst.callWalls : [];
   const pw = Array.isArray(inst.putWalls) ? inst.putWalls : [];
@@ -616,7 +619,7 @@ export function oiStoreToLevels(inst, { topWalls = null, minTier = "moderate", m
   // (already on the record), fall back to the shared brick.
   push(Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : gammaFlip(gp, inst.spot), 'gamma_flip');
   let hvl = null, hg = -Infinity;
-  for (const g of gp) { const ag = Math.abs(g?.gamma ?? 0); if (ag > hg) { hg = ag; hvl = g?.strike; } }
+  for (const g of gp) { if (!nearSpot(g?.strike)) continue; const ag = Math.abs(g?.gamma ?? 0); if (ag > hg) { hg = ag; hvl = g?.strike; } }
   push(hvl, 'hvl');
   // The RIGOROUS gamma boundary (total net GEX re-evaluated at candidate prices,
   // root-found) alongside the cheap per-strike crossing. Both are emitted because they
