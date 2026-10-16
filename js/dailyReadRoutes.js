@@ -53,7 +53,11 @@ export function createDailyRead({ kv, log = console }) {
     if (Date.now() - (tried.get(date) ?? 0) < RETRY_MS) return false;
     const [sess, fc] = [parse(await kv.get(`vol_session_${date}`)), parse(await kv.get(`vol_forecast_${date}`))];
     if (!sess?.instruments || !fc?.instruments) { tried.set(date, Date.now()); return false; }
-    if (!auditUsable(date, sess.audited_at)) {             // audit measured the next session: never score it
+    // The 22:00 UTC audit is taken ~45 min before the London session ends (complete:false). Wait for the final
+    // audit the scheduler takes after London midnight (late_audit), unless the session is long gone without one.
+    if (!sess.late_audit && londonDate() <= date) { tried.set(date, Date.now()); return false; }
+    if (!sess.late_audit && Date.now() - Date.parse(sess.audited_at ?? 0) < 6 * 3600e3) { tried.set(date, Date.now()); return false; }
+    if (!auditUsable(date, sess.audited_at, !!sess.late_audit)) {             // audit measured the next session: never score it
       store.days[date] = { ...(store.days[date] ?? {}), skipped: { at: new Date().toISOString(), auditedAt: sess.audited_at,
         why: 'session audit taken after the London session ended (it measured the next session)' } };
       note(store, `skipped ${date}: late session audit (${sess.audited_at})`);
@@ -62,7 +66,7 @@ export function createDailyRead({ kv, log = console }) {
     const setupBy = Object.fromEntries((store.days[date]?.setup?.rows ?? []).map(r => [r.sym, r]));
     const rows = syms(fc).map(s => scoreRow(s, fc.instruments[s], sess.instruments[s], setupBy[s])).filter(Boolean);
     if (!rows.length) { tried.set(date, Date.now()); return false; }
-    store.days[date] = { ...(store.days[date] ?? {}), score: { at: new Date().toISOString(), auditedAt: sess.audited_at ?? null, rows } };
+    store.days[date] = { ...(store.days[date] ?? {}), score: { at: new Date().toISOString(), auditedAt: sess.audited_at ?? null, lateAudit: !!sess.late_audit, rows } };
     note(store, `scored ${date}: ${rows.length} instruments`);
     return true;
   }
@@ -76,7 +80,7 @@ export function createDailyRead({ kv, log = console }) {
       await buildSetup(store, paper, today);
       // Days scored before the late-audit check existed: move any built on a late audit out of the scores.
       for (const [d, day] of Object.entries(store.days)) {
-        if (day.score?.auditedAt && !auditUsable(d, day.score.auditedAt)) {
+        if (day.score?.auditedAt && !auditUsable(d, day.score.auditedAt, !!day.score.lateAudit)) {
           day.skipped = { at: new Date().toISOString(), auditedAt: day.score.auditedAt,
             why: 'session audit taken after the London session ended (it measured the next session)' };
           delete day.score; delete day.lesson;

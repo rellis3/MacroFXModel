@@ -995,8 +995,19 @@ function _repairTick() {
     .finally(() => { _repairInFlight = false; });
 }
 
+// The FINAL audit: the 22:00 UTC audit runs ~45 min before a BST session ends (complete:false), so once London's
+// date has moved past the session, re-audit it through the late path (_sessionRecordFor: that session's own
+// midnight-to-midnight window from bars) and overwrite. The Daily Read waits for this record before scoring.
+let _pendingFinalAudit = null;
+async function _finalAuditTick() {
+  if (!_pendingFinalAudit || _londonDateOf() <= _pendingFinalAudit) return;
+  const d = _pendingFinalAudit; _pendingFinalAudit = null;
+  await _auditSession(d);
+}
+
 async function _schedulerTick() {
   _repairTick();
+  await _finalAuditTick().catch(e => console.error('[VOL-FORECAST] Final audit failed:', e.message));
   const now = new Date();
   const day = now.getUTCDay();
   if (day === 0 || day === 6) return;                             // skip weekends
@@ -1008,6 +1019,7 @@ async function _schedulerTick() {
   console.log(`[VOL-FORECAST] Daily trigger at ${now.toISOString()}`);
   // Audit today's session before computing tomorrow's forecast
   await _auditSession(todayStr);
+  _pendingFinalAudit = todayStr;   // re-audited complete after London midnight (_finalAuditTick)
   runVolForecast().catch(e => console.error('[VOL-FORECAST] Daily run failed:', e.message));
 }
 

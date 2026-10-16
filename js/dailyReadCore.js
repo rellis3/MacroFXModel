@@ -98,8 +98,11 @@ export function scoreRow(sym, fc, sess, setup) {
 
 // A session audit is only usable if it was taken before that London date ended. Before 2026-10-06 (cf47b9a0) the
 // audit could run after London midnight and record the NEXT session's first minutes (6 of 15 records, Sep-Oct 2026).
-export function auditUsable(sessionDate, auditedAt) {
-  if (!auditedAt) return true;
+// A LATE audit (late_audit: true, volForecastScheduler's _sessionRecordFor) measures this session's own
+// London-midnight -> next-midnight window from bars, so it is usable whenever it was taken -- and it is the one
+// that includes the session's final ~45 minutes, which the 22:00 UTC audit misses.
+export function auditUsable(sessionDate, auditedAt, lateAudit = false) {
+  if (!auditedAt || lateAudit) return true;
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date(auditedAt)) <= sessionDate;
 }
 

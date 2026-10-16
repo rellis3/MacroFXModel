@@ -54,3 +54,9 @@ ok('every lesson renders without throwing', LESSONS.every(l => { try { const a =
 
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);
+
+// late audits rebuild the session's own window from bars: usable whenever taken (audit 2026-10-16)
+import('./dailyReadCore.js').then(({ auditUsable }) => {
+  if (auditUsable('2026-10-15', '2026-10-16T01:00:00Z', true) !== true) throw new Error('late audit must be usable');
+  if (auditUsable('2026-10-15', '2026-10-16T01:00:00Z') !== false) throw new Error('a plain audit after midnight must not be');
+});
