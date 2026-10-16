@@ -90,6 +90,9 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
   const lastFomc = cb.USD?.meetingDate ?? null;
   const sessionsSinceFomc = lastFomc ? Math.floor(ageDays(lastFomc) * 5 / 7) : null;
 
+  // median |open→close| of the fitted ladder's σ (0.6745σ), the same σ as the lines the Day Read draws
+  const rowSigma = Object.fromEntries(rows.map(r => [r.sym, r.sigma]));
+  const tapeDen = (sym, ss) => (rowSigma[sym] > 0 ? 0.6745 * rowSigma[sym] : ss?.forecast?.oc_median ?? null);
   const relCcy = (map, [b, q], scale = 1) => (map[b] != null && map[q] != null ? Math.max(-1, Math.min(1, (map[b] - map[q]) / scale)) : 0);
   const dir = {};
   for (const [pair, bq] of Object.entries(GR_PAIRS)) {
@@ -112,7 +115,9 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
       add('macro-regime-fx', sgn(mr.oos.mean), { ic: Math.abs(2 * (hit - 0.5)), n_eff: mr.all.nEffective, note: `OOS hit ${mr.oos.hitRate}% (n ${mr.oos.n}) but only ${mr.all.nEffective} independent episodes` });
     }
     const lean = plan[pair]?.lean; add('lean', lean === 'up' ? 1 : lean === 'down' ? -1 : 0, { note: `page lean ${lean ?? '—'}` });
-    const h = hmm[SLASH(pair)]; add('hmm-trend', h?.trendDir === 'up' ? 1 : h?.trendDir === 'down' ? -1 : 0, { note: `HMM ${h?.regime ?? '—'}` });
+    // /api/hmm/regimes says BULL/BEAR (trade-grade.js), not up/down: the old test made this input 0 on every pair
+    const h = hmm[SLASH(pair)], td = String(h?.trendDir ?? '').toUpperCase();
+    add('hmm-trend', !h?.trendDirConfident ? 0 : td === 'BULL' || td === 'UP' ? 1 : td === 'BEAR' || td === 'DOWN' ? -1 : 0, { note: `HMM ${h?.regime ?? '—'} ${h?.trendDir ?? ''}` });
     add('trend', bq[0] === 'USD' ? -(trend[bq[1]] ?? 0) : (trend[bq[0]] ?? 0), { note: '12-month trend' });
     add('macro-score', relCcy(sc, bq, 0.5), { note: `${bq[0]} ${sc[bq[0]] ?? '—'} vs ${bq[1]} ${sc[bq[1]] ?? '—'}` });
     add('cb-tone', relCcy(Object.fromEntries(Object.entries(cb).map(([c, v]) => [c, v.score])), bq, 0.5), { note: 'hawk − dove, last statements' });
@@ -124,8 +129,8 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
     if (mc.us10y?.deltas?.['20'] != null) add('us-yields', usdSide * clip1(mc.us10y.deltas['20'] / 25), { note: `US 10Y ${mc.us10y.deltas['20'] > 0 ? '+' : ''}${mc.us10y.deltas['20']}bp over 20d` });
     if (obs.dxy20dPct != null) add('dollar-tape', usdSide * clip1(obs.dxy20dPct / 2), { note: `broad dollar ${obs.dxy20dPct > 0 ? '+' : ''}${obs.dxy20dPct}% over 20d` });
     if (obs.hy20dBp != null) add('risk-tone', (RISK_BETA[pair] ?? 0) * clip1(-obs.hy20dBp / 50), { note: `HY spreads ${obs.hy20dBp > 0 ? '+' : ''}${obs.hy20dBp}bp over 20d` });
-    const ss = D['vol-forecast/session']?.instruments?.[pair];
-    if (ss?.oc != null && ss?.forecast?.oc_median > 0) add('today-tape', clip1(ss.oc / ss.forecast.oc_median), { note: `session ${ss.oc > 0 ? '+' : ''}${ss.oc}% from the open so far` });
+    const ss = D['vol-forecast/session']?.instruments?.[pair], den = tapeDen(pair, ss);
+    if (ss?.oc != null && den > 0) add('today-tape', clip1(ss.oc / den), { note: `session ${ss.oc > 0 ? '+' : ''}${ss.oc}% from the open so far` });
     dir[pair] = xs;
   }
 
@@ -135,8 +140,8 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
     const mk = sym => {
       const xs = [], r = id => REG[id];
       const add = (id, sv, note) => xs.push({ id, label: r(id).label, family: r(id).family, tier: r(id).tier, s: 0, e: 0, note, sStory: sv });
-      const ss = D['vol-forecast/session']?.instruments?.[sym];
-      if (ss?.oc != null && ss?.forecast?.oc_median > 0) add('today-tape', clip1(ss.oc / ss.forecast.oc_median), `session ${ss.oc > 0 ? '+' : ''}${ss.oc}% from the open so far`);
+      const ss = D['vol-forecast/session']?.instruments?.[sym], den = tapeDen(sym, ss);
+      if (ss?.oc != null && den > 0) add('today-tape', clip1(ss.oc / den), `session ${ss.oc > 0 ? '+' : ''}${ss.oc}% from the open so far`);
       return { xs, add };
     };
     const g = mk('GOLD');
@@ -168,12 +173,13 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
     currencies[c] = {
       move20Pct: fac[c]?.move20Pct ?? null, dollarShare: fac[c]?.dollarShare ?? null,
       vr4h: pers[c]?.vr4hMean ?? null,
-      macroScore: scRow[c]?.composite ?? null, macroStale: Object.values(D['macro-scorecard']?.staleDims ?? {}).flat().filter(x => x.ccy === c).map(x => `${x.ageDays}d`),
+      macroScore: scRow[c]?.composite ?? null, macroStale: Object.entries(D['macro-scorecard']?.staleDims ?? {}).flatMap(([dim, v]) => v.filter(x => x.ccy === c).map(x => `${dim} ${x.ageDays}d`)),
       surprise: es[c] ? { score: es[c].score, stale: !!es[c].staleOnly, lastAsOf: es[c].lastAsOf } : null,
       cb: cb[c] ? { score: cb[c].score, regime: cb[c].regime, meeting: cb[c].meetingDate } : null,
       cot: cotRow ? { specPct: cotRow.specPct, z: cotRow.specShareZ } : null,
       realYield: ry[c]?.latestReal ?? null, curveSlope: yc[c]?.latestSlope ?? null,
-      spreadZ: y ? +y.z.toFixed(2) : null, trend: trend[c] ?? null,
+      // oriented: + = the short-rate spread favours THIS currency (the raw z is the pair's, US minus foreign)
+      spreadZ: y ? +(y.z * (y.inverted ? -1 : 1) * (GR_PAIRS[pairKey][0] === c ? 1 : -1)).toFixed(2) : null, trend: trend[c] ?? null,
     };
   }
 
@@ -181,6 +187,9 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
   const health = D['data-health']?.rows ?? [];
   const checks = [];
   const chk = (cond, problem, where = null) => { if (cond) checks.push({ problem, where }); };
+  // the range arm's main validated driver: say so when it is absent rather than run on the VIX flags alone
+  { const noIv = rows.filter(r => r.ratio == null).map(r => r.sym);
+    chk(rows.length && noIv.length, `IV÷σ missing for ${noIv.length} of ${rows.length} instruments (${noIv.join(', ')}): their range read runs on the VIX/breadth flags only`, '/api/daily-read setup'); }
   chk((D.cot?.errors ?? []).length, `COT live feed: ${(D.cot?.errors ?? []).join(', ')} (FX legs missing; the weekly cot-extremes copy is used)`, 'other pages');
   chk(D['hmm5m-v2'] && !Object.keys(D['hmm5m-v2']).length, 'intraday HMM (5m/1h) serve {}: those services are off by default (SVC_HMM5M_V2/SVC_HMM1H), so the input is absent', 'not on today.html');
   const fomcDoc = D['fomc/latest']?.meetingDate;
@@ -234,7 +243,8 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
 
   return {
     obs, rows, flags, dir, tags, currencies,
-    hmm: Object.fromEntries(Object.entries(hmm).map(([k, v]) => [hmmKey(k), v.regime])),
+    // RANGE only when the HMM's own filtered probability agrees with its Viterbi label (EURUSD read RANGE at 34%)
+    hmm: Object.fromEntries(Object.entries(hmm).map(([k, v]) => [hmmKey(k), v.regime === 'RANGE' && !(v.rangeProb >= 0.5) ? 'MIXED' : v.regime])),
     health, checks, persist, eventsDue, context, invalidation,
     meta: {
       asOf: new Date(now).toISOString(),

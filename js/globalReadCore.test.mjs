@@ -65,9 +65,11 @@ t('behaviour labels follow P(beyond p75)', () => {
 });
 
 t('state axes and label: real-rate dollar, calm vol, credit leaking', () => {
-  const ax = stateAxes({ dxy20dPct: 2.7, usdMove20Pct: 1.7, us10y20dBp: 21, real20dBp: 19, hikesPriced: 3.5, medianVolPctIdx: 13, medianVolPctFx: 43, frontState: 'calm', hy20dBp: 47, csi: -1.36, liquidityBlocked: true });
+  const ax = stateAxes({ dxy20dPct: 2.7, usdMove20Pct: 1.7, us10y20dBp: 21, real20dBp: 19, hikesPriced: 3.5, medianVolPctIdx: 13, medianVolPctFx: 43, frontState: 'calm', hy20dBp: 47, csi: 0.8, liquidityBlocked: true });
   assert.equal(ax.usd.agree, '2/2'); assert.ok(ax.rates.score > 0.4 && ax.vol.score < -0.3 && ax.credit.score > 0.3);
   assert.match(environmentLabel(ax), /real-rate dollar regime.*compressed volatility.*credit widening under a calm tape/);
+  // CSI is + = stress (creditStressCore cuts exposure at z >= 1): a calm CSI must pull the credit axis DOWN
+  assert.ok(stateAxes({ csi: -1.2 }).credit.score < 0 && stateAxes({ csi: 1.2 }).credit.score > 0);
 });
 
 t('buildGlobalRead ranks by clarity and reports separate range / direction conviction', () => {
@@ -168,6 +170,22 @@ t('10:00 snapshot (D3) is scored on the move that is left, not the morning move'
   assert.equal(sc.D3.n, 31); assert.equal(sc.D3.hits, 0);
   rows.forEach(r => { r.cards.EURUSD.oc = 0.6; });
   assert.equal(scoreRecord(rows).D3.hits, 31);
+});
+
+t('audit 2026-10-16: an inactive tested input is a nominal story read; GEX is centred both ways', () => {
+  // 2Y spread below its entry: tested s = 0 but tier weight > 0. The story must not give it the confirmed weight.
+  const ys = { id: 'yield-spread', family: 'rates-rv', s: 0, sStory: -0.4, e: 0.247, tier: 'confirmed' };
+  const other = [{ id: 'a', family: 'price-state', s: 0.4, e: 0 }, { id: 'b', family: 'macro-state', s: 0.4, e: 0 }];
+  const st = storyDirection([ys, ...other]);
+  assert.ok(st.pUp > 0.5, `two nominal ups should outweigh one nominal down, got ${st.pUp}`);
+  assert.ok(st.reads.every(r => r.contrib != null));
+  // active tested input keeps its evidence weight
+  assert.ok(storyDirection([{ ...ys, s: -1, sStory: -1 }, ...other]).pUp < 0.5);
+  // GEX: short gamma is ordinary (~ +9%), long gamma quieter; neither alone makes "expansion"
+  const row = { sym: 'NQ', ratio: null, lines: { hl_p50: 1.33, hl_p75: 1.79 } };
+  const sh = rangeView(row, { gexShortNq: true }), lg = rangeView(row, { gexShortNq: false }), no = rangeView(row, {});
+  assert.ok(sh.mult > 1 && sh.mult < 1.12 && lg.mult < 1 && no.mult === 1, `${sh.mult} ${lg.mult} ${no.mult}`);
+  assert.notEqual(behaviourOf(sh).label, 'expansion');
 });
 
 console.log(`globalReadCore: ${n} tests passed`);

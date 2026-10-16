@@ -316,6 +316,19 @@ All of them are about where price stops, not which way it goes.
 | C1 combination | R1 and D1 | best single input (IV-only ladder for range; yield sleeve alone for direction) | engine ≥ best single on its metric | engine < best single ⇒ ship the single input, not the engine |
 | K1 conviction | range conviction score | — | sessions in the top tercile of conviction have larger \|realised ÷ plain − 1\| than the bottom tercile | otherwise the score is cosmetic and is removed |
 
+*Amendment, 2026-10-16, before any story row existed (the arm went live after both record windows that day):*
+the **story arm** (`storyDirection`: every read that points a way, nominal weight IC 0.05 unless its tested rule is
+active, family-correlation aware) is recorded as a shadow and never moves D1, R1 or R2.
+
+| target | engine output | baseline | PASS | FAIL |
+|---|---|---|---|---|
+| D2 story, 07:00 | story P(up), \|P − 0.5\| ≥ 0.02 | 50% | Brier skill > 0 AND > D1's, at n ≥ 30 sessions, sign-stable halves | otherwise the lean leaves the Day Read |
+| D3 story, 10:00 | the 10:00 re-read | 50% | same bar | same |
+
+Both are scored on the move **left** after the read (close minus the 07:00 / 10:00 level, % of the London-midnight
+open), because the read includes the tape so far. Calls are clustered by day (one dollar move is several pairs),
+so the verdict also reports the session-clustered hit rate before any claim.
+
 **Chance baseline.** Five targets: expect about one to look good at n=30 by luck. One pass
 alone is not evidence.
 

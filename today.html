@@ -2402,7 +2402,7 @@ function renderStatRow() {
     const hist = (fredHist?.dxy ?? []).map(p => p.value);
     const wkAgo = hist.length >= 6 ? hist[hist.length - 6] : null;
     const wkPct = wkAgo != null ? (dxy.value - wkAgo) / wkAgo * 100 : null;
-    cards.push(statCardHtml('DXY Index', dxy.value.toFixed(2),
+    cards.push(statCardHtml(`Broad $ (Fed)${dxy.asOf ? ' · ' + String(dxy.asOf).slice(5, 10) : ''}`, dxy.value.toFixed(2),
       dPct != null ? `${dPct >= 0 ? '+' : ''}${dPct.toFixed(2)}%` : null, dPct == null || dPct >= 0,
       hist, wkPct == null || wkPct >= 0,
       wkPct != null ? `${wkPct >= 0 ? '+' : ''}${wkPct.toFixed(2)}%` : null, wkPct == null || wkPct >= 0));
@@ -2986,7 +2986,7 @@ function riskLight() {
   const asOf = fred?.vix?.asOf ? ` · as of ${fred.vix.asOf}` : '';
   return { icon: state[0], label: state[1], color: state[2],
     note: fredAsOfNote('vix', 'VIX'),
-    detail: `VIX ${fmtN(vix, 1)}${d(vix, fred?.vix?.prev)} · HY ${fmtN(hy, 2)}${d(hy, fred?.hy?.prev)}${fred?.dxy?.value != null ? ` · DXY ${fmtN(fred.dxy.value, 1)}${d(fred.dxy.value, fred.dxy.prev)}` : ''}${asOf}` };
+    detail: `VIX ${fmtN(vix, 1)}${d(vix, fred?.vix?.prev)} · HY ${fmtN(hy, 2)}${d(hy, fred?.hy?.prev)}${fred?.dxy?.value != null ? ` · broad $ ${fmtN(fred.dxy.value, 1)}${d(fred.dxy.value, fred.dxy.prev)}${fred.dxy.asOf ? ` (${String(fred.dxy.asOf).slice(5, 10)})` : ''}` : ''}${asOf}` };
 }
 
 // Lives in the sidebar's "Today's Calendar" card (#calList) — moved off the
@@ -3253,11 +3253,11 @@ function renderConcentration() {
   if (weakest && weakest.score < -THEME_MIN) themes.push(`<b>${ccyShort(weakest.ccy)} weakness</b>${mag(weakest.score)} (in ${nps(weakest.n)})`);
   // Only claim "same bet" when the cross-section actually says so. A high R² IS the
   // evidence that these pairs are one trade; a low one is evidence they are not.
-  const cR2 = csrC?.r2 ?? null;
+  const cR2 = csrC?.conc ?? null;   // lead-currency share of the board (was a fit R², which is ~1 by arbitrage)
   if (themes.length && (cR2 == null || cR2 >= 0.3)) {
-    bits.push(`Today is mostly a story of ${themes.join(' and ')} — most tradeable pairs are versions of the same bet, so <b>don't count them as separate trades</b>${cR2 != null ? ` (cross-pair fit R² ${cR2.toFixed(2)})` : ''}.`);
+    bits.push(`Today is mostly a story of ${themes.join(' and ')} — most tradeable pairs are versions of the same bet, so <b>don't count them as separate trades</b>${cR2 != null ? ` (lead currency carries ${Math.round(100 * cR2)}% of the board)` : ''}.`);
   } else if (cR2 != null && cR2 < 0.3) {
-    bits.push(`No single currency is driving the board (cross-pair fit R² ${cR2.toFixed(2)}) — pairs are moving on their <b>own individual stories</b> today, so they diversify each other more than usual.`);
+    bits.push(`No single currency is driving the board (the leader carries ${Math.round(100 * cR2)}%) — pairs are moving on <b>different currencies</b> today, so they diversify each other more than usual.`);
   }
   // Measured correlation, not inferred from currency dominance. The "same bet"
   // warning is a claim about correlation, so it should be made from the correlation
@@ -3428,11 +3428,16 @@ function currencyStrengthReturns(rs) {
     // Expected day range as a fraction of price -- the same hl_med percentage the
     // range meter divides by. Without it a JPY cross' raw move dwarfs EUR/CHF's and
     // the fit just ranks volatility.
+    // FIT ON RAW LOG RETURNS. Crosses are bound by arbitrage: log(EURGBP) = log(EURUSD) - log(GBPUSD),
+    // so raw moves are exactly r_base - r_quote and the fit leaves ~nothing over. Dividing each pair by
+    // its OWN σ first (what this did until 2026-10-16) broke that identity and manufactured a "pair-
+    // specific" residual of up to a third of a day-range out of the normalisation alone. σ now enters
+    // only as a WLS weight (quiet pairs are measured more precisely) and as the display unit.
     const sigma = (r.hlMed != null && r.hlMed > 0) ? r.hlMed / 100 : null;
     if (!sigma) continue;
-    const ret = Math.log(px / open) / sigma;            // in "expected day ranges"
-    if (!Number.isFinite(ret)) continue;
-    obs.push({ name: r.name, base: cc[0], quote: cc[1], ret });
+    const raw = Math.log(px / open);
+    if (!Number.isFinite(raw)) continue;
+    obs.push({ name: r.name, base: cc[0], quote: cc[1], raw, sigma, ret: raw / sigma });
   }
   if (obs.length < STRENGTH_MIN_PAIRS) return null;
 
@@ -3446,29 +3451,42 @@ function currencyStrengthReturns(rs) {
   // is the unique sum-to-zero one rather than one of infinitely many.
   const L = Array.from({ length: n }, () => new Array(n).fill(0));
   const b = new Array(n).fill(0);
+  const sMed = [...obs.map(o => o.sigma)].sort((a, b2) => a - b2)[Math.floor(obs.length / 2)];
   for (const o of obs) {
-    const i = idx[o.base], j = idx[o.quote];
-    L[i][i] += 1; L[j][j] += 1; L[i][j] -= 1; L[j][i] -= 1;
-    b[i] += o.ret; b[j] -= o.ret;
+    const i = idx[o.base], j = idx[o.quote], w = (sMed / o.sigma) ** 2;
+    L[i][i] += w; L[j][j] += w; L[i][j] -= w; L[j][i] -= w;
+    b[i] += w * o.raw; b[j] -= w * o.raw;
   }
   for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) L[i][j] += 1 / n;
-  const c = _solveDense(L, b);
-  if (!c || c.some(v => !Number.isFinite(v))) return null;
+  const cRaw = _solveDense(L, b);
+  if (!cRaw || cRaw.some(v => !Number.isFinite(v))) return null;
+  // One common unit for every currency: a typical currency's day range, taken as the median pair's
+  // expected range / √2 (a pair carries two currencies' variance). Linear, so sum-to-zero and the
+  // triangle consistency survive; currencies stay comparable with each other.
+  const unit = sMed / Math.SQRT2;
+  const c = cRaw.map(v => v / unit);
 
   // Goodness of fit: how much of the cross-section a pure currency story explains.
   // Measured against ZERO, not against the mean return -- this model has no
   // intercept (a sum-to-zero currency vector predicts no move when nothing is
   // happening), so zero is its real null and an about-the-mean R-squared can go
   // negative on data the fit actually describes well.
-  let sse = 0, sst = 0;
+  // Per pair, in that pair's OWN expected day ranges: base leg + quote leg + residual = the move.
+  // On consistent prices the residual is ~0, so it is a data check (a stale anchor or price), not a story.
+  let maxResid = 0;
   for (const o of obs) {
-    const fit = c[idx[o.base]] - c[idx[o.quote]];
-    sse += (o.ret - fit) ** 2;
-    sst += o.ret ** 2;
+    o.cb = +(cRaw[idx[o.base]] / o.sigma).toFixed(3);
+    o.cq = +(-cRaw[idx[o.quote]] / o.sigma).toFixed(3);
+    const fit = o.cb + o.cq;
     o.fit = +fit.toFixed(3);
     o.resid = +(o.ret - fit).toFixed(3);
+    maxResid = Math.max(maxResid, Math.abs(o.resid));
   }
-  const r2 = sst > 0 ? Math.max(0, 1 - sse / sst) : null;
+  // How concentrated today is: the leading currency's share of the board's squared strength.
+  // ~1 = one currency is moving everything; ~1/n = no theme. (An R² of the fit is ~1 by arbitrage
+  // whatever the day looks like, so it cannot answer this question.)
+  const ss = c.reduce((a, v) => a + v * v, 0);
+  const conc = ss > 0 ? Math.max(...c.map(v => v * v)) / ss : null;
 
   const pairsOf = {};
   for (const o of obs) {
@@ -3478,7 +3496,7 @@ function currencyStrengthReturns(rs) {
   const scores = ccys
     .map(cy => ({ ccy: cy, score: +c[idx[cy]].toFixed(3), n: (pairsOf[cy] ?? []).length, pairs: pairsOf[cy] ?? [] }))
     .sort((a, b2) => b2.score - a.score);
-  return { scores, r2: r2 == null ? null : +r2.toFixed(2), nPairs: obs.length, obs };
+  return { scores, conc: conc == null ? null : +conc.toFixed(2), maxResid: +maxResid.toFixed(3), nPairs: obs.length, obs };
 }
 
 // ── The no-trade gate, and how wide a stop has to be ─────────────────────────
@@ -3897,7 +3915,7 @@ function assembleChainSnapshot() {
   ].filter(Boolean).join('\n') : null;
   const equities = risk?.chips?.length ? `  ${risk.up} of ${risk.chips.length} indices bid today: ${risk.chips.map(c => `${c.name} ${c.dir === 'up' ? 'up' : c.dir === 'down' ? 'down' : 'flat'}`).join(', ')} -> ${risk.tone ?? ''}` : null;
   const csr = currencyStrengthMeasured(rs);
-  const ccy = csr?.scores?.length ? `  ${csr.scores.map(x => `${x.ccy} ${x.score >= 0 ? '+' : ''}${x.score}`).join(' · ')} (in expected day ranges; fit R-squared ${csr.r2 ?? '?'}${csr.r2 != null && csr.r2 < 0.3 ? ' -- weak, not a clean currency story today' : ''})` : null;
+  const ccy = csr?.scores?.length ? `  ${csr.scores.map(x => `${x.ccy} ${x.score >= 0 ? '+' : ''}${x.score}`).join(' · ')} (in a typical currency's day range; lead-currency share ${csr.conc ?? '?'}${csr.conc != null && csr.conc < 0.3 ? ' -- no single currency theme today' : ''})` : null;
   const divergences = macroDivergences().map(d => `  ${d.title}: ${d.detail}`).join('\n') || null;
   const caveats = [
     ...dataConflicts().map(c => `  CONFLICT ${c.label}: ${c.a.src} ${c.a.v} vs ${c.b.src} ${c.b.v} (${c.diffPct}% gap) -- treat reads built on it as unsupported`),
@@ -4262,10 +4280,10 @@ function falsifiersGlobal(rs, risk, csr) {
       : `Credit turns from support to warning if <b>HY OAS widens past ${RISK_LEVELS.stress.hy}%</b> (now ${fmtN(hy, 2)}%) or its weekly change turns sharply positive.`);
   }
   // The currency-theme claim, falsified by its own fit statistic.
-  if (csr?.r2 != null) {
-    out.push(csr.r2 >= 0.3
-      ? `The "one currency is driving the board" framing fails if the <b>cross-pair fit R² drops under 0.30</b> (now ${csr.r2.toFixed(2)}) — pairs would then be moving on their own stories.`
-      : `The "pairs are moving independently" framing fails if the <b>cross-pair fit R² rises back over 0.30</b> (now ${csr.r2.toFixed(2)}).`);
+  if (csr?.conc != null) {
+    out.push(csr.conc >= 0.3
+      ? `The "one currency is driving the board" framing fails if the <b>lead currency's share of the board drops under 30%</b> (now ${Math.round(100 * csr.conc)}%).`
+      : `The "no single currency theme" framing fails if <b>one currency's share of the board rises over 30%</b> (now ${Math.round(100 * csr.conc)}%).`);
   }
   // The rates story — which component is driving it.
   const rd = ratesDecomp();
@@ -4549,11 +4567,12 @@ function lsHedgeHtml() {
   if (!c) return '';
   const side = n => c.sides?.[n];
   const on = Object.keys(c.sides ?? {}).filter(n => side(n) === 'risk-on'), off = Object.keys(c.sides ?? {}).filter(n => side(n) === 'risk-off');
-  const fails = ['GOLD', 'UST10Y', 'USDJPY'].filter(n => side(n) === 'risk-on');
-  const nice = n => n === 'UST10Y' ? 'US bonds' : n === 'GOLD' ? 'gold' : n;
+  const failSide = { GOLD: 'risk-on', UST10Y: 'risk-on', USDJPY: 'risk-off', USDCHF: 'risk-off' };
+  const fails = Object.keys(failSide).filter(n => side(n) === failSide[n]);
+  const nice = n => ({ UST10Y: 'US bonds', GOLD: 'gold', USDJPY: 'the yen', USDCHF: 'the franc' })[n] ?? n;
   const fx = _lsReads.global.fxConcentration;
   return `<div class="side-card"><h3 class="help" title="Cross-asset absorption ratio: PCA across FX majors, gold, silver, oil, US/EU indices, the Nikkei and US 10Y bonds over 60 days, signed so the Nasdaq loads positive. PC1 share = how much of everything is one risk trade. A market on the risk-off side moves against equities today; one on the risk-on side does not hedge them.">What is hedging what</h3>
-    <div class="ccy-explain">One trade drives <b>${Math.round(c.pc1 * 100)}%</b> of cross-asset movement (${c.pctile}th pct of the year).${fails.length ? ` <b class="neg">Not hedging equities today: ${fails.map(nice).join(', ')}</b>, which sit on the same side as the Nasdaq.` : ' Gold, bonds and the yen are on the risk-off side: the usual hedges are working.'}</div>
+    <div class="ccy-explain">One trade drives <b>${Math.round(c.pc1 * 100)}%</b> of cross-asset movement (${c.pctile}th pct of the year).${fails.length ? ` <b class="neg">Not hedging equities today: ${fails.map(nice).join(', ')}</b>, which sit on the same side as the Nasdaq.` : ' Gold, bonds and the yen are all hedging equities today: the usual hedges are working.'}</div>
     <div class="muted" style="font-size:11px;line-height:1.5">With equities: ${on.map(nice).join(', ')}<br>Against: ${off.map(nice).join(', ') || '–'}${fx ? `<br>FX alone: one dollar trade = ${Math.round(fx.pc1 * 100)}% of FX movement (${fx.pctile}th pct).` : ''} <a href="surface-lab.html" target="_blank">Surface Lab ↗</a></div></div>`;
 }
 function lsVolTermLine() {
@@ -4640,9 +4659,9 @@ function conceptOfTheDay() {
       ? `Average absolute correlation across the board is ${creg.mean.toFixed(2)}${creg.z != null ? `, ${creg.z >= 0 ? '+' : ''}${creg.z.toFixed(2)} standard deviations above its own normal` : ''}. When correlation rises, separate-looking positions stop being separate: you are holding one bet at multiple times the size you think. It matters most exactly when it is least welcome — in a genuine risk-off, correlations converge toward 1 and the historical hedge stops hedging.`
       : `Average absolute correlation is ${creg.mean.toFixed(2)}, unusually low. Pairs are being driven by their own stories rather than one shared factor, so separate positions genuinely spread risk today in a way they often do not.`,
   });
-  if (csr?.r2 != null) cands.push({
+  if (csr?.conc != null) cands.push({
     id: 'attrib', title: 'Whether you have a currency view or a pair view',
-    body: `Today's cross-pair fit is R² ${csr.r2.toFixed(2)}. That number says how much of the whole board a single currency story explains. ${csr.r2 >= 0.5 ? 'It is high, so pairs really are moving as expressions of a few currencies — pick the cleanest instrument and treat correlated setups as one bet.' : csr.r2 >= 0.3 ? 'It is moderate: some of the board is a currency story and some is not, so check each pair’s own attribution before assuming a theme.' : 'It is low, which means there is no board-wide currency theme today. Pairs are moving on their own stories, and framing anything as "strong dollar" would be reading a pattern that is not there.'}`,
+    body: `Today the leading currency carries ${Math.round(100 * csr.conc)}% of the board's movement. ${csr.conc >= 0.5 ? 'One currency is moving most of the board, so most pairs are the same bet: pick the cleanest instrument and treat correlated setups as one trade.' : csr.conc >= 0.3 ? 'One currency leads but others are moving too, so check each pair\'s two legs before assuming a theme.' : 'No currency dominates today; framing anything as "strong dollar" would be reading a pattern that is not there.'}`,
   });
   if (!cands.length) return null;
   // Stable through the day, and driven by conditions rather than a rotation.
@@ -4924,8 +4943,7 @@ function moveDecompFor(name, rs) {
   const csr = currencyStrengthMeasured(rs ?? allRows());
   const o = csr?.obs?.find(x => x.name === name);
   if (!o) return null;
-  const byCcy = Object.fromEntries((csr.scores || []).map(x => [x.ccy, x.score]));
-  const baseC = byCcy[o.base] ?? 0, quoteC = byCcy[o.quote] ?? 0;
+  const baseC = o.cb ?? 0, quoteC = -(o.cq ?? 0);
   const resid = o.resid ?? (o.ret - (baseC - quoteC));
   // Shares of the total ABSOLUTE contribution, so three parts that partly cancel still
   // sum to 100% and a pair can honestly read as "80% dollar, and the euro leg fought it".
@@ -4936,7 +4954,7 @@ function moveDecompFor(name, rs) {
     base: { ccy: o.base, contrib: +baseC.toFixed(2), share: share(baseC) },
     quote: { ccy: o.quote, contrib: +(-quoteC).toFixed(2), share: share(quoteC) },
     idio: { contrib: +resid.toFixed(2), share: share(resid) },
-    r2: csr.r2,
+    conc: csr.conc,
   };
 }
 
@@ -4949,13 +4967,13 @@ function moveDecompSentence(dc) {
   ].sort((a, b) => (b.share ?? 0) - (a.share ?? 0));
   const lead = parts[0];
   const dirWord = v => v > 0 ? 'pushing it up' : v < 0 ? 'pulling it down' : 'neutral';
-  if (dc.idio.share != null && dc.idio.share >= 50) {
-    return `Most of today's move here (<b>${dc.idio.share}%</b>) is <b>pair-specific</b> — it isn't explained by either currency's broader behaviour, so this is a ${dispCcyPair(dc)} story rather than a macro one. A macro view is better expressed somewhere else.`;
+  if (dc.idio.share != null && dc.idio.share >= 25) {
+    return `The two currency legs do not add up to this pair's move (<b>${dc.idio.share}%</b> unexplained). Crosses are bound by arbitrage, so that is a <b>data problem</b> (a stale open or price for ${dispCcyPair(dc)}), not a pair-specific story.`;
   }
-  return `Today's move is mostly the <b>${ccyFull(lead.label)}</b> (${lead.share}% of it, ${dirWord(lead.contrib)}), with <b>${dc.idio.share}%</b> pair-specific. `
-    + (dc.idio.share <= 25
+  return `Today's move is mostly the <b>${ccyFull(lead.label)}</b> (${lead.share}% of it, ${dirWord(lead.contrib)}), the ${ccyFull(parts[1].label)} ${parts[1].share}% (${dirWord(parts[1].contrib)}). `
+    + (lead.share >= 70
         ? `That makes this a clean way to express a ${ccyShort(lead.label)} view.`
-        : `A meaningful slice is this pair's own story, so it tracks the ${ccyShort(lead.label)} theme only loosely.`);
+        : `Both legs matter, so it tracks the ${ccyShort(lead.label)} theme only loosely.`);
 }
 function dispCcyPair(dc) { return `${dc.base.ccy}/${dc.quote.ccy}`; }
 
@@ -4967,17 +4985,17 @@ function moveDecompChip(r) {
     { ccy: dc.quote.ccy, share: dc.quote.share, contrib: dc.quote.contrib },
   ].sort((a, b) => (b.share ?? 0) - (a.share ?? 0));
   const lead = drivers[0];
-  const pairLed = dc.idio.share >= 50;
+  const pairLed = dc.idio.share >= 25;                 // legs do not add up: a data problem, not flow
   const cls = pairLed ? 'warn' : 'neu';
-  const face = pairLed ? `◑ pair-specific ${dc.idio.share}%` : `◑ ${lead.ccy}-led ${lead.share}%`;
+  const face = pairLed ? `◑ check data ${dc.idio.share}%` : `◑ ${lead.ccy}-led ${lead.share}%`;
   const tip = `Where today's move actually came from, split exactly: ${dc.base.ccy} leg ${dc.base.contrib >= 0 ? '+' : ''}${dc.base.contrib}, `
-    + `${dc.quote.ccy} leg ${dc.quote.contrib >= 0 ? '+' : ''}${dc.quote.contrib}, pair-specific ${dc.idio.contrib >= 0 ? '+' : ''}${dc.idio.contrib} `
+    + `${dc.quote.ccy} leg ${dc.quote.contrib >= 0 ? '+' : ''}${dc.quote.contrib}, unexplained ${dc.idio.contrib >= 0 ? '+' : ''}${dc.idio.contrib} `
     + `(units = expected day ranges; total move ${dc.ret >= 0 ? '+' : ''}${dc.ret}). `
-    + `The pair-specific part is what no currency story explains. `
+    + `Crosses are bound by arbitrage, so the unexplained part should be ~0; a large one means a stale open or price. `
     + (pairLed
-        ? 'Most of this move is that residual, so this instrument is a poor way to express a macro view right now.'
+        ? 'It is large here: check this pair\'s data before reading the split.'
         : `Mostly a ${lead.ccy} story, so this is a reasonable instrument for a ${lead.ccy} view.`)
-    + (dc.r2 != null ? ` Board-wide fit R² ${dc.r2.toFixed(2)}.` : '');
+    + (dc.conc != null ? ` Lead-currency share of the board ${Math.round(100 * dc.conc)}%.` : '');
   return `<span class="chip ${cls}" title="${esc0(tip)}">${face}</span>`;
 }
 
@@ -5282,7 +5300,7 @@ function renderMarketRead() {
   const csrN = currencyStrengthMeasured(rs);
   const csNarr = csrN?.scores?.length ? csrN.scores : cs;
   const narrIsMeasured = !!csrN?.scores?.length;
-  const narrR2 = csrN?.r2 ?? null;
+  const narrR2 = csrN?.conc ?? null;
   const risk = equitiesRisk(rs);
   const trending = rs.filter(r => r.trending);
   const tUp = trending.filter(r => _trendDir(r.d.regime?.trend_dir) === 'up').length;
@@ -5324,7 +5342,7 @@ function renderMarketRead() {
     if (strengthReadable) {
       sentences.push(`Today's <b>strongest is the ${ccyFull(strongest.ccy)}</b>, weakest is the <b>${ccyFull(weakest.ccy)}</b> — so buying the ${ccyShort(strongest.ccy)} and selling the ${ccyShort(weakest.ccy)} is the trade with the wind behind it.`);
     } else {
-      sentences.push(`No currency is clearly leading today — the pairs are <b>moving on their own stories</b> rather than as one currency theme (cross-pair fit R² ${narrR2.toFixed(2)}), so "strongest vs weakest" isn't the right frame right now.`);
+      sentences.push(`No currency is clearly leading today — the pairs are <b>moving on their own stories</b> rather than as one currency theme (the leader carries ${Math.round(100 * narrR2)}% of the board), so "strongest vs weakest" isn't the right frame right now.`);
     }
   }
   // 4) trending vs chopping
@@ -5372,12 +5390,13 @@ function renderMarketRead() {
     const mMax = Math.max(0.15, ...csrMR.scores.map(c => Math.abs(c.score)));
     measuredBarsHtml = csrMR.scores.map((c, i) => barRow(c, i, csrMR.scores.length, 2,
       `${c.ccy}: ${c.score >= 0 ? '+' : ''}${c.score.toFixed(2)} expected day ranges since the London-midnight open, fitted across ${c.n} pair${c.n === 1 ? '' : 's'} (${c.pairs.join(', ')}). Every pair constrains every currency it touches, so this is triangle-consistent by construction — unlike a per-pair average. Click for detail.`, mMax)).join('');
-    const r2 = csrMR.r2;
-    const r2Cls = r2 == null ? 'muted' : r2 >= 0.6 ? 'pos' : r2 >= 0.3 ? '' : 'neg';
+    const r2 = csrMR.conc;
+    const r2Cls = r2 == null ? 'muted' : r2 >= 0.5 ? 'pos' : r2 >= 0.3 ? '' : 'neg';
     measuredNote = `<div class="muted" style="font-size:10.5px;margin-top:4px">`
       + `<span class="help" title="How much of today's cross-section a pure currency story explains, from ${csrMR.nPairs} pairs. High = the board really is one or two currencies moving everything. Low = pairs are moving on their own idiosyncratic stories and 'strongest / weakest currency' is not the right frame today. Measured against a no-move null, not against the average move.">`
-      + `fit R² <b class="${r2Cls}">${r2 == null ? '—' : r2.toFixed(2)}</b> across ${csrMR.nPairs} pairs`
-      + `${r2 != null && r2 < 0.3 ? ' — weak: today is not a clean currency story' : ''}</span></div>`;
+      + `lead-currency share <b class="${r2Cls}">${r2 == null ? '—' : Math.round(100 * r2) + '%'}</b> across ${csrMR.nPairs} pairs`
+      + `${r2 != null && r2 < 0.3 ? ' — no single currency theme today' : ''}`
+      + `${csrMR.maxResid > 0.1 ? ` · <b class="neg">a pair's legs do not add up (${csrMR.maxResid} day-ranges): stale price?</b>` : ''}</span></div>`;
   }
 
   // ── Economic-surprise bars (the real thing) ──
@@ -6103,7 +6122,7 @@ function currencyDetail(ccy) {
   // never folded into it.
   const csrD = currencyStrengthMeasured(rs);
   const mRow = csrD?.scores?.find(x => x.ccy === ccy) ?? null;
-  const measured = mRow ? { score: mRow.score, n: mRow.n, r2: csrD.r2, nPairs: csrD.nPairs } : null;
+  const measured = mRow ? { score: mRow.score, n: mRow.n, r2: csrD.conc, nPairs: csrD.nPairs } : null;
   return { ccy, score: row?.score ?? null, n: row?.n ?? 0, legs, cot: cotInfo, carry, shortRate, dxy, measured, bucket: CCY_BUCKET[ccy] ?? 'neutral' };
 }
 
@@ -6283,7 +6302,7 @@ function assembleCcySnapshot(ccy) {
   const creg = correlationRegime();
   const rd = ratesDecompBest();
   return {
-    measured: mRow ? { score: mRow.score, n: mRow.n, r2: csr.r2,
+    measured: mRow ? { score: mRow.score, n: mRow.n, r2: csr.conc,
       rank: (csr.scores.findIndex(x => x.ccy === ccy) + 1) || null, of: csr.scores.length } : null,
     lean: det.score, leanN: det.n,
     legs: det.legs.map(l => ({ pair: l.pair, read: `${l.pairSig >= 0 ? '+' : ''}${l.pairSig.toFixed(2)} (${l.isBase ? `${ccy} is the base` : `${ccy} is the quote`})` })),
@@ -6514,7 +6533,7 @@ function openCcyDrawer(ccy) {
     ${compositeHtml}
     <div class="dr-sec">
       <h3 class="help" title="Two readings, deliberately kept apart. MEASURED is how far this currency has actually moved today, from a cross-sectional fit of every pair's real move since the London-midnight open, each normalised by its own expected day range. LEAN is a blend of each pair's HMM trend regime and session bias &mdash; a model read, not a move.">Today&#39;s flow</h3>
-      ${det.measured ? `<div class="ccy-explain" style="margin-bottom:8px"><b>Measured move:</b> <b class="${det.measured.score >= 0 ? 'pos' : 'neg'}">${det.measured.score >= 0 ? '+' : ''}${det.measured.score.toFixed(2)}</b> expected day ranges, fitted across ${det.measured.n} pair${det.measured.n === 1 ? '' : 's'}${det.measured.r2 != null ? ` &middot; board-wide fit R\u00b2 ${det.measured.r2.toFixed(2)}${det.measured.r2 < 0.3 ? ' &mdash; weak, so read this as this currency\u2019s own story rather than a board-wide theme' : ''}` : ''}.</div>` : ''}
+      ${det.measured ? `<div class="ccy-explain" style="margin-bottom:8px"><b>Measured move:</b> <b class="${det.measured.score >= 0 ? 'pos' : 'neg'}">${det.measured.score >= 0 ? '+' : ''}${det.measured.score.toFixed(2)}</b> expected day ranges, fitted across ${det.measured.n} pair${det.measured.n === 1 ? '' : 's'}${det.measured.r2 != null ? ` &middot; lead-currency share of the board ${Math.round(100 * det.measured.r2)}%${det.measured.r2 < 0.3 ? ' &mdash; no single currency theme today' : ''}` : ''}.</div>` : ''}
       <div style="margin-bottom:8px"><span class="chip ${scoreRead.cls}" title="Model lean, not a measured move.">Lean: ${scoreRead.arrow} ${scoreRead.word}${scoreRead.mag !== 'no edge' ? ` &middot; ${scoreRead.mag}` : ''}</span></div>
       <div class="ccy-explain">${clearestLine}</div>
       <div class="csrow" title="Precise net score across ${det.n} pair${det.n === 1 ? '' : 's'} — the number behind the read above."><span class="ccy">${ccy}</span><span class="track"><span class="mid"></span>${scoreBar}</span><span class="val">${det.score == null ? '—' : (det.score >= 0 ? '+' : '') + det.score.toFixed(2)}</span></div>
@@ -6976,14 +6995,15 @@ const _DR_SHORT = { 'macro-state': 'Macro', 'price-state': 'Trend', events: 'Eve
 function _drWhy(story) {
   // the reads collapse into at most three family chips, strongest first, with the net sign per family
   const fam = {};
-  for (const x of (story?.reads ?? [])) { const f = (fam[x.family] ??= { s: 0, notes: [] }); f.s += x.s; f.notes.push(`${x.label}: ${x.note ?? ''}`); }
-  return Object.entries(fam).filter(([, f]) => Math.abs(f.s) >= 0.15).sort((a, b) => Math.abs(b[1].s) - Math.abs(a[1].s)).slice(0, 3)
+  for (const x of (story?.reads ?? [])) { const f = (fam[x.family] ??= { s: 0, notes: [] }); f.s += x.contrib ?? x.s * 0.05; f.notes.push(`${x.label}: ${x.note ?? ''}`); }
+  const tot = Object.values(fam).reduce((a, f) => a + Math.abs(f.s), 0) || 1;
+  return Object.entries(fam).filter(([, f]) => Math.abs(f.s) / tot >= 0.12).sort((a, b) => Math.abs(b[1].s) - Math.abs(a[1].s)).slice(0, 3)
     .map(([k, f]) => `<span class="${f.s > 0 ? 'u' : 'd'}" title="${esc0(f.notes.join(' · '))}">${f.s > 0 ? '▲' : '▼'} ${_DR_SHORT[k] ?? k}</span>`).join('');
 }
 function _drTile(r, k) {
   const d = r.d, st = k.direction?.story;
   const pUp = st?.nLive ? st.pUp : 0.5, edge = Math.abs(pUp - 0.5);
-  const lean = edge < 0.03 ? { cls: 'fl', word: 'Two-way', sub: '' } : { cls: pUp > 0.5 ? 'up' : 'dn', word: pUp > 0.5 ? '▲ Up' : '▼ Down', sub: `<small>${Math.round(Math.max(pUp, 1 - pUp) * 100)}%</small>` };
+  const lean = edge < 0.02 ? { cls: 'fl', word: 'Two-way', sub: '' } : { cls: pUp > 0.5 ? 'up' : 'dn', word: pUp > 0.5 ? '▲ Up' : '▼ Down', sub: `<small>${Math.round(Math.max(pUp, 1 - pUp) * 100)}%</small>` };
   const p75 = k.range?.pAbove75;
   const day = p75 == null ? null : p75 >= 0.32 ? { t: 'Wide', c: 'wide' } : p75 <= 0.18 ? { t: 'Capped', c: 'cap' } : { t: 'Normal', c: '' };
   const px = d.current_price, open = d.session_open, chg = open > 0 && px != null ? (px / open - 1) * 100 : null;
@@ -8198,9 +8218,9 @@ function rangeMapHtml(r, { bare = false } = {}) {
   const fromOpen = (px - open) / open * 100;
   const dir = fromOpen >= 0 ? 'up' : 'dn';
   const usedPct = r.used != null ? Math.round(100 * r.used) : null;
-  const hm = t => { if (!t) return null; const dt = new Date(t); return isNaN(dt) ? null : dt.toISOString().substr(11, 5); };
+  const hm = t => { if (!t) return null; const dt = new Date(t); return isNaN(dt) ? null : dt.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }); };
   const hiT = hm(s?.oh_reached_at), loT = hm(s?.ol_reached_at);
-  const bandTip = `Shaded = the range price has actually travelled today (session low ${sLo != null ? fmtN(sLo, d.dp) : '?'}${loT ? ' at ' + loT : ''} → high ${sHi != null ? fmtN(sHi, d.dp) : '?'}${hiT ? ' at ' + hiT : ''}, UK time).`;
+  const bandTip = `Shaded = the range price has actually travelled today (session low ${sLo != null ? fmtN(sLo, d.dp) : '?'} → high ${sHi != null ? fmtN(sHi, d.dp) : '?'}).${hiT || loT ? ` An hourly bar first CLOSED beyond the median line${hiT ? ` up in the hour from ${hiT}` : ''}${hiT && loT ? ',' : ''}${loT ? ` down in the hour from ${loT}` : ''} (UK time). These are not the times of the high and low.` : ''}`;
   const band = (sHi != null && sLo != null)
     ? `<div class="band ${dir}" style="left:${X(sLo)}%;width:${Math.max(1.2, X(sHi) - X(sLo))}%" title="${bandTip}"></div>` : '';
   const ticks = [['OL75', ol75, 'o75'], ['OL', olM, ''], ['OPEN', open, 'open'], ['OH', ohM, ''], ['OH75', oh75, 'o75']]
@@ -8846,7 +8866,7 @@ function beforeYouTradeHtml(r) {
   // 5 relative value: the chain links that end on this pair, the peer, and which leg is moving
   { const parts = []; const node = _BYT_CHAIN_NODE[r.name];
     if (node) { const ls = chainLinks().filter(l => l.b?.key === node || l.a?.key === node); const judged = ls.filter(l => l.verdict === 'holding' || l.verdict === 'broken'); if (judged.length) parts.push(judged.map(l => `${esc0(l.short)} <b>${l.verdict.toUpperCase()}</b>`).join(', ')); else if (ls.length) parts.push(`${ls.length} chain link${ls.length > 1 ? 's' : ''} on this pair, all quiet this month`); }
-    const dc = moveDecompFor(r.name); if (dc && dc.ret != null) parts.push(`today ${dc.ret >= 0 ? '+' : ''}${dc.ret} day-ranges: ${dc.base.ccy} ${dc.base.share ?? '?'}%, ${dc.quote.ccy} ${dc.quote.share ?? '?'}%, own story ${dc.idio.share ?? '?'}%`);
+    const dc = moveDecompFor(r.name); if (dc && dc.ret != null) parts.push(`today ${dc.ret >= 0 ? '+' : ''}${dc.ret} day-ranges: ${dc.base.ccy} ${dc.base.share ?? '?'}%, ${dc.quote.ccy} ${dc.quote.share ?? '?'}%, unexplained ${dc.idio.share ?? '?'}%`);
     const peer = _BYT_PEER[r.name]; const pr = peer ? allRows().find(x => x.name === peer) : null; const pdc = pr ? moveDecompFor(pr.name) : null;
     if (pdc && pdc.ret != null) parts.push(`peer ${dispName(peer)} ${pdc.ret >= 0 ? '+' : ''}${pdc.ret}${dc && dc.ret != null && Math.sign(dc.ret) !== Math.sign(pdc.ret) && Math.abs(dc.ret - pdc.ret) >= 0.3 ? ' — <b>the peers disagree</b>: this move is this pair\u2019s own' : ''}`);
     rows.push(line(5, 'Relative', (parts.length ? parts.join(' · ') : 'no cross-asset read loaded yet') + '. Same-window links, tested: they explain a move, they do not announce the next one.', 'why', { t: 'explains, does not predict', cls: 'neu' })); }
@@ -9020,10 +9040,10 @@ function marketToneGaugeHtml(risk, cs, usTen, wti, mood) {
   // Real-data rows below the gauge — same convention as the mockup's list,
   // but every value is read off data already computed elsewhere on this page.
   const rows = [];
-  if (risk.credit?.gate) rows.push(['Credit Spreads', risk.credit.widening ? 'Widening' : 'Tightening', risk.credit.widening ? 'off' : 'on']);
+  if (risk.credit?.gate) rows.push(['Credit Spreads', risk.credit.widening > 0 ? 'Widening' : risk.credit.widening < 0 ? 'Tightening' : 'Flat', risk.credit.widening > 0 ? 'off' : risk.credit.widening < 0 ? 'on' : 'mix']);
   if (risk.vix != null) rows.push(['Equity Vol (VIX)', risk.vix > 20 ? 'Elevated' : 'Low', risk.vix > 20 ? 'off' : 'on']);
   const usd = cs.find(c => c.ccy === 'USD');
-  if (usd) rows.push(['USD Trend', usd.score > 0.05 ? 'Strengthening' : usd.score < -0.05 ? 'Weakening' : 'Flat', usd.score > 0.05 ? 'on' : usd.score < -0.05 ? 'off' : 'mix']);
+  if (usd) rows.push(['USD Trend', usd.score > 0.05 ? 'Strengthening' : usd.score < -0.05 ? 'Weakening' : 'Flat', 'mix']);   // context: the dollar's sign vs risk flips by regime
   if (usTen?.value != null && usTen.prev != null) rows.push(['Rate Trend (10Y)', usTen.value > usTen.prev ? 'Rising' : usTen.value < usTen.prev ? 'Falling' : 'Flat', 'mix']);
   if (wti?.pct != null) rows.push(['Oil Trend (WTI)', wti.pct > 0.15 ? 'Firming' : wti.pct < -0.15 ? 'Slightly Weak' : 'Flat', wti.pct > 0.15 ? 'on' : wti.pct < -0.15 ? 'off' : 'mix']);
 
@@ -9141,7 +9161,8 @@ function driverBoardHtml() {
   if (lines.length < 2) return '';
 
   const changes = {};
-  for (const l of lines) changes[l.key] = CA.lastFinite(l.series);
+  const RISK_SIGN = { 'US T-Note': -1, 'USD strength': -1 };   // up = risk-off for these two
+  for (const l of lines) { const v = CA.lastFinite(l.series); changes[l.key] = v == null ? v : v * (RISK_SIGN[l.key] ?? 1); }
   const al = CA.driverAlignment(changes);
 
   const W = 360, H = 132, L = 26, R = 6, T = 8, B = 16;
@@ -9315,7 +9336,7 @@ function renderSidebar() {
         <div class="glance-cell"><div class="gv">${rangeConsumed}</div><div class="gl">Range Consumed</div></div>
         <div class="glance-cell"><div class="gv">${hiVol}</div><div class="gl">Elevated Vol</div></div>
         <div class="glance-cell"><div class="gv">${brief.news_flag ? '⚠' : '—'}</div><div class="gl">Event Risk</div></div>
-        <div class="glance-cell" title="Line tags for the session (Daily Read): CONTINUE = lines likely too tight · FAIR · EXHAUST = lines likely too wide"><div class="gv">${(() => { const c = _lsReads?.global?.tags?.counts; return c ? `${c.continue ?? 0}·${c.fair ?? 0}·${c.exhaust ?? 0}` : '–'; })()}</div><div class="gl">Lines C·F·E</div></div>
+        <div class="glance-cell" title="Line tags for the session (Daily Read): CONTINUE = lines likely too tight · FAIR · EXHAUST = lines likely too wide"><div class="gv">${(() => { const c = _lsReads?.global?.tags?.counts; const tot = c ? (c.continue ?? 0) + (c.fair ?? 0) + (c.exhaust ?? 0) : 0; return tot ? `${c.continue ?? 0}·${c.fair ?? 0}·${c.exhaust ?? 0}` : '–'; })()}</div><div class="gl">Lines C·F·E</div></div>
         <div class="glance-cell" title="Share of all FX movement that is one (dollar) trade over 60 days"><div class="gv">${_lsReads?.global?.fxConcentration ? Math.round(_lsReads.global.fxConcentration.pc1 * 100) + '%' : '–'}</div><div class="gl">FX One-Trade</div></div>
       </div>
     </div>
@@ -10496,9 +10517,9 @@ function renderDrawerAttrib(r) {
       + `<div class="ccy-legs" style="margin-top:8px">`
       + bar(`${dc.base.ccy} leg`, dc.base.contrib, dc.base.share, dc.base.contrib >= 0 ? 'bull' : 'bear')
       + bar(`${dc.quote.ccy} leg`, dc.quote.contrib, dc.quote.share, dc.quote.contrib >= 0 ? 'bull' : 'bear')
-      + bar('This pair only', dc.idio.contrib, dc.idio.share, 'neu')
+      + bar('Unexplained (data check)', dc.idio.contrib, dc.idio.share, 'neu')
       + `</div>`
-      + `<div class="muted" style="font-size:10.5px;margin-top:4px">Total move ${dc.ret >= 0 ? '+' : ''}${dc.ret} expected day ranges${dc.r2 != null ? ` · board-wide fit R² ${dc.r2.toFixed(2)}${dc.r2 < 0.3 ? ' — weak, so read the split loosely today' : ''}` : ''}. Units are day-ranges, so the three parts add to the whole.</div>`;
+      + `<div class="muted" style="font-size:10.5px;margin-top:4px">Total move ${dc.ret >= 0 ? '+' : ''}${dc.ret} expected day ranges${dc.conc != null ? ` · lead-currency share of the board ${Math.round(100 * dc.conc)}%` : ''}. Units are day-ranges, so the three parts add to the whole.</div>`;
   }
   // Is the move rates-backed? Agreement means a rates story stands behind it;
   // disagreement is exactly when a macro read is most likely to be wrong.
@@ -13060,10 +13081,10 @@ function assembleSnapshot(r) {
   if (csrAI?.scores?.length) {
     const pick = c => { const x = csrAI.scores.find(y => y.ccy === c); return x ? x.score : null; };
     s.currencyStrengthMeasured = {
-      fitR2: csrAI.r2, nPairs: csrAI.nPairs,
+      leadCurrencyShare: csrAI.conc, nPairs: csrAI.nPairs,
       strongest: csrAI.scores[0]?.ccy ?? null, weakest: csrAI.scores[csrAI.scores.length - 1]?.ccy ?? null,
       ...(cc2 ? { base: cc2[0], baseScore: pick(cc2[0]), quote: cc2[1], quoteScore: pick(cc2[1]) } : {}),
-      note: 'Cross-sectional least-squares fit of each pair’s ACTUAL move since the London-midnight open, normalised by its own expected day range, as strength(base) - strength(quote) summing to zero. Units are expected day ranges. fitR2 below ~0.3 means the board is NOT moving as a currency story and strongest/weakest should not be read as one.',
+      note: 'Cross-sectional least-squares fit of each pair’s ACTUAL move since the London-midnight open, as strength(base) - strength(quote) summing to zero, fitted on RAW log returns (crosses are arbitrage-bound) weighted by 1/σ²; scores in a typical currency’s day range. leadCurrencyShare = the leading currency’s share of the board’s squared strength; below ~0.3 there is no single currency theme and strongest/weakest should not be read as one.',
     };
   }
 
@@ -13987,7 +14008,7 @@ function _mpPicture() {
     L.push(`Credit: high-yield OAS ${_mpNum(hy)}%${d != null ? ` (${d >= 0 ? '+' : ''}${d.toFixed(0)}bp)` : ''}.`);
   }
   const dxy = f.dxy?.value, dxyPrev = f.dxy?.prev;
-  if (dxy != null) L.push(`Dollar: DXY ${_mpNum(dxy)}${dxyPrev != null ? ` (${dxy >= dxyPrev ? '+' : ''}${(dxy - dxyPrev).toFixed(2)})` : ''}.`);
+  if (dxy != null) L.push(`Dollar: Fed broad index (H.10, ~1 week lag) ${_mpNum(dxy)}${dxyPrev != null ? ` (${dxy >= dxyPrev ? '+' : ''}${(dxy - dxyPrev).toFixed(2)})` : ''}.`);
   const us10 = f.us10y?.value, us2 = f.us2y?.value;
   if (us10 != null) L.push(`Rates: US 10y ${_mpNum(us10)}%${us2 != null ? `, 2s10s ${Math.round((us10 - us2) * 100)}bp` : ''}.`);
   const w = _fedPath?.windows?.[0];
@@ -14021,7 +14042,7 @@ function _mpLines() {
 async function _mpRecord() {
   try {
     const j = await (await fetch('/api/ledger')).json();
-    const h = j?.summary?.overall?.h0;
+    const h = j?.summary?.overall?.h1;            // h1 = the NEXT close (h0 is the call day's own close)
     if (!h || h.n == null) return 'No scored record yet.';
     return `These leans have run ${(h.hitRate * 100).toFixed(1)}% at the next close `
       + `(n=${h.n} over ${j.summary.days} days, CI ${(h.hitRateLo * 100).toFixed(0)}–${(h.hitRateHi * 100).toFixed(0)}%).\n`

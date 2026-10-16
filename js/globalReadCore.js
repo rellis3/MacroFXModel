@@ -100,7 +100,13 @@ export const RANGE_COEF = {
   index: { iv_exp: Math.log(2.01), vix_inv: [1.106, 0.053], front_dear: [1.074, 0.349], front_calm: [0.885, 0.300], all_down: [1.034, 0.188], nq_dw: [1.116, 0.278] },
   fx:    { iv_exp: Math.log(2.195), vix_inv: [1.014, 0.054], front_dear: [1.021, 0.330], front_calm: [0.918, 0.317], all_down: [1.027, 0.178], nq_dw: [1.0, 0.26] },
 };
-export const GEX_SHORT_NQ = 1.176;              // gex-range: short gamma +0.176 ATR next day (NQ only)
+// gex-range (NQ only): next-day range vs a vol-matched Brownian baseline is DR ≈ 1.02 on short-gamma days and
+// ≈ 0.85 on long-gamma days -- "long gamma is quiet", short gamma is ordinary. Centred on an even split so the
+// two states move the ladder symmetrically around it. (+0.176 is the DR GAP, not a multiplier: applying
+// ×1.176 to short gamma alone used to turn an ordinary NQ day into "WIDE / FOLLOW BREAKS".)
+export const GEX_DR = { short: 1.02, long: 0.85 };
+const GEX_MID = (GEX_DR.short + GEX_DR.long) / 2;
+export const GEX_SHORT_NQ = +(GEX_DR.short / GEX_MID).toFixed(3), GEX_LONG_NQ = +(GEX_DR.long / GEX_MID).toFixed(3);
 const INDEX = new Set(['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100']);
 export const classOf = sym => (INDEX.has(sym) ? 'index' : 'fx');
 
@@ -171,11 +177,17 @@ export function combineDirection(signals) {
 // by registry edit; if not, the story stays a story.
 export const STORY_IC = 0.05;
 export function storyDirection(signals) {
-  const lifted = signals.map(x => { const sv = x.sStory ?? x.s; return { ...x, s: sv, e: sv !== 0 && !(x.e > 0) ? STORY_IC * Math.abs(sv) : x.e }; });
+  // Weight: an input keeps its evidence weight only while its TESTED rule is active (x.s ≠ 0, e > 0). A
+  // below-threshold story value (e.g. the 2Y spread under its 2.75 entry) is a story read like any other
+  // and gets the nominal weight -- giving it the confirmed tier weight let one inactive input set the lean.
+  const lifted = signals.map(x => { const sv = x.sStory ?? x.s; const tested = x.s !== 0 && x.e > 0;
+    return { ...x, s: sv, e: sv === 0 ? 0 : tested ? x.e : STORY_IC * Math.abs(sv) }; });
   const d = combineDirection(lifted);
   // the reads, strongest first, for the "because" chips: what pulls up, what pulls down
-  const reads = lifted.filter(x => x.s !== 0).sort((a, b) => Math.abs(b.s) - Math.abs(a.s))
-    .map(x => ({ id: x.id, label: x.label ?? REG[x.id]?.label ?? x.id, family: x.family, s: r2(x.s), note: x.note ?? null }));
+  // ranked by what each read actually contributes to the lean (beta_i * s_i), not by its raw size
+  const betaOf = Object.fromEntries((d.beta ?? []).map(b => [b.id, b.beta]));
+  const reads = lifted.filter(x => x.s !== 0).map(x => ({ id: x.id, label: x.label ?? REG[x.id]?.label ?? x.id, family: x.family, s: r2(x.s),
+    contrib: r3((betaOf[x.id] ?? 0) * x.s), note: x.note ?? null })).sort((a, b) => Math.abs(b.contrib) - Math.abs(a.contrib));
   return { pUp: d.pUp, r2: d.r2, agreement: d.agreement, nLive: d.nLive, reads,
     byFamily: Object.fromEntries(Object.entries(lifted.filter(x => x.s !== 0).reduce((a, x) => { (a[x.family] ??= []).push(Math.sign(x.s)); return a; }, {}))
       .map(([f, v]) => [f, Math.sign(v.reduce((a, b) => a + b, 0))])) };
@@ -198,7 +210,7 @@ export function rangeView(row, flags = {}) {
   flag('vix-term', 'front_calm', flags.frontCalm, 'VIX front calm');
   flag('all-down', 'all_down', flags.allDown, 'all six indices down');
   if (cls === 'index') flag('nq-dw', 'nq_dw', flags.nqDownWeek, 'NAS100 down-week');
-  if (flags.gexShortNq && row.sym === 'NQ') add('gex', GEX_SHORT_NQ, 'NQ dealers short gamma');
+  if (row.sym === 'NQ' && flags.gexShortNq != null) add('gex', flags.gexShortNq ? GEX_SHORT_NQ : GEX_LONG_NQ, flags.gexShortNq ? 'NQ dealers short gamma (ordinary movement)' : 'NQ dealers long gamma (quieter)');
   // The ladder's lines already carry the event multiplier (forecastLadder.buildLadder), so it is not re-applied.
   const p50 = row.lines?.hl_p50, p75 = row.lines?.hl_p75;
   let pAbove75 = null;
@@ -245,7 +257,7 @@ export function stateAxes(o = {}) {
   if (o.frontState) put('vol', 'VIX front', o.frontState === 'dear' ? 0.8 : o.frontState === 'calm' ? -0.8 : 0, `VIX front ${o.frontState}`);
   // credit / liquidity (+ = stress)
   if (o.hy20dBp != null) put('credit', 'HY 20d', clamp(o.hy20dBp / 50, -1, 1), `HY ${o.hy20dBp > 0 ? '+' : ''}${o.hy20dBp}bp over 20d`);
-  if (o.csi != null) put('credit', 'credit stress index', clamp(-o.csi / 2, -1, 1), `credit-stress composite ${o.csi}`);
+  if (o.csi != null) put('credit', 'credit stress index', clamp(o.csi / 2, -1, 1), `credit-stress composite ${o.csi}`);
   if (o.liquidityBlocked != null) put('credit', 'liquidity gate', o.liquidityBlocked ? 0.6 : -0.3, o.liquidityBlocked ? 'index liquidity gate BLOCKED' : 'liquidity gate open');
 
   const out = {};
@@ -306,7 +318,7 @@ export function instrumentCard(sym, { row, flags, dirSignals = [], tag, hmmRange
 export function scenarios({ envLabel, ax, persist = {}, eventsDue = [] }) {
   const out = [];
   const pBase = persist.vixInvert5d != null ? 1 - persist.vixInvert5d : null;
-  out.push({ name: 'Base: the current state persists', p: r2(pBase),
+  out.push({ name: 'Base: no VIX inversion within 5 sessions', p: r2(pBase),
     pWhy: persist.vixInvert5d != null ? '1 − base rate of a first VIX inversion within 5 sessions' : 'not measured',
     text: `${envLabel}. Ranges follow the instrument cards below; direction only where a tested input is active.` });
   out.push({ name: 'Alternative: stress transmits to equity vol', p: r2(persist.vixInvert5d),
@@ -405,12 +417,13 @@ export { REG };
 // One compact row per London session, written at the first run after 07:00
 // London, then filled from the daily-read score (the same lines, the same
 // realised session) once the session is scored. Pure, so the test is too.
-export function recordRow(read, day) {
+export function recordRow(read, day, sessionInstruments = {}) {
   const cards = {};
   for (const c of Object.values(read.cards ?? {})) cards[c.sym] = {
     mult: c.range?.mult ?? null, hlP50: c.range?.hlP50 ?? null, hlP75: c.range?.hlP75 ?? null, pAbove75: c.range?.pAbove75 ?? null,
     behaviour: c.behaviour?.label ?? null, stance: c.plan?.stance ?? null, pUp: c.direction?.pUp ?? 0.5, nLive: c.direction?.nLive ?? 0, pUpStory: c.direction?.story?.pUp ?? 0.5, nStory: c.direction?.story?.nLive ?? 0, clarity: c.clarity,
     realisedHl: null, beyondP75: null, oc: null,
+    oc07: Number.isFinite(sessionInstruments[c.sym]?.oc) ? sessionInstruments[c.sym].oc : null,   // % from the open at the 07:00 read
   };
   return { day, at: read.meta?.asOf ?? new Date().toISOString(), headline: read.headline, conviction: read.conviction, cards };
 }
@@ -463,10 +476,13 @@ export function scoreRecord(rows = [], { floor = 30 } = {}) {
   const bd = calls.length ? calls.reduce((a, o) => a + (o.pUp - (o.oc > 0 ? 1 : 0)) ** 2, 0) / calls.length : null;
   const D1 = { n: calls.length, hits: calls.filter(o => (o.pUp > 0.5) === (o.oc > 0)).length, brierSkill: bd != null ? r3(1 - bd / 0.25) : null };
   // D2: the story arm (nominal weights), scored on the same sessions and the same outcome
-  const sc = obs.filter(o => o.nStory > 0 && Math.abs(o.pUpStory - 0.5) >= 0.02 && o.oc != null && o.oc !== 0);
-  const bs = sc.length ? sc.reduce((a, o) => a + (o.pUpStory - (o.oc > 0 ? 1 : 0)) ** 2, 0) / sc.length : null;
-  const D2 = { n: sc.length, hits: sc.filter(o => (o.pUpStory > 0.5) === (o.oc > 0)).length, hitRate: sc.length ? r3(sc.filter(o => (o.pUpStory > 0.5) === (o.oc > 0)).length / sc.length) : null,
-    brierSkill: bs != null ? r3(1 - bs / 0.25) : null };
+  // scored on the move LEFT after the 07:00 read (close − 07:00 level): the read includes the tape so far,
+  // so scoring it from the midnight open would count seven hours of the outcome as a forecast
+  const left = o => o.oc - o.oc07;
+  const sc = obs.filter(o => o.nStory > 0 && Math.abs(o.pUpStory - 0.5) >= 0.02 && o.oc != null && o.oc07 != null && left(o) !== 0);
+  const bs = sc.length ? sc.reduce((a, o) => a + (o.pUpStory - (left(o) > 0 ? 1 : 0)) ** 2, 0) / sc.length : null;
+  const h2 = sc.filter(o => (o.pUpStory > 0.5) === (left(o) > 0)).length;
+  const D2 = { n: sc.length, hits: h2, hitRate: sc.length ? r3(h2 / sc.length) : null, brierSkill: bs != null ? r3(1 - bs / 0.25) : null };
   // D3: the 10:00 story, scored on the remaining move (close minus the 10:00 level, in % of the open)
   const s3 = obs.filter(o => o.snap && o.oc != null && o.snap.nStory > 0 && Math.abs(o.snap.pUpStory - 0.5) >= 0.02 && (o.oc - o.snap.oc10) !== 0);
   const hit3 = s3.filter(o => (o.snap.pUpStory > 0.5) === (o.oc - o.snap.oc10 > 0)).length;

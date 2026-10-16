@@ -4288,7 +4288,7 @@ async function _globalReadTick() {
     const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date());
     const dow = new Date().getUTCDay();
     // only the 07:00-07:59 London read counts (pre-registered); a day the server missed stays missing
-    if (lonHour === 7 && dow !== 0 && dow !== 6 && !store.days.some(r => r.day === day)) { store.days.push(_grRecordRow(read, day)); changed = true; }
+    if (lonHour === 7 && dow !== 0 && dow !== 6 && !store.days.some(r => r.day === day)) { store.days.push(_grRecordRow(read, day, D['vol-forecast/session']?.instruments ?? {})); changed = true; }
     // the 10:00 London snapshot of the story arm (D3), once, onto today's existing row
     if (lonHour === 10 && dow !== 0 && dow !== 6) {
       const today = store.days.find(r => r.day === day);
