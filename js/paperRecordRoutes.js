@@ -51,7 +51,12 @@ export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetc
     await getFastLive(key);                                // gap-fills from OANDA; first call may only start warming
     const p = liveCache.get(key)?.packed;
     if (!p?.n) return null;
-    return { ...p, volumes: p.volumes ?? new Float64Array(p.n) };
+    // The live cache can hand back plain Arrays (e.g. after a restore from storage). Everything below slices with
+    // .subarray(), so a plain Array threw 'packed.times.subarray is not a function' on every tick from 2026-10-12,
+    // swallowed by the tick's catch: no flags, no IV, and the Daily Read ran without IV÷σ for six sessions.
+    const F = a => (a == null ? a : ArrayBuffer.isView(a) ? a : Float64Array.from(a));
+    return { ...p, times: F(p.times), opens: F(p.opens), highs: F(p.highs), lows: F(p.lows), closes: F(p.closes),
+      volumes: p.volumes != null ? F(p.volumes) : new Float64Array(p.n) };
   }
 
   async function ivFor(inst, oiStore, cboeCache) {
