@@ -89,6 +89,24 @@ explicitly declined).
   this is a different cut than S8, not a repeat of it. Source: 2026-09-21
   entry, step 5.
 
+- **AI-crack → metals rotation** — Crown (2026-10-16, clip 1): "you need the AI trade to
+  crack for metals to continue to go up." A relative drawdown in SMH against SPY as a
+  predictor of gold/silver excess return over the following weeks. Not on the desk in any
+  form; `which-gold` found gold's drivers in real yields and the dollar and "no single
+  gold" nearly half the time. Prior unstated — not run. Source: 2026-10-16 entry, step 5.
+- **Energy equities against the barrel** — Crown (2026-10-16, clip 1): XLE rich against
+  WTI and distillate is "toxic waste". A 20-session XLE−WTI divergence as a predictor of
+  crude or XLE forward return/range. Data in hand (XLE six years in the drill bundle, WTI
+  via the same Yahoo path). Nearest finding is `mv-dislocation-forward` (NULL: a
+  dislocation says which markets disagree today and nothing about tomorrow). Source:
+  2026-10-16 entry, step 5.
+- **Leadership persistence** — Crown (2026-10-16, clip 3): hyperscalers over semis
+  "continues to the point no one can believe it". Does a 60-session relative-return
+  extreme between two equity sleeves run on? `rotation-extreme` (Nasdaq vs Russell) is the
+  nearest: the extreme extended in 45% of 140 cases, i.e. a coin. Single-name history here
+  is three years; SOX/SMH vs QQQ is the long-history proxy. Low prior. Source: 2026-10-16
+  (3) entry, step 5.
+
 None of these are pre-registered — each still needs the `MARKET_SENSE_TESTS.md`
 pre-registration step (state the pass/null bar first) before it's run, per the
 standing discipline. Listed here so "cheap, low-prior, not run" doesn't have to
@@ -1052,3 +1070,303 @@ easiest number in finance to produce. The desk measures it independently or not 
 null three ways and not worth re-testing. **The sleeve-selection half is the first Crown
 claim in a while with a clean testable core and the data already on the desk** — pre-registered,
 harness not yet written.
+
+*Resolved 2026-10-16: the six-year run was UNTESTABLE (13–14 episodes against a floor of 20);
+the identical design on the 2003→ history is **NULL** on 85 episodes. See the 2026-10-16 (3)
+entry and `BREADTH_TILT_SEMIS_PREREG.md` RESULTS.*
+
+
+---
+
+## 2026-10-16 — "What the hell is going on" (PPI day: puts paid, a rates whipsaw, RSP/SPY hits target, metals split, energy "toxic waste")
+
+> *"First, we get PPI. This thing opens white hot, so we got a gap down immediately in
+> stocks... 132% return on premium in our put spreads. Immediately after that, we see
+> Treasury vol go completely through the roof. We see yields go down, then up, then down
+> again. This helps stage a late day recovery... breadth gapped up a full point, RSP/SPY
+> just boom to the moon, hitting our target on that trade in just four trading sessions...
+> Market breadth is here to stay, and the AI story is completely under the microscope...
+> Anything you see towards the end of the session is a dead cat sympathy bounce... the
+> dollar came off 50 bits, giving a little bit of love back to metals... there's monetary
+> metals and there's industrial metals, and then there's silver, which lives somewhere in
+> between... you need [the AI trade] to crack for metals to continue to go up. Energy is
+> toxic waste right here, even as it trades north, because we see divergence between energy
+> stocks and the actual underlying barrels and distillate... we covered our TIP shorts well
+> before this craziness. This was a widowmaker for macro funds."*
+
+A tape read, not a thesis — he says so himself. Most of it is description of one session,
+and the honest pass separates the three things in it that are claims from the many that are
+not.
+
+**1. The claims, stated plainly.**
+- **(a) "Market breadth is here to stay."** The broadening that just paid will *continue* —
+  the RSP/SPY ratio keeps rising. Falsifiable: a forecast of the ratio's direction.
+- **(b) "You need the AI trade to crack for metals to continue to go up."** A cross-asset
+  mechanism: money leaving semis is what bids gold and silver. Falsifiable as a lead/lag.
+- **(c) "Energy is toxic waste because stocks diverge from the barrels."** A divergence
+  between energy equities and crude/distillate predicts the equities give it back.
+  Falsifiable as a divergence-forward test.
+- **Not claims:** the put-spread return, "ending the session up big", "hedge funds blowing
+  up", "widowmaker", "dealer desks on the chin", "dead cat bounce", "AI under the
+  microscope". Results and colour. None of it is checkable and none of it should be
+  scored.
+
+**2. What's already on this desk.**
+- **(a) is `breadth-narrowing` H4 — NULL.** The one study that asked what the RSP/SPY ratio
+  does after an extreme asked it in *both* directions: H3 (does an extreme narrowing revert?)
+  −0.16 [−0.52, +0.14] at five sessions, H4 (does the rotation run on?) −0.37 [−1.12, +0.38].
+  Thirty-five de-clustered events over twenty-three years. The ratio's next move after an
+  extreme is not forecastable from the extreme, either way. "Here to stay" is a direction
+  call on a series the desk has found directionless at this horizon.
+- **(b) is not here in any form.** `which-gold` (context) decomposes gold's drivers into real
+  yields, the dollar and a reserve residual and finds "no single gold" 45% of the time;
+  `fear-gold` (NULL) killed the VIX leg. Nothing has ever asked whether *equity sector
+  rotation* is a gold driver. New, and testable from data in hand (SMH, gold, silver). Added
+  to the open candidates index, prior unstated — the desk has no evidence either way.
+- **(c) is the shape of `mv-dislocation-forward` — NULL** ("when two markets that normally
+  move together come apart, something follows": range +0.01 [−0.11, +0.34], direction below
+  control, halves flip sign). That was FX and indices, not XLE against WTI, so it is a prior,
+  not an answer. The energy-specific work here is the **crack spread** family
+  (`crack-inflation-channel` context, `crack-disagreement-direction` NULL on 45 cases at 62%
+  [48–75]) — crude against *products*, which is his "barrels and distillate" leg, but never
+  against the equities. Added to the index.
+- **The rates leg he is proud of avoiding.** "Covered our TIP shorts before this" — TIP
+  rallied +0.25% and +0.45% on 10-14 and 10-15. The chain's `us10y-real` and `real-*` nodes
+  carry real yields as context; nothing here would have told him to cover, and he does not
+  claim it did.
+- **"Treasury vol through the roof."** This is the read the desk cannot make: the `^MOVE`
+  feed decision from the 2026-10-02 clip (CLIP_WATCH, "dealer inventory spiral") is still
+  open — a 0.6-weight factor in the COG risk score abstaining for want of a feed Yahoo
+  serves for free. On the daily close MOVE printed 102.5 on 10-15 against a six-month high
+  of 113.6 on 10-05, so "through the roof" is an *intraday* claim, and the desk measures
+  neither daily nor intraday rate vol live.
+
+**3. Trading or macro-understanding.** (a) and (c) are trading claims; (a) is already nulled
+and (c) has a nulled prior and no test. (b) is macro-understanding — "how does one market
+explain another" — and the honest audit is that the chain does not carry it: there is no
+equities→metals link on `today.html` at all. It is the one genuinely new mechanism in the
+clip.
+
+**4. The configuration, checked only far enough to know it is real (step 4b).** Undated as
+always; the described session matches 2026-10-15 closely enough to say the setup exists, and
+nothing below is a score.
+- *"Gap down in stocks... late day recovery."* SPY opened −0.44%, low −0.67%, closed +0.28%
+  on 10-15. True shape.
+- *"Breadth gapped up a full point."* RSP/SPY **+1.08% in one session** — the **99.1st
+  percentile** of every one-day change since 2003. RSP closed +1.37% against SPY +0.28%.
+  Over four sessions to 10-16 the ratio is +2.29%, the 99.4th percentile of four-session
+  changes. "Boom to the moon" is, for once, the measured description.
+- *"Yields down, then up, then down."* The 10-year's 10-14 range was 5.18–5.33 (15bp), and it
+  closed 5.09 on 10-15 from 5.19. The high of the move is **5.36 on 10-07**, with highs at or
+  above 5.30 on seven sessions since 09-30 — which is clip 2's "repeated rejection near 535".
+- *"Dollar came off 50 bits."* DXY −0.54% on 10-15. True.
+- *"Monetary vs industrial metals, silver in between."* On 10-15 gold +1.5%, silver +2.3%,
+  **copper −1.5%** — the split he describes, on the day he describes it. Over 20 sessions
+  silver is −14% and gold −5%, so "metals continue to go up" is a call from inside a
+  drawdown, not a trend.
+- *"Energy stocks diverging from barrels and distillate."* XLE **+5.9% over 20 sessions**
+  against WTI **−1.4%** and heating oil **−6.6%**. The divergence is real and the equities
+  are the rich leg, as he says. Over the last five sessions WTI caught up (+7.7% vs XLE
+  +4.6%), which is the barrel closing the gap, not the stocks.
+- *"Credit spreads wide."* HYG/LQD −1.4% over five sessions. Wider, yes.
+- PPI's release date is not in `calendar_events.csv` (its US rows end in 2026-06) and the
+  BLS schedule page did not return a date from here; "PPI day" is taken as given.
+
+**5. Verdict and action.**
+- **Nothing to build from the clip as spoken.** The one direction call (a) is a nulled
+  hypothesis restated; the trade-result talk is not evidence of anything.
+- **Two candidates logged, neither pre-registered**: the AI-crack→metals lead (b) and the
+  energy-equity-vs-barrel divergence (c). Both have data in hand. (b) is the one worth a
+  prior of "unknown" rather than "null-shaped": nothing adjacent has been run.
+- **The display nugget is the speed of the broadening.** The board shows the 20-session
+  equal-weight spread as a z-score (`eqwt`). It does not show that a one-day +1.08% in the
+  ratio is a once-in-500-sessions event, and that is a real, checkable, descriptive fact that
+  changes what "the index was flat" means: on 10-15 the cap-weighted index was flat because
+  its largest names fell while the other 490 rose. Same ruling as every breadth finding
+  here — show it, never alert on it, read it as *where the return is coming from*, not as a
+  forecast. No new build; proposed, not done.
+- **The MOVE feed stays the owner's decision**, now with a second clip that wanted it. The
+  2026-10-02 pre-registration candidate ("does high or rising bond vol precede wider ranges
+  in FX and equities?") is still the first thing worth running when it is taken up.
+
+---
+
+## 2026-10-16 (2) — "How we identified the most important trade in equities this year" (the RSP/SPY long and the layers under it)
+
+> *"We monitor cap weight versus equal weight dispersion via RSP/SPY. This is always sitting
+> on our screens... from that starting point we overlay implied versus realized vol, index
+> skew, options flow, dealer gamma exposure, and futures positioning alongside various
+> technical indicators that CTAs follow... Then we add our rates layer: repeated rejection
+> near 535 in tens, strong auction demand on tens and thirties, changes in the Fed funds
+> strip... credit spreads widening even as duration caught a bid — a really dangerous sign
+> for the financing behind the AI buildout. Finally, the narrative: we use a press listener
+> that runs sentiment analysis and measures headline frequency... So the question wasn't
+> whether the Fed was going to hike; it's how is market composition going to change. We put
+> this trade on a few days ago, and RSP is now surging relative to SPY. We just hit our
+> profit target in four days."*
+
+**1. The claim, stated plainly.** One trade and one method.
+- **(a) The trade.** Long RSP against SPY, entered when the ratio was at an extreme low,
+  profit target reached in four sessions. The entry rule, as far as one is stated, is
+  "narrow extreme → expect reversion".
+- **(b) The method.** A stack of six layers — breadth, vol surface, dealer positioning,
+  futures positioning, rates, narrative — read together to answer "how will market
+  composition change". No weights, no thresholds, no stated failure condition. As given it
+  is a *description of what was looked at*, not a rule that could be run or falsified.
+- **(c) The framing.** "The question wasn't whether the Fed hikes, it's how composition
+  changes." A reframing, and a good one: it moves the forecast from a binary nobody can
+  call to a relative-value quantity. Not a claim.
+
+**2. What's already on this desk.** The trade is a nulled hypothesis, and most of the layers
+are built here.
+- **(a) is `breadth-narrowing` H3 — NULL, in exactly these words.** "Does an extreme
+  narrowing revert — does the spread broaden back?" was pre-registered 2026-09-23 as the
+  one hypothesis "a trader would want", with the expectation written as *unknown*. It came
+  back −0.16 [−0.52, +0.14] at five sessions and −0.06 [−0.40, +0.29] at twenty, on 35
+  de-clustered NARROW events over twenty-three years. The extreme does not revert more than
+  the ratio moves anyway. **This trade worked; the rule it is told through has no edge on 35
+  prior instances.** Same split as the 2026-10-02 clip: the money was made, and the story is
+  the part that fails. One realised win is one observation added to a well-powered null.
+- **The layers, mapped.** The most useful thing in the clip is that it lists what a desk
+  looks at, and almost all of it is on this one — with verdicts he does not have:
+
+  | his layer | here | verdict |
+  |---|---|---|
+  | RSP/SPY on the screen | `eqwt` board finding; `breadth-narrowing` | description real, timing NULL ×4 |
+  | implied vs realised vol | `iv-over-rv-wider` | **VALIDATED — for range**, not direction |
+  | index skew | `skew-fade` (CME CVOL, 8,611 touches) | NULL; the descriptive skew read did not replicate across sources |
+  | dealer gamma | `gex-range` (793 NQ days) | **VALIDATED — range** (+0.18 to +0.32); direction NULL |
+  | futures positioning / CTA | `cot-positioning-factor`, `cot-extremes.html`, `crowded-bond-short-fomc` | positioning read exists; the bond-squeeze version NULL |
+  | 10y "rejection at 535" | `level-touch`, `daily-band-fade` family | a line on a daily chart is not an entry here — NULL across the family |
+  | auction demand | — | not on the desk |
+  | Fed funds strip | SOFR futures M1 (`stir-composite-nq`, `rate-curve-structure` 2026-10-11, `rates-pivot-lead`) | built; every lead/lag into equities NULL — rates and equities move in the **same bar** |
+  | credit wide, duration bid | `vix-hy` chain link; `mv-creditstack-range`; `stock-bond-flip` | context |
+  | press listener / headline frequency | CB sentiment pages, `cb-tone-direction` (NULL), the GPR feed | tone is measured; a general headline-frequency meter is not |
+
+  Read down the right-hand column: **every layer that has been tested here for *direction*
+  is null, and the two that validated validated for *range*.** His stack, run through this
+  desk's own tests, is a range stack. That is consistent with how the trade actually paid —
+  a 99th-percentile four-session move in the ratio is a *range* event in RSP/SPY, and he was
+  positioned for the move rather than forecasting its sign from the layers.
+
+**3. Trading or macro-understanding.** (a) is a trading claim, already tested, null. (b) is a
+method, not a claim; it cannot be pre-registered because it has no rule. (c) is the one
+transferable idea and it needs no test: *composition* (which names carry the index) is a
+quantity the desk already measures, and "the question is composition, not the Fed" is a
+cleaner statement of why `breadth-narrowing`'s `use` line says to read the ratio as
+*concentration exposure*.
+
+**4. The configuration (step 4b, no score).** Entry "a few days ago", target in four
+sessions. On 10-09 the ratio's 20-session change sat at the **4.3rd percentile** of its own
+history since 2003 and its level at the 1.6th percentile of three years — a NARROW setup by
+the desk's own definition. Four sessions to 10-16 the ratio is **+2.29%, the 99.4th
+percentile** of all four-session changes. The move he describes happened, at the size he
+describes, from the setup he describes. None of that bears on whether the setup
+*predicted* it — 35 earlier setups say it does not, on average.
+
+**5. Verdict and action.**
+- **Nothing to pre-register.** The entry is H3, run and null; the method has no rule to
+  test. Re-running H3 because this instance paid would be the "test it until it passes"
+  failure the log exists to prevent.
+- **Worth keeping, said carefully.** The layer list is a fair inventory of what a
+  positioning-aware desk watches, and this desk has most of it *with verdicts attached*.
+  The verdicts say the stack informs *how wide* the next move is likely to be and not *which
+  way* — which is also what the trade's own payoff looked like. "Composition, not the Fed"
+  is the sentence to remember.
+- **Display nugget.** None new beyond clip 1's: the ratio's four-session change at the 99th
+  percentile is the same fact. The layer table above is itself the nugget — a one-screen
+  answer to "which of the things he looks at has this desk tested, and what did it find" —
+  and belongs in this log rather than on a page.
+- **"The most important trade in equities this year" is a title, not a claim**, and the
+  letter funnel at the end is the reason the method is described rather than specified.
+  Noted without weight either way.
+
+---
+
+## 2026-10-16 (3) — "My full prognosis" (hyperscalers over semis, alts over hard assets, crude higher but whack-a-mole)
+
+> *"There's a rotation going on at the top of the market. Hyperscalers outperform SOX. I
+> think that continues to the point where no one can believe it. Prognosis number two:
+> alternative assets will eerily start to outperform hard assets like gold and silver. So
+> don't sleep on alts... even though we don't maybe have the full picture on why that bid is
+> there. And finally, crude oil is going to go up; it's going to continue to be a game of
+> whack-a-mole, but it's going to be less and less predictable. Used to be able to lean on an
+> afternoon headline, a VaR squash at eleven o'clock... now you don't know when the
+> headline's coming. Prices are going higher, but definitely not in a straight line."*
+
+**1. The claims, stated plainly.** Three directional calls, none with a horizon or a
+failure condition.
+- **(a) Hyperscalers keep beating semis** (SOX). Continuation of a relative-return trend.
+- **(b) Alts beat gold and silver.** "Alts" is not defined; crypto is the measurable reading
+  and the one the chain already carries (`dxy-btc`).
+- **(c) Crude goes higher, less predictably, headline-driven.** Two parts: a direction
+  (higher) and a *vol* claim (more, and less schedulable, big days).
+
+**2. What's already on this desk.**
+- **(a) contradicts his own clip of eleven days ago, and that is the finding.** The 2026-10-05
+  entry: *"The real leadership is compressed into the physical bottlenecks of the AI
+  buildout. This is memory, lithography and foundry."* Today: hyperscalers outperform semis
+  and it continues "to the point no one can believe it". Both are the trailing relative
+  return restated as a forecast: on 10-05 semis had led; by 10-16 the equal-weight basket of
+  MSFT/AMZN/GOOGL/META is **+17.0% over 60 sessions against SOX −9.5%**, and over the last
+  ten sessions −0.8% against **−14.9%**. The leadership call tracks the last two months'
+  tape. The desk's nearest test is `rotation-extreme` (NULL, n=140): a relative-return
+  extreme between two sleeves "extended in 45% of cases" — a coin. And **the semis half of
+  the 10-05 claim is now answered**: `breadth-tilt-semis`, pre-registered 10-05 and
+  UNTESTABLE on six years, was re-run today on the identical design over 2003→ and is
+  **NULL on 85 de-clustered episodes** — after a breadth narrowing, semis beat SPY by +0.70
+  [−0.50, +1.82] more than they ordinarily do over 20 sessions, and by −0.21 [−2.88, +2.35]
+  over 60, where the *broadening* arm did better (+1.73). The prior written on 10-05 ("this
+  fails on the unconditional control") is what came back. So of his two leadership calls,
+  one is tested null and the other is its reversal.
+- **(b) has no finding here.** BTC is on the chain against the dollar only. Over 60 sessions
+  BTC +26% and ETH +26% against gold +3.4%, silver −1.0%; over 120 sessions BTC +29% against
+  gold −10.8%, silver −23.7%. The "will eerily start to" is a description of the last six
+  months. His own "we don't have the full picture on why" is the honest part and the reason
+  there is nothing to test: a bid with no mechanism is a trend, and trend-following crypto
+  against metals is not a question this desk has asked or needs to.
+- **(c)'s vol half is partly measurable, and partly on the desk.** WTI closed 98.8, inside a
+  120-session range of 68.6–108.7. Its 20-day realised vol is **36% annualised — the 65th
+  percentile of fifteen years and the 35th of the last year**: not extreme. But **38 sessions
+  of the last 120 moved more than 3%, against a fifteen-year average of 18.5** — twice the
+  ordinary count of big days with ordinary overall vol, which is exactly the "whack-a-mole"
+  shape: jumps, not a wider distribution. The headline mechanics he describes have been
+  tested: `driver-roundtrip` (NULL, 35 crude round trips on M15 — a crude spike that
+  retraces does not pull the linked markets back with it) and `event-impact-map`
+  (VALIDATED: size by release, direction a coin). The "eleven o'clock VaR squash" is a
+  scheduled-time claim; this desk's `exhaustion-schedule` work found intraday effects are
+  clock effects, which is consistent with a regime where the clock has stopped mattering
+  being harder — but nothing here measures *crude's* intraday clock.
+- **(c)'s direction half** is a call. Crude is +7.7% in five sessions and he says higher
+  still; `crack-disagreement-direction` (62% [48–75] on 45 cases) is the only directional
+  crude base rate here and it needs a crack-vs-crude disagreement, which is not the setup
+  today (products are *lagging* crude: heating oil −6.6% over 20 sessions against WTI −1.4%).
+
+**3. Trading or macro-understanding.** All three are trading calls dressed as prognosis,
+and none is falsifiable as stated — no horizon, no level, no "I am wrong if". The only
+macro-understanding content is the crude vol observation, and the measurable version of it
+(jump count up, total vol ordinary) is a better statement than "less predictable".
+
+**4. Configuration (step 4b, no score).** All three described conditions are occurring:
+hyperscalers over SOX by 26 points over 60 sessions, crypto over metals by 20–50 points
+over 60–120 sessions, crude at 98.8 with twice the normal count of 3% days. The clip
+describes the tape accurately. Describing the tape and forecasting it are different acts,
+and the clip only does the first.
+
+**5. Verdict and action.**
+- **Nothing to pre-register from the prognoses.** Each is a trend restated; `rotation-extreme`
+  already says relative extremes extend about half the time.
+- **One real resolution banked today**: `breadth-tilt-semis` NULL on the long history — the
+  10-05 clip's testable half, closed. Ledger updated (`js/deskEvidence.js`), prereg RESULTS
+  written, harness gained `--long`.
+- **One candidate logged** (index above): leadership persistence between equity sleeves, on
+  the long SOX-vs-QQQ history rather than three years of single names. Low prior, stated.
+- **Display nugget — the crude jump count.** "38 of the last 120 sessions moved more than
+  3%, against an ordinary 18–19" is a one-line descriptive fact that says what "whack-a-mole"
+  means without a forecast attached, and it is the kind of thing the Daily Read's crude line
+  could carry as `~ context`. Proposed, not built.
+- **The lesson across the three clips of this batch.** Clip 2 lists six layers and clip 3
+  gives three prognoses; the one thing he was *right* about in a checkable way — the
+  RSP/SPY move — is the one this desk finds to be a range event, not a direction call. The
+  value in the thread is the inventory of what to watch; the verdicts on what it predicts
+  live here.
