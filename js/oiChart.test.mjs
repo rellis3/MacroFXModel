@@ -106,7 +106,7 @@ function loadChartCode(h, ctx) {
   const pre = `
     let OANDA_SYM={'EUR/USD':'EUR_USD'}, SYM='EUR/USD', STORE={'EUR/USD':{spot:1.14}};
     const esc = s => String(s);
-    const drawLines = () => {}, drawCone = () => {};
+    const drawLines = () => {}, drawCone = () => {}, drawBands = () => {};   // drawBands: added to mountChart with the bands overlay
     let _chart=null,_series=null,_priceLines=[],_candleCache={};
     let _tf='${ctx.tf || 'H1'}';
   `;   // _TF_POLL/_pollTimer/_coneSeries/CONE_ON come from the grabbed page source itself

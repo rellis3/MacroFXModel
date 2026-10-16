@@ -118,7 +118,7 @@ console.log('[aggregator + clusterer]');
 const all = collectLevels({ ...ctx, intraday, price: last.close }, 'all');
 ok('collectLevels tags every level with source', all.length > 0 && all.every(l => l.source));
 ok('collectLevels sorted by price', all.every((l, i) => i === 0 || l.price >= all[i - 1].price));
-ok('registry exposes 7 sources', Object.keys(LEVEL_SOURCES).length === 7);
+ok('registry exposes 9 sources', Object.keys(LEVEL_SOURCES).length === 9);   // + vwap, liquidity_levels
 const zones = clusterLevels(all, 10, instrument);
 ok('clusterLevels merges into scored zones', zones.length > 0 && zones.every(z => z.score > 0 && Array.isArray(z.sources)));
 ok('zones sorted by score desc', zones.every((z, i) => i === 0 || z.score <= zones[i - 1].score));

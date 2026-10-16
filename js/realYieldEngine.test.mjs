@@ -97,7 +97,9 @@ console.log('[realYieldScore — score field itself is rounded, not just latestR
 console.log('[REAL_YIELD_UNIVERSE sanity]');
 {
   ok('covers all 8 currencies', ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'].every(c => REAL_YIELD_UNIVERSE[c]));
-  ok('every currency also has a CPI_UNIVERSE headline entry to pair with (imported from cpiEngine.js)', Object.keys(REAL_YIELD_UNIVERSE).every(c => CPI_UNIVERSE[c]?.headline));
+  // GBP/CAD/AUD/NZD/JPY CPI are deliberately marked discontinued in cpiEngine.js (no live FRED source): each currency
+  // needs a live headline OR a documented discontinued entry, so a missing real yield is explained, not silent.
+  ok('every currency has a CPI_UNIVERSE headline entry or a documented discontinued one (imported from cpiEngine.js)', Object.keys(REAL_YIELD_UNIVERSE).every(c => CPI_UNIVERSE[c]?.headline || CPI_UNIVERSE[c]?.discontinued?.reason));
 }
 
 if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }

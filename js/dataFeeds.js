@@ -47,6 +47,7 @@ export const FEED_CATEGORIES = [
 /** Hosts the server talks to that are not data feeds. */
 export const IGNORE_HOSTS = [
   'anthropic.com',            // LLM calls
+  'api.deepseek.com', 'api.moonshot.ai', 'openai.com', 'googleapis.com/v1beta',   // other LLM providers (js/modelRouter.js)
   'telegram.org',             // alerts out
   'r2.cloudflarestorage.com', 'r2.dev', 'cloudflare.com',   // our own storage / KV
   'github.com', 'githubusercontent.com', 'tradingview.com', 'sheetjs.com', 'cdnjs.cloudflare.com', 'jsdelivr.net',
