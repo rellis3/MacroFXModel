@@ -1,0 +1,9 @@
+candidate,legs,period_overlap_days,start_gap_days,end_gap_days,last_trade_gap_days,cut_window_at,in_reference_period_at_data_end
+P0,SR3U6 - IH7,-91,182,182,90,none (all last-trade dates after data end 2026-10-09),SR3U6: 25%; IH7: 0%
+P1,SR3H7 - IH7,91,0,0,-92,none (all last-trade dates after data end 2026-10-09),SR3H7: 0%; IH7: 0%
+P2,SR3Z6 - IZ6,91,0,0,-92,none (all last-trade dates after data end 2026-10-09),SR3Z6: 0%; IZ6: 0%
+P3,SR3Z6 - ER3Z6,91,0,0,0,none (all last-trade dates after data end 2026-10-09),SR3Z6: 0%; ER3Z6: 0%
+P4,SR3H7 - ER3H7,91,0,0,0,none (all last-trade dates after data end 2026-10-09),SR3H7: 0%; ER3H7: 0%
+L-US,SR3Z6,,,,,none (single leg),no
+L-EU-Euribor,IZ6,,,,,none (single leg),no
+L-EU-ESTR,ER3Z6,,,,,none (single leg),no

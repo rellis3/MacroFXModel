@@ -1,0 +1,573 @@
+spec,ctx,H,n,diff,t,p,fdr
+k1=0.25 continue(0.5) W=8,all,4,1094,,,,False
+k1=0.25 continue(0.5) W=8,all,8,1094,-0.005367926162897998,-0.36801843990913446,0.7128594845786623,False
+k1=0.25 continue(0.5) W=8,all,16,1094,,,,False
+k1=0.25 continue(0.5) W=8,all,32,1094,,,,False
+k1=0.25 continue(0.5) W=8,nasdaq opposed,4,525,,,,False
+k1=0.25 continue(0.5) W=8,nasdaq opposed,8,525,0.0017043519618364215,0.08334004719862677,0.9335811579748436,False
+k1=0.25 continue(0.5) W=8,nasdaq opposed,16,525,,,,False
+k1=0.25 continue(0.5) W=8,nasdaq opposed,32,525,,,,False
+k1=0.25 continue(0.5) W=8,nasdaq consolidating,4,208,0.009103198523956692,0.4882842975732418,0.6253484821994377,False
+k1=0.25 continue(0.5) W=8,nasdaq consolidating,8,208,-0.007930934681533134,-0.30884473020159037,0.7574396415428997,False
+k1=0.25 continue(0.5) W=8,nasdaq consolidating,16,208,,,,False
+k1=0.25 continue(0.5) W=8,nasdaq consolidating,32,208,,,,False
+k1=0.25 continue(0.5) W=8,nasdaq has not yet shown its own sequence,4,674,,,,False
+k1=0.25 continue(0.5) W=8,nasdaq has not yet shown its own sequence,8,674,0.010740417771610179,0.6237501374357975,0.5327916905856207,False
+k1=0.25 continue(0.5) W=8,nasdaq has not yet shown its own sequence,16,674,,,,False
+k1=0.25 continue(0.5) W=8,nasdaq has not yet shown its own sequence,32,674,,,,False
+k1=0.25 continue(0.5) W=16,all,4,1303,,,,False
+k1=0.25 continue(0.5) W=16,all,8,1303,-0.004153586949385029,-0.30837670797858735,0.7577957032786934,False
+k1=0.25 continue(0.5) W=16,all,16,1303,,,,False
+k1=0.25 continue(0.5) W=16,all,32,1303,,,,False
+k1=0.25 continue(0.5) W=16,nasdaq opposed,4,616,,,,False
+k1=0.25 continue(0.5) W=16,nasdaq opposed,8,616,0.011461285272770688,0.5994617113615185,0.5488650354566826,False
+k1=0.25 continue(0.5) W=16,nasdaq opposed,16,616,,,,False
+k1=0.25 continue(0.5) W=16,nasdaq opposed,32,616,,,,False
+k1=0.25 continue(0.5) W=16,nasdaq consolidating,4,275,0.00990111952578702,0.66172301952033,0.5081487491588424,False
+k1=0.25 continue(0.5) W=16,nasdaq consolidating,8,275,-0.0051377277592421725,-0.24966078654385593,0.8028496858090648,False
+k1=0.25 continue(0.5) W=16,nasdaq consolidating,16,275,,,,False
+k1=0.25 continue(0.5) W=16,nasdaq consolidating,32,275,,,,False
+k1=0.25 continue(0.5) W=16,nasdaq has not yet shown its own sequence,4,825,,,,False
+k1=0.25 continue(0.5) W=16,nasdaq has not yet shown its own sequence,8,825,0.018722727528390316,1.197031899502377,0.23129412148517958,False
+k1=0.25 continue(0.5) W=16,nasdaq has not yet shown its own sequence,16,825,,,,False
+k1=0.25 continue(0.5) W=16,nasdaq has not yet shown its own sequence,32,825,,,,False
+k1=0.25 continue(0.5) W=32,all,4,1450,,,,False
+k1=0.25 continue(0.5) W=32,all,8,1450,-0.008946751270281167,-0.6978469207437933,0.4852729321204171,False
+k1=0.25 continue(0.5) W=32,all,16,1450,,,,False
+k1=0.25 continue(0.5) W=32,all,32,1450,,,,False
+k1=0.25 continue(0.5) W=32,nasdaq opposed,4,680,,,,False
+k1=0.25 continue(0.5) W=32,nasdaq opposed,8,680,0.007538238691382074,0.43056733169677597,0.6667829990395869,False
+k1=0.25 continue(0.5) W=32,nasdaq opposed,16,680,,,,False
+k1=0.25 continue(0.5) W=32,nasdaq opposed,32,680,,,,False
+k1=0.25 continue(0.5) W=32,nasdaq consolidating,4,338,0.00794867486525665,0.6048833481262375,0.5452565081353106,False
+k1=0.25 continue(0.5) W=32,nasdaq consolidating,8,338,-0.011245397710204367,-0.5758746663067651,0.5646999003024795,False
+k1=0.25 continue(0.5) W=32,nasdaq consolidating,16,338,,,,False
+k1=0.25 continue(0.5) W=32,nasdaq consolidating,32,338,,,,False
+k1=0.25 continue(0.5) W=32,nasdaq has not yet shown its own sequence,4,918,,,,False
+k1=0.25 continue(0.5) W=32,nasdaq has not yet shown its own sequence,8,918,0.008512464131582255,0.5740804995908211,0.5659133285746063,False
+k1=0.25 continue(0.5) W=32,nasdaq has not yet shown its own sequence,16,918,,,,False
+k1=0.25 continue(0.5) W=32,nasdaq has not yet shown its own sequence,32,918,,,,False
+k1=0.25 continue(1.0) W=8,all,4,437,-0.023106253103450228,-1.309849410574808,0.1902467840424702,False
+k1=0.25 continue(1.0) W=8,all,8,437,-0.04984944534601736,-1.846229499935163,0.06485888930501936,False
+k1=0.25 continue(1.0) W=8,all,16,437,,,,False
+k1=0.25 continue(1.0) W=8,all,32,437,,,,False
+k1=0.25 continue(1.0) W=8,nasdaq opposed,4,207,-0.01217563741486554,-0.5721040491246321,0.567251486121261,False
+k1=0.25 continue(1.0) W=8,nasdaq opposed,8,207,-0.03944721615817025,-1.213382512036396,0.22498360929731442,False
+k1=0.25 continue(1.0) W=8,nasdaq opposed,16,207,,,,False
+k1=0.25 continue(1.0) W=8,nasdaq opposed,32,207,,,,False
+k1=0.25 continue(1.0) W=8,nasdaq consolidating,4,54,0.00838497375858542,0.24619034554543645,0.805534888749101,False
+k1=0.25 continue(1.0) W=8,nasdaq consolidating,8,54,0.06234426365009474,1.2091452349144975,0.2266070532443576,False
+k1=0.25 continue(1.0) W=8,nasdaq consolidating,16,54,,,,False
+k1=0.25 continue(1.0) W=8,nasdaq consolidating,32,54,,,,False
+k1=0.25 continue(1.0) W=8,nasdaq has not yet shown its own sequence,4,264,-0.033535852316499026,-1.5874567244115618,0.11240924080614247,False
+k1=0.25 continue(1.0) W=8,nasdaq has not yet shown its own sequence,8,264,-0.04677866522720255,-1.912815557389106,0.05577166879382995,False
+k1=0.25 continue(1.0) W=8,nasdaq has not yet shown its own sequence,16,264,,,,False
+k1=0.25 continue(1.0) W=8,nasdaq has not yet shown its own sequence,32,264,,,,False
+k1=0.25 continue(1.0) W=16,all,4,651,-0.02635859093946521,-1.8127603037904314,0.0698687989733469,False
+k1=0.25 continue(1.0) W=16,all,8,651,-0.03805947426784895,-1.7350650780877679,0.08272927895397358,False
+k1=0.25 continue(1.0) W=16,all,16,651,,,,False
+k1=0.25 continue(1.0) W=16,all,32,651,,,,False
+k1=0.25 continue(1.0) W=16,nasdaq opposed,4,320,-0.0144812642305337,-0.9134528570185275,0.36100441699559616,False
+k1=0.25 continue(1.0) W=16,nasdaq opposed,8,320,-0.030618455686378977,-1.110278705165898,0.2668789464567094,False
+k1=0.25 continue(1.0) W=16,nasdaq opposed,16,320,,,,False
+k1=0.25 continue(1.0) W=16,nasdaq opposed,32,320,,,,False
+k1=0.25 continue(1.0) W=16,nasdaq consolidating,4,91,0.009960049780232709,0.42807627024207573,0.6685955926231613,False
+k1=0.25 continue(1.0) W=16,nasdaq consolidating,8,91,0.04748660263008047,0.9647479195040624,0.334671087308669,False
+k1=0.25 continue(1.0) W=16,nasdaq consolidating,16,91,,,,False
+k1=0.25 continue(1.0) W=16,nasdaq consolidating,32,91,,,,False
+k1=0.25 continue(1.0) W=16,nasdaq has not yet shown its own sequence,4,410,-0.01791055727945269,-1.053778855132678,0.2919841764972534,False
+k1=0.25 continue(1.0) W=16,nasdaq has not yet shown its own sequence,8,410,-0.016168501745732533,-0.7859248415185753,0.43191152012917866,False
+k1=0.25 continue(1.0) W=16,nasdaq has not yet shown its own sequence,16,410,,,,False
+k1=0.25 continue(1.0) W=16,nasdaq has not yet shown its own sequence,32,410,,,,False
+k1=0.25 continue(1.0) W=32,all,4,814,,,,False
+k1=0.25 continue(1.0) W=32,all,8,814,-0.034338528871674746,-1.7288716449743193,0.0838320699067264,False
+k1=0.25 continue(1.0) W=32,all,16,814,,,,False
+k1=0.25 continue(1.0) W=32,all,32,814,,,,False
+k1=0.25 continue(1.0) W=32,nasdaq opposed,4,387,,,,False
+k1=0.25 continue(1.0) W=32,nasdaq opposed,8,387,-0.01656564496995859,-0.6497922645914744,0.5158264162607351,False
+k1=0.25 continue(1.0) W=32,nasdaq opposed,16,387,,,,False
+k1=0.25 continue(1.0) W=32,nasdaq opposed,32,387,,,,False
+k1=0.25 continue(1.0) W=32,nasdaq consolidating,4,118,0.014955381953302092,0.7687590304174031,0.4420363744502006,False
+k1=0.25 continue(1.0) W=32,nasdaq consolidating,8,118,0.0288119612921927,0.7549146175195266,0.4503002144747057,False
+k1=0.25 continue(1.0) W=32,nasdaq consolidating,16,118,,,,False
+k1=0.25 continue(1.0) W=32,nasdaq consolidating,32,118,,,,False
+k1=0.25 continue(1.0) W=32,nasdaq has not yet shown its own sequence,4,505,-0.015443520726973737,-0.9779492417582999,0.32809942904499845,False
+k1=0.25 continue(1.0) W=32,nasdaq has not yet shown its own sequence,8,505,-0.022208397482437383,-1.175174471391289,0.23992492135292365,False
+k1=0.25 continue(1.0) W=32,nasdaq has not yet shown its own sequence,16,505,,,,False
+k1=0.25 continue(1.0) W=32,nasdaq has not yet shown its own sequence,32,505,,,,False
+k1=0.25 retest(0.3) W=8,all,4,695,,,,False
+k1=0.25 retest(0.3) W=8,all,8,695,-0.027516138348423518,-1.356884797005659,0.17481781819590758,False
+k1=0.25 retest(0.3) W=8,all,16,695,,,,False
+k1=0.25 retest(0.3) W=8,all,32,695,,,,False
+k1=0.25 retest(0.3) W=8,nasdaq opposed,4,351,,,,False
+k1=0.25 retest(0.3) W=8,nasdaq opposed,8,351,-0.010224676558333798,-0.45591975434395443,0.648447683662534,False
+k1=0.25 retest(0.3) W=8,nasdaq opposed,16,351,,,,False
+k1=0.25 retest(0.3) W=8,nasdaq opposed,32,351,,,,False
+k1=0.25 retest(0.3) W=8,nasdaq consolidating,4,145,,,,False
+k1=0.25 retest(0.3) W=8,nasdaq consolidating,8,145,-0.03714474620962193,-1.577606321796782,0.1146560791503226,False
+k1=0.25 retest(0.3) W=8,nasdaq consolidating,16,145,-0.007776064944807525,-0.233256558895754,0.8155621892033755,False
+k1=0.25 retest(0.3) W=8,nasdaq consolidating,32,145,,,,False
+k1=0.25 retest(0.3) W=8,nasdaq has not yet shown its own sequence,4,448,,,,False
+k1=0.25 retest(0.3) W=8,nasdaq has not yet shown its own sequence,8,448,-0.01792142796904563,-1.0152957181978512,0.3099648848610914,False
+k1=0.25 retest(0.3) W=8,nasdaq has not yet shown its own sequence,16,448,,,,False
+k1=0.25 retest(0.3) W=8,nasdaq has not yet shown its own sequence,32,448,,,,False
+k1=0.25 retest(0.3) W=16,all,4,963,,,,False
+k1=0.25 retest(0.3) W=16,all,8,963,-0.0160149701885964,-0.9422661792673731,0.3460563790300726,False
+k1=0.25 retest(0.3) W=16,all,16,963,,,,False
+k1=0.25 retest(0.3) W=16,all,32,963,,,,False
+k1=0.25 retest(0.3) W=16,nasdaq opposed,4,486,,,,False
+k1=0.25 retest(0.3) W=16,nasdaq opposed,8,486,0.0009930625001560187,0.04922103631768239,0.9607431470261522,False
+k1=0.25 retest(0.3) W=16,nasdaq opposed,16,486,,,,False
+k1=0.25 retest(0.3) W=16,nasdaq opposed,32,486,,,,False
+k1=0.25 retest(0.3) W=16,nasdaq consolidating,4,220,,,,False
+k1=0.25 retest(0.3) W=16,nasdaq consolidating,8,220,-0.016220872997647264,-0.8418645137128682,0.3998637955953699,False
+k1=0.25 retest(0.3) W=16,nasdaq consolidating,16,220,,,,False
+k1=0.25 retest(0.3) W=16,nasdaq consolidating,32,220,,,,False
+k1=0.25 retest(0.3) W=16,nasdaq has not yet shown its own sequence,4,628,,,,False
+k1=0.25 retest(0.3) W=16,nasdaq has not yet shown its own sequence,8,628,-0.0034282334245122467,-0.22271961159692535,0.823753736861431,False
+k1=0.25 retest(0.3) W=16,nasdaq has not yet shown its own sequence,16,628,,,,False
+k1=0.25 retest(0.3) W=16,nasdaq has not yet shown its own sequence,32,628,,,,False
+k1=0.25 retest(0.3) W=32,all,4,1134,,,,False
+k1=0.25 retest(0.3) W=32,all,8,1134,-0.024029823239561304,-1.4115486331416707,0.15808290621276633,False
+k1=0.25 retest(0.3) W=32,all,16,1134,,,,False
+k1=0.25 retest(0.3) W=32,all,32,1134,,,,False
+k1=0.25 retest(0.3) W=32,nasdaq opposed,4,561,,,,False
+k1=0.25 retest(0.3) W=32,nasdaq opposed,8,561,-0.012578012569691993,-0.6458085776262238,0.518403332259102,False
+k1=0.25 retest(0.3) W=32,nasdaq opposed,16,561,,,,False
+k1=0.25 retest(0.3) W=32,nasdaq opposed,32,561,,,,False
+k1=0.25 retest(0.3) W=32,nasdaq consolidating,4,273,,,,False
+k1=0.25 retest(0.3) W=32,nasdaq consolidating,8,273,-0.023510927712514552,-1.294951570726675,0.19533693655210826,False
+k1=0.25 retest(0.3) W=32,nasdaq consolidating,16,273,,,,False
+k1=0.25 retest(0.3) W=32,nasdaq consolidating,32,273,,,,False
+k1=0.25 retest(0.3) W=32,nasdaq has not yet shown its own sequence,4,727,,,,False
+k1=0.25 retest(0.3) W=32,nasdaq has not yet shown its own sequence,8,727,-0.01148754395689142,-0.7379313478599526,0.4605561684482029,False
+k1=0.25 retest(0.3) W=32,nasdaq has not yet shown its own sequence,16,727,,,,False
+k1=0.25 retest(0.3) W=32,nasdaq has not yet shown its own sequence,32,727,,,,False
+k1=0.25 retest(0.5) W=8,all,4,412,,,,False
+k1=0.25 retest(0.5) W=8,all,8,412,-0.01701889986361394,-0.7849152447893442,0.43250326321326515,False
+k1=0.25 retest(0.5) W=8,all,16,412,,,,False
+k1=0.25 retest(0.5) W=8,all,32,412,,,,False
+k1=0.25 retest(0.5) W=8,nasdaq opposed,4,201,,,,False
+k1=0.25 retest(0.5) W=8,nasdaq opposed,8,201,-0.0022900260920012015,-0.07739038116330657,0.9383129925539564,False
+k1=0.25 retest(0.5) W=8,nasdaq opposed,16,201,,,,False
+k1=0.25 retest(0.5) W=8,nasdaq opposed,32,201,,,,False
+k1=0.25 retest(0.5) W=8,nasdaq consolidating,4,89,-0.02525743360801273,-1.3251002526252573,0.18513790237042782,False
+k1=0.25 retest(0.5) W=8,nasdaq consolidating,8,89,-0.05875283702242997,-1.8745740946836849,0.06085133981143819,False
+k1=0.25 retest(0.5) W=8,nasdaq consolidating,16,89,-0.02580995159025211,-0.6076352812247066,0.5434293955855336,False
+k1=0.25 retest(0.5) W=8,nasdaq consolidating,32,89,,,,False
+k1=0.25 retest(0.5) W=8,nasdaq has not yet shown its own sequence,4,260,,,,False
+k1=0.25 retest(0.5) W=8,nasdaq has not yet shown its own sequence,8,260,-0.002763653073176434,-0.12181894800092817,0.9030424073780948,False
+k1=0.25 retest(0.5) W=8,nasdaq has not yet shown its own sequence,16,260,,,,False
+k1=0.25 retest(0.5) W=8,nasdaq has not yet shown its own sequence,32,260,,,,False
+k1=0.25 retest(0.5) W=16,all,4,605,,,,False
+k1=0.25 retest(0.5) W=16,all,8,605,-0.01221027448525471,-0.6116753431056938,0.5407525785131211,False
+k1=0.25 retest(0.5) W=16,all,16,605,,,,False
+k1=0.25 retest(0.5) W=16,all,32,605,,,,False
+k1=0.25 retest(0.5) W=16,nasdaq opposed,4,294,,,,False
+k1=0.25 retest(0.5) W=16,nasdaq opposed,8,294,-0.0005593410590596929,-0.02028736747406467,0.9838141330099073,False
+k1=0.25 retest(0.5) W=16,nasdaq opposed,16,294,,,,False
+k1=0.25 retest(0.5) W=16,nasdaq opposed,32,294,,,,False
+k1=0.25 retest(0.5) W=16,nasdaq consolidating,4,141,-0.008120709808727165,-0.5018391177259206,0.6157806942375381,False
+k1=0.25 retest(0.5) W=16,nasdaq consolidating,8,141,-0.039702439397384076,-1.514475285904729,0.12990533736768178,False
+k1=0.25 retest(0.5) W=16,nasdaq consolidating,16,141,-0.023855745814420848,-0.6257447919210094,0.5314823486209763,False
+k1=0.25 retest(0.5) W=16,nasdaq consolidating,32,141,,,,False
+k1=0.25 retest(0.5) W=16,nasdaq has not yet shown its own sequence,4,386,,,,False
+k1=0.25 retest(0.5) W=16,nasdaq has not yet shown its own sequence,8,386,0.011720753577436445,0.5530023660665196,0.5802617899959609,False
+k1=0.25 retest(0.5) W=16,nasdaq has not yet shown its own sequence,16,386,,,,False
+k1=0.25 retest(0.5) W=16,nasdaq has not yet shown its own sequence,32,386,,,,False
+k1=0.25 retest(0.5) W=32,all,4,759,,,,False
+k1=0.25 retest(0.5) W=32,all,8,759,-0.017174525988176596,-0.8891799988266638,0.3739063503000447,False
+k1=0.25 retest(0.5) W=32,all,16,759,,,,False
+k1=0.25 retest(0.5) W=32,all,32,759,,,,False
+k1=0.25 retest(0.5) W=32,nasdaq opposed,4,363,,,,False
+k1=0.25 retest(0.5) W=32,nasdaq opposed,8,363,-0.008598715769763402,-0.34899955754882,0.7270896417340942,False
+k1=0.25 retest(0.5) W=32,nasdaq opposed,16,363,,,,False
+k1=0.25 retest(0.5) W=32,nasdaq opposed,32,363,,,,False
+k1=0.25 retest(0.5) W=32,nasdaq consolidating,4,179,-0.005327836508086283,-0.37598810448779985,0.7069257395309946,False
+k1=0.25 retest(0.5) W=32,nasdaq consolidating,8,179,-0.027797934693052764,-1.1741947533987533,0.2403170270586027,False
+k1=0.25 retest(0.5) W=32,nasdaq consolidating,16,179,-0.0006890071355935106,-0.019804610991923082,0.9841992395661894,False
+k1=0.25 retest(0.5) W=32,nasdaq consolidating,32,179,,,,False
+k1=0.25 retest(0.5) W=32,nasdaq has not yet shown its own sequence,4,474,,,,False
+k1=0.25 retest(0.5) W=32,nasdaq has not yet shown its own sequence,8,474,0.001608921456091532,0.08762938041874378,0.9301712498007153,False
+k1=0.25 retest(0.5) W=32,nasdaq has not yet shown its own sequence,16,474,,,,False
+k1=0.25 retest(0.5) W=32,nasdaq has not yet shown its own sequence,32,474,,,,False
+k1=0.25 accelerate(0.5) W=8,all,4,1906,,,,False
+k1=0.25 accelerate(0.5) W=8,all,8,1906,-0.009087123210517202,-0.9936939236585403,0.3203719018742205,False
+k1=0.25 accelerate(0.5) W=8,all,16,1906,,,,False
+k1=0.25 accelerate(0.5) W=8,all,32,1906,,,,False
+k1=0.25 accelerate(0.5) W=8,nasdaq opposed,4,924,,,,False
+k1=0.25 accelerate(0.5) W=8,nasdaq opposed,8,924,-0.022344722719671695,-1.5887142606588975,0.1121249178651456,False
+k1=0.25 accelerate(0.5) W=8,nasdaq opposed,16,924,,,,False
+k1=0.25 accelerate(0.5) W=8,nasdaq opposed,32,924,,,,False
+k1=0.25 accelerate(0.5) W=8,nasdaq consolidating,4,403,0.004471514281098464,0.4843468156507939,0.6281397562955291,False
+k1=0.25 accelerate(0.5) W=8,nasdaq consolidating,8,403,0.002808567453549528,0.19141653693446892,0.8481992650053789,False
+k1=0.25 accelerate(0.5) W=8,nasdaq consolidating,16,403,,,,False
+k1=0.25 accelerate(0.5) W=8,nasdaq consolidating,32,403,,,,False
+k1=0.25 accelerate(0.5) W=8,nasdaq has not yet shown its own sequence,4,1191,,,,False
+k1=0.25 accelerate(0.5) W=8,nasdaq has not yet shown its own sequence,8,1191,-0.010635094878350506,-0.9648545868062701,0.3346176503517577,False
+k1=0.25 accelerate(0.5) W=8,nasdaq has not yet shown its own sequence,16,1191,,,,False
+k1=0.25 accelerate(0.5) W=8,nasdaq has not yet shown its own sequence,32,1191,,,,False
+k1=0.25 accelerate(0.5) W=16,all,4,1993,,,,False
+k1=0.25 accelerate(0.5) W=16,all,8,1993,-0.01158188419076303,-1.2746258632979142,0.20244169870313466,False
+k1=0.25 accelerate(0.5) W=16,all,16,1993,,,,False
+k1=0.25 accelerate(0.5) W=16,all,32,1993,,,,False
+k1=0.25 accelerate(0.5) W=16,nasdaq opposed,4,960,,,,False
+k1=0.25 accelerate(0.5) W=16,nasdaq opposed,8,960,-0.020229677594292835,-1.428913764129341,0.1530290208490893,False
+k1=0.25 accelerate(0.5) W=16,nasdaq opposed,16,960,,,,False
+k1=0.25 accelerate(0.5) W=16,nasdaq opposed,32,960,,,,False
+k1=0.25 accelerate(0.5) W=16,nasdaq consolidating,4,429,0.0037291454772419956,0.4328249759948388,0.6651419271597452,False
+k1=0.25 accelerate(0.5) W=16,nasdaq consolidating,8,429,-2.712944516908949e-05,-0.001895477909995712,0.9984876283458889,False
+k1=0.25 accelerate(0.5) W=16,nasdaq consolidating,16,429,,,,False
+k1=0.25 accelerate(0.5) W=16,nasdaq consolidating,32,429,,,,False
+k1=0.25 accelerate(0.5) W=16,nasdaq has not yet shown its own sequence,4,1253,,,,False
+k1=0.25 accelerate(0.5) W=16,nasdaq has not yet shown its own sequence,8,1253,-0.011038392937443199,-1.0317488400144674,0.30218979130037893,False
+k1=0.25 accelerate(0.5) W=16,nasdaq has not yet shown its own sequence,16,1253,,,,False
+k1=0.25 accelerate(0.5) W=16,nasdaq has not yet shown its own sequence,32,1253,,,,False
+k1=0.25 accelerate(0.5) W=32,all,4,2068,,,,False
+k1=0.25 accelerate(0.5) W=32,all,8,2068,-0.005073589057544065,-0.5649213072699976,0.5721272902674733,False
+k1=0.25 accelerate(0.5) W=32,all,16,2068,,,,False
+k1=0.25 accelerate(0.5) W=32,all,32,2068,,,,False
+k1=0.25 accelerate(0.5) W=32,nasdaq opposed,4,995,,,,False
+k1=0.25 accelerate(0.5) W=32,nasdaq opposed,8,995,-0.0158548748555888,-1.1242274034039896,0.26091656691198484,False
+k1=0.25 accelerate(0.5) W=32,nasdaq opposed,16,995,,,,False
+k1=0.25 accelerate(0.5) W=32,nasdaq opposed,32,995,,,,False
+k1=0.25 accelerate(0.5) W=32,nasdaq consolidating,4,457,0.0025470029639033,0.3101986861311035,0.7564098696031856,False
+k1=0.25 accelerate(0.5) W=32,nasdaq consolidating,8,457,-0.002334139853406258,-0.17382541511479857,0.8620026700769208,False
+k1=0.25 accelerate(0.5) W=32,nasdaq consolidating,16,457,,,,False
+k1=0.25 accelerate(0.5) W=32,nasdaq consolidating,32,457,,,,False
+k1=0.25 accelerate(0.5) W=32,nasdaq has not yet shown its own sequence,4,1304,,,,False
+k1=0.25 accelerate(0.5) W=32,nasdaq has not yet shown its own sequence,8,1304,-0.007880094024783589,-0.7324068092380552,0.4639203039205919,False
+k1=0.25 accelerate(0.5) W=32,nasdaq has not yet shown its own sequence,16,1304,,,,False
+k1=0.25 accelerate(0.5) W=32,nasdaq has not yet shown its own sequence,32,1304,,,,False
+k1=0.25 accelerate(1.0) W=8,all,4,655,-0.0049975321389382175,-0.30915896945429383,0.7572006036184399,False
+k1=0.25 accelerate(1.0) W=8,all,8,655,-0.011823339459350246,-0.6099118382047422,0.5419202100979705,False
+k1=0.25 accelerate(1.0) W=8,all,16,655,,,,False
+k1=0.25 accelerate(1.0) W=8,all,32,655,,,,False
+k1=0.25 accelerate(1.0) W=8,nasdaq opposed,4,326,0.005995042665627871,0.25977521107005824,0.7950371733658685,False
+k1=0.25 accelerate(1.0) W=8,nasdaq opposed,8,326,-0.026546840157885228,-0.8559550257413041,0.39202265660736,False
+k1=0.25 accelerate(1.0) W=8,nasdaq opposed,16,326,,,,False
+k1=0.25 accelerate(1.0) W=8,nasdaq opposed,32,326,,,,False
+k1=0.25 accelerate(1.0) W=8,nasdaq consolidating,4,74,0.020125008625875348,0.610132838296376,0.5417738151436886,False
+k1=0.25 accelerate(1.0) W=8,nasdaq consolidating,8,74,0.055565403097691514,0.9691258085771189,0.3324824222245979,False
+k1=0.25 accelerate(1.0) W=8,nasdaq consolidating,16,74,0.12823745059984223,1.6876346598170748,0.09148138161452919,False
+k1=0.25 accelerate(1.0) W=8,nasdaq consolidating,32,74,,,,False
+k1=0.25 accelerate(1.0) W=8,nasdaq has not yet shown its own sequence,4,382,0.0047205958732431975,0.24037232957501134,0.8100416272479452,False
+k1=0.25 accelerate(1.0) W=8,nasdaq has not yet shown its own sequence,8,382,-0.00030778169267656734,-0.012089912735421343,0.9903538802766322,False
+k1=0.25 accelerate(1.0) W=8,nasdaq has not yet shown its own sequence,16,382,,,,False
+k1=0.25 accelerate(1.0) W=8,nasdaq has not yet shown its own sequence,32,382,,,,False
+k1=0.25 accelerate(1.0) W=16,all,4,759,-0.004743620344512179,-0.322405141185142,0.74714578989787,False
+k1=0.25 accelerate(1.0) W=16,all,8,759,-0.014055343414717614,-0.680087618086189,0.4964489840305436,False
+k1=0.25 accelerate(1.0) W=16,all,16,759,,,,False
+k1=0.25 accelerate(1.0) W=16,all,32,759,,,,False
+k1=0.25 accelerate(1.0) W=16,nasdaq opposed,4,378,0.005183195369980676,0.24164443828493856,0.8090556855062949,False
+k1=0.25 accelerate(1.0) W=16,nasdaq opposed,8,378,-0.03389965836385646,-0.97609163669555,0.3290190554516601,False
+k1=0.25 accelerate(1.0) W=16,nasdaq opposed,16,378,,,,False
+k1=0.25 accelerate(1.0) W=16,nasdaq opposed,32,378,,,,False
+k1=0.25 accelerate(1.0) W=16,nasdaq consolidating,4,95,0.028905697372218438,1.0206782942957917,0.30740688152607965,False
+k1=0.25 accelerate(1.0) W=16,nasdaq consolidating,8,95,0.0473068439981443,0.7646454042809832,0.4444827244626314,False
+k1=0.25 accelerate(1.0) W=16,nasdaq consolidating,16,95,0.10258097392299072,1.2151211871677956,0.22431987387252705,False
+k1=0.25 accelerate(1.0) W=16,nasdaq consolidating,32,95,,,,False
+k1=0.25 accelerate(1.0) W=16,nasdaq has not yet shown its own sequence,4,452,0.009667695635875185,0.5470259467484245,0.5843609063849309,False
+k1=0.25 accelerate(1.0) W=16,nasdaq has not yet shown its own sequence,8,452,0.008784997867800905,0.35803116838824545,0.7203199885552707,False
+k1=0.25 accelerate(1.0) W=16,nasdaq has not yet shown its own sequence,16,452,,,,False
+k1=0.25 accelerate(1.0) W=16,nasdaq has not yet shown its own sequence,32,452,,,,False
+k1=0.25 accelerate(1.0) W=32,all,4,844,-0.0011923608422920653,-0.08112575703992263,0.9353419420399235,False
+k1=0.25 accelerate(1.0) W=32,all,8,844,-0.009357571444750008,-0.42645438398548036,0.6697767804389403,False
+k1=0.25 accelerate(1.0) W=32,all,16,844,,,,False
+k1=0.25 accelerate(1.0) W=32,all,32,844,,,,False
+k1=0.25 accelerate(1.0) W=32,nasdaq opposed,4,414,0.009286676518885125,0.45605491641220425,0.6483504884957583,False
+k1=0.25 accelerate(1.0) W=32,nasdaq opposed,8,414,-0.027926025677883413,-0.8084053520708113,0.4188572719506055,False
+k1=0.25 accelerate(1.0) W=32,nasdaq opposed,16,414,,,,False
+k1=0.25 accelerate(1.0) W=32,nasdaq opposed,32,414,,,,False
+k1=0.25 accelerate(1.0) W=32,nasdaq consolidating,4,108,0.03300769023414245,1.235990610620456,0.21646205381969075,False
+k1=0.25 accelerate(1.0) W=32,nasdaq consolidating,8,108,0.03867728052952701,0.6546734888761016,0.5126779977062592,False
+k1=0.25 accelerate(1.0) W=32,nasdaq consolidating,16,108,0.10203491597085605,1.290764657917611,0.1967852963590545,False
+k1=0.25 accelerate(1.0) W=32,nasdaq consolidating,32,108,,,,False
+k1=0.25 accelerate(1.0) W=32,nasdaq has not yet shown its own sequence,4,507,0.013216899113831579,0.770721502092653,0.44087202411324267,False
+k1=0.25 accelerate(1.0) W=32,nasdaq has not yet shown its own sequence,8,507,0.007404208068316212,0.31518326191866924,0.7526225134425579,False
+k1=0.25 accelerate(1.0) W=32,nasdaq has not yet shown its own sequence,16,507,,,,False
+k1=0.25 accelerate(1.0) W=32,nasdaq has not yet shown its own sequence,32,507,,,,False
+k1=0.5 continue(0.5) W=8,all,4,621,-0.017545633512990898,-1.2837691277853855,0.19922274865539114,False
+k1=0.5 continue(0.5) W=8,all,8,621,-0.035736224553146914,-1.8120761913747294,0.06997442459745606,False
+k1=0.5 continue(0.5) W=8,all,16,621,,,,False
+k1=0.5 continue(0.5) W=8,all,32,621,,,,False
+k1=0.5 continue(0.5) W=8,nasdaq opposed,4,289,-0.012597874859015055,-0.6574400726891407,0.5108979921345189,False
+k1=0.5 continue(0.5) W=8,nasdaq opposed,8,289,-0.03259070977597052,-1.130476456172068,0.258275513660397,False
+k1=0.5 continue(0.5) W=8,nasdaq opposed,16,289,,,,False
+k1=0.5 continue(0.5) W=8,nasdaq opposed,32,289,,,,False
+k1=0.5 continue(0.5) W=8,nasdaq consolidating,4,93,0.007220633557201785,0.338075009074292,0.735306662774557,False
+k1=0.5 continue(0.5) W=8,nasdaq consolidating,8,93,0.004687202193172158,0.12509138490006216,0.9004512035781638,False
+k1=0.5 continue(0.5) W=8,nasdaq consolidating,16,93,0.06822895120654049,1.3050898786092173,0.19186224480539316,False
+k1=0.5 continue(0.5) W=8,nasdaq consolidating,32,93,,,,False
+k1=0.5 continue(0.5) W=8,nasdaq has not yet shown its own sequence,4,367,-0.005391937984801826,-0.26812144498692675,0.7886058392718969,False
+k1=0.5 continue(0.5) W=8,nasdaq has not yet shown its own sequence,8,367,-0.012845364989256442,-0.5727355432709124,0.5668237676948591,False
+k1=0.5 continue(0.5) W=8,nasdaq has not yet shown its own sequence,16,367,,,,False
+k1=0.5 continue(0.5) W=8,nasdaq has not yet shown its own sequence,32,367,,,,False
+k1=0.5 continue(0.5) W=16,all,4,776,-0.005377319963316627,-0.4426149831403472,0.658044245420254,False
+k1=0.5 continue(0.5) W=16,all,8,776,-0.024183903304785773,-1.4301397469561745,0.1526769144326904,False
+k1=0.5 continue(0.5) W=16,all,16,776,,,,False
+k1=0.5 continue(0.5) W=16,all,32,776,,,,False
+k1=0.5 continue(0.5) W=16,nasdaq opposed,4,366,-0.0068394642085784895,-0.42997027698159235,0.6672172626611608,False
+k1=0.5 continue(0.5) W=16,nasdaq opposed,8,366,-0.022907432155657825,-0.9839254118472539,0.325152188037501,False
+k1=0.5 continue(0.5) W=16,nasdaq opposed,16,366,,,,False
+k1=0.5 continue(0.5) W=16,nasdaq opposed,32,366,,,,False
+k1=0.5 continue(0.5) W=16,nasdaq consolidating,4,126,0.013466459155717538,0.7822345883658676,0.4340767206789502,False
+k1=0.5 continue(0.5) W=16,nasdaq consolidating,8,126,0.010192046462905679,0.34031729147972634,0.733617596753525,False
+k1=0.5 continue(0.5) W=16,nasdaq consolidating,16,126,,,,False
+k1=0.5 continue(0.5) W=16,nasdaq consolidating,32,126,,,,False
+k1=0.5 continue(0.5) W=16,nasdaq has not yet shown its own sequence,4,477,0.0019270753260141385,0.12095431340481141,0.9037272220468239,False
+k1=0.5 continue(0.5) W=16,nasdaq has not yet shown its own sequence,8,477,0.00045204789075385573,0.02423615614801457,0.9806642381577547,False
+k1=0.5 continue(0.5) W=16,nasdaq has not yet shown its own sequence,16,477,,,,False
+k1=0.5 continue(0.5) W=16,nasdaq has not yet shown its own sequence,32,477,,,,False
+k1=0.5 continue(0.5) W=32,all,4,888,,,,False
+k1=0.5 continue(0.5) W=32,all,8,888,-0.030651583070881082,-2.0358353922481522,0.04176688719926237,False
+k1=0.5 continue(0.5) W=32,all,16,888,,,,False
+k1=0.5 continue(0.5) W=32,all,32,888,,,,False
+k1=0.5 continue(0.5) W=32,nasdaq opposed,4,419,,,,False
+k1=0.5 continue(0.5) W=32,nasdaq opposed,8,419,-0.024328165203075652,-1.1357367187193437,0.2560667682982525,False
+k1=0.5 continue(0.5) W=32,nasdaq opposed,16,419,,,,False
+k1=0.5 continue(0.5) W=32,nasdaq opposed,32,419,,,,False
+k1=0.5 continue(0.5) W=32,nasdaq consolidating,4,169,0.006738788302871151,0.4616599611983284,0.6443251879161125,False
+k1=0.5 continue(0.5) W=32,nasdaq consolidating,8,169,0.005972217837744965,0.24725959952604873,0.8047073230767259,False
+k1=0.5 continue(0.5) W=32,nasdaq consolidating,16,169,,,,False
+k1=0.5 continue(0.5) W=32,nasdaq consolidating,32,169,,,,False
+k1=0.5 continue(0.5) W=32,nasdaq has not yet shown its own sequence,4,543,0.005283342625478232,0.3707147059940989,0.7108500358149528,False
+k1=0.5 continue(0.5) W=32,nasdaq has not yet shown its own sequence,8,543,0.0014616734541798267,0.08611960731619205,0.9313713371444365,False
+k1=0.5 continue(0.5) W=32,nasdaq has not yet shown its own sequence,16,543,,,,False
+k1=0.5 continue(0.5) W=32,nasdaq has not yet shown its own sequence,32,543,,,,False
+k1=0.5 continue(1.0) W=8,all,4,243,-0.08818883108967665,-2.8782739401034036,0.0039985774775608,False
+k1=0.5 continue(1.0) W=8,all,8,243,-0.13036493075149688,-2.906658392560824,0.0036531189927642062,False
+k1=0.5 continue(1.0) W=8,all,16,243,,,,False
+k1=0.5 continue(1.0) W=8,all,32,243,,,,False
+k1=0.5 continue(1.0) W=8,nasdaq opposed,4,113,-0.07282683112756133,-2.2452450870605034,0.024752403117513797,False
+k1=0.5 continue(1.0) W=8,nasdaq opposed,8,113,-0.14165197822045525,-2.8590220614550947,0.0042494923013332575,False
+k1=0.5 continue(1.0) W=8,nasdaq opposed,16,113,,,,False
+k1=0.5 continue(1.0) W=8,nasdaq opposed,32,113,,,,False
+k1=0.5 continue(1.0) W=8,nasdaq has not yet shown its own sequence,4,136,-0.08621127227986178,-2.930815373640248,0.003380736404492368,False
+k1=0.5 continue(1.0) W=8,nasdaq has not yet shown its own sequence,8,136,-0.12161735997122015,-2.3121709184761916,0.02076826622650816,False
+k1=0.5 continue(1.0) W=8,nasdaq has not yet shown its own sequence,16,136,,,,False
+k1=0.5 continue(1.0) W=8,nasdaq has not yet shown its own sequence,32,136,,,,False
+k1=0.5 continue(1.0) W=16,all,4,385,-0.0716683193329798,-3.0556134587686645,0.0022460060679610062,False
+k1=0.5 continue(1.0) W=16,all,8,385,-0.09440865827065338,-2.8167361082420257,0.004851436920446371,False
+k1=0.5 continue(1.0) W=16,all,16,385,,,,False
+k1=0.5 continue(1.0) W=16,all,32,385,,,,False
+k1=0.5 continue(1.0) W=16,nasdaq opposed,4,178,-0.056813686404937946,-2.2237890118935266,0.026162643037640317,False
+k1=0.5 continue(1.0) W=16,nasdaq opposed,8,178,-0.10673725997152006,-2.65027168483483,0.008042706663239921,False
+k1=0.5 continue(1.0) W=16,nasdaq opposed,16,178,,,,False
+k1=0.5 continue(1.0) W=16,nasdaq opposed,32,178,,,,False
+k1=0.5 continue(1.0) W=16,nasdaq consolidating,4,44,0.043417226210266294,1.0200245585017405,0.30771681368043635,False
+k1=0.5 continue(1.0) W=16,nasdaq consolidating,8,44,0.011827107710587608,0.1590328686701396,0.8736429779103471,False
+k1=0.5 continue(1.0) W=16,nasdaq consolidating,16,44,0.1150880997344665,1.3333104900613735,0.18242993261932683,False
+k1=0.5 continue(1.0) W=16,nasdaq consolidating,32,44,,,,False
+k1=0.5 continue(1.0) W=16,nasdaq has not yet shown its own sequence,4,221,-0.04917156958757412,-2.4013460737837655,0.016334879767055516,False
+k1=0.5 continue(1.0) W=16,nasdaq has not yet shown its own sequence,8,221,-0.048664489990215186,-1.3556536272755344,0.17520940045619138,False
+k1=0.5 continue(1.0) W=16,nasdaq has not yet shown its own sequence,16,221,,,,False
+k1=0.5 continue(1.0) W=16,nasdaq has not yet shown its own sequence,32,221,,,,False
+k1=0.5 continue(1.0) W=32,all,4,506,-0.055089361099595044,-3.0190009437780665,0.0025360974144082245,False
+k1=0.5 continue(1.0) W=32,all,8,506,-0.08761079575174449,-3.247690373299904,0.001163458028759904,False
+k1=0.5 continue(1.0) W=32,all,16,506,,,,False
+k1=0.5 continue(1.0) W=32,all,32,506,,,,False
+k1=0.5 continue(1.0) W=32,nasdaq opposed,4,234,-0.0350949747655823,-1.7160524721270471,0.08615243901631223,False
+k1=0.5 continue(1.0) W=32,nasdaq opposed,8,234,-0.08565194051726509,-2.63960778121102,0.008300202559986612,False
+k1=0.5 continue(1.0) W=32,nasdaq opposed,16,234,,,,False
+k1=0.5 continue(1.0) W=32,nasdaq opposed,32,234,,,,False
+k1=0.5 continue(1.0) W=32,nasdaq consolidating,4,64,0.0413507661828865,1.3172648926769452,0.18774984873014766,False
+k1=0.5 continue(1.0) W=32,nasdaq consolidating,8,64,0.0109345550648333,0.19453474724803566,0.8457571910063044,False
+k1=0.5 continue(1.0) W=32,nasdaq consolidating,16,64,0.11377149660008326,1.533536435239948,0.12514373646957416,False
+k1=0.5 continue(1.0) W=32,nasdaq consolidating,32,64,,,,False
+k1=0.5 continue(1.0) W=32,nasdaq has not yet shown its own sequence,4,296,-0.044321396584656864,-2.6301975567183087,0.008533526228654111,False
+k1=0.5 continue(1.0) W=32,nasdaq has not yet shown its own sequence,8,296,-0.06016614344178334,-2.0736894939708748,0.0381081575703171,False
+k1=0.5 continue(1.0) W=32,nasdaq has not yet shown its own sequence,16,296,,,,False
+k1=0.5 continue(1.0) W=32,nasdaq has not yet shown its own sequence,32,296,,,,False
+k1=0.5 retest(0.3) W=8,all,4,468,-0.01863719835931426,-1.177912925978615,0.2388313213905512,False
+k1=0.5 retest(0.3) W=8,all,8,468,-0.048368658536592585,-2.211762505472922,0.026983079086233056,False
+k1=0.5 retest(0.3) W=8,all,16,468,,,,False
+k1=0.5 retest(0.3) W=8,all,32,468,,,,False
+k1=0.5 retest(0.3) W=8,nasdaq opposed,4,229,-9.452773549852356e-05,-0.0051624865361061855,0.9958809499938134,False
+k1=0.5 retest(0.3) W=8,nasdaq opposed,8,229,-0.005532797934458243,-0.19528847118884493,0.8451671219753936,False
+k1=0.5 retest(0.3) W=8,nasdaq opposed,16,229,,,,False
+k1=0.5 retest(0.3) W=8,nasdaq opposed,32,229,,,,False
+k1=0.5 retest(0.3) W=8,nasdaq consolidating,4,86,0.00606561414080621,0.2489756653889938,0.8033796050032644,False
+k1=0.5 retest(0.3) W=8,nasdaq consolidating,8,86,-0.029304914703058148,-1.1222266386416355,0.2617660890393144,False
+k1=0.5 retest(0.3) W=8,nasdaq consolidating,16,86,0.01662831708762732,0.38938313018863624,0.6969927494668381,False
+k1=0.5 retest(0.3) W=8,nasdaq consolidating,32,86,,,,False
+k1=0.5 retest(0.3) W=8,nasdaq has not yet shown its own sequence,4,292,-0.0006714485842657605,-0.04253677042313979,0.9660707997062246,False
+k1=0.5 retest(0.3) W=8,nasdaq has not yet shown its own sequence,8,292,-0.016740162300495423,-0.8062083479092836,0.4201227261262611,False
+k1=0.5 retest(0.3) W=8,nasdaq has not yet shown its own sequence,16,292,,,,False
+k1=0.5 retest(0.3) W=8,nasdaq has not yet shown its own sequence,32,292,,,,False
+k1=0.5 retest(0.3) W=16,all,4,639,-0.0067896895249352435,-0.504186334513027,0.6141304424827843,False
+k1=0.5 retest(0.3) W=16,all,8,639,-0.024372537589052952,-1.3294047266201225,0.1837144792833314,False
+k1=0.5 retest(0.3) W=16,all,16,639,,,,False
+k1=0.5 retest(0.3) W=16,all,32,639,,,,False
+k1=0.5 retest(0.3) W=16,nasdaq opposed,4,317,0.02137870827426663,1.3347680980351562,0.18195225775814117,False
+k1=0.5 retest(0.3) W=16,nasdaq opposed,8,317,0.00673597575558235,0.27920732940572945,0.780085719173255,False
+k1=0.5 retest(0.3) W=16,nasdaq opposed,16,317,,,,False
+k1=0.5 retest(0.3) W=16,nasdaq opposed,32,317,,,,False
+k1=0.5 retest(0.3) W=16,nasdaq consolidating,4,126,0.016488699257774016,0.905707380363786,0.3650907550799558,False
+k1=0.5 retest(0.3) W=16,nasdaq consolidating,8,126,-0.0030934264167308935,-0.1284969071398797,0.8977557456802345,False
+k1=0.5 retest(0.3) W=16,nasdaq consolidating,16,126,,,,False
+k1=0.5 retest(0.3) W=16,nasdaq consolidating,32,126,,,,False
+k1=0.5 retest(0.3) W=16,nasdaq has not yet shown its own sequence,4,402,0.021279129443651394,1.5469892669513787,0.12186583378951439,False
+k1=0.5 retest(0.3) W=16,nasdaq has not yet shown its own sequence,8,402,0.006641342220022996,0.35808705379817646,0.7202781671278129,False
+k1=0.5 retest(0.3) W=16,nasdaq has not yet shown its own sequence,16,402,,,,False
+k1=0.5 retest(0.3) W=16,nasdaq has not yet shown its own sequence,32,402,,,,False
+k1=0.5 retest(0.3) W=32,all,4,773,,,,False
+k1=0.5 retest(0.3) W=32,all,8,773,-0.030872214254701994,-1.5924952832150778,0.11127346209267133,False
+k1=0.5 retest(0.3) W=32,all,16,773,,,,False
+k1=0.5 retest(0.3) W=32,all,32,773,,,,False
+k1=0.5 retest(0.3) W=32,nasdaq opposed,4,370,,,,False
+k1=0.5 retest(0.3) W=32,nasdaq opposed,8,370,-0.008704892859665497,-0.35249906037168377,0.7244640230202393,False
+k1=0.5 retest(0.3) W=32,nasdaq opposed,16,370,,,,False
+k1=0.5 retest(0.3) W=32,nasdaq opposed,32,370,,,,False
+k1=0.5 retest(0.3) W=32,nasdaq consolidating,4,169,0.0039989723540366584,0.2537608069455869,0.799680354004584,False
+k1=0.5 retest(0.3) W=32,nasdaq consolidating,8,169,-0.015210773431887729,-0.707180499688347,0.4794543152110017,False
+k1=0.5 retest(0.3) W=32,nasdaq consolidating,16,169,,,,False
+k1=0.5 retest(0.3) W=32,nasdaq consolidating,32,169,,,,False
+k1=0.5 retest(0.3) W=32,nasdaq has not yet shown its own sequence,4,475,0.006193891155447367,0.4431118662583994,0.6576848226041849,False
+k1=0.5 retest(0.3) W=32,nasdaq has not yet shown its own sequence,8,475,-0.012013178343805823,-0.6420626578540297,0.5208325005996717,False
+k1=0.5 retest(0.3) W=32,nasdaq has not yet shown its own sequence,16,475,,,,False
+k1=0.5 retest(0.3) W=32,nasdaq has not yet shown its own sequence,32,475,,,,False
+k1=0.5 retest(0.5) W=8,all,4,263,-0.004940632165605931,-0.28735629956028325,0.7738395186216682,False
+k1=0.5 retest(0.5) W=8,all,8,263,-0.03164020751406986,-1.2834337546759236,0.1993401544180733,False
+k1=0.5 retest(0.5) W=8,all,16,263,,,,False
+k1=0.5 retest(0.5) W=8,all,32,263,,,,False
+k1=0.5 retest(0.5) W=8,nasdaq opposed,4,125,0.008016044385981202,0.30765070598893307,0.7583481324127552,False
+k1=0.5 retest(0.5) W=8,nasdaq opposed,8,125,0.013649797631660913,0.3487550819148289,0.7272731879696295,False
+k1=0.5 retest(0.5) W=8,nasdaq opposed,16,125,,,,False
+k1=0.5 retest(0.5) W=8,nasdaq opposed,32,125,,,,False
+k1=0.5 retest(0.5) W=8,nasdaq consolidating,4,47,-0.020994701250442862,-0.6903646080191714,0.4899649275861728,False
+k1=0.5 retest(0.5) W=8,nasdaq consolidating,8,47,-0.07807821816106142,-2.1443236741547542,0.032006961182508585,False
+k1=0.5 retest(0.5) W=8,nasdaq consolidating,16,47,-0.07282719880688317,-1.1174981639401584,0.2637813841919209,False
+k1=0.5 retest(0.5) W=8,nasdaq consolidating,32,47,,,,False
+k1=0.5 retest(0.5) W=8,nasdaq has not yet shown its own sequence,4,151,0.0059005340799877124,0.2709190760085712,0.7864532729791063,False
+k1=0.5 retest(0.5) W=8,nasdaq has not yet shown its own sequence,8,151,0.015187866028230789,0.4762875284088439,0.6338695492335256,False
+k1=0.5 retest(0.5) W=8,nasdaq has not yet shown its own sequence,16,151,,,,False
+k1=0.5 retest(0.5) W=8,nasdaq has not yet shown its own sequence,32,151,,,,False
+k1=0.5 retest(0.5) W=16,all,4,382,-0.0010358653539589162,-0.0726000030461027,0.9421244242978192,False
+k1=0.5 retest(0.5) W=16,all,8,382,-0.015124848394501112,-0.7238730821502273,0.46914365693902393,False
+k1=0.5 retest(0.5) W=16,all,16,382,,,,False
+k1=0.5 retest(0.5) W=16,all,32,382,,,,False
+k1=0.5 retest(0.5) W=16,nasdaq opposed,4,184,0.014336821419493898,0.7104275314701243,0.4774390553635698,False
+k1=0.5 retest(0.5) W=16,nasdaq opposed,8,184,0.009528571760642018,0.32030685999795605,0.7487357233646911,False
+k1=0.5 retest(0.5) W=16,nasdaq opposed,16,184,,,,False
+k1=0.5 retest(0.5) W=16,nasdaq opposed,32,184,,,,False
+k1=0.5 retest(0.5) W=16,nasdaq consolidating,4,74,0.01192545611414545,0.465901803958711,0.6412857898431493,False
+k1=0.5 retest(0.5) W=16,nasdaq consolidating,8,74,-0.007913375759537709,-0.23434568418402693,0.8147166223087337,False
+k1=0.5 retest(0.5) W=16,nasdaq consolidating,16,74,0.0021331445947147935,0.03863932826785851,0.9691779462685494,False
+k1=0.5 retest(0.5) W=16,nasdaq consolidating,32,74,,,,False
+k1=0.5 retest(0.5) W=16,nasdaq has not yet shown its own sequence,4,225,0.011699905989031997,0.6736267284499875,0.5005486557877431,False
+k1=0.5 retest(0.5) W=16,nasdaq has not yet shown its own sequence,8,225,0.03449202257397986,1.3069654759863694,0.1912244369361069,False
+k1=0.5 retest(0.5) W=16,nasdaq has not yet shown its own sequence,16,225,,,,False
+k1=0.5 retest(0.5) W=16,nasdaq has not yet shown its own sequence,32,225,,,,False
+k1=0.5 retest(0.5) W=32,all,4,492,,,,False
+k1=0.5 retest(0.5) W=32,all,8,492,-0.023448838425709287,-1.145625289578263,0.25195022860878236,False
+k1=0.5 retest(0.5) W=32,all,16,492,,,,False
+k1=0.5 retest(0.5) W=32,all,32,492,,,,False
+k1=0.5 retest(0.5) W=32,nasdaq opposed,4,232,,,,False
+k1=0.5 retest(0.5) W=32,nasdaq opposed,8,232,-0.01670641645658363,-0.6065352665739273,0.5441593711996131,False
+k1=0.5 retest(0.5) W=32,nasdaq opposed,16,232,,,,False
+k1=0.5 retest(0.5) W=32,nasdaq opposed,32,232,,,,False
+k1=0.5 retest(0.5) W=32,nasdaq consolidating,4,103,0.0113828528526861,0.5460042871710261,0.5850629902417671,False
+k1=0.5 retest(0.5) W=32,nasdaq consolidating,8,103,-0.008634689508368529,-0.2789327307584521,0.7802964494846232,False
+k1=0.5 retest(0.5) W=32,nasdaq consolidating,16,103,0.025647302692564735,0.5410283497598586,0.588488042410866,False
+k1=0.5 retest(0.5) W=32,nasdaq consolidating,32,103,,,,False
+k1=0.5 retest(0.5) W=32,nasdaq has not yet shown its own sequence,4,285,0.007548389495428677,0.44390254432399706,0.6571130449530225,False
+k1=0.5 retest(0.5) W=32,nasdaq has not yet shown its own sequence,8,285,0.003958091580946445,0.174088863230673,0.8617956254112229,False
+k1=0.5 retest(0.5) W=32,nasdaq has not yet shown its own sequence,16,285,,,,False
+k1=0.5 retest(0.5) W=32,nasdaq has not yet shown its own sequence,32,285,,,,False
+k1=0.5 accelerate(0.5) W=8,all,4,1325,,,,False
+k1=0.5 accelerate(0.5) W=8,all,8,1325,-0.01492993835829489,-1.3082651170276307,0.19078340239420033,False
+k1=0.5 accelerate(0.5) W=8,all,16,1325,,,,False
+k1=0.5 accelerate(0.5) W=8,all,32,1325,,,,False
+k1=0.5 accelerate(0.5) W=8,nasdaq opposed,4,644,,,,False
+k1=0.5 accelerate(0.5) W=8,nasdaq opposed,8,644,-0.032275050021229844,-1.9339355533533475,0.05312105212211318,False
+k1=0.5 accelerate(0.5) W=8,nasdaq opposed,16,644,,,,False
+k1=0.5 accelerate(0.5) W=8,nasdaq opposed,32,644,,,,False
+k1=0.5 accelerate(0.5) W=8,nasdaq consolidating,4,248,-0.00473345832785046,-0.43487906758670203,0.6636502092450368,False
+k1=0.5 accelerate(0.5) W=8,nasdaq consolidating,8,248,0.002070595461257718,0.11834969121729004,0.9057905861260793,False
+k1=0.5 accelerate(0.5) W=8,nasdaq consolidating,16,248,,,,False
+k1=0.5 accelerate(0.5) W=8,nasdaq consolidating,32,248,,,,False
+k1=0.5 accelerate(0.5) W=8,nasdaq has not yet shown its own sequence,4,802,,,,False
+k1=0.5 accelerate(0.5) W=8,nasdaq has not yet shown its own sequence,8,802,-0.020231365674407947,-1.5631423651275147,0.11801911282295087,False
+k1=0.5 accelerate(0.5) W=8,nasdaq has not yet shown its own sequence,16,802,,,,False
+k1=0.5 accelerate(0.5) W=8,nasdaq has not yet shown its own sequence,32,802,,,,False
+k1=0.5 accelerate(0.5) W=16,all,4,1369,,,,False
+k1=0.5 accelerate(0.5) W=16,all,8,1369,-0.008837768275992149,-0.8073578094687983,0.41946036688934696,False
+k1=0.5 accelerate(0.5) W=16,all,16,1369,,,,False
+k1=0.5 accelerate(0.5) W=16,all,32,1369,,,,False
+k1=0.5 accelerate(0.5) W=16,nasdaq opposed,4,663,,,,False
+k1=0.5 accelerate(0.5) W=16,nasdaq opposed,8,663,-0.028970798712254976,-1.6953429062340475,0.09001038988031225,False
+k1=0.5 accelerate(0.5) W=16,nasdaq opposed,16,663,,,,False
+k1=0.5 accelerate(0.5) W=16,nasdaq opposed,32,663,,,,False
+k1=0.5 accelerate(0.5) W=16,nasdaq consolidating,4,262,0.0019780179657508576,0.18789157075700588,0.8509616506195591,False
+k1=0.5 accelerate(0.5) W=16,nasdaq consolidating,8,262,0.004419437512162712,0.24714550163416982,0.8047956204956966,False
+k1=0.5 accelerate(0.5) W=16,nasdaq consolidating,16,262,,,,False
+k1=0.5 accelerate(0.5) W=16,nasdaq consolidating,32,262,,,,False
+k1=0.5 accelerate(0.5) W=16,nasdaq has not yet shown its own sequence,4,832,,,,False
+k1=0.5 accelerate(0.5) W=16,nasdaq has not yet shown its own sequence,8,832,-0.0183719455358808,-1.4282300537053048,0.15322565291357598,False
+k1=0.5 accelerate(0.5) W=16,nasdaq has not yet shown its own sequence,16,832,,,,False
+k1=0.5 accelerate(0.5) W=16,nasdaq has not yet shown its own sequence,32,832,,,,False
+k1=0.5 accelerate(0.5) W=32,all,4,1422,,,,False
+k1=0.5 accelerate(0.5) W=32,all,8,1422,-0.008593546847692918,-0.8233142863340867,0.41032929148772235,False
+k1=0.5 accelerate(0.5) W=32,all,16,1422,,,,False
+k1=0.5 accelerate(0.5) W=32,all,32,1422,,,,False
+k1=0.5 accelerate(0.5) W=32,nasdaq opposed,4,686,,,,False
+k1=0.5 accelerate(0.5) W=32,nasdaq opposed,8,686,-0.027743106058139677,-1.6644179329172382,0.0960289388083897,False
+k1=0.5 accelerate(0.5) W=32,nasdaq opposed,16,686,,,,False
+k1=0.5 accelerate(0.5) W=32,nasdaq opposed,32,686,,,,False
+k1=0.5 accelerate(0.5) W=32,nasdaq consolidating,4,285,-0.002343154602176772,-0.23300013906397535,0.8157612977826263,False
+k1=0.5 accelerate(0.5) W=32,nasdaq consolidating,8,285,0.003285102150617667,0.1987952752819668,0.842422892010309,False
+k1=0.5 accelerate(0.5) W=32,nasdaq consolidating,16,285,,,,False
+k1=0.5 accelerate(0.5) W=32,nasdaq consolidating,32,285,,,,False
+k1=0.5 accelerate(0.5) W=32,nasdaq has not yet shown its own sequence,4,870,,,,False
+k1=0.5 accelerate(0.5) W=32,nasdaq has not yet shown its own sequence,8,870,-0.015037856828300276,-1.2150017101181547,0.22436543914169915,False
+k1=0.5 accelerate(0.5) W=32,nasdaq has not yet shown its own sequence,16,870,,,,False
+k1=0.5 accelerate(0.5) W=32,nasdaq has not yet shown its own sequence,32,870,,,,False
+k1=0.5 accelerate(1.0) W=8,all,4,491,-0.019110908568700107,-1.0556043263986856,0.2911490234920966,False
+k1=0.5 accelerate(1.0) W=8,all,8,491,-0.040324356109921716,-1.9337027521016412,0.053149685282160394,False
+k1=0.5 accelerate(1.0) W=8,all,16,491,,,,False
+k1=0.5 accelerate(1.0) W=8,all,32,491,,,,False
+k1=0.5 accelerate(1.0) W=8,nasdaq opposed,4,237,-0.012354094992625339,-0.5169902800480317,0.6051629440479724,False
+k1=0.5 accelerate(1.0) W=8,nasdaq opposed,8,237,-0.058738440529963416,-1.8944506460685901,0.05816521940812398,False
+k1=0.5 accelerate(1.0) W=8,nasdaq opposed,16,237,,,,False
+k1=0.5 accelerate(1.0) W=8,nasdaq opposed,32,237,,,,False
+k1=0.5 accelerate(1.0) W=8,nasdaq consolidating,4,49,-0.0022886681696009676,-0.07455669942275889,0.9405674270412633,False
+k1=0.5 accelerate(1.0) W=8,nasdaq consolidating,8,49,0.013069241948303553,0.22466936035067375,0.8222365021557404,False
+k1=0.5 accelerate(1.0) W=8,nasdaq consolidating,16,49,0.03939310470274076,0.5444721832117249,0.586116585256343,False
+k1=0.5 accelerate(1.0) W=8,nasdaq consolidating,32,49,,,,False
+k1=0.5 accelerate(1.0) W=8,nasdaq has not yet shown its own sequence,4,272,-0.012278115270472168,-0.5664557358180689,0.5710840152095684,False
+k1=0.5 accelerate(1.0) W=8,nasdaq has not yet shown its own sequence,8,272,-0.031391702514054966,-1.2083768290677244,0.22690234831100098,False
+k1=0.5 accelerate(1.0) W=8,nasdaq has not yet shown its own sequence,16,272,,,,False
+k1=0.5 accelerate(1.0) W=8,nasdaq has not yet shown its own sequence,32,272,,,,False
+k1=0.5 accelerate(1.0) W=16,all,4,561,-0.026697824263860883,-1.5714542409518157,0.11607717535632506,False
+k1=0.5 accelerate(1.0) W=16,all,8,561,-0.03842338580896135,-1.7102973441208404,0.0872109026656689,False
+k1=0.5 accelerate(1.0) W=16,all,16,561,,,,False
+k1=0.5 accelerate(1.0) W=16,all,32,561,,,,False
+k1=0.5 accelerate(1.0) W=16,nasdaq opposed,4,276,-0.013998189017415213,-0.6099431747387138,0.5418994509398987,False
+k1=0.5 accelerate(1.0) W=16,nasdaq opposed,8,276,-0.05552576121784027,-1.565754814486917,0.11740602825984081,False
+k1=0.5 accelerate(1.0) W=16,nasdaq opposed,16,276,,,,False
+k1=0.5 accelerate(1.0) W=16,nasdaq opposed,32,276,,,,False
+k1=0.5 accelerate(1.0) W=16,nasdaq consolidating,4,62,0.0028500666498438676,0.10872611493000194,0.9134197279232331,False
+k1=0.5 accelerate(1.0) W=16,nasdaq consolidating,8,62,0.0007367960831066149,0.012432523374912314,0.9900805370859863,False
+k1=0.5 accelerate(1.0) W=16,nasdaq consolidating,16,62,0.013333812312841212,0.1822194895626943,0.8554104785816523,False
+k1=0.5 accelerate(1.0) W=16,nasdaq consolidating,32,62,,,,False
+k1=0.5 accelerate(1.0) W=16,nasdaq has not yet shown its own sequence,4,321,-0.01270856850388013,-0.6732111714149006,0.500812955035595,False
+k1=0.5 accelerate(1.0) W=16,nasdaq has not yet shown its own sequence,8,321,-0.015996316210445092,-0.679316827901848,0.4969371362489339,False
+k1=0.5 accelerate(1.0) W=16,nasdaq has not yet shown its own sequence,16,321,,,,False
+k1=0.5 accelerate(1.0) W=16,nasdaq has not yet shown its own sequence,32,321,,,,False
+k1=0.5 accelerate(1.0) W=32,all,4,627,-0.015087478070472969,-0.9449337434823303,0.34469270309315314,False
+k1=0.5 accelerate(1.0) W=32,all,8,627,-0.032502027718198684,-1.5192729580151925,0.12869380355898194,False
+k1=0.5 accelerate(1.0) W=32,all,16,627,,,,False
+k1=0.5 accelerate(1.0) W=32,all,32,627,,,,False
+k1=0.5 accelerate(1.0) W=32,nasdaq opposed,4,307,-0.008897065083466174,-0.42814239828555734,0.668547450248399,False
+k1=0.5 accelerate(1.0) W=32,nasdaq opposed,8,307,-0.049571989731436214,-1.426121470821857,0.15383328215328518,False
+k1=0.5 accelerate(1.0) W=32,nasdaq opposed,16,307,,,,False
+k1=0.5 accelerate(1.0) W=32,nasdaq opposed,32,307,,,,False
+k1=0.5 accelerate(1.0) W=32,nasdaq consolidating,4,74,0.022880092298166572,1.016804769792284,0.30924631261582647,False
+k1=0.5 accelerate(1.0) W=32,nasdaq consolidating,8,74,0.008592512651302588,0.16356696717563451,0.8700720507919605,False
+k1=0.5 accelerate(1.0) W=32,nasdaq consolidating,16,74,0.037854276158197905,0.5859884509064417,0.5578832759183769,False
+k1=0.5 accelerate(1.0) W=32,nasdaq consolidating,32,74,,,,False
+k1=0.5 accelerate(1.0) W=32,nasdaq has not yet shown its own sequence,4,363,-0.0024968460047835287,-0.14669054485230718,0.8833762819833,False
+k1=0.5 accelerate(1.0) W=32,nasdaq has not yet shown its own sequence,8,363,-0.0134232851175679,-0.5622751908556615,0.573928538732534,False
+k1=0.5 accelerate(1.0) W=32,nasdaq has not yet shown its own sequence,16,363,,,,False
+k1=0.5 accelerate(1.0) W=32,nasdaq has not yet shown its own sequence,32,363,,,,False

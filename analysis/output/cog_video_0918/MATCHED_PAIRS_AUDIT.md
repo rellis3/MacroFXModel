@@ -1,0 +1,146 @@
+# COG-MATCHED-PAIRS audit (published before the tests run)
+
+Registered in forge/COG_MATCHED_PAIRS_ADDENDUM_A.md section 1. Reference periods are derived from exchange convention and then checked against IBKR contract details (last trade date); they are not read from IBKR.
+
+## 1. Reference periods and expiries
+| contract   | kind    | ibkr_name                                                 |   contract_month | ref_period_start   | ref_period_end   | last_trade_ibkr   | last_trade_from_convention   | convention_matches_ibkr   |   real_expiration |
+|:-----------|:--------|:----------------------------------------------------------|-----------------:|:-------------------|:-----------------|:------------------|:-----------------------------|:--------------------------|------------------:|
+| SR3U6      | SR3     | Secured Overnight Financing Rate 3-month Average of Rates |           202609 | 2026-09-16         | 2026-12-16       | 2026-12-15        | 2026-12-15                   | True                      |          20261216 |
+| SR3Z6      | SR3     | Secured Overnight Financing Rate 3-month Average of Rates |           202612 | 2026-12-16         | 2027-03-17       | 2027-03-16        | 2027-03-16                   | True                      |          20270317 |
+| SR3H7      | SR3     | Secured Overnight Financing Rate 3-month Average of Rates |           202703 | 2027-03-17         | 2027-06-16       | 2027-06-15        | 2027-06-15                   | True                      |          20270616 |
+| IH7        | EURIBOR | 3 Month EURIBOR Interest Rate                             |           202703 | 2027-03-17         | 2027-06-16       | 2027-03-15        | 2027-03-15                   | True                      |          20270315 |
+| IZ6        | EURIBOR | 3 Month EURIBOR Interest Rate                             |           202612 | 2026-12-16         | 2027-03-17       | 2026-12-14        | 2026-12-14                   | True                      |          20261214 |
+| ER3Z6      | ER3     | Compounded ESTR Average 3 Months Rate                     |           202612 | 2026-12-16         | 2027-03-17       | 2027-03-16        | 2027-03-16                   | True                      |          20270317 |
+| ER3H7      | ER3     | Compounded ESTR Average 3 Months Rate                     |           202703 | 2027-03-17         | 2027-06-16       | 2027-06-15        | 2027-06-15                   | True                      |          20270616 |
+
+Convention check: 7 of 7 contracts have the convention-derived last-trade date equal to IBKR's.
+
+Reading: SR3 and ER3 (compounded ESTR) share the IMM quarter and the same last-trade convention (business day before the period end), so SR3Z6 vs ER3Z6 and SR3H7 vs ER3H7 compare like with like. Euribor (a forward-looking term fixing) expires two business days before its period STARTS, so its price stops moving before the period it refers to begins, while SR3 keeps moving through its period as fixings arrive.
+
+### Pair-level alignment
+| candidate    | legs          |   period_overlap_days |   start_gap_days |   end_gap_days |   last_trade_gap_days | cut_window_at                                         | in_reference_period_at_data_end   |
+|:-------------|:--------------|----------------------:|-----------------:|---------------:|----------------------:|:------------------------------------------------------|:----------------------------------|
+| P0           | SR3U6 - IH7   |                   -91 |              182 |            182 |                    90 | none (all last-trade dates after data end 2026-10-09) | SR3U6: 25%; IH7: 0%               |
+| P1           | SR3H7 - IH7   |                    91 |                0 |              0 |                   -92 | none (all last-trade dates after data end 2026-10-09) | SR3H7: 0%; IH7: 0%                |
+| P2           | SR3Z6 - IZ6   |                    91 |                0 |              0 |                   -92 | none (all last-trade dates after data end 2026-10-09) | SR3Z6: 0%; IZ6: 0%                |
+| P3           | SR3Z6 - ER3Z6 |                    91 |                0 |              0 |                     0 | none (all last-trade dates after data end 2026-10-09) | SR3Z6: 0%; ER3Z6: 0%              |
+| P4           | SR3H7 - ER3H7 |                    91 |                0 |              0 |                     0 | none (all last-trade dates after data end 2026-10-09) | SR3H7: 0%; ER3H7: 0%              |
+| L-US         | SR3Z6         |                       |                  |                |                       | none (single leg)                                     | no                                |
+| L-EU-Euribor | IZ6           |                       |                  |                |                       | none (single leg)                                     | no                                |
+| L-EU-ESTR    | ER3Z6         |                       |                  |                |                       | none (single leg)                                     | no                                |
+
+**C.OG's pair (P0)** compares SOFR Sep-Dec 2026 with Euribor Mar-Jun 2027 (a six-month gap between the periods). SR3U6 is **inside its own reference period since 2026-09-16** (about a quarter elapsed at the data end), so its price is partly realised fixings from that date: the last 3.5 weeks of the earlier P0 studies, including the video week, are an in-period regime for the US leg. P1 to P4 are forward-looking over the whole window.
+
+## 2. Coverage and staleness per contract
+| contract   | first            | last             |   minutes |   days |   unchanged_minute_share |   longest_flat_run_min | active_utc_hours                                |
+|:-----------|:-----------------|:-----------------|----------:|-------:|-------------------------:|-----------------------:|:------------------------------------------------|
+| SR3U6      | 2024-04-14 22:00 | 2026-10-09 20:59 |    880170 |    776 |                    0.885 |                   1081 | 00-24 (hours with >= half of peak coverage: 23) |
+| SR3Z6      | 2024-04-14 22:00 | 2026-10-09 20:59 |    880170 |    776 |                    0.879 |                    946 | 00-24 (hours with >= half of peak coverage: 23) |
+| SR3H7      | 2024-04-14 22:00 | 2026-10-09 20:59 |    880170 |    776 |                    0.871 |                    788 | 00-24 (hours with >= half of peak coverage: 23) |
+| IH7        | 2024-04-15 00:00 | 2026-10-09 19:59 |    762300 |    637 |                    0.873 |                    888 | 00-20 (hours with >= half of peak coverage: 20) |
+| IZ6        | 2024-04-15 00:00 | 2026-10-09 19:59 |    762300 |    637 |                    0.883 |                   1282 | 00-20 (hours with >= half of peak coverage: 20) |
+| ER3Z6      | 2024-11-14 01:00 | 2026-10-09 19:59 |    579900 |    485 |                    0.79  |                    785 | 00-20 (hours with >= half of peak coverage: 20) |
+| ER3H7      | 2024-11-14 01:00 | 2026-10-09 19:59 |    579838 |    485 |                    0.768 |                    463 | 00-20 (hours with >= half of peak coverage: 20) |
+
+### Share of minutes with an unchanged price, by UTC hour (high = a stale quote that hour)
+|   UTC hour |   SR3U6 |   SR3Z6 |   SR3H7 |    IH7 |    IZ6 |   ER3Z6 |   ER3H7 |
+|-----------:|--------:|--------:|--------:|-------:|-------:|--------:|--------:|
+|          0 |    0.89 |    0.89 |    0.89 |   0.9  |   0.91 |    0.85 |    0.84 |
+|          1 |    0.91 |    0.91 |    0.9  |   0.93 |   0.94 |    0.89 |    0.88 |
+|          2 |    0.94 |    0.93 |    0.93 |   0.96 |   0.96 |    0.93 |    0.92 |
+|          3 |    0.95 |    0.94 |    0.93 |   0.96 |   0.96 |    0.93 |    0.93 |
+|          4 |    0.95 |    0.95 |    0.94 |   0.96 |   0.96 |    0.94 |    0.93 |
+|          5 |    0.94 |    0.94 |    0.93 |   0.94 |   0.94 |    0.89 |    0.88 |
+|          6 |    0.9  |    0.9  |    0.89 |   0.85 |   0.86 |    0.77 |    0.74 |
+|          7 |    0.88 |    0.87 |    0.87 |   0.8  |   0.82 |    0.68 |    0.65 |
+|          8 |    0.89 |    0.88 |    0.87 |   0.81 |   0.83 |    0.68 |    0.65 |
+|          9 |    0.9  |    0.9  |    0.89 |   0.83 |   0.84 |    0.71 |    0.69 |
+|         10 |    0.91 |    0.9  |    0.89 |   0.85 |   0.86 |    0.73 |    0.71 |
+|         11 |    0.88 |    0.87 |    0.86 |   0.85 |   0.86 |    0.74 |    0.71 |
+|         12 |    0.8  |    0.79 |    0.78 |   0.81 |   0.82 |    0.7  |    0.67 |
+|         13 |    0.78 |    0.77 |    0.76 |   0.79 |   0.8  |    0.68 |    0.64 |
+|         14 |    0.8  |    0.78 |    0.77 |   0.8  |   0.82 |    0.68 |    0.64 |
+|         15 |    0.83 |    0.81 |    0.8  |   0.82 |   0.84 |    0.69 |    0.66 |
+|         16 |    0.85 |    0.85 |    0.84 |   0.86 |   0.87 |    0.75 |    0.72 |
+|         17 |    0.86 |    0.86 |    0.85 |   0.89 |   0.91 |    0.81 |    0.79 |
+|         18 |    0.87 |    0.86 |    0.85 |   0.92 |   0.92 |    0.86 |    0.84 |
+|         19 |    0.88 |    0.87 |    0.87 |   0.92 |   0.93 |    0.86 |    0.85 |
+|         20 |    0.9  |    0.89 |    0.89 |   0.94 |   0.94 |    0.88 |    0.88 |
+|         21 |    0.9  |    0.91 |    0.91 | nan    | nan    |  nan    |  nan    |
+|         22 |    0.91 |    0.91 |    0.91 | nan    | nan    |  nan    |  nan    |
+|         23 |    0.93 |    0.93 |    0.92 | nan    | nan    |  nan    |  nan    |
+
+### Pair bars: both legs print, flat legs (15-minute close equal to the bar before)
+| candidate   |   bars_both_print |   share_either_leg_flat_vs_prev_bar |   share_both_flat |   share_only_US_flat |   share_only_EU_flat |
+|:------------|------------------:|------------------------------------:|------------------:|---------------------:|---------------------:|
+| P0          |             50331 |                               0.781 |             0.381 |                0.214 |                0.186 |
+| P1          |             50331 |                               0.758 |             0.363 |                0.191 |                0.204 |
+| P2          |             50331 |                               0.777 |             0.387 |                0.19  |                0.2   |
+| P3          |             38219 |                               0.723 |             0.303 |                0.289 |                0.13  |
+| P4          |             38215 |                               0.696 |             0.273 |                0.292 |                0.131 |
+
+## 3. Timestamp alignment
+
+IBKR stamps a 1-minute bar by its START; the registered 15-minute bars are right-labelled and right-closed, so the bar labelled t contains the minute stamped t, which ends at t + 1 minute. The same convention applies to every leg, to the OANDA CFD and to the NQ futures, so relative alignment is preserved, but the information at the decision bar overhangs the label by one minute. Sensitivity (strict-causal rebuild: bar t holds only minutes that ended by t; window to 2026-08-20 so Nasdaq can be rebuilt the same way):
+
+| candidate    |   corr_of_15m_changes_registered_vs_strict |   share_bars_value_differs |   same_hour_link_registered |   same_hour_link_strict |   A0_turns_registered |   A0_turns_strict |   strict_turns_with_registered_turn_within_1_bar |
+|:-------------|-------------------------------------------:|---------------------------:|----------------------------:|------------------------:|----------------------:|------------------:|-------------------------------------------------:|
+| P0           |                                     0.7023 |                      0.239 |                      0.1753 |                  0.1738 |                  3157 |              3121 |                                            0.716 |
+| P1           |                                     0.6922 |                      0.245 |                      0.1164 |                  0.1213 |                  3355 |              3288 |                                            0.699 |
+| P2           |                                     0.6879 |                      0.235 |                      0.1267 |                  0.1304 |                  3213 |              3243 |                                            0.719 |
+| P3           |                                     0.7112 |                      0.328 |                      0.1505 |                  0.1164 |                  2380 |              2381 |                                            0.728 |
+| P4           |                                     0.7114 |                      0.345 |                      0.1392 |                  0.1048 |                  2437 |              2408 |                                            0.704 |
+| L-US         |                                     0.7062 |                      0.147 |                      0.0935 |                  0.0895 |                  2729 |              2655 |                                            0.808 |
+| L-EU-Euribor |                                     0.7952 |                      0.145 |                     -0.0203 |                 -0.0286 |                  2331 |              2241 |                                            0.82  |
+| L-EU-ESTR    |                                     0.843  |                      0.249 |                     -0.0471 |                 -0.0083 |                  1625 |              1575 |                                            0.803 |
+
+### Asynchronous updates between the legs (cross-correlation of 1-minute changes at lags of minutes)
+| candidate   |   corr_lag0 |   corr_minus1 |   corr_plus1 |   corr_minus5 |   corr_plus5 |   peak_lag_min |   peak_corr | note                                             |
+|:------------|------------:|--------------:|-------------:|--------------:|-------------:|---------------:|------------:|:-------------------------------------------------|
+| P0          |       0.219 |         0.007 |        0.013 |        -0.003 |       -0.003 |              0 |       0.219 | lag>0: euro leg change follows the US leg change |
+| P1          |       0.239 |         0.007 |        0.015 |        -0.004 |       -0.001 |              0 |       0.239 | lag>0: euro leg change follows the US leg change |
+| P2          |       0.23  |         0.01  |        0.013 |        -0.008 |        0     |              0 |       0.23  | lag>0: euro leg change follows the US leg change |
+| P3          |       0.212 |         0.011 |        0.011 |        -0.007 |       -0     |              0 |       0.212 | lag>0: euro leg change follows the US leg change |
+| P4          |       0.228 |         0.007 |        0.013 |        -0.006 |        0.001 |              0 |       0.228 | lag>0: euro leg change follows the US leg change |
+
+### Session overlap (UTC hours in which both legs have at least half their peak coverage)
+| candidate   | overlap_utc_hours                                                              |   n_hours |
+|:------------|:-------------------------------------------------------------------------------|----------:|
+| P0          | 00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 |        20 |
+| P1          | 00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 |        20 |
+| P2          | 00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 |        20 |
+| P3          | 00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 |        20 |
+| P4          | 00, 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 |        20 |
+
+## 4. Raw versus display
+
+- Research line at 2024-05-02 10:15:00+00:00: 154.5000 bp; recomputed by hand from the raw 1-minute closes ((100 - 95.88) - (100 - 97.425)) x 100 = 154.5000 bp. Equal: True.
+- The Pine display parameters (scale 0.1, offset 1.445, invert, smoothing, plot lead) are not inputs of any research script. Lines mentioning those words in the research scripts (all must be unrelated to the line; the futures-splice `off` applies to Nasdaq only):
+
+```
+cog_turn_events.py:32: X = (((us - eu) * 100).where(good)).to_numpy()            # raw: ((100 - price_US) - (100 - price_EU)) x 100, in bp; no scale, offset, inversion, smoo
+cog_turn_events.py:182: LEAD = lead_stats(FAM['A0'])
+cog_turn_events.py:341: ax.axvline(0, color='k', lw=.7); ax.set_yticks([a for a, _ in labs]); ax.set_yticklabels([b for _, b in labs], fontsize=7); ax.invert_yaxis(); ax.set_
+cog_turn_events.py:373: L = LEAD if d_ == 0 else LEAD[LEAD.d == d_]
+cog_turn_events.py:384: f'Time-shift placebo ({len(PLEAD)} draws): share of shifted-line turns followed by a same-direction Nasdaq confirm within 8 h: mean {pl_a.mean():.3f} 
+cog_sequence_events.py:18: from sklearn.preprocessing import StandardScaler
+cog_sequence_events.py:285: variants = {'trees depth 3 (registered)': (None, None), 'ridge, all features': (lambda: make_pipeline(SimpleImputer(strategy='median'), StandardScaler
+cog_shape_agnostic.py:159: txt = ['# COG-SHAPE-AGNOSTIC results', '', 'Run once per forge/COG_SHAPE_AGNOSTIC_PREREG.md. Gradient-boosted trees, fixed hyper-parameters, walk-forw
+cog_event_features.py:85: audit.append('Contract rolls: the pinned pair (SR3U6, IH7) has no roll in the window; the next roll is 2026-12-15 (SR3Z6 / IM7). The Pine indicator pl
+cog_event_features.py:227: txt = ['# COG-EVENT-FEATURES results', '', 'Run once per forge/COG_EVENT_FEATURES_PREREG.md. Research series only (raw bp, close-labelled, no display 
+```
+
+## 5. Usable samples per candidate (days and 15-minute bars with the series and Nasdaq present, video week excluded)
+
+| candidate    |   IS_days |   IS_bars |   IS_min_detectable_corr |   VAL_days |   VAL_bars |   VAL_min_detectable_corr |   OOS_days |   OOS_bars |   OOS_min_detectable_corr | first_usable_day   | underpowered_(IS_days<60)   |
+|:-------------|----------:|----------:|-------------------------:|-----------:|-----------:|--------------------------:|-----------:|-----------:|--------------------------:|:-------------------|:----------------------------|
+| P0           |       247 |     19547 |                    0.178 |        189 |      14962 |                     0.204 |        188 |      14968 |                     0.204 | 2024-04-15         | False                       |
+| P1           |       247 |     19547 |                    0.178 |        189 |      14962 |                     0.204 |        189 |      14994 |                     0.204 | 2024-04-15         | False                       |
+| P2           |       247 |     19547 |                    0.178 |        190 |      15042 |                     0.203 |        189 |      14994 |                     0.204 | 2024-04-15         | False                       |
+| P3           |        95 |      7457 |                    0.287 |        191 |      15087 |                     0.203 |        190 |      15074 |                     0.203 | 2024-11-14         | False                       |
+| P4           |        95 |      7453 |                    0.287 |        191 |      15087 |                     0.203 |        190 |      15074 |                     0.203 | 2024-11-14         | False                       |
+| L-US         |       263 |     22524 |                    0.173 |        207 |      17526 |                     0.195 |        202 |      17367 |                     0.197 | 2024-04-15         | False                       |
+| L-EU-Euribor |       247 |     19547 |                    0.178 |        191 |      15122 |                     0.203 |        191 |      15154 |                     0.203 | 2024-04-15         | False                       |
+| L-EU-ESTR    |        95 |      7457 |                    0.287 |        192 |      15167 |                     0.202 |        192 |      15234 |                     0.202 | 2024-11-14         | False                       |
+
+Candidates with fewer than 60 in-sample days are descriptive only (COG_MATCHED_PAIRS_ADDENDUM_A.md section 4).

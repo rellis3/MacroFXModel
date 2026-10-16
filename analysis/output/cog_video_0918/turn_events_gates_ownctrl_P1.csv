@@ -1,0 +1,6 @@
+pattern,ret_ok,race_ok,beats_placebo95,s_t_significant,no_release_effect,robust
+A1,False,True,False,False,0.008112587266431593,False
+A2,False,False,False,False,-0.00422374782686776,False
+A3,False,True,False,False,-0.009416997942383884,False
+A2m,False,False,False,False,0.012903382678821452,False
+A4,False,False,False,False,-0.0020852755829270514,False

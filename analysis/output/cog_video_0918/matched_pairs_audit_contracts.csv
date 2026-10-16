@@ -1,0 +1,8 @@
+contract,kind,ibkr_name,contract_month,ref_period_start,ref_period_end,last_trade_ibkr,last_trade_from_convention,convention_matches_ibkr,real_expiration
+SR3U6,SR3,Secured Overnight Financing Rate 3-month Average of Rates,202609,2026-09-16,2026-12-16,2026-12-15,2026-12-15,True,20261216
+SR3Z6,SR3,Secured Overnight Financing Rate 3-month Average of Rates,202612,2026-12-16,2027-03-17,2027-03-16,2027-03-16,True,20270317
+SR3H7,SR3,Secured Overnight Financing Rate 3-month Average of Rates,202703,2027-03-17,2027-06-16,2027-06-15,2027-06-15,True,20270616
+IH7,EURIBOR,3 Month EURIBOR Interest Rate,202703,2027-03-17,2027-06-16,2027-03-15,2027-03-15,True,20270315
+IZ6,EURIBOR,3 Month EURIBOR Interest Rate,202612,2026-12-16,2027-03-17,2026-12-14,2026-12-14,True,20261214
+ER3Z6,ER3,Compounded ESTR Average 3 Months Rate,202612,2026-12-16,2027-03-17,2027-03-16,2027-03-16,True,20270317
+ER3H7,ER3,Compounded ESTR Average 3 Months Rate,202703,2027-03-17,2027-06-16,2027-06-15,2027-06-15,True,20270616
