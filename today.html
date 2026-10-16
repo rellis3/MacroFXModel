@@ -317,6 +317,17 @@
   .dr-why span{font-size:10.5px;padding:1px 6px;border-radius:4px;background:var(--card);border:1px solid var(--border);color:var(--text2);white-space:nowrap}
   .dr-why span.u{color:var(--bull)} .dr-why span.d{color:var(--bear)}
   .dr-tile .rmap{margin:6px 0 20px}
+
+  /* Views: the page shows one group of panels at a time; "All" is the old long page */
+  .vhide{display:none!important}
+  .vtabs{display:flex;gap:6px;overflow-x:auto;margin:0 0 10px;padding:2px 0;position:sticky;top:var(--jump-top,60px);z-index:30;background:var(--bg)}
+  .vtabs button{flex:0 0 auto;font:inherit;font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:16px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer}
+  .vtabs button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  @media(min-width:1200px){ .vtabs{display:none} }
+  .jump a.vt{font-size:12.5px;font-weight:600;padding:7px 8px}
+  .jump a.vt .vn{margin-left:auto;font-size:10px;font-weight:700;opacity:.6}
+  .jump a.vt.on{border-left-color:var(--blue)}
+  .jump a.sub{padding-left:22px;font-size:11px}
   .rmap-lbl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text3);margin-bottom:4px;gap:8px}
   .rmap-lbl b{color:var(--text2);font-weight:600;white-space:nowrap}
   .rmap{position:relative;height:16px;background:var(--card2);border-radius:8px;margin:0 0 22px;overflow:visible}
@@ -1542,6 +1553,7 @@
 
   <div class="dashgrid">
     <div class="main-col">
+      <div class="vtabs" id="vtabs" data-keep="1"></div>
       <div class="mbrief" id="mbrief" style="display:none"></div>
       <div class="mread" id="dayRead" data-focus="Day read" style="display:none"></div>
       <div class="mread" id="globalRead" data-focus="Global read" style="display:none"></div>
@@ -1584,7 +1596,7 @@
 
       <div class="mread" id="conceptBox" style="display:none"></div>
 
-      <div class="ctl">
+      <div class="ctl" id="ctlBar">
         <button class="fchip on" data-f="all" onclick="setFilter('all')">All</button>
         <button class="fchip" data-f="fx" onclick="setFilter('fx')">FX</button>
         <button class="fchip" data-f="index" onclick="setFilter('index')">Indices</button>
@@ -5154,7 +5166,6 @@ function pairSignalGold(r) {
 let collapsedSections;
 try { collapsedSections = new Set(JSON.parse(localStorage.getItem('collapsedSections') || '[]')); }
 catch (e) { collapsedSections = new Set(); }
-try { if (localStorage.getItem('gr_detail_seen_v1') == null) { collapsedSections.add('globalRead'); localStorage.setItem('gr_detail_seen_v1', '1'); localStorage.setItem('collapsedSections', JSON.stringify([...collapsedSections])); } } catch (e) { /* storage blocked: leave it open */ }
 function toggleSection(id) {
   if (collapsedSections.has(id)) collapsedSections.delete(id); else collapsedSections.add(id);
   setTimeout(() => { try { renderJumpNav(); } catch (e) {} }, 0);   // the rail marks collapsed sections
@@ -5182,15 +5193,46 @@ function renderJumpNav() {
     const h = document.querySelector('.hdr');
     if (h) document.documentElement.style.setProperty('--jump-top', (h.getBoundingClientRect().height + 14) + 'px');
   } catch (e) {}
-  const list = J.items(document, { getStyle: n => { try { return getComputedStyle(n); } catch { return null; } } });
+  const V = window.viewNavBrick;
+  const list = J.items(document, { getStyle: n => { try { return n.classList?.contains('vhide') ? null : getComputedStyle(n); } catch { return null; } } });
   if (list.length < 3) { el.innerHTML = ''; return; }   // not worth a rail for one or two
   _jumpList = list;
-  el.innerHTML = `<div class="jump-h">on this page</div>` + list.map(i =>
-    `<a href="#${i.id}" data-j="${i.id}" onclick="jumpTo(event,'${i.id}')"${collapsedSections.has(i.id) ? ' class="shut" title="this section is collapsed — opens it"' : ''}>`
-    + `<span class="ji">${i.icon}</span><span class="jt">${esc0(i.label)}</span></a>`).join('')
-    + `<a class="jump-top" href="#" onclick="jumpTo(event,null)"><span class="ji">\u2191</span><span class="jt">Top</span></a>`;
+  const item = (i, cls = '') => `<a href="#${i.id}" data-j="${i.id}" onclick="jumpTo(event,'${i.id}')" class="${cls}${collapsedSections.has(i.id) ? ' shut' : ''}"${collapsedSections.has(i.id) ? ' title="this section is collapsed — opens it"' : ''}>`
+    + `<span class="ji">${i.icon}</span><span class="jt">${esc0(i.label)}</span></a>`;
+  if (!V) { el.innerHTML = `<div class="jump-h">on this page</div>` + list.map(i => item(i)).join('') + `<a class="jump-top" href="#" onclick="jumpTo(event,null)"><span class="ji">↑</span><span class="jt">Top</span></a>`; markJumpActive(); return; }
+  _applyView();
+  const act = _view;
+  const count = v => list.filter(i => V.viewOf(i.id) === v.id).length;
+  const views = V.VIEWS.map(v => `<a href="#view=${v.id}" class="vt${act === v.id ? ' on' : ''}" title="${esc0(v.hint)}" onclick="setView('${v.id}',event)"><span class="ji">${v.icon}</span><span class="jt">${v.label}</span><span class="vn">${count(v) || ''}</span></a>`).join('')
+    + `<a href="#view=all" class="vt${act === V.ALL_VIEW ? ' on' : ''}" title="the old long page, every panel in order" onclick="setView('all',event)"><span class="ji">☰</span><span class="jt">All</span></a>`;
+  const here = act === V.ALL_VIEW ? list : list.filter(i => V.viewOf(i.id) === act);
+  el.innerHTML = `<div class="jump-h">views</div>${views}` + (here.length ? `<div class="jump-h" style="margin-top:8px">in this view</div>` + here.map(i => item(i, 'sub')).join('') : '');
+  const tabs = $('vtabs');
+  if (tabs) tabs.innerHTML = V.VIEWS.map(v => `<button class="${act === v.id ? 'on' : ''}" onclick="setView('${v.id}')">${v.icon} ${v.label}</button>`).join('') + `<button class="${act === V.ALL_VIEW ? 'on' : ''}" onclick="setView('all')">☰ All</button>`;
   markJumpActive();
 }
+// ── views: which group of panels is showing (js/viewNav.js) ──
+let _view = 'now';
+try { const h = /view=([a-z]+)/.exec(location.hash)?.[1]; _view = h ?? localStorage.getItem('todayView') ?? 'now'; } catch (e) { /* default */ }
+function _applyView() {
+  const V = window.viewNavBrick; if (!V) return;
+  _view = V.validView(_view);
+  document.body.dataset.view = _view;
+  for (const c of document.querySelectorAll('.main-col > *')) {
+    if (c.dataset.keep) continue;
+    if (c.dataset.vw === undefined) c.dataset.vw = V.viewOf(c.id) ?? '';
+    c.classList.toggle('vhide', !V.shows(c.dataset.vw || null, _view));
+  }
+}
+window.setView = (v, ev) => {
+  ev?.preventDefault?.();
+  _view = v; try { localStorage.setItem('todayView', v); } catch (e) { /* not remembered */ }
+  try { history.replaceState(null, '', `#view=${v}`); } catch (e) { /* hash stays */ }
+  renderJumpNav();
+  window.scrollTo({ top: 0, behavior: 'auto' });
+};
+/** The view a panel lives in: its own tag, or its nearest tagged ancestor (the chain panel sits inside another one). */
+function _viewOfEl(el) { const c = el?.closest?.('.main-col > *'); return c?.dataset?.vw || null; }
 let _jumpList = [];
 
 /** Clicking a collapsed section opens it first — scrolling to a closed panel shows nothing. */
@@ -5199,6 +5241,8 @@ window.jumpTo = (ev, id) => {
   if (!id) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (collapsedSections.has(id)) toggleSection(id);
   const el = document.getElementById(id);
+  const want = window.viewNavBrick && el ? _viewOfEl(el) : null;
+  if (want && _view !== 'all' && _view !== want) { _view = want; try { localStorage.setItem('todayView', want); } catch (e) { /* not remembered */ } renderJumpNav(); }
   if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 88, behavior: 'smooth' });
 };
 
@@ -13778,6 +13822,7 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
 <script type="module">
   import * as JumpNav from './js/jumpNav.js';
   window.jumpNavBrick = JumpNav;
+  try { window.viewNavBrick = await import('./js/viewNav.js'); } catch (e) { /* the rail falls back to scrolling */ }
   try { window.renderJumpNav?.(); } catch (e) {}
 </script>
 <script type="module">

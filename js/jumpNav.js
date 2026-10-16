@@ -25,6 +25,8 @@
 /** id → what to call it. Order here is irrelevant; the DOM decides. */
 export const SECTIONS = [
   { id: 'mbrief', icon: '\u{1F5DE}', label: 'Brief' },
+  { id: 'dayRead', icon: '\u{1F3AF}', label: 'Day read' },
+  { id: 'sinceYday', icon: '\u{1F504}', label: 'Changes' },
   { id: 'eodPanel', icon: '\u{1F313}', label: 'End of day' },
   { id: 'widerPanel', icon: '\u{1F30D}', label: 'Wider market' },
   { id: 'drillPanel', icon: '\u{1F9E9}', label: 'Reading' },
@@ -35,6 +37,11 @@ export const SECTIONS = [
   { id: 'weekAhead', icon: '\u{1F4C5}', label: 'Week ahead' },
   { id: 'regimePanel', icon: '\u{1F501}', label: 'Regime' },
   { id: 'chainPanel', icon: '\u{1F517}', label: 'The chain' },
+  { id: 'macro', icon: '\u{1F310}', label: 'Macro threads' },
+  { id: 'summary', icon: '\u{1F4C8}', label: 'Summary' },
+  { id: 'newsPlay', icon: '\u{1F4F0}', label: 'News play' },
+  { id: 'grid', icon: '\u{1F4B1}', label: 'Pair cards' },
+  { id: 'globalRead', icon: '\u{1F9ED}', label: 'Global read' },
 ];
 
 /**
