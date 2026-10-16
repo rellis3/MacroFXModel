@@ -108,13 +108,33 @@ export function etClockToUtcMs(isoDate, hh, mm) {
   return ms;
 }
 
+/**
+ * An Eastern wall-clock time on an Eastern calendar date -> the UTC instant. Exact: no pulling onto
+ * another date.
+ */
+export function etWallToUtcMs(etDate, hh, mm) {
+  const guess = Date.parse(`${etDate}T${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00Z`);
+  if (!Number.isFinite(guess)) return null;
+  let ms = guess - etOffsetMs(guess);
+  return guess - etOffsetMs(ms);                     // one refinement, for the DST edges
+}
+const _prevDay = iso => new Date(Date.parse(iso + 'T12:00:00Z') - 864e5).toISOString().slice(0, 10);
+
+/**
+ * THE LIST FOR DATE D IS NEW YORK'S DATE D-1, not the UTC date D (checked against the live feed
+ * 2026-10-16: ?date=2026-10-14 holds NFIB and Redbook, both Tuesday releases, i.e. 10-13; ?date=2026-10-15
+ * holds Wednesday's MBA applications). Reading it as the UTC date pulled every US daytime print 24h late, so
+ * the news-outcome join never found today's US actuals. An overnight Asian print still lands on D: 21:30 New
+ * York on D-1 is 01:30 UTC on D.
+ */
 export function parseNasdaq(json, isoDate) {
   const rows = json?.data?.rows ?? [];
   const out = [];
+  const etDate = isoDate && /^\d{4}-\d{2}-\d{2}$/.test(isoDate) ? _prevDay(isoDate) : null;
   for (const r of rows) {
     const t = String(r?.gmt ?? '').match(/^(\d{1,2}):(\d{2})/);
-    if (!t || !isoDate) continue;
-    const ms = etClockToUtcMs(isoDate, t[1], t[2]);
+    if (!t || !etDate) continue;
+    const ms = etWallToUtcMs(etDate, t[1], t[2]);
     if (!Number.isFinite(ms)) continue;
     const actual = num(r.actual), consensus = num(r.consensus), previous = num(r.previous);
     out.push({

@@ -41,6 +41,15 @@ t('Nasdaq rows carry actual vs consensus, and the surprise is their difference',
   assert.equal(rows[1].raw.actual, '206K', 'but the raw string is kept for display');
 });
 
+t('the Nasdaq list for date D is New York date D-1 (live feed, 2026-10-16)', () => {
+  const rows = parseNasdaq({ data: { rows: [
+    { gmt: '06:00', country: 'United States', eventName: 'NFIB Small Business Optimism', actual: '97.9' },   // a Tuesday release
+    { gmt: '21:30', country: 'Australia', eventName: 'Employment Change', actual: '20K' },
+  ] } }, '2026-10-14');
+  assert.equal(new Date(rows[0].ms).toISOString(), '2026-10-13T10:00:00.000Z');   // Tue 06:00 New York (EDT)
+  assert.equal(new Date(rows[1].ms).toISOString(), '2026-10-14T01:30:00.000Z');   // overnight print still on D
+});
+
 t('numbers parse with their unit, and anything ambiguous returns null', () => {
   assert.equal(num('2.20%'), 2.2); assert.equal(num('-0.20%'), -0.2);
   assert.equal(num('55.7'), 55.7); assert.equal(num('1,234'), 1234);
@@ -189,7 +198,9 @@ t('a parsed day carries the corrected instants end to end', () => {
   ] } }, '2026-09-24');
   assert.equal(rows.length, 2);
   const us = rows.find(r => r.country === 'United States');
-  assert.equal(new Date(us.ms).toISOString(), '2026-09-24T13:45:00.000Z');
+  // list 09-24 is New York 09-23 (verified live 2026-10-16: list 10-16 held Thursday's claims and Philly Fed,
+  // list 10-17 Friday's industrial production): the PMI printed 09:45 New York on the 23rd
+  assert.equal(new Date(us.ms).toISOString(), '2026-09-23T13:45:00.000Z');
   assert.equal(us.surprise, 3.4);
   const au = rows.find(r => r.country === 'Australia');
   assert.equal(new Date(au.ms).toISOString(), '2026-09-24T01:30:00.000Z');

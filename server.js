@@ -5646,9 +5646,9 @@ async function _computeNewsOutcomes(day = new Date().toISOString().slice(0, 10))
   const NAS_COUNTRY = { 'United States': 'US', 'Euro Zone': 'EU', Germany: 'DE', France: 'FR', Italy: 'IT', Spain: 'ES',
     'United Kingdom': 'GB', Japan: 'JP', Switzerland: 'CH', Australia: 'AU', 'New Zealand': 'NZ', Canada: 'CA' };
   const norm = x => String(x ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-  const findPrinted = (country, event) => {
+  const findPrinted = (country, event, ms = null) => {
     const want = norm(event);
-    const same = printedRows.filter(r => NAS_COUNTRY[r.country] === country);
+    const same = printedRows.filter(r => NAS_COUNTRY[r.country] === country && (ms == null || !Number.isFinite(r.ms) || Math.abs(r.ms - ms) <= 20 * 60_000));
     return same.find(r => norm(r.event) === want)
         ?? same.find(r => { const n = norm(r.event); return n.includes(want) || want.includes(n); })
         ?? null;
@@ -5656,7 +5656,7 @@ async function _computeNewsOutcomes(day = new Date().toISOString().slice(0, 10))
 
   const rows = [];
   for (const e of evs) {
-    const hit = (e.actual == null || e.actual === '') ? findPrinted(e.country, e.event) : null;
+    const hit = (e.actual == null || e.actual === '') ? findPrinted(e.country, e.event, e.ms) : null;
     const ev = { country: e.country, event: e.event, ms: e.ms, kind: _newsKindServer(e.event),
                  actual: e.actual ?? hit?.raw?.actual ?? null,
                  estimate: e.estimate ?? hit?.raw?.consensus ?? null,
@@ -6045,7 +6045,7 @@ async function _serverSnapshotFor(name, sym) {
       if (o) {
         const gexv = o.exposures?.gex;
         const de = o.dayExpiry;
-        const _bAt = Number.isFinite(o.basisAtMs) ? o.basisAtMs : o.savedAtMs;   // basis ages separately from the chain
+        const _bAt = Math.max(...[o.basisAtMs, o.basisAt, o.savedAtMs].filter(Number.isFinite)) || o.savedAtMs;   // newer of capture / intraday re-basis
         const ageH = Number.isFinite(_bAt) ? (Date.now() - _bAt) / 3.6e6 : null;
         snap.oi = {
           maxPain: o.maxPain, callWall: o.callWall, putWall: o.putWall,
@@ -7889,7 +7889,7 @@ app.get('/api/gpr/refresh-status', async (_req, res) => {
 // changes, the page served the previous print all day.
 const _gprPoller = _createReleasePoller({
   name: 'gpr', dueAfterDays: 8,   // weekly cadence
-  build: async () => { _gprRunning = true; try { await _buildGprScores(); } finally { _gprRunning = false; } },
+  build: async () => { _gprRunning = true; try { await _buildGprScore(); } finally { _gprRunning = false; } },   // was _buildGprScores (undefined): a swallowed ReferenceError
   read: async () => { const r = await kv.get(_GPR_KV).catch(() => null); return r ? JSON.parse(r) : null; },
   log: m => console.log(m),
 });
@@ -22292,7 +22292,8 @@ app.get('/api/oi-today', async (req, res) => {
       const gex = inst.exposures?.gex ?? 0;
       const pip = /JPY/.test(pair) ? 0.01 : /XAU/.test(pair) ? 0.1
         : /NAS|SPX|US30|US2000|DE30/.test(pair) ? 1 : 0.0001;
-      const _bAt = Number.isFinite(inst.basisAtMs) ? inst.basisAtMs : inst.savedAtMs;   // basis ages separately from the chain
+      // the intraday re-basis (oiReprojectBasis) writes basisAt, the capture writes basisAtMs: the newer of the two
+      const _bAt = Math.max(...[inst.basisAtMs, inst.basisAt, inst.savedAtMs].filter(Number.isFinite)) || inst.savedAtMs;
       const ageH = Number.isFinite(_bAt) ? (Date.now() - _bAt) / 3.6e6 : null;
 
       pairs.push({
@@ -29754,17 +29755,23 @@ async function _refreshCalFeed() {
       { headers: H, signal: AbortSignal.timeout(20_000) });
     if (r.ok) ff = _calParseFF(await r.json());
   } catch (e) { console.warn('[calendar] forexfactory:', e.message); }
-  try {
-    const r = await fetch(`https://api.nasdaq.com/api/calendar/economicevents?date=${today}`,
-      { headers: H, signal: AbortSignal.timeout(20_000) });
-    if (r.ok) nas = _calParseNasdaq(await r.json(), today);
-  } catch (e) { console.warn('[calendar] nasdaq:', e.message); }
+  // Nasdaq's list for date D is New York's D-1 (js/calendarFeed.js parseNasdaq), so today's US releases sit in
+  // TOMORROW's list: fetch both and merge.
+  const tomorrow = new Date(Date.parse(today + 'T12:00:00Z') + 864e5).toISOString().slice(0, 10);
+  for (const d of [today, tomorrow]) {
+    try {
+      const r = await fetch(`https://api.nasdaq.com/api/calendar/economicevents?date=${d}`,
+        { headers: H, signal: AbortSignal.timeout(20_000) });
+      if (r.ok) nas = [...(nas ?? []), ..._calParseNasdaq(await r.json(), d)];
+    } catch (e) { console.warn('[calendar] nasdaq:', d, e.message); }
+  }
+  if (nas) nas.sort((a, b) => a.ms - b.ms);
   const health = _calHealth(ff, nas);
   // never overwrite a good payload with a failed fetch
   if (health.state === 'bad' && _calFeed.data) { _calFeed.error = health.detail; return _calFeed; }
   _calFeed = { at: Date.now(), error: health.state === 'bad' ? health.detail : null,
     data: { ahead: _calUpcoming(ff ?? [], Date.now(), { days: 7, minRank: 3 }),
-            printed: _calPrinted(nas ?? [], { limit: 60 }), health, today } };
+            printed: _calPrinted(nas ?? [], { limit: 200 }), health, today } };   // two lists now; the actuals join reads these rows
   return _calFeed;
 }
 app.get('/api/calendar-feed', async (_req, res) => {
@@ -37023,7 +37030,8 @@ async function refreshFredDashboard(retry = 0) {
     // shape so the daily-brief macro-backdrop thread can read it exactly like `wti`.
     if (process.env.OANDA_KEY) {
       try {
-        const bars = await _btFetchD1('XCU_USD', 2);
+        // 3 bars: the incomplete current one is dropped upstream, so 2 left `prev` null and the thread never drew
+        const bars = await _btFetchD1('XCU_USD', 3);
         const last = bars.at(-1), prior = bars.at(-2);
         out.copper = { value: last?.close ?? null, prev: prior?.close ?? null };
       } catch {
