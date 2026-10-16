@@ -24792,7 +24792,8 @@ const WEEKLY_INSTRUMENTS = [
 // them. Added 2026-07-29 (found via the today.html currency-strength drill-down) —
 // zero new cost, the regime data already exists in state.hmmRegimes.
 const BRIEF_HMM_KEYS = {
-  GOLD:   'XAU/USD',  NQ: null,
+  GOLD:   'XAU/USD',  NQ: 'NAS100_USD',  SPX500: 'SPX500_USD',  US30: 'US30_USD',  US2000: 'US2000_USD',
+  DE30: 'DE30_USD',  UK100: 'UK100_GBP',   // indices are fitted in the HMM loop (DEFAULT_PAIRS) but were mapped to nothing
   EURUSD: 'EUR/USD',  GBPUSD: 'GBP/USD',  USDJPY: 'USD/JPY',
   AUDUSD: 'AUD/USD',  NZDUSD: 'NZD/USD',  USDCAD: 'USD/CAD',
   USDCHF: 'USD/CHF',  GBPJPY: 'GBP/JPY',
@@ -24803,7 +24804,7 @@ const BRIEF_HMM_KEYS = {
   // HMM), so those two fall back to session-bias-only in the brief.
   EURAUD: 'EUR/AUD',  EURCAD: 'EUR/CAD',  EURNZD: 'EUR/NZD',
   GBPAUD: 'GBP/AUD',  GBPCAD: 'GBP/CAD',  AUDCAD: 'AUD/CAD',
-  NZDJPY: 'NZD/JPY',  NZDCAD: null,       BTCUSD: null,
+  NZDJPY: 'NZD/JPY',  NZDCAD: 'NZD/CAD',  BTCUSD: null,
 };
 
 function _oandaBaseW() {
@@ -36662,7 +36663,10 @@ async function runLevelsRefresh() {
 
     // Compute HMM regime for each pair using last 200 daily closes (1 year)
     const hmmResults = [];
-    for (const sym of pairs) {
+    // The brief maps the 2026-08 crosses to HMM keys "already computed here", but they were never in `pairs`,
+    // so 8 of the brief's markets had no regime (and the summary counted them as 'range'). Fit them too.
+    const _HMM_EXTRA = ['EUR/AUD', 'EUR/CAD', 'EUR/NZD', 'GBP/AUD', 'GBP/CAD', 'AUD/CAD', 'NZD/JPY', 'NZD/CAD'];
+    for (const sym of [...new Set([...pairs, ..._HMM_EXTRA])]) {
       const closes = await fetchDailyCandles(sym, 201);
       if (closes && closes.length >= 20) {
         const returns = [];
