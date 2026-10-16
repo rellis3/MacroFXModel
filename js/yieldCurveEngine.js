@@ -76,7 +76,7 @@ export function mergeSlope(longSeries, shortSeries) {
     while (si + 1 < shortSeries.length && shortSeries[si + 1].date <= l.date) si++;
     const s = si >= 0 ? shortSeries[si] : null;
     if (s?.value == null || l.value == null) continue;
-    out.push({ date: l.date, long: l.value, short: s.value, slope: round2(l.value - s.value) });
+    out.push({ date: l.date, shortDate: s.date, long: l.value, short: s.value, slope: round2(l.value - s.value) });
   }
   return out;
 }
@@ -95,7 +95,11 @@ export function yieldCurveScore(longObsMap, shortObsMap) {
     return { latestSlope: latest?.slope ?? null, latestLong: round2(latest?.long), latestShort: round2(latest?.short), latestDate: latest?.date ?? null, z: null, score: null, inverted: null };
   }
   const z = latestZScore(merged.map(p => p.slope));
-  return { latestSlope: latest.slope, latestLong: round2(latest.long), latestShort: round2(latest.short), latestDate: latest.date, z, score: zToScore(z), inverted: latest.slope < 0 };
+  // The slope is only as fresh as its OLDER leg. The forward-filled short rate kept a discontinued series
+  // (GBP IR3TIB01, last print 2026-01) looking current under the long leg's date, so the staleness gate
+  // never saw it. latestDate is now the older of the two; each leg's own date is reported too.
+  const asOf = latest.shortDate && latest.shortDate < latest.date ? latest.shortDate : latest.date;
+  return { latestSlope: latest.slope, latestLong: round2(latest.long), latestShort: round2(latest.short), latestDate: asOf, longDate: latest.date, shortDate: latest.shortDate ?? null, z, score: zToScore(z), inverted: latest.slope < 0 };
 }
 
 // Fetch the two series this currency needs (short rate + 10Y yield). Never

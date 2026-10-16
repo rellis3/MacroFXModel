@@ -3275,7 +3275,7 @@ function renderConcentration() {
   }
   // crowded (COT extreme) pairs
   const crowded = rs.filter(r => r.ct?.level === 'EXTREME').map(r => `${dispName(r.name)} ${r.ct.dir}`);
-  if (crowded.length) bits.push(`<span class="chg-warn">Crowded</span> (squeeze risk): ${crowded.join(', ')}.`);
+  if (crowded.length) bits.push(`<span class="chg-warn">Crowded</span> (context, not a direction read): ${crowded.join(', ')}.`);
   if (!bits.length) { el.style.display = 'none'; return; }
   el.style.display = 'flex';
   el.innerHTML = `<span class="qk">Concentration</span><span class="qv">${bits.join(' ')}</span>`;
@@ -5060,7 +5060,7 @@ function surpriseRows() {
     const v = by[c];
     if (!v) continue;
     out.push({ ccy: c, score: v.score, n: v.n, nSeries: v.nSeries, pending: v.pending,
-               assumed: v.assumedPolarity, top: v.top ?? [], lastAsOf: v.lastAsOf });
+               assumed: v.assumedPolarity, top: v.top ?? [], lastAsOf: v.lastAsOf, staleOnly: !!v.staleOnly, nRecent: v.nRecent ?? null });
   }
   // Scored first (strongest beat at the top), still-collecting currencies after.
   out.sort((a, b) => (b.score ?? -Infinity) - (a.score ?? -Infinity));
@@ -5345,7 +5345,7 @@ function renderMarketRead() {
   // 3) strongest / weakest + the trade with momentum
   if (strongest && weakest && strongest.ccy !== weakest.ccy && (strongest.score - weakest.score) > 0.2) {
     if (strengthReadable) {
-      sentences.push(`Today's <b>strongest is the ${ccyFull(strongest.ccy)}</b>, weakest is the <b>${ccyFull(weakest.ccy)}</b> — so buying the ${ccyShort(strongest.ccy)} and selling the ${ccyShort(weakest.ccy)} is the trade with the wind behind it.`);
+      sentences.push(`Today's <b>strongest is the ${ccyFull(strongest.ccy)}</b>, weakest is the <b>${ccyFull(weakest.ccy)}</b> — the widest gap on the board so far today. That describes the move; whether it continues is a banked coin flip.`);
     } else {
       sentences.push(`No currency is clearly leading today — the pairs are <b>moving on their own stories</b> rather than as one currency theme (the leader carries ${Math.round(100 * narrR2)}% of the board), so "strongest vs weakest" isn't the right frame right now.`);
     }
@@ -6434,7 +6434,7 @@ function openCcyDrawer(ccy) {
   // The single clearest way to act on this — the biggest non-flat pair leg, if one exists.
   const clearest = legReads.filter(l => l.read.word !== 'Flat').sort((a, b) => Math.abs(b.pairSig) - Math.abs(a.pairSig))[0];
   const clearestLine = clearest
-    ? `The cleanest way to express this: <b class="${clearest.read.cls === 'bull' ? 'pos' : 'neg'}">${clearest.read.arrow} ${clearest.read.word} ${clearest.pair}</b> (${clearest.read.mag}).`
+    ? `The page lean is clearest on <b class="${clearest.read.cls === 'bull' ? 'pos' : 'neg'}">${clearest.read.arrow} ${clearest.read.word} ${clearest.pair}</b> (${clearest.read.mag}) <span class="muted">— a description, not a trade: the lean has scored below a coin flip at the next close.</span>`
     : `No single pair stands out as a clean expression of this — the pull here is broad but individually mild.`;
   const scoreMax = Math.max(0.25, Math.abs(det.score ?? 0));
   const scorePct = det.score == null ? 0 : Math.min(50, 50 * Math.abs(det.score) / scoreMax);
@@ -6460,7 +6460,7 @@ function openCcyDrawer(ccy) {
     cotHtml = `
       <div class="ccy-explain">${c.derived
         ? `The ICE US Dollar Index future (CFTC code 098662) did not come through in this pull, so USD's position here is derived as the mirror image of the other majors' futures vs USD. Read it as a rough cross-check, not a direct read.${dxyLine}`
-        : `Large speculators (CFTC weekly report) are <b>${dirWord}</b> ${ccy} — about <b>${(c.pct ?? 0).toFixed(1)}%</b> of open interest${c.pctile != null ? ` (${Math.round(c.pctile)}th percentile of recent history)` : ''}. This is <i>who's positioned</i>, not <i>who's moving</i> — a crowded one-way bet (≥20% OI) raises the odds of a snap-back squeeze if it's wrong.`}</div>
+        : `Large speculators (CFTC weekly report) are <b>${dirWord}</b> ${ccy} — about <b>${(c.pct ?? 0).toFixed(1)}%</b> of open interest${c.pctile != null ? ` (${Math.round(c.pctile)}th percentile of recent history)` : ''}. This is <i>who's positioned</i>, not <i>who's moving</i>. Tested here, crowding does not predict which way the market goes (COT direction and squeeze-fuel are banked nulls), so read it as who would have to act, not as a signal.`}</div>
       <div class="csrow"><span class="ccy">${ccy}</span><span class="track"><span class="mid"></span>${bar}</span><span class="val">${(c.specNet ?? 0) >= 0 ? '+' : ''}${fmtN(c.specNet ?? 0, 0)}</span></div>
       <div class="ccy-stat">
         ${c.wkChg != null ? `<span>week Δ <b>${c.wkChg >= 0 ? '+' : ''}${fmtN(c.wkChg, 0)}</b></span>` : ''}
@@ -6564,9 +6564,11 @@ function openCcyDrawer(ccy) {
       ${(() => {
         const srow = surpriseRows().find(x => x.ccy === ccy);
         if (!srow) return '';
-        if (srow.score == null) return `<div class="ccy-explain" style="margin-top:12px"><b>Surprise vs consensus:</b> still collecting — ${srow.n} scored release${srow.n === 1 ? '' : 's'}, ${srow.pending} more needed.</div>`;
+        if (srow.score == null) return `<div class="ccy-explain" style="margin-top:12px"><b>Surprise vs consensus:</b> ${srow.staleOnly || (srow.n ?? 0) > 20
+          ? `<b class="neg">no live prints${srow.lastAsOf ? ` since ${esc0(String(srow.lastAsOf).slice(0, 10))}` : ''}</b> — the feed is not scoring ${ccy} releases, so there is no current read (the ${srow.n} stored releases are history).`
+          : `still collecting — ${srow.n} scored release${srow.n === 1 ? '' : 's'}, ${srow.pending} more needed.`}</div>`;
         const rows = srow.top.map(t => `<div class="ccy-legrow"><span class="lp">${esc0(t.event)}</span><span class="dim-age">${esc0(String(t.actual))} vs ${esc0(String(t.estimate))}</span><span class="lv ${t.z > 0 ? 'bull' : t.z < 0 ? 'bear' : 'neu'}">${t.z > 0 ? '+' : ''}${t.z}</span></div>`).join('');
-        return `<div class="ccy-explain" style="margin-top:12px"><b>Surprise vs consensus:</b> <b class="${srow.score >= 0 ? 'pos' : 'neg'}">${srow.score >= 0 ? '+' : ''}${srow.score.toFixed(2)}</b> — ${srow.score >= 0 ? 'beating' : 'missing'} expectations by ${Math.abs(srow.score).toFixed(2)} of a typical surprise, across ${srow.n} release${srow.n === 1 ? '' : 's'}. What markets reprice on is the gap to consensus, not the level.</div>
+        return `<div class="ccy-explain" style="margin-top:12px"><b>Surprise vs consensus:</b> <b class="${srow.score >= 0 ? 'pos' : 'neg'}">${srow.score >= 0 ? '+' : ''}${srow.score.toFixed(2)}</b> — ${srow.score >= 0 ? 'beating' : 'missing'} expectations by ${Math.abs(srow.score).toFixed(2)} of a typical surprise, from ${srow.nRecent ?? srow.n} recent release${(srow.nRecent ?? srow.n) === 1 ? '' : 's'} (60-day half-life). What markets reprice on is the gap to consensus, not the level.</div>
           <div class="ccy-legs" style="margin-top:6px">${rows}</div>`;
       })()}
     </div>
@@ -6850,9 +6852,9 @@ function buildMacro() {
   const calm = vix == null || vix < 20;
   const ccy = [];
   const push = (c, sign, txt) => ccy.push({ c, sign, txt });
-  push('US dollar', dUs >= 0 ? 1 : 0, `backed by high US rates${dUs < 0 ? ', though they are easing this week' : ''}. The one to beat.`);
+  push('US dollar', dUs >= 0 ? 1 : 0, `US rates are ${dUs < 0 ? 'easing this week, which takes some support away' : 'holding up, which supports it'}.`);
   if (gap('de10y') != null) push('Euro', -1, `held back by lower euro-zone rates — it pays ${gap('de10y').toFixed(2)} points less than the US to hold.`);
-  if (v('jp10y') != null) push('Japanese yen', -1, `the market's punching bag while US rates tower over Japan's near-zero — only the threat of government intervention caps how weak it gets.`);
+  if (v('jp10y') != null) push('Japanese yen', -1, `Japan's 10-year pays ${v('jp10y').toFixed(2)}%${gap('jp10y') != null ? `, ${gap('jp10y').toFixed(2)} points under the US` : ''} — the gap that has weighed on the yen; intervention risk is the cap.`);
   if (gap('gb10y') != null) push('British pound', gap('gb10y') < 0.5 ? 1 : 0, `UK rates are ${Math.abs(gap('gb10y')).toFixed(2)} points ${gap('gb10y') > 0 ? 'below' : 'above'} the US — ${gap('gb10y') < 0.5 ? 'not far off, so it holds up better than most' : 'a modest drag'}.`);
   push('Aussie & Kiwi', calm ? 1 : -1, `“risk-on” currencies — ${calm ? 'helped while markets are calm like now' : 'hurt while markets are nervous'} and when commodities are firm.`);
   push('Canadian dollar', 0, `follows oil and US rates — a bit of both worlds.`);
@@ -7920,7 +7922,7 @@ function directionChip(r) {
     ...(t.modifiers.length ? t.modifiers.map(m => `  ${line(m)}  [${m.status}]`) : ['  (none available)']),
     ...compLines,
     '',
-    'A description of the current lean, not a forecast. Nothing here is backtested.',
+    'A description of the current lean, not a forecast. Scored forward on this page\'s ledger it has run below a coin flip at the next close (about 42%, see the Market Picture record).',
   ].join('\n');
   // esc0 only handles '<' — a title attribute also needs quotes and & escaped,
   // or a stray quote in any detail string silently truncates the tooltip.
@@ -8467,8 +8469,8 @@ function ladderHtml(r) {
   // plain-English meaning of each ladder rung
   const TAG_T = {
     'OH 75':  "A BIGGER daily high — where price reaches on the more volatile 1-day-in-4. A stretch target / where a strong move runs out.",
-    'OH med': "The TYPICAL daily HIGH — how far above the open price usually gets on an average day. Often where an up-move stalls.",
-    'OL med': "The TYPICAL daily LOW — how far below the open price usually gets on an average day. Often where a down-move stalls.",
+    'OH med': "The TYPICAL daily HIGH — how far above the open price usually gets on an average day. A size line: tested here, price does not stall or turn at it more than anywhere else.",
+    'OL med': "The TYPICAL daily LOW — how far below the open price usually gets on an average day. A size line: tested here, price does not stall or turn at it more than anywhere else.",
     'OL 75':  "A BIGGER daily low — reached on the more volatile 1-day-in-4. A stretch target to the downside.",
   };
   const rowsDef = [
@@ -11756,7 +11758,7 @@ function biasFactors(r, arima) {
   if (g?.label === 'TREND' && g.trend_dir) F.push({ k:'HTF trend', dir: _trendDir(g.trend_dir) === 'up' ? 1 : -1, d:`HMM trending ${_trendDir(g.trend_dir) ?? g.trend_dir} (${g.trend_prob}%)` });
   else if (g?.label === 'RANGE') F.push({ k:'HTF regime', dir:0, d:`ranging (${g.range_prob}%) — no trend to back a directional trade` });
   const bd = r.s?.bias_detail; if (bd) F.push({ k:'Today’s tape', dir: _biasDir(bd) === 'up' ? 1 : _biasDir(bd) === 'down' ? -1 : 0, d: bd.toLowerCase() });
-  if (r.ct?.level === 'EXTREME') { const cdir = /long/i.test(r.ct.dir) ? 1 : -1; F.push({ k:'Positioning', dir: -cdir, d:`specs extreme ${r.ct.dir} — crowded, squeeze risk against the crowd` }); }
+  if (r.ct?.level === 'EXTREME') { const cdir = /long/i.test(r.ct.dir) ? 1 : -1; F.push({ k:'Positioning', dir: -cdir, d:`specs extreme ${r.ct.dir} — crowded (context; squeeze-fuel tested null)` }); }
   else if (r.ct?.dir) F.push({ k:'Positioning', dir:0, d:`specs ${r.ct.dir} — not crowded` });
   const rl = RISK_LEAN[r.name], gr = globalRisk();
   if (rl != null && rl !== 0 && gr !== 0) F.push({ k:'Risk mood', dir: rl * gr, d:`${gr > 0 ? 'risk-on' : 'risk-off'} backdrop ${rl * gr > 0 ? 'supports' : 'weighs on'} this ${rl > 0 ? 'risk-sensitive' : 'haven'} pair` });
@@ -12674,7 +12676,7 @@ function storyPositioning(r) {
   if (c.pctile != null) bits.push(`${Math.round(c.pctile)}th %ile`);
   if (c.z != null) bits.push(`z ${c.z >= 0 ? '+' : ''}${c.z.toFixed(1)}`);
   if (c.wkChg != null) bits.push(`${c.wkChg >= 0 ? '+' : ''}${(c.wkChg / 1000).toFixed(1)}k wk`);
-  const contra = c.level === 'EXTREME' ? ' — crowded, contrarian / squeeze risk' : '';
+  const contra = c.level === 'EXTREME' ? ' — crowded (context; tested null as a direction read)' : '';
   return `Specs ${tag} (${bits.join(' · ')})${contra}.${c.reportDate ? ` <span class="muted">CFTC ${c.reportDate}</span>` : ''}`;
 }
 

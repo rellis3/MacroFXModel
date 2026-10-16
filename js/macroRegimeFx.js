@@ -139,7 +139,9 @@ function summarise(vals, h, minObs) {
     // no p-value appears anywhere in this file.
     nEffective: Math.max(1, Math.round(v.length / h)),
     mean: round3(mean * 100), median: round3(median * 100), hitRate: round1(hit * 100),
-    enough: v.length >= minObs,
+    // raw n is overlapping windows: 114 rows at a 20-day horizon are ~6 independent episodes. A direction
+    // verdict needs at least 10 independent ones (audit 2026-10-16), whatever the raw count says.
+    enough: v.length >= minObs && Math.round(v.length / h) >= 10,
   };
 }
 
