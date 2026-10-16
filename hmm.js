@@ -226,13 +226,17 @@ export function fitHMM(returns) {
     const trendState = 1 - rangeState;
 
     const currentState = states[states.length - 1];
-    const regime = currentState === rangeState ? 'RANGE' : 'TREND';
+    const viterbiRegime = currentState === rangeState ? 'RANGE' : 'TREND';
 
     // Current regime probability from forward pass (last timestep)
     const { alpha } = forward(returns, A, B, pi);
     const lastAlpha  = alpha[returns.length - 1];
     const alphaSum   = lastAlpha.reduce((s, x) => s + x, 0) || 1;
     const rangeProb  = lastAlpha[rangeState] / alphaSum;
+    // The LABEL comes from the same filtered probability that is reported beside it (owner decision 2026-10-16).
+    // It used to be the Viterbi path's last state, which can disagree with the filter: EURUSD read 'RANGE' at a
+    // 34% range probability. The Viterbi state is kept as viterbiRegime for anyone who wants the smoothed path.
+    const regime = rangeProb >= 0.5 ? 'RANGE' : 'TREND';
 
     // Trend direction: mean of the last 10 log returns
     const recent      = returns.slice(-10);
@@ -276,6 +280,7 @@ export function fitHMM(returns) {
       trendProb: 1 - rangeProb,
       sigmaRatio,
       reliable: sigmaRatio >= 1.2,  // false = states not well-separated; don't trust regime
+      viterbiRegime,
       computedAt: new Date().toISOString(),
     };
   } catch (e) {
