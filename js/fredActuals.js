@@ -252,7 +252,14 @@ function _plausible(spec, releaseMs, date) {
 
 function _format(spec, rows, i) {
   if (i < 0 || i >= rows.length) return null;
-  const v = rows[i].value, prev = rows[i - 1]?.value, yr = rows[i - 12]?.value;
+  // Prior values are found BY DATE for monthly/quarterly series, not by position: FRED has holes (no October
+  // 2025 CPI, the shutdown), and rows[i - 12] then landed 13 months back -- Sep-2026 CPI y/y read 4.0% vs 3.7%.
+  const d0 = rows[i].date, at = iso => rows.find(r => r.date === iso)?.value;
+  const shiftM = (iso, k) => { const [y, m] = iso.split('-').map(Number); const t = new Date(Date.UTC(y, m - 1 + k, 1)); return t.toISOString().slice(0, 10); };
+  const monthly = /^[mq]/.test(spec.ref ?? '') && /-01$/.test(d0);
+  const v = rows[i].value;
+  const prev = monthly ? at(shiftM(d0, spec.ref?.startsWith('q') ? -3 : -1)) : rows[i - 1]?.value;
+  const yr = monthly ? at(shiftM(d0, -12)) : rows[i - 12]?.value;
   const dp = spec.dp ?? 1;
   const pct = x => `${x.toFixed(dp)}%`;
   switch (spec.kind) {

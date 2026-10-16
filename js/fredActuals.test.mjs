@@ -115,4 +115,12 @@ t('international: ONS/StatCan stamps join like FRED; Eurostat needs the exact pe
   assert.equal(actualFromVintage(eu, ms('2026-09-17T09:00:00Z'), es), null);   // the Final CPI spec (m1) would take it; the flash spec (m0) must not
   assert.equal(actualFromVintage(fredSpecFor('EU', 'Final CPI y/y'), ms('2026-09-17T09:00:00Z'), es).actual, '3.2%');
 });
+t('y/y and m/m look the prior value up by DATE: FRED has no Oct-2025 CPI (the shutdown)', () => {
+  const v = [['2025-08-01', 323.291], ['2025-09-01', 324.245], ['2025-11-01', 325.063], ['2025-12-01', 326.031], ['2026-01-01', 326.588],
+    ['2026-02-01', 327.46], ['2026-03-01', 330.293], ['2026-04-01', 332.407], ['2026-05-01', 333.979], ['2026-06-01', 332.568],
+    ['2026-07-01', 332.813], ['2026-08-01', 334.131], ['2026-09-01', 336.298]].map(([date, value]) => ({ date, value, realtime_start: '2026-10-14' }));
+  const rel = ms('2026-10-14T12:30:00Z');
+  assert.equal(actualFromVintage(fredSpecFor('US', 'CPI y/y'), rel, v).actual, '3.7%');   // was 4.0% (vs Aug-2025)
+  assert.equal(actualFromVintage(fredSpecFor('US', 'CPI m/m'), rel, v).actual, '0.6%');
+});
 console.log(`fredActuals: ${n} groups, all passed`);

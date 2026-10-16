@@ -309,7 +309,8 @@ export function mergeReleases(stored = [], incoming = [], opts = {}) {
       country: String(e.country ?? '').toUpperCase(), event: e.event ?? '',
       impact: String(e.impact ?? '').toLowerCase(), time: e.time ?? null, ms: e.ms,
       estimate: e.estimate ?? null, prev: e.prev ?? null, actual: e.actual ?? null,
-      ...(e.src ? { src: e.src } : {}),   // where the actual came from ('fred:CPIAUCSL'); absent for the feed's own
+      ...(e.src ? { src: e.src } : {}),
+      ...(e.srcV ? { srcV: e.srcV } : {}),   // fill-logic version (2 = FRED priors found by date)   // where the actual came from ('fred:CPIAUCSL'); absent for the feed's own
       ...(e.revision ? { revision: e.revision } : {}),   // this release revised the previous print: {of, was, now, delta}
     };
     if (map.has(id)) {

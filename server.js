@@ -16525,7 +16525,10 @@ let _fredFillWarned = false;
 async function _fillActualsFromFred(events, stored) {
   const key = process.env.FRED_KEY;
   if (!key) { if (!_fredFillWarned) { console.warn('[surprise] FRED_KEY not set -- live actuals cannot be filled'); _fredFillWarned = true; } return { filled: 0, tried: 0 }; }
-  const have = new Set((stored ?? []).filter(x => x.actual != null && x.actual !== '').map(x => `${String(x.country).toUpperCase()}|${String(x.event).trim().toLowerCase()}|${x.ms}`));
+  // srcV 2 = filled after the 2026-10-16 by-date fix for FRED gaps (Oct-2025 CPI missing made y/y read 13 months
+  // back). Older FRED-filled pct rows inside the 21-day window are refilled once so the live score is corrected.
+  const stale = x => typeof x.src === 'string' && x.src.startsWith('fred:') && !x.srcV && /%$/.test(String(x.actual));
+  const have = new Set((stored ?? []).filter(x => x.actual != null && x.actual !== '' && !stale(x)).map(x => `${String(x.country).toUpperCase()}|${String(x.event).trim().toLowerCase()}|${x.ms}`));
   const pend = _fredPending((events ?? []).filter(e => !have.has(`${String(e.country).toUpperCase()}|${String(e.event).trim().toLowerCase()}|${e.ms}`))).slice(0, _FRED_FILL_MAX);
   let filled = 0, tried = 0; const notes = [];
   for (const ev of pend) {
@@ -16556,7 +16559,7 @@ async function _fillActualsFromFred(events, stored) {
       const obs = (j.observations ?? []).map(o => ({ date: o.date, value: o.value === '.' ? NaN : parseFloat(o.value), realtime_start: o.realtime_start }));
       const a = _fredActual(spec, ev.ms, obs);
       if (!a?.actual) continue;   // not on FRED yet; the next hourly pass asks again
-      ev.actual = a.actual; ev.src = `fred:${spec.id}`; filled++;
+      ev.actual = a.actual; ev.src = `fred:${spec.id}`; ev.srcV = 2; filled++;
       const agree = a.prior != null && ev.prev != null ? _fredPriorAgrees(ev.prev, a.prior) : null;
       // The revision: the previous print of this series, as it was first reported,
       // against the same period as this vintage now carries it. Written on both rows
