@@ -2606,7 +2606,7 @@ async function loadGate() {
   setInterval(() => loadCorrStatus().catch(() => {}), 15 * 60_000);
   setTimeout(() => loadNewsOutcomes().catch(() => {}), 6000);      // what the day's releases actually did
   setInterval(() => loadNewsOutcomes().catch(() => {}), 10 * 60_000);
-  jget('/api/gpr').then(r => { if (r?.ok) { gpr = r; render(); } }).catch(() => {});   // geopolitical risk line
+  jget('/api/gpr').then(r => { gpr = r?.ok ? r : { down: true, error: r?.error ?? 'no data' }; render(); }).catch(e => { gpr = { down: true, error: e.message }; render(); });   // geopolitical risk line; a dead feed says so
   jget('/api/econ-surprise').then(r => { if (r?.ok) { econSurprise = r; render(); } }).catch(() => {});   // actual-vs-consensus surprise per currency
   jget('/api/macro-regime-fx').then(r => { if (r?.ok) { regimeFx = r; render(); } }).catch(() => {});   // regime-conditional FX base rates
   renderGate(); renderRiskFlags(); renderMacroMoved(); renderNewsPlay(); renderSummary(); render();
@@ -9350,6 +9350,7 @@ function renderSidebar() {
     takeaways.push(['📊', 'blue', `<b>${dispName(h.name)}</b> is today's most-watched pair${h.isProx ? ' — right at a key level' : h.ct?.level === 'EXTREME' ? ' — COT positioning is stretched' : ''}.`]);
   }
   if (risk.credit?.gate) takeaways.push(['🛡', 'purple', `Credit gate (context; failed out of sample as a signal) reads <b>${esc0(risk.credit.gate)}</b>${risk.credit.wideningBps != null ? ` (${risk.credit.wideningBps > 0 ? '+' : ''}${risk.credit.wideningBps}bps)` : ''}.`]);
+  if (gpr?.down) takeaways.push(['⚑', 'amber', `Geopolitical Risk feed is down (${esc0(String(gpr.error).slice(0, 80))}) — the GPR line is missing, not quiet.`]);
   if (risk.gpr?.stale) takeaways.push(['⚑', 'amber', `Geopolitical Risk data hasn't refreshed in ${risk.gpr.daysStale}+ days — the weekly pull may be behind.`]);
   const nextEv = nextHighImpact();
   if (nextEv) takeaways.push(['📅', 'blue', `Next high-impact release: ${nextEv}`]);
