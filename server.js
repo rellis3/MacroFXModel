@@ -36923,6 +36923,16 @@ let _fredHistoryRunning = false;
 // must not hammer FRED); scheduled runs re-fetch everything, and the TTL is a day.
 const _FREDHISTORY_TTL_S = 24 * 60 * 60;
 let _fredHistoryBooted = false;
+function _fredHistFresh(raw) {
+  try {
+    const pts = JSON.parse(raw); if (!Array.isArray(pts) || pts.length < 3) return false;
+    const ds = pts.slice(-10).map(p => Date.parse(p.date)).filter(Number.isFinite);
+    const gaps = ds.slice(1).map((d, i) => (d - ds[i]) / 864e5).sort((a, b) => a - b);
+    if ((gaps[Math.floor(gaps.length / 2)] ?? 99) > 5) return true;          // weekly/monthly: present is enough
+    const prev = new Date(); do { prev.setUTCDate(prev.getUTCDate() - 1); } while ([0, 6].includes(prev.getUTCDay()));
+    return pts.at(-1).date >= prev.toISOString().slice(0, 10);
+  } catch { return false; }
+}
 async function refreshFredHistory(retry = 0) {
   if (!process.env.FRED_KEY) return;
   if (_fredHistoryRunning) return;
@@ -36936,7 +36946,10 @@ async function refreshFredHistory(retry = 0) {
       const kvKey = `fredhistory_series_${key}`;
       try {
         const existing = skipPresent ? await kv.get(kvKey) : null;
-        if (existing) { skipped++; continue; }
+        // Present is not the same as current: a boot skip kept yesterday's VIX/HY until the 6h run, so every
+        // deploy left /api/macro-changes a session behind. Skip a DAILY series only when it already holds the
+        // previous business day; low-frequency series (monthly OECD yields) are skipped when present.
+        if (existing && _fredHistFresh(existing)) { skipped++; continue; }
         const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}` +
           `&api_key=${process.env.FRED_KEY}&file_type=json&sort_order=desc&limit=90`;
         const r = await fetch(url);
