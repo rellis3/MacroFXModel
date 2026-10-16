@@ -79,7 +79,11 @@ def walk(M, ytar, keep_models=False):
     for b in range(len(BL) - 1):
         a, e = BL[b], BL[b + 1]; test = (G >= a) & (G < e) & VALIDROW & np.isfinite(ytar); train = (G < a - pd.Timedelta(minutes=15 * 96)) & VALIDROW & np.isfinite(ytar)
         if test.sum() < 100 or train.sum() < 2000: continue
-        mdl = HistGradientBoostingRegressor(**HP).fit(M[train], ytar[train]); pred[test] = mdl.predict(M[test])
+        try:
+            mdl = HistGradientBoostingRegressor(**HP).fit(M[train], ytar[train]); pred[test] = mdl.predict(M[test])
+        except ValueError:                                  # sklearn binning fails on a column with a single distinct value in a short training window; such a column cannot split a tree, so drop it and refit (only reached after a failure)
+            cols = np.where(np.nan_to_num(np.nanstd(M[train], axis=0), nan=0.0) > 0)[0]
+            mdl = HistGradientBoostingRegressor(**HP).fit(M[train][:, cols], ytar[train]); pred[test] = mdl.predict(M[test][:, cols])
         if keep_models: models.append((mdl, test))
     return pred, models
 dcode = pd.factorize(pd.Series(dayv))[0]
