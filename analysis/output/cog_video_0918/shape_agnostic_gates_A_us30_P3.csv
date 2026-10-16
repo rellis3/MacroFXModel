@@ -1,0 +1,5 @@
+target,both_halves_CI_above_zero,beats_placebo95,real_gain_val_oos,placebo_mean,placebo_p95,economic_gate,economic_ok
+dir_8,False,,,,,net lower bound at 1.0 bp: -0.0586%,False
+dir_16,False,False,,-0.026084288501184806,-0.011869889521681866,net lower bound at 1.0 bp: -0.0855%,False
+dir_32,False,,,,,net lower bound at 1.0 bp: not computed,False
+vol_8,True,False,0.014752317523886078,0.009803799617364323,0.017048457862340525,volatility context (no trade),True

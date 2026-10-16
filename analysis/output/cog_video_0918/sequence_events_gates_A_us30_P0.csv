@@ -1,0 +1,2 @@
+spec,ret_ok,race_ok,beats_plain_placebo95,placebo_mean_ret8,selection_aware_p,incremental_ok,no_release_effect,real_val_oos_effect,passes
+k1=0.5 continue(0.5) W=16,False,False,False,-1.3310493868592988e-05,,False,0.008387370797246343,-0.0002722421878232908,False

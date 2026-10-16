@@ -1,0 +1,2 @@
+matched_VAL_and_OOS,real_val_oos,plain_placebo_mean,plain_placebo_p95,beats_placebo95,regression_t_VAL,regression_t_OOS,oos_R2_rises,no_release_effect,passes
+False,0.08655332090759518,-0.011774361714069346,0.08039915828294784,True,1.4092787392977832,-0.1507661624974199,False,0.04446146831456877,False
