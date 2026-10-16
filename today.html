@@ -8596,7 +8596,7 @@ function _threatChip(r) {
 // Support: the single read that most backs the lean.
 function _supportChip(r) {
   for (const [html, g] of [[r.agr?.chip ?? '', 'c'], [outlookChip(r), 'c'], [moveDecompChip(r), 'c'], [sessionResearchChip(r), 'c'],
-                           [r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? 'From options positioning: price is likely to stay stuck near here today — favours fading the edges.' : 'From options positioning: a move could accelerate today — breakouts are more likely to run.'}">◎ ${r.oi.regime}</span>` : '', 'c'],
+                           [r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? 'Dealers long gamma (net GEX > 0): tested on the Nasdaq, days run quieter than a vol-matched baseline. A range statement only; fading the walls tested null.' : 'Dealers short gamma (net GEX < 0): tested on the Nasdaq, days move about as much as an ordinary day. Not a breakout call.'}">◎ ${r.oi.regime}</span>` : '', 'c'],
                            [mveChip(r), 'c'], [commodityChip(r), 'c']]) {
     if (html) return _stampChip(html, g);
   }
@@ -8872,7 +8872,7 @@ function beforeYouTradeHtml(r) {
   // 1 options: where they sit (open interest), not what they pay (no free skew)
   { const o = r.oi; const fx = v => v == null ? '?' : Number(v).toFixed(d.dp ?? 4);
     let t, tag;
-    if (o && !o.stale) { t = `walls ${o.putWall != null ? `${fx(o.putWall)} (puts)` : ''}${o.putWall != null && o.callWall != null ? ' / ' : ''}${o.callWall != null ? `${fx(o.callWall)} (calls)` : ''}, gamma ${o.regime === 'PIN' ? 'long: pins price, favours fading the edges' : o.regime === 'BREAKOUT' ? 'short: a move can run' : '—'}${o.pcRatio != null ? `, put/call ${Number(o.pcRatio).toFixed(2)}` : ''}. Skew (what buyers are paying for): <b>no free feed</b>.`; tag = { t: 'where, not what they pay', cls: 'neu' }; }
+    if (o && !o.stale) { t = `walls ${o.putWall != null ? `${fx(o.putWall)} (puts)` : ''}${o.putWall != null && o.callWall != null ? ' / ' : ''}${o.callWall != null ? `${fx(o.callWall)} (calls)` : ''}, gamma ${o.regime === 'PIN' ? 'long: quieter than usual (range only; wall fades tested null)' : o.regime === 'BREAKOUT' ? 'short: ordinary movement (not a breakout call)' : '—'}${o.pcRatio != null ? `, put/call ${Number(o.pcRatio).toFixed(2)}` : ''}. Skew (what buyers are paying for): <b>no free feed</b>.`; tag = { t: 'where, not what they pay', cls: 'neu' }; }
     else if (o?.stale) { t = `the options book is stale (${Math.round(o.ageH)}h old) — capture it before leaning on a wall. Skew: no free feed.`; tag = { t: 'stale', cls: 'warn' }; }
     else { t = `no options book for this instrument (CME lists FX majors, gold and the indices). Skew: no free feed.`; tag = { t: 'not covered', cls: 'neu' }; }
     rows.push(line(1, 'Options', t, 'levels', tag)); }
@@ -11787,7 +11787,7 @@ function biasFactors(r, arima) {
   else if (r.ct?.dir) F.push({ k:'Positioning', dir:0, d:`specs ${r.ct.dir} — not crowded` });
   const rl = RISK_LEAN[r.name], gr = globalRisk();
   if (rl != null && rl !== 0 && gr !== 0) F.push({ k:'Risk mood', dir: rl * gr, d:`${gr > 0 ? 'risk-on' : 'risk-off'} backdrop ${rl * gr > 0 ? 'supports' : 'weighs on'} this ${rl > 0 ? 'risk-sensitive' : 'haven'} pair` });
-  if (r.oi && !r.oi.stale && r.oi.regime) F.push({ k:'Options', dir:0, d: r.oi.regime === 'PIN' ? 'PIN gamma — favours fading the edges, caps a trend' : 'negative gamma — breakout-friendly, amplifies a move' });
+  if (r.oi && !r.oi.stale && r.oi.regime) F.push({ k:'Options', dir:0, d: r.oi.regime === 'PIN' ? 'long gamma — quieter days (range only, no direction)' : 'short gamma — ordinary movement (range only, no direction)' });
   if (arima?.fairValueDev != null && Math.abs(arima.fairValueDev) >= 1 && !(arima.residualRatio > 1.5)) { const dv = arima.fairValueDev; F.push({ k:'Fair value', dir: dv > 0 ? -1 : 1, d:`${Math.abs(dv).toFixed(1)}σ ${dv > 0 ? 'rich — mean-revert bias lower' : 'cheap — mean-revert bias higher'}` }); }
   const ev = nextPairEvent(r.name); if (ev && (ev.impact ?? '').toLowerCase() === 'high' && (ev.ms - Date.now()) < 14 * 3600e3) F.push({ k:'Event risk', dir:0, d:`${ev.event} at ${evtTime(ev)} — the number can override the setup; size down / wait` });
   return F;

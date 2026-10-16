@@ -52,7 +52,9 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
     frontCalm: g.volTerm?.frontState === 'calm',
     allDown: null,                                   // validated (breadth-all-down) but no live job computes it
     nqDownWeek: !!st('nq-down-week')?.firing,
-    gexShortNq: nqOi && nqGexFlip ? nqOi.spot < nqGexFlip : null,
+    // ONE definition of NQ gamma (owner decision 2026-10-16): the sign of net dealer GEX, as the OI bot and the
+    // card use (oi.js regime: PIN = long gamma, BREAKOUT = short). spot-vs-flip disagreed with it on one screen.
+    gexShortNq: nqOi?.regime === 'BREAKOUT' ? true : nqOi?.regime === 'PIN' ? false : null,
   };
 
   // ── global state observations ─────────────────────────────────────────────
