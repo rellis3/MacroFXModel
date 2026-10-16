@@ -7075,6 +7075,313 @@ loadOiVolLiveStatus();
 
 
 
+// ── OI-CONF Bot config (execution/credentials/telegram cloned from the OI-Vol tab; strategy = OI x vol-line coincidences; own KV keys; + the coincidence AUDIT) ── ───────────────────────────────────────────────────────
+// ONE config object (oi_conf_bot_config): the camelCase STRATEGY keys are read by the server plan producer (js/oiConf.js), the snake EXECUTION keys by the Python bot (oi_conf_bot/oi_conf_bot.py).
+const OIC_DEFAULTS = {
+  // strategy (server plan producer: js/oiConf.js) — an OI level and a forecast line must coincide
+  tolSigma: 0.10, tolPips: 0, style: 'fade', slSigma: 0.25, tpR: 1.0, maxArmSigma: 1.5, minTier: 'moderate',
+  rungs: ['p50', 'p75', 'p90'], useStatic: true, useDynamic: true, minSources: 1, minTouchP: 0, touchHorizon: '4h',
+  oiTypes: ['call_wall', 'put_wall', 'max_pain', 'gamma_flip', 'gex_flip', 'charm_flip', 'vanna_flip', 'oi_volume', 'exp_move_hi', 'exp_move_lo'],
+  pairs: ['nq', 'gold', 'dow', 'rut', 'eurusd', 'gbpusd', 'usdjpy', 'audusd', 'usdcad', 'usdchf'],
+  // execution (the bot)
+  paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
+  touch_tol_pips: 2, max_spread_pips: null, tick_secs: 3, status_secs: 30, plan_secs: 60,
+  stack_guard: true, stack_guard_pips: 10,   // refuse a 2nd same-dir entry within N pips of an open one (one bet, not two)
+  enabled_pairs: [], broker_symbols: {},
+  // execution — 2026-08 additions
+  max_open_risk_pct: 2.0, max_group_positions: { index: 2 }, plan_max_age_hours: 24,
+  break_hold_ticks: 2, approach_trim: 0.7, scale_out: false, be_at_tp1: true,
+  max_hold_hours: { fade: 48, break: 24, maxpain: 24, react: 24},   // per-mode time exits (0 = off)
+  // telegram entry alerts (blank token/chat → shared tg_config)
+  tg_enabled: false, tg_token: '', tg_chat_id: '',
+};
+const OIC_INDEX_KEYS = ['nq', 'spx', 'dax', 'dow', 'rut'];
+const OIC_OI_TYPES = ['call_wall', 'put_wall', 'max_pain', 'gamma_flip', 'gex_flip', 'charm_flip', 'vanna_flip', 'oi_volume', 'exp_move_hi', 'exp_move_lo'];
+let _oicCfg = { ...OIC_DEFAULTS };
+
+function renderOiConfForm() {
+  const chk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+  const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+  set('oic_tol_sigma', _oicCfg.tolSigma ?? OIC_DEFAULTS.tolSigma);
+  set('oic_tol_pips', _oicCfg.tolPips ?? 0);
+  set('oic_style', _oicCfg.style ?? OIC_DEFAULTS.style);
+  set('oic_sl_sigma', _oicCfg.slSigma ?? OIC_DEFAULTS.slSigma);
+  set('oic_tp_r', _oicCfg.tpR ?? OIC_DEFAULTS.tpR);
+  set('oic_max_arm_sigma', _oicCfg.maxArmSigma ?? OIC_DEFAULTS.maxArmSigma);
+  set('oic_min_tier', _oicCfg.minTier ?? OIC_DEFAULTS.minTier);
+  set('oic_min_sources', _oicCfg.minSources ?? OIC_DEFAULTS.minSources);
+  set('oic_min_touch_p', _oicCfg.minTouchP ?? 0);
+  set('oic_touch_horizon', _oicCfg.touchHorizon ?? OIC_DEFAULTS.touchHorizon);
+  chk('oic_use_static', _oicCfg.useStatic ?? true); chk('oic_use_dynamic', _oicCfg.useDynamic ?? true);
+  ['p50', 'p75', 'p90'].forEach(r => chk('oic_rung_' + r, (_oicCfg.rungs ?? OIC_DEFAULTS.rungs).includes(r)));
+  OIC_OI_TYPES.forEach(t => chk('oic_t_' + t, (_oicCfg.oiTypes ?? OIC_DEFAULTS.oiTypes).includes(t)));
+  set('oic_pairs', (_oicCfg.pairs ?? OIC_DEFAULTS.pairs).join(', '));
+  const mh = { ...OIC_DEFAULTS.max_hold_hours, ...(_oicCfg.max_hold_hours || {}) };
+  set('oic_mh_fade', mh.fade); set('oic_mh_break', mh.break); set('oic_mh_maxpain', mh.maxpain); set('oic_mh_react', mh.react);
+  set('oic_max_open_risk_pct', _oicCfg.max_open_risk_pct ?? OIC_DEFAULTS.max_open_risk_pct);
+  set('oic_group_index_cap', (_oicCfg.max_group_positions || {}).index ?? 0);
+  set('oic_plan_max_age_hours', _oicCfg.plan_max_age_hours ?? OIC_DEFAULTS.plan_max_age_hours);
+  set('oic_break_hold_ticks', _oicCfg.break_hold_ticks ?? OIC_DEFAULTS.break_hold_ticks);
+  set('oic_approach_trim', _oicCfg.approach_trim ?? OIC_DEFAULTS.approach_trim);
+  chk('oic_scale_out', _oicCfg.scale_out ?? false);
+  chk('oic_be_at_tp1', _oicCfg.be_at_tp1 ?? true);
+  chk('oic_paper_mode', _oicCfg.paper_mode ?? true);
+  chk('oic_kill_switch', _oicCfg.kill_switch);
+  set('oic_risk_pct', _oicCfg.risk_pct ?? OIC_DEFAULTS.risk_pct);
+  set('oic_max_lot', _oicCfg.max_lot ?? OIC_DEFAULTS.max_lot);
+  set('oic_max_open', _oicCfg.max_open ?? OIC_DEFAULTS.max_open);
+  set('oic_touch_tol_pips', _oicCfg.touch_tol_pips ?? OIC_DEFAULTS.touch_tol_pips);
+  chk('oic_stack_guard', _oicCfg.stack_guard ?? true);
+  set('oic_stack_guard_pips', _oicCfg.stack_guard_pips ?? OIC_DEFAULTS.stack_guard_pips);
+  set('oic_max_spread_pips', _oicCfg.max_spread_pips ?? '');
+  set('oic_enabled_pairs', (_oicCfg.enabled_pairs ?? []).join(', '));
+  set('oic_tick_secs', _oicCfg.tick_secs ?? OIC_DEFAULTS.tick_secs);
+  set('oic_status_secs', _oicCfg.status_secs ?? OIC_DEFAULTS.status_secs);
+  set('oic_plan_secs', _oicCfg.plan_secs ?? OIC_DEFAULTS.plan_secs);
+  const syms = _oicCfg.broker_symbols || {};
+  OIC_INDEX_KEYS.forEach(k => { const el = document.getElementById(`oic_sym_${k}`); if (el) el.value = syms[k] ?? ''; });
+  chk('oic_tg_enabled', _oicCfg.tg_enabled);
+  set('oic_tg_token', _oicCfg.tg_token ?? '');
+  set('oic_tg_chat_id', _oicCfg.tg_chat_id ?? '');
+}
+function readOiConfForm() {
+  const num = (id, d) => { const v = parseFloat(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
+  const list = id => (document.getElementById(id)?.value || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const flag = id => !!document.getElementById(id)?.checked;
+  _oicCfg.tolSigma = num('oic_tol_sigma', OIC_DEFAULTS.tolSigma);
+  _oicCfg.tolPips = num('oic_tol_pips', 0);
+  _oicCfg.style = document.getElementById('oic_style')?.value || OIC_DEFAULTS.style;
+  _oicCfg.slSigma = num('oic_sl_sigma', OIC_DEFAULTS.slSigma);
+  _oicCfg.tpR = num('oic_tp_r', OIC_DEFAULTS.tpR);
+  _oicCfg.maxArmSigma = num('oic_max_arm_sigma', OIC_DEFAULTS.maxArmSigma);
+  _oicCfg.minTier = document.getElementById('oic_min_tier')?.value || OIC_DEFAULTS.minTier;
+  _oicCfg.minSources = Math.max(1, Math.round(num('oic_min_sources', 1)));
+  _oicCfg.minTouchP = num('oic_min_touch_p', 0);
+  _oicCfg.touchHorizon = document.getElementById('oic_touch_horizon')?.value || OIC_DEFAULTS.touchHorizon;
+  _oicCfg.useStatic = flag('oic_use_static'); _oicCfg.useDynamic = flag('oic_use_dynamic');
+  _oicCfg.rungs = ['p50', 'p75', 'p90'].filter(r => flag('oic_rung_' + r));
+  _oicCfg.oiTypes = OIC_OI_TYPES.filter(t => flag('oic_t_' + t));
+  _oicCfg.pairs = list('oic_pairs');
+  _oicCfg.max_hold_hours = {
+    fade: num('oic_mh_fade', OIC_DEFAULTS.max_hold_hours.fade),
+    break: num('oic_mh_break', OIC_DEFAULTS.max_hold_hours.break),
+    maxpain: num('oic_mh_maxpain', OIC_DEFAULTS.max_hold_hours.maxpain),
+    react: num('oic_mh_react', OIC_DEFAULTS.max_hold_hours.react),
+  };
+  _oicCfg.max_open_risk_pct = num('oic_max_open_risk_pct', OIC_DEFAULTS.max_open_risk_pct);
+  const _gidx = Math.round(num('oic_group_index_cap', 0));
+  _oicCfg.max_group_positions = _gidx > 0 ? { index: _gidx } : {};
+  _oicCfg.plan_max_age_hours = num('oic_plan_max_age_hours', OIC_DEFAULTS.plan_max_age_hours);
+  _oicCfg.break_hold_ticks = Math.round(num('oic_break_hold_ticks', OIC_DEFAULTS.break_hold_ticks));
+  _oicCfg.approach_trim = num('oic_approach_trim', OIC_DEFAULTS.approach_trim);
+  _oicCfg.scale_out = !!document.getElementById('oic_scale_out')?.checked;
+  _oicCfg.be_at_tp1 = !!document.getElementById('oic_be_at_tp1')?.checked;
+  _oicCfg.paper_mode = !!document.getElementById('oic_paper_mode')?.checked;
+  _oicCfg.kill_switch = !!document.getElementById('oic_kill_switch')?.checked;
+  _oicCfg.risk_pct = num('oic_risk_pct', OIC_DEFAULTS.risk_pct);
+  _oicCfg.max_lot = num('oic_max_lot', OIC_DEFAULTS.max_lot);
+  _oicCfg.max_open = Math.round(num('oic_max_open', OIC_DEFAULTS.max_open));
+  _oicCfg.touch_tol_pips = num('oic_touch_tol_pips', OIC_DEFAULTS.touch_tol_pips);
+  _oicCfg.stack_guard = !!document.getElementById('oic_stack_guard')?.checked;
+  _oicCfg.stack_guard_pips = num('oic_stack_guard_pips', OIC_DEFAULTS.stack_guard_pips);
+  const ms = document.getElementById('oic_max_spread_pips')?.value;
+  _oicCfg.max_spread_pips = (ms === '' || ms == null) ? null : (parseFloat(ms) || null);
+  _oicCfg.enabled_pairs = list('oic_enabled_pairs');
+  _oicCfg.tick_secs = Math.round(num('oic_tick_secs', OIC_DEFAULTS.tick_secs));
+  _oicCfg.status_secs = Math.round(num('oic_status_secs', OIC_DEFAULTS.status_secs));
+  _oicCfg.plan_secs = Math.round(num('oic_plan_secs', OIC_DEFAULTS.plan_secs));
+  const syms = {};
+  OIC_INDEX_KEYS.forEach(k => { const v = (document.getElementById(`oic_sym_${k}`)?.value || '').trim(); if (v) syms[k] = v; });
+  _oicCfg.broker_symbols = syms;
+  _oicCfg.tg_enabled = !!document.getElementById('oic_tg_enabled')?.checked;
+  _oicCfg.tg_token = (document.getElementById('oic_tg_token')?.value || '').trim();
+  _oicCfg.tg_chat_id = (document.getElementById('oic_tg_chat_id')?.value || '').trim();
+}
+// The OI-Conf bot is only comparable to the OI bot if everything EXCEPT the reach/selection options matches. So a first open (no saved
+// oi_conf_bot_config yet) seeds the form from the live OI bot's settings, and "Copy settings from OI bot" re-seeds on demand. Paper mode,
+// kill switch and Telegram are NOT copied — the variant stays paper, and alerts stay off until you choose.
+const OIC_OWN_KEYS = ['tolSigma', 'tolPips', 'style', 'slSigma', 'tpR', 'maxArmSigma', 'minTier', 'rungs', 'useStatic', 'useDynamic', 'minSources', 'minTouchP', 'touchHorizon', 'oiTypes', 'pairs'];
+const OIC_NOT_COPIED = ['paper_mode', 'kill_switch', 'tg_enabled', 'tg_token', 'tg_chat_id'];
+let _oicLiveCfg = null;
+async function _oicSeed() {
+  _oicLiveCfg = (await kvGet('oi_bot_config')) || null;
+  const c = {}; Object.keys(OIC_DEFAULTS).forEach(k => { c[k] = (!OIC_OWN_KEYS.includes(k) && _oicLiveCfg && _oicLiveCfg[k] !== undefined) ? _oicLiveCfg[k] : OIC_DEFAULTS[k]; });   // only the shared execution settings come across
+  OIC_NOT_COPIED.forEach(k => { c[k] = OIC_DEFAULTS[k]; });
+  c.paper_mode = true; c.kill_switch = false;
+  return c;
+}
+async function loadOiConfConfig() {
+  try {
+    const stored = await kvGet('oi_conf_bot_config');
+    if (stored) { _oicCfg = { ...OIC_DEFAULTS, ...stored }; _oicLiveCfg = (await kvGet('oi_bot_config')) || null; }
+    else { _oicCfg = await _oicSeed(); const n = document.getElementById('oicSeedNote'); if (n) n.style.display = ''; }
+    renderOiConfForm(); renderOiConfDiff();
+  } catch (e) {}
+}
+async function copyOiConfFromOi() {
+  _oicCfg = await _oicSeed(); renderOiConfForm(); renderOiConfDiff();
+  const el = document.getElementById('oicSaveStatus'); if (el) { el.textContent = 'Copied from the OI bot (paper stays on) — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+// What differs from the live OI bot, apart from the variant's own options — so an audit difference can't hide a settings difference.
+function renderOiConfDiff() {
+  const el = document.getElementById('oicDiffList'); if (!el) return;
+  readOiConfForm();
+  if (!_oicLiveCfg) { el.textContent = 'OI bot settings not found — nothing to compare.'; return; }
+  const skip = new Set([...OIC_OWN_KEYS, 'tg_enabled', 'tg_token', 'tg_chat_id', 'paper_mode', 'kill_switch']);
+  const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  const rows = Object.keys(OIC_DEFAULTS).filter(k => !skip.has(k) && _oicLiveCfg[k] !== undefined && !same(_oicCfg[k], _oicLiveCfg[k]));
+  el.innerHTML = rows.length
+    ? rows.map(k => `<code>${k}</code>: OI bot <b>${JSON.stringify(_oicLiveCfg[k])}</b> → OI-Conf <b style="color:#f59e0b">${JSON.stringify(_oicCfg[k])}</b>`).join(' &nbsp;·&nbsp; ')
+    : '<span style="color:var(--green)">Identical to the OI bot apart from the reach / selection options.</span>';
+}
+async function saveOiConfConfig() {
+  readOiConfForm();
+  const el = document.getElementById('oicSaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try { await kvSet('oi_conf_bot_config', _oicCfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#ffcc80'; setTimeout(() => { el.textContent = ''; }, 3000); }
+  } catch (e) { if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+function resetOiConfDefaults() {
+  _oicCfg = { ...OIC_DEFAULTS }; renderOiConfForm();
+  const el = document.getElementById('oicSaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+async function loadOiConfCreds() { try { _applyCredsToForm(await kvGet('oi_conf_bot_credentials'), 'oic_', 'oic_mt5_password'); } catch (e) {} }
+async function saveOiConfCreds() { await _saveCreds('oi_conf_bot_credentials', 'oic_', 'oic_mt5_password', 'oicCredsStatus'); }
+
+async function loadOiConfLiveStatus() {
+  const ageEl = document.getElementById('oicLiveAge'), modeEl = document.getElementById('oicLiveMode');
+  const balEl = document.getElementById('oicLiveBal'), openEl = document.getElementById('oicOpenN');
+  const uniEl = document.getElementById('oicUniN'), paEl = document.getElementById('oicPlanAge');
+  try {
+    const [st, planWrap] = await Promise.all([kvGet('oi_conf_bot_status'), kvGet('oi_conf_bot_zones')]);
+    if (paEl) paEl.textContent = planWrap?.generatedAt ? new Date(planWrap.generatedAt).toISOString().slice(0, 16).replace('T', ' ') + 'Z' : '—';
+    const body = document.getElementById('oicLinesBody');
+    // Prefer the bot's live lines; fall back to the plan itself so the table shows
+    // the planned zones even before the bot is running.
+    const rows = st?.lines || Object.entries(planWrap?.instruments || {}).map(([k, v]) =>
+      ({ instrument: k, regime: v.regime, spot: v.spot, maxPain: v.maxPain, zoneCount: v.zoneCount, stale: v.stale, entered: [], dayDriftPct: v.dayDriftPct }));
+    // Carry the plan's stale flag onto the bot's own lines too (status may omit it).
+    const _staleBy = Object.fromEntries(Object.entries(planWrap?.instruments || {}).map(([k, v]) => [k, v.stale]));
+    if (!st) { if (ageEl) ageEl.textContent = planWrap ? 'Bot not running — showing the plan' : 'Bot not running — no plan yet'; }
+    else {
+      if (ageEl)  { ageEl.textContent = st.running ? 'Running' : 'Idle'; ageEl.style.color = 'var(--text3)'; }
+      if (modeEl) { modeEl.textContent = st.mode === 'live' ? '🟢 LIVE' : '📄 PAPER'; modeEl.style.color = st.mode === 'live' ? 'var(--green)' : 'var(--amber)'; }
+      if (balEl)  balEl.textContent = st.balance != null ? `Balance ${st.balance}` : '';
+    }
+    if (openEl) openEl.textContent = (st?.mt5_positions || []).length;
+    if (uniEl)  uniEl.textContent  = rows.length;
+    if (body) {
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">No OI plan yet — paste the OI heatmap on index.html, then refresh the plan</td></tr>';
+      } else {
+        const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : (/^(nq|spx|dax|dow|rut|de30|us30|us2000|ftse|uk100)$/i.test(sym) ? 1 : (/gold|xau/i.test(sym) ? 2 : 5)));
+        const regCol = r => r === 'PIN' ? 'var(--green)' : r === 'BREAKOUT' ? 'var(--red)' : 'var(--text3)';
+        // Primed = zones the bot skipped because price had already passed their entry when the
+        // plan armed. Show the count + a hover with WHEN and how far past, so a "hit but no
+        // trade" is self-explaining (was invisible before). `past` is in the instrument's price
+        // units; `at` is epoch seconds from the bot.
+        const primedCell = (r) => {
+          const p = r.primed || [];
+          if (!p.length) return '<span style="color:var(--text3)">—</span>';
+          const tip = p.map(z => {
+            const t = z.at ? new Date(z.at * 1000).toISOString().slice(11, 19) + 'Z' : '?';
+            return `${z.zone_id}: primed ${t} @ ${z.price} — ${z.past} past entry ${z.entry}`;
+          }).join('\n').replace(/"/g, '');
+          return `<span title="${tip}" style="color:var(--amber);cursor:help">${p.length} ⓘ</span>`;
+        };
+        body.innerHTML = rows.map(r => {
+          const stale = r.stale || _staleBy[r.instrument];
+          return `<tr style="border-top:1px solid var(--border)"${stale ? ' title="' + String(stale).replace(/"/g, '') + '"' : ''}>
+          <td style="padding:6px 10px;font-weight:600">${r.instrument}${stale ? ' <span style="color:var(--amber);font-weight:400">⚠</span>' : ''}</td>
+          <td style="padding:6px 10px;color:${stale ? 'var(--amber)' : regCol(r.regime)}">${stale ? 'stale — re-paste' : (r.regime || '—')}</td>
+          <td style="padding:6px 10px;text-align:right">${d(r.instrument, r.spot)}</td>
+          <td style="padding:6px 10px;text-align:right">${d(r.instrument, r.maxPain)}</td>
+          <td style="padding:6px 10px;text-align:right;color:${r.dayDriftPct == null ? 'var(--text3)' : Math.abs(r.dayDriftPct) >= 1.5 ? 'var(--amber)' : 'var(--text3)'}">${r.dayDriftPct == null ? '—' : (r.dayDriftPct > 0 ? '+' : '') + r.dayDriftPct.toFixed(2) + '%'}</td>
+          <td style="padding:6px 10px;text-align:right">${stale ? '—' : (r.zoneCount ?? 0)}</td>
+          <td style="padding:6px 10px;color:var(--text3)">${(r.entered || []).length}</td>
+          <td style="padding:6px 10px">${primedCell(r)}</td>
+        </tr>`; }).join('');
+      }
+    }
+  } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
+}
+
+window.saveOiConfConfig = saveOiConfConfig; window.resetOiConfDefaults = resetOiConfDefaults;
+window.saveOiConfCreds = saveOiConfCreds; window.loadOiConfLiveStatus = loadOiConfLiveStatus;
+
+document.querySelector('.tab-btn[data-tab="oiconfbot"]')?.addEventListener('click', () => { loadOiConfLiveStatus(); loadOiConfAudit(); });
+
+// ── COINCIDENCE AUDIT: every OI level x forecast line pair within tolerance (and the near misses), per instrument ──────────────
+// Server: GET /api/oi-conf-bot/audit. Dynamic lines move, so rows appear and disappear as the hourly re-forecast updates.
+async function loadOiConfAudit() {
+  const sum = document.getElementById('oicAuditSummary'), body = document.getElementById('oicAuditBody'), pos = document.getElementById('oicAuditPos');
+  if (!body) return;
+  try {
+    const r = await fetch('/api/oi-conf-bot/audit', { cache: 'no-store' }); const a = await r.json();
+    if (!a.ok) throw new Error(a.error || 'failed');
+    const age = t => t ? Math.round((Date.now() - Date.parse(t)) / 60000) + ' min ago' : '—';
+    const nz = Object.values(a.instruments).reduce((n, v) => n + v.zones.length, 0), nh = Object.values(a.instruments).reduce((n, v) => n + v.confluence.hits.length, 0);
+    if (sum) sum.innerHTML = `<b>${nz}</b> armed zones from <b>${nh}</b> coincidences across ${Object.keys(a.instruments).length} instruments · plan ${age(a.generatedAt)} · bot ${a.mode || 'not running'}`
+      + (a.cfgUsed ? ` · tolerance ${a.cfgUsed.tolPips > 0 ? a.cfgUsed.tolPips + ' pips' : a.cfgUsed.tolSigma + 'σ'} · ${a.cfgUsed.style}` : '')
+      + (Object.keys(a.skipped || {}).length ? ` · skipped: ${Object.entries(a.skipped).map(([k, v]) => k + ' (' + v + ')').join(', ')}` : '');
+    const dgt = (k, v) => v == null ? '—' : (+v).toPrecision(/^(nq|spx|dax|dow|rut)$/i.test(k) ? 6 : /gold/i.test(k) ? 6 : 6);
+    const fired = (list, z) => (list || []).some(id => { const m = String(id).split('_'); return m[0] === z.mode && m[1] === z.side && Math.abs(parseFloat(m[m.length - 1]) - z.level) <= Math.abs(z.level) * 0.0006; });
+    let html = '';
+    for (const [k, v] of Object.entries(a.instruments)) {
+      const c = v.confluence;
+      html += `<tr style="background:var(--s2)"><td colspan="9" style="padding:8px 10px;font-weight:600">${k.toUpperCase()} <span style="font-weight:400;color:var(--text3)">spot ${dgt(k, v.spot)} · day σ ${dgt(k, c.sigmaPrice)} · tolerance ${dgt(k, c.tol)}${c.tolSigma ? ' (' + c.tolSigma + 'σ)' : ''} · ${c.nOi} OI levels × ${c.volLines.length} lines · dynamic lines @ ${c.dynamicAtHour != null ? c.dynamicAtHour + ':00 London' : 'not yet (first at 01:00)'}</span></td></tr>`;
+      for (const z of v.zones) {
+        html += `<tr style="border-top:1px solid var(--border)"><td style="padding:5px 10px;color:#ffcc80;font-weight:600">ARMED</td><td style="padding:5px 10px">${z.mode} ${z.side}</td><td style="padding:5px 10px;text-align:right">${dgt(k, z.level)}</td>`
+          + `<td style="padding:5px 10px;text-align:right">${dgt(k, z.sl)}</td><td style="padding:5px 10px;text-align:right">${dgt(k, z.tp1)}</td>`
+          + `<td style="padding:5px 10px">${z.confluence.oi.map(o => o.type.replace('_', ' ')).join(' + ')}</td><td style="padding:5px 10px">${z.confluence.vol.map(x => x.name).join(' + ')}</td>`
+          + `<td style="padding:5px 10px;text-align:right">${z.pTouch ? Math.round(z.pTouch.p1 * 100) + '/' + Math.round(z.pTouch.p4 * 100) + '/' + Math.round(z.pTouch.p8 * 100) + '%' : '—'}</td>`
+          + `<td style="padding:5px 10px">${fired(v.entered, z) ? '<span style="color:var(--green)">fired ✓</span>' : ''}</td></tr>`;
+      }
+      for (const n of (c.near || []).slice(0, 6)) html += `<tr style="border-top:1px dashed var(--border);color:var(--text3)"><td style="padding:3px 10px">near miss</td><td style="padding:3px 10px" colspan="2">${n.oi.replace('_', ' ')} ${dgt(k, n.oiPrice)}</td><td colspan="3" style="padding:3px 10px">${n.vol} ${dgt(k, n.volPrice)}</td><td colspan="2" style="padding:3px 10px">Δ ${dgt(k, n.delta)} (${(n.delta / c.tol).toFixed(1)}× tol)</td></tr>`;
+      for (const t of (c.tooFar || []).slice(0, 4)) html += `<tr style="border-top:1px dashed var(--border);color:var(--text3)"><td style="padding:3px 10px">too far</td><td colspan="8" style="padding:3px 10px">${t.oi.map(o => o.type).join('+')} ${dgt(k, t.level)} with ${t.vol.map(x => x.name).join('+')} — ${t.dist}σ from spot (limit ${a.cfgUsed?.maxArmSigma}σ)</td></tr>`;
+      if (!v.zones.length && v.diag) html += `<tr><td colspan="9" style="padding:3px 10px;color:var(--text3);font-size:11px">${v.diag}</td></tr>`;
+    }
+    body.innerHTML = html || '<tr><td colspan="9" style="padding:14px;text-align:center;color:var(--text3)">No plan yet (the server builds it every minute once the OI store and forecast are loaded)</td></tr>';
+    if (pos) pos.innerHTML = `<div style="flex:1;min-width:320px"><div style="font-size:11px;font-weight:600;margin-bottom:4px">OI-Conf open positions (${a.positions.length})</div>`
+      + (a.positions.length ? `<table style="width:100%;font-size:11px;border-collapse:collapse">${a.positions.map(p => `<tr style="border-top:1px solid var(--border)"><td style="padding:3px 6px">${p.symbol}</td><td>${p.direction}</td><td style="text-align:right">${p.lots}</td><td style="text-align:right">${p.open_price}</td><td style="text-align:right">${p.sl ?? '—'}</td><td style="text-align:right">${p.tp ?? '—'}</td><td style="text-align:right;color:${p.profit >= 0 ? 'var(--green)' : 'var(--red)'}">${p.profit}</td><td style="color:var(--text3)">${String(p.comment || '').slice(0, 28)}</td></tr>`).join('')}</table>` : '<div style="color:var(--text3);font-size:11px">none open</div>') + '</div>';
+  } catch (e) { if (sum) sum.textContent = 'Audit unavailable: ' + e.message; }
+}
+window.loadOiConfAudit = loadOiConfAudit; window.copyOiConfFromOi = copyOiConfFromOi; window.renderOiConfDiff = renderOiConfDiff;
+
+loadOiConfConfig();
+loadOiConfCreds();
+loadOiConfLiveStatus();
+
+
+
+
+// TradingView-format export of the OI-Conf bot's planned zones (same TZ line format; block title "OI-CONF BOT TRADES").
+async function oiConfExportCopy() {
+  const st = document.getElementById('oicExportStatus'), out = document.getElementById('oicExportOut');
+  const say = (t, c) => { if (st) { st.textContent = t; st.style.color = c || 'var(--text3)'; } };
+  try {
+    say('Fetching…');
+    const r = await fetch('/api/oi-conf-bot/trades-export', { cache: 'no-store' }); const text = await r.text();
+    if (!r.ok) { say(text || ('Error ' + r.status), 'var(--amber)'); return; }
+    if (out) out.value = text;
+    let copied = false;
+    try { await navigator.clipboard.writeText(text); copied = true; } catch (e) { if (out) { out.focus(); out.select(); try { copied = document.execCommand('copy'); } catch (e2) {} } }
+    const zones = (text.match(/^TZ /gm) || []).length;
+    say(copied ? `Copied ✓ (${zones} zones)` : `Ready (${zones} zones) — press Ctrl+C in the box`, copied ? '#ffcc80' : 'var(--amber)');
+  } catch (e) { say('Error: ' + e.message, 'var(--red)'); }
+}
+window.oiConfExportCopy = oiConfExportCopy;
+async function oiConfRefresh(btn) {
+  const was = btn.textContent; btn.disabled = true; btn.textContent = 'Working…';
+  const st = document.getElementById('oicExportStatus');
+  try { const r = await fetch('/api/oi-conf-bot/zones/refresh', { method: 'POST' }); const j2 = await r.json(); if (!j2.ok) throw new Error(j2.error || 'failed'); if (st) st.textContent = `Rebuilt ✓ (${j2.instruments} instruments)`; loadOiConfAudit(); }
+  catch (e) { if (st) { st.textContent = 'Error: ' + e.message; st.style.color = 'var(--red)'; } }
+  btn.disabled = false; btn.textContent = was;
+}
+window.oiConfRefresh = oiConfRefresh;
+
 // ── TradingView export for BOTH bots (one indicator: pine/OI Bot Trades.pine) ─────────────────────────────────────
 // Same block format for each bot; the block title ("OI BOT TRADES" / "OI-VOL BOT TRADES") tells the indicator which bot a zone belongs to,
 // so the two blocks can be pasted one after the other. The card is rendered in both the OI Gamma and the OI-Vol tab (class-based, no ids).
