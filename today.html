@@ -6519,8 +6519,8 @@ function openCcyDrawer(ccy) {
       const legRows = comp.legs.map(l => `<div class="ccy-legrow"><span class="lp">${l.label}</span><span class="lv ${l.score > 0 ? 'bull' : l.score < 0 ? 'bear' : 'neu'}">${l.score > 0 ? '+' : ''}${Number.isFinite(+l.score) ? (+l.score).toFixed(2) : l.score}</span></div>`).join('');
       compositeHtml = `
     <div class="dr-sec">
-      <h3 class="help" title="Averages whatever's covered of the four sections below into one read. Arithmetic agreement across signals this dashboard already builds — not a backtested rule, and not a substitute for reading the sections themselves.">Composite (all of the above, combined)</h3>
-      <div style="margin-bottom:8px"><span class="chip ${cls}">${comp.direction} ${ccy} · ${comp.agree}/${comp.total} agree</span></div>
+      <h3 class="help" title="Averages whatever's covered of the four sections below into one read. Every leg here is a banked null as a direction read (the page lean, COT, the macro composite) or a structural constant (the carry rank), so agreement between them is arithmetic, not evidence.">Descriptive tally (not a tested direction)</h3>
+      <div style="margin-bottom:8px"><span class="chip neu">${comp.direction === 'LONG' ? 'leans long' : comp.direction === 'SHORT' ? 'leans short' : 'mixed'} ${ccy} · ${comp.agree}/${comp.total} legs agree</span> <span class="muted" style="font-size:11px">no tested view: see the Global Read at the top of this drawer</span></div>
       <div class="ccy-legs">${legRows}</div>
     </div>`;
     }

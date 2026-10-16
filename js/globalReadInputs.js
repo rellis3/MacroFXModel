@@ -152,7 +152,7 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
     for (const sym of ['NQ', 'US2000']) {
       const q = mk(sym);
       if (obs.hy20dBp != null) q.add('risk-tone', clip1(-obs.hy20dBp / 50), `HY spreads ${obs.hy20dBp > 0 ? '+' : ''}${obs.hy20dBp}bp over 20d`);
-      if (obs.vix != null && obs.vix3m != null) q.add('vix-tone', obs.vix >= obs.vix3m ? -1 : clip1((obs.vix3m - obs.vix) / obs.vix3m * 5), `VIX ${obs.vix} vs 3M ${obs.vix3m}`);
+      if (obs.vix != null && obs.vix3m != null) q.add('vix-tone', obs.vix >= obs.vix3m ? -1 : clip1(((obs.vix3m - obs.vix) / obs.vix3m - 0.10) * 5), `VIX ${obs.vix} vs 3M ${obs.vix3m} (a ~10% contango is normal = 0)`);
       if (mc.us10y?.deltas?.['20'] != null) q.add('us-yields', -0.5 * clip1(mc.us10y.deltas['20'] / 25), `US 10Y ${mc.us10y.deltas['20'] > 0 ? '+' : ''}${mc.us10y.deltas['20']}bp over 20d`);
       dir[sym] = q.xs;
     }
