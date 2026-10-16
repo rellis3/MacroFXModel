@@ -10,7 +10,8 @@ import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt
 ROOT = Path(__file__).resolve().parents[2]; OUTD = ROOT / 'analysis' / 'output' / 'cog_video_0918'
 ap = argparse.ArgumentParser(); ap.add_argument('--placebo', type=int, default=200); ap.add_argument('--own-only', action='store_true', help='Amendment B: controls exclude only bars near their OWN event'); ARGS = ap.parse_args()
 import os
-PAIR_US = os.environ.get('COG_US', 'CME_SR3U6'); PAIR_EU = os.environ.get('COG_EU', 'ICEEU_IH7'); MODE = os.environ.get('COG_MODE', 'spread'); TAG = os.environ.get('COG_TAG', ''); COG_END = os.environ.get('COG_END', ''); STRICT = os.environ.get('COG_STRICT', '') == '1'      # strict-causal timestamps: minute stamps -> minute ENDS (bar t holds only minutes that had ended by t)
+PAIR_US = os.environ.get('COG_US', 'CME_SR3U6'); PAIR_EU = os.environ.get('COG_EU', 'ICEEU_IH7'); MODE = os.environ.get('COG_MODE', 'spread'); TAG = os.environ.get('COG_TAG', ''); COG_END = os.environ.get('COG_END', ''); ASSET = os.environ.get('COG_ASSET', 'nq'); STRICT = os.environ.get('COG_STRICT', '') == '1'      # strict-causal timestamps: minute stamps -> minute ENDS (bar t holds only minutes that had ended by t)
+if (STRICT or ASSET != 'nq') and not COG_END: COG_END = '2026-08-20'          # other assets: research cache only; the forward block after 2026-08-20 is reserved (forge/LOCKBOX_PROTOCOL.md H-A)
 if STRICT and not COG_END: COG_END = '2026-08-20'          # the CFD cache is the only Nasdaq source that can be rebuilt strictly
 SUF = ('_ownctrl' if ARGS.own_only else '') + TAG
 rng = np.random.default_rng(11)
@@ -34,12 +35,15 @@ else:                                                           # a single leg a
     leg = r15(DEEP / f'{PAIR_US if MODE == "us" else PAIR_EU}.parquet').reindex(G); us = eu = leg
     dl = dist(leg); good = np.array([dl.get(d, 0) >= 3 for d in dayv]); X = ((leg * 100).where(good)).to_numpy()
 if COG_END: X = X.copy(); X[np.asarray(G > pd.Timestamp(COG_END, tz='UTC') + pd.Timedelta(days=1))] = np.nan      # window cut at the earlier of the legs' last-trade dates
-cfd = pd.read_parquet(ROOT / 'VolRangeForecaster' / 'data' / 'm1' / 'nq_m1.parquet')['close']; cfd.index = pd.to_datetime(cfd.index, utc=True)
+cfd = pd.read_parquet(ROOT / 'VolRangeForecaster' / 'data' / 'm1' / f'{ASSET}_m1.parquet')['close']; cfd.index = pd.to_datetime(cfd.index, utc=True)
 if STRICT: cfd.index = cfd.index + pd.Timedelta(minutes=1)
 cl = np.log(cfd.resample('15min', label='right', closed='right').last()).reindex(G)
-fut = pd.read_parquet(ROOT / 'analysis' / 'output' / 'rate_curve_structure' / 'bars15.parquet')['NQ']; fut.index = pd.to_datetime(fut.index, utc=True); fut = fut.reindex(G)
-sp_i = cl.last_valid_index(); off = cl.loc[sp_i] - fut.loc[:sp_i].dropna().iloc[-1]
-nq = cl.copy(); nq[G > sp_i] = fut[G > sp_i] + off; Y = nq.to_numpy()
+if ASSET == 'nq':
+    fut = pd.read_parquet(ROOT / 'analysis' / 'output' / 'rate_curve_structure' / 'bars15.parquet')['NQ']; fut.index = pd.to_datetime(fut.index, utc=True); fut = fut.reindex(G)
+    sp_i = cl.last_valid_index(); off = cl.loc[sp_i] - fut.loc[:sp_i].dropna().iloc[-1]
+    nq = cl.copy(); nq[G > sp_i] = fut[G > sp_i] + off; Y = nq.to_numpy()
+else:                                                             # any other OANDA asset: its own research-cache closes only (no futures splice, nothing after 2026-08-20)
+    nq = cl.copy(); nq[np.asarray(G > pd.Timestamp('2026-08-20 23:59', tz='UTC'))] = np.nan; Y = nq.to_numpy()
 hour = G.hour.to_numpy() + (G.minute.to_numpy() > 0) * 0          # confirm bar END hour (UTC)
 SPLITS = {'IS': (pd.Timestamp('2024-04-15', tz='UTC'), pd.Timestamp('2025-04-01', tz='UTC')), 'VAL': (pd.Timestamp('2025-04-01', tz='UTC'), pd.Timestamp('2026-01-01', tz='UTC')), 'OOS': (pd.Timestamp('2026-01-01', tz='UTC'), pd.Timestamp('2026-10-10', tz='UTC'))}
 half_of = np.full(N, '', dtype=object)

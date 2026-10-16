@@ -96,7 +96,7 @@ HALF = {'VAL': (G >= BL[0]) & (G < BL[3]), 'OOS': (G >= BL[3]) & (G < BL[-1]), '
 def gain(p1, p0, y, mask, B=2000):
     a, b = day_ic(p1, y, mask), day_ic(p0, y, mask); idx = a.index.intersection(b.index); d = (a[idx] - b[idx]).to_numpy()
     if len(d) < 10: return np.nan, np.nan, np.nan, np.nan, np.nan, len(d)
-    bm = d[rng.integers(0, len(d), size=(B, len(d)))].mean(1); return d.mean(), np.percentile(bm, 2.5), np.percentile(bm, 97.5), a[idx].mean(), b[idx].mean(), len(d)
+    bm = d[rng.integers(0, len(d), size=(B, len(d)))].mean(1); global LAST_P; LAST_P = float((bm <= 0).mean()); return d.mean(), np.percentile(bm, 2.5), np.percentile(bm, 97.5), a[idx].mean(), b[idx].mean(), len(d)
 
 # ------------------------------------------------------------------ real run
 M0 = np.column_stack([NFD.to_numpy(float), HOUR.to_numpy(float)]); DV = divergence(LF)
@@ -108,7 +108,7 @@ for tn, y in TARG.items():
     for hf, mk in HALF.items():
         gm, lo, hi, ic1, ic0, nd = gain(p1, p0, y, mk & np.isfinite(p0) & np.isfinite(p1))
         a1, a0 = auc(p1, y, mk & np.isfinite(p1)), auc(p0, y, mk & np.isfinite(p0)) if tn.startswith('dir') else (np.nan, np.nan)
-        RES.append(dict(target=tn, half=hf, days=nd, IC_M0=ic0, IC_M1=ic1, IC_gain=gm, ci_lo=lo, ci_hi=hi, AUC_M0=a0, AUC_M1=a1))
+        RES.append(dict(target=tn, half=hf, days=nd, IC_M0=ic0, IC_M1=ic1, IC_gain=gm, ci_lo=lo, ci_hi=hi, AUC_M0=a0, AUC_M1=a1, p_boot=LAST_P))
     print('done', tn, flush=True)
 RES = pd.DataFrame(RES)
 # placebo on the two primary targets
