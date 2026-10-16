@@ -153,6 +153,24 @@ export function combineDirection(signals) {
     agreement: den && live.length > 1 ? r2(num / den) : null, nLive: live.length, shown };
 }
 
+// ── 4b. The STORY arm (D2): every input with a direction gets a vote-sized weight ──
+// The owner's hypothesis: the many descriptive reads (chain, rates, spreads, scorecard,
+// COT, OI, HMM, lean...) say something TOGETHER that none says alone. The evidence-weighted
+// arm above gives a null input weight 0, so it can never test that. This arm gives every
+// input that points a way a small NOMINAL weight (an IC of 0.05, a ~52.5% hit rate), still
+// correlation-aware so a family of six rates reads counts as about one voice, not six.
+// It is a SHADOW: scored forward as D2 next to D1, never allowed to move D1, the range
+// arm or any bot. If D2 beats D1 and a coin flip out of sample, the weights get promoted
+// by registry edit; if not, the story stays a story.
+export const STORY_IC = 0.05;
+export function storyDirection(signals) {
+  const lifted = signals.map(x => ({ ...x, e: x.s !== 0 && !(x.e > 0) ? STORY_IC * Math.abs(x.s) : x.e }));
+  const d = combineDirection(lifted);
+  return { pUp: d.pUp, r2: d.r2, agreement: d.agreement, nLive: d.nLive,
+    byFamily: Object.fromEntries(Object.entries(lifted.filter(x => x.s !== 0).reduce((a, x) => { (a[x.family] ??= []).push(Math.sign(x.s)); return a; }, {}))
+      .map(([f, v]) => [f, Math.sign(v.reduce((a, b) => a + b, 0))])) };
+}
+
 // ── 5. Range: joint multiplier on the fitted ladder, and P(H-L > p75) ───────
 // row: one daily-read row { sym, ratio (IV/σ), edges ([lo,hi] tercile cuts), lines:{hl_p50,hl_p75} }
 // flags: { vixInv, frontDear, frontCalm, allDown, nqDownWeek, gexShortNq }
@@ -263,7 +281,11 @@ export function instrumentCard(sym, { row, flags, dirSignals = [], tag, hmmRange
   const dirLabel = dir.nLive === 0 ? 'no tested directional input is active'
     : Math.abs(dir.pUp - 0.5) < 0.04 ? `active inputs net to ~50/50${dir.agreement == null ? ' (one weak input)' : ` (agreement ${dir.agreement})`}`
     : `${dir.pUp > 0.5 ? 'UP' : 'DOWN'} ${Math.round(Math.max(dir.pUp, 1 - dir.pUp) * 100)}% (R² ${dir.r2}, ${dir.nLive} input${dir.nLive > 1 ? 's' : ''})`;
-  const card = { sym, range: rv, behaviour: bh, direction: { ...dir, label: dirLabel }, clarity };
+  const story = storyDirection(dirSignals);
+  const storyLabel = story.nLive === 0 ? 'the story has no direction today'
+    : Math.abs(story.pUp - 0.5) < 0.02 ? 'the story nets to ~50/50'
+    : `${story.pUp > 0.5 ? 'UP' : 'DOWN'} ${Math.round(Math.max(story.pUp, 1 - story.pUp) * 100)}% (${story.nLive} reads, unvalidated)`;
+  const card = { sym, range: rv, behaviour: bh, direction: { ...dir, label: dirLabel, story: { ...story, label: storyLabel } }, clarity };
   card.plan = tradePlan(card);
   return card;
 }
@@ -377,7 +399,7 @@ export function recordRow(read, day) {
   const cards = {};
   for (const c of Object.values(read.cards ?? {})) cards[c.sym] = {
     mult: c.range?.mult ?? null, hlP50: c.range?.hlP50 ?? null, hlP75: c.range?.hlP75 ?? null, pAbove75: c.range?.pAbove75 ?? null,
-    behaviour: c.behaviour?.label ?? null, stance: c.plan?.stance ?? null, pUp: c.direction?.pUp ?? 0.5, nLive: c.direction?.nLive ?? 0, clarity: c.clarity,
+    behaviour: c.behaviour?.label ?? null, stance: c.plan?.stance ?? null, pUp: c.direction?.pUp ?? 0.5, nLive: c.direction?.nLive ?? 0, pUpStory: c.direction?.story?.pUp ?? 0.5, nStory: c.direction?.story?.nLive ?? 0, clarity: c.clarity,
     realisedHl: null, beyondP75: null, oc: null,
   };
   return { day, at: read.meta?.asOf ?? new Date().toISOString(), headline: read.headline, conviction: read.conviction, cards };
@@ -416,10 +438,16 @@ export function scoreRecord(rows = [], { floor = 30 } = {}) {
   const calls = obs.filter(o => o.nLive > 0 && Math.abs(o.pUp - 0.5) >= 0.04 && o.oc != null && o.oc !== 0);
   const bd = calls.length ? calls.reduce((a, o) => a + (o.pUp - (o.oc > 0 ? 1 : 0)) ** 2, 0) / calls.length : null;
   const D1 = { n: calls.length, hits: calls.filter(o => (o.pUp > 0.5) === (o.oc > 0)).length, brierSkill: bd != null ? r3(1 - bd / 0.25) : null };
+  // D2: the story arm (nominal weights), scored on the same sessions and the same outcome
+  const sc = obs.filter(o => o.nStory > 0 && Math.abs(o.pUpStory - 0.5) >= 0.02 && o.oc != null && o.oc !== 0);
+  const bs = sc.length ? sc.reduce((a, o) => a + (o.pUpStory - (o.oc > 0 ? 1 : 0)) ** 2, 0) / sc.length : null;
+  const D2 = { n: sc.length, hits: sc.filter(o => (o.pUpStory > 0.5) === (o.oc > 0)).length, hitRate: sc.length ? r3(sc.filter(o => (o.pUpStory > 0.5) === (o.oc > 0)).length / sc.length) : null,
+    brierSkill: bs != null ? r3(1 - bs / 0.25) : null };
   const verdict = sessions < floor ? `too early: ${sessions} of ${floor} sessions` : [
     R1.medianRatio == null ? 'R1 n/a' : R1.medianRatio < 0.97 && R1.betterShare >= 0.6 ? 'R1 PASS' : R1.medianRatio >= 1 ? 'R1 FAIL' : 'R1 between bars',
     R2.brierSkill == null ? 'R2 n/a' : R2.brierSkill > 0 && R2.expansionRate != null && R2.containedRate != null && R2.expansionRate - R2.containedRate >= 0.10 ? 'R2 PASS' : R2.brierSkill <= 0 ? 'R2 FAIL' : 'R2 between bars',
     D1.n < floor ? `D1 too few calls (${D1.n})` : D1.brierSkill > 0 ? 'D1 PASS' : 'D1 FAIL',
+    D2.n < floor ? `D2 (story) too few calls (${D2.n})` : D2.brierSkill > 0 && (D1.brierSkill == null || D2.brierSkill > D1.brierSkill) ? 'D2 story beats D1' : 'D2 story FAIL',
   ].join(' · ');
-  return { sessions, observations: obs.length, R1, R2, D1, verdict };
+  return { sessions, observations: obs.length, R1, R2, D1, D2, verdict };
 }

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { tradePlan, currencyTier, recordRow, attachRealised, scoreRecord, combineDirection, effectiveIc, freshness, rangeView, behaviourOf, stateAxes, environmentLabel, buildGlobalRead, normCdf, solve, TIER_P } from './globalReadCore.js';
+import { tradePlan, currencyTier, recordRow, attachRealised, scoreRecord, combineDirection, effectiveIc, freshness, rangeView, behaviourOf, stateAxes, environmentLabel, buildGlobalRead, storyDirection, normCdf, solve, TIER_P } from './globalReadCore.js';
 import { assembleGlobalReadInput } from './globalReadInputs.js';
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 
@@ -127,6 +127,21 @@ t('input assembly survives every route missing, and reads a firing tested input'
   const r = buildGlobalRead(assembleGlobalReadInput(D, { now: Date.parse('2026-10-13T08:00:00Z') }));
   assert.ok(r.cards.USDJPY.direction.pUp > 0.55); assert.match(r.cards.USDJPY.plan.direction, /UP/); assert.equal(r.cards.USDJPY.plan.stance, 'TAKE PROFIT AT LINES');
   assert.ok(r.currencies.JPY.pStronger < 0.45);
+});
+
+
+t('story arm: nulls get a nominal weight, one family is ~one voice, evidence-weighted arm is untouched', () => {
+  const nul = (id, family, s) => ({ id, family, s, e: 0, tier: 'null' });
+  const rates = ['a', 'b', 'c', 'd', 'e'].map(i => nul('r' + i, 'rates', 1));
+  const six = storyDirection([...rates, nul('x', 'price-state', 1), nul('y', 'positioning', 1)]);
+  const one = storyDirection([nul('r', 'rates', 1), nul('x', 'price-state', 1), nul('y', 'positioning', 1)]);
+  assert.ok(six.pUp > 0.5 && six.pUp < 0.6);                       // modest by construction
+  assert.ok(six.pUp - one.pUp < 0.02);                              // five rates reads are not five votes
+  assert.equal(storyDirection([nul('u', 'rates', 1), nul('d', 'price-state', -1)]).pUp, 0.5);   // disagreement cancels
+  assert.equal(storyDirection([nul('z', 'rates', 0)]).nLive, 0);
+  assert.equal(combineDirection([nul('r', 'rates', 1)]).nLive, 0);   // D1 still gives a null no weight
+  const card = buildGlobalRead({ dir: { EURUSD: [nul('r', 'rates', 1), nul('x', 'price-state', 1)] } }).cards.EURUSD;
+  assert.equal(card.direction.nLive, 0); assert.ok(card.direction.story.pUp > 0.5);
 });
 
 console.log(`globalReadCore: ${n} tests passed`);

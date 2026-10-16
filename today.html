@@ -6835,6 +6835,13 @@ function _grDirChip(d) {
   const up = d.pUp > 0.5;
   return `<span class="chip ${up ? 'bull' : 'bear'}" title="${esc0(d.label)}">${up ? '▲' : '▼'} ${Math.round(Math.max(d.pUp, 1 - d.pUp) * 100)}%</span>`;
 }
+// The story arm (D2): every read that points a way, nominal weight, family-aware. Shadow only -- scored
+// forward next to the evidence-weighted arm; it never feeds the tested direction, the range or a bot.
+function _grStoryChip(d) {
+  const st = d?.story; if (!st || !st.nLive || Math.abs(st.pUp - 0.5) < 0.02) return '';
+  const up = st.pUp > 0.5;
+  return `<span class="chip dim" style="border-style:dashed" title="${esc0(`Story lean (shadow): ${st.label}. Every read that points a way gets a small equal weight, with reads from the same family counted as roughly one voice. NOT validated: it is being scored forward as D2 against the evidence-weighted arm. See /api/global-read/record.`)}">story ${up ? '▲' : '▼'} ${Math.round(Math.max(st.pUp, 1 - st.pUp) * 100)}%</span>`;
+}
 const _grAg = x => `<span class="gr-ag ${x.s > 0 ? 'up' : x.s < 0 ? 'dn' : ''} ${x.e > 0 ? '' : 'w0'}">${x.s > 0 ? '▲' : x.s < 0 ? '▼' : '0'}</span>`;
 const _GR_AXES = { risk: ['Risk appetite', 'risk-on', 'risk-off'], usd: ['Dollar', 'stronger', 'weaker'], rates: ['Rates', 'tightening', 'easing'], vol: ['Volatility', 'elevated', 'compressed'], credit: ['Credit', 'stress', 'easing'] };
 function renderGlobalRead() {
@@ -6888,7 +6895,7 @@ function renderGlobalRead() {
 function _globalTier(r) {
   const k = globalRead?.cards?.[r.name]; if (!k) return '';
   const p = k.range?.pAbove75;
-  return `<div class="tier"><span class="lbl">read</span>${_grStanceChip(k.plan?.stance, ` title="${esc0(`${k.plan?.lines ?? ''} ${k.plan?.direction ?? ''}`)}"`)}${p != null ? `<span class="chip dim" title="Global Read: P(today's high-low beyond the ladder's p75). 25% is a normal day.">p75+ ${_grPct(p)}</span>` : ''}${_grDirChip(k.direction)}</div>`;
+  return `<div class="tier"><span class="lbl">read</span>${_grStanceChip(k.plan?.stance, ` title="${esc0(`${k.plan?.lines ?? ''} ${k.plan?.direction ?? ''}`)}"`)}${p != null ? `<span class="chip dim" title="Global Read: P(today's high-low beyond the ladder's p75). 25% is a normal day.">p75+ ${_grPct(p)}</span>` : ''}${_grDirChip(k.direction)}${_grStoryChip(k.direction)}</div>`;
 }
 // currency drawer: its pairs and its own readings
 function globalReadCcyHtml(ccy) {
@@ -6922,7 +6929,7 @@ function renderDrawerGlobal(r) {
   const ins = (k.direction?.shown ?? []).map(x => `<tr><td>${esc0(x.label)}</td><td>${_grAg(x)}</td><td class="gr-num">${x.e}</td><td class="muted">${esc0(x.tier ?? '')}</td><td class="muted">${esc0(x.note ?? '')}</td></tr>`).join('');
   el.innerHTML = `<div style="font-size:12.5px;line-height:1.5"><b>${esc0(k.plan?.lines ?? '')}</b><br>${esc0(k.plan?.direction ?? '')}</div>
     <div class="gr-h">Range</div><div style="font-size:12px">P(beyond p75) <b>${_grPct(k.range?.pAbove75)}</b> · expected high-low ×${k.range?.mult ?? '—'} the ladder (${k.range?.expectedHl ?? '—'}% vs ${k.range?.hlP50 ?? '—'}%) · ${drv}</div>
-    ${ins ? `<div class="gr-h">Direction inputs — P(up) ${_grPct(k.direction.pUp)}</div><div class="gr-scroll"><table class="gr-tbl" style="font-size:11.5px"><tr><th>input</th><th>says</th><th>weight</th><th>evidence</th><th>reading</th></tr>${ins}</table></div>` : ''}`;
+    ${ins ? `<div class="gr-h">Direction inputs — tested P(up) ${_grPct(k.direction.pUp)}${k.direction.story?.nLive ? ` · story (shadow, unvalidated) P(up) ${_grPct(k.direction.story.pUp)} from ${k.direction.story.nLive} reads` : ''}</div><div class="gr-scroll"><table class="gr-tbl" style="font-size:11.5px"><tr><th>input</th><th>says</th><th>weight</th><th>evidence</th><th>reading</th></tr>${ins}</table></div>` : ''}`;
 }
 function renderMacro() {
   const el = $('macro');
