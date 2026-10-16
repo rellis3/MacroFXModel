@@ -59,7 +59,7 @@ export function newsKind(name) {
   if (/rate decision|interest rate|policy rate|bank rate|rate statement|cash rate|refi rate|deposit rate/.test(n)) return 'rate';
   if (/\bcpi\b|\bppi\b|\bpce\b|inflation|price index|consumer prices|producer prices/.test(n)) return 'inflation';
   if (/unemployment rate|jobless rate/.test(n)) return 'unemp';
-  if (/jobless claims|initial claims|continuing claims/.test(n)) return 'claims';
+  if (/jobless claims|initial claims|continuing claims|unemployment claims/.test(n)) return 'claims';
   if (/nonfarm|non-farm|payroll|employment change|employment report|\bjobs\b/.test(n)) return 'jobs';
   if (/\bgdp\b|growth rate/.test(n)) return 'growth';
   if (/\bpmi\b|\bism\b|business climate|manufacturing|services|sentiment|confidence|zew|ifo|tankan/.test(n)) return 'survey';
