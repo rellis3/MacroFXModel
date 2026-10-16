@@ -144,4 +144,17 @@ t('story arm: nulls get a nominal weight, one family is ~one voice, evidence-wei
   assert.equal(card.direction.nLive, 0); assert.ok(card.direction.story.pUp > 0.5);
 });
 
+t('story-only reads: tape so far, US yields and credit tone enter the story arm and never the tested one', () => {
+  const D = { 'vol-forecast/session': { instruments: { EURUSD: { oc: 0.2, forecast: { oc_median: 0.25 } } } },
+    'macro-changes': { rows: [{ key: 'us10y', deltas: { 20: 25 }, last: 4.5 }, { key: 'hy', deltas: { 20: 50 } }] } };
+  const inp = assembleGlobalReadInput(D, { now: Date.parse('2026-10-13T08:00:00Z') });
+  const ids = inp.dir.EURUSD.map(x => x.id);
+  for (const id of ['today-tape', 'us-yields', 'risk-tone']) assert.ok(ids.includes(id), id);
+  const tape = inp.dir.EURUSD.find(x => x.id === 'today-tape');
+  assert.equal(tape.e, 0); assert.ok(tape.s > 0.5);                 // up so far, no tested weight
+  const r = buildGlobalRead(inp).cards.EURUSD;
+  assert.equal(r.direction.nLive, 0); assert.ok(r.direction.story.reads.length >= 3);
+  assert.ok(r.direction.story.reads.find(x => x.id === 'us-yields').s < 0);   // USD side: EURUSD falls when US yields rise
+});
+
 console.log(`globalReadCore: ${n} tests passed`);

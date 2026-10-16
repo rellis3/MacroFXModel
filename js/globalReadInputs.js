@@ -16,11 +16,13 @@ import { effectiveIc, freshness, REG } from './globalReadCore.js';
 export const GLOBAL_READ_ENDPOINTS = ['data-health', 'daily-read', 'desk-watch', 'today-reads', 'macro-changes', 'vol-forecast', 'hmm/regimes',
   'yield-spread/plan', 'macro-regime-fx', 'macro-scorecard', 'trend-basket', 'cot-extremes', 'cot', 'oi-today', 'oi-levels',
   'credit-stress', 'liquidity-gate/live', 'regime', 'ledger', 'range-calls', 'release-calls', 'chain-read', 'morning-brief',
-  'econ-surprise', 'fomc/latest', 'hmm5m-v2', 'daily-snapshot?days=2', 'real-yield', 'yield-curve'];
+  'econ-surprise', 'fomc/latest', 'hmm5m-v2', 'vol-forecast/session', 'daily-snapshot?days=2', 'real-yield', 'yield-curve'];
 
 export const GR_PAIRS = { EURUSD: ['EUR', 'USD'], GBPUSD: ['GBP', 'USD'], USDJPY: ['USD', 'JPY'], AUDUSD: ['AUD', 'USD'], NZDUSD: ['NZD', 'USD'], USDCAD: ['USD', 'CAD'], USDCHF: ['USD', 'CHF'] };
 export const GR_CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
 
+// risk-on moves each pair this way (1 = pair up): commodity FX and the haven crosses; USDCAD down because CAD is the risk side
+const RISK_BETA = { AUDUSD: 1, NZDUSD: 1, USDCAD: -1, USDJPY: 1, USDCHF: 1, EURUSD: 0.5, GBPUSD: 0.5 };
 const SLASH = s => s.replace(/^([A-Z]{3})([A-Z]{3})$/, '$1/$2');
 const sgn = x => (x > 0 ? 1 : x < 0 ? -1 : 0);
 const median = xs => { const a = xs.filter(Number.isFinite).sort((p, q) => p - q); return a.length ? a[Math.floor(a.length / 2)] : null; };
@@ -94,13 +96,13 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
     const k = pair.toLowerCase(), xs = [];
     const add = (id, s, extra = {}) => {
       const r = REG[id];
-      xs.push({ id, label: r.label, family: r.family, tier: r.tier, s, e: effectiveIc({ tier: r.tier, ic: extra.ic ?? r.ic, n_eff: extra.n_eff ?? null }, extra.fresh ?? 1), note: extra.note ?? null });
+      xs.push({ id, label: r.label, family: r.family, tier: r.tier, s, e: effectiveIc({ tier: r.tier, ic: extra.ic ?? r.ic, n_eff: extra.n_eff ?? null }, extra.fresh ?? 1), note: extra.note ?? null, sStory: extra.sStory });
     };
     const y = ys?.signals?.[k];
     if (y) {
       const active = Math.abs(y.z) >= ysThr;
       const d = (y.z > 0 ? 1 : -1) * (y.inverted ? -1 : 1);
-      add('yield-spread', active ? d * Math.min(1, Math.abs(y.z) / ysThr) : 0, { fresh: freshness(ageDays(y.asOf), 3), note: `2Y spread z ${y.z.toFixed(2)} (enters at ${ysThr})` });
+      add('yield-spread', active ? d * Math.min(1, Math.abs(y.z) / ysThr) : 0, { sStory: d * Math.min(1, Math.abs(y.z) / ysThr), fresh: freshness(ageDays(y.asOf), 3), note: `2Y spread z ${y.z.toFixed(2)} (enters at ${ysThr})` });
     }
     const usdSide = bq[0] === 'USD' ? 1 : -1;
     add('post-fomc', sessionsSinceFomc != null && sessionsSinceFomc <= 5 ? usdSide : 0, { note: lastFomc ? `last FOMC ${lastFomc}, ${sessionsSinceFomc} sessions ago` : 'no FOMC date' });
@@ -117,6 +119,13 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
     add('cot', -relCcy(cot, bq, 2), { note: 'spec positioning, read contrarian' });
     const oi = (D['oi-today']?.pairs ?? []).find(p => p.pair === SLASH(pair));
     add('oi-walls', oi?.maxPain && oi?.spot ? sgn(oi.maxPain - oi.spot) : 0, { note: oi ? `max pain ${oi.maxPain.toPrecision(6)} (${oi.regime})` : '—' });
+    // story-only reads (REGISTRY tier 'untested', weight 0 in the tested arm): the chain and the tape so far
+    const clip1 = v => Math.max(-1, Math.min(1, v));
+    if (mc.us10y?.deltas?.['20'] != null) add('us-yields', usdSide * clip1(mc.us10y.deltas['20'] / 25), { note: `US 10Y ${mc.us10y.deltas['20'] > 0 ? '+' : ''}${mc.us10y.deltas['20']}bp over 20d` });
+    if (obs.dxy20dPct != null) add('dollar-tape', usdSide * clip1(obs.dxy20dPct / 2), { note: `broad dollar ${obs.dxy20dPct > 0 ? '+' : ''}${obs.dxy20dPct}% over 20d` });
+    if (obs.hy20dBp != null) add('risk-tone', (RISK_BETA[pair] ?? 0) * clip1(-obs.hy20dBp / 50), { note: `HY spreads ${obs.hy20dBp > 0 ? '+' : ''}${obs.hy20dBp}bp over 20d` });
+    const ss = D['vol-forecast/session']?.instruments?.[pair];
+    if (ss?.oc != null && ss?.forecast?.oc_median > 0) add('today-tape', clip1(ss.oc / ss.forecast.oc_median), { note: `session ${ss.oc > 0 ? '+' : ''}${ss.oc}% from the open so far` });
     dir[pair] = xs;
   }
 
@@ -206,6 +215,7 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
     meta: {
       asOf: new Date(now).toISOString(),
       dailyReadAt: drDay?.setup?.at ?? null,
+      chain: D['chain-read']?.read ? { hook: D['chain-read'].read.hook ?? null, shouldHave: D['chain-read'].read.shouldHave ?? null, stories: (D['chain-read'].read.stories ?? []).map(x => ({ name: x.name, status: x.status, legs: x.legs, evidence: x.evidence })), ageMin: D['chain-read'].ageMin ?? null } : null,
       prices: Object.fromEntries(Object.entries(plan).map(([k, v]) => [k, v.price ?? null])),
       forward: { lean: D.ledger?.summary?.overall ?? null, rangeCalls: D['range-calls']?.summary?.flagged ? { ...D['range-calls'].summary.flagged, n: D['range-calls'].summary.n } : null },
       missing,

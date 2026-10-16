@@ -71,6 +71,11 @@ export const REGISTRY = [
     tier: 'null', ic: 0, evidence: 'cb-tone-direction (t 0.32)' },
   { id: 'cot', label: 'COT positioning', family: 'positioning', question: 'direction', timing: 'lagging', horizon: 'weeks',
     tier: 'null', ic: 0, evidence: 'crowded-bond-short-fomc, squeeze-fuel (null)' },
+  // story-only reads: no test has asked these to lead, so weight 0 in the tested arm; the story arm scores them forward
+  { id: 'us-yields', label: 'US 10Y yield trend', family: 'rates', question: 'direction', timing: 'coincident', horizon: 'days', tier: 'untested', ic: 0, evidence: 'yield→asset coupling null (same-bar only)' },
+  { id: 'dollar-tape', label: 'Dollar trend (20d)', family: 'price-state', question: 'direction', timing: 'lagging', horizon: 'days', tier: 'untested', ic: 0, evidence: 'untested as a day-direction read' },
+  { id: 'risk-tone', label: 'Credit / risk tone', family: 'risk', question: 'direction', timing: 'coincident', horizon: 'days', tier: 'untested', ic: 0, evidence: 'credit-stress gate failed OOS; direction untested' },
+  { id: 'today-tape', label: 'Today so far (open → now)', family: 'intraday', question: 'direction', timing: 'coincident', horizon: 'session', tier: 'untested', ic: 0, evidence: 'path-neutral lines, jump-momentum null; shown as a story read only' },
   { id: 'oi-walls', label: 'OI walls / max pain', family: 'positioning', question: 'direction', timing: 'coincident', horizon: 'session',
     tier: 'null', ic: 0, evidence: 'oi-max-pain, wall-placebo (null)' },
   // range — joint coefficients (forge/COMBINED_RANGE_PREREG.md, test pinball 0.90 / 0.94)
@@ -164,9 +169,12 @@ export function combineDirection(signals) {
 // by registry edit; if not, the story stays a story.
 export const STORY_IC = 0.05;
 export function storyDirection(signals) {
-  const lifted = signals.map(x => ({ ...x, e: x.s !== 0 && !(x.e > 0) ? STORY_IC * Math.abs(x.s) : x.e }));
+  const lifted = signals.map(x => { const sv = x.sStory ?? x.s; return { ...x, s: sv, e: sv !== 0 && !(x.e > 0) ? STORY_IC * Math.abs(sv) : x.e }; });
   const d = combineDirection(lifted);
-  return { pUp: d.pUp, r2: d.r2, agreement: d.agreement, nLive: d.nLive,
+  // the reads, strongest first, for the "because" chips: what pulls up, what pulls down
+  const reads = lifted.filter(x => x.s !== 0).sort((a, b) => Math.abs(b.s) - Math.abs(a.s))
+    .map(x => ({ id: x.id, label: x.label ?? REG[x.id]?.label ?? x.id, family: x.family, s: r2(x.s), note: x.note ?? null }));
+  return { pUp: d.pUp, r2: d.r2, agreement: d.agreement, nLive: d.nLive, reads,
     byFamily: Object.fromEntries(Object.entries(lifted.filter(x => x.s !== 0).reduce((a, x) => { (a[x.family] ??= []).push(Math.sign(x.s)); return a; }, {}))
       .map(([f, v]) => [f, Math.sign(v.reduce((a, b) => a + b, 0))])) };
 }

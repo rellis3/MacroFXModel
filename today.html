@@ -295,6 +295,28 @@
   .meter .tick span{position:absolute;top:15px;left:-8px;font-size:8.5px;color:var(--text3);letter-spacing:.02em}
 
   /* Range map — price position vs forecast cone + travelled range */
+
+  /* Day Read: one tile per market, verdict first, numbers second */
+  .dr-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin:2px 0 8px}
+  .dr-hook{font-size:14px;line-height:1.4;font-weight:600;color:var(--text)}
+  .dr-sub{font-size:11px;color:var(--text3)}
+  .dr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+  .dr-tile{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;cursor:pointer;min-width:0}
+  .dr-tile:hover{border-color:var(--text3)}
+  .dr-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .dr-nm{font-weight:700;font-size:13.5px}
+  .dr-px{font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums}
+  .dr-verdict{display:flex;align-items:center;gap:8px;margin:6px 0 8px}
+  .dr-big{font-size:17px;font-weight:800;letter-spacing:.02em;white-space:nowrap}
+  .dr-big.up{color:var(--bull)} .dr-big.dn{color:var(--bear)} .dr-big.fl{color:var(--text3)}
+  .dr-big small{font-size:11px;font-weight:600;opacity:.8;margin-left:3px}
+  .dr-day{font-size:11px;font-weight:700;padding:1px 7px;border-radius:9px;background:var(--card);border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .dr-day.wide{color:var(--amber,#f59e0b);border-color:currentColor} .dr-day.cap{color:var(--blue,#60a5fa);border-color:currentColor}
+  .dr-line{font-size:11.5px;color:var(--text2);line-height:1.4;margin:0 0 6px}
+  .dr-why{display:flex;flex-wrap:wrap;gap:4px}
+  .dr-why span{font-size:10.5px;padding:1px 6px;border-radius:4px;background:var(--card);border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .dr-why span.u{color:var(--bull)} .dr-why span.d{color:var(--bear)}
+  .dr-tile .rmap{margin:6px 0 20px}
   .rmap-lbl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text3);margin-bottom:4px;gap:8px}
   .rmap-lbl b{color:var(--text2);font-weight:600;white-space:nowrap}
   .rmap{position:relative;height:16px;background:var(--card2);border-radius:8px;margin:0 0 22px;overflow:visible}
@@ -1521,6 +1543,7 @@
   <div class="dashgrid">
     <div class="main-col">
       <div class="mbrief" id="mbrief" style="display:none"></div>
+      <div class="mread" id="dayRead" data-focus="Day read" style="display:none"></div>
       <div class="mread" id="globalRead" data-focus="Global read" style="display:none"></div>
 
       <!-- The end-of-day read: this morning's published numbers against what the
@@ -5131,6 +5154,7 @@ function pairSignalGold(r) {
 let collapsedSections;
 try { collapsedSections = new Set(JSON.parse(localStorage.getItem('collapsedSections') || '[]')); }
 catch (e) { collapsedSections = new Set(); }
+try { if (localStorage.getItem('gr_detail_seen_v1') == null) { collapsedSections.add('globalRead'); localStorage.setItem('gr_detail_seen_v1', '1'); localStorage.setItem('collapsedSections', JSON.stringify([...collapsedSections])); } } catch (e) { /* storage blocked: leave it open */ }
 function toggleSection(id) {
   if (collapsedSections.has(id)) collapsedSections.delete(id); else collapsedSections.add(id);
   setTimeout(() => { try { renderJumpNav(); } catch (e) {} }, 0);   // the rail marks collapsed sections
@@ -6826,7 +6850,8 @@ function renderDeskWatch() {
 // the pre-registered forward test: MD files/GLOBAL_DECISION_ENGINE.md.
 let globalRead = null;
 async function loadGlobalRead() {
-  try { const r = await jget('/api/global-read'); if (r?.ok) { globalRead = r; renderGlobalRead(); render(); } } catch { /* panel stays hidden */ }
+  await _drLoadRecord();
+  try { const r = await jget('/api/global-read'); if (r?.ok) { globalRead = r; renderGlobalRead(); renderDayRead(); render(); } } catch { /* panel stays hidden */ }
 }
 const _grPct = x => x == null ? '—' : `${Math.round(x * 100)}%`;
 const _grStanceChip = (s, extra = '') => s ? `<span class="chip ${s === 'FOLLOW BREAKS' ? 'warn' : s === 'TAKE PROFIT AT LINES' ? 'range' : 'neu'}"${extra}>${esc0(s)}</span>` : '';
@@ -6869,7 +6894,7 @@ function renderGlobalRead() {
   const dq = g.dataQuality ?? {};
   const probs = [...(dq.issues ?? []).map(i => `${esc0(i.problem)}${i.where ? ` <span class="muted">(${esc0(i.where)})</span>` : ''}`), ...(dq.feeds ?? []).map(f => `feed ${esc0(f.id)}: ${esc0(f.state)}`)];
   el.style.display = 'block';
-  el.innerHTML = `<div class="sec-hd-row"><span class="sec-title">🧭 Global Read — every engine, weighted by its evidence <span style="font-weight:400;letter-spacing:0;text-transform:none">· ${g.meta?.asOf ? new Date(g.meta.asOf).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''} · <a href="/api/global-read/record" target="_blank">forward record →</a></span></span>${secChev('globalRead')}</div>
+  el.innerHTML = `<div class="sec-hd-row"><span class="sec-title">🧭 Global Read — full detail, every engine weighted by its evidence <span style="font-weight:400;letter-spacing:0;text-transform:none">· ${g.meta?.asOf ? new Date(g.meta.asOf).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''} · <a href="/api/global-read/record" target="_blank">forward record →</a></span></span>${secChev('globalRead')}</div>
   ${secBody('globalRead', `
     <div style="font-size:13.5px;line-height:1.45;margin:2px 0 6px"><b>${esc0(g.headline)}</b></div>
     <div class="gr-grid">
@@ -6890,6 +6915,59 @@ function renderGlobalRead() {
     <details style="margin-top:8px"><summary class="gr-h" style="display:inline;cursor:pointer">Data problems (${probs.length})</summary><ul class="gr-list">${probs.map(p => `<li>${p}</li>`).join('')}</ul></details>
     <details style="margin-top:4px"><summary class="gr-h" style="display:inline;cursor:pointer">Context — read, not weighted (${(g.context ?? []).length})</summary><ul class="gr-list">${(g.context ?? []).map(x => `<li>${esc0(x)}</li>`).join('')}</ul></details>
     <div class="mread-precise" style="margin-top:8px">Weight = P(real | evidence tier) × predictive value × sample-size shrink × freshness. A null is read and shown, never dropped by hand; it just carries no weight. Day-level continuation vs reversal is a banked coin flip (49.0%), so the read names the range regime and leaves continuation to the intraday rules. Scored daily against the 07:00 London read (MD files/GLOBAL_DECISION_ENGINE.md §6).</div>`)}`;
+}
+
+// ── Day Read: the compact version. One tile per market; verdict first. ─────────
+// RANGE side = tested (the fitted ladder + joint multipliers, Global Read). LEAN side = the
+// story arm (every direction read, nominal weight, family-aware): a SHADOW, scored forward as D2.
+// Intraday state (range used, the session so far, the next lines) is read live from the card's own row.
+const _DR_SHORT = { 'macro-state': 'Macro', 'price-state': 'Trend', events: 'Events', positioning: 'Positioning', rates: 'Yields', 'rates-rv': 'Spreads', risk: 'Credit/risk', intraday: 'Today so far' };
+function _drWhy(story) {
+  // the reads collapse into at most three family chips, strongest first, with the net sign per family
+  const fam = {};
+  for (const x of (story?.reads ?? [])) { const f = (fam[x.family] ??= { s: 0, notes: [] }); f.s += x.s; f.notes.push(`${x.label}: ${x.note ?? ''}`); }
+  return Object.entries(fam).filter(([, f]) => Math.abs(f.s) >= 0.15).sort((a, b) => Math.abs(b[1].s) - Math.abs(a[1].s)).slice(0, 3)
+    .map(([k, f]) => `<span class="${f.s > 0 ? 'u' : 'd'}" title="${esc0(f.notes.join(' · '))}">${f.s > 0 ? '▲' : '▼'} ${_DR_SHORT[k] ?? k}</span>`).join('');
+}
+function _drTile(r, k) {
+  const d = r.d, st = k.direction?.story;
+  const pUp = st?.nLive ? st.pUp : 0.5, edge = Math.abs(pUp - 0.5);
+  const lean = edge < 0.03 ? { cls: 'fl', word: 'TWO-WAY', sub: '' } : { cls: pUp > 0.5 ? 'up' : 'dn', word: pUp > 0.5 ? '▲ UP' : '▼ DOWN', sub: `<small>${Math.round(Math.max(pUp, 1 - pUp) * 100)}%</small>` };
+  const p75 = k.range?.pAbove75;
+  const day = p75 == null ? null : p75 >= 0.32 ? { t: 'WIDE DAY', c: 'wide' } : p75 <= 0.18 ? { t: 'CAPPED', c: 'cap' } : { t: 'NORMAL', c: '' };
+  const px = d.current_price, open = d.session_open, chg = open > 0 && px != null ? (px / open - 1) * 100 : null;
+  const used = r.used != null ? Math.round(100 * r.used) : null;
+  const L = d.levels ?? {};
+  const rungs = [['oh_75', 'OH75'], ['oh_med', 'OH'], ['ol_med', 'OL'], ['ol_75', 'OL75']].map(([key, lbl]) => L[key]?.price != null ? { lbl, price: L[key].price, hit: L[key].hit_pct } : null).filter(Boolean);
+  const up1 = px != null ? rungs.filter(x => x.price > px).sort((a, b) => a.price - b.price)[0] : null;
+  const dn1 = px != null ? rungs.filter(x => x.price < px).sort((a, b) => b.price - a.price)[0] : null;
+  const nx = x => x ? `${fmtN(x.price, d.dp)}${x.hit != null ? ` <span class="muted">(${x.hit}%)</span>` : ''}` : '—';
+  const line = `${used != null ? `<b>${used}%</b> of the day's range used` : ''}${chg != null ? `, ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% from open` : ''}. Next lines: ↑ ${nx(up1)} · ↓ ${nx(dn1)}`;
+  return `<div class="dr-tile" onclick="openDrawer('${r.name}')">
+    <div class="dr-top"><span class="dr-nm">${esc0(dispName(r.name))}</span><span class="dr-px">${px != null ? fmtN(px, d.dp) : ''}</span></div>
+    <div class="dr-verdict"><span class="dr-big ${lean.cls}" title="${esc0(st?.label ?? '')}">${lean.word}${lean.sub}</span>${day ? `<span class="dr-day ${day.c}" title="P(high-low beyond the ladder's p75) = ${_grPct(p75)}; 25% is a normal day. Tested.">${day.t}</span>` : ''}</div>
+    ${rangeMapHtml(r, { bare: true })}
+    <div class="dr-line">${line}</div>
+    <div class="dr-why">${_drWhy(st) || '<span>no story reads for this market</span>'}</div>
+  </div>`;
+}
+let _drRecord = null;
+async function _drLoadRecord() { try { const r = await jget('/api/global-read/record'); if (r?.ok !== false) _drRecord = r; } catch (e) { /* the footer says it is starting */ } }
+function renderDayRead() {
+  const el = $('dayRead'); if (!el) return;
+  const g = globalRead; if (!g?.cards) { el.style.display = 'none'; return; }
+  const tiles = (g.ranked ?? []).map(rk => { const r = allRows().find(x => x.name === rk.sym); const k = g.cards[rk.sym]; return r && k ? _drTile(r, k) : ''; }).join('');
+  if (!tiles) { el.style.display = 'none'; return; }
+  const ch = g.meta?.chain, doms = (ch?.stories ?? []).filter(x => x.status === 'dominant').map(x => x.name);
+  const rec = _drRecord?.summary?.D2;
+  const recTxt = rec?.n ? `story record: ${rec.hits}/${rec.n} right (${Math.round(100 * rec.hitRate)}%) over ${_drRecord.summary.sessions} sessions` : `story record: starting (${_drRecord?.summary?.sessions ?? 0} sessions scored; needs 30)`;
+  el.style.display = 'block';
+  el.innerHTML = `<div class="sec-hd-row"><span class="sec-title">🎯 Day Read</span>${secChev('dayRead')}</div>
+    ${secBody('dayRead', `
+    <div class="dr-head"><span class="dr-hook">${esc0(ch?.hook ?? g.headline ?? '')}</span></div>
+    ${doms.length ? `<div class="dr-sub" style="margin-bottom:8px">The live stories: ${doms.map(esc0).join(' · ')}</div>` : ''}
+    <div class="dr-grid">${tiles}</div>
+    <div class="dr-sub" style="margin-top:8px"><b>Day size</b> (wide / normal / capped) is tested. <b>Up / down</b> is a story lean, not validated: every read that points a way, family-weighted, scored each morning. ${esc0(recTxt)}. Full detail is in Global Read below.</div>`)}`;
 }
 // pair card: one tier row
 function _globalTier(r) {
@@ -10091,6 +10169,7 @@ function render() {
   try { if (brief) renderHeader(); } catch (e) {}
   renderStatRow();
   renderMarketRead();
+  try { renderDayRead(); } catch (e) { /* panel stays as it was */ }
   renderOutlookPanel();
   renderSidebar();
   renderMacroMoved();
