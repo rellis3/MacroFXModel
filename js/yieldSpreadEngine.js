@@ -235,8 +235,12 @@ export async function computeYieldSpreadSignals(opts = {}, pairKeys = Object.key
       // series is already computed; we just slice the tail.
       const histN = opts.historyDays ?? 30;
       const history = dates.slice(-histN).map(d => { const zi = zByDate.get(d); return { date: d, z: +zi.z.toFixed(3) }; });
+      // Each leg's last RAW observation date: `asOf` is the forward-filled z series' end (always today), so a dead
+      // leg (GBP's 3-month rate, last print 2026-01) looked current. Reported only; nothing here uses it.
+      const lastObs = a => (Array.isArray(a) ? a : []).reduce((m, o) => (o?.date && o.value != null && Number.isFinite(+o.value) && o.date > m ? o.date : m), '') || null;
+      const legDates = { baseObsDate: lastObs(usRaw), quoteObsDate: lastObs(forRaw) };
       out[pairKey] = zInfo
-        ? { z: +zInfo.z.toFixed(3), spread: +zInfo.spread.toFixed(4), asOf: lastDate, inverted, label: cfg.label, pairDisplay: cfg.pairDisplay, pip: cfg.pip, history }
+        ? { z: +zInfo.z.toFixed(3), spread: +zInfo.spread.toFixed(4), asOf: lastDate, ...legDates, inverted, label: cfg.label, pairDisplay: cfg.pairDisplay, pip: cfg.pip, history }
         : { z: null, spread: null, asOf: null, inverted, label: cfg.label, pairDisplay: cfg.pairDisplay, pip: cfg.pip, history: [] };
     } catch (e) {
       out[pairKey] = { z: null, error: e?.message || String(e), label: cfg.label, pairDisplay: cfg.pairDisplay, pip: cfg.pip };

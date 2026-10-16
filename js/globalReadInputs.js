@@ -108,7 +108,10 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
     if (y) {
       const active = Math.abs(y.z) >= ysThr;
       const d = (y.z > 0 ? 1 : -1) * (y.inverted ? -1 : 1);
-      add('yield-spread', active ? d * Math.min(1, Math.abs(y.z) / ysThr) : 0, { sStory: d * Math.min(1, Math.abs(y.z) / ysThr), fresh: freshness(ageDays(y.asOf), 3), note: `2Y spread z ${y.z.toFixed(2)} (enters at ${ysThr})` });
+      // decay on the OLDER raw leg (monthly foreign series, ~45d publication lag): y.asOf is always today
+      const fr = y.quoteObsDate ? freshness(ageDays(y.quoteObsDate), 80) : freshness(ageDays(y.asOf), 3);
+      add('yield-spread', active ? d * Math.min(1, Math.abs(y.z) / ysThr) : 0, { sStory: fr * d * Math.min(1, Math.abs(y.z) / ysThr), fresh: fr,
+        note: `short-rate spread z ${y.z.toFixed(2)} (enters at ${ysThr})${y.quoteObsDate ? `, foreign leg last printed ${y.quoteObsDate}` : ''}` });
     }
     const usdSide = bq[0] === 'USD' ? 1 : -1;
     add('post-fomc', sessionsSinceFomc != null && sessionsSinceFomc <= 5 ? usdSide : 0, { note: lastFomc ? `last FOMC ${lastFomc}, ${sessionsSinceFomc} sessions ago` : 'no FOMC date' });
