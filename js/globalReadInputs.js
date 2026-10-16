@@ -50,7 +50,7 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
     vixInv: !!st('vix-inversion')?.firing,
     frontDear: g.volTerm?.frontState === 'dear',
     frontCalm: g.volTerm?.frontState === 'calm',
-    allDown: null,                                   // validated (breadth-all-down) but no live job computes it
+    allDown: D._allDown ?? null,                     // validated (breadth-all-down); computed in the server tick from D1 closes
     nqDownWeek: !!st('nq-down-week')?.firing,
     // ONE definition of NQ gamma (owner decision 2026-10-16): the sign of net dealer GEX, as the OI bot and the
     // card use (oi.js regime: PIN = long gamma, BREAKOUT = short). spot-vs-flip disagreed with it on one screen.
@@ -214,7 +214,7 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
   chk(Object.keys(D['macro-scorecard']?.staleDims ?? {}).length, `macro scorecard stale: ${Object.entries(D['macro-scorecard']?.staleDims ?? {}).map(([k, v]) => `${k} ${v.map(x => `${x.ccy} ${x.ageDays}d`).join('/')}`).join('; ')}`, 'today.html');
   chk(ys && ysThr !== 2.75, `the yield-spread plan enters at |z| ${ysThr}; the validated rule is 2.75`, 'today.html');
   chk(mc.dxy && ageDays(mc.dxy.lastDate) > 5, `broad dollar last printed ${mc.dxy?.lastDate} (${Math.round(ageDays(mc.dxy?.lastDate))}d old)`, 'today.html');
-  chk(flags.allDown == null, 'breadth-all-down is validated but no live job computes it', 'missing everywhere');
+  chk(flags.allDown == null, 'breadth-all-down could not be computed this pass (index D1 bars unavailable)', 'server globalRead tick');
   const missing = GLOBAL_READ_ENDPOINTS.filter(p => D[p] == null && !skip.includes(p));
   for (const p of missing) chk(true, `/api/${p} returned nothing: its inputs are absent from this read`, 'route down');
 

@@ -4313,6 +4313,13 @@ async function _globalReadTick() {
       try { const r = await fetch(`http://127.0.0.1:${PORT}/api/${p}`, { signal: AbortSignal.timeout(60_000) }); D[p] = r.ok ? await r.json() : null; }
       catch { D[p] = null; }
     }));
+    // breadth-all-down (validated, deskEvidence M12): the last COMPLETED session had all six indices close lower.
+    // It had no live job, so the range arm never saw it. _btFetchD1 drops the incomplete bar.
+    try {
+      const idx = ['NAS100_USD', 'SPX500_USD', 'US30_USD', 'US2000_USD', 'DE30_EUR', 'UK100_GBP'];
+      const downs = await Promise.all(idx.map(async s => { const b = (await _btFetchD1(s, 4)).sort((x, y) => (x.date < y.date ? -1 : 1)); return b.length >= 2 ? b.at(-1).close < b.at(-2).close : null; }));
+      D._allDown = downs.every(x => x === true) ? true : downs.some(x => x === null) ? null : false;
+    } catch { D._allDown = null; }
     const read = _buildGlobalRead(_grAssemble(D, { skip: [..._GR_SKIP] }));
     delete read.registry;
     _grLatest = read; _grError = null;
@@ -6383,6 +6390,14 @@ app.get('/api/fomc/calendar', (_req, res) => {
 });
 app.get('/api/fomc/latest', async (_req, res) => {
   try {
+    // The NEWEST meeting with an analysis, not whatever document was written last: the 'fomc_latest' pointer is set
+    // by any fetch (a late minutes/transcript for an older meeting moves it back), and it read 2026-07-29 while
+    // 09-16 was analysed. Statement first, then the other kinds; the pointer only as a fallback.
+    const past = FOMC_MEETINGS.filter(m => Date.parse(m.date) <= Date.now()).slice(-6).reverse();
+    for (const m of past) for (const kind of ['statement', 'minutes', 'transcript', 'sep']) {
+      const r = await kv.get(`fomc_analysis_${kind}_${m.date}`).catch(() => null);
+      if (r) return res.json({ ok: true, ...JSON.parse(r) });
+    }
     const ptr = await kv.get('fomc_latest');
     if (!ptr) return res.json({ ok: false, error: 'No FOMC analysis yet — click Fetch now.' });
     const { kind, meetingDate } = JSON.parse(ptr);
