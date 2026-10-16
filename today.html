@@ -296,31 +296,30 @@
 
   /* Range map — price position vs forecast cone + travelled range */
 
-  /* Day Read: one tile per market, verdict first, numbers second */
-  .dr-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin:2px 0 8px}
-  .dr-hook{font-size:14px;line-height:1.4;font-weight:600;color:var(--text)}
-  .dr-sub{font-size:11px;color:var(--text3)}
-  .dr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
-  .dr-tile{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;cursor:pointer;min-width:0}
-  .dr-tile:hover{border-color:var(--text3)}
-  .dr-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-  .dr-nm{font-weight:700;font-size:13.5px}
-  .dr-px{font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums}
-  .dr-verdict{display:flex;align-items:center;gap:8px;margin:6px 0 8px}
-  .dr-big{font-size:17px;font-weight:800;letter-spacing:.02em;white-space:nowrap}
-  .dr-big.up{color:var(--bull)} .dr-big.dn{color:var(--bear)} .dr-big.fl{color:var(--text3)}
-  .dr-big small{font-size:11px;font-weight:600;opacity:.8;margin-left:3px}
-  .dr-day{font-size:11px;font-weight:700;padding:1px 7px;border-radius:9px;background:var(--card);border:1px solid var(--border);color:var(--text2);white-space:nowrap}
-  .dr-day.wide{color:var(--amber,#f59e0b);border-color:currentColor} .dr-day.cap{color:var(--blue,#60a5fa);border-color:currentColor}
-  .dr-line{font-size:11.5px;color:var(--text2);line-height:1.4;margin:0 0 6px}
-  .dr-why{display:flex;flex-wrap:wrap;gap:4px}
-  .dr-why span{font-size:10.5px;padding:1px 6px;border-radius:4px;background:var(--card);border:1px solid var(--border);color:var(--text2);white-space:nowrap}
-  .dr-why span.u{color:var(--bull)} .dr-why span.d{color:var(--bear)}
-  .dr-tile .rmap{margin:6px 0 20px}
-
+  /* Day Read: a list, one line per market (dy- prefix: .dr-* belongs to the pair drawer) */
+  .dy-hook{font-size:14px;line-height:1.4;font-weight:600;color:var(--text);margin:2px 0 4px}
+  .dy-sub{font-size:11px;color:var(--text3)}
+  .dy-list{display:flex;flex-direction:column;margin-top:8px;border-top:1px solid var(--border)}
+  .dy-row{display:grid;grid-template-columns:78px 112px 82px minmax(120px,1fr) 44px minmax(0,auto);align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border);cursor:pointer}
+  .dy-row:hover{background:var(--card2)}
+  .dy-nm{font-weight:700;font-size:13px}
+  .dy-big{font-size:14px;font-weight:800;white-space:nowrap}
+  .dy-big.up{color:var(--bull)} .dy-big.dn{color:var(--bear)} .dy-big.fl{color:var(--text3);font-weight:700}
+  .dy-big small{font-size:10.5px;font-weight:600;opacity:.8;margin-left:4px}
+  .dy-day{font-size:10.5px;font-weight:700;text-align:center;padding:1px 6px;border-radius:9px;border:1px solid var(--border);color:var(--text3)}
+  .dy-day.wide{color:var(--amber,#f59e0b);border-color:currentColor} .dy-day.cap{color:var(--blue,#60a5fa);border-color:currentColor}
+  .dy-row .rmap{margin:0;height:12px} .dy-row .rmap .rt span{display:none}
+  .dy-used{font-size:11px;color:var(--text2);text-align:right;font-variant-numeric:tabular-nums}
+  .dy-used.hot{color:var(--amber,#f59e0b);font-weight:700}
+  .dy-why{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}
+  .dy-why span{font-size:10.5px;padding:1px 6px;border-radius:4px;background:var(--card2);border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .dy-why span.u{color:var(--bull)} .dy-why span.d{color:var(--bear)}
+  .dy-head{cursor:default!important;padding:3px 4px!important;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+  .dy-head:hover{background:none!important}
+  @media(max-width:760px){ .dy-head{display:none} .dy-row{grid-template-columns:70px 1fr 74px;grid-template-areas:"n v d" "m m u" "w w w"} .dy-row>.dy-nm{grid-area:n} .dy-row>.dy-vb{grid-area:v} .dy-row>.dy-day{grid-area:d} .dy-row>.rmap{grid-area:m} .dy-row>.dy-used{grid-area:u} .dy-row>.dy-why{grid-area:w;justify-content:flex-start} }
   /* Views: the page shows one group of panels at a time; "All" is the old long page */
   .vhide{display:none!important}
-  .vtabs{display:flex;gap:6px;overflow-x:auto;margin:0 0 10px;padding:2px 0;position:sticky;top:var(--jump-top,60px);z-index:30;background:var(--bg)}
+  .vtabs{display:flex;gap:6px;overflow-x:auto;margin:0 0 10px;padding:2px 0;position:sticky;top:calc(var(--hdr-h,60px) + 6px);z-index:30;background:var(--bg)}
   .vtabs button{flex:0 0 auto;font:inherit;font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:16px;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer}
   .vtabs button.on{background:var(--blue);border-color:var(--blue);color:#fff}
   @media(min-width:1200px){ .vtabs{display:none} }
@@ -5191,7 +5190,7 @@ function renderJumpNav() {
   // the header gained a row.
   try {
     const h = document.querySelector('.hdr');
-    if (h) document.documentElement.style.setProperty('--jump-top', (h.getBoundingClientRect().height + 14) + 'px');
+    if (h) _placeRail();
   } catch (e) {}
   const V = window.viewNavBrick;
   const list = J.items(document, { getStyle: n => { try { return n.classList?.contains('vhide') ? null : getComputedStyle(n); } catch { return null; } } });
@@ -5224,6 +5223,14 @@ function _applyView() {
     c.classList.toggle('vhide', !V.shows(c.dataset.vw || null, _view));
   }
 }
+// The rail and tab bar start BELOW the sticky header at any scroll position: at the top of the page the
+// header sits under the nav bars, so its bottom edge (not its height) is where the rail must begin.
+function _placeRail() {
+  const h = document.querySelector('.hdr'); if (!h) return;
+  const b = h.getBoundingClientRect();
+  document.documentElement.style.setProperty('--jump-top', Math.max(b.bottom, b.height) + 14 + 'px');
+  document.documentElement.style.setProperty('--hdr-h', b.height + 'px');
+}
 window.setView = (v, ev) => {
   ev?.preventDefault?.();
   _view = v; try { localStorage.setItem('todayView', v); } catch (e) { /* not remembered */ }
@@ -5251,7 +5258,7 @@ function markJumpActive() {
   const id = J.activeId(_jumpList, window.scrollY);
   for (const a of document.querySelectorAll('.jump a[data-j]')) a.classList.toggle('on', a.dataset.j === id);
 }
-addEventListener('scroll', () => { clearTimeout(window._jumpT); window._jumpT = setTimeout(markJumpActive, 60); }, { passive: true });
+addEventListener('scroll', () => { try { _placeRail(); } catch (e) { /* rail keeps its last place */ } clearTimeout(window._jumpT); window._jumpT = setTimeout(markJumpActive, 60); }, { passive: true });
 
 function secChev(id) {
   const closed = collapsedSections.has(id);
@@ -6976,23 +6983,24 @@ function _drWhy(story) {
 function _drTile(r, k) {
   const d = r.d, st = k.direction?.story;
   const pUp = st?.nLive ? st.pUp : 0.5, edge = Math.abs(pUp - 0.5);
-  const lean = edge < 0.03 ? { cls: 'fl', word: 'TWO-WAY', sub: '' } : { cls: pUp > 0.5 ? 'up' : 'dn', word: pUp > 0.5 ? '▲ UP' : '▼ DOWN', sub: `<small>${Math.round(Math.max(pUp, 1 - pUp) * 100)}%</small>` };
+  const lean = edge < 0.03 ? { cls: 'fl', word: 'Two-way', sub: '' } : { cls: pUp > 0.5 ? 'up' : 'dn', word: pUp > 0.5 ? '▲ Up' : '▼ Down', sub: `<small>${Math.round(Math.max(pUp, 1 - pUp) * 100)}%</small>` };
   const p75 = k.range?.pAbove75;
-  const day = p75 == null ? null : p75 >= 0.32 ? { t: 'WIDE DAY', c: 'wide' } : p75 <= 0.18 ? { t: 'CAPPED', c: 'cap' } : { t: 'NORMAL', c: '' };
+  const day = p75 == null ? null : p75 >= 0.32 ? { t: 'Wide', c: 'wide' } : p75 <= 0.18 ? { t: 'Capped', c: 'cap' } : { t: 'Normal', c: '' };
   const px = d.current_price, open = d.session_open, chg = open > 0 && px != null ? (px / open - 1) * 100 : null;
   const used = r.used != null ? Math.round(100 * r.used) : null;
   const L = d.levels ?? {};
   const rungs = [['oh_75', 'OH75'], ['oh_med', 'OH'], ['ol_med', 'OL'], ['ol_75', 'OL75']].map(([key, lbl]) => L[key]?.price != null ? { lbl, price: L[key].price, hit: L[key].hit_pct } : null).filter(Boolean);
   const up1 = px != null ? rungs.filter(x => x.price > px).sort((a, b) => a.price - b.price)[0] : null;
   const dn1 = px != null ? rungs.filter(x => x.price < px).sort((a, b) => b.price - a.price)[0] : null;
-  const nx = x => x ? `${fmtN(x.price, d.dp)}${x.hit != null ? ` <span class="muted">(${x.hit}%)</span>` : ''}` : '—';
-  const line = `${used != null ? `<b>${used}%</b> of the day's range used` : ''}${chg != null ? `, ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% from open` : ''}. Next lines: ↑ ${nx(up1)} · ↓ ${nx(dn1)}`;
-  return `<div class="dr-tile" onclick="openDrawer('${r.name}')">
-    <div class="dr-top"><span class="dr-nm">${esc0(dispName(r.name))}</span><span class="dr-px">${px != null ? fmtN(px, d.dp) : ''}</span></div>
-    <div class="dr-verdict"><span class="dr-big ${lean.cls}" title="${esc0(st?.label ?? '')}">${lean.word}${lean.sub}</span>${day ? `<span class="dr-day ${day.c}" title="P(high-low beyond the ladder's p75) = ${_grPct(p75)}; 25% is a normal day. Tested.">${day.t}</span>` : ''}</div>
+  const nx = x => x ? `${x.lbl} ${fmtN(x.price, d.dp)}${x.hit != null ? ` (${x.hit}% of days)` : ''}` : 'none left';
+  const tip = `${dispName(r.name)} ${px != null ? fmtN(px, d.dp) : ''}${chg != null ? `, ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% from the open` : ''}. Next line up: ${nx(up1)}. Next line down: ${nx(dn1)}. Click for the full card.`;
+  return `<div class="dy-row" onclick="openDrawer('${r.name}')" title="${esc0(tip)}">
+    <span class="dy-nm">${esc0(dispName(r.name))}</span>
+    <span class="dy-big dy-vb ${lean.cls}" title="${esc0(st?.label ?? '')}">${lean.word}${lean.sub}</span>
+    ${day ? `<span class="dy-day ${day.c}" title="P(high-low beyond the ladder's p75) = ${_grPct(p75)}; 25% is a normal day. Tested.">${day.t}</span>` : '<span></span>'}
     ${rangeMapHtml(r, { bare: true })}
-    <div class="dr-line">${line}</div>
-    <div class="dr-why">${_drWhy(st) || '<span>no story reads for this market</span>'}</div>
+    <span class="dy-used${used != null && used >= 100 ? ' hot' : ''}" title="share of the expected day's range already used">${used != null ? used + '%' : ''}</span>
+    <span class="dy-why">${_drWhy(st) || ''}</span>
   </div>`;
 }
 let _drRecord = null;
@@ -7008,10 +7016,10 @@ function renderDayRead() {
   el.style.display = 'block';
   el.innerHTML = `<div class="sec-hd-row"><span class="sec-title">🎯 Day Read</span>${secChev('dayRead')}</div>
     ${secBody('dayRead', `
-    <div class="dr-head"><span class="dr-hook">${esc0(ch?.hook ?? g.headline ?? '')}</span></div>
-    ${doms.length ? `<div class="dr-sub" style="margin-bottom:8px">The live stories: ${doms.map(esc0).join(' · ')}</div>` : ''}
-    <div class="dr-grid">${tiles}</div>
-    <div class="dr-sub" style="margin-top:8px"><b>Day size</b> (wide / normal / capped) is tested. <b>Up / down</b> is a story lean, not validated: every read that points a way, family-weighted, scored each morning. ${esc0(recTxt)}${_drRecord?.summary?.D3?.n ? `; 10:00 re-read: ${_drRecord.summary.D3.hits}/${_drRecord.summary.D3.n} right on the move left` : ''}. Full detail is in Global Read below.</div>`)}`;
+    <div class="dy-hook"><span>${esc0(ch?.hook ?? g.headline ?? '')}</span></div>
+    ${doms.length ? `<div class="dy-sub">The live stories: ${doms.map(esc0).join(' · ')}</div>` : ''}
+    <div class="dy-list"><div class="dy-row dy-head"><span>market</span><span>story lean</span><span>day size</span><span>range today</span><span style="text-align:right">used</span><span style="text-align:right">because</span></div>${tiles}</div>
+    <div class="dy-sub" style="margin-top:8px"><b>Day size</b> (wide / normal / capped) is tested. <b>Up / down</b> is a story lean, not validated: every read that points a way, family-weighted, scored each morning. ${esc0(recTxt)}${_drRecord?.summary?.D3?.n ? `; 10:00 re-read: ${_drRecord.summary.D3.hits}/${_drRecord.summary.D3.n} right on the move left` : ''}. Full detail is in Global Read below.</div>`)}`;
 }
 // pair card: one tier row
 function _globalTier(r) {
