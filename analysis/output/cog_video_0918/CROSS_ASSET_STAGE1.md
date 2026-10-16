@@ -1,0 +1,78 @@
+# COG-CROSS-ASSET stage 1 (T1 same-hour link and T2 lead grid), published before stage 2
+
+Correlation of the line's 1-hour change with the asset's 1-hour return (EURUSD up = euro up; USDJPY up = dollar up). T2 confirmed = in-sample FDR and same sign one-sided p<0.05 in validation and out-of-sample. Window to 2026-08-20; out-of-sample 2026-01-01 to 2026-08-20.
+
+## T1
+| asset        | line   |   corr_IS |   corr_VAL |   corr_OOS |   R2_OOS |   share_20d_windows_negative_OOS |   days_OOS |
+|:-------------|:-------|----------:|-----------:|-----------:|---------:|---------------------------------:|-----------:|
+| gold         | P0     |    -0.123 |     -0.118 |      0.196 |    0.038 |                            0.241 |        159 |
+| gold         | P3     |    -0.024 |     -0.111 |      0.044 |    0.002 |                            0.541 |        160 |
+| gold         | L-US   |    -0.201 |     -0.170 |     -0.330 |    0.109 |                            0.876 |        162 |
+| EURUSD       | P0     |    -0.368 |     -0.347 |      0.192 |    0.037 |                            0.449 |        159 |
+| EURUSD       | P3     |    -0.347 |     -0.336 |      0.007 |    0.000 |                            0.629 |        160 |
+| EURUSD       | L-US   |    -0.301 |     -0.335 |     -0.455 |    0.207 |                            1.000 |        163 |
+| USDJPY       | P0     |     0.296 |      0.399 |     -0.175 |    0.031 |                            0.620 |        159 |
+| USDJPY       | P3     |     0.277 |      0.394 |     -0.037 |    0.001 |                            0.377 |        160 |
+| USDJPY       | L-US   |     0.536 |      0.524 |      0.315 |    0.099 |                            0.000 |        163 |
+| Russell 2000 | P0     |     0.013 |      0.148 |      0.384 |    0.148 |                            0.082 |        159 |
+| Russell 2000 | P3     |     0.037 |      0.112 |      0.246 |    0.061 |                            0.302 |        160 |
+| Russell 2000 | L-US   |    -0.019 |      0.264 |     -0.303 |    0.092 |                            0.778 |        163 |
+| Dow          | P0     |     0.037 |      0.153 |      0.401 |    0.161 |                            0.038 |        159 |
+| Dow          | P3     |     0.061 |      0.111 |      0.255 |    0.065 |                            0.289 |        160 |
+| Dow          | L-US   |     0.048 |      0.264 |     -0.302 |    0.091 |                            0.784 |        163 |
+| S&P 500      | P0     |     0.059 |      0.171 |      0.394 |    0.155 |                            0.006 |        159 |
+| S&P 500      | P3     |     0.070 |      0.133 |      0.261 |    0.068 |                            0.245 |        160 |
+| S&P 500      | L-US   |     0.085 |      0.301 |     -0.277 |    0.077 |                            0.741 |        163 |
+| DAX          | P0     |     0.089 |      0.177 |      0.467 |    0.218 |                            0.057 |        159 |
+| DAX          | P3     |     0.069 |      0.139 |      0.299 |    0.089 |                            0.138 |        160 |
+| DAX          | L-US   |     0.128 |      0.302 |     -0.383 |    0.147 |                            0.767 |        160 |
+
+## T2 lead grid (24 cells per asset x line)
+| asset        | line   |   cells |   fdr_in_sample |   confirmed |   max_abs_t_IS | at       |   t_VAL_there |   t_OOS_there |
+|:-------------|:-------|--------:|----------------:|------------:|---------------:|:---------|--------------:|--------------:|
+| gold         | P0     |      24 |               0 |           0 |          2.626 | 4h->24h  |         1.065 |        -0.304 |
+| gold         | P3     |      24 |              22 |           0 |          3.428 | 1h->8h   |        -0.852 |         0.674 |
+| gold         | L-US   |      24 |               3 |           0 |          2.638 | 1h->1h   |        -1.594 |        -1.001 |
+| EURUSD       | P0     |      24 |               0 |           0 |          2.212 | 1h->15m  |        -1.456 |         0.960 |
+| EURUSD       | P3     |      24 |               0 |           0 |          1.174 | 4h->24h  |         0.765 |        -0.717 |
+| EURUSD       | L-US   |      24 |               0 |           0 |          1.099 | 15m->30m |        -0.996 |        -0.899 |
+| USDJPY       | P0     |      24 |               0 |           0 |          2.002 | 15m->15m |         0.708 |        -1.758 |
+| USDJPY       | P3     |      24 |               0 |           0 |          1.228 | 1h->48h  |        -1.373 |         2.270 |
+| USDJPY       | L-US   |      24 |               0 |           0 |          2.244 | 15m->15m |         0.507 |         0.032 |
+| Russell 2000 | P0     |      24 |               0 |           0 |          1.682 | 4h->24h  |         0.210 |         0.887 |
+| Russell 2000 | P3     |      24 |               0 |           0 |          1.204 | 15m->8h  |         0.976 |         1.124 |
+| Russell 2000 | L-US   |      24 |               0 |           0 |          1.265 | 15m->24h |         0.212 |        -0.623 |
+| Dow          | P0     |      24 |               0 |           0 |          1.438 | 4h->24h  |         0.735 |         1.456 |
+| Dow          | P3     |      24 |               0 |           0 |          1.927 | 15m->24h |         1.129 |         0.711 |
+| Dow          | L-US   |      24 |               0 |           0 |          1.837 | 4h->8h   |         0.039 |        -0.400 |
+| S&P 500      | P0     |      24 |               0 |           0 |          2.228 | 1h->1h   |         0.262 |         1.543 |
+| S&P 500      | P3     |      24 |               0 |           0 |          2.539 | 15m->8h  |         1.672 |         1.114 |
+| S&P 500      | L-US   |      24 |               0 |           0 |          1.860 | 4h->8h   |         0.326 |        -0.508 |
+| DAX          | P0     |      24 |               0 |           0 |          1.935 | 4h->8h   |         0.695 |         2.517 |
+| DAX          | P3     |      24 |               0 |           0 |          1.671 | 15m->30m |        -0.939 |         2.064 |
+| DAX          | L-US   |      24 |               0 |           0 |          2.473 | 4h->8h   |         0.955 |        -0.297 |
+
+## Leg decomposition of the top in-sample lead cells
+| asset        | line   | attributions                                   |
+|:-------------|:-------|:-----------------------------------------------|
+| gold         | P0     | US-leg effect, spread effect                   |
+| gold         | P3     | US-leg effect, spread effect, unattributed     |
+| gold         | L-US   | single leg candidate (no decomposition needed) |
+| EURUSD       | P0     | spread effect                                  |
+| EURUSD       | P3     | unattributed                                   |
+| EURUSD       | L-US   | single leg candidate (no decomposition needed) |
+| USDJPY       | P0     | US-leg effect, unattributed                    |
+| USDJPY       | P3     | unattributed                                   |
+| USDJPY       | L-US   | single leg candidate (no decomposition needed) |
+| Russell 2000 | P0     | spread effect, unattributed                    |
+| Russell 2000 | P3     | unattributed                                   |
+| Russell 2000 | L-US   | single leg candidate (no decomposition needed) |
+| Dow          | P0     | euro-leg effect, spread effect                 |
+| Dow          | P3     | US-leg effect, spread effect                   |
+| Dow          | L-US   | single leg candidate (no decomposition needed) |
+| S&P 500      | P0     | spread effect, unattributed                    |
+| S&P 500      | P3     | US-leg effect, spread effect                   |
+| S&P 500      | L-US   | single leg candidate (no decomposition needed) |
+| DAX          | P0     | US-leg effect, spread effect                   |
+| DAX          | P3     | spread effect                                  |
+| DAX          | L-US   | single leg candidate (no decomposition needed) |
