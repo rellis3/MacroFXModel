@@ -619,7 +619,8 @@ export function oiStoreToLevels(inst, { topWalls = null, minTier = "moderate", m
   // (already on the record), fall back to the shared brick.
   push(Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : gammaFlip(gp, inst.spot), 'gamma_flip');
   let hvl = null, hg = -Infinity;
-  for (const g of gp) { if (!nearSpot(g?.strike)) continue; const ag = Math.abs(g?.gamma ?? 0); if (ag > hg) { hg = ag; hvl = g?.strike; } }
+  // hvl is a near-money concept: within 10% of spot (the 25% artefact guard still let NQ pick a strike 25% away)
+  for (const g of gp) { if (!(Number.isFinite(spot) && spot > 0 ? Math.abs(g?.strike / spot - 1) <= 0.10 : nearSpot(g?.strike))) continue; const ag = Math.abs(g?.gamma ?? 0); if (ag > hg) { hg = ag; hvl = g?.strike; } }
   push(hvl, 'hvl');
   // The RIGOROUS gamma boundary (total net GEX re-evaluated at candidate prices,
   // root-found) alongside the cheap per-strike crossing. Both are emitted because they
