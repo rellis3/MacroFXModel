@@ -19445,10 +19445,11 @@ const OI_BOT_CFG_DEFAULTS = {
   reactNodes: null,                  // per-type react-entry weights {walls,gammaFlip,gexFlip,vannaFlip,volMagnets}
   volMagnetMinShare: 0.25,           // a magnet needs ≥ this share of the strongest magnet's volume to be a node
   holdScore: true,                   // wall hold-score (react-vs-blow-through) stamped on zones, sizes fades
-  minBookOI: 500,                    // traded book must hold ≥ this many contracts in its walls (calls+puts), else no
-                                     // zones. US30/YM options are ~125 contracts in total — a "wall" there is 5 lots (2026-10-14 audit). 0 = off.
-  maxReachMult: 3,                   // drop (don't just trim) any strike-anchored zone whose entry is > this × refMove
-                                     // from spot — SPX break-sells were armed 25-32× away. 0 = off (old: flag + ×0.7 trim only).
+  minBookOI: 0,                      // traded book must hold ≥ this many contracts in its walls (calls+puts), else no zones. 0 = off (the OI bot's original behaviour).
+                                     // US30/YM options are ~125 contracts in total — a "wall" there is 5 lots (2026-10-14 audit). ON for the OI-Vol bot (OI_VOL_CFG_OVERRIDES).
+  maxReachMult: 0,                   // drop any strike-anchored zone whose entry is > this × refMove from spot. 0 = off (old: flag + ×0.7 trim only).
+                                     // 2026-10-16: was 3 here and left the OI bot with NO index zones — it picks strongest-first (the far walls take every slot) and the cap then drops them
+                                     // all. Only safe with selectBy 'reach', which is how OI-Vol uses it (OI_VOL_CFG_OVERRIDES). Re-enable here only together with selectBy:'reach'.
   maxSizeFactor: 2.0,                // aggregate cap on the FINAL sizeFactor (every multiplier applied) —
                                      // without it max_lot silently became the real sizing model on any
                                      // zone whose favourable reads compounded past it. 0 = uncapped.
@@ -19522,6 +19523,7 @@ const OI_VOL_CFG_OVERRIDES = {
   nearBookDays: 3,
   selectBy: 'reach',          // near, reachable walls fill the K slots (the OI bot ranks by strength and lets the far ones crowd them out)
   maxReachMult: 3,            // …and anything beyond 3× the day-scaled reference move is not armed
+  minBookOI: 500,             // thin books (US30 ≈ 100 contracts) are not traded — this guard lives here, not in the OI bot's defaults
   minTouchP: 0.10,            // calibrated chance price touches the ENTRY inside touchHorizon — below this the zone is dropped (0 = off). 20%/4h armed NOTHING on 2026-10-15 (every break entry sits >0.5% away), so the default is 10% over 8h
   touchHorizon: '8h',         // '1h' | '4h' | '8h'
 };
