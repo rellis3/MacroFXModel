@@ -40,3 +40,4 @@ contradictions found between docs and code. Add new entries at the bottom of the
 8. The blueprint's layer-1 list says the IV-adjusted re-check is "pending" and late audits were "6 of 14". DATA_SPEC
    says switched 2026-10-06 and "6 of 15". Trust DATA_SPEC.
 9. `PIP_CALCULATION_FIX.md` is stale (2025-04). Use the registry.
+10. 2026-10-17: net liquidity was computed in mixed units across the repo. WTREGEN is $ millions like WALCL (only RRPONTSYD is $ billions); the 2026-07-02 fix assumed otherwise and produced ≈ −TGA. Use `js/netLiquidity.js`. See DATA_SPEC §5 #8 for which banked results need re-running.

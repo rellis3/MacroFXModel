@@ -363,14 +363,16 @@ def build_dataset(oanda_bars: dict, vix: pd.Series,
 def build_raw_features(df: pd.DataFrame) -> pd.DataFrame:
     """Compute un-normalised features. No z-scores here — just transforms."""
     r = pd.DataFrame(index=df.index)
-    r['net_liq_change'] = (df['walcl'] - df['wtregen'] - df['rrpo']).pct_change(21)
+    # UNITS FIX 2026-10-17: WALCL/WTREGEN are $M, RRPONTSYD $bn -> net liquidity in $bn (RRP was dropped before).
+    _net_liq_bn = df['walcl'] / 1000.0 - df['wtregen'] / 1000.0 - df['rrpo']
+    r['net_liq_change'] = _net_liq_bn.pct_change(21)
     r['curve']          = df['curve']
     r['credit_change']  = df['credit'].diff(21)
     r['real_yield']     = df['real_yld']
     r['ism']            = df['ism']
     r['vix']            = df['VIX_close']
     # Carry net_liq level for regime breakdown
-    r['net_liq']        = df['walcl'] - df['wtregen'] - df['rrpo']
+    r['net_liq']        = _net_liq_bn
     return r
 
 

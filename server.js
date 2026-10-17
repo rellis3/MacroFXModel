@@ -304,6 +304,7 @@ import { loadM1Resampled as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js
 import { evaluateSessions, dailySessionContributions } from './js/forecastSessionResearch.js';
 import { _fetchAllH1 as _fetchH1AB, _fetchAllH1 as _fetchH1 } from './js/sessionStats.js';
 import { runMacroEquityBacktest } from './js/macroEquityEngine.js';
+import { netLiquiditySeriesBn as _netLiquiditySeriesBn, netLiqUnitWarnings as _netLiqUnitWarnings } from './js/netLiquidity.js';
 import { loadEngine as loadGliEngine } from './GlobalLiquidity/engineLoader.mjs';
 import { computeBacktest as computeGliBacktest, computeNqBacktest as computeGliNqBacktest, computeRegressionTest as computeGliRegressionTest, accumulateWeekly as gliAccumulateWeekly, weeklyReturnsFromByWeek as gliWeeklyFromByWeek, FRED_IDS as GLI_FRED_IDS, FX_FILE_ALIAS as GLI_FX_ALIAS } from './GlobalLiquidity/backtestCore.mjs';
 import { computeNetLiquidityRegression } from './analysis/liquidityNetRegressionCore.mjs';
@@ -17129,22 +17130,18 @@ function _liqGateRollingZ(values, window = LIQ_GATE_Z_WINDOW, minWindow = LIQ_GA
 }
 
 // Net liquidity = WALCL - WTREGEN - RRPON, %-change, 5-day publication lag, 252d rolling z.
-// UNITS: FRED publishes WALCL in $MILLIONS but WTREGEN/RRPONTSYD in $BILLIONS.
-// Subtracting raw values made TGA/RRP ~0.01% of WALCL — "net liquidity"
-// degenerated to the bare Fed balance sheet and missed the 2022/23-style
-// TGA-rebuild/RRP-drain events the metric exists for. Convert WALCL→$B first.
+// UNITS (verified 2026-10-17): WALCL and WTREGEN are $MILLIONS, RRPONTSYD is $BILLIONS.
+// The 2026-07-02 fix converted WALCL only and left TGA in millions, so this series was
+// roughly minus the TGA until 2026-10-17. One definition now: js/netLiquidity.js.
 function computeNetLiqZ(fredRaw, dates) {
   const walcl   = forwardFillAlign(dates, fredRaw.walcl   ?? new Map());
   const wtregen = forwardFillAlign(dates, fredRaw.wtregen ?? new Map());
   const rrpon   = forwardFillAlign(dates, fredRaw.rrpon   ?? new Map());
   // Unit sentinel: WALCL in $M is ~4,000,000–9,000,000. If FRED ever changes
   // the series' units this goes quiet-wrong again — make it loud instead.
-  const walclSample = walcl.find(v => isFinite(v));
-  if (walclSample != null && walclSample < 100_000)
-    console.error(`[liquidity-gate] WALCL sample ${walclSample} does not look like $MILLIONS — check FRED units before trusting netLiqZ`);
-  const netliqRaw = dates.map((_, i) =>
-    (isFinite(walcl[i]) && isFinite(wtregen[i]) && isFinite(rrpon[i])) ? walcl[i] / 1000 - wtregen[i] - rrpon[i] : NaN
-  );
+  for (const w of _netLiqUnitWarnings({ walcl, tga: wtregen, rrp: rrpon }))
+    console.error(`[liquidity-gate] ${w} — check FRED units before trusting netLiqZ`);
+  const netliqRaw = _netLiquiditySeriesBn(walcl, wtregen, rrpon);
   const pctCh  = _liqGatePctChange(netliqRaw);
   const lagged = _liqGateApplyLag(pctCh, LIQ_GATE_PUB_LAG_WEEKLY);
   return _liqGateRollingZ(lagged);
