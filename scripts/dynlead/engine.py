@@ -74,12 +74,12 @@ def nw_stats(P, mask, lag):
     return sharpe, p, n, mean
 
 
-def family_M(ad, S, want_pnl=False, k_list=K_LIST, h_list=H_LIST, w_list=W_LIST):
+def family_M(ad, S, want_pnl=False, k_list=K_LIST, h_list=H_LIST, w_list=W_LIST, cost_mult=1.0):
     """Returns a DataFrame with one row per (spread, asset, k, h, W) and net Sharpe / p / n for DISC, VAL, OOS."""
     LP = np.log(ad)
     idx = ad.index
     r_next = (LP.shift(-1) - LP)
-    cost = np.array([COST_BP.get(c, 2.0) for c in ad.columns]) / 2e4            # half the round trip, as a fraction
+    cost = cost_mult * np.array([COST_BP.get(c, 2.0) for c in ad.columns]) / 2e4            # half the round trip, as a fraction (cost_mult 0 only for the labelled gross diagnostic)
     ys = {h: (LP.shift(-h) - LP) for h in h_list}
     masks = {p: period_mask(idx, p) for p in PERIODS}
     rows = []
