@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hurst Exponent &amp; Variance Ratio Test — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -42,6 +43,66 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 245" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Variance of the q-day return against the horizon q, from 1 day to 5 days, starting from a 1-day variance of 0.1289. A grey straight line shows the random-walk case, where 5-day variance is exactly 5 times 0.1289, or 0.64, so the variance ratio is 1 and H is 0.5. A red line ends higher, at 0.95: variance ratio about 1.47, trending, H above 0.5. A blue line ends lower, at 0.45: variance ratio about 0.70, mean-reverting, H below 0.5.">
+      <line class="tlp-line" x1="60" y1="212" x2="384" y2="212"/>
+      <line class="tlp-line" x1="60" y1="24" x2="60" y2="212"/>
+      <line class="tlp-line dash" x1="380" y1="30" x2="380" y2="212"/>
+      <polyline class="tlp-line red thick" points="70,188.8 380,41"/>
+      <polyline class="tlp-line thick" points="70,188.8 380,96"/>
+      <polyline class="tlp-line blue thick" points="70,188.8 380,131"/>
+      <circle class="tlp-text3" cx="147.5" cy="165.6" r="3.5"/>
+      <circle class="tlp-text3" cx="225" cy="142.4" r="3.5"/>
+      <circle class="tlp-text3" cx="302.5" cy="119.2" r="3.5"/>
+      <circle class="tlp-purple" cx="70" cy="188.8" r="6"/>
+      <circle class="tlp-red" cx="380" cy="41" r="6"/>
+      <circle class="tlp-text2" cx="380" cy="96" r="6"/>
+      <circle class="tlp-blue" cx="380" cy="131" r="6"/>
+      <text class="tlp-red" x="394" y="46" font-size="15" font-weight="700">0.95 · VR ≈ 1.47</text>
+      <text class="tlp-text2" x="394" y="63" font-size="13">trending, H &gt; 0.5</text>
+      <text class="tlp-text" x="394" y="101" font-size="15" font-weight="700">0.64 · VR = 1</text>
+      <text class="tlp-text2" x="394" y="118" font-size="13">random walk, H = 0.5</text>
+      <text class="tlp-blue" x="394" y="136" font-size="15" font-weight="700">0.45 · VR ≈ 0.70</text>
+      <text class="tlp-text2" x="394" y="153" font-size="13">mean-reverting, H &lt; 0.5</text>
+      <text class="tlp-purple" x="54" y="193" text-anchor="end" font-size="12">0.1289</text>
+      <text class="tlp-text3" x="66" y="36" font-size="12">q-day variance (%²) ↑</text>
+      <text class="tlp-text3" x="70" y="230" text-anchor="middle" font-size="12">1 day</text>
+      <text class="tlp-text3" x="380" y="230" text-anchor="middle" font-size="12">5 days</text>
+      <text class="tlp-text3" x="225" y="230" text-anchor="middle" font-size="12">horizon q →</text>
+      <text class="tlp-text2" x="394" y="196" font-size="13">random walk: 5 × 0.1289</text>
+      <text class="tlp-text2" x="394" y="213" font-size="13">= 0.6445, the yardstick</text>
+    </svg>
+    <figcaption>Start from the same 1-day variance of 0.1289. If the days are independent, variance adds up in a straight line to 0.6445 at five days. Days that team up land above it (trending), days that cancel land below it (mean-reverting). The variance ratio is the actual figure divided by that yardstick.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Everyone tells me to check whether a market is trending or mean-reverting before I pick a strategy. How do you actually measure that?</p>
+      <p data-who="Quant">Picture three people leaving a bar. One wanders at random. One keeps stumbling the same way. One is on a leash held by a friend at the door. The question is which one you are watching.</p>
+      <p data-who="Trader">And you tell them apart by how far they get?</p>
+      <p data-who="Quant">By how their distance grows with time. The random walker's distance grows with the square root of the number of steps. The stumbler gets further, faster. The one on the leash stays closer. The Hurst exponent puts one number on that. A half means random. Above a half means trending. Below a half means mean-reverting.</p>
+      <p data-who="Trader">Where does the name come from?</p>
+      <p data-who="Quant">Harold Hurst, a British hydrologist. He studied the Nile's flood records to size a reservoir, and found that wet years clustered with wet years. His number came out well above a half. Decades later Mandelbrot took the method into markets.</p>
+      <p data-who="Trader">You said there's a second test, and that it's the better one.</p>
+      <p data-who="Quant">The variance ratio, from Lo and MacKinlay in 1988. If daily moves are independent, the wobble of a five-day return should be exactly five times the wobble of one day. Independent wobbles just add up.</p>
+      <p data-who="Trader">So you compare the real five-day wobble with five times the daily one.</p>
+      <p data-who="Quant">Yes. Say the daily variance is about point one three. Five times that is about point six four. If the real five-day figure comes out at point four five, the ratio is about point seven. The days are cancelling each other out. That is mean reversion.</p>
+      <p data-who="Trader">And if it came out at point nine five?</p>
+      <p data-who="Quant">Then the ratio is about one and a half. The days are teaming up. That is trending. And unlike the Hurst slope, this test comes with a proper standard error, so you can ask whether the gap from one is real or just noise.</p>
+      <p data-who="Trader">Does persistence actually show up in real markets?</p>
+      <p data-who="Quant">It comes and goes. Trend followers bet on it. In 2008 the stock market lost about thirty-seven percent, and broad managed-futures indices finished up by double digits. Much of the 2010s was lean for the same rules. Then in 2022 inflation peaked at nine point one percent, the Fed hiked hard, yields rose and the dollar climbed for most of the year, and trend followers had a very strong year.</p>
+      <p data-who="Trader">So if I get a Hurst reading of point five five on the last few weeks, I follow the trend?</p>
+      <p data-who="Quant">Careful. On short samples the classic method is biased towards finding trends, even in pure noise. A reading from a few dozen bars can flip across a half on noise alone. And neither number tells you direction, only whether recent moves have reinforced or undone each other.</p>
+      <p data-who="Trader">So what is it good for?</p>
+      <p data-who="Quant">As a gate. It tells you which family, fade or follow, has a right to work. And near the middle, it tells you to stand aside.</p>
+      <p data-who="Trader">Give me the one-line version.</p>
+      <p data-who="Quant">Watch how the wobble grows with time: faster than the square root means trending, slower means mean-reverting, and a short window is a noisy hint, not a fact.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -78,6 +139,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the Hurst exponent comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{Y_t = \sum_{i=1}^{t} (X_i - \bar{X})} \]</div>
+      <p>Take a chunk of \(n\) returns and walk it: start at zero and add each day's deviation from the chunk's own mean. This is the detrended cumulative walk.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ R(n) = \color{#fbbf24}{\max_{t} Y_t - \min_{t} Y_t} \]</div>
+      <p>Measure how far that walk swings: its highest point minus its lowest point. A walk that keeps going one way swings wide; one that keeps coming back swings narrow.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \left(\frac{R}{S}\right)_n = \frac{\max_{t} Y_t - \min_{t} Y_t}{\color{#fbbf24}{S(n)}} \]</div>
+      <p>Divide by the chunk's own standard deviation. Now a calm chunk and a wild chunk can be compared on the same footing.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \left(\frac{R}{S}\right)_n \approx \color{#fbbf24}{c \cdot n^{H}} \]</div>
+      <p>Repeat for several window lengths \(n\). Hurst found the rescaled range grows as a power of \(n\). For a random walk that power is one half: the square-root law.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \log\left(\frac{R}{S}\right)_n = \log c + \color{#10b981}{H} \log n \]</div>
+      <p>Take logs and the power law becomes a straight line. Its slope is the Hurst exponent: below 0.5 mean-reverting, 0.5 random, above 0.5 trending.</p>
+    </div>
+  </div>
   <p>
     We'll build this in three passes: (1) the rescaled-range statistic and how it's used to estimate <em>H</em>, the
     Hurst exponent; (2) what values of <em>H</em> mean; (3) the variance ratio test, a statistically cleaner way to ask
@@ -368,6 +453,10 @@
       watch how far below or above 1 the ratio moves as you change the actual
       q-day variance.
     </p>
+    <div class="tl-predict" data-answer="1.47" data-tol="0.03" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Keep the 1-day variance at 0.1289 and the horizon at 5 days. If the actual 5-day variance came out at 0.95 instead of 0.45, what would VR(5) be? Lock in a guess, then type 0.95 into the third field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 1.47.</strong> The random-walk yardstick is \(5 \times 0.1289 = 0.6445\), and \(0.95 / 0.6445 \approx 1.474\). Five-day variance is 47% bigger than independent days would give, so the days are teaming up: trending. Now try 0.6445 and watch the ratio land on exactly 1, the random walk.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>1-day variance Var(r&#8321;) (%&sup2;)</span></div>
@@ -391,6 +480,12 @@
     </div>
     <button type="button" id="hurst-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
+
+  <!-- WB:hurst_variance_ratio:START -->
+  <div class="wb" id="wb-hurst_variance_ratio" data-title="Three walkers and the variance ratio, drawn step by step">
+    <script type="application/json">{"w":600,"h":830,"intro":"Three walkers, one question: does the path have memory? First the Hurst exponent, then the variance ratio, on the lesson's own numbers. Press play, or step through.","steps":[{"cap":"Three people leave a bar. The first steps at random, each step a coin flip with no memory. The second keeps stumbling the same way: momentum. The third is on a leash held by a friend at the door: every stumble gets pulled back.","do":[{"icon":"rw","name":"person","x":50,"y":4,"s":0.7,"label":"random\nno memory","lsize":17},{"icon":"tr","name":"person","x":265,"y":4,"s":0.7,"tone":"red","label":"stumbler\nmomentum","lsize":17},{"icon":"mr","name":"person","x":480,"y":4,"s":0.7,"tone":"blue","label":"on a leash\npulled back","lsize":17}]},{"cap":"The random walker's distance from the door grows with the square root of the steps. After 64 steps the typical swing is about √64 = 8. That is the Hurst exponent H = 0.5: range grows as n to the power 0.5.","do":[{"chart":"rg","x":10,"y":150,"w":580,"h":250,"title":"How far the walk swings: range ∝ n^H","xd":[0,64],"yd":[0,20],"yt":[[0,"0"],[8,"8"],[16,"16"]],"xt":[[8,"8"],[16,"16"],[32,"32"],[64,"64"]],"pl":44,"pr":112},{"series":"h5","chart":"rg","pts":[[0,0.0],[2,1.414],[4,2.0],[6,2.449],[8,2.828],[10,3.162],[12,3.464],[14,3.742],[16,4.0],[18,4.243],[20,4.472],[22,4.69],[24,4.899],[26,5.099],[28,5.292],[30,5.477],[32,5.657],[34,5.831],[36,6.0],[38,6.164],[40,6.325],[42,6.481],[44,6.633],[46,6.782],[48,6.928],[50,7.071],[52,7.211],[54,7.348],[56,7.483],[58,7.616],[60,7.746],[62,7.874],[64,8.0]],"tone":null,"ms":1300,"label":"H 0.5: 8","lat":[64,8],"ldx":6,"ldy":0,"lanchor":"start"},{"pulse":"rw"}]},{"cap":"The stumbler's moves reinforce each other, so the swing grows faster than the square root. With H = 0.7 the range after 64 steps is about 18, more than twice the random walker's.","do":[{"series":"h7","chart":"rg","pts":[[0,0.0],[2,1.625],[4,2.639],[6,3.505],[8,4.287],[10,5.012],[12,5.694],[14,6.343],[16,6.964],[18,7.563],[20,8.142],[22,8.704],[24,9.25],[26,9.783],[28,10.304],[30,10.814],[32,11.314],[34,11.804],[36,12.286],[38,12.76],[40,13.226],[42,13.686],[44,14.139],[46,14.586],[48,15.027],[50,15.462],[52,15.893],[54,16.318],[56,16.739],[58,17.155],[60,17.567],[62,17.975],[64,18.379]],"tone":"red","ms":1300,"label":"H 0.7: 18","lat":[64,18.4],"ldx":6,"ldy":0,"lanchor":"start"},{"pulse":"tr"}]},{"cap":"The leashed walker keeps getting pulled back, so the swing grows slower than the square root. With H = 0.3 it is only about 3.5 after 64 steps. Same number of steps, three very different spreads.","do":[{"series":"h3","chart":"rg","pts":[[0,0.0],[2,1.231],[4,1.516],[6,1.712],[8,1.866],[10,1.995],[12,2.107],[14,2.207],[16,2.297],[18,2.38],[20,2.456],[22,2.528],[24,2.595],[26,2.658],[28,2.717],[30,2.774],[32,2.828],[34,2.88],[36,2.93],[38,2.978],[40,3.024],[42,3.069],[44,3.112],[46,3.154],[48,3.194],[50,3.234],[52,3.272],[54,3.309],[56,3.345],[58,3.381],[60,3.415],[62,3.449],[64,3.482]],"tone":"blue","ms":1300,"label":"H 0.3: 3.5","lat":[64,3.48],"ldx":6,"ldy":0,"lanchor":"start"},{"pulse":"mr"}]},{"cap":"To measure H from data, compute the rescaled range R/S on windows of 8, 16, 32 and 64 bars, then plot log of R/S against log of n. A power law becomes a straight line, and its slope is H.","do":[{"chart":"ll","x":10,"y":418,"w":280,"h":222,"title":"log(R/S) vs log n","xd":[2.5,6.5],"yd":[0,4.6],"yt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"]],"xt":[[3,"8"],[4,"16"],[5,"32"],[6,"64"]],"pl":36,"pr":46,"size":18},{"series":"l5","chart":"ll","pts":[[3.0,1.5],[4.0,2.0],[5.0,2.5],[6.0,3.0]],"tone":null,"ms":900,"label":"0.5","lat":[6,3.0],"ldx":6,"ldy":0,"lanchor":"start"},{"series":"l7","chart":"ll","pts":[[3.0,2.1],[4.0,2.8],[5.0,3.5],[6.0,4.2]],"tone":"red","ms":900,"label":"0.7","lat":[6,4.2],"ldx":6,"ldy":0,"lanchor":"start"},{"series":"l3","chart":"ll","pts":[[3.0,0.9],[4.0,1.2],[5.0,1.5],[6.0,1.8]],"tone":"blue","ms":900,"label":"0.3","lat":[6,1.8],"ldx":6,"ldy":0,"lanchor":"start"}]},{"cap":"The variance ratio asks the same question more directly. If days are independent, variance just adds up: five days should have exactly five times the one-day variance. With the lesson's 0.1289, the yardstick is 5 × 0.1289 = 0.6445.","do":[{"chart":"vb","x":310,"y":418,"w":280,"h":222,"title":"Five-day variance, %²","xd":[0.4,3.6],"yd":[0,1.15],"yt":[[0.5,"0.5"],[1,"1.0"]],"xt":[[1,"yardstick"],[2,"case A"],[3,"case B"]],"pl":40,"pr":10,"size":18},{"bars":"by","chart":"vb","data":[[1,0.6445,"0.64","purple"]],"bw":40,"ms":900}]},{"cap":"Case A: the real five-day variance is 0.45. VR(5) = 0.45 ÷ 0.6445 ≈ 0.70. Below 1: the days are cancelling each other out, which is mean reversion, the leash.","do":[{"bars":"ba","chart":"vb","data":[[2,0.45,"VR 0.70","blue"]],"bw":40,"ms":900},{"pulse":"mr"}]},{"cap":"Case B: the real five-day variance is 0.95. VR(5) = 0.95 ÷ 0.6445 ≈ 1.47. Above 1: the days are teaming up, 47% more variance than independence allows. That is trending, the stumbler.","do":[{"bars":"bb","chart":"vb","data":[[3,0.95,"VR 1.47","red"]],"bw":40,"ms":900},{"pulse":"tr"}]},{"cap":"Why the variance ratio is the one to trust more: Lo and MacKinlay (1988) gave it a standard error and a z-statistic, so you can ask whether a gap from 1 is real or just noise. A Hurst slope is eyeballed.","do":[{"box":"se","x":10,"y":660,"w":186,"h":112,"text":"VR has a\nstandard error:\nreal or noise?","tone":"green","size":18}]},{"cap":"The trap: on short windows, R/S is biased towards finding H above 0.5 even in a pure random walk. A reading from a few dozen bars can flip across 0.5 on noise alone.","do":[{"box":"bias","x":207,"y":660,"w":186,"h":112,"text":"short window:\nR/S leans to\n\"trending\"","tone":"red","size":18}]},{"cap":"And persistence comes and goes. Trend followers did well in 2008 and very well in 2022, and had a long lean stretch through much of the 2010s, with the same rules. A full-sample H can hide all of that.","do":[{"box":"epi","x":404,"y":660,"w":186,"h":112,"text":"2008 · 2022: on\n2010s: mostly off","tone":"amber","size":18}]},{"cap":"So treat H and the variance ratio as a gate, not a forecast. They say whether fade or follow has any right to work right now. They never say which way the next move goes.","do":[{"note":"end","x":300,"y":806,"text":"a gate for fade or follow, never a forecast of direction","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:hurst_variance_ratio:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: trend following's fat years and lean years</h2>
@@ -551,6 +646,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill" data-date="2022-07-13">
+    <div class="tl-drill-label">Scenario drill · 13 July 2022</div>
+    <h3>Inflation at 9.1%, and your Hurst reading just dipped below a half</h3>
+    <p>US CPI for June has just printed at 9.1% year on year. The Fed raised rates by 75bp a month ago. Bond yields have risen for most of the year and the dollar is strong. You run trend rules that trade on horizons of weeks to months, and they are short bonds and long the dollar. Suppose a Hurst reading on the last 30 daily bars has just slipped from 0.58 to 0.47 (a hypothetical reading for this drill). What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Close the trend book. H is below 0.5, so the market has turned mean-reverting.<div class="tl-drill-why">One reading from 30 bars is squarely in the small-sample zone, where R/S is noisy and biased, and can flip across 0.5 on estimation noise alone. It is weak evidence of a regime change, and the rules trade a longer horizon than the window measures.</div></li>
+      <li data-verdict="good">Keep running the rules at their normal size, and treat the short reading as noise until longer-horizon evidence says otherwise.<div class="tl-drill-why">The gate question is about persistence at the horizon the rules trade. A short-window wobble around 0.5 does not answer it, and neither statistic forecasts direction anyway. Sticking to the process avoids trading on noise.</div></li>
+      <li data-verdict="bad">Double the size. Inflation at 9.1% means the trend has to continue.<div class="tl-drill-why">Neither H nor the variance ratio says which way the next move goes, and a strong macro story is not a measurement. Doubling up on conviction is how a trend book gets caught by the reversal it cannot see coming.</div></li>
+      <li data-verdict="ok">Trim a little, and wait for a variance ratio on a longer window, with its standard error, before deciding more.<div class="tl-drill-why">Asking for a proper test with a standard error is the right instinct. But trimming on one noisy reading still lets noise move your size, which costs you when the persistence is real.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The Fed raised rates by 75bp three more times, on 27 July, 21 September and 2 November. Yields kept rising for most of the year, and by late September the dollar had reached its strongest level in about two decades. Trend followers, short bonds and long the dollar, had a very strong year. The 30-bar Hurst reading in the setup was hypothetical; the real lesson is that one short-window reading crossing 0.5 is a noisy hint, not a regime change.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -650,6 +758,26 @@
       classical R/S analysis is biased by short-range dependence and proposing a modified R/S statistic robust to it.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="ou-mean-reversion.html">The Ornstein-Uhlenbeck Process &amp; Mean Reversion</a> <span>· the leash, written as a model</span></li>
+        <li><a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a> <span>· autocorrelation is what both tests pick up</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a> <span>· persistence in the size of moves, not the direction</span></li>
+        <li><a href="fractional-brownian-motion.html">Fractional Brownian Motion &amp; Long Memory</a> <span>· a process built with any H you choose</span></li>
+        <li><a href="hidden-markov-models.html">Hidden Markov Models &amp; Regime Detection</a> <span>· when the regime itself switches</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> before you fade or follow a move, this tells you whether the recent path has given either family any right to work.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="ou-mean-reversion.html">← Ornstein-Uhlenbeck &amp; Mean Reversion</a>
@@ -769,10 +897,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

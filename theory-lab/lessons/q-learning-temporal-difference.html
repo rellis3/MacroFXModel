@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Q-Learning &amp; Temporal-Difference Methods — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,67 @@
       <li><strong>How it reached trading:</strong> Moody &amp; Saffell tested it on stock-index allocation in the late 1990s, and Nevmyvaka, Feng &amp; Kearns (2006) used a tabular version on real order-book data to cut execution costs.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: one Q-learning update on a number line. The old guess for Long, Hold is 0.5. The target, one real reward plus 0.9 times the best next guess, is 1.45. The gap between them, the TD error, is 0.95. With a step size of 0.5 the new guess moves half way, to 0.975. Right: repeating that update, the guess climbs from 0 toward the true value of 10, closing about 5 percent of the remaining gap each time, reaching about 9.5 after 60 updates.">
+      <text class="tlp-text3" x="150" y="18" text-anchor="middle" font-size="12">one update: move part way to the target</text>
+      <path class="tlp-line amber" d="M110,74 L110,68 L262,68 L262,74"/>
+      <text class="tlp-amber" x="186" y="60" text-anchor="middle" font-size="13" font-weight="700">TD error 0.95</text>
+      <line class="tlp-line" x1="30" y1="120" x2="290" y2="120"/>
+      <line class="tlp-line green thick" x1="110" y1="120" x2="178" y2="120"/>
+      <polygon class="tlp-green" points="186,120 176,115 176,125"/>
+      <circle class="tlp-blue" cx="110" cy="120" r="6"/>
+      <circle class="tlp-amber" cx="262" cy="120" r="6"/>
+      <circle class="tlp-green" cx="186" cy="120" r="6"/>
+      <text class="tlp-blue" x="110" y="100" text-anchor="middle" font-size="13" font-weight="700">old 0.5</text>
+      <text class="tlp-amber" x="262" y="100" text-anchor="middle" font-size="13" font-weight="700">target 1.45</text>
+      <text class="tlp-green" x="186" y="146" text-anchor="middle" font-size="13" font-weight="700">new 0.975</text>
+      <text class="tlp-text3" x="30" y="140" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text2" x="150" y="180" text-anchor="middle" font-size="12">target = reward 1 + 0.9 × best next guess 0.5</text>
+      <text class="tlp-text2" x="150" y="198" text-anchor="middle" font-size="12">step size 0.5: move half of the error</text>
+      <line class="tlp-line dash" x1="315" y1="10" x2="315" y2="226"/>
+      <text class="tlp-text3" x="460" y="18" text-anchor="middle" font-size="12">repeat it: the guess climbs to the answer</text>
+      <line class="tlp-line" x1="340" y1="210" x2="584" y2="210"/>
+      <line class="tlp-line" x1="340" y1="40" x2="340" y2="210"/>
+      <line class="tlp-line green dash" x1="340" y1="60" x2="584" y2="60"/>
+      <text class="tlp-green" x="584" y="52" text-anchor="end" font-size="13" font-weight="700">true value 10</text>
+      <polyline class="tlp-line amber thick" points="340.0,210.0 344.0,202.5 348.0,195.4 352.0,188.6 356.0,182.2 360.0,176.1 364.0,170.3 368.0,164.8 372.0,159.5 376.0,154.5 380.0,149.8 384.0,145.3 388.0,141.1 392.0,137.0 396.0,133.2 400.0,129.5 404.0,126.0 408.0,122.7 412.0,119.6 416.0,116.6 420.0,113.8 424.0,111.1 428.0,108.5 432.0,106.1 436.0,103.8 440.0,101.6 444.0,99.5 448.0,97.6 452.0,95.7 456.0,93.9 460.0,92.2 464.0,90.6 468.0,89.1 472.0,87.6 476.0,86.2 480.0,84.9 484.0,83.7 488.0,82.5 492.0,81.4 496.0,80.3 500.0,79.3 504.0,78.3 508.0,77.4 512.0,76.5 516.0,75.7 520.0,74.9 524.0,74.2 528.0,73.5 532.0,72.8 536.0,72.1 540.0,71.5 544.0,71.0 548.0,70.4 552.0,69.9 556.0,69.4 560.0,68.9 564.0,68.5 568.0,68.1 572.0,67.7 576.0,67.3 580.0,66.9"/>
+      <circle class="tlp-green" cx="348" cy="195.4" r="4"/>
+      <text class="tlp-green" x="356" y="199" font-size="12">0.975 after 2</text>
+      <text class="tlp-amber" x="580" y="88" text-anchor="end" font-size="12" font-weight="700">9.5 after 60</text>
+      <text class="tlp-text2" x="462" y="160" text-anchor="middle" font-size="12">each update closes 5% of the gap</text>
+      <text class="tlp-text3" x="462" y="226" text-anchor="middle" font-size="12">updates →</text>
+    </svg>
+    <figcaption>Q-learning never needs the odds of the market. It nudges each guess part of the way toward one real reward plus its own best guess about the next step. The gap it closes is the TD error, and repeated samples pull the guess to the same value the previous lesson solved for with a known model.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Last time we solved for the value of every state. But that needed the odds of every move written down. Nobody can write down the odds of a market.</p>
+      <p data-who="Quant">Right, and that's what Q-learning fixes. It learns from experience alone. Each record is just: where I was, what I did, what I got, where I landed.</p>
+      <p data-who="Trader">Like a fills log.</p>
+      <p data-who="Quant">Exactly like a fills log. The agent keeps a table with one guess for every situation and action. All the guesses start at zero.</p>
+      <p data-who="Trader">And how does a guess improve?</p>
+      <p data-who="Quant">After each step, build a target. The real reward you just got, plus the discounted best guess for where you landed. The gap between the target and your old guess is the surprise. Move your guess part of the way across that gap.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">You're long and you hold. You earn one. Your old guess for holding long was a half. The target is one, plus zero point nine times a half, so one point four five. The surprise is zero point nine five. Move half of it, and the new guess is zero point nine seven five.</p>
+      <p data-who="Trader">And it keeps going?</p>
+      <p data-who="Quant">Repeat that sample and each update closes about five percent of the remaining gap. The guess climbs toward ten, the exact answer we solved for last time. But here nobody told it the model.</p>
+      <p data-who="Trader">Does it ever land on ten?</p>
+      <p data-who="Quant">Not with a fixed step size. It gets close and then jitters with every new sample. To truly converge, the steps have to shrink over time.</p>
+      <p data-who="Trader">What stops it learning the wrong thing?</p>
+      <p data-who="Quant">It has to explore. Mostly it takes the move it rates best, but now and then it tries something random. Otherwise it never finds out an untried move was better.</p>
+      <p data-who="Trader">Any other trap?</p>
+      <p data-who="Quant">It always looks at the best guess for the next step, and the best of several noisy guesses runs high. So its values tend to be optimistic, especially early on.</p>
+      <p data-who="Trader">Has this made anyone money?</p>
+      <p data-who="Quant">The clearest case is execution. In 2006, Nevmyvaka, Feng and Kearns learned where to place limit orders from historical order book data, and cut trading costs compared with simple submit and leave orders. Directional trading results have been weaker.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Move each guess part way toward one real reward plus your own best guess about what comes next, and keep exploring so the guesses can be checked.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -141,6 +203,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">The Q-learning update, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ Q(s,a) \leftarrow \color{#fbbf24}{Q(s,a)} \]</div>
+      <p>Start from the current guess for taking action \(a\) in state \(s\). Before any learning, it is 0.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{target} = \color{#fbbf24}{r + \gamma \max_{a'} Q(s',a')} \]</div>
+      <p>Build a target from one real reward plus the discounted best guess for the state you landed in. In step 3 of the worked example: \(1 + 0.9 \times 0.5 = 1.45\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \delta = r + \gamma \max_{a'} Q(s',a') \color{#fbbf24}{{}- Q(s,a)} \]</div>
+      <p>Subtract the old guess to get the TD error: how surprised you are. Here \(1.45 - 0.5 = 0.95\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ Q(s,a) \leftarrow Q(s,a) + \color{#fbbf24}{\alpha}\,\delta \]</div>
+      <p>Move only a fraction \(\alpha\) of the way, because one sample is noisy. With \(\alpha = 0.5\), the guess moves half the gap.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{Q(s,a) \leftarrow Q(s,a) + \alpha\Big[\,r + \gamma \max_{a'} Q(s',a') - Q(s,a)\,\Big]} \]</div>
+      <p>Put together, that is Q-learning: \(0.5 + 0.5 \times 0.95 = 0.975\). Repeat the same sample and the guess climbs toward \(Q^* = 10\).</p>
+    </div>
+  </div>
   <p>
     <strong>TD(0) — learning the value of a state from one step of
     experience.</strong> Recall the Bellman equation from the previous
@@ -347,6 +433,10 @@
       Starts on step 3's exact numbers above. Edit any field and the TD
       target, TD error, and updated \(Q(s,a)\) all recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="1.426" data-tol="0.01" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> After step 3, \(Q(\text{Long, Hold}) = 0.975\). The agent holds again, earns +1, and stays in Long, so the best next guess is also 0.975. What is the new \(Q\)? Lock in a guess, then type 0.975 into both the current \(Q(s,a)\) field and the \(\max_{a'}Q(s',a')\) field below.</div>
+      <div class="tl-predict-reveal"><p><strong>About 1.426.</strong> Target \(= 1 + 0.9 \times 0.975 = 1.8775\). TD error \(= 1.8775 - 0.975 = 0.9025\). New \(Q = 0.975 + 0.5 \times 0.9025 \approx 1.426\). It still climbs fast, because it is far below 10. Now try a current \(Q\) and best next guess of 10: the TD error is exactly 0, which is what the true value means.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Current \(Q(s,a)\)</span></div>
@@ -427,6 +517,12 @@
     </p>
   </div>
 
+  <!-- WB:q_learning_temporal_difference:START -->
+  <div class="wb" id="wb-q_learning_temporal_difference" data-title="Learning a Q-table one sample at a time">
+    <script type="application/json">{"w":600,"h":550,"intro":"The same three-state market as the previous lesson, but now nobody tells the agent the odds. It learns a table of action values from samples. Press play, or step through.","steps":[{"cap":"Same market as before: Flat, Long, Short, discount 0.9. But now the agent does not know the odds or the rewards. It keeps a Q-table: one guess per state and action, all starting at 0.","do":[{"box":"fs","x":10,"y":40,"w":168,"h":58,"text":"Flat · Stay","tone":"blue","sub":"0","size":19},{"box":"fo","x":190,"y":40,"w":168,"h":58,"text":"Flat · Open","tone":"blue","sub":"0","size":19},{"box":"lh","x":10,"y":112,"w":168,"h":58,"text":"Long · Hold","tone":"green","sub":"0","size":19},{"box":"lc","x":190,"y":112,"w":168,"h":58,"text":"Long · Close","tone":"green","sub":"0","size":19},{"box":"sh","x":10,"y":184,"w":168,"h":58,"text":"Short · Hold","tone":"red","sub":"0","size":19},{"box":"sc","x":190,"y":184,"w":168,"h":58,"text":"Short · Close","tone":"red","sub":"0","size":19},{"note":"qt","x":188,"y":22,"text":"the Q-table (step size 0.5)","size":18,"anchor":"middle","tone":"purple"}]},{"cap":"Sample 1: in Flat it tries Open, lands in Long, and pays 0.1. Target: −0.1 + 0.9 × (best guess in Long, still 0) = −0.1. Move half way from 0: Q(Flat, Open) = −0.05. One noisy sample makes Open look bad for now.","do":[{"note":"c1","x":395,"y":70,"text":"Flat → Open → Long\nreward −0.1\ntarget −0.1\nnew Q = −0.05","size":18,"anchor":"start","tone":"blue"},{"count":"fo","from":0,"to":-0.05,"dp":3,"ms":800},{"pulse":"fo"}]},{"cap":"Sample 2: in Long it Holds, stays Long, and earns +1. Target: 1 + 0.9 × 0 = 1. Error 1. Move half way: Q(Long, Hold) = 0.5.","do":[{"hide":"c1"},{"note":"c2","x":395,"y":70,"text":"Long → Hold → Long\nreward +1\ntarget 1\nnew Q = 0.5","size":18,"anchor":"start","tone":"green"},{"count":"lh","from":0,"to":0.5,"dp":3,"ms":800},{"pulse":"lh"}]},{"cap":"Sample 3: the same move again. Now the target uses the new guess: 1 + 0.9 × 0.5 = 1.45. The error, how surprised it is, is 1.45 − 0.5 = 0.95. Move half of that: Q(Long, Hold) = 0.975.","do":[{"hide":"c2"},{"note":"c3","x":395,"y":70,"text":"target 1 + 0.9 × 0.5\n= 1.45\nerror 0.95\nnew Q = 0.975","size":18,"anchor":"start","tone":"amber"},{"count":"lh","from":0.5,"to":0.975,"dp":3,"ms":800},{"pulse":"lh"}]},{"cap":"Keep repeating that sample and each update closes 5% of the remaining gap. The guess climbs toward 10, the exact value the previous lesson solved for with a known model. Here it was learned from samples alone.","do":[{"chart":"q","x":10,"y":268,"w":580,"h":262,"title":"Q(Long, Hold), update by update","xd":[0,60],"yd":[0,11],"yt":[[0,"0"],[5,"5"],[10,"10"]],"xt":[[0,"0"],[20,"20"],[40,"40"],[60,"60"]],"pl":46,"pr":20},{"series":"star","chart":"q","pts":[[0,10],[60,10]],"tone":"green","dash":true,"ms":500,"label":"Q* = 10","lat":[14,10],"ldy":-14,"lsize":17},{"series":"qk","chart":"q","pts":[[0,0.0],[1,0.5],[2,0.975],[3,1.426],[4,1.855],[5,2.262],[6,2.649],[7,3.017],[8,3.366],[9,3.698],[10,4.013],[11,4.312],[12,4.596],[13,4.867],[14,5.123],[15,5.367],[16,5.599],[17,5.819],[18,6.028],[19,6.226],[20,6.415],[21,6.594],[22,6.765],[23,6.926],[24,7.08],[25,7.226],[26,7.365],[27,7.497],[28,7.622],[29,7.741],[30,7.854],[31,7.961],[32,8.063],[33,8.16],[34,8.252],[35,8.339],[36,8.422],[37,8.501],[38,8.576],[39,8.647],[40,8.715],[41,8.779],[42,8.84],[43,8.898],[44,8.953],[45,9.006],[46,9.055],[47,9.103],[48,9.147],[49,9.19],[50,9.231],[51,9.269],[52,9.306],[53,9.34],[54,9.373],[55,9.405],[56,9.434],[57,9.463],[58,9.49],[59,9.515],[60,9.539]],"tone":"amber","ms":1800},{"dot":"d1","chart":"q","at":[1,0.5],"text":"","tone":"amber"},{"dot":"d2","chart":"q","at":[2,0.975],"text":"0.5, then 0.975","tone":"amber","dx":14,"dy":-14,"anchor":"start"}]},{"cap":"With a fixed step size it gets close but never lands exactly on 10, and every new noisy sample keeps nudging it. Formal convergence needs the step size to shrink over time.","do":[{"dot":"d60","chart":"q","at":[60,9.54],"text":"9.54 after 60","tone":"amber","dy":22,"anchor":"end"}]},{"cap":"To learn about every action, the agent must sometimes try one it does not currently rate best. A common rule, ε-greedy: take the best-rated action most of the time, a random one with small probability ε.","do":[{"hide":"q"},{"hide":"star"},{"hide":"qk"},{"hide":"d1"},{"hide":"d2"},{"hide":"d60"},{"hide":"c3"},{"icon":"dice","name":"dice","x":430,"y":60,"s":0.7,"tone":"amber","label":"explore\nsometimes","lsize":18}]},{"cap":"Q-learning's target always uses the best action in the next state, whatever the agent actually does next. So it learns the value of the greedy policy while it is still exploring. That is what off-policy means.","do":[{"note":"off","x":300,"y":300,"text":"Q-learning target: r + γ × best Q in next state","size":19,"anchor":"middle","tone":"green"},{"note":"on","x":300,"y":340,"text":"SARSA target: r + γ × Q of the action actually taken","size":19,"anchor":"middle","tone":"blue"}]},{"cap":"One catch. The target takes the maximum of noisy guesses, and the maximum of noisy guesses runs high. Five estimates of an action truly worth 0 (illustrative): the max picks the one that overshot, +0.8.","do":[{"hide":"off"},{"hide":"on"},{"chart":"ov","x":10,"y":268,"w":580,"h":262,"title":"Five noisy estimates of a true value of 0","xd":[0.3,5.7],"yd":[-0.9,1.1],"yt":[[-0.5,"−0.5"],[0,"0"],[0.5,"+0.5"],[1,"+1"]],"xt":[[1,""],[2,""],[3,""],[4,""],[5,""]],"zero":true,"pl":56,"pr":14},{"bars":"nb","chart":"ov","data":[[1,-0.6,"-0.6","blue"],[2,0.3,"+0.3","blue"],[3,-0.2,"-0.2","blue"],[4,0.8,"+0.8","red"],[5,-0.4,"-0.4","blue"]],"bw":50,"ms":1000}]},{"cap":"That is the overestimation bias, and Double Q-learning is the standard fix. Where has this worked in trading? Mostly execution: Nevmyvaka, Feng and Kearns (2006) learned where to place limit orders from historical order-book data and cut costs against simple submit-and-leave orders.","do":[{"note":"ex","x":300,"y":252,"text":"clearest trading use: order execution","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:q_learning_temporal_difference:END -->
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -495,6 +591,19 @@
       <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
       <p>If you ask five noisy weather apps for tomorrow's temperature and then trust whichever one gave the highest number, you'll tend to end up too optimistic — not because any one app is lying, but because picking the max of several guesses systematically favors whichever one happened to overshoot. Q-learning does exactly that every update, picking the max over its own still-noisy value estimates, which is why its scores tend to run a little too high, especially early on.</p>
     </div>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative execution desk</div>
+    <h3>Your learned table says "be aggressive here". Do you trust it?</h3>
+    <p>You trained a tabular Q-learning agent on a year of logged order-book data to place limit orders. The state is time left and shares left, plus the spread. In one state, the table rates an aggressive limit price far above every other action. You check the logs: that state-action pair was tried only three times, while its neighbors were tried thousands of times. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Trust it. The table is the greedy policy, so the highest value is the right move.<div class="tl-drill-why">With three samples the estimate is mostly noise, and the update always takes the maximum over noisy guesses, which runs high. A rarely visited action that tops the table is exactly where the overestimation bias bites hardest.</div></li>
+      <li data-verdict="good">Treat it as unproven: gather more experience in that state, check it with a less biased estimate such as Double Q-learning, and only then let it drive orders.<div class="tl-drill-why">Convergence needs every state-action pair visited enough, and the max in the target is upward biased. More samples and a de-biased estimate address both problems before real orders depend on it.</div></li>
+      <li data-verdict="ok">Never take that action again, since it is untested.<div class="tl-drill-why">Safe, but it stops learning. With no exploration the table can never find out whether that action really is better. Exploration is part of the convergence guarantee, not an optional extra.</div></li>
+      <li data-verdict="bad">Raise the learning rate so the table learns faster from the samples it has.<div class="tl-drill-why">A bigger step size makes each noisy sample move the guess further. It speeds up learning but makes three data points even louder, the opposite of what this estimate needs.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What this shows.</strong> This is an illustrative situation, not a real episode. The lesson's real execution result, Nevmyvaka, Feng and Kearns (2006), learned order placement from historical order-book data. The traps here are the lesson's own: too little exploration and the upward bias of the max.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -593,6 +702,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="mdp-bellman-equation.html">MDPs, Value Functions &amp; the Bellman Equation</a> <span>· the equation this update estimates from samples</span></li>
+        <li><a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a> <span>· the state an execution agent sees</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="deep-q-networks.html">Deep Q-Networks &amp; Function Approximation</a> <span>· the same update when the table gets too big</span></li>
+        <li><a href="policy-gradients-actor-critic.html">Policy Gradients &amp; Actor-Critic Methods</a> <span>· learning the action directly, for sizes on a dial</span></li>
+        <li><a href="execution-algorithms.html">Execution Algorithms: TWAP, VWAP, POV, IS</a> <span>· the baselines a learned policy has to beat</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> it turns a log of what you did and what it cost into a rule for what to do next, without a model of the market.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="mdp-bellman-equation.html">← MDPs, Value Functions &amp; the Bellman Equation</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -674,6 +803,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

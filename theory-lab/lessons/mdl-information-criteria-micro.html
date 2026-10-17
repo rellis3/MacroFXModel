@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Minimum Description Length &amp; Information Criteria — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -221,7 +222,19 @@
       <p class="sl-p">DL = (k/2)·log₂(n) + (−2lnL̂)/(2ln2). Model B's three extra parameters cost about 3×½log₂(100) ≈ 9.97 extra bits to state, and only bought back about 6/ln2 ≈ 8.66 bits of residual — a losing trade in coding-length terms, and (per the bridge above) the exact same verdict BIC already gave in the AIC &amp; BIC lesson.</p>
     </section>
 
+    <!-- WB:mdl_information_criteria-deck:START -->
     <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">MDL: the shortest message wins</h2>
+      <!-- WB:mdl_information_criteria:START -->
+      <div class="wb" data-title="MDL: the shortest message wins">
+        <script type="application/json">{"w":600,"h":790,"intro":"Occam's razor with a ruler: send a model and its data down a wire, paying for every bit. The lesson's own two models. Press play, or step through.","steps":[{"cap":"You must send a model, and the data it describes, to someone over a slow wire. You pay for every bit. Whoever sends the shorter total message wins.","do":[{"icon":"snd","name":"person","x":30,"y":8,"s":0.7,"tone":"blue","label":"you","lsize":17},{"icon":"rcv","name":"person","x":500,"y":8,"s":0.7,"tone":"blue","label":"receiver","lsize":17},{"arrow":["snd","rcv"],"label":"pay per bit","tone":"amber"}]},{"cap":"Model A has 2 parameters, fitted to 100 observations. Stating each one as precisely as 100 points allow costs ½ log₂ 100 ≈ 3.32 bits, so 6.64 bits for the model.","do":[{"chart":"dl","x":10,"y":130,"w":370,"h":350,"title":"Message length, bits","xd":[0,3],"yd":[0,95],"yt":[[0,"0"],[40,"40"],[80,"80"]],"xt":[[0.95,"Model A"],[2.05,"Model B"]],"pl":46},{"gap":"am","chart":"dl","top":[[0.6,6.644],[1.3,6.644]],"bot":[[0.6,0],[1.3,0]],"tone":"amber","op":0.55},{"note":"aml","chart":"dl","at":[1.35,3.322],"text":"6.64","tone":"amber","size":16,"anchor":"start","dx":0,"dy":0}]},{"cap":"Then the leftovers: whatever Model A does not explain, priced by Shannon's rule at 72.14 bits. Total for Model A: 78.78 bits.","do":[{"gap":"ad","chart":"dl","top":[[0.6,78.77900000000001],[1.3,78.77900000000001]],"bot":[[0.6,6.644],[1.3,6.644]],"tone":"blue","op":0.55},{"note":"at","chart":"dl","at":[0.95,78.78],"text":"78.78","tone":"green","size":18,"anchor":"middle","dx":0,"dy":-14},{"note":"adl","chart":"dl","at":[0.95,42.7115],"text":"72.14\nleftover","tone":"blue","size":16,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Model B has 5 parameters. Writing them down costs 2.5 × 6.64 = 16.61 bits, more than double Model A's.","do":[{"gap":"bm","chart":"dl","top":[[1.7,16.61],[2.4,16.61]],"bot":[[1.7,0],[2.4,0]],"tone":"amber","op":0.55},{"note":"bml","chart":"dl","at":[2.45,8.305],"text":"16.61","tone":"amber","size":16,"anchor":"start","dx":0,"dy":0}]},{"cap":"Model B fits better, so its leftovers are shorter: 67.81 bits. But its total is 84.42 bits, longer than Model A's.","do":[{"gap":"bd","chart":"dl","top":[[1.7,84.417],[2.4,84.417]],"bot":[[1.7,16.61],[2.4,16.61]],"tone":"blue","op":0.55},{"note":"bt","chart":"dl","at":[2.05,84.42],"text":"84.42","tone":"red","size":18,"anchor":"middle","dx":0,"dy":-14},{"note":"bdl","chart":"dl","at":[2.05,50.5135],"text":"67.81\nleftover","tone":"blue","size":16,"anchor":"middle","dx":0,"dy":0}]},{"cap":"The trade: three extra parameters cost 9.97 bits to state and saved only 8.66 bits of leftovers. A losing trade, so Model A sends the shorter message.","do":[{"box":"tr","x":400,"y":130,"w":190,"h":160,"text":"3 extra params\n+9.97 bits to state\n−8.66 bits leftover\n→ A wins","tone":"red","size":18},{"pulse":"at"}]},{"cap":"Why ½ log₂ n per parameter? More data pins a parameter down more finely, so stating it to that precision costs a little more. The cost grows slowly with the sample size.","do":[{"chart":"pc","x":10,"y":500,"w":370,"h":280,"title":"Bits per parameter, ½ log₂ n","xd":[1,4],"yd":[0,7.5],"yt":[[0,"0"],[3.32,"3.32"],[6.64,"6.64"]],"xt":[[1,"10"],[2,"100"],[3,"1,000"],[4,"10,000"]],"pl":50},{"series":"pcs","chart":"pc","pts":[[1.0,1.661],[1.1,1.827],[1.2,1.993],[1.3,2.159],[1.4,2.325],[1.5,2.491],[1.6,2.658],[1.7,2.824],[1.8,2.99],[1.9,3.156],[2.0,3.322],[2.1,3.488],[2.2,3.654],[2.3,3.82],[2.4,3.986],[2.5,4.152],[2.6,4.319],[2.7,4.485],[2.8,4.651],[2.9,4.817],[3.0,4.983],[3.1,5.149],[3.2,5.315],[3.3,5.481],[3.4,5.647],[3.5,5.813],[3.6,5.979],[3.7,6.146],[3.8,6.312],[3.9,6.478],[4.0,6.644]],"tone":"purple","ms":1300},{"dot":"p100","chart":"pc","at":[2,3.322],"text":"n = 100","tone":"purple","dx":10,"dy":12,"anchor":"start"}]},{"cap":"Now multiply each message length by a fixed constant, 2 ln 2 ≈ 1.386. Model A: 78.78 × 1.386 = 109.21. Model B: 84.42 × 1.386 = 117.03.","do":[{"box":"bic","x":400,"y":310,"w":190,"h":170,"text":"× 2 ln 2 ≈ 1.386\nA: 109.21\nB: 117.03","tone":"purple","size":19}]},{"cap":"Those are exactly the two models' BIC values. Shortest message and lowest BIC are the same number, rescaled, so they always pick the same model.","do":[{"note":"eq","x":300,"y":118,"text":"BIC = 2 ln 2 × message length","size":20,"anchor":"middle","tone":"purple"},{"pulse":"bic"}]},{"cap":"Two roads, one answer. Schwarz got BIC from Bayesian probability in 1978. Rissanen got the same penalty from compression the same year, independently.","do":[{"box":"sch","x":400,"y":500,"w":190,"h":130,"text":"Schwarz 1978:\nBayes","tone":"blue","size":19},{"box":"ris","x":400,"y":650,"w":190,"h":130,"text":"Rissanen 1978:\ncompression","tone":"green","size":19}]},{"cap":"Two cautions. The shortest message is only the best of the models you tried, not the true model. And this exact match is with BIC, not AIC.","do":[{"hide":"eq"},{"note":"cv","x":300,"y":118,"text":"best among candidates, not \"true\"","size":20,"anchor":"middle","tone":"amber"}]},{"cap":"The question to ask of any backtest: does it compress the data, or just memorise it? Every parameter has to pay for itself in bits.","do":[{"hide":"cv"},{"note":"q","x":300,"y":118,"text":"compress, or memorise?","size":22,"anchor":"middle","tone":"green"},{"pulse":"tr"}]}]}</script>
+      </div>
+      <!-- WB:mdl_information_criteria:END -->
+    </section>
+    <!-- WB:mdl_information_criteria-deck:END -->
+
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
@@ -233,7 +246,7 @@
       <div class="sl-quote">Recall the AIC &amp; BIC lesson's own lag-selection scenario: a 5-lag spread model's four extra coefficients would cost about 4×½log₂(100) ≈ 13.3 extra bits just to state, and only bought back about 6/ln2 ≈ 8.66 fewer bits of residual. Describing those four extra lags costs more, in bits, than the story they tell about the spread is worth — the same BIC verdict, in a physical, checkable currency.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this stands<!-- DESK:START --> in this repo, right now<!-- DESK:END --></h2>
       <!-- DESK:START --><p class="sl-p">The full lesson is tagged "concept — background math, not built or tested anywhere in this repo." Checking the actual source code for this deck: no file anywhere in this repository implements a two-part code, a description-length calculation, or normalized maximum likelihood (NML) under any name — an MDL-specific search turns up nothing but an unrelated variable literally named <code>mdl</code> as shorthand for "model" in <code>volatilityExhaustion/daytype_classifier.py</code>, not this lesson's Minimum Description Length.</p>
@@ -248,7 +261,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -299,7 +312,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -448,5 +461,9 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

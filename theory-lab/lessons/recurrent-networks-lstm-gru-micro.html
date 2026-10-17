@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Recurrent Networks: LSTM &amp; GRU — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -204,7 +205,19 @@
       </div>
     </section>
 
+    <!-- WB:recurrent_networks_lstm_gru-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Why a recurrent network forgets, and how the LSTM remembers</h2>
+      <!-- WB:recurrent_networks_lstm_gru:START -->
+      <div class="wb" data-title="Why a recurrent network forgets, and how the LSTM remembers">
+        <script type="application/json">{"w":600,"h":690,"intro":"A network that reads returns one day at a time, and why its memory fades unless it adds instead of multiplying. Press play, or step through.","steps":[{"cap":"A recurrent network reads a series in order: day 1, then day 2, then day 3, carrying a running note forward. That note is the hidden state.","do":[{"chip":"x0","x":60,"y":30,"text":"day 1","tone":"blue"},{"chip":"x1","x":150,"y":30,"text":"day 2","tone":"blue"},{"chip":"x2","x":240,"y":30,"text":"day 3","tone":"blue"},{"chip":"x3","x":330,"y":30,"text":"day 4","tone":"blue"},{"chip":"x4","x":420,"y":30,"text":"day 5","tone":"blue"},{"box":"h","x":470,"y":8,"w":120,"h":50,"text":"note h","tone":"purple","size":19},{"arrow":["x4","h"],"tone":"purple"}]},{"cap":"At every step the same rule runs: mix the old note with the new day, squash the result, and pass it on. The same weight is used at every single step.","do":[{"note":"rule","x":300,"y":90,"text":"new note = squash(weight × old note + new input)","size":19,"anchor":"middle","tone":"purple"}]},{"cap":"Training sends an error signal back through every step. Each step multiplies it by the same factor; say 0.75 (illustrative). After one step back, 0.75 is left; after two, 0.56.","do":[{"chart":"g","x":10,"y":116,"w":580,"h":270,"title":"Training signal left, by steps back (illustrative)","xd":[0,15],"yd":[0,1.08],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[0,"0"],[5,"5"],[10,"10"],[15,"15"]],"pl":40,"pr":30},{"series":"rnn","chart":"g","pts":[[0,1.0],[1,0.75],[2,0.5625],[3,0.4219],[4,0.3164],[5,0.2373],[6,0.178],[7,0.1335],[8,0.1001],[9,0.0751],[10,0.0563],[11,0.0422],[12,0.0317],[13,0.0238],[14,0.0178],[15,0.0134]],"tone":"red","ms":1600}]},{"cap":"After 15 steps back, 0.75 to the 15th power is about 0.013: barely one percent. Whatever happened on the early days can hardly teach the network anything. That is the vanishing gradient.","do":[{"dot":"r15","chart":"g","at":[15,0.0134],"text":"≈ 0.01","tone":"red","dx":-10,"dy":-16,"anchor":"end"}]},{"cap":"If the factor were above 1, the signal would blow up instead: the exploding gradient. Clipping the gradient patches that direction; nothing so simple fixes the vanishing one.","do":[{"note":"exp","x":300,"y":410,"text":"above 1: explodes (clip it) · below 1: vanishes (no easy patch)","size":17,"anchor":"middle","tone":"amber"}]},{"cap":"The LSTM adds a second memory, the cell state, like a conveyor belt. Gates take things off and put things on, but the belt carries memory forward by adding. Through one step the signal is scaled only by the forget gate.","do":[{"box":"belt","x":20,"y":440,"w":560,"h":56,"text":"cell state: keep old × forget gate, add new × input gate","tone":"green","size":18}]},{"cap":"If the forget gate learns to stay near 0.95, about 0.46 of the signal survives 15 steps, instead of 0.01. Same length of sequence, far longer memory.","do":[{"series":"lstm","chart":"g","pts":[[0,1.0],[1,0.95],[2,0.9025],[3,0.8574],[4,0.8145],[5,0.7738],[6,0.7351],[7,0.6983],[8,0.6634],[9,0.6302],[10,0.5987],[11,0.5688],[12,0.5404],[13,0.5133],[14,0.4877],[15,0.4633]],"tone":"green","ms":1600},{"dot":"l15","chart":"g","at":[15,0.4633],"text":"≈ 0.46","tone":"green","dx":-10,"dy":-16,"anchor":"end"}]},{"cap":"The gates can also throw memory away. In the worked example the cell holds 0.671, then 0.828. Then a sharp input of −1 shuts every gate to 0.119, and the memory drops to 0.008 in one step.","do":[{"hide":"belt"},{"hide":"exp"},{"chart":"c","x":10,"y":410,"w":580,"h":200,"title":"Worked example: cell state after each input","xd":[0.4,3.6],"yd":[0,1.05],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[1,"x = 1"],[2,"x = 0.5"],[3,"x = −1"]],"pl":40},{"bars":"cb","chart":"c","data":[[1,0.671,"0.671","green"],[2,0.828,"0.828","green"],[3,0.008,"0.008","red"]],"bw":70,"ms":1200}]},{"cap":"The GRU keeps the same additive idea with two gates and no separate belt: fewer parameters, often as good, not always. Which wins is an empirical question.","do":[{"note":"gru","x":300,"y":634,"text":"GRU: same additive trick, two gates, one state","size":18,"anchor":"middle","tone":"blue"}]},{"cap":"A flexible memory also fits noise. Fischer and Krauss (2018) found an LSTM ranking S&P 500 stocks beat a random forest and logistic regression, but its returns faded sharply after about 2010. Beat a simple baseline out of sample before you believe one.","do":[{"note":"end","x":300,"y":670,"text":"remember further back, then prove it out of sample","size":19,"anchor":"middle","tone":"amber"}]}]}</script>
+      </div>
+      <!-- WB:recurrent_networks_lstm_gru:END -->
+    </section>
+    <!-- WB:recurrent_networks_lstm_gru-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">GRU: the same additive idea, fewer moving parts</h2>
       <p class="sl-sub">Two gates instead of three, one merged state instead of two.</p>
@@ -222,7 +235,7 @@
       <div class="sl-quote">If the LSTM is a note-taker with a separate long-term notebook (the cell state) and a short summary card they hand off (the hidden state), the GRU is a note-taker who keeps just one notebook and decides, page by page, how much of the old page to keep versus overwrite. Simpler machinery, usually just as good, occasionally not — and cheaper to run either way.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Longer sequences make the gap worse</h2>
       <p class="sl-sub">Drag the slider to change how far back the gradient has to travel. Watch both curves — and the two readouts below them.</p>
@@ -250,7 +263,7 @@
       <p class="sl-p">Drag the slider longer and the gap widens: the plain RNN's curve doesn't just start lower, it collapses toward zero almost immediately, while the LSTM's stays meaningfully above zero even at 50 steps back. That gap — not the exact numbers, which are illustrative fixed decay rates, not measurements from a trained model — is the entire practical argument for gating.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Put a number on the vanishing</h2>
       <p class="sl-sub">A plain RNN's backprop gradient shrinks by roughly the same decay factor at every step back through time.</p>
@@ -275,7 +288,7 @@
       <p class="sl-p">This is the same mechanism as the chart two slides back, made numeric: γ is the per-step decay a plain RNN's backprop gradient effectively applies, and γⁿ is what's left of the original gradient magnitude after n steps of repeated multiplication. There is no equivalent single-number decay for an LSTM's cell-state gradient — it's governed by a learned, per-unit forget gate rather than one fixed constant, which is precisely the point.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Not obsolete — a real, current tradeoff</h2>
       <p class="sl-p">RNNs and LSTMs were the dominant sequence architecture before 2017 — the next lesson explains why that changed for long sequences. Attention lets every output position look directly at every input position, instead of relaying information step by step through a chain that still degrades gradually even with gating.</p>
@@ -291,7 +304,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -342,7 +355,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -461,5 +474,9 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

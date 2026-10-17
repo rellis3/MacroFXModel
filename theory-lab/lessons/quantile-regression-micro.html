@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quantile Regression — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <style>
   .qr-dot{fill:var(--text2);opacity:.75}
@@ -150,7 +151,19 @@
       </div>
     </section>
 
+    <!-- WB:quantile_regression-deck:START -->
     <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Three lines through the same points: quantile regression step by step</h2>
+      <!-- WB:quantile_regression:START -->
+      <div class="wb" data-title="Three lines through the same points: quantile regression step by step">
+        <script type="application/json">{"w":600,"h":770,"intro":"The lesson's 40 toy points, one ordinary regression, and two lines fitted with a lopsided penalty instead. Press play, or step through.","steps":[{"cap":"Forty points from the lesson's toy dataset. As x grows, the outcomes spread out: the risk itself changes with x.","do":[{"chart":"sc","x":10,"y":10,"w":580,"h":380,"title":"Toy data: outcome y against predictor x","xd":[0,10.5],"yd":[0,20],"yt":[[0,"0"],[10,"10"],[20,"20"]],"xt":[[1,"1"],[4,"4"],[7,"7"],[10,"10"]],"pl":50,"pr":74},{"dot":"p0","chart":"sc","at":[1.39,4.58],"text":"","tone":null},{"dot":"p1","chart":"sc","at":[1.57,4.74],"text":"","tone":null},{"dot":"p2","chart":"sc","at":[1.85,4.27],"text":"","tone":null},{"dot":"p3","chart":"sc","at":[2.15,5.42],"text":"","tone":null},{"dot":"p4","chart":"sc","at":[2.17,5.35],"text":"","tone":null},{"dot":"p5","chart":"sc","at":[2.39,5.77],"text":"","tone":null},{"dot":"p6","chart":"sc","at":[2.71,6.88],"text":"","tone":null},{"dot":"p7","chart":"sc","at":[2.75,6.34],"text":"","tone":null},{"dot":"p8","chart":"sc","at":[3.04,7.25],"text":"","tone":null},{"dot":"p9","chart":"sc","at":[3.05,6.63],"text":"","tone":null},{"dot":"p10","chart":"sc","at":[3.93,8.25],"text":"","tone":null},{"dot":"p11","chart":"sc","at":[4.19,9.09],"text":"","tone":null},{"dot":"p12","chart":"sc","at":[4.33,6.6],"text":"","tone":null},{"dot":"p13","chart":"sc","at":[4.34,8.09],"text":"","tone":null},{"dot":"p14","chart":"sc","at":[4.95,8.75],"text":"","tone":null},{"dot":"p15","chart":"sc","at":[4.99,8.57],"text":"","tone":null},{"dot":"p16","chart":"sc","at":[5.05,9.17],"text":"","tone":null},{"dot":"p17","chart":"sc","at":[5.2,12.03],"text":"","tone":null},{"dot":"p18","chart":"sc","at":[5.23,8.54],"text":"","tone":null},{"dot":"p19","chart":"sc","at":[5.28,11.38],"text":"","tone":null},{"dot":"p20","chart":"sc","at":[5.99,8.18],"text":"","tone":null},{"dot":"p21","chart":"sc","at":[6.69,11.42],"text":"","tone":null},{"dot":"p22","chart":"sc","at":[6.8,12.5],"text":"","tone":null},{"dot":"p23","chart":"sc","at":[7.03,13.65],"text":"","tone":null},{"dot":"p24","chart":"sc","at":[7.15,14.09],"text":"","tone":null},{"dot":"p25","chart":"sc","at":[7.28,14.46],"text":"","tone":null},{"dot":"p26","chart":"sc","at":[7.7,12.84],"text":"","tone":null},{"dot":"p27","chart":"sc","at":[7.82,12.77],"text":"","tone":null},{"dot":"p28","chart":"sc","at":[7.85,15.56],"text":"","tone":null},{"dot":"p29","chart":"sc","at":[7.97,13.55],"text":"","tone":null},{"dot":"p30","chart":"sc","at":[8.01,11.31],"text":"","tone":null},{"dot":"p31","chart":"sc","at":[8.08,11.7],"text":"","tone":null},{"dot":"p32","chart":"sc","at":[8.41,12.58],"text":"","tone":null},{"dot":"p33","chart":"sc","at":[8.45,15.77],"text":"","tone":null},{"dot":"p34","chart":"sc","at":[8.73,15.42],"text":"","tone":null},{"dot":"p35","chart":"sc","at":[9.04,17.17],"text":"","tone":null},{"dot":"p36","chart":"sc","at":[9.34,14.98],"text":"","tone":null},{"dot":"p37","chart":"sc","at":[9.71,16.96],"text":"","tone":null},{"dot":"p38","chart":"sc","at":[9.74,18.17],"text":"","tone":null},{"dot":"p39","chart":"sc","at":[9.78,15.9],"text":"","tone":null}]},{"cap":"Ordinary least squares punishes a miss above the line exactly as hard as a miss below it. The best line then runs through the middle: the conditional mean, ŷ = 2.172 + 1.464x.","do":[{"series":"ols","chart":"sc","pts":[[1,3.636],[10,16.812]],"tone":null,"ms":1100,"label":"mean","lat":[10,16.812],"ldx":8,"ldy":0,"lanchor":"start","lsize":17}]},{"cap":"Now make the penalty lopsided. At τ = 0.1, a guess that comes out too high costs 0.9 per unit, a guess too low only 0.1. That is the pinball loss.","do":[{"chart":"pb","x":10,"y":400,"w":285,"h":220,"title":"Pinball loss","xd":[-2,2],"yd":[0,2.2],"yt":[[0,"0"],[1,"1"],[2,"2"]],"xt":[[-1.6,"too high"],[0,"0"],[1.6,"too low"]],"pl":40,"pr":20},{"series":"pb1","chart":"pb","pts":[[-2,1.8],[0,0],[2,0.2]],"tone":"blue","ms":900},{"note":"pl1","chart":"pb","at":[-1.0,1.75],"text":"τ = 0.1","tone":"blue","size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Minimizing that penalty drags the line down to the bottom edge of the cloud: the conditional 10th percentile, 2.062 + 1.194x. Only a few points sit below it.","do":[{"series":"q1","chart":"sc","pts":[[1,3.256],[10,14.002]],"tone":"blue","ms":1100,"label":"τ = 0.1","lat":[10,14.002],"ldx":8,"ldy":0,"lanchor":"start","lsize":17}]},{"cap":"Flip the weights for τ = 0.9: now guessing too low is the expensive side, 0.9 per unit against 0.1.","do":[{"series":"pb9","chart":"pb","pts":[[-2,0.2],[0,0],[2,1.8]],"tone":"amber","ms":900},{"note":"pl9","chart":"pb","at":[0.9,1.75],"text":"τ = 0.9","tone":"amber","size":17,"anchor":"middle","dx":0,"dy":0},{"dim":"pb1"}]},{"cap":"That line rides the top edge: the 90th percentile, 2.395 + 1.658x. Three lines with three different slopes, all from the same points.","do":[{"series":"q9","chart":"sc","pts":[[1,4.053],[10,18.975]],"tone":"amber","ms":1100,"label":"τ = 0.9","lat":[10,18.975],"ldx":8,"ldy":0,"lanchor":"start","lsize":17}]},{"cap":"The band between the two is the story. At x = 1 it is 0.80 wide. At x = 10 it is 4.97 wide, roughly six times wider. Risk grows with x.","do":[{"gap":"band","chart":"sc","top":[[1,4.053],[10,18.975]],"bot":[[1,3.256],[10,14.002]],"tone":"amber","op":0.2},{"note":"w1","chart":"sc","at":[1.2,6.253],"text":"0.80","tone":"amber","size":17,"anchor":"middle","dx":0,"dy":0},{"note":"w10","chart":"sc","at":[8.6,19.2],"text":"4.97 wide","tone":"amber","size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"The mean line reports one number at every x. It has no way to say that the outcomes got riskier. That needs a line aimed at the tail.","do":[{"box":"one","x":310,"y":410,"w":280,"h":96,"text":"mean: one number per x\nno word on the spread","size":18}]},{"cap":"The real version: \"Vulnerable Growth\" (2019) fitted quantile regressions of future US growth on a financial conditions index. As conditions tightened, as in 2008, the median barely moved.","do":[{"icon":"fci","name":"thermo","x":70,"y":636,"s":0.6,"tone":"red","label":"financial\nconditions\ntighten","lsize":16},{"box":"med","x":240,"y":636,"w":345,"h":54,"text":"median growth: barely moves","tone":"blue","size":18},{"arrow":["fci","med"],"tone":"blue"}]},{"cap":"But the lower quantiles of next year's growth fell sharply. Tight conditions changed how bad things could get, not the typical outcome.","do":[{"box":"low","x":240,"y":704,"w":345,"h":54,"text":"5th percentile: falls sharply","tone":"red","size":18},{"arrow":["fci","low"],"tone":"red"}]},{"cap":"The IMF built its Growth-at-Risk framework on it, from October 2017. Honest postscript: out-of-sample, the tail signal looked weaker, and the index tightens as a crisis unfolds, not years before it.","do":[{"box":"gar","x":310,"y":520,"w":280,"h":96,"text":"Growth-at-Risk:\nthe 5th percentile, given x","tone":"amber","size":18}]}]}</script>
+      </div>
+      <!-- WB:quantile_regression:END -->
+    </section>
+    <!-- WB:quantile_regression-deck:END -->
+
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Drag τ and watch the fan</h2>
       <p class="sl-sub">Faint lines mark τ = 0.05, 0.25, 0.5, 0.75, 0.95. The bold line is whatever τ you pick — the fan itself is the heteroskedasticity.</p>
@@ -182,7 +195,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Compute a pinball loss, live</h2>
       <p class="sl-sub">Enter an actual outcome Y, a predicted quantile q, and a target level τ — the asymmetric penalty recalculates instantly.</p>
@@ -209,7 +222,7 @@
       <p class="sl-p">Default numbers: the market actually returned <strong>−3.2%</strong>, but a τ=0.05 model had only predicted a 5th-percentile floor of <strong>−2.5%</strong> — the model's guess was too high (too optimistic about the floor), so this is an over-prediction, penalized at weight (1−τ) = 0.95. |u|·0.95 = 0.7 × 0.95 = <strong>0.665</strong>.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The practical payoff</h2>
       <p class="sl-sub">A tail estimate that moves with conditions, instead of a fixed correction hoping the tail scales proportionally.</p>
@@ -230,7 +243,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">How this actually gets used</h2>
       <div class="sl-icard-grid">
@@ -241,7 +254,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where it gets over-trusted</h2>
       <div class="sl-callout amber">
@@ -256,7 +269,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Checked against this repo's actual code</h2>
       <p class="sl-sub">The full lesson makes a specific claim about what's built here. Verifying it against the current source turned up a nuance worth stating plainly.</p>
@@ -270,7 +283,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11 · It actually happened</div>
       <h2 class="sl-h2">"Vulnerable Growth": the median held, the tail fell away</h2>
       <div class="sl-callout amber">
@@ -290,7 +303,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <!-- DESK:START -->
@@ -305,7 +318,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -356,7 +369,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -473,5 +486,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

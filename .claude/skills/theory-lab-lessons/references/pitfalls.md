@@ -28,3 +28,9 @@ Add a line whenever a new one bites.
 15. **Existing decks aren't perfect references.** `kelly-criterion-micro.html`'s `#sl-total` is off by one (deck.js
     corrects it at runtime). `merton-jump-diffusion-micro.html` and `time-value-of-money-micro.html` use `sl-legend`,
     which isn't in `deck.css` (2026-10-12). Don't copy those.
+
+- **Building several whiteboards at once.** `build_whiteboards.py` rewrites `watch.html` and the hub badges on every run,
+  so parallel runs race on those shared pages. Build boards with `--no-index <name>`, then run it once with no
+  arguments at the end to regenerate the index and badges.
+- **`vark.js` without `tts.js?v=6`.** The spoken blocks borrow the LaTeX-to-speech helpers from `tts.js` v6
+  (`window.TLSpeech`); load `tts.js` first. An old `?v=5` cache-buster can serve the pre-export script.

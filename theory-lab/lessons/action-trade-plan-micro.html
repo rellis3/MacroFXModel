@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>From a View to a Trade Plan — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <style>
   .tp-svg{width:100%;height:auto;display:block}
@@ -121,7 +122,19 @@
       <div class="sl-callout amber"><div class="sl-callout-label">Same view, pain stop</div><p>A 20-pip stop at 1.0830 is 0.31 ATR, inside a quiet morning's wiggle. It shows 7.5R on paper, but the hit rate collapses because most "losses" are noise.</p></div>
     </section>
 
+    <!-- WB:action_trade_plan-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">From a view to a trade plan, drawn step by step</h2>
+      <!-- WB:action_trade_plan:START -->
+      <div class="wb" data-title="From a view to a trade plan, drawn step by step">
+        <script type="application/json">{"w":600,"h":720,"intro":"One view, turned into five numbers written before you click: entry, invalidation, stop, target and size. Press play, or step through.","steps":[{"cap":"A view: EUR/USD looks cheap against the 2-year rate spread and should recover toward 1.1000 over about three weeks. Price is 1.0850. A view has a direction and a reason, but no prices and no size.","do":[{"icon":"you","name":"person","x":20,"y":10,"s":0.7,"tone":"blue","label":"you","lsize":18},{"icon":"view","name":"scroll","x":130,"y":10,"s":0.7,"tone":"blue","label":"the view","lsize":18},{"note":"vnote","x":410,"y":60,"text":"direction + reason","size":19,"anchor":"middle","tone":"blue"},{"note":"vnote2","x":410,"y":92,"text":"no prices, no size","size":19,"anchor":"middle","tone":"red"}]},{"cap":"First number: entry at 1.0850. An ordinary day moves about 65 pips from high to low. That is the ATR, the yardstick for noise.","do":[{"chart":"px","x":10,"y":170,"w":580,"h":330,"title":"EUR/USD: the plan on a price chart","xd":[0,15],"yd":[1.068,1.103],"yt":[[1.07,"1.0700"],[1.08,"1.0800"],[1.09,"1.0900"],[1.1,"1.1000"]],"xt":[[0,"entry"],[5,"5"],[10,"10"],[15,"15 sessions"]],"pl":62,"pr":128},{"series":"entry","chart":"px","pts":[[0,1.085],[15,1.085]],"tone":null,"ms":500,"label":"entry 1.0850","lat":[15,1.085],"ldx":6,"ldy":-10,"lanchor":"start","lsize":15},{"chip":"atr","x":470,"y":120,"text":"ATR 65 pips","tone":"blue"}]},{"cap":"Second number, from the analysis: the March low at 1.0780 held even when the spread was at its widest. A daily close below it means the reason is wrong. That price is the invalidation level.","do":[{"series":"inv","chart":"px","pts":[[0,1.078],[15,1.078]],"tone":"amber","ms":500,"label":"invalid. 1.0780","lat":[15,1.078],"ldx":6,"ldy":-9,"lanchor":"start","lsize":15}]},{"cap":"Third: the stop goes just beyond invalidation, by a quarter of an ATR. 0.25 × 65 ≈ 16 pips, so the stop is 1.0764. That is 86 pips from entry, or 1.32 ATR.","do":[{"series":"stop","chart":"px","pts":[[0,1.0764],[15,1.0764]],"tone":"red","ms":500,"label":"stop 1.0764","lat":[15,1.0764],"ldx":6,"ldy":10,"lanchor":"start","lsize":15}]},{"cap":"Shade half an ATR either side of entry: a normal day's wiggle. The stop sits well outside it, so if it is hit, that means something. The reason was wrong.","do":[{"gap":"noise","chart":"px","top":[[0,1.08825],[15,1.08825]],"bot":[[0,1.08175],[15,1.08175]],"tone":"blue","op":0.18},{"note":"nlab","chart":"px","at":[0.3,1.08825],"text":"± ½ ATR: noise","tone":"blue","size":16,"anchor":"start","dx":0,"dy":-10}]},{"cap":"A trader who only wants to risk 20 pips puts the stop at 1.0830 instead: 0.31 ATR, inside the noise. Nothing about the thesis changes at 1.0830. A quiet morning can hit it.","do":[{"series":"pain","chart":"px","pts":[[0,1.083],[15,1.083]],"tone":"red","dash":true,"ms":500,"label":"pain stop 1.0830","lat":[15,1.083],"ldx":6,"ldy":2,"lanchor":"start","lsize":15}]},{"cap":"Fourth: the target, also from the analysis: 1.1000, 150 pips away. That is 150 ÷ 86 = 1.74R, so the trade breaks even before costs if it wins 36.4% of the time.","do":[{"series":"tgt","chart":"px","pts":[[0,1.1],[15,1.1]],"tone":"green","ms":500,"label":"target 1.1000","lat":[15,1.1],"ldx":6,"ldy":0,"lanchor":"start","lsize":15},{"box":"rr","x":10,"y":515,"w":280,"h":84,"text":"target = 150 pips = 1.74R\nbreak-even win rate 36.4%","tone":"green","size":18}]},{"cap":"Fifth, and last: the size. Decide the money first: 0.5% of $100,000 is $500. One lot loses 86 × $10 = $860 over the stop distance, so $500 ÷ $860 = 0.58 lots, rounded down.","do":[{"box":"size","x":310,"y":515,"w":280,"h":84,"text":"size = $500 ÷ (86 × $10)","tone":"purple","sub":"0.00 lots","size":18},{"count":"size","from":0,"to":0.58,"dp":2,"suf":" lots","ms":1400}]},{"cap":"One illustrative path: an ordinary dip on day 2 takes out the 20-pip pain stop. Then price climbs to 1.1000. The analysis stop never came close, and at target the plan makes 0.58 × 150 × $10 = $870.","do":[{"dim":"noise"},{"dim":"nlab"},{"series":"path","chart":"px","pts":[[0,1.085],[1,1.0838],[2,1.0815],[3,1.0832],[4,1.0861],[5,1.0849],[6,1.0884],[7,1.0905],[8,1.0893],[9,1.0932],[10,1.0951],[11,1.0974],[12,1.1]],"tone":"purple","ms":1800,"label":"illustrative path","lat":[9,1.0932],"ldx":10,"ldy":14,"lanchor":"start","lsize":15},{"dot":"hitpain","chart":"px","at":[2,1.0815],"text":"pain stop hit","tone":"red","dx":8,"dy":20,"anchor":"start"},{"dot":"hittgt","chart":"px","at":[12,1.1],"text":"+$870","tone":"green","dy":-16}]},{"cap":"A stop is an order, not a guarantee. If a weekend gap opened at 1.0700, the stop would fill there: a loss of 0.58 × 150 × $10 = $870, 1.74 times the plan. Around weekends and events, size for the gap.","do":[{"series":"gapl","chart":"px","pts":[[0,1.07],[15,1.07]],"tone":"red","dash":true,"ms":500,"label":"gap fill 1.0700","lat":[15,1.07],"ldx":6,"ldy":8,"lanchor":"start","lsize":15},{"box":"gapbox","x":10,"y":614,"w":280,"h":96,"text":"weekend gap to 1.0700?\nthe stop fills there:\nloss $870, not $500","tone":"red","size":18}]},{"cap":"It happened: on 15 January 2015 the Swiss National Bank dropped its 1.20 floor under EUR/CHF without warning. Stops just under 1.20 filled far lower, and losses were many times what plans allowed.","do":[{"box":"snb","x":310,"y":614,"w":280,"h":96,"text":"SNB, 15 Jan 2015:\nstops under 1.20\nfilled far lower","tone":"amber","size":18}]},{"cap":"Five numbers, written before you click: entry, invalidation, stop, target and size. The reason sets the stop, and the stop sets the size. Fear belongs in the size, never in the stop.","do":[{"hide":"vnote"},{"hide":"vnote2"},{"note":"sum","x":410,"y":60,"text":"reason → stop → size","size":20,"anchor":"middle","tone":"green"},{"note":"sum2","x":410,"y":92,"text":"written before entry","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:action_trade_plan:END -->
+    </section>
+    <!-- WB:action_trade_plan-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7 · It actually happened</div>
       <h2 class="sl-h2">15 January 2015: the franc floor goes</h2>
       <p class="sl-p">From 2011 the Swiss National Bank held EUR/CHF above 1.20. Traders went long near 1.20 with stops just below. On their analysis the floor could not break.</p>
@@ -132,7 +145,7 @@
       <div class="sl-callout amber"><div class="sl-callout-label">The lesson</div><p>A stop is an order, not a guarantee. Around pegs, events and weekends, add a gap line and size for it.</p></div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Where the plan sits</h2>
       <div class="sl-chain">
@@ -148,7 +161,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9 · The desk's verdict</div>
       <h2 class="sl-h2">What was tested here</h2>
       <div class="sl-stamp untested"><span class="sl-stamp-tag">Not tested here</span><span><strong>"Writing the plan first improves results."</strong> No plan-first vs plan-later sample. The desk does pre-register every test, writing the pass bar before the data are run. That is invalidation-before-entry for research.</span></div>
@@ -156,7 +169,7 @@
       <div class="sl-stamp validated" data-evidence="band-reach-from-here" data-evidence-date="2026-09-18"><span class="sl-stamp-tag">Desk test: held up</span><span><strong>Targets from a measured range.</strong> Median band reached by 10:30 UK → 75th band before the close: EUR/USD 43% vs 18% ordinary, gold 50% vs 21%, NAS100 63% vs 23% (2.3–2.7×). A target guide, never an entry.</span></div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · Template</div>
       <h2 class="sl-h2">The trade plan card</h2>
       <div class="sl-icard-grid">
@@ -169,7 +182,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -207,7 +220,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -290,5 +303,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

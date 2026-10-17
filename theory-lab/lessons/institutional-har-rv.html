@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HAR-RV &amp; Realized Volatility Forecasting — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -42,6 +43,79 @@
       <li><strong>How it reached trading:</strong> Corsi (published 2009) replaced long-memory machinery with three OLS terms, and HAR-RV became the workhorse benchmark for forecasting realised vol against implied.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of the worked example's 22 days of realized variance, with a volatility shock on days 10 to 14 peaking at 1.44 on day 11. Three horizons are marked: today's value 0.397, the 5-day average 0.439 over days 18 to 22, and the 22-day average 0.596 across the whole month. The HAR-RV forecast for day 23 is 0.468, above today's value because the week and month still remember the shock.">
+      <rect class="tlp-box" x="53.2" y="166.8" width="14" height="43.2" rx="2"/>
+      <rect class="tlp-box" x="73.7" y="159.3" width="14" height="50.7" rx="2"/>
+      <rect class="tlp-box" x="94.1" y="162.4" width="14" height="47.6" rx="2"/>
+      <rect class="tlp-box" x="114.5" y="163.9" width="14" height="46.1" rx="2"/>
+      <rect class="tlp-box" x="135.0" y="157.7" width="14" height="52.3" rx="2"/>
+      <rect class="tlp-box" x="155.4" y="162.4" width="14" height="47.6" rx="2"/>
+      <rect class="tlp-box" x="175.8" y="154.5" width="14" height="55.5" rx="2"/>
+      <rect class="tlp-box" x="196.3" y="149.5" width="14" height="60.5" rx="2"/>
+      <rect class="tlp-box" x="216.7" y="152.9" width="14" height="57.1" rx="2"/>
+      <rect class="tlp-box red" x="237.1" y="101.7" width="14" height="108.3" rx="2"/>
+      <rect class="tlp-box red" x="257.6" y="37.2" width="14" height="172.8" rx="2"/>
+      <rect class="tlp-box red" x="278.0" y="64.8" width="14" height="145.2" rx="2"/>
+      <rect class="tlp-box red" x="298.4" y="90.0" width="14" height="120.0" rx="2"/>
+      <rect class="tlp-box red" x="318.9" y="112.8" width="14" height="97.2" rx="2"/>
+      <rect class="tlp-box" x="339.3" y="133.2" width="14" height="76.8" rx="2"/>
+      <rect class="tlp-box" x="359.7" y="142.5" width="14" height="67.5" rx="2"/>
+      <rect class="tlp-box" x="380.2" y="147.8" width="14" height="62.2" rx="2"/>
+      <rect class="tlp-box" x="400.6" y="152.9" width="14" height="57.1" rx="2"/>
+      <rect class="tlp-box" x="421.0" y="154.5" width="14" height="55.5" rx="2"/>
+      <rect class="tlp-box" x="441.5" y="157.7" width="14" height="52.3" rx="2"/>
+      <rect class="tlp-box" x="461.9" y="159.3" width="14" height="50.7" rx="2"/>
+      <rect class="tlp-box" x="482.3" y="162.4" width="14" height="47.6" rx="2"/>
+      <line class="tlp-line purple thick dash" x1="53.2" y1="138.5" x2="496.3" y2="138.5"/>
+      <line class="tlp-line amber thick" x1="400.6" y1="157.4" x2="496.3" y2="157.4"/>
+      <circle class="tlp-blue" cx="489.3" cy="162.4" r="5"/>
+      <circle class="tlp-green" cx="509.8" cy="153.8" r="6"/>
+      <line class="tlp-line" x1="50" y1="210" x2="525" y2="210"/>
+      <text class="tlp-text3" x="44" y="214" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="44" y="154" text-anchor="end" font-size="12">0.5</text>
+      <text class="tlp-text3" x="44" y="94" text-anchor="end" font-size="12">1.0</text>
+      <text class="tlp-text3" x="60.2" y="226" text-anchor="middle" font-size="12">day 1</text>
+      <text class="tlp-text3" x="264.6" y="226" text-anchor="middle" font-size="12">11</text>
+      <text class="tlp-text3" x="486" y="226" text-anchor="middle" font-size="12">22</text>
+      <text class="tlp-green" x="513" y="226" text-anchor="middle" font-size="12" font-weight="700">23</text>
+      <text class="tlp-red" x="248" y="40" text-anchor="end" font-size="13" font-weight="700">shock, days 10–14</text>
+      <text class="tlp-purple" x="350" y="54" font-size="13" font-weight="700">22-day average 0.596</text>
+      <text class="tlp-amber" x="350" y="73" font-size="13" font-weight="700">5-day average 0.439</text>
+      <text class="tlp-blue" x="350" y="92" font-size="13" font-weight="700">today 0.397</text>
+      <text class="tlp-green" x="350" y="114" font-size="14" font-weight="700">forecast, day 23: 0.468</text>
+    </svg>
+    <figcaption>Realized variance over the worked example's 22 days. By day 22 the single day has calmed down, but the week, and above all the month, still remember the shock. HAR-RV blends all three horizons, so its forecast (green, 10.86% a year) sits above the "same as today" forecast (10.00%).</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">GARCH forecasts tomorrow's volatility from yesterday's squared return. Why isn't that good enough?</p>
+      <p data-who="Quant">Because one squared return is a very noisy reading of a whole day. Two days with the same true volatility can give squared returns three or four times apart, just from where the close happened to land.</p>
+      <p data-who="Trader">So what's the fix?</p>
+      <p data-who="Quant">Look inside the day. Add up the squared returns of every five-minute bar. That's realized variance: hundreds of small readings instead of one big guess.</p>
+      <p data-who="Trader">And once I have that, how do I forecast with it?</p>
+      <p data-who="Quant">Fulvio Corsi's answer, published in 2009, is almost embarrassingly simple. Take today's realized variance, the average over the past week, and the average over the past month. Regress tomorrow on those three. Ordinary least squares, nothing fancier.</p>
+      <p data-who="Trader">Why those three?</p>
+      <p data-who="Quant">Because the market is made of people working on different clocks. Day traders care about today. Weekly rebalancers care about the week. Monthly allocators care about the month. Each adds its own memory, and together they make volatility remember shocks for a long time.</p>
+      <p data-who="Trader">Longer than GARCH expects?</p>
+      <p data-who="Quant">Yes. GARCH's memory fades at a steady rate. Real realized volatility fades more slowly. Three plain averages capture that almost as well as the heavy long-memory models built for it.</p>
+      <p data-who="Trader">Walk me through the example.</p>
+      <p data-who="Quant">Twenty-two days, with a shock around day eleven. By day twenty-two, today's reading is back near normal. But the week's average is a bit higher, and the month's average, which still contains the shock, is higher again.</p>
+      <p data-who="Trader">So the forecast?</p>
+      <p data-who="Quant">With typical published weights, it comes out at about ten point nine percent a year. A forecast that just copies today would say ten percent. The model hasn't forgotten the shock, even though today looks calm.</p>
+      <p data-who="Trader">What's the catch?</p>
+      <p data-who="Quant">Two. It needs real intraday data. Feed it a one-number-a-day proxy and it isn't the model the research tested. And because it averages, it lags when volatility first spikes. It reads low just as a new regime starts.</p>
+      <p data-who="Trader">So it's not automatically better than GARCH.</p>
+      <p data-who="Quant">Right. When it wins, it wins because its input is measured better, not because the model is cleverer. GARCH is actually the more complicated of the two.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Measure each day properly, then forecast from today, this week and this month, and let a plain regression weigh them.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -136,6 +210,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">The HAR-RV forecast, one horizon at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ RV_t = \color{#fbbf24}{\sum_{j=1}^{M} r_{t,j}^2} \]</div>
+      <p>First measure each day well: add up the squared intraday returns. This is the input and the target.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ RV_{t+1} = \beta_0 + \color{#fbbf24}{\beta_d RV_t} \]</div>
+      <p>The daily term: how volatile today was. On its own, this is a short-memory forecast.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ RV_{t+1} = \beta_0 + \beta_d RV_t + \color{#fbbf24}{\beta_w RV_t^{(w)}} \]</div>
+      <p>Add the weekly term: the average over the past 5 days. It keeps a recent shock in view a little longer.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ RV_{t+1} = \beta_0 + \beta_d RV_t + \beta_w RV_t^{(w)} + \color{#fbbf24}{\beta_m RV_t^{(m)}} \]</div>
+      <p>Add the monthly term: the average over the past 22 days. Three plain averages, fitted by ordinary least squares, mimic the slow long-memory decay of real volatility.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ 0.03 + 0.35(0.3969) + 0.41(0.4387) + 0.20(0.5962) = \color{#10b981}{0.4680} \;\Rightarrow\; \sqrt{0.4680}\times\sqrt{252} \approx \color{#10b981}{10.86\%} \]</div>
+      <p>The worked example's numbers. The monthly term still holds the shock, so the forecast sits above the 10.00% you would get by copying today.</p>
+    </div>
+  </div>
   <h3>Step 1 — realized variance, defined</h3>
   <p>
     Let day \(t\) be split into \(M\) equal intraday intervals (5-minute bars
@@ -262,6 +360,12 @@
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>HAR-RV is like predicting tomorrow's mood by asking three questions: how was today, how has this whole week been, and how has this whole month been — then taking a weighted blend of the three answers. No fancy math is needed to combine three plain averages; you're just deciding how much to trust "today" versus "this week" versus "this month," and a regression is the standard tool for finding those weights from data.</p>
   </div>
+
+  <!-- WB:institutional_har_rv:START -->
+  <div class="wb" id="wb-institutional_har_rv" data-title="HAR-RV: three clocks, one forecast">
+    <script type="application/json">{"w":600,"h":700,"intro":"The lesson's 22 days of realized variance, a shock in the middle, and three people reading it on three clocks. Press play, or step through.","steps":[{"cap":"One squared daily return is a noisy reading of a whole day. Realized variance adds up the squared returns of every five-minute bar instead: many small readings, one well-measured number per day.","do":[{"box":"rv","x":120,"y":14,"w":360,"h":70,"text":"RV = sum of squared 5-minute returns","tone":"blue","size":19}]},{"cap":"Here are 22 days of it, from the lesson. Calm at first, around 0.4.","do":[{"hide":"rv"},{"chart":"c","x":10,"y":130,"w":580,"h":290,"title":"Realized variance, %² per day","xd":[0.3,23.7],"yd":[0,1.6],"yt":[[0,"0"],[0.5,"0.5"],[1.0,"1.0"],[1.5,"1.5"]],"xt":[[1,"1"],[11,"11"],[22,"22"],[23,"23"]],"pl":44,"pr":8},{"bars":"b1","chart":"c","data":[[1,0.36,"","blue"],[2,0.4225,"","blue"],[3,0.3969,"","blue"],[4,0.3844,"","blue"],[5,0.4356,"","blue"],[6,0.3969,"","blue"],[7,0.4624,"","blue"],[8,0.5041,"","blue"],[9,0.4761,"","blue"]],"bw":16,"ms":900}]},{"cap":"Then a shock: days 10 to 14, peaking at 1.44 on day 11. After it, variance slowly drifts back down. By day 22, today, it reads 0.3969, close to where it started.","do":[{"bars":"b2","chart":"c","data":[[10,0.9025,"","red"],[11,1.44,"","red"],[12,1.21,"","red"],[13,1.0,"","red"],[14,0.81,"","red"],[15,0.64,"","blue"],[16,0.5625,"","blue"],[17,0.5184,"","blue"],[18,0.4761,"","blue"],[19,0.4624,"","blue"],[20,0.4356,"","blue"],[21,0.4225,"","blue"],[22,0.3969,"","blue"]],"bw":16,"ms":1300},{"dot":"pk","chart":"c","at":[11,1.44],"text":"1.44","tone":"red","dy":-14}]},{"cap":"Three people read this chart on three clocks. The day trader only cares about today: 0.3969.","do":[{"icon":"p1","name":"person","x":40,"y":10,"s":0.62,"tone":"blue","label":"today","lsize":17},{"dot":"dd","chart":"c","at":[22,0.3969],"text":"","tone":"blue"}]},{"cap":"The weekly rebalancer cares about the past 5 days: their average is 0.4387. A little higher, because the tail of the shock is still in that window.","do":[{"icon":"p2","name":"person","x":255,"y":10,"s":0.62,"tone":"amber","label":"past week","lsize":17},{"series":"ww","chart":"c","pts":[[17.6,0.4387],[22.4,0.4387]],"tone":"amber","ms":600},{"note":"wl","chart":"c","at":[23.4,0.95],"text":"week avg 0.4387","tone":"amber","size":17,"anchor":"end","dx":0,"dy":0}]},{"cap":"The monthly allocator looks at all 22 days: an average of 0.5962. The highest of the three, because the month still contains the whole shock.","do":[{"icon":"p3","name":"person","x":470,"y":10,"s":0.62,"tone":"purple","label":"past month","lsize":17},{"series":"mm","chart":"c","pts":[[0.6,0.5961727272727273],[22.4,0.5961727272727273]],"tone":"purple","dash":true,"ms":1000},{"note":"ml","chart":"c","at":[1,0.5961727272727273],"text":"0.5962","tone":"purple","size":16,"anchor":"start","dx":0,"dy":-10}]},{"cap":"HAR-RV blends the three with weights from a plain regression. With the lesson's illustrative weights: 0.03 + 0.35 × 0.3969 + 0.41 × 0.4387 + 0.20 × 0.5962 = 0.4680.","do":[{"box":"eq","x":10,"y":440,"w":580,"h":60,"text":"0.03 + 0.35 × today + 0.41 × week + 0.20 × month","tone":"green","size":18},{"pulse":"p1"},{"pulse":"p2"},{"pulse":"p3"}]},{"cap":"That is the forecast for day 23: 0.4680, above today's 0.3969. The model has not forgotten the shock, even though today looks calm.","do":[{"dot":"fc","chart":"c","at":[23,0.468],"text":"","tone":"green"},{"note":"fcl","chart":"c","at":[23.4,0.78],"text":"forecast 0.4680","tone":"green","size":18,"anchor":"end","dx":0,"dy":0}]},{"cap":"In annual terms: copying today gives 10.00%; HAR-RV gives 10.86%.","do":[{"chart":"cmp","x":10,"y":520,"w":300,"h":160,"title":"Forecast, % a year","xd":[0.4,2.6],"yd":[0,12],"yt":[[0,"0"],[10,"10"]],"xt":[[1,"copy today"],[2,"HAR-RV"]],"pl":30,"pr":6},{"bars":"cb","chart":"cmp","data":[[1,10.0,"10.00","blue"],[2,10.86,"10.86","green"]],"bw":60,"ms":900}]},{"cap":"Why three averages work: traders on different clocks each add their own memory, so real volatility forgets shocks slowly. Three plain averages mimic that long memory almost as well as heavier models.","do":[{"box":"why","x":330,"y":520,"w":260,"h":76,"text":"three clocks →\nlong memory","tone":"purple","size":19}]},{"cap":"The catches: it needs real intraday data to be the model the research tested, and because it averages, it lags when a fresh spike begins.","do":[{"box":"catch","x":330,"y":606,"w":260,"h":76,"text":"needs intraday RV;\nslow at a new spike","tone":"red","size":18}]}]}</script>
+  </div>
+  <!-- WB:institutional_har_rv:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>HAR-RV versus GARCH — same job, genuinely different inputs</h2>
@@ -440,6 +544,10 @@
       negative — so a negative or non-finite entry is flagged rather than
       silently producing a nonsense forecast.
     </p>
+    <div class="tl-predict" data-answer="10.39" data-tol="0.1" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The forecast is 10.86% a year, partly because the monthly average (0.5962) still holds the shock. Suppose instead the whole month had been as calm as today, so the monthly average is 0.3969, with everything else unchanged. What is the annualized forecast now? Lock in a guess, then set the monthly field below to 0.3969 to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 10.39%.</strong> The monthly term drops from \(0.20 \times 0.5962 = 0.1192\) to \(0.20 \times 0.3969 = 0.0794\), so \(RV_{t+1} = 0.4282\), daily \(\sigma \approx 0.654\%\), and \(0.654\% \times \sqrt{252} \approx 10.39\%\). Nearly half of the forecast's gap above the naive 10.00% came from the month remembering the shock. Now set the weekly field to 0.3969 as well and see how much of the rest was the week.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>RV<sub>t</sub> — daily (%²)</span></div>
@@ -672,6 +780,18 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative calm day after a shock</div>
+    <h3>Today looks calm. Do you cut your volatility forecast?</h3>
+    <p>You set position sizes from a one-day-ahead volatility forecast. A volatility shock hit the market about two trading weeks ago and has faded: today's realized volatility is back to 0.63% a day, about 10.0% a year, near the pre-shock level. Using the lesson's 22 days, your HAR-RV forecast for tomorrow says 10.86%. A colleague wants to size off today's 10.0% instead, since "the shock is over". What do you size off?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Today's 10.0%. The most recent day is the best guide to tomorrow.<div class="tl-drill-why">That is a forecast with one day of memory. Realized volatility decays slowly after a shock, and one calm day right after a cluster is exactly where a copy-today forecast is most likely to be fooled. You would size up just before volatility drifts back.</div></li>
+      <li data-verdict="good">The HAR-RV forecast of 10.86%, which still weighs the past week and month.<div class="tl-drill-why">This is what the model is built for. The weekly (0.4387) and monthly (0.5962) averages still carry the shock, so the forecast stays above today's reading. It encodes the long memory that real volatility shows, with weights fitted by a plain regression.</div></li>
+      <li data-verdict="ok">The 22-day average alone, about 12.3% a year, to be safe.<div class="tl-drill-why">Cautious, and it remembers the shock, but it gives today and this week no more say than a day three weeks ago. It will keep you undersized long after the market has settled. Safer than copying today, less accurate than the blend.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the method says.</strong> This day is illustrative, built on the lesson's own 22-day example and its illustrative Corsi-style weights, not a dated market event. The point is the worked example's: a forecast that only looks at yesterday can be fooled by one calm day after a cluster, while HAR-RV's weekly and monthly terms keep that memory alive. The flip side, from the pitfalls, is that the same averaging makes it slow to react when a fresh spike starts.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -780,6 +900,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a> <span>· the one-return-a-day model HAR-RV challenges</span></li>
+        <!-- DESK:START --><li><a href="institutional-garman-klass-yang-zhang.html">Garman-Klass &amp; Yang-Zhang Volatility Estimators</a> <span>· the bar-based stand-in when you lack intraday data</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-bipower-variation.html">Bipower Variation</a> <span>· splitting realized variance into smooth moves and jumps</span></li><!-- DESK:END -->
+        <!-- DESK:START --><li><a href="institutional-breeden-litzenberger-variance-swaps.html">Breeden-Litzenberger &amp; Variance Swaps</a> <span>· the implied variance a forecast is set against</span></li><!-- DESK:END -->
+        <!-- DESK:START --><li><a href="institutional-jump-detection-tests.html">Lee-Mykland &amp; Boudt-Croux-Laurent: Testing for Jumps</a> <span>· finding exactly when the jumps happened</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> sizing, vol targets and judging whether implied vol is rich or cheap all need a realized-vol forecast, and this is the standard one.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-garman-klass-yang-zhang.html">← Garman-Klass &amp; Yang-Zhang</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -810,7 +950,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var DEFAULTS = { rvt: 0.3969, rvw: 0.4387, rvm: 0.5962, b0: 0.03, bd: 0.35, bw: 0.41, bm: 0.20 };
@@ -887,5 +1028,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

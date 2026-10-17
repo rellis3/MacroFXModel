@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Change-Point Detection — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -133,7 +134,19 @@
       </div>
     </section>
 
+    <!-- WB:change_point_detection-deck:START -->
     <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">CUSUM: a jar that fills when the mean moves</h2>
+      <!-- WB:change_point_detection:START -->
+      <div class="wb" data-title="CUSUM: a jar that fills when the mean moves">
+        <script type="application/json">{"w":600,"h":760,"intro":"CUSUM, the classic change detector, as a jar you drop coins into. The lesson's own twelve numbers, its allowance and its alarm line. Press play, or step through.","steps":[{"cap":"Meet the process: a machine that should sit at a mean of 0. Each step we see one new number, and we want to know if the mean has moved.","do":[{"icon":"mach","name":"factory","x":50,"y":6,"s":0.75,"tone":"blue","label":"process, mean 0","lsize":17},{"box":"jar","x":230,"y":18,"w":160,"h":74,"text":"the jar: S","tone":"purple","sub":"0","size":20},{"box":"h","x":430,"y":18,"w":160,"h":74,"text":"alarm line h","tone":"amber","sub":"3.5","size":20}]},{"cap":"The rule: take each number, subtract the mean and an allowance of k = 1, and add what is left to the jar. If the jar would go below empty, reset it to empty.","do":[{"note":"rule","x":300,"y":128,"text":"S = max(0, S + x − 0 − 1)","size":21,"anchor":"middle","tone":"purple"}]},{"cap":"Steps 1 to 7: the numbers hover near 0. Each one minus the allowance is negative, so the jar is reset to 0 every time. One odd day never builds up.","do":[{"hide":"rule"},{"chart":"xc","x":10,"y":148,"w":580,"h":200,"title":"The observations","xd":[0.5,12.5],"yd":[-1,4],"yt":[[0,"0"],[3,"3"]],"xt":[[1,"1"],[4,"4"],[8,"8"],[9,"9"],[12,"12"]],"zero":true,"pl":40,"pr":16},{"series":"x1","chart":"xc","pts":[[1,0.2],[2,-0.3],[3,0.5],[4,-0.1],[5,0.3],[6,-0.2],[7,0.1]],"tone":"blue","ms":1400},{"chart":"sc","x":10,"y":362,"w":580,"h":250,"title":"The jar S, step by step","xd":[0.5,12.5],"yd":[0,11.5],"yt":[[0,"0"],[3.5,"3.5"],[10,"10"]],"xt":[[1,"1"],[4,"4"],[8,"8"],[9,"9"],[12,"12"]],"pl":40,"pr":16},{"series":"s1","chart":"sc","pts":[[1,0.0],[2,0.0],[3,0.0],[4,0.0],[5,0.0],[6,0.0],[7,0.0]],"tone":"purple","ms":1400},{"series":"hl","chart":"sc","pts":[[0.5,3.5],[12.5,3.5]],"tone":"amber","dash":true,"ms":600}]},{"cap":"Step 8: the mean really moves. The reading is 3.2, and 3.2 − 0 − 1 leaves 2.2 in the jar. That is still under the 3.5 line, so no alarm yet.","do":[{"series":"x2","chart":"xc","pts":[[7,0.1],[8,3.2]],"tone":"red","ms":700},{"dot":"d8","chart":"xc","at":[8,3.2],"text":"3.2","tone":"red","dx":-8,"dy":-14,"anchor":"end"},{"series":"s2","chart":"sc","pts":[[7,0],[8,2.2]],"tone":"purple","ms":700},{"count":"jar","from":0,"to":2.2,"dp":1,"ms":700}]},{"cap":"Step 9: the reading is 2.8, which adds 1.8. The jar holds 2.2 + 1.8 = 4.0, more than 3.5. The alarm rings.","do":[{"series":"x3","chart":"xc","pts":[[8,3.2],[9,2.8]],"tone":"red","ms":600},{"series":"s3","chart":"sc","pts":[[8,2.2],[9,4.0]],"tone":"purple","ms":600},{"count":"jar","from":2.2,"to":4.0,"dp":1,"ms":600},{"dot":"al","chart":"sc","at":[9,4.0],"text":"alarm at step 9","tone":"red","dx":-10,"dy":-16,"anchor":"end"},{"pulse":"h"}]},{"cap":"The change began at step 8 and the alarm came at step 9: one step late. That delay is the price of a jar that ignores ordinary noise. It is not a bug.","do":[{"note":"late","x":300,"y":128,"text":"change at 8 → alarm at 9: one step of delay","size":20,"anchor":"middle","tone":"red"}]},{"cap":"Once the mean has moved, every new reading adds to the jar: 6.5, 8.6, then 10.5 by step 12. A real, lasting shift keeps piling up.","do":[{"series":"x4","chart":"xc","pts":[[9,2.8],[10,3.5],[11,3.1],[12,2.9]],"tone":"red","ms":900},{"series":"s4","chart":"sc","pts":[[9,4.0],[10,6.5],[11,8.6],[12,10.5]],"tone":"purple","ms":900},{"count":"jar","from":4.0,"to":10.5,"dp":1,"ms":900}]},{"cap":"Move the alarm line and the delay moves with it. With h = 2 the same jar would have rung at step 8. With h = 6 it waits until step 10, when the jar holds 6.5.","do":[{"hide":"late"},{"series":"h2","chart":"sc","pts":[[0.5,2],[12.5,2]],"tone":"red","dash":true,"ms":500},{"series":"h6","chart":"sc","pts":[[0.5,6],[12.5,6]],"tone":"green","dash":true,"ms":500},{"dot":"a8","chart":"sc","at":[8,2.2],"text":"h = 2: step 8","tone":"red","dx":-10,"dy":-12,"anchor":"end"},{"dot":"a10","chart":"sc","at":[10,6.5],"text":"h = 6: step 10","tone":"green","dx":-10,"dy":-12,"anchor":"end"}]},{"cap":"That is the trade-off. A low line or a small allowance catches changes sooner but trips on noise more often. A high one stays calm but hears about real changes later. Every choice is a point on that curve.","do":[{"note":"trade","x":300,"y":128,"text":"lower line: sooner but noisier · higher: calmer but later","size":17,"anchor":"middle","tone":"amber"}]},{"cap":"In February 2020 each step was a trading day. The S&P 500 closed at a record on 19 February. Markets fell hard from Monday 24 February.","do":[{"hide":"trade"},{"box":"rec","x":10,"y":636,"w":160,"h":110,"text":"19 Feb 2020\nrecord high","tone":"blue","size":18},{"box":"fall","x":220,"y":636,"w":160,"h":110,"text":"24 Feb\nheavy falls\nbegin","tone":"amber","size":18},{"arrow":["rec","fall"]}]},{"cap":"A detector tuned to stay quiet through calm 2019 needed several big days to fill its jar. By 27 February the index was already more than 10% below its record, in six sessions.","do":[{"box":"ten","x":430,"y":636,"w":160,"h":110,"text":"27 Feb\nmore than 10%\nbelow record","tone":"red","size":18},{"arrow":["fall","ten"]},{"pulse":"ten"}]},{"cap":"Looking back over the whole year, an offline fit puts the break around 20 to 24 February: a cliff. But it used data from after the break. Real time sees it late. The jar tells you that something changed and roughly when, never why.","do":[{"note":"hind","x":300,"y":128,"text":"hindsight finds the break; real time finds it late","size":19,"anchor":"middle","tone":"red"}]}]}</script>
+      </div>
+      <!-- WB:change_point_detection:END -->
+    </section>
+    <!-- WB:change_point_detection-deck:END -->
+
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Recompute one CUSUM step, live</h2>
       <p class="sl-sub">Starts on the worked example's t = 9 step exactly: S_{t−1} = 2.2 going into x_t = 2.8. Change any field.</p>
@@ -156,7 +169,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Twitchy vs. conservative — the same two knobs</h2>
       <p class="sl-sub">k and h always move together on the same trade-off curve. There's no setting that avoids it.</p>
@@ -176,7 +189,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Drag the threshold, watch the alarm move</h2>
       <p class="sl-sub">Fixed noisy series, k = 1.0, true mean shift at t = 13. The curve below is S_t — only the threshold h changes.</p>
@@ -205,7 +218,7 @@
       <p class="sl-p">Drag h below about 0.5 and a small pre-shift noise bump (t = 5–6) crosses it first — a false alarm before anything actually changed. Drag h high and the real alarm keeps arriving later after t = 13. There is no setting of this one slider that is both fast and quiet.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">BOCPD: a distribution, not a verdict</h2>
       <p class="sl-sub">Adams &amp; MacKay (2007) — instead of one running number, keep a full posterior over the run length r_t.</p>
@@ -221,7 +234,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Hard alarm vs. probability cloud</h2>
       <p class="sl-sub">Same underlying idea — a sustained shift in the data — read two completely different ways.</p>
@@ -263,7 +276,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Neither tool tells you why — or what's next</h2>
       <div class="sl-quote">A CUSUM crossing h says the accumulated evidence exceeded a chosen bar — not that there's a 99% chance a change occurred. BOCPD is more honest by construction, since it reports a posterior rather than a flag, but that posterior is still conditioned on an assumed hazard rate and predictive model that can both be wrong.</div>
@@ -275,7 +288,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">What's actually running in this repo</h2>
       <p class="sl-sub">The full lesson tags itself "CONCEPT — not built or tested anywhere in this repo." Checked against the current codebase, that's only half true.</p>
@@ -292,7 +305,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11 · It actually happened</div>
       <h2 class="sl-h2">February–March 2020: obvious afterwards, late in real time</h2>
       <div class="sl-callout amber">
@@ -312,7 +325,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <!-- DESK:START -->
       <h2 class="sl-h2">What this desk can say, and where the textbook breaks</h2>
@@ -329,7 +342,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -382,7 +395,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -539,5 +552,9 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

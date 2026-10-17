@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hasbrouck Information Share — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -141,7 +142,19 @@
       <p class="sl-p">Y's own information share swings from 57.1% down to 10.7% purely from the ordering choice — nothing about the fitted model changed between the two tabs.</p>
     </section>
 
+    <!-- WB:institutional_hasbrouck_information_share-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Information share: who gets credit for the news</h2>
+      <!-- WB:institutional_hasbrouck_information_share:START -->
+      <div class="wb" data-title="Information share: who gets credit for the news">
+        <script type="application/json">{"w":600,"h":790,"intro":"One true price, two venues, and a fight over who gets credit for the news. The lesson's own worked example, split two ways. Press play, or step through.","steps":[{"cap":"One asset, two venues: spot (Y) and futures (X). Both prices track one efficient price that nobody sees directly. Each venue adds its own noise.","do":[{"box":"eff","x":170,"y":10,"w":260,"h":60,"text":"efficient price\n(unseen)","tone":"amber","size":19},{"box":"Y","x":20,"y":130,"w":220,"h":70,"text":"spot (Y)","tone":"blue","sub":"","size":20},{"box":"X","x":360,"y":130,"w":220,"h":70,"text":"futures (X)","tone":"purple","sub":"","size":20},{"arrow":["eff","Y"],"tone":"amber","id":"eY"},{"arrow":["eff","X"],"tone":"amber","id":"eX"}]},{"cap":"News arrives. Each venue's price takes a shock. In the example the shocks have variances 4 and 1, and covariance 1: a correlation of 0.5. They share information.","do":[{"icon":"news","name":"bolt","x":26,"y":8,"s":0.55,"tone":"amber","label":"news","lsize":17},{"note":"om","x":300,"y":236,"text":"variances 4 and 1 · covariance 1 (correlation 0.5)","size":18,"anchor":"middle","tone":"chalk"}]},{"cap":"From the VECM's adjustment speeds, −0.40 for Y and 0.10 for X, each venue's weight in the common price: Y 0.10 ÷ 0.50 = 0.20, X 0.40 ÷ 0.50 = 0.80. The venue that corrects less carries more.","do":[{"sub":"Y","text":"weight 0.20"},{"sub":"X","text":"weight 0.80"}]},{"cap":"Total variance of the common price: 0.16 from Y's own shock, 0.64 from X's own shock, and 0.32 from the cross term. Together, 1.12.","do":[{"note":"tot","x":300,"y":284,"text":"common-price variance = 1.12","size":19,"anchor":"middle","tone":"chalk"},{"box":"oy","x":50.0,"y":302,"w":71.4,"h":54,"text":"0.16","tone":"blue","size":18},{"box":"sh","x":121.4,"y":302,"w":142.9,"h":54,"text":"0.32 shared","tone":"amber","size":18},{"box":"ox","x":264.3,"y":302,"w":285.7,"h":54,"text":"0.64","tone":"purple","size":18}]},{"cap":"The 0.32 in the middle comes from the correlation. It belongs to both venues at once. Which venue should get the credit? Nothing in the economics says.","do":[{"pulse":"sh"},{"note":"who","x":300,"y":384,"text":"who owns the shared 0.32?","size":20,"anchor":"middle","tone":"amber"}]},{"cap":"Hasbrouck's fix is a Cholesky ordering. List Y first and Y claims the shared part, plus the piece of X's shock that Y's shock explains. Y: 0.64 of 1.12 = 57.1%.","do":[{"hide":"who"},{"note":"r1","x":50,"y":424,"text":"Y ordered first","size":18,"anchor":"start","tone":"blue"},{"box":"a1","x":50.0,"y":440,"w":285.7,"h":54,"text":"Y 57.1%","tone":"blue","size":18},{"box":"b1","x":335.7,"y":440,"w":214.3,"h":54,"text":"X 42.9%","tone":"purple","size":18}]},{"cap":"Same model, same numbers, X listed first instead. Now X claims the shared part. Y is left with 0.12 of 1.12 = 10.7%.","do":[{"note":"r2","x":50,"y":522,"text":"X ordered first","size":18,"anchor":"start","tone":"purple"},{"box":"a2","x":50.0,"y":538,"w":53.6,"h":54,"text":"10.7","tone":"blue","size":16},{"box":"b2","x":103.6,"y":538,"w":446.4,"h":54,"text":"X 89.3%","tone":"purple","size":18}]},{"cap":"So Y's information share is anywhere from 10.7% to 57.1%, purely from a bookkeeping choice. That is the standard critique of the measure.","do":[{"line":"rng","points":[[103.6,612],[335.7,612]],"tone":"red","width":5,"ms":700},{"note":"rngl","x":352,"y":612,"text":"Y: 10.7% … 57.1%","size":19,"anchor":"start","tone":"red"}]},{"cap":"Hasbrouck's own advice: report both orderings, or the midpoint. Here the midpoint gives Y 33.9% and X 66.1%. One number, but it papers over a wide range.","do":[{"line":"mid","points":[[219.7,598],[219.7,626]],"tone":"green","width":4,"ms":500},{"note":"midl","x":219.7,"y":646,"text":"midpoint 33.9%","size":18,"anchor":"middle","tone":"green"}]},{"cap":"Check where the problem lives: set the covariance to zero and there is no shared part. Both orderings then give Y exactly 0.16 ÷ 0.80 = 20%.","do":[{"box":"zero","x":10,"y":668,"w":280,"h":56,"text":"covariance 0 → Y = 20%\neither way","tone":"green","size":17}]},{"cap":"Other measures avoid the ordering step: Gonzalo and Granger's component share (1995), and Putniņš' information leadership share (2013), which combines the two.","do":[{"box":"alt","x":310,"y":668,"w":280,"h":56,"text":"component share ·\nleadership share","tone":"purple","size":17}]},{"cap":"Used with care it finds real leaders: E-mini futures over the S&P 500 cash index (Hasbrouck, 2003), credit default swaps over bonds (2005). Watch the leading market; know which ordering made the number.","do":[{"note":"end","x":300,"y":760,"text":"watch the leader · report both orderings","size":20,"anchor":"middle","tone":"green"},{"pulse":"X"}]}]}</script>
+      </div>
+      <!-- WB:institutional_hasbrouck_information_share:END -->
+    </section>
+    <!-- WB:institutional_hasbrouck_information_share-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Drag the correlation, watch the gap open up</h2>
       <p class="sl-sub">α_Y, α_X, σ_Y², σ_X² fixed. Only σ_YX (the shocks' covariance) changes below.</p>
@@ -164,7 +177,7 @@
       <p class="sl-p">Near σ_YX = 0 the two bars line up almost exactly — no shared variance means nothing to fight over. Drag σ_YX toward its valid extreme (±2 here, where the implied correlation hits ±1) and the two orderings pull apart hard.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Compute it yourself, from any inputs</h2>
       <p class="sl-sub">Change α_Y, α_X, or any entry of Ω — every downstream number recomputes live.</p>
@@ -194,7 +207,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Two ways the literature responds</h2>
       <div class="sl-compare">
@@ -218,7 +231,7 @@
       <p class="sl-p">Neither response is "the" correct fix — a wide gap between the two Cholesky orderings is itself a meaningful diagnostic, not a nuisance to average away and forget.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this quietly goes wrong</h2>
       <div class="sl-icard-grid">
@@ -229,7 +242,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -289,7 +302,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -439,5 +452,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

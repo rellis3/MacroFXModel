@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Stress Testing, Scenario Analysis &amp; Reverse Stress Tests — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -120,7 +121,19 @@
       </div>
     </section>
 
+    <!-- WB:stress_testing_scenario_analysis-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Two desks, one factor: forward and reverse stress tests</h2>
+      <!-- WB:stress_testing_scenario_analysis:START -->
+      <div class="wb" data-title="Two desks, one factor: forward and reverse stress tests">
+        <script type="application/json">{"w":600,"h":720,"intro":"A $10 million book, two desks that look unrelated, and two ways to stress-test it: forward and backward. Press play, or step through.","steps":[{"cap":"A $10 million book with two desks. Desk A runs $6M of short-volatility equity carry. Desk B runs $4M of high-yield credit carry. Different asset classes, different instruments.","do":[{"box":"a","x":15,"y":20,"w":200,"h":84,"text":"Desk A · equity","tone":"blue","sub":"$6M","size":19},{"box":"b","x":385,"y":20,"w":200,"h":84,"text":"Desk B · credit","tone":"blue","sub":"$4M","size":19}]},{"cap":"The forward test, desk by desk. A 2008-style quarter for equity volatility costs Desk A 30% of $6M: $1.8M. A credit widening costs Desk B 15% of $4M: $0.6M. Each loss is survivable on its own.","do":[{"count":"a","from":6,"to":1.8,"dp":1,"pre":"−$","suf":"M","ms":1000},{"count":"b","from":4,"to":0.6,"dp":1,"pre":"−$","suf":"M","ms":1000}]},{"cap":"Now the reverse question. The risk committee sets the loss it cannot accept: $5M, half the book. What shock would get there?","do":[{"note":"ystar","x":300,"y":160,"text":"unacceptable: Y* = $5M","size":21,"anchor":"middle","tone":"red"}]},{"cap":"Solving backward exposes what the desks share: both are driven by the same risk-off factor s, a broad collapse in risk appetite. One bridge that both of them cross.","do":[{"icon":"f","name":"bolt","x":272,"y":22,"s":0.55,"tone":"amber","label":"risk-off s","lsize":17},{"arrow":["f","a"],"label":"30%","tone":"amber"},{"arrow":["f","b"],"label":"15%","tone":"amber"}]},{"cap":"So the losses add along one line: Loss(s) = $1.8M × s + $0.6M × s = $2.4M × s. Two desks, one risk.","do":[{"chart":"ch","x":10,"y":236,"w":580,"h":300,"title":"Loss ($M) vs shock size s","xd":[0,3],"yd":[0,7.5],"yt":[[2.4,"2.4"],[5,"5"]],"xt":[[0,"0"],[1,"s = 1"],[2,"2"],[3,"3"]],"pl":50,"pr":20},{"series":"line","chart":"ch","pts":[[0,0],[3,7.2]],"tone":"purple","ms":1200},{"note":"ll","chart":"ch","at":[2.56,2.0],"text":"Loss = $2.4M × s","tone":"purple","size":16,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Forward: pick a shock and read the loss. One 2008-style quarter, s = 1, costs $2.4M: 24% of the book. Painful, survivable.","do":[{"series":"fw","chart":"ch","pts":[[1,0],[1,2.4],[0,2.4]],"tone":"blue","dash":true,"ms":900},{"dot":"d1","chart":"ch","at":[1,2.4],"text":"$2.4M","tone":"blue","dx":14,"dy":10,"anchor":"start"}]},{"cap":"Reverse: start at the $5M loss and read across to the line, then down. The shock that breaks the book is s* = 5 ÷ 2.4 ≈ 2.08.","do":[{"series":"rv","chart":"ch","pts":[[0,5],[2.0833333333333335,5],[2.0833333333333335,0]],"tone":"red","dash":true,"ms":1200},{"dot":"d2","chart":"ch","at":[2.0833333333333335,5],"text":"s* ≈ 2.08","tone":"red","dx":12,"dy":8,"anchor":"start"}]},{"cap":"That is the finding. Not an exotic catastrophe: about twice an ordinary bad quarter, along one factor, takes out half the book. A desk-by-desk forward test called this book diversified.","do":[{"pulse":"f"},{"note":"find","x":300,"y":566,"text":"two \"different\" desks = one bet","size":20,"anchor":"middle","tone":"red"}]},{"cap":"September 2022, for real. UK pension funds' leveraged LDI hedges kept collateral buffers sized to past gilt moves: a forward test. On 23 September the mini-budget sent long yields up further and faster than that history.","do":[{"hide":"find"},{"icon":"gov","name":"govt","x":20,"y":590,"s":0.55,"tone":"amber","label":"mini-budget\n23 Sept","lsize":16},{"icon":"buf","name":"shield","x":200,"y":590,"s":0.55,"tone":"red","label":"buffer\nused up","lsize":16},{"arrow":["gov","buf"],"tone":"red"}]},{"cap":"Funds sold gilts to meet collateral calls, which pushed yields up again: the shock fed on the positions being stressed, so the loss line steepened instead of staying straight (red curve, illustrative).","do":[{"icon":"sell","name":"down","x":370,"y":590,"s":0.55,"tone":"red","label":"forced gilt\nselling","lsize":16},{"arrow":["buf","sell"],"tone":"red"},{"series":"steep","chart":"ch","pts":[[0,0],[1,2.6],[1.6,4.6],[2.0,6.6],[2.3,7.5]],"tone":"red","ms":1100,"label":"feedback","lat":[2.3,7.5],"ldx":8,"ldy":8,"lanchor":"start","lsize":16}]},{"cap":"On 28 September the Bank of England bought long-dated gilts to break the loop, and stopped on 14 October. A reverse test asks the question the buffer never did: which move uses me up, and who else is selling then?","do":[{"icon":"boe","name":"bank","x":505,"y":590,"s":0.55,"tone":"green","label":"BoE buys\n28 Sept","sym":"£","lsize":16},{"arrow":["sell","boe"],"tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:stress_testing_scenario_analysis:END -->
+    </section>
+    <!-- WB:stress_testing_scenario_analysis-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Forward computes a loss. Reverse solves for a scenario.</h2>
       <p class="sl-sub">Same relationship, same two boxes — the arrow runs the opposite way.</p>
@@ -161,7 +174,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Drag the severity. Watch the loss grow.</h2>
       <p class="sl-sub">Same $10M book: every unit of stress severity s costs $2.4M. The dot always sits exactly on the line — that's what "linear" means.</p>
@@ -191,7 +204,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Solve backward, live</h2>
       <p class="sl-sub">A simplified reverse stress test: given a target loss and a position's sensitivity to one risk factor, what factor move produces it?</p>
@@ -213,7 +226,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Diversified on paper, concentrated underneath</h2>
       <p class="sl-sub">The same $10M book — $6M short-vol equity carry (β=30%), $4M high-yield credit carry (β=15%) — read two ways.</p>
@@ -240,7 +253,7 @@
       <div class="sl-quote">It's two commuters who look totally independent — one drives, one bikes — until you notice they cross the same one bridge every day. Test each separately and everything looks fine. Ask "what's the smallest thing that stops both at once," and the answer is one ordinary bridge closure, not two separate disasters.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">How this actually gets used<!-- DESK:START --> — and a grounding check<!-- DESK:END --></h2>
       <div class="sl-icard-grid">
@@ -255,7 +268,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12 · It actually happened</div>
       <h2 class="sl-h2">UK gilts and LDI, September 2022</h2>
       <div class="sl-callout amber">
@@ -275,7 +288,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <!-- DESK:START -->
@@ -290,7 +303,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -341,7 +354,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -461,5 +474,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

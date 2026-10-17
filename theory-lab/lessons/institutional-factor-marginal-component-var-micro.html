@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Factor, Marginal &amp; Component VaR — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -108,7 +109,19 @@
       </div>
     </section>
 
+    <!-- WB:institutional_factor_marginal_component_var-deck:START -->
     <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Component VaR: slicing one number exactly</h2>
+      <!-- WB:institutional_factor_marginal_component_var:START -->
+      <div class="wb" data-title="Component VaR: slicing one number exactly">
+        <script type="application/json">{"w":600,"h":720,"intro":"The lesson's three-position FX book: one VaR number, then where it comes from. Press play, or step through.","steps":[{"cap":"Three FX positions. A is long $100,000 with 2% daily volatility. B is long $150,000 at 1.5%. C is short $50,000 at 3%.","do":[{"box":"A","x":20,"y":14,"w":160,"h":76,"text":"A  long","tone":"purple","sub":"$100,000 · 2%","size":20},{"box":"B","x":220,"y":14,"w":160,"h":76,"text":"B  long","tone":"blue","sub":"$150,000 · 1.5%","size":20},{"box":"C","x":420,"y":14,"w":160,"h":76,"text":"C  short","tone":"amber","sub":"−$50,000 · 3%","size":20}]},{"cap":"They are correlated: A and B by 0.30, A and C by −0.20, B and C by 0.10. Together these make the covariance matrix.","do":[{"line":"ab","points":[[180,52],[220,52]],"tone":null,"width":3,"ms":400},{"line":"bc","points":[[380,52],[420,52]],"tone":null,"width":3,"ms":400},{"note":"rab","x":200,"y":112,"text":"0.30","size":18,"anchor":"middle"},{"note":"rbc","x":400,"y":112,"text":"0.10","size":18,"anchor":"middle"},{"note":"rac","x":300,"y":134,"text":"A with C: −0.20","size":18,"anchor":"middle"}]},{"cap":"Assume normal returns. Portfolio volatility is the square root of wᵀΣw: $3,813 a day. One-day 95% VaR is 1.645 × $3,813 = $6,272. One number. Where is it coming from?","do":[{"box":"tot","x":100,"y":158,"w":400,"h":58,"text":"VaR = 1.645 × $3,813 = $6,272","tone":"green","size":21}]},{"cap":"Marginal VaR: nudge one position by one more dollar, hold the rest, and see how much VaR moves. A adds 2.6 cents per dollar, B 1.7 cents. C's is negative: more short C would lower VaR.","do":[{"chart":"mv","x":10,"y":236,"w":285,"h":250,"title":"Marginal VaR, $ per $","xd":[0.4,3.6],"yd":[-0.032,0.036],"yt":[[-0.02,"−.02"],[0,"0"],[0.02,".02"]],"xt":[[1,"A"],[2,"B"],[3,"C"]],"zero":true,"pl":46,"pr":10},{"bars":"mvb","chart":"mv","data":[[1,0.02567,"+0.026","purple"],[2,0.01747,"+0.017","blue"],[3,-0.02168,"−0.022","amber"]],"bw":34,"ms":1100}]},{"cap":"Component VaR is weight times marginal VaR. A: $100,000 × 0.02567 = $2,567. B: $150,000 × 0.01747 = $2,621. C: −$50,000 × −0.02168 = +$1,084.","do":[{"chart":"cv","x":305,"y":236,"w":285,"h":250,"title":"Component VaR ($)","xd":[0.4,5.4],"yd":[0,7000],"yt":[[0,"0"],[3000,"3k"],[6000,"6k"]],"xt":[[1,"A"],[2,"B"],[3,"C"],[4.6,"sum"]],"pl":40,"pr":10},{"bars":"cvb","chart":"cv","data":[[1,2567.07,"2,567","purple"],[2,2621.0,"2,621","blue"],[3,1083.99,"1,084","amber"]],"bw":30,"ms":1100}]},{"cap":"Stack the three slices: 2,567 + 2,621 + 1,084 = $6,272. Exactly the total VaR. Nothing left over, nothing counted twice.","do":[{"gap":"sa","chart":"cv","top":[[4.25,2567.07],[4.95,2567.07]],"bot":[[4.25,0],[4.95,0]],"tone":"purple","op":0.7},{"gap":"sb","chart":"cv","top":[[4.25,5188.07],[4.95,5188.07]],"bot":[[4.25,2567.07],[4.95,2567.07]],"tone":"blue","op":0.7},{"gap":"sc","chart":"cv","top":[[4.25,6272.07],[4.95,6272.07]],"bot":[[4.25,5188.07],[4.95,5188.07]],"tone":"amber","op":0.7},{"series":"vl","chart":"cv","pts":[[0.5,6272.07],[5.3,6272.07]],"tone":"green","dash":true,"ms":600},{"note":"vll","chart":"cv","at":[2,6272.07],"text":"$6,272","tone":"green","size":17,"anchor":"middle","dx":0,"dy":-14},{"pulse":"tot"}]},{"cap":"Why exact? Double every position and VaR doubles: it is homogeneous of degree 1. Euler's theorem then says the weights times their marginal VaRs add up to the whole.","do":[{"box":"eu","x":10,"y":504,"w":580,"h":58,"text":"double every position → VaR doubles → slices sum exactly","tone":"purple","size":19}]},{"cap":"C is short and partly hedges A, yet its slice is still +$1,084. Being short still adds risk here, just less than its size would suggest.","do":[{"pulse":"C"},{"pulse":"cvb"}]},{"cap":"But marginal VaR is a local slope. Close C completely and VaR falls only to $5,642, a saving of $630, not $1,084. Removing a whole position is incremental VaR, a different number.","do":[{"box":"inc","x":10,"y":578,"w":580,"h":58,"text":"close C: VaR $6,272 → $5,642 (saves $630, not $1,084)","tone":"amber","size":19}]},{"cap":"The same trick works one level up: split VaR across a few common factors, plus one specific-risk bucket. It all rests on normal returns and a covariance matrix that is itself an estimate.","do":[{"note":"end","x":300,"y":680,"text":"exact slices, as long as the assumptions hold","size":20,"anchor":"middle","tone":"red"}]}]}</script>
+      </div>
+      <!-- WB:institutional_factor_marginal_component_var:END -->
+    </section>
+    <!-- WB:institutional_factor_marginal_component_var-deck:END -->
+
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Drag position weights, watch the components stack — live</h2>
       <p class="sl-sub">Fixed volatilities (2% / 1.5% / 3%) and correlations (ρ_AB=0.3, ρ_AC=−0.2, ρ_BC=0.1), 95% confidence. Only the three weights move.</p>
@@ -139,7 +152,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Factor VaR — the same logic, one level up</h2>
       <div class="sl-card">
@@ -162,7 +175,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Full calculator — any weights, vols, correlations</h2>
       <p class="sl-sub">Starts on the worked-example numbers from the full lesson. Change anything, live.</p>
@@ -197,7 +210,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
@@ -208,7 +221,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this clean result quietly breaks down</h2>
       <div class="sl-icard-grid">
@@ -219,7 +232,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -279,7 +292,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -510,5 +523,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

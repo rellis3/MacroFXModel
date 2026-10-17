@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bipower Variation — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -41,6 +42,72 @@
       <li><strong>How it reached trading:</strong> Barndorff-Nielsen &amp; Shephard (2004) gave the jump-robust measure; Andersen, Bollerslev &amp; Diebold (2007) showed jumps are far less persistent, so desks split them out before forecasting vol.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 254" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top: the worked example's fifteen one-minute returns drawn to scale. Fourteen are tiny, between 0.7 and 1.5 basis points, and one at minute 9 is a 46 basis point jump. Bottom, in units of ten to the minus six: realized variance is 21.33, of which the jump minute alone is 99.2%. Bipower variation is only 1.37. The gap, J, is 19.96, which recovers about 94% of the jump's own squared size.">
+      <text class="tlp-text2" x="20" y="62" font-size="13" font-weight="700">15 one-minute</text>
+      <text class="tlp-text2" x="20" y="78" font-size="13" font-weight="700">returns, to scale</text>
+      <line class="tlp-line" x1="150" y1="96" x2="450" y2="96"/>
+      <rect class="tlp-blue" x="155" y="94.1" width="10" height="1.9"/>
+      <rect class="tlp-blue" x="175" y="96.0" width="10" height="1.3"/>
+      <rect class="tlp-blue" x="195" y="93.6" width="10" height="2.4"/>
+      <rect class="tlp-blue" x="215" y="96.0" width="10" height="1.8"/>
+      <rect class="tlp-blue" x="235" y="94.6" width="10" height="1.4"/>
+      <rect class="tlp-blue" x="255" y="96.0" width="10" height="2.1"/>
+      <rect class="tlp-blue" x="275" y="94.4" width="10" height="1.6"/>
+      <rect class="tlp-blue" x="295" y="96.0" width="10" height="1.1"/>
+      <rect class="tlp-red" x="315" y="22.4" width="10" height="73.6"/>
+      <rect class="tlp-blue" x="335" y="96.0" width="10" height="1.4"/>
+      <rect class="tlp-blue" x="355" y="94.2" width="10" height="1.8"/>
+      <rect class="tlp-blue" x="375" y="96.0" width="10" height="2.2"/>
+      <rect class="tlp-blue" x="395" y="94.7" width="10" height="1.3"/>
+      <rect class="tlp-blue" x="415" y="96.0" width="10" height="1.6"/>
+      <rect class="tlp-blue" x="435" y="93.9" width="10" height="2.1"/>
+      <text class="tlp-red" x="333" y="34" font-size="13" font-weight="700">+46.0 bp jump, minute 9</text>
+      <text class="tlp-text3" x="458" y="92" font-size="12">others ±0.7 to 1.5 bp</text>
+
+      <text class="tlp-text" x="20" y="148" font-size="13" font-weight="700">RV · squares</text>
+      <rect class="tlp-box red" x="150" y="132" width="377" height="22" rx="3"/>
+      <rect class="tlp-box blue" x="527" y="132" width="3" height="22"/>
+      <text class="tlp-text" x="338" y="148" text-anchor="middle" font-size="12">the jump minute alone: 99.2%</text>
+      <text class="tlp-red" x="536" y="148" font-size="13" font-weight="700">21.33</text>
+      <text class="tlp-text" x="20" y="186" font-size="13" font-weight="700">BV · neighbours</text>
+      <rect class="tlp-box green" x="150" y="170" width="24.4" height="22" rx="3"/>
+      <text class="tlp-green" x="182" y="186" font-size="13" font-weight="700">1.37 · barely notices the jump</text>
+      <text class="tlp-text" x="20" y="224" font-size="13" font-weight="700">J = RV − BV</text>
+      <rect class="tlp-box amber" x="150" y="208" width="355.6" height="22" rx="3"/>
+      <text class="tlp-text" x="328" y="224" text-anchor="middle" font-size="12">≈ 94% of the jump's own square</text>
+      <text class="tlp-amber" x="513" y="224" font-size="13" font-weight="700">19.96</text>
+      <text class="tlp-text3" x="20" y="248" font-size="12">variance in units of 10⁻⁶ (decimal returns)</text>
+    </svg>
+    <figcaption>Realized variance squares every return, so one 46 bp minute supplies almost all of it. Bipower variation multiplies each return by its neighbour, and the jump's neighbours are ordinary, so it hardly moves. The gap between the two is the jump.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Realized variance tells me how volatile a day was. What's missing?</p>
+      <p data-who="Quant">It can't tell you where the volatility came from. It adds up every squared return. A day that ground around steadily and a day that sat still until one news print blew through the range can give the same total.</p>
+      <p data-who="Trader">And that matters because?</p>
+      <p data-who="Quant">Because they're different risks. Steady turbulence tends to carry on. A one-off jump tends not to. Andersen, Bollerslev and Diebold showed in 2007 that the jump part is far less persistent.</p>
+      <p data-who="Trader">So how do you pull them apart?</p>
+      <p data-who="Quant">Barndorff-Nielsen and Shephard's trick, from 2004. Instead of squaring each return, multiply each return's size by the size of the one next to it.</p>
+      <p data-who="Trader">Why does that help?</p>
+      <p data-who="Quant">A jump lands in one interval. Its neighbours are ordinary. So squaring counts the jump as big times big. Pairing counts it as big times ordinary. The jump dominates the first number and barely touches the second.</p>
+      <p data-who="Trader">Give me the example.</p>
+      <p data-who="Quant">Fifteen one-minute returns, all about one basis point, except minute nine, which is forty-six. The squared total is ninety-nine percent that one minute. The paired measure hardly moves. The gap between them recovers about ninety-four percent of the jump.</p>
+      <p data-who="Trader">There's a pi over two in the formula. What's that doing?</p>
+      <p data-who="Quant">It's an exact correction, not a fudge. The average size of a normal move is a bit smaller than its typical spread, so products of sizes come out short by a factor of two over pi. Multiplying by pi over two puts it back, so on a day with no jumps both measures agree.</p>
+      <p data-who="Trader">Does it tell me which minute was the jump?</p>
+      <p data-who="Quant">No. It's one number for the whole session: how much of today was jumps. Finding the exact minute needs a different test, return by return.</p>
+      <p data-who="Trader">Any traps?</p>
+      <p data-who="Quant">Two jumps next to each other. Then a jump's neighbour isn't ordinary any more, and the pairing trick breaks. That's why there are truncated and multipower versions.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Square the returns to get the total, pair them with their neighbours to get the smooth part, and the difference is the jump.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -126,6 +193,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From realized variance to the jump estimate, one change at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ RV = \color{#fbbf24}{\sum_{i=1}^{n} r_i^2} \]</div>
+      <p>Start with realized variance: square every return and add. It measures the total, smooth moves and jumps together.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \sum_{i=2}^{n} \color{#fbbf24}{|r_i|\,|r_{i-1}|} \]</div>
+      <p>Replace each square with a return's size times its neighbour's size. A jump now enters as "large times ordinary", not "large times large".</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ BV = \color{#fbbf24}{\frac{\pi}{2}} \sum_{i=2}^{n} |r_i|\,|r_{i-1}| \]</div>
+      <p>Scale by \(\pi/2\). Because \(E[|Z|]^2 = 2/\pi\), the raw sum falls short by exactly that factor; this puts it back, so with no jumps \(BV\) and \(RV\) estimate the same thing.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{J = \max(RV - BV,\ 0)} \]</div>
+      <p>The gap is the jump part. The floor at zero stops sampling noise on a quiet day from producing a negative jump.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ J = 0.00002133 - 0.00000137 = \color{#10b981}{0.00001996} \]</div>
+      <p>The worked example's session with one 46 bp minute: \(J\) recovers about 94% of that jump's own squared size.</p>
+    </div>
+  </div>
   <p>
     Barndorff-Nielsen &amp; Shephard's fix keeps the same idea as RV — sum
     something across all the intraday returns in a period — but replaces
@@ -226,6 +317,12 @@
     <tr><td>\(Z\)</td><td>A standard normal random variable; \(E[|Z|]=\sqrt{2/\pi}\) is the identity the \(\pi/2\) constant corrects for.</td></tr>
     <tr><td>jump fraction</td><td>\(J/RV\) — the share of the period's total realized variance attributed to jumps, between 0 and 1.</td></tr>
   </table></div>
+
+  <!-- WB:institutional_bipower_variation:START -->
+  <div class="wb" id="wb-institutional_bipower_variation" data-title="Bipower variation: squares versus neighbours">
+    <script type="application/json">{"w":600,"h":700,"intro":"The lesson's quiet session with one 46 bp jump, measured two ways. Watch one measure explode and the other barely move. Press play, or step through.","steps":[{"cap":"A quiet session: fifteen one-minute returns, each about 1 basis point up or down. Drawn to scale, they barely leave the line.","do":[{"chart":"r","x":10,"y":14,"w":580,"h":200,"title":"One-minute returns, bp (to scale)","xd":[0.3,15.7],"yd":[-5,50],"yt":[[0,"0"],[20,"20"],[40,"40"]],"xt":[[1,"1"],[5,"5"],[9,"9"],[15,"15"]],"zero":true,"pl":36,"pr":8},{"bars":"q1","chart":"r","data":[[1,1.2,"","blue"],[2,-0.8,"","blue"],[3,1.5,"","blue"],[4,-1.1,"","blue"],[5,0.9,"","blue"],[6,-1.3,"","blue"],[7,1.0,"","blue"],[8,-0.7,"","blue"]],"bw":18,"ms":700}]},{"cap":"Minute 9: a news release. The price jumps 46 bp in one bar, then goes back to ordinary 1 bp wiggles.","do":[{"bars":"jb","chart":"r","data":[[9,46.0,"+46","red"]],"bw":18,"ms":600},{"bars":"q2","chart":"r","data":[[10,-0.9,"","blue"],[11,1.1,"","blue"],[12,-1.4,"","blue"],[13,0.8,"","blue"],[14,-1.0,"","blue"],[15,1.3,"","blue"]],"bw":18,"ms":600}]},{"cap":"Realized variance squares each return and adds them up. Watch its running total: it creeps along, then leaps at minute 9. One minute supplies 99.2% of the day's total.","do":[{"chart":"c","x":10,"y":236,"w":580,"h":230,"title":"Running total, units of 10⁻⁶","xd":[0,15.3],"yd":[0,23],"yt":[[0,"0"],[10,"10"],[20,"20"]],"xt":[[0,"0"],[9,"9"],[15,"15"]],"pl":36,"pr":8},{"series":"crv","chart":"c","pts":[[0,0],[1,0.014],[2,0.021],[3,0.043],[4,0.055],[5,0.063],[6,0.08],[7,0.09],[8,0.095],[9,21.255],[10,21.263],[11,21.276],[12,21.295],[13,21.302],[14,21.312],[15,21.328]],"tone":"red","ms":1500,"label":"RV 21.33","lat":[15,21.328],"ldx":-4,"ldy":-14,"lanchor":"end","lsize":17}]},{"cap":"Bipower variation multiplies each return's size by its neighbour's instead. Its running total barely moves at minute 9.","do":[{"series":"cbv","chart":"c","pts":[[0,0],[1,0.0],[2,0.015],[3,0.034],[4,0.06],[5,0.075],[6,0.094],[7,0.114],[8,0.125],[9,0.631],[10,1.281],[11,1.297],[12,1.321],[13,1.339],[14,1.351],[15,1.372]],"tone":"green","ms":1500,"label":"BV 1.37","lat":[15,1.372],"ldx":-4,"ldy":-14,"lanchor":"end","lsize":17}]},{"cap":"Why: the jump's neighbours are ordinary. Squared, the jump counts 46 × 46. Paired, it counts 46 × 0.7 and 46 × 0.9: big times ordinary, never big times big.","do":[{"box":"sq","x":20,"y":486,"w":260,"h":70,"text":"RV: 46 × 46 = 2116","tone":"red","size":20},{"box":"pr","x":320,"y":486,"w":260,"h":70,"text":"BV: 46 × 0.7, 46 × 0.9","tone":"green","size":20}]},{"cap":"The π/2 in front is an exact correction. The average size of a normal move is smaller than its spread, so products of sizes come out short by 2/π. With no jump, π/2 makes the two measures agree.","do":[{"note":"pi","x":300,"y":582,"text":"π/2 corrects for E[|Z|]² = 2/π","size":19,"anchor":"middle","tone":"purple"}]},{"cap":"The gap is the jump: J = RV − BV = 21.33 − 1.37 = 19.96. That recovers about 94% of the jump's own squared size.","do":[{"gap":"jg","chart":"c","top":[[9,21.255],[15,21.328]],"bot":[[9,0.631],[15,1.372]],"tone":"amber","op":0.25},{"note":"jl","chart":"c","at":[12,11],"text":"J = 19.96","tone":"amber","size":20,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Drag the jump back to zero and the two agree: RV 0.17, BV 0.22. Sampling noise puts BV slightly above, so J is floored at zero rather than reported negative.","do":[{"box":"zero","x":20,"y":608,"w":560,"h":44,"text":"no jump → RV ≈ BV → J = max(RV − BV, 0) = 0","tone":"blue","size":18}]},{"cap":"J is one number for the whole session: how much of the day was jumps. It does not say which minute. Finding the minute is a separate, return-by-return test.","do":[{"note":"which","x":300,"y":680,"text":"how much, not which minute","size":20,"anchor":"middle","tone":"amber"},{"pulse":"jb"}]},{"cap":"One trap: two jumps side by side. Then a jump's neighbour is not ordinary, the product is big times big, and the trick breaks. Truncated and multipower versions exist for that.","do":[{"pulse":"pr"}]}]}</script>
+  </div>
+  <!-- WB:institutional_bipower_variation:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>The jump estimate — and what it does and doesn't tell you</h2>
@@ -381,6 +478,10 @@
       fourteen small alternating background returns plus one larger return
       inserted at the same position.
     </p>
+    <div class="tl-predict" data-answer="60" data-tol="5" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With the 46 bp jump, the jump fraction J/RV is 93.6%. Shrink the jump to 10 bp, still several times its 1 bp neighbours, and keep the background at 1.00×. What jump fraction do you expect? Lock in a guess, then drag the jump size slider to 10.0 bp to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 60%.</strong> RV falls to about 0.00000117 and BV to about 0.00000047, so \(J \approx 0.00000070\) and \(J/RV \approx 60.0\%\). The share falls fast because a jump's square shrinks with the square of its size, while its paired contribution to BV shrinks only in proportion. Now drag the jump to 0: BV comes out slightly above RV, and the floor sets J to zero.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Background return scale</span><span class="tl-live" id="bv-bgscale-val">1.00×</span></div>
@@ -582,6 +683,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative payrolls Friday</div>
+    <h3>One minute made the whole day look volatile</h3>
+    <p>You forecast next week's volatility from daily realized variance. Friday was quiet except for one minute: the payrolls release moved the pair 46 bp in a single one-minute bar, with ordinary 1 bp wiggles either side. Friday's realized variance came out over 100 times what the same session would have shown without that minute, and 99% of it was the one minute. Bipower variation for Friday is only about 6% of its realized variance. What goes into your forecast?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Friday's full realized variance. A big number is a big number, and volatility clusters.<div class="tl-drill-why">That treats a one-off jump as if the whole day had been turbulent. Jump variance is far less persistent than continuous variance, so feeding it in at full weight inflates next week's forecast and shrinks your positions for a regime that never started.</div></li>
+      <li data-verdict="good">Split it: use the continuous part (bipower variation) as the persistent input, and treat the jump part (RV − BV) separately, with much less carry-over.<div class="tl-drill-why">This is what the split is for. Andersen, Bollerslev and Diebold found the jump component far less persistent than the continuous one, so a forecast that weighs them differently reflects how volatility actually behaves after a news spike.</div></li>
+      <li data-verdict="ok">Delete Friday from the sample as an outlier.<div class="tl-drill-why">Closer to right than using the full number, but it throws away the continuous variance Friday did have, and it pretends jumps never happen. The next scheduled release will jump too; dropping days hides a risk instead of measuring it.</div></li>
+      <li data-verdict="bad">The jump was up, so lean long next week.<div class="tl-drill-why">Bipower variation measures how much of the day was jumps, not which way the next move goes. The split is about magnitude. Nothing in it is a directional signal.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the method says.</strong> This Friday is illustrative: the numbers are the lesson's 15-minute worked example (one 46 bp jump among 1 bp moves), not a specific dated release. The decision rests on the lesson's sourced point: realized variance mixes two kinds of risk, and bipower variation is how you separate the part that tends to persist from the part that tends to fade.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -706,6 +820,25 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-har-rv.html">HAR-RV &amp; Realized Volatility Forecasting</a> <span>· what realized variance is and how it is forecast</span></li><!-- DESK:END -->
+        <li><a href="merton-jump-diffusion.html">The Merton Jump-Diffusion Model</a> <span>· prices as smooth diffusion plus rare jumps</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-jump-detection-tests.html">Lee-Mykland &amp; Boudt-Croux-Laurent: Testing for Jumps</a> <span>· finding which minute was the jump</span></li><!-- DESK:END -->
+        <li><a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a> <span>· modelling the size of the rare big moves</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> it tells you whether a volatile day was a lasting change in the market or one news spike that will fade, which changes how you size the next trade.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-har-rv.html">← HAR-RV</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -736,7 +869,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var PI_OVER_2 = Math.PI / 2;
@@ -819,5 +953,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

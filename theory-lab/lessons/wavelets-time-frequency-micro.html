@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wavelets &amp; Time-Frequency Analysis — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -177,7 +178,19 @@
       <p class="sl-p">This <strong>scalogram</strong> is the direct visual analogue of the previous lesson's periodogram — except it plots \(|W(a,b)|^2\) as a 2-D image, scale against time, instead of collapsing everything into one static curve. Reading it top-to-bottom answers "which size of pattern"; reading it left-to-right answers "when." A single periodogram of this exact series would report both the slow trend and the high-frequency noise as simply present — with no way to say the trend faded out right as the noise took over.</p>
     </section>
 
+    <!-- WB:wavelets_time_frequency-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Wavelets: which cycles, and when</h2>
+      <!-- WB:wavelets_time_frequency:START -->
+      <div class="wb" data-title="Wavelets: which cycles, and when">
+        <script type="application/json">{"w":600,"h":790,"intro":"Why \"which cycles\" is not enough, and how a short, stretchable ripple adds \"when\". Press play, or step through.","steps":[{"cap":"A made-up series in two halves: a fast cycle, every 8 steps, for the first 128 steps, then a slow cycle, every 32 steps, for the rest.","do":[{"chart":"ts","x":10,"y":10,"w":580,"h":190,"title":"The series: fast cycle, then slow cycle","xd":[0,256],"yd":[-1.3,1.5],"yt":[[-1,"−1"],[0,"0"],[1,"1"]],"xt":[[0,"0"],[128,"128"],[256,"256"]],"zero":true,"pl":40},{"series":"xs","chart":"ts","pts":[[0,0.0],[1,0.707],[2,1.0],[3,0.707],[4,0.0],[5,-0.707],[6,-1.0],[7,-0.707],[8,-0.0],[9,0.707],[10,1.0],[11,0.707],[12,0.0],[13,-0.707],[14,-1.0],[15,-0.707],[16,-0.0],[17,0.707],[18,1.0],[19,0.707],[20,0.0],[21,-0.707],[22,-1.0],[23,-0.707],[24,-0.0],[25,0.707],[26,1.0],[27,0.707],[28,0.0],[29,-0.707],[30,-1.0],[31,-0.707],[32,-0.0],[33,0.707],[34,1.0],[35,0.707],[36,0.0],[37,-0.707],[38,-1.0],[39,-0.707],[40,-0.0],[41,0.707],[42,1.0],[43,0.707],[44,0.0],[45,-0.707],[46,-1.0],[47,-0.707],[48,-0.0],[49,0.707],[50,1.0],[51,0.707],[52,-0.0],[53,-0.707],[54,-1.0],[55,-0.707],[56,-0.0],[57,0.707],[58,1.0],[59,0.707],[60,0.0],[61,-0.707],[62,-1.0],[63,-0.707],[64,-0.0],[65,0.707],[66,1.0],[67,0.707],[68,-0.0],[69,-0.707],[70,-1.0],[71,-0.707],[72,-0.0],[73,0.707],[74,1.0],[75,0.707],[76,0.0],[77,-0.707],[78,-1.0],[79,-0.707],[80,-0.0],[81,0.707],[82,1.0],[83,0.707],[84,-0.0],[85,-0.707],[86,-1.0],[87,-0.707],[88,-0.0],[89,0.707],[90,1.0],[91,0.707],[92,0.0],[93,-0.707],[94,-1.0],[95,-0.707],[96,-0.0],[97,0.707],[98,1.0],[99,0.707],[100,-0.0],[101,-0.707],[102,-1.0],[103,-0.707],[104,0.0],[105,0.707],[106,1.0],[107,0.707],[108,0.0],[109,-0.707],[110,-1.0],[111,-0.707],[112,-0.0],[113,0.707],[114,1.0],[115,0.707],[116,-0.0],[117,-0.707],[118,-1.0],[119,-0.707],[120,-0.0],[121,0.707],[122,1.0],[123,0.707],[124,0.0],[125,-0.707],[126,-1.0],[127,-0.707],[128,-0.0],[129,0.195],[130,0.383],[131,0.556],[132,0.707],[133,0.831],[134,0.924],[135,0.981],[136,1.0],[137,0.981],[138,0.924],[139,0.831],[140,0.707],[141,0.556],[142,0.383],[143,0.195],[144,0.0],[145,-0.195],[146,-0.383],[147,-0.556],[148,-0.707],[149,-0.831],[150,-0.924],[151,-0.981],[152,-1.0],[153,-0.981],[154,-0.924],[155,-0.831],[156,-0.707],[157,-0.556],[158,-0.383],[159,-0.195],[160,-0.0],[161,0.195],[162,0.383],[163,0.556],[164,0.707],[165,0.831],[166,0.924],[167,0.981],[168,1.0],[169,0.981],[170,0.924],[171,0.831],[172,0.707],[173,0.556],[174,0.383],[175,0.195],[176,0.0],[177,-0.195],[178,-0.383],[179,-0.556],[180,-0.707],[181,-0.831],[182,-0.924],[183,-0.981],[184,-1.0],[185,-0.981],[186,-0.924],[187,-0.831],[188,-0.707],[189,-0.556],[190,-0.383],[191,-0.195],[192,-0.0],[193,0.195],[194,0.383],[195,0.556],[196,0.707],[197,0.831],[198,0.924],[199,0.981],[200,1.0],[201,0.981],[202,0.924],[203,0.831],[204,0.707],[205,0.556],[206,0.383],[207,0.195],[208,-0.0],[209,-0.195],[210,-0.383],[211,-0.556],[212,-0.707],[213,-0.831],[214,-0.924],[215,-0.981],[216,-1.0],[217,-0.981],[218,-0.924],[219,-0.831],[220,-0.707],[221,-0.556],[222,-0.383],[223,-0.195],[224,-0.0],[225,0.195],[226,0.383],[227,0.556],[228,0.707],[229,0.831],[230,0.924],[231,0.981],[232,1.0],[233,0.981],[234,0.924],[235,0.831],[236,0.707],[237,0.556],[238,0.383],[239,0.195],[240,0.0],[241,-0.195],[242,-0.383],[243,-0.556],[244,-0.707],[245,-0.831],[246,-0.924],[247,-0.981],[248,-1.0],[249,-0.981],[250,-0.924],[251,-0.831],[252,-0.707],[253,-0.556],[254,-0.383],[255,-0.195]],"tone":"blue","ms":1600}]},{"cap":"Its periodogram shows two equal spikes, at periods 8 and 32. It cannot say that one cycle ran first and the other second: a series with both cycles all the way through would look much the same.","do":[{"chart":"pg","x":10,"y":214,"w":280,"h":230,"title":"Periodogram","xd":[0,0.19],"yd":[0,18.5],"yt":[[0,"0"],[16,"16"]],"xt":[[0.03125,"1/32"],[0.125,"1/8"]],"pl":36,"pr":12},{"series":"pgs","chart":"pg","pts":[[0.0,0.0],[0.0039,0.244],[0.0078,0.0],[0.0117,0.344],[0.0156,0.0],[0.0195,0.788],[0.0234,0.0],[0.0273,6.53],[0.0312,16.0],[0.0352,6.57],[0.0391,0.0],[0.043,0.79],[0.0469,0.0],[0.0508,0.328],[0.0547,0.0],[0.0586,0.203],[0.0625,0.0],[0.0664,0.157],[0.0703,0.0],[0.0742,0.142],[0.0781,0.0],[0.082,0.145],[0.0859,0.0],[0.0898,0.169],[0.0938,0.0],[0.0977,0.225],[0.1016,0.0],[0.1055,0.369],[0.1094,0.0],[0.1133,0.877],[0.1172,0.0],[0.1211,6.895],[0.125,16.0],[0.1289,6.121],[0.1328,0.0],[0.1367,0.612],[0.1406,0.0],[0.1445,0.2],[0.1484,0.0],[0.1523,0.094],[0.1562,0.0],[0.1602,0.053],[0.1641,0.0],[0.168,0.033],[0.1719,0.0],[0.1758,0.022],[0.1797,0.0],[0.1836,0.016],[0.1875,0.0]],"tone":"purple","ms":1200},{"note":"pgn","chart":"pg","at":[0.08,12],"text":"no \"when\"","tone":"red","size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"A wavelet is a short ripple that switches itself off. Slide a small, fast one along the series and record how well it matches at each step.","do":[{"chart":"en","x":310,"y":214,"w":280,"h":230,"title":"Wavelet power over time","xd":[0,256],"yd":[0,1.25],"yt":[[0,"0"],[1,"max"]],"xt":[[0,"0"],[128,"128"],[256,"256"]],"pl":40,"pr":12},{"series":"e8","chart":"en","pts":[[0,0.252],[4,0.491],[8,0.728],[12,0.888],[16,0.964],[20,0.991],[24,0.998],[28,1.0],[32,1.0],[36,1.0],[40,1.0],[44,1.0],[48,1.0],[52,1.0],[56,1.0],[60,1.0],[64,1.0],[68,1.0],[72,1.0],[76,1.0],[80,1.0],[84,1.0],[88,1.0],[92,1.0],[96,1.0],[100,1.0],[104,0.999],[108,0.993],[112,0.971],[116,0.903],[120,0.75],[124,0.512],[128,0.262],[132,0.093],[136,0.022],[140,0.003],[144,0.0],[148,0.0],[152,0.0],[156,0.0],[160,0.0],[164,0.0],[168,0.0],[172,0.0],[176,0.0],[180,0.0],[184,0.0],[188,0.0],[192,0.0],[196,0.0],[200,0.0],[204,0.0],[208,0.0],[212,0.0],[216,0.0],[220,0.0],[224,0.0],[228,0.0],[232,0.0],[236,0.0],[240,0.0],[244,0.0],[248,0.001],[252,0.001]],"tone":"green","ms":1500,"label":"fast","lat":[64,1.0],"ldy":-12}]},{"cap":"The fast ripple lights up for the first half only, and goes dark once the fast cycle stops at step 128.","do":[{"pulse":"e8"},{"series":"cut","chart":"ts","pts":[[128,-1.3],[128,1.5]],"tone":"red","dash":true,"ms":500}]},{"cap":"Stretch the ripple to match the slow cycle and slide it again. Now the second half lights up. That is the scalogram idea: which cycle, and when.","do":[{"series":"e32","chart":"en","pts":[[0,0.001],[4,0.001],[8,0.001],[12,0.001],[16,0.001],[20,0.001],[24,0.001],[28,0.001],[32,0.0],[36,0.0],[40,0.0],[44,0.0],[48,0.0],[52,0.0],[56,0.0],[60,0.0],[64,0.0],[68,0.001],[72,0.001],[76,0.002],[80,0.004],[84,0.006],[88,0.01],[92,0.016],[96,0.024],[100,0.035],[104,0.051],[108,0.071],[112,0.097],[116,0.13],[120,0.17],[124,0.216],[128,0.269],[132,0.328],[136,0.391],[140,0.458],[144,0.526],[148,0.593],[152,0.659],[156,0.722],[160,0.779],[164,0.831],[168,0.876],[172,0.914],[176,0.945],[180,0.969],[184,0.986],[188,0.996],[192,1.0],[196,0.997],[200,0.988],[204,0.971],[208,0.948],[212,0.918],[216,0.88],[220,0.836],[224,0.785],[228,0.728],[232,0.666],[236,0.6],[240,0.533],[244,0.465],[248,0.398],[252,0.334]],"tone":"amber","ms":1500,"label":"slow","lat":[192,1.0],"ldy":-12}]},{"cap":"Look at the right-hand end: the slow ripple fades before the data does, though the slow cycle never stops. Near the edges the ripple hangs off the data. That is the cone of influence: trust edge readings less.","do":[{"gap":"coi","chart":"en","top":[[212,1.2],[256,1.2]],"bot":[[212,0],[256,0]],"tone":"amber","op":0.22},{"note":"coil","chart":"en","at":[234,0.12],"text":"edge","tone":"amber","size":16,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Now the lesson's worked example: eight daily returns, all tiny except a 3.00% shock at step 4.","do":[{"chart":"hx","x":10,"y":460,"w":280,"h":230,"title":"Returns (%)","xd":[-0.6,7.6],"yd":[-0.4,3.5],"yt":[[0,"0"],[3,"3"]],"xt":[[0,"0"],[4,"4"],[7,"7"]],"zero":true,"pl":36},{"bars":"hxb","chart":"hx","data":[[0,0.1,"","blue"],[1,-0.1,"","blue"],[2,0.05,"","blue"],[3,-0.05,"","blue"],[4,3.0,"3.00","red"],[5,-0.05,"","blue"],[6,0.05,"","blue"],[7,-0.1,"","blue"]],"bw":22,"ms":900}]},{"cap":"Haar: pair the days up and take half the difference of each pair. Three pairs give 0.100 or less. Pair 3, steps 4 and 5, gives 1.525: more than ten times the rest, right where the shock is.","do":[{"chart":"hd","x":310,"y":460,"w":280,"h":230,"title":"Haar details","xd":[0.4,4.6],"yd":[0,1.8],"yt":[[0,"0"],[1.5,"1.5"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"]],"pl":36},{"bars":"hdb","chart":"hd","data":[[1,0.1,"0.100","blue"],[2,0.05,"0.050","blue"],[3,1.525,"1.525","red"],[4,0.075,"0.075","blue"]],"bw":34,"ms":1000}]},{"cap":"There is no free lunch. A step-shaped Haar wavelet pins down a jump sharply in time but blurs frequency. A smooth Morlet wavelet separates nearby cycles well but blurs timing.","do":[{"box":"haar","x":10,"y":704,"w":280,"h":80,"text":"Haar: sharp in time","tone":"red","size":19},{"box":"mor","x":310,"y":704,"w":280,"h":80,"text":"Morlet: sharp in frequency","tone":"green","size":19}]},{"cap":"And a big map has many cells, so some will light up by chance. A bright patch is a hint to test, not a signal. Wavelets tell you which cycles, and roughly when.","do":[{"pulse":"e8"},{"pulse":"e32"},{"pulse":"hdb"}]}]}</script>
+      </div>
+      <!-- WB:wavelets_time_frequency:END -->
+    </section>
+    <!-- WB:wavelets_time_frequency-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Worked example: pinpointing a single shock exactly</h2>
       <p class="sl-sub">Eight toy daily returns (%), mostly small, with one large shock in the middle: <span style="font-family:'DM Mono',monospace;color:var(--text)">[0.10, −0.10, 0.05, −0.05, 3.00, −0.05, 0.05, −0.10]</span></p>
@@ -195,7 +208,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this actually earns its keep on a desk</h2>
       <p class="sl-sub">A researcher wants to know whether EURUSD's intraday cycle character shortens right after a scheduled ECB announcement, and for how long.</p>
@@ -215,7 +228,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where a scalogram misleads</h2>
       <div class="sl-icard-grid">
@@ -226,7 +239,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -268,7 +281,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -377,5 +390,9 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

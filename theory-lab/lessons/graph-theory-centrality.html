@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Graph Theory Fundamentals &amp; Centrality Measures — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,79 @@
       <li><strong>How it reached trading:</strong> Mantegna mapped stock markets as graphs in 1999, and after 2008 network centrality became a systemic-risk tool (Billio et al., 2012; Diebold &amp; Yilmaz, 2014) and a scored category in the Basel method for systemically important banks.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The lesson's seven-node network: EUR, GBP and CHF form one triangle, AUD, NZD and CAD another, and JPY is the only bridge, linked to EUR and AUD. Each node shows three scores: degree, betweenness and eigenvector. EUR and AUD score 3, 8 and 1.00. JPY scores 2, 9 and 0.85. GBP, CHF, NZD and CAD score 2, 0 and 0.74. Three boxes below name the winners: degree picks EUR and AUD, betweenness picks JPY alone, eigenvector picks EUR and AUD with JPY third.">
+      <text class="tlp-text3" x="300" y="16" text-anchor="middle" font-size="12">scores shown as degree · betweenness · eigenvector</text>
+      <line class="tlp-line" x1="150" y1="52" x2="75" y2="138"/>
+      <line class="tlp-line" x1="150" y1="52" x2="225" y2="138"/>
+      <line class="tlp-line" x1="75" y1="138" x2="225" y2="138"/>
+      <line class="tlp-line" x1="450" y1="52" x2="375" y2="138"/>
+      <line class="tlp-line" x1="450" y1="52" x2="525" y2="138"/>
+      <line class="tlp-line" x1="375" y1="138" x2="525" y2="138"/>
+      <line class="tlp-line amber thick" x1="150" y1="52" x2="300" y2="95"/>
+      <line class="tlp-line amber thick" x1="300" y1="95" x2="450" y2="52"/>
+      <circle class="tlp-box blue" cx="150" cy="52" r="22"/>
+      <circle class="tlp-box blue" cx="75" cy="138" r="22"/>
+      <circle class="tlp-box blue" cx="225" cy="138" r="22"/>
+      <circle class="tlp-box amber" cx="300" cy="95" r="22"/>
+      <circle class="tlp-box blue" cx="450" cy="52" r="22"/>
+      <circle class="tlp-box blue" cx="375" cy="138" r="22"/>
+      <circle class="tlp-box blue" cx="525" cy="138" r="22"/>
+      <text class="tlp-text" x="150" y="57" text-anchor="middle" font-size="13" font-weight="700">EUR</text>
+      <text class="tlp-text" x="75" y="143" text-anchor="middle" font-size="13" font-weight="700">GBP</text>
+      <text class="tlp-text" x="225" y="143" text-anchor="middle" font-size="13" font-weight="700">CHF</text>
+      <text class="tlp-amber" x="300" y="100" text-anchor="middle" font-size="13" font-weight="700">JPY</text>
+      <text class="tlp-text" x="450" y="57" text-anchor="middle" font-size="13" font-weight="700">AUD</text>
+      <text class="tlp-text" x="375" y="143" text-anchor="middle" font-size="13" font-weight="700">NZD</text>
+      <text class="tlp-text" x="525" y="143" text-anchor="middle" font-size="13" font-weight="700">CAD</text>
+      <text class="tlp-text2" x="122" y="57" text-anchor="end" font-size="12">3 · 8 · 1.00</text>
+      <text class="tlp-text2" x="478" y="57" font-size="12">3 · 8 · 1.00</text>
+      <text class="tlp-amber" x="300" y="134" text-anchor="middle" font-size="12" font-weight="700">2 · 9 · 0.85</text>
+      <text class="tlp-text3" x="75" y="177" text-anchor="middle" font-size="12">2 · 0 · 0.74</text>
+      <text class="tlp-text3" x="225" y="177" text-anchor="middle" font-size="12">2 · 0 · 0.74</text>
+      <text class="tlp-text3" x="375" y="177" text-anchor="middle" font-size="12">2 · 0 · 0.74</text>
+      <text class="tlp-text3" x="525" y="177" text-anchor="middle" font-size="12">2 · 0 · 0.74</text>
+      <rect class="tlp-box blue" x="8" y="196" width="186" height="52" rx="6"/>
+      <rect class="tlp-box amber" x="207" y="196" width="186" height="52" rx="6"/>
+      <rect class="tlp-box purple" x="406" y="196" width="186" height="52" rx="6"/>
+      <text class="tlp-blue" x="101" y="217" text-anchor="middle" font-size="13" font-weight="700">Degree: EUR &amp; AUD</text>
+      <text class="tlp-text2" x="101" y="236" text-anchor="middle" font-size="12">most links, 3 each</text>
+      <text class="tlp-amber" x="300" y="217" text-anchor="middle" font-size="13" font-weight="700">Betweenness: JPY</text>
+      <text class="tlp-text2" x="300" y="236" text-anchor="middle" font-size="12">the only bridge, 9 routes</text>
+      <text class="tlp-purple" x="499" y="217" text-anchor="middle" font-size="13" font-weight="700">Eigenvector: EUR &amp; AUD</text>
+      <text class="tlp-text2" x="499" y="236" text-anchor="middle" font-size="12">JPY 0.85 beats 0.74</text>
+    </svg>
+    <figcaption>Same seven nodes, same eight edges, three questions. Count links and EUR and AUD win. Count the shortest routes a node sits on and JPY wins alone. Weigh each link by who is on the other end and JPY climbs above the four triangle-only nodes.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">People keep telling me some market is the most central one. What does that even mean?</p>
+      <p data-who="Quant">It means you have drawn a network. Each market is a dot, and you draw a line between two dots when they are strongly linked. Then you ask which dot matters most.</p>
+      <p data-who="Trader">Surely that has one answer.</p>
+      <p data-who="Quant">It has at least three. Take a toy network of seven currencies. The euro, the pound and the Swiss franc form one tight triangle. The Aussie, the kiwi and the Canadian dollar form another. The yen sits in the middle and links to just the euro and the Aussie.</p>
+      <p data-who="Trader">So the yen is the bridge.</p>
+      <p data-who="Quant">Exactly. Now the first answer, degree. Just count the links. The euro and the Aussie have three each. Everyone else, the yen included, has two. By that count the yen looks ordinary.</p>
+      <p data-who="Trader">And the second?</p>
+      <p data-who="Quant">Betweenness. Ask how many shortest routes between other pairs pass through you. Any trip from the European side to the commodity side has to cross the yen. There are nine such pairs, so the yen scores nine, the highest in the network. The euro and the Aussie score eight. The other four score zero.</p>
+      <p data-who="Trader">So the dull node is the gatekeeper.</p>
+      <p data-who="Quant">Yes. And the third answer is eigenvector centrality. You matter if your neighbors matter. You start everyone level, then keep passing scores along the links until they settle.</p>
+      <p data-who="Trader">Where does the yen land?</p>
+      <p data-who="Quant">Scale the top nodes to one. The euro and the Aussie sit at one. The yen settles at about point eight five. The four triangle-only nodes sit at about point seven four. The yen has only two links, but both go to the two biggest nodes.</p>
+      <p data-who="Trader">So which one do I use?</p>
+      <p data-who="Quant">The one that matches your question. Biggest direct exposure, use degree. Who carries the traffic between two parts of your book, use betweenness. Who sits nearest the important players, use eigenvector.</p>
+      <p data-who="Trader">Does anyone outside a textbook care?</p>
+      <p data-who="Quant">Very much, since 2008. Researchers built networks of banks and funds to see who passes shocks on. And interconnectedness is one of the scored categories in the Basel Committee's 2011 method for finding global systemically important banks.</p>
+      <p data-who="Trader">Any catch?</p>
+      <p data-who="Quant">Every score is one snapshot. Correlation networks shift between regimes, and on a small network one extra line can reshuffle the ranking.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">There is no single most important node. Name the question first, then pick the centrality that answers it.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -126,6 +200,27 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From counting links to Ax = λx, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ C_D(v) = \color{#fbbf24}{\sum_{j} A_{vj}} \]</div>
+      <p>Start with degree: add up node \(v\)'s row of the adjacency matrix. Every neighbor counts as 1, however important it is. EUR scores 3, JPY scores 2.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ x_v = \sum_{j} A_{vj}\,\color{#fbbf24}{x_j} \]</div>
+      <p>Now weight each neighbor by its own score \(x_j\). A link to an important node counts for more than a link to a minor one. The score is recursive: it is defined in terms of itself.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\lambda}\, x_v = \sum_{j} A_{vj}\, x_j \]</div>
+      <p>Summing neighbors inflates every score each round, so allow a constant scale factor \(\lambda\). We only need the scores to be consistent with each other, not equal to the raw sums.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{Ax = \lambda x} \]</div>
+      <p>Write that for every node at once and it is the eigenvector equation. Take the leading eigenvector. On the toy network \(\lambda \approx 2.343\), giving EUR \(=\) AUD \(= 1.00\), JPY \(\approx 0.85\) and the four triangle-only nodes \(\approx 0.74\).</p>
+    </div>
+  </div>
 
   <h3>Step 1 — a graph, and the adjacency matrix that encodes it</h3>
   <p>
@@ -527,6 +622,10 @@
       \((n-1)(n-2)/2\) and both normalized betweenness scores recalculate
       instantly.
     </p>
+    <div class="tl-predict" data-answer="15" data-tol="0" data-unit=" paths">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Picture a different 7-node network: a pure hub with six spokes, and no other links. Every shortest route between two spokes goes through the hub. How many shortest paths does the hub sit on? Lock in a guess, then type it into the JPY field below and watch the normalized score.</div>
+      <div class="tl-predict-reveal"><p><strong>15 paths.</strong> Six spokes make \(6 \times 5 / 2 = 15\) pairs, and every one routes through the hub. Type 15 into the JPY field: the normalized score reads 1.00, the maximum possible, because \((7-1)(7-2)/2 = 15\) is exactly the number of pairs that do not involve the hub. JPY's 0.60 means it carries 60% of a perfect hub's load. Now try 0 to see a node no route needs.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Nodes \(n\)</span></div>
@@ -576,6 +675,12 @@
       favorite.
     </p>
   </div>
+
+  <!-- WB:graph_theory_centrality:START -->
+  <div class="wb" id="wb-graph_theory_centrality" data-title="Three centralities, one network, three winners">
+    <script type="application/json">{"w":600,"h":650,"intro":"The lesson's seven-node network, and three different ways to ask which node matters most. Press play, or step through.","steps":[{"cap":"Start with three currencies that all move together: EUR, GBP and CHF. Each dot is a node, each line an edge. Every pair is linked, so they form a triangle. (A teaching network: plausible in shape, not measured.)","do":[{"box":"EUR","x":88,"y":14,"w":84,"h":62,"text":"EUR","tone":"blue","sub":"","size":20},{"box":"GBP","x":13,"y":129,"w":84,"h":62,"text":"GBP","tone":"blue","sub":"","size":20},{"box":"CHF","x":163,"y":129,"w":84,"h":62,"text":"CHF","tone":"blue","sub":"","size":20},{"line":"eEURGBP","points":[[107.8,79.0],[77.2,126.0]],"width":3,"ms":500},{"line":"eEURCHF","points":[[152.2,79.0],[182.8,126.0]],"width":3,"ms":500},{"line":"eGBPCHF","points":[[100.0,160.0],[160.0,160.0]],"width":3,"ms":500}]},{"cap":"A second cluster, the commodity bloc: AUD, NZD and CAD. Another fully linked triangle.","do":[{"box":"AUD","x":428,"y":14,"w":84,"h":62,"text":"AUD","tone":"green","sub":"","size":20},{"box":"NZD","x":353,"y":129,"w":84,"h":62,"text":"NZD","tone":"green","sub":"","size":20},{"box":"CAD","x":503,"y":129,"w":84,"h":62,"text":"CAD","tone":"green","sub":"","size":20},{"line":"eAUDNZD","points":[[447.8,79.0],[417.2,126.0]],"width":3,"ms":500},{"line":"eAUDCAD","points":[[492.2,79.0],[522.8,126.0]],"width":3,"ms":500},{"line":"eNZDCAD","points":[[440.0,160.0],[500.0,160.0]],"width":3,"ms":500}]},{"cap":"Now JPY. It links to exactly two nodes: EUR on one side and AUD on the other. That is the only bridge between the clusters. Seven nodes, eight edges.","do":[{"box":"JPY","x":258,"y":69,"w":84,"h":62,"text":"JPY","tone":"amber","sub":"","size":20},{"line":"eEURJPY","points":[[175.0,59.6],[255.0,85.4]],"width":4,"ms":500,"tone":"amber"},{"line":"eJPYAUD","points":[[345.0,85.4],[425.0,59.6]],"width":4,"ms":500,"tone":"amber"}]},{"cap":"Measure one, degree: just count the links. EUR and AUD have three each. Everyone else, JPY included, has two. By this count JPY looks ordinary.","do":[{"sub":"EUR","text":"3"},{"sub":"GBP","text":"2"},{"sub":"CHF","text":"2"},{"sub":"JPY","text":"2"},{"sub":"AUD","text":"3"},{"sub":"NZD","text":"2"},{"sub":"CAD","text":"2"},{"note":"verdict","x":300,"y":238,"text":"Degree: EUR and AUD win, 3 links each","size":19,"anchor":"middle","tone":"blue"}]},{"cap":"Measure two, betweenness: send a message from GBP to NZD by the shortest route. It must go GBP, EUR, JPY, AUD, NZD. There is no other way across.","do":[{"hide":"verdict"},{"line":"p0","points":[[77.2,126.0],[107.8,79.0]],"width":6,"ms":500,"tone":"red"},{"line":"p1","points":[[175.0,59.6],[255.0,85.4]],"width":6,"ms":500,"tone":"red"},{"line":"p2","points":[[345.0,85.4],[425.0,59.6]],"width":6,"ms":500,"tone":"red"},{"line":"p3","points":[[447.8,79.0],[417.2,126.0]],"width":6,"ms":500,"tone":"red"}]},{"cap":"The same is true for all nine pairs that cross between the clusters: every one of them runs through JPY. EUR and AUD each sit on eight shortest routes. GBP, CHF, NZD and CAD sit on none.","do":[{"sub":"EUR","text":"8"},{"sub":"GBP","text":"0"},{"sub":"CHF","text":"0"},{"sub":"JPY","text":"9"},{"sub":"AUD","text":"8"},{"sub":"NZD","text":"0"},{"sub":"CAD","text":"0"},{"pulse":"JPY"},{"note":"verdict","x":300,"y":238,"text":"Betweenness: JPY wins alone, on 9 routes","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"Measure three, eigenvector: you matter if your neighbors matter. Give every node a score of 1. Each round, a node's new score is the sum of its neighbors' scores, rescaled so the top node is 1.","do":[{"hide":"p0"},{"hide":"p1"},{"hide":"p2"},{"hide":"p3"},{"hide":"verdict"},{"sub":"EUR","text":"1"},{"sub":"GBP","text":"1"},{"sub":"CHF","text":"1"},{"sub":"JPY","text":"1"},{"sub":"AUD","text":"1"},{"sub":"NZD","text":"1"},{"sub":"CAD","text":"1"}]},{"cap":"After one round the scores are just degree over three: EUR and AUD 1, everyone else 0.67. But JPY's two neighbors are the two biggest nodes, so in the next round it gets more back than GBP does.","do":[{"sub":"EUR","text":"1"},{"sub":"GBP","text":"0.67"},{"sub":"CHF","text":"0.67"},{"sub":"JPY","text":"0.67"},{"sub":"AUD","text":"1"},{"sub":"NZD","text":"0.67"},{"sub":"CAD","text":"0.67"},{"chart":"pw","x":10,"y":270,"w":580,"h":262,"title":"Eigenvector score, round by round","xd":[0,20],"yd":[0.6,1.05],"yt":[[0.7,"0.7"],[0.8,"0.8"],[0.9,"0.9"],[1.0,"1.0"]],"xt":[[0,"0"],[5,"5"],[10,"10"],[15,"15"],[20,"20 rounds"]],"pl":48,"pr":96},{"series":"gbp","chart":"pw","pts":[[0,1.0],[1,0.667],[2,0.833],[3,0.688],[4,0.794],[5,0.709],[6,0.774],[7,0.723],[8,0.762],[9,0.732],[10,0.755],[11,0.737],[12,0.751],[13,0.74],[14,0.748],[15,0.742],[16,0.747],[17,0.743],[18,0.746],[19,0.744],[20,0.745]],"tone":"blue","ms":1800,"label":"GBP 0.74","lat":[20,0.745],"ldx":6,"ldy":8,"lanchor":"start","lsize":17},{"series":"jpy","chart":"pw","pts":[[0,1.0],[1,0.667],[2,1.0],[3,0.75],[4,0.941],[5,0.791],[6,0.905],[7,0.815],[8,0.884],[9,0.831],[10,0.872],[11,0.84],[12,0.865],[13,0.845],[14,0.86],[15,0.849],[16,0.858],[17,0.851],[18,0.856],[19,0.852],[20,0.855]],"tone":"amber","ms":1800,"label":"JPY 0.85","lat":[20,0.855],"ldx":6,"ldy":-8,"lanchor":"start","lsize":17}]},{"cap":"The scores swing, then settle. This repeated multiply-and-rescale is power iteration, and where it settles is the leading eigenvector of the adjacency matrix, with eigenvalue about 2.343.","do":[{"sub":"EUR","text":"1.00"},{"sub":"GBP","text":"0.74"},{"sub":"CHF","text":"0.74"},{"sub":"JPY","text":"0.85"},{"sub":"AUD","text":"1.00"},{"sub":"NZD","text":"0.74"},{"sub":"CAD","text":"0.74"},{"dot":"jend","chart":"pw","at":[20,0.855],"text":"","tone":"amber"},{"dot":"gend","chart":"pw","at":[20,0.745],"text":"","tone":"blue"}]},{"cap":"Final scores: EUR and AUD 1.00, JPY 0.85, the four triangle-only nodes 0.74. Degree tied JPY with them. Eigenvector lifts JPY above them, because of who it is linked to, not how many.","do":[{"note":"verdict","x":300,"y":238,"text":"Eigenvector: EUR and AUD 1.00, then JPY 0.85","size":19,"anchor":"middle","tone":"purple"}]},{"cap":"Same seven nodes, same eight edges, three answers. Most links: EUR and AUD. The bridge everything crosses: JPY. Closest to the important nodes: EUR and AUD, with JPY third. Name the measure that fits your question.","do":[{"box":"w1","x":10,"y":552,"w":180,"h":88,"text":"most links\nEUR · AUD","tone":"blue","size":19},{"box":"w2","x":210,"y":552,"w":180,"h":88,"text":"the bridge\nJPY","tone":"amber","size":19},{"box":"w3","x":410,"y":552,"w":180,"h":88,"text":"best-connected\nEUR · AUD","tone":"purple","size":19}]}]}</script>
+  </div>
+  <!-- WB:graph_theory_centrality:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -646,6 +751,19 @@
       added, removed, or reweighted — treat exact rankings on a small network
       as illustrative of the mechanism, not as precise, stable measurements.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative risk meeting</div>
+    <h3>You can keep one hedge. Your worry is spillover between two halves of the book</h3>
+    <p>Your book looks like the lesson's toy network: a European cluster (EUR, GBP, CHF), a commodity cluster (AUD, NZD, CAD), and JPY as the only link between them. Risk tells you to drop every hedge but one. The head of desk says the danger is a shock in one cluster spreading into the other. Which node keeps its hedge, and why?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">EUR or AUD, because they have the most connections.<div class="tl-drill-why">That answers a different question: who has the most direct links. Degree scores EUR and AUD at 3, but the worry here is transmission between the clusters, and degree cannot see that at all.</div></li>
+      <li data-verdict="good">JPY, because it has the highest betweenness.<div class="tl-drill-why">Every one of the 9 cross-cluster shortest routes runs through JPY, so its betweenness of 9 is the highest in the network. The question is about traffic between the halves, and betweenness is the measure built for that question.</div></li>
+      <li data-verdict="ok">Run all three measures and hedge whichever node wins the most of them.<div class="tl-drill-why">Reporting all three is good practice, but a vote picks EUR or AUD (they win degree and eigenvector). Measures answer different questions; you should pick the one that matches the question, not count wins.</div></li>
+      <li data-verdict="bad">GBP, because its eigenvector score of 0.74 shows it is safely peripheral.<div class="tl-drill-why">A low score says GBP is not central, which is the opposite of a reason to hedge it. And no measure points to GBP as the channel between the clusters: its betweenness is zero.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What this shows.</strong> This is an illustrative situation built on the lesson's teaching network, not a real episode. The point is the one the worked example makes: the three measures crown different nodes, and the right one depends on the risk you care about. For spillover between clusters, that is betweenness, and the answer is JPY.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -742,6 +860,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="linear-algebra-matrices.html">Linear Algebra &amp; Matrices</a> <span>· eigenvectors, the engine under eigenvector centrality</span></li>
+        <li><a href="pca-factors.html">Principal Component Analysis &amp; Factor Regimes</a> <span>· the same leading-eigenvector search on a covariance matrix</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="correlation-networks-mst.html">Correlation Networks &amp; Minimum Spanning Trees</a> <span>· turn a real correlation matrix into a graph</span></li>
+        <li><a href="systemic-risk-networks.html">Systemic Risk &amp; Financial Contagion Networks</a> <span>· how losses travel along the edges</span></li>
+        <li><a href="transfer-entropy-causality.html">Transfer Entropy &amp; Information-Theoretic Causality</a> <span>· directed edges for who leads whom</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> "the most central market" means nothing until you say which centrality, and each one points to a different risk in your book.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
     <a href="correlation-networks-mst.html">Correlation Networks &amp; Minimum Spanning Trees →</a>
@@ -821,6 +959,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

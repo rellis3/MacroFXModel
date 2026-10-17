@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>White's Reality Check &amp; SPA — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -255,7 +256,19 @@
       </div>
     </section>
 
+    <!-- WB:institutional_reality_check_spa-deck:START -->
     <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">The Reality Check: replay history with no edge anywhere</h2>
+      <!-- WB:institutional_reality_check_spa:START -->
+      <div class="wb" data-title="The Reality Check: replay history with no edge anywhere">
+        <script type="application/json">{"w":600,"h":860,"intro":"Five strategies tried on the same 16 periods. Is the winner a real edge, or just the luckiest of five? Replay history with no edge anywhere and see. Press play, or step through.","steps":[{"cap":"You tried five strategy variants on the same 16 periods: A momentum, B mean-reversion, C carry, D breakout and E contrarian. The benchmark is zero. Which one, if any, has a real edge?","do":[{"icon":"crowd","name":"crowd","x":20,"y":10,"s":0.95,"tone":"blue","label":"5 strategies","lsize":18},{"note":"setup","x":360,"y":50,"text":"16 periods each · benchmark = 0","size":19,"anchor":"middle"},{"note":"q","x":360,"y":84,"text":"real edge, or the luckiest of five?","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"Their average return per period: A 0.469%, C 0.156%, B and D about zero, E −0.163%. Momentum wins. But the best of five always wins something.","do":[{"chart":"means","x":10,"y":132,"w":580,"h":222,"title":"Mean return per period, %","xd":[0.4,5.6],"yd":[-0.3,0.62],"yt":[[0.4,"0.4"],[0,"0"]],"xt":[[1,"A"],[2,"B"],[3,"C"],[4,"D"],[5,"E"]],"zero":true,"pl":46,"pr":14},{"bars":"mb","chart":"means","data":[[1,0.469,"0.469","green"],[2,-0.006,"",null],[3,0.156,"0.156","amber"],[4,-0.013,"",null],[5,-0.163,"−0.163","red"]],"bw":46,"ms":1100}]},{"cap":"The trap: carry's Sharpe is 0.93, close to momentum's 1.19, only because its swings happened to be tiny (0.168 against 0.394). Its average is a third of momentum's.","do":[{"note":"sh","chart":"means","at":[3,0.42],"text":"C's Sharpe 0.93  vs  A's 1.19","tone":"amber","size":18,"anchor":"start","dx":-40,"dy":0}]},{"cap":"The Reality Check builds a world with no edge at all. Subtract each strategy's own average from its returns. Now every strategy averages exactly zero.","do":[{"dim":"mb"},{"dim":"sh"},{"box":"null","x":60,"y":372,"w":480,"h":50,"text":"returns − own average  →  every edge = 0","tone":"blue","size":19}]},{"cap":"Reshuffle the 16 periods in short chunks, about 2 periods long on average. One reshuffle is used for all five strategies at once, so streaks and shared bad weeks stay together.","do":[{"note":"orig","x":300,"y":446,"text":"one replay, period order (· = new chunk):","size":18,"anchor":"middle"},{"note":"rep","x":300,"y":474,"text":"9 10 11 12 13 14 15 16 · 2 3 · 16 1 · 4 5 · 7 · 6","size":18,"anchor":"middle","tone":"purple"}]},{"cap":"Average each strategy over the reshuffled periods and keep the best of the five. That is one replay of how good the winner looks from luck alone. This replay: E at +0.06%.","do":[{"note":"one","x":300,"y":504,"text":"A −0.03 · B −0.01 · C −0.01 · D −0.04 · E +0.06  →  best +0.06","size":17,"anchor":"middle","tone":"purple"}]},{"cap":"Do it 5,000 times. The replay winners pile up between about 0 and 0.2%. That pile is what the best of five edge-free strategies looks like.","do":[{"chart":"null","x":10,"y":530,"w":580,"h":214,"title":"Best of five, 5,000 no-edge replays (% of replays)","xd":[-0.06,0.56],"yd":[0,18],"yt":[[5,"5%"],[10,"10%"],[15,"15%"]],"xt":[[0,"0"],[0.2,"0.2"],[0.4,"0.4%"]],"pl":46,"pr":14},{"bars":"hist","chart":"null","data":[[-0.0125,1.4,"","blue"],[0.0125,9.28,"","blue"],[0.0375,11.66,"","blue"],[0.0625,16.7,"","blue"],[0.0875,13.78,"","blue"],[0.1125,11.38,"","blue"],[0.1375,9.34,"","blue"],[0.1625,6.92,"","blue"],[0.1875,4.16,"","blue"],[0.2125,4.24,"","blue"],[0.2375,2.5,"","blue"],[0.2625,2.08,"","blue"],[0.2875,1.88,"","blue"],[0.3125,1.26,"","blue"],[0.3375,0.88,"","blue"],[0.3625,0.66,"","blue"],[0.3875,0.56,"","blue"],[0.4125,0.2,"","blue"],[0.4375,0.14,"","blue"],[0.4625,0.14,"","blue"],[0.4875,0.08,"","blue"],[0.5125,0.1,"","blue"]],"bw":19,"ms":1200}]},{"cap":"Momentum's real 0.469% sits far out in the thin right tail. Only about 3 replays in 1,000 got that far: p ≈ 0.003. A real edge, on this sample.","do":[{"dot":"pa","chart":"null","at":[0.46875,0.4],"text":"A 0.469\np ≈ 0.003","tone":"green","dy":-62,"size":18}]},{"cap":"Carry's 0.156% sits inside the pile. About one replay in four does at least as well: p ≈ 0.24. The tempting Sharpe was noise.","do":[{"dot":"pc","chart":"null","at":[0.15625,9.5],"text":"C 0.156\np ≈ 0.24","tone":"amber","dx":58,"dy":-12,"size":18}]},{"cap":"Hansen's SPA test keeps the replay but divides each strategy by its own noise, and keeps clear losers (E, t = −1.30) at their own bad average. Losers stop padding the null: momentum's p falls to about 0.0002.","do":[{"box":"spa","x":10,"y":758,"w":285,"h":92,"text":"SPA: scale by own noise,\nbench clear losers\nA: p ≈ 0.0002","tone":"green","size":18}]},{"cap":"One rule no test can enforce: show it every strategy you tried. Run fifty, test only your best five, and the p-value is worthless.","do":[{"box":"honest","x":305,"y":758,"w":285,"h":92,"text":"tried 50, tested 5?\nthe p-value is worthless","tone":"red","size":18}]}]}</script>
+      </div>
+      <!-- WB:institutional_reality_check_spa:END -->
+    </section>
+    <!-- WB:institutional_reality_check_spa-deck:END -->
+
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">The test is only as honest as the candidate set</h2>
       <div class="sl-compare">
@@ -282,7 +295,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What this repo actually has — and doesn't</h2>
       <div class="sl-callout amber">
@@ -292,7 +305,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -343,7 +356,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -580,5 +593,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

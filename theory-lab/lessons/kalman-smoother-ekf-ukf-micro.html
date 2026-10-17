@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Kalman Smoother &amp; EKF/UKF — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -197,7 +198,19 @@
       <p class="sl-p">At k = 0 there's nothing to see: a linear h means the EKF's Jacobian is exact everywhere, and EKF, UKF, and the plain Kalman filter all agree perfectly. Drag the slider up and the true curve bends away from that same fixed tangent line — the sigma points, which always sit on the true curve, visibly separate from where the tangent line places them.</p>
     </section>
 
+    <!-- WB:kalman_smoother_ekf_ukf-deck:START -->
     <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Hindsight and curves: the smoother, the EKF and the UKF</h2>
+      <!-- WB:kalman_smoother_ekf_ukf:START -->
+      <div class="wb" data-title="Hindsight and curves: the smoother, the EKF and the UKF">
+        <script type="application/json">{"w":600,"h":700,"intro":"Two upgrades to the Kalman filter: hindsight for research, and curves for nonlinear prices. The lesson's own numbers. Press play, or step through.","steps":[{"cap":"The live filter, Day 1. It starts at 1.20, sees Day 1's data, and moves to 1.321. Its uncertainty, shown as a ±1 standard-deviation bar, is still wide: variance 0.0080.","do":[{"chart":"sm","x":10,"y":10,"w":580,"h":250,"title":"Hedge ratio: live vs hindsight","xd":[-0.3,4.2],"yd":[1.05,1.45],"yt":[[1.1,"1.10"],[1.2,"1.20"],[1.3,"1.30"],[1.4,"1.40"]],"xt":[[0,"start"],[1,"Day 1"],[2,"Day 2"]],"pl":56,"pr":14},{"dot":"d0","chart":"sm","at":[0,1.2],"text":"1.20","tone":null,"dx":0,"dy":-16},{"series":"f1b","chart":"sm","pts":[[0.94,1.2316],[0.94,1.4104]],"tone":"blue","ms":500,"width":4},{"dot":"f1","chart":"sm","at":[0.94,1.321],"text":"1.321","tone":"blue","dx":-12,"dy":0,"anchor":"end"}]},{"cap":"Day 2. The new observation, 1.30, is a little below the Day 1 estimate. The live filter moves to 1.311, with variance 0.0047.","do":[{"series":"f2b","chart":"sm","pts":[[2,1.2424],[2,1.3796]],"tone":"green","ms":500,"width":4},{"dot":"f2","chart":"sm","at":[2,1.311],"text":"1.311","tone":"green","dx":-12,"dy":0,"anchor":"end"}]},{"cap":"Now the backward pass. The smoother gain for Day 1 is C = 0.0080 ÷ 0.0089 = 0.899: Day 1 was uncertain, so it should listen to what Day 2 revealed.","do":[{"box":"cg","x":360,"y":50,"w":220,"h":70,"text":"C = 0.0080 ÷ 0.0089\n= 0.899","tone":"purple","size":18}]},{"cap":"Day 2 came in 0.010 below the Day 1 forecast. Hindsight pulls Day 1 down by 0.899 × 0.010: from 1.321 to 1.312. The error bar shrinks too, variance 0.0080 to 0.0046.","do":[{"series":"s1b","chart":"sm","pts":[[1.08,1.2441],[1.08,1.3799]],"tone":"green","ms":500,"width":4},{"dot":"s1","chart":"sm","at":[1.08,1.312],"text":"1.312","tone":"green","dx":12,"dy":0,"anchor":"start"}]},{"cap":"The trap: nobody trading on Day 1 could have known 1.312. It needs Day 2's data. Smoothed paths are for research and post-mortems. Used in a backtest, they are lookahead.","do":[{"box":"look","x":360,"y":140,"w":220,"h":72,"text":"smoothed = hindsight\nnever a live signal","tone":"red","size":18}]},{"cap":"Second upgrade: curves. Suppose what you observe is h(x) = x², a curved function of the hidden state. Your prediction is x̂ = 1.30, so you expect to see 1.69. You actually see 1.75.","do":[{"chart":"cv","x":10,"y":276,"w":580,"h":300,"title":"Observation h(x) = x²","xd":[0.6,1.9],"yd":[0,3.8],"yt":[[1,"1"],[2,"2"],[3,"3"]],"xt":[[0.8,"0.8"],[1.0,"1.0"],[1.3,"1.30"],[1.6,"1.6"],[1.8,"1.8"]],"pl":40,"pr":14},{"series":"h","chart":"cv","pts":[[0.6,0.36],[0.65,0.4225],[0.7,0.49],[0.75,0.5625],[0.8,0.64],[0.85,0.7225],[0.9,0.81],[0.95,0.9025],[1.0,1.0],[1.05,1.1025],[1.1,1.21],[1.15,1.3225],[1.2,1.44],[1.25,1.5625],[1.3,1.69],[1.35,1.8225],[1.4,1.96],[1.45,2.1025],[1.5,2.25],[1.55,2.4025],[1.6,2.56],[1.65,2.7225],[1.7,2.89],[1.75,3.0625],[1.8,3.24],[1.85,3.4225],[1.9,3.61]],"tone":null,"ms":1000,"width":3.2},{"dot":"xh","chart":"cv","at":[1.3,1.69],"text":"x̂ = 1.30","tone":"blue","dx":-12,"dy":-10,"anchor":"end"}]},{"cap":"The extended Kalman filter lays a straight tangent line on the curve at 1.30, slope 2.6, and runs the ordinary equations on that line. Its update lands at 1.3178.","do":[{"series":"tan","chart":"cv","pts":[[0.7,0.13],[1.9,3.25]],"tone":"red","dash":true,"ms":700,"label":"EKF tangent → 1.3178","lat":[1.88,0.45],"ldx":0,"ldy":0,"lanchor":"end"}]},{"cap":"The unscented filter instead sends three points onto the real curve: 1.127, 1.30 and 1.473. Averaged, they predict 1.700, not 1.690, because the curve bends upward. The tangent line cannot see that.","do":[{"dot":"sg0","chart":"cv","at":[1.3,1.69],"text":"","tone":"purple"},{"dot":"sg1","chart":"cv","at":[1.4732,2.1703],"text":"","tone":"purple"},{"dot":"sg2","chart":"cv","at":[1.1268,1.2697],"text":"","tone":"purple"}]},{"cap":"The UKF update lands at 1.3148. With this mild curve and narrow uncertainty, the two methods are only 0.003 apart.","do":[{"box":"gap1","x":10,"y":590,"w":285,"h":100,"text":"P = 0.01:\nEKF 1.3178 · UKF 1.3148\ngap 0.003","tone":"purple","size":18}]},{"cap":"Make the prediction ten times less certain, P = 0.10. The sigma points spread to 0.75 and 1.85, deep into the bend. Now the EKF says 1.3224 and the UKF 1.2855: a gap of 0.037.","do":[{"dim":"sg0"},{"dim":"sg1"},{"dim":"sg2"},{"dot":"sw1","chart":"cv","at":[1.8477,3.4141],"text":"","tone":"amber"},{"dot":"sw2","chart":"cv","at":[0.7523,0.5659],"text":"","tone":"amber"},{"box":"gap2","x":305,"y":590,"w":285,"h":100,"text":"P = 0.10:\nEKF 1.3224 · UKF 1.2855\ngap 0.037","tone":"amber","size":18}]},{"cap":"Pick the tool by the problem. Linear: the plain Kalman filter. Prices curved in a hidden factor: EKF, or UKF when the bend is strong. A history for research: the smoother. Strongly non-Gaussian: the particle filter.","do":[{"pulse":"gap2"},{"pulse":"look"}]}]}</script>
+      </div>
+      <!-- WB:kalman_smoother_ekf_ukf:END -->
+    </section>
+    <!-- WB:kalman_smoother_ekf_ukf-deck:END -->
+
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Try the linearization error yourself</h2>
       <p class="sl-sub">Using h(x) = x² — the same toy nonlinearity as the worked example above. Pick a point x₀ and a nearby offset dx; compare the EKF's linear (Taylor) approximation there against the true function value.</p>
@@ -224,7 +237,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">When to reach for each</h2>
       <div class="sl-icard-grid">
@@ -235,7 +248,7 @@
       <div class="sl-quote">Escalate in that order. Each step up trades more compute for more fidelity to the true, ugly shape of the problem. Reaching for a full particle swarm to solve a mildly curved, single-humped problem is over-engineering; reaching for one tangent line to solve a genuinely multimodal one will just be wrong.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this actually stands</h2>
       <div class="sl-icard-grid">
@@ -251,7 +264,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -302,7 +315,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -442,5 +455,9 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

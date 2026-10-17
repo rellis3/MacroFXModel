@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Linear Algebra &amp; Matrices — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -41,6 +42,65 @@
       <li><strong>How it reached trading:</strong> Markowitz (1952) made the covariance matrix the core of portfolio risk, and Litterman and Scheinkman (1991) used its eigenvectors to show that three factors drive the yield curve.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 235" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the matrix A with rows 3, 1 and 1, 3 turns a dashed circle of unit arrows into an ellipse. A generic arrow pointing right comes out turned, but the arrow along (1, 1) is only stretched four times and the arrow along (1, minus 1) only stretched twice: the eigenvectors, with eigenvalues 4 and 2. Right: read as the covariance matrix of EUR/USD and GBP/USD, the total variance of 6 splits into 4, or 66.7%, where both pairs move together and 2, or 33.3%, where they diverge, so two positions are about 1.8 effective bets.">
+      <line class="tlp-line" x1="40" y1="128" x2="262" y2="128"/>
+      <line class="tlp-line" x1="150" y1="30" x2="150" y2="226"/>
+      <circle cx="150" cy="128" r="25" class="tlp-line dash"/>
+      <ellipse cx="150" cy="128" rx="100" ry="50" transform="rotate(-45 150 128)" class="tlp-line purple"/>
+      <line class="tlp-line" x1="150" y1="128" x2="175" y2="128" stroke-width="2.5"/>
+      <line class="tlp-line dash" x1="150" y1="128" x2="225" y2="103"/>
+      <circle class="tlp-text3" cx="225" cy="103" r="3.5"/>
+      <line class="tlp-line amber thick" x1="150" y1="128" x2="220.7" y2="57.3"/>
+      <circle class="tlp-amber" cx="220.7" cy="57.3" r="5"/>
+      <line class="tlp-line blue thick" x1="150" y1="128" x2="185.4" y2="163.4"/>
+      <circle class="tlp-blue" cx="185.4" cy="163.4" r="5"/>
+      <text class="tlp-text" x="20" y="22" font-size="14" font-weight="700">A = (3 1 ; 1 3) moves every arrow</text>
+      <text class="tlp-amber" x="228.7" y="59.3" font-size="13" font-weight="700">(1, 1): ×4</text>
+      <text class="tlp-blue" x="195.4" y="179.4" font-size="13" font-weight="700">(1, −1): ×2</text>
+      <text class="tlp-text3" x="240" y="115" font-size="12">others turn</text>
+      <rect class="tlp-box amber" x="340" y="78" width="153" height="40"/>
+      <rect class="tlp-box blue" x="493" y="78" width="77" height="40"/>
+      <text class="tlp-text" x="455" y="22" text-anchor="middle" font-size="14" font-weight="700">as EUR/USD + GBP/USD risk</text>
+      <text class="tlp-text2" x="455" y="44" text-anchor="middle" font-size="13">total variance = trace = 6</text>
+      <text class="tlp-amber" x="416" y="103" text-anchor="middle" font-size="13" font-weight="700">4 · 66.7%</text>
+      <text class="tlp-blue" x="531" y="103" text-anchor="middle" font-size="13" font-weight="700">2 · 33.3%</text>
+      <text class="tlp-text3" x="416" y="138" text-anchor="middle" font-size="12">move together</text>
+      <text class="tlp-text3" x="531" y="138" text-anchor="middle" font-size="12">diverge</text>
+      <text class="tlp-green" x="455" y="184" text-anchor="middle" font-size="15" font-weight="700">2 positions ≈ 1.8 bets</text>
+      <text class="tlp-text2" x="455" y="204" text-anchor="middle" font-size="13">6² ÷ (4² + 2²) = 36 ÷ 20</text>
+    </svg>
+    <figcaption>A matrix is a machine that moves every arrow. Most arrows get turned, but two directions only get stretched: the eigenvectors (1, 1) and (1, −1), stretched by their eigenvalues 4 and 2. Read the same matrix as two FX pairs' covariance and those eigenvalues say two-thirds of the risk is one shared move.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Every risk lesson I open says eigenvector within two paragraphs. What is it, in plain words?</p>
+      <p data-who="Quant">Start smaller. A vector is just a list of numbers, like two currency pairs' returns on one day. Picture it as an arrow from the middle of a page.</p>
+      <p data-who="Trader">And a matrix?</p>
+      <p data-who="Quant">A machine that takes any arrow in and gives a new arrow back, always by the same rule. Feed it every arrow on the page at once and a circle of arrows comes out as an ellipse.</p>
+      <p data-who="Trader">So every arrow gets moved.</p>
+      <p data-who="Quant">Moved, yes. Most also get turned to point somewhere new. But a few special directions only get stretched or shrunk, never turned. Those are the eigenvectors. How much they stretch is the eigenvalue.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">Take the matrix with three and one on the top row, one and three on the bottom. An arrow pointing straight right comes out pointing up and to the right: turned. But the arrow along one-one comes out four times as long, same line. The arrow along one, minus one comes out twice as long. Eigenvalues four and two.</p>
+      <p data-who="Trader">And those two directions are at right angles.</p>
+      <p data-who="Quant">Always, for a symmetric matrix. And covariance matrices are always symmetric. That's why it matters to us.</p>
+      <p data-who="Trader">Where's the trade in this?</p>
+      <p data-who="Quant">Read that same matrix as the risk of a book holding euro-dollar and sterling-dollar. Each has variance three, and they share one, a correlation of about a third. Total variance is six. The eigenvalues split it: four where both pairs move together, two where they diverge.</p>
+      <p data-who="Trader">So two-thirds of my risk is one move.</p>
+      <p data-who="Quant">Exactly. Two positions, but only about one point eight independent bets. Add a third dollar pair and it won't add a full bet either.</p>
+      <p data-who="Trader">Has anyone used this for real?</p>
+      <p data-who="Quant">Markowitz in nineteen fifty-two put the covariance matrix at the heart of portfolio risk. In nineteen ninety-one, Litterman and Scheinkman found that three eigenvectors, level, slope and curvature, explain almost all the moves in the yield curve.</p>
+      <p data-who="Trader">Any catch?</p>
+      <p data-who="Quant">The matrix comes from a window of past returns. Roll the window and the eigenvectors can shift, sometimes sharply. It is a snapshot, not a law.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">A matrix moves arrows, eigenvectors are the directions it only stretches, and for a risk matrix they tell you how many genuinely different bets you hold.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -148,6 +208,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From "a direction that only stretches" to the characteristic equation, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{Av = \lambda v} \qquad (v \neq 0) \]</div>
+      <p>The question: is there an arrow \(v\) that the machine \(A\) only stretches by a number \(\lambda\), without turning it?</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ Av - \lambda \color{#fbbf24}{I} v = 0 \]</div>
+      <p>Move everything to one side. Writing \(\lambda v\) as \(\lambda I v\) lets the number sit next to a matrix.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{(A - \lambda I)}\,v = 0 \]</div>
+      <p>The shifted matrix \(A - \lambda I\) crushes a nonzero arrow to zero, so it must flatten some direction completely.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\det(A - \lambda I) = 0} \]</div>
+      <p>A matrix that flattens a direction has zero determinant. That turns the search for arrows into an equation for \(\lambda\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\lambda^2 - \operatorname{trace}(A)\,\lambda + \det(A) = 0} \]</div>
+      <p>For a \(2\times2\) matrix it is an ordinary quadratic. For \(A = \begin{pmatrix} 3 & 1 \\ 1 & 3 \end{pmatrix}\): \(\lambda^2 - 6\lambda + 8 = (\lambda-4)(\lambda-2) = 0\), so \(\lambda = 4\) and \(2\).</p>
+    </div>
+  </div>
   <p>
     Work through this in order — matrix-vector multiplication first (the basic
     operation), then matrix-matrix multiplication and the identity matrix
@@ -537,6 +621,10 @@
       eigenvectors recalculate instantly from
       \(\lambda = \tfrac{\operatorname{trace}(A) \pm \sqrt{\operatorname{trace}(A)^2 - 4\det(A)}}{2}\).
     </p>
+    <div class="tl-predict" data-answer="5" data-tol="0.3" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With off-diagonal entry 1 the eigenvalues are 4 and 2. Raise the shared entry to 2, so the two series move together more. What will the larger eigenvalue \(\lambda_1\) be? Lock in a guess, then type 2 into the middle field below.</div>
+      <div class="tl-predict-reveal"><p><strong>5</strong> (and \(\lambda_2 = 1\)). The trace is still 6, so total variance has not changed, but more of it now sits in the shared direction: \(5/6 \approx 83\%\). The eigenvectors stay \((1, 1)\) and \((1, -1)\). Effective bets fall from 1.8 to \(36/26 \approx 1.4\). Now try 3: \(\lambda_2\) hits 0 and the two positions are one bet.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>A&#8321;&#8321;</span></div>
@@ -612,6 +700,12 @@
       assume it adds a full third independent bet.
     </p>
   </div>
+
+  <!-- WB:linear_algebra_matrices:START -->
+  <div class="wb" id="wb-linear_algebra_matrices" data-title="A matrix moves arrows; eigenvectors only stretch">
+    <script type="application/json">{"w":600,"h":720,"intro":"One 2×2 matrix from the lesson, treated as a machine that moves arrows. Watch which directions it turns and which it only stretches, then read it as the risk of a two-pair book. Press play, or step through.","steps":[{"cap":"Meet a vector: (1, 0), an arrow one step to the right. A vector is just a list of numbers, like two FX pairs' returns on one day.","do":[{"line":"ax","points":[[20,200],[330,200]],"width":2,"ms":400},{"line":"ay","points":[[170,40],[170,362]],"width":2,"ms":400},{"dim":"ax"},{"dim":"ay"},{"line":"e1","points":[[170,200],[200,200]],"tone":"blue","width":4,"ms":500},{"note":"e1l","x":206,"y":222,"text":"(1, 0)","size":17,"anchor":"start","tone":"blue"}]},{"cap":"Meet the machine: A has rows (3, 1) and (1, 3). Each output entry is a row of A times the arrow. So (1, 0) goes in and (3, 1) comes out: longer, and turned upward.","do":[{"box":"A","x":350,"y":20,"w":240,"h":86,"text":"A has rows\n(3, 1) and (1, 3)","tone":"purple","size":20},{"line":"o1","points":[[170,200],[260,170]],"tone":null,"width":3,"ms":700},{"note":"o1l","x":266,"y":158,"text":"(3, 1)","size":17,"anchor":"start"}]},{"cap":"Try (0, 1), straight up. It comes out as (1, 3): turned to the right. Most arrows get turned to a new direction.","do":[{"line":"e2","points":[[170,200],[170,170]],"tone":"blue","width":4,"ms":500},{"line":"o2","points":[[170,200],[200,110]],"tone":null,"width":3,"ms":700},{"note":"o2l","x":208,"y":112,"text":"(1, 3)","size":17,"anchor":"start"}]},{"cap":"Now feed it every unit arrow at once, the dashed circle. The machine turns the whole circle into an ellipse.","do":[{"dim":"o1"},{"dim":"o2"},{"hide":"o1l"},{"hide":"o2l"},{"dim":"e1"},{"dim":"e2"},{"hide":"e1l"},{"line":"circ","points":[[200.0,200.0],[199.5,194.8],[198.2,189.7],[196.0,185.0],[193.0,180.7],[189.3,177.0],[185.0,174.0],[180.3,171.8],[175.2,170.5],[170.0,170.0],[164.8,170.5],[159.7,171.8],[155.0,174.0],[150.7,177.0],[147.0,180.7],[144.0,185.0],[141.8,189.7],[140.5,194.8],[140.0,200.0],[140.5,205.2],[141.8,210.3],[144.0,215.0],[147.0,219.3],[150.7,223.0],[155.0,226.0],[159.7,228.2],[164.8,229.5],[170.0,230.0],[175.2,229.5],[180.3,228.2],[185.0,226.0],[189.3,223.0],[193.0,219.3],[196.0,215.0],[198.2,210.3],[199.5,205.2],[200.0,200.0]],"tone":null,"width":2,"ms":700},{"line":"ell","points":[[260.0,170.0],[263.8,154.8],[264.8,141.0],[262.9,129.0],[258.2,119.2],[250.8,111.8],[241.0,107.1],[229.0,105.2],[215.2,106.2],[200.0,110.0],[183.9,116.6],[167.4,125.7],[151.0,137.1],[135.1,150.3],[120.3,165.1],[107.1,181.0],[95.7,197.4],[86.6,213.9],[80.0,230.0],[76.2,245.2],[75.2,259.0],[77.1,271.0],[81.8,280.8],[89.2,288.2],[99.0,292.9],[111.0,294.8],[124.8,293.8],[140.0,290.0],[156.1,283.4],[172.6,274.3],[189.0,262.9],[204.9,249.7],[219.7,234.9],[232.9,219.0],[244.3,202.6],[253.4,186.1],[260.0,170.0]],"tone":"purple","width":3,"ms":1100}]},{"cap":"But one direction is not turned. The arrow along (1, 1) comes out as (4, 4): four times as long, on the same line. That is an eigenvector, and 4 is its eigenvalue.","do":[{"line":"v1","points":[[170,200],[254.9,115.1]],"tone":"amber","width":5,"ms":900},{"note":"v1l","x":262.9,"y":109.1,"text":"(1, 1): ×4","size":18,"anchor":"start","tone":"amber"}]},{"cap":"The other: (1, −1) comes out as (2, −2), twice as long, same line. Eigenvalue 2. And the two directions sit at right angles, because A is symmetric, as every covariance matrix is.","do":[{"line":"v2","points":[[170,200],[212.4,242.4]],"tone":"blue","width":5,"ms":800},{"note":"v2l","x":222.4,"y":256.4,"text":"(1, −1): ×2","size":18,"anchor":"start","tone":"blue"}]},{"cap":"How to find them without guessing: Av = λv means (A − λI)v = 0, so det(A − λI) = 0. For this A that is λ² − 6λ + 8 = 0, which factors to (λ − 4)(λ − 2).","do":[{"box":"ch","x":350,"y":122,"w":240,"h":110,"text":"det(A − λI) = 0\nλ² − 6λ + 8 = 0\nλ = 4 or 2","tone":"green","size":19}]},{"cap":"Now read A as risk: the covariance matrix of EUR/USD and GBP/USD. Each has variance 3; they share 1, a correlation of about a third.","do":[{"chip":"eur","x":476,"y":262,"text":"EUR/USD · var 3","tone":"blue"},{"chip":"gbp","x":476,"y":308,"text":"GBP/USD · var 3","tone":"blue"},{"note":"cv","x":476,"y":354,"text":"shared: cov 1","size":18,"anchor":"middle","tone":"purple"}]},{"cap":"Total variance is the trace, 3 + 3 = 6. The eigenvalues split it: 4 in the \"both move together\" direction, 66.7%, and 2 in the \"they diverge\" direction, 33.3%.","do":[{"chart":"split","x":10,"y":390,"w":280,"h":220,"title":"Where the book's variance sits","xd":[0.4,2.6],"yd":[0,5],"yt":[[0,"0"],[2,"2"],[4,"4"]],"xt":[[1,"together"],[2,"diverge"]],"pl":34,"pr":10},{"bars":"sb","chart":"split","data":[[1,4,"4 · 66.7%","amber"],[2,2,"2 · 33.3%","blue"]],"bw":60,"ms":1000}]},{"cap":"So two positions are only 6² ÷ (4² + 2²) = 36 ÷ 20 = 1.8 effective bets. Two tickets, but less than two independent bets.","do":[{"chart":"eff","x":310,"y":390,"w":280,"h":220,"title":"Effective bets vs shared entry","xd":[0,3],"yd":[0.8,2.2],"yt":[[1,"1"],[2,"2"]],"xt":[[0,"0"],[1,"1"],[2,"2"],[3,"3"]],"pl":40,"pr":14},{"dot":"b1","chart":"eff","at":[1,1.8],"text":"1.8","tone":"amber","dx":10,"dy":-14,"anchor":"start"}]},{"cap":"Raise the shared entry and the eigenvalues spread apart: at 2 they are 5 and 1, about 1.4 bets; at 3 they are 6 and 0, a single bet. More co-movement, fewer real bets.","do":[{"series":"effc","chart":"eff","pts":[[0.0,2.0],[0.25,1.986],[0.5,1.946],[0.75,1.882],[1.0,1.8],[1.25,1.704],[1.5,1.6],[1.75,1.492],[2.0,1.385],[2.25,1.28],[2.5,1.18],[2.75,1.087],[3.0,1.0]],"tone":"purple","ms":1200},{"dot":"b2","chart":"eff","at":[2,1.385],"text":"1.4","tone":"red","dx":10,"dy":-14,"anchor":"start"},{"dot":"b3","chart":"eff","at":[3,1.0],"text":"1","tone":"red","dx":-10,"dy":-14,"anchor":"end"}]},{"cap":"That is portfolio risk as matrix algebra. Markowitz (1952) put the covariance matrix at its heart. Litterman and Scheinkman (1991) found that three eigenvectors, level, slope and curvature, drive almost all yield-curve moves.","do":[{"box":"mk","x":10,"y":628,"w":580,"h":80,"text":"covariance matrix → eigenvectors = the real bets\nMarkowitz 1952 · Litterman & Scheinkman 1991","tone":"green","size":19}]}]}</script>
+  </div>
+  <!-- WB:linear_algebra_matrices:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -712,6 +806,19 @@
       <em>instantaneous covariance structure</em> across instruments at a point
       in time, not their dynamics through time.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative Monday</div>
+    <h3>Is a third dollar pair a third bet?</h3>
+    <p>You hold equal long positions in EUR/USD and GBP/USD, with the lesson's covariance matrix: variance 3 each, covariance 1, a correlation of about a third. That book is about 1.8 effective bets. You want to add a third dollar pair, AUD/USD, with the same variance and the same covariance of 1 with each of the others. A colleague says: "Three pairs, three bets. Size each one as if it were independent." What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Agree. A correlation of a third is low, so the pairs are close enough to independent.<div class="tl-drill-why">Low pairwise correlation still adds up. All three share one direction, "the dollar moves", and that shared direction now carries 5 of the 9 units of variance, more than any single pair.</div></li>
+      <li data-verdict="good">Work out the eigenvalues first: 5 for the shared direction and 2, 2 for the rest, so about 81 ÷ 33 ≈ 2.45 effective bets. Size the shared dollar exposure as one big bet.<div class="tl-drill-why">This is the lesson's tool used on a 3×3 matrix. The third pair adds about 0.65 of a bet, not a whole one, and about 56% of the book's variance is a single move. Sizing for that is honest risk.</div></li>
+      <li data-verdict="ok">Skip the third pair: two pairs are already diversified enough.<div class="tl-drill-why">Cautious, but it rests on a guess. The third pair does add some diversification, about 0.65 of a bet. The point is to measure it, then decide.</div></li>
+      <li data-verdict="bad">Add it at double size, since diversification makes the book safer.<div class="tl-drill-why">Adding a pair that mostly loads on the same dollar direction makes the shared bet bigger, not safer.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What to take from it.</strong> This is an illustrative situation built on the lesson's own matrix, not a historical event. With three pairs, the matrix has 3 on the diagonal and 1 everywhere else. Its eigenvalues are \(3+1+1 = 5\) along \((1,1,1)\) and \(3-1 = 2\) twice. Effective bets \(= 9^2/(5^2+2^2+2^2) = 81/33 \approx 2.45\), up from 1.8 with two pairs. Count bets with eigenvalues, not with position tickets.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -839,6 +946,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="foundation-algebra-functions.html">Algebra &amp; Functions Refresher</a> <span>· solving a quadratic by factoring</span></li>
+        <li><a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> <span>· the covariances that fill the matrix</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="pca-factors.html">Principal Component Analysis &amp; Factor Regimes</a> <span>· eigenvectors of a real FX correlation matrix</span></li>
+        <li><a href="kalman-filter.html">The Kalman Filter &amp; Adaptive Relationships</a> <span>· matrix multiplication, chained every step</span></li>
+        <li><a href="hidden-markov-models.html">Hidden Markov Models &amp; Regime Detection</a> <span>· the stationary distribution as an eigenvector</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every risk report that adds up a book is matrix algebra, and the eigenvalues tell you how many genuinely different bets you are really holding.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="primer-returns-compounding.html">&#8592; Returns, Log-Returns &amp; Compounding</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -939,6 +1066,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

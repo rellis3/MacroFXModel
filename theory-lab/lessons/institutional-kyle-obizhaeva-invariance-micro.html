@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Market Microstructure Invariance — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -100,10 +101,22 @@
       </div>
     </section>
 
+    <!-- WB:institutional_kyle_obizhaeva_invariance-deck:START -->
     <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Invariance: change the ruler, markets look alike</h2>
+      <!-- WB:institutional_kyle_obizhaeva_invariance:START -->
+      <div class="wb" data-title="Invariance: change the ruler, markets look alike">
+        <script type="application/json">{"w":600,"h":800,"intro":"A mega-cap and a small-cap that look like different worlds, until you change the ruler. The lesson's own two stocks. Press play, or step through.","steps":[{"cap":"Two stocks from the lesson. A is a mega-cap: $150, 50 million shares a day, 25% annual volatility. B is a small-cap: $20, 200,000 shares a day, 45% volatility.","do":[{"icon":"fa","name":"factory","x":30,"y":6,"s":0.7,"tone":"purple","label":"A mega-cap","lsize":18},{"icon":"ho","name":"house","x":450,"y":6,"s":0.7,"tone":"green","label":"B small-cap","lsize":18}]},{"cap":"Measure the same order in shares: 10,000 of each. Same number, but in A it is 0.02% of a day's volume, and in B it is 5%. Shares are the wrong ruler.","do":[{"chip":"qa","x":140,"y":40,"text":"10,000 sh","tone":"purple"},{"chip":"qb","x":330,"y":40,"text":"10,000 sh","tone":"green"},{"note":"r1","x":300,"y":120,"text":"shares: 0.02% of A's day vs 5% of B's","size":18,"anchor":"middle","tone":"chalk"}]},{"cap":"In dollars: $1.5 million of A against $200,000 of B. Better, but a dollar of a calm stock and a dollar of a wild one do not carry the same risk.","do":[{"hide":"r1"},{"note":"r2","x":300,"y":120,"text":"dollars: $1,500,000 vs $200,000","size":18,"anchor":"middle","tone":"chalk"}]},{"cap":"In risk: multiply by daily volatility, 1.575% for A and 2.835% for B. The bet becomes about $23,600 of risk in A and $5,670 in B. This is the bet size L.","do":[{"hide":"r2"},{"note":"r3","x":300,"y":120,"text":"risk L = Q × P × σ:  $23,625 vs $5,670","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"Now the market side, same recipe on the whole day's volume: W = P × V × σ. A transfers about 118 million dollars of risk a day; B about 113 thousand.","do":[{"chart":"w","x":10,"y":160,"w":280,"h":240,"title":"Activity W (log scale)","xd":[0.4,2.6],"yd":[0,9.2],"yt":[[2,"10²"],[5,"10⁵"],[8,"10⁸"]],"xt":[[1,"A"],[2,"B"]],"pl":50,"pr":10},{"bars":"wb","chart":"w","data":[[1,8.072,"1.2×10⁸","purple"],[2,5.055,"1.1×10⁵","green"]],"bw":50,"ms":1000}]},{"cap":"That is a gap of about 1,042 times in trading activity. If typical bets grew in step with activity, A's typical bet would be over a thousand times B's.","do":[{"box":"gap","x":310,"y":170,"w":280,"h":64,"text":"A is ≈ 1,042× as active","tone":"amber","size":19}]},{"cap":"They do not. Invariance splits the gap: bets per day grow as activity to the two-thirds, so A sees about 103 times as many bets as B, and typical bet size only as activity to the one-third, so A's typical bet is only about 10 times B's.","do":[{"icon":"cr","name":"crowd","x":330,"y":250,"s":0.6,"tone":"purple","label":"A: more bets","lsize":16},{"icon":"pe","name":"person","x":480,"y":250,"s":0.6,"tone":"green","label":"B: fewer bets","lsize":16},{"note":"sl","x":450,"y":370,"text":"≈10× bigger × ≈103× more bets","size":18,"anchor":"middle","tone":"chalk"}]},{"cap":"So in the thin name each bet is a much bigger slice of the day. A typical bet's share of daily volume falls as activity to the minus two-thirds: about 103 times larger a share in B than in A.","do":[{"note":"sh","x":450,"y":402,"text":"thin B: ≈103× bigger % of volume","size":16,"anchor":"middle","tone":"amber"}]},{"cap":"The invariance claim: divide every bet's risk size by the cube root of its own market's activity, and the whole distribution of bet sizes, not just its middle, is about the same everywhere: stocks, venues, eras.","do":[{"chart":"d","x":10,"y":420,"w":580,"h":170,"title":"Bet size ÷ W^(1/3) (stylized)","xd":[0,10],"yd":[0,1.15],"yt":[],"xt":[],"pl":16,"pr":16},{"series":"da","chart":"d","pts":[[0.0,0.011],[0.425,0.022],[0.85,0.042],[1.275,0.076],[1.7,0.129],[2.125,0.205],[2.55,0.308],[2.975,0.435],[3.4,0.576],[3.825,0.717],[4.25,0.838],[4.675,0.921],[5.1,0.95],[5.525,0.921],[5.95,0.838],[6.375,0.717],[6.8,0.576],[7.225,0.435],[7.65,0.308],[8.075,0.205],[8.5,0.129],[8.925,0.076],[9.35,0.042],[9.775,0.022],[10.2,0.011]],"tone":"purple","ms":1100,"label":"A","lat":[3.2,0.5],"ldx":-8,"lanchor":"end"},{"series":"db","chart":"d","pts":[[0.4,0.011],[0.775,0.023],[1.15,0.044],[1.525,0.08],[1.9,0.135],[2.275,0.216],[2.65,0.325],[3.025,0.458],[3.4,0.607],[3.775,0.755],[4.15,0.882],[4.525,0.969],[4.9,1.0],[5.275,0.969],[5.65,0.882],[6.025,0.755],[6.4,0.607],[6.775,0.458],[7.15,0.325],[7.525,0.216],[7.9,0.135],[8.275,0.08],[8.65,0.044],[9.025,0.023],[9.4,0.011]],"tone":"green","dash":true,"ms":900,"label":"B","lat":[6.6,0.55],"ldx":8,"lanchor":"start"},{"note":"one","x":505,"y":470,"text":"one shared shape","size":19,"anchor":"middle","tone":"green"}]},{"cap":"Costs still differ in the raw numbers. With the square-root law, trading 1% of a day's volume costs about 15.7 bps in A and 28.3 bps in B: the thinner, more volatile name is nearly twice as dear.","do":[{"box":"ca","x":10,"y":606,"w":280,"h":60,"text":"A at 1% ADV ≈ 15.7 bps","tone":"purple","size":18},{"box":"cb","x":310,"y":606,"w":280,"h":60,"text":"B at 1% ADV ≈ 28.3 bps","tone":"green","size":18}]},{"cap":"The payoff: a cost model calibrated once on liquid names can travel to a new, thin instrument using only its price, volume and volatility. No history of your own fills needed on day one.","do":[{"note":"use","x":300,"y":694,"text":"P, V, σ → W → a day-one estimate","size":19,"anchor":"middle","tone":"blue"}]},{"cap":"The caveats: it is an empirical regularity with real scatter, the evidence is mostly from US equities, and in FX there is no single clean volume figure. Use it as a starting point.","do":[{"box":"cav","x":10,"y":718,"w":580,"h":50,"text":"regularity, not law · mostly equity evidence","tone":"red","size":18}]},{"cap":"And it is silent on how impact decays once a bet stops trading; that is the next lesson. In one line: measure bets in risk, scale by the market's activity, and different markets start to look alike.","do":[{"note":"end","x":300,"y":786,"text":"risk units + activity scaling = comparable markets","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:institutional_kyle_obizhaeva_invariance:END -->
+    </section>
+    <!-- WB:institutional_kyle_obizhaeva_invariance-deck:END -->
+
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
-      <h2 class="sl-h2">Typical bet size scales as W^(2/3), not W</h2>
-      <p class="sl-sub">Sub-linear, concave — the same qualitative shape as the square-root law of impact, applied to a different quantity.</p>
+      <h2 class="sl-h2">Bets per day scale as W^(2/3); typical bet size only as W^(1/3)</h2>
+      <p class="sl-sub">Both sub-linear and concave, the same qualitative shape as the square-root law of impact, applied to different quantities. Most extra activity is more bets, not bigger ones.</p>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it</div>
         <div class="sl-tabs" id="scale-tabs">
@@ -112,73 +125,82 @@
           <button class="sl-tab" data-panel="sc-1000">1,000× busier</button>
         </div>
         <div class="sl-panel active" id="sc-10">
-          <div class="sl-verdict">A market with <strong>10×</strong> the trading activity W does not have 10× the typical bet size — it has <strong>10<sup>2/3</sup> ≈ 4.64×</strong> the typical bet size.</div>
+          <div class="sl-verdict">A market with <strong>10×</strong> the trading activity W does not have 10× the typical bet size. Its bets are only <strong>10<sup>1/3</sup> ≈ 2.15×</strong> bigger, and there are <strong>10<sup>2/3</sup> ≈ 4.64×</strong> more of them per day.</div>
         </div>
         <div class="sl-panel" id="sc-100">
-          <div class="sl-verdict">A hundred-fold jump in W scales typical bet size by only <strong>100<sup>2/3</sup> ≈ 21.5×</strong> — not 100×.</div>
+          <div class="sl-verdict">A hundred-fold jump in W makes typical bets only <strong>100<sup>1/3</sup> ≈ 4.64×</strong> bigger, with <strong>100<sup>2/3</sup> ≈ 21.5×</strong> more of them per day.</div>
         </div>
         <div class="sl-panel" id="sc-1000">
-          <div class="sl-verdict">A thousand-fold jump in W scales typical bet size by exactly <strong>1,000<sup>2/3</sup> = 100×</strong> — since 1,000 = 10³ and (10³)^(2/3) = 10² = 100.</div>
+          <div class="sl-verdict">A thousand-fold jump in W makes typical bets exactly <strong>1,000<sup>1/3</sup> = 10×</strong> bigger and bets per day <strong>1,000<sup>2/3</sup> = 100×</strong> more numerous: 1,000 = 10³, and 10 × 100 = 1,000.</div>
         </div>
       </div>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Visualize it</div>
         <div class="sl-svgwrap">
-          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Log-log chart. Trading activity W on the x-axis spans several orders of magnitude. A dashed gray line shows naive one-to-one scaling, rising steeply. A solid blue line with slope two-thirds, anchored at the same start, rises far less steeply.">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Log-log chart. Trading activity W on the x-axis spans several orders of magnitude. A dashed gray line shows naive one-to-one scaling, rising steeply. A purple line with slope two-thirds shows bets per day. A blue line with slope one-third shows typical bet size, rising least steeply. All three start from the same point.">
             <line x1="55" y1="15" x2="55" y2="220" style="stroke:var(--text3);stroke-width:1"/>
             <line x1="55" y1="220" x2="610" y2="220" style="stroke:var(--text3);stroke-width:1"/>
-            <text x="18" y="120" text-anchor="middle" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 18 120)">Bet size (log)</text>
+            <text x="18" y="120" text-anchor="middle" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 18 120)">Relative scale (log)</text>
             <text x="610" y="240" text-anchor="end" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--text3)">Trading activity W (log) →</text>
             <line x1="55" y1="190" x2="600" y2="35" style="stroke:var(--text3);stroke-width:2;stroke-dasharray:5,4"/>
-            <line x1="55" y1="190" x2="600" y2="88" style="stroke:var(--blue);stroke-width:2.5"/>
+            <line x1="55" y1="190" x2="600" y2="86.7" style="stroke:var(--purple);stroke-width:2.5"/>
+            <line x1="55" y1="190" x2="600" y2="138.3" style="stroke:var(--blue);stroke-width:2.5"/>
             <circle cx="55" cy="190" r="4" style="fill:var(--text)"/>
             <circle cx="600" cy="35" r="4" style="fill:var(--text3)"/>
-            <circle cx="600" cy="88" r="4" style="fill:var(--blue)"/>
-            <text x="430" y="58" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">naive 1-to-1 scaling</text>
-            <text x="430" y="112" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--blue)">invariance: slope 2/3</text>
+            <circle cx="600" cy="86.7" r="4" style="fill:var(--purple)"/>
+            <circle cx="600" cy="138.3" r="4" style="fill:var(--blue)"/>
+            <text x="72" y="30" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--text3)">- - naive 1-to-1 scaling</text>
+            <text x="72" y="48" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--purple)">—— bets per day: slope 2/3</text>
+            <text x="72" y="66" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--blue)">—— typical bet size: slope 1/3</text>
           </svg>
         </div>
-        <div class="sl-note">Both lines start from the same point by construction — the comparison is entirely in the slope. Axes are illustrative and unitless, not calibrated to real dollar figures.</div>
+        <div class="sl-note">All three lines start from the same point by construction — the comparison is entirely in the slopes, and the two invariance slopes add up to the 1-to-1 line. Axes are illustrative and unitless, not calibrated to real dollar figures.</div>
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
-      <h2 class="sl-h2">Worked example: 1,042× apart in activity, 103× apart in typical bet size</h2>
+      <h2 class="sl-h2">Worked example: 1,042× apart in activity, 10× apart in typical bet size, 103× in bets per day</h2>
       <p class="sl-sub">Asset A — mega-cap: P=$150, V=50M shares, 25% annualized vol. Asset B — small-cap: P=$20, V=200K shares, 45% annualized vol.</p>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Visualize it</div>
         <div class="sl-svgwrap">
-          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart with two groups on a log scale. Left group: trading activity W for Asset A and Asset B, roughly 1,042 times apart in height. Right group: invariance-implied typical bet size L-star for the same two assets, only about 103 times apart in height — visibly compressed relative to the activity gap.">
+          <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart with three pairs on a shared log scale. Left pair: trading activity W for Asset A and Asset B, about 1,042 times apart. Middle pair: the bets-per-day index W to the two-thirds, about 103 times apart. Right pair: the typical bet size index W to the one-third, only about 10 times apart.">
             <line x1="20" y1="225" x2="620" y2="225" style="stroke:var(--border2)"/>
-            <rect x="70" y="59.2" width="80" height="165.8" rx="4" style="fill:var(--blue);opacity:.85"/>
-            <rect x="170" y="157.8" width="80" height="67.2" rx="4" style="fill:var(--green);opacity:.85"/>
-            <rect x="380" y="147.1" width="80" height="77.9" rx="4" style="fill:var(--blue);opacity:.85"/>
-            <rect x="480" y="212.9" width="80" height="12.1" rx="4" style="fill:var(--green);opacity:.85"/>
-            <text x="110" y="49" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--blue)">W_A ≈ 118M</text>
-            <text x="210" y="147.8" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--green)">W_B ≈ 113K</text>
-            <text x="420" y="137.1" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--blue)">L*_A ≈ 241K</text>
-            <text x="520" y="202.9" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--green)">L*_B ≈ 2.3K</text>
-            <text x="160" y="20" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text2)">W_A / W_B ≈ 1,042×</text>
-            <text x="470" y="20" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text2)">L*_A / L*_B ≈ 103×</text>
-            <text x="160" y="245" text-anchor="middle" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--text3)">Trading activity (W)</text>
-            <text x="470" y="245" text-anchor="middle" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--text3)">Typical bet size (W^2/3)</text>
+            <rect x="40" y="59.2" width="70" height="165.8" rx="4" style="fill:var(--blue);opacity:.85"/>
+            <rect x="120" y="129.9" width="70" height="95.1" rx="4" style="fill:var(--green);opacity:.85"/>
+            <rect x="250" y="122.3" width="70" height="102.7" rx="4" style="fill:var(--blue);opacity:.85"/>
+            <rect x="330" y="169.4" width="70" height="55.6" rx="4" style="fill:var(--green);opacity:.85"/>
+            <rect x="460" y="185.4" width="70" height="39.6" rx="4" style="fill:var(--blue);opacity:.85"/>
+            <rect x="540" y="208.9" width="70" height="16.1" rx="4" style="fill:var(--green);opacity:.85"/>
+            <text x="75" y="49.2" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--blue)">W_A ≈ 118M</text>
+            <text x="155" y="119.9" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--green)">W_B ≈ 113K</text>
+            <text x="285" y="112.3" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--blue)">γ_A ≈ 241K</text>
+            <text x="365" y="159.4" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--green)">γ_B ≈ 2.3K</text>
+            <text x="495" y="175.4" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--blue)">L*_A ≈ 491</text>
+            <text x="575" y="198.9" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--green)">L*_B ≈ 48</text>
+            <text x="110" y="16" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text2)">W_A / W_B ≈ 1,042×</text>
+            <text x="320" y="16" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text2)">γ_A / γ_B ≈ 103×</text>
+            <text x="530" y="16" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text2)">L*_A / L*_B ≈ 10.1×</text>
+            <text x="110" y="245" text-anchor="middle" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--text3)">Trading activity (W)</text>
+            <text x="320" y="245" text-anchor="middle" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--text3)">Bets per day (W^2/3)</text>
+            <text x="530" y="245" text-anchor="middle" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--text3)">Typical bet size (W^1/3)</text>
           </svg>
         </div>
-        <div class="sl-note">Bar heights are on a shared log scale (illustrative, not literal pixel-to-dollar). The activity gap and the typical-bet-size gap are the same calculation viewed two ways: 1,042^(2/3) ≈ 102.8, matching the L* ratio almost exactly.</div>
+        <div class="sl-note">Bar heights are on a shared log scale (illustrative indices, not literal dollars or bet counts). The activity gap splits in two: 1,042^(1/3) ≈ 10.1 for typical bet size and 1,042^(2/3) ≈ 102.8 for bets per day, and 10.1 × 102.8 ≈ 1,042.</div>
       </div>
-      <p class="sl-p">Even at the <strong>same</strong> percentage of ADV (1%), the square-root law alone says the small-cap costs roughly 1.8× more than the mega-cap (28.3 bps vs. 15.7 bps). Invariance adds a further insight: a rational bet-sizer wouldn't actually trade the same percentage of ADV in both — the invariance-implied "typical" bet is a much smaller share of Asset B's volume than of Asset A's, precisely because a "typical" bet occupies the same statistical position in each market's own distribution.</p>
+      <p class="sl-p">Even at the <strong>same</strong> percentage of ADV (1%), the square-root law alone says the small-cap costs roughly 1.8× more than the mega-cap (28.3 bps vs. 15.7 bps). Invariance adds that 1% of ADV is not the same-sized bet in the two names. A typical bet's share of volume scales as W^(−2/3), so B's typical bet is about 103× larger a share of B's volume than A's is of A's. The same 1%-of-ADV order is a far more ordinary bet in the thin name than in the busy one.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The full hypothesis: one shared distribution, not just one center</h2>
-      <p class="sl-sub">z = L / W^(2/3) — a specific bet's size, standardized by its own market's activity.</p>
+      <p class="sl-sub">z = L / W^(1/3) = (Q/V) · W^(2/3) — a specific bet's size, standardized by its own market's activity.</p>
       <div class="sl-compare">
         <div class="sl-ccard red">
           <span class="sl-ctag red">Just the scaling law</span>
           <ul>
-            <li>Only pins down the typical bet size, L* ∝ W^(2/3)</li>
+            <li>Only pins down the typical bet size, L* ∝ W^(1/3), and bets per day, γ ∝ W^(2/3)</li>
             <li>Says nothing about spread or tail behavior</li>
             <li>A much weaker claim than invariance proper</li>
           </ul>
@@ -198,7 +220,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Compute your own bet's standardized size</h2>
       <p class="sl-sub">Same formulas as the full lesson's calculator — change any input, live.</p>
@@ -214,8 +236,9 @@
           <div>Daily σ = <b id="mc-sigmad">1.8898%</b></div>
           <div>Trading activity W = P × V × σ = <b id="mc-w">4,724,556</b></div>
           <div>Bet size L = Q × P × σ = $<b id="mc-l">47,246</b></div>
-          <div>Typical bet size W^(2/3) = <b id="mc-lstar">28,156</b></div>
-          <div>Standardized size z = L / W^(2/3) = <b id="mc-z">1.68</b></div>
+          <div>Typical bet size index W^(1/3) = <b id="mc-lstar">167.8</b></div>
+          <div>Bets per day index W^(2/3) = <b id="mc-gamma">28,156</b></div>
+          <div>Standardized size z = L / W^(1/3) = <b id="mc-z">281.56</b> (an index: compare across orders and markets)</div>
           <div>Square-root-law benchmark cost ≈ <b id="mc-cost">18.90</b> bps</div>
         </div>
         <button type="button" class="sl-reset-btn" id="mc-reset">Reset to default numbers</button>
@@ -223,12 +246,12 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How practitioners use this — and where it breaks</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🔀</div><div><h4>Cross-asset cost prediction</h4><p>Given only price, volume, and volatility, invariance implies an expected order-size distribution and cost profile with no name-specific trading history required.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">✂️</div><div><h4>Sizing order slices sensibly</h4><p>The "unremarkable," typical clip should itself scale as W^(2/3) — smaller relative to volume in already-thin markets, not a fixed ratio everywhere.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✂️</div><div><h4>Sizing order slices sensibly</h4><p>A typical bet's share of volume scales as W^(−2/3): larger in thin markets, smaller in busy ones. The same %ADV is routine in one name and outsized in another, so compare orders by z, not one fixed ratio.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🌍</div><div><h4>Extending Kyle's Lambda across a universe</h4><p>Where Kyle treats σ_v and σ_u as separately given per asset, invariance is a falsifiable theory of how those quantities — and the bet sizes they support — compare across a whole universe of assets.</p></div></div>
       </div>
       <div class="sl-callout amber">
@@ -237,7 +260,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -262,11 +285,11 @@
 
       <div class="sl-quiz-q" data-q="3">
         <div class="sl-quiz-num">Question 3</div>
-        <h4>Two assets differ in trading activity W by 1,000×. By roughly how much should their typical bet sizes differ, per the invariance scaling law?</h4>
-        <button class="sl-quiz-opt" data-correct="true">100×, since typical bet size scales as W^(2/3) and 1,000^(2/3) = 100</button>
+        <h4>Two assets differ in trading activity W by 1,000×. By roughly how much should their typical bet sizes (in risk units) differ, per the invariance scaling law?</h4>
+        <button class="sl-quiz-opt" data-correct="true">10×, since typical bet size scales as W^(1/3) and 1,000^(1/3) = 10; the busier asset has 1,000^(2/3) = 100× more bets per day</button>
         <button class="sl-quiz-opt">1,000×, because bet size should track activity one-for-one</button>
-        <button class="sl-quiz-opt">10×, because bet size barely responds to activity at all</button>
-        <div class="sl-quiz-explain">The sub-linear, concave W^(2/3) exponent compresses a large activity gap into a much smaller — but still large — typical-bet-size gap. This deck's own worked example shows almost exactly this: ~1,042× in W versus ~103× in L*.</div>
+        <button class="sl-quiz-opt">100×, because typical bet size scales as W^(2/3)</button>
+        <div class="sl-quiz-explain">W^(2/3) is the number of bets per day, not their size. Typical bet size grows only as W^(1/3), so a 1,000× activity gap splits into bets about 10× bigger and about 100× more of them. This deck's own worked example: ~1,042× in W, ~10.1× in L*, ~103× in bets per day.</div>
       </div>
 
       <div class="sl-quiz-q" data-q="4">
@@ -288,14 +311,14 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Measuring in the wrong unit makes markets look falsely unique — raw share counts and dollar sizes hide a shared pattern that shows up once bet size is L = Q·P·σ.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>W = P·V·σ is the one number summarizing a market's trading activity — the sole asset-specific input the invariance hypothesis needs.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Typical bet size scales as W^(2/3), not W — a 1,000× activity gap implies only roughly a 100× gap in typical bet size.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The full hypothesis is stronger than the scaling law alone: the entire distribution of standardized size z = L/W^(2/3) is claimed to be shared across assets, venues, and eras.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Bets per day scale as W^(2/3) and typical bet size only as W^(1/3) — a 1,000× activity gap means about 100× more bets but only about 10× bigger ones, so in thin names each bet is a larger share of volume.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The full hypothesis is stronger than the scaling laws alone: the entire distribution of standardized size z = L/W^(1/3) is claimed to be shared across assets, venues, and eras.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This extends Kyle's (1985) single-asset Lambda into a cross-sectional theory — and it's an empirical regularity with real scatter, silent on transient impact dynamics.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>How it reached trading: invariance (2016) lets a desk carry pre-trade cost and sizing estimates from liquid names to thin ones.</p></div>
       </div>
@@ -339,6 +362,7 @@
     var wOut = document.getElementById('mc-w');
     var lOut = document.getElementById('mc-l');
     var lstarOut = document.getElementById('mc-lstar');
+    var gammaOut = document.getElementById('mc-gamma');
     var zOut = document.getElementById('mc-z');
     var costOut = document.getElementById('mc-cost');
     var note = document.getElementById('mc-note');
@@ -356,9 +380,13 @@
       return sign + parts.join(',');
     }
 
+    function fmtIdx(n, dp){
+      return Math.abs(n) < 1000 ? n.toFixed(dp) : addCommas(n);
+    }
+
     function blank(){
       sigmadOut.textContent = '—'; wOut.textContent = '—'; lOut.textContent = '—';
-      lstarOut.textContent = '—'; zOut.textContent = '—'; costOut.textContent = '—';
+      lstarOut.textContent = '—'; gammaOut.textContent = '—'; zOut.textContent = '—'; costOut.textContent = '—';
     }
 
     function recompute(){
@@ -376,15 +404,17 @@
       var sigmaDaily = (sigmaPct / 100) / Math.sqrt(TRADING_DAYS);
       var W = price * adv * sigmaDaily;
       var L = qty * price * sigmaDaily;
-      var Lstar = Math.pow(W, 2 / 3);
-      var z = Lstar > 0 ? L / Lstar : NaN;
+      var Lstar = Math.pow(W, 1 / 3);      // typical bet size in risk units scales as W^(1/3)
+      var gammaIdx = Math.pow(W, 2 / 3);   // bets per day scale as W^(2/3)
+      var z = Lstar > 0 ? L / Lstar : NaN; // = (Q/V) * W^(2/3)
       var cost = 10000 * sigmaDaily * Math.sqrt(qty / adv);
 
       sigmadOut.textContent = (sigmaDaily * 100).toFixed(4) + '%';
       wOut.textContent = addCommas(W);
       lOut.textContent = addCommas(L);
-      lstarOut.textContent = addCommas(Lstar);
-      zOut.textContent = isFinite(z) ? z.toFixed(2) : '—';
+      lstarOut.textContent = fmtIdx(Lstar, 1);
+      gammaOut.textContent = addCommas(gammaIdx);
+      zOut.textContent = isFinite(z) ? fmtIdx(z, 2) : '—';
       costOut.textContent = isFinite(cost) ? cost.toFixed(2) : '—';
 
       if (qty > adv) {
@@ -408,5 +438,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ledoit-Wolf Covariance Shrinkage — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -145,7 +146,19 @@
       <p class="sl-p">No universal "correct" target — it depends on how much real structure the researcher believes it captures for this specific basket. A badly-fitting target just produces a smaller estimated δ̂*, automatically down-weighting itself.</p>
     </section>
 
+    <!-- WB:institutional_ledoit_wolf_shrinkage-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Ledoit-Wolf: one dial between noise and bias</h2>
+      <!-- WB:institutional_ledoit_wolf_shrinkage:START -->
+      <div class="wb" data-title="Ledoit-Wolf: one dial between noise and bias">
+        <script type="application/json">{"w":600,"h":720,"intro":"The lesson's three-asset example: a noisy sample matrix, a stable target, and one dial between them. Press play, or step through.","steps":[{"cap":"A sample covariance matrix is like a blurry photo of a real face: about the right thing, but noisy, because the history is short. Unbiased on average, unreliable in any one sample.","do":[{"box":"samp","x":10,"y":10,"w":190,"h":84,"text":"sample Σ̂\nunbiased · noisy","tone":"red","size":19}]},{"cap":"A shrinkage target is a clean stock drawing of a face: simple, stable, and wrong in the details. Here every pair gets the basket's average correlation, 0.356, and each asset keeps its own variance.","do":[{"box":"targ","x":400,"y":10,"w":190,"h":84,"text":"target F\nstable · biased","tone":"blue","size":19}]},{"cap":"One dial between them: Σ_shrunk = δ F + (1 − δ) Σ̂. At δ = 0 you get the sample, at δ = 1 the target. Anything between blends every entry in the same proportion.","do":[{"box":"dial","x":245,"y":18,"w":110,"h":68,"text":"δ","tone":"green","sub":"0.00","size":20},{"arrow":["samp","dial"],"tone":"red"},{"arrow":["targ","dial"],"tone":"blue"}]},{"cap":"The lesson's sample matrix: covariances of 1.80, 0.90 and 2.10 between the three pairs of assets, from volatilities of 2, 3 and 1.5.","do":[{"chart":"ch","x":10,"y":120,"w":580,"h":300,"title":"Off-diagonal covariances","xd":[0.5,3.5],"yd":[0,2.6],"yt":[[0,"0"],[1,"1"],[2,"2"]],"xt":[[1,"Σ₁₂"],[2,"Σ₁₃"],[3,"Σ₂₃"]],"pl":40,"pr":12},{"bars":"sb","chart":"ch","data":[[0.73,1.8,"1.80","red"],[1.73,0.9,"0.90","red"],[2.73,2.1,"2.10","red"]],"bw":26,"ms":1000}]},{"cap":"The constant-correlation target puts 0.356 on every pair: 2.13, 1.07 and 1.60. It pulls the low correlations up and the high one down.","do":[{"bars":"fb","chart":"ch","data":[[1.0,2.1333,"2.13","blue"],[2.0,1.0667,"1.07","blue"],[3.0,1.6,"1.60","blue"]],"bw":26,"ms":1000}]},{"cap":"Turn the dial to δ = 0.30. Each entry moves 30% of the way from the sample to the target: 1.80 becomes 1.90, 0.90 becomes 0.95, 2.10 becomes 1.95.","do":[{"count":"dial","from":0,"to":0.3,"dp":2,"ms":1000},{"bars":"xb","chart":"ch","data":[[1.27,1.9,"1.90","green"],[2.27,0.95,"0.95","green"],[3.27,1.95,"1.95","green"]],"bw":26,"ms":1000}]},{"cap":"The diagonal does not move. With this target each asset keeps its own variance, 4.00, 9.00 and 2.25. Only the correlation structure is pulled toward the average.","do":[{"note":"diag","x":300,"y":446,"text":"variances 4.00 · 9.00 · 2.25: unchanged","size":20,"anchor":"middle","tone":"green"}]},{"cap":"Why a blend can beat both: the target adds a little bias, but removes a lot of noise. Squared error counts bias squared and variance in full, so the right mix has lower total error than either extreme.","do":[{"box":"bv","x":10,"y":476,"w":580,"h":58,"text":"a little bias, a lot less noise → lower total error","tone":"purple","size":19}]},{"cap":"Ledoit and Wolf's contribution: a formula for the best δ from the data alone. Noise in the sample, over how wrong the target is, divided by the history length. More history, less shrinkage.","do":[{"box":"lw","x":10,"y":548,"w":580,"h":58,"text":"δ̂* ≈ (π̂ − ρ̂) ÷ γ̂ ÷ T, clipped to [0, 1]","tone":"green","size":20},{"pulse":"dial"}]},{"cap":"Why traders care: an optimiser inverts this matrix. Shrinkage pulls the smallest eigenvalues up and the largest down, so the inverse is calmer and the weights stop chasing noise.","do":[{"box":"opt","x":10,"y":620,"w":285,"h":62,"text":"calmer inverse,\ncalmer weights","tone":"blue","size":18}]},{"cap":"What it cannot do: fix a regime change inside the data window, or rescue a badly chosen target. It treats estimation noise, nothing more.","do":[{"box":"lim","x":305,"y":620,"w":285,"h":62,"text":"not a cure for\nstructural breaks","tone":"red","size":18}]}]}</script>
+      </div>
+      <!-- WB:institutional_ledoit_wolf_shrinkage:END -->
+    </section>
+    <!-- WB:institutional_ledoit_wolf_shrinkage-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Worked example — 3 assets, δ = 0.30</h2>
       <p class="sl-p">σ₁=2.0, σ₂=3.0, σ₃=1.5, correlations ρ₁₂=0.30, ρ₁₃=0.30, ρ₂₃=0.4667. Average correlation ρ̄ ≈ 0.3556 builds the constant-correlation target F, which keeps every diagonal entry the same as Σ̂.</p>
@@ -158,7 +171,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Try it — your own 3-asset matrix, shrunk live</h2>
       <p class="sl-sub">Starts on the worked-example numbers. Change any volatility or correlation, then drag the slider — check δ=0% matches Σ̂ and δ=100% matches F exactly.</p>
@@ -190,7 +203,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Why this matters for portfolio construction</h2>
       <div class="sl-compare">
@@ -206,7 +219,7 @@
       <p class="sl-p">Two different inputs, two different fixes — a well-run desk applies both, since an optimizer built on two separately noisy inputs is at least twice as likely to hand back something nobody should trade.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where shrinkage quietly stops helping</h2>
       <div class="sl-icard-grid">
@@ -217,7 +230,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -277,7 +290,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -405,5 +418,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

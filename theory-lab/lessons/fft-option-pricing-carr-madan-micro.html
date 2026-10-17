@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FFT Option Pricing (Carr-Madan) — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -231,7 +232,19 @@
       </div>
     </section>
 
+    <!-- WB:fft_option_pricing_carr_madan-deck:START -->
     <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Damp it, transform it, read off every strike</h2>
+      <!-- WB:fft_option_pricing_carr_madan:START -->
+      <div class="wb" data-title="Damp it, transform it, read off every strike">
+        <script type="application/json">{"w":600,"h":720,"intro":"Pricing a whole strike curve at once: why the raw call price needs damping, and how one FFT replaces one integration per strike. Press play, or step through.","steps":[{"cap":"A model like Heston hands you a characteristic function: a closed-form fingerprint of where the price may end up. From it you can price one call at one strike with one numerical integration.","do":[{"icon":"fp","name":"key","x":14,"y":8,"s":0.8,"tone":"blue","label":"φ_T(u)","lsize":18},{"box":"one","x":160,"y":22,"w":190,"h":70,"text":"one strike =\none integration","tone":"blue","size":19},{"arrow":["fp","one"]}]},{"cap":"Calibration needs much more. Price 200 strikes, at each of 500 candidate parameter sets the optimizer tries: 200 × 500 = 100,000 separate integrations, for one expiry on one day.","do":[{"box":"cnt","x":395,"y":22,"w":195,"h":70,"text":"200 strikes × 500 sets","tone":"red","sub":"0","size":17},{"count":"cnt","from":0,"to":100000,"dp":0,"ms":1400}]},{"cap":"Carr and Madan wanted all strikes from one Fourier transform. The snag: as the strike falls towards zero, a call price heads up towards the spot price instead of fading. That curve has no clean transform.","do":[{"chart":"pr","x":10,"y":140,"w":580,"h":250,"title":"Call price vs log-strike k (illustrative)","xd":[-4,0.8],"yd":[0,1.3],"yt":[[0.5,"0.5"],[1,"1"]],"xt":[[-4,"−4"],[-2,"−2"],[0,"k = 0"]],"pl":46},{"series":"raw","chart":"pr","pts":[[-4.0,0.9817],[-3.85,0.9787],[-3.7,0.9753],[-3.55,0.9713],[-3.4,0.9666],[-3.25,0.9612],[-3.1,0.955],[-2.95,0.9477],[-2.8,0.9392],[-2.65,0.9293],[-2.5,0.9179],[-2.35,0.9046],[-2.2,0.8892],[-2.05,0.8713],[-1.9,0.8504],[-1.75,0.8262],[-1.6,0.7981],[-1.45,0.7654],[-1.3,0.7275],[-1.15,0.6834],[-1.0,0.6321],[-0.85,0.5726],[-0.7,0.5034],[-0.55,0.4232],[-0.4,0.3311],[-0.25,0.2301],[-0.1,0.1327],[0.05,0.0586],[0.2,0.0184],[0.35,0.0038],[0.5,0.0005],[0.65,0.0],[0.8,0.0]],"tone":"blue","ms":1200,"label":"raw price: never fades","lat":[-3.9,0.98],"ldx":0,"ldy":-16,"lanchor":"start"}]},{"cap":"The fix: multiply by a damping factor e^(αk), here with α = 1.5. The damped price fades to zero at both ends (drawn four times taller so you can see it). The damping changes nothing about what the call is worth; it is undone at the end.","do":[{"series":"damp","chart":"pr","pts":[[-4.0,0.0097],[-3.85,0.0122],[-3.7,0.0152],[-3.55,0.0189],[-3.4,0.0236],[-3.25,0.0294],[-3.1,0.0365],[-2.95,0.0454],[-2.8,0.0563],[-2.65,0.0698],[-2.5,0.0863],[-2.35,0.1066],[-2.2,0.1312],[-2.05,0.161],[-1.9,0.1968],[-1.75,0.2394],[-1.6,0.2896],[-1.45,0.3478],[-1.3,0.414],[-1.15,0.487],[-1.0,0.5642],[-0.85,0.64],[-0.7,0.7047],[-0.55,0.7418],[-0.4,0.7268],[-0.25,0.6326],[-0.1,0.4569],[0.05,0.2526],[0.2,0.0991],[0.35,0.026],[0.5,0.0043],[0.65,0.0004],[0.8,0.0]],"tone":"green","ms":1200,"label":"damped (×4): fades both ends","lat":[-2.4,0.42],"ldx":0,"ldy":-14,"lanchor":"middle"}]},{"cap":"The damped price has a clean, published transform, ψ_T(v). Only one piece of it depends on the model: the characteristic function, evaluated at a shifted point.","do":[{"box":"psi","x":10,"y":420,"w":170,"h":76,"text":"ψ_T(v)\nbuilt from φ_T","tone":"amber","size":19},{"pulse":"fp"}]},{"cap":"Turning ψ_T back into prices is an integral over v. Lay it on an evenly spaced grid and that integral becomes exactly a discrete Fourier transform, the shape the FFT computes in N log N steps.","do":[{"box":"fft","x":215,"y":420,"w":150,"h":76,"text":"one FFT","tone":"purple","sub":"N log N","size":20},{"arrow":["psi","fft"]}]},{"cap":"One FFT call returns the price at every grid strike at once. Undo the damping with e^(−αk) and you have the whole curve, not one point.","do":[{"box":"grid","x":400,"y":420,"w":190,"h":76,"text":"every strike\nat once","tone":"green","size":19},{"arrow":["fft","grid"]},{"dot":"g0","chart":"pr","at":[-3.6,0.9727],"text":"","tone":"green","r":5},{"dot":"g1","chart":"pr","at":[-3.3,0.9631],"text":"","tone":"green","r":5},{"dot":"g2","chart":"pr","at":[-3.0,0.9502],"text":"","tone":"green","r":5},{"dot":"g3","chart":"pr","at":[-2.7,0.9328],"text":"","tone":"green","r":5},{"dot":"g4","chart":"pr","at":[-2.4,0.9093],"text":"","tone":"green","r":5},{"dot":"g5","chart":"pr","at":[-2.1,0.8775],"text":"","tone":"green","r":5},{"dot":"g6","chart":"pr","at":[-1.8,0.8347],"text":"","tone":"green","r":5},{"dot":"g7","chart":"pr","at":[-1.5,0.7769],"text":"","tone":"green","r":5},{"dot":"g8","chart":"pr","at":[-1.2,0.6988],"text":"","tone":"green","r":5},{"dot":"g9","chart":"pr","at":[-0.9,0.5934],"text":"","tone":"green","r":5},{"dot":"g10","chart":"pr","at":[-0.6,0.4512],"text":"","tone":"green","r":5},{"dot":"g11","chart":"pr","at":[-0.3,0.2642],"text":"","tone":"green","r":5},{"dot":"g12","chart":"pr","at":[-0.0,0.0797],"text":"","tone":"green","r":5},{"dot":"g13","chart":"pr","at":[0.3,0.0068],"text":"","tone":"green","r":5}]},{"cap":"Back to the count. The direct way: 100,000 integrations. Carr-Madan: one FFT per parameter set, 500 calls. That is 200 times fewer pricing calls, exactly the strike count, before counting how cheap each FFT is.","do":[{"chart":"cmp","x":10,"y":540,"w":380,"h":170,"title":"Pricing calls in one calibration","xd":[0.4,2.6],"yd":[0,110000],"yt":[[50000,"50k"],[100000,"100k"]],"xt":[[1,"direct"],[2,"FFT"]],"pl":52},{"bars":"cb","chart":"cmp","data":[[1,100000,"100,000","red"],[2,500,"500","green"]],"bw":60,"ms":1200}]},{"cap":"It is not free. The grid spacing in v (η) and in log-strike (λ) are tied by N·η·λ = 2π. A finer strike grid forces a wider frequency range, so α, η and λ all need tuning. N = 4096 is a routine size even for 200 strikes.","do":[{"note":"tr","x":300,"y":122,"text":"N · η · λ = 2π: finer strikes cost frequency range","size":18,"anchor":"middle","tone":"amber"}]},{"cap":"And it only works when the model has a closed-form characteristic function: Heston, Bates, variance gamma. A model without one has nothing to feed in, and falls back to Monte Carlo or a PDE solve.","do":[{"box":"lim","x":400,"y":540,"w":190,"h":170,"text":"needs φ_T\nin closed form\n\nno φ_T:\nMonte Carlo / PDE","tone":"red","size":17}]}]}</script>
+      </div>
+      <!-- WB:fft_option_pricing_carr_madan:END -->
+    </section>
+    <!-- WB:fft_option_pricing_carr_madan-deck:END -->
+
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Do the math yourself</h2>
       <p class="sl-sub">Same comparison, with your own numbers — enter strikes, a per-integration time estimate, and what one FFT call costs.</p>
@@ -258,7 +271,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this lives on a real desk</h2>
       <div class="sl-icard-grid">
@@ -270,7 +283,7 @@
       <div class="sl-quote">A quant recalibrating Heston's five parameters against that morning's full implied-volatility surface — a few hundred quoted prices, thousands of candidate parameter sets tried by the optimizer — is exactly the workload Carr-Madan targets: not a new source of edge, but the infrastructure that makes running the existing model's calibration at the required scale and speed practically possible at all.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where it doesn't apply</h2>
       <div class="sl-compare">
@@ -299,7 +312,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -350,7 +363,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -483,5 +496,9 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Stress Testing, Scenario Analysis &amp; Reverse Stress Tests — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,79 @@
       <li><strong>Real-world episode:</strong> in September 2022 UK pension schemes' LDI funds held collateral buffers sized to past gilt moves. The mini-budget produced a bigger one, forced selling made it bigger still, and the Bank of England had to buy long gilts to stop the loop.<!-- DESK:START --> On this desk, reading history forward as a forecast tested null (<code>analogue-weeks</code>).<!-- DESK:END --></li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the worked example's loss line, loss equals $2.4 million times the shock size s. A forward stress test picks s equals 1 and reads a $2.4 million loss. A reverse stress test starts from the $5 million unacceptable loss and reads back the shock that causes it, s star of about 2.08. Right: why the line is so steep. Desk A, $6 million at 30% per unit, and Desk B, $4 million at 15% per unit, both load on one risk-off factor, adding to $2.4 million per unit of shock.">
+      <line class="tlp-line" x1="60" y1="210" x2="350" y2="210"/>
+      <line class="tlp-line" x1="60" y1="30" x2="60" y2="210"/>
+      <line class="tlp-line purple thick" x1="60" y1="210" x2="350" y2="37.2"/>
+      <line class="tlp-line blue dash" x1="156.7" y1="210" x2="156.7" y2="152.4"/>
+      <line class="tlp-line blue dash" x1="156.7" y1="152.4" x2="66" y2="152.4"/>
+      <polygon class="tlp-blue" points="60,152.4 70,147.4 70,157.4"/>
+      <circle class="tlp-blue" cx="156.7" cy="152.4" r="5"/>
+      <line class="tlp-line red dash" x1="60" y1="90" x2="261.4" y2="90"/>
+      <line class="tlp-line red dash" x1="261.4" y1="90" x2="261.4" y2="204"/>
+      <polygon class="tlp-red" points="261.4,210 256.4,200 266.4,200"/>
+      <circle class="tlp-red" cx="261.4" cy="90" r="5"/>
+      <text class="tlp-blue" x="54" y="156.5" text-anchor="end" font-size="12" font-weight="700">$2.4M</text>
+      <text class="tlp-red" x="54" y="94" text-anchor="end" font-size="12" font-weight="700">$5M</text>
+      <text class="tlp-blue" x="156.7" y="226" text-anchor="middle" font-size="12" font-weight="700">s = 1</text>
+      <text class="tlp-red" x="261.4" y="226" text-anchor="middle" font-size="12" font-weight="700">s* ≈ 2.08</text>
+      <text class="tlp-blue" x="166" y="176" font-size="13" font-weight="700">forward:</text>
+      <text class="tlp-blue" x="166" y="192" font-size="12">pick a shock, read the loss</text>
+      <text class="tlp-red" x="100" y="70" font-size="13" font-weight="700">reverse:</text>
+      <text class="tlp-red" x="100" y="84" font-size="12">pick the loss, solve for the shock</text>
+      <text class="tlp-purple" x="300" y="44" text-anchor="end" font-size="13" font-weight="700">Loss = $2.4M × s</text>
+      <text class="tlp-text3" x="350" y="244" text-anchor="end" font-size="12">shock size s, in "bad quarters" →</text>
+      <text class="tlp-text3" x="66" y="24" font-size="12">loss ↑</text>
+      <line class="tlp-line dash" x1="380" y1="14" x2="380" y2="240"/>
+      <rect class="tlp-box amber" x="410" y="18" width="170" height="44" rx="6"/>
+      <text class="tlp-amber" x="495" y="37" text-anchor="middle" font-size="13" font-weight="700">one hidden factor:</text>
+      <text class="tlp-amber" x="495" y="53" text-anchor="middle" font-size="12">risk-off shock s</text>
+      <line class="tlp-line amber" x1="465" y1="62" x2="447" y2="92"/>
+      <line class="tlp-line amber" x1="525" y1="62" x2="543" y2="92"/>
+      <rect class="tlp-box blue" x="396" y="96" width="94" height="64" rx="6"/>
+      <text class="tlp-blue" x="443" y="116" text-anchor="middle" font-size="13" font-weight="700">Desk A</text>
+      <text class="tlp-text2" x="443" y="132" text-anchor="middle" font-size="12">$6M × 30%</text>
+      <text class="tlp-text" x="443" y="150" text-anchor="middle" font-size="13" font-weight="700">$1.8M</text>
+      <rect class="tlp-box blue" x="500" y="96" width="94" height="64" rx="6"/>
+      <text class="tlp-blue" x="547" y="116" text-anchor="middle" font-size="13" font-weight="700">Desk B</text>
+      <text class="tlp-text2" x="547" y="132" text-anchor="middle" font-size="12">$4M × 15%</text>
+      <text class="tlp-text" x="547" y="150" text-anchor="middle" font-size="13" font-weight="700">$0.6M</text>
+      <line class="tlp-line red" x1="443" y1="160" x2="470" y2="188"/>
+      <line class="tlp-line red" x1="547" y1="160" x2="520" y2="188"/>
+      <rect class="tlp-box red" x="410" y="190" width="170" height="44" rx="6"/>
+      <text class="tlp-red" x="495" y="209" text-anchor="middle" font-size="13" font-weight="700">$2.4M per unit of s</text>
+      <text class="tlp-text2" x="495" y="225" text-anchor="middle" font-size="12">one risk, not two</text>
+    </svg>
+    <figcaption>The same loss line, read two ways. A forward test asks what a 2008-style quarter costs ($2.4M). A reverse test asks what shock costs the $5M you cannot accept, and finds a modest one, about 2.08 quarters, because two "different" desks share one factor.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">We already run stress tests. We replay 2008 on the book every quarter and we survive it. Isn't that enough?</p>
+      <p data-who="Quant">It answers one question: what if that exact storm hit the house you live in today. It's useful, because the moves really did happen together. But it only covers storms you thought to ask about.</p>
+      <p data-who="Trader">So I add made-up storms. Simulations where every correlation goes to one.</p>
+      <p data-who="Quant">Good, that's the second tool. It can explore crises that never happened. But it's only as good as the rule you feed it. Assume a mild storm and the house looks safe for the wrong reason.</p>
+      <p data-who="Trader">And the third?</p>
+      <p data-who="Quant">The third flips the question. Don't pick a storm and measure the damage. Pick the damage you cannot survive, and solve backward for the storm. A structural engineer asks the same thing: what is the smallest failure that brings the house down?</p>
+      <p data-who="Trader">Walk me through it with numbers.</p>
+      <p data-who="Quant">A ten million dollar book. Six million in a short-volatility equity carry strategy, four million in high-yield credit carry. Different desks, different asset classes. Looks diversified.</p>
+      <p data-who="Trader">And each desk survives its own bad quarter.</p>
+      <p data-who="Quant">Easily. The equity desk loses thirty percent of its six million, one point eight. The credit desk loses fifteen percent of its four, point six. But both are really driven by the same thing: a broad collapse in risk appetite. One bad quarter on that one factor costs two point four million together.</p>
+      <p data-who="Trader">Twenty-four percent of the book. Painful, but survivable.</p>
+      <p data-who="Quant">Now go backward. The committee says losing five million, half the book, is unacceptable. Five divided by two point four is about two point oh eight. A shock only about twice an ordinary bad quarter, on one factor, takes out half the book.</p>
+      <p data-who="Trader">So the two desks were one bet.</p>
+      <p data-who="Quant">Exactly. That's what a reverse test is for: finding the one beam the whole house rests on.</p>
+      <p data-who="Trader">Has a forward-only buffer ever failed like that?</p>
+      <p data-who="Quant">UK pension funds, September 2022. Their leveraged hedging funds kept collateral buffers sized to past gilt moves. On the twenty-third the mini-budget hit, and long yields rose further and faster than the buffers had been set for. Funds sold gilts to meet margin calls, which pushed yields up again. On the twenty-eighth the Bank of England had to buy long gilts to break the loop.</p>
+      <p data-who="Trader">So what's the one-line version?</p>
+      <p data-who="Quant">Forward tests tell you what the storms you imagined would cost; a reverse test tells you which storm breaks you, and it's usually smaller than you'd think.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -77,6 +151,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From two desks to one breaking point, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Loss}(s) = \color{#fbbf24}{\$6\text{M} \times 0.30 \times s} \]</div>
+      <p>Start with Strategy A, the short-volatility equity carry book. It loses 30% of its $6M for each unit of the risk-off shock \(s\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Loss}(s) = \$6\text{M} \times 0.30 \times s + \color{#fbbf24}{\$4\text{M} \times 0.15 \times s} \]</div>
+      <p>Add Strategy B, the high-yield credit carry book. Different desk, different instruments, but the same shock \(s\) drives it, at 15% of its $4M per unit.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Loss}(s) = \color{#fbbf24}{\$2.4\text{M} \times s} \]</div>
+      <p>Collect terms. Two desks collapse into one line: $1.8M plus $0.6M of loss per unit of the same factor. A forward test with \(s = 1\) reads $2.4M off it.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \$2.4\text{M} \times s^{*} = \color{#fbbf24}{Y^{*} = \$5\text{M}} \]</div>
+      <p>Now run it backward. Start from the loss the committee cannot accept, \(Y^{*}\), and ask which shock \(s^{*}\) produces it.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{s^{*} = \frac{\$5\text{M}}{\$2.4\text{M}} \approx 2.08} \]</div>
+      <p>Solve. A shock only about twice an ordinary bad quarter, along one factor, takes out half the book. That is the hidden concentration a desk-by-desk forward test misses.</p>
+    </div>
+  </div>
   <p>
   We'll define each of the three approaches precisely, in the order a risk team typically layers them:
   replay what actually happened, then explore what could hypothetically happen, then solve backward from
@@ -234,6 +332,10 @@
       book, and the reverse-solved shock \(s^{*}\) needed to breach a $5M
       loss threshold all recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="3.33" data-tol="0.2" data-unit="×">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The worked example breaks at \(s^{*} \approx 2.08\). Halve the short-volatility leg: Notional A from $6M down to $3M, everything else unchanged. How big a shock now reaches the $5M threshold, in multiples of an ordinary bad quarter? Lock in a guess, then type 3 into "Notional A" below to check.</div>
+      <div class="tl-predict-reveal"><p><strong>About 3.33×.</strong> The loss per unit of shock falls to \(\$3\text{M} \times 0.30 + \$4\text{M} \times 0.15 = \$0.9\text{M} + \$0.6\text{M} = \$1.5\text{M}\), so \(s^{*} = 5 / 1.5 \approx 3.33\). Cutting the leg with the biggest sensitivity moved the breaking point from about two bad quarters to more than three. Now also set \(\beta_B\) to 0, as if the credit book had no link to the factor: \(s^{*}\) jumps to about 5.56.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Notional A ($M)</span></div>
@@ -322,6 +424,12 @@
     show up as a headline "EM risk" line item on the standard risk report.
     </p>
   </div>
+
+  <!-- WB:stress_testing_scenario_analysis:START -->
+  <div class="wb" id="wb-stress_testing_scenario_analysis" data-title="Two desks, one factor: forward and reverse stress tests">
+    <script type="application/json">{"w":600,"h":720,"intro":"A $10 million book, two desks that look unrelated, and two ways to stress-test it: forward and backward. Press play, or step through.","steps":[{"cap":"A $10 million book with two desks. Desk A runs $6M of short-volatility equity carry. Desk B runs $4M of high-yield credit carry. Different asset classes, different instruments.","do":[{"box":"a","x":15,"y":20,"w":200,"h":84,"text":"Desk A · equity","tone":"blue","sub":"$6M","size":19},{"box":"b","x":385,"y":20,"w":200,"h":84,"text":"Desk B · credit","tone":"blue","sub":"$4M","size":19}]},{"cap":"The forward test, desk by desk. A 2008-style quarter for equity volatility costs Desk A 30% of $6M: $1.8M. A credit widening costs Desk B 15% of $4M: $0.6M. Each loss is survivable on its own.","do":[{"count":"a","from":6,"to":1.8,"dp":1,"pre":"−$","suf":"M","ms":1000},{"count":"b","from":4,"to":0.6,"dp":1,"pre":"−$","suf":"M","ms":1000}]},{"cap":"Now the reverse question. The risk committee sets the loss it cannot accept: $5M, half the book. What shock would get there?","do":[{"note":"ystar","x":300,"y":160,"text":"unacceptable: Y* = $5M","size":21,"anchor":"middle","tone":"red"}]},{"cap":"Solving backward exposes what the desks share: both are driven by the same risk-off factor s, a broad collapse in risk appetite. One bridge that both of them cross.","do":[{"icon":"f","name":"bolt","x":272,"y":22,"s":0.55,"tone":"amber","label":"risk-off s","lsize":17},{"arrow":["f","a"],"label":"30%","tone":"amber"},{"arrow":["f","b"],"label":"15%","tone":"amber"}]},{"cap":"So the losses add along one line: Loss(s) = $1.8M × s + $0.6M × s = $2.4M × s. Two desks, one risk.","do":[{"chart":"ch","x":10,"y":236,"w":580,"h":300,"title":"Loss ($M) vs shock size s","xd":[0,3],"yd":[0,7.5],"yt":[[2.4,"2.4"],[5,"5"]],"xt":[[0,"0"],[1,"s = 1"],[2,"2"],[3,"3"]],"pl":50,"pr":20},{"series":"line","chart":"ch","pts":[[0,0],[3,7.2]],"tone":"purple","ms":1200},{"note":"ll","chart":"ch","at":[2.56,2.0],"text":"Loss = $2.4M × s","tone":"purple","size":16,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Forward: pick a shock and read the loss. One 2008-style quarter, s = 1, costs $2.4M: 24% of the book. Painful, survivable.","do":[{"series":"fw","chart":"ch","pts":[[1,0],[1,2.4],[0,2.4]],"tone":"blue","dash":true,"ms":900},{"dot":"d1","chart":"ch","at":[1,2.4],"text":"$2.4M","tone":"blue","dx":14,"dy":10,"anchor":"start"}]},{"cap":"Reverse: start at the $5M loss and read across to the line, then down. The shock that breaks the book is s* = 5 ÷ 2.4 ≈ 2.08.","do":[{"series":"rv","chart":"ch","pts":[[0,5],[2.0833333333333335,5],[2.0833333333333335,0]],"tone":"red","dash":true,"ms":1200},{"dot":"d2","chart":"ch","at":[2.0833333333333335,5],"text":"s* ≈ 2.08","tone":"red","dx":12,"dy":8,"anchor":"start"}]},{"cap":"That is the finding. Not an exotic catastrophe: about twice an ordinary bad quarter, along one factor, takes out half the book. A desk-by-desk forward test called this book diversified.","do":[{"pulse":"f"},{"note":"find","x":300,"y":566,"text":"two \"different\" desks = one bet","size":20,"anchor":"middle","tone":"red"}]},{"cap":"September 2022, for real. UK pension funds' leveraged LDI hedges kept collateral buffers sized to past gilt moves: a forward test. On 23 September the mini-budget sent long yields up further and faster than that history.","do":[{"hide":"find"},{"icon":"gov","name":"govt","x":20,"y":590,"s":0.55,"tone":"amber","label":"mini-budget\n23 Sept","lsize":16},{"icon":"buf","name":"shield","x":200,"y":590,"s":0.55,"tone":"red","label":"buffer\nused up","lsize":16},{"arrow":["gov","buf"],"tone":"red"}]},{"cap":"Funds sold gilts to meet collateral calls, which pushed yields up again: the shock fed on the positions being stressed, so the loss line steepened instead of staying straight (red curve, illustrative).","do":[{"icon":"sell","name":"down","x":370,"y":590,"s":0.55,"tone":"red","label":"forced gilt\nselling","lsize":16},{"arrow":["buf","sell"],"tone":"red"},{"series":"steep","chart":"ch","pts":[[0,0],[1,2.6],[1.6,4.6],[2.0,6.6],[2.3,7.5]],"tone":"red","ms":1100,"label":"feedback","lat":[2.3,7.5],"ldx":8,"ldy":8,"lanchor":"start","lsize":16}]},{"cap":"On 28 September the Bank of England bought long-dated gilts to break the loop, and stopped on 14 October. A reverse test asks the question the buffer never did: which move uses me up, and who else is selling then?","do":[{"icon":"boe","name":"bank","x":505,"y":590,"s":0.55,"tone":"green","label":"BoE buys\n28 Sept","sym":"£","lsize":16},{"arrow":["sell","boe"],"tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:stress_testing_scenario_analysis:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: UK gilts and LDI, September 2022</h2>
@@ -469,6 +577,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill" data-date="2022-09-26">
+    <div class="tl-drill-label">Scenario drill · 26 September 2022</div>
+    <h3>The gilt move is heading past what your buffer was built for</h3>
+    <p>You oversee the hedge of a UK defined-benefit pension scheme. It runs through a leveraged LDI fund that holds gilts, gilt repo and swaps, with a collateral buffer sized to cover a yield rise of a chosen size, taken from the history of gilt moves. On Friday the government's mini-budget announced large unfunded tax cuts. Long gilt yields are jumping and collateral calls are arriving. At this pace the rise will soon pass anything your buffer was set for. Every other LDI fund holds a similar book. What do you do first?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Wait. A move this extreme has to reverse.<div class="tl-drill-why">A move past history is exactly what a buffer sized to history cannot handle. Calls you cannot meet do not wait for a reversal; the fund gets closed out at the worst level.</div></li>
+      <li data-verdict="ok">Meet each call as it comes by selling gilts.<div class="tl-drill-why">It keeps the hedge alive for now, but you and every similar fund are selling the same gilts into a market with few buyers. That pushes yields up again and triggers the next round of calls.</div></li>
+      <li data-verdict="good">Run the reverse test now: what further yield rise uses up what is left of the buffer, counting everyone else forced to sell at once? Then raise collateral from other assets and cut leverage to survive that answer, not the historical one.<div class="tl-drill-why">The forward test is about to fail. Solving backward for the shock that breaks you, including the forced-selling loop that steepens the loss, tells you how close the edge really is and how much cash and de-leveraging you need.</div></li>
+      <li data-verdict="bad">Re-run the historical replay with the worst week on record and report that the book survives it.<div class="tl-drill-why">The record is being beaten as you watch. Replaying it again only measures a storm you already know is too small.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The collateral calls came in. To meet them, funds and schemes sold gilts into a market with few buyers, which pushed yields up again and set off the next round of calls. The Bank of England said afterwards that the move went beyond what LDI funds had been prepared for. On 28 September it stepped in with temporary purchases of long-dated gilts, to protect financial stability rather than as monetary policy, and ended them on 14 October. Within weeks the Chancellor had been replaced and the Prime Minister had resigned. UK authorities then set a higher minimum level of resilience for LDI funds.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -557,6 +678,26 @@
     <li>See also <a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a> for the tail-modeling machinery underlying how severe a hypothetical scenario's shock size should plausibly be assumed to be, and <a href="coherent-risk-measures.html">Coherent Risk Measures</a> for how the resulting stressed loss distribution should be summarized honestly.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> <span>· the everyday risk numbers that stress tests go beyond</span></li>
+        <li><a href="tail-risk-hedging-convexity.html">Tail Risk Hedging &amp; Portfolio Convexity</a> <span>· why losses can steepen as the shock grows</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="collateral-margin-repo-markets.html">Collateral, Margin &amp; Repo Markets</a> <span>· the collateral calls behind the 2022 gilt spiral</span></li>
+        <li><a href="bootstrapping-monte-carlo.html">Bootstrapping &amp; Monte Carlo Simulation</a> <span>· how simulated stress scenarios are built</span></li>
+        <li><a href="cornish-fisher-expansion.html">Cornish-Fisher Expansion</a> <span>· a cheap way to put fat tails into VaR</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a book that survives every scenario you thought of can still rest on one factor you didn't, and a reverse test is how you find it before the market does.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="tail-risk-hedging-convexity.html">← Tail Risk Hedging &amp; Portfolio Convexity</a>
@@ -651,10 +792,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

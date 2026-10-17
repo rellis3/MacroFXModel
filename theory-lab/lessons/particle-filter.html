@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Particle Filter (Sequential Monte Carlo) — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -42,6 +43,51 @@
       <li><strong>How it reached trading:</strong> within a few years of the 1993 bootstrap filter, econometricians were using it to track hidden volatility in stochastic-volatility and jump models (Pitt &amp; Shephard, 1999; Johannes, Polson &amp; Stroud, 2009).</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four rows show one particle-filter cycle on the lesson's five particles at 1.05, 1.15, 1.20, 1.25 and 1.40, drawn as circles whose area is their weight. Row one: equal weights after propagating. Row two: weighed against an observation of 1.30, the weights stay fairly even, effective sample size 4.83 of 5. Row three: a jump, the observation is 1.60 with a sharp sensor, and the particle at 1.40 takes 98 percent of the weight, effective sample size 1.04. Row four: resampling replaces the swarm with five clones of that survivor.">
+      <text class="tlp-text" x="10" y="39" font-size="13" font-weight="700">propagate</text><text class="tlp-text2" x="10" y="55" font-size="12">5 equal guesses</text>
+      <text class="tlp-text" x="10" y="99" font-size="13" font-weight="700">weigh vs y = 1.30</text><text class="tlp-text2" x="10" y="115" font-size="12">N_eff 4.83 of 5: healthy</text>
+      <text class="tlp-red" x="10" y="159" font-size="13" font-weight="700">a jump: y = 1.60</text><text class="tlp-text2" x="10" y="175" font-size="12">N_eff 1.04: collapse</text>
+      <text class="tlp-green" x="10" y="219" font-size="13" font-weight="700">resample</text><text class="tlp-text2" x="10" y="235" font-size="12">clone the survivor</text>
+      <line class="tlp-line amber dash" x1="344.0" y1="80" x2="344.0" y2="124"/>
+      <line class="tlp-line amber dash" x1="518.0" y1="140" x2="518.0" y2="184"/>
+      <text class="tlp-amber" x="350.0" y="88" font-size="13" font-weight="700">y</text>
+      <text class="tlp-amber" x="524.0" y="148" font-size="13" font-weight="700">y</text>
+      <circle class="tlp-blue" cx="199.0" cy="42" r="9.8" opacity=".85"/><circle class="tlp-blue" cx="257.0" cy="42" r="9.8" opacity=".85"/><circle class="tlp-blue" cx="286.0" cy="42" r="9.8" opacity=".85"/><circle class="tlp-blue" cx="315.0" cy="42" r="9.8" opacity=".85"/><circle class="tlp-blue" cx="402.0" cy="42" r="9.8" opacity=".85"/><circle class="tlp-blue" cx="199.0" cy="102" r="7.9" opacity=".85"/><circle class="tlp-blue" cx="257.0" cy="102" r="9.7" opacity=".85"/><circle class="tlp-blue" cx="286.0" cy="102" r="10.3" opacity=".85"/><circle class="tlp-blue" cx="315.0" cy="102" r="10.7" opacity=".85"/><circle class="tlp-blue" cx="402.0" cy="102" r="10.3" opacity=".85"/><circle class="tlp-blue" cx="199.0" cy="162" r="1.8" opacity=".85"/><circle class="tlp-blue" cx="257.0" cy="162" r="1.8" opacity=".85"/><circle class="tlp-blue" cx="286.0" cy="162" r="1.8" opacity=".85"/><circle class="tlp-blue" cx="315.0" cy="162" r="2.8" opacity=".85"/><circle class="tlp-blue" cx="402.0" cy="162" r="21.8" opacity=".85"/><circle class="tlp-green" cx="390.0" cy="222" r="9.8" opacity=".55"/><circle class="tlp-green" cx="396.0" cy="222" r="9.8" opacity=".55"/><circle class="tlp-green" cx="402.0" cy="222" r="9.8" opacity=".55"/><circle class="tlp-green" cx="408.0" cy="222" r="9.8" opacity=".55"/><circle class="tlp-green" cx="414.0" cy="222" r="9.8" opacity=".55"/>
+      <line class="tlp-line" x1="170" y1="246" x2="576" y2="246"/>
+      <text class="tlp-text3" x="170.0" y="262" text-anchor="middle" font-size="12">1.0</text><text class="tlp-text3" x="228.0" y="262" text-anchor="middle" font-size="12">1.1</text><text class="tlp-text3" x="286.0" y="262" text-anchor="middle" font-size="12">1.2</text><text class="tlp-text3" x="344.0" y="262" text-anchor="middle" font-size="12">1.3</text><text class="tlp-text3" x="402.0" y="262" text-anchor="middle" font-size="12">1.4</text><text class="tlp-text3" x="460.0" y="262" text-anchor="middle" font-size="12">1.5</text><text class="tlp-text3" x="518.0" y="262" text-anchor="middle" font-size="12">1.6</text><text class="tlp-text3" x="576.0" y="262" text-anchor="middle" font-size="12">1.7</text>
+    </svg>
+    <figcaption>The belief is a crowd of guesses, and each circle's size is its weight. An ordinary observation leaves the crowd healthy. A jump that only one guess explains collapses the weight onto it, and resampling refills the crowd with clones of the guess the data backed.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">The Kalman filter tracks my hedge ratio fine. Why would I need anything else?</p>
+      <p data-who="Quant">The Kalman filter has a closed form only because everything is linear and every shock is a bell curve. Then two numbers, a best guess and a spread, describe your whole belief.</p>
+      <p data-who="Trader">And when the shocks aren't bell curves?</p>
+      <p data-who="Quant">Say the hedge ratio drifts gently most days, but around a rate decision it can jump. "Probably a small drift, but maybe a big jump" isn't one bell curve. There's no formula for it, and the Kalman filter quietly gives you the wrong shape and the wrong confidence.</p>
+      <p data-who="Trader">So what does a particle filter do?</p>
+      <p data-who="Quant">It swaps one confident guesser for a crowd. Each particle is one concrete guess for the hidden value. Every bar, each guess moves forward under the model, and some of them take the rare big jump.</p>
+      <p data-who="Trader">Then the new price arrives.</p>
+      <p data-who="Quant">And you score every guess by how well it explains what you saw. Close guesses get heavy weight, far ones get light weight. The weighted crowd is your belief.</p>
+      <p data-who="Trader">Give me the numbers.</p>
+      <p data-who="Quant">The lesson has five guesses, from one point oh five to one point four, and an observation of one point three. After weighting, the closest one, at one point two five, holds about twenty-four percent and the furthest holds thirteen. Nobody dominates.</p>
+      <p data-who="Trader">How do I know if the crowd is healthy?</p>
+      <p data-who="Quant">The effective sample size. One over the sum of the squared weights. Here it's about four point eight out of five: healthy. If one guess grabs all the weight, it falls toward one, and the crowd is really one guess.</p>
+      <p data-who="Trader">And then?</p>
+      <p data-who="Quant">You resample. Clone the guesses the data backed and retire the ones it ruled out. The usual trigger is when the effective size drops below half the crowd.</p>
+      <p data-who="Trader">Where did this reach finance?</p>
+      <p data-who="Quant">Volatility you can't see. The bootstrap filter dates from nineteen ninety-three, and by the late nineties econometricians were using it to track hidden volatility in stochastic volatility models.</p>
+      <p data-who="Trader">What's the catch?</p>
+      <p data-who="Quant">Cloning isn't new information, so repeated resampling can leave you with many copies of a few guesses. You need far more particles as the hidden state gets bigger. And rerun it with a new seed and the answer moves a little: it's an estimate, not an exact number.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">When the world won't fit a bell curve, track it with a crowd of guesses, weigh them by the data, and refresh the crowd when it collapses.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -123,6 +169,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the particle approximation and its health check come from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ p(x_t \mid y_{1:t}) \approx \sum_{i=1}^{N} \color{#fbbf24}{\delta\!\left(x_t - x_t^{(i)}\right)} \]</div>
+      <p>Represent the belief as a pile of spikes, one at each particle's candidate value \(x_t^{(i)}\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ p(x_t \mid y_{1:t}) \approx \sum_{i=1}^{N} \color{#fbbf24}{w_t^{(i)}}\, \delta\!\left(x_t - x_t^{(i)}\right) \]</div>
+      <p>Give each spike a weight, normalized so the weights sum to 1. Taller spikes are guesses the data supports more.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ w_t^{(i)} \propto w_{t-1}^{(i)}\, \color{#fbbf24}{p\!\left(y_t \mid x_t^{(i)}\right)} \]</div>
+      <p>When the observation \(y_t\) arrives, multiply each weight by how well that particle explains it. No linearity or bell curve is needed.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{N_{\text{eff}} = \frac{1}{\sum_{i=1}^{N} \left(w_t^{(i)}\right)^2}} \]</div>
+      <p>Check the crowd's health. Equal weights give \(N\); one dominant particle gives 1. In the worked example it is 4.83 of 5, well above the resample trigger of \(N/2\).</p>
+    </div>
+  </div>
   <p>
     The setup generalizes the Kalman filter's state-space model by allowing the transition and
     observation functions to be nonlinear, and the noise to be drawn from any distribution at all — not
@@ -367,6 +433,10 @@
       stay fixed exactly as propagated above; edit the observation \(y\) or its variance \(R\) and every
       particle's likelihood, normalized weight, and \(N_{\text{eff}}\) recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="1.04" data-tol="0.3" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Now suppose the fat tail fires: the state jumps, and the observation comes in at \(y = 1.60\), from a sharper sensor with \(R = 0.01\). The five particles stay where they are. What is \(N_{\text{eff}}\)? Lock in a guess, then type 1.60 and 0.01 into the fields below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 1.04.</strong> Particle 5, at 1.40, is the only guess anywhere near 1.60. Its likelihood dwarfs the others, so it takes about 0.981 of the weight, and \(N_{\text{eff}}\) falls to 1.04, far below the \(N/2 = 2.5\) trigger. This is degeneracy: resample now, cloning the one guess the jump vindicated. Then try \(y = 1.60\) with \(R = 0.05\) and see a noisier sensor keep the crowd alive.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Observation \(y\)</span></div>
@@ -409,6 +479,12 @@
       built, backtested, or shown to add anything over the existing linear approach.
     </p>
   </div>
+
+  <!-- WB:particle_filter:START -->
+  <div class="wb" id="wb-particle_filter" data-title="A particle filter: weigh the crowd, then resample">
+    <script type="application/json">{"w":600,"h":660,"intro":"Five guesses, one observation, then a jump. The lesson's own particles and numbers. Press play, or step through.","steps":[{"cap":"You are tracking a hidden value, say a hedge ratio, that you never see directly. Instead of one best guess, hold a crowd of guesses: here, the lesson's five particles. Each starts with an equal weight of 0.2.","do":[{"chart":"st","x":10,"y":10,"w":580,"h":290,"title":"Particle weights","xd":[1.0,1.66],"yd":[0,1.12],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[1.05,"1.05"],[1.15,"1.15"],[1.25,"1.25"],[1.4,"1.40"],[1.6,"1.60"]],"pl":46,"pr":14},{"bars":"b0","chart":"st","data":[[1.05,0.2,".20","blue"],[1.15,0.2,".20","blue"],[1.2,0.2,".20","blue"],[1.25,0.2,".20","blue"],[1.4,0.2,".20","blue"]],"bw":30,"ms":1000}]},{"cap":"Propagate: each guess moves forward under the model with its own random shock. In the lesson's model, 90% of shocks are small nudges and 10% are large jumps. No single bell curve can describe that mixture; a crowd can.","do":[{"box":"mix","x":10,"y":312,"w":280,"h":92,"text":"shocks: 90% small,\n10% large jumps","tone":"purple","size":19}]},{"cap":"An observation arrives: y = 1.30, from a sensor with noise variance R = 0.05.","do":[{"series":"o1","chart":"st","pts":[[1.3,0],[1.3,1.08]],"tone":"amber","dash":true,"ms":500,"label":"y = 1.30","lat":[1.3,1.08],"ldx":8,"ldy":6,"lanchor":"start"}]},{"cap":"Weigh each guess by how well it explains 1.30. The closest, at 1.25, gets the most: 0.237. The furthest, at 1.05, gets 0.130. The crowd has learned something, but nobody dominates.","do":[{"hide":"b0"},{"bars":"b1","chart":"st","data":[[1.05,0.13,".13","blue"],[1.15,0.194,".19","blue"],[1.2,0.22,".22","blue"],[1.25,0.237,".24","blue"],[1.4,0.22,".22","blue"]],"bw":30,"ms":1000}]},{"cap":"Check the crowd's health: N_eff = 1 ÷ (sum of squared weights) = 4.83 out of 5. Above the usual trigger of N/2 = 2.5, so there is no need to resample.","do":[{"box":"neff","x":310,"y":312,"w":280,"h":92,"text":"N_eff","tone":"green","sub":"4.83 of 5","size":20}]},{"cap":"Now the fat tail fires: the state jumps, and the next observation is y = 1.60, from a sharper sensor, R = 0.01.","do":[{"hide":"o1"},{"dim":"b1"},{"series":"o2","chart":"st","pts":[[1.6,0],[1.6,1.08]],"tone":"red","dash":true,"ms":500,"label":"y = 1.60","lat":[1.6,1.08],"ldx":-8,"ldy":6,"lanchor":"end"}]},{"cap":"Only one guess is anywhere near 1.60: the one at 1.40. It takes 0.981 of the weight and the other four are almost worthless. The crowd has collapsed onto a single opinion.","do":[{"hide":"b1"},{"bars":"b2","chart":"st","data":[[1.05,0.0,"","red"],[1.15,0.0,"","red"],[1.2,0.002,"","red"],[1.25,0.016,".02","red"],[1.4,0.981,"0.981","red"]],"bw":30,"ms":1000}]},{"cap":"N_eff drops to 1.04, far below 2.5. That is particle degeneracy: five particles, but effectively one.","do":[{"count":"neff","from":4.83,"to":1.04,"dp":2,"suf":" of 5"},{"pulse":"neff"}]},{"cap":"Resample. Systematic resampling lays the weights end to end and picks five evenly spaced points. About 9 times in 10 all five land on the 1.40 guess, as here: the new crowd is five equal-weight clones of the survivor.","do":[{"chart":"cnt","x":10,"y":420,"w":580,"h":160,"title":"Copies kept after resampling","xd":[1.0,1.66],"yd":[0,6],"yt":[[0,"0"],[5,"5"]],"xt":[[1.05,"1.05"],[1.15,"1.15"],[1.25,"1.25"],[1.4,"1.40"]],"pl":46,"pr":14},{"bars":"cb","chart":"cnt","data":[[1.05,0,"0",null],[1.15,0,"0",null],[1.2,0,"0",null],[1.25,0,"0",null],[1.4,5,"5","green"]],"bw":30,"ms":900}]},{"cap":"Next bar, the clones propagate again, each with its own shock, so the crowd spreads out around the new level. The filter jumped with the data instead of crawling after it.","do":[{"box":"next","x":10,"y":592,"w":580,"h":60,"text":"next step: clones spread out again","tone":"green","size":19}]},{"cap":"The costs: cloning is not new information, so repeated resampling can leave many copies of few guesses. The crowd you need grows fast with the number of hidden variables. And a rerun with a new seed gives a slightly different answer.","do":[{"hide":"next"},{"box":"cost","x":10,"y":592,"w":580,"h":60,"text":"clones ≠ new information · rerun ≠ same answer","tone":"amber","size":18}]}]}</script>
+  </div>
+  <!-- WB:particle_filter:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -479,6 +555,19 @@
     to the same answer the closed-form Kalman filter gives instantly and exactly. That generality is not
     free: for a problem that genuinely is linear-Gaussian, the plain Kalman filter is both cheaper and
     exact, and reaching for particles there adds Monte Carlo noise for no benefit.
+  </div>
+
+  <div class="tl-drill" data-date="2015-01-15">
+    <div class="tl-drill-label">Scenario drill · 15 January 2015</div>
+    <h3>The franc floor goes, in one print</h3>
+    <p>You track the hidden "fair level" of EUR/CHF with a state-space filter. For more than three years the Swiss National Bank has held a minimum rate of 1.20 francs per euro, and the pair has barely moved. This morning the SNB scraps the floor. Within minutes EUR/CHF trades below 1.00. Your filter has to make sense of a print more than 15% away from its estimate. Which filter do you want running?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">A linear Kalman filter with the small process noise that fitted the last three calm years.<div class="tl-drill-why">With one small Gaussian shock size, the filter treats the print as mostly sensor noise and moves its estimate a little each bar. It underreacts to a genuine jump for a long time, while reporting high confidence.</div></li>
+      <li data-verdict="good">A particle filter whose process noise is a mixture: mostly small drifts, with a small chance of a large jump.<div class="tl-drill-why">Some particles take the rare jump on every step. When the print arrives, those few explain it, the weight collapses onto them, effective sample size plunges, and resampling refills the crowd around the new level. The estimate jumps with the market.</div></li>
+      <li data-verdict="bad">A Kalman filter with its process noise raised permanently to the size of today's move.<div class="tl-drill-why">That handles today, then overreacts to ordinary noise on every quiet day afterwards. One bell curve cannot be both small and large; that is the lesson's point.</div></li>
+      <li data-verdict="ok">Keep the calm-period Kalman filter, but reset it by hand to the new price.<div class="tl-drill-why">It works once, if someone is watching. It is a manual override, not a model, and it gives no help the next time a jump arrives unannounced.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 15 January 2015 the Swiss National Bank discontinued the minimum exchange rate of 1.20 francs per euro, which it had set in September 2011, and cut its deposit rate to −0.75%. EUR/CHF fell from about 1.20 to below parity within minutes. A process that sat almost still for years moved in a single discontinuous step: the "mostly small, occasionally huge" shock shape that a single Gaussian cannot hold and a particle filter can.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -573,6 +662,27 @@
     <li>Christophe Andrieu, Arnaud Doucet &amp; Roman Holenstein, <em>"Particle Markov Chain Monte Carlo Methods,"</em> Journal of the Royal Statistical Society: Series B, 2010 — the paper introducing particle MCMC, for readers who need to estimate fixed model parameters alongside the hidden state.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="kalman-filter.html">The Kalman Filter &amp; Adaptive Relationships</a> <span>· the linear, Gaussian case this generalizes</span></li>
+        <li><a href="kalman-smoother-ekf-ukf.html">The Kalman Smoother &amp; Extended/Unscented Kalman Filters</a> <span>· where the Kalman fixes for nonlinearity run out</span></li>
+        <li><a href="bootstrapping-monte-carlo.html">Bootstrapping &amp; Monte Carlo Simulation</a> <span>· samples standing in for a formula</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="regime-switching-state-space.html">Regime-Switching State Space Models</a> <span>· hidden regimes, the next non-Gaussian state</span></li>
+        <li><a href="heston-model.html">The Heston Model</a> <span>· the hidden volatility a particle filter tracks</span></li>
+        <li><a href="merton-jump-diffusion.html">The Merton Jump-Diffusion Model</a> <span>· jumps a single bell curve cannot hold</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> markets jump, and a filter that can only imagine small, bell-shaped moves will lag the jump while telling you it is confident.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
@@ -706,6 +816,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

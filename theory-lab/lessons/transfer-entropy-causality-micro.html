@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Transfer Entropy &amp; Information-Theoretic Causality — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -203,7 +204,19 @@
       </div>
     </section>
 
+    <!-- WB:transfer_entropy_causality-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Transfer entropy: a one-way channel, and its catch</h2>
+      <!-- WB:transfer_entropy_causality:START -->
+      <div class="wb" data-title="Transfer entropy: a one-way channel, and its catch">
+        <script type="application/json">{"w":600,"h":790,"intro":"The lesson's noisy one-way channel, then the catch. Press play, or step through.","steps":[{"cap":"X is a fair coin, flipped fresh every day. It has no memory at all: yesterday's flip tells you nothing about today's.","do":[{"icon":"xc","name":"coin","x":60,"y":6,"s":0.75,"tone":"amber","label":"X: fresh flips","sym":"?","lsize":17}]},{"cap":"Y listens to X with a one-day delay over a noisy line. Each day Y copies yesterday's X, but 10% of the bits get flipped on the way.","do":[{"box":"yb","x":420,"y":20,"w":170,"h":74,"text":"Y today","tone":"blue","sub":"= X yesterday","size":19},{"arrow":["xc","yb"],"label":"10% of bits flipped","tone":"green"}]},{"cap":"One simulated run of twelve days. Y is X shifted one day to the right. Here one bit got flipped by the noise, on day 11.","do":[{"note":"xl","x":40,"y":196,"text":"X","size":22,"anchor":"start","tone":"amber"},{"note":"x0","x":120,"y":196,"text":"0","size":22,"anchor":"middle","tone":"amber"},{"note":"x1","x":160,"y":196,"text":"0","size":22,"anchor":"middle","tone":"amber"},{"note":"x2","x":200,"y":196,"text":"1","size":22,"anchor":"middle","tone":"amber"},{"note":"x3","x":240,"y":196,"text":"0","size":22,"anchor":"middle","tone":"amber"},{"note":"x4","x":280,"y":196,"text":"1","size":22,"anchor":"middle","tone":"amber"},{"note":"x5","x":320,"y":196,"text":"1","size":22,"anchor":"middle","tone":"amber"},{"note":"x6","x":360,"y":196,"text":"1","size":22,"anchor":"middle","tone":"amber"},{"note":"x7","x":400,"y":196,"text":"1","size":22,"anchor":"middle","tone":"amber"},{"note":"x8","x":440,"y":196,"text":"0","size":22,"anchor":"middle","tone":"amber"},{"note":"x9","x":480,"y":196,"text":"0","size":22,"anchor":"middle","tone":"amber"},{"note":"x10","x":520,"y":196,"text":"1","size":22,"anchor":"middle","tone":"amber"},{"note":"x11","x":560,"y":196,"text":"0","size":22,"anchor":"middle","tone":"amber"},{"note":"yl","x":40,"y":234,"text":"Y","size":22,"anchor":"start","tone":"blue"},{"note":"y0","x":120,"y":234,"text":"·","size":22,"anchor":"middle","tone":"blue"},{"note":"y1","x":160,"y":234,"text":"0","size":22,"anchor":"middle","tone":"blue"},{"note":"y2","x":200,"y":234,"text":"0","size":22,"anchor":"middle","tone":"blue"},{"note":"y3","x":240,"y":234,"text":"1","size":22,"anchor":"middle","tone":"blue"},{"note":"y4","x":280,"y":234,"text":"0","size":22,"anchor":"middle","tone":"blue"},{"note":"y5","x":320,"y":234,"text":"1","size":22,"anchor":"middle","tone":"blue"},{"note":"y6","x":360,"y":234,"text":"1","size":22,"anchor":"middle","tone":"blue"},{"note":"y7","x":400,"y":234,"text":"1","size":22,"anchor":"middle","tone":"blue"},{"note":"y8","x":440,"y":234,"text":"1","size":22,"anchor":"middle","tone":"blue"},{"note":"y9","x":480,"y":234,"text":"0","size":22,"anchor":"middle","tone":"blue"},{"note":"y10","x":520,"y":234,"text":"1","size":22,"anchor":"middle","tone":"blue"},{"note":"y11","x":560,"y":234,"text":"1","size":22,"anchor":"middle","tone":"blue"},{"pulse":"y10"}]},{"cap":"The question: once you know Y yesterday, does X yesterday tell you anything new about Y today? Before you look at X, Y today is a 50/50 guess: 1 full bit of uncertainty.","do":[{"chart":"bc","x":10,"y":262,"w":280,"h":240,"title":"Uncertainty about Y today","xd":[0.4,3.6],"yd":[0,1.25],"yt":[[0,"0"],[0.5,"0.5"],[1,"1 bit"]],"xt":[[1,"before"],[2,"know X"],[3,"TE"]],"pl":56},{"bars":"b1","chart":"bc","data":[[1,1.0,"1","blue"]],"bw":52,"ms":900}]},{"cap":"Know X yesterday and only the noise is left: the binary entropy of a 10% flip, 0.469 bits.","do":[{"bars":"b2","chart":"bc","data":[[2,0.469,"0.469","amber"]],"bw":52,"ms":900}]},{"cap":"The drop, 1 − 0.469 = 0.531 bits, is the transfer entropy from X to Y: new information X's past adds about Y's future.","do":[{"bars":"b3","chart":"bc","data":[[3,0.531,"0.531","green"]],"bw":52,"ms":900}]},{"cap":"The other way round is exactly zero. X today is a fresh coin flip, so nothing in anyone's past, Y's included, helps predict it. One way 0.531 bits, the other way 0.","do":[{"arrow":["yb","xc"],"label":"Y → X: 0 bits","tone":"red","bend":-70,"dash":true}]},{"cap":"Change the noise and the flow changes: 1 − H(ε). At a 50% flip the line carries nothing. At 90% it carries 0.531 bits again, because you can read the opposite.","do":[{"chart":"ec","x":310,"y":262,"w":280,"h":240,"title":"TE from X to Y vs flip rate","xd":[0,1],"yd":[0,1.1],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"pl":44,"pr":14},{"series":"ecs","chart":"ec","pts":[[0.0,1.0],[0.02,0.8586],[0.04,0.7577],[0.06,0.6726],[0.08,0.5978],[0.1,0.531],[0.12,0.4706],[0.14,0.4158],[0.16,0.3657],[0.18,0.3199],[0.2,0.2781],[0.22,0.2398],[0.24,0.205],[0.26,0.1733],[0.28,0.1445],[0.3,0.1187],[0.32,0.0956],[0.34,0.0752],[0.36,0.0573],[0.38,0.042],[0.4,0.029],[0.42,0.0185],[0.44,0.0104],[0.46,0.0046],[0.48,0.0012],[0.5,0.0],[0.52,0.0012],[0.54,0.0046],[0.56,0.0104],[0.58,0.0185],[0.6,0.029],[0.62,0.042],[0.64,0.0573],[0.66,0.0752],[0.68,0.0956],[0.7,0.1187],[0.72,0.1445],[0.74,0.1733],[0.76,0.205],[0.78,0.2398],[0.8,0.2781],[0.82,0.3199],[0.84,0.3657],[0.86,0.4158],[0.88,0.4706],[0.9,0.531],[0.92,0.5978],[0.94,0.6726],[0.96,0.7577],[0.98,0.8586],[1.0,1.0]],"tone":"purple","ms":1400},{"dot":"e1","chart":"ec","at":[0.1,0.531],"text":"0.531","tone":"green","dx":10,"dy":-8,"anchor":"start"},{"dot":"e5","chart":"ec","at":[0.5,0],"text":"0","tone":"red","dy":-14}]},{"cap":"Now the catch. A hidden driver, say a risk-off shock, hits market A first and market B a little later. There is no wire between A and B at all.","do":[{"icon":"drv","name":"bolt","x":260,"y":520,"s":0.6,"tone":"red","label":"hidden driver","lsize":17},{"box":"ma","x":10,"y":690,"w":170,"h":80,"text":"market A\nreacts fast","tone":"amber","size":18},{"box":"mb","x":420,"y":690,"w":170,"h":80,"text":"market B\nreacts later","tone":"blue","size":18},{"arrow":["drv","ma"],"tone":"red"},{"arrow":["drv","mb"],"tone":"red"}]},{"cap":"Yet A's past now predicts B's future, and not the reverse: a clean, one-way transfer entropy with no direct link. It measures predictive flow, never cause.","do":[{"arrow":["ma","mb"],"label":"TE > 0, no link","tone":"amber","dash":true},{"pulse":"drv"}]},{"cap":"Two more facts from the lesson. For Gaussian, linear data transfer entropy gives the same answer as Granger causality. And in 2002 Marschinski and Kantz used it on the Dow Jones and the DAX.","do":[{"hide":"ecs"},{"hide":"e1"},{"hide":"e5"},{"hide":"ec"},{"box":"g1","x":310,"y":262,"w":280,"h":110,"text":"linear + Gaussian:\nsame as Granger","tone":"purple","size":18},{"box":"g2","x":310,"y":392,"w":280,"h":110,"text":"real data: lots of\nhistory + a shuffle test","tone":"amber","size":18}]},{"cap":"The takeaway: transfer entropy tells you whose past helps predict whose future, in any shape. It does not tell you who is pushing whom.","do":[{"pulse":"b3"},{"pulse":"g2"}]}]}</script>
+      </div>
+      <!-- WB:transfer_entropy_causality:END -->
+    </section>
+    <!-- WB:transfer_entropy_causality-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">A confound can keep the reading elevated even with zero real link</h2>
       <p class="sl-sub">Drag Z's strength. The true, direct X→Y causal coefficient is fixed at exactly 0 for every position of this slider — it never moves.</p>
@@ -229,7 +242,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The message that must not get lost</h2>
       <div class="sl-compare">
@@ -257,7 +270,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Why this is much harder to compute from real data than Granger's regression</h2>
       <div class="sl-compare">
@@ -278,7 +291,7 @@
       <p class="sl-p">This lesson's worked example on the earlier slide is exact <em>by construction</em> — the process's true distributions are known, not estimated. A real, finite, noisy sample never comes with known distributions, which is precisely why a naive transfer-entropy estimator can report a spuriously large number purely from overfitting a small sample's joint density.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this sits in the literature<!-- DESK:START --> — and in this repo<!-- DESK:END --></h2>
       <p class="sl-p">Thomas Schreiber introduced transfer entropy (2000) explicitly as a model-free alternative to Granger causality for nonlinear systems. Barnett, Barrett &amp; Seth (2009) then proved the two are mathematically equivalent, up to a constant, for jointly Gaussian variables under a linear model — confirming transfer entropy is a strict generalization, adding real detection power only once the true relationship stops being linear. In neuroscience, it's a standard tool for directional flow between EEG or physiological channels, where nonlinear coupling is the norm rather than the exception.</p>
@@ -290,7 +303,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -332,7 +345,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -459,5 +472,9 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

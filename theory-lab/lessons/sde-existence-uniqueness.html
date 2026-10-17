@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Existence &amp; Uniqueness of SDE Solutions — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,67 @@
       <li>How it reached trading: it became a desk question with the square-root models, CIR (1985) and Heston (1993), whose rates or variances can touch zero; whether a fitted model is well-posed (the Feller condition) decides how it can be simulated.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three small panels, three coefficient verdicts. Left, GBM's coefficient sigma times x is a straight line with the same slope everywhere: Lipschitz constant 0.28 for drift 0.08 and volatility 0.20, so both conditions pass and a unique solution exists. Middle, the CIR square-root coefficient rises vertically out of zero: its slope is infinite at zero, so it fails the Lipschitz condition and needs the Yamada-Watanabe theorem instead. Right, the equation dX/dt equals X squared starting from 1 has solution 1 over 1 minus t, which shoots to infinity at t equals 1: it fails linear growth and no solution exists past t equals 1.">
+      <text class="tlp-green" x="105" y="28" text-anchor="middle" font-size="14" font-weight="700">GBM: σ(x) = σx</text>
+      <text class="tlp-amber" x="300" y="28" text-anchor="middle" font-size="14" font-weight="700">CIR: σ(x) = σ√x</text>
+      <text class="tlp-red" x="495" y="28" text-anchor="middle" font-size="14" font-weight="700">dX/dt = X²</text>
+      <line class="tlp-line" x1="30" y1="170" x2="185" y2="170"/>
+      <line class="tlp-line" x1="30" y1="50" x2="30" y2="170"/>
+      <line class="tlp-line" x1="225" y1="170" x2="380" y2="170"/>
+      <line class="tlp-line" x1="225" y1="50" x2="225" y2="170"/>
+      <line class="tlp-line" x1="420" y1="170" x2="580" y2="170"/>
+      <line class="tlp-line" x1="420" y1="50" x2="420" y2="170"/>
+      <line class="tlp-line green thick" x1="30" y1="170" x2="180" y2="60"/>
+      <polyline class="tlp-line amber thick" points="225.0,170.0 225.1,167.5 225.3,165.1 225.8,162.2 226.5,159.0 228.0,154.4 231.0,148.0 235.5,140.9 240.0,135.2 247.5,127.4 255.0,120.8 270.0,109.8 285.0,100.4 300.0,92.2 315.0,84.8 330.0,78.0 345.0,71.6 360.0,65.6 375.0,60.0"/>
+      <polyline class="tlp-line red thick" points="420.0,159.0 429.0,158.3 438.0,157.5 447.0,156.6 456.0,155.5 465.0,154.3 474.0,152.8 483.0,151.0 492.0,148.8 501.0,146.1 510.0,142.5 519.0,137.6 528.0,130.7 532.5,126.0 537.0,120.0 541.5,112.1 546.0,101.3 550.5,85.4 555.0,60.0"/>
+      <line class="tlp-line red dash" x1="570" y1="48" x2="570" y2="170"/>
+      <text class="tlp-text2" x="112" y="150" font-size="12">slope K = 0.28,</text>
+      <text class="tlp-text2" x="112" y="164" font-size="12">everywhere</text>
+      <text class="tlp-amber" x="234" y="60" font-size="12" font-weight="700">slope → ∞ at 0</text>
+      <text class="tlp-red" x="534" y="52" text-anchor="end" font-size="12" font-weight="700">→ ∞</text>
+      <text class="tlp-text3" x="185" y="186" text-anchor="end" font-size="12">level x →</text>
+      <text class="tlp-text3" x="380" y="186" text-anchor="end" font-size="12">level x →</text>
+      <text class="tlp-text3" x="420" y="186" font-size="12">time t →</text>
+      <text class="tlp-red" x="570" y="186" text-anchor="middle" font-size="12" font-weight="700">t = 1</text>
+      <text class="tlp-green" x="105" y="206" text-anchor="middle" font-size="13" font-weight="700">passes both</text>
+      <text class="tlp-text2" x="105" y="223" text-anchor="middle" font-size="12">one unique solution</text>
+      <text class="tlp-amber" x="300" y="206" text-anchor="middle" font-size="13" font-weight="700">fails Lipschitz at 0</text>
+      <text class="tlp-text2" x="300" y="223" text-anchor="middle" font-size="12">Yamada–Watanabe covers it</text>
+      <text class="tlp-red" x="495" y="206" text-anchor="middle" font-size="13" font-weight="700">fails linear growth</text>
+      <text class="tlp-text2" x="495" y="223" text-anchor="middle" font-size="12">no solution past t = 1</text>
+    </svg>
+    <figcaption>Writing an SDE down does not make a solution exist. A coefficient with a bounded slope and no faster-than-linear growth gets exactly one solution. A vertical slope at zero needs a more careful theorem, and superlinear growth can end the solution at a finite time.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Every model we use is a stochastic differential equation. Drift plus noise. Why would I ever worry whether one has a solution?</p>
+      <p data-who="Quant">Because writing an equation down doesn't make it true. It might have no solution at all, or more than one. Either way, your Monte Carlo prices are noise.</p>
+      <p data-who="Trader">So how do you know it's safe?</p>
+      <p data-who="Quant">The standard theorem asks two things of the drift and the volatility. First, a bounded slope: they can't change faster than some fixed multiple of the change in the level. That rules out two different solutions from the same start.</p>
+      <p data-who="Trader">And the second?</p>
+      <p data-who="Quant">No faster-than-straight-line growth. As the level gets big, the coefficients can grow at most in proportion to it. That stops the solution racing off to infinity before your time horizon.</p>
+      <p data-who="Trader">Does the Black-Scholes model pass?</p>
+      <p data-who="Quant">Easily. Its drift and volatility are both a fixed percentage of the price. Take eight percent drift and twenty percent volatility. The constant is just the two added: zero point two eight, the same everywhere.</p>
+      <p data-who="Trader">Give me the growth check.</p>
+      <p data-who="Quant">At a price of one hundred, the two coefficients add up to eight plus twenty, so twenty-eight. The bound is zero point two eight times one hundred and one, which is twenty-eight point two eight. Twenty-eight is under it. Passed.</p>
+      <p data-who="Trader">So where does it break?</p>
+      <p data-who="Quant">The square-root volatility in the Cox, Ingersoll and Ross rate model. The square root rises vertically out of zero. Its slope there is infinite, so no fixed constant can bound it. The standard theorem simply doesn't apply.</p>
+      <p data-who="Trader">But everyone uses that model.</p>
+      <p data-who="Quant">Right, and that's the point. Yamada and Watanabe proved a weaker theorem in 1971 that covers exactly this square-root shape. Failing the first check means use the more careful theorem, not throw the model away.</p>
+      <p data-who="Trader">And the growth condition? What happens if that fails?</p>
+      <p data-who="Quant">Something much worse. Take an equation where the rate of change is the level squared, starting at one. The exact answer is one over one minus time. At time one it hits infinity, and after that there is no solution at all, by any method.</p>
+      <p data-who="Trader">Does this ever come up on a real desk?</p>
+      <p data-who="Quant">Every time someone proposes a new model. Heston's variance is a square-root process too, and Heston parameters fitted to real smiles often break the Feller condition, which decides whether the variance can hit zero. That's why special simulation schemes exist.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Before you trust a simulation, check that the equation has exactly one solution to simulate.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -127,6 +189,31 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the theorem build</div>
+    <div class="tl-eqbuild-title">From an SDE to a guaranteed unique solution, one piece at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ dX_t = \color{#fbbf24}{\mu(X_t,t)\,dt} \]</div>
+      <p>Start with the drift: how the process moves on average, which may depend on its own level and on time.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ dX_t = \mu(X_t,t)\,dt + \color{#fbbf24}{\sigma(X_t,t)\,dW_t} \]</div>
+      <p>Add the noise. Now the question is whether any process satisfies this, and whether only one does.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{|\mu(x,t)-\mu(y,t)| + |\sigma(x,t)-\sigma(y,t)| \le K|x-y|} \]</div>
+      <p>Condition one, Lipschitz: the coefficients cannot change faster than \(K\) times the change in level. This rules out two solutions from one start.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{|\mu(x,t)| + |\sigma(x,t)| \le K(1+|x|)} \]</div>
+      <p>Condition two, linear growth, with the same \(K\): no faster than a straight line far out. This rules out a race to infinity before \(T\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{both hold} \;\Rightarrow\; \color{#10b981}{\text{a unique strong solution on } [0,T]} \]</div>
+      <p>For GBM with \(\mu = 0.08\), \(\sigma = 0.20\), both hold with \(K = 0.28\). The square root fails condition one at zero; \(dX/dt = X^2\) fails condition two.</p>
+    </div>
+  </div>
+
   <p>
     Start from the general form every SDE in this curriculum is a special
     case of:
@@ -372,6 +459,10 @@
       constant \(K\), the growth-condition left- and right-hand sides, and
       whether the condition holds all recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="0.28" data-tol="0.01">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At \(x = 100\) the two sides of the growth check are 28 and 28.28, a margin of 0.28. Move the point out to \(x = 1000\), keeping \(\mu = 0.08\) and \(\sigma = 0.20\). How big is the margin between \(K(1+|x|)\) and \(|\mu x|+|\sigma x|\) now? Lock in a guess, then set \(x\) to 1000 below and subtract the two readouts.</div>
+      <div class="tl-predict-reveal"><p><strong>0.28, exactly as before.</strong> The left side is \(0.28 \times 1000 = 280\) and the right side is \(0.28 \times 1001 = 280.28\). For linear coefficients the margin is always just \(K\), the "+1" in the bound, however far out you go. Now try \(\sigma = -0.20\): \(K\) uses absolute values, so nothing changes.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Drift \(\mu\)</span></div>
@@ -421,6 +512,12 @@
       GBM with an extra exponent."
     </p>
   </div>
+
+  <!-- WB:sde_existence_uniqueness:START -->
+  <div class="wb" id="wb-sde_existence_uniqueness" data-title="When an SDE has one solution, none or many, step by step">
+    <script type="application/json">{"w":600,"h":620,"intro":"Two conditions decide whether an SDE has exactly one solution. Here is each one passing, then each one failing, with the lesson's own examples. Press play, or step through.","steps":[{"cap":"Every model in this sequence is an SDE: drift plus noise. Writing one down does not prove that any process satisfies it, or that only one does.","do":[{"box":"sde","x":100,"y":14,"w":400,"h":70,"text":"dX = μ(X,t) dt + σ(X,t) dW","tone":"blue","size":21}]},{"cap":"Condition one, Lipschitz: the coefficients cannot change faster than a fixed multiple K of the change in level. No infinitely steep hills. It rules out two solutions from one start.","do":[{"box":"lip","x":20,"y":110,"w":270,"h":100,"text":"Lipschitz\nslope ≤ K","tone":"green","size":20}]},{"cap":"Condition two, linear growth: far out, the coefficients grow no faster than a straight line. No unlimited horsepower. It rules out a race to infinity before your horizon.","do":[{"box":"grow","x":310,"y":110,"w":270,"h":100,"text":"linear growth\n≤ K(1 + |x|)","tone":"amber","size":20}]},{"cap":"GBM passes both. With 8% drift and 20% volatility its coefficients are 0.08x and 0.20x: straight lines, slope K = 0.28 everywhere. At x = 100 they add to 28, under the bound 0.28 × 101 = 28.28.","do":[{"chart":"g","x":10,"y":250,"w":580,"h":350,"title":"GBM coefficients: straight lines, slope K = 0.28","xd":[0,100],"yd":[0,30],"yt":[[0,"0"],[10,"10"],[20,"20"],[30,"30"]],"xt":[[0,"x = 0"],[50,"50"],[100,"100"]],"pl":50,"pr":30},{"series":"sum","chart":"g","pts":[[0,0],[100,28]],"tone":"green","ms":1200,"label":"|μx| + |σx| = 28","lat":[100,28],"ldx":-6,"ldy":-16,"lanchor":"end","lsize":16},{"series":"bound","chart":"g","pts":[[0,0.28],[100,28.28]],"tone":"amber","dash":true,"ms":900},{"pulse":"lip"},{"pulse":"grow"}]},{"cap":"Now the square root behind the CIR rate model, σ√x. Near zero it rises straight up. Its slope between 0 and ε is σ ÷ √ε: 10σ at ε = 0.01, 100σ at 0.0001, 1000σ at 0.000001. No fixed K can bound that.","do":[{"hide":"g"},{"hide":"sum"},{"hide":"bound"},{"chart":"sq","x":10,"y":250,"w":580,"h":350,"title":"Slope of √x between 0 and ε (× σ)","xd":[0.4,3.6],"yd":[0,1100],"yt":[[0,"0"],[500,"500"],[1000,"1000"]],"xt":[[1,"ε = 0.01"],[2,"0.0001"],[3,"0.000001"]],"pl":58,"pr":16},{"bars":"sqb","chart":"sq","data":[[1,10,"10σ","amber"],[2,100,"100σ","amber"],[3,1000,"1000σ","amber"]],"bw":70,"ms":1200},{"cross":"lip"}]},{"cap":"Why it matters: a vertical slope is what lets two solutions share a start. In the ODE dx/dt = √|x| from x = 0, both x = 0 forever and x = t²/4 satisfy the equation. Nothing picks one.","do":[{"hide":"sq"},{"hide":"sqb"},{"chart":"nu","x":10,"y":250,"w":580,"h":350,"title":"dx/dt = √|x|, x(0) = 0: two solutions","xd":[0,4],"yd":[0,4.4],"yt":[[0,"0"],[2,"2"],[4,"4"]],"xt":[[0,"0"],[2,"t = 2"],[4,"4"]],"pl":46,"pr":16},{"series":"z","chart":"nu","pts":[[0,0],[4,0]],"tone":"blue","ms":900,"label":"x = 0","lat":[3.6,0],"ldy":-16,"lsize":16},{"series":"p","chart":"nu","pts":[[0.0,0.0],[0.25,0.0156],[0.5,0.0625],[0.75,0.1406],[1.0,0.25],[1.25,0.3906],[1.5,0.5625],[1.75,0.7656],[2.0,1.0],[2.25,1.2656],[2.5,1.5625],[2.75,1.8906],[3.0,2.25],[3.25,2.6406],[3.5,3.0625],[3.75,3.5156],[4.0,4.0]],"tone":"amber","ms":1200,"label":"x = t²/4","lat":[4,4],"ldx":-8,"ldy":0,"lanchor":"end","lsize":16}]},{"cap":"CIR is still a standard model. Yamada and Watanabe (1971) proved a weaker theorem that covers exactly this square-root shape. Failing Lipschitz means use the more careful theorem, not drop the model.","do":[{"note":"yw","x":300,"y":232,"text":"square root: Yamada–Watanabe (1971) covers it","size":19,"anchor":"middle","tone":"green"}]},{"cap":"Break growth instead and it is worse. dX/dt = X², starting at 1, has the exact solution X = 1/(1 − t): 2 at t = 0.5, 10 at t = 0.9, 20 at t = 0.95.","do":[{"hide":"nu"},{"hide":"z"},{"hide":"p"},{"hide":"yw"},{"chart":"bl","x":10,"y":250,"w":580,"h":350,"title":"dX/dt = X², X(0) = 1: X = 1/(1 − t)","xd":[0,1.05],"yd":[0,22],"yt":[[0,"0"],[10,"10"],[20,"20"]],"xt":[[0,"0"],[0.5,"0.5"],[1,"t = 1"]],"pl":46,"pr":16},{"series":"bx","chart":"bl","pts":[[0,1.0],[0.2,1.25],[0.4,1.667],[0.5,2.0],[0.6,2.5],[0.7,3.333],[0.75,4.0],[0.8,5.0],[0.85,6.667],[0.88,8.333],[0.9,10.0],[0.92,12.5],[0.94,16.667],[0.95,20.0]],"tone":"red","ms":1600},{"dot":"b9","chart":"bl","at":[0.9,10],"text":"10","tone":"red","dx":-10,"dy":0,"anchor":"end"},{"dot":"b95","chart":"bl","at":[0.95,20],"text":"20","tone":"red","dx":-10,"dy":0,"anchor":"end"},{"cross":"grow"}]},{"cap":"At t = 1 it reaches infinity, and after that there is no solution at all, for any method. Not hard to simulate: the road itself ends.","do":[{"series":"wall","chart":"bl","pts":[[1,0],[1,22]],"tone":"red","dash":true,"ms":700,"label":"no solution past t = 1","lat":[1,22],"ldx":-8,"ldy":8,"lanchor":"end","lsize":16}]},{"cap":"On a desk this is a pre-flight check. Heston's variance is a square-root process too, and Heston parameters fitted to real smiles often break the Feller condition, which decides whether the variance can reach zero. That is why schemes such as Andersen's (2008) exist.","do":[{"hide":"sde"},{"hide":"lip"},{"hide":"grow"},{"box":"desk","x":60,"y":30,"w":480,"h":120,"text":"new model?\n1. one solution?  2. stays positive?\n3. finite moments?","tone":"purple","size":19}]},{"cap":"The rule: before trusting a simulation, check that the equation has exactly one solution to simulate. A clean run proves nothing about that.","do":[{"note":"rule","x":300,"y":205,"text":"one solution first, then simulate","size":22,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:sde_existence_uniqueness:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -492,6 +589,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative model review</div>
+    <h3>A new local-volatility model that "looks like GBM"</h3>
+    <p>A colleague proposes an FX local-volatility model with diffusion coefficient \(\sigma(x) = \sigma_0 x^{1.5}\), to fit the smile harder at high spot levels. Its Monte Carlo ran overnight without errors and the prices look sensible. It is locally Lipschitz away from zero, but it grows faster than a straight line as spot rises. You sign off model validation. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Approve it. The simulation ran cleanly and it is GBM with a slightly bigger exponent.<div class="tl-drill-why">A fixed-step scheme can step straight over a blow-up and still print plausible paths. Well-posedness is a property of the continuous-time equation, not of one run, and this coefficient breaks the growth condition the standard theorem needs.</div></li>
+      <li data-verdict="good">Hold approval until someone shows the process cannot explode in finite time for these parameters, or cites a result that does.<div class="tl-drill-why">This is the gate the lesson describes. Failing linear growth means the textbook guarantee does not cover the model, so a separate non-explosion argument is real due diligence, not a formality.</div></li>
+      <li data-verdict="bad">Reject it outright. Any model that fails a condition of the theorem is broken.<div class="tl-drill-why">Failing a sufficient condition does not prove failure. The CIR square root fails Lipschitz and is still a standard, well-posed model under a more careful theorem. The right response is a more careful check.</div></li>
+      <li data-verdict="ok">Cap the exponent so the coefficient turns linear above some spot level, then approve.<div class="tl-drill-why">Capping does restore linear growth, so the standard theorem applies. But it is a different model from the one that was fitted, and the smile at high spot, the reason for the change, now needs refitting and rechecking.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What this teaches.</strong> This drill is illustrative, based on the lesson's own scenario, not a real episode. The real-world version of the check is routine: model validation asks whether a new model is well-posed, stays positive and has finite moments before it is used, and square-root models such as CIR and Heston are exactly where the answer depends on the fitted parameters.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -547,6 +657,26 @@
     <li><code>short-rate-models-vasicek-cir-hull-white.html</code>, next-but-one in this sequence — where the CIR square-root diffusion introduced here is built into a full short-rate model.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="ito-lemma.html">Itô's Lemma</a> <span>· the calculus that assumes a solution already exists</span></li>
+        <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> <span>· the GBM model that passes both checks</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="sde-numerical-schemes.html">Numerical Schemes: Euler-Maruyama &amp; Milstein</a> <span>· simulating a model once it is well-posed</span></li>
+        <li><a href="short-rate-models-vasicek-cir-hull-white.html">Short-Rate Models: Vasicek, CIR &amp; Hull-White</a> <span>· the square-root model and its Feller condition</span></li>
+        <li><a href="heston-model.html">The Heston Model</a> <span>· a square-root variance that fitted parameters often push to zero</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a Monte Carlo price is only meaningful if the model behind it defines exactly one path for each draw of noise.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
@@ -626,6 +756,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

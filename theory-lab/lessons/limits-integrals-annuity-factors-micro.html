@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Limits, Integrals &amp; Annuity Factors — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -247,7 +248,19 @@
       <div class="sl-quote">Duration answers one question: if the yield wiggled by a tiny amount, how much would the bond's price wiggle in response? It's a speedometer reading — the "road" is yield, the "distance traveled" is price. Differentiating the pricing formula is reading that speedometer directly off the math instead of guessing.</div>
     </section>
 
+    <!-- WB:limits_integrals_annuity_factors-deck:START -->
     <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">From a stream of dollars to a limit and a duration</h2>
+      <!-- WB:limits_integrals_annuity_factors:START -->
+      <div class="wb" data-title="From a stream of dollars to a limit and a duration">
+        <script type="application/json">{"w":600,"h":770,"intro":"One dollar a year for five years, at 4%. Watch it become one number, then a limit, then a duration. Press play, or step through.","steps":[{"cap":"Start with a stream: $1 at the end of each of the next five years. The yield is 4%. What is the whole stream worth today?","do":[{"icon":"c1","name":"coin","x":18,"y":8,"s":0.44,"tone":"amber","label":"yr 1","sym":"$","lsize":16},{"icon":"c2","name":"coin","x":90,"y":8,"s":0.44,"tone":"amber","label":"yr 2","sym":"$","lsize":16},{"icon":"c3","name":"coin","x":162,"y":8,"s":0.44,"tone":"amber","label":"yr 3","sym":"$","lsize":16},{"icon":"c4","name":"coin","x":234,"y":8,"s":0.44,"tone":"amber","label":"yr 4","sym":"$","lsize":16},{"icon":"c5","name":"coin","x":306,"y":8,"s":0.44,"tone":"amber","label":"yr 5","sym":"$","lsize":16}]},{"cap":"Bring each dollar back to today by dividing by 1.04 once for every year you wait. Year 1 is worth 0.9615, year 5 only 0.8219. Each bar is the one before, divided by 1.04: a geometric series.","do":[{"chart":"df","x":10,"y":92,"w":360,"h":228,"title":"Each $1, worth today","xd":[0.4,5.6],"yd":[0,1.18],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"pl":40,"pr":12},{"bars":"dfb","chart":"df","data":[[1,0.9615,"0.96","blue"],[2,0.9246,"0.92","blue"],[3,0.889,"0.89","blue"],[4,0.8548,"0.85","blue"],[5,0.8219,"0.82","blue"]],"bw":34,"ms":1300}]},{"cap":"Add the five bars: 0.9615 + 0.9246 + 0.8890 + 0.8548 + 0.8219 = 4.4518. That one number is the annuity factor. Multiply any level payment by it to get its value today.","do":[{"box":"A","x":388,"y":112,"w":202,"h":92,"text":"annuity factor\nA(5, 4%)","tone":"purple","sub":"0","size":18},{"count":"A","from":0,"to":4.4518,"dp":4,"ms":1300}]},{"cap":"No need to add terms one by one. Multiply the series by 1.04, subtract the original, and every middle term cancels: A = (1 − 1.04⁻⁵) ÷ 0.04 = 4.4518. Same number, in three lines of algebra.","do":[{"note":"cf","x":489,"y":238,"text":"A = (1 − 1.04⁻⁵) ÷ 0.04","size":18,"anchor":"middle","tone":"purple"},{"note":"cf2","x":489,"y":270,"text":"= 0.17807 ÷ 0.04","size":18,"anchor":"middle","tone":"purple"}]},{"cap":"Now let the stream run longer at the same 4%. Ten years is worth 8.11, twenty years 13.59, fifty years 21.48. Each extra year adds a smaller discounted dollar.","do":[{"chart":"perp","x":10,"y":334,"w":580,"h":196,"title":"Value of $1 a year, n years, at 4%","xd":[0,150],"yd":[0,28],"yt":[[0,"0"],[25,"25"]],"xt":[[0,"0"],[50,"50"],[100,"100"],[150,"150"]],"pl":40,"pr":16},{"series":"pc","chart":"perp","pts":[[1,0.962],[2,1.886],[3,2.775],[4,3.63],[5,4.452],[6,5.242],[7,6.002],[8,6.733],[9,7.435],[10,8.111],[11,8.76],[12,9.385],[13,9.986],[14,10.563],[15,11.118],[16,11.652],[17,12.166],[18,12.659],[19,13.134],[20,13.59],[21,14.029],[22,14.451],[23,14.857],[24,15.247],[25,15.622],[26,15.983],[27,16.33],[28,16.663],[29,16.984],[30,17.292],[31,17.588],[32,17.874],[33,18.148],[34,18.411],[35,18.665],[36,18.908],[37,19.143],[38,19.368],[39,19.584],[40,19.793],[41,19.993],[42,20.186],[43,20.371],[44,20.549],[45,20.72],[46,20.885],[47,21.043],[48,21.195],[49,21.341],[50,21.482],[51,21.617],[52,21.748],[53,21.873],[54,21.993],[55,22.109],[56,22.22],[57,22.327],[58,22.43],[59,22.528],[60,22.623],[61,22.715],[62,22.803],[63,22.887],[64,22.969],[65,23.047],[66,23.122],[67,23.194],[68,23.264],[69,23.33],[70,23.395],[71,23.456],[72,23.516],[73,23.573],[74,23.628],[75,23.68],[76,23.731],[77,23.78],[78,23.827],[79,23.872],[80,23.915],[81,23.957],[82,23.997],[83,24.036],[84,24.073],[85,24.109],[86,24.143],[87,24.176],[88,24.207],[89,24.238],[90,24.267],[91,24.295],[92,24.323],[93,24.349],[94,24.374],[95,24.398],[96,24.421],[97,24.443],[98,24.465],[99,24.485],[100,24.505],[101,24.524],[102,24.542],[103,24.56],[104,24.577],[105,24.593],[106,24.609],[107,24.624],[108,24.638],[109,24.652],[110,24.666],[111,24.678],[112,24.691],[113,24.703],[114,24.714],[115,24.725],[116,24.736],[117,24.746],[118,24.756],[119,24.765],[120,24.774],[121,24.783],[122,24.791],[123,24.799],[124,24.807],[125,24.814],[126,24.821],[127,24.828],[128,24.835],[129,24.841],[130,24.847],[131,24.853],[132,24.859],[133,24.864],[134,24.87],[135,24.875],[136,24.879],[137,24.884],[138,24.888],[139,24.893],[140,24.897],[141,24.901],[142,24.905],[143,24.908],[144,24.912],[145,24.915],[146,24.919],[147,24.922],[148,24.925],[149,24.928],[150,24.93]],"tone":"purple","ms":1800},{"dot":"p10","chart":"perp","at":[10,8.111],"text":"10 yrs: 8.11","tone":"blue","dx":8,"dy":4,"anchor":"start"},{"dot":"p50","chart":"perp","at":[50,21.482],"text":"50 yrs: 21.48","tone":"blue","dx":4,"dy":22,"anchor":"start"}]},{"cap":"Push n towards infinity and (1.04)⁻ⁿ shrinks to zero, so the value closes in on 1 ÷ 0.04 = 25, the value of $1 a year forever. 150 years already gives 24.93. It never crosses 25: that approach without arrival is a limit.","do":[{"series":"pl","chart":"perp","pts":[[0,25],[150,25]],"tone":"green","dash":true,"ms":700,"label":"perpetuity 1/y = 25","lat":[150,25],"ldx":-4,"ldy":-14,"lanchor":"end"},{"dot":"p150","chart":"perp","at":[150,24.93],"text":"","tone":"green"}]},{"cap":"Now hold the five years fixed and move the yield instead. The value falls as the yield rises, along a gently curved line. At 4% it is 4.4518.","do":[{"chart":"py","x":10,"y":546,"w":580,"h":214,"title":"A(5, y) as the yield moves","xd":[0.03,0.1],"yd":[3.65,4.62],"yt":[[4,"4.0"],[4.5,"4.5"]],"xt":[[0.04,"4%"],[0.06,"6%"],[0.08,"8%"],[0.1,"10%"]],"pl":48,"pr":16},{"series":"pyc","chart":"py","pts":[[0.03,4.5797],[0.035,4.5151],[0.04,4.4518],[0.045,4.39],[0.05,4.3295],[0.055,4.2703],[0.06,4.2124],[0.065,4.1557],[0.07,4.1002],[0.075,4.0459],[0.08,3.9927],[0.085,3.9406],[0.09,3.8897],[0.095,3.8397],[0.1,3.7908]],"tone":"chalk","ms":1400},{"dot":"y4","chart":"py","at":[0.04,4.4518],"text":"4.45 at 4%","tone":"amber","dx":8,"dy":-16,"anchor":"start"}]},{"cap":"Join 4% to 8%, a 400 basis-point gap, with a straight line. Its slope, −11.48, is the average fall in value per unit of yield over that gap. Honest, but not yet the derivative.","do":[{"series":"sec","chart":"py","pts":[[0.03,4.5666],[0.1,3.7632]],"tone":"blue","ms":900},{"dot":"y8","chart":"py","at":[0.08,3.9927],"text":"secant: −11.48","tone":"blue","dx":-8,"dy":-20,"anchor":"end"}]},{"cap":"Shrink the gap. As it heads to zero the line rotates onto the tangent, whose slope is the exact derivative: −12.51. Bump ±10bp and reprice, and you already get −12.506.","do":[{"dim":"sec"},{"dim":"y8"},{"series":"tan","chart":"py","pts":[[0.03,4.5769],[0.1,3.7015]],"tone":"purple","dash":true,"ms":800},{"note":"tl","x":330,"y":724,"text":"tangent: −12.51","size":18,"anchor":"middle","tone":"purple"}]},{"cap":"Divide by the value and flip the sign: 12.506 ÷ 4.4518 = 2.809 years. That is modified duration: not a separate formula, just this annuity, differentiated.","do":[{"box":"D","x":388,"y":240,"w":202,"h":76,"text":"modified duration","tone":"green","sub":"0","size":18},{"hide":"cf"},{"hide":"cf2"},{"count":"D","from":0,"to":2.809,"dp":3,"suf":" years","ms":1200}]},{"cap":"Desks put it to work as DV01. A $10 million short in a note with duration 8.50 moves $8,500 per basis point. At an illustrative $85 per futures contract, buy 100 contracts to go flat.","do":[{"box":"dv","x":388,"y":112,"w":202,"h":92,"text":"DV01 hedge","tone":"amber","sub":"8,500 ÷ 85 = 100","size":18},{"hide":"A"}]},{"cap":"One caution: the tangent is straight and the curve is not. Far from 4% the two pull apart, so a duration hedge is exact only for small moves. The bend that duration ignores is convexity.","do":[{"pulse":"tan"},{"pulse":"pyc"}]}]}</script>
+      </div>
+      <!-- WB:limits_integrals_annuity_factors:END -->
+    </section>
+    <!-- WB:limits_integrals_annuity_factors-deck:END -->
+
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">DV01: duration, scaled into dollars</h2>
       <p class="sl-sub">DV01 = P × D<sub>mod</sub> × 0.0001 — the dollar price change for a 1 basis-point yield move. Change the inputs, live.</p>
@@ -271,7 +284,7 @@
       <p class="sl-p">A rates desk has sold (gone short) $10,000,000 face of a 10-year note priced near par, D<sub>mod</sub> = 8.50 years. DV01<sub>position</sub> = 10,000,000 × 8.50 × 0.0001 = <strong>$8,500 per basis point</strong>. If the 10-year futures contract carries a DV01 of roughly $85, the hedge ratio is 8,500 ÷ 85 = <strong>100 contracts</strong> long — a specific number derived from the exact derivative above, not a guess.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Every fixed-income formula, wearing a trading-desk name</h2>
       <div class="sl-quote">Duration, convexity, DV01, the annuity factor itself, and forward-rate extraction from a yield curve — every one of them is a limit, a derivative, or an integral, just dressed up in trading-desk vocabulary. Even the instantaneous forward rate, f(t) = d/dt[t·r(t)] = r(t) + t·r'(t), is nothing but the derivative of a fitted yield curve's cumulative yield.</div>
@@ -283,7 +296,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -334,7 +347,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -513,5 +526,9 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

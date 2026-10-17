@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Glosten-Milgrom: Sequential Bayesian Market Making — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,56 @@
       <li><strong>How it reached trading:</strong> Glosten &amp; Milgrom (1985), alongside Kyle (1985), made adverse selection a priced part of the spread, which is the logic behind how dealers price "toxic" flow and widen into announcements today.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A hump-shaped curve of the quoted spread against the market maker's belief that the asset is worth the high value, with 30 percent informed traders. The spread is widest, 3.00, at a belief of 0.5 and falls to zero at beliefs of 0 and 1. The worked sequence is marked: the opening quote at 3.00, a buy moves belief to 0.65 and the spread to 2.75, a second buy moves belief to 0.7752 and the spread to 2.15, and a sell moves it back to 0.65 and 2.75. With no informed traders the spread would be zero everywhere.">
+      <line class="tlp-line" x1="60" y1="200" x2="560" y2="200"/>
+      <line class="tlp-line" x1="60" y1="30" x2="60" y2="200"/>
+      <polyline class="tlp-line purple thick" points="60.0,200.0 70.0,187.2 80.0,175.1 90.0,163.6 100.0,152.8 110.0,142.7 120.0,133.2 130.0,124.2 140.0,115.9 150.0,108.1 160.0,100.8 170.0,94.0 180.0,87.8 190.0,82.1 200.0,76.9 210.0,72.2 220.0,67.9 230.0,64.1 240.0,60.8 250.0,57.9 260.0,55.5 270.0,53.5 280.0,52.0 290.0,50.9 300.0,50.2 310.0,50.0 320.0,50.2 330.0,50.9 340.0,52.0 350.0,53.5 360.0,55.5 370.0,57.9 380.0,60.8 390.0,64.1 400.0,67.9 410.0,72.2 420.0,76.9 430.0,82.1 440.0,87.8 450.0,94.0 460.0,100.8 470.0,108.1 480.0,115.9 490.0,124.2 500.0,133.2 510.0,142.7 520.0,152.8 530.0,163.6 540.0,175.1 550.0,187.2 560.0,200.0"/>
+      <circle class="tlp-blue" cx="310" cy="50" r="6.5"/>
+      <circle class="tlp-green" cx="385" cy="62.4" r="6.5"/>
+      <circle class="tlp-green" cx="447.6" cy="92.5" r="6.5"/>
+      <text class="tlp-blue" x="310" y="36" text-anchor="middle" font-size="14" font-weight="700">open: 3.00</text>
+      <text class="tlp-green" x="397" y="54" font-size="13" font-weight="700">buy: 2.75</text>
+      <text class="tlp-green" x="462" y="86" font-size="13" font-weight="700">buy: 2.15</text>
+      <text class="tlp-red" x="385" y="88" text-anchor="end" font-size="13" font-weight="700">sell: back to 2.75</text>
+      <text class="tlp-text2" x="310" y="150" text-anchor="middle" font-size="13">widest at most doubt</text>
+      <text class="tlp-amber" x="310" y="190" text-anchor="middle" font-size="13" font-weight="700">no informed traders: spread 0</text>
+      <line class="tlp-line amber dash" x1="60" y1="198" x2="560" y2="198"/>
+      <text class="tlp-text3" x="66" y="34" font-size="12">spread ↑</text>
+      <text class="tlp-text3" x="60" y="216" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="310" y="216" text-anchor="middle" font-size="12">0.5</text>
+      <text class="tlp-text3" x="560" y="216" text-anchor="middle" font-size="12">1</text>
+      <text class="tlp-text3" x="560" y="232" text-anchor="end" font-size="12">belief δ that the value is high →</text>
+    </svg>
+    <figcaption>With 30% informed flow, the spread is widest, 3.00, when the market maker is most unsure. Two buys tighten it to 2.75, then 2.15; a contrary sell widens it back to 2.75. With no informed traders there is no spread at all.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Why does a dealer quote a gap between bid and ask at all? Say they have no inventory problem and no fees.</p>
+      <p data-who="Quant">Because some of the people they trade with know more than they do. Glosten and Milgrom showed in 1985 that this alone is enough to force a spread.</p>
+      <p data-who="Trader">Walk me through it.</p>
+      <p data-who="Quant">The asset is worth either a hundred and five or ninety-five. The dealer doesn't know which. Orders arrive one at a time. Thirty percent come from informed traders, who buy only if it's worth a hundred and five and sell only if it's ninety-five. The rest are noise traders who buy or sell at random.</p>
+      <p data-who="Trader">And the dealer can't tell them apart.</p>
+      <p data-who="Quant">No. But a buy is still a clue. If the value is high, a buy turns up sixty-five percent of the time. If it's low, only thirty-five percent. So every buy nudges the dealer's belief up, and every sell nudges it down. That's just Bayes' rule.</p>
+      <p data-who="Trader">How does that become a price?</p>
+      <p data-who="Quant">The dealer sets the ask at what the asset is worth if the next order is a buy, and the bid at what it's worth if it's a sell. Starting from fifty-fifty, that's an ask of one hundred and one fifty and a bid of ninety-eight fifty. A spread of three.</p>
+      <p data-who="Trader">Three is thirty percent of the ten-point gap.</p>
+      <p data-who="Quant">Exactly. At fifty-fifty, the spread is the informed share times the gap. Set the informed share to zero and a buy tells you nothing, so the spread is zero. The whole spread is insurance against being picked off.</p>
+      <p data-who="Trader">And then the trades start.</p>
+      <p data-who="Quant">A buy arrives. Belief rises to sixty-five percent and the dealer requotes. The spread narrows to two seventy-five, because there's less left to be unsure about. Another buy, and it narrows to two fifteen. Then a sell, contrary evidence, and it widens back to two seventy-five.</p>
+      <p data-who="Trader">So spreads breathe with the evidence.</p>
+      <p data-who="Quant">They do. And that gives a real prediction. Before a central bank decision, more of the flow is trading on a view of the outcome, so dealers widen. Straight after, the first wave of trades is one-sided, belief settles fast, and spreads compress, often within minutes.</p>
+      <p data-who="Trader">How is this different from Kyle's lambda?</p>
+      <p data-who="Quant">Kyle is about size: bigger orders move price more. Glosten-Milgrom has no size at all. It explains why there's a gap for any order, even the smallest.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Every order is a clue, and the spread is the price of not knowing who sent it.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters — and why it isn't Kyle's Lambda again</h2>
@@ -161,6 +212,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the opening spread comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P(\text{buy}\mid V_H) = \color{#fbbf24}{\mu\cdot 1} + (1-\mu)\cdot\tfrac12 = 0.65 \]</div>
+      <p>If the value is high, informed traders always buy and noise traders buy half the time. With \(\mu = 0.3\) that is 0.65.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P(\text{buy}\mid V_L) = \color{#fbbf24}{\mu\cdot 0} + (1-\mu)\cdot\tfrac12 = 0.35 \]</div>
+      <p>If the value is low, informed traders never buy, so only noise traders do. The gap between 0.65 and 0.35 is what makes a buy a clue.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P(V_H \mid \text{buy}) = \frac{P(\text{buy}\mid V_H)\,\color{#fbbf24}{\delta}}{P(\text{buy})} = \frac{0.65(0.5)}{0.500} = 0.65 \]</div>
+      <p>Bayes' rule, with the market maker's current belief \(\delta\) as the prior. A buy lifts the belief in \(V_H\) from 0.50 to 0.65.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\text{Ask} = E[V\mid\text{buy}]} = 0.65(105)+0.35(95) = 101.50 \]</div>
+      <p>Break-even pricing: sell at what the asset is worth given that a buy is arriving. The bid is the mirror image, \(E[V\mid\text{sell}] = 98.50\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\text{Spread}_0 = 101.50 - 98.50 = 3.00 = \mu\,(V_H - V_L)} \]</div>
+      <p>At \(\delta = 0.5\) the spread is the informed share times the value gap. Set \(\mu = 0\) and it vanishes: no informed traders, no spread.</p>
+    </div>
+  </div>
 
   <h3>1. Setting up the model, precisely</h3>
   <p>
@@ -402,6 +477,10 @@
       "Buy arrives" or "Sell arrives" repeatedly to watch \(\delta\) update
       and the market maker requote, exactly as derived above.
     </p>
+    <div class="tl-predict" data-answer="6" data-tol="0.2" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With 30% informed traders the opening spread is 3.00. Keep the prior at 50% and the values at 105 and 95, but double the informed share to 60%. What will the opening spread be? Lock in a guess, then type 60 into the informed-share field to check.</div>
+      <div class="tl-predict-reveal"><p><strong>6.00.</strong> At \(\delta_0 = 0.5\) the spread is \(\mu(V_H - V_L) = 0.6 \times 10 = 6.00\): the quote moves to 103.00 / 97.00. Twice the informed flow means twice the insurance. Now set the informed share to 0 and watch the spread close completely.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Prior \(\delta_0\) (%)</span></div>
@@ -523,6 +602,12 @@
     </div>
   </div>
 
+  <!-- WB:institutional_glosten_milgrom:START -->
+  <div class="wb" id="wb-institutional_glosten_milgrom" data-title="Glosten-Milgrom: a quote that learns from every trade">
+    <script type="application/json">{"w":600,"h":724,"intro":"A market maker sees one anonymous order at a time. Each buy or sell is a clue about the true value, and the quote moves with the clue. Press play, or step through.","steps":[{"cap":"The asset is worth either 105 or 95. The market maker cannot tell which, so it starts at 50/50. Orders arrive one at a time from two kinds of trader.","do":[{"icon":"inf","name":"person","x":36,"y":6,"s":0.62,"tone":"amber","label":"informed 30%","lsize":16},{"icon":"noise","name":"crowd","x":150,"y":6,"s":0.62,"tone":"blue","label":"noise 70%","lsize":16},{"icon":"mm","name":"bank","x":470,"y":6,"s":0.7,"tone":"purple","label":"market maker","lsize":16},{"box":"delta","x":10,"y":140,"w":138,"h":70,"text":"belief in 105","tone":"purple","sub":"δ = 0.5000","size":17}]},{"cap":"Informed traders know the value: they buy only if it is 105 and sell only if it is 95. Noise traders buy or sell at random. So a buy is more likely if the value is high: 0.65 against 0.35.","do":[{"note":"lik","x":300,"y":240,"text":"P(buy | 105) = 0.3 + 0.7 × ½ = 0.65   ·   P(buy | 95) = 0.35","size":17,"anchor":"middle","tone":"amber"}]},{"cap":"Quote at break-even. The ask is the expected value given that a buy arrives, 101.50. The bid is the expected value given a sell, 98.50. The 3.00 gap pays for being picked off by informed traders.","do":[{"box":"ask","x":158,"y":140,"w":138,"h":70,"text":"Ask","tone":"green","sub":"101.50","size":18},{"box":"bid","x":306,"y":140,"w":138,"h":70,"text":"Bid","tone":"red","sub":"98.50","size":18},{"box":"spr","x":454,"y":140,"w":136,"h":70,"text":"Spread","tone":"blue","sub":"3.00","size":18},{"chart":"sc","x":10,"y":272,"w":580,"h":296,"title":"Spread against belief δ, 30% informed","xd":[0,1],"yd":[0,3.6],"yt":[[1,"1.00"],[2,"2.00"],[3,"3.00"]],"xt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"pl":56,"pr":16},{"series":"curve","chart":"sc","pts":[[0.0,0.0],[0.025,0.3184],[0.05,0.6148],[0.075,0.8904],[0.1,1.146],[0.125,1.3825],[0.15,1.6006],[0.175,1.801],[0.2,1.9843],[0.225,2.1511],[0.25,2.3018],[0.275,2.4369],[0.3,2.5568],[0.325,2.6618],[0.35,2.7523],[0.375,2.8284],[0.4,2.8904],[0.425,2.9385],[0.45,2.9727],[0.475,2.9932],[0.5,3.0],[0.525,2.9932],[0.55,2.9727],[0.575,2.9385],[0.6,2.8904],[0.625,2.8284],[0.65,2.7523],[0.675,2.6618],[0.7,2.5568],[0.725,2.4369],[0.75,2.3018],[0.775,2.1511],[0.8,1.9843],[0.825,1.801],[0.85,1.6006],[0.875,1.3825],[0.9,1.146],[0.925,0.8904],[0.95,0.6148],[0.975,0.3184],[1.0,-0.0]],"tone":"purple","ms":1200},{"dot":"p0","chart":"sc","at":[0.5,3.0],"text":"open: 3.00","tone":"blue","dy":-16,"size":16}]},{"cap":"A buy arrives. By Bayes, belief in 105 rises from 0.50 to 0.65. The market maker requotes: 102.75 / 100.00. Less is left to be unsure about, so the spread narrows to 2.75.","do":[{"chip":"c1","x":190,"y":60,"text":"BUY","tone":"green"},{"move":"c1","x":440,"y":60,"ms":1000},{"hide":"c1"},{"count":"delta","from":0.5,"to":0.65,"dp":4,"pre":"δ = "},{"count":"ask","from":101.5,"to":102.75,"dp":2},{"count":"bid","from":98.5,"to":100.0,"dp":2},{"count":"spr","from":3.0,"to":2.75,"dp":2},{"dot":"p1","chart":"sc","at":[0.65,2.7522935779816464],"text":"1: buy → 2.75","tone":"green","size":16,"dx":10,"dy":-14,"anchor":"start"}]},{"cap":"Another buy. Belief rises to 0.7752 and the quote moves to 103.65 / 101.50. The spread narrows again, to 2.15.","do":[{"chip":"c2","x":190,"y":60,"text":"BUY","tone":"green"},{"move":"c2","x":440,"y":60,"ms":1000},{"hide":"c2"},{"count":"delta","from":0.65,"to":0.7752,"dp":4,"pre":"δ = "},{"count":"ask","from":102.75,"to":103.65,"dp":2},{"count":"bid","from":100.0,"to":101.5,"dp":2},{"count":"spr","from":2.75,"to":2.15,"dp":2},{"dot":"p2","chart":"sc","at":[0.7752293577981652,2.149606299212593],"text":"2: buy → 2.15","tone":"green","size":16,"dx":10,"dy":-14,"anchor":"start"}]},{"cap":"Then a sell, contrary evidence. Belief falls back to 0.65 exactly, one buy's worth of evidence net, and the quote returns to 102.75 / 100.00. The spread widens back to 2.75.","do":[{"chip":"c3","x":190,"y":60,"text":"SELL","tone":"red"},{"move":"c3","x":440,"y":60,"ms":1000},{"hide":"c3"},{"count":"delta","from":0.7752,"to":0.65,"dp":4,"pre":"δ = "},{"count":"ask","from":103.65,"to":102.75,"dp":2},{"count":"bid","from":101.5,"to":100.0,"dp":2},{"count":"spr","from":2.15,"to":2.75,"dp":2},{"dot":"p3","chart":"sc","at":[0.6500000000000001,2.7522935779816606],"text":"3: sell → 2.75","tone":"red","size":16,"dx":-12,"dy":22,"anchor":"end","r":3.5}]},{"cap":"The shape: the spread is widest at δ = 0.5, maximum doubt, and shrinks as belief heads toward 0 or 1. A run of same-side trades narrows it; a contrary trade widens it again.","do":[{"pulse":"curve"}]},{"cap":"Set the informed share to zero and a buy tells you nothing. Belief never moves, and ask = bid: no spread at all. In this model the whole spread exists because some traders know more.","do":[{"series":"zero","chart":"sc","pts":[[0,0.02],[1,0.02]],"tone":"amber","dash":true,"ms":500,"label":"no informed traders: spread 0","lat":[0.5,0.02],"ldy":-14,"lsize":16}]},{"cap":"The testable prediction: before a scheduled release more of the flow is informed, so dealers widen. After it, early one-sided trades settle the belief fast and the spread compresses within minutes.","do":[{"box":"news","x":20,"y":584,"w":270,"h":84,"text":"before news:\nmore informed flow → wider","tone":"amber","size":18},{"box":"after","x":310,"y":584,"w":270,"h":84,"text":"after news:\none-sided trades → tighter","tone":"green","size":18}]}]}</script>
+  </div>
+  <!-- WB:institutional_glosten_milgrom:END -->
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -624,6 +709,19 @@
       and every conclusion drawn from this model inherits whatever
       uncertainty exists in those estimates.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative rate-decision hour</div>
+    <h3>Thirty minutes to a central bank decision</h3>
+    <p>You make prices in a major FX pair. A central bank rate decision is due in thirty minutes, and the outcome is genuinely uncertain. Over recent weeks, flow arriving just before these decisions has tended to be right more often than usual. Your normal spread is tight. What do you do with your quote through the decision?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Keep the normal spread. Volume is high and you want the business.<div class="tl-drill-why">The informed share is higher than usual right now, so the break-even spread is wider. Quoting tight means the traders with a view pick you off, and the noise flow does not pay for it.</div></li>
+      <li data-verdict="good">Widen ahead of the decision, then tighten step by step as the first trades after the release reveal where the price is going.<div class="tl-drill-why">This is the model's prediction: a higher perceived informed share before the news, then one-sided post-release trades that settle your belief fast and let the spread compress, often within minutes.</div></li>
+      <li data-verdict="ok">Pull your quotes completely until an hour after the decision.<div class="tl-drill-why">It avoids being picked off, but you lose the flow and you skip the post-release window, where trades resolve the uncertainty quickly and a tighter quote is again break-even.</div></li>
+      <li data-verdict="bad">Widen before the release and keep the wide spread all afternoon to be safe.<div class="tl-drill-why">Once the early trades have revealed the news, your belief is far from 50/50 and the break-even spread is narrower. Staying wide prices you out of business that is no longer dangerous.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson says.</strong> This is an illustrative situation, not a dated historical episode. The lesson's model and its real-world scenario point the same way: spreads widen ahead of scheduled information events because more of the flow is informed, and compress afterwards as one-sided trades resolve the uncertainty, which the lesson notes is a documented empirical pattern. Real spreads also carry inventory and processing costs, so the model explains one component, not all of it.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -739,6 +837,27 @@
     <li><code>theory-lab/lessons/market-microstructure.html</code><!-- DESK:START --> in this repo<!-- DESK:END --> — the single-shot, fixed-prior version of this exact model, presented alongside Kyle's Lambda.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="market-microstructure.html">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a> <span>· the one-shot version, beside Kyle's lambda</span></li>
+        <li><a href="bayesian-inference.html">Bayesian Inference &amp; Updating</a> <span>· the update rule every requote uses</span></li>
+        <!-- DESK:START --><li><a href="institutional-roll-spread-estimator.html">Roll's Implicit Spread Estimator</a> <span>· measuring a spread you cannot see</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-pin.html">The Probability of Informed Trading (PIN)</a> <span>· estimating the informed share from data</span></li><!-- DESK:END -->
+        <li><a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp; VPIN</a> <span>· a live proxy for toxic flow</span></li>
+        <!-- DESK:START --><li><a href="institutional-avellaneda-stoikov.html">Avellaneda-Stoikov Inventory-Aware Market Making</a> <span>· the inventory side of quoting</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the spread you pay is partly the dealer's insurance against you, so it widens exactly when the dealer thinks you might know something.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="institutional-roll-spread-estimator.html">← Roll's Spread Estimator</a>
@@ -925,6 +1044,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

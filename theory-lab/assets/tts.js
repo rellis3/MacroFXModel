@@ -7,14 +7,6 @@
 
   var toggleBtn = document.getElementById('tts-toggle');
   var page = document.getElementById('page');
-  if (!toggleBtn || !page) return;
-
-  if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
-    toggleBtn.hidden = true;
-    return;
-  }
-
-  var synth = window.speechSynthesis;
   var RATE_KEY = 'theoryLabTTSRate';
   var VOICE_KEY = 'theoryLabTTSVoiceName';
 
@@ -115,6 +107,19 @@
     return out;
   }
 
+  // ---------- Reader start-up (after the helpers, so they can be shared) ----------
+  // vark.js ("Listen" dialogue and "Quiz me aloud") speaks with the same LaTeX
+  // conversion and sentence splitting, so it borrows them rather than copying.
+  window.TLSpeech = { latexToSpeech: latexToSpeech, textToSpeechFriendly: textToSpeechFriendly, splitForSpeech: splitForSpeech };
+  if (!toggleBtn || !page) return;
+
+  if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+    toggleBtn.hidden = true;
+    return;
+  }
+
+  var synth = window.speechSynthesis;
+
   // ---------- Build the reading queue ----------
   var CHUNK_SELECTOR = [
     'h1', 'h2', 'h3', 'h4', 'p', 'li', 'blockquote', 'figcaption', 'summary',
@@ -123,7 +128,11 @@
   var EXCLUDE_SELECTOR = [
     '.tl-crumb', '.tl-glosslink', '.tl-kicker', '.tl-meta', '.tl-eli5',
     '.tl-eli5-toggle', '.tl-tts-toggle', '.tl-tts-bar', '.tl-footer-nav',
-    '.tl-symbols', '.tl-quiz', 'svg', 'script', 'style'
+    '.tl-symbols', '.tl-quiz', 'svg', 'script', 'style',
+    // the VARK blocks: the dialogue has its own player, and the hidden answers
+    // and outcomes would spoil a prediction or drill if read out first
+    '.tl-listen', '.tl-quizaloud', '.tl-predict-reveal', '.tl-drill-why', '.tl-drill-outcome',
+    '.tl-eqbuild-bar', '.tl-fits'
   ].join(',');
 
   function buildQueue() {

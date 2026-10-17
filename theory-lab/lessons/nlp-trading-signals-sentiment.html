@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NLP for Trading Signals: Sentiment, Embeddings &amp; FinBERT — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -41,6 +42,67 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top: a pipeline of four boxes. A Fed statement's raw text goes to Word2Vec, which gives one vector per word, then to BERT, which reads the whole sentence in context, then to FinBERT, which is trained on finance text and outputs a score. Bottom: an illustrative hawkish score across three statements, plus 0.10 for 'inflation has moderated', plus 0.55 for 'highly attentive to inflation risks', and plus 0.35 for 'further tightening will depend on incoming data'. The trend carries the information. A closing line warns that turning text into a number always works, but whether the number predicts anything needs its own test.">
+      <rect class="tlp-box" x="10" y="24" width="130" height="56" rx="6"/>
+      <rect class="tlp-box blue" x="160" y="24" width="130" height="56" rx="6"/>
+      <rect class="tlp-box green" x="310" y="24" width="130" height="56" rx="6"/>
+      <rect class="tlp-box purple" x="460" y="24" width="130" height="56" rx="6"/>
+      <text class="tlp-text" x="75" y="47" text-anchor="middle" font-size="13" font-weight="700">Fed statement</text>
+      <text class="tlp-text2" x="75" y="66" text-anchor="middle" font-size="12">raw text</text>
+      <text class="tlp-blue" x="225" y="47" text-anchor="middle" font-size="13" font-weight="700">Word2Vec</text>
+      <text class="tlp-text2" x="225" y="66" text-anchor="middle" font-size="12">one vector per word</text>
+      <text class="tlp-green" x="375" y="47" text-anchor="middle" font-size="13" font-weight="700">BERT</text>
+      <text class="tlp-text2" x="375" y="66" text-anchor="middle" font-size="12">reads in context</text>
+      <text class="tlp-purple" x="525" y="47" text-anchor="middle" font-size="13" font-weight="700">FinBERT</text>
+      <text class="tlp-text2" x="525" y="66" text-anchor="middle" font-size="12">trained on finance</text>
+      <text class="tlp-text3" x="150" y="57" text-anchor="middle" font-size="14">→</text>
+      <text class="tlp-text3" x="300" y="57" text-anchor="middle" font-size="14">→</text>
+      <text class="tlp-text3" x="450" y="57" text-anchor="middle" font-size="14">→</text>
+      <text class="tlp-text" x="10" y="106" font-size="13" font-weight="700">Out comes a score. Illustrative hawkish score, three statements:</text>
+      <line class="tlp-line" x1="60" y1="214" x2="560" y2="214"/>
+      <text class="tlp-text3" x="54" y="218" text-anchor="end" font-size="12">0</text>
+      <polyline class="tlp-line amber thick" points="130,201 300,142.5 470,168.5"/>
+      <circle class="tlp-amber" cx="130" cy="201" r="6"/>
+      <circle class="tlp-red" cx="300" cy="142.5" r="7"/>
+      <circle class="tlp-amber" cx="470" cy="168.5" r="6"/>
+      <text class="tlp-amber" x="130" y="188" text-anchor="middle" font-size="13" font-weight="700">+0.10</text>
+      <text class="tlp-red" x="300" y="129" text-anchor="middle" font-size="13" font-weight="700">+0.55 hawkish jump</text>
+      <text class="tlp-amber" x="470" y="155" text-anchor="middle" font-size="13" font-weight="700">+0.35</text>
+      <text class="tlp-text2" x="130" y="234" text-anchor="middle" font-size="12">t−2 · “has moderated”</text>
+      <text class="tlp-text2" x="300" y="234" text-anchor="middle" font-size="12">t−1 · “highly attentive”</text>
+      <text class="tlp-text2" x="470" y="234" text-anchor="middle" font-size="12">t · “depends on data”</text>
+      <text class="tlp-red" x="300" y="254" text-anchor="middle" font-size="13" font-weight="700">Text into a number always works. Whether the number predicts needs its own test.</text>
+    </svg>
+    <figcaption>Each step reads text more like an analyst does: first words by the company they keep, then whole sentences, then finance language as finance means it. The scores are the lesson's illustrative example. The trend across meetings, not one reading, is what carries information.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">When the Fed statement drops, I read it and get a feel: more hawkish than last time, or less. Can a model do that?</p>
+      <p data-who="Quant">That is exactly what this lesson builds. Turn that feel into a number a system can use.</p>
+      <p data-who="Trader">Where do you start?</p>
+      <p data-who="Quant">With words. The old way just counts them, and to a counter, inflation is no closer to risk than to coffee. Word2Vec, from 2013, fixes that. It learns a short list of numbers for each word from the company it keeps.</p>
+      <p data-who="Trader">So hawkish ends up near tighten and raise.</p>
+      <p data-who="Quant">Right, without anyone labeling them. But it has a flaw. Each word gets one fixed vector. Hold, in "the Fed will hold rates", gets the same vector as hold in "hold my coffee".</p>
+      <p data-who="Trader">And BERT fixes that?</p>
+      <p data-who="Quant">Yes. BERT, from 2019, reads the whole sentence at once, in both directions, so each word is read in its context. FinBERT is BERT trained further on financial text, so it knows that "attentive to inflation risks" is a loaded phrase, not filler.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">The lesson sketches three statements. "Inflation has moderated" scores about plus zero point one on a hawkish scale. "Highly attentive to inflation risks" jumps to plus zero point five five. "Further tightening will depend on incoming data" slips back to plus zero point three five.</p>
+      <p data-who="Trader">So I'd trade the jump?</p>
+      <p data-who="Quant">Careful. One reading is noisy. Models trip on sarcasm and hedges, and zero point five five is not a fifty-five percent chance of anything. The trend across meetings is the useful part.</p>
+      <p data-who="Trader">Has text ever actually worked as a signal?</p>
+      <p data-who="Quant">The famous case says be careful. In 2010 a paper turned nearly ten million tweets into seven mood series. One mood, "Calm", called the Dow's daily direction with eighty-seven point six percent accuracy.</p>
+      <p data-who="Trader">That sounds incredible.</p>
+      <p data-who="Quant">It was tested on a few weeks of December 2008, after trying seven series at several lags. A fund launched to trade it closed within about a year, and a 2017 replication could not find the effect.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Turning text into a number always works. Whether that number predicts anything is a separate claim, and only an out-of-sample test can settle it.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -74,6 +136,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the idea build</div>
+    <div class="tl-eqbuild-title">From a word to a score, one step at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{hawkish} \;\to\; \color{#fbbf24}{[\,0,\ \dots,\ 1,\ \dots,\ 0\,]} \]</div>
+      <p>The crude start: a one-hot vector, a 1 in this word's slot and 0 everywhere else. Every word is equally far from every other, so there is no meaning in it.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{hawkish} \;\to\; \color{#fbbf24}{\mathbf{v}_{\text{hawkish}} \in \mathbb{R}^{d}} \]</div>
+      <p>Word2Vec swaps it for a dense vector of a few hundred numbers, learned with skip-gram or CBOW so that words used in similar contexts sit close together: "hawkish" near "tighten" and "raise".</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{hold} \;\to\; \mathbf{v}_{\text{hold}}\,\color{#fbbf24}{\big|\ \text{the whole sentence}} \]</div>
+      <p>BERT makes the vector depend on the sentence, read in both directions at once. "Hold" in "the Fed will hold rates" no longer shares a vector with "hold my coffee".</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\text{statement} \;\to\; \text{FinBERT} \;\to\; s \in [-1,\,+1]} \]</div>
+      <p>FinBERT, BERT trained further on financial text, maps a whole statement to a hawkish/dovish score. In the worked example below the score moves \(+0.10 \to +0.55 \to +0.35\) across three meetings. It is a model's confidence, not a calibrated probability.</p>
+    </div>
+  </div>
   <h3>Word embeddings — Word2Vec</h3>
   <p>
   Tomas Mikolov, Kai Chen, Greg Corrado &amp; Jeffrey Dean introduced Word2Vec in "Efficient Estimation of Word
@@ -224,6 +306,15 @@
     hawkish/dovish score, on a −1 (fully dovish) to +1 (fully hawkish) scale, might assign to each — a
     conceptual illustration of the mechanism, not a real backtest of actual FOMC language:
     </p>
+    <div class="tl-predict">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Before you look at the table, which of these three excerpts do you think a finance-trained model scores as the most hawkish? Lock in a choice, then check the Score column just below.</div>
+      <ul class="tl-predict-options">
+        <li>\(t{-}2\): "inflation has moderated, labor market remains solid"</li>
+        <li data-correct>\(t{-}1\): "the committee remains highly attentive to inflation risks"</li>
+        <li>\(t\): "further tightening will depend on incoming data"</li>
+      </ul>
+      <div class="tl-predict-reveal"><p><strong>\(t{-}1\), at +0.55.</strong> "Highly attentive to inflation risks" is a well-known hawkish hedge phrase. The \(t\) excerpt says "tightening" out loud, but it is conditional on data, so it scores lower at +0.35, and \(t{-}2\) sits at +0.10. Reading the phrase in context, rather than spotting the word "tightening", is the whole point of BERT-style models.</p></div>
+    </div>
     <div class="tl-math">
       \[
       \begin{array}{l|l|c}
@@ -354,6 +445,12 @@
   </div>
   <!-- DESK:END -->
 
+  <!-- WB:nlp_trading_signals_sentiment:START -->
+  <div class="wb" id="wb-nlp_trading_signals_sentiment" data-title="From a Fed sentence to a score, and the tweet that fooled everyone">
+    <script type="application/json">{"w":600,"h":770,"intro":"How a model turns a Fed sentence into a number, step by step, and then the famous time a text score fooled everyone. Press play, or step through.","steps":[{"cap":"Start with a sentence an analyst reads by eye: a classic hedge phrase that reads hawkish. The job is to turn it into a number a system can use.","do":[{"note":"sent","x":300,"y":24,"text":"“the committee remains highly attentive to inflation risks”","size":17,"anchor":"middle","tone":"purple"}]},{"cap":"The crude way counts words. Each word is just a 1 in one slot of a huge list: \"inflation\" is no closer to \"risks\" than to \"coffee\". No meaning at all.","do":[{"chip":"w1","x":95,"y":66,"text":"committee","tone":null},{"chip":"w2","x":235,"y":66,"text":"attentive","tone":null},{"chip":"w3","x":375,"y":66,"text":"inflation","tone":null},{"chip":"w4","x":505,"y":66,"text":"risks","tone":null}]},{"cap":"Word2Vec (2013) learns a short vector for each word from the company it keeps. Words used in similar contexts land close together: a hawkish neighborhood and a dovish one. (Illustrative positions.)","do":[{"chart":"emb","x":10,"y":100,"w":330,"h":250,"title":"Word vectors (illustrative)","xd":[0,10],"yd":[0,10],"yt":[],"xt":[],"pl":16,"pb":14},{"dot":"d0","chart":"emb","at":[2.0,7.25],"text":"dovish","tone":"blue","dx":8,"dy":-10,"anchor":"start","size":15},{"dot":"d1","chart":"emb","at":[1.5,5.69],"text":"ease","tone":"blue","dx":8,"dy":-10,"anchor":"start","size":15},{"dot":"d2","chart":"emb","at":[2.42,4.9],"text":"cut","tone":"blue","dx":8,"dy":-10,"anchor":"start","size":15},{"dot":"d3","chart":"emb","at":[1.25,3.33],"text":"stimulus","tone":"blue","dx":8,"dy":-10,"anchor":"start","size":15},{"dot":"h0","chart":"emb","at":[7.67,7.06],"text":"hawkish","tone":"red","dx":-8,"dy":-10,"anchor":"end","size":15},{"dot":"h1","chart":"emb","at":[8.17,5.49],"text":"tighten","tone":"red","dx":-8,"dy":-10,"anchor":"end","size":15},{"dot":"h2","chart":"emb","at":[7.25,4.71],"text":"raise","tone":"red","dx":-8,"dy":-10,"anchor":"end","size":15},{"dot":"h3","chart":"emb","at":[8.0,3.33],"text":"inflation risk","tone":"red","dx":-8,"dy":-10,"anchor":"end","size":15}]},{"cap":"The catch: Word2Vec gives every word one fixed vector. \"Hold\" in \"the Fed will hold rates\" gets exactly the same vector as \"hold\" in \"hold my coffee\".","do":[{"box":"fixed","x":360,"y":100,"w":230,"h":110,"text":"one vector per word:\n“hold rates” =\n“hold my coffee”","tone":"red","size":18}]},{"cap":"BERT (2019) reads the whole sentence at once, in both directions, using attention. Each word's vector is built from every other word around it, so \"hold\" means what its sentence says.","do":[{"arrow":["w1","w4"],"tone":"green","bend":-26,"id":"fw"},{"arrow":["w4","w2"],"tone":"green","bend":-16,"id":"bw"},{"box":"bert","x":360,"y":228,"w":230,"h":122,"text":"BERT reads both ways:\neach word gets\nits context","tone":"green","size":18}]},{"cap":"FinBERT (2019) is BERT trained further on financial text, so \"attentive to inflation risks\" reads as the loaded phrase it is. Out comes a hawkish score. Across three statements (illustrative): +0.10, +0.55, +0.35.","do":[{"chart":"sc","x":10,"y":372,"w":330,"h":222,"title":"Hawkish score by meeting","xd":[0.4,3.6],"yd":[0,0.75],"yt":[[0,"0"],[0.5,"+0.5"]],"xt":[[1,"t−2"],[2,"t−1"],[3,"t"]],"pl":44},{"bars":"scb","chart":"sc","data":[[1,0.1,"+0.10","amber"],[2,0.55,"+0.55","red"],[3,0.35,"+0.35","amber"]],"bw":46,"ms":1100}]},{"cap":"One reading is noisy: sarcasm, negation and hedges trip models up, and 0.55 is not a 55% chance of anything. The trend across meetings carries the information: a hawkish jump, then a partial, data-dependent retreat.","do":[{"series":"tr","chart":"sc","pts":[[1,0.1],[2,0.55],[3,0.35]],"tone":"purple","dash":true,"ms":800}]},{"cap":"Now the famous case. Bollen, Mao and Zeng took about 9.8 million tweets from 2008 and turned each day's text into seven series: one positive/negative score and six \"moods\".","do":[{"box":"tw","x":360,"y":372,"w":230,"h":92,"text":"9.8 million tweets\n→ 7 daily series","tone":"blue","size":19}]},{"cap":"Positive/negative did not predict the Dow. But one mood of six, \"Calm\", seemed to lead it by a few days, and called the daily direction with 87.6% accuracy, on a test of a few weeks in December 2008.","do":[{"box":"calm","x":360,"y":478,"w":230,"h":116,"text":"1 mood of 6, “Calm”,\nat a few days' lag:\n87.6% on a few weeks","tone":"amber","size":18}]},{"cap":"Many series, several lags, a test window of weeks: many chances to find something by luck. A fund launched in 2011 to trade it closed within about a year. A 2017 replication could not recover the result.","do":[{"box":"fail","x":10,"y":610,"w":580,"h":62,"text":"fund closed within about a year · 2017 replication: no result","tone":"red","size":19},{"cross":"calm"}]},{"cap":"The lesson in one board: turning text into a number always works. Whether that number predicts anything is a separate claim, and only an out-of-sample test can settle it.","do":[{"note":"end","x":300,"y":704,"text":"Text → number: always works.\nNumber → edge: test it out of sample.","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:nlp_trading_signals_sentiment:END -->
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -411,6 +508,19 @@
       <li><strong>Assuming the technique's popularity is evidence of validated edge here.</strong> NLP sentiment scoring is genuinely widely used across the industry — that fact says nothing about whether any specific pipeline built on it has been backtested or shown to add value in this repo.</li>
 <!-- DESK:END -->
     </ul>
+  </div>
+
+  <div class="tl-drill" data-date="2011">
+    <div class="tl-drill-label">Scenario drill · 2011</div>
+    <h3>A fund wants to trade Twitter mood</h3>
+    <p>A widely reported paper says one mood series built from about 9.8 million tweets, "Calm", called the Dow's daily direction with 87.6% accuracy. The test window was a few weeks of trading days in December 2008, after seven sentiment series were tried at several lags. A new London fund will trade the signal and asks you to allocate. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Allocate. 87.6% is far above chance, and the paper is everywhere.<div class="tl-drill-why">Seven series, several lags and a test window of weeks give many chances to find something by luck. Press coverage and citations measure attention, not out-of-sample evidence.</div></li>
+      <li data-verdict="good">Ask for the signal's record on data the researchers never saw, with the number of series and lags tried counted against it, before committing anything.<div class="tl-drill-why">This is the step the lesson keeps returning to. Turning text into a score always works; whether the score adds anything has to be shown out of sample, with the search that found it taken into account.</div></li>
+      <li data-verdict="ok">Allocate a small pilot and watch the live results.<div class="tl-drill-why">A small live test limits the damage and does produce genuinely out-of-sample evidence. But it pays to run a test that a fresh historical check could have done first, and a few months of daily direction calls is itself a noisy sample.</div></li>
+      <li data-verdict="bad">Build your own version with FinBERT and more mood series, and keep whichever works best.<div class="tl-drill-why">A better text model does not fix the problem. Adding more series and keeping the winner widens the search that produced the original result, making a lucky fit more likely, not less.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The London hedge fund launched in 2011 to trade Twitter sentiment closed within about a year. In 2017 Lachanski and Pav tried to reproduce the original result and could not recover its predictive power. The text-to-number step worked as advertised. The claim that the number predicted the Dow did not survive.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -489,6 +599,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="central-bank-policy.html">Central Bank Policy</a> <span>· the hawkish and dovish vocabulary this lesson turns into numbers</span></li>
+        <li><a href="attention-transformers-time-series.html">Attention &amp; Transformers for Time Series</a> <span>· the attention mechanism inside BERT</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere Effect</a> <span>· why seven mood series and several lags found 87.6%</span></li>
+        <li><a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> <span>· the out-of-sample test a text score has to pass</span></li>
+        <li><a href="taylor-rule.html">The Taylor Rule</a> <span>· the numeric policy view a sentiment score would sit beside</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> central banks and companies move markets with words, and this is how those words become an input you can test.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="anomaly-detection-isolation-autoencoders.html">← Anomaly Detection: Isolation Forests &amp; Autoencoders</a>
     <a href="../hub.html">Theory Lab hub →</a>
@@ -518,7 +648,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Roll's Implicit Spread Estimator — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,66 @@
       <li><strong>How it reached trading:</strong> Roll (1984) backed the spread out of trade prices alone, and with Hasbrouck's 2009 Bayesian refinement and Corwin &amp; Schultz's 2012 alternative it is how researchers and quants put a cost on long histories and quote-less markets.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 245" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: 14 trade prints zig-zag between a rising ask line and a rising bid line, a spread of 0.10 apart, around a smoothly drifting true price. Right: each price change plotted against the change before it. The points slope downward: a move up tends to be followed by a move down. Their covariance is minus 0.002431, and Roll's formula turns that into a spread of about 0.0986, against a true spread of 0.10.">
+      <text class="tlp-text3" x="20" y="22" font-size="12">14 prints bounce between bid and ask</text>
+      <polyline class="tlp-line green dash" points="40.0,154.3 59.2,146.7 78.5,139.0 97.7,131.4 116.9,123.8 136.2,116.2 155.4,108.6 174.6,101.0 193.8,93.3 213.1,85.7 232.3,78.1 251.5,70.5 270.8,62.9 290.0,55.2"/>
+      <polyline class="tlp-line red dash" points="40.0,192.4 59.2,184.8 78.5,177.1 97.7,169.5 116.9,161.9 136.2,154.3 155.4,146.7 174.6,139.0 193.8,131.4 213.1,123.8 232.3,116.2 251.5,108.6 270.8,101.0 290.0,93.3"/>
+      <polyline class="tlp-line dash" points="40.0,173.3 59.2,165.7 78.5,158.1 97.7,150.5 116.9,142.9 136.2,135.2 155.4,127.6 174.6,120.0 193.8,112.4 213.1,104.8 232.3,97.1 251.5,89.5 270.8,81.9 290.0,74.3"/>
+      <polyline class="tlp-line blue thick" points="40.0,154.3 59.2,184.8 78.5,177.1 97.7,131.4 116.9,123.8 136.2,116.2 155.4,146.7 174.6,101.0 193.8,93.3 213.1,123.8 232.3,78.1 251.5,108.6 270.8,101.0 290.0,55.2"/>
+      <text class="tlp-green" x="296" y="59" font-size="13" font-weight="700">ask</text>
+      <text class="tlp-text3" x="296" y="78" font-size="13">true</text>
+      <text class="tlp-red" x="296" y="97" font-size="13" font-weight="700">bid</text>
+      <text class="tlp-blue" x="40" y="214" font-size="13" font-weight="700">printed price zig-zags: no news in it</text>
+      <text class="tlp-text2" x="40" y="232" font-size="12">true spread s = 0.10, true price drifts +0.02 a trade</text>
+      <line class="tlp-line dash" x1="330" y1="30" x2="330" y2="236"/>
+      <text class="tlp-text3" x="350" y="22" font-size="12">each move against the move before</text>
+      <line class="tlp-line" x1="360" y1="132.3" x2="586" y2="132.3"/>
+      <line class="tlp-line" x1="453.1" y1="40" x2="453.1" y2="200"/>
+      <line class="tlp-line amber thick" x1="368.5" y1="85.9" x2="571.5" y2="148.2"/>
+      <circle class="tlp-purple" cx="385.4" cy="120.0" r="6.5"/>
+      <circle class="tlp-purple" cx="470.0" cy="58.5" r="6.5"/>
+      <circle class="tlp-purple" cx="554.6" cy="120.0" r="6.5"/>
+      <circle class="tlp-purple" cx="470.0" cy="120.0" r="4"/>
+      <circle class="tlp-purple" cx="470.0" cy="181.5" r="6.5"/>
+      <circle class="tlp-purple" cx="385.4" cy="58.5" r="6.5"/>
+      <circle class="tlp-purple" cx="554.6" cy="181.5" r="4"/>
+      <text class="tlp-text3" x="358" y="148" font-size="12">prior move →</text>
+      <text class="tlp-text3" x="459" y="44" font-size="12">this move ↑</text>
+      <text class="tlp-amber" x="586" y="210" text-anchor="end" font-size="13" font-weight="700">Cov = −0.002431</text>
+      <text class="tlp-green" x="586" y="232" text-anchor="end" font-size="14" font-weight="700">s = 2√0.002431 ≈ 0.0986</text>
+    </svg>
+    <figcaption>The bounce makes each printed move tend to undo the one before, so the moves covary negatively. Roll turns that covariance back into a spread: 0.0986 from the prints alone, against a true 0.10. If the covariance comes out positive, there is no estimate at all.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I've got years of trade prices for a thin market, but no quotes at all. My backtest needs a spread. Am I stuck?</p>
+      <p data-who="Quant">Not quite. Richard Roll showed in 1984 that the spread leaves a fingerprint in the prices themselves.</p>
+      <p data-who="Trader">How? The prices don't say where the bid and ask were.</p>
+      <p data-who="Quant">Think about what a trade is. A buyer who crosses pays the ask. A seller who crosses gets the bid. So even if the true value never moves, the printed price jumps up and down between the two.</p>
+      <p data-who="Trader">The bid-ask bounce.</p>
+      <p data-who="Quant">Right. And here's the key. A bounce up to the ask tends to be followed by a bounce back down. So each printed move tends to undo the move before it. Statisticians call that negative covariance between one move and the next.</p>
+      <p data-who="Trader">And the size of that tells you the spread?</p>
+      <p data-who="Quant">Exactly. Under Roll's assumptions, the covariance equals minus a quarter of the spread squared. Each bounce is half a spread, and the covariance multiplies two of them. Turn it around and the spread is twice the square root of minus the covariance.</p>
+      <p data-who="Trader">Does it actually work?</p>
+      <p data-who="Quant">The lesson builds fourteen prints from a true spread of exactly nought point one, with the true price drifting up nought point nought two a trade. The covariance of the moves comes out at about minus nought point nought nought two four. Twice the square root of that is nought point nought nine eight six. Within about one and a half percent of the truth, from prices alone.</p>
+      <p data-who="Trader">What about the drift? Doesn't that spoil it?</p>
+      <p data-who="Quant">No. A smooth drift with no memory adds nothing to the covariance between one move and the next. The bounce does all the work.</p>
+      <p data-who="Trader">So what's the catch?</p>
+      <p data-who="Quant">The covariance has to come out negative. In short or trending samples it often comes out positive. Then you'd need the square root of a negative number, and the estimate simply doesn't exist.</p>
+      <p data-who="Trader">So I'd get gaps.</p>
+      <p data-who="Quant">You will. Record those windows as missing, never as zero, because a positive covariance means the assumptions failed, not that the spread was tiny. And cross-check with a high-low estimator like Corwin and Schultz from 2012, which fails less often.</p>
+      <p data-who="Trader">And if I do have quotes?</p>
+      <p data-who="Quant">Then use them. Roll is for when the quotes aren't there.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">The bounce makes prices undo themselves, and how hard they undo tells you the spread, when it works at all.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -122,6 +183,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where Roll's spread estimate comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P_t = m_t + \color{#fbbf24}{\frac{s}{2}\,q_t} \]</div>
+      <p>The printed price is the true price plus half a spread, up at the ask (\(q_t = +1\)) or down at the bid (\(q_t = -1\)).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \Delta P_t = \Delta m_t + \color{#fbbf24}{\frac{s}{2}\big(q_t - q_{t-1}\big)} \]</div>
+      <p>Take the change from one trade to the next. The bounce term is zero when two trades hit the same side and a full spread when they flip.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \mathrm{Cov}(\Delta P_t,\Delta P_{t-1}) = \left(\frac{s}{2}\right)^{2}\color{#fbbf24}{\mathrm{Cov}\big(q_t - q_{t-1},\; q_{t-1} - q_{t-2}\big)} \]</div>
+      <p>Covary each move with the one before. The true-price terms drop out because they have no memory, so only the bounces are left.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \mathrm{Cov}(\Delta P_t,\Delta P_{t-1}) = \left(\frac{s}{2}\right)^{2}\cdot\color{#fbbf24}{(-1)} = -\frac{s^{2}}{4} \]</div>
+      <p>Only the shared \(q_{t-1}\) survives, with a minus sign and a variance of 1. The bounce forces a negative covariance.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{s = 2\sqrt{-\,\mathrm{Cov}(\Delta P_t,\Delta P_{t-1})}} \]</div>
+      <p>Solve for the spread. The worked example's covariance of −0.002431 gives \(s \approx 0.0986\), against a true 0.10. If the covariance is positive, there is no estimate.</p>
+    </div>
+  </div>
 
   <h3>1. Setting up the model: a true price plus a bounce</h3>
   <p>
@@ -394,6 +479,15 @@
       purely trending series with no bid-ask bounce at all — watch the
       covariance flip positive and the estimator refuse to return a number.
     </p>
+    <div class="tl-predict">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The worked example's 14 prints give a spread estimate of 0.0986. The trending series below rises every trade, by a little more each time, with no bounce. What will Roll's estimator report for it? Pick one, then press "Load a trending series" to check.</div>
+      <ul class="tl-predict-options">
+        <li>About 0.10 again, since the prices span a similar range.</li>
+        <li>A larger spread, because the series moves further overall.</li>
+        <li data-correct>No estimate at all: the covariance comes out positive.</li>
+      </ul>
+      <div class="tl-predict-reveal"><p><strong>No estimate.</strong> The moves are 0.01, 0.02, 0.03 and so on, each bigger than the last, so a big move is followed by a bigger one. The covariance comes out at +0.001192. Roll needs a negative number under the square root, so the estimator is undefined. A trend with momentum looks nothing like a bounce. Now reset and change one price in the worked example to see how sensitive 14 prints are.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control" style="flex-basis:100%">
         <div class="tl-control-head"><span>Transaction price series</span></div>
@@ -459,6 +553,12 @@
       above describes, superimposed on the genuine underlying drift.
     </div>
   </div>
+
+  <!-- WB:institutional_roll_spread_estimator:START -->
+  <div class="wb" id="wb-institutional_roll_spread_estimator" data-title="Roll's estimator: a spread from the bounce">
+    <script type="application/json">{"w":600,"h":730,"intro":"Fourteen trade prints, no quotes. The spread still leaves a fingerprint: each bounce tends to undo the last. Press play, or step through.","steps":[{"cap":"Start with the true price nobody sees. It drifts up 0.02 a trade, from 100.00 to 100.26, smoothly and with no bounce.","do":[{"chart":"px","x":10,"y":10,"w":580,"h":262,"title":"Price, 14 trades","xd":[0,13],"yd":[99.9,100.36],"yt":[[100,"100.00"],[100.2,"100.20"]],"xt":[[0,"0"],[13,"13"]],"pl":74,"pr":56},{"series":"m","chart":"px","pts":[[0,100.0],[1,100.02],[2,100.04],[3,100.06],[4,100.08],[5,100.1],[6,100.12],[7,100.14],[8,100.16],[9,100.18],[10,100.2],[11,100.22],[12,100.24],[13,100.26]],"tone":null,"dash":true,"ms":900,"label":"true","lat":[13,100.26],"ldx":6,"ldy":0,"lanchor":"start","lsize":16}]},{"cap":"Quotes sit half a spread either side. The spread is 0.10, so the ask is 0.05 above the true price and the bid 0.05 below.","do":[{"gap":"band","chart":"px","top":[[0,100.05],[1,100.07],[2,100.09],[3,100.11],[4,100.13],[5,100.14999999999999],[6,100.17],[7,100.19],[8,100.21],[9,100.23],[10,100.25],[11,100.27],[12,100.28999999999999],[13,100.31]],"bot":[[0,99.95],[1,99.97],[2,99.99000000000001],[3,100.01],[4,100.03],[5,100.05],[6,100.07000000000001],[7,100.09],[8,100.11],[9,100.13000000000001],[10,100.15],[11,100.17],[12,100.19],[13,100.21000000000001]],"tone":"purple","op":0.2},{"note":"half","x":210,"y":70,"text":"ask = true + 0.05 · bid = true − 0.05","size":17,"anchor":"middle","tone":"purple"}]},{"cap":"Each trade lands on the ask (a buyer crossed) or the bid (a seller crossed). The printed price jumps between the two edges of the band.","do":[{"series":"p","chart":"px","pts":[[0,100.05],[1,99.97],[2,99.99],[3,100.11],[4,100.13],[5,100.15],[6,100.07],[7,100.19],[8,100.21],[9,100.13],[10,100.25],[11,100.17],[12,100.19],[13,100.31]],"tone":"blue","ms":1500,"label":"printed","lat":[13,100.31],"ldx":6,"ldy":0,"lanchor":"start","lsize":16},{"dot":"d0","chart":"px","at":[0,100.05],"text":"","tone":"green","r":4.5},{"dot":"d1","chart":"px","at":[1,99.97],"text":"","tone":"red","r":4.5},{"dot":"d2","chart":"px","at":[2,99.99],"text":"","tone":"red","r":4.5},{"dot":"d3","chart":"px","at":[3,100.11],"text":"","tone":"green","r":4.5},{"dot":"d4","chart":"px","at":[4,100.13],"text":"","tone":"green","r":4.5},{"dot":"d5","chart":"px","at":[5,100.15],"text":"","tone":"green","r":4.5},{"dot":"d6","chart":"px","at":[6,100.07],"text":"","tone":"red","r":4.5},{"dot":"d7","chart":"px","at":[7,100.19],"text":"","tone":"green","r":4.5},{"dot":"d8","chart":"px","at":[8,100.21],"text":"","tone":"green","r":4.5},{"dot":"d9","chart":"px","at":[9,100.13],"text":"","tone":"red","r":4.5},{"dot":"d10","chart":"px","at":[10,100.25],"text":"","tone":"green","r":4.5},{"dot":"d11","chart":"px","at":[11,100.17],"text":"","tone":"red","r":4.5},{"dot":"d12","chart":"px","at":[12,100.19],"text":"","tone":"red","r":4.5},{"dot":"d13","chart":"px","at":[13,100.31],"text":"","tone":"green","r":4.5}]},{"cap":"The printed moves: −0.08, +0.02, +0.12 and so on. A flip from ask to bid adds a full spread of fake move on top of the real +0.02 drift. Same side twice adds nothing.","do":[{"chart":"dp","x":10,"y":286,"w":580,"h":214,"title":"Printed price change, trade to trade","xd":[0.4,13.6],"yd":[-0.12,0.16],"yt":[[0.12,"+0.12"],[0.02,"+0.02"],[-0.08,"−0.08"]],"xt":[[1,"1"],[13,"13"]],"zero":true,"pl":74,"pr":14},{"bars":"db","chart":"dp","data":[[1,-0.08,"","red"],[2,0.02,"","blue"],[3,0.12,"","green"],[4,0.02,"","blue"],[5,0.02,"","blue"],[6,-0.08,"","red"],[7,0.12,"","green"],[8,0.02,"","blue"],[9,-0.08,"","red"],[10,0.12,"","green"],[11,-0.08,"","red"],[12,0.02,"","blue"],[13,0.12,"","green"]],"bw":24,"ms":1100}]},{"cap":"The fingerprint: after a −0.08 move, the next move averaged +0.07. After a +0.12 move, it averaged about −0.01. Moves tend to undo the move before.","do":[{"note":"pat","x":300,"y":528,"text":"after −0.08 → next averages +0.07 · after +0.12 → about −0.01","size":17,"anchor":"middle","tone":"amber"}]},{"cap":"Measure it as the covariance of each move with the move before, over the 12 pairs: −0.002431. Negative, as Roll predicts: −s²/4.","do":[{"note":"cov","x":300,"y":564,"text":"Cov(ΔPₜ, ΔPₜ₋₁) = −0.02917 ÷ 12 = −0.002431","size":19,"anchor":"middle","tone":"purple"}]},{"cap":"Solve for the spread: s = 2 × √0.002431 ≈ 0.0986. The true spread was 0.10, so the prints alone got within about 1.4%. The drift added nothing.","do":[{"box":"s","x":110,"y":588,"w":380,"h":54,"text":"s = 2√0.002431 ≈ 0.0986  (true 0.10)","tone":"green","size":20}]},{"cap":"Now a series that only trends, with no bounce: every move a bit bigger than the last. Its covariance is +0.001192, positive. There is no square root of a negative number to take.","do":[{"box":"tr","x":10,"y":656,"w":280,"h":64,"text":"trending series:\nCov = +0.001192","tone":"red","size":18}]},{"cap":"So Roll returns nothing at all, which is common in short or trending windows. Record that window as missing, never as zero, and cross-check with a high-low estimator such as Corwin and Schultz (2012).","do":[{"box":"na","x":310,"y":656,"w":280,"h":64,"text":"Roll: undefined\nmissing, not zero","tone":"amber","size":18}]}]}</script>
+  </div>
+  <!-- WB:institutional_roll_spread_estimator:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -543,6 +643,19 @@
       \(\lambda\) discussion warns about for price impact — is being averaged
       over by a single Roll estimate, not tracked through the window.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative backfill</div>
+    <h3>One month comes back with no spread</h3>
+    <p>You are backfilling a monthly spread history for a thin FX cross from trade prints, because no usable quote feed goes back that far. Most months give a sensible Roll estimate. One volatile, trending month comes back with a positive covariance, so Roll returns nothing. The backtest needs a number for every month. What goes in that month's cell?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Zero. No estimate means no measurable spread.<div class="tl-drill-why">A positive covariance means the model's assumptions failed that month, usually a trend or correlated order flow. It says nothing about the spread being small, and a volatile month is when spreads are usually wider, not narrower.</div></li>
+      <li data-verdict="bad">Copy the previous month's estimate forward quietly.<div class="tl-drill-why">It hides the failure. Anyone reading the series later sees a smooth, populated history and has no idea that month's number was never measured.</div></li>
+      <li data-verdict="good">Record it as missing with a flag, cross-check with a high-low estimator such as Corwin and Schultz, and charge the backtest a cost you state openly for that month.<div class="tl-drill-why">This keeps the gap visible and uses an estimator that does not need a negative covariance. Whatever cost the backtest uses there is then a labelled assumption, not a fake measurement.</div></li>
+      <li data-verdict="ok">Widen the window to two months until the covariance turns negative.<div class="tl-drill-why">You may get a number, but it averages the troubled month with a calmer one and assumes the spread stayed constant across both. Defensible as a rough fill if you say so, but it blurs exactly the month you care about.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson says.</strong> This is an illustrative situation, not a historical episode. The lesson's guidance is direct: an undefined Roll window is a normal outcome in short or trending samples, and it must be represented explicitly as missing, never as zero and never silently interpolated. A high-low estimator such as Corwin and Schultz (2012) is the natural cross-check because it does not share Roll's failure mode.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -651,6 +764,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="market-microstructure.html">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a> <span>· why a spread exists at all</span></li>
+        <li><a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a> <span>· the lag-1 autocovariance Roll is built on</span></li>
+        <!-- DESK:START --><li><a href="institutional-trade-classification.html">Trade Classification: Lee-Ready &amp; Bulk Volume Classification</a> <span>· which side of the spread each trade hit</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-glosten-milgrom.html">Glosten-Milgrom: Sequential Bayesian Market Making</a> <span>· why the spread is as wide as it is</span></li><!-- DESK:END -->
+        <li><a href="hurst-variance-ratio.html">The Hurst Exponent &amp; Variance Ratio Test</a> <span>· the same bounce, treated as noise to remove</span></li>
+        <li><a href="research-pipeline-hypothesis-to-backtest.html">The Research Pipeline: Hypothesis to Honest Backtest</a> <span>· where a spread estimate becomes a cost</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a backtest that cannot see quotes still has to pay the spread, and Roll gives you a first estimate of that cost from prices alone.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-trade-classification.html">← Trade Classification</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -681,7 +815,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var input = document.getElementById('roll-scratch-prices');
@@ -767,5 +902,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

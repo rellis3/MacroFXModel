@@ -40,6 +40,61 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 272" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two doors into the same room. Door one: own a share at 100 dollars and sell the 105 call for 2.39, an outlay of 97.61. Door two: put 103.96 dollars in bills and sell the 105 put for 6.35, the same outlay of 97.61. Below, one profit line at expiry serves both: it rises with the stock up to 105, then goes flat at plus 7.39. The stock alone keeps rising, and the gap above the flat line is the upside sold. Breakeven is 97.61; at 80 the position loses 17.61 against 20 for the stock alone.">
+      <rect class="tlp-box blue" x="10" y="4" width="260" height="72" rx="6"/>
+      <text class="tlp-blue" x="22" y="26" font-size="14" font-weight="700">Door 1: own a share at $100</text>
+      <text class="tlp-text2" x="22" y="46" font-size="13">sell the 105 call: +$2.39</text>
+      <text class="tlp-text" x="22" y="66" font-size="13" font-weight="700">outlay $97.61</text>
+      <text class="tlp-text" x="300" y="50" text-anchor="middle" font-size="28" font-weight="700">=</text>
+      <rect class="tlp-box amber" x="330" y="4" width="260" height="72" rx="6"/>
+      <text class="tlp-amber" x="342" y="26" font-size="14" font-weight="700">Door 2: $103.96 in bills</text>
+      <text class="tlp-text2" x="342" y="46" font-size="13">sell the 105 put: +$6.35</text>
+      <text class="tlp-text" x="342" y="66" font-size="13" font-weight="700">outlay $97.61</text>
+      <text class="tlp-text2" x="280" y="100" text-anchor="middle" font-size="13">both hold min(stock, 105) at expiry: one line</text>
+      <polygon class="tlp-amber" points="368,171.1 580,110 580,171.1" opacity=".22"/>
+      <line class="tlp-line" x1="60" y1="185" x2="580" y2="185"/>
+      <line class="tlp-line" x1="60" y1="108" x2="60" y2="264"/>
+      <polyline class="tlp-line dash" points="60,260 580,110"/>
+      <polyline class="tlp-line blue thick" points="60,255.5 352.5,171.1 580,171.1"/>
+      <circle class="tlp-red" cx="304.5" cy="185" r="5"/>
+      <circle class="tlp-blue" cx="190" cy="218" r="5"/>
+      <text class="tlp-text3" x="52" y="189" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="560" y="104" text-anchor="end" font-size="12">stock alone</text>
+      <text class="tlp-amber" x="548" y="160" text-anchor="end" font-size="13" font-weight="700">upside sold</text>
+      <text class="tlp-blue" x="500" y="204" text-anchor="middle" font-size="13" font-weight="700">max +7.39 above 105</text>
+      <text class="tlp-red" x="312" y="204" font-size="13">breakeven 97.61</text>
+      <text class="tlp-text2" x="200" y="246" font-size="13">at 80: −17.61 (stock −20)</text>
+    </svg>
+    <figcaption>The lesson's worked example: stock at $100, strike $105, three months. Both doors cost $97.61 and end holding the smaller of the stock price and $105. You keep almost the whole downside, cushioned by $2.39, and sell everything above the strike.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My adviser says covered calls are the safe income strategy, and selling puts is the risky one. Fair?</p>
+      <p data-who="Quant">At the same strike and expiry, they're the same position. Not similar. The same, to the cent at expiry.</p>
+      <p data-who="Trader">That can't be right. One owns a stock, the other sells insurance.</p>
+      <p data-who="Quant">Walk through it. The stock is at a hundred. You own a share and sell a call at one hundred and five for about two forty. You've put in ninety-seven sixty-one.</p>
+      <p data-who="Trader">And the put seller?</p>
+      <p data-who="Quant">Parks about one hundred and four in bills, which grows to one hundred and five by expiry. Sells the one-oh-five put for about six thirty-five. Net outlay? Ninety-seven sixty-one again.</p>
+      <p data-who="Trader">Same cost. What about the ending?</p>
+      <p data-who="Quant">Both end with the smaller of the stock price and one hundred and five. If the stock finishes at one-thirty, the call writer's share is called away for one-oh-five. The put writer just keeps the cash. Both make about seven forty.</p>
+      <p data-who="Trader">While the stock alone made thirty.</p>
+      <p data-who="Quant">Right. About twenty-two sixty of rally was sold. And if the stock finishes at eighty, both are holding a share worth eighty. That's a loss of about seventeen sixty, against twenty for the stock alone.</p>
+      <p data-who="Trader">So the premium only buys a small cushion.</p>
+      <p data-who="Quant">One premium's worth, and nothing more. Conservative just means slightly less bad than owning the stock. If a short put frightens you, the covered call should too.</p>
+      <p data-who="Trader">Has that shown up in real funds?</p>
+      <p data-who="Quant">Very clearly. In twenty twenty-two the Nasdaq-100 fell by roughly a third. Covered-call funds on it fell less, cushioned by the monthly premium. In twenty twenty-three the index rose more than fifty percent, and those funds trailed it by a wide margin. They kept the premium and gave away the trend.</p>
+      <p data-who="Trader">There was an open interest point too.</p>
+      <p data-who="Quant">Yes. Those funds sell calls every month. Each sold call adds to call open interest, just like a bull buying one. Open interest never records who opened the contract, so a call-heavy market is not proof of a crowd of bulls.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">A covered call is a short put in different clothes. You keep the downside, less one premium, and you sell the upside.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -93,6 +148,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Why the covered call and the short put are one position, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{S_T} \]</div>
+      <p>Start with the share you own. At expiry it is worth \(S_T\), all the way up and all the way down.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ S_T \color{#fbbf24}{\,-\, \max(S_T - K,\,0)} \]</div>
+      <p>Sell a call at strike \(K\). If the stock ends above \(K\), the call holder takes everything above it.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ S_T - \max(S_T - K,\,0) = \color{#fbbf24}{\min(S_T,\,K)} \]</div>
+      <p>Simplify. Above the strike you hold \(K\); below it you hold the share. The covered call ends with the smaller of the two.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \min(S_T,\,K) = \color{#fbbf24}{K - \max(K - S_T,\,0)} \]</div>
+      <p>Now the other door: cash that grows to \(K\), minus a sold put that makes you absorb everything below \(K\). It ends with exactly the same thing, in every possible world.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\underbrace{S - C}_{\text{covered call}} = \underbrace{Ke^{-rT} - P}_{\text{cash + short put}}} \]</div>
+      <p>Same payoff everywhere, so the same cost today, or arbitrage closes the gap. In the worked example: \(100 - 2.39 = 103.96 - 6.35 = 97.61\).</p>
+    </div>
+  </div>
 
   <h3>1. Put-call parity</h3>
   <p>
@@ -181,6 +260,10 @@
 
   <div class="tl-chart interactive">
     <div class="tl-chart-label">Covered call vs. cash-secured short put: profit at expiry</div>
+    <div class="tl-predict" data-answer="2" data-tol="0.5" data-unit=" dollars">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At the default settings (strike 105, time value $2) the most the covered call can make is $7.00. Leave the time value at $2 and move the strike down to 95, below today's $100 price. What will the "Max profit" readout show? Lock in a guess, then move the strike slider to check.</div>
+      <div class="tl-predict-reveal"><p><strong>$2.00.</strong> At 95 the call is $5 in the money, so it sells for 5 + 2 = $7.00 and your outlay is 100 − 7 = $93.00. The most you can ever hold at expiry is the $95 strike, so the cap is 95 − 93 = $2.00: just the time value. A lower strike pays more premium and caps sooner. Check the other door too: the 95 put costs $2.00, so its outlay K − P also reads $93.00.</p></div>
+    </div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Profit at expiry against the stock price at expiry. The covered-call line and the short-put line are drawn on top of each other and coincide exactly: rising one-for-one below the strike, then flat above it. A dashed grey line shows owning the stock alone for comparison, which keeps rising above the strike.">
       <line x1="60" y1="140" x2="610" y2="140" style="stroke:var(--text3);stroke-width:1"/>
       <line x1="60" y1="20" x2="60" y2="260" style="stroke:var(--text3);stroke-width:1"/>
@@ -495,6 +578,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2023-01">
+    <div class="tl-drill-label">Scenario drill · January 2023</div>
+    <h3>"It fell less last year, so it must be the safe one"</h3>
+    <p>The Nasdaq-100 has just fallen by roughly a third in 2022. A widely held Nasdaq-100 covered-call ETF, which owns the index and sells at-the-money index calls every month, fell too, but by less. A friend wants to move all of their Nasdaq savings into it: "It held up better and it pays a big income, so it's the conservative choice." What do you tell them?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Agree. It fell less in a bad year, so it is the lower-risk way to hold the index.<div class="tl-drill-why">It fell less only by the premiums collected. A covered call keeps the full downside, less one premium a month. It is not protected, only cushioned.</div></li>
+      <li data-verdict="ok">Suggest a put-writing fund instead, since puts look like they pay more premium.<div class="tl-drill-why">At the same strike and tenor, put-call parity makes that the same exposure, up to dividends and fees. It changes the label, not the payoff, so it does not answer the real question.</div></li>
+      <li data-verdict="bad">Buy both funds, to diversify between the call side and the put side.<div class="tl-drill-why">Two doors into the same room. Holding both doubles one exposure; it does not spread it.</div></li>
+      <li data-verdict="good">Explain the trade: they keep almost the whole downside and sell every up-month above the strike. Only switch if they accept lagging badly in a strong rally.<div class="tl-drill-why">This is what the payoff says. An at-the-money call written each month hands over everything above that month's starting level. In a year that goes up most months, the fund keeps the premium and gives away the trend.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In 2023 the Nasdaq-100 rose more than 50%. Covered-call funds on the same index captured only part of that and trailed it by a wide margin. Both years are the payoff diagram played out month by month: cushioned on the way down, capped on the way up.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -579,6 +675,25 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="options-four-positions.html">The Four Option Positions</a> <span>· why a sold put is a bullish position</span></li>
+        <li><a href="payoff-shape-vs-greek-signs.html">Same Greeks, Different Risk</a> <span>· the mirror case: same signs, different payoffs</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a> <span>· what dealers do with the calls the funds sell</span></li>
+        <li><a href="open-interest-walls-max-pain.html">Open Interest Walls, Max Pain &amp; Squeeze Trading</a> <span>· reading call walls without assuming bulls</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> once you see one payoff behind two sales pitches, you stop buying a product for its label and stop reading call-heavy open interest as a crowd of bulls.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="payoff-shape-vs-greek-signs.html">← Same Greeks, Different Risk</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -659,7 +774,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

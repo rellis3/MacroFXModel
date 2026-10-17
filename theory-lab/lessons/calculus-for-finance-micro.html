@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Calculus for Finance — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -172,7 +173,19 @@
       <p class="sl-p">Relabel the step h as a per-period return R, and this is exactly the shortcut used — without derivation — back in the Returns primer: <strong>ln(1+R) ≈ R − R²/2</strong>. It isn't a separate finance approximation someone invented; it's the general-purpose Taylor formula with three specific numbers dropped in. The minus-one-half is not a design choice — it falls straight out of f″(0) = −1 for this particular function.</p>
     </section>
 
+    <!-- WB:calculus_for_finance-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Slope, area and a Taylor guess, drawn step by step</h2>
+      <!-- WB:calculus_for_finance:START -->
+      <div class="wb" data-title="Slope, area and a Taylor guess, drawn step by step">
+        <script type="application/json">{"w":600,"h":760,"intro":"The lesson's three ideas on two curves: a slope found by shrinking a gap, an area found by undoing a slope, and a Taylor guess that turns into volatility drag and delta. Press play, or step through.","steps":[{"cap":"Take the curve f(x) = x², and stand at x = 1. How steep is it right there? Start with an average: the straight line from x = 1 to x = 2 rises from 1 to 4, a slope of 3.","do":[{"chart":"sq","x":10,"y":10,"w":580,"h":300,"title":"f(x) = x²","xd":[0,3],"yd":[0,9],"yt":[[0,"0"],[4,"4"],[8,"8"]],"xt":[[0,"0"],[1,"1"],[2,"2"],[3,"3"]],"pl":36,"pr":14},{"series":"fx","chart":"sq","pts":[[0.0,0.0],[0.1,0.01],[0.2,0.04],[0.3,0.09],[0.4,0.16],[0.5,0.25],[0.6,0.36],[0.7,0.49],[0.8,0.64],[0.9,0.81],[1.0,1.0],[1.1,1.21],[1.2,1.44],[1.3,1.69],[1.4,1.96],[1.5,2.25],[1.6,2.56],[1.7,2.89],[1.8,3.24],[1.9,3.61],[2.0,4.0],[2.1,4.41],[2.2,4.84],[2.3,5.29],[2.4,5.76],[2.5,6.25],[2.6,6.76],[2.7,7.29],[2.8,7.84],[2.9,8.41],[3.0,9.0]],"tone":"blue","ms":1000,"label":"x²","lat":[2.9,8.41],"ldx":-10,"ldy":0,"lanchor":"end"},{"dot":"p1","chart":"sq","at":[1,1],"text":"x = 1","tone":"blue","dx":12,"dy":22,"anchor":"start"},{"series":"s1","chart":"sq","pts":[[0.6666666666666666,0],[2.3,4.9]],"tone":null,"dash":true},{"note":"n1","chart":"sq","at":[0.1,7.4],"text":"gap 1: slope 3","tone":null,"size":17,"anchor":"start","dx":0,"dy":0},{"dot":"q1","chart":"sq","at":[2,4],"text":"","tone":null}]},{"cap":"Shrink the gap to 0.5: the line to x = 1.5 has slope 2.5. For x², the average slope over a gap h is always 2x + h, so at x = 1 it is 2 + h.","do":[{"series":"s2","chart":"sq","pts":[[0.6,0],[2.3,4.25]],"tone":"purple","dash":true},{"note":"n2","chart":"sq","at":[0.1,6.3],"text":"gap 0.5: slope 2.5","tone":"purple","size":17,"anchor":"start","dx":0,"dy":0},{"dot":"q2","chart":"sq","at":[1.5,2.25],"text":"","tone":"purple"}]},{"cap":"Let the gap shrink to nothing and the slope settles on exactly 2: the tangent line. That is the derivative, the speedometer reading at one instant: d/dx(x²) = 2x.","do":[{"series":"tan","chart":"sq","pts":[[0.5,0],[2.3,3.6]],"tone":"amber","ms":900},{"note":"n3","chart":"sq","at":[0.1,5.2],"text":"gap → 0: slope 2","tone":"amber","size":17,"anchor":"start","dx":0,"dy":0},{"pulse":"p1"}]},{"cap":"The integral goes the other way: add up area. The area under the speed curve 2x from 0 to 1 is a triangle of area 1, which is x² at 1 minus x² at 0. Integrating undoes differentiating.","do":[{"dim":"s1"},{"dim":"s2"},{"dim":"q1"},{"dim":"q2"},{"series":"d2x","chart":"sq","pts":[[0,0],[1.2,2.4]],"tone":"green","ms":600},{"gap":"area","chart":"sq","top":[[0,0],[1,2]],"bot":[[0,0],[1,0]],"tone":"green","op":0.35},{"note":"al","chart":"sq","at":[0.08,2.4],"text":"area = 1","tone":"green","size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"Now a Taylor guess. You only know ln(1 + x) at x = 0. First guess: nothing changes, so the value stays 0. Flat.","do":[{"chart":"ln","x":10,"y":326,"w":580,"h":300,"title":"Guessing ln(1 + x) from x = 0","xd":[-0.4,0.8],"yd":[-0.55,0.85],"yt":[[0,"0"],[0.5,"0.5"]],"xt":[[-0.3,"−0.3"],[0,"0"],[0.3,"0.3"],[0.6,"0.6"]],"pl":36,"pr":14,"zero":true},{"series":"true","chart":"ln","pts":[[-0.4,-0.5108],[-0.35,-0.4308],[-0.3,-0.3567],[-0.25,-0.2877],[-0.2,-0.2231],[-0.15,-0.1625],[-0.1,-0.1054],[-0.05,-0.0513],[0.0,0.0],[0.05,0.0488],[0.1,0.0953],[0.15,0.1398],[0.2,0.1823],[0.25,0.2231],[0.3,0.2624],[0.35,0.3001],[0.4,0.3365],[0.45,0.3716],[0.5,0.4055],[0.55,0.4383],[0.6,0.47],[0.65,0.5008],[0.7,0.5306],[0.75,0.5596],[0.8,0.5878]],"tone":"blue","ms":1000},{"note":"lt","chart":"ln","at":[0.4,-0.15],"text":"true ln(1 + x)","tone":"blue","size":17,"anchor":"start","dx":0,"dy":0},{"series":"z0","chart":"ln","pts":[[-0.4,0],[0.8,0]],"tone":null,"width":4,"ms":500}]},{"cap":"Second guess: keep going at today's slope. The slope of ln(1 + x) at 0 is 1, so the tangent guess is just x. Fine near 0, but it pulls away as the step grows.","do":[{"series":"t1","chart":"ln","pts":[[-0.4,-0.4],[0.8,0.8]],"tone":"amber","ms":800},{"note":"l1","chart":"ln","at":[0.4,-0.27],"text":"1st order: x","tone":"amber","size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"Third guess: add the bend. The second derivative at 0 is −1, so the correction is −x²/2, and the guess becomes x − x²/2. It hugs the true curve.","do":[{"series":"t2","chart":"ln","pts":[[-0.4,-0.48],[-0.35,-0.4113],[-0.3,-0.345],[-0.25,-0.2812],[-0.2,-0.22],[-0.15,-0.1613],[-0.1,-0.105],[-0.05,-0.0512],[0.0,0.0],[0.05,0.0487],[0.1,0.095],[0.15,0.1388],[0.2,0.18],[0.25,0.2188],[0.3,0.255],[0.35,0.2888],[0.4,0.32],[0.45,0.3488],[0.5,0.375],[0.55,0.3988],[0.6,0.42],[0.65,0.4387],[0.7,0.455],[0.75,0.4688],[0.8,0.48]],"tone":"green","dash":true,"ms":900},{"note":"l2","chart":"ln","at":[0.4,-0.39],"text":"2nd order: x − x²/2","tone":"green","size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"How good? At a 5% step the error is 0.00004. At a 30% step it is 0.007, nearly 200 times bigger. A Taylor guess is local: great for small moves, worse for big ones.","do":[{"dot":"h05","chart":"ln","at":[0.05,0.0488],"text":"h = 0.05","tone":"purple","dx":8,"dy":22,"anchor":"start"},{"dot":"h30","chart":"ln","at":[0.3,0.2624],"text":"h = 0.30: off by 0.007","tone":"red","dx":10,"dy":24,"anchor":"start"}]},{"cap":"Average ln(1 + R) ≈ R − R²/2 over many periods and you get volatility drag: compound growth g ≈ μ − σ²/2. At 20% volatility that is 0.04 ÷ 2 = 2% a year.","do":[{"box":"drag","x":10,"y":642,"w":186,"h":106,"text":"g ≈ μ − σ²/2\n20% vol → 2%","tone":"amber","size":19}]},{"cap":"An option is a curve too. Delta is its first-order term: with delta 0.60, a $1 move in a $100 stock moves a $4.30 call by about $0.60. Gamma is the bend, the second-order correction for bigger moves.","do":[{"box":"dg","x":207,"y":642,"w":186,"h":106,"text":"ΔC ≈ δΔS\n+ ½γ(ΔS)²","tone":"purple","size":20}]},{"cap":"Merton brought Itô's calculus into finance in 1969–71, and in 1973 it gave Black, Scholes and Merton the option price. The second-order term that survives randomness is where volatility enters.","do":[{"box":"mer","x":404,"y":642,"w":186,"h":106,"text":"Merton 1969–71\nBSM 1973","tone":"green","size":19}]}]}</script>
+      </div>
+      <!-- WB:calculus_for_finance:END -->
+    </section>
+    <!-- WB:calculus_for_finance-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Same shape, twice: volatility drag and Kelly</h2>
       <p class="sl-sub">Average the identity ln(1+R) ≈ R − R²/2 across many periods and the σ²/2 term in the Kelly lesson falls out directly.</p>
@@ -202,7 +215,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Derivatives you're already trading with</h2>
       <div class="sl-icard-grid">
@@ -217,7 +230,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -268,7 +281,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -410,5 +423,9 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

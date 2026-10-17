@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Merton's Portfolio Problem — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -180,7 +181,19 @@
       <p class="sl-p">The curve itself never moves — only which point on it you occupy does. Everything right of γ=1 is fractional Kelly, and it isn't a discount off "the" true answer; it's Merton's exact optimum for that investor's own honestly-stated risk aversion.</p>
     </section>
 
+    <!-- WB:merton_portfolio_problem-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">The Merton fraction, from Kelly to 25 to 1</h2>
+      <!-- WB:merton_portfolio_problem:START -->
+      <div class="wb" data-title="The Merton fraction, from Kelly to 25 to 1">
+        <script type="application/json">{"w":600,"h":800,"intro":"One risky asset, one safe one, and a dial for how much you dislike risk. Then what the clean answer assumes, at 25 to 1. Press play, or step through.","steps":[{"cap":"You hold wealth in two places: cash, which earns the safe rate, and a risky asset that beats cash by 6% a year on average, with 25% volatility.","do":[{"icon":"cash","name":"piggy","x":30,"y":10,"s":0.75,"tone":"blue","label":"cash\nearns r","sym":"$","lsize":17},{"icon":"you","name":"person","x":262,"y":10,"s":0.75,"label":"you","lsize":17},{"icon":"risky","name":"up","x":480,"y":10,"s":0.75,"tone":"purple","label":"risky asset\n+6%/yr, 25% vol","lsize":17}]},{"cap":"At every instant you choose one number: the share f of your wealth to hold in the risky asset. The rest, 1 − f, sits in cash. Merton asked how to set f for life, not for one bet.","do":[{"chip":"f","x":300,"y":150,"text":"share f","tone":"purple"},{"move":"f","x":470,"y":150,"ms":1000},{"chip":"rest","x":300,"y":150,"text":"1 − f","tone":"blue"},{"move":"rest","x":110,"y":150,"ms":1000}]},{"cap":"Merton solved it in 1969 and 1971 with the HJB equation. For an investor with constant relative risk aversion γ, the best share is the edge divided by γ times the variance.","do":[{"note":"rule","x":300,"y":205,"text":"f* = edge ÷ (γ × variance) = 6% ÷ (γ × 6.25%)","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"Draw that share against risk aversion. The edge and the volatility never change on this chart: only the investor does.","do":[{"chart":"fg","x":10,"y":240,"w":580,"h":270,"title":"Best share in the risky asset vs risk aversion γ","xd":[0,5.2],"yd":[0,1.25],"yt":[[0,"0"],[0.5,"50%"],[1,"100%"]],"xt":[[1,"γ = 1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]]},{"series":"curve","chart":"fg","pts":[[0.77,1.2468],[0.81,1.1852],[0.85,1.1294],[0.89,1.0787],[0.93,1.0323],[0.97,0.9897],[1.01,0.9505],[1.05,0.9143],[1.09,0.8807],[1.13,0.8496],[1.17,0.8205],[1.21,0.7934],[1.25,0.768],[1.29,0.7442],[1.33,0.7218],[1.37,0.7007],[1.41,0.6809],[1.45,0.6621],[1.49,0.6443],[1.53,0.6275],[1.57,0.6115],[1.61,0.5963],[1.65,0.5818],[1.69,0.568],[1.73,0.5549],[1.77,0.5424],[1.81,0.5304],[1.85,0.5189],[1.89,0.5079],[1.93,0.4974],[1.97,0.4873],[2.01,0.4776],[2.05,0.4683],[2.09,0.4593],[2.13,0.4507],[2.17,0.4424],[2.21,0.4344],[2.25,0.4267],[2.29,0.4192],[2.33,0.412],[2.37,0.4051],[2.41,0.3983],[2.45,0.3918],[2.49,0.3855],[2.53,0.3794],[2.57,0.3735],[2.61,0.3678],[2.65,0.3623],[2.69,0.3569],[2.73,0.3516],[2.77,0.3466],[2.81,0.3416],[2.85,0.3368],[2.89,0.3322],[2.93,0.3276],[2.97,0.3232],[3.01,0.3189],[3.05,0.3148],[3.09,0.3107],[3.13,0.3067],[3.17,0.3028],[3.21,0.2991],[3.25,0.2954],[3.29,0.2918],[3.33,0.2883],[3.37,0.2849],[3.41,0.2815],[3.45,0.2783],[3.49,0.2751],[3.53,0.272],[3.57,0.2689],[3.61,0.2659],[3.65,0.263],[3.69,0.2602],[3.73,0.2574],[3.77,0.2546],[3.81,0.252],[3.85,0.2494],[3.89,0.2468],[3.93,0.2443],[3.97,0.2418],[4.01,0.2394],[4.05,0.237],[4.09,0.2347],[4.13,0.2324],[4.17,0.2302],[4.21,0.228],[4.25,0.2259],[4.29,0.2238],[4.33,0.2217],[4.37,0.2197],[4.41,0.2177],[4.45,0.2157],[4.49,0.2138],[4.53,0.2119],[4.57,0.2101],[4.61,0.2082],[4.65,0.2065],[4.69,0.2047],[4.73,0.203],[4.77,0.2013],[4.81,0.1996],[4.85,0.1979],[4.89,0.1963],[4.93,0.1947],[4.97,0.1932]],"tone":"purple","ms":1500}]},{"cap":"Risk aversion of 1 is log utility, which is exactly what Kelly maximises. So the answer here, 6 ÷ 6.25 = 96% of wealth, is precisely the Kelly fraction. Kelly is one point on Merton's dial.","do":[{"dot":"k1","chart":"fg","at":[1,0.96],"text":"Kelly (γ = 1): 96%","tone":"green","dx":14,"dy":-10,"anchor":"start"}]},{"cap":"Risk aversion of 2: the share halves, to 48%. That is half-Kelly, exactly. At 4 it is 24%, quarter-Kelly. Each is the correct answer for that investor, not a discount on the \"real\" one.","do":[{"dot":"k2","chart":"fg","at":[2,0.48],"text":"γ = 2: 48%, half-Kelly","tone":"blue","dx":12,"dy":-14,"anchor":"start"},{"dot":"k4","chart":"fg","at":[4,0.24],"text":"γ = 4: 24%","tone":"amber","dy":-22}]},{"cap":"And the share is a constant. For this kind of investor it does not change with how rich you are or how long you have left. Wealth goes up or down, you rebalance back to the same f.","do":[{"box":"const","x":330,"y":282,"w":250,"h":74,"text":"rich or poor, young or old:\nthe same share f","tone":"blue","size":18}]},{"cap":"That rebalancing is assumed to be free and instant. Now take a very large f. In early 1998 Long-Term Capital Management, where Merton was a partner, ran about 25 to 1: well over $100 billion of positions on under $5 billion of capital.","do":[{"dim":"fg"},{"dim":"curve"},{"dim":"k1"},{"dim":"k2"},{"dim":"k4"},{"dim":"const"},{"box":"ltcm","x":10,"y":528,"w":270,"h":96,"text":"LTCM, early 1998\n~25 to 1: $100bn+\non under $5bn","tone":"red","size":18}]},{"cap":"Start with wealth 1 and positions of 25. A 1% fall in the positions loses 0.25: a quarter of your wealth. To stay at 25 times the new wealth of 0.75, positions must drop to 18.75. You must sell 6, about a quarter of everything you own.","do":[{"chart":"reb","x":300,"y":528,"w":290,"h":222,"title":"Positions, in units of capital","xd":[0.4,3.6],"yd":[0,31],"yt":[[0,"0"],[25,"25"]],"xt":[[1,"before"],[2,"after −1%"],[3,"target"]],"pl":36},{"bars":"rb","chart":"reb","data":[[1,25,"25","blue"],[2,24.75,"24.75","amber"],[3,18.75,"18.75","green"]],"bw":46,"ms":1100}]},{"cap":"After Russia devalued and defaulted on 17 August 1998, LTCM's spreads widened together and lenders demanded collateral. Much of the market knew roughly what it held, so every sale moved prices against it and deepened the next mark.","do":[{"box":"sell","x":10,"y":668,"w":270,"h":70,"text":"market knows the book:\nevery sale moves the price","tone":"red","size":17},{"arrow":["ltcm","sell"],"tone":"red"}]},{"cap":"By late September about $4.6 billion was gone. On 23 September fourteen banks and brokers put in about $3.6 billion to take the portfolio over. Merton's rule is sound; its free-rebalancing assumption is what breaks when f is far above 1.","do":[{"note":"out","x":300,"y":778,"text":"~$4.6bn lost · $3.6bn takeover by 14 banks, 23 Sep 1998","size":18,"anchor":"middle","tone":"red"}]}]}</script>
+      </div>
+      <!-- WB:merton_portfolio_problem:END -->
+    </section>
+    <!-- WB:merton_portfolio_problem-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Same edge, same volatility, three allocations</h2>
       <p class="sl-sub">Three simulated wealth paths, identical random shocks (μ=8%, σ=20%, r=2%, ~5 years). Only the allocation fraction f differs.</p>
@@ -222,7 +235,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Your own numbers: compute f*</h2>
       <p class="sl-sub">f* = (μ − r) / (σ² · γ). Enter the risky asset's raw expected return μ, the risk-free rate r, its volatility σ, and your own γ.</p>
@@ -250,7 +263,7 @@
       <p class="sl-p">At the defaults, this is Trader B from the full lesson's scenario: γ=2, exactly half of the γ=1 (full-Kelly-equivalent) allocation. Set γ back to 1 to see the full-Kelly-equivalent number the formula collapses to — a literal doubling, not a rounding coincidence.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where half-Kelly actually comes from</h2>
       <p class="sl-sub">The Kelly lesson introduced fractional Kelly as a practical hedge against estimation error. Merton's framework says there's a second, deeper reason.</p>
@@ -284,7 +297,7 @@
 <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the clean formula quietly breaks down</h2>
       <div class="sl-icard-grid">
@@ -296,7 +309,7 @@
       <div class="sl-quote">None of this is an argument against the math — it's the same discipline the Kelly lesson applied one level down: feed the formula honest, uncertain inputs, and treat its output as a ceiling to size down from, not a target to hit exactly.</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12 · It actually happened</div>
       <h2 class="sl-h2">LTCM, 1998: the rebalancing nobody could do</h2>
       <div class="sl-callout amber">
@@ -316,7 +329,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk can say<!-- DESK:END --></h2>
       <!-- DESK:START -->
@@ -331,7 +344,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -382,7 +395,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -553,5 +566,9 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

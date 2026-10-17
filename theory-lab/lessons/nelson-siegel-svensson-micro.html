@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nelson-Siegel &amp; Svensson — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -156,7 +157,19 @@
       </div>
     </section>
 
+    <!-- WB:nelson_siegel_svensson-deck:START -->
     <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Four dials draw a curve, and 2022 turns one</h2>
+      <!-- WB:nelson_siegel_svensson:START -->
+      <div class="wb" data-title="Four dials draw a curve, and 2022 turns one">
+        <script type="application/json">{"w":600,"h":760,"intro":"Four dials draw a whole yield curve. Watch the curve assemble from its three pieces, then watch 2022 turn the slope dial the other way. Press play, or step through.","steps":[{"cap":"Rates by maturity, from today out to 30 years. Nelson-Siegel draws the whole curve from four numbers. Dial one is the level, β₀ = 4.5%: where the curve settles far out.","do":[{"chart":"ns","x":10,"y":10,"w":580,"h":340,"title":"Yield by maturity (%)","xd":[0,5.477225575051661],"yd":[1.5,7.2],"yt":[[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"6"],[7,"7"]],"xt":[[1,"1y"],[1.4142135623730951,"2y"],[2.23606797749979,"5y"],[3.1622776601683795,"10y"],[5.477225575051661,"30y"]],"pl":44,"pr":26},{"series":"lvl","chart":"ns","pts":[[0,4.5],[5.477225575051661,4.5]],"tone":null,"dash":true,"ms":600,"label":"level β₀ = 4.5%","lat":[0.3,4.5],"ldx":0,"ldy":-14,"lanchor":"start","lsize":16}]},{"cap":"Dial two is the slope, β₁ = −2.0%. Its piece matters fully at the short end and fades with maturity. So the curve starts at β₀ + β₁ = 2.5% and climbs toward the level.","do":[{"series":"ls","chart":"ns","pts":[[0.141,2.51],[0.316,2.549],[0.5,2.62],[0.707,2.73],[0.866,2.832],[1.0,2.926],[1.225,3.093],[1.414,3.236],[1.732,3.464],[2.0,3.635],[2.236,3.766],[2.449,3.867],[2.646,3.946],[2.828,4.009],[3.162,4.103],[3.464,4.167],[3.873,4.233],[4.243,4.278],[4.583,4.31],[5.0,4.34],[5.477,4.367]],"tone":"green","ms":1200,"dash":true},{"dot":"y0","chart":"ns","at":[0,2.5],"text":"short end 2.5%","tone":"green","dx":10,"dy":16,"anchor":"start"}]},{"cap":"Dial three is the curvature, β₂ = 1.0%. Its piece is zero at both ends and bulges in the middle, lifting the belly. Add it, and that is the full Nelson-Siegel curve.","do":[{"dim":"ls"},{"series":"full","chart":"ns","pts":[[0.141,2.515],[0.316,2.573],[0.5,2.677],[0.707,2.836],[0.866,2.979],[1.0,3.107],[1.225,3.324],[1.414,3.5],[1.732,3.759],[2.0,3.932],[2.236,4.051],[2.449,4.133],[2.646,4.193],[2.828,4.236],[3.162,4.295],[3.464,4.331],[3.873,4.366],[4.243,4.389],[4.583,4.405],[5.0,4.42],[5.477,4.433]],"tone":"blue","ms":1300}]},{"cap":"Read it off at the worked maturities: 3.11% at 1 year, 3.50% at 2, 4.05% at 5 and 4.29% at 10. Smooth everywhere, from four numbers, with no kinks between bonds.","do":[{"dot":"d1","chart":"ns","at":[1,3.106530659712633],"text":"3.11","tone":"blue","dy":18},{"dot":"d2","chart":"ns","at":[1.4142135623730951,3.5],"text":"3.50","tone":"blue","dy":18},{"dot":"d5","chart":"ns","at":[2.23606797749979,4.050749000825661],"text":"4.05","tone":"blue","dy":18},{"dot":"d10","chart":"ns","at":[3.1622776601683795,4.294609642400732],"text":"4.29","tone":"blue","dy":18}]},{"cap":"Dial four, λ, sets where along the maturities things happen. Drop it from 2.0 to 0.5 and the short-end behaviour fades much faster: the curve reaches 4.24% by 2 years instead of 3.50%.","do":[{"series":"lam","chart":"ns","pts":[[0.141,2.559],[0.316,2.775],[0.5,3.107],[0.707,3.5],[0.866,3.759],[1.0,3.932],[1.225,4.133],[1.414,4.236],[1.732,4.331],[2.0,4.375],[2.236,4.4],[2.449,4.417],[2.646,4.429],[2.828,4.437],[3.162,4.45],[3.464,4.458],[3.873,4.467],[4.243,4.472],[4.583,4.476],[5.0,4.48],[5.477,4.483]],"tone":"purple","dash":true,"ms":1000,"label":"λ = 0.5","lat":[1,3.932332358381694],"ldx":-12,"ldy":0,"lanchor":"end","lsize":16}]},{"cap":"Now turn the slope dial the other way, β₁ = +2.0%. The short end jumps to 6.5%, above the 4.5% level: an inverted curve. One sign change, and the whole shape flips.","do":[{"dim":"lam"},{"dim":"d1"},{"dim":"d2"},{"dim":"d5"},{"dim":"d10"},{"series":"inv","chart":"ns","pts":[[0.141,6.495],[0.316,6.475],[0.5,6.438],[0.707,6.376],[0.866,6.314],[1.0,6.254],[1.225,6.138],[1.414,6.028],[1.732,5.831],[2.0,5.662],[2.236,5.519],[2.449,5.4],[2.646,5.301],[2.828,5.218],[3.162,5.089],[3.464,4.996],[3.873,4.899],[4.243,4.833],[4.583,4.786],[5.0,4.74],[5.477,4.7]],"tone":"red","ms":1300,"label":"β₁ = +2: inverted","lat":[2.8284271247461903,5.217947631944716],"ldx":0,"ldy":-26,"lanchor":"start","lsize":16},{"dot":"y0i","chart":"ns","at":[0,6.5],"text":"6.5%","tone":"red","dx":10,"dy":-4,"anchor":"start"}]},{"cap":"That is what 2022 did. As the Fed hiked from near zero, the 2-year yield went from about 0.7% to about 4.4%; the 10-year from about 1.5% to under 4%. The short end rose far more than the long end.","do":[{"chart":"yr","x":10,"y":370,"w":280,"h":250,"title":"2022, start → end (%)","xd":[0.4,4.6],"yd":[0,5.2],"yt":[[0,"0"],[2,"2"],[4,"4"]],"xt":[[1.5,"2-year"],[3.5,"10-year"]],"pl":34},{"bars":"b22","chart":"yr","data":[[1.1,0.7,"0.7","blue"],[1.9,4.4,"4.4","red"],[3.1,1.5,"1.5","blue"],[3.9,3.9,"<4","amber"]],"bw":30,"ms":1200}]},{"cap":"From July 2022 the 2-year stayed above the 10-year. In the lesson's terms, β₁ went from negative to positive: the short end now sat above the long-run level.","do":[{"note":"flip","x":300,"y":650,"text":"β₁: negative → positive  (short end above the level)","size":19,"anchor":"middle","tone":"red"}]},{"cap":"Then a harder shape: bills above 2-years above 10-years, yet by late 2023 the 30-year back above the 10-year. A rise, a long fall, then a turn up. Here is that kind of shape, illustrative numbers.","do":[{"chart":"sv","x":310,"y":370,"w":280,"h":250,"title":"hump and dip (illustrative)","xd":[0,5.477225575051661],"yd":[3.0,5.2],"yt":[[3.5,"3.5"],[4.5,"4.5"]],"xt":[[0.5,"3m"],[1.4142135623730951,"2y"],[3.1622776601683795,"10y"],[5.477225575051661,"30y"]],"pl":40,"pr":24},{"series":"svc","chart":"sv","pts":[[0.141,4.46],[0.316,4.644],[0.5,4.806],[0.707,4.795],[0.866,4.653],[1.0,4.485],[1.225,4.193],[1.414,3.98],[1.732,3.712],[2.0,3.557],[2.236,3.463],[2.449,3.408],[2.646,3.378],[2.828,3.366],[3.162,3.374],[3.464,3.405],[3.873,3.466],[4.243,3.527],[4.583,3.581],[5.0,3.64],[5.477,3.697]],"tone":"amber","ms":1400}]},{"cap":"One Nelson-Siegel hump can fit the rise then fall, but not the turn back up. Svensson adds a second curvature piece with its own λ₂: six dials instead of four, and a hump and a dip.","do":[{"hide":"flip"},{"note":"svn","x":300,"y":650,"text":"Svensson: + β₃ × a second hump, placed by λ₂","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"The fit is still only a description. Forecasting the dials from the 2010s, when β₁ was almost always negative, assumed a regime that 2022 ended. Smooth curve, honest about its limits.","do":[{"note":"end","x":300,"y":700,"text":"describes any day well · forecasts only within a regime","size":19,"anchor":"middle","tone":"blue"}]}]}</script>
+      </div>
+      <!-- WB:nelson_siegel_svensson:END -->
+    </section>
+    <!-- WB:nelson_siegel_svensson-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Watch the curve reshape, live</h2>
       <p class="sl-sub">Every slider recomputes y(τ) = β₀ + β₁L(τ) + β₂(L(τ) − e⁻ˣ) at 151 points from the real formula — no lookup table.</p>
@@ -204,7 +217,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Worked by hand — the same numbers the chart starts on</h2>
       <p class="sl-sub">β₀ = 4.5%, β₁ = −2.0%, β₂ = 1.0%, λ = 2.0. Plugging τ into y(τ) = β₀ + β₁L(τ) + β₂(L(τ) − e⁻ˣ):</p>
@@ -217,7 +230,7 @@
       <p class="sl-p">By 10 years the curve is already closing in on β₀ = 4.5% — it would sit at 4.4333% at 30 years, consistent with the τ→∞ limit from Section 4. Every one of these four numbers comes from the same three-term formula, just evaluated at a different τ.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Now put in your own numbers</h2>
       <p class="sl-sub">Starts on the worked-example parameters. Change any field — the result recomputes on every keystroke.</p>
@@ -247,7 +260,7 @@
       <p class="sl-p">Try λ = 0 or leave a field blank — the calculator shows "—" instead of a broken number. λ sitting in a denominator means λ = 0 is undefined, not just an edge case to skip past.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">When one hump isn't enough</h2>
       <p class="sl-sub">Plain Nelson-Siegel's curvature term can only ever produce exactly one hump — or one dip. No amount of tuning β₂ or λ changes that.</p>
@@ -272,7 +285,7 @@
       <p class="sl-p">Six parameters (β₀, β₁, β₂, β₃, λ₁, λ₂) instead of four — best read as "Nelson-Siegel, twice, sharing one level and one slope." This is the extra flexibility central banks like the ECB and the U.S. Federal Reserve actually use in the curves they publish daily.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Fitting is optimization, not algebra</h2>
       <p class="sl-sub">λ sits inside an exponential and a division — that rules out ordinary linear regression.</p>
@@ -293,7 +306,7 @@
       <p class="sl-p">A second trap sits right next to this one: bolting on more curvature terms to chase every last wiggle defeats the entire point of a parametric fit. A six-parameter Svensson fit to eight bonds is barely different from an unconstrained interpolation — it loses exactly the stability that was the whole reason to fit a smooth shape in the first place.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
@@ -308,7 +321,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12 · It actually happened</div>
       <h2 class="sl-h2">2022: the year the factors moved</h2>
       <div class="sl-callout amber">
@@ -328,7 +341,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13<!-- DESK:START --> · Tested here<!-- DESK:END --></div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and the verdict<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: the fitted betas can be forecast well enough to trade the curve (Diebold-Li).</p>
@@ -347,7 +360,7 @@
       <div class="sl-quote">A model fitted on the 2010s learned a β₁ that was almost always negative. Forecasting the betas assumes their behaviour is stable, and 2022 was a regime change in exactly that factor.</div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -398,7 +411,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -579,5 +592,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

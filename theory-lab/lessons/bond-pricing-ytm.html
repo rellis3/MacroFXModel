@@ -43,6 +43,64 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The price-yield curve for a 5-year, 4% annual-coupon bond with $1,000 face value. Price falls as yield rises, from $1,200 at a 0% yield to about $773 at 10%. At a 3% yield it is a premium bond at $1,045.80; at 4%, equal to its coupon, it is exactly at par, $1,000; at 5% it is a discount bond at $956.71.">
+      <line class="tlp-line" x1="70" y1="205" x2="570" y2="205"/>
+      <line class="tlp-line" x1="70" y1="30" x2="70" y2="205"/>
+      <line class="tlp-line dash" x1="270" y1="115" x2="570" y2="115" opacity=".6"/>
+      <polyline class="tlp-line blue thick" points="70.0,43.0 80.0,47.0 90.0,51.0 100.0,54.9 110.0,58.8 120.0,62.6 130.0,66.4 140.0,70.1 150.0,73.8 160.0,77.5 170.0,81.1 180.0,84.6 190.0,88.2 200.0,91.7 210.0,95.1 220.0,98.5 230.0,101.9 240.0,105.2 250.0,108.5 260.0,111.8 270.0,115.0 280.0,118.2 290.0,121.3 300.0,124.5 310.0,127.5 320.0,130.6 330.0,133.6 340.0,136.6 350.0,139.5 360.0,142.4 370.0,145.3 380.0,148.2 390.0,151.0 400.0,153.8 410.0,156.6 420.0,159.3 430.0,162.0 440.0,164.7 450.0,167.3 460.0,169.9 470.0,172.5 480.0,175.1 490.0,177.6 500.0,180.1 510.0,182.6 520.0,185.0 530.0,187.4 540.0,189.8 550.0,192.2 560.0,194.6 570.0,196.9"/>
+      <circle class="tlp-green" cx="220" cy="98.5" r="6"/>
+      <circle class="tlp-blue" cx="270" cy="115" r="7"/>
+      <circle class="tlp-amber" cx="320" cy="130.6" r="6"/>
+      <line class="tlp-line green" x1="200" y1="128" x2="216" y2="105"/>
+      <text class="tlp-green" x="80" y="142" font-size="14" font-weight="700">3%: $1,045.80 premium</text>
+      <text class="tlp-blue" x="284" y="104" font-size="14" font-weight="700">4% = the coupon: $1,000, par</text>
+      <text class="tlp-amber" x="312" y="162" text-anchor="end" font-size="14" font-weight="700">5%: $956.71 discount</text>
+      <text class="tlp-purple" x="565" y="44" text-anchor="end" font-size="15" font-weight="700">yield up, price down</text>
+      <text class="tlp-text2" x="565" y="64" text-anchor="end" font-size="13">same coupons, bigger discount</text>
+      <text class="tlp-text3" x="62" y="191" text-anchor="end" font-size="12">$800</text>
+      <text class="tlp-text3" x="62" y="119" text-anchor="end" font-size="12">$1,000</text>
+      <text class="tlp-text3" x="62" y="47" text-anchor="end" font-size="12">$1,200</text>
+      <text class="tlp-text3" x="70" y="221" text-anchor="middle" font-size="12">0%</text>
+      <text class="tlp-text3" x="170" y="221" text-anchor="middle" font-size="12">2%</text>
+      <text class="tlp-text3" x="270" y="221" text-anchor="middle" font-size="12">4%</text>
+      <text class="tlp-text3" x="370" y="221" text-anchor="middle" font-size="12">6%</text>
+      <text class="tlp-text3" x="470" y="221" text-anchor="middle" font-size="12">8%</text>
+      <text class="tlp-text3" x="570" y="221" text-anchor="end" font-size="12">10%</text>
+      <text class="tlp-text3" x="570" y="237" text-anchor="end" font-size="12">yield to maturity →</text>
+      <text class="tlp-text3" x="76" y="24" font-size="12">price ↑</text>
+    </svg>
+    <figcaption>One bond, five $40 coupons and $1,000 at the end, priced at every yield. The cash flows never change; only the rate you discount them at does. When the yield equals the 4% coupon the price is exactly $1,000. Above it, the bond trades at a discount; below it, at a premium.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Everyone quotes the ten-year yield. Nobody quotes the price. What is a bond actually worth?</p>
+      <p data-who="Quant">Exactly what its payments are worth today. A bond is a stack of dated promises. Take each payment, shrink it for how long you wait, and add them up.</p>
+      <p data-who="Trader">Shrink it by how much?</p>
+      <p data-who="Quant">By the rate the market demands. A dollar next year is worth less than a dollar now, because today's dollar could be earning interest in the meantime.</p>
+      <p data-who="Trader">Give me a real one.</p>
+      <p data-who="Quant">A five-year bond with a thousand dollars of face value and a four percent coupon. It pays forty dollars a year, then the thousand back at the end. If the market wants five percent, the five coupons are worth about one hundred and seventy-three dollars today, and the thousand is worth about seven hundred and eighty-four. Together, nine hundred and fifty-six dollars and seventy-one cents.</p>
+      <p data-who="Trader">Less than face value.</p>
+      <p data-who="Quant">Because its coupon, four percent, is stingier than the five the market wants. That is a discount bond. If the coupon matched the market rate it would price at exactly a thousand, at par. If it beat the market rate, it would trade at a premium.</p>
+      <p data-who="Trader">And the yield to maturity?</p>
+      <p data-who="Quant">Same sum, run backwards. You see the price and ask what single rate makes the sum match it. For more than a couple of coupons there is no neat formula, so software guesses and refines, step by step, until it lands.</p>
+      <p data-who="Trader">Why do price and yield always move opposite ways?</p>
+      <p data-who="Quant">Every payment is divided by one plus the yield, raised to some power. Raise the yield and every single piece shrinks. No exceptions, for a plain fixed-coupon bond.</p>
+      <p data-who="Trader">Has that ever really hurt anyone?</p>
+      <p data-who="Quant">Twenty twenty-two. Inflation took off and the Fed hiked from near zero. The ten-year yield went from about one and a half percent to above four. No bond's payments changed, yet the broad US bond index lost about thirteen percent, its worst year on record.</p>
+      <p data-who="Trader">Put a number on one bond.</p>
+      <p data-who="Quant">The ten-year note sold in August twenty twenty pays a coupon of five-eighths of a percent. At a one and a half percent yield it is worth about ninety-three dollars per hundred. At four percent, about seventy-seven.</p>
+      <p data-who="Trader">But you get par back if you wait.</p>
+      <p data-who="Quant">If you can wait. In March twenty twenty-three Silicon Valley Bank had to sell about twenty-one billion dollars of bonds to raise cash, and took about one point eight billion of losses. Depositors ran, and it failed within days.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">A bond's price is its payments discounted at today's yield, so when yields rise the price falls, and that loss is only on paper for as long as nobody makes you sell.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -98,6 +156,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where a bond's price comes from, one cash flow at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P = \color{#fbbf24}{\frac{C}{(1+y)^1}} \]</div>
+      <p>Start with the first coupon. It arrives in one period, so you shrink it once by \(1+y\). In the worked example, \(40/1.05 = 38.10\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P = \frac{C}{(1+y)^1} + \color{#fbbf24}{\frac{C}{(1+y)^2} + \cdots + \frac{C}{(1+y)^n}} \]</div>
+      <p>Add every later coupon, each shrunk once more for every extra period you wait. The five $40 coupons are worth $173.18 today.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P = \sum_{t=1}^{n} \frac{C}{(1+y)^t} + \color{#fbbf24}{\frac{F}{(1+y)^n}} \]</div>
+      <p>Add the face value, discounted from maturity only. \(1000/1.05^5 \approx 783.53\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P = 173.18 + 783.53 = \color{#10b981}{\$956.71} \]</div>
+      <p>That is the price at a 5% yield: below face, because the 4% coupon is below the yield.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{P_{mkt}} = \sum_{t=1}^{n} \frac{C}{(1+\color{#10b981}{\text{YTM}})^t} + \frac{F}{(1+\color{#10b981}{\text{YTM}})^n} \]</div>
+      <p>Now run it backwards. Fix the price at what the market pays and solve for the one rate that fits. That rate is the yield to maturity.</p>
+    </div>
+  </div>
   <p>
     A coupon-paying bond promises two kinds of cash flow: a fixed coupon
     payment \(C\) at the end of each period until maturity, and a single
@@ -522,6 +604,10 @@
       discounted cash flow, plus the final price, recalculates instantly
       from the pricing formula above.
     </p>
+    <div class="tl-predict" data-answer="1000" data-tol="5" data-unit=" dollars">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At a 5% yield this 4% coupon bond is worth $956.71. What is it worth if the yield drops to 4%, the same as its coupon rate? Lock in a guess, then type 4 into the yield field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>$1,000.00, exactly par.</strong> When the yield equals the coupon rate, each $40 coupon pays exactly the 4% the market demands on $1,000, so there is nothing to make up in the price. Now try 3%: the coupon beats the yield and the price rises above face, to $1,045.80, a premium bond.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Face value \(F\)</span></div>
@@ -738,6 +824,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2022-11-02">
+    <div class="tl-drill-label">Scenario drill · 2 November 2022</div>
+    <h3>Your bonds are down a quarter, and your deposits could leave</h3>
+    <p>You run the bond portfolio of a bank. In 2020 you parked deposits in low-coupon Treasuries, including the 0.625% 10-year note sold that August, bought close to par. Today the Fed raised rates by 0.75 points for the fourth meeting in a row. The 10-year yield, about 1.5% in January, is now around 4%. At that yield the formula prices your note near $77 per $100. Nothing it promises has changed. Your depositors are few and large, and they could move money in a day. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Nothing. It is only a paper loss, and the note pulls to par at maturity.<div class="tl-drill-why">True only for a holder who can wait. With deposits that can leave in a day, you may be forced to sell before maturity, and then the discount is a real loss. The formula prices the cash flows, not your ability to keep them.</div></li>
+      <li data-verdict="bad">Buy more long, low-coupon bonds. Yields are high, so they are cheap.<div class="tl-drill-why">They are cheaper, but you are doubling the very exposure that hurts if you have to sell early. More long bonds means a bigger forced loss if the deposits go.</div></li>
+      <li data-verdict="good">Plan for having to sell: line up other funding or capital now, and cut the rate risk, so the bonds are never sold at the worst moment.<div class="tl-drill-why">The loss is only on paper while you can hold to maturity. Making sure you can hold, or that you are not forced to sell into a run, is what keeps it on paper.</div></li>
+      <li data-verdict="ok">Sell the whole portfolio now and take the loss.<div class="tl-drill-why">It removes the risk of a forced sale later, but it turns a mark into a certain loss of about a quarter on those notes. Defensible if funding really is fragile; costly if it was not.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The Fed ended 2022 at 4.25–4.50%, and the broad US investment-grade bond index lost about 13% that year, its worst on record. Banks that had parked deposits in low-coupon bonds sat on large unrealised losses. In March 2023 one of them, Silicon Valley Bank, sold about $21 billion of bonds at a loss of about $1.8 billion to raise cash as deposits drained. Depositors ran, and it failed within days. Holders who could wait still receive par at maturity.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -837,6 +936,26 @@
     <li>Any standard CFA Institute Level I fixed-income curriculum reading — for the clean/dirty price and accrued interest conventions referenced briefly above.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="time-value-of-money.html">Time Value of Money</a> <span>· why a later dollar is worth less</span></li>
+        <li><a href="limits-integrals-annuity-factors.html">Limits, Integrals &amp; Annuity Factors</a> <span>· the coupon sum as an annuity</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="duration-convexity.html">Duration &amp; Convexity</a> <span>· how much the price moves, not just which way</span></li>
+        <li><a href="yield-curve-construction.html">Bootstrapping the Yield Curve</a> <span>· one rate per maturity instead of one blended yield</span></li>
+        <li><a href="newton-raphson-gradient-descent.html">Newton-Raphson &amp; Gradient Descent</a> <span>· the search that finds the yield</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every rates headline is a yield, and every yield move is a price move on someone's book, so this is the arithmetic under every macro data release you trade.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
@@ -986,7 +1105,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

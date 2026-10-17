@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Curve Fitting: Nelson-Siegel &amp; Svensson — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,67 @@
       <li><strong>Real-world episode:</strong> 2022. As the Fed hiked, the level factor rose and the slope factor \(\beta_1\) flipped from negative to positive (the curve inverted), and a curve that rose, fell, then rose again at the long end put Svensson's second hump to work.<!-- DESK:START --> Forecasting the betas (Diebold-Li) is <em>untested</em> here; reading the flip as a recession signal tested <strong>NULL</strong> (<code>curve-inversion</code>).<!-- DESK:END --></li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two Nelson-Siegel yield curves from 0 to 30 years, maturity on a square-root scale. With the worked parameters, level 4.5%, slope minus 2.0%, curvature 1.0% and lambda 2, the curve starts at 2.5% and rises smoothly through 3.50% at 2 years, 4.05% at 5 and 4.29% at 10 toward the 4.5% level. Flipping only the slope to plus 2.0% gives an inverted curve that starts at 6.5% and falls toward the same 4.5% level.">
+      <line class="tlp-line" x1="70" y1="205" x2="570" y2="205"/>
+      <line class="tlp-line" x1="70" y1="30" x2="70" y2="205"/>
+      <line class="tlp-line dash" x1="70" y1="117.5" x2="570" y2="117.5"/>
+      <polyline class="tlp-line red thick dash" points="70.0,47.5 90.4,47.9 98.9,48.4 110.8,49.2 124.0,50.6 134.5,51.9 149.1,54.0 161.3,56.1 181.8,60.2 199.1,64.0 214.3,67.6 228.1,70.9 252.6,76.8 274.1,81.8 293.6,86.0 311.5,89.5 328.2,92.4 358.7,96.9 386.2,100.1 423.6,103.5 457.3,105.8 488.3,107.5 526.4,109.1 570.0,110.5"/>
+      <polyline class="tlp-line blue thick" points="70.0,187.5 90.4,186.2 98.9,184.9 110.8,182.5 124.0,179.0 134.5,175.7 149.1,170.7 161.3,166.3 181.8,158.7 199.1,152.5 214.3,147.5 228.1,143.4 252.6,137.4 274.1,133.2 293.6,130.3 311.5,128.3 328.2,126.7 358.7,124.7 386.2,123.4 423.6,122.2 457.3,121.4 488.3,120.8 526.4,120.3 570.0,119.8"/>
+      <circle class="tlp-green" cx="70" cy="187.5" r="6"/>
+      <circle class="tlp-red" cx="70" cy="47.5" r="6"/>
+      <circle class="tlp-blue" cx="199.1" cy="152.5" r="5"/>
+      <circle class="tlp-blue" cx="274.1" cy="133.2" r="5"/>
+      <circle class="tlp-blue" cx="358.7" cy="124.7" r="5"/>
+      <text class="tlp-blue" x="199" y="172" text-anchor="middle" font-size="13" font-weight="700">3.50%</text>
+      <text class="tlp-blue" x="274" y="153" text-anchor="middle" font-size="13" font-weight="700">4.05%</text>
+      <text class="tlp-blue" x="359" y="144" text-anchor="middle" font-size="13" font-weight="700">4.29%</text>
+      <text class="tlp-green" x="80" y="201" font-size="13" font-weight="700">2.5%</text>
+      <text class="tlp-red" x="80" y="38" font-size="13" font-weight="700">6.5%</text>
+      <text class="tlp-text2" x="80" y="110" font-size="13" font-weight="700">level β₀ = 4.5%</text>
+      <text class="tlp-red" x="565" y="64" text-anchor="end" font-size="13" font-weight="700">slope β₁ = +2: inverted</text>
+      <text class="tlp-blue" x="565" y="168" text-anchor="end" font-size="13" font-weight="700">slope β₁ = −2: normal</text>
+      <text class="tlp-text2" x="565" y="186" text-anchor="end" font-size="12">short end = β₀ + β₁, long end = β₀</text>
+      <text class="tlp-text3" x="62" y="174" text-anchor="end" font-size="12">3%</text>
+      <text class="tlp-text3" x="62" y="104" text-anchor="end" font-size="12">5%</text>
+      <text class="tlp-text3" x="62" y="69" text-anchor="end" font-size="12">6%</text>
+      <text class="tlp-text3" x="70" y="221" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="161" y="221" text-anchor="middle" font-size="12">1y</text>
+      <text class="tlp-text3" x="199" y="221" text-anchor="middle" font-size="12">2y</text>
+      <text class="tlp-text3" x="274" y="221" text-anchor="middle" font-size="12">5y</text>
+      <text class="tlp-text3" x="359" y="221" text-anchor="middle" font-size="12">10y</text>
+      <text class="tlp-text3" x="570" y="221" text-anchor="end" font-size="12">30y</text>
+      <text class="tlp-text3" x="570" y="237" text-anchor="end" font-size="12">maturity (square-root scale) →</text>
+    </svg>
+    <figcaption>Four numbers draw a whole curve. The level sets where it settles far out, the slope sets where the short end starts, and curvature bends the belly. Flip only the slope's sign and the same machine draws an inverted curve: what 2022 did to real Treasuries.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Bootstrapping gives me an exact curve. Why would I want a fitted one?</p>
+      <p data-who="Quant">Exact is not the same as well behaved. A bootstrap hits every bond you feed it, but between thin or noisy bonds it can kink, and past the last bond it is guesswork.</p>
+      <p data-who="Trader">And Nelson-Siegel fixes that how?</p>
+      <p data-who="Quant">It draws the whole curve from four dials. Charles Nelson and Andrew Siegel published it in nineteen eighty-seven. The curve is smooth by construction, so it cannot kink.</p>
+      <p data-who="Trader">What are the four dials?</p>
+      <p data-who="Quant">The level is where the curve settles at very long maturities. The slope says how far the short end sits below or above that. The curvature adds a hump or a dip in the middle. And the decay dial slides that hump along the maturities.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">Level four and a half percent, slope minus two, curvature one, decay two. The short end starts at four and a half minus two, so two and a half. The curve passes three and a half percent at two years, about four point oh five at five years, and four point two nine at ten, closing in on the level.</p>
+      <p data-who="Trader">So the slope dial is the short end minus the long end.</p>
+      <p data-who="Quant">Exactly. Negative slope, normal upward curve. Flip it positive and the short end sits above the long run. That is an inverted curve.</p>
+      <p data-who="Trader">Which is what we got in twenty twenty-two.</p>
+      <p data-who="Quant">Yes. The Fed hiked from near zero, including four three-quarter-point moves in a row. The two-year yield went from about point seven percent to about four point four. The ten-year went from about one and a half to under four. From July the two-year stayed above the ten-year. The slope dial changed sign.</p>
+      <p data-who="Trader">And Svensson?</p>
+      <p data-who="Quant">Plain Nelson-Siegel can draw one hump. By late twenty twenty-three bills yielded more than two-years, which yielded more than ten-years, yet the thirty-year was back above the ten-year. A rise, a long fall, then a turn up. Lars Svensson added a second hump with its own decay dial, and central banks use that version for the curves they publish.</p>
+      <p data-who="Trader">Can I forecast the dials and trade the curve?</p>
+      <p data-who="Quant">People do, but a model fitted on the twenty-tens learned a slope that was almost always negative. Twenty twenty-two was a regime change in exactly that dial.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Four dials describe any day's curve smoothly; trust them to describe, and be careful asking them to forecast across a change of regime.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -124,6 +186,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the Nelson-Siegel curve comes from, one piece at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ y(\tau) = \color{#fbbf24}{\beta_0} \]</div>
+      <p>Start with the level: a flat line at the long-run rate. In the worked example, 4.5% at every maturity.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ y(\tau) = \beta_0 + \color{#fbbf24}{\beta_1 L(\tau)}, \qquad L(\tau)=\frac{1-e^{-\tau/\lambda}}{\tau/\lambda} \]</div>
+      <p>Add the slope. \(L(\tau)\) starts at 1 and fades to 0, so the short end sits at \(\beta_0+\beta_1\) and the long end at \(\beta_0\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ y(\tau) = \beta_0 + \beta_1 L(\tau) + \color{#fbbf24}{\beta_2\big(L(\tau)-e^{-\tau/\lambda}\big)} \]</div>
+      <p>Add the curvature. This loading is zero at both ends and bulges in between, so \(\beta_2\) adds one hump or one dip. That is the full Nelson-Siegel curve.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ y(1) = 4.5 - 2.0(0.7870) + 1.0(0.7870-0.6065) = \color{#10b981}{3.1065\%} \]</div>
+      <p>Plug in the worked parameters at one year. The same arithmetic gives 3.50% at 2 years, 4.05% at 5 and 4.29% at 10.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ y(\tau) = \beta_0 + \beta_1 L_1 + \beta_2\big(L_1-e^{-\tau/\lambda_1}\big) + \color{#fbbf24}{\beta_3\big(L_2-e^{-\tau/\lambda_2}\big)} \]</div>
+      <p>Svensson adds a second curvature piece with its own decay \(\lambda_2\): a second hump at a different maturity, six parameters in all.</p>
+    </div>
+  </div>
   <p>
     Nelson &amp; Siegel (1987) proposed modeling the instantaneous forward
     rate curve as the solution to a particular second-order differential
@@ -503,6 +589,10 @@
       parameter or the maturity \(\tau\) and \(y(\tau)\) recalculates
       instantly from the Nelson-Siegel formula above.
     </p>
+    <div class="tl-predict" data-answer="6.25" data-tol="0.15" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With the worked parameters, the 1-year yield is 3.11%. Flip only the slope, from \(\beta_1=-2.0\) to \(\beta_1=+2.0\). What is the 1-year yield now? Lock in a guess, then set the maturity to 1 and the slope to 2 below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 6.25%.</strong> The slope term was \(-2.0\times0.7870=-1.574\); flipping its sign makes it \(+1.574\), a swing of 3.15 points: \(4.5+1.574+0.1805\approx6.2545\%\). The curve is now inverted: the short end sits above the 4.5% level. Now try maturity 30 and see both versions close in on \(\beta_0\).</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>&beta;&#8320; (level, %)</span></div>
@@ -573,6 +663,12 @@
       of the bonds that happened to be used to fit it.
     </p>
   </div>
+
+  <!-- WB:nelson_siegel_svensson:START -->
+  <div class="wb" id="wb-nelson_siegel_svensson" data-title="Four dials draw a curve, and 2022 turns one">
+    <script type="application/json">{"w":600,"h":760,"intro":"Four dials draw a whole yield curve. Watch the curve assemble from its three pieces, then watch 2022 turn the slope dial the other way. Press play, or step through.","steps":[{"cap":"Rates by maturity, from today out to 30 years. Nelson-Siegel draws the whole curve from four numbers. Dial one is the level, β₀ = 4.5%: where the curve settles far out.","do":[{"chart":"ns","x":10,"y":10,"w":580,"h":340,"title":"Yield by maturity (%)","xd":[0,5.477225575051661],"yd":[1.5,7.2],"yt":[[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"6"],[7,"7"]],"xt":[[1,"1y"],[1.4142135623730951,"2y"],[2.23606797749979,"5y"],[3.1622776601683795,"10y"],[5.477225575051661,"30y"]],"pl":44,"pr":26},{"series":"lvl","chart":"ns","pts":[[0,4.5],[5.477225575051661,4.5]],"tone":null,"dash":true,"ms":600,"label":"level β₀ = 4.5%","lat":[0.3,4.5],"ldx":0,"ldy":-14,"lanchor":"start","lsize":16}]},{"cap":"Dial two is the slope, β₁ = −2.0%. Its piece matters fully at the short end and fades with maturity. So the curve starts at β₀ + β₁ = 2.5% and climbs toward the level.","do":[{"series":"ls","chart":"ns","pts":[[0.141,2.51],[0.316,2.549],[0.5,2.62],[0.707,2.73],[0.866,2.832],[1.0,2.926],[1.225,3.093],[1.414,3.236],[1.732,3.464],[2.0,3.635],[2.236,3.766],[2.449,3.867],[2.646,3.946],[2.828,4.009],[3.162,4.103],[3.464,4.167],[3.873,4.233],[4.243,4.278],[4.583,4.31],[5.0,4.34],[5.477,4.367]],"tone":"green","ms":1200,"dash":true},{"dot":"y0","chart":"ns","at":[0,2.5],"text":"short end 2.5%","tone":"green","dx":10,"dy":16,"anchor":"start"}]},{"cap":"Dial three is the curvature, β₂ = 1.0%. Its piece is zero at both ends and bulges in the middle, lifting the belly. Add it, and that is the full Nelson-Siegel curve.","do":[{"dim":"ls"},{"series":"full","chart":"ns","pts":[[0.141,2.515],[0.316,2.573],[0.5,2.677],[0.707,2.836],[0.866,2.979],[1.0,3.107],[1.225,3.324],[1.414,3.5],[1.732,3.759],[2.0,3.932],[2.236,4.051],[2.449,4.133],[2.646,4.193],[2.828,4.236],[3.162,4.295],[3.464,4.331],[3.873,4.366],[4.243,4.389],[4.583,4.405],[5.0,4.42],[5.477,4.433]],"tone":"blue","ms":1300}]},{"cap":"Read it off at the worked maturities: 3.11% at 1 year, 3.50% at 2, 4.05% at 5 and 4.29% at 10. Smooth everywhere, from four numbers, with no kinks between bonds.","do":[{"dot":"d1","chart":"ns","at":[1,3.106530659712633],"text":"3.11","tone":"blue","dy":18},{"dot":"d2","chart":"ns","at":[1.4142135623730951,3.5],"text":"3.50","tone":"blue","dy":18},{"dot":"d5","chart":"ns","at":[2.23606797749979,4.050749000825661],"text":"4.05","tone":"blue","dy":18},{"dot":"d10","chart":"ns","at":[3.1622776601683795,4.294609642400732],"text":"4.29","tone":"blue","dy":18}]},{"cap":"Dial four, λ, sets where along the maturities things happen. Drop it from 2.0 to 0.5 and the short-end behaviour fades much faster: the curve reaches 4.24% by 2 years instead of 3.50%.","do":[{"series":"lam","chart":"ns","pts":[[0.141,2.559],[0.316,2.775],[0.5,3.107],[0.707,3.5],[0.866,3.759],[1.0,3.932],[1.225,4.133],[1.414,4.236],[1.732,4.331],[2.0,4.375],[2.236,4.4],[2.449,4.417],[2.646,4.429],[2.828,4.437],[3.162,4.45],[3.464,4.458],[3.873,4.467],[4.243,4.472],[4.583,4.476],[5.0,4.48],[5.477,4.483]],"tone":"purple","dash":true,"ms":1000,"label":"λ = 0.5","lat":[1,3.932332358381694],"ldx":-12,"ldy":0,"lanchor":"end","lsize":16}]},{"cap":"Now turn the slope dial the other way, β₁ = +2.0%. The short end jumps to 6.5%, above the 4.5% level: an inverted curve. One sign change, and the whole shape flips.","do":[{"dim":"lam"},{"dim":"d1"},{"dim":"d2"},{"dim":"d5"},{"dim":"d10"},{"series":"inv","chart":"ns","pts":[[0.141,6.495],[0.316,6.475],[0.5,6.438],[0.707,6.376],[0.866,6.314],[1.0,6.254],[1.225,6.138],[1.414,6.028],[1.732,5.831],[2.0,5.662],[2.236,5.519],[2.449,5.4],[2.646,5.301],[2.828,5.218],[3.162,5.089],[3.464,4.996],[3.873,4.899],[4.243,4.833],[4.583,4.786],[5.0,4.74],[5.477,4.7]],"tone":"red","ms":1300,"label":"β₁ = +2: inverted","lat":[2.8284271247461903,5.217947631944716],"ldx":0,"ldy":-26,"lanchor":"start","lsize":16},{"dot":"y0i","chart":"ns","at":[0,6.5],"text":"6.5%","tone":"red","dx":10,"dy":-4,"anchor":"start"}]},{"cap":"That is what 2022 did. As the Fed hiked from near zero, the 2-year yield went from about 0.7% to about 4.4%; the 10-year from about 1.5% to under 4%. The short end rose far more than the long end.","do":[{"chart":"yr","x":10,"y":370,"w":280,"h":250,"title":"2022, start → end (%)","xd":[0.4,4.6],"yd":[0,5.2],"yt":[[0,"0"],[2,"2"],[4,"4"]],"xt":[[1.5,"2-year"],[3.5,"10-year"]],"pl":34},{"bars":"b22","chart":"yr","data":[[1.1,0.7,"0.7","blue"],[1.9,4.4,"4.4","red"],[3.1,1.5,"1.5","blue"],[3.9,3.9,"<4","amber"]],"bw":30,"ms":1200}]},{"cap":"From July 2022 the 2-year stayed above the 10-year. In the lesson's terms, β₁ went from negative to positive: the short end now sat above the long-run level.","do":[{"note":"flip","x":300,"y":650,"text":"β₁: negative → positive  (short end above the level)","size":19,"anchor":"middle","tone":"red"}]},{"cap":"Then a harder shape: bills above 2-years above 10-years, yet by late 2023 the 30-year back above the 10-year. A rise, a long fall, then a turn up. Here is that kind of shape, illustrative numbers.","do":[{"chart":"sv","x":310,"y":370,"w":280,"h":250,"title":"hump and dip (illustrative)","xd":[0,5.477225575051661],"yd":[3.0,5.2],"yt":[[3.5,"3.5"],[4.5,"4.5"]],"xt":[[0.5,"3m"],[1.4142135623730951,"2y"],[3.1622776601683795,"10y"],[5.477225575051661,"30y"]],"pl":40,"pr":24},{"series":"svc","chart":"sv","pts":[[0.141,4.46],[0.316,4.644],[0.5,4.806],[0.707,4.795],[0.866,4.653],[1.0,4.485],[1.225,4.193],[1.414,3.98],[1.732,3.712],[2.0,3.557],[2.236,3.463],[2.449,3.408],[2.646,3.378],[2.828,3.366],[3.162,3.374],[3.464,3.405],[3.873,3.466],[4.243,3.527],[4.583,3.581],[5.0,3.64],[5.477,3.697]],"tone":"amber","ms":1400}]},{"cap":"One Nelson-Siegel hump can fit the rise then fall, but not the turn back up. Svensson adds a second curvature piece with its own λ₂: six dials instead of four, and a hump and a dip.","do":[{"hide":"flip"},{"note":"svn","x":300,"y":650,"text":"Svensson: + β₃ × a second hump, placed by λ₂","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"The fit is still only a description. Forecasting the dials from the 2010s, when β₁ was almost always negative, assumed a regime that 2022 ended. Smooth curve, honest about its limits.","do":[{"note":"end","x":300,"y":700,"text":"describes any day well · forecasts only within a regime","size":19,"anchor":"middle","tone":"blue"}]}]}</script>
+  </div>
+  <!-- WB:nelson_siegel_svensson:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: 2022, the year the factors moved</h2>
@@ -753,6 +849,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2022-12-14">
+    <div class="tl-drill-label">Scenario drill · 14 December 2022</div>
+    <h3>Your factor model says the curve must re-steepen</h3>
+    <p>You forecast the US Treasury curve by fitting Nelson-Siegel each day and forecasting the three betas with simple time-series models, all estimated on the 2010s. Today the Fed raised rates again, to 4.25–4.50%, after four 75bp increases in a row. The 2-year yield is about 4.4%, up from about 0.7% in January; the 10-year is under 4%. Since July the 2-year has stayed above the 10-year, so your fitted slope \(\beta_1\) is positive. Your model, which learned a \(\beta_1\) that was almost always negative, forecasts a fast return to a normal upward curve. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Trust the forecast and put on a large steepener. The slope has to revert to its long-run average.<div class="tl-drill-why">The "long-run average" is the 2010s, when the short end sat near zero for years. The model's persistence and mean are estimates from a regime that has just ended, so its confidence is borrowed from the wrong decade.</div></li>
+      <li data-verdict="good">Treat it as a regime change: keep fitting the curve daily to describe it, but stop trusting forecasts estimated only on the old regime, and size any curve trade small.<div class="tl-drill-why">Nelson-Siegel still describes each day's curve well. What broke is the assumption that the factors behave as they did in the 2010s. Separating the description, which still works, from the forecast, which does not, is the honest response.</div></li>
+      <li data-verdict="ok">Add more terms until the fit hits every bond, then trade any bond that sits off the curve.<div class="tl-drill-why">A second hump may genuinely be needed soon, so Svensson is reasonable. But piling on terms to chase every wiggle loses the stability that was the point, and a bond's residual against a fitted curve is fitting noise, not an edge.</div></li>
+      <li data-verdict="bad">Drop the model entirely and connect the bonds with a bootstrap instead.<div class="tl-drill-why">The fitting was never the problem. A bootstrap gives you an exact but kink-prone curve, and it says nothing more about where the curve goes next.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The curve did not snap back. The inversion deepened, and at its deepest, in 2023, the 10-year yield was roughly a full percentage point below the 2-year. Treasury bills yielded more than 2-year notes, which yielded more than 10-year bonds, yet by late 2023 the 30-year yielded more than the 10-year again: a hump and a dip that needs Svensson's second term. For holders of long bonds, 2022 was one of the worst calendar years on record for US Treasury returns.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -846,6 +955,26 @@
     <li>Refet S. Gürkaynak, Brian Sack, and Jonathan H. Wright, <em>"The U.S. Treasury Yield Curve: 1961 to the Present,"</em> <em>Journal of Monetary Economics</em>, 2007 (Federal Reserve Board FEDS working paper 2006-28) — documents the Fed's own Svensson-family fitted Treasury curve dataset referenced in the scenario above.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="yield-curve-construction.html">Bootstrapping the Yield Curve</a> <span>· the exact, kink-prone curve this smooths</span></li>
+        <li><a href="foundation-trig-logs-exponentials.html">Trigonometry, Logarithms &amp; Exponentials</a> <span>· the decay function every loading is built on</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="newton-raphson-gradient-descent.html">Newton-Raphson &amp; Gradient Descent</a> <span>· how the fit is actually solved</span></li>
+        <li><a href="pca-factors.html">Principal Component Analysis &amp; Factor Regimes</a> <span>· level, slope and curvature found from data</span></li>
+        <li><a href="yield-curve-growth-expectations.html">What the Yield Curve Says About Growth</a> <span>· what the slope flip is read to mean</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> level, slope and curvature are the three numbers a rates desk uses to say how the whole curve moved, and the slope's sign is the inversion every macro headline talks about.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="yield-curve-construction.html">← Bootstrapping the Yield Curve</a>
@@ -1060,10 +1189,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

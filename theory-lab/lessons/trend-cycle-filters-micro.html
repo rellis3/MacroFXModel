@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Trend/Cycle Filters — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -116,7 +117,19 @@
       <div class="sl-quote">A central bank estimates the 2019 Q4 output gap from quarterly GDP through 2019 Q4, concluding the economy is near potential — a judgment that feeds that quarter's policy discussion. Two years later, with 2020's collapse and 2021's rebound added to the same dataset, the desk re-runs the identical filter and finds the trend estimate <strong>at 2019 Q4 itself</strong> has shifted meaningfully — not because the 2019 data changed, but because the two-sided filter's 2019 Q4 estimate was, at the time, computed without any of the "future" data it would eventually have. The reading a decision-maker actually had in hand was the least reliable part of the whole series.</div>
     </section>
 
+    <!-- WB:trend_cycle_filters-deck:START -->
     <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Trend and cycle: why the newest point misleads</h2>
+      <!-- WB:trend_cycle_filters:START -->
+      <div class="wb" data-title="Trend and cycle: why the newest point misleads">
+        <script type="application/json">{"w":600,"h":790,"intro":"Splitting one series into a slow trend and a cycle, and why the newest point of the trend is the one to doubt. Press play, or step through.","steps":[{"cap":"One quarterly series (made up for this board). Like the sea at a pier, it mixes a slow tide, the trend, with waves on top, the cycle. Only the total is ever observed.","do":[{"chart":"lv","x":10,"y":10,"w":580,"h":270,"title":"The series (illustrative, quarterly)","xd":[0,40],"yd":[97,128],"yt":[[100,"100"],[110,"110"],[120,"120"]],"xt":[[0,"0"],[20,"20"],[27,"27"],[40,"40"]],"pl":50},{"series":"ys","chart":"lv","pts":[[0,100.0],[1,101.46],[2,102.85],[3,104.11],[4,105.2],[5,106.11],[6,106.85],[7,107.46],[8,108.0],[9,108.54],[10,109.15],[11,109.89],[12,110.8],[13,111.89],[14,113.15],[15,114.54],[16,116.0],[17,117.46],[18,118.85],[19,120.11],[20,121.2],[21,121.36],[22,121.35],[23,121.21],[24,121.0],[25,120.79],[26,120.65],[27,120.64],[28,120.8],[29,121.14],[30,121.65],[31,122.29],[32,123.0],[33,123.71],[34,124.35],[35,124.86],[36,125.2],[37,125.36],[38,125.35],[39,125.21]],"tone":"blue","ms":1500}]},{"cap":"Hodrick-Prescott draws a trend that stays close to the data but is charged for bending. One dial, λ, sets the charge. Turn it near zero and the \"trend\" just copies the data.","do":[{"series":"loose","chart":"lv","pts":[[0,100.05],[1,101.47],[2,102.83],[3,104.08],[4,105.17],[5,106.08],[6,106.83],[7,107.45],[8,108.0],[9,108.55],[10,109.17],[11,109.92],[12,110.83],[13,111.91],[14,113.17],[15,114.56],[16,116.02],[17,117.49],[18,118.88],[19,120.09],[20,120.95],[21,121.34],[22,121.38],[23,121.24],[24,121.02],[25,120.81],[26,120.67],[27,120.66],[28,120.83],[29,121.17],[30,121.67],[31,122.3],[32,123.0],[33,123.7],[34,124.33],[35,124.83],[36,125.16],[37,125.32],[38,125.34],[39,125.28]],"tone":"red","ms":1200,"label":"λ = 1","lat":[8,108.0001458923475],"ldy":-16}]},{"cap":"Turn λ up enormously and bending is banned: the trend becomes a straight line. Neither extreme separates tide from waves.","do":[{"series":"stiff","chart":"lv","pts":[[0,103.61],[1,104.25],[2,104.89],[3,105.53],[4,106.17],[5,106.81],[6,107.45],[7,108.09],[8,108.73],[9,109.37],[10,110.01],[11,110.65],[12,111.29],[13,111.93],[14,112.57],[15,113.21],[16,113.85],[17,114.49],[18,115.13],[19,115.77],[20,116.41],[21,117.05],[22,117.69],[23,118.33],[24,118.97],[25,119.61],[26,120.25],[27,120.89],[28,121.53],[29,122.17],[30,122.8],[31,123.44],[32,124.08],[33,124.72],[34,125.36],[35,126.0],[36,126.64],[37,127.28],[38,127.92],[39,128.56]],"tone":"purple","ms":1000,"label":"λ huge","lat":[31,123.44404477741506],"ldy":-20}]},{"cap":"The quarterly convention is λ = 1600. Now the trend follows the slow tide, and the cycle, data minus trend, is what is left over.","do":[{"hide":"loose"},{"hide":"stiff"},{"series":"full","chart":"lv","pts":[[0,101.11],[1,102.05],[2,102.98],[3,103.91],[4,104.84],[5,105.76],[6,106.68],[7,107.6],[8,108.51],[9,109.41],[10,110.3],[11,111.19],[12,112.07],[13,112.93],[14,113.77],[15,114.6],[16,115.39],[17,116.16],[18,116.89],[19,117.57],[20,118.22],[21,118.83],[22,119.39],[23,119.91],[24,120.4],[25,120.86],[26,121.29],[27,121.7],[28,122.1],[29,122.48],[30,122.85],[31,123.22],[32,123.58],[33,123.94],[34,124.3],[35,124.65],[36,125.0],[37,125.35],[38,125.69],[39,126.04]],"tone":"green","ms":1300},{"chart":"cy","x":10,"y":296,"w":580,"h":190,"title":"Gap = data − trend","xd":[0,40],"yd":[-4,3.2],"yt":[[-3,"−3"],[0,"0"],[2,"2"]],"xt":[[0,"0"],[20,"20"],[27,"27"],[40,"40"]],"zero":true,"pl":50},{"series":"gap","chart":"cy","pts":[[0,-1.11],[1,-0.59],[2,-0.13],[3,0.2],[4,0.36],[5,0.34],[6,0.16],[7,-0.14],[8,-0.51],[9,-0.87],[10,-1.15],[11,-1.3],[12,-1.27],[13,-1.04],[14,-0.62],[15,-0.06],[16,0.61],[17,1.3],[18,1.96],[19,2.53],[20,2.98],[21,2.53],[22,1.96],[23,1.3],[24,0.6],[25,-0.07],[26,-0.64],[27,-1.06],[28,-1.3],[29,-1.34],[30,-1.2],[31,-0.93],[32,-0.58],[33,-0.23],[34,0.05],[35,0.21],[36,0.2],[37,0.01],[38,-0.35],[39,-0.83]],"tone":"green","ms":1300}]},{"cap":"Wrong frequency, wrong λ. 1600 is for quarterly data. Monthly data needs 1600 × 3⁴ = 129,600; annual needs 1600 ÷ 4⁴ ≈ 6.25.","do":[{"box":"lam","x":10,"y":504,"w":280,"h":120,"text":"monthly: 129,600\nquarterly: 1,600\nannual: 6.25","tone":"purple","size":19}]},{"cap":"Now go back in time. You only have data up to quarter 27. Run the same filter: the trend has no data after its last point, and it ends at 123.5.","do":[{"dim":"full"},{"dim":"gap"},{"series":"rt","chart":"lv","pts":[[0,100.98],[1,101.9],[2,102.83],[3,103.75],[4,104.67],[5,105.58],[6,106.5],[7,107.41],[8,108.31],[9,109.21],[10,110.11],[11,111.01],[12,111.91],[13,112.79],[14,113.67],[15,114.54],[16,115.39],[17,116.23],[18,117.05],[19,117.84],[20,118.61],[21,119.36],[22,120.09],[23,120.8],[24,121.49],[25,122.18],[26,122.86],[27,123.54]],"tone":"amber","ms":1300},{"dot":"rtd","chart":"lv","at":[27,123.54],"text":"123.5","tone":"amber","dx":-10,"dy":-14,"anchor":"end"}]},{"cap":"Data at quarter 27 is 120.6, so the real-time gap is -2.9: it looks like a lot of slack.","do":[{"series":"rtg","chart":"cy","pts":[[0,-0.98],[1,-0.45],[2,0.02],[3,0.36],[4,0.53],[5,0.53],[6,0.35],[7,0.05],[8,-0.31],[9,-0.67],[10,-0.96],[11,-1.12],[12,-1.11],[13,-0.9],[14,-0.52],[15,0.0],[16,0.61],[17,1.23],[18,1.8],[19,2.27],[20,2.59],[21,2.0],[22,1.26],[23,0.41],[24,-0.49],[25,-1.39],[26,-2.21],[27,-2.9]],"tone":"amber","ms":1200},{"dot":"g1","chart":"cy","at":[27,-2.9],"text":"real time -2.9","tone":"amber","dx":-10,"dy":8,"anchor":"end"}]},{"cap":"Twelve quarters later, rerun the same filter. The quarter-27 trend drops to 121.7 and the gap shrinks to -1.1. The early data did not change; only the end of the sample did.","do":[{"pulse":"full"},{"dot":"g2","chart":"cy","at":[27,-1.1],"text":"revised -1.1","tone":"green","dx":10,"dy":-14,"anchor":"start"}]},{"cap":"That is what happened in the 1970s. Trend growth slowed, trends fitted to the fast 1950s and 1960s sat too high, and the gap showed slack that was not there. Policy stayed loose; inflation rose into double digits.","do":[{"box":"s70","x":310,"y":504,"w":280,"h":120,"text":"1970s: slack that\nwasn't there","tone":"red","size":19}]},{"cap":"Orphanides and van Norden later showed the revisions were about as big as the gap itself, and came mainly from the end of the sample, not from revised data.","do":[{"box":"ovn","x":310,"y":640,"w":280,"h":140,"text":"revisions ≈ size of\nthe gap, mostly from\nthe end of the sample","tone":"amber","size":18}]},{"cap":"The alternative: a band-pass filter that keeps only cycles of 6 to 32 quarters. It states the cycle openly, but a Baxter-King filter has no value at all for its last K quarters.","do":[{"box":"bp","x":10,"y":640,"w":280,"h":140,"text":"band-pass: keep\n6 to 32 quarters,\nlose K at each end","tone":"blue","size":18}]},{"cap":"The takeaway: a trend is a modelling choice, not a measurement, and its newest point, the one decisions use, is the one most likely to be revised.","do":[{"pulse":"g1"},{"pulse":"rtd"}]}]}</script>
+      </div>
+      <!-- WB:trend_cycle_filters:END -->
+    </section>
+    <!-- WB:trend_cycle_filters-deck:END -->
+
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">The second flaw: cycles that were never there</h2>
       <div class="sl-icard-grid">
@@ -130,7 +143,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">A different idea: state the cutoff explicitly</h2>
       <p class="sl-sub">Instead of an implicit smoothness tradeoff, a band-pass filter names exactly which cycle lengths count as "the cycle."</p>
@@ -155,7 +168,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The Butterworth filter — borrowed from electrical engineering</h2>
       <div class="sl-icard-grid">
@@ -167,7 +180,7 @@
       <p class="sl-p">Choosing a Butterworth filter still means choosing an order and a cutoff up front — a real modeling decision, just a different one than HP's λ.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The Baxter-King filter — an explicit, finite band-pass</h2>
       <p class="sl-sub">Baxter &amp; King (1999) — a finite moving average using K leads and K lags, approximating an ideal 6-to-32-quarter band-pass.</p>
@@ -186,7 +199,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Same noisy series, three filters, three tradeoffs</h2>
       <p class="sl-sub">Same synthetic quarterly data throughout. Only the trend line — and what it costs to draw it — differs.</p>
@@ -248,7 +261,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Rescale λ for any frequency, live</h2>
       <p class="sl-sub">Ravn &amp; Uhlig (2002): scale by the fourth power of the frequency ratio. Starts on the standard quarterly→monthly case.</p>
@@ -269,7 +282,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Which one, when</h2>
       <div class="sl-compare">
@@ -293,7 +306,7 @@
       <div class="sl-quote">In practice, many researchers report HP results alongside a band-pass robustness check rather than relying on HP alone — the two families are complements, not rivals, for exactly this reason.</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12 · It actually happened</div>
       <h2 class="sl-h2">The 1970s: an output gap that wasn't there</h2>
       <div class="sl-callout amber">
@@ -313,7 +326,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk can say<!-- DESK:END --></h2>
       <!-- DESK:START -->
@@ -328,7 +341,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -379,7 +392,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -555,5 +568,9 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

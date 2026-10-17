@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Girsanov's Theorem &amp; the Risk-Neutral Measure — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,67 @@
       <li>How it reached trading: Harrison, Kreps and Pliska (1979–81) showed that no-arbitrage pricing means averaging under a risk-neutral measure, and Girsanov's theorem is how that measure is built, which is why every Monte Carlo pricer simulates with drift r.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 252" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top: a real-world box, drift 8 percent and volatility 20 percent, joined by an arrow to a risk-neutral box, drift 4 percent and the same 20 percent volatility. The arrow is Girsanov's shift by the market price of risk, 8 minus 4 over 20, which is 0.2. Bottom: the two distributions of a 100 stock's price in one year. They have the same shape and width; the real-world one averages 108.3 and the risk-neutral one averages 104.1. The price is the risk-neutral average payoff discounted at the risk-free rate, so the real-world drift never appears.">
+      <rect class="tlp-box blue" x="16" y="12" width="180" height="58" rx="6"/>
+      <rect class="tlp-box green" x="404" y="12" width="180" height="58" rx="6"/>
+      <text class="tlp-blue" x="106" y="36" text-anchor="middle" font-size="15" font-weight="700">Real world ℙ</text>
+      <text class="tlp-text2" x="106" y="56" text-anchor="middle" font-size="13">drift 8% · vol 20%</text>
+      <text class="tlp-green" x="494" y="36" text-anchor="middle" font-size="15" font-weight="700">Risk-neutral ℚ</text>
+      <text class="tlp-text2" x="494" y="56" text-anchor="middle" font-size="13">drift 4% (cash) · vol 20%</text>
+      <line class="tlp-line thick" x1="204" y1="42" x2="388" y2="42"/>
+      <polygon class="tlp-arrow" points="398,42 386,36 386,48"/>
+      <text class="tlp-purple" x="300" y="33" text-anchor="middle" font-size="13" font-weight="700">Girsanov: shift the drift</text>
+      <text class="tlp-text2" x="300" y="61" text-anchor="middle" font-size="12">θ = (8% − 4%) ÷ 20% = 0.2</text>
+      <line class="tlp-line" x1="40" y1="212" x2="560" y2="212"/>
+      <polyline class="tlp-line blue thick" points="40.0,209.1 45.2,208.3 50.4,207.4 55.6,206.3 60.8,205.0 66.0,203.6 71.2,201.9 76.4,200.0 81.6,197.9 86.8,195.6 92.0,193.0 97.2,190.3 102.4,187.3 107.6,184.1 112.8,180.7 118.0,177.2 123.2,173.5 128.4,169.8 133.6,165.9 138.8,162.0 144.0,158.0 149.2,154.1 154.4,150.2 159.6,146.3 164.8,142.6 170.0,139.0 175.2,135.6 180.4,132.3 185.6,129.3 190.8,126.5 196.0,123.9 201.2,121.7 206.4,119.7 211.6,118.0 216.8,116.6 222.0,115.5 227.2,114.7 232.4,114.2 237.6,114.0 242.8,114.1 248.0,114.4 253.2,115.0 258.4,115.9 263.6,117.0 268.8,118.4 274.0,119.9 279.2,121.6 284.4,123.5 289.6,125.6 294.8,127.8 300.0,130.1 305.2,132.5 310.4,134.9 315.6,137.5 320.8,140.1 326.0,142.7 331.2,145.3 336.4,148.0 341.6,150.6 346.8,153.2 352.0,155.8 357.2,158.4 362.4,160.9 367.6,163.4 372.8,165.8 378.0,168.2 383.2,170.5 388.4,172.7 393.6,174.9 398.8,176.9 404.0,178.9 409.2,180.8 414.4,182.7 419.6,184.4 424.8,186.1 430.0,187.7 435.2,189.3 440.4,190.7 445.6,192.1 450.8,193.4 456.0,194.6 461.2,195.8 466.4,196.9 471.6,197.9 476.8,198.9 482.0,199.8 487.2,200.7 492.4,201.5 497.6,202.3 502.8,203.0 508.0,203.6 513.2,204.3 518.4,204.8 523.6,205.4 528.8,205.9 534.0,206.3 539.2,206.8 544.4,207.2 549.6,207.6 554.8,207.9 560.0,208.2"/>
+      <polyline class="tlp-line green thick" points="40.0,207.0 45.2,205.7 50.4,204.3 55.6,202.7 60.8,200.8 66.0,198.6 71.2,196.2 76.4,193.6 81.6,190.7 86.8,187.6 92.0,184.2 97.2,180.6 102.4,176.8 107.6,172.9 112.8,168.8 118.0,164.7 123.2,160.4 128.4,156.1 133.6,151.9 138.8,147.6 144.0,143.5 149.2,139.4 154.4,135.6 159.6,131.9 164.8,128.4 170.0,125.2 175.2,122.2 180.4,119.5 185.6,117.2 190.8,115.1 196.0,113.4 201.2,112.1 206.4,111.1 211.6,110.4 216.8,110.0 222.0,110.0 227.2,110.3 232.4,110.9 237.6,111.8 242.8,112.9 248.0,114.3 253.2,116.0 258.4,117.8 263.6,119.9 268.8,122.1 274.0,124.5 279.2,127.0 284.4,129.6 289.6,132.3 294.8,135.0 300.0,137.8 305.2,140.7 310.4,143.6 315.6,146.4 320.8,149.3 326.0,152.1 331.2,154.9 336.4,157.7 341.6,160.4 346.8,163.0 352.0,165.6 357.2,168.1 362.4,170.5 367.6,172.9 372.8,175.2 378.0,177.3 383.2,179.4 388.4,181.4 393.6,183.3 398.8,185.1 404.0,186.9 409.2,188.5 414.4,190.1 419.6,191.6 424.8,193.0 430.0,194.3 435.2,195.5 440.4,196.7 445.6,197.8 450.8,198.8 456.0,199.8 461.2,200.7 466.4,201.5 471.6,202.3 476.8,203.1 482.0,203.7 487.2,204.4 492.4,205.0 497.6,205.5 502.8,206.0 508.0,206.5 513.2,207.0 518.4,207.4 523.6,207.8 528.8,208.1 534.0,208.4 539.2,208.7 544.4,209.0 549.6,209.2 554.8,209.5 560.0,209.7"/>
+      <line class="tlp-line green dash" x1="248.4" y1="96" x2="248.4" y2="212"/>
+      <line class="tlp-line blue dash" x1="268.5" y1="96" x2="268.5" y2="212"/>
+      <text class="tlp-green" x="242" y="90" text-anchor="end" font-size="13" font-weight="700">ℚ average 104.1</text>
+      <text class="tlp-blue" x="275" y="90" font-size="13" font-weight="700">ℙ average 108.3</text>
+      <text class="tlp-text2" x="40" y="112" font-size="12">same shape, same width:</text>
+      <text class="tlp-text2" x="40" y="127" font-size="12">vol is not touched</text>
+      <text class="tlp-text" x="556" y="118" text-anchor="end" font-size="12">price = ℚ average payoff,</text>
+      <text class="tlp-text" x="556" y="134" text-anchor="end" font-size="12">discounted at 4%. 8% never enters.</text>
+      <text class="tlp-text3" x="134.5" y="228" text-anchor="middle" font-size="12">80</text>
+      <text class="tlp-text3" x="229.1" y="228" text-anchor="middle" font-size="12">100</text>
+      <text class="tlp-text3" x="323.6" y="228" text-anchor="middle" font-size="12">120</text>
+      <text class="tlp-text3" x="418.2" y="228" text-anchor="middle" font-size="12">140</text>
+      <text class="tlp-text3" x="512.7" y="228" text-anchor="middle" font-size="12">160</text>
+      <text class="tlp-text3" x="300" y="246" text-anchor="middle" font-size="12">price in one year, for a stock at 100 today</text>
+    </svg>
+    <figcaption>Girsanov keeps the stock, its volatility and every possible path, and only reweights how likely each path is, so the average lands on the cash rate. Both curves have the same width; only the center moves. Prices come from the green curve, forecasts from the blue one.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">The option pricing formula never asks me where I think the stock is going. That has always bothered me. Isn't the expected return the most important number there is?</p>
+      <p data-who="Quant">For a forecast, yes. For a price, no. And there is a theorem that says exactly why. Igor Girsanov proved it in 1960.</p>
+      <p data-who="Trader">Go on.</p>
+      <p data-who="Quant">Take a stock you think grows eight percent a year on average, with twenty percent volatility. Cash pays four percent. That is the real world: your actual odds.</p>
+      <p data-who="Trader">Fine.</p>
+      <p data-who="Quant">Girsanov says you can keep the same stock, the same volatility and the same set of possible paths, and just reweight how likely each path is. Make the high paths a little less likely and the low paths a little more likely, until the average growth is four percent, the same as cash.</p>
+      <p data-who="Trader">That sounds like cheating. You have just thrown my view away.</p>
+      <p data-who="Quant">It is not a different stock. Nothing that could happen becomes impossible, and nothing impossible becomes possible. Only the odds sheet changes. Mathematicians call the two odds sheets equivalent.</p>
+      <p data-who="Trader">How far do you have to shift?</p>
+      <p data-who="Quant">By the extra return per unit of risk. Eight minus four is four points. Divide by twenty percent volatility and you get zero point two. That is the market price of risk, the stock's Sharpe ratio, and it is exactly the size of the shift.</p>
+      <p data-who="Trader">And why land on four percent? Why the cash rate and not somewhere else?</p>
+      <p data-who="Quant">Because it is the only choice that makes the price, measured in today's money, a fair game, with no predictable drift left at all. And no arbitrage forces every traded price to be a fair game under that same odds sheet. Harrison, Kreps and Pliska proved that link between 1979 and 1981.</p>
+      <p data-who="Trader">So the option price is what, exactly?</p>
+      <p data-who="Quant">The average payoff under the reweighted odds, discounted at the cash rate. Your eight percent never appears. You need a volatility, never a forecast.</p>
+      <p data-who="Trader">What about the Black-Scholes chance of finishing in the money? Is that a fake number?</p>
+      <p data-who="Quant">It is a real probability, worked out under the reweighted odds. If you truly expect eight percent, your own chance of finishing in the money is usually higher. The number is real. The odds sheet is the device.</p>
+      <p data-who="Trader">So if I am bullish euro dollar, I should not price the call higher?</p>
+      <p data-who="Quant">No. Price and hedge it at the interest-rate differential, like everyone else. Put your view in the price and you quote too high, your hedge ratio is wrong, and counterparties who hedge properly pick you off. Express the view as a separate trade: buy the spot, or hold a call without hedging it.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">The risk-neutral world prices; it does not forecast. Keep your view in a separate trade.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -131,6 +193,31 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From the real-world stock to a price with no μ in it, one step at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ dS_t = \color{#fbbf24}{\mu S_t\,dt} + \sigma S_t\,dW_t^{\mathbb{P}} \]</div>
+      <p>Start in the real world. The stock drifts at its expected return \(\mu\) and jiggles with volatility \(\sigma\), driven by a Brownian motion under \(\mathbb{P}\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ dS_t = \mu S_t\,dt + \sigma S_t\big(dW_t^{\mathbb{Q}} \color{#fbbf24}{-\, \theta\,dt}\big), \qquad \theta = \frac{\mu - r}{\sigma} \]</div>
+      <p>Girsanov: \(W_t^{\mathbb{Q}} = W_t^{\mathbb{P}} + \theta t\) is a genuine Brownian motion under an equivalent measure \(\mathbb{Q}\). Write the same noise in terms of it. The shift is the market price of risk.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ dS_t = \color{#fbbf24}{r S_t\,dt} + \sigma S_t\,dW_t^{\mathbb{Q}} \]</div>
+      <p>Collect the \(dt\) terms: \(\mu - \sigma\theta = r\). The drift is now the risk-free rate. The volatility term has not changed at all.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ d\tilde S_t = \color{#fbbf24}{\sigma \tilde S_t\,dW_t^{\mathbb{Q}}} \]</div>
+      <p>Discount, \(\tilde S_t = e^{-rt}S_t\). The two \(r\) drift terms cancel and only noise is left, so the discounted price is a martingale under \(\mathbb{Q}\): a fair game.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{V_0 = e^{-rT}\,\mathbb{E}^{\mathbb{Q}}\big[V_T\big]} \]</div>
+      <p>No arbitrage makes every derivative's discounted price a martingale too, so its price is the discounted average payoff under \(\mathbb{Q}\). \(\mu\) appears nowhere.</p>
+    </div>
+  </div>
   <p>
     Three pieces, in order: (1) the same SDE written under two different
     drifts, (2) Girsanov's theorem, which says the shift between them is a
@@ -411,6 +498,17 @@
 
   <div class="tl-chart">
     <div class="tl-chart-label">Same underlying, two measures — same shape, shifted center</div>
+
+    <div class="tl-predict">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Keep cash at 4% and volatility at 20%. Investors grow more bullish and the real-world drift rises from 8% to 12%. What happens to the red risk-neutral curve in the chart below?</div>
+      <ul class="tl-predict-options">
+        <li>It shifts right, by the same amount as the blue curve.</li>
+        <li data-correct>It stays exactly where it is.</li>
+        <li>It gets wider, because the risk premium is bigger.</li>
+        <li>It shifts left, to keep the gap the same.</li>
+      </ul>
+      <div class="tl-predict-reveal"><p><strong>It stays exactly where it is.</strong> The red curve is centered on the risk-free forward price, \(S_0 e^{rT}\), and its width is set by \(\sigma\). Neither changed. Only the blue curve moves right, and the shift between them grows from \(\theta = (8-4)/20 = 0.2\) to \(\theta = (12-4)/20 = 0.4\). That is why a bullish view leaves the option's price unchanged. Look at the chart: the red center is marked \(S_0 e^{rT}\), with no \(\mu\) in it.</p></div>
+    </div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two overlaid bell-shaped probability curves over the same underlying's future price. The real-world measure curve, in blue, is centered further to the right, reflecting a positive real-world risk premium pulling expected price higher. The risk-neutral measure curve, in red, has the identical shape and spread but is centered further to the left, reflecting drift at only the risk-free rate. Both curves span the same price axis and have the same width, differing only in where they're centered.">
       <line x1="40" y1="260" x2="620" y2="260" style="stroke:var(--text3);stroke-width:1"/>
       <text x="620" y="278" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Underlying price at horizon T →</text>
@@ -439,6 +537,12 @@
       the center.
     </div>
   </div>
+
+  <!-- WB:girsanov_risk_neutral:START -->
+  <div class="wb" id="wb-girsanov_risk_neutral" data-title="Girsanov: same paths, new odds, one price">
+    <script type="application/json">{"w":600,"h":700,"intro":"Why an option's price never asks where you think the stock is going. One small tree first, then the same idea for a whole price path. Press play, or step through.","steps":[{"cap":"Meet the stock: 100 today. In one year it goes up to 120 or down to 90. Cash pays 5%. A call with strike 100 pays 20 if the stock goes up and nothing if it goes down.","do":[{"box":"now","x":20,"y":80,"w":130,"h":70,"text":"stock\n100","tone":"blue","size":20},{"box":"up","x":230,"y":12,"w":140,"h":70,"text":"up: 120","tone":"green","sub":"call pays 20","size":19},{"box":"dn","x":230,"y":150,"w":140,"h":70,"text":"down: 90","tone":"red","sub":"call pays 0","size":19},{"arrow":["now","up"]},{"arrow":["now","dn"]}]},{"cap":"Say you think the up move is 70% likely (an illustrative view). Average the payoff with your odds and discount at 5%: 0.7 × 20 ÷ e^0.05 = 13.32. Is that the price?","do":[{"box":"view","x":410,"y":12,"w":180,"h":80,"text":"your odds: 70% up","tone":"amber","sub":"price 13.32?","size":18}]},{"cap":"No. You can copy the call without it: buy two thirds of a share and borrow 57.07. If the stock goes up you hold 80 and repay 60: a profit of 20. If it goes down you hold 60 and repay 60: nothing. Exactly the call's payoffs.","do":[{"box":"copy","x":410,"y":110,"w":180,"h":118,"text":"copy it:\n⅔ share − 57.07","tone":"green","sub":"costs 9.59","size":18},{"arrow":["copy","up"],"dash":true},{"arrow":["copy","dn"],"dash":true}]},{"cap":"The copy costs ⅔ × 100 − 57.07 = 9.59 today. So the call must cost 9.59. Sell it for 13.32 and anyone can sell you the call, buy the copy, and pocket the gap with no risk.","do":[{"cross":"view"},{"pulse":"copy"}]},{"cap":"Which odds give 9.59? Only q = (e^0.05 − 0.9) ÷ (1.2 − 0.9) = 0.504. Under those odds the stock grows on average at exactly 5%, the cash rate. That is the risk-neutral probability.","do":[{"note":"q","x":300,"y":248,"text":"risk-neutral odds:  q = (e^0.05 − 0.9) ÷ 0.3 = 0.504","size":18,"anchor":"middle","tone":"green"}]},{"cap":"Price = 0.504 × 20 ÷ e^0.05 = 9.59. Your 70% appears nowhere. The price needs the possible moves and the cash rate, never a forecast.","do":[{"hide":"q"},{"note":"q2","x":300,"y":248,"text":"price = 0.504 × 20 ÷ e^0.05 = 9.59   (70% never used)","size":18,"anchor":"middle","tone":"green"}]},{"cap":"Now a real stock with a whole path of moves: real-world drift 9%, volatility 20%, cash 5%. Here is the spread of its price in one year under the real-world odds. Its average is 109.4.","do":[{"chart":"dens","x":10,"y":290,"w":580,"h":270,"title":"Price in one year, from 100 today","xd":[60,170],"yd":[0,2.2],"yt":[],"xt":[[80,"80"],[100,"100"],[120,"120"],[140,"140"],[160,"160"]],"pl":20,"pr":20},{"series":"p","chart":"dens","pts":[[60,0.049],[62,0.075],[64,0.111],[66,0.159],[68,0.219],[70,0.293],[72,0.381],[74,0.482],[76,0.596],[78,0.72],[80,0.852],[82,0.988],[84,1.126],[86,1.261],[88,1.39],[90,1.509],[92,1.616],[94,1.707],[96,1.782],[98,1.839],[100,1.876],[102,1.895],[104,1.895],[106,1.879],[108,1.846],[110,1.799],[112,1.74],[114,1.67],[116,1.592],[118,1.508],[120,1.42],[122,1.329],[124,1.236],[126,1.144],[128,1.054],[130,0.966],[132,0.882],[134,0.801],[136,0.725],[138,0.653],[140,0.587],[142,0.525],[144,0.468],[146,0.416],[148,0.369],[150,0.326],[152,0.287],[154,0.252],[156,0.221],[158,0.193],[160,0.169],[162,0.147],[164,0.128],[166,0.111],[168,0.096],[170,0.083]],"tone":"blue","ms":1400,"label":"real world ℙ","lat":[140,0.5865097315074597],"ldx":6,"ldy":-16,"lanchor":"start"},{"dot":"mp","chart":"dens","at":[109.4,1.814],"text":"avg 109.4","tone":"blue","dx":14,"dy":-12,"anchor":"start"}]},{"cap":"Girsanov reweights the same paths: high ones a little less likely, low ones a little more, until the average grows at 5%. The shift is θ = (9% − 5%) ÷ 20% = 0.2, the market price of risk.","do":[{"series":"q","chart":"dens","pts":[[60,0.086],[62,0.128],[64,0.183],[66,0.253],[68,0.338],[70,0.44],[72,0.556],[74,0.685],[76,0.824],[78,0.97],[80,1.119],[82,1.267],[84,1.409],[86,1.541],[88,1.66],[90,1.763],[92,1.846],[94,1.91],[96,1.952],[98,1.972],[100,1.972],[102,1.953],[104,1.916],[106,1.863],[108,1.797],[110,1.719],[112,1.633],[114,1.54],[116,1.443],[118,1.344],[120,1.244],[122,1.145],[124,1.048],[126,0.955],[128,0.866],[130,0.781],[132,0.702],[134,0.628],[136,0.56],[138,0.498],[140,0.44],[142,0.389],[144,0.342],[146,0.3],[148,0.262],[150,0.228],[152,0.199],[154,0.172],[156,0.149],[158,0.129],[160,0.111],[162,0.095],[164,0.082],[166,0.07],[168,0.06],[170,0.051]],"tone":"green","ms":1400,"label":"risk-neutral ℚ","lat":[92,1.8463092060049031],"ldx":-12,"ldy":0,"lanchor":"end"},{"dot":"mq","chart":"dens","at":[105.1,1.888],"text":"avg 105.1","tone":"green","dx":0,"dy":36,"anchor":"middle"}]},{"cap":"Look at what did not move: the shape and the width. Volatility is 20% under both. No path is added or removed. Only the odds on each path change, so the center slides from 109.4 to 105.1.","do":[{"pulse":"p"},{"pulse":"q"}]},{"cap":"Under the green odds the price in today's money has no drift left: a fair game, a martingale. No arbitrage forces every derivative to be a fair game under the same odds, so its price is the discounted green average.","do":[{"box":"qbox","x":10,"y":580,"w":285,"h":108,"text":"ℚ: price and hedge\ndrift = cash rate 5%","tone":"green","size":19}]},{"cap":"The blue odds still matter, just for different jobs: your view, stress tests and how bad things could get. Price with ℚ, forecast with ℙ, and never mix the two in one number.","do":[{"box":"pbox","x":305,"y":580,"w":285,"h":108,"text":"ℙ: forecast and risk\ndrift = your 9%","tone":"blue","size":19}]}]}</script>
+  </div>
+  <!-- WB:girsanov_risk_neutral:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -532,6 +636,19 @@
       explicit position (spot, forwards, an undelta-hedged option), never a
       silent adjustment to the assumed drift inside a pricing model.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative morning</div>
+    <h3>You are bullish EUR/USD and a client wants a call</h3>
+    <p>Your own macro read says EUR/USD will rise over the next six months by more than the interest-rate differential implies. A client asks you to quote a six-month EUR/USD call, and you will hedge whatever you sell. How do you price it?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Price it with your own expected drift. You are confident in the view, so the call is worth more.<div class="tl-drill-why">That swaps the risk-free drift for your real-world drift inside the price. You quote too high against anyone who prices under the risk-neutral measure, and the delta you hedge with is wrong, because it no longer matches what a replicating portfolio needs.</div></li>
+      <li data-verdict="bad">Shade it a little: blend part of your view into the drift, not all of it.<div class="tl-drill-why">Still a mispriced number, only smaller. A desk whose house view leaks into its pricing misprices consistently in the direction of that view, and counterparties who hedge correctly pick it off.</div></li>
+      <li data-verdict="good">Price and hedge the call at the rate differential, like everyone else, and put the view on as a separate trade: buy EUR/USD spot or forwards.<div class="tl-drill-why">This is the split the theorem asks for. The no-arbitrage price comes from the risk-neutral measure and needs only a volatility. Your view is a real bet about the real-world measure, so it belongs in its own explicit position, sized on its own merits.</div></li>
+      <li data-verdict="ok">Decline to quote until you are less bullish.<div class="tl-drill-why">It avoids the mistake, but it gives up a fair trade for no reason. The price and the view are separate questions, so your view is no reason to stop quoting.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happens.</strong> This is an illustrative situation, not a dated episode. The lesson's point is general: an option priced with a real-world drift is systematically off in the direction of the view, and the hedge built from it is off too. Price under the risk-neutral measure, and keep the directional bet as a separate, visible position.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -659,6 +776,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="ito-lemma.html">Itô's Lemma</a> <span>· the stock dynamics this lesson reweights</span></li>
+        <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> <span>· where "risk-neutral probability" first appears</span></li>
+        <li><a href="emh.html">The Efficient Market Hypothesis</a> <span>· the fair-game martingale that comes back here</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="heston-model.html">The Heston Model</a> <span>· risk-neutral pricing when volatility is random too</span></li>
+        <li><a href="sde-numerical-schemes.html">Numerical Schemes: Euler-Maruyama &amp; Milstein</a> <span>· simulating paths with drift r</span></li>
+        <!-- DESK:START --><li><a href="institutional-breeden-litzenberger-variance-swaps.html">Breeden-Litzenberger &amp; Variance Swaps</a> <span>· reading the risk-neutral distribution off option prices</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every option price you see is a risk-neutral number, and reading it as a forecast is a classic, costly mistake.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="ito-lemma.html">← Itô's Lemma</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -689,6 +827,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

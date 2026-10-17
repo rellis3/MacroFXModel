@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Thinking in Expected Value — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -47,6 +48,58 @@
       <li><strong>Desk verdicts:</strong> the desk's one audited sleeve (63% win, profit factor 2.2) works out to about +0.44 average-losses per trade, clearing its break-even win rate by about 19 points. The desk's own records also show how far a backtest win rate can fall live (85.7% → 39.6% on one system).</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A map of win rate against payoff ratio. A curve marks the break-even win rate, one over one plus the payoff: 50% at 1R, 33.3% at 2R. Above it trades make money, below it they lose. Trader A wins 70% of the time at a 0.4R payoff and sits just below the curve, which asks for 71.4%, so loses 0.02R a trade. Trader B wins only 40% at 2R and sits well above the 33.3% line, making 0.20R a trade.">
+      <polygon class="tlp-green" points="70.0,24.0 78.3,32.9 86.7,40.9 95.0,48.3 103.3,55.0 111.7,61.2 120.0,66.9 128.3,72.2 136.7,77.1 145.0,81.7 153.3,86.0 161.7,90.0 170.0,93.8 178.3,97.3 186.7,100.6 195.0,103.7 203.3,106.7 211.7,109.5 220.0,112.1 228.3,114.6 236.7,117.0 245.0,119.3 253.3,121.4 261.7,123.5 270.0,125.5 278.3,127.3 286.7,129.1 295.0,130.9 303.3,132.5 311.7,134.1 320.0,135.6 328.3,137.1 336.7,138.5 345.0,139.8 353.3,141.1 361.7,142.4 370.0,143.6 378.3,144.7 386.7,145.9 395.0,146.9 403.3,148.0 411.7,149.0 420.0,150.0 428.3,151.0 436.7,151.9 445.0,152.8 453.3,153.6 461.7,154.5 470.0,155.3 478.3,156.1 486.7,156.9 495.0,157.6 503.3,158.3 511.7,159.0 520.0,159.7 528.3,160.4 536.7,161.1 545.0,161.7 553.3,162.3 561.7,162.9 570.0,163.5 570,24 70,24" opacity=".12"/>
+      <polygon class="tlp-red" points="70.0,24.0 78.3,32.9 86.7,40.9 95.0,48.3 103.3,55.0 111.7,61.2 120.0,66.9 128.3,72.2 136.7,77.1 145.0,81.7 153.3,86.0 161.7,90.0 170.0,93.8 178.3,97.3 186.7,100.6 195.0,103.7 203.3,106.7 211.7,109.5 220.0,112.1 228.3,114.6 236.7,117.0 245.0,119.3 253.3,121.4 261.7,123.5 270.0,125.5 278.3,127.3 286.7,129.1 295.0,130.9 303.3,132.5 311.7,134.1 320.0,135.6 328.3,137.1 336.7,138.5 345.0,139.8 353.3,141.1 361.7,142.4 370.0,143.6 378.3,144.7 386.7,145.9 395.0,146.9 403.3,148.0 411.7,149.0 420.0,150.0 428.3,151.0 436.7,151.9 445.0,152.8 453.3,153.6 461.7,154.5 470.0,155.3 478.3,156.1 486.7,156.9 495.0,157.6 503.3,158.3 511.7,159.0 520.0,159.7 528.3,160.4 536.7,161.1 545.0,161.7 553.3,162.3 561.7,162.9 570.0,163.5 570,210 70,210" opacity=".12"/>
+      <line class="tlp-line" x1="70" y1="210" x2="570" y2="210"/>
+      <line class="tlp-line" x1="70" y1="24" x2="70" y2="210"/>
+      <polyline class="tlp-line thick" points="70.0,24.0 78.3,32.9 86.7,40.9 95.0,48.3 103.3,55.0 111.7,61.2 120.0,66.9 128.3,72.2 136.7,77.1 145.0,81.7 153.3,86.0 161.7,90.0 170.0,93.8 178.3,97.3 186.7,100.6 195.0,103.7 203.3,106.7 211.7,109.5 220.0,112.1 228.3,114.6 236.7,117.0 245.0,119.3 253.3,121.4 261.7,123.5 270.0,125.5 278.3,127.3 286.7,129.1 295.0,130.9 303.3,132.5 311.7,134.1 320.0,135.6 328.3,137.1 336.7,138.5 345.0,139.8 353.3,141.1 361.7,142.4 370.0,143.6 378.3,144.7 386.7,145.9 395.0,146.9 403.3,148.0 411.7,149.0 420.0,150.0 428.3,151.0 436.7,151.9 445.0,152.8 453.3,153.6 461.7,154.5 470.0,155.3 478.3,156.1 486.7,156.9 495.0,157.6 503.3,158.3 511.7,159.0 520.0,159.7 528.3,160.4 536.7,161.1 545.0,161.7 553.3,162.3 561.7,162.9 570.0,163.5"/>
+      <text class="tlp-text3" x="62" y="214" text-anchor="end" font-size="12">0%</text>
+      <text class="tlp-text3" x="62" y="121" text-anchor="end" font-size="12">50%</text>
+      <text class="tlp-text3" x="62" y="28" text-anchor="end" font-size="12">100%</text>
+      <text class="tlp-text3" x="236.7" y="228" text-anchor="middle" font-size="12">1R</text>
+      <text class="tlp-text3" x="403.3" y="228" text-anchor="middle" font-size="12">2R</text>
+      <text class="tlp-text3" x="570" y="228" text-anchor="middle" font-size="12">3R</text>
+      <text class="tlp-text3" x="320" y="246" text-anchor="middle" font-size="12">payoff b: average win ÷ average loss →</text>
+      <text class="tlp-text3" x="14" y="14" font-size="12">win rate ↑</text>
+      <text class="tlp-green" x="560" y="36" text-anchor="end" font-size="14" font-weight="700">makes money</text>
+      <text class="tlp-red" x="82" y="200" font-size="14" font-weight="700">loses money</text>
+      <text class="tlp-text2" x="560" y="186" text-anchor="end" font-size="12">break-even win rate = 1/(1+b)</text>
+      <circle class="tlp-red" cx="136.7" cy="79.8" r="6"/>
+      <circle class="tlp-green" cx="403.3" cy="135.6" r="6"/>
+      <text class="tlp-red" x="150" y="60" font-size="13" font-weight="700">A: right 70%, wins 0.4R, needs 71.4% → −0.02R</text>
+      <text class="tlp-green" x="403.3" y="110" text-anchor="middle" font-size="13" font-weight="700">B: right 40%, wins 2R, needs 33.3% → +0.20R</text>
+    </svg>
+    <figcaption>A win rate means nothing until you know what a win pays. Every payoff has its own break-even line. Trader A is right far more often and still sits under the line; Trader B is wrong most of the time and sits well above it.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I'm right seventy percent of the time. That has to be a good system.</p>
+      <p data-who="Quant">Maybe. What does a win pay, compared with a loss?</p>
+      <p data-who="Trader">I take profits quickly. A win is about four tenths of what a loss costs.</p>
+      <p data-who="Quant">Then do the sum. Seven wins of four tenths is two point eight. Three full losses is three. Over ten trades you're down a little, before any costs.</p>
+      <p data-who="Trader">So being right isn't enough.</p>
+      <p data-who="Quant">Being right is half the sum. The other half is what each win pays. Expected value multiplies them through: how often you win, times what a win pays, minus how often you lose, minus the cost of trading.</p>
+      <p data-who="Trader">And there's a line I have to clear?</p>
+      <p data-who="Quant">Every payoff has a break-even win rate. With wins at four tenths of a loss, you need just over seventy-one percent. You're at seventy, so you're under the line. Now take someone right only forty percent of the time, but whose wins are twice their losses. They need just a third. They're well above it, and they make about a fifth of their risk on every trade.</p>
+      <p data-who="Trader">So I'll just widen my target. Bigger wins.</p>
+      <p data-who="Quant">That's the trap. In a market with no edge, a wider target gets hit less often, by exactly the amount that cancels the bigger payoff. Move from one times your risk to three times, and your hit rate drops from a half to a quarter. Expected value stays at zero, and costs make it negative.</p>
+      <p data-who="Trader">Then where does an edge come from?</p>
+      <p data-who="Quant">From beating that no-edge hit rate. Start from it as your base rate. Count how often your setup actually worked in the past. And if the sample is small, pull the count back toward the base rate, because twelve wins in thirty cases could easily be luck.</p>
+      <p data-who="Trader">How long before my results prove it?</p>
+      <p data-who="Quant">Longer than you'd like. For the forty percent trader with a fifth of a unit of edge, it takes around two hundred trades before the record can tell the edge from luck.</p>
+      <p data-who="Trader">Has a high win rate ever really blown up?</p>
+      <p data-who="Quant">Short volatility in early twenty eighteen. Through the calm of twenty seventeen it made a little money almost every month. On the fifth of February the VIX more than doubled in a day, and the best known of those products lost more than ninety percent. The win rate was real. The size of the rare loss was the number nobody had measured.</p>
+      <p data-who="Trader">The one-line version?</p>
+      <p data-who="Quant">Your edge is how far your win rate sits above the break-even line for your payoff, after costs. Not how often you're right.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -120,6 +173,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Expected value and its break-even line, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ E = \color{#fbbf24}{p\,b} \]</div>
+      <p>What the winners bring: how often you win, times what a win pays in R. Trader B: \(0.40 \times 2 = 0.80\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ E = p\,b \;\color{#fbbf24}{-\; (1-p)} \]</div>
+      <p>What the losers take: how often you lose, times 1R. Trader B: \(0.80 - 0.60 = +0.20\)R. Trader A: \(0.28 - 0.30 = -0.02\)R.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ E = p\,b \;-\; (1-p) \;\color{#fbbf24}{-\; c} \]</div>
+      <p>The toll, paid on every trade, win or lose. With \(c = 0.05\)R, B makes +0.15R and A loses 0.07R.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ p\,b - (1-p) - c = 0 \;\Rightarrow\; \color{#10b981}{p^{*} = \frac{1 + c}{1 + b}} \]</div>
+      <p>Set EV to zero to find the line you must clear. At 2R with no cost it is 33.3%; at 0.4R it is 71.4%. Your edge is \(p - p^{*}\), not \(p\).</p>
+    </div>
+  </div>
 
   <h3>1. Measure every trade in R</h3>
   <p>
@@ -252,6 +325,10 @@
 
   <div class="tl-chart interactive">
     <div class="tl-chart-label">Your tool: the EV and payoff explorer</div>
+    <div class="tl-predict" data-answer="75" data-tol="2" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Trader A wins 70% of the time with wins worth 0.4R. With no cost, A needs 71.4% to break even. Keep the cost at 0.05R per trade. What win rate does A need now? Lock in a guess, then press the "Trader A" button below and read the break-even win rate.</div>
+      <div class="tl-predict-reveal"><p><strong>75.0%.</strong> \(p^{*} = (1 + 0.05)/(1 + 0.4) = 1.05/1.4 = 0.75\). A cost of just 0.05R lifted the bar by 3.6 points, because small wins leave little room to pay the toll. A's 70% now sits 5 points short, an EV of −0.07R a trade. Now press "Trader B" and see how little the same cost moves a 2R payoff.</p></div>
+    </div>
     <div class="ev-wrap">
     <svg id="ev-svg" class="ev-svg" viewBox="0 0 640 302" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A map of win rate against payoff ratio. A curve marks the break-even win rate for each payoff; the region above it makes money and the region below loses. A dashed curve shows the no-edge hit rate of a random market. Your chosen trade is a dot; reference points mark Trader A and Trader B.">
       <g id="ev-g"></g>
@@ -391,6 +468,12 @@
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>Your friend says "I'm good at guessing coin flips, I got 4 out of 5!" Before you believe them, remember that anyone gets 4 out of 5 sometimes. So you start from "half the time, like everyone" and only move a little toward 4 out of 5. If they get 400 out of 500, then you move a lot.</p>
   </div>
+
+  <!-- WB:action_expected_value:START -->
+  <div class="wb" id="wb-action_expected_value" data-title="Expected value: the line every trade has to clear">
+    <script type="application/json">{"w":600,"h":760,"intro":"Two traders, ten trades each, and the line every trade has to clear. Then where an honest probability comes from. Press play, or step through.","steps":[{"cap":"Two traders. A is right 70% of the time but takes profits quickly: a win pays 0.4R, where R is what a loss costs. B is right only 40% of the time, but a win pays 2R. Who makes more?","do":[{"icon":"ta","name":"person","x":30,"y":18,"s":0.7,"tone":"amber","label":"A: right 70%\nwins 0.4R","lsize":17},{"icon":"tb","name":"person","x":330,"y":18,"s":0.7,"tone":"blue","label":"B: right 40%\nwins 2R","lsize":17}]},{"cap":"Ten of A's trades: seven small wins of 0.4R and three full losses of 1R. Lots of green.","do":[{"chart":"ca","x":10,"y":140,"w":285,"h":210,"title":"A: ten trades","xd":[0.4,10.6],"yd":[-1.3,2.3],"yt":[[2,"+2R"],[0,"0"],[-1,"−1R"]],"xt":[[1,"1"],[10,"10"]],"zero":true,"pl":46,"pr":10},{"bars":"ba","chart":"ca","data":[[1,0.4,"","green"],[2,0.4,"","green"],[3,0.4,"","green"],[4,0.4,"","green"],[5,0.4,"","green"],[6,0.4,"","green"],[7,0.4,"","green"],[8,-1.0,"","red"],[9,-1.0,"","red"],[10,-1.0,"","red"]],"bw":16,"ms":1200}]},{"cap":"Ten of B's trades: six full losses and four wins of 2R. Mostly red.","do":[{"chart":"cb","x":305,"y":140,"w":285,"h":210,"title":"B: ten trades","xd":[0.4,10.6],"yd":[-1.3,2.3],"yt":[[2,"+2R"],[0,"0"],[-1,"−1R"]],"xt":[[1,"1"],[10,"10"]],"zero":true,"pl":46,"pr":10},{"bars":"bb","chart":"cb","data":[[1,2.0,"","green"],[2,2.0,"","green"],[3,2.0,"","green"],[4,2.0,"","green"],[5,-1.0,"","red"],[6,-1.0,"","red"],[7,-1.0,"","red"],[8,-1.0,"","red"],[9,-1.0,"","red"],[10,-1.0,"","red"]],"bw":16,"ms":1200}]},{"cap":"Now count the money. A: 7 × 0.4 − 3 × 1 = −0.2R over ten trades. B: 4 × 2 − 6 × 1 = +2.0R. The trader who is wrong more often is the one who is ahead.","do":[{"box":"sa","x":10,"y":358,"w":285,"h":56,"text":"A over ten","tone":"red","sub":"0.0R","size":18},{"count":"sa","from":0,"to":-0.2,"dp":1,"suf":"R","ms":1100},{"box":"sb","x":305,"y":358,"w":285,"h":56,"text":"B over ten","tone":"green","sub":"0.0R","size":18},{"count":"sb","from":0,"to":2.0,"dp":1,"pre":"+","suf":"R","ms":1100}]},{"cap":"That weighing is expected value: E = p × b − (1 − p) − c, the average R per trade after the cost c. Before costs, A makes −0.02R a trade and B makes +0.20R.","do":[{"note":"ev","x":300,"y":446,"text":"E = p·b − (1 − p) − c","size":22,"anchor":"middle","tone":"purple"}]},{"cap":"Set E to zero and every payoff gets a break-even win rate: 1 ÷ (1 + b). At 0.4R you need 71.4%, so A at 70% sits just under the line. At 2R you need 33.3%, and B at 40% sits well above it.","do":[{"chart":"map","x":10,"y":462,"w":360,"h":290,"title":"win rate needed vs payoff","xd":[0,3],"yd":[0,1],"yt":[[0.25,"25%"],[0.5,"50%"],[0.75,"75%"],[1,"100%"]],"xt":[[0,"0"],[1,"1R"],[2,"2R"],[3,"3R"]],"pl":58,"pr":14},{"series":"be","chart":"map","pts":[[0.0,1.0],[0.05,0.9524],[0.1,0.9091],[0.15,0.8696],[0.2,0.8333],[0.25,0.8],[0.3,0.7692],[0.35,0.7407],[0.4,0.7143],[0.45,0.6897],[0.5,0.6667],[0.55,0.6452],[0.6,0.625],[0.65,0.6061],[0.7,0.5882],[0.75,0.5714],[0.8,0.5556],[0.85,0.5405],[0.9,0.5263],[0.95,0.5128],[1.0,0.5],[1.05,0.4878],[1.1,0.4762],[1.15,0.4651],[1.2,0.4545],[1.25,0.4444],[1.3,0.4348],[1.35,0.4255],[1.4,0.4167],[1.45,0.4082],[1.5,0.4],[1.55,0.3922],[1.6,0.3846],[1.65,0.3774],[1.7,0.3704],[1.75,0.3636],[1.8,0.3571],[1.85,0.3509],[1.9,0.3448],[1.95,0.339],[2.0,0.3333],[2.05,0.3279],[2.1,0.3226],[2.15,0.3175],[2.2,0.3125],[2.25,0.3077],[2.3,0.303],[2.35,0.2985],[2.4,0.2941],[2.45,0.2899],[2.5,0.2857],[2.55,0.2817],[2.6,0.2778],[2.65,0.274],[2.7,0.2703],[2.75,0.2667],[2.8,0.2632],[2.85,0.2597],[2.9,0.2564],[2.95,0.2532],[3.0,0.25]],"tone":null,"ms":1300},{"dot":"da","chart":"map","at":[0.4,0.7],"text":"A","tone":"red","dx":12,"dy":-12,"anchor":"start"},{"dot":"db","chart":"map","at":[2.0,0.4],"text":"B","tone":"green","dy":-16}]},{"cap":"Costs lift the line. With a 0.05R toll on every trade, A now needs 75%, not 71.4%. Small wins leave little room to pay for trading.","do":[{"series":"bec","chart":"map","pts":[[0.0,1],[0.05,1],[0.1,0.9545],[0.15,0.913],[0.2,0.875],[0.25,0.84],[0.3,0.8077],[0.35,0.7778],[0.4,0.75],[0.45,0.7241],[0.5,0.7],[0.55,0.6774],[0.6,0.6562],[0.65,0.6364],[0.7,0.6176],[0.75,0.6],[0.8,0.5833],[0.85,0.5676],[0.9,0.5526],[0.95,0.5385],[1.0,0.525],[1.05,0.5122],[1.1,0.5],[1.15,0.4884],[1.2,0.4773],[1.25,0.4667],[1.3,0.4565],[1.35,0.4468],[1.4,0.4375],[1.45,0.4286],[1.5,0.42],[1.55,0.4118],[1.6,0.4038],[1.65,0.3962],[1.7,0.3889],[1.75,0.3818],[1.8,0.375],[1.85,0.3684],[1.9,0.3621],[1.95,0.3559],[2.0,0.35],[2.05,0.3443],[2.1,0.3387],[2.15,0.3333],[2.2,0.3281],[2.25,0.3231],[2.3,0.3182],[2.35,0.3134],[2.4,0.3088],[2.45,0.3043],[2.5,0.3],[2.55,0.2958],[2.6,0.2917],[2.65,0.2877],[2.7,0.2838],[2.75,0.28],[2.8,0.2763],[2.85,0.2727],[2.9,0.2692],[2.95,0.2658],[3.0,0.2625]],"tone":"amber","dash":true,"ms":1200},{"note":"becl","chart":"map","at":[1.15,0.9],"text":"dashed: + 0.05R cost","tone":"amber","size":15,"anchor":"start","dx":0,"dy":0}]},{"cap":"Here is the twist. In a market with no edge, the chance of hitting a target before the stop is S ÷ (S + T), which is 1 ÷ (1 + b): exactly the break-even line. A 1R target is hit half the time, a 3R target a quarter of the time. EV stays at zero either way.","do":[{"dim":"bec"},{"dim":"becl"},{"dim":"da"},{"dim":"db"},{"dot":"n1","chart":"map","at":[1,0.5],"text":"1R: 50%","tone":"blue","dx":10,"dy":-14,"anchor":"start"},{"dot":"n3","chart":"map","at":[3,0.25],"text":"3R: 25%","tone":"blue","dx":-6,"dy":20,"anchor":"end"},{"box":"noedge","x":385,"y":462,"w":205,"h":132,"text":"no edge:\nmoving the target\nslides you along\nthe line","tone":"blue","size":18}]},{"cap":"So an edge means beating the line for the stop and target you chose. Worked example: a EUR/USD trade with a 2.5R target. A random market hits it first 40 ÷ 140 = 28.6% of the time. That is the base rate.","do":[{"hide":"n1"},{"hide":"n3"},{"hide":"da"},{"hide":"db"},{"dot":"p0","chart":"map","at":[2.5,0.2857142857142857],"text":"base 28.6%","tone":"blue","dy":20},{"box":"prob","x":385,"y":612,"w":205,"h":140,"text":"b = 2.5\nbase rate","tone":"purple","sub":"28.6%","size":18}]},{"cap":"The analysis found 12 wins in 30 past cases: 40%. But 30 cases is a small sample, so pull the count back toward the base rate, worth 30 pretend cases: (12 + 30 × 0.286) ÷ 60 = 34.3%.","do":[{"dot":"raw","chart":"map","at":[2.5,0.4],"text":"count 40%","tone":"amber","dy":-16},{"dot":"shr","chart":"map","at":[2.5,0.3428571428571428],"text":"34.3%","tone":"green","dx":-10,"dy":0,"anchor":"end"},{"sub":"prob","text":"12/30 → shrunk 34.3%"}]},{"cap":"EV after a 0.0375R cost: 0.343 × 2.5 − 0.657 − 0.0375 = +0.16R a trade. Positive, but thin. A trade like this swings about 1.66R, so it takes about 418 trades before the record can tell this edge from luck.","do":[{"hide":"noedge"},{"box":"evx","x":385,"y":462,"w":205,"h":132,"text":"E = +0.16R\n≈ 418 trades\nto show","tone":"green","size":19}]},{"cap":"The habit: write the payoff, the cost, the base rate and an honest probability before the order goes in. Your edge is how far you sit above the line, not how often you are right.","do":[{"pulse":"be"},{"pulse":"shr"}]}]}</script>
+  </div>
+  <!-- WB:action_expected_value:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Worked example: one EUR/USD trade, end to end</h2>
@@ -570,6 +653,19 @@ decision: no trade / small / normal     review after __ more cases</div>
     <p style="margin-bottom:0"><strong>Treating EV as what will happen.</strong> It is the average over many repetitions. A +0.16R edge will produce losing months, and it needs hundreds of trades to show.</p>
   </div>
 
+  <div class="tl-drill" data-date="2018-01-31">
+    <div class="tl-drill-label">Scenario drill · 31 January 2018</div>
+    <h3>A short-volatility note that almost never loses</h3>
+    <p>Through the very calm markets of 2017 you have held an exchange-traded note that rises when the VIX falls. Most days, and most months, it has made a little money. The equity curve is smooth and the hit rate is high. A friend says you should double the position, since it "basically never loses". What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Double it. A hit rate that high is proof of an edge.<div class="tl-drill-why">A hit rate on its own says nothing. EV also needs the size of the losing side, and with a short-volatility note the rare loss can be a large multiple of a typical win. A long run of small wins is exactly what this shape looks like before the loss arrives.</div></li>
+      <li data-verdict="good">Write out the EV with the loss side made explicit: how big the rare loss could be and how often it might come. Stress both, then size so that loss is survivable.<div class="tl-drill-why">This is the lesson's method. With a high win rate and a huge, rare loss, the sign of EV depends almost entirely on the loss you have not seen yet. If you cannot pin that number down, size as if it is bad.</div></li>
+      <li data-verdict="ok">Keep the position as it is. It has worked, so there is no reason to change.<div class="tl-drill-why">Better than doubling, but it still judges the trade by its recent results. The question is whether the position survives the rare loss, and you have not asked it.</div></li>
+      <li data-verdict="bad">Judge it by its smooth equity curve: low volatility means low risk.<div class="tl-drill-why">A smooth curve is what many small wins look like. It tells you the win rate, not the tail. The risk sits in the one outcome the curve has not shown you.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 5 February 2018 U.S. stocks fell sharply and the VIX more than doubled in a single session. The best-known short-volatility note, Credit Suisse's XIV, lost more than 90% of its value in a day, and Credit Suisse announced it would terminate it. Several other short-volatility funds took heavy losses in the same days. The win rate had been real; the payoff on the losing side was the number nobody had measured well.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -620,6 +716,27 @@ decision: no trade / small / normal     review after __ more cases</div>
     <li><a href="kelly-criterion.html">Kelly Criterion</a>, <a href="bayesian-conjugate-priors.html">Conjugate Priors</a> and <a href="drawdowns-risk-of-ruin.html">Drawdowns and Risk of Ruin</a>: the sizing, shrinkage and streak lessons this one connects to.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <!-- DESK:START --><li><a href="action-trade-plan.html">From a View to a Trade Plan</a> <span>· where the stop, target and R come from</span></li><!-- DESK:END -->
+        <li><a href="primer-probability.html">Probability &amp; Random Variables</a> <span>· weighing outcomes by their chances</span></li>
+        <li><a href="bayesian-conjugate-priors.html">Conjugate Priors &amp; Bayesian Updating in Practice</a> <span>· why a small count gets shrunk</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="action-combining-signals.html">Combining Signals That Disagree</a> <span>· getting a better probability to feed in</span></li><!-- DESK:END -->
+        <!-- DESK:START --><li><a href="action-edge-after-costs.html">Does the Edge Survive Costs?</a> <span>· the cost term taken seriously</span></li><!-- DESK:END -->
+        <li><a href="kelly-criterion.html">The Kelly Criterion &amp; Position Sizing</a> <span>· sizing from the same win rate and payoff</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a high hit rate feels like skill, but only the gap between your win rate and the break-even line for your payoff tells you whether a trade is worth taking.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="action-trade-plan.html">← From a View to a Trade Plan</a>
@@ -770,10 +887,12 @@ decision: no trade / small / normal     review after __ more cases</div>
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

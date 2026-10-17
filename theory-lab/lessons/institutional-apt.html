@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Arbitrage Pricing Theory — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,85 @@
       <li><strong>How it reached trading:</strong> Ross's 1976 no-arbitrage theory reached money management through Chen-Roll-Ross's 1986 macro factors and Roll &amp; Ross's own macro-factor risk models, and it is the logic behind every multi-factor risk model a desk runs today.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 248" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three toy assets priced by the two-factor APT equation. Each bar starts with the 3% risk-free rate, adds its growth-surprise term and then its inflation-surprise term. Asset X: 3 plus 4.5 minus 0.75 equals 6.75%. Asset Y: 3 plus 2.4 plus 0.45 equals 5.85%. Asset Z: 3 plus 6 minus 1.5 equals 7.50%.">
+      <rect class="tlp-box blue" x="110" y="12" width="12" height="12" rx="2"/>
+      <text class="tlp-text2" x="128" y="23" font-size="13">risk-free 3%</text>
+      <rect class="tlp-box green" x="232" y="12" width="12" height="12" rx="2"/>
+      <text class="tlp-text2" x="250" y="23" font-size="13">growth β × 3%</text>
+      <rect class="tlp-box red" x="368" y="12" width="12" height="12" rx="2"/>
+      <text class="tlp-text2" x="386" y="23" font-size="13">inflation β × −1.5%</text>
+
+      <text class="tlp-text" x="20" y="68" font-size="14" font-weight="700">Asset X</text>
+      <text class="tlp-text3" x="20" y="86" font-size="12">betas 1.5, 0.5</text>
+      <rect class="tlp-box blue" x="110" y="52" width="135" height="24" rx="3"/>
+      <rect class="tlp-box green" x="245" y="52" width="202.5" height="24" rx="3"/>
+      <rect class="tlp-box red" x="413.75" y="80" width="33.75" height="12" rx="2"/>
+      <text class="tlp-text" x="177.5" y="69" text-anchor="middle" font-size="13">3</text>
+      <text class="tlp-text" x="346" y="69" text-anchor="middle" font-size="13">+4.5</text>
+      <text class="tlp-red" x="453" y="92" font-size="12" font-weight="700">−0.75</text>
+      <line class="tlp-line purple thick" x1="413.75" y1="46" x2="413.75" y2="98"/>
+      <text class="tlp-purple" x="532" y="70" font-size="15" font-weight="700">6.75%</text>
+
+      <text class="tlp-text" x="20" y="128" font-size="14" font-weight="700">Asset Y</text>
+      <text class="tlp-text3" x="20" y="146" font-size="12">betas 0.8, −0.3</text>
+      <rect class="tlp-box blue" x="110" y="112" width="135" height="24" rx="3"/>
+      <rect class="tlp-box green" x="245" y="112" width="108" height="24" rx="3"/>
+      <rect class="tlp-box amber" x="353" y="140" width="20.25" height="12" rx="2"/>
+      <text class="tlp-text" x="177.5" y="129" text-anchor="middle" font-size="13">3</text>
+      <text class="tlp-text" x="299" y="129" text-anchor="middle" font-size="13">+2.4</text>
+      <text class="tlp-amber" x="381" y="152" font-size="12" font-weight="700">+0.45</text>
+      <line class="tlp-line purple thick" x1="373.25" y1="106" x2="373.25" y2="158"/>
+      <text class="tlp-purple" x="532" y="130" font-size="15" font-weight="700">5.85%</text>
+
+      <text class="tlp-text" x="20" y="188" font-size="14" font-weight="700">Asset Z</text>
+      <text class="tlp-text3" x="20" y="206" font-size="12">betas 2.0, 1.0</text>
+      <rect class="tlp-box blue" x="110" y="172" width="135" height="24" rx="3"/>
+      <rect class="tlp-box green" x="245" y="172" width="270" height="24" rx="3"/>
+      <rect class="tlp-box red" x="447.5" y="200" width="67.5" height="12" rx="2"/>
+      <text class="tlp-text" x="177.5" y="189" text-anchor="middle" font-size="13">3</text>
+      <text class="tlp-text" x="346" y="189" text-anchor="middle" font-size="13">+6.0</text>
+      <text class="tlp-red" x="520" y="212" font-size="12" font-weight="700">−1.5</text>
+      <line class="tlp-line purple thick" x1="447.5" y1="166" x2="447.5" y2="218"/>
+      <text class="tlp-purple" x="532" y="190" font-size="15" font-weight="700">7.50%</text>
+
+      <line class="tlp-line" x1="110" y1="226" x2="515" y2="226"/>
+      <text class="tlp-text3" x="110" y="242" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="245" y="242" text-anchor="middle" font-size="12">3%</text>
+      <text class="tlp-text3" x="380" y="242" text-anchor="middle" font-size="12">6%</text>
+      <text class="tlp-text3" x="515" y="242" text-anchor="middle" font-size="12">9%</text>
+    </svg>
+    <figcaption>Expected return is built from exposures times prices: the risk-free 3%, plus each factor's beta times its premium. The purple tick is where each asset ends up. Same two prices of risk, different exposures, different expected returns. Two assets with identical betas would have to land on the same tick, or someone could arbitrage the gap.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">CAPM gives me one factor, the market. Fama-French gives me three or four. What does arbitrage pricing theory give me?</p>
+      <p data-who="Quant">A rule about shape, not a list of factors. Stephen Ross showed in 1976 that if free lunches get competed away, expected returns must line up, roughly in a straight line, with exposure to a few big shared risks.</p>
+      <p data-who="Trader">Which risks?</p>
+      <p data-who="Quant">That's the twist. The theory doesn't say. It doesn't even say how many. You choose them, and only then does it become a model you can test.</p>
+      <p data-who="Trader">So where does the straight line come from?</p>
+      <p data-who="Quant">Picture two big, well-spread portfolios with exactly the same exposure to every shared risk. One is priced to return eight percent, the other six.</p>
+      <p data-who="Trader">I'd buy the eight and short the six.</p>
+      <p data-who="Quant">Right. It costs nothing, because the legs are equal size. The shared risks cancel, because the exposures match. And the stock-specific noise has already washed out, because both portfolios are spread across many names. You pocket two percent for no money and no risk.</p>
+      <p data-who="Trader">Which can't last.</p>
+      <p data-who="Quant">No. Everyone piles in until the gap closes. So the same exposure has to mean the same expected return. That's the whole pricing equation: the risk-free rate, plus each exposure times the price the market pays for that risk.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">Take two factors: growth surprises and inflation surprises. The risk-free rate is three percent. Growth risk pays three percent per unit. Inflation risk pays minus one and a half, because assets that rise with surprise inflation are a hedge, and people accept less for a hedge.</p>
+      <p data-who="Trader">And an asset with a growth beta of one and a half and an inflation beta of a half?</p>
+      <p data-who="Quant">Three, plus four and a half for growth, minus three quarters for the inflation hedge. Six point seven five percent.</p>
+      <p data-who="Trader">You keep saying surprises. Why not just inflation?</p>
+      <p data-who="Quant">Because the expected part is already in the price. Chen, Roll and Ross made that the core of their 1986 version. An inflation print bang on consensus is old news. Only the miss is new risk. It's the same reason a rate hike the market fully expected barely moves a currency.</p>
+      <p data-who="Trader">So what's the catch?</p>
+      <p data-who="Quant">There's no single agreed model. Two researchers can pick different factors and both call it arbitrage pricing theory. And the equation only holds approximately, better as the number of assets grows.</p>
+      <p data-who="Trader">One line to take away?</p>
+      <p data-who="Quant">Same exposure to the same surprises means the same expected return, or someone gets a free lunch; the theory just won't tell you which surprises.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters — three completely different ways to get a factor model</h2>
@@ -161,6 +241,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step — from a factor structure to a pricing equation</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">The APT pricing equation, one priced risk at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ E[R_i] = \color{#fbbf24}{R_f} \]</div>
+      <p>Start with a diversified portfolio that has no exposure to any shared risk. It is riskless, so if it earned more than the risk-free rate, borrowing to buy it would be a free lunch. So it earns \(R_f\), here 3%.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ E[R_i] = R_f + \color{#fbbf24}{\beta_{i,\text{IP}}\,\lambda_{\text{IP}}} \]</div>
+      <p>Add one priced risk: exposure to growth surprises, times the premium the market pays per unit. With only this term and the market as the factor, you are back at something CAPM-like.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ E[R_i] = R_f + \beta_{i,\text{IP}}\,\lambda_{\text{IP}} + \color{#fbbf24}{\beta_{i,\text{INF}}\,\lambda_{\text{INF}}} \]</div>
+      <p>Add a second: exposure to inflation surprises. Its premium can be negative, because an asset that rises on inflation surprises is a hedge.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{E[R_i] \approx R_f + \sum_{k=1}^{K} \beta_{ik}\,\lambda_k} \]</div>
+      <p>Keep going for every pervasive factor. APT never says what \(K\) is or which factors to use, and the \(\approx\) is real: the relation holds approximately, better as the number of assets grows.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ E[R_X] = 3 + 1.5(3) + 0.5(-1.5) = \color{#10b981}{6.75\%} \]</div>
+      <p>Plug in the worked example's Asset X: growth adds 4.5 points, the inflation hedge costs 0.75.</p>
+    </div>
+  </div>
   <p>
     Start from an assumption about how returns are <em>generated</em>, not priced — this part
     is purely descriptive. Suppose the return on any asset \(i\) can be written as a linear
@@ -315,6 +419,12 @@
     </div>
   </div>
 
+  <!-- WB:institutional_apt:START -->
+  <div class="wb" id="wb-institutional_apt" data-title="APT: a free lunch, and why it closes">
+    <script type="application/json">{"w":600,"h":580,"intro":"Two portfolios with the same risk and different prices, and what arbitrage does about it. Then the lesson's two-factor toy model. Press play, or step through.","steps":[{"cap":"Two big, well-diversified portfolios, P and Q. Each has exactly the same exposure to the shared risk factor: a beta of 1.0.","do":[{"box":"P","x":20,"y":20,"w":200,"h":84,"text":"P · beta 1.0","tone":"green","sub":"expected ?","size":20},{"box":"Q","x":380,"y":20,"w":200,"h":84,"text":"Q · beta 1.0","tone":"amber","sub":"expected ?","size":20}]},{"cap":"Same risk, different price tags. P is priced to return 8% a year, Q only 6%.","do":[{"sub":"P","text":"expected 8%"},{"sub":"Q","text":"expected 6%"},{"note":"gap","x":300,"y":140,"text":"same beta, 2-point gap","size":19,"anchor":"middle","tone":"red"}]},{"cap":"So buy $1 of P and short $1 of Q. The two legs are the same size, so the position costs nothing to put on.","do":[{"chip":"long","x":70,"y":176,"text":"long $1 of P","tone":"green"},{"chip":"short","x":430,"y":176,"text":"short $1 of Q","tone":"amber"},{"note":"cost","x":300,"y":230,"text":"net cost: $0","size":19,"anchor":"middle","tone":"blue"}]},{"cap":"The factor exposures cancel: +1.0 from P, −1.0 from Q, net zero. And because both portfolios are spread over many names, their stock-specific noise has already averaged away.","do":[{"note":"exp","x":300,"y":262,"text":"net exposure: 1.0 − 1.0 = 0","size":19,"anchor":"middle","tone":"blue"},{"note":"noise","x":300,"y":292,"text":"stock-specific noise: diversified away","size":17,"anchor":"middle","tone":"blue"}]},{"cap":"What is left: 8% − 6% = 2% a year, for no money and no risk. A free lunch.","do":[{"icon":"coin","name":"coin","x":262,"y":302,"s":0.6,"tone":"green","label":"+2%","sym":"$","lsize":19}]},{"cap":"A free lunch does not survive. Arbitrageurs pile in, buying P and selling Q. Buying pushes P's price up and its expected return down; selling does the reverse to Q, until the gap closes.","do":[{"icon":"crowd","name":"crowd","x":255,"y":6,"s":0.9,"tone":"red","label":"arbitrageurs","lsize":17},{"sub":"P","text":"expected ↓"},{"sub":"Q","text":"expected ↑"},{"hide":"gap"},{"note":"closed","x":300,"y":140,"text":"gap closes: same beta, same return","size":19,"anchor":"middle","tone":"green"},{"dim":"coin"}]},{"cap":"So the rule is: the same exposure must earn the same expected return. Expected return = the risk-free rate, plus each exposure times that risk's price. APT never says which risks.","do":[{"hide":"long"},{"hide":"short"},{"hide":"cost"},{"hide":"exp"},{"hide":"noise"},{"hide":"coin"},{"box":"eq","x":20,"y":270,"w":560,"h":64,"text":"expected return ≈ R_f + Σ beta × price of that risk","tone":"purple","size":20}]},{"cap":"The lesson's toy version has two factors: growth surprises and inflation surprises. The risk-free rate is 3%. Growth risk pays +3% per unit. Inflation risk pays −1.5%, because assets that rise on inflation surprises are a hedge.","do":[{"note":"prices","x":300,"y":362,"text":"R_f 3%  ·  growth +3%  ·  inflation −1.5%","size":19,"anchor":"middle","tone":"blue"}]},{"cap":"Asset X (growth beta 1.5, inflation beta 0.5): 3 + 4.5 − 0.75 = 6.75%. Asset Y (0.8, −0.3): 3 + 2.4 + 0.45 = 5.85%. Asset Z (2.0, 1.0): 3 + 6 − 1.5 = 7.5%.","do":[{"box":"aX","x":20,"y":384,"w":170,"h":92,"text":"Asset X\n3 + 4.5 − 0.75","tone":"green","sub":"3%","size":18},{"box":"aY","x":215,"y":384,"w":170,"h":92,"text":"Asset Y\n3 + 2.4 + 0.45","tone":"blue","sub":"3%","size":18},{"box":"aZ","x":410,"y":384,"w":170,"h":92,"text":"Asset Z\n3 + 6 − 1.5","tone":"purple","sub":"3%","size":18},{"count":"aX","from":3.0,"to":6.75,"dp":2,"suf":"%"},{"count":"aY","from":3.0,"to":5.85,"dp":2,"suf":"%"},{"count":"aZ","from":3.0,"to":7.5,"dp":2,"suf":"%"}]},{"cap":"Why surprises and not levels: an inflation print exactly on consensus is already in the price. Its surprise is zero, so it moves nothing, however high the number is. Only the miss carries risk, and a premium.","do":[{"note":"surp","x":300,"y":512,"text":"on consensus → surprise 0 → no new risk","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"The catch: the theory never names the factors, so there is no single \"APT model\". Different factor choices give different premia. And the equation is approximate, tighter as the number of assets grows.","do":[{"note":"catch","x":300,"y":552,"text":"a framework: you choose the factors","size":19,"anchor":"middle","tone":"red"},{"pulse":"eq"}]}]}</script>
+  </div>
+  <!-- WB:institutional_apt:END -->
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Chen, Roll &amp; Ross (1986): putting a macro face on the factors</h2>
   <p>
@@ -437,6 +547,10 @@
       Change any field and \(E[R_i]\) recalculates instantly from
       \(E[R_i] = R_f + \beta_1\lambda_1 + \beta_2\lambda_2\).
     </p>
+    <div class="tl-predict" data-answer="8.25" data-tol="0.15" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Asset X is priced at 6.75%. Suppose the market stopped treating inflation exposure as a hedge and paid +1.5% for it instead of −1.5%, with everything else unchanged. What is Asset X's expected return now? Lock in a guess, then set the \(\lambda_2\) field below to 1.5 to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>8.25%.</strong> \(3 + 1.5(3) + 0.5(1.5) = 3 + 4.5 + 0.75 = 8.25\%\). The inflation term flips from costing 0.75 points to adding 0.75, a swing of 1.5 points from one sign change. Now try Asset Y's loadings (0.8 and −0.3) with the same flip and see its inflation term turn negative.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Risk-free rate \(R_f\) (%)</span></div>
@@ -587,6 +701,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative CPI morning</div>
+    <h3>Inflation is high, and it is exactly what everyone expected</h3>
+    <p>Your book has a large negative exposure to inflation surprises: it loses when inflation comes in above forecast. This morning's inflation print is the highest in years, but it lands exactly on the consensus forecast, and futures had priced that number for weeks. A colleague says the book is "obviously wrong-footed by high inflation" and wants to cut the position before lunch. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Cut it. Inflation this high has to hurt a book with negative inflation exposure.<div class="tl-drill-why">That reads the level, not the surprise. The factor in the model is inflation minus what was expected, and today that is zero. Nothing new arrived for the book's exposure to price, so trading on the headline number pays costs for no change in risk.</div></li>
+      <li data-verdict="good">Leave the position. The surprise was zero, so this print adds no new risk to that exposure. Review the exposure itself if you think the next surprise is more likely to be upside.<div class="tl-drill-why">This is the Chen-Roll-Ross logic. Only the unexpected part carries a premium or moves the price. If you are worried, the honest question is about the odds of a future upside miss, which is a decision about the exposure, not a reaction to today's on-consensus number.</div></li>
+      <li data-verdict="ok">Halve it, to be safe.<div class="tl-drill-why">Cheaper than cutting all of it, but it still answers a headline rather than a surprise. If you wanted less inflation-surprise exposure, that was true yesterday too. Halving now just pays costs for the feeling of doing something.</div></li>
+      <li data-verdict="bad">Double it. High inflation must mean it falls back from here.<div class="tl-drill-why">That is a forecast of the level dressed up as a factor view. APT says nothing about where inflation goes next. It prices exposure to surprises, and doubling the exposure doubles your bet on the next miss, whichever way it goes.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the framework says.</strong> This morning is illustrative, not a specific historical release. The point is the lesson's Section 03: an anticipated number, however extreme, is already in the price, so a factor built from the level would credit or blame the book for news nobody received. Measure the surprise first; only then ask whether the exposure is the one you want.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -679,6 +806,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-capm.html">The Capital Asset Pricing Model (CAPM)</a> <span>· the one-factor model APT generalises</span></li><!-- DESK:END -->
+        <!-- DESK:START --><li><a href="institutional-fama-macbeth.html">Fama-MacBeth Two-Stage Regression</a> <span>· how each premium is estimated</span></li><!-- DESK:END -->
+        <li><a href="central-bank-policy.html">Central Bank Policy</a> <span>· why the surprise moves prices, not the level</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-barra-risk-models.html">Barra-Style Risk Models</a> <span>· APT's logic run as a daily risk model</span></li><!-- DESK:END -->
+        <li><a href="factor-based-portfolio-construction.html">Factor-Based Portfolio Construction</a> <span>· choosing which exposures to hold</span></li>
+        <li><a href="pca-factors.html">Principal Component Analysis &amp; Factor Regimes</a> <span>· extracting unnamed factors from the data</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> it tells you to judge a book by which macro surprises it is exposed to, and why the same exposure should earn the same return.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-fama-macbeth.html">← Fama-MacBeth</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -709,7 +857,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var DEFAULTS = { rf: 3, b1: 1.5, l1: 3, b2: 0.5, l2: -1.5 };
@@ -756,5 +905,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

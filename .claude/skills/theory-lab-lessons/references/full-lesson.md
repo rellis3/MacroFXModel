@@ -4,9 +4,14 @@ Reference: `theory-lab/lessons/kelly-criterion.html`. Component catalogue: `educ
 
 ## Body order
 
-TL;DR → Why this matters → plain-English intuition → (How it reached trading, for maths/ML lessons) → the maths →
-symbols → interactive chart → worked example → real-world scenario → It actually happened (story, chain, desk verdict)
-→ How practitioners use it → pitfalls → Key Takeaways → Self-test → Further reading → footer nav.
+TL;DR → summary picture (`.tl-picture`) → spoken version (`.tl-listen`) → Why this matters → plain-English
+intuition → (How it reached trading, for maths/ML lessons) → the maths (opening with `.tl-eqbuild`) → symbols →
+interactive chart → worked example (the "Try it yourself" box opens with `.tl-predict`) → real-world scenario → It
+actually happened (story, chain, desk verdict) → How practitioners use it → pitfalls → scenario drill (`.tl-drill`) →
+Key Takeaways → Self-test → Further reading → Where this fits (`.tl-fits`) → footer nav.
+
+The VARK blocks and their exact markup and writing rules: style guide §5.20, worked in full in `kelly-criterion.html`.
+Load `../assets/vark.js?v=1` (defer) right after `../assets/tts.js?v=6`. Every lesson also gets a whiteboard.
 
 Number the sections with `tl-section-mark` ("Section 01", "Section 02", …).
 

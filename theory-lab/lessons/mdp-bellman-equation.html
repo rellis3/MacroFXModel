@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MDPs, Value Functions &amp; the Bellman Equation — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,76 @@
       <li><strong>How it reached trading:</strong> Samuelson and Merton (1969–71) used it to solve lifetime portfolio choice, and Cox, Ross &amp; Rubinstein's 1979 binomial tree made backward induction the standard way to price American options.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 244" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the rewards from holding a long position forever, plus 1 each step, drawn as bars that shrink by a factor of 0.9 each step. The first bar is the reward now; all the later bars together are 0.9 times the same picture, so the value of being long is 1 plus 0.9 times itself, which is 10. Right: the solved values and best moves for the lesson's three states: Flat 7.32, open a position; Long 10, hold; Short 6.49, close.">
+      <text class="tlp-green" x="170" y="18" text-anchor="middle" font-size="14" font-weight="700">V(Long) = 1 + 0.9 × V(Long) = 10</text>
+      <rect class="tlp-green" x="30" y="80.0" width="16" height="120.0" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="51" y="92.0" width="16" height="108.0" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="72" y="102.8" width="16" height="97.2" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="93" y="112.5" width="16" height="87.5" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="114" y="121.3" width="16" height="78.7" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="135" y="129.1" width="16" height="70.9" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="156" y="136.2" width="16" height="63.8" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="177" y="142.6" width="16" height="57.4" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="198" y="148.3" width="16" height="51.7" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="219" y="153.5" width="16" height="46.5" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="240" y="158.2" width="16" height="41.8" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="261" y="162.3" width="16" height="37.7" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="282" y="166.1" width="16" height="33.9" rx="2" opacity=".8"/>
+      <rect class="tlp-blue" x="303" y="169.5" width="16" height="30.5" rx="2" opacity=".8"/>
+      <line class="tlp-line" x1="24" y1="200" x2="326" y2="200"/>
+      <path class="tlp-line purple" d="M51,88 L51,82 L319,82 L319,88"/>
+      <text class="tlp-green" x="38" y="72" text-anchor="middle" font-size="13" font-weight="700">+1</text>
+      <text class="tlp-purple" x="185" y="72" text-anchor="middle" font-size="13" font-weight="700">0.9 × (the same picture) = 9</text>
+      <text class="tlp-text3" x="38" y="216" text-anchor="middle" font-size="12">now</text>
+      <text class="tlp-text3" x="190" y="216" text-anchor="middle" font-size="12">each later step shrunk by 0.9 →</text>
+      <text class="tlp-text2" x="175" y="236" text-anchor="middle" font-size="12">value now = reward now + discounted value next</text>
+      <line class="tlp-line dash" x1="350" y1="10" x2="350" y2="236"/>
+      <text class="tlp-text3" x="475" y="18" text-anchor="middle" font-size="12">solved: value and best move</text>
+      <circle class="tlp-box blue" cx="400" cy="70" r="28"/>
+      <circle class="tlp-box green" cx="400" cy="136" r="28"/>
+      <circle class="tlp-box red" cx="400" cy="202" r="28"/>
+      <text class="tlp-text" x="400" y="75" text-anchor="middle" font-size="13" font-weight="700">Flat</text>
+      <text class="tlp-text" x="400" y="141" text-anchor="middle" font-size="13" font-weight="700">Long</text>
+      <text class="tlp-text" x="400" y="207" text-anchor="middle" font-size="13" font-weight="700">Short</text>
+      <text class="tlp-blue" x="440" y="66" font-size="14" font-weight="700">7.32</text>
+      <text class="tlp-text2" x="440" y="84" font-size="12">best move: Open</text>
+      <text class="tlp-green" x="440" y="132" font-size="14" font-weight="700">10</text>
+      <text class="tlp-text2" x="440" y="150" font-size="12">best move: Hold</text>
+      <text class="tlp-red" x="440" y="198" font-size="14" font-weight="700">6.49</text>
+      <text class="tlp-text2" x="440" y="216" font-size="12">best move: Close</text>
+    </svg>
+    <figcaption>One idea does all the work: a state's value is the reward you get now plus 0.9 times the value of where you land. Holding long forever is worth 1 + 0.9 + 0.81 + … = 10. Apply the same rule to all three states and the best moves fall out: open from flat, hold a winner, cut a loser.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Most of my rules are static. A threshold, a size, done. When do I need anything fancier?</p>
+      <p data-who="Quant">When today's action changes tomorrow's situation. Hold or close, add or wait. The right move depends on everything that can happen after it.</p>
+      <p data-who="Trader">That sounds impossible to work out.</p>
+      <p data-who="Quant">It would be, without one trick. First, write the problem down. The situations you can be in, the moves available, how likely each move takes you where, and what each step pays. Plus one number for patience, the discount.</p>
+      <p data-who="Trader">Patience?</p>
+      <p data-who="Quant">How much a reward next step is worth today. At zero point nine, a dollar one step away is worth ninety cents now, two steps away eighty one cents, and so on.</p>
+      <p data-who="Trader">And the trick?</p>
+      <p data-who="Quant">The value of a situation is the reward you get now, plus the discounted value of wherever you land. That's the Bellman equation. You never add up the whole future. You only look one step ahead, because the next state's value already contains the rest.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Say being long pays one per step and you hold forever. The value of long is one, plus zero point nine times the value of long. Solve that and you get ten.</p>
+      <p data-who="Trader">And if I'm short and it costs me half a point a step?</p>
+      <p data-who="Quant">In the lesson's toy market, closing costs a tenth and puts you back flat, and flat is worth about seven point three. So closing is worth about six and a half. Holding the short is worth only about five point three. Close it.</p>
+      <p data-who="Trader">So the maths says cut losers.</p>
+      <p data-who="Quant">And hold winners, and don't sit flat forever. Nobody typed those rules in. They come out of the rewards and the discount.</p>
+      <p data-who="Trader">Where does this show up on a real desk?</p>
+      <p data-who="Quant">Every American option. In 1979 Cox, Ross and Rubinstein priced one on a tree by working backwards from expiry. At every node you take the bigger of exercising now or the discounted value of carrying on. That is exactly this equation.</p>
+      <p data-who="Trader">What's the catch?</p>
+      <p data-who="Quant">You need to know the odds and the payoffs in advance, and real markets don't hand you that table. And it assumes today's state tells you everything that matters, which markets with momentum and regimes break.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Value now is reward now plus discounted value next. Get that, and every reinforcement learning method is a way of estimating it.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -142,6 +213,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From an infinite sum to the Bellman optimality equation</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ V^\pi(s) = E\big[\color{#fbbf24}{r_0 + \gamma r_1 + \gamma^2 r_2 + \cdots}\big] \]</div>
+      <p>Start with the definition: every future reward, each shrunk by \(\gamma\) once per step it lies in the future.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ V^\pi(s) = E\big[r_0 + \gamma\,\color{#fbbf24}{(r_1 + \gamma r_2 + \cdots)}\big] \]</div>
+      <p>Pull out one factor of \(\gamma\). What is left in the bracket has exactly the same shape as the whole sum, just starting one step later.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ V^\pi(s) = E\big[r_0 + \gamma\,\color{#fbbf24}{V^\pi(s')}\big] \]</div>
+      <p>So the bracket is the value of the next state \(s'\). Value now is reward now plus discounted value next.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ V^\pi(s) = \color{#fbbf24}{\sum_a \pi(a|s) \sum_{s'} P(s'|s,a)}\Big[R(s,a,s') + \gamma V^\pi(s')\Big] \]</div>
+      <p>Spell out the expectation: average over the action the policy picks, then over where that action lands you.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{V^*(s) = \max_{a} \sum_{s'} P(s'|s,a)\Big[R(s,a,s') + \gamma V^*(s')\Big]} \]</div>
+      <p>Swap the average over actions for the best action. In the worked example, Long gives \(V^* = 1 + 0.9 \times 10 = 10\).</p>
+    </div>
+  </div>
   <p>
     <strong>The five pieces of an MDP.</strong> Formally, a Markov Decision
     Process is the tuple \((S, A, P, R, \gamma)\):
@@ -458,6 +553,10 @@
       backed-up value \(V(s)=r+\gamma V(s')=1.9\). Edit any field and the
       result recalculates instantly.
     </p>
+    <div class="tl-predict" data-answer="10" data-tol="0.1" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The worked example says the converged value of Long is 10. Feed that back in: reward 1, discount 0.9, next-state value 10. What does one backup give? Lock in a guess, then type 10 into the next-state field below.</div>
+      <div class="tl-predict-reveal"><p><strong>10.</strong> \(V(s) = 1 + 0.9 \times 10 = 10\). The backup hands back exactly what you put in: that is what a fixed point is, and it is why value iteration stops moving there. Now try a next-state value of 9: you get 9.1, closer to 10. Each backup pulls a wrong guess toward the answer.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Reward \(r\)</span></div>
@@ -501,6 +600,12 @@
       number instead of a vague feeling.
     </p>
   </div>
+
+  <!-- WB:mdp_bellman_equation:START -->
+  <div class="wb" id="wb-mdp_bellman_equation" data-title="Value iteration on a three-state trading MDP">
+    <script type="application/json">{"w":600,"h":620,"intro":"The lesson's three-state trading MDP, solved by value iteration. Press play, or step through.","steps":[{"cap":"Three states: you are Flat, Long or Short. That is the whole market, as far as this toy model is concerned.","do":[{"box":"F","x":20,"y":135,"w":140,"h":64,"text":"Flat","tone":"blue","sub":"","size":21},{"box":"L","x":390,"y":30,"w":150,"h":64,"text":"Long","tone":"green","sub":"","size":21},{"box":"S","x":390,"y":240,"w":150,"h":64,"text":"Short","tone":"red","sub":"","size":21}]},{"cap":"From Flat you can Stay (reward 0), or Open, paying 0.1 to land Long or Short with equal chance. You do not know which way the market will go.","do":[{"arrow":["F","L"],"label":"Open ½","tone":"blue","bend":-18,"id":"fl"},{"arrow":["F","S"],"label":"Open ½","tone":"blue","bend":18,"id":"fs"},{"note":"stay","x":90,"y":224,"text":"Stay: 0","size":18,"anchor":"middle","tone":"blue"}]},{"cap":"Long pays +1 every step you Hold. Short costs 0.5 every step you Hold. From either one, Close takes you back to Flat for a cost of 0.1.","do":[{"note":"hl","x":465,"y":116,"text":"Hold: +1 a step","size":18,"anchor":"middle","tone":"green"},{"note":"hs","x":465,"y":326,"text":"Hold: −0.5 a step","size":18,"anchor":"middle","tone":"red"},{"arrow":["L","F"],"label":"Close","tone":"amber","bend":-18,"id":"lf"},{"arrow":["S","F"],"label":"Close","tone":"amber","bend":18,"id":"sf"}]},{"cap":"How much is being Long worth? Hold forever and you collect 1, then 1 again a step later, and so on. With a discount of 0.9, each step is worth 0.9 times the one before.","do":[{"chart":"geo","x":10,"y":340,"w":580,"h":262,"title":"Rewards from holding Long, discounted","xd":[0.3,12.7],"yd":[0,1.15],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[1,"now"],[4,"+3"],[8,"+7"],[12,"+11 steps"]],"pl":46,"pr":20},{"bars":"gb","chart":"geo","data":[[1,1.0,"","green"],[2,0.9,"","blue"],[3,0.81,"","blue"],[4,0.729,"","blue"],[5,0.656,"","blue"],[6,0.59,"","blue"],[7,0.531,"","blue"],[8,0.478,"","blue"],[9,0.43,"","blue"],[10,0.387,"","blue"],[11,0.349,"","blue"],[12,0.314,"","blue"]],"bw":28,"ms":1400}]},{"cap":"The trick: everything after the first bar is the same picture again, shrunk by 0.9. So the value of Long is 1 plus 0.9 times the value of Long. Solve it: 10.","do":[{"note":"bell","x":300,"y":382,"text":"V(Long) = 1 + 0.9 × V(Long)   →   V(Long) = 10","size":19,"anchor":"middle","tone":"green"}]},{"cap":"Value iteration does this for every state at once. Start every value at 0, then keep applying the Bellman equation: value now = reward now + 0.9 × value of where you land, taking the best action.","do":[{"hide":"geo"},{"hide":"gb"},{"hide":"bell"},{"sub":"F","text":"0"},{"sub":"L","text":"0"},{"sub":"S","text":"0"}]},{"cap":"Sweep 1: Long is worth 1 (Hold). Short is worth −0.1 (Close beats Hold, −0.1 against −0.5). Flat is worth 0: Stay ties, because Open cannot yet see any value on the other side.","do":[{"count":"L","from":0,"to":1,"dp":2,"ms":800},{"count":"S","from":0,"to":-0.1,"dp":2,"ms":800},{"pulse":"S"}]},{"cap":"Sweep 2: Long rises to 1.9. Now Flat's Open sees that value: half of (−0.1 + 0.9 × 1.9) plus half of (−0.1 + 0.9 × −0.1) is 0.305, which beats Stay. From here on the best action in each state never changes.","do":[{"count":"L","from":1,"to":1.9,"dp":2,"ms":800},{"count":"F","from":0,"to":0.305,"dp":3,"ms":800},{"pulse":"fl"},{"pulse":"fs"}]},{"cap":"The values keep climbing every sweep, slower and slower, toward a fixed point: Long 10, Flat 7.32, Short 6.49.","do":[{"chart":"vi","x":10,"y":340,"w":580,"h":262,"title":"Value by sweep","xd":[0,60],"yd":[-0.5,11],"yt":[[0,"0"],[5,"5"],[10,"10"]],"xt":[[0,"0"],[20,"20"],[40,"40"],[60,"60"]],"pl":46,"pr":104},{"series":"cL","chart":"vi","pts":[[0,0.0],[2,1.9],[4,3.439],[6,4.686],[8,5.695],[10,6.513],[12,7.176],[14,7.712],[16,8.147],[18,8.499],[20,8.784],[22,9.015],[24,9.202],[26,9.354],[28,9.477],[30,9.576],[32,9.657],[34,9.722],[36,9.775],[38,9.818],[40,9.852],[42,9.88],[44,9.903],[46,9.921],[48,9.936],[50,9.948],[52,9.958],[54,9.966],[56,9.973],[58,9.978],[60,9.982]],"tone":"green","ms":1600,"label":"Long 10","lat":[60,9.99],"ldx":6,"ldy":0,"lanchor":"start","lsize":17},{"series":"cF","chart":"vi","pts":[[0,0.0],[2,0.305],[4,1.198],[6,2.183],[8,3.087],[10,3.862],[12,4.507],[14,5.036],[16,5.468],[18,5.819],[20,6.104],[22,6.335],[24,6.522],[26,6.673],[28,6.796],[30,6.895],[32,6.976],[34,7.041],[36,7.094],[38,7.137],[40,7.172],[42,7.2],[44,7.222],[46,7.241],[48,7.256],[50,7.268],[52,7.278],[54,7.286],[56,7.292],[58,7.297],[60,7.301]],"tone":"blue","ms":1600,"label":"Flat 7.32","lat":[60,7.31],"ldx":6,"ldy":-6,"lanchor":"start","lsize":17},{"series":"cS","chart":"vi","pts":[[0,0.0],[2,-0.1],[4,0.539],[6,1.421],[8,2.283],[10,3.041],[12,3.68],[14,4.206],[16,4.637],[18,4.988],[20,5.272],[22,5.503],[24,5.69],[26,5.841],[28,5.964],[30,6.063],[32,6.144],[34,6.209],[36,6.262],[38,6.305],[40,6.34],[42,6.368],[44,6.39],[46,6.409],[48,6.424],[50,6.436],[52,6.446],[54,6.454],[56,6.46],[58,6.465],[60,6.469]],"tone":"red","ms":1600,"label":"Short 6.49","lat":[60,6.48],"ldx":6,"ldy":10,"lanchor":"start","lsize":17},{"count":"F","from":0.305,"to":7.32,"dp":2,"ms":800},{"count":"L","from":1.9,"to":10,"dp":2,"ms":800},{"count":"S","from":-0.1,"to":6.49,"dp":2,"ms":800}]},{"cap":"Check Short against its own equation. Close: −0.1 + 0.9 × 7.32 = 6.49. Hold: −0.5 + 0.9 × 6.49 = 5.34. Close wins: cut the losing position rather than sit in it.","do":[{"pulse":"sf"},{"dim":"hs"}]},{"cap":"Read the policy off the values: Open from Flat, Hold when Long, Close when Short. Don't sit flat forever, hold winners, cut losers. Nobody wrote those rules in. They fall out of the rewards and the discount.","do":[{"dim":"lf"},{"dim":"stay"},{"pulse":"L"}]}]}</script>
+  </div>
+  <!-- WB:mdp_bellman_equation:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -560,6 +665,19 @@
       \(0\) versus a patient \(\gamma\) near \(1\) can favor entirely
       different actions, as the scenario above shows even in a 3-state toy).
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative losing short</div>
+    <h3>Your short costs you every step. Hold or close?</h3>
+    <p>You are in the lesson's three-state market with a discount of 0.9. You are short. Each step you hold, the position costs 0.5. Closing costs 0.1 and puts you back flat, and from flat the best you can do (open again and take your chances) is worth 7.32. Holding short for good is worth 6.49 at best. What do you do, and why?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Hold. Closing locks in a loss, and the position might turn.<div class="tl-drill-why">In this model holding costs 0.5 every step with no chance of turning, and its value is −0.5 + 0.9 × 6.49, about 5.34. Refusing to realize a loss is exactly what the equation prices as the worse choice.</div></li>
+      <li data-verdict="good">Close, because −0.1 + 0.9 × 7.32, about 6.49, beats holding's 5.34.<div class="tl-drill-why">This compares both actions on their full continuation value: the reward now plus the discounted value of where you land. Closing pays a small cost to get back to a state worth more.</div></li>
+      <li data-verdict="ok">Close, because losing 0.1 now beats losing 0.5 now.<div class="tl-drill-why">Right answer, short-sighted reason. That is the zero-discount view. It works here, but it ignores where each action leaves you, and in other cases the one-step view picks the wrong move.</div></li>
+      <li data-verdict="bad">Hold, because flat is worth 7.32 and you will get there eventually anyway.<div class="tl-drill-why">You only get to flat by closing. Holding keeps you short and paying 0.5 a step. The value of flat counts only for the action that actually takes you there.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What this shows.</strong> This is an illustrative situation using the lesson's toy MDP, not a real episode. Close is the Bellman answer: 6.49 against 5.34. The point is the method, not the numbers. Judge each action by the reward now plus the discounted value of where it leaves you.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -649,6 +767,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="kelly-criterion.html">The Kelly Criterion &amp; Position Sizing</a> <span>· judging a bet by the long run, not the next payoff</span></li>
+        <li><a href="time-value-of-money.html">Time Value of Money</a> <span>· where the discount factor comes from</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="q-learning-temporal-difference.html">Q-Learning &amp; Temporal-Difference Methods</a> <span>· learning the values when you don't know the odds</span></li>
+        <li><a href="merton-portfolio-problem.html">Merton's Continuous-Time Portfolio Problem</a> <span>· the same recursion in continuous time</span></li>
+        <li><a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a> <span>· trade now or later, as a sequential decision</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> hold, close, exercise or wait are all sequential decisions, and this is the identity that prices every one of them.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
     <a href="q-learning-temporal-difference.html">Q-Learning &amp; Temporal-Difference Methods →</a>
@@ -720,6 +858,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

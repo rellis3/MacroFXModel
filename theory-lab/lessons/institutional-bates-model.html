@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bates Model: Stochastic Volatility + Jumps — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -50,6 +51,93 @@
       <li><strong>How it reached trading:</strong> Bates fitted it to Deutsche mark currency options in 1996; stochastic vol plus jumps ("SVJ") is now the benchmark index and FX desks use to separate priced jump risk from ordinary volatility risk.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top: Heston's stochastic volatility plus Merton's jumps equals Bates, with eight parameters. Below, three bar groups for the lesson's fixed jump parameters at 1 week, 1 month, 3 months and 1 year. The jump share of variance is 38.6% at every maturity. Skewness shrinks from minus 0.70 to minus 0.10, like one over the square root of maturity. Excess kurtosis shrinks from 7.74 to 0.15, like one over maturity.">
+      <rect class="tlp-box blue" x="20" y="12" width="176" height="40" rx="6"/>
+      <text class="tlp-blue" x="108" y="37" text-anchor="middle" font-size="13" font-weight="700">Heston: stochastic vol</text>
+      <text class="tlp-text2" x="205" y="38" text-anchor="middle" font-size="18" font-weight="700">+</text>
+      <rect class="tlp-box amber" x="214" y="12" width="176" height="40" rx="6"/>
+      <text class="tlp-amber" x="302" y="37" text-anchor="middle" font-size="13" font-weight="700">Merton: jumps</text>
+      <text class="tlp-text2" x="399" y="38" text-anchor="middle" font-size="18" font-weight="700">=</text>
+      <rect class="tlp-box purple" x="408" y="12" width="172" height="40" rx="6"/>
+      <text class="tlp-purple" x="494" y="37" text-anchor="middle" font-size="13" font-weight="700">Bates: 8 parameters</text>
+      <text class="tlp-text" x="20" y="84" font-size="13" font-weight="700">Jump share of variance</text>
+      <line class="tlp-line" x1="20" y1="210" x2="192" y2="210"/>
+      <rect class="tlp-box blue" x="30" y="148.2" width="28" height="61.8" rx="3"/>
+      <text class="tlp-blue" x="44" y="142.2" text-anchor="middle" font-size="12" font-weight="700">38.6%</text>
+      <text class="tlp-text3" x="44" y="226" text-anchor="middle" font-size="12">1w</text>
+      <rect class="tlp-box blue" x="72" y="148.2" width="28" height="61.8" rx="3"/>
+      <text class="tlp-blue" x="86" y="142.2" text-anchor="middle" font-size="12" font-weight="700">38.6%</text>
+      <text class="tlp-text3" x="86" y="226" text-anchor="middle" font-size="12">1m</text>
+      <rect class="tlp-box blue" x="114" y="148.2" width="28" height="61.8" rx="3"/>
+      <text class="tlp-blue" x="128" y="142.2" text-anchor="middle" font-size="12" font-weight="700">38.6%</text>
+      <text class="tlp-text3" x="128" y="226" text-anchor="middle" font-size="12">3m</text>
+      <rect class="tlp-box blue" x="156" y="148.2" width="28" height="61.8" rx="3"/>
+      <text class="tlp-blue" x="170" y="142.2" text-anchor="middle" font-size="12" font-weight="700">38.6%</text>
+      <text class="tlp-text3" x="170" y="226" text-anchor="middle" font-size="12">1y</text>
+      <text class="tlp-blue" x="106" y="248" text-anchor="middle" font-size="13" font-weight="700">flat</text>
+      <text class="tlp-text" x="214" y="84" font-size="13" font-weight="700">Skewness (size)</text>
+      <line class="tlp-line" x1="214" y1="210" x2="386" y2="210"/>
+      <rect class="tlp-box amber" x="224" y="110.1" width="28" height="99.9" rx="3"/>
+      <text class="tlp-amber" x="238" y="104.1" text-anchor="middle" font-size="12" font-weight="700">−0.70</text>
+      <text class="tlp-text3" x="238" y="226" text-anchor="middle" font-size="12">1w</text>
+      <rect class="tlp-box amber" x="266" y="162.0" width="28" height="48.0" rx="3"/>
+      <text class="tlp-amber" x="280" y="156.0" text-anchor="middle" font-size="12" font-weight="700">−0.34</text>
+      <text class="tlp-text3" x="280" y="226" text-anchor="middle" font-size="12">1m</text>
+      <rect class="tlp-box amber" x="308" y="182.3" width="28" height="27.7" rx="3"/>
+      <text class="tlp-amber" x="322" y="176.3" text-anchor="middle" font-size="12" font-weight="700">−0.19</text>
+      <text class="tlp-text3" x="322" y="226" text-anchor="middle" font-size="12">3m</text>
+      <rect class="tlp-box amber" x="350" y="196.1" width="28" height="13.9" rx="3"/>
+      <text class="tlp-amber" x="364" y="190.1" text-anchor="middle" font-size="12" font-weight="700">−0.10</text>
+      <text class="tlp-text3" x="364" y="226" text-anchor="middle" font-size="12">1y</text>
+      <text class="tlp-amber" x="300" y="248" text-anchor="middle" font-size="13" font-weight="700">falls like 1/√T</text>
+      <text class="tlp-text" x="408" y="84" font-size="13" font-weight="700">Excess kurtosis</text>
+      <line class="tlp-line" x1="408" y1="210" x2="580" y2="210"/>
+      <rect class="tlp-box red" x="418" y="110.0" width="28" height="100.0" rx="3"/>
+      <text class="tlp-red" x="432" y="104.0" text-anchor="middle" font-size="12" font-weight="700">7.74</text>
+      <text class="tlp-text3" x="432" y="226" text-anchor="middle" font-size="12">1w</text>
+      <rect class="tlp-box red" x="460" y="186.9" width="28" height="23.1" rx="3"/>
+      <text class="tlp-red" x="474" y="180.9" text-anchor="middle" font-size="12" font-weight="700">1.79</text>
+      <text class="tlp-text3" x="474" y="226" text-anchor="middle" font-size="12">1m</text>
+      <rect class="tlp-box red" x="502" y="202.3" width="28" height="7.7" rx="3"/>
+      <text class="tlp-red" x="516" y="196.3" text-anchor="middle" font-size="12" font-weight="700">0.60</text>
+      <text class="tlp-text3" x="516" y="226" text-anchor="middle" font-size="12">3m</text>
+      <rect class="tlp-box red" x="544" y="208.1" width="28" height="1.9" rx="3"/>
+      <text class="tlp-red" x="558" y="202.1" text-anchor="middle" font-size="12" font-weight="700">0.15</text>
+      <text class="tlp-text3" x="558" y="226" text-anchor="middle" font-size="12">1y</text>
+      <text class="tlp-red" x="494" y="248" text-anchor="middle" font-size="13" font-weight="700">falls like 1/T</text>
+    </svg>
+    <figcaption>Same jump parameters at every maturity. Jumps always supply the same 38.6% of variance, but their skew and fat tails fade fast as the horizon grows. That is why jumps shape the short-dated smile and stochastic volatility shapes the long end.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I calibrated Heston to my three-month and one-year vols and it fits beautifully. Then I price a one-week option and the model's wings are far too cheap. Why?</p>
+      <p data-who="Quant">Because Heston is all smooth diffusion. Volatility wanders and mean-reverts, but it needs calendar time to build a skew. A week isn't much runway.</p>
+      <p data-who="Trader">And jumps fix that?</p>
+      <p data-who="Quant">Jumps can move the price a long way in an instant, however little time is left. That's exactly what a steep short-dated smile needs. But a pure jump model has no memory. It can't explain why volatility stays high after a shock.</p>
+      <p data-who="Trader">So use both.</p>
+      <p data-who="Quant">That's the Bates model, from David Bates in 1996. He fitted it to Deutsche mark currency options. Take Heston's price and variance equations unchanged, and add Merton's jump term to the price. Nothing else is new.</p>
+      <p data-who="Trader">Nothing at all?</p>
+      <p data-who="Quant">One assumption. The jump clock is independent of the smooth part. That matters, because independent pieces combine by simply multiplying their pricing recipes. So the same fast Fourier pricing that works for Heston still works for Bates.</p>
+      <p data-who="Trader">Show me why jumps matter more at the short end.</p>
+      <p data-who="Quant">The lesson holds the jump settings fixed: nine percent diffusive vol, three jumps a year, an average jump of minus one percent with a four percent spread. Jumps then supply thirty-eight point six percent of the variance at every maturity, a week or a year.</p>
+      <p data-who="Trader">So the same share everywhere. Then why steeper at one week?</p>
+      <p data-who="Quant">Because the smile is about lopsidedness and fat tails, not variance. Excess kurtosis from those jumps is about seven point seven at one week and about zero point one five at one year. Fifty-two times smaller, one for each week in the year. Skew shrinks too, just more slowly.</p>
+      <p data-who="Trader">Like one firework in a short clip versus a long film.</p>
+      <p data-who="Quant">Exactly. Same share of the action, but it dominates the short clip. So jumps own the short end, and stochastic volatility owns the long end.</p>
+      <p data-who="Trader">What does it cost me?</p>
+      <p data-who="Quant">Parameters. Eight of them, against five for Heston. Different combinations can fit today's surface almost equally well. A bit less starting variance and a bit more jump frequency can look the same from outside.</p>
+      <p data-who="Trader">And that matters because?</p>
+      <p data-who="Quant">Because your hedge depends on the split. Smooth volatility risk can be delta-hedged as it moves. A jump happens in an instant, and you can't rebalance through it. A good fit is not proof the split is right.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Bates is Heston plus jumps: the jumps steepen the short-dated smile, stochastic volatility carries the long end, and eight parameters make the split easy to fit and hard to trust.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -153,6 +241,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math: two lessons' equations, stapled together</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">How Heston plus Merton becomes Bates, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{dS_t}{S_{t^-}} = \mu\,dt + \color{#fbbf24}{\sqrt{v_t}\,dW_t^{1}} \]</div>
+      <p>Start with Heston's price: drift plus a diffusion whose variance \(v_t\) is itself random.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ dv_t = \color{#fbbf24}{\kappa(\theta - v_t)\,dt + \xi\sqrt{v_t}\,dW_t^{2}}, \qquad \mathrm{Corr}(dW_t^{1}, dW_t^{2}) = \rho \]</div>
+      <p>The variance mean-reverts to \(\theta\) at speed \(\kappa\), with its own noise, correlated with price by \(\rho\). This is what makes volatility cluster and persist.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{dS_t}{S_{t^-}} = \mu\,dt + \sqrt{v_t}\,dW_t^{1} + \color{#fbbf24}{dJ_t} \]</div>
+      <p>Add Merton's compound-Poisson jump term, unchanged: jumps arrive at rate \(\lambda\), with log-sizes drawn from \(\mathcal{N}(\mu_J,\sigma_J^2)\). That makes eight parameters in all.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{J_t \perp (W_t^{1}, W_t^{2})} \;\Rightarrow\; \color{#10b981}{\varphi_{\text{Bates}}(u) = \varphi_{\text{Heston}}(u)\times\varphi_{\text{jump}}(u)} \]</div>
+      <p>Assume the jump clock ignores the diffusion. Independent pieces have characteristic functions that multiply, so Bates keeps a closed form and prices with the same Carr-Madan FFT as Heston.</p>
+    </div>
+  </div>
   <p>
     Recall Heston's two correlated SDEs exactly as that lesson derives them —
     reproduced here without re-derivation, purely as the starting point:
@@ -448,6 +556,10 @@
       every maturity's row recomputes instantly from the exact formulas in
       Section 04.
     </p>
+    <div class="tl-predict" data-answer="55.7" data-tol="3" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With three jumps a year, jumps supply 38.6% of the variance at every maturity. Double the jump intensity λ to 6 per year, keeping everything else the same. What will the jump share of variance be at 1 week? Lock in a guess, then type 6 into the λ field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>55.7%.</strong> Jump variance per year is \(\lambda(\mu_J^2+\sigma_J^2) = 6 \times (0.0001+0.0016) = 0.0102\), against diffusive variance of \(0.09^2 = 0.0081\). The share is \(0.0102/0.0183 \approx 55.7\%\), and it is the same 55.7% at every maturity, because both pieces grow in proportion to \(T\). Now look at the kurtosis column: it still collapses, from 8.06 at 1 week to 0.155 at 1 year.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Diffusive vol \(\sqrt{v_0}\) (annual %)</span></div>
@@ -476,6 +588,12 @@
     <div class="tl-readout"><span id="bm-note" class="tl-scratch-note"></span></div>
     <button type="button" id="bm-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
+
+  <!-- WB:institutional_bates_model:START -->
+  <div class="wb" id="wb-institutional_bates_model" data-title="Bates: stochastic vol plus jumps, maturity by maturity">
+    <script type="application/json">{"w":600,"h":720,"intro":"Two models the lab already covers, stapled together, then the lesson's fixed jump settings run across four maturities. Press play, or step through.","steps":[{"cap":"Heston: the price diffuses smoothly, and its variance is a random process of its own. It mean-reverts and clusters, like weather with its own weather.","do":[{"icon":"wx","name":"thermo","x":66,"y":6,"s":0.8,"tone":"blue","label":"Heston:\nvariance has weather","lsize":17}]},{"cap":"Merton: every so often the price jumps, with no warning. Jumps arrive like a Poisson clock, with random sizes. No memory, though: vol does not stay high afterwards.","do":[{"icon":"jp","name":"bolt","x":460,"y":6,"s":0.8,"tone":"amber","label":"Merton:\nsudden jumps","lsize":17}]},{"cap":"Bates (1996) adds Merton's jump term to Heston's price equation and changes nothing else. Eight parameters: Heston's five plus the jump trio.","do":[{"icon":"bt","name":"scales","x":250,"y":6,"s":0.8,"tone":"purple","label":"Bates","lsize":18},{"arrow":["wx","bt"],"tone":"blue"},{"arrow":["jp","bt"],"tone":"amber"},{"note":"eq","x":300,"y":176,"text":"dS/S = μ dt + √v dW  +  dJ","size":21,"anchor":"middle","tone":"purple"}]},{"cap":"The one new assumption: the jump clock ignores the diffusion. Independent pieces have pricing recipes that multiply, so Bates keeps a closed form and prices with the same FFT as Heston.","do":[{"note":"cf","x":300,"y":214,"text":"φ_Bates = φ_Heston × φ_jump","size":20,"anchor":"middle","tone":"green"}]},{"cap":"Fix the lesson's settings: 9% diffusive vol, 3 jumps a year, average jump −1%, jump spread 4%. Now look at four maturities. Jumps supply 38.6% of the variance at every one of them.","do":[{"chart":"sh","x":10,"y":244,"w":186,"h":250,"title":"Jump share","xd":[0.4,4.6],"yd":[0,50],"yt":[[0,"0"],[20,"20"],[40,"40"]],"xt":[[1,"1w"],[2,"1m"],[3,"3m"],[4,"1y"]],"pl":36,"pr":8},{"bars":"shb","chart":"sh","data":[[1,38.6,"38.6","blue"],[2,38.6,"","blue"],[3,38.6,"","blue"],[4,38.6,"38.6","blue"]],"bw":24,"ms":1000}]},{"cap":"Skewness tells a different story: −0.70 at one week, −0.10 at one year. It fades like one over the square root of maturity.","do":[{"chart":"sk","x":207,"y":244,"w":186,"h":250,"title":"Skewness","xd":[0.4,4.6],"yd":[-0.8,0],"yt":[[-0.6,"−.6"],[-0.3,"−.3"],[0,"0"]],"xt":[[1,"1w"],[2,"1m"],[3,"3m"],[4,"1y"]],"pl":40,"pr":8},{"bars":"skb","chart":"sk","data":[[1,-0.699,"−.70","amber"],[2,-0.336,"","amber"],[3,-0.194,"","amber"],[4,-0.097,"−.10","amber"]],"bw":24,"ms":1000}]},{"cap":"Excess kurtosis collapses fastest: 7.74 at one week, 0.15 at one year. That is 52 times smaller, one for each week in the year: it fades like one over maturity.","do":[{"chart":"ku","x":404,"y":244,"w":186,"h":250,"title":"Excess kurtosis","xd":[0.4,4.6],"yd":[0,9],"yt":[[0,"0"],[4,"4"],[8,"8"]],"xt":[[1,"1w"],[2,"1m"],[3,"3m"],[4,"1y"]],"pl":34,"pr":8},{"bars":"kub","chart":"ku","data":[[1,7.744,"7.74","red"],[2,1.787,"","red"],[3,0.596,"","red"],[4,0.149,"0.15","red"]],"bw":24,"ms":1000}]},{"cap":"Smiles are shaped by skew and fat tails, not raw variance. So the same jumps steepen a one-week smile a lot and barely touch a one-year one. Stochastic vol needs time, so it shapes the long end.","do":[{"box":"own","x":10,"y":514,"w":580,"h":56,"text":"jumps own the short end · stochastic vol owns the long end","tone":"green","size":19},{"pulse":"kub"}]},{"cap":"The cost: eight parameters. A bit less starting variance and a bit more jump frequency can fit today's surface almost equally well. A good fit does not prove the split is right.","do":[{"box":"id","x":10,"y":584,"w":285,"h":72,"text":"8 parameters:\nmany fits look alike","tone":"amber","size":18}]},{"cap":"And the split matters for hedging. Smooth volatility risk can be delta-hedged as it moves. A jump happens in an instant, and no rebalancing gets you through it.","do":[{"box":"hg","x":305,"y":584,"w":285,"h":72,"text":"jump risk: no continuous\nhedge gets through it","tone":"red","size":18},{"pulse":"jp"}]},{"cap":"So: Heston for persistence, jumps for the sudden short-dated wing, and humility about which is which.","do":[{"note":"end","x":300,"y":690,"text":"easy to fit, hard to identify","size":20,"anchor":"middle","tone":"purple"}]}]}</script>
+  </div>
+  <!-- WB:institutional_bates_model:END -->
 
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>The calibration trade-off, stated honestly</h2>
@@ -650,6 +768,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative week before a data release</div>
+    <h3>Your Heston fit says the weekly wings are far too expensive</h3>
+    <p>You run an FX options book. Heston, calibrated to your 3-month and 1-year implied vols, fits them tightly. A scheduled release falls inside next week's expiry, and your model prices the one-week out-of-the-money options well below where the market trades them. The model's smile at one week is close to flat; the market's is steep. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Sell the one-week wings. The model says they are overpriced.<div class="tl-drill-why">Heston's smooth diffusion cannot build a steep skew in a week, so its "fair value" for the wings is low by construction. You would be selling jump risk at a price set by a model with no jumps in it.</div></li>
+      <li data-verdict="bad">Refit Heston's five parameters to the one-week slice alone.<div class="tl-drill-why">That may patch the one-week price, but the parameters then stop fitting the 3-month and 1-year slices you already had right. This is the slice-by-slice trap the lesson warns about.</div></li>
+      <li data-verdict="good">Add a jump term and calibrate all maturities jointly, then treat the short-dated wing as jump risk that delta-hedging cannot remove.<div class="tl-drill-why">Jumps steepen the short end without bending the long end, because their kurtosis fades like one over maturity. And a jump cannot be rebalanced through, so the wing deserves its own risk limit, not just a vega number.</div></li>
+      <li data-verdict="ok">Keep Heston and add a hand-set vol spread to short-dated wings.<div class="tl-drill-why">A pragmatic patch that gets prices closer, but it has no mechanism behind it, so it says nothing about how that risk behaves or how to hedge it.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the numbers say.</strong> This is an illustrative case based on the lesson's own trading scenario, not a real episode. With the lesson's fixed jump settings, excess kurtosis from jumps is 7.744 at one week against 0.149 at one year, 52 times larger, while jumps keep the same 38.6% share of variance at both. One honest caveat stays: a better joint fit does not prove the split between jump risk and volatility risk is the true one, and the hedge depends on that split.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -759,6 +890,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="heston-model.html">The Heston Model</a> <span>· the stochastic-volatility half</span></li>
+        <li><a href="merton-jump-diffusion.html">The Merton Jump-Diffusion Model</a> <span>· the jump half</span></li>
+        <li><a href="fft-option-pricing-carr-madan.html">FFT Option Pricing (Carr-Madan)</a> <span>· how the multiplied characteristic function becomes prices</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-dupire-local-vol.html">Dupire's Local Volatility Model</a> <span>· the exact-fit alternative to a parametric model</span></li><!-- DESK:END -->
+        <li><a href="tail-risk-hedging-convexity.html">Tail Risk Hedging &amp; Portfolio Convexity</a> <span>· pricing and holding the crash wing</span></li>
+        <li><a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a> <span>· the smile and term structure Bates is fitted to</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> short-dated options around events price jump risk, and knowing how much of a wing is jumps rather than ordinary volatility changes how you hedge it.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-factor-marginal-component-var.html">← Factor, Marginal &amp; Component VaR</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -789,7 +941,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var ids = ['sigma', 'lambda', 'muj', 'sigj'];
@@ -877,5 +1030,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

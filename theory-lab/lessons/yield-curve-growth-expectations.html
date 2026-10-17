@@ -46,6 +46,80 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two yield curves against maturity. A normal curve rises from 2.0% at three months to 3.7% at ten years. The lesson's inverted example falls from a 5.30% bill rate to 4.50% at two years and 4.00% at five, so the 2s10s slope is minus 40 basis points and the forward rate for years two to five is about 3.67%, well below the bill rate: the market is pricing cuts. Side notes say a long yield is the expected rate path plus a term premium, and that expected is not the same as will happen.">
+      <line class="tlp-line" x1="70" y1="200" x2="390" y2="200"/>
+      <line class="tlp-line" x1="70" y1="28" x2="70" y2="200"/>
+      <text class="tlp-text3" x="62" y="186.2" text-anchor="end" font-size="12">2%</text>
+      <text class="tlp-text3" x="62" y="150.7" text-anchor="end" font-size="12">3%</text>
+      <text class="tlp-text3" x="62" y="115.1" text-anchor="end" font-size="12">4%</text>
+      <text class="tlp-text3" x="62" y="79.6" text-anchor="end" font-size="12">5%</text>
+      <text class="tlp-text3" x="119.0" y="216" text-anchor="middle" font-size="12">3m</text>
+      <text class="tlp-text3" x="208.6" y="216" text-anchor="middle" font-size="12">2y</text>
+      <text class="tlp-text3" x="289.2" y="216" text-anchor="middle" font-size="12">5y</text>
+      <text class="tlp-text3" x="380.0" y="216" text-anchor="middle" font-size="12">10y</text>
+      <text class="tlp-text3" x="225" y="234" text-anchor="middle" font-size="12">maturity (square-root scale) →</text>
+      <line class="tlp-line amber dash" x1="119.0" y1="64.9" x2="289.2" y2="64.9"/>
+      <text class="tlp-amber" x="295.2" y="68.9" font-size="12">3m bill 5.30%</text>
+      <polyline class="tlp-line green thick" points="119.0,182.2 208.6,160.9 289.2,139.6 380.0,121.8"/>
+      <polyline class="tlp-line red thick" points="119.0,64.9 208.6,93.3 289.2,111.1 380.0,107.6"/>
+      <circle class="tlp-green" cx="119.0" cy="182.2" r="4"/>
+      <circle class="tlp-green" cx="208.6" cy="160.9" r="4"/>
+      <circle class="tlp-green" cx="289.2" cy="139.6" r="4"/>
+      <circle class="tlp-green" cx="380.0" cy="121.8" r="4"/>
+      <circle class="tlp-red" cx="119.0" cy="64.9" r="4"/>
+      <circle class="tlp-red" cx="208.6" cy="93.3" r="4"/>
+      <circle class="tlp-red" cx="289.2" cy="111.1" r="4"/>
+      <circle class="tlp-red" cx="380.0" cy="107.6" r="4"/>
+      <line class="tlp-line amber thick" x1="208.6" y1="123.0" x2="289.2" y2="123.0"/>
+      <text class="tlp-amber" x="200.6" y="119.0" text-anchor="end" font-size="13" font-weight="700">forward, years 2 to 5</text>
+      <text class="tlp-amber" x="200.6" y="135.0" text-anchor="end" font-size="13" font-weight="700">≈ 3.67%: cuts priced</text>
+      <text class="tlp-red" x="386.0" y="97.6" font-size="12">2s10s −40bp</text>
+      <text class="tlp-red" x="386.0" y="113.6" font-size="13" font-weight="700">inverted</text>
+      <text class="tlp-green" x="386.0" y="139.8" font-size="13" font-weight="700">normal</text>
+      <rect class="tlp-box green" x="482" y="28" width="112" height="56" rx="6"/>
+      <text class="tlp-text" x="538" y="47" text-anchor="middle" font-size="12">long yield ≈</text>
+      <text class="tlp-text" x="538" y="62" text-anchor="middle" font-size="12">expected path</text>
+      <text class="tlp-text" x="538" y="77" text-anchor="middle" font-size="12">+ term premium</text>
+      <rect class="tlp-box red" x="482" y="94" width="112" height="56" rx="6"/>
+      <text class="tlp-text" x="538" y="113" text-anchor="middle" font-size="12">inverted =</text>
+      <text class="tlp-text" x="538" y="128" text-anchor="middle" font-size="12">cuts expected,</text>
+      <text class="tlp-text" x="538" y="143" text-anchor="middle" font-size="12">slowdown feared</text>
+      <rect class="tlp-box amber" x="482" y="160" width="112" height="42" rx="6"/>
+      <text class="tlp-text" x="538" y="178" text-anchor="middle" font-size="12">expected is not</text>
+      <text class="tlp-text" x="538" y="193" text-anchor="middle" font-size="12">will happen</text>
+    </svg>
+    <figcaption>The curve is mostly the market's expected path of rates. When the front end sits above the long end, the forwards price cuts, usually because a slowdown is expected. That is a reading of expectations, not a recession clock.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Every time the yield curve inverts, my inbox fills up with recession warnings. What is the curve actually telling me?</p>
+      <p data-who="Quant">Start with what a long yield is. Lending to the government for ten years has to compete with lending for two years and then rolling over. So the ten-year yield ends up close to the average short rate people expect over the next ten years, plus a small fee for locking money away.</p>
+      <p data-who="Trader">And that fee is the term premium.</p>
+      <p data-who="Quant">Right. Nobody sees it directly. Models estimate it, and it can even be negative. But mostly, the shape of the curve is a picture of where the market thinks the central bank will take rates.</p>
+      <p data-who="Trader">So what does it mean when the two-year yields more than the ten-year?</p>
+      <p data-who="Quant">The market is saying short rates are high now and should be lower later. Rates are usually cut when the economy weakens. That is why an inversion reads as an expected slowdown. Notice the word expected.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">Say the three-month bill pays five point three percent, the two-year four and a half, and the five-year four. Lend for five years and you lock in twenty percent in total. Two years at four and a half earns nine of that. So the three years in between must average eleven divided by three, about three point seven percent.</p>
+      <p data-who="Trader">That is well below the bill rate.</p>
+      <p data-who="Quant">More than a point and a half below. Allow for a small term premium and it is roughly two points of cuts priced. That is what the market expects. It is not a promise.</p>
+      <p data-who="Trader">How do inversions usually start?</p>
+      <p data-who="Quant">At the front end. The Fed hikes, and the two-year is dragged up above the ten-year. They usually end with a bull steepening, when the two-year falls faster as cuts get priced.</p>
+      <p data-who="Trader">And has the expectation been right?</p>
+      <p data-who="Quant">Sometimes, with a long fuse. Through 2006 the curve was flat or inverted, but stocks did not peak until October 2007. The recession was dated from December 2007, and that date was only announced a year later.</p>
+      <p data-who="Trader">And when it was wrong?</p>
+      <p data-who="Quant">The curve inverted in July 2022 and stayed that way until around September 2024, the longest run in the series. Recession forecasts were everywhere. As of this writing, no recession has been dated to follow it.</p>
+      <p data-who="Trader">Who decides what counts as a recession, anyway?</p>
+      <p data-who="Quant">A committee at the National Bureau of Economic Research, in hindsight, often many months later. Two negative quarters is newspaper shorthand. The first estimates for 2022 showed two, and no recession was declared.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">The curve is a good reading of what the market expects, and a poor clock for when anything will happen. Read it. Don't time with it.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -94,6 +168,31 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>Reading the curve, step by step</h2>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From an expected path to the cuts the curve is pricing, one step at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ y_n \;\approx\; \color{#fbbf24}{\frac{1}{n}\sum_{i=0}^{n-1} \mathbb{E}_t\!\left[r_{t+i}\right]} \]</div>
+      <p>Start with the expected path. An \(n\)-year yield is close to the average policy rate the market expects over those \(n\) years.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ y_n \;\approx\; \frac{1}{n}\sum_{i=0}^{n-1} \mathbb{E}_t\!\left[r_{t+i}\right] \;+\; \color{#fbbf24}{TP_n} \]</div>
+      <p>Add the term premium: extra yield for locking money away. Nobody observes it, models estimate it, and it can be negative.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{2s10s} = y_{10} - y_{2} = 4.10 - 4.50 = \color{#fbbf24}{-40\text{bp}} \]</div>
+      <p>Compare two points on the curve. In the worked example the 10-year sits below the 2-year, so the slope is negative: inverted.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ f_{m\to n} \;\approx\; \frac{n\,y_n \color{#fbbf24}{\;-\; m\,y_m}}{n-m} \]</div>
+      <p>Pull out the forward. Take what lending for \(n\) years locks in, subtract what the first \(m\) years earn, and spread the rest over the years in between.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ f_{2\to5} \;\approx\; \frac{5(4.00) - 2(4.50)}{3} = \color{#10b981}{3.67\%} \]</div>
+      <p>Years 2 to 5 are priced at about 3.67%, well under the 5.30% bill rate. The market expects cuts. It has not promised them.</p>
+    </div>
+  </div>
 
   <h3>1. A long yield is an expected path plus a premium</h3>
   <div class="tl-math">
@@ -165,6 +264,11 @@
 
   <div class="tl-chart interactive">
     <div class="tl-chart-label">Shape the curve — five tenors, live slope, forward and shape label</div>
+
+    <div class="tl-predict" data-answer="3.97" data-tol="0.1" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The Inverted preset sets the 2-year at 4.8% and the 5-year at 4.3%. What 2-year to 5-year forward will the readout show? Lock in a guess, then press Inverted below and read the first line under the chart.</div>
+      <div class="tl-predict-reveal"><p><strong>About 3.97%.</strong> \((5 \times 4.3 - 2 \times 4.8)/3 = 11.9/3 \approx 3.97\%\). That is well over a point below the 5.3% bill rate, so cuts are priced for years 2 to 5. The 2s10s readout shows −70bp. Now press "Mark current as before" and drag the 2y slider down to 4.3%: the move label reads bull steepening, the way inversions usually end.</p></div>
+    </div>
     <svg viewBox="0 0 640 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A yield curve drawn through five points — 3-month, 2-year, 5-year, 10-year and 30-year — whose heights follow five sliders, with a dashed earlier curve for comparison and a live label of the curve's shape">
       <line x1="60" y1="250" x2="610" y2="250" style="stroke:var(--text3);stroke-width:1"/>
       <line x1="60" y1="250" x2="60" y2="20" style="stroke:var(--text3);stroke-width:1"/>
@@ -419,6 +523,20 @@
     <p style="margin-bottom:0"><strong>Treating "two negative quarters" as the definition.</strong> It is not; the NBER is. 2022 is the counter-example.</p>
   </div>
 
+
+  <div class="tl-drill" data-date="2022-07">
+    <div class="tl-drill-label">Scenario drill · July 2022</div>
+    <h3>The curve has just inverted. Do you sell?</h3>
+    <p>It is July 2022. The Fed began hiking in March and is raising rates faster than at any time in four decades. This month the 2s10s curve has inverted. A morning note says: "The curve just inverted. A recession is coming. Sell equities now." You hold an equity position. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Sell everything today. Inversion means recession, and recession means stocks fall.<div class="tl-drill-why">The curve measures expectations, not timing. In 2006 to 2007 the curve was flat or inverted for more than a year before the recession, and stocks rose in between. Even when the curve is right, the fuse can be long.</div></li>
+      <li data-verdict="good">Read it as expectations. The 2-year was dragged up by hikes, so the forwards are pricing cuts later. Note the expected slowdown, and judge the equity position on its own evidence.<div class="tl-drill-why">This uses the curve for what it measures: the market's expected path of rates. A recession is only dated in hindsight, so the inversion cannot tell you when, or even whether, to sell.</div></li>
+      <li data-verdict="ok">Trim a little and wait for an official recession call before doing more.<div class="tl-drill-why">A small trim is defensible risk control. But the official call comes from the NBER many months after the turning point (the December 2007 peak was announced in December 2008), so you would be waiting for a label, not a signal.</div></li>
+      <li data-verdict="bad">Ignore the curve. The bond market knows nothing about growth.<div class="tl-drill-why">The curve is a genuine reading of where the market expects the Fed to take rates, and why. Throwing it away loses real information about policy, even if it is a poor clock.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The 2s10s curve stayed inverted until around September 2024: the longest continuous inversion in the series, and at its deepest in 2023 around a full percentage point below zero. The first GDP estimates for the first half of 2022 showed two negative quarters, yet the NBER declared no recession and unemployment stayed low. As of this writing, no recession has been dated to follow that inversion. It ended with a bull steepening as the Fed began cutting.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -465,6 +583,27 @@
     <li><a href="central-bank-policy.html">Central Bank Policy</a> — the rate decisions that move the front end.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="bond-pricing-ytm.html">Bond Pricing &amp; Yield to Maturity</a> <span>· what a yield is, and why it moves opposite to price</span></li>
+        <li><a href="central-bank-policy.html">Central Bank Policy</a> <span>· the rate decisions that move the front end</span></li>
+        <li><a href="vix-uncertainty-not-fear.html">The VIX Is an Uncertainty Index, Not a Fear Gauge</a> <span>· the options market's question, just before this one</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="four-markets-four-questions.html">Four Markets, Four Questions</a> <span>· the curve side by side with the VIX, FX and gold</span></li>
+        <li><a href="qe-qt-balance-sheet.html">QE and QT: What the Fed's Balance Sheet Actually Does</a> <span>· how the Fed pushes on the term premium</span></li>
+        <li><a href="nelson-siegel-svensson.html">Curve Fitting: Nelson-Siegel &amp; Svensson</a> <span>· level, slope and curvature as a model</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the curve tells you what the market expects the Fed to do, which moves every rate you trade against, but it is a poor clock for when anything will happen.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="vix-uncertainty-not-fear.html">← The VIX Is an Uncertainty Index, Not a Fear Gauge</a>
@@ -628,7 +767,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

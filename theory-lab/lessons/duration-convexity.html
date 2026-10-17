@@ -42,6 +42,64 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The price-yield curve of a 5-year, 4% coupon, $1,000 bond, with a straight tangent line touching it at today's 5% yield and $956.71. The tangent is the duration estimate, with modified duration 4.40. The true curve always sits above the straight line, and the shaded gap between them, the convexity correction, grows the further yield moves: at a 10% yield the line says about $746 while the true price is about $773.">
+      <polygon class="tlp-purple" points="70.0,35.7 80.0,39.7 90.0,43.6 100.0,47.5 110.0,51.4 120.0,55.2 130.0,58.9 140.0,62.7 150.0,66.4 160.0,70.0 170.0,73.6 180.0,77.2 190.0,80.7 200.0,84.2 210.0,87.6 220.0,91.0 230.0,94.4 240.0,97.7 250.0,101.0 260.0,104.2 270.0,107.5 70.0,43.5" opacity=".22"/>
+      <polygon class="tlp-purple" points="270.0,107.5 280.0,110.6 290.0,113.8 300.0,116.9 310.0,120.0 320.0,123.0 330.0,126.0 340.0,129.0 350.0,131.9 360.0,134.9 370.0,137.7 380.0,140.6 390.0,143.4 400.0,146.2 410.0,149.0 420.0,151.7 430.0,154.4 440.0,157.1 450.0,159.7 460.0,162.3 470.0,164.9 480.0,167.5 490.0,170.0 500.0,172.5 510.0,175.0 520.0,177.4 530.0,179.9 540.0,182.3 550.0,184.6 560.0,187.0 570.0,189.3 570.0,203.4" opacity=".22"/>
+      <line class="tlp-line" x1="70" y1="205" x2="570" y2="205"/>
+      <line class="tlp-line" x1="70" y1="28" x2="70" y2="205"/>
+      <line class="tlp-line amber dash" x1="70" y1="43.5" x2="570" y2="203.4"/>
+      <polyline class="tlp-line blue thick" points="70.0,35.7 80.0,39.7 90.0,43.6 100.0,47.5 110.0,51.4 120.0,55.2 130.0,58.9 140.0,62.7 150.0,66.4 160.0,70.0 170.0,73.6 180.0,77.2 190.0,80.7 200.0,84.2 210.0,87.6 220.0,91.0 230.0,94.4 240.0,97.7 250.0,101.0 260.0,104.2 270.0,107.5 280.0,110.6 290.0,113.8 300.0,116.9 310.0,120.0 320.0,123.0 330.0,126.0 340.0,129.0 350.0,131.9 360.0,134.9 370.0,137.7 380.0,140.6 390.0,143.4 400.0,146.2 410.0,149.0 420.0,151.7 430.0,154.4 440.0,157.1 450.0,159.7 460.0,162.3 470.0,164.9 480.0,167.5 490.0,170.0 500.0,172.5 510.0,175.0 520.0,177.4 530.0,179.9 540.0,182.3 550.0,184.6 560.0,187.0 570.0,189.3"/>
+      <line class="tlp-line red" x1="520" y1="128" x2="520" y2="175"/>
+      <circle class="tlp-blue" cx="270" cy="107.5" r="7"/>
+      <text class="tlp-blue" x="284" y="92" font-size="14" font-weight="700">today: 5% → $956.71</text>
+      <text class="tlp-red" x="566" y="121" text-anchor="end" font-size="13" font-weight="700">at 10%: line $746 · true $773</text>
+      <text class="tlp-blue" x="84" y="158" font-size="13" font-weight="700">curve: the true price</text>
+      <text class="tlp-amber" x="84" y="176" font-size="13" font-weight="700">dashed line: duration only</text>
+      <text class="tlp-purple" x="84" y="194" font-size="13" font-weight="700">shaded gap: convexity, in your favour</text>
+      <text class="tlp-text3" x="62" y="57" text-anchor="end" font-size="12">$1,100</text>
+      <text class="tlp-text3" x="62" y="95" text-anchor="end" font-size="12">$1,000</text>
+      <text class="tlp-text3" x="62" y="171" text-anchor="end" font-size="12">$800</text>
+      <text class="tlp-text3" x="70" y="221" text-anchor="middle" font-size="12">1%</text>
+      <text class="tlp-text3" x="170" y="221" text-anchor="middle" font-size="12">3%</text>
+      <text class="tlp-text3" x="270" y="221" text-anchor="middle" font-size="12">5%</text>
+      <text class="tlp-text3" x="370" y="221" text-anchor="middle" font-size="12">7%</text>
+      <text class="tlp-text3" x="470" y="221" text-anchor="middle" font-size="12">9%</text>
+      <text class="tlp-text3" x="570" y="221" text-anchor="end" font-size="12">11%</text>
+      <text class="tlp-text3" x="570" y="237" text-anchor="end" font-size="12">yield →</text>
+      <text class="tlp-text3" x="76" y="22" font-size="12">price ↑</text>
+    </svg>
+    <figcaption>Duration is the slope of the price curve where you stand today: a straight line. The real curve bends above it, so the line always undersells the bond, up or down. For a 1-point rise the line says $914.61, adding convexity says $915.78, and the exact price is $915.75.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I know bond prices fall when yields rise. What I want is how much.</p>
+      <p data-who="Quant">That is duration. Start with a simpler question: on average, how long do you wait to get your money back?</p>
+      <p data-who="Trader">For a five-year bond, five years?</p>
+      <p data-who="Quant">Only if it pays nothing until the end. A coupon bond hands some money back early, which pulls the average wait forward. Weight each payment by its share of today's price and average the dates. That is Macaulay duration.</p>
+      <p data-who="Trader">Take the usual bond. Five years, four percent coupon, priced at a five percent yield.</p>
+      <p data-who="Quant">It costs nine hundred and fifty-six dollars and seventy-one cents, and its average wait is about four point six two years. Divide by one point oh five and you get modified duration, about four point four. That is the rule of thumb: about four point four percent of price for every one point move in yield.</p>
+      <p data-who="Trader">So if the yield goes from five to six?</p>
+      <p data-who="Quant">Duration alone says the price drops to about nine hundred and fourteen dollars sixty-one. Reprice it exactly and you get nine hundred and fifteen seventy-five. Duration was a dollar fourteen too gloomy.</p>
+      <p data-who="Trader">Why too gloomy?</p>
+      <p data-who="Quant">Because duration is a straight line, the slope of the price curve where you stand. The real curve bends upward, away from that line, on both sides. So a plain bond always ends up worth a bit more than duration predicts, whether yields rise or fall.</p>
+      <p data-who="Trader">And that bend is convexity.</p>
+      <p data-who="Quant">Right. It is the second term of the same Taylor series. Add it and the estimate becomes nine hundred and fifteen seventy-eight, three cents from the truth. The bigger the move, the more it matters, because the error grows with the square of the move.</p>
+      <p data-who="Trader">How do desks actually use it?</p>
+      <p data-who="Quant">In dollars per basis point, called DV01. You size a hedge so the dollars per basis point on both sides cancel. But that only covers small, parallel moves.</p>
+      <p data-who="Trader">Has duration ever sunk a bank?</p>
+      <p data-who="Quant">Silicon Valley Bank, March twenty twenty-three. It bought long bonds while rates sat near zero. When the Fed hiked, the held-to-maturity book fell about fifteen billion dollars below book value, against about sixteen billion of equity.</p>
+      <p data-who="Trader">But held to maturity means you never sell.</p>
+      <p data-who="Quant">Unless you have to. On the eighth of March it sold about twenty-one billion of securities at a loss of about one point eight billion. The next day depositors pulled about forty-two billion, and on the tenth the bank was closed.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Duration tells you how far the price tips, convexity tells you how it bends, and neither tells you whether you will be forced to sell at that price.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -99,6 +157,31 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where duration and convexity come from, one Taylor term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P(y_0+\Delta y) \approx \color{#fbbf24}{P(y_0)} \]</div>
+      <p>Start where you stand: today's price. For the worked bond at 5%, $956.71.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P(y_0+\Delta y) \approx P(y_0) + \color{#fbbf24}{P'(y_0)\,\Delta y} \]</div>
+      <p>Add the slope times the move. The slope is \(-D_{mod}\cdot P\), so this is duration: a straight-line guess.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P(y_0+\Delta y) \approx P(y_0) + P'(y_0)\,\Delta y + \color{#fbbf24}{\tfrac{1}{2}P''(y_0)(\Delta y)^2} \]</div>
+      <p>Add the curvature. It grows with the square of the move, so it is tiny for a small wiggle and large for a big shock.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{\Delta P}{P} \approx \color{#fbbf24}{-D_{mod}}\,\Delta y + \tfrac{1}{2}\,\color{#fbbf24}{C}\,(\Delta y)^2 \]</div>
+      <p>Divide through by the price. The first derivative becomes modified duration, the second becomes convexity.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{\Delta P}{P} \approx -4.40(0.01) + \tfrac{1}{2}(24.47)(0.01)^2 = \color{#10b981}{-4.28\%} \]</div>
+      <p>For a 100bp rise: \(956.71\times(1-0.04278)\approx\$915.78\), against an exact $915.75. Duration alone said $914.61.</p>
+    </div>
+  </div>
 
   <h3>Macaulay duration — a weighted-average payment date</h3>
   <p>
@@ -440,6 +523,10 @@
       discounted cash flow, exactly as in the steps above, rather than from
       a level-annuity closed form.
     </p>
+    <div class="tl-predict" data-answer="7.96" data-tol="0.4" data-unit=" years">
+      <div class="tl-predict-q"><strong>Predict first.</strong> This 5-year bond has a modified duration of 4.40 years. Keep everything else the same and make it a 10-year bond. What is the new modified duration? Lock in a guess, then type 10 into the years field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 7.96 years, not 8.80.</strong> Doubling the maturity less than doubles duration, because the extra coupons hand money back along the way and pull the average wait forward. The price drops to $922.78, and convexity more than triples, from 24.47 to 78.29: longer bonds bend much more. Now try a 0% coupon at 5 years and watch Macaulay duration land on exactly 5.00.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Face value \(F\)</span></div>
@@ -691,6 +778,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2022-03-16">
+    <div class="tl-drill-label">Scenario drill · 16 March 2022</div>
+    <h3>The Fed has started hiking, and your bank owns a lot of duration</h3>
+    <p>You run the securities book at a bank whose deposits roughly tripled in 2020 and 2021. Loans could not absorb the cash, so you bought long-dated Treasuries and agency mortgage bonds, much of them labelled held to maturity. Most deposits are above the insurance limit and come from a small, closely connected group of start-ups and funds. Today the Fed raised rates for the first time in this cycle, from near zero, and more hikes are expected. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Nothing. The held-to-maturity label keeps any fall in value out of earnings and capital.<div class="tl-drill-why">The label changes the accounting, not the economics. Duration still says what the bonds are worth after the hikes, and the label only holds if you never have to sell. Your deposits decide that, not you.</div></li>
+      <li data-verdict="bad">Buy more long bonds. Yields are rising, so new purchases pay more.<div class="tl-drill-why">Each new long bond adds duration just as rates start climbing. With an illustrative modified duration of 6, a 2.5-point rise in yields costs about 15% of the book on duration alone.</div></li>
+      <li data-verdict="good">Cut the book's duration or hedge it now, sized in DV01, and stress-test what happens if a large share of deposits leaves at once.<div class="tl-drill-why">This treats both sides. The hedge limits how far the assets fall; the stress test asks whether you could be forced to sell them. Duration measures the loss; the liability side decides whether it becomes real.</div></li>
+      <li data-verdict="ok">Hedge the DV01 you measure today, and leave it there.<div class="tl-drill-why">Better than nothing, but the mortgage bonds have negative convexity. As rates rise, prepayments slow and their duration lengthens, so a hedge sized on today's DV01 covers less and less of the risk.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> This is Silicon Valley Bank's position. The Fed took its target range from near zero to 4.50–4.75% by February 2023. By the end of 2022 SVB's held-to-maturity securities were about $15 billion below book value, against about $16 billion of shareholders' equity. On 8 March 2023 it said it had sold about $21 billion of securities at a loss of about $1.8 billion and would raise capital. On 9 March depositors withdrew about $42 billion in a single day, and on 10 March regulators closed the bank.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -790,6 +890,26 @@
     <li>Lakhbir S. Hayre (ed.), <em>Salomon Smith Barney Guide to Mortgage-Backed and Asset-Backed Securities</em>, Wiley, 2001 — a standard reference for negative convexity in mortgage securities, referenced in the pitfalls above.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="bond-pricing-ytm.html">Bond Pricing &amp; Yield to Maturity</a> <span>· the price formula duration differentiates</span></li>
+        <li><a href="calculus-for-finance.html">Calculus for Finance: Derivatives, Integrals &amp; Taylor Series</a> <span>· the Taylor series behind both terms</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="yield-curve-construction.html">Bootstrapping the Yield Curve</a> <span>· when the curve does not move in parallel</span></li>
+        <li><a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a> <span>· the instruments desks hedge DV01 with</span></li>
+        <li><a href="tail-risk-hedging-convexity.html">Tail Risk Hedging &amp; Portfolio Convexity</a> <span>· convexity as something you buy on purpose</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> duration turns "yields jumped 15bp" into a dollar number for any bond book, and convexity tells you when that number is about to be wrong.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
@@ -993,7 +1113,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

@@ -43,6 +43,66 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two hidden states drawn as circles above a dashed line. Trending stays put with probability 0.70 and switches to choppy with probability 0.30; it lasts about 3.3 days on average and takes about 33% of the time. Choppy stays put with probability 0.85 and switches to trending with probability 0.15; it lasts about 6.7 days and takes about 67% of the time. Below the line is the only thing you actually see: one unlabelled return path that each hidden state emits.">
+      <circle class="tlp-box blue" cx="170" cy="112" r="55"/>
+      <circle class="tlp-box amber" cx="430" cy="112" r="55"/>
+      <path class="tlp-line blue" d="M142.5,64.4 C122,14 218,14 197.5,64.4"/>
+      <polygon class="tlp-blue" points="197.5,66 191,56 203,57"/>
+      <path class="tlp-line amber" d="M402.5,64.4 C382,14 478,14 457.5,64.4"/>
+      <polygon class="tlp-amber" points="457.5,66 451,56 463,57"/>
+      <path class="tlp-line thick" d="M226,98 Q300,68 372,98"/>
+      <polygon class="tlp-arrow" points="375,100 364,101 369,91"/>
+      <path class="tlp-line thick" d="M374,128 Q300,158 228,128"/>
+      <polygon class="tlp-arrow" points="225,126 236,125 231,135"/>
+      <text class="tlp-blue" x="170" y="20" text-anchor="middle" font-size="14" font-weight="700">stay 0.70</text>
+      <text class="tlp-amber" x="430" y="20" text-anchor="middle" font-size="14" font-weight="700">stay 0.85</text>
+      <text class="tlp-text2" x="300" y="68" text-anchor="middle" font-size="13">switch 0.30</text>
+      <text class="tlp-text2" x="300" y="166" text-anchor="middle" font-size="13">switch 0.15</text>
+      <text class="tlp-blue" x="170" y="106" text-anchor="middle" font-size="15" font-weight="700">Trending</text>
+      <text class="tlp-text" x="170" y="124" text-anchor="middle" font-size="12">≈ 3.3 days</text>
+      <text class="tlp-text2" x="170" y="140" text-anchor="middle" font-size="12">33% of the time</text>
+      <text class="tlp-amber" x="430" y="106" text-anchor="middle" font-size="15" font-weight="700">Choppy</text>
+      <text class="tlp-text" x="430" y="124" text-anchor="middle" font-size="12">≈ 6.7 days</text>
+      <text class="tlp-text2" x="430" y="140" text-anchor="middle" font-size="12">67% of the time</text>
+      <text class="tlp-text3" x="16" y="20" font-size="12">hidden: never seen</text>
+      <line class="tlp-line dash" x1="16" y1="182" x2="584" y2="182"/>
+      <line class="tlp-line dash" x1="170" y1="168" x2="170" y2="196"/>
+      <line class="tlp-line dash" x1="430" y1="168" x2="430" y2="194"/>
+      <polyline class="tlp-line thick" points="60,228 80,224 100,226 120,220 140,221 160,216 180,217 200,212 220,213 240,208 260,209 280,205 300,214 320,201 340,212 360,203 380,215 400,200 420,211 440,204 460,216 480,202 500,210 520,199 540,213 560,205 580,210"/>
+      <text class="tlp-text3" x="16" y="244" font-size="12">what you see: only the returns, with no labels</text>
+    </svg>
+    <figcaption>The two regimes sit above the line, where you cannot see them. Each one stays put with its own probability, and that probability alone sets how long a spell lasts, 1 ÷ (1 − stay), and how much of the time each state takes. Below the line is all the data you get.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Half my rules only work in a trend, and the other half only work in chop. How do I know which market I'm in?</p>
+      <p data-who="Quant">You don't, directly. That's the whole idea of a hidden Markov model. The regime is hidden. You only see what it leaves behind: the returns.</p>
+      <p data-who="Trader">Like what?</p>
+      <p data-who="Quant">Imagine a friend in another city sends you a photo of a stranger every day, but never tells you the weather. A heavy coat suggests cold. A t-shirt suggests warm. The clothes are a clue, not proof. The weather is the hidden state, and the clothes are what it emits.</p>
+      <p data-who="Trader">And the market version?</p>
+      <p data-who="Quant">The hidden state is trending or choppy. What you see is each day's return. Trending days might drift gently with low noise. Choppy days sit flat with more noise.</p>
+      <p data-who="Trader">What stops it jumping around every day?</p>
+      <p data-who="Quant">Stickiness. Weather doesn't teleport. The model holds a table of odds: if we're trending today, what's the chance we're still trending tomorrow? In the lesson's example that's seventy percent. For choppy it's eighty-five.</p>
+      <p data-who="Trader">How does that turn into something I can use?</p>
+      <p data-who="Quant">One over the chance of leaving gives the average length of a spell. Leave trending thirty percent of the time, and a trend lasts about three and a third days. Leave choppy fifteen percent of the time, and chop lasts about six and two thirds. Over the long run that's a third of the time trending, two thirds choppy.</p>
+      <p data-who="Trader">So who works out the odds?</p>
+      <p data-who="Quant">The data, through three classic tools. The forward algorithm says how likely your data is under the model. Viterbi finds the single most likely path of hidden states. And Baum-Welch learns the odds from history: guess the states, refit, repeat.</p>
+      <p data-who="Trader">Then I label every day in my backtest and trade on the labels.</p>
+      <p data-who="Quant">That's the classic trap. The best-path labels use the whole sequence, including days that came later. In a live system you only know the past, so you must use the filtered probability, built from data up to today.</p>
+      <p data-who="Trader">Has a model like this ever been badly wrong?</p>
+      <p data-who="Quant">2022. For about twenty years, bonds usually rallied when stocks fell. A model trained on those years learned a stress state with bonds as the hedge. Then inflation hit nine point one percent, the Fed hiked hard, and both fell together. The S and P lost about eighteen percent, the broad US bond index about thirteen. The model had no box for that.</p>
+      <p data-who="Trader">And more states wouldn't have fixed it?</p>
+      <p data-who="Quant">No. A model can't learn a state its history never showed it. Only a longer history, or judgement from outside the model, could have.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Treat the regime as hidden weather: infer it from clues with honest probabilities, use only the past when trading live, and remember it only knows the weather it has seen.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -93,6 +153,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From a table of odds to how long a regime lasts, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ A = \begin{pmatrix} \color{#fbbf24}{0.70} & 0.30 \\ 0.15 & \color{#fbbf24}{0.85} \end{pmatrix} \]</div>
+      <p>Start with the transition matrix from the worked example. Row 1 is trending, row 2 is choppy. Each row sums to 1, and the diagonal holds the chance of staying put.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P(\text{spell lasts } k \text{ days}) = \color{#fbbf24}{A_{ii}^{\,k-1}\,(1 - A_{ii})} \]</div>
+      <p>A spell of length \(k\) means staying \(k-1\) times, then leaving once. That is a geometric distribution.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Expected duration}_i = \color{#fbbf24}{\frac{1}{1 - A_{ii}}} \]</div>
+      <p>The average of a geometric spell is one over the chance of leaving. A stickier regime has a smaller chance of leaving, so its spells run longer.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{1}{1 - 0.70} \approx 3.3 \text{ days}, \qquad \frac{1}{1 - 0.85} \approx \color{#fbbf24}{6.7 \text{ days}} \]</div>
+      <p>Plug in the diagonal. Trends last about 3.3 days, chop about 6.7.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \pi^*_{\text{trending}} = \frac{b}{a+b} = \frac{0.15}{0.30 + 0.15} \approx \color{#10b981}{0.333} \]</div>
+      <p>Finally the long-run share, with \(a\) and \(b\) the two switching odds. The market spends about a third of its time trending and two thirds choppy: the state you leave more often, you spend less time in.</p>
+    </div>
+  </div>
   <p>
   We'll build the model in three layers: first the plain Markov chain (a chain of <em>observed</em>
   states with no hidden part at all), then add the "hidden" layer on top, then walk through — at a
@@ -374,6 +458,10 @@
       expected regime durations and the stationary (long-run) probabilities
       recalculate instantly from the formulas derived above.
     </p>
+    <div class="tl-predict" data-answer="85.7" data-tol="2" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Keep P(stay trending) at 0.70, but make chop stickier: P(stay choppy) = 0.95. What share of the time does the market now spend choppy in the long run? Lock in a guess, then type 0.95 into the second field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 85.7%.</strong> The switching odds are now \(a = 0.30\) out of trending and \(b = 0.05\) out of choppy, so the choppy share is \(a/(a+b) = 0.30/0.35 \approx 0.857\). Chop now lasts \(1/0.05 = 20\) days on average, against 3.3 for a trend. A small change on the diagonal, from 0.85 to 0.95, tripled the length of a choppy spell. Now try 0.99 and watch how fast it grows.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>P(stay trending) A<sub>11</sub></span></div>
@@ -721,6 +809,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill" data-date="2022-07-13">
+    <div class="tl-drill-label">Scenario drill · 13 July 2022</div>
+    <h3>Your regime model says the bond hedge should be working</h3>
+    <p>US CPI for June has just printed at 9.1% year on year. The Fed has been raising rates since March, with a 75bp step in June. Stocks and bonds are both down sharply since January. You hold a balanced book of stocks with Treasuries as the hedge, and you use a two-state model fitted on 2000–2021. Its "stress" state was learned in years when bonds rallied as stocks fell. What do you do with its reading?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Trust the model. If it says stress, the bond leg will cushion the stock leg, as it always has.<div class="tl-drill-why">The model's stress state has bonds rallying built into its emission distribution. Today's data does not look like either state it knows, so it is choosing the least-wrong box, not describing what is happening.</div></li>
+      <li data-verdict="bad">Add a third state and refit with Baum-Welch on the same 2000–2021 data.<div class="tl-drill-why">More states always raise the fit, but the algorithm cannot learn a state the data never showed. On that window there is no "stocks and bonds fall together" regime to find.</div></li>
+      <li data-verdict="good">Treat the label as unreliable for this joint move, and judge the hedge from outside the model: both legs are falling, so the bonds are not protecting you.<div class="tl-drill-why">This is the honest response. The model can only pick among states it has seen, and this is not one of them. A judgement call from outside the model is what the situation needs.</div></li>
+      <li data-verdict="ok">Refit the model on a much longer history, reaching back before 2000, when the stock-bond correlation was often positive.<div class="tl-drill-why">A real fix in principle: a longer history can contain the missing state. But it is a research project, not today's risk decision, and meanwhile the hedge is still not working.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The Fed kept raising rates in 75bp steps. Over the calendar year the S&amp;P 500 lost about 18% including dividends, and the broad US investment-grade bond index lost about 13%, its worst year on record. Balanced portfolios lost on both legs. A model whose states were learned on 2000–2021 had no state for that year.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -822,6 +923,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-probability.html">Probability &amp; Random Variables</a> <span>· conditional probability, the language of the whole model</span></li>
+        <li><a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a> <span>· why calm and stormy spells persist</span></li>
+        <li><a href="bayesian-inference.html">Bayesian Inference &amp; Updating</a> <span>· turning clues into a probability for each state</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="kalman-filter.html">The Kalman Filter &amp; Adaptive Relationships</a> <span>· the same hidden-state idea with a continuous state</span></li>
+        <li><a href="regime-switching-state-space.html">Regime-Switching State Space Models</a> <span>· regimes and drifting parameters together</span></li>
+        <li><a href="change-point-detection.html">Change-Point Detection</a> <span>· spotting the switch as it happens</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> most trading rules are quiet bets on a regime, and this gives you an honest probability of which regime you are in, instead of a hard label.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="garch-volatility.html">← GARCH &amp; Volatility Clustering</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -852,7 +974,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

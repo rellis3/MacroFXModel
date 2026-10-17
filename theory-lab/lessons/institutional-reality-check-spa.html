@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>White's Reality Check &amp; Hansen's SPA Test — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,90 @@
       <li><strong>How it reached trading:</strong> White's Reality Check (2000) and Hansen's SPA test (2005) were built for trading-rule data-snooping (Sullivan, Timmermann &amp; White tested about 7,800 technical rules), and they are how a team tests whether the best backtest is more than luck.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: bars of five candidate strategies' mean return per period. A momentum 0.469 percent, B and D about zero, C carry 0.156 percent, E contrarian minus 0.163 percent. A's Sharpe is 1.19 and C's is 0.93. Right: a histogram of the best of five means when no strategy has any edge, built by bootstrap replays. It piles up between about 0 and 0.2. C's 0.156 sits inside the pile, p about 0.24. A's 0.469 sits far out in the thin tail, p about 0.003.">
+      <text class="tlp-text3" x="20" y="22" font-size="12">mean return per period, %</text>
+      <line class="tlp-line" x1="28" y1="140" x2="262" y2="140"/>
+      <rect class="tlp-green" x="40" y="55.6" width="30" height="84.4" rx="3"/>
+      <rect class="tlp-text3" x="85" y="139" width="30" height="2" rx="1"/>
+      <rect class="tlp-amber" x="130" y="111.9" width="30" height="28.1" rx="3"/>
+      <rect class="tlp-text3" x="175" y="139" width="30" height="2.5" rx="1"/>
+      <rect class="tlp-red" x="220" y="140" width="30" height="29.3" rx="3" opacity=".75"/>
+      <text class="tlp-green" x="55" y="48" text-anchor="middle" font-size="13" font-weight="700">0.469</text>
+      <text class="tlp-amber" x="145" y="104" text-anchor="middle" font-size="13" font-weight="700">0.156</text>
+      <text class="tlp-red" x="235" y="184" text-anchor="middle" font-size="12" font-weight="700">−0.163</text>
+      <text class="tlp-text2" x="55" y="204" text-anchor="middle" font-size="13" font-weight="700">A</text>
+      <text class="tlp-text2" x="100" y="204" text-anchor="middle" font-size="13" font-weight="700">B</text>
+      <text class="tlp-text2" x="145" y="204" text-anchor="middle" font-size="13" font-weight="700">C</text>
+      <text class="tlp-text2" x="190" y="204" text-anchor="middle" font-size="13" font-weight="700">D</text>
+      <text class="tlp-text2" x="235" y="204" text-anchor="middle" font-size="13" font-weight="700">E</text>
+      <text class="tlp-green" x="55" y="222" text-anchor="middle" font-size="12">Sharpe 1.19</text>
+      <text class="tlp-amber" x="145" y="222" text-anchor="middle" font-size="12">Sharpe 0.93</text>
+      <text class="tlp-text3" x="330" y="22" font-size="12">best of five when nobody has an edge</text>
+      <rect class="tlp-blue" x="341.2" y="182.1" width="9.4" height="7.9" opacity=".55"/>
+      <rect class="tlp-blue" x="351.9" y="132.0" width="9.4" height="58.0" opacity=".55"/>
+      <rect class="tlp-blue" x="362.5" y="108.3" width="9.4" height="81.7" opacity=".55"/>
+      <rect class="tlp-blue" x="373.1" y="89.0" width="9.4" height="101.0" opacity=".55"/>
+      <rect class="tlp-blue" x="383.7" y="85.0" width="9.4" height="105.0" opacity=".55"/>
+      <rect class="tlp-blue" x="394.4" y="120.2" width="9.4" height="69.8" opacity=".55"/>
+      <rect class="tlp-blue" x="405.0" y="118.2" width="9.4" height="71.8" opacity=".55"/>
+      <rect class="tlp-blue" x="415.6" y="147.7" width="9.4" height="42.3" opacity=".55"/>
+      <rect class="tlp-blue" x="426.2" y="154.4" width="9.4" height="35.6" opacity=".55"/>
+      <rect class="tlp-blue" x="436.9" y="164.5" width="9.4" height="25.5" opacity=".55"/>
+      <rect class="tlp-blue" x="447.5" y="171.5" width="9.4" height="18.5" opacity=".55"/>
+      <rect class="tlp-blue" x="458.1" y="178.1" width="9.4" height="11.9" opacity=".55"/>
+      <rect class="tlp-blue" x="468.7" y="179.0" width="9.4" height="11.0" opacity=".55"/>
+      <rect class="tlp-blue" x="479.4" y="182.1" width="9.4" height="7.9" opacity=".55"/>
+      <rect class="tlp-blue" x="490.0" y="184.3" width="9.4" height="5.7" opacity=".55"/>
+      <rect class="tlp-blue" x="500.6" y="185.4" width="9.4" height="4.6" opacity=".55"/>
+      <rect class="tlp-blue" x="511.2" y="186.7" width="9.4" height="3.3" opacity=".55"/>
+      <rect class="tlp-blue" x="521.9" y="187.4" width="9.4" height="2.6" opacity=".55"/>
+      <rect class="tlp-blue" x="532.5" y="188.3" width="9.4" height="1.7" opacity=".55"/>
+      <rect class="tlp-blue" x="543.1" y="189.2" width="9.4" height="0.8" opacity=".55"/>
+      <rect class="tlp-blue" x="553.7" y="189.3" width="9.4" height="0.7" opacity=".55"/>
+      <rect class="tlp-blue" x="564.4" y="189.3" width="9.4" height="0.7" opacity=".55"/>
+      <rect class="tlp-blue" x="575.0" y="189.7" width="9.4" height="0.3" opacity=".55"/>
+      <line class="tlp-line" x1="336" y1="190" x2="590" y2="190"/>
+      <line class="tlp-line amber dash" x1="417.7" y1="62" x2="417.7" y2="190"/>
+      <line class="tlp-line green thick dash" x1="550.5" y1="62" x2="550.5" y2="190"/>
+      <text class="tlp-amber" x="417.7" y="54" text-anchor="middle" font-size="13" font-weight="700">C · p ≈ 0.24</text>
+      <text class="tlp-green" x="590" y="54" text-anchor="end" font-size="13" font-weight="700">A · p ≈ 0.003</text>
+      <text class="tlp-text3" x="351.3" y="206" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="436.3" y="206" text-anchor="middle" font-size="12">0.2</text>
+      <text class="tlp-text3" x="521.3" y="206" text-anchor="middle" font-size="12">0.4</text>
+      <text class="tlp-text2" x="460" y="228" text-anchor="middle" font-size="12">p = share of no-edge replays at or past the line</text>
+    </svg>
+    <figcaption>Carry's Sharpe looks almost as good as momentum's, but its mean is a third the size. Replay history with no edge anywhere and the best of five reaches carry's 0.156 about one time in four. It reaches momentum's 0.469 about three times in a thousand.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I ran five versions of a strategy over the same sixteen periods. Momentum came out on top. Can I trust it?</p>
+      <p data-who="Quant">That depends on a question most people skip. How good would the best of five look if none of them had any edge at all?</p>
+      <p data-who="Trader">How would I even know that?</p>
+      <p data-who="Quant">One way is a formula. You assume a bell curve and work out how big the luckiest of five should be. White's Reality Check skips the formula. It replays history, using your own five return streams.</p>
+      <p data-who="Trader">Replays it how?</p>
+      <p data-who="Quant">First it takes away each strategy's own average, so in the replay nobody has an edge. Then it reshuffles the periods in short chunks, and it uses the same reshuffle for all five at once. Streaks and shared bad weeks stay together.</p>
+      <p data-who="Trader">And then?</p>
+      <p data-who="Quant">It keeps the best of the five reshuffled averages. That is one replay. Do it five thousand times and you have a picture of how good the winner looks from pure luck.</p>
+      <p data-who="Trader">So how did my momentum strategy do?</p>
+      <p data-who="Quant">Its average was about half a percent per period, nought point four seven. In the replays, the luckiest of five almost never got that far. About three replays in a thousand did. That is a p-value of about nought point nought nought three. A real edge, on this sample.</p>
+      <p data-who="Trader">My carry version had a Sharpe of nought point nine three. Momentum's was one point one nine. That's close. Isn't carry a winner too?</p>
+      <p data-who="Quant">That's the trap. Carry's Sharpe is high only because its swings happened to be tiny. Its average was about nought point one six, a third of momentum's. The luckiest of five edge-free strategies beats that about one time in four. Noise.</p>
+      <p data-who="Trader">Where does Hansen's test come in?</p>
+      <p data-who="Quant">It fixes a weak spot. In White's replay, even the obvious losers get a fresh shot at winning, and that raises the bar for everyone. Hansen scales each strategy by its own noise and keeps the clear losers at their own bad average. Same data, more power to spot a real winner.</p>
+      <p data-who="Trader">Has anyone run this on real trading rules?</p>
+      <p data-who="Quant">Sullivan, Timmermann and White tested about seven thousand eight hundred technical rules on a century of Dow Jones data. Once the whole search was counted, the best rule's edge did not hold up in later data.</p>
+      <p data-who="Trader">Any catch?</p>
+      <p data-who="Quant">One big one. The test only knows about the strategies you show it. Run fifty, show it your best five, and the answer is worthless. No formula can catch that.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Judge your winner against the best that luck could do across everything you tried, and be honest about everything you tried.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -143,6 +228,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>White's Reality Check, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the Reality Check p-value comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ d_{k,t} = R_{k,t} - \color{#fbbf24}{R_{t}^{\,bench}} \]</div>
+      <p>Start with each candidate's excess return over a benchmark you name up front: zero, buy-and-hold, or the strategy already running.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \bar V = \color{#fbbf24}{\max_{k=1,\dots,N}} \bar d_k \]</div>
+      <p>Average each candidate over the \(T\) periods and keep the biggest. The statistic is the winner's mean, because the winner is what you would report.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \bar V^*_b = \max_{k} \big(\bar d^{\,*}_{k,b} \color{#fbbf24}{- \bar d_k}\big) \]</div>
+      <p>Replay: block-resample the periods with one shared index path, and subtract each candidate's own real mean. In this world nobody has an edge, so the max is pure luck.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{p_{WRC} = \frac{1 + \#\{b : \bar V^*_b \ge \bar V\}}{1 + B}} \]</div>
+      <p>Count how often luck matched the real winner across \(B\) replays. In the worked panel, \(\bar V = 0.469\) gives \(p_{WRC} \approx 0.003\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ Z^*_b = \max_{k} \frac{\big(\bar d^{\,*}_{k,b} - \bar d_k\big) + \color{#fbbf24}{g_k}}{\color{#fbbf24}{s_k}} \]</div>
+      <p>Hansen's SPA changes two things: divide by each candidate's own spread \(s_k\), and keep clear losers at their own mean through \(g_k\). Count the same way to get \(p_{SPA}\).</p>
+    </div>
+  </div>
   <p>
     <strong>The setup.</strong> There are \(N\) candidate strategies (the
     parameter sweep, the different lookbacks, the competing signal
@@ -457,6 +566,10 @@
       you run. Toggle studentizing to switch between the WRC and SPA
       statistics on the exact same panel.
     </p>
+    <div class="tl-predict" data-answer="0.156" data-tol="0.01" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Delete every number in the A (Momentum) box, so the real edge drops out of the panel. The readout's observed statistic switches to the new best candidate's mean. What will it read? Lock in a guess, then clear the A box to check.</div>
+      <div class="tl-predict-reveal"><p><strong>About 0.156%, candidate C.</strong> With Momentum gone, Carry's mean is the largest left: 2.50 summed over 16 periods, so 0.156, a third of Momentum's 0.469. Now press Run a few times. The p-value settles near 0.25, far above 0.05: the best of four edge-free candidates reaches 0.156 about one replay in four. Carry's tidy Sharpe of 0.93 did not make it a real winner.</p></div>
+    </div>
     <div class="tl-controls" id="wrc-series-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>A — Momentum</span></div>
@@ -614,6 +727,12 @@
     </p>
   </div>
 
+  <!-- WB:institutional_reality_check_spa:START -->
+  <div class="wb" id="wb-institutional_reality_check_spa" data-title="The Reality Check: replay history with no edge anywhere">
+    <script type="application/json">{"w":600,"h":860,"intro":"Five strategies tried on the same 16 periods. Is the winner a real edge, or just the luckiest of five? Replay history with no edge anywhere and see. Press play, or step through.","steps":[{"cap":"You tried five strategy variants on the same 16 periods: A momentum, B mean-reversion, C carry, D breakout and E contrarian. The benchmark is zero. Which one, if any, has a real edge?","do":[{"icon":"crowd","name":"crowd","x":20,"y":10,"s":0.95,"tone":"blue","label":"5 strategies","lsize":18},{"note":"setup","x":360,"y":50,"text":"16 periods each · benchmark = 0","size":19,"anchor":"middle"},{"note":"q","x":360,"y":84,"text":"real edge, or the luckiest of five?","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"Their average return per period: A 0.469%, C 0.156%, B and D about zero, E −0.163%. Momentum wins. But the best of five always wins something.","do":[{"chart":"means","x":10,"y":132,"w":580,"h":222,"title":"Mean return per period, %","xd":[0.4,5.6],"yd":[-0.3,0.62],"yt":[[0.4,"0.4"],[0,"0"]],"xt":[[1,"A"],[2,"B"],[3,"C"],[4,"D"],[5,"E"]],"zero":true,"pl":46,"pr":14},{"bars":"mb","chart":"means","data":[[1,0.469,"0.469","green"],[2,-0.006,"",null],[3,0.156,"0.156","amber"],[4,-0.013,"",null],[5,-0.163,"−0.163","red"]],"bw":46,"ms":1100}]},{"cap":"The trap: carry's Sharpe is 0.93, close to momentum's 1.19, only because its swings happened to be tiny (0.168 against 0.394). Its average is a third of momentum's.","do":[{"note":"sh","chart":"means","at":[3,0.42],"text":"C's Sharpe 0.93  vs  A's 1.19","tone":"amber","size":18,"anchor":"start","dx":-40,"dy":0}]},{"cap":"The Reality Check builds a world with no edge at all. Subtract each strategy's own average from its returns. Now every strategy averages exactly zero.","do":[{"dim":"mb"},{"dim":"sh"},{"box":"null","x":60,"y":372,"w":480,"h":50,"text":"returns − own average  →  every edge = 0","tone":"blue","size":19}]},{"cap":"Reshuffle the 16 periods in short chunks, about 2 periods long on average. One reshuffle is used for all five strategies at once, so streaks and shared bad weeks stay together.","do":[{"note":"orig","x":300,"y":446,"text":"one replay, period order (· = new chunk):","size":18,"anchor":"middle"},{"note":"rep","x":300,"y":474,"text":"9 10 11 12 13 14 15 16 · 2 3 · 16 1 · 4 5 · 7 · 6","size":18,"anchor":"middle","tone":"purple"}]},{"cap":"Average each strategy over the reshuffled periods and keep the best of the five. That is one replay of how good the winner looks from luck alone. This replay: E at +0.06%.","do":[{"note":"one","x":300,"y":504,"text":"A −0.03 · B −0.01 · C −0.01 · D −0.04 · E +0.06  →  best +0.06","size":17,"anchor":"middle","tone":"purple"}]},{"cap":"Do it 5,000 times. The replay winners pile up between about 0 and 0.2%. That pile is what the best of five edge-free strategies looks like.","do":[{"chart":"null","x":10,"y":530,"w":580,"h":214,"title":"Best of five, 5,000 no-edge replays (% of replays)","xd":[-0.06,0.56],"yd":[0,18],"yt":[[5,"5%"],[10,"10%"],[15,"15%"]],"xt":[[0,"0"],[0.2,"0.2"],[0.4,"0.4%"]],"pl":46,"pr":14},{"bars":"hist","chart":"null","data":[[-0.0125,1.4,"","blue"],[0.0125,9.28,"","blue"],[0.0375,11.66,"","blue"],[0.0625,16.7,"","blue"],[0.0875,13.78,"","blue"],[0.1125,11.38,"","blue"],[0.1375,9.34,"","blue"],[0.1625,6.92,"","blue"],[0.1875,4.16,"","blue"],[0.2125,4.24,"","blue"],[0.2375,2.5,"","blue"],[0.2625,2.08,"","blue"],[0.2875,1.88,"","blue"],[0.3125,1.26,"","blue"],[0.3375,0.88,"","blue"],[0.3625,0.66,"","blue"],[0.3875,0.56,"","blue"],[0.4125,0.2,"","blue"],[0.4375,0.14,"","blue"],[0.4625,0.14,"","blue"],[0.4875,0.08,"","blue"],[0.5125,0.1,"","blue"]],"bw":19,"ms":1200}]},{"cap":"Momentum's real 0.469% sits far out in the thin right tail. Only about 3 replays in 1,000 got that far: p ≈ 0.003. A real edge, on this sample.","do":[{"dot":"pa","chart":"null","at":[0.46875,0.4],"text":"A 0.469\np ≈ 0.003","tone":"green","dy":-62,"size":18}]},{"cap":"Carry's 0.156% sits inside the pile. About one replay in four does at least as well: p ≈ 0.24. The tempting Sharpe was noise.","do":[{"dot":"pc","chart":"null","at":[0.15625,9.5],"text":"C 0.156\np ≈ 0.24","tone":"amber","dx":58,"dy":-12,"size":18}]},{"cap":"Hansen's SPA test keeps the replay but divides each strategy by its own noise, and keeps clear losers (E, t = −1.30) at their own bad average. Losers stop padding the null: momentum's p falls to about 0.0002.","do":[{"box":"spa","x":10,"y":758,"w":285,"h":92,"text":"SPA: scale by own noise,\nbench clear losers\nA: p ≈ 0.0002","tone":"green","size":18}]},{"cap":"One rule no test can enforce: show it every strategy you tried. Run fifty, test only your best five, and the p-value is worthless.","do":[{"box":"honest","x":305,"y":758,"w":285,"h":92,"text":"tried 50, tested 5?\nthe p-value is worthless","tone":"red","size":18}]}]}</script>
+  </div>
+  <!-- WB:institutional_reality_check_spa:END -->
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -681,6 +800,19 @@
     </p>
   </div>
   <!-- DESK:END -->
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative research review</div>
+    <h3>Your best variant passed, but only five were tested</h3>
+    <p>You swept 50 variants of a strategy over the same history. Forty-five looked poor, so you dropped them. Of the five you kept, the best averages 0.47% a period, and a Reality Check run on those five gives \(p = 0.003\). A colleague wants to put capital behind it this week. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Approve it. A p-value of 0.003 is far below any threshold.<div class="tl-drill-why">The test answered "is the best of these five real?" The search was fifty wide. Dropping the forty-five losers first means the replay never saw how many chances luck really had, so the small p-value says nothing about the search you actually ran.</div></li>
+      <li data-verdict="good">Rerun the test, SPA ideally, on all fifty variants including the dropped ones, then check the survivor on data the search never touched.<div class="tl-drill-why">The test is only honest on the full candidate set. SPA keeps the forty-five weak variants from padding the null, so you lose little power by including them. Passing it is still not proof: a separate out-of-sample check comes after.</div></li>
+      <li data-verdict="ok">Skip the bootstrap and run the Deflated Sharpe Ratio with fifty trials instead.<div class="tl-drill-why">Better than the five-candidate test, because it counts the real search. But it uses a count and an estimated spread of Sharpes in a bell-curve shortcut, when you already hold all fifty return histories and can bootstrap them directly.</div></li>
+      <li data-verdict="bad">Switch to whichever of the five has the highest Sharpe, since Sharpe already adjusts for risk.<div class="tl-drill-why">A high Sharpe can come from luckily small swings rather than a real mean edge. In this lesson's panel, Carry's Sharpe of 0.93 sat close to the real edge's 1.19, yet its mean failed the bootstrap test with \(p \approx 0.24\).</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson says.</strong> This is an illustrative situation, not a historical episode. The rule that decides it is the lesson's own: a Reality Check or SPA test is only as honest as the candidate set you feed it. A p-value from five hand-picked survivors of a fifty-variant search is worthless as evidence, and no later step can detect that. Rerun on all fifty, and even then treat a pass as "not just luck on this sample", with an out-of-sample check still to come.</p></div>
+  </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
@@ -801,6 +933,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="sharpe-family-deflated.html">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a> <span>· the best-of-N problem, solved with a formula</span></li>
+        <li><a href="bootstrapping-monte-carlo.html">Bootstrapping &amp; Monte Carlo Simulation</a> <span>· the block bootstrap this test runs on</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere Effect</a> <span>· the same luck problem across many separate tests</span></li>
+        <li><a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> <span>· honest return histories to feed the test</span></li>
+        <!-- DESK:START --><li><a href="institutional-triple-barrier-labeling.html">Triple-Barrier Labelling &amp; Meta-Labelling</a> <span>· the next advanced lesson: honest labels for each trade</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the best of many backtests always looks good, and this is the check that tells you whether it beats what luck alone would have produced.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
     <a href="institutional-triple-barrier-labeling.html">Triple-Barrier &amp; Meta-Labelling →</a>
@@ -830,7 +982,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   // ---- Genuine, live stationary block bootstrap for the WRC/SPA "try it yourself" widget ----
@@ -1085,5 +1238,6 @@
   resetTally();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

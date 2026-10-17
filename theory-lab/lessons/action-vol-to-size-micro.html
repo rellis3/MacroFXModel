@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>From a Volatility Forecast to a Position Size — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <style>
   .vs-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
@@ -124,14 +125,26 @@
       <p class="sl-p">A caps the loss at the stop. B sets a typical yearly swing of about $5,000. Stop-and-target trade → A. Held exposure with no natural stop → B.</p>
     </section>
 
+    <!-- WB:action_vol_to_size-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">From a volatility forecast to a position size, drawn step by step</h2>
+      <!-- WB:action_vol_to_size:START -->
+      <div class="wb" data-title="From a volatility forecast to a position size, drawn step by step">
+        <script type="application/json">{"w":600,"h":790,"intro":"One volatility forecast, turned into pips, a stop and a size, two ways. Then the calm-market trap. Press play, or step through.","steps":[{"cap":"A HAR model forecasts tomorrow's realised variance on EUR/USD at 0.16, in percent squared. Variance, not volatility: take the square root. σ = √0.16 = 0.40%.","do":[{"icon":"fc","name":"thermo","x":20,"y":12,"s":0.7,"tone":"purple","label":"forecast\n0.16 %²","lsize":16},{"box":"sig","x":150,"y":20,"w":200,"h":82,"text":"σ = √0.16 = 0.40%","tone":"purple","sub":" ","size":18}]},{"cap":"Units next. 0.40% of 1.0850 is 0.004340 in price, which is 43.4 pips: one standard deviation of tomorrow's move.","do":[{"sub":"sig","text":"= 43.4 pips"}]},{"cap":"Sanity check: for a random walk the typical high-to-low day is about 1.6σ. 1.6 × 43.4 ≈ 69 pips, close to the pair's 65-pip ATR. The units are right.","do":[{"box":"atr","x":380,"y":20,"w":210,"h":82,"text":"1.6σ ≈ 69 pips\nATR 65 ✓","tone":"green","size":18}]},{"cap":"Route A, per-trade risk: put the stop at 2σ. 2 × 43.4 = 86.8, rounded to 87 pips.","do":[{"chart":"st","x":10,"y":136,"w":280,"h":240,"title":"stop, in pips","xd":[0.4,2.6],"yd":[0,210],"yt":[[87,"87"],[174,"174"]],"xt":[[1,"0.40%"],[2,"0.80%"]],"pl":46,"pr":10},{"bars":"st1","chart":"st","data":[[1,87,"87","blue"]],"bw":56,"ms":800}]},{"cap":"Decide the money first: 0.5% of $100,000 is $500. Lots = $500 ÷ (87 pips × $10) = 0.575, rounded down to 0.57 lots. Loss at the stop: $495.90.","do":[{"chart":"lt","x":300,"y":136,"w":290,"h":240,"title":"lots","xd":[0.4,3.6],"yd":[0,0.72],"yt":[[0.57,"0.57"],[0.28,"0.28"]],"xt":[[1,"0.40%"],[2,"0.80%"],[3,"both cut"]],"pl":50,"pr":10},{"bars":"lt1","chart":"lt","data":[[1,0.57,"0.57","green"]],"bw":52,"ms":800}]},{"cap":"Volatility doubles to 0.80%. The stop doubles to 174 pips, and the size halves to 0.28 lots. The loss at the stop is $487.20: the same budget, carried in fewer lots.","do":[{"bars":"st2","chart":"st","data":[[2,174,"174","red"]],"bw":56,"ms":800},{"bars":"lt2","chart":"lt","data":[[2,0.28,"0.28","green"]],"bw":52,"ms":800},{"box":"risk","x":10,"y":388,"w":580,"h":58,"text":"≈ $500 at risk both times: lots move with 1 ÷ σ","tone":"green","size":18}]},{"cap":"Use one route, not two. If you also cut the risk budget when volatility rises, size falls with the square of volatility: volatility doubles and the position quarters, to about 0.14 lots.","do":[{"bars":"lt3","chart":"lt","data":[[3,0.14,"≈0.14","red"]],"bw":52,"ms":800}]},{"cap":"Route B, volatility targeting, for a position with no natural stop. Target 5% a year. 0.40% a day is 0.40 × √252 = 6.35% a year, so the notional is 5% × $100,000 ÷ 6.35% = $78,743: 0.72 lots.","do":[{"box":"rb","x":10,"y":460,"w":280,"h":126,"text":"Route B: 5% target\n6.35% a year\n$78,743 → 0.72 lots","tone":"purple","size":18}]},{"cap":"The catch: the lower the forecast, the bigger the position. A sleeve with a 10% target holds 10 ÷ 8 = 1.25× at an 8% forecast, and 2× at 5%.","do":[{"chart":"lv","x":300,"y":460,"w":290,"h":250,"title":"leverage, 10% target","xd":[3,32],"yd":[0,3.2],"yt":[[1,"1×"],[2,"2×"],[3,"3×"]],"xt":[[5,"5%"],[10,"10%"],[20,"20%"],[30,"30%"]],"pl":40,"pr":12},{"series":"lvs","chart":"lv","pts":[[3.5,2.857],[4,2.5],[5,2.0],[6,1.667],[8,1.25],[10,1.0],[12,0.833],[15,0.667],[20,0.5],[25,0.4],[30,0.333]],"tone":"purple","ms":1300},{"dot":"l8","chart":"lv","at":[8,1.25],"text":"1.25×","tone":"blue","dx":14,"dy":0,"anchor":"start"},{"dot":"l5","chart":"lv","at":[5,2.0],"text":"2×","tone":"red","dx":10,"dy":-6,"anchor":"start"}]},{"cap":"Then volatility jumps to 30% in a week. The trailing forecast catches up only after the move, so the sleeve takes the first leg at 2× and only then cuts to 0.33×, selling into the fall.","do":[{"dot":"l30","chart":"lv","at":[30,0.333],"text":"0.33×","tone":"amber","dx":-4,"dy":-16,"anchor":"end"}]},{"cap":"It happened: 2017 was one of the calmest years on record. On 5 February 2018 the VIX more than doubled in a single session, and the biggest inverse-VIX note, XIV, lost almost all its value.","do":[{"box":"vm","x":10,"y":598,"w":280,"h":112,"text":"5 Feb 2018: VIX\nmore than doubled\nin one session","tone":"red","size":18}]},{"cap":"The fixes: a leverage cap, a floor under the forecast, and a check against implied volatility, which looks forward where trailing realised looks back.","do":[{"series":"cap","chart":"lv","pts":[[3,1.5],[32,1.5]],"tone":"green","dash":true,"ms":600,"label":"cap 1.5×","lat":[32,1.5],"ldx":-4,"ldy":-12,"lanchor":"end","lsize":15},{"note":"fix","x":300,"y":752,"text":"cap the leverage · floor the forecast · check implied","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:action_vol_to_size:END -->
+    </section>
+    <!-- WB:action_vol_to_size-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Where Kelly fits</h2>
       <div class="sl-row"><div class="sl-box">Kelly leverage f* = μ / σ² → position vol f*·σ = μ/σ = Sharpe</div></div>
       <p class="sl-p"><strong>Full Kelly is a volatility target equal to your Sharpe ratio.</strong> An honest Sharpe of 0.5 means 50% volatility at full Kelly, 25% at half. A 5–10% target is a small fraction, on purpose: Sharpe estimates run high, and past Kelly, risk rises while growth falls. More in <a href="kelly-criterion-micro.html">the Kelly guide</a>.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8 · It actually happened</div>
       <h2 class="sl-h2">5 February 2018: "Volmageddon"</h2>
       <p class="sl-p">2017 was one of the calmest years on record for US stocks. Inverse-VIX products had grown large, and positions were sized from a long run of quiet trailing volatility.</p>
@@ -141,7 +154,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The chain</h2>
       <div class="sl-chain">
@@ -157,7 +170,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · The desk's verdict</div>
       <h2 class="sl-h2">What was tested here</h2>
       <div class="sl-stamp validated" data-evidence="tape-speed-persistence" data-evidence-date="2026-09-12"><span class="sl-stamp-tag">Desk test: held up</span><span><strong>Pace persists.</strong> A slow 15 minutes is followed by a slow hour, a fast one by a fast hour: monotonic in 68 of 68 cells across 17 pairs. That's why a volatility forecast is worth sizing on. Not a direction.</span></div>
@@ -165,7 +178,7 @@
       <div class="sl-stamp untested"><span class="sl-stamp-tag">Not tested here</span><span><strong>"Volatility targeting adds return."</strong> Not tested here. Published evidence is mixed: gains in Moreira &amp; Muir (2017), harder to capture out of sample in later work. The risk-control case stands either way.</span></div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11 · Template</div>
       <h2 class="sl-h2">Before you size</h2>
       <div class="sl-icard-grid">
@@ -178,7 +191,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -216,7 +229,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -295,5 +308,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

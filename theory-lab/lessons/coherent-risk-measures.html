@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,69 @@
       <li><strong>Real-world episode:</strong> in January 2012 a new VaR model roughly halved the reported risk of JPMorgan's "London Whale" credit book, and no positions were cut. Losses passed $6 billion. A risk measure is only as good as the model under it, coherent or not.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: a normal loss distribution with the 95% VaR drawn as a single cutoff line at 1.65 standard deviations and the tail beyond it shaded red; CVaR, the average of that red tail, sits further out at 2.06 standard deviations. Right: the two-bond example. Summed VaR of two bonds is $0 but VaR of the combined pair is $100, a sub-additivity violation. Summed CVaR is $160 and CVaR of the pair is $103.20, which respects sub-additivity.">
+      <text class="tlp-text2" x="30" y="22" font-size="13" font-weight="700">One position's losses</text>
+      <line class="tlp-line" x1="30" y1="200" x2="290" y2="200"/>
+      <polyline class="tlp-line blue thick" points="30.0,195.6 34.3,194.3 38.7,192.7 43.0,190.8 47.3,188.4 51.7,185.7 56.0,182.4 60.3,178.6 64.7,174.3 69.0,169.4 73.3,163.9 77.7,157.8 82.0,151.2 86.3,144.2 90.7,136.7 95.0,129.0 99.3,121.2 103.7,113.3 108.0,105.6 112.3,98.2 116.7,91.4 121.0,85.3 125.3,80.0 129.7,75.7 134.0,72.6 138.3,70.6 142.7,70.0 147.0,70.6 151.3,72.6 155.7,75.7 160.0,80.0 164.3,85.3 168.7,91.4 173.0,98.2 177.3,105.6 181.7,113.3 186.0,121.2 190.3,129.0 194.7,136.7 199.0,144.2 203.3,151.2 207.7,157.8 212.0,163.9 216.3,169.4 220.7,174.3 225.0,178.6 229.3,182.4 233.7,185.7 238.0,188.4 242.3,190.8 246.7,192.7 251.0,194.3 255.3,195.6 259.7,196.6 264.0,197.4 268.3,198.1 272.7,198.6 277.0,198.9 281.3,199.2 285.7,199.4 290.0,199.6"/>
+      <path class="tlp-red" opacity=".55" d="M214.0,200 L214.0,166.4 L216.3,169.4 L220.7,174.3 L225.0,178.6 L229.3,182.4 L233.7,185.7 L238.0,188.4 L242.3,190.8 L246.7,192.7 L251.0,194.3 L255.3,195.6 L259.7,196.6 L264.0,197.4 L268.3,198.1 L272.7,198.6 L277.0,198.9 L281.3,199.2 L285.7,199.4 L290.0,199.6 L290.0,200 Z"/>
+      <line class="tlp-line amber thick" x1="214" y1="42" x2="214" y2="200"/>
+      <text class="tlp-amber" x="208" y="52" text-anchor="end" font-size="13" font-weight="700">VaR 95% = 1.65σ</text>
+      <text class="tlp-amber" x="208" y="68" text-anchor="end" font-size="12">a single cutoff</text>
+      <circle class="tlp-red" cx="232" cy="200" r="5"/>
+      <line class="tlp-line red" x1="236" y1="194" x2="258" y2="146"/>
+      <text class="tlp-red" x="262" y="122" text-anchor="middle" font-size="13" font-weight="700">CVaR 2.06σ</text>
+      <text class="tlp-red" x="262" y="138" text-anchor="middle" font-size="12">tail average</text>
+      <text class="tlp-text3" x="290" y="218" text-anchor="end" font-size="12">loss →</text>
+      <line class="tlp-line dash" x1="312" y1="14" x2="312" y2="240"/>
+      <text class="tlp-text2" x="330" y="22" font-size="13" font-weight="700">Two bonds: sum of parts vs combined</text>
+      <line class="tlp-line" x1="330" y1="200" x2="570" y2="200"/>
+      <rect class="tlp-text3" x="335" y="197" width="44" height="3"/>
+      <rect class="tlp-red" x="389" y="125" width="44" height="75" opacity=".85"/>
+      <rect class="tlp-green" x="465" y="80" width="44" height="120" opacity=".85"/>
+      <rect class="tlp-green" x="519" y="122.6" width="44" height="77.4" opacity=".85"/>
+      <text class="tlp-text2" x="357" y="190" text-anchor="middle" font-size="13" font-weight="700">$0</text>
+      <text class="tlp-red" x="411" y="118" text-anchor="middle" font-size="13" font-weight="700">$100</text>
+      <text class="tlp-green" x="487" y="73" text-anchor="middle" font-size="13" font-weight="700">$160</text>
+      <text class="tlp-green" x="541" y="116" text-anchor="middle" font-size="13" font-weight="700">$103.20</text>
+      <text class="tlp-text3" x="357" y="216" text-anchor="middle" font-size="12">sum</text>
+      <text class="tlp-text3" x="411" y="216" text-anchor="middle" font-size="12">A+B</text>
+      <text class="tlp-text3" x="487" y="216" text-anchor="middle" font-size="12">sum</text>
+      <text class="tlp-text3" x="541" y="216" text-anchor="middle" font-size="12">A+B</text>
+      <text class="tlp-red" x="384" y="238" text-anchor="middle" font-size="13" font-weight="700">VaR: rises ✗</text>
+      <text class="tlp-green" x="514" y="238" text-anchor="middle" font-size="13" font-weight="700">CVaR: falls ✓</text>
+    </svg>
+    <figcaption>VaR reads one point on the loss curve; CVaR averages everything past it. That is why, for two bonds that each default 4% of the time, VaR says combining them creates $100 of risk out of $0, while CVaR correctly says the pair is less risky than the parts.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My risk report gives me Value at Risk every morning. People keep telling me it's broken. What's wrong with it?</p>
+      <p data-who="Quant">Nothing is wrong with the arithmetic. The problem is what it leaves out. Value at Risk at ninety-five percent is one line: the loss you only beat on one day in twenty.</p>
+      <p data-who="Trader">So it tells me where the bad days start.</p>
+      <p data-who="Quant">Exactly, and nothing about how bad they get. Two books can share the same line. One has a gentle slope behind it, the other has a cliff.</p>
+      <p data-who="Trader">And Expected Shortfall fixes that?</p>
+      <p data-who="Quant">Expected Shortfall, also called conditional Value at Risk, is the average of everything past the line. A point, versus an average of the whole tail.</p>
+      <p data-who="Trader">Does that difference ever matter in practice?</p>
+      <p data-who="Quant">It matters the moment you combine positions. Take two bonds. Each has a four percent chance of default, and each loses its full hundred dollars if it does. They are independent.</p>
+      <p data-who="Trader">Four percent is inside the five percent tail. So each bond on its own looks safe.</p>
+      <p data-who="Quant">Each one has a Value at Risk of zero dollars. Its ninety-fifth percentile outcome is no default. Zero plus zero is zero.</p>
+      <p data-who="Trader">And the two together?</p>
+      <p data-who="Quant">Now the chance that at least one defaults is seven point eight four percent. That is over five. So the pair has a Value at Risk of one hundred dollars. Put two zero-risk positions together, and the measure says you just created a hundred dollars of risk.</p>
+      <p data-who="Trader">So it says diversifying made me riskier. That's backwards.</p>
+      <p data-who="Quant">That is the broken rule. It's called sub-additivity: the whole should never look riskier than the sum of its parts. Artzner and three co-authors set out four rules for a sensible risk measure in 1999. Value at Risk fails exactly that one.</p>
+      <p data-who="Trader">And the average version passes?</p>
+      <p data-who="Quant">It passes all four. Each bond alone has an Expected Shortfall of eighty dollars, so a hundred and sixty for the two. The pair together comes to one hundred and three dollars twenty. Less than the sum, as it should be. That is a big part of why bank capital rules moved to Expected Shortfall.</p>
+      <p data-who="Trader">So I switch my limits to Expected Shortfall and I'm covered?</p>
+      <p data-who="Quant">Not on its own. Think of the London Whale at JPMorgan in 2012. The credit book was over its limit. A new model roughly halved the reported risk, and no position was cut. The model had a spreadsheet error, and losses passed six billion dollars. An Expected Shortfall built on the same spreadsheet would have been wrong too.</p>
+      <p data-who="Trader">So what's the one-line version?</p>
+      <p data-who="Quant">Value at Risk shows you where the cliff edge is, Expected Shortfall shows you how far the drop goes, and neither is better than the model underneath.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -79,6 +143,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where CVaR comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{VaR}_p(L) = \color{#fbbf24}{\inf\{\, \ell : P(L > \ell) \le 1-p \,\}} \]</div>
+      <p>Start with the cutoff. At \(p = 0.95\), VaR is the smallest loss you exceed at most 5% of the time. It is one point on the loss distribution.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{CVaR}_p(L) = \color{#fbbf24}{\int_p^1 \text{VaR}_u(L)\,du} \]</div>
+      <p>Now sweep past the cutoff. Add up the loss at every confidence level \(u\) from \(p\) to 1. This collects every outcome in the worst \(1-p\) share, not just its edge.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{CVaR}_p(L) = \color{#fbbf24}{\frac{1}{1-p}}\int_p^1 \text{VaR}_u(L)\,du \]</div>
+      <p>Divide by the width of the tail, \(1-p\). The sum becomes an average: the typical loss on one of the bad days.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\text{CVaR}_p(L) = \frac{1}{1-p}\int_p^1 \text{VaR}_u(L)\,du \;=\; E[\, L \mid L > \text{VaR}_p(L) \,]} \]</div>
+      <p>For a continuous loss this is simply the average loss given you are past VaR. In the two-bond example below it gives $80 for each bond and $103.20 for the pair, less than the $160 sum: sub-additivity holds.</p>
+    </div>
+  </div>
   <p>
   We'll define both risk measures precisely, state the four axioms a "coherent" risk measure must
   satisfy, then work through exactly why VaR fails one of them while CVaR passes all four.
@@ -290,6 +374,15 @@
       alone, summed, and for the combined portfolio (still assuming independence) — recalculate instantly,
       so you can find inputs where sub-additivity holds as well as the one above where it breaks.
     </p>
+    <div class="tl-predict">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The worked example uses a 4% default chance per bond. Cut it to 2%, keeping the $100 face value and 95% confidence. What does VaR(A+B) become? Pick one, then type 2 into the first field below to check.</div>
+      <ul class="tl-predict-options">
+        <li data-correct>$0: the violation disappears</li>
+        <li>$100: still violated</li>
+        <li>$200: both bonds count</li>
+      </ul>
+      <div class="tl-predict-reveal"><p><strong>$0.</strong> The chance that at least one bond defaults is now \(1 - 0.98^2 = 3.96\%\), inside the 5% tail, so the pair's 95th-percentile outcome is still "no default". The violation only appears once that joint chance crosses 5%. Now try 3%: \(1 - 0.97^2 = 5.91\%\), and VaR(A+B) jumps back to $100 while each bond alone still shows $0.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Default probability (%)</span></div>
@@ -375,6 +468,12 @@
     visible together, didn't actually become more severe than the sum of the parts.
     </p>
   </div>
+
+  <!-- WB:coherent_risk_measures:START -->
+  <div class="wb" id="wb-coherent_risk_measures" data-title="Two safe bonds, one unsafe VaR, drawn step by step">
+    <script type="application/json">{"w":600,"h":700,"intro":"Two bonds that each look safe on their own, one risk limit, and what happens when you put them in the same book. Press play, or step through.","steps":[{"cap":"Two corporate bonds, A and B. Each has a 4% chance of defaulting over the horizon, and on default it loses its full $100. Otherwise it loses nothing. They are independent.","do":[{"icon":"a","name":"scroll","x":30,"y":8,"s":0.6,"tone":"blue","label":"bond A\n4% · −$100","lsize":17},{"icon":"b","name":"scroll","x":180,"y":8,"s":0.6,"tone":"blue","label":"bond B\n4% · −$100","lsize":17}]},{"cap":"The risk rule: 95% VaR, the smallest loss you exceed at most 5% of the time. Anything with a 5% chance or less sits in the tail the limit ignores.","do":[{"box":"rule","x":360,"y":16,"w":220,"h":90,"text":"95% VaR","tone":"amber","sub":"tail = 5%","size":20}]},{"cap":"Bond A alone: the chance of losing anything is 4%, under the 5% line. So its 95th-percentile outcome is \"no default\", and VaR(A) = $0.","do":[{"chart":"odds","x":10,"y":130,"w":580,"h":250,"title":"Chance of losing anything (%)","xd":[0.4,3.6],"yd":[0,10],"yt":[[0,"0"],[5,"5%"],[10,"10%"]],"xt":[[1,"A alone"],[2,"B alone"],[3,"A + B"]],"pl":52},{"series":"cut","chart":"odds","pts":[[0.4,5],[3.6,5]],"tone":"amber","dash":true,"ms":500,"label":"5% tail","lat":[3.6,5],"ldx":-4,"ldy":-12,"lanchor":"end","lsize":16},{"bars":"o1","chart":"odds","data":[[1,4,"","blue"]],"bw":60,"ms":800},{"note":"o1l","chart":"odds","at":[1,2],"text":"4%","tone":null,"size":19,"anchor":"middle","dx":0,"dy":0},{"note":"va","x":300,"y":412,"text":"VaR(A) = $0","size":19,"anchor":"middle","tone":"blue"}]},{"cap":"Bond B is identical: 4%, VaR(B) = $0. Added up, the two bonds carry $0 of measured risk.","do":[{"bars":"o2","chart":"odds","data":[[2,4,"","blue"]],"bw":60,"ms":800},{"note":"o2l","chart":"odds","at":[2,2],"text":"4%","tone":null,"size":19,"anchor":"middle","dx":0,"dy":0},{"hide":"va"},{"note":"sum0","x":300,"y":412,"text":"VaR(A) + VaR(B) = $0 + $0 = $0","size":19,"anchor":"middle","tone":"blue"}]},{"cap":"Now hold both. Three outcomes: no default 92.16%, exactly one 7.68%, both 0.16%. The chance of losing anything is 7.84%, over the 5% line.","do":[{"bars":"o3","chart":"odds","data":[[3,7.84,"7.84%","red"]],"bw":60,"ms":900},{"pulse":"rule"}]},{"cap":"So the pair's 95th-percentile outcome is \"one default\": VaR(A + B) = $100. Two \"riskless\" bonds, combined, show $100 of risk. That breaks sub-additivity.","do":[{"hide":"sum0"},{"note":"viol","x":300,"y":412,"text":"VaR(A + B) = $100  >  $0 + $0","size":20,"anchor":"middle","tone":"red"}]},{"cap":"Same bonds, CVaR instead: average the worst 5% of outcomes. For one bond that is the 4% default at $100 plus 1% of \"no default\" at $0: (0.04 × 100 + 0.01 × 0) ÷ 0.05 = $80. Two bonds: $160.","do":[{"chart":"cmp","x":10,"y":440,"w":580,"h":250,"title":"Measured risk ($)","xd":[0.4,4.6],"yd":[0,180],"yt":[[0,"$0"],[100,"$100"],[160,"$160"]],"xt":[[1,"VaR sum"],[2,"VaR A+B"],[3,"CVaR sum"],[4,"CVaR A+B"]],"pl":58},{"bars":"c1","chart":"cmp","data":[[1,0,"$0","blue"],[2,100,"$100","red"]],"bw":56,"ms":900},{"bars":"c3","chart":"cmp","data":[[3,160,"$160","green"]],"bw":56,"ms":900}]},{"cap":"For the pair, the worst 5% is 0.16% at $200 plus 4.84% at $100: (0.0016 × 200 + 0.0484 × 100) ÷ 0.05 = $103.20. Below $160. Combining lowers the risk, as diversification should.","do":[{"bars":"c4","chart":"cmp","data":[[4,103.2,"$103.20","green"]],"bw":56,"ms":900}]},{"cap":"The reason: VaR reads one point, the edge of the tail, so it jumps when the joint chance crosses 5%. CVaR averages the whole tail, so it cannot be fooled by where that edge lands. It passes all four of Artzner's rules.","do":[{"hide":"viol"},{"note":"why","x":300,"y":412,"text":"VaR: a point · CVaR: the tail average","size":20,"anchor":"middle","tone":"green"}]},{"cap":"One limit on all of it: coherence is a property of the formula. In 2012 a new VaR model roughly halved the London Whale book's risk with no position cut, and losses passed $6 billion. A CVaR fed by the same broken model would have been wrong too.","do":[{"hide":"rule"},{"icon":"warn","name":"warn","x":430,"y":8,"s":0.6,"tone":"red","label":"the model\nunder it?","lsize":17}]}]}</script>
+  </div>
+  <!-- WB:coherent_risk_measures:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: the London Whale, 2012</h2>
@@ -524,6 +623,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill" data-date="2012-01">
+    <div class="tl-drill-label">Scenario drill · late January 2012</div>
+    <h3>The book is over its VaR limit, and a new model says it isn't</h3>
+    <p>You sit on the risk team that oversees a big bank's large credit-derivatives book, which the bank describes as a hedge. This month the book has been over its VaR limit. The office running it has just switched to a new VaR model it had been developing, and the reported VaR has roughly halved. The book is back inside its limit. Not one position has been cut. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Accept the new number. The book is inside its limit, so there is nothing to do.<div class="tl-drill-why">The positions did not change; only the measurement did. A model that halves the risk of an unchanged book, chosen by the office the limit is meant to constrain, is exactly the number to check before you trust it.</div></li>
+      <li data-verdict="bad">Move the limit to Expected Shortfall on the new model. It is coherent, so the problem is solved.<div class="tl-drill-why">Coherence is a property of the formula, not of the data under it. An Expected Shortfall computed from the same flawed model would understate the tail just as badly.</div></li>
+      <li data-verdict="good">Treat the halving as a red flag. Run the old and new models side by side, get the new one checked, and keep the old limit binding, cutting positions if needed, until the gap is explained.<div class="tl-drill-why">The risk measure is one quantile from one model, so the whole gap between "over" and "inside" the limit is one modelling choice. Until you know why the number halved, the honest assumption is that the risk did not.</div></li>
+      <li data-verdict="ok">Keep the new model, but ask the office to trim positions a little anyway, to be safe.<div class="tl-drill-why">Better than nothing, but it skips the real question: is the new number right? A token cut leaves an unknown, possibly large, risk on the book.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> This was JPMorgan's Chief Investment Office, and the book later known as the London Whale. The positions stayed on. The bank's own task force later found the new model ran on spreadsheets filled in by copying and pasting, and that one formula divided by a sum where it should have divided by an average, which muted the volatility it measured. In May 2012 the bank disclosed the losses and went back to its old model, under which first-quarter VaR came out at roughly double the reported figure. Losses for the year passed $6 billion, a US Senate subcommittee investigated, and regulators in the US and the UK fined the bank.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -608,6 +720,26 @@
     <li>Basel Committee on Banking Supervision, "Minimum Capital Requirements for Market Risk" (the Fundamental Review of the Trading Book, FRTB), Bank for International Settlements, 2019 — the regulatory framework that replaced VaR with Expected Shortfall as the standard market-risk capital measure.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-stats-normal.html">Descriptive Statistics &amp; the Normal Distribution</a> <span>· percentiles and the normal tail VaR reads from</span></li>
+        <li><a href="primer-probability.html">Probability &amp; Random Variables</a> <span>· independence and the chance that two bonds both default</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a> <span>· estimating the thin tail that CVaR averages over</span></li>
+        <li><a href="tail-risk-hedging-convexity.html">Tail Risk Hedging &amp; Portfolio Convexity</a> <span>· what to do about the tail once you can measure it</span></li>
+        <!-- DESK:START --><li><a href="institutional-factor-marginal-component-var.html">Factor VaR, Marginal VaR &amp; Component VaR</a> <span>· splitting one risk number across positions</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every limit you trade under is a risk number, and knowing what that number ignores tells you when "inside the limit" means very little.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
@@ -727,9 +859,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

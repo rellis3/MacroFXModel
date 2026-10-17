@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Triple-Barrier Labelling &amp; Meta-Labelling — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,60 @@
       <li><strong>How it reached trading:</strong> López de Prado's 2018 book turned the desk's stop-loss, take-profit and time limit into the ML training target, and it is now a standard step in ML research pipelines for trading.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A price path from an entry at 1.0850, with a take-profit barrier 20 pips above at 1.0870, a stop barrier 10 pips below at 1.0840, and a time limit at bar 10. The path dips 14 pips by bar 5 and hits the stop first, so the triple-barrier label is minus one. The path then recovers to 9 pips up at bar 10, so a fixed 10-bar label would call the same entry plus one.">
+      <line class="tlp-line green dash" x1="70" y1="40" x2="470" y2="40"/>
+      <line class="tlp-line red dash" x1="70" y1="160" x2="470" y2="160"/>
+      <line class="tlp-line amber dash" x1="470" y1="30" x2="470" y2="212"/>
+      <line class="tlp-line" x1="60" y1="212" x2="590" y2="212"/>
+      <polyline class="tlp-line dash" points="270,176 310,148 350,164 390,132 430,100 470,84"/>
+      <polyline class="tlp-line blue thick" points="70,120 110,108 150,136 190,112 230,156 270,176"/>
+      <circle class="tlp-blue" cx="70" cy="120" r="5"/>
+      <circle class="tlp-red" cx="270" cy="176" r="7"/>
+      <circle class="tlp-amber" cx="470" cy="84" r="6"/>
+      <text class="tlp-blue" x="70" y="102" text-anchor="middle" font-size="13" font-weight="700">entry</text>
+      <text class="tlp-amber" x="470" y="22" text-anchor="middle" font-size="13" font-weight="700">V · bar 10</text>
+      <text class="tlp-green" x="480" y="44" font-size="13" font-weight="700">U 1.0870 target</text>
+      <text class="tlp-red" x="480" y="164" font-size="13" font-weight="700">L 1.0840 stop</text>
+      <text class="tlp-red" x="270" y="200" text-anchor="middle" font-size="14" font-weight="700">−1 · stop hit first, bar 5</text>
+      <text class="tlp-amber" x="458" y="72" text-anchor="end" font-size="14" font-weight="700">fixed 10-bar label: +1</text>
+      <text class="tlp-text2" x="80" y="64" font-size="13">first touch decides the label</text>
+      <text class="tlp-text3" x="70" y="228" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="270" y="228" text-anchor="middle" font-size="12">5</text>
+      <text class="tlp-text3" x="470" y="228" text-anchor="middle" font-size="12">10</text>
+      <text class="tlp-text3" x="590" y="228" text-anchor="end" font-size="12">bars since entry</text>
+    </svg>
+    <figcaption>One path, two labels. The triple barrier stops at the first touch: the 10-pip stop at bar 5, so −1. A fixed 10-bar label only checks bar 10, where price is 9 pips up, and calls it +1. A real trade with that stop had already lost.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I'm training a model to pick entries. My label is simple: was the price higher ten bars later? What's wrong with that?</p>
+      <p data-who="Quant">It describes a trade you would never place. You don't hold blindly for ten bars. You have a stop, a target and a time limit, and the trade ends at whichever comes first.</p>
+      <p data-who="Trader">But over ten bars, surely it mostly comes out the same?</p>
+      <p data-who="Quant">Not when it matters. Picture a path that drops fourteen pips by bar five, then recovers to nine pips up by bar ten. The ten-bar label says win. With a ten-pip stop, your real trade was stopped out at bar five. A loss.</p>
+      <p data-who="Trader">So the model learns from wins that were really losses.</p>
+      <p data-who="Quant">Exactly. The fix is the triple barrier. At every entry you set three barriers before you look: a take-profit above, a stop below, and a time limit. Then you walk forward bar by bar, and the first one touched is the label.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">Long euro dollar at one point zero eight five zero. Volatility is about five pips a bar. Put the target four times that above, twenty pips, at one point zero eight seven zero. Put the stop three times below, fifteen pips. Time limit, ten bars.</p>
+      <p data-who="Trader">And what happens?</p>
+      <p data-who="Quant">The price wobbles for six bars without touching either barrier. At bar seven it trades at one point zero eight seven two. Target hit. Label plus one. Bars eight to ten don't matter, because a real position is already closed.</p>
+      <p data-who="Trader">Why tie the barriers to volatility instead of a fixed twenty pips?</p>
+      <p data-who="Quant">Because twenty pips is huge on a quiet day and nothing on a wild one. Scaling by volatility keeps the barriers equally hard to reach in both. Just make sure the volatility estimate only uses data from before the entry.</p>
+      <p data-who="Trader">And meta-labelling?</p>
+      <p data-who="Quant">A second idea on top. Keep your signal for direction, even if it's weak. Train a separate model that only predicts whether a signal that already fired will hit its target first.</p>
+      <p data-who="Trader">Does that help?</p>
+      <p data-who="Quant">In the lesson's example, ten signals won five times. Coin flip. Take only the four the meta-model rated above sixty percent, and three of the four win. Seventy-five percent, but on four trades instead of ten. It ranks a real signal. It can't create edge from noise.</p>
+      <p data-who="Trader">Where does this come from?</p>
+      <p data-who="Quant">Marcos López de Prado set it out in his 2018 book on machine learning for finance. Stops and targets are old desk practice. He made them the training target.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Label each trade the way it would actually end: first barrier touched wins.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -109,6 +164,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The triple-barrier method, precisely</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the triple-barrier label comes from, one piece at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ U = P_0\big(1 + \color{#fbbf24}{k_u\,\hat\sigma_{t_0}}\big) \]</div>
+      <p>The take-profit sits a volatility multiple above the entry. With \(\hat\sigma_{t_0} = 0.0005\) and \(k_u = 4\), that is 20 pips up, 1.0870.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ U = P_0\big(1 + k_u\,\hat\sigma_{t_0}\big), \quad \color{#fbbf24}{L = P_0\big(1 - k_l\,\hat\sigma_{t_0}\big)} \]</div>
+      <p>The stop sits a separate multiple below. With \(k_l = 3\) it is 15 pips down, 1.0835. The two widths need not match.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ U,\ L, \quad \color{#fbbf24}{V = t_0 + h} \]</div>
+      <p>Add the time limit: \(h\) bars after entry, 10 in the worked example. All three barriers are fixed before the path is seen.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\tau = \min\big(\tau_U,\ \tau_L,\ V\big)} \]</div>
+      <p>Walk forward bar by bar. \(\tau\) is the first bar where any barrier is reached. In the worked example the price first reaches \(U\) at bar 7.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{y = \begin{cases} +1 & \tau = \tau_U \\ -1 & \tau = \tau_L \\ 0 \text{ or } r_\tau & \tau = V \end{cases}} \]</div>
+      <p>The barrier that fired first is the label. Bar 7 touched the upper barrier, so \(y = +1\), whatever the price did afterwards.</p>
+    </div>
+  </div>
   <p>
     Fix an entry time \(t_0\) with entry price \(P_0\), and a volatility estimate \(\hat\sigma_{t_0}\) available
     at (or before) \(t_0\) — a GARCH conditional volatility, an EWMA, a Garman-Klass/Yang-Zhang range estimator,
@@ -320,6 +399,12 @@
     </div>
   </div>
 
+  <!-- WB:institutional_triple_barrier_labeling:START -->
+  <div class="wb" id="wb-institutional_triple_barrier_labeling" data-title="The barrier race, then the meta-label filter">
+    <script type="application/json">{"w":600,"h":806,"intro":"A trade ends at its stop, its target or its time limit, whichever comes first. Label it the same way. Press play, or step through.","steps":[{"cap":"You go long EUR/USD at 1.0850. A point-in-time volatility estimate says about 5 pips a bar.","do":[{"icon":"you","name":"person","x":20,"y":4,"s":0.66,"tone":"blue","label":"long 1.0850","lsize":17},{"note":"sig","x":360,"y":40,"text":"σ̂ = 5 pips a bar, known at entry","size":19,"anchor":"middle"}]},{"cap":"Set three barriers before you look at the path: a take-profit 4σ up at 1.0870, a stop 3σ down at 1.0835, and a time limit 10 bars out.","do":[{"chart":"w","x":10,"y":92,"w":580,"h":236,"title":"Worked example: pips from entry","xd":[0,10],"yd":[-20,28],"yt":[[20,"+20"],[0,"0"],[-15,"−15"]],"xt":[[0,"0"],[5,"5"],[10,"10 bars"]],"pl":46,"pr":110},{"series":"u","chart":"w","pts":[[0,20],[10,20]],"tone":"green","dash":true,"ms":500,"label":"U 1.0870","lat":[10,20],"ldx":8,"ldy":0,"lanchor":"start","lsize":16},{"series":"l","chart":"w","pts":[[0,-15],[10,-15]],"tone":"red","dash":true,"ms":500,"label":"L 1.0835","lat":[10,-15],"ldx":8,"ldy":0,"lanchor":"start","lsize":16},{"series":"v","chart":"w","pts":[[10,-20],[10,28]],"tone":"amber","dash":true,"ms":400,"label":"V","lat":[10,26],"ldx":8,"ldy":0,"lanchor":"start","lsize":16}]},{"cap":"Walk forward bar by bar, in order, exactly as an open position would. Through bar 6 the price stays between the barriers: the high so far is 1.0865.","do":[{"series":"p6","chart":"w","pts":[[0,0],[1,5],[2,-2],[3,7],[4,12],[5,0],[6,15]],"tone":"blue","ms":1400}]},{"cap":"Bar 7 trades at 1.0872, at or above the upper barrier. The walk stops here: the label is +1.","do":[{"series":"p7","chart":"w","pts":[[6,15],[7,22]],"tone":"blue","ms":500},{"dot":"t7","chart":"w","at":[7,22],"text":"+1 at bar 7","tone":"green","dy":-16}]},{"cap":"Bars 8 to 10 no longer matter. A real position closed by its take-profit at bar 7 never sees them, so the label ignores them too.","do":[{"note":"moot","chart":"w","at":[8.6,2],"text":"bars 8–10:\nmoot","tone":null,"size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Now the lesson's 20-bar path, with the stop tightened to 2σ, 10 pips below entry. At bar 5 the price is 14 pips down. The stop is hit first: the label is −1.","do":[{"chart":"s","x":10,"y":346,"w":580,"h":236,"title":"Same idea, the 20-bar path: pips from entry","xd":[0,20],"yd":[-30,36],"yt":[[20,"+20"],[0,"0"],[-10,"−10"]],"xt":[[0,"0"],[5,"5"],[10,"10"],[20,"20 bars"]],"pl":46,"pr":110},{"series":"u2","chart":"s","pts":[[0,20],[20,20]],"tone":"green","dash":true,"ms":500,"label":"U +20","lat":[20,20],"ldx":8,"ldy":0,"lanchor":"start","lsize":16},{"series":"l2","chart":"s","pts":[[0,-10],[20,-10]],"tone":"red","dash":true,"ms":500,"label":"L −10","lat":[20,-10],"ldx":8,"ldy":0,"lanchor":"start","lsize":16},{"series":"v2","chart":"s","pts":[[10,-30],[10,36]],"tone":"amber","dash":true,"ms":400},{"series":"q5","chart":"s","pts":[[0,0],[1,3],[2,-4],[3,2],[4,-9],[5,-14]],"tone":"blue","ms":1200},{"dot":"t5","chart":"s","at":[5,-14],"text":"−1 at bar 5","tone":"red","dy":22}]},{"cap":"A fixed 10-bar label ignores the path and checks only bar 10, where price is 9 pips up. It calls this +1. A real trade with that stop had already lost.","do":[{"series":"q10","chart":"s","pts":[[5,-14],[6,-7],[7,-11],[8,-3],[9,5],[10,9]],"tone":null,"dash":true,"ms":700},{"dot":"f10","chart":"s","at":[10,9],"text":"fixed 10-bar label: +1","tone":"amber","dx":-8,"dy":-18,"anchor":"end"}]},{"cap":"Meta-labelling is a second idea. A primary signal fired 10 times and won 5: a coin flip. A separate model gives each fired signal a probability of winning.","do":[{"chart":"m","x":10,"y":600,"w":580,"h":196,"title":"Ten fired signals: meta-probability, and the outcome","xd":[0.4,10.6],"yd":[0,1.5],"yt":[[0.6,"0.60"]],"xt":[[1,"1"],[10,"10"]],"pl":50,"pr":14,"pt":36},{"bars":"mb","chart":"m","data":[[1,0.82,"","green"],[2,0.71,"","green"],[3,0.65,"","green"],[4,0.61,"","red"],[5,0.58,"","green"],[6,0.54,"","red"],[7,0.47,"","red"],[8,0.39,"","green"],[9,0.33,"","red"],[10,0.22,"","red"]],"bw":30,"ms":1100},{"note":"key","chart":"m","at":[5.5,1.13],"text":"green = target first (+1) · red = stop first (−1)","tone":null,"size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Take only signals above 0.60. Four clear the bar and three of them win: 75% instead of 50%, from 4 trades instead of 10.","do":[{"series":"thr","chart":"m","pts":[[0.4,0.6],[10.6,0.6]],"tone":"amber","dash":true,"ms":500},{"hide":"key"},{"note":"kept","chart":"m","at":[5.5,1.36],"text":"above 0.60: 4 taken · 3 win = 75%","tone":"green","size":18,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Compare taking every signal: 5 wins from 10, 50%. Higher precision costs trades. And the filter can only rank a signal with real information in it. On pure noise it finds splits that vanish out of sample.","do":[{"note":"warn","chart":"m","at":[5.5,1.13],"text":"all signals: 10 taken · 5 win = 50%","tone":null,"size":17,"anchor":"middle","dx":0,"dy":0}]}]}</script>
+  </div>
+  <!-- WB:institutional_triple_barrier_labeling:END -->
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Meta-labelling: a second, separate idea</h2>
   <p>
@@ -421,6 +506,10 @@
       Same ten signals as above. Drag the threshold and watch how many signals clear it and what their combined
       win rate becomes.
     </p>
+    <div class="tl-predict" data-answer="66.7" data-tol="2" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At a 0.60 threshold, four signals clear it and three win: 75%. Lower the threshold to 0.50. What will the filtered win rate be? Lock in a guess, then drag the slider to 0.50 to check.</div>
+      <div class="tl-predict-reveal"><p><strong>66.7%.</strong> Two more signals clear the bar: signal 5 (0.58, a win) and signal 6 (0.54, a loss). That makes six taken and four wins, 4/6 = 66.7%. A looser filter takes more trades at lower precision. Now try 0.30 and watch the rate slide back toward the raw 50%.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Meta-probability threshold</span><span class="tl-live" id="ml-thresh-val">0.60</span></div>
@@ -524,6 +613,19 @@
     measuring the wrong thing to begin with.
   </p>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative labelling decision</div>
+    <h3>Which label do you train on?</h3>
+    <p>You are building training labels for a model that will trade EUR/USD with a stop 3σ below entry, a target 4σ above and a 10-bar time limit. A colleague suggests labelling every entry by the sign of the 10-bar return because it is quicker. Another suggests triple-barrier labels with σ taken from the whole sample's volatility, "because it is more accurate". What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Use the sign of the 10-bar return. Over many entries the errors should wash out.<div class="tl-drill-why">The errors are not random. Every path that hits the stop and then recovers is labelled a win, so the model learns to like exactly the entries your stop turns into losses.</div></li>
+      <li data-verdict="bad">Use triple-barrier labels with σ from the full sample.<div class="tl-drill-why">The barrier walk is fine, but a full-sample σ knows how volatile the future turned out to be. That leaks information from after the entry into where the barriers sit today.</div></li>
+      <li data-verdict="good">Use triple-barrier labels with the trade's real multiples, 4σ, 3σ and 10 bars, and a σ computed only from data before each entry.<div class="tl-drill-why">The label then describes the trade you will actually run, and nothing in it peeks past the entry. This is the lesson's recipe.</div></li>
+      <li data-verdict="ok">Use triple-barrier labels with fixed 20-pip and 15-pip barriers for every entry.<div class="tl-drill-why">It respects the first-touch race, which is the main fix. But fixed widths are easy to hit on wild days and hard on quiet ones, so labels from different regimes stop being comparable.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson says.</strong> This is an illustrative decision, not a historical episode. The lesson's rule settles it: label each entry by whichever barrier its real exit rules would hit first, with barrier widths scaled by a volatility estimate known at the entry. In the lesson's own 20-bar path, a 10-pip stop is hit at bar 5 while the 10-bar return is 9 pips up, so the quick label and the real trade disagree.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -616,6 +718,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> <span>· why the volatility estimate must be point-in-time</span></li>
+        <li><a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a> <span>· one way to get the σ that sets barrier widths</span></li>
+        <!-- DESK:START --><li><a href="institutional-reality-check-spa.html">White's Reality Check &amp; Hansen's SPA Test</a> <span>· honest testing of the filtered results</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> <span>· overlapping barrier labels leak between folds</span></li>
+        <li><a href="gradient-boosting.html">Gradient Boosting</a> <span>· a common choice for the meta-model</span></li>
+        <!-- DESK:START --><li><a href="institutional-trade-classification.html">Trade Classification: Lee-Ready &amp; Bulk Volume Classification</a> <span>· the next advanced lesson: who started each trade</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a model can only learn the trade you label, so labelling by first touch makes it learn the trade your stops and targets will actually give you.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-reality-check-spa.html">← White's Reality Check &amp; Hansen's SPA Test</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -646,7 +769,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   // ── Live triple-barrier widget: fixed deterministic 20-bar synthetic path ──
@@ -827,5 +951,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

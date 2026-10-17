@@ -7,6 +7,23 @@
   if (!D) return;
   var ADD = {
  "stages": {
+  "foundations": [
+   "action-expected-value",
+   "action-base-rates",
+   "action-vol-to-size"
+  ],
+  "stochastic": [
+   "action-vol-to-size",
+   "action-expected-value",
+   "action-edge-after-costs"
+  ],
+  "quantml": [
+   "action-base-rates",
+   "action-combining-signals",
+   "action-calibration-scoring",
+   "action-edge-after-costs",
+   "action-edge-decay"
+  ],
   "volatility": [
    "action-trade-plan",
    "action-expected-value",

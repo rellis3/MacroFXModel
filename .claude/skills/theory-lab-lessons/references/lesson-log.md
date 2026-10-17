@@ -22,4 +22,11 @@ Format: `YYYY-MM-DD — slug (full + micro) — category — source notes / why`
 
 ## Added
 
-(none yet; add entries here)
+- 2026-10-17: VARK layer added to all 175 full lessons (summary picture, two-voice spoken version, equation
+  build-up, predict-first, scenario drill, Where this fits; style guide §5.20) plus a whiteboard for every lesson
+  (133 new scene files). Three new paths (foundations, stochastic, quantml) put every non-institutional lesson
+  on a path. New public capstones: capstone-systems.html, capstone-risk.html. Spaced review card (review.js).
+  Corrected during the rollout: pca-factors eigenvalues/loadings, systemic-risk-networks round-2 h_B,
+  correlation-networks-mst longest edge, numerical-integration 15^7 count, newton-raphson f(y1)/P'(y0),
+  sde-numerical-schemes strong-error chart, hamiltonian-monte-carlo-nuts leapfrog (interior kicks were ε/2),
+  institutional-kyle-obizhaeva-invariance scaling exponents, institutional-avellaneda-stoikov inventory sign.

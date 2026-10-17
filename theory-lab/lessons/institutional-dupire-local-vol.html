@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dupire's Local Volatility Model — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,68 @@
       <li><strong>How it reached trading:</strong> Dupire and Derman &amp; Kani published it in 1994 so exotics could be priced consistently with every vanilla; it is still the calibration anchor on equity exotics desks, often inside local-stochastic-vol hybrids.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the lesson's five Black-Scholes call prices on a cross-shaped stencil around strike 100 and one year: 13.3465 at strike 95, 10.4506 at the centre, 8.0214 at strike 105, 11.0820 at 1.1 years and 9.7982 at 0.9 years. Middle: the three slopes read off them, a strike slope of minus 0.5325, a strike curvature of 0.01867 and a calendar slope of 6.4190. Right: Dupire's formula turns them into a local vol of about 20.06%, against a true flat vol of 20%.">
+      <text class="tlp-text" x="20" y="20" font-size="13" font-weight="700">Five call prices around K = 100, T = 1</text>
+      <line class="tlp-line blue dash" x1="60" y1="120" x2="240" y2="120"/>
+      <line class="tlp-line green dash" x1="150" y1="50" x2="150" y2="190"/>
+      <circle class="tlp-blue" cx="60" cy="120" r="6"/>
+      <circle class="tlp-amber" cx="150" cy="120" r="7"/>
+      <circle class="tlp-blue" cx="240" cy="120" r="6"/>
+      <circle class="tlp-green" cx="150" cy="50" r="6"/>
+      <circle class="tlp-green" cx="150" cy="190" r="6"/>
+      <text class="tlp-blue" x="60" y="106" text-anchor="middle" font-size="13" font-weight="700">13.3465</text>
+      <text class="tlp-text3" x="60" y="140" text-anchor="middle" font-size="12">K = 95</text>
+      <text class="tlp-blue" x="240" y="106" text-anchor="middle" font-size="13" font-weight="700">8.0214</text>
+      <text class="tlp-text3" x="240" y="140" text-anchor="middle" font-size="12">K = 105</text>
+      <text class="tlp-amber" x="160" y="106" font-size="13" font-weight="700">10.4506</text>
+      <text class="tlp-green" x="160" y="54" font-size="13" font-weight="700">11.0820</text>
+      <text class="tlp-text3" x="140" y="54" text-anchor="end" font-size="12">T = 1.1</text>
+      <text class="tlp-green" x="160" y="194" font-size="13" font-weight="700">9.7982</text>
+      <text class="tlp-text3" x="140" y="194" text-anchor="end" font-size="12">T = 0.9</text>
+      <rect class="tlp-box blue" x="290" y="38" width="160" height="32" rx="6"/>
+      <text class="tlp-blue" x="370" y="59" text-anchor="middle" font-size="13" font-weight="700">∂C/∂K ≈ −0.5325</text>
+      <rect class="tlp-box blue" x="290" y="80" width="160" height="32" rx="6"/>
+      <text class="tlp-blue" x="370" y="101" text-anchor="middle" font-size="13" font-weight="700">∂²C/∂K² ≈ 0.01867</text>
+      <rect class="tlp-box green" x="290" y="122" width="160" height="32" rx="6"/>
+      <text class="tlp-green" x="370" y="143" text-anchor="middle" font-size="13" font-weight="700">∂C/∂T ≈ 6.4190</text>
+      <text class="tlp-purple" x="290" y="182" font-size="13" font-weight="700">σ²_local = 3.7564 ÷ 93.33</text>
+      <text class="tlp-text3" x="460" y="101" font-size="16">→</text>
+      <rect class="tlp-box green" x="480" y="56" width="108" height="84" rx="8"/>
+      <text class="tlp-text2" x="534" y="80" text-anchor="middle" font-size="12">local vol</text>
+      <text class="tlp-green" x="534" y="104" text-anchor="middle" font-size="18" font-weight="700">20.06%</text>
+      <text class="tlp-text3" x="534" y="126" text-anchor="middle" font-size="12">true: 20%</text>
+      <text class="tlp-text2" x="20" y="228" font-size="13">One source of randomness: know the spot and the time, and the vol is a number you look up.</text>
+    </svg>
+    <figcaption>Dupire reads volatility straight off the slopes of the call-price surface. Fed the five prices of a flat 20% world, it hands back about 20.06%. Real quotes are noisy, so desks smooth the surface first.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My vanilla smile is marked. A client wants a barrier on the same pair. Which volatility do I use?</p>
+      <p data-who="Quant">Not one flat number. Price the barrier at the at-the-money vol and it disagrees with the vanillas on your own book. Someone could hedge one against the other and pick you off.</p>
+      <p data-who="Trader">So I need a model that matches every vanilla at once.</p>
+      <p data-who="Quant">That's what Bruno Dupire gave us in 1994, in a paper called Pricing with a Smile. Emanuel Derman and Iraj Kani built the same idea as a tree that same year.</p>
+      <p data-who="Trader">How is it different from Heston?</p>
+      <p data-who="Quant">Heston makes volatility random, with its own shock on top of the price shock. Two sources of randomness. Dupire keeps one. Volatility becomes a fixed map: tell me the spot and the date, and I'll read you the vol.</p>
+      <p data-who="Trader">And where does the map come from?</p>
+      <p data-who="Quant">Straight from option prices. Take how fast a call gains value as you add time, adjust for interest, and divide by how curved the call price is across strikes. That curvature is the market's probability of ending near that strike.</p>
+      <p data-who="Trader">Does it actually work?</p>
+      <p data-who="Quant">The lesson tests it. Five call prices from a world where volatility is a flat twenty percent, around a strike of a hundred and a one-year expiry. Run the formula and you get twenty point oh six percent. The tiny gap is just the coarse grid.</p>
+      <p data-who="Trader">So it fits perfectly.</p>
+      <p data-who="Quant">Today, by construction. Like tracing paper over a drawing. That's its strength and its catch. It's a calibration device, not a claim about how the market behaves.</p>
+      <p data-who="Trader">What's the catch exactly?</p>
+      <p data-who="Quant">Ask it what the smile looks like next month and its answer is typically too flat compared with what markets go on to show. For a barrier, where the path matters, that weakness bites. Many desks blend it with stochastic volatility for that reason.</p>
+      <p data-who="Trader">Anything practical to watch?</p>
+      <p data-who="Quant">Never feed it raw quotes. The curvature is a second difference, and it blows up noise. In the lesson's example, moving one quote by five cents pushes the answer from about twenty to about twenty-two and a half percent. Fit a smooth surface first.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Dupire turns today's whole option surface into a volatility map that reprices every vanilla exactly, so use it for consistency, smooth before you differentiate, and don't trust its view of tomorrow.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -121,6 +184,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From one flat σ to Dupire's formula, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ dS_t = \mu S_t\,dt + \color{#fbbf24}{\sigma}\,S_t\,dW_t \]</div>
+      <p>Black-Scholes: one shock \(dW_t\) and one constant volatility. It cannot produce a smile.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ dS_t = \mu S_t\,dt + \color{#fbbf24}{\sigma_{\text{local}}(S_t, t)}\,S_t\,dW_t \]</div>
+      <p>Let volatility depend on where spot is and when, but keep it a plain function. Still one shock: no second equation, no \(\rho\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \sigma_{\text{local}}^2(K,T) = \frac{\color{#fbbf24}{\dfrac{\partial C}{\partial T}}}{\color{#fbbf24}{\dfrac12 K^2\,\dfrac{\partial^2 C}{\partial K^2}}} \]</div>
+      <p>With zero rates, local variance is the calendar slope of the call price over its strike convexity, which is the risk-neutral density at \(K\). In the worked example: 6.4190 over 93.33.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\sigma_{\text{local}}^2(K,T) = \frac{\dfrac{\partial C}{\partial T} + rK\,\dfrac{\partial C}{\partial K}}{\dfrac12 K^2\,\dfrac{\partial^2 C}{\partial K^2}}} \]</div>
+      <p>Add the carry correction for discounting the strike. \((6.4190 - 2.6626)/93.33 = 0.04025\), so \(\sigma_{\text{local}} \approx 20.06\%\), against the true 20%.</p>
+    </div>
+  </div>
   <p>
     Four things in order: (1) the local-vol SDE, set directly against
     Heston's two SDEs so the "one source versus two" distinction is
@@ -358,6 +441,10 @@ C(K,   T+Δt)= C(100, 1.1) = 11.0820</pre>
       and \(\sigma_{\text{local}}\) recompute instantly from the discretized
       formula above.
     </p>
+    <div class="tl-predict" data-answer="22.59" data-tol="1" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Real quotes carry noise. Keep everything else at the worked example and change only the middle price, C(K, T), from 10.4506 to 10.50: about a 0.5% nudge. What will σ<sub>local</sub> be? Lock in a guess, then type 10.50 into the C(K, T) field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 22.59%.</strong> The strike curvature is a second difference, \((8.0214 - 2 \times 10.50 + 13.3465)/25 = 0.01472\), down from 0.01867. The denominator falls from 93.33 to 73.58, so \(\sigma^2_{\text{local}} = 3.7564/73.58 \approx 0.0511\). A 5-cent nudge to one quote moved local vol by over 2.5 points. Now try 10.40: it drops to about 18.19%. This is why desks smooth the surface before differentiating.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Strike \(K\)</span></div>
@@ -449,6 +536,12 @@ C(K,   T+Δt)= C(100, 1.1) = 11.0820</pre>
       data enters the calculation at this one (K,T) location.
     </div>
   </div>
+
+  <!-- WB:institutional_dupire_local_vol:START -->
+  <div class="wb" id="wb-institutional_dupire_local_vol" data-title="Dupire: reading local vol off the price surface">
+    <script type="application/json">{"w":600,"h":680,"intro":"Three ways to handle a smile, then Dupire's formula run on the lesson's own five call prices. Press play, or step through.","steps":[{"cap":"Black-Scholes glues the volatility dial in place: one number, forever. Real option markets never quote one flat volatility, so something has to give.","do":[{"box":"bs","x":10,"y":10,"w":180,"h":92,"text":"Black-Scholes\nσ fixed","tone":"blue","size":19}]},{"cap":"Heston and SABR let the dial wander on its own: volatility gets its own random shock, a second source of randomness alongside the price.","do":[{"box":"sv","x":210,"y":10,"w":180,"h":92,"text":"Heston / SABR\nσ random: 2 shocks","tone":"purple","size":19}]},{"cap":"Dupire's local vol does something else. The dial is not random at all: it is read off a map, σ_local(S, t). Know the spot and the time, and the volatility is a number you look up. One source of randomness.","do":[{"box":"lv","x":410,"y":10,"w":180,"h":92,"text":"Local vol\nσ(S, t): a lookup","tone":"green","size":19}]},{"cap":"Dupire (1994): hand me every call price C(K, T), and there is exactly one such map that reprices them all. It comes straight from the slopes of the price surface. Here are five prices around strike 100, one year, from a world with a flat 20% vol.","do":[{"box":"c","x":120,"y":246,"w":100,"h":60,"text":"K, T","tone":"amber","sub":"10.4506","size":18},{"box":"l","x":10,"y":246,"w":100,"h":60,"text":"K − 5","tone":"blue","sub":"13.3465","size":18},{"box":"r","x":230,"y":246,"w":100,"h":60,"text":"K + 5","tone":"blue","sub":"8.0214","size":18},{"box":"u","x":120,"y":170,"w":100,"h":60,"text":"T + 0.1","tone":"green","sub":"11.0820","size":18},{"box":"d","x":120,"y":322,"w":100,"h":60,"text":"T − 0.1","tone":"green","sub":"9.7982","size":18},{"note":"ax","x":170,"y":148,"text":"strike across · maturity up","size":17,"anchor":"middle"}]},{"cap":"Across strikes: the slope is (8.0214 − 13.3465) ÷ 10 = −0.5325, and the curvature is 0.01867. That curvature is the risk-neutral density at 100, the denominator of the formula.","do":[{"box":"dk","x":350,"y":170,"w":240,"h":52,"text":"∂C/∂K ≈ −0.5325","tone":"blue","size":19},{"box":"dkk","x":350,"y":234,"w":240,"h":52,"text":"∂²C/∂K² ≈ 0.01867","tone":"blue","size":19},{"pulse":"l"},{"pulse":"r"}]},{"cap":"Across time: the calendar slope is (11.0820 − 9.7982) ÷ 0.2 = 6.4190. A call for a little longer costs a little more.","do":[{"box":"dt","x":350,"y":298,"w":240,"h":52,"text":"∂C/∂T ≈ 6.4190","tone":"green","size":19},{"pulse":"u"},{"pulse":"d"}]},{"cap":"Assemble: numerator 6.4190 − 0.05 × 100 × 0.5325 = 3.7564; denominator ½ × 100² × 0.01867 = 93.33. Local variance 0.04025, so local vol ≈ 20.06%. The true flat vol was 20%: the formula hands it back.","do":[{"box":"res","x":350,"y":362,"w":240,"h":66,"text":"σ_local ≈ 20.06%","tone":"green","sub":"true: 20%","size":21}]},{"cap":"Real quotes are noisy. Nudge just the middle price by 5 cents, from 10.4506 to 10.50. The curvature drops to 0.01472 and local vol jumps to 22.59%. A second derivative amplifies noise.","do":[{"sub":"c","text":"10.50 (+5¢)"},{"pulse":"c"},{"box":"nz","x":10,"y":448,"w":580,"h":58,"text":"5¢ on one quote: σ_local 20.06% → 22.59%","tone":"red","size":20}]},{"cap":"So production desks never differentiate raw quotes. They fit a smooth, arbitrage-free surface first, a spline or a SABR smile, and differentiate that.","do":[{"sub":"c","text":"10.4506"},{"box":"sm","x":10,"y":522,"w":285,"h":70,"text":"smooth the surface\nfirst, then differentiate","tone":"amber","size":18}]},{"cap":"Local vol reprices every vanilla today by construction, like tracing paper. But its forward smile is typically too flat. That is why desks use it to price exotics consistently, and blend it with stochastic vol in SLV hybrids.","do":[{"box":"fw","x":305,"y":522,"w":285,"h":70,"text":"exact today,\ntoo flat tomorrow","tone":"red","size":18},{"note":"end","x":300,"y":636,"text":"a calibration device, not a model of how smiles move","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:institutional_dupire_local_vol:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>A calibration device, not a behavioral model</h2>
@@ -744,6 +837,19 @@ C(K,   T+Δt)= C(100, 1.1) = 11.0820</pre>
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative client request</div>
+    <h3>A down-and-out barrier on a pair whose smile you have already marked</h3>
+    <p>You run an FX exotics book with a full, liquid USD/JPY vanilla smile marked at one expiry, as in the lesson's scenario. A client asks for a price on a down-and-out barrier option on the same pair and expiry. Its value depends heavily on the path spot takes towards the barrier. How do you price it?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Use the at-the-money implied vol for the whole thing.<div class="tl-drill-why">One flat vol is inconsistent with your own marked smile. A client could hedge the barrier with your vanillas and trade against the mispricing.</div></li>
+      <li data-verdict="bad">Build local vol straight from the raw vanilla quotes with finite differences.<div class="tl-drill-why">The strike curvature amplifies noise. In the lesson's own numbers, a 5-cent change in one quote moves local vol from about 20.06% to 22.59%. Unsmoothed quotes can even give negative local variance.</div></li>
+      <li data-verdict="ok">Fit a smooth surface, build local vol from it, price the barrier, and stop there.<div class="tl-drill-why">The price is now consistent with every vanilla on the book. But a barrier is sensitive to how the smile moves, and local vol's forward smile is typically too flat, so this inherits that weakness unexamined.</div></li>
+      <li data-verdict="good">Fit a smooth surface, price with local vol for vanilla consistency, and check the price against a stochastic-vol or SLV model before quoting.<div class="tl-drill-why">Local vol gives the exact match to today's vanillas. A model with tested forward dynamics shows how much the barrier depends on the smile's future path, which is the part local vol gets least right.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson says.</strong> This is an illustrative case built on the lesson's own trading scenario, not a real trade. The point: local vol reprices every vanilla exactly by construction, which removes the static-hedge inconsistency, but its implied forward smile is widely considered too flat. For a path-dependent exotic like a barrier, that is exactly the risk to check, and it is why larger desks often use stochastic-local-vol hybrids for barriers.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -857,6 +963,27 @@ C(K,   T+Δt)= C(100, 1.1) = 11.0820</pre>
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a> <span>· the surface local vol is read from</span></li>
+        <li><a href="heston-model.html">The Heston Model</a> <span>· the two-shock alternative it is contrasted with</span></li>
+        <li><a href="sabr-model.html">The SABR Model</a> <span>· a standard way to smooth the smile first</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-breeden-litzenberger-variance-swaps.html">Breeden-Litzenberger &amp; Variance Swaps</a> <span>· why strike curvature is a probability density</span></li><!-- DESK:END -->
+        <li><a href="second-order-greeks.html">Second-Order Greeks: Vanna, Charm, Vomma &amp; More</a> <span>· the smile-consistent hedge ratios exotics need</span></li>
+        <!-- DESK:START --><li><a href="institutional-bates-model.html">Bates Model: Stochastic Volatility + Jumps</a> <span>· a parametric model to compare it against</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> any exotic you price has to agree with the vanillas you hedge it with, and local vol is the standard way to guarantee that.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-bates-model.html">← Bates Model: Stochastic Volatility + Jumps</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -887,7 +1014,8 @@ C(K,   T+Δt)= C(100, 1.1) = 11.0820</pre>
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var DEFAULTS = { K: 100, h: 5, dt: 0.1, r: 5, Ckm: 13.3465, Ck: 10.4506, Ckp: 8.0214, Ctm: 9.7982, Ctp: 11.0820 };
@@ -974,5 +1102,6 @@ C(K,   T+Δt)= C(100, 1.1) = 11.0820</pre>
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

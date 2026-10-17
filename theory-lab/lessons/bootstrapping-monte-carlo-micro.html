@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bootstrapping &amp; Monte Carlo — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -103,7 +104,19 @@
       </div>
     </section>
 
+    <!-- WB:bootstrapping_monte_carlo-deck:START -->
     <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">The bootstrap and Monte Carlo, drawn step by step</h2>
+      <!-- WB:bootstrapping_monte_carlo:START -->
+      <div class="wb" data-title="The bootstrap and Monte Carlo, drawn step by step">
+        <script type="application/json">{"w":600,"h":800,"intro":"Five real trades, reached into again and again: the lesson's worked example, then what Monte Carlo does differently. Press play, or step through.","steps":[{"cap":"One sample: a strategy has closed five trades, returning +2, −1, +3, −2 and +1 percent. The mean is 0.6%. How much could that number have wobbled?","do":[{"box":"bag","x":10,"y":14,"w":400,"h":100,"text":"the one sample","tone":"purple","top":true,"size":19},{"chip":"x0","x":62,"y":76,"text":"+2","tone":"purple"},{"chip":"x1","x":134,"y":76,"text":"−1","tone":"purple"},{"chip":"x2","x":206,"y":76,"text":"+3","tone":"purple"},{"chip":"x3","x":278,"y":76,"text":"−2","tone":"purple"},{"chip":"x4","x":350,"y":76,"text":"+1","tone":"purple"},{"box":"mean","x":430,"y":30,"w":160,"h":70,"text":"mean","tone":"green","sub":"0.6%","size":19}]},{"cap":"Draw five trades from the bag at random, putting each one back. This resample picked trade 4 three times, trade 5 and trade 2: −2, −2, +1, −1, −2. Its mean is -1.2%.","do":[{"chip":"r0","x":62,"y":150,"text":"−2","tone":"red"},{"chip":"r1","x":134,"y":150,"text":"−2","tone":"red"},{"chip":"r2","x":206,"y":150,"text":"+1","tone":"red"},{"chip":"r3","x":278,"y":150,"text":"−1","tone":"red"},{"chip":"r4","x":350,"y":150,"text":"−2","tone":"red"},{"count":"mean","from":0.6,"to":-1.2,"dp":1,"suf":"%","ms":900}]},{"cap":"Two more resamples from the same five trades come out at 1.4% and 1.6%. Nothing new entered the bag; only which trades repeated changed.","do":[{"hide":"r0"},{"hide":"r1"},{"hide":"r2"},{"hide":"r3"},{"hide":"r4"},{"chart":"h","x":10,"y":200,"w":580,"h":230,"title":"Mean of a resample: all 3,125 equally likely","xd":[-2.3,3.3],"yd":[0,11],"yt":[[0,"0"],[5,"5%"],[10,"10%"]],"xt":[[-2,"−2"],[-1,"−1"],[0,"0"],[1,"1"],[2,"2"],[3,"3%"]],"pl":50,"pr":14},{"dot":"m2","chart":"h","at":[-1.2,0],"text":"-1.2","tone":"red","dy":-16},{"dot":"m1","chart":"h","at":[1.4,0],"text":"1.4","tone":"red","dx":-6,"dy":-16,"anchor":"end"},{"dot":"m3","chart":"h","at":[1.6,0],"text":"1.6","tone":"red","dx":6,"dy":-16,"anchor":"start"},{"count":"mean","from":-1.2,"to":0.6,"dp":1,"suf":"%","ms":600}]},{"cap":"Do it thousands of times. With five trades there are only 3,125 possible resamples, so here is every one of them: a whole spread of means around your 0.6%.","do":[{"hide":"m1"},{"hide":"m2"},{"hide":"m3"},{"bars":"hb","chart":"h","data":[[-2.0,0.03,"","chalk"],[-1.8,0.16,"","chalk"],[-1.6,0.32,"","chalk"],[-1.4,0.48,"","chalk"],[-1.2,0.96,"","chalk"],[-1.0,1.79,"","blue"],[-0.8,2.56,"","blue"],[-0.6,3.36,"","blue"],[-0.4,4.64,"","blue"],[-0.2,6.24,"","blue"],[0.0,7.36,"","blue"],[0.2,8.0,"","blue"],[0.4,8.8,"","blue"],[0.6,9.44,"","green"],[0.8,9.28,"","blue"],[1.0,8.35,"","blue"],[1.2,7.36,"","blue"],[1.4,6.4,"","blue"],[1.6,5.12,"","blue"],[1.8,3.68,"","blue"],[2.0,2.43,"","blue"],[2.2,1.6,"","blue"],[2.4,0.96,"","chalk"],[2.6,0.48,"","chalk"],[2.8,0.16,"","chalk"],[3.0,0.03,"","chalk"]],"bw":15,"ms":1400}]},{"cap":"That spread is the error bar. Its standard deviation, the bootstrap standard error, is 0.83 points. The middle 95% of resamples run from about −1.0% to 2.2%. No formula for the mean's distribution was needed.","do":[{"note":"ci","chart":"h","at":[0.6,10.4],"text":"middle 95%: −1.0 to 2.2","tone":"amber","size":18,"anchor":"middle","dx":0,"dy":0},{"sub":"mean","text":"0.6% ± 0.83"}]},{"cap":"But look in the bag. Every one of those 3,125 resamples is made of the same five trades. No resample ever holds a sixth trade, from a market or a regime the strategy has not traded.","do":[{"note":"nos","x":210,"y":150,"text":"no sixth trade, ever","size":19,"anchor":"middle","tone":"red"},{"pulse":"bag"}]},{"cap":"Market days add a wrinkle: they cluster. Here a stormy run of days sits together. Resample single days and the storms get scattered among calm days, so the error bar comes out too narrow.","do":[{"note":"st0","x":20,"y":470,"text":"real days:","size":17,"anchor":"start"},{"chip":"d0","x":200,"y":470,"text":"C","tone":"blue"},{"chip":"d1","x":272,"y":470,"text":"C","tone":"blue"},{"chip":"d2","x":344,"y":470,"text":"S","tone":"red"},{"chip":"d3","x":416,"y":470,"text":"S","tone":"red"},{"chip":"d4","x":488,"y":470,"text":"S","tone":"red"},{"chip":"d5","x":560,"y":470,"text":"C","tone":"blue"},{"note":"st1","x":20,"y":512,"text":"single days:","size":17,"anchor":"start"},{"chip":"e0","x":200,"y":512,"text":"S","tone":"red"},{"chip":"e1","x":272,"y":512,"text":"C","tone":"blue"},{"chip":"e2","x":344,"y":512,"text":"C","tone":"blue"},{"chip":"e3","x":416,"y":512,"text":"S","tone":"red"},{"chip":"e4","x":488,"y":512,"text":"C","tone":"blue"},{"chip":"e5","x":560,"y":512,"text":"C","tone":"blue"}]},{"cap":"The block bootstrap resamples runs of consecutive days instead, say three at a time. A stormy block stays stormy, so the clustering survives and the error bar stays honest.","do":[{"note":"st2","x":20,"y":554,"text":"blocks of 3:","size":17,"anchor":"start"},{"chip":"g0","x":200,"y":554,"text":"S","tone":"red"},{"chip":"g1","x":272,"y":554,"text":"S","tone":"red"},{"chip":"g2","x":344,"y":554,"text":"S","tone":"red"},{"chip":"g3","x":416,"y":554,"text":"C","tone":"blue"},{"chip":"g4","x":488,"y":554,"text":"C","tone":"blue"},{"chip":"g5","x":560,"y":554,"text":"S","tone":"red"}]},{"cap":"Monte Carlo is a different move: fit a model to the data, here a normal with the trades' own mean 0.6% and spread 1.86%, then let it generate brand-new paths. Twelve 40-trade paths (illustrative).","do":[{"hide":"d0"},{"hide":"d1"},{"hide":"d2"},{"hide":"d3"},{"hide":"d4"},{"hide":"d5"},{"hide":"e0"},{"hide":"e1"},{"hide":"e2"},{"hide":"e3"},{"hide":"e4"},{"hide":"e5"},{"hide":"g0"},{"hide":"g1"},{"hide":"g2"},{"hide":"g3"},{"hide":"g4"},{"hide":"g5"},{"hide":"nos"},{"hide":"st0"},{"hide":"st1"},{"hide":"st2"},{"chart":"mc","x":10,"y":450,"w":580,"h":330,"title":"Cumulative return, % (model fitted to the same 5 trades)","xd":[0,40],"yd":[-25,65],"yt":[[-20,"−20"],[0,"0"],[20,"20"],[40,"40"],[60,"60"]],"xt":[[0,"0"],[20,"20"],[40,"40 trades"]],"zero":true,"pl":48,"pr":16},{"series":"f0","chart":"mc","pts":[[0,0],[4,1.87],[8,5.0],[12,10.86],[16,13.62],[20,7.13],[24,9.79],[28,15.45],[32,18.58],[36,21.78],[40,22.87]],"tone":"amber","ms":900},{"series":"f1","chart":"mc","pts":[[0,0],[4,-0.62],[8,-0.04],[12,1.46],[16,5.67],[20,9.23],[24,8.45],[28,6.69],[32,10.58],[36,4.08],[40,8.56]],"tone":"amber","ms":900},{"series":"f2","chart":"mc","pts":[[0,0],[4,7.77],[8,11.61],[12,11.93],[16,14.08],[20,17.78],[24,24.34],[28,26.72],[32,31.14],[36,29.9],[40,32.99]],"tone":"amber","ms":900},{"series":"f3","chart":"mc","pts":[[0,0],[4,5.8],[8,10.45],[12,14.1],[16,23.3],[20,25.91],[24,27.05],[28,29.0],[32,31.37],[36,37.72],[40,33.62]],"tone":"amber","ms":900},{"series":"f4","chart":"mc","pts":[[0,0],[4,3.75],[8,6.69],[12,6.66],[16,6.9],[20,11.92],[24,18.74],[28,25.5],[32,30.66],[36,29.02],[40,26.15]],"tone":"amber","ms":900},{"series":"f5","chart":"mc","pts":[[0,0],[4,7.13],[8,11.78],[12,16.93],[16,16.98],[20,21.77],[24,31.39],[28,34.75],[32,34.32],[36,34.26],[40,40.79]],"tone":"amber","ms":900},{"series":"f6","chart":"mc","pts":[[0,0],[4,9.97],[8,7.27],[12,5.7],[16,7.03],[20,15.67],[24,16.33],[28,17.9],[32,19.93],[36,18.91],[40,15.15]],"tone":"amber","ms":900},{"series":"f7","chart":"mc","pts":[[0,0],[4,-2.88],[8,-4.44],[12,-8.11],[16,-1.04],[20,2.03],[24,7.1],[28,15.21],[32,20.44],[36,23.71],[40,27.76]],"tone":"amber","ms":900},{"series":"f8","chart":"mc","pts":[[0,0],[4,1.69],[8,8.01],[12,8.83],[16,15.99],[20,16.0],[24,20.38],[28,21.11],[32,24.66],[36,36.93],[40,32.8]],"tone":"amber","ms":900},{"series":"f9","chart":"mc","pts":[[0,0],[4,1.68],[8,7.2],[12,9.02],[16,10.35],[20,10.49],[24,16.08],[28,14.11],[32,9.27],[36,9.42],[40,12.62]],"tone":"amber","ms":900},{"series":"f10","chart":"mc","pts":[[0,0],[4,7.53],[8,14.69],[12,19.6],[16,29.12],[20,38.4],[24,43.62],[28,46.96],[32,53.45],[36,57.15],[40,53.72]],"tone":"amber","ms":900},{"series":"f11","chart":"mc","pts":[[0,0],[4,-2.35],[8,-2.06],[12,5.08],[16,6.95],[20,3.63],[24,-3.1],[28,2.3],[32,6.28],[36,4.57],[40,2.6]],"tone":"amber","ms":900}]},{"cap":"Every path inherits the model's settings, and those came from the same five trades. If tomorrow's market has a different mean or bigger swings, all twelve paths, or ten thousand, share the same blind spot.","do":[{"pulse":"mc"},{"note":"fit","x":300,"y":142,"text":"the model's settings came from the same five trades","size":18,"anchor":"middle","tone":"red"}]},{"cap":"So both tools answer: given what I already have, what range of outcomes is consistent with it? A fair question for setting expectations. Whether the signal works on unseen data needs data it has never touched.","do":[{"note":"end","x":300,"y":178,"text":"an error bar, not an out-of-sample test","size":20,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:bootstrapping_monte_carlo:END -->
+    </section>
+    <!-- WB:bootstrapping_monte_carlo-deck:END -->
+
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">More resamples narrow the picture — they don't create new data</h2>
       <p class="sl-sub">Drag B. Watch the histogram of bootstrapped Sharpe ratios fill in and the 95% interval steady — around a spread the original trades (here a twelve-trade sample) already fixed.</p>
@@ -127,7 +140,7 @@
       <p class="sl-p">Turning B up smooths the histogram and stabilizes the interval's edges — but it never narrows the interval below what the underlying twelve trades can actually support. More resamples reduce noise <em>in the estimate of the spread</em>; they cannot shrink the spread itself, because every resample is still built from the same original observations.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Time series break the "independent draws" assumption</h2>
       <p class="sl-sub">The plain bootstrap above assumes each observation is independent. Financial returns routinely aren't.</p>
@@ -158,7 +171,7 @@
       <p class="sl-p">Concretely: fix a block length l (say, 10 trading days), form every overlapping block of that length from the series, draw enough of those blocks with replacement to cover n observations, and concatenate them into one resampled series. Because each block is a real, intact, consecutive run lifted straight out of history, the day-to-day correlation the plain bootstrap would have shuffled away survives inside the resample.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Monte Carlo: don't resample the data, simulate from a model of it</h2>
       <p class="sl-sub">A different move entirely — fit a process, then generate brand-new synthetic paths from it.</p>
@@ -171,7 +184,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">A historical curve fanning into simulated forward paths</h2>
       <p class="sl-sub">The realized curve is one real sample. Every faint path in the fan is built from that same sample, or a model fitted to it.</p>
@@ -204,7 +217,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Read this one twice: neither tool can leave the sample it started from</h2>
       <p class="sl-p">Both techniques answer some version of the same question: "given what I already have — one historical sample, or one fitted model built from that sample — what range of outcomes is consistent with it?" That's a real, useful, well-posed statistical question, and both tools answer it validly. It is <strong>not</strong> the same question as "will this signal work on a market, or a time period, it has never seen?"</p>
@@ -215,7 +228,7 @@
       </div>
     </section>
 
-    <!-- DESK:START --><section class="sl-slide" data-slide="11">
+    <!-- DESK:START --><section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Already built into this repo's own tearsheet — more than the full lesson lets on</h2>
       <p class="sl-sub">A stale claim caught while building this deck — corrected below with what the code actually does.</p>
@@ -230,7 +243,7 @@
       <p class="sl-p">The underlying validation point still holds exactly as this lesson argues it: those numbers describe sample and model consistency, not generalization. What's out of date is only the status claim about whether the technique is implemented here — it is, and has been used to report the very i.i.d.-vs-block distinction this lesson teaches.</p>
     </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -281,7 +294,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -468,5 +481,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

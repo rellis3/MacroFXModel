@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wavelets &amp; Time-Frequency Analysis — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,68 @@
       <li><strong>How it reached trading:</strong> economists took wavelets from 1980s signal processing in the 1990s (Ramsey &amp; Lampart, 1998) and finance followed (Gençay, Selçuk &amp; Whitcher, 2002) to measure how correlations and betas differ by horizon and shift over time.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the worked example's eight daily returns, all tiny except one 3.00 percent shock at step 4. An arrow labelled Haar, pair up and halve the differences, points right to the four detail coefficients: 0.100, 0.050, 1.525 and 0.075. The third, 1.525, towers over the rest and points to pair 3, steps 4 and 5, exactly where the shock sits. A note says a wavelet tells you when, not just which frequencies.">
+      <text class="tlp-text3" x="20" y="30" font-size="12">8 daily returns (%)</text>
+      <line class="tlp-line" x1="20" y1="150" x2="270" y2="150"/>
+      <rect class="tlp-box blue" x="30" y="146.7" width="20" height="3.3"/>
+      <rect class="tlp-box blue" x="61" y="150" width="20" height="3.3"/>
+      <rect class="tlp-box blue" x="92" y="148.3" width="20" height="1.7"/>
+      <rect class="tlp-box blue" x="123" y="150" width="20" height="1.7"/>
+      <rect class="tlp-box red" x="154" y="50" width="20" height="100"/>
+      <rect class="tlp-box blue" x="185" y="150" width="20" height="1.7"/>
+      <rect class="tlp-box blue" x="216" y="148.3" width="20" height="1.7"/>
+      <rect class="tlp-box blue" x="247" y="150" width="20" height="3.3"/>
+      <text class="tlp-red" x="164" y="44" text-anchor="middle" font-size="13" font-weight="700">3.00</text>
+      <text class="tlp-text3" x="40" y="172" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-red" x="164" y="172" text-anchor="middle" font-size="12" font-weight="700">4</text>
+      <text class="tlp-text3" x="257" y="172" text-anchor="middle" font-size="12">7</text>
+      <text class="tlp-text3" x="145" y="190" text-anchor="middle" font-size="12">step →</text>
+      <line class="tlp-line purple thick" x1="282" y1="105" x2="338" y2="105"/>
+      <polygon class="tlp-purple" points="350,105 336,98 336,112"/>
+      <text class="tlp-purple" x="314" y="88" text-anchor="middle" font-size="12" font-weight="700">Haar</text>
+      <text class="tlp-purple" x="314" y="128" text-anchor="middle" font-size="11">pair up,</text>
+      <text class="tlp-purple" x="314" y="142" text-anchor="middle" font-size="11">halve the gap</text>
+      <text class="tlp-text3" x="364" y="30" font-size="12">4 detail coefficients</text>
+      <line class="tlp-line" x1="364" y1="150" x2="584" y2="150"/>
+      <rect class="tlp-box blue" x="372" y="143.4" width="34" height="6.6"/>
+      <rect class="tlp-box blue" x="424" y="146.7" width="34" height="3.3"/>
+      <rect class="tlp-box red" x="476" y="50" width="34" height="100"/>
+      <rect class="tlp-box blue" x="528" y="145.1" width="34" height="4.9"/>
+      <text class="tlp-text3" x="389" y="137" text-anchor="middle" font-size="12">0.100</text>
+      <text class="tlp-text3" x="441" y="140" text-anchor="middle" font-size="12">0.050</text>
+      <text class="tlp-red" x="493" y="44" text-anchor="middle" font-size="13" font-weight="700">1.525</text>
+      <text class="tlp-text3" x="545" y="138" text-anchor="middle" font-size="12">0.075</text>
+      <text class="tlp-red" x="493" y="172" text-anchor="middle" font-size="12" font-weight="700">pair 3 = steps 4, 5</text>
+      <text class="tlp-green" x="300" y="222" text-anchor="middle" font-size="14" font-weight="700">a wavelet says when, not just which frequencies</text>
+    </svg>
+    <figcaption>The lesson's worked example. One shock in eight returns gives one detail coefficient more than ten times the others, and it sits at exactly the pair of steps where the shock happened. A periodogram of the same eight numbers would spread that jump across many frequencies and could not say when.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">The Fourier lesson said a periodogram tells me which cycles are in a series. What's missing?</p>
+      <p data-who="Quant">When. A periodogram is one picture for the whole sample. It's like a list of every note in a song, with how loud each one is. Useful, but you can't tell the verse from the chorus.</p>
+      <p data-who="Trader">And wavelets are the sheet music.</p>
+      <p data-who="Quant">Closer to it. Instead of a sine wave that hums forever, you use a short ripple that switches itself off. You slide it along the series to ask, is a pattern like this here? And you stretch or squeeze it to ask about slow patterns and fast ones.</p>
+      <p data-who="Trader">So two knobs.</p>
+      <p data-who="Quant">Yes. Where you are in time, and how stretched the ripple is, which plays the role of frequency. Do every combination and you get a map, time along one side and scale along the other. That map is called a scalogram.</p>
+      <p data-who="Trader">Show me it catching something.</p>
+      <p data-who="Quant">Eight daily returns, all tiny, except one jump of three percent in the middle. Pair the days up. For each pair, take half the difference. Three of the pairs give a tenth or less. The pair with the jump gives one and a half. More than ten times the others, and it sits exactly where the shock was.</p>
+      <p data-who="Trader">And a periodogram of the same eight days?</p>
+      <p data-who="Quant">A sudden jump contains a little of every frequency, so its energy gets smeared across the whole spectrum. It can tell you something happened. It can't tell you when.</p>
+      <p data-who="Trader">Which wavelet should I use?</p>
+      <p data-who="Quant">There's a trade-off you can't escape. Sharp timing costs you frequency precision, and the reverse. The Haar wavelet, a simple up-then-down step, is great at pinning down jumps. The Morlet, a smooth wiggle, is better at telling nearby cycles apart, so it's the usual choice for smoother financial cycles.</p>
+      <p data-who="Trader">Where has this been used in markets?</p>
+      <p data-who="Quant">Economists picked it up in the nineteen-nineties. Ramsey and Lampart in 1998 split money and income relationships by time horizon and found they differ a lot between horizons. Finance followed, measuring how correlations and betas change with the horizon you look at.</p>
+      <p data-who="Trader">Any traps?</p>
+      <p data-who="Quant">Two big ones. Near the start and end of the sample the ripple hangs off the edge of the data, so readings there are unreliable. And a scalogram has so many cells that some will light up by chance. The one-line version: wavelets tell you which cycles and roughly when, but a bright patch is a hint, not a signal.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -95,6 +158,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the continuous wavelet transform comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ x(t)\,\color{#fbbf24}{\psi^*(t)} \]</div>
+      <p>Start like Fourier: multiply the series by a test shape. But instead of an endless sine wave, use a mother wavelet \(\psi\), a short ripple that dies away to zero.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ x(t)\,\psi^*\!\left(t \color{#fbbf24}{- b}\right) \]</div>
+      <p>Shift it. \(b\) slides the ripple along the series, so the answer now depends on <em>where</em> you look.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ x(t)\,\psi^*\!\left(\frac{t-b}{\color{#fbbf24}{a}}\right) \]</div>
+      <p>Stretch it. A large scale \(a\) makes a slow ripple that matches long cycles; a small \(a\) makes a fast one that matches short cycles. Scale plays the role of inverse frequency.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\int_{-\infty}^{\infty}} x(t)\,\psi^*\!\left(\frac{t-b}{a}\right) \color{#fbbf24}{dt} \]</div>
+      <p>Add up the products, as the Fourier transform does. A big total means the series looks like that ripple, at that size, at that place.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{W(a,b) = \frac{1}{\sqrt{a}} \int_{-\infty}^{\infty} x(t)\,\psi^*\!\left(\frac{t-b}{a}\right) dt} \]</div>
+      <p>Scale by \(1/\sqrt{a}\) so every size is compared fairly. Plotting \(|W(a,b)|^2\) over time and scale gives the scalogram. In the Haar worked example the same idea gives \(d_3 = (3.00 - (-0.05))/2 = 1.525\), right where the shock is.</p>
+    </div>
+  </div>
   <p>
     Three pieces: (1) the core idea of a localized, scalable wavelet in place of an infinite sine wave; (2) the
     continuous wavelet transform itself and what its two parameters mean; (3) the resolution trade-off this all rests
@@ -303,6 +390,10 @@
       quietest baseline detail elsewhere in the series (\(d_1=0.100\), fixed
       from the untouched first pair) recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="7.75" data-tol="0.3" data-unit="×">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With the 3.00% shock, \(|d_3|\) is 15.25 times the baseline detail. Halve the shock to \(x_4 = 1.50\), leaving \(x_5 = -0.05\). How many times the baseline will \(|d_3|\) be now? Lock in a guess, then type 1.50 into the first field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>7.75 times.</strong> \(d_3 = (1.50 - (-0.05))/2 = 0.775\), and \(0.775 / 0.100 = 7.75\). Halving the shock roughly halves the detail coefficient: the Haar detail is linear in the jump. Even a 1.5% move still stands far above the quiet pairs, so the transform still points at steps 4 and 5. Now try \(x_4 = -0.05\), equal to \(x_5\), and watch the detail vanish.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>\(x_4\)</span></div>
@@ -342,6 +433,12 @@
       scalogram itself only describes what happened, it doesn't license a trade.
     </p>
   </div>
+
+  <!-- WB:wavelets_time_frequency:START -->
+  <div class="wb" id="wb-wavelets_time_frequency" data-title="Wavelets: which cycles, and when">
+    <script type="application/json">{"w":600,"h":790,"intro":"Why \"which cycles\" is not enough, and how a short, stretchable ripple adds \"when\". Press play, or step through.","steps":[{"cap":"A made-up series in two halves: a fast cycle, every 8 steps, for the first 128 steps, then a slow cycle, every 32 steps, for the rest.","do":[{"chart":"ts","x":10,"y":10,"w":580,"h":190,"title":"The series: fast cycle, then slow cycle","xd":[0,256],"yd":[-1.3,1.5],"yt":[[-1,"−1"],[0,"0"],[1,"1"]],"xt":[[0,"0"],[128,"128"],[256,"256"]],"zero":true,"pl":40},{"series":"xs","chart":"ts","pts":[[0,0.0],[1,0.707],[2,1.0],[3,0.707],[4,0.0],[5,-0.707],[6,-1.0],[7,-0.707],[8,-0.0],[9,0.707],[10,1.0],[11,0.707],[12,0.0],[13,-0.707],[14,-1.0],[15,-0.707],[16,-0.0],[17,0.707],[18,1.0],[19,0.707],[20,0.0],[21,-0.707],[22,-1.0],[23,-0.707],[24,-0.0],[25,0.707],[26,1.0],[27,0.707],[28,0.0],[29,-0.707],[30,-1.0],[31,-0.707],[32,-0.0],[33,0.707],[34,1.0],[35,0.707],[36,0.0],[37,-0.707],[38,-1.0],[39,-0.707],[40,-0.0],[41,0.707],[42,1.0],[43,0.707],[44,0.0],[45,-0.707],[46,-1.0],[47,-0.707],[48,-0.0],[49,0.707],[50,1.0],[51,0.707],[52,-0.0],[53,-0.707],[54,-1.0],[55,-0.707],[56,-0.0],[57,0.707],[58,1.0],[59,0.707],[60,0.0],[61,-0.707],[62,-1.0],[63,-0.707],[64,-0.0],[65,0.707],[66,1.0],[67,0.707],[68,-0.0],[69,-0.707],[70,-1.0],[71,-0.707],[72,-0.0],[73,0.707],[74,1.0],[75,0.707],[76,0.0],[77,-0.707],[78,-1.0],[79,-0.707],[80,-0.0],[81,0.707],[82,1.0],[83,0.707],[84,-0.0],[85,-0.707],[86,-1.0],[87,-0.707],[88,-0.0],[89,0.707],[90,1.0],[91,0.707],[92,0.0],[93,-0.707],[94,-1.0],[95,-0.707],[96,-0.0],[97,0.707],[98,1.0],[99,0.707],[100,-0.0],[101,-0.707],[102,-1.0],[103,-0.707],[104,0.0],[105,0.707],[106,1.0],[107,0.707],[108,0.0],[109,-0.707],[110,-1.0],[111,-0.707],[112,-0.0],[113,0.707],[114,1.0],[115,0.707],[116,-0.0],[117,-0.707],[118,-1.0],[119,-0.707],[120,-0.0],[121,0.707],[122,1.0],[123,0.707],[124,0.0],[125,-0.707],[126,-1.0],[127,-0.707],[128,-0.0],[129,0.195],[130,0.383],[131,0.556],[132,0.707],[133,0.831],[134,0.924],[135,0.981],[136,1.0],[137,0.981],[138,0.924],[139,0.831],[140,0.707],[141,0.556],[142,0.383],[143,0.195],[144,0.0],[145,-0.195],[146,-0.383],[147,-0.556],[148,-0.707],[149,-0.831],[150,-0.924],[151,-0.981],[152,-1.0],[153,-0.981],[154,-0.924],[155,-0.831],[156,-0.707],[157,-0.556],[158,-0.383],[159,-0.195],[160,-0.0],[161,0.195],[162,0.383],[163,0.556],[164,0.707],[165,0.831],[166,0.924],[167,0.981],[168,1.0],[169,0.981],[170,0.924],[171,0.831],[172,0.707],[173,0.556],[174,0.383],[175,0.195],[176,0.0],[177,-0.195],[178,-0.383],[179,-0.556],[180,-0.707],[181,-0.831],[182,-0.924],[183,-0.981],[184,-1.0],[185,-0.981],[186,-0.924],[187,-0.831],[188,-0.707],[189,-0.556],[190,-0.383],[191,-0.195],[192,-0.0],[193,0.195],[194,0.383],[195,0.556],[196,0.707],[197,0.831],[198,0.924],[199,0.981],[200,1.0],[201,0.981],[202,0.924],[203,0.831],[204,0.707],[205,0.556],[206,0.383],[207,0.195],[208,-0.0],[209,-0.195],[210,-0.383],[211,-0.556],[212,-0.707],[213,-0.831],[214,-0.924],[215,-0.981],[216,-1.0],[217,-0.981],[218,-0.924],[219,-0.831],[220,-0.707],[221,-0.556],[222,-0.383],[223,-0.195],[224,-0.0],[225,0.195],[226,0.383],[227,0.556],[228,0.707],[229,0.831],[230,0.924],[231,0.981],[232,1.0],[233,0.981],[234,0.924],[235,0.831],[236,0.707],[237,0.556],[238,0.383],[239,0.195],[240,0.0],[241,-0.195],[242,-0.383],[243,-0.556],[244,-0.707],[245,-0.831],[246,-0.924],[247,-0.981],[248,-1.0],[249,-0.981],[250,-0.924],[251,-0.831],[252,-0.707],[253,-0.556],[254,-0.383],[255,-0.195]],"tone":"blue","ms":1600}]},{"cap":"Its periodogram shows two equal spikes, at periods 8 and 32. It cannot say that one cycle ran first and the other second: a series with both cycles all the way through would look much the same.","do":[{"chart":"pg","x":10,"y":214,"w":280,"h":230,"title":"Periodogram","xd":[0,0.19],"yd":[0,18.5],"yt":[[0,"0"],[16,"16"]],"xt":[[0.03125,"1/32"],[0.125,"1/8"]],"pl":36,"pr":12},{"series":"pgs","chart":"pg","pts":[[0.0,0.0],[0.0039,0.244],[0.0078,0.0],[0.0117,0.344],[0.0156,0.0],[0.0195,0.788],[0.0234,0.0],[0.0273,6.53],[0.0312,16.0],[0.0352,6.57],[0.0391,0.0],[0.043,0.79],[0.0469,0.0],[0.0508,0.328],[0.0547,0.0],[0.0586,0.203],[0.0625,0.0],[0.0664,0.157],[0.0703,0.0],[0.0742,0.142],[0.0781,0.0],[0.082,0.145],[0.0859,0.0],[0.0898,0.169],[0.0938,0.0],[0.0977,0.225],[0.1016,0.0],[0.1055,0.369],[0.1094,0.0],[0.1133,0.877],[0.1172,0.0],[0.1211,6.895],[0.125,16.0],[0.1289,6.121],[0.1328,0.0],[0.1367,0.612],[0.1406,0.0],[0.1445,0.2],[0.1484,0.0],[0.1523,0.094],[0.1562,0.0],[0.1602,0.053],[0.1641,0.0],[0.168,0.033],[0.1719,0.0],[0.1758,0.022],[0.1797,0.0],[0.1836,0.016],[0.1875,0.0]],"tone":"purple","ms":1200},{"note":"pgn","chart":"pg","at":[0.08,12],"text":"no \"when\"","tone":"red","size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"A wavelet is a short ripple that switches itself off. Slide a small, fast one along the series and record how well it matches at each step.","do":[{"chart":"en","x":310,"y":214,"w":280,"h":230,"title":"Wavelet power over time","xd":[0,256],"yd":[0,1.25],"yt":[[0,"0"],[1,"max"]],"xt":[[0,"0"],[128,"128"],[256,"256"]],"pl":40,"pr":12},{"series":"e8","chart":"en","pts":[[0,0.252],[4,0.491],[8,0.728],[12,0.888],[16,0.964],[20,0.991],[24,0.998],[28,1.0],[32,1.0],[36,1.0],[40,1.0],[44,1.0],[48,1.0],[52,1.0],[56,1.0],[60,1.0],[64,1.0],[68,1.0],[72,1.0],[76,1.0],[80,1.0],[84,1.0],[88,1.0],[92,1.0],[96,1.0],[100,1.0],[104,0.999],[108,0.993],[112,0.971],[116,0.903],[120,0.75],[124,0.512],[128,0.262],[132,0.093],[136,0.022],[140,0.003],[144,0.0],[148,0.0],[152,0.0],[156,0.0],[160,0.0],[164,0.0],[168,0.0],[172,0.0],[176,0.0],[180,0.0],[184,0.0],[188,0.0],[192,0.0],[196,0.0],[200,0.0],[204,0.0],[208,0.0],[212,0.0],[216,0.0],[220,0.0],[224,0.0],[228,0.0],[232,0.0],[236,0.0],[240,0.0],[244,0.0],[248,0.001],[252,0.001]],"tone":"green","ms":1500,"label":"fast","lat":[64,1.0],"ldy":-12}]},{"cap":"The fast ripple lights up for the first half only, and goes dark once the fast cycle stops at step 128.","do":[{"pulse":"e8"},{"series":"cut","chart":"ts","pts":[[128,-1.3],[128,1.5]],"tone":"red","dash":true,"ms":500}]},{"cap":"Stretch the ripple to match the slow cycle and slide it again. Now the second half lights up. That is the scalogram idea: which cycle, and when.","do":[{"series":"e32","chart":"en","pts":[[0,0.001],[4,0.001],[8,0.001],[12,0.001],[16,0.001],[20,0.001],[24,0.001],[28,0.001],[32,0.0],[36,0.0],[40,0.0],[44,0.0],[48,0.0],[52,0.0],[56,0.0],[60,0.0],[64,0.0],[68,0.001],[72,0.001],[76,0.002],[80,0.004],[84,0.006],[88,0.01],[92,0.016],[96,0.024],[100,0.035],[104,0.051],[108,0.071],[112,0.097],[116,0.13],[120,0.17],[124,0.216],[128,0.269],[132,0.328],[136,0.391],[140,0.458],[144,0.526],[148,0.593],[152,0.659],[156,0.722],[160,0.779],[164,0.831],[168,0.876],[172,0.914],[176,0.945],[180,0.969],[184,0.986],[188,0.996],[192,1.0],[196,0.997],[200,0.988],[204,0.971],[208,0.948],[212,0.918],[216,0.88],[220,0.836],[224,0.785],[228,0.728],[232,0.666],[236,0.6],[240,0.533],[244,0.465],[248,0.398],[252,0.334]],"tone":"amber","ms":1500,"label":"slow","lat":[192,1.0],"ldy":-12}]},{"cap":"Look at the right-hand end: the slow ripple fades before the data does, though the slow cycle never stops. Near the edges the ripple hangs off the data. That is the cone of influence: trust edge readings less.","do":[{"gap":"coi","chart":"en","top":[[212,1.2],[256,1.2]],"bot":[[212,0],[256,0]],"tone":"amber","op":0.22},{"note":"coil","chart":"en","at":[234,0.12],"text":"edge","tone":"amber","size":16,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Now the lesson's worked example: eight daily returns, all tiny except a 3.00% shock at step 4.","do":[{"chart":"hx","x":10,"y":460,"w":280,"h":230,"title":"Returns (%)","xd":[-0.6,7.6],"yd":[-0.4,3.5],"yt":[[0,"0"],[3,"3"]],"xt":[[0,"0"],[4,"4"],[7,"7"]],"zero":true,"pl":36},{"bars":"hxb","chart":"hx","data":[[0,0.1,"","blue"],[1,-0.1,"","blue"],[2,0.05,"","blue"],[3,-0.05,"","blue"],[4,3.0,"3.00","red"],[5,-0.05,"","blue"],[6,0.05,"","blue"],[7,-0.1,"","blue"]],"bw":22,"ms":900}]},{"cap":"Haar: pair the days up and take half the difference of each pair. Three pairs give 0.100 or less. Pair 3, steps 4 and 5, gives 1.525: more than ten times the rest, right where the shock is.","do":[{"chart":"hd","x":310,"y":460,"w":280,"h":230,"title":"Haar details","xd":[0.4,4.6],"yd":[0,1.8],"yt":[[0,"0"],[1.5,"1.5"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"]],"pl":36},{"bars":"hdb","chart":"hd","data":[[1,0.1,"0.100","blue"],[2,0.05,"0.050","blue"],[3,1.525,"1.525","red"],[4,0.075,"0.075","blue"]],"bw":34,"ms":1000}]},{"cap":"There is no free lunch. A step-shaped Haar wavelet pins down a jump sharply in time but blurs frequency. A smooth Morlet wavelet separates nearby cycles well but blurs timing.","do":[{"box":"haar","x":10,"y":704,"w":280,"h":80,"text":"Haar: sharp in time","tone":"red","size":19},{"box":"mor","x":310,"y":704,"w":280,"h":80,"text":"Morlet: sharp in frequency","tone":"green","size":19}]},{"cap":"And a big map has many cells, so some will light up by chance. A bright patch is a hint to test, not a signal. Wavelets tell you which cycles, and roughly when.","do":[{"pulse":"e8"},{"pulse":"e32"},{"pulse":"hdb"}]}]}</script>
+  </div>
+  <!-- WB:wavelets_time_frequency:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -389,6 +486,19 @@
         is an observation, not evidence of a repeatable, tradeable edge until it clears an honest out-of-sample
         test.</li>
     </ul>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative ECB afternoon</div>
+    <h3>A bright band after the press conference</h3>
+    <p>You run a Morlet scalogram of EUR/USD 5-minute returns over one session that included an ECB press conference. It shows a bright band at short scales in the 20 minutes after the press conference starts. It also shows bright patches at long scales at the very start and the very end of the session. What do you conclude?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Both are real. Build a rule that trades the short cycle after ECB press conferences and the long cycle at the open and close.<div class="tl-drill-why">The edge patches sit inside the cone of influence, where the wavelet hangs off the end of the data, so they mostly reflect how the edges were handled. And one day's bright band is an observation, not a tested rule.</div></li>
+      <li data-verdict="good">Distrust the edge patches, then check whether the post-conference band shows up across many ECB days, with a proper significance test rather than brightness by eye.<div class="tl-drill-why">This handles both traps in the lesson. Edge readings get far less weight, and scanning many time-scale cells for a bright spot is a multiple-comparisons problem. A band that recurs across many events, and survives a real test, is worth taking further.</div></li>
+      <li data-verdict="ok">Write up the band as a description of what happened that day, with no trading rule attached.<div class="tl-drill-why">Honest, and the scalogram is good at exactly this kind of description. But a single day says little about whether the pattern repeats, and the edge patches still need flagging in the write-up.</div></li>
+      <li data-verdict="bad">Swap the scalogram for one periodogram of the whole session, since it is the more established tool.<div class="tl-drill-why">That throws away the one thing you wanted to know: when. A periodogram would report a short cycle somewhere in the day, with no way to say whether it was concentrated right after the press conference.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson says.</strong> This is an illustrative case built on the lesson's own ECB scenario, not a reported result. A scalogram can show a shortening cycle as a narrow band right at the announcement, which a whole-session periodogram cannot. But readings near the sample edges are contaminated, isolated hot spots need a real significance framework, and turning a pattern into a rule still needs an honest out-of-sample test.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -486,6 +596,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="fourier-analysis-frequency-domain.html">Fourier Analysis &amp; the Frequency Domain</a> <span>· the "which cycles" view this adds timing to</span></li>
+        <li><a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a> <span>· why a changing series breaks a single spectrum</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="trend-cycle-filters.html">Trend/Cycle Filters: Hodrick-Prescott, Butterworth &amp; Baxter-King</a> <span>· fixed-band filters for separating trend from cycle</span></li>
+        <li><a href="hurst-variance-ratio.html">The Hurst Exponent &amp; Variance Ratio Test</a> <span>· long memory, which wavelets estimate scale by scale</span></li>
+        <li><a href="multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere Effect</a> <span>· why a bright cell in a big map needs a higher bar</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> markets change character around events and between regimes, and this is the tool that shows which horizon changed, and when.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="fourier-analysis-frequency-domain.html">← Fourier Analysis &amp; the Frequency Domain</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -563,6 +693,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Short-Rate Models: Vasicek, CIR &amp; Hull-White — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -211,7 +212,19 @@
       </div>
     </section>
 
+    <!-- WB:short_rate_models_vasicek_cir_hull_white-deck:START -->
     <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Three short-rate models and the floor at zero</h2>
+      <!-- WB:short_rate_models_vasicek_cir_hull_white:START -->
+      <div class="wb" data-title="Three short-rate models and the floor at zero">
+        <script type="application/json">{"w":600,"h":750,"intro":"One short rate, three models. Watch what each model's noise term does near zero, then what real rates did from 2014 to 2023. Press play, or step through.","steps":[{"cap":"The short rate is the interest rate on the shortest possible loan. Vasicek's picture: it wanders, but a spring pulls it back towards a long-run level b. In the lesson's example b = 0.5%.","do":[{"chart":"p","x":10,"y":10,"w":580,"h":300,"title":"Short rate, %: one simulated 10-year path","xd":[0,10],"yd":[-2.4,2.5],"yt":[[-2,"−2%"],[-1,"−1%"],[0,"0%"],[1,"1%"],[2,"2%"]],"xt":[[0,"0"],[5,"5 yr"],[10,"10 yr"]],"zero":true,"pl":50,"pr":20},{"series":"b","chart":"p","pts":[[0,0.5],[10,0.5]],"tone":null,"dash":true,"ms":500,"label":"b = 0.5%","lat":[10,0.5],"ldx":-4,"ldy":-12,"lanchor":"end","lsize":17}]},{"cap":"The spring is the drift, a(b − r). With speed a = 0.20, a rate sitting at 2% is pulled down at 0.20 × (0.5% − 2%) = −0.3% a year. The further away, the harder the pull.","do":[{"box":"pull","x":20,"y":330,"w":560,"h":78,"text":"pull = a(b − r)\nat r = 2%:  0.20 × (0.5% − 2%) = −0.3% a year","tone":"purple","size":19}]},{"cap":"Add random shocks of a constant size, σ = 1%, and you have Vasicek. Here is one simulated path from the lesson, ten years long.","do":[{"hide":"pull"},{"box":"vas","x":20,"y":330,"w":270,"h":78,"text":"Vasicek\nsame noise σ at every level","tone":"amber","size":18},{"series":"vp","chart":"p","pts":[[0.0,0.5],[0.13,1.19],[0.27,1.21],[0.4,0.85],[0.53,1.19],[0.67,1.83],[0.8,1.77],[0.93,1.84],[1.07,2.02],[1.2,1.52],[1.33,0.96],[1.47,0.8],[1.6,0.7],[1.73,0.46],[1.87,0.51],[2.0,0.47],[2.13,0.59],[2.27,1.08],[2.4,1.2],[2.53,0.83],[2.67,1.02],[2.8,0.55],[2.93,0.18],[3.07,0.09],[3.2,0.54],[3.33,0.35],[3.47,0.49],[3.6,0.83],[3.73,1.33],[3.87,1.07],[4.0,1.16],[4.13,0.79],[4.27,0.45],[4.4,0.63],[4.53,0.65],[4.67,0.79],[4.8,0.45],[4.93,0.98],[5.07,1.28],[5.2,1.47],[5.33,1.27],[5.47,1.39],[5.6,1.47],[5.73,1.8],[5.87,1.5],[6.0,1.68],[6.13,1.55],[6.27,1.64],[6.4,1.09],[6.53,1.76],[6.67,1.83],[6.8,1.68],[6.93,1.0],[7.07,0.77],[7.2,0.71],[7.33,0.72],[7.47,0.42],[7.6,-0.08],[7.73,-0.05],[7.87,-0.04],[8.0,0.07],[8.13,0.19],[8.27,-0.47],[8.4,-0.59],[8.53,-0.74],[8.67,-0.48],[8.8,-0.44],[8.93,-1.12],[9.07,-1.32],[9.2,-1.97],[9.33,-1.57],[9.47,-0.93],[9.6,-0.92],[9.73,-0.98],[9.87,-1.07],[10.0,-0.68]],"tone":"amber","ms":2200}]},{"cap":"Nothing stops it crossing zero: the shove at 0% is as big as at 2%. This run tops out near 2.0% and, late on, falls to about −2.0%.","do":[{"dot":"vmax","chart":"p","at":[1.07,2.02],"text":"2.0%","tone":"amber","dx":8,"dy":-4,"anchor":"start"},{"dot":"vmin","chart":"p","at":[9.2,-1.97],"text":"−2.0%","tone":"red","dx":-10,"dy":4,"anchor":"end"}]},{"cap":"CIR keeps the same pull but multiplies the shock by the square root of the rate. At 0.5%, the square root is about 0.07, so the shove is about one fourteenth of Vasicek's. At zero it is nothing.","do":[{"box":"cir","x":310,"y":330,"w":270,"h":78,"text":"CIR\nnoise σ√r shrinks near 0%","tone":"green","size":18}]},{"cap":"Same parameters, same shocks, CIR's noise instead. The path never leaves a band between about 0.33% and 0.61%, and never goes below zero.","do":[{"dim":"vp"},{"dim":"vmax"},{"dim":"vmin"},{"series":"cp","chart":"p","pts":[[0.0,0.5],[0.13,0.55],[0.27,0.55],[0.4,0.52],[0.53,0.55],[0.67,0.6],[0.8,0.59],[0.93,0.6],[1.07,0.61],[1.2,0.57],[1.33,0.53],[1.47,0.52],[1.6,0.51],[1.73,0.49],[1.87,0.5],[2.0,0.49],[2.13,0.5],[2.27,0.54],[2.4,0.55],[2.53,0.52],[2.67,0.53],[2.8,0.5],[2.93,0.47],[3.07,0.47],[3.2,0.5],[3.33,0.48],[3.47,0.49],[3.6,0.52],[3.73,0.55],[3.87,0.54],[4.0,0.54],[4.13,0.52],[4.27,0.49],[4.4,0.5],[4.53,0.51],[4.67,0.52],[4.8,0.49],[4.93,0.53],[5.07,0.55],[5.2,0.56],[5.33,0.55],[5.47,0.56],[5.6,0.56],[5.73,0.59],[5.87,0.57],[6.0,0.58],[6.13,0.57],[6.27,0.58],[6.4,0.54],[6.53,0.59],[6.67,0.59],[6.8,0.58],[6.93,0.53],[7.07,0.51],[7.2,0.51],[7.33,0.51],[7.47,0.49],[7.6,0.45],[7.73,0.45],[7.87,0.46],[8.0,0.46],[8.13,0.47],[8.27,0.43],[8.4,0.42],[8.53,0.41],[8.67,0.43],[8.8,0.43],[8.93,0.38],[9.07,0.37],[9.2,0.33],[9.33,0.36],[9.47,0.4],[9.6,0.4],[9.73,0.39],[9.87,0.39],[10.0,0.41]],"tone":"green","ms":2000}]},{"cap":"Why it holds: the Feller condition, 2ab ≥ σ². Here 2 × 0.20 × 0.005 = 0.002, against σ² = 0.0001. The pull beats the noise by a factor of 20, so the rate never touches zero.","do":[{"box":"fel","x":20,"y":424,"w":560,"h":64,"text":"Feller:  2ab = 0.002  ≥  σ² = 0.0001   ✓ (× 20)","tone":"green","size":19}]},{"cap":"Hull-White solves a different problem. With fixed settings, Vasicek draws one natural yield-curve shape, and today's real curve rarely matches it. Hull-White swaps the fixed target for θ(t), a target that moves over time, chosen so the model reprices today's curve exactly.","do":[{"hide":"vas"},{"hide":"cir"},{"hide":"fel"},{"icon":"crv","name":"scroll","x":40,"y":330,"s":0.72,"tone":"blue","label":"today's curve","lsize":17},{"box":"hw","x":220,"y":336,"w":360,"h":78,"text":"Hull-White: target θ(t)\nmoves to fit today's curve","tone":"purple","size":18},{"arrow":["crv","hw"],"label":"calibrate","tone":"purple","id":"cal"}]},{"cap":"Then reality. The ECB cut its deposit rate to −0.10% in June 2014, then in steps to −0.50% by September 2019. CIR said this was impossible.","do":[{"chart":"ecb","x":10,"y":450,"w":580,"h":290,"title":"ECB deposit rate, % (approx. dates)","xd":[2014,2024],"yd":[-1.6,4.5],"yt":[[0,"0%"],[2,"2%"],[4,"4%"]],"xt":[[2014,"2014"],[2016,"2016"],[2019,"2019"],[2022,"2022"],[2024,"2024"]],"zero":true,"pl":50,"pr":20},{"series":"neg","chart":"ecb","pts":[[2014.0,0],[2014.44,0],[2014.44,-0.1],[2014.69,-0.1],[2014.69,-0.2],[2015.94,-0.2],[2015.94,-0.3],[2016.21,-0.3],[2016.21,-0.4],[2019.71,-0.4],[2019.71,-0.5],[2022.57,-0.5]],"tone":"red","ms":1800},{"dot":"m50","chart":"ecb","at":[2019.71,-0.5],"text":"−0.50%","tone":"red","dx":0,"dy":-14}]},{"cap":"And Vasicek gave real odds to −3%. Neither happened: rates sat just below zero for eight years. The deepest major policy rates reached about −0.75% (the Swiss rate from 2015), because past that, holding cash is cheaper. A soft floor no model here has.","do":[{"series":"flr","chart":"ecb","pts":[[2014,-0.75],[2024,-0.75]],"tone":"amber","dash":true,"ms":600,"label":"≈ −0.75% floor","lat":[2014,-0.75],"ldx":4,"ldy":18,"lanchor":"start","lsize":17}]},{"cap":"Then the exit: zero in July 2022 and 4.00% by September 2023, 4.5 points in fourteen months. One fixed long-run level fits eight pinned years and a sprint very badly.","do":[{"series":"up","chart":"ecb","pts":[[2022.57,-0.5],[2022.57,0],[2022.7,0],[2022.7,0.75],[2022.84,0.75],[2022.84,1.5],[2022.97,1.5],[2022.97,2.0],[2023.11,2.0],[2023.11,2.5],[2023.22,2.5],[2023.22,3.0],[2023.36,3.0],[2023.36,3.25],[2023.47,3.25],[2023.47,3.5],[2023.59,3.5],[2023.59,3.75],[2023.72,3.75],[2023.72,4.0],[2024.0,4.0]],"tone":"blue","ms":1400},{"dot":"top","chart":"ecb","at":[2023.72,4.0],"text":"4.00%","tone":"blue","dx":-8,"dy":-10,"anchor":"end"}]},{"cap":"The noise term decides where a rate model puts the floor: CIR at a hard wall at zero, Vasicek and Hull-White nowhere. Check that floor against the regime you are actually in.","do":[{"hide":"hw"},{"hide":"crv"},{"hide":"cal"},{"box":"end","x":20,"y":336,"w":560,"h":84,"text":"CIR: wall at 0  ·  Vasicek: no floor\ndata 2014–2022: soft floor ≈ −0.75%","tone":"amber","size":19}]}]}</script>
+      </div>
+      <!-- WB:short_rate_models_vasicek_cir_hull_white:END -->
+    </section>
+    <!-- WB:short_rate_models_vasicek_cir_hull_white-deck:END -->
+
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this fits — in theory<!-- DESK:START -->, and in this repo<!-- DESK:END --></h2>
       <div class="sl-icard-grid">
@@ -226,7 +239,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11 · It actually happened</div>
       <h2 class="sl-h2">Eight years below zero, and the way out</h2>
       <div class="sl-callout amber">
@@ -246,7 +259,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12<!-- DESK:START --> · Tested here<!-- DESK:END --></div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and the verdict<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: the short rate mean-reverts to b, so fade it when it's far away.</p>
@@ -259,7 +272,7 @@
       <div class="sl-quote">CIR puts a hard wall at zero; Vasicek puts no wall anywhere. The data had a <strong>soft floor below zero</strong>, set by the cost of holding cash, and a rate that sat pinned for eight years and then rose 4.5 points in fourteen months. Neither boundary, and no constant b, fits that.</div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -310,7 +323,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -457,5 +470,9 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

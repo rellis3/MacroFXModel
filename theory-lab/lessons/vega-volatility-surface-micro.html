@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vega &amp; the Volatility Surface — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -228,7 +229,19 @@
       <p class="sl-p">This is why a vega-exposed desk reaches for a completely different toolkit than a delta-exposed one: calendar spreads, strangles, straddles — combinations designed to isolate vega — because the underlying structurally can't do the job. The cross-Greeks (Vanna, and Charm for delta's time decay) get the full treatment next lesson.</p>
     </section>
 
+    <!-- WB:vega_volatility_surface-deck:START -->
     <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Vega and the volatility surface, drawn step by step</h2>
+      <!-- WB:vega_volatility_surface:START -->
+      <div class="wb" data-title="Vega and the volatility surface, drawn step by step">
+        <script type="application/json">{"w":600,"h":830,"intro":"How much an option cares about the market's volatility forecast, why the market quotes a whole grid of forecasts, and the crash that shaped it. The lesson's own numbers.","steps":[{"cap":"A stock at 100 and an at-the-money call with 30 days left, priced at 20% implied volatility. Nudge that forecast up one point, the price unchanged, and the call gains about 11 cents a share. That sensitivity is vega.","do":[{"box":"vol","x":20,"y":18,"w":210,"h":80,"text":"implied vol\n20% → 21%","tone":"amber","size":20},{"box":"opt","x":370,"y":18,"w":210,"h":80,"text":"ATM call, 30 days","tone":"blue","sub":"+$0.0000","size":19},{"arrow":["vol","opt"],"label":"vega"},{"count":"opt","from":0,"to":0.1142,"dp":4,"pre":"+$","ms":1200}]},{"cap":"Vega grows with the square root of time. At the money it is 11.42 per 1.00 of volatility with 30 days left, 19.71 with 90 and 39.10 with a year. It never melts away like gamma or theta.","do":[{"chart":"exp","x":10,"y":120,"w":280,"h":250,"title":"Vega by expiry, at the money","xd":[0.4,3.6],"yd":[0,47],"yt":[[0,"0"],[20,"20"],[40,"40"]],"xt":[[1,"30d"],[2,"90d"],[3,"1 year"]],"pl":40},{"bars":"eb","chart":"exp","data":[[1,11.42,"11.42","blue"],[2,19.71,"19.71","blue"],[3,39.1,"39.10","blue"]],"bw":46,"ms":1100}]},{"cap":"Across strikes it is a bell. With 90 days left, vega is 19.71 at the money but only 10.11 at the 90 strike and 13.68 at 110. It is biggest where the outcome is still a coin flip.","do":[{"chart":"stk","x":310,"y":120,"w":280,"h":250,"title":"Vega by strike, 90 days","xd":[0.4,3.6],"yd":[0,47],"yt":[[0,"0"],[20,"20"],[40,"40"]],"xt":[[1,"90"],[2,"100"],[3,"110"]],"pl":40},{"bars":"sb","chart":"stk","data":[[1,10.11,"10.11","purple"],[2,19.71,"19.71","green"],[3,13.68,"13.68","purple"]],"bw":46,"ms":1100}]},{"cap":"A call and a put at the same strike have exactly the same vega. The stock itself has none at all: buying or selling it cannot offset a vega risk by even a cent. Only another option can.","do":[{"box":"stk0","x":10,"y":386,"w":280,"h":66,"text":"the stock: vega = 0","tone":"red","size":20},{"box":"hedge","x":310,"y":386,"w":280,"h":66,"text":"hedge vega with options","tone":"green","size":20}]},{"cap":"Markets don't quote one volatility. Across strikes, equity-index options show a smirk: crash protection on the left trades at richer implied vol than the matching calls on the right. A single flat volatility would be the dashed line. (The lesson's stylized shape.)","do":[{"chart":"smile","x":10,"y":468,"w":580,"h":232,"title":"Implied vol by strike ÷ spot (stylized)","xd":[0.72,1.28],"yd":[15,32],"yt":[[20,"20%"],[30,"30%"]],"xt":[[0.8,"0.8"],[0.9,"0.9"],[1.0,"1.0"],[1.1,"1.1"],[1.2,"1.2"]],"pl":52},{"series":"flat","chart":"smile","pts":[[0.73,20],[1.27,20]],"tone":null,"dash":true,"ms":500,"label":"one flat σ","lat":[1.27,20],"ldy":16,"lanchor":"end"},{"series":"sm","chart":"smile","pts":[[0.75,29.8],[0.8,27.7],[0.85,25.2],[0.9,23.1],[0.95,21.1],[1.0,19.1],[1.05,19.7],[1.1,20.6],[1.15,21.9],[1.2,23.4],[1.25,25.2]],"tone":"amber","ms":1400},{"dot":"pw","chart":"smile","at":[0.75,29.8],"text":"put wing, rich","tone":"red","dx":14,"dy":0,"anchor":"start"}]},{"cap":"Across expiries, event risk sets the shape. If a central-bank day counts like 3 ordinary days in a 5-day option, it carries 3 of 7 day-equivalents, about 43% of the expected variance. In a 60-day option the same day is diluted to a small fraction.","do":[{"box":"ev","x":10,"y":716,"w":280,"h":100,"text":"event in a 5-day expiry","tone":"amber","sub":"≈ 43% of the variance","size":19},{"box":"ev60","x":310,"y":716,"w":280,"h":100,"text":"same event, 60-day expiry","tone":"blue","sub":"a small fraction","size":19}]},{"cap":"Where the smirk came from. In 1987, portfolio insurance protected tens of billions of dollars of equity without buying a single put: a program sold index futures as the market fell, copying a put's delta. A copy with no vega.","do":[{"hide":"vol"},{"hide":"opt"},{"hide":"vol>opt"},{"hide":"exp"},{"hide":"eb"},{"hide":"stk"},{"hide":"sb"},{"hide":"stk0"},{"hide":"hedge"},{"icon":"ins","name":"shield","x":50,"y":14,"s":0.72,"tone":"blue","label":"portfolio insurance","lsize":16},{"box":"rule","x":180,"y":20,"w":400,"h":80,"text":"market falls → sell index futures\na copied put: delta only","tone":"blue","size":19}]},{"cap":"Monday 19 October 1987: the Dow falls 22.6% and the S&P 500 about 20% in one session. Prices gap instead of sliding, futures trade at a deep discount, and the copied puts fall behind exactly when they are needed.","do":[{"box":"crash","x":60,"y":140,"w":480,"h":84,"text":"Dow −22.6% in one day\nS&P 500 about −20%","tone":"red","size":21},{"cross":"rule"}]},{"cap":"Holders of real puts were protected twice: their puts gained from the fall and again from the jump in implied volatility. That second gain is vega, the part the copy never had.","do":[{"box":"real","x":60,"y":250,"w":480,"h":84,"text":"real puts: gain on price AND on vol","tone":"green","size":20}]},{"cap":"Index options had traded close to a flat smile before the crash. Since then, out-of-the-money puts have carried a persistent implied-vol premium. The smirk is the market still charging for the vega that portfolio insurance lacked.","do":[{"pulse":"pw"},{"pulse":"sm"},{"note":"since","chart":"smile","at":[1.0,29.5],"text":"richer ever since 1987","tone":"red","size":18,"anchor":"start","dx":0,"dy":0}]},{"cap":"The other axis has its own extreme. On 16 March 2020 the VIX closed at 82.69, its highest close on record, and near-dated implied vol stayed above longer-dated vol for weeks: the term structure turned upside down.","do":[{"box":"m20","x":60,"y":360,"w":480,"h":84,"text":"March 2020: VIX closes at 82.69\nnear-dated vol above far, for weeks","tone":"amber","size":19}]}]}</script>
+      </div>
+      <!-- WB:vega_volatility_surface:END -->
+    </section>
+    <!-- WB:vega_volatility_surface-deck:END -->
+
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Building the dollar VegaExposure formula, step by step</h2>
       <p class="sl-sub">νₖ × OIₖ × 100 looks arbitrary until you build it up. Step through it.</p>
@@ -255,7 +268,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Add up a toy three-strike vega book, live</h2>
       <p class="sl-sub">Fixed 90-day expiry vegas from the worked example (per vol point). Edit any OI or ν.</p>
@@ -290,7 +303,7 @@
       </div>
     </section>
 
-<!-- DESK:START -->    <section class="sl-slide" data-slide="13">
+<!-- DESK:START -->    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Fact-checked against this repo's own code</h2>
       <div class="sl-callout amber">
@@ -300,7 +313,7 @@
       </div>
     </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13 · It actually happened</div>
       <h2 class="sl-h2">October 1987: insurance that had no vega</h2>
       <div class="sl-callout amber">
@@ -321,7 +334,7 @@
       <p class="sl-p">★ is this lesson's concept. How much portfolio insurance <em>caused</em> the fall, rather than accompanied it, is still debated; that it couldn't hedge vega is not.</p>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: an inverted term structure says something about the weeks ahead.</p>
@@ -343,7 +356,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -394,7 +407,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="17">
+    <section class="sl-slide" data-slide="18">
       <div class="sl-kicker">Section 16</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -587,5 +600,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -41,6 +41,78 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 245" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Stacked bars for the lesson's three assets: bonds with 5% volatility, equities 15%, commodities 25%, all pairs correlated 0.30. Equal dollars puts a third of the capital in each, but the risk splits 7%, 30% and 64%, with portfolio volatility 11.64%. Equal risk contribution puts 65%, 22% and 13% of the capital in them, and the risk splits a third each, with portfolio volatility 7.14%.">
+      <text class="tlp-text2" x="20" y="24" font-size="13" font-weight="700">Equal dollars, $100 in each</text>
+      <text class="tlp-text3" x="140" y="52" text-anchor="end" font-size="12">capital</text>
+      <rect class="tlp-blue" opacity=".5" x="150.0" y="34" width="123.3" height="26"/>
+      <text class="tlp-text" x="211.7" y="52" text-anchor="middle" font-size="12" font-weight="700">33%</text>
+      <rect class="tlp-purple" opacity=".5" x="273.3" y="34" width="123.3" height="26"/>
+      <text class="tlp-text" x="335.0" y="52" text-anchor="middle" font-size="12" font-weight="700">33%</text>
+      <rect class="tlp-amber" opacity=".5" x="396.6" y="34" width="123.4" height="26"/>
+      <text class="tlp-text" x="458.3" y="52" text-anchor="middle" font-size="12" font-weight="700">33%</text>
+      <text class="tlp-text3" x="140" y="86" text-anchor="end" font-size="12">risk</text>
+      <rect class="tlp-blue" opacity=".5" x="150.0" y="68" width="25.8" height="26"/>
+      <text class="tlp-text" x="162.9" y="86" text-anchor="middle" font-size="12" font-weight="700">7%</text>
+      <rect class="tlp-purple" opacity=".5" x="175.8" y="68" width="109.2" height="26"/>
+      <text class="tlp-text" x="230.4" y="86" text-anchor="middle" font-size="12" font-weight="700">30%</text>
+      <rect class="tlp-amber" opacity=".5" x="285.0" y="68" width="235.0" height="26"/>
+      <text class="tlp-text" x="402.5" y="86" text-anchor="middle" font-size="12" font-weight="700">64%</text>
+      <text class="tlp-red" x="530" y="64" font-size="13" font-weight="700">σp 11.64%</text>
+      <text class="tlp-red" x="530" y="82" font-size="12">lopsided</text>
+      <text class="tlp-text2" x="20" y="130" font-size="13" font-weight="700">Equal risk contribution, weights ∝ 1/σ</text>
+      <text class="tlp-text3" x="140" y="158" text-anchor="end" font-size="12">capital</text>
+      <rect class="tlp-blue" opacity=".5" x="150.0" y="140" width="241.3" height="26"/>
+      <text class="tlp-text" x="270.7" y="158" text-anchor="middle" font-size="12" font-weight="700">65%</text>
+      <rect class="tlp-purple" opacity=".5" x="391.3" y="140" width="80.4" height="26"/>
+      <text class="tlp-text" x="431.5" y="158" text-anchor="middle" font-size="12" font-weight="700">22%</text>
+      <rect class="tlp-amber" opacity=".5" x="471.8" y="140" width="48.2" height="26"/>
+      <text class="tlp-text" x="495.9" y="158" text-anchor="middle" font-size="12" font-weight="700">13%</text>
+      <text class="tlp-text3" x="140" y="192" text-anchor="end" font-size="12">risk</text>
+      <rect class="tlp-blue" opacity=".5" x="150.0" y="174" width="123.3" height="26"/>
+      <text class="tlp-text" x="211.7" y="192" text-anchor="middle" font-size="12" font-weight="700">33%</text>
+      <rect class="tlp-purple" opacity=".5" x="273.3" y="174" width="123.3" height="26"/>
+      <text class="tlp-text" x="335.0" y="192" text-anchor="middle" font-size="12" font-weight="700">33%</text>
+      <rect class="tlp-amber" opacity=".5" x="396.6" y="174" width="123.4" height="26"/>
+      <text class="tlp-text" x="458.3" y="192" text-anchor="middle" font-size="12" font-weight="700">33%</text>
+      <text class="tlp-green" x="530" y="170" font-size="13" font-weight="700">σp 7.14%</text>
+      <text class="tlp-green" x="530" y="188" font-size="12">balanced</text>
+      <rect class="tlp-blue" opacity=".5" x="110" y="222" width="12" height="12"/>
+      <text class="tlp-text2" x="127" y="233" font-size="13">bonds σ 5%</text>
+      <rect class="tlp-purple" opacity=".5" x="235" y="222" width="12" height="12"/>
+      <text class="tlp-text2" x="252" y="233" font-size="13">equities σ 15%</text>
+      <rect class="tlp-amber" opacity=".5" x="375" y="222" width="12" height="12"/>
+      <text class="tlp-text2" x="392" y="233" font-size="13">commodities σ 25%</text>
+    </svg>
+    <figcaption>Equal money is not equal risk. Split $300 evenly and commodities supply about two-thirds of the swings. Size each sleeve by one over its volatility and every sleeve supplies exactly a third, with the calm bonds holding the biggest pile.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I tried a mean-variance optimizer on my books. The weights jumped all over the place every time I nudged a return forecast.</p>
+      <p data-who="Quant">That's the classic problem. The optimizer leans hardest on the expected returns, and those are the least reliable numbers you have. Risk parity's answer is blunt: stop forecasting returns at all.</p>
+      <p data-who="Trader">Then how do I decide the weights?</p>
+      <p data-who="Quant">Make every asset contribute the same slice of the portfolio's total risk. Not the same money. The same risk.</p>
+      <p data-who="Trader">Isn't splitting the money evenly the balanced thing to do?</p>
+      <p data-who="Quant">It feels balanced. Take three sleeves: bonds that swing about five percent a year, equities about fifteen, commodities about twenty-five. Every pair has a correlation of point three. Put a hundred dollars in each.</p>
+      <p data-who="Trader">A third each. Fine.</p>
+      <p data-who="Quant">A third of the money each. But the risk splits about seven percent bonds, thirty percent equities, sixty-four percent commodities. Two-thirds of your swings come from one third of your money.</p>
+      <p data-who="Trader">So the bonds barely matter.</p>
+      <p data-who="Quant">In risk terms they're a rounding error. Now size each sleeve by one over its volatility. Bonds get about sixty-five percent of the money, equities twenty-two, commodities thirteen. And each sleeve supplies exactly a third of the risk.</p>
+      <p data-who="Trader">Is that one-over-volatility rule always the answer?</p>
+      <p data-who="Quant">Only when every pair shares the same correlation. With real, uneven correlations you have to solve for the weights numerically. As a side effect, the total wiggle here drops from about eleven and a half percent to about seven.</p>
+      <p data-who="Trader">Less risk, but also less return, with all that money in bonds.</p>
+      <p data-who="Quant">Right, so real funds borrow and lever the bond sleeve up. That works while bonds stay calm and keep moving apart from stocks.</p>
+      <p data-who="Trader">And when they don't?</p>
+      <p data-who="Quant">March 2020. The VIX closed at a record of about eighty-three on the sixteenth, and for several days stocks and Treasuries fell together. The big levered bond sleeve suddenly carried far more risk than it had been given. The rules told every fund running them the same thing: cut. They sold into the fall, and held less when markets rebounded after the Fed's purchases on the twenty-third.</p>
+      <p data-who="Trader">So what's the one-line version?</p>
+      <p data-who="Quant">Size by risk, not by money, but remember the split is only equal for the risk you measured, not the risk that arrives.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -88,6 +160,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From portfolio variance to the equal-risk weights, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \sigma_p^2 = \color{#fbbf24}{w^\top \Sigma w} \]</div>
+      <p>Start with the portfolio's variance: the weights \(w\) acting through the covariance matrix \(\Sigma\), the same object as in Markowitz.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{\partial \sigma_p^2}{\partial w_i} = \color{#fbbf24}{2(\Sigma w)_i} \]</div>
+      <p>Ask how much the variance moves when you nudge one weight. The answer is the \(i\)-th entry of \(\Sigma w\): asset \(i\)'s marginal contribution.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ RC_i = \frac{\color{#fbbf24}{w_i}\,(\Sigma w)_i}{\color{#fbbf24}{\sigma_p}}, \qquad \textstyle\sum_i RC_i = \sigma_p \]</div>
+      <p>Scale by the asset's own weight and divide by total volatility. The pieces add up exactly to \(\sigma_p\): an exact split of the portfolio's risk.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{RC_i = RC_j \quad \forall\, i,j}, \qquad \text{s.t. } \textstyle\sum_i w_i = 1 \]</div>
+      <p>Risk parity's whole rule: every slice the same size. In general this nonlinear system has to be solved numerically.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{w_i^{ERC} = \frac{1/\sigma_i}{\sum_j 1/\sigma_j}} \quad \text{(uniform pairwise correlation)} \]</div>
+      <p>When every pair shares one correlation, the answer is inverse volatility. For bonds 5%, equities 15% and commodities 25%: weights 65.2%, 21.7% and 13.0%, each supplying 33.3% of the risk.</p>
+    </div>
+  </div>
   <p>
     This builds directly on the same quadratic-form portfolio variance from
     the Markowitz lesson, \(\text{Var}(R_p) = w^\top \Sigma w\), just asking a
@@ -433,6 +529,10 @@
       uniform-correlation assumption) weights, portfolio volatilities, and
       each asset's risk-contribution share all recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="7.0" data-tol="0.6" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At 25% volatility, commodities get 13.0% of the money. Double their volatility to 50%, keeping bonds at 5%, equities at 15% and the 0.30 correlation. What weight does the equal-risk portfolio give commodities now? Lock in a guess, then type 50 into "Commodities vol" below to check.</div>
+      <div class="tl-predict-reveal"><p><strong>About 7.0%.</strong> The inverse volatilities are now 20, 6.67 and 2, summing to 28.67, so commodities get \(2 / 28.67 \approx 7.0\%\), bonds 69.8% and equities 23.3%. Doubling the volatility roughly halved the weight, and the risk shares stay at exactly a third each. Now try a correlation of 0.9 and watch both portfolios' total volatility climb.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Bonds vol &sigma;&#8321; (%)</span></div>
@@ -671,6 +771,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2020-03-16">
+    <div class="tl-drill-label">Scenario drill · 16 March 2020</div>
+    <h3>Your "balanced" book is suddenly far over its risk target</h3>
+    <p>You run a risk-parity fund: equities, bonds and commodities sized to equal risk contributions, with leverage on the large bond sleeve. Your weights come from a covariance matrix estimated on a calm year. Today the VIX closed at a record 82.69. For several days long Treasury yields have been rising while stocks fall, so the bond sleeve is losing at the same time as equities. Measured on recent data, the portfolio's volatility is far above target, and most of the excess comes from the bond sleeve. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Hold the weights. On the model's covariance matrix the risk contributions are still equal.<div class="tl-drill-why">They are equal only on stale data. The split is exact for the matrix you feed it, and the matrix has changed in days. Your real risk is far above what the mandate allows.</div></li>
+      <li data-verdict="bad">Add to the bond sleeve. Treasuries are the safe haven and must rally.<div class="tl-drill-why">The diversifier has stopped diversifying for now. Adding leverage to the sleeve whose risk contribution just ballooned doubles down on the assumption that has already failed.</div></li>
+      <li data-verdict="good">Re-estimate risk on recent data and bring volatility back toward target in planned steps, starting with the levered bond sleeve, accepting the cost.<div class="tl-drill-why">The rule exists to keep risk at its target, and the current risk says cut. Doing it in planned steps, knowing that every fund running similar rules is selling the same assets, limits how much your own selling costs you.</div></li>
+      <li data-verdict="ok">Cut everything back to target at today's close, in one go.<div class="tl-drill-why">Right direction, wrong execution. Selling everything at once, alongside every other fund on the same rule, means paying the worst prices: the de-levering is itself a market event.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The S&amp;P 500 fell about a third from its February peak to its low on 23 March. Market strategists at the time widely described risk-parity and vol-targeting funds as forced sellers of equities and bonds into the fall. The selling was mechanical and came after the losses rather than before, and it left the funds with less exposure when markets rebounded from late March, after the Federal Reserve announced open-ended purchases on 23 March. Cutting cost money in hindsight; holding a book far over its risk target with no plan would have risked much worse had the fall continued.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -730,6 +843,26 @@
     <li>Edward Qian, "On the Financial Interpretation of Risk Contribution: Risk Budgets Do Add Up," <em>Journal of Investment Management</em>, 4(4), 2006 — the Euler's-theorem-based argument for why risk contributions sum exactly to portfolio volatility, referenced in Self-test Q2.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a> <span>· the return-forecast problem risk parity sidesteps</span></li>
+        <li><a href="linear-algebra-matrices.html">Linear Algebra &amp; Matrices</a> <span>· reading a covariance matrix acting on weights</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a> <span>· equal risk without inverting a noisy matrix</span></li>
+        <li><a href="correlation-networks-mst.html">Correlation Networks &amp; Minimum Spanning Trees</a> <span>· March 2020 seen through correlation</span></li>
+        <!-- DESK:START --><li><a href="institutional-ledoit-wolf-shrinkage.html">Ledoit-Wolf Covariance Shrinkage</a> <span>· a steadier covariance matrix to size from</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> any book with a loud position and a quiet one is a bet on the loud one, and this tells you how to size so each position actually pulls its weight.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
@@ -845,7 +978,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

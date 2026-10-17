@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Entropy, KL Divergence &amp; Mutual Information — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,62 @@
       <li><strong>How it reached trading:</strong> through Kelly's 1956 result that the best growth rate on a noisy tip equals its information rate, which Thorp took from blackjack to markets, and later through relative-entropy calibration of option prices in the 1990s.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the five points of Y equals X squared, for X from minus 2 to 2, lying on a U-shaped curve. The best straight line through them is flat, so their correlation is exactly zero. Right: a bar for the 2.322 bits of uncertainty in X, split into 1.522 bits that knowing Y removes, the mutual information, and 0.8 bits left over, the sign of X that squaring destroys.">
+      <line class="tlp-line" x1="40" y1="190" x2="280" y2="190"/>
+      <line class="tlp-line" x1="40" y1="40" x2="40" y2="190"/>
+      <polyline class="tlp-line purple thick" points="60.0,50.0 72.5,82.8 85.0,111.2 97.5,135.3 110.0,155.0 122.5,170.3 135.0,181.2 147.5,187.8 160.0,190.0 172.5,187.8 185.0,181.2 197.5,170.3 210.0,155.0 222.5,135.3 235.0,111.2 247.5,82.8 260.0,50.0"/>
+      <line class="tlp-line red dash" x1="48" y1="120" x2="272" y2="120"/>
+      <circle class="tlp-purple" cx="60" cy="50" r="6"/>
+      <circle class="tlp-purple" cx="110" cy="155" r="6"/>
+      <circle class="tlp-purple" cx="160" cy="190" r="6"/>
+      <circle class="tlp-purple" cx="210" cy="155" r="6"/>
+      <circle class="tlp-purple" cx="260" cy="50" r="6"/>
+      <text class="tlp-purple" x="160" y="44" text-anchor="middle" font-size="15" font-weight="700">Y = X²</text>
+      <text class="tlp-text3" x="60" y="208" text-anchor="middle" font-size="12">−2</text>
+      <text class="tlp-text3" x="160" y="208" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="260" y="208" text-anchor="middle" font-size="12">2</text>
+      <text class="tlp-text3" x="286" y="194" font-size="12">X</text>
+      <text class="tlp-red" x="160" y="230" text-anchor="middle" font-size="13" font-weight="700">best straight line is flat: correlation 0</text>
+      <text class="tlp-text" x="340" y="60" font-size="14" font-weight="700">What knowing Y tells you about X</text>
+      <text class="tlp-text2" x="340" y="90" font-size="13">uncertainty in X: 2.322 bits</text>
+      <rect class="tlp-box green" x="340" y="100" width="152" height="40" rx="4"/>
+      <rect class="tlp-box amber" x="492" y="100" width="80" height="40" rx="4"/>
+      <text class="tlp-green" x="416" y="125" text-anchor="middle" font-size="14" font-weight="700">1.522</text>
+      <text class="tlp-amber" x="532" y="125" text-anchor="middle" font-size="14" font-weight="700">0.8</text>
+      <text class="tlp-green" x="340" y="162" font-size="13" font-weight="700">removed by Y: mutual information</text>
+      <text class="tlp-amber" x="572" y="184" text-anchor="end" font-size="13" font-weight="700">left over: the sign of X</text>
+      <text class="tlp-text" x="456" y="224" text-anchor="middle" font-size="14" font-weight="700">uncorrelated is not unrelated</text>
+    </svg>
+    <figcaption>The lesson's worked example. A straight line sees nothing in these five points, yet knowing Y removes 1.522 of the 2.322 bits of uncertainty about X. Only the sign is left to guess. Mutual information measures that shared information, whatever shape the relationship takes.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I screen features with a correlation matrix. If the correlation is near zero, I drop the feature. What's wrong with that?</p>
+      <p data-who="Quant">Correlation only sees straight lines. A feature can be tightly tied to your target and still show a correlation of exactly zero.</p>
+      <p data-who="Trader">Exactly zero? Show me.</p>
+      <p data-who="Quant">Take five values, minus two up to plus two, equally likely. Square each one. The squares sit on a U shape. The best straight line through a U is flat, so the correlation is zero. But the square is completely fixed by the number. Nothing is random about it.</p>
+      <p data-who="Trader">So what measures the link instead?</p>
+      <p data-who="Quant">Information theory. Start with entropy. It is how surprised you are, on average, when you learn an outcome. A fair coin is one bit of surprise. A coin that lands heads ninety-nine times in a hundred barely surprises you, so its entropy is close to zero.</p>
+      <p data-who="Trader">And for my five numbers?</p>
+      <p data-who="Quant">Before you know anything, there are about two point three bits of uncertainty. Now I tell you the square. If it's zero, you know the number. If it's one or four, you only have to guess the sign: one bit. On average, eight tenths of a bit is left.</p>
+      <p data-who="Trader">So the square told me one and a half bits.</p>
+      <p data-who="Quant">One point five two, exactly. That drop in uncertainty is called mutual information. Correlation said zero. Mutual information says the link is strong.</p>
+      <p data-who="Trader">Where does the KL divergence part come in?</p>
+      <p data-who="Quant">It is the cost of using the wrong model, in wasted bits. And it is lopsided. If the coin is really ninety-nine percent heads and you assume it's fair, you waste about point nine bits per flip. If the coin is really fair and you assume ninety-nine percent heads, you waste two point three bits. Same two coins, two and a half times the cost.</p>
+      <p data-who="Trader">Why so lopsided?</p>
+      <p data-who="Quant">Because the second model wrote tails off as a one-in-a-hundred event, and then tails turned up half the time. Being blindsided by something you called nearly impossible is the expensive mistake. Think of a risk model that ignores big tail moves.</p>
+      <p data-who="Trader">Has any of this ever been used to make money?</p>
+      <p data-who="Quant">John Kelly, at Bell Labs in 1956, showed that the best growth rate a gambler can get from a noisy tip equals the information in that tip, in bits. Ed Thorp took that to blackjack and then to markets.</p>
+      <p data-who="Trader">So for my screen: check mutual information before I drop a feature.</p>
+      <p data-who="Quant">Yes, with one caution. It needs a lot of data, and it only tells you two things are linked, not that the link is tradeable. The one-line version: uncorrelated is not the same as unrelated.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -112,6 +169,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From the surprise of one outcome to mutual information, one idea at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{-\log_2 p(x)} \]</div>
+      <p>The surprise of one outcome. A fair coin's heads, \(p = 0.5\), is exactly 1 bit. A certain outcome, \(p = 1\), is 0 bits.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ H(X) = \color{#fbbf24}{\sum_x p(x)}\,\bigl(-\log_2 p(x)\bigr) \]</div>
+      <p>Average the surprise over every outcome, weighted by how often it happens. That is entropy. For five equally likely values it is \(\log_2 5 \approx 2.322\) bits.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ D_{\text{KL}}(P\|Q) = \sum_x p(x)\,\log_2\frac{p(x)}{\color{#fbbf24}{q(x)}} \]</div>
+      <p>Swap in a model \(Q\) and count the extra bits it wastes on data from \(P\). For a 99% coin described as fair it is 0.919 bits; the other way round, 2.329 bits.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ I(X;Y) = D_{\text{KL}}\bigl(\color{#fbbf24}{P(X,Y)} \,\|\, \color{#fbbf24}{P(X)P(Y)}\bigr) \]</div>
+      <p>Make the "model" the independent world. Mutual information is how far the real joint distribution is from what it would be if \(X\) and \(Y\) told each other nothing.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{I(X;Y) = H(X) - H(X|Y) = 2.322 - 0.8 = 1.522 \text{ bits}} \]</div>
+      <p>The same number, read as uncertainty removed. In the \(Y = X^2\) example, knowing \(Y\) leaves only the sign to guess, 0.8 bits, so it removes 1.522 bits, while the correlation is exactly zero.</p>
+    </div>
+  </div>
 
   <h3>Shannon entropy — the expected surprise</h3>
   <p>
@@ -298,6 +379,10 @@
       of the KL divergence recalculate instantly, so you can feel how
       sharply the asymmetry grows as one distribution gets more confident.
     </p>
+    <div class="tl-predict" data-answer="2.329" data-tol="0.05" data-unit=" bits">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With the true coin at 0.99 and the model coin at 0.5, \(D_{\text{KL}}(P\|Q)\) is 0.919 bits. Now make the true coin fair and the model the biased one: true coin 0.5, model coin 0.99. What will \(D_{\text{KL}}(P\|Q)\) read? Lock in a guess, then type 0.5 and 0.99 into the two fields below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>2.329 bits.</strong> You have swapped which coin is truth and which is the model, so you get the other direction from the worked example: \(0.5\log_2\frac{0.5}{0.99} + 0.5\log_2\frac{0.5}{0.01} \approx -0.493 + 2.822 = 2.329\). Same two coins, two and a half times the cost, because the model treats tails as a 1% event and tails now come up half the time. Now try a true coin of 0.5 and a model of 0.999 and watch the cost keep climbing.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>P(heads) — true coin</span></div>
@@ -446,6 +531,12 @@
     </p>
   </div>
 
+  <!-- WB:entropy_kl_mutual_information:START -->
+  <div class="wb" id="wb-entropy_kl_mutual_information" data-title="Entropy, KL and mutual information, drawn">
+    <script type="application/json">{"w":600,"h":800,"intro":"Three ideas from the lesson, each built on the last: surprise, the cost of a wrong model, and the information two variables share. Press play, or step through.","steps":[{"cap":"Start with a fair coin. You have no idea how it will land, so each flip carries the most surprise a coin can: exactly 1 bit.","do":[{"icon":"fair","name":"coin","x":30,"y":14,"s":0.8,"tone":"blue","label":"fair coin\n1 bit","sym":"½","lsize":17}]},{"cap":"Now a coin that lands heads 99 times in 100. You almost always know what is coming, so it carries only about 0.08 bits per flip.","do":[{"icon":"bias","name":"coin","x":30,"y":150,"s":0.6,"tone":"amber","label":"99% heads\n0.08 bits","sym":"H","lsize":17}]},{"cap":"Entropy across every coin: zero when the outcome is certain, 1 bit at a fair coin, 0.469 bits at 10% or 90%. Entropy is the average surprise.","do":[{"chart":"hc","x":190,"y":10,"w":400,"h":270,"title":"Entropy of a coin, in bits","xd":[0,1],"yd":[0,1.15],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[0,"0"],[0.5,"p = 0.5"],[1,"1"]],"pl":48,"pr":18},{"series":"hs","chart":"hc","pts":[[0.0,0.0],[0.02,0.1414],[0.04,0.2423],[0.06,0.3274],[0.08,0.4022],[0.1,0.469],[0.12,0.5294],[0.14,0.5842],[0.16,0.6343],[0.18,0.6801],[0.2,0.7219],[0.22,0.7602],[0.24,0.795],[0.26,0.8267],[0.28,0.8555],[0.3,0.8813],[0.32,0.9044],[0.34,0.9248],[0.36,0.9427],[0.38,0.958],[0.4,0.971],[0.42,0.9815],[0.44,0.9896],[0.46,0.9954],[0.48,0.9988],[0.5,1.0],[0.52,0.9988],[0.54,0.9954],[0.56,0.9896],[0.58,0.9815],[0.6,0.971],[0.62,0.958],[0.64,0.9427],[0.66,0.9248],[0.68,0.9044],[0.7,0.8813],[0.72,0.8555],[0.74,0.8267],[0.76,0.795],[0.78,0.7602],[0.8,0.7219],[0.82,0.6801],[0.84,0.6343],[0.86,0.5842],[0.88,0.5294],[0.9,0.469],[0.92,0.4022],[0.94,0.3274],[0.96,0.2423],[0.98,0.1414],[1.0,0.0]],"tone":"purple","ms":1500},{"dot":"h5","chart":"hc","at":[0.5,1.0],"text":"1 bit","tone":"blue","dy":-14},{"dot":"h1","chart":"hc","at":[0.1,0.469],"text":"0.469","tone":"purple","dx":12,"dy":12,"anchor":"start"},{"dot":"h99","chart":"hc","at":[0.99,0.081],"text":"0.08","tone":"amber","dx":-10,"dy":-4,"anchor":"end"}]},{"cap":"KL divergence is the cost of the wrong model. The coin is really 99% heads, but you describe it as fair. You waste 0.919 bits per flip.","do":[{"chart":"kc","x":10,"y":306,"w":280,"h":228,"title":"Bits wasted per flip","xd":[0.4,2.6],"yd":[0,2.7],"yt":[[0,"0"],[1,"1"],[2,"2"]],"xt":[[1,"truth 99%"],[2,"truth fair"]],"pl":40},{"bars":"k1","chart":"kc","data":[[1,0.919,"0.919","blue"]],"bw":64,"ms":900},{"box":"t1","x":320,"y":306,"w":270,"h":100,"text":"truth: 99% heads\nmodel: fair coin","tone":"blue","size":18}]},{"cap":"Swap the roles. The coin is really fair, but your model says 99% heads. Now you waste 2.329 bits per flip: same two coins, about 2.5 times the cost.","do":[{"bars":"k2","chart":"kc","data":[[2,2.329,"2.329","red"]],"bw":64,"ms":900},{"box":"t2","x":320,"y":434,"w":270,"h":100,"text":"truth: fair coin\nmodel: 99% heads","tone":"red","size":18}]},{"cap":"Why so lopsided? The second model calls tails a 1% event, so each tails costs it 6.64 bits of surprise, and tails turn up half the time. Writing off a common event as nearly impossible is the expensive mistake.","do":[{"pulse":"t2"},{"pulse":"bias"}]},{"cap":"Now two variables. X is −2, −1, 0, 1 or 2, all equally likely, and Y is X squared. The five points sit on a U.","do":[{"chart":"xy","x":10,"y":552,"w":280,"h":240,"title":"Y = X²","xd":[-2.6,2.6],"yd":[-0.4,4.8],"yt":[[0,"0"],[1,"1"],[4,"4"]],"xt":[[-2,"−2"],[0,"0"],[2,"2"]],"pl":36,"pr":12},{"dot":"p1","chart":"xy","at":[-2,4],"text":"","tone":"purple"},{"dot":"p2","chart":"xy","at":[-1,1],"text":"","tone":"purple"},{"dot":"p3","chart":"xy","at":[0,0],"text":"","tone":"purple"},{"dot":"p4","chart":"xy","at":[1,1],"text":"","tone":"purple"},{"dot":"p5","chart":"xy","at":[2,4],"text":"","tone":"purple"}]},{"cap":"The best straight line through a U is flat. The correlation between X and Y is exactly zero, even though Y is fixed by X.","do":[{"series":"fit","chart":"xy","pts":[[-2.5,2],[2.5,2]],"tone":"red","dash":true,"ms":600},{"note":"fl","chart":"xy","at":[0,2],"text":"correlation = 0","tone":"red","size":17,"anchor":"middle","dx":0,"dy":-16}]},{"cap":"Before you know anything, X holds 2.322 bits of uncertainty. Tell someone Y and they only have to guess the sign: 0.8 bits left on average.","do":[{"chart":"bc","x":310,"y":552,"w":280,"h":240,"title":"Uncertainty about X, bits","xd":[0.4,3.6],"yd":[0,2.7],"yt":[[0,"0"],[1,"1"],[2,"2"]],"xt":[[1,"before"],[2,"after Y"],[3,"shared"]],"pl":40},{"bars":"b1","chart":"bc","data":[[1,2.322,"2.322","blue"],[2,0.8,"0.8","amber"]],"bw":52,"ms":1000}]},{"cap":"The drop, 2.322 − 0.8 = 1.522 bits, is the mutual information. Correlation said nothing is there. Mutual information says Y removes most of the uncertainty about X.","do":[{"bars":"b2","chart":"bc","data":[[3,1.522,"1.522","green"]],"bw":52,"ms":900},{"pulse":"p1"},{"pulse":"p5"}]},{"cap":"In markets: if big up days and big down days both come before busy sessions, the signed return can show near-zero correlation with tomorrow's volatility while mutual information is clearly positive.","do":[{"hide":"t1"},{"hide":"t2"},{"box":"mk","x":320,"y":306,"w":270,"h":228,"text":"signed return vs\ntomorrow's volatility:\ncorrelation ≈ 0\nmutual information > 0","tone":"green","size":18}]},{"cap":"Two cautions. Estimating mutual information from a small, noisy sample can overstate it badly. And a real dependence is not yet a tradeable edge.","do":[{"hide":"mk"},{"box":"c1","x":320,"y":306,"w":270,"h":100,"text":"small sample:\nestimate biased up","tone":"amber","size":18},{"box":"c2","x":320,"y":434,"w":270,"h":100,"text":"dependence\nis not edge","tone":"red","size":18}]}]}</script>
+  </div>
+  <!-- WB:entropy_kl_mutual_information:END -->
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -538,6 +629,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative research morning</div>
+    <h3>A feature with "no relationship" to tomorrow's volatility</h3>
+    <p>You are screening features to predict next-session realised volatility. A colleague's correlation matrix shows yesterday's <em>signed</em> return has a correlation of 0.02 with next-day volatility, and proposes dropping it. You know large up days and large down days both tend to come before busier sessions. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Drop it. A correlation of 0.02 means there is no relationship.<div class="tl-drill-why">Correlation only rules out a straight-line link. A link that is symmetric around zero, big moves either way meaning more volatility, gives a correlation near zero for the same reason \(Y = X^2\) does. This throws away real information.</div></li>
+      <li data-verdict="good">Estimate the mutual information between signed return and next-day volatility, then look at the shape, for example a binned average of volatility by return.<div class="tl-drill-why">Mutual information picks up any dependence, linear or not. If it comes back clearly positive, the binned average shows the U shape, and you can then decide how to use the feature, for example through its absolute value.</div></li>
+      <li data-verdict="ok">Swap in the absolute return straight away and move on.<div class="tl-drill-why">Probably the right feature in the end, but you have skipped the check. Without measuring the dependence first you are relying on a hunch, and you learn nothing about whether other features were wrongly dropped the same way.</div></li>
+      <li data-verdict="bad">Compute mutual information on the last three months of data and, if it is positive, start trading on it.<div class="tl-drill-why">Mutual information needs a lot of data. On a small sample a naive estimator can report a large value just from overfitting the joint density. And a dependence, even a real one, is not yet an edge after costs.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson says.</strong> This is an illustrative case, not a dated episode. It is the lesson's own volatility-feature scenario: when volatility follows the size of a move rather than its sign, the signed return can show near-zero correlation with next-day volatility while its mutual information is clearly positive. The right first step is to measure the dependence with a tool that can see curves, and the right second step is to test whether it is stable and tradeable.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -580,6 +684,26 @@
     <li>E. T. Jaynes, <em>Probability Theory: The Logic of Science</em> (Cambridge University Press, 2003) — a deeper, inference-focused treatment of entropy and its role in probabilistic reasoning.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-probability.html">Probability &amp; Random Variables</a> <span>· distributions are what entropy is measured on</span></li>
+        <li><a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> <span>· the straight-line tool this lesson generalises</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="transfer-entropy-causality.html">Transfer Entropy &amp; Information-Theoretic Causality</a> <span>· mutual information with a direction in time</span></li>
+        <li><a href="mdl-information-criteria.html">Minimum Description Length &amp; Information Criteria</a> <span>· bits as a way to choose between models</span></li>
+        <li><a href="kelly-criterion.html">The Kelly Criterion &amp; Position Sizing</a> <span>· where information in bits became a bet size</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a correlation screen silently throws away curved relationships, and a risk model that writes off rare events pays the steepest price when they arrive.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
@@ -658,6 +782,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

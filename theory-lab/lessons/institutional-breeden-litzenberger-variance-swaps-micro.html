@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Breeden-Litzenberger &amp; Variance Swaps — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -192,7 +193,19 @@
       </div>
     </section>
 
+    <!-- WB:institutional_breeden_litzenberger_variance_swaps-deck:START -->
     <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Option prices to probabilities, and to fair variance</h2>
+      <!-- WB:institutional_breeden_litzenberger_variance_swaps:START -->
+      <div class="wb" data-title="Option prices to probabilities, and to fair variance">
+        <script type="application/json">{"w":600,"h":740,"intro":"Three call prices give a probability; five out-of-the-money options give a fair variance. Both from the lesson's own numbers, with no volatility model. Press play, or step through.","steps":[{"cap":"Three call prices on the same expiry, from the lesson: strike 95 costs $8.9470, strike 100 costs $6.1207, strike 105 costs $3.9856. Each one alone gives you one implied vol. Together they give much more.","do":[{"chart":"cp","x":10,"y":10,"w":285,"h":230,"title":"Call prices ($)","xd":[91,109],"yd":[0,10.5],"yt":[[0,"0"],[5,"5"],[10,"10"]],"xt":[[95,"95"],[100,"100"],[105,"105"]],"pl":36,"pr":10},{"bars":"cpb","chart":"cp","data":[[95,8.947,"8.95","blue"],[100,6.1207,"6.12","purple"],[105,3.9856,"3.99","blue"]],"bw":34,"ms":1000}]},{"cap":"Build a butterfly: buy the 95 and 105 calls, sell two 100 calls. It pays only if the price ends between 95 and 105, most at exactly 100. A bet on \"landing here\".","do":[{"hide":"cp"},{"hide":"cpb"},{"chart":"pay","x":10,"y":10,"w":285,"h":230,"title":"Butterfly payoff ($)","xd":[85,115],"yd":[0,6.2],"yt":[[0,"0"],[5,"5"]],"xt":[[95,"95"],[100,"100"],[105,"105"]],"pl":32,"pr":10},{"series":"tent","chart":"pay","pts":[[85,0],[95,0],[100,5],[105,0],[115,0]],"tone":"amber","ms":1200}]},{"cap":"Its price: 8.9470 − 2 × 6.1207 + 3.9856 = $0.6912. Divide by the strike gap squared, 25, and undo the half-year discount: the density at 100 is about 0.0279.","do":[{"box":"bf","x":10,"y":254,"w":580,"h":56,"text":"butterfly $0.6912 ÷ 25 × e^0.01 ≈ 0.0279","tone":"amber","size":20}]},{"cap":"Here is the true density of the price at expiry in this flat 20% world. Its height at 100 is 0.0282. The butterfly got within about 1%, and narrower wings would close the gap: the curvature of call prices is the probability.","do":[{"chart":"den","x":305,"y":10,"w":285,"h":230,"title":"Density of price at expiry","xd":[60,150],"yd":[0,0.032],"yt":[[0,"0"],[0.015,".015"],[0.03,".03"]],"xt":[[70,"70"],[100,"100"],[130,"130"]],"pl":44,"pr":10},{"series":"dc","chart":"den","pts":[[64,0.0003],[68,0.00101],[72,0.00264],[76,0.00565],[80,0.01016],[84,0.01571],[88,0.02131],[92,0.02577],[96,0.02819],[100,0.02821],[104,0.0261],[108,0.02252],[112,0.01827],[116,0.01402],[120,0.01024],[124,0.00715],[128,0.0048],[132,0.00311],[136,0.00195],[140,0.00119],[144,0.00071],[148,0.00041]],"tone":"purple","ms":1300},{"dot":"d100","chart":"den","at":[100,0.02821],"text":"0.0282","tone":"green","dx":12,"dy":-12,"anchor":"start"}]},{"cap":"Part 2. A variance swap pays realised variance against a fixed strike. Pricing it sounds like it needs a volatility forecast. It does not: today's options already price it.","do":[{"dim":"bf"},{"dim":"tent"},{"dim":"dc"}]},{"cap":"The trick: a contract paying the log of the final price pays expected variance, if prices move smoothly. You cannot buy it, but you can build it from out-of-the-money puts and calls at every strike, each weighted by 1/K².","do":[{"note":"lw","x":300,"y":336,"text":"log contract = OTM puts + calls, weighted 1/K²","size":20,"anchor":"middle","tone":"purple"}]},{"cap":"The lesson's strip: puts at 80 and 90, the average of put and call at 100, calls at 110 and 120. Weight each price by ΔK/K² and multiply by e^(rT). The middle strike counts most.","do":[{"chart":"st","x":10,"y":360,"w":285,"h":250,"title":"Weighted contributions","xd":[74,126],"yd":[0,0.0066],"yt":[[0,"0"],[0.003,".003"],[0.006,".006"]],"xt":[[80,"80"],[90,"90"],[100,"100"],[110,"110"],[120,"120"]],"pl":46,"pr":10},{"bars":"stb","chart":"st","data":[[80,0.00041,"","blue"],[90,0.001943,"","blue"],[100,0.00568,"","purple"],[110,0.002064,"","green"],[120,0.000583,"","green"]],"bw":30,"ms":1200}]},{"cap":"Add them up: 0.010681. Times 2/T is 0.042722; subtract a small forward correction of 0.000202. Fair variance 0.04252, so fair vol is about 20.62%.","do":[{"box":"fv","x":305,"y":360,"w":285,"h":96,"text":"fair vol ≈ 20.62%","tone":"green","sub":"true: 20%","size":21}]},{"cap":"Why not exactly 20%? Only five strikes, ten apart. The lesson reruns it on strikes from 40 to 160, five apart, and gets 20.21%. Real markets list a finite range, so some truncation error always remains. CBOE's VIX, since 2003, is a discrete strip just like this.","do":[{"box":"fg","x":305,"y":470,"w":285,"h":96,"text":"finer, wider grid:\n20.21%","tone":"blue","size":20}]},{"cap":"Two catches. Differencing prices twice amplifies noise, so a negative density means bad or stale quotes, never a negative probability. And the log-contract result assumes no jumps.","do":[{"box":"n1","x":10,"y":630,"w":285,"h":62,"text":"negative density\n= bad data","tone":"red","size":18},{"box":"n2","x":305,"y":630,"w":285,"h":62,"text":"jumps: the strip\nmisses a residual","tone":"red","size":18}]},{"cap":"Read the whole strike ladder, not one option: its curvature is the market's probability, and its 1/K² strip is the market's fair variance.","do":[{"note":"end","x":300,"y":716,"text":"model-free: only arbitrage-free prices needed","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:institutional_breeden_litzenberger_variance_swaps:END -->
+    </section>
+    <!-- WB:institutional_breeden_litzenberger_variance_swaps-deck:END -->
+
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Why these two results are actually the same idea</h2>
       <div class="sl-compare">
@@ -211,7 +224,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this quietly breaks down</h2>
       <div class="sl-icard-grid">
@@ -226,7 +239,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -286,7 +299,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -455,5 +468,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

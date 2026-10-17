@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sharpe, Sortino &amp; the Deflated Sharpe Ratio — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -214,7 +215,19 @@
       </div>
     </section>
 
+    <!-- WB:sharpe_family_deflated-deck:START -->
     <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">The Deflated Sharpe Ratio: beat luck, not zero</h2>
+      <!-- WB:sharpe_family_deflated:START -->
+      <div class="wb" data-title="The Deflated Sharpe Ratio: beat luck, not zero">
+        <script type="application/json">{"w":600,"h":810,"intro":"Fifty versions of one signal, and the best Sharpe ratio among them. The lesson's own numbers, step by step. Press play, or step through.","steps":[{"cap":"A researcher backtests 50 versions of a mean-reversion signal: different lookbacks, entry thresholds and exits. The best one posts an annual Sharpe of 1.80 over ten years of daily data. That goes in the write-up.","do":[{"icon":"res","name":"person","x":30,"y":6,"s":0.75,"tone":"blue","label":"researcher","lsize":17},{"icon":"dice","name":"dice","x":170,"y":14,"s":0.6,"tone":"amber","label":"50 versions","lsize":17},{"box":"best","x":330,"y":16,"w":250,"h":76,"text":"best of 50","tone":"green","sub":"Sharpe 1.80","size":21}]},{"cap":"Now imagine none of the 50 has any edge at all. Their backtested Sharpes still scatter around zero, just from noise. In this search the spread across them is 0.66.","do":[{"chart":"c1","x":10,"y":120,"w":580,"h":220,"title":"Sharpe of a zero-skill version (spread 0.66)","xd":[-2.2,2.2],"yd":[0,0.68],"yt":[],"xt":[[-2,"−2"],[-1,"−1"],[0,"0"],[1,"1"],[2,"2"]],"pl":20,"pr":16},{"series":"bell","chart":"c1","pts":[[-2.2,0.0023],[-2.1,0.0038],[-2.0,0.0061],[-1.9,0.0096],[-1.8,0.0147],[-1.7,0.0219],[-1.6,0.032],[-1.5,0.0457],[-1.4,0.0637],[-1.3,0.0869],[-1.2,0.1158],[-1.1,0.1507],[-1.0,0.1918],[-0.9,0.2386],[-0.8,0.29],[-0.7,0.3444],[-0.6,0.3999],[-0.5,0.4537],[-0.4,0.503],[-0.3,0.5451],[-0.2,0.5773],[-0.1,0.5976],[0.0,0.6045],[0.1,0.5976],[0.2,0.5773],[0.3,0.5451],[0.4,0.503],[0.5,0.4537],[0.6,0.3999],[0.7,0.3444],[0.8,0.29],[0.9,0.2386],[1.0,0.1918],[1.1,0.1507],[1.2,0.1158],[1.3,0.0869],[1.4,0.0637],[1.5,0.0457],[1.6,0.032],[1.7,0.0219],[1.8,0.0147],[1.9,0.0096],[2.0,0.0061],[2.1,0.0038],[2.2,0.0023]],"tone":"purple","ms":1300}]},{"cap":"Take 50 draws from that spread and keep the best. Extreme value theory says the best should land about 1.50 on average. That is luck's bar, SR₀, with zero skill anywhere in the search.","do":[{"series":"s0","chart":"c1","pts":[[1.5,0],[1.5,0.6]],"tone":"red","ms":600,"label":"luck ≈ 1.50","lat":[1.5,0.6],"ldx":-6,"ldy":-10,"lanchor":"end","lsize":17}]},{"cap":"Your 1.80 sits only 0.30 above that bar, not 1.80 above zero. The honest question is whether 0.30 is a real gap or more luck.","do":[{"series":"rep","chart":"c1","pts":[[1.8,0],[1.8,0.6]],"tone":"blue","ms":600,"label":"yours 1.80","lat":[1.8,0.6],"ldx":-6,"ldy":-34,"lanchor":"end","lsize":17},{"gap":"g1","chart":"c1","top":[[1.5,0.58],[1.8,0.58]],"bot":[[1.5,0],[1.8,0]],"tone":"green","op":0.35},{"sub":"best","text":"1.80, only 0.30 above luck"}]},{"cap":"Luck's bar rises with the number of tries. With the same spread: about 1.04 after 10 tries, 1.37 after 30, 1.50 after 50.","do":[{"chart":"c2","x":10,"y":352,"w":580,"h":220,"title":"Luck's best Sharpe vs versions tried, N","xd":[0,200],"yd":[0,2.1],"yt":[[0,"0"],[1,"1"],[2,"2"]],"xt":[[0,"0"],[50,"50"],[100,"100"],[150,"150"],[200,"200"]],"pl":40,"pr":20},{"series":"luck","chart":"c2","pts":[[2,0.343],[3,0.563],[4,0.694],[5,0.787],[7,0.915],[10,1.039],[14,1.147],[20,1.254],[30,1.368],[40,1.445],[50,1.502],[70,1.586],[100,1.67],[130,1.73],[160,1.777],[200,1.825]],"tone":"red","ms":1400},{"series":"rep2","chart":"c2","pts":[[0,1.8],[200,1.8]],"tone":"blue","dash":true,"ms":600,"label":"your 1.80","lat":[0,1.8],"ldx":8,"ldy":-14,"lanchor":"start","lsize":17},{"dot":"n50","chart":"c2","at":[50,1.5],"text":"N = 50: 1.50","tone":"red","dx":10,"dy":20,"anchor":"start"}]},{"cap":"By about N = 179, luck alone is expected to reach 1.80. Try that many versions and a 1.80 tells you nothing at all.","do":[{"dot":"nx","chart":"c2","at":[179,1.8],"text":"N ≈ 179","tone":"amber","dx":0,"dy":-18}]},{"cap":"The Deflated Sharpe Ratio turns the gap into a probability. In daily units the gap, times the square root of 2,519 days, over a standard error widened for skew −0.4 and kurtosis 7, gives z = 0.91. So DSR = 82%.","do":[{"chart":"c3","x":10,"y":584,"w":330,"h":216,"title":"Chance the true Sharpe is above 0","xd":[0.4,3.6],"yd":[0,115],"yt":[[0,"0"],[50,"50%"],[100,"100%"]],"xt":[[1,"naive"],[2,"N = 50"],[3,"N = 10?"]],"pl":50,"pr":14},{"bars":"b2","chart":"c3","data":[[2,82,"82%","amber"]],"bw":56,"ms":900}]},{"cap":"Ignore the 50 tries and test 1.80 against zero, and z is about 5.5: effectively 100%. Same backtest. The whole difference is the search.","do":[{"bars":"b1","chart":"c3","data":[[1,100,"≈100%","red"]],"bw":56,"ms":900}]},{"cap":"The count must be honest. Log 10 runs when you really ran 30, and you would report 99% instead of 91%. Every untracked try lowers the bar and flatters the result.","do":[{"bars":"b3","chart":"c3","data":[[3,99,"99%","red"]],"bw":56,"ms":900},{"box":"real","x":356,"y":590,"w":234,"h":92,"text":"really 30 tries?\nthen only 91%","tone":"red","size":19}]},{"cap":"And DSR corrects for the search, not for a calm sample. LTCM's smooth record of 1995 to 1997 had no storm in it. Every ratio looked excellent until August 1998.","do":[{"box":"ltcm","x":356,"y":698,"w":234,"h":100,"text":"no storm in the\nsample? no ratio\ncan see it","tone":"amber","size":18}]},{"cap":"Even a good DSR is in-sample evidence. The survivor still has to pass an out-of-sample test on data the whole search never touched.","do":[{"pulse":"best"},{"sub":"best","text":"next: out-of-sample test"}]}]}</script>
+      </div>
+      <!-- WB:sharpe_family_deflated:END -->
+    </section>
+    <!-- WB:sharpe_family_deflated-deck:END -->
+
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Try it — 50 variations, one reported Sharpe of 1.8</h2>
       <p class="sl-sub">Starts on this deck's real-world scenario: 50 trials, moderately fat-tailed and left-skewed returns, ten years of daily returns. Sharpes are entered annualized; the calculator divides by √252 to put them in the same per-day units as T, as the DSR formula requires.</p>
@@ -238,7 +251,7 @@
       </div>
     </section>
 
-<!-- DESK:START -->    <section class="sl-slide" data-slide="12">
+<!-- DESK:START -->    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">This repo's own discipline — and a claim worth double-checking</h2>
       <p class="sl-p">This repo's own validation rule already covers half of this problem: a strategy only "wins" if it beats the incumbent on out-of-sample Sharpe with a non-trivial trade count. The full lesson this deck summarizes states that nothing yet tracks how many variations produced a reported Sharpe, and that a Deflated Sharpe Ratio "isn't built" in this project's own metrics stack.</p>
@@ -249,7 +262,7 @@
       <p class="sl-p">What's still true from the lesson: undercounting N remains the real risk. That same 2026-08-29 note flags that the vote rule's original search was larger and partly unlogged — 104 trials is only the grid that could be reconstructed, not necessarily the full search that ever ran. DSR being built and wired in doesn't mean every reported Sharpe in this repo has actually been run through it yet.</p>
     </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12 · It actually happened</div>
       <h2 class="sl-h2">LTCM: a beautiful ratio on a sample with no storm</h2>
       <div class="sl-callout amber">
@@ -269,7 +282,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <!-- DESK:START --><h2 class="sl-h2">This desk's Sharpe of 18.4</h2>
       <p class="sl-sub">Fibonacci-level system backtest: 10,190 trades, Sharpe <strong>18.4</strong>, <strong>85.7%</strong> wins at one-to-one. The paper bot on the same game: <strong>39.6%</strong> of 101 trades, −$13,696 (paper) in 90 days. The arithmetic was right; the fills were not.</p><!-- DESK:END -->
@@ -285,7 +298,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -336,7 +349,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -536,5 +549,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

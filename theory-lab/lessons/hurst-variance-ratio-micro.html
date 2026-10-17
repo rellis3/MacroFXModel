@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hurst Exponent &amp; Variance Ratio Test — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -151,7 +152,19 @@
       <div class="sl-note">Lo &amp; MacKinlay also derived the statistic's asymptotic distribution under the null — an actual standard error and z-statistic, not just "does this slope look off." That's what makes VR the more rigorous of the two tools.</div>
     </section>
 
+    <!-- WB:hurst_variance_ratio-deck:START -->
     <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Three walkers and the variance ratio, drawn step by step</h2>
+      <!-- WB:hurst_variance_ratio:START -->
+      <div class="wb" data-title="Three walkers and the variance ratio, drawn step by step">
+        <script type="application/json">{"w":600,"h":830,"intro":"Three walkers, one question: does the path have memory? First the Hurst exponent, then the variance ratio, on the lesson's own numbers. Press play, or step through.","steps":[{"cap":"Three people leave a bar. The first steps at random, each step a coin flip with no memory. The second keeps stumbling the same way: momentum. The third is on a leash held by a friend at the door: every stumble gets pulled back.","do":[{"icon":"rw","name":"person","x":50,"y":4,"s":0.7,"label":"random\nno memory","lsize":17},{"icon":"tr","name":"person","x":265,"y":4,"s":0.7,"tone":"red","label":"stumbler\nmomentum","lsize":17},{"icon":"mr","name":"person","x":480,"y":4,"s":0.7,"tone":"blue","label":"on a leash\npulled back","lsize":17}]},{"cap":"The random walker's distance from the door grows with the square root of the steps. After 64 steps the typical swing is about √64 = 8. That is the Hurst exponent H = 0.5: range grows as n to the power 0.5.","do":[{"chart":"rg","x":10,"y":150,"w":580,"h":250,"title":"How far the walk swings: range ∝ n^H","xd":[0,64],"yd":[0,20],"yt":[[0,"0"],[8,"8"],[16,"16"]],"xt":[[8,"8"],[16,"16"],[32,"32"],[64,"64"]],"pl":44,"pr":112},{"series":"h5","chart":"rg","pts":[[0,0.0],[2,1.414],[4,2.0],[6,2.449],[8,2.828],[10,3.162],[12,3.464],[14,3.742],[16,4.0],[18,4.243],[20,4.472],[22,4.69],[24,4.899],[26,5.099],[28,5.292],[30,5.477],[32,5.657],[34,5.831],[36,6.0],[38,6.164],[40,6.325],[42,6.481],[44,6.633],[46,6.782],[48,6.928],[50,7.071],[52,7.211],[54,7.348],[56,7.483],[58,7.616],[60,7.746],[62,7.874],[64,8.0]],"tone":null,"ms":1300,"label":"H 0.5: 8","lat":[64,8],"ldx":6,"ldy":0,"lanchor":"start"},{"pulse":"rw"}]},{"cap":"The stumbler's moves reinforce each other, so the swing grows faster than the square root. With H = 0.7 the range after 64 steps is about 18, more than twice the random walker's.","do":[{"series":"h7","chart":"rg","pts":[[0,0.0],[2,1.625],[4,2.639],[6,3.505],[8,4.287],[10,5.012],[12,5.694],[14,6.343],[16,6.964],[18,7.563],[20,8.142],[22,8.704],[24,9.25],[26,9.783],[28,10.304],[30,10.814],[32,11.314],[34,11.804],[36,12.286],[38,12.76],[40,13.226],[42,13.686],[44,14.139],[46,14.586],[48,15.027],[50,15.462],[52,15.893],[54,16.318],[56,16.739],[58,17.155],[60,17.567],[62,17.975],[64,18.379]],"tone":"red","ms":1300,"label":"H 0.7: 18","lat":[64,18.4],"ldx":6,"ldy":0,"lanchor":"start"},{"pulse":"tr"}]},{"cap":"The leashed walker keeps getting pulled back, so the swing grows slower than the square root. With H = 0.3 it is only about 3.5 after 64 steps. Same number of steps, three very different spreads.","do":[{"series":"h3","chart":"rg","pts":[[0,0.0],[2,1.231],[4,1.516],[6,1.712],[8,1.866],[10,1.995],[12,2.107],[14,2.207],[16,2.297],[18,2.38],[20,2.456],[22,2.528],[24,2.595],[26,2.658],[28,2.717],[30,2.774],[32,2.828],[34,2.88],[36,2.93],[38,2.978],[40,3.024],[42,3.069],[44,3.112],[46,3.154],[48,3.194],[50,3.234],[52,3.272],[54,3.309],[56,3.345],[58,3.381],[60,3.415],[62,3.449],[64,3.482]],"tone":"blue","ms":1300,"label":"H 0.3: 3.5","lat":[64,3.48],"ldx":6,"ldy":0,"lanchor":"start"},{"pulse":"mr"}]},{"cap":"To measure H from data, compute the rescaled range R/S on windows of 8, 16, 32 and 64 bars, then plot log of R/S against log of n. A power law becomes a straight line, and its slope is H.","do":[{"chart":"ll","x":10,"y":418,"w":280,"h":222,"title":"log(R/S) vs log n","xd":[2.5,6.5],"yd":[0,4.6],"yt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"]],"xt":[[3,"8"],[4,"16"],[5,"32"],[6,"64"]],"pl":36,"pr":46,"size":18},{"series":"l5","chart":"ll","pts":[[3.0,1.5],[4.0,2.0],[5.0,2.5],[6.0,3.0]],"tone":null,"ms":900,"label":"0.5","lat":[6,3.0],"ldx":6,"ldy":0,"lanchor":"start"},{"series":"l7","chart":"ll","pts":[[3.0,2.1],[4.0,2.8],[5.0,3.5],[6.0,4.2]],"tone":"red","ms":900,"label":"0.7","lat":[6,4.2],"ldx":6,"ldy":0,"lanchor":"start"},{"series":"l3","chart":"ll","pts":[[3.0,0.9],[4.0,1.2],[5.0,1.5],[6.0,1.8]],"tone":"blue","ms":900,"label":"0.3","lat":[6,1.8],"ldx":6,"ldy":0,"lanchor":"start"}]},{"cap":"The variance ratio asks the same question more directly. If days are independent, variance just adds up: five days should have exactly five times the one-day variance. With the lesson's 0.1289, the yardstick is 5 × 0.1289 = 0.6445.","do":[{"chart":"vb","x":310,"y":418,"w":280,"h":222,"title":"Five-day variance, %²","xd":[0.4,3.6],"yd":[0,1.15],"yt":[[0.5,"0.5"],[1,"1.0"]],"xt":[[1,"yardstick"],[2,"case A"],[3,"case B"]],"pl":40,"pr":10,"size":18},{"bars":"by","chart":"vb","data":[[1,0.6445,"0.64","purple"]],"bw":40,"ms":900}]},{"cap":"Case A: the real five-day variance is 0.45. VR(5) = 0.45 ÷ 0.6445 ≈ 0.70. Below 1: the days are cancelling each other out, which is mean reversion, the leash.","do":[{"bars":"ba","chart":"vb","data":[[2,0.45,"VR 0.70","blue"]],"bw":40,"ms":900},{"pulse":"mr"}]},{"cap":"Case B: the real five-day variance is 0.95. VR(5) = 0.95 ÷ 0.6445 ≈ 1.47. Above 1: the days are teaming up, 47% more variance than independence allows. That is trending, the stumbler.","do":[{"bars":"bb","chart":"vb","data":[[3,0.95,"VR 1.47","red"]],"bw":40,"ms":900},{"pulse":"tr"}]},{"cap":"Why the variance ratio is the one to trust more: Lo and MacKinlay (1988) gave it a standard error and a z-statistic, so you can ask whether a gap from 1 is real or just noise. A Hurst slope is eyeballed.","do":[{"box":"se","x":10,"y":660,"w":186,"h":112,"text":"VR has a\nstandard error:\nreal or noise?","tone":"green","size":18}]},{"cap":"The trap: on short windows, R/S is biased towards finding H above 0.5 even in a pure random walk. A reading from a few dozen bars can flip across 0.5 on noise alone.","do":[{"box":"bias","x":207,"y":660,"w":186,"h":112,"text":"short window:\nR/S leans to\n\"trending\"","tone":"red","size":18}]},{"cap":"And persistence comes and goes. Trend followers did well in 2008 and very well in 2022, and had a long lean stretch through much of the 2010s, with the same rules. A full-sample H can hide all of that.","do":[{"box":"epi","x":404,"y":660,"w":186,"h":112,"text":"2008 · 2022: on\n2010s: mostly off","tone":"amber","size":18}]},{"cap":"So treat H and the variance ratio as a gate, not a forecast. They say whether fade or follow has any right to work right now. They never say which way the next move goes.","do":[{"note":"end","x":300,"y":806,"text":"a gate for fade or follow, never a forecast of direction","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:hurst_variance_ratio:END -->
+    </section>
+    <!-- WB:hurst_variance_ratio-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">A tiny variance-ratio calculation by hand</h2>
       <p class="sl-sub">10 daily log returns, in percent: 0.4, −0.2, 0.6, 0.1, −0.5, 0.3, −0.1, 0.5, −0.4, 0.2.</p>
@@ -167,7 +180,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Recompute VR(k), live</h2>
       <p class="sl-sub">Starts on the worked example's exact numbers. Change any field and the ratio — and the verdict — recalculate instantly.</p>
@@ -195,7 +208,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Where this lives in this repo</h2>
       <p class="sl-p">This isn't just theory here. <code>js/rangeBiasCore.js</code> has a <code>featureHurst</code> function that runs live R/S analysis — lags of 2, 4, 8, and 16 bars on the last ~80 daily closes, the identical log-log regression from Section 3 — as one of the entry-bias features scored alongside ADX, swing structure, TWAP slope, and EMA/RSI. Its call is the same regime-gate logic from Section 2: <strong>H &lt; 0.45 confirms a fade</strong>, <strong>H &gt; 0.55 confirms a follow</strong>, and anything in between abstains.</p>
@@ -207,7 +220,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How this actually gets used on a desk</h2>
       <div class="sl-icard-grid">
@@ -222,7 +235,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">Trend following's fat years and lean years</h2>
       <div class="sl-callout amber">
@@ -244,7 +257,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <!-- DESK:START --><h2 class="sl-h2">What this desk found when it tested the claim</h2><!-- DESK:END -->
       <p class="sl-sub">The tempting claim: when the path looks persistent, follow it.</p>
@@ -263,7 +276,7 @@
       <div class="sl-quote"><strong>Where the textbook breaks:</strong> H and VR treat persistence as one fixed property of a series. In markets it is episodic: it switches on when one macro force pushes the same way for months, and off for years. A full-sample H near 0.5 can hide both, and the persistence of move <em>size</em> is far more reliable than that of <em>direction</em>.</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -305,7 +318,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -391,5 +404,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Hill Estimator — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -44,6 +45,74 @@
       <li><strong>How it reached trading:</strong> Hill's 1975 tail-index estimator reached markets through 1990s fat-tail studies of returns (tail indices near three), and risk teams use it as the quick check on whether a normal VaR can be trusted.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the lesson's six sorted daily losses, 187, 152, 134, 121, 109 and 98 basis points. The top five are measured against the sixth, 98; their log-ratios average 0.343, and the Hill estimate is one over that, about 2.92. Right: a Hill plot of the estimate against k for a simulated sample whose true tail index is 3. It jumps between about 3.5 and 4.25 for k up to 6, drops to about 2.2 at k equal to 7, and wanders near 2 for larger k, never settling on 3.">
+      <text class="tlp-text" x="20" y="22" font-size="13" font-weight="700">Worked example, k = 5</text>
+      <rect class="tlp-box blue" x="30" y="59.75" width="28" height="140.25" rx="3"/>
+      <text class="tlp-text2" x="44" y="53.75" text-anchor="middle" font-size="12">187</text>
+      <rect class="tlp-box blue" x="70" y="86" width="28" height="114" rx="3"/>
+      <text class="tlp-text2" x="84" y="80" text-anchor="middle" font-size="12">152</text>
+      <rect class="tlp-box blue" x="110" y="99.5" width="28" height="100.5" rx="3"/>
+      <text class="tlp-text2" x="124" y="93.5" text-anchor="middle" font-size="12">134</text>
+      <rect class="tlp-box blue" x="150" y="109.25" width="28" height="90.75" rx="3"/>
+      <text class="tlp-text2" x="164" y="103.25" text-anchor="middle" font-size="12">121</text>
+      <rect class="tlp-box blue" x="190" y="118.25" width="28" height="81.75" rx="3"/>
+      <text class="tlp-text2" x="204" y="112.25" text-anchor="middle" font-size="12">109</text>
+      <rect class="tlp-box amber" x="230" y="126.5" width="28" height="73.5" rx="3"/>
+      <text class="tlp-text2" x="244" y="120.5" text-anchor="middle" font-size="12">98</text>
+      <line class="tlp-line amber dash" x1="24" y1="126.5" x2="264" y2="126.5"/>
+      <line class="tlp-line" x1="24" y1="200" x2="264" y2="200"/>
+      <text class="tlp-blue" x="124" y="216" text-anchor="middle" font-size="12" font-weight="700">top k = 5</text>
+      <text class="tlp-amber" x="244" y="216" text-anchor="middle" font-size="12" font-weight="700">reference</text>
+      <text class="tlp-text2" x="20" y="238" font-size="13">average of ln(loss ÷ 98) = 0.343</text>
+      <text class="tlp-purple" x="20" y="256" font-size="14" font-weight="700">α̂ = 1 ÷ 0.343 ≈ 2.92</text>
+      <line class="tlp-line dash" x1="300" y1="14" x2="300" y2="250" opacity=".5"/>
+      <text class="tlp-text" x="322" y="22" font-size="13" font-weight="700">Hill plot: α̂ as k grows</text>
+      <line class="tlp-line" x1="350" y1="40" x2="350" y2="210"/>
+      <line class="tlp-line" x1="350" y1="210" x2="585" y2="210"/>
+      <text class="tlp-text3" x="342" y="72" text-anchor="end" font-size="12">4</text>
+      <text class="tlp-text3" x="342" y="129" text-anchor="end" font-size="12">3</text>
+      <text class="tlp-text3" x="342" y="186" text-anchor="end" font-size="12">2</text>
+      <text class="tlp-text3" x="350" y="226" text-anchor="middle" font-size="12">k = 2</text>
+      <text class="tlp-text3" x="585" y="226" text-anchor="end" font-size="12">k = 27</text>
+      <line class="tlp-line green dash" x1="350" y1="125" x2="585" y2="125"/>
+      <text class="tlp-green" x="585" y="117" text-anchor="end" font-size="12" font-weight="700">true α = 3</text>
+      <polyline class="tlp-line red thick" points="350.0,94.9 359.4,128.4 368.8,74.8 378.2,76.1 387.6,54.0 397.0,171.3 406.4,173.6 415.8,172.3 425.2,166.4 434.6,196.8 444.0,192.6 453.4,188.9 462.8,181.4 472.2,190.2 481.6,189.1 491.0,182.7 500.4,182.1 509.8,186.4 519.2,186.1 528.6,185.6 538.0,183.1 547.4,179.4 556.8,175.5 566.2,172.5 575.6,173.1 585.0,171.8"/>
+      <text class="tlp-red" x="414" y="62" font-size="12" font-weight="700">small k: jumpy</text>
+      <text class="tlp-amber" x="500" y="152" text-anchor="middle" font-size="12" font-weight="700">large k: drifts low</text>
+      <text class="tlp-text2" x="467" y="250" text-anchor="middle" font-size="13">no single k is "right"</text>
+    </svg>
+    <figcaption>Left: sort, take the top k, measure each against the next value down, average the log-ratios and flip. Right: the same recipe on a simulated sample with a true tail index of 3. The answer swings with k, so always show it across a range.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Everyone says FX returns have fat tails. Can you put one number on how fat?</p>
+      <p data-who="Quant">Yes. The oldest quick way is the Hill estimator, from Bruce Hill in 1975. It gives you the tail index. A small index means a fat tail, a big one means a thin tail.</p>
+      <p data-who="Trader">What does it actually do?</p>
+      <p data-who="Quant">Sort your losses. Take the biggest few, say five. Take the next one down as a reference. Then ask how many times bigger each of the top five is than that reference.</p>
+      <p data-who="Trader">And then?</p>
+      <p data-who="Quant">Take the log of each ratio, average them, and flip the average upside down. A sort, a few logs and a division. That's the whole estimator.</p>
+      <p data-who="Trader">Walk me through the numbers.</p>
+      <p data-who="Quant">The lesson uses six daily losses in basis points: one eighty-seven, one fifty-two, one thirty-four, one twenty-one, one oh nine and ninety-eight. The top five against ninety-eight give an average log-ratio of about zero point three four. Flip it and the tail index is about two point nine.</p>
+      <p data-who="Trader">Is that fat?</p>
+      <p data-who="Quant">Moderately. Studies of daily stock returns found tail indices clustering around three. Below two, the variance itself stops existing, and a risk number built on variance stops meaning much.</p>
+      <p data-who="Trader">Why logs, though?</p>
+      <p data-who="Quant">If the tail really is a power law, those log-ratios behave like draws from an exponential distribution, and its rate is the tail index. The textbook estimate of that rate is one over the average. Hill is just that, applied to the extremes.</p>
+      <p data-who="Trader">How do I choose how many points to use?</p>
+      <p data-who="Quant">That's the catch. Too few and the answer jumps around. Too many and you pull in ordinary days that aren't tail at all, which biases it. In the lesson's simulation, where the true answer is three, adding one point moves the estimate from above four to near two.</p>
+      <p data-who="Trader">So I shouldn't report one number.</p>
+      <p data-who="Quant">Not at one setting. Plot it across a range, check different sub-samples, and compare with a full extreme-value fit.</p>
+      <p data-who="Trader">Then why not do the full fit every time?</p>
+      <p data-who="Quant">Because Hill is cheap and assumes less. Run it on every pair, flag the fat-tailed ones, and spend the careful fitting there. Just remember it only gives you the exponent. It never tells you the size of a one-in-a-thousand loss.</p>
+      <p data-who="Trader">One line to take away?</p>
+      <p data-who="Quant">Sort, take the top few, average the log-ratios, flip it, and never trust it at a single choice of how many.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -114,6 +183,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the Hill estimate α̂<sub>k</sub> comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{X_{(1)} \le X_{(2)} \le \dots \le X_{(n)}} \]</div>
+      <p>Sort the losses. \(X_{(n)}\) is the biggest, \(X_{(n-1)}\) the next, and so on. In the worked example the top six are 187, 152, 134, 121, 109 and 98.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \ln\!\left(\frac{X_{(n-i+1)}}{\color{#fbbf24}{X_{(n-k)}}}\right) \]</div>
+      <p>Measure each of the top \(k\) against the \((k{+}1)\)-th largest, the reference. The log turns "how many times bigger" into a distance. With \(k = 5\) the reference is 98, and the first term is \(\ln(187/98) = 0.6461\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\frac{1}{k}\sum_{i=1}^{k}} \ln\!\left(\frac{X_{(n-i+1)}}{X_{(n-k)}}\right) \]</div>
+      <p>Average the \(k\) distances. For an exact Pareto tail these log-ratios are exponential with rate \(\alpha\), so their mean estimates \(1/\alpha\). Here: \(1.7151 / 5 = 0.3430\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\hat\alpha_k = \left[ \frac{1}{k}\sum_{i=1}^{k} \ln\!\left(\frac{X_{(n-i+1)}}{X_{(n-k)}}\right) \right]^{-1}} \]</div>
+      <p>Flip it. \(\hat\alpha_5 = 1/0.3430 \approx 2.92\), and the GPD shape is the same fact inverted: \(\hat\xi = 1/\hat\alpha \approx 0.343\).</p>
+    </div>
+  </div>
   <p>
   Suppose \(X_1,\dots,X_n\) are (loss) observations believed to have a <strong>regularly varying</strong>
   right tail — informally, a tail that behaves like a power law far out: \(P(X>x) \sim C\,x^{-\alpha}\)
@@ -205,6 +294,12 @@
     picked to produce a realistic-looking estimate, not measured from any actual instrument.
     </p>
   </div>
+
+  <!-- WB:institutional_hill_estimator:START -->
+  <div class="wb" id="wb-institutional_hill_estimator" data-title="The Hill estimator: sort, average, flip">
+    <script type="application/json">{"w":600,"h":720,"intro":"The lesson's six worked-example losses run through the Hill recipe, then the same recipe at different k. Press play, or step through.","steps":[{"cap":"Six of the worst daily losses in the lesson's toy sample, in basis points, sorted largest first: 187, 152, 134, 121, 109 and 98. How fat is the tail they come from?","do":[{"chart":"v","x":10,"y":10,"w":285,"h":270,"title":"Top losses (bps)","xd":[0.4,6.6],"yd":[0,215],"yt":[[0,"0"],[100,"100"],[200,"200"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"6"]],"pl":48,"pr":10},{"bars":"vb","chart":"v","data":[[1,187,"187","blue"],[2,152,"152","blue"],[3,134,"134","blue"],[4,121,"121","blue"],[5,109,"109","blue"],[6,98,"98","blue"]],"bw":26,"ms":1100}]},{"cap":"Pick k = 5. The top five feed the estimate. The sixth, 98, is the reference that every one of them is measured against.","do":[{"series":"ref","chart":"v","pts":[[0.5,98],[6.5,98]],"tone":"amber","dash":true,"ms":600},{"bars":"rb","chart":"v","data":[[6,98,"","amber"]],"bw":26,"ms":500}]},{"cap":"For each of the top five, ask how many times bigger it is than 98, and take the log. 187 is 1.91 times 98, and its log is 0.65. The five logs are 0.65, 0.44, 0.31, 0.21 and 0.11.","do":[{"chart":"lr","x":305,"y":10,"w":285,"h":270,"title":"ln(loss ÷ 98)","xd":[0.4,5.6],"yd":[0,0.75],"yt":[[0,"0"],[0.25,".25"],[0.5,".50"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"pl":46,"pr":10},{"bars":"lb","chart":"lr","data":[[1,0.6461,"0.65","purple"],[2,0.4389,"0.44","purple"],[3,0.3129,"0.31","purple"],[4,0.2108,"0.21","purple"],[5,0.1064,"0.11","purple"]],"bw":26,"ms":1100}]},{"cap":"Average the five logs: 1.715 ÷ 5 = 0.343. A thin tail gives small logs, because the top values are not much bigger than the reference. A fat tail gives big ones.","do":[{"series":"avg","chart":"lr","pts":[[3.55,0.343],[5.6,0.343]],"tone":"green","dash":true,"ms":700},{"note":"avgl","chart":"lr","at":[5.6,0.343],"text":"average 0.343","tone":"green","size":17,"anchor":"end","dx":0,"dy":-16}]},{"cap":"Flip the average: α̂ = 1 ÷ 0.343 ≈ 2.92. That is the tail index. As a GPD shape it is ξ = 1/α ≈ 0.34: the same fact in another unit.","do":[{"box":"res","x":10,"y":296,"w":580,"h":58,"text":"α̂ = 1 ÷ 0.343 ≈ 2.92 · so ξ̂ = 1/α̂ ≈ 0.34","tone":"green","size":21}]},{"cap":"Why logs? If the tail is a power law, those log-ratios behave like draws from an exponential distribution whose rate is α. The textbook estimate of that rate is one over the average. Hill is exactly that.","do":[{"pulse":"avg"},{"pulse":"res"}]},{"cap":"Now the catch. Same six numbers, different k. k = 1 gives 4.83, k = 2 gives 4.35, k = 3 gives 3.92, k = 4 gives 3.38 and k = 5 gives 2.92. The answer depends on how many points you trust.","do":[{"chart":"bk","x":10,"y":370,"w":285,"h":270,"title":"α̂ at each k","xd":[0.4,5.6],"yd":[0,5.6],"yt":[[0,"0"],[2,"2"],[4,"4"]],"xt":[[1,"k=1"],[2,"k=2"],[3,"k=3"],[4,"k=4"],[5,"k=5"]],"pl":40,"pr":10},{"bars":"kb","chart":"bk","data":[[1,4.83,"4.83","amber"],[2,4.35,"4.35","amber"],[3,3.92,"3.92","amber"],[4,3.38,"3.38","amber"],[5,2.92,"2.92","green"]],"bw":28,"ms":1200}]},{"cap":"On a bigger sample it gets worse. The lesson simulates 300 draws with a true tail index of 3. The Hill plot jumps to 4.25 at k = 6, falls to 2.18 at k = 7, then wanders near 2.","do":[{"chart":"hp","x":305,"y":370,"w":285,"h":270,"title":"Hill plot, n = 300","xd":[2,27],"yd":[1.5,4.5],"yt":[[2,"2"],[3,"3"],[4,"4"]],"xt":[[2,"2"],[7,"7"],[27,"27"]],"pl":36,"pr":12},{"series":"true","chart":"hp","pts":[[2,3],[27,3]],"tone":"green","dash":true,"ms":500,"label":"true 3","lat":[27,3],"lanchor":"end","ldy":-12},{"series":"hc","chart":"hp","pts":[[2,3.531],[3,2.94],[4,3.887],[5,3.863],[6,4.252],[7,2.182],[8,2.143],[9,2.166],[10,2.27],[11,1.733],[12,1.808],[13,1.873],[14,2.004],[15,1.849],[16,1.868],[17,1.982],[18,1.992],[19,1.916],[20,1.923],[21,1.931],[22,1.975],[23,2.04],[24,2.109],[25,2.162],[26,2.151],[27,2.173]],"tone":"red","ms":1500},{"dot":"k6","chart":"hp","at":[6,4.252],"text":"4.25","tone":"red","dx":14,"dy":-2,"anchor":"start"},{"dot":"k7","chart":"hp","at":[7,2.182],"text":"2.18","tone":"red","dx":10,"dy":18,"anchor":"start"}]},{"cap":"Small k: built from a handful of points, so it jumps. Large k: ordinary days leak into the \"tail\" and bias it. No formula picks the right k, so show the estimate across a range.","do":[{"note":"kk","x":300,"y":666,"text":"small k → noisy · large k → biased","size":20,"anchor":"middle","tone":"amber"}]},{"cap":"Hill gives only the exponent, never a loss level at a chosen confidence. Its job is the cheap screen: rank the tails, then build a full GPD fit for the fat ones.","do":[{"note":"end","x":300,"y":700,"text":"a ruler for tail heaviness, not a VaR","size":20,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:institutional_hill_estimator:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Choosing k: the Hill plot and the bias-variance trade-off</h2>
@@ -358,6 +453,15 @@
     \((k{+}1)\)-th number in your list becomes the reference \(X_{(n-k)}\) automatically. Starts on the
     worked example's own six numbers.
     </p>
+    <div class="tl-predict">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With the six worked-example numbers and \(k = 5\), \(\hat\alpha \approx 2.92\). Keep the same list but use \(k = 4\), so 109 becomes the reference. What happens to \(\hat\alpha\)? Pick one, then type 4 into the k field below to check it.</div>
+      <ul class="tl-predict-options">
+        <li>It falls below 2.92: fewer points means a fatter tail.</li>
+        <li>It stays at about 2.92: the same data gives the same tail.</li>
+        <li data-correct>It rises to about 3.4.</li>
+      </ul>
+      <div class="tl-predict-reveal"><p><strong>About 3.38.</strong> The four log-ratios against 109 sum to 1.1832, an average of 0.2958, and \(1/0.2958 \approx 3.38\). Same six numbers, a different \(k\), a different answer. Try \(k = 3\), 2 and 1 too: you get 3.92, 4.35 and 4.83. That drift is the Hill plot problem in miniature.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control" style="flex:2 1 320px">
         <div class="tl-control-head"><span>Order statistics, largest first (comma-separated)</span></div>
@@ -472,6 +576,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative screening run</div>
+    <h3>One currency comes back with a tail index of 1.8</h3>
+    <p>You screen a watchlist with the Hill estimator, as in the lesson's ranking table. A calm major pair comes back near 4.5, a typical G10 cross near 3.0, and a crisis-prone EM currency near 1.8, at the one value of \(k\) you happened to pick. All three are currently risked with a normal-distribution VaR. What do you do next?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Use 1.8 as the EM currency's risk number and cut the position to match.<div class="tl-drill-why">Hill gives a tail exponent, not a loss level. There is no closed-form VaR at a chosen confidence from \(\hat\alpha\) alone, so there is nothing to size against yet.</div></li>
+      <li data-verdict="good">Recompute it across a range of k and sub-samples, then build a full GPD fit for the EM currency first.<div class="tl-drill-why">This is the screening use the lesson describes. One estimate at one \(k\) can swing a long way, so check that 1.8 is stable, then spend the expensive fitting effort on the name that looks fattest.</div></li>
+      <li data-verdict="ok">Fit a full GPD to all three names straight away.<div class="tl-drill-why">Not wrong, and you get loss levels for everything. But it skips the point of a cheap screen, and the thin-tailed major may not need the effort.</div></li>
+      <li data-verdict="bad">Declare the EM currency's variance infinite and drop variance-based risk for it.<div class="tl-drill-why">Below 2 is the variance-breaking zone, but one Hill number is not proof. On the lesson's simulated sample with a true index of 3, the estimate ran from about 4.25 down to 1.73 depending on \(k\).</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson's numbers say.</strong> This is an illustrative case built on the lesson's own illustrative ranking table, not a real screening result. The live Hill plot shows why the second option wins: on 300 simulated draws whose true tail index is 3, \(\hat\alpha\) moves from 4.25 at \(k = 6\) to 2.18 at \(k = 7\) and wanders near 2 after that. A single reading, whatever its value, is a prompt to look harder, not a risk number.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -561,6 +678,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a> <span>· the GPD fit and the shape ξ that Hill inverts</span></li>
+        <li><a href="primer-stats-normal.html">Descriptive Statistics &amp; the Normal Distribution</a> <span>· the thin-tailed benchmark a fat tail is measured against</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-factor-marginal-component-var.html">Factor VaR, Marginal VaR &amp; Component VaR</a> <span>· the VaR whose normal assumption Hill checks</span></li><!-- DESK:END -->
+        <li><a href="tail-risk-hedging-convexity.html">Tail Risk Hedging &amp; Portfolio Convexity</a> <span>· what to do once a tail looks fat</span></li>
+        <li><a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> <span>· the risk numbers a heavy tail breaks</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> whether a five-sigma loss is a once-a-millennium event or a once-a-decade one depends on how fat the tail is, and Hill is the quickest honest way to find out.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-covar.html">← CoVaR: Conditional Value-at-Risk for Systemic Risk</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -591,7 +728,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   // Section 03 — live Hill plot chart + k slider, computed entirely from a
@@ -759,5 +897,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

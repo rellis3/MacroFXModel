@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alpha vs. Beta Separation — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -286,7 +287,19 @@
       </div>
     </section>
 
+    <!-- WB:alpha_beta_separation-deck:START -->
     <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Alpha vs beta: take the return apart</h2>
+      <!-- WB:alpha_beta_separation:START -->
+      <div class="wb" data-title="Alpha vs beta: take the return apart">
+        <script type="application/json">{"w":600,"h":760,"intro":"A manager made 20% in a year the market made 15%. How much was skill? Take the return apart, hedge out the market, then watch what 2008 did to the idea. Press play, or step through.","steps":[{"cap":"A strategy returned 20% in a year the S&P 500 returned 15%, with cash paying 4%. Five points ahead of the market. Is that five points of skill?","do":[{"box":"strat","x":10,"y":12,"w":180,"h":80,"text":"strategy\n20%","tone":"purple","size":20},{"box":"mkt","x":210,"y":12,"w":180,"h":80,"text":"S&P 500\n15%","tone":"blue","size":20},{"box":"cash","x":410,"y":12,"w":180,"h":80,"text":"cash\n4%","size":20}]},{"cap":"Regress the strategy's monthly returns over cash on the market's. Each dot is a month (illustrative). The slope is beta, 1.2: the strategy moves 1.2 times as much as the market.","do":[{"chart":"sc","x":10,"y":120,"w":290,"h":270,"title":"Monthly returns (illustrative)","xd":[-9,10],"yd":[-12,14],"yt":[[0,"0"]],"xt":[[-5,"−5%"],[0,"0"],[5,"+5% market"]],"pl":30,"pr":10,"zero":true},{"series":"fit","chart":"sc","pts":[[-9,-10.633333333333333],[10,12.166666666666666]],"tone":"red","ms":900,"label":"slope β = 1.2","lat":[5,6.166666666666667],"ldx":-6,"ldy":-16,"lanchor":"end"},{"dot":"p0","chart":"sc","at":[-0.42,0.27],"text":"","tone":"blue"},{"dot":"p1","chart":"sc","at":[-0.3,-0.58],"text":"","tone":"blue"},{"dot":"p2","chart":"sc","at":[-3.12,-3.83],"text":"","tone":"blue"},{"dot":"p3","chart":"sc","at":[5.05,6.73],"text":"","tone":"blue"},{"dot":"p4","chart":"sc","at":[4.75,6.16],"text":"","tone":"blue"},{"dot":"p5","chart":"sc","at":[2.18,3.0],"text":"","tone":"blue"},{"dot":"p6","chart":"sc","at":[-6.06,-6.08],"text":"","tone":"blue"},{"dot":"p7","chart":"sc","at":[2.63,3.92],"text":"","tone":"blue"},{"dot":"p8","chart":"sc","at":[-6.17,-9.32],"text":"","tone":"blue"},{"dot":"p9","chart":"sc","at":[-2.96,-3.95],"text":"","tone":"blue"},{"dot":"p10","chart":"sc","at":[1.82,2.3],"text":"","tone":"blue"},{"dot":"p11","chart":"sc","at":[2.68,2.62],"text":"","tone":"blue"},{"dot":"p12","chart":"sc","at":[1.83,2.84],"text":"","tone":"blue"},{"dot":"p13","chart":"sc","at":[-2.04,-0.23],"text":"","tone":"blue"},{"dot":"p14","chart":"sc","at":[2.83,4.99],"text":"","tone":"blue"},{"dot":"p15","chart":"sc","at":[-1.88,-2.98],"text":"","tone":"blue"},{"dot":"p16","chart":"sc","at":[-0.78,-0.89],"text":"","tone":"blue"},{"dot":"p17","chart":"sc","at":[3.13,4.22],"text":"","tone":"blue"},{"dot":"p18","chart":"sc","at":[-1.19,-2.41],"text":"","tone":"blue"},{"dot":"p19","chart":"sc","at":[-1.48,-0.15],"text":"","tone":"blue"},{"dot":"p20","chart":"sc","at":[-2.63,-2.7],"text":"","tone":"blue"},{"dot":"p21","chart":"sc","at":[2.31,1.15],"text":"","tone":"blue"},{"dot":"p22","chart":"sc","at":[0.79,2.69],"text":"","tone":"blue"},{"dot":"p23","chart":"sc","at":[-7.46,-9.17],"text":"","tone":"blue"},{"dot":"p24","chart":"sc","at":[0.18,-0.6],"text":"","tone":"blue"},{"dot":"p25","chart":"sc","at":[2.59,3.2],"text":"","tone":"blue"},{"dot":"p26","chart":"sc","at":[-5.26,-5.15],"text":"","tone":"blue"},{"dot":"p27","chart":"sc","at":[3.28,5.23],"text":"","tone":"blue"},{"dot":"p28","chart":"sc","at":[6.36,8.24],"text":"","tone":"blue"},{"dot":"p29","chart":"sc","at":[1.08,-0.1],"text":"","tone":"blue"},{"dot":"p30","chart":"sc","at":[3.06,3.11],"text":"","tone":"blue"},{"dot":"p31","chart":"sc","at":[-1.21,-2.8],"text":"","tone":"blue"},{"dot":"p32","chart":"sc","at":[-3.27,-4.4],"text":"","tone":"blue"},{"dot":"p33","chart":"sc","at":[5.76,4.63],"text":"","tone":"blue"},{"dot":"p34","chart":"sc","at":[-5.23,-5.82],"text":"","tone":"blue"},{"dot":"p35","chart":"sc","at":[6.37,8.51],"text":"","tone":"blue"}]},{"cap":"Now take the 20% apart. Cash: 4%. The market ride: 1.2 × (15% − 4%) = 13.2%. Alpha, the intercept: about 2%. Noise for this one year: 0.8%.","do":[{"chart":"bar","x":310,"y":120,"w":280,"h":270,"title":"The 20%, taken apart","xd":[0.4,4.6],"yd":[0,15],"yt":[[5,"5%"],[10,"10%"]],"xt":[[1,"cash"],[2,"beta"],[3,"alpha"],[4,"noise"]],"pl":40,"pr":10},{"bars":"parts","chart":"bar","data":[[1,4.0,"4%","purple"],[2,13.2,"13.2%","blue"],[3,2.0,"2%","green"],[4,0.8,"0.8%","amber"]],"bw":40,"ms":1200}]},{"cap":"The beta slice is the cheap part: anyone can buy 1.2 times the market with an index future, no skill needed. The manager's real contribution is the 2%, not the 20%.","do":[{"pulse":"parts"},{"dim":"mkt"}]},{"cap":"Hedge it out: short S&P futures worth 1.2 times the position. The two beta terms cancel. What is left, in expectation, is about 2% a year of alpha, before the costs of the hedge.","do":[{"chip":"fut","x":120,"y":430,"text":"short 1.2× futures","tone":"red"},{"move":"fut","x":450,"y":430,"ms":1100},{"note":"left","x":300,"y":470,"text":"beta → 0,  ≈ 2%/yr alpha left (before costs)","size":19,"anchor":"middle","tone":"green"}]},{"cap":"That hedged stream is portable: attach it to any market exposure you actually want, or none. Pension plans did exactly this, holding equity beta in futures and putting the spare cash into an \"alpha\" source.","do":[{"icon":"plan","name":"piggy","x":40,"y":500,"s":0.62,"tone":"blue","label":"pension plan","sym":"$","lsize":17},{"icon":"fut2","name":"up","x":200,"y":500,"s":0.6,"tone":"blue","label":"S&P futures\n(beta, margin)","lsize":17},{"icon":"hf","name":"bank","x":400,"y":500,"s":0.6,"tone":"green","label":"hedge funds,\ncredit (alpha)","sym":"$","lsize":17},{"arrow":["plan","fut2"],"id":"a1"},{"arrow":["plan","hf"],"bend":-40,"id":"a2"}]},{"cap":"2008: the S&P 500 fell by more than a third. The futures lost what the index lost, and futures settle in cash as they go, so the plan owed margin every day.","do":[{"hide":"left"},{"icon":"dn","name":"down","x":200,"y":500,"s":0.6,"tone":"red","label":"futures lose,\nmargin due daily","lsize":17},{"hide":"fut2"},{"pulse":"dn"}]},{"cap":"The alpha leg was supposed to be unrelated to the market. It was not: hedge fund indices had one of their worst years on record and structured credit fell. And the money paid out monthly or quarterly, some behind gates.","do":[{"cross":"hf"},{"note":"gate","x":470,"y":628,"text":"losing too, and gated","size":18,"anchor":"middle","tone":"red"}]},{"cap":"Both legs lost at once, and the cash to meet the calls was locked away. Some plans had to sell other assets at bad prices to raise collateral.","do":[{"icon":"fire","name":"fire","x":50,"y":650,"s":0.5,"tone":"red","label":"forced selling","lsize":17}]},{"cap":"The lesson: the residual of a one-factor regression hid other betas, to credit and to liquidity. Before trusting an alpha, test it against more factors and match the liquidity of the two legs.","do":[{"box":"lesson","x":220,"y":664,"w":260,"h":88,"text":"hidden betas:\ncredit + liquidity","tone":"amber","size":19}]}]}</script>
+      </div>
+      <!-- WB:alpha_beta_separation:END -->
+    </section>
+    <!-- WB:alpha_beta_separation-deck:END -->
+
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <!-- DESK:START -->
       <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
@@ -303,7 +316,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -354,7 +367,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -478,5 +491,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

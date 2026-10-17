@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Roll's Implicit Spread Estimator — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -196,7 +197,19 @@
       <div class="sl-quote">A rolling application of Roll's estimator to real data produces a series with genuine holes in it — windows with no estimate at all. Any honest use of this method needs a plan for what "no answer" means, because a meaningful share of windows will return exactly that.</div>
     </section>
 
+    <!-- WB:institutional_roll_spread_estimator-deck:START -->
     <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Roll's estimator: a spread from the bounce</h2>
+      <!-- WB:institutional_roll_spread_estimator:START -->
+      <div class="wb" data-title="Roll's estimator: a spread from the bounce">
+        <script type="application/json">{"w":600,"h":730,"intro":"Fourteen trade prints, no quotes. The spread still leaves a fingerprint: each bounce tends to undo the last. Press play, or step through.","steps":[{"cap":"Start with the true price nobody sees. It drifts up 0.02 a trade, from 100.00 to 100.26, smoothly and with no bounce.","do":[{"chart":"px","x":10,"y":10,"w":580,"h":262,"title":"Price, 14 trades","xd":[0,13],"yd":[99.9,100.36],"yt":[[100,"100.00"],[100.2,"100.20"]],"xt":[[0,"0"],[13,"13"]],"pl":74,"pr":56},{"series":"m","chart":"px","pts":[[0,100.0],[1,100.02],[2,100.04],[3,100.06],[4,100.08],[5,100.1],[6,100.12],[7,100.14],[8,100.16],[9,100.18],[10,100.2],[11,100.22],[12,100.24],[13,100.26]],"tone":null,"dash":true,"ms":900,"label":"true","lat":[13,100.26],"ldx":6,"ldy":0,"lanchor":"start","lsize":16}]},{"cap":"Quotes sit half a spread either side. The spread is 0.10, so the ask is 0.05 above the true price and the bid 0.05 below.","do":[{"gap":"band","chart":"px","top":[[0,100.05],[1,100.07],[2,100.09],[3,100.11],[4,100.13],[5,100.14999999999999],[6,100.17],[7,100.19],[8,100.21],[9,100.23],[10,100.25],[11,100.27],[12,100.28999999999999],[13,100.31]],"bot":[[0,99.95],[1,99.97],[2,99.99000000000001],[3,100.01],[4,100.03],[5,100.05],[6,100.07000000000001],[7,100.09],[8,100.11],[9,100.13000000000001],[10,100.15],[11,100.17],[12,100.19],[13,100.21000000000001]],"tone":"purple","op":0.2},{"note":"half","x":210,"y":70,"text":"ask = true + 0.05 · bid = true − 0.05","size":17,"anchor":"middle","tone":"purple"}]},{"cap":"Each trade lands on the ask (a buyer crossed) or the bid (a seller crossed). The printed price jumps between the two edges of the band.","do":[{"series":"p","chart":"px","pts":[[0,100.05],[1,99.97],[2,99.99],[3,100.11],[4,100.13],[5,100.15],[6,100.07],[7,100.19],[8,100.21],[9,100.13],[10,100.25],[11,100.17],[12,100.19],[13,100.31]],"tone":"blue","ms":1500,"label":"printed","lat":[13,100.31],"ldx":6,"ldy":0,"lanchor":"start","lsize":16},{"dot":"d0","chart":"px","at":[0,100.05],"text":"","tone":"green","r":4.5},{"dot":"d1","chart":"px","at":[1,99.97],"text":"","tone":"red","r":4.5},{"dot":"d2","chart":"px","at":[2,99.99],"text":"","tone":"red","r":4.5},{"dot":"d3","chart":"px","at":[3,100.11],"text":"","tone":"green","r":4.5},{"dot":"d4","chart":"px","at":[4,100.13],"text":"","tone":"green","r":4.5},{"dot":"d5","chart":"px","at":[5,100.15],"text":"","tone":"green","r":4.5},{"dot":"d6","chart":"px","at":[6,100.07],"text":"","tone":"red","r":4.5},{"dot":"d7","chart":"px","at":[7,100.19],"text":"","tone":"green","r":4.5},{"dot":"d8","chart":"px","at":[8,100.21],"text":"","tone":"green","r":4.5},{"dot":"d9","chart":"px","at":[9,100.13],"text":"","tone":"red","r":4.5},{"dot":"d10","chart":"px","at":[10,100.25],"text":"","tone":"green","r":4.5},{"dot":"d11","chart":"px","at":[11,100.17],"text":"","tone":"red","r":4.5},{"dot":"d12","chart":"px","at":[12,100.19],"text":"","tone":"red","r":4.5},{"dot":"d13","chart":"px","at":[13,100.31],"text":"","tone":"green","r":4.5}]},{"cap":"The printed moves: −0.08, +0.02, +0.12 and so on. A flip from ask to bid adds a full spread of fake move on top of the real +0.02 drift. Same side twice adds nothing.","do":[{"chart":"dp","x":10,"y":286,"w":580,"h":214,"title":"Printed price change, trade to trade","xd":[0.4,13.6],"yd":[-0.12,0.16],"yt":[[0.12,"+0.12"],[0.02,"+0.02"],[-0.08,"−0.08"]],"xt":[[1,"1"],[13,"13"]],"zero":true,"pl":74,"pr":14},{"bars":"db","chart":"dp","data":[[1,-0.08,"","red"],[2,0.02,"","blue"],[3,0.12,"","green"],[4,0.02,"","blue"],[5,0.02,"","blue"],[6,-0.08,"","red"],[7,0.12,"","green"],[8,0.02,"","blue"],[9,-0.08,"","red"],[10,0.12,"","green"],[11,-0.08,"","red"],[12,0.02,"","blue"],[13,0.12,"","green"]],"bw":24,"ms":1100}]},{"cap":"The fingerprint: after a −0.08 move, the next move averaged +0.07. After a +0.12 move, it averaged about −0.01. Moves tend to undo the move before.","do":[{"note":"pat","x":300,"y":528,"text":"after −0.08 → next averages +0.07 · after +0.12 → about −0.01","size":17,"anchor":"middle","tone":"amber"}]},{"cap":"Measure it as the covariance of each move with the move before, over the 12 pairs: −0.002431. Negative, as Roll predicts: −s²/4.","do":[{"note":"cov","x":300,"y":564,"text":"Cov(ΔPₜ, ΔPₜ₋₁) = −0.02917 ÷ 12 = −0.002431","size":19,"anchor":"middle","tone":"purple"}]},{"cap":"Solve for the spread: s = 2 × √0.002431 ≈ 0.0986. The true spread was 0.10, so the prints alone got within about 1.4%. The drift added nothing.","do":[{"box":"s","x":110,"y":588,"w":380,"h":54,"text":"s = 2√0.002431 ≈ 0.0986  (true 0.10)","tone":"green","size":20}]},{"cap":"Now a series that only trends, with no bounce: every move a bit bigger than the last. Its covariance is +0.001192, positive. There is no square root of a negative number to take.","do":[{"box":"tr","x":10,"y":656,"w":280,"h":64,"text":"trending series:\nCov = +0.001192","tone":"red","size":18}]},{"cap":"So Roll returns nothing at all, which is common in short or trending windows. Record that window as missing, never as zero, and cross-check with a high-low estimator such as Corwin and Schultz (2012).","do":[{"box":"na","x":310,"y":656,"w":280,"h":64,"text":"Roll: undefined\nmissing, not zero","tone":"amber","size":18}]}]}</script>
+      </div>
+      <!-- WB:institutional_roll_spread_estimator:END -->
+    </section>
+    <!-- WB:institutional_roll_spread_estimator-deck:END -->
+
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Compute it yourself — including the undefined case</h2>
       <p class="sl-sub">Enter a serial covariance value. The formula does the rest, and refuses to answer when it should.</p>
@@ -218,7 +231,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Roll isn't the last word — just the first one</h2>
       <p class="sl-sub">A newer estimator sidesteps Roll's exact failure mode entirely.</p>
@@ -243,7 +256,7 @@
       <div class="sl-quote">Not derived in full here — this deck's depth budget goes to Roll, as the historically foundational, conceptually clearest result. Corwin-Schultz is worth recognizing by name as the modern, more robust successor built for exactly the situations where Roll goes quiet.</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">One phrase, two very different jobs</h2>
       <div class="sl-callout purple">
@@ -258,7 +271,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -309,7 +322,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -457,5 +470,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

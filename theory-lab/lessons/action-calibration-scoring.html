@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Scoring Your Own Calls — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -59,6 +60,74 @@
       <li><strong>The desk's record:</strong> a conviction score that was never scored turned out <em>anti</em>-predictive; and a 54.1% hit rate that looked like an edge matched a 54.1% base rate exactly — zero resolution.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A reliability diagram for the lesson's 40 worked-example calls. Stated probability runs along the bottom, the share that came true up the side. The 50% calls sit on the dashed calibration diagonal, the 60% and 70% calls sit a little below it at 58% and 60%, and the 80% and 90% calls fall far below it at 50%, with red gaps showing the overconfidence. A dashed amber line marks the 55% base rate. Three boxes on the right compare the Brier score of 0.2775 with 0.2475 for quoting 55% on every call, a skill of minus 12.1%.">
+      <line class="tlp-line" x1="70" y1="220" x2="300" y2="220"/>
+      <line class="tlp-line" x1="70" y1="30" x2="70" y2="220"/>
+      <line class="tlp-line dash" x1="70" y1="204.2" x2="300" y2="45.8"/>
+      <line class="tlp-line amber dash" x1="70" y1="172.5" x2="300" y2="172.5"/>
+      <line class="tlp-line red thick dash" x1="231" y1="188.3" x2="231" y2="93.3"/>
+      <line class="tlp-line red thick dash" x1="277" y1="188.3" x2="277" y2="61.7"/>
+      <polyline class="tlp-line purple thick" points="93,188.3 139,161.9 185,156.7 231,188.3 277,188.3"/>
+      <circle class="tlp-purple" cx="93" cy="188.3" r="6"/>
+      <circle class="tlp-purple" cx="139" cy="161.9" r="6"/>
+      <circle class="tlp-purple" cx="185" cy="156.7" r="6"/>
+      <circle class="tlp-purple" cx="231" cy="188.3" r="6"/>
+      <circle class="tlp-purple" cx="277" cy="188.3" r="6"/>
+      <text class="tlp-text3" x="62" y="192" text-anchor="end" font-size="12">50%</text>
+      <text class="tlp-text3" x="62" y="129" text-anchor="end" font-size="12">70%</text>
+      <text class="tlp-text3" x="62" y="66" text-anchor="end" font-size="12">90%</text>
+      <text class="tlp-text3" x="93" y="236" text-anchor="middle" font-size="12">50%</text>
+      <text class="tlp-text3" x="185" y="236" text-anchor="middle" font-size="12">70%</text>
+      <text class="tlp-text3" x="277" y="236" text-anchor="middle" font-size="12">90%</text>
+      <text class="tlp-text3" x="185" y="254" text-anchor="middle" font-size="12">what you said →</text>
+      <text class="tlp-text3" x="78" y="24" font-size="12">what came true ↑</text>
+      <text class="tlp-text3" x="196" y="78" text-anchor="end" font-size="12">calibrated line</text>
+      <text class="tlp-amber" x="306" y="176" font-size="12" font-weight="700">base 55%</text>
+      <text class="tlp-red" x="254" y="208" text-anchor="middle" font-size="12" font-weight="700">overconfident</text>
+      <rect class="tlp-box purple" x="390" y="22" width="200" height="60" rx="8"/>
+      <text class="tlp-text2" x="490" y="45" text-anchor="middle" font-size="13">Your Brier score</text>
+      <text class="tlp-purple" x="490" y="69" text-anchor="middle" font-size="15" font-weight="700">0.2775</text>
+      <rect class="tlp-box blue" x="390" y="96" width="200" height="60" rx="8"/>
+      <text class="tlp-text2" x="490" y="119" text-anchor="middle" font-size="13">Quote 55% every call</text>
+      <text class="tlp-blue" x="490" y="143" text-anchor="middle" font-size="15" font-weight="700">0.2475</text>
+      <rect class="tlp-box red" x="390" y="170" width="200" height="60" rx="8"/>
+      <text class="tlp-text2" x="490" y="193" text-anchor="middle" font-size="13">Skill vs the base rate</text>
+      <text class="tlp-red" x="490" y="217" text-anchor="middle" font-size="15" font-weight="700">−12.1%: worse</text>
+    </svg>
+    <figcaption>The lesson's 40 calls, bucketed by what was written. Points below the diagonal are overconfidence, and the 80% and 90% calls came true only half the time. Lower Brier is better, so quoting the 55% base rate on every call would have beaten this record.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I write a confidence on every call now. Seventy percent, eighty percent. Is that number worth anything?</p>
+      <p data-who="Quant">Only if it comes true about as often as you say. That is calibration. If your seventy percent calls come true seven times in ten, your seventy means seventy.</p>
+      <p data-who="Trader">But I can't grade one call. If it fails, maybe I was just unlucky.</p>
+      <p data-who="Quant">Right. One call proves nothing. So you collect them. Every seventy percent call goes in one bucket, every eighty in another, and you count how many came true in each.</p>
+      <p data-who="Trader">Like a weather forecaster.</p>
+      <p data-who="Quant">That is exactly where it came from. Glenn Brier proposed his score in nineteen fifty to grade rain forecasts. You take the gap between what you said and what happened, square it, and average it over all your calls. Zero is perfect. Lower is better.</p>
+      <p data-who="Trader">Why square it?</p>
+      <p data-who="Quant">So confident misses hurt. A seventy percent call that comes true costs you nine hundredths. One that fails costs forty-nine hundredths. More than five times as much.</p>
+      <p data-who="Trader">So what counts as a good score?</p>
+      <p data-who="Quant">Don't compare it with zero. Compare it with someone who quotes your overall hit rate on every single call. They have no skill at telling one call from another, but they know the average. If you can't beat them, your numbers add nothing.</p>
+      <p data-who="Trader">Give me a real example.</p>
+      <p data-who="Quant">Forty calls in a quarter. On average you wrote about sixty-six percent. Twenty-two came true, which is fifty-five percent. Your score comes out at about twenty-eight hundredths. Quoting fifty-five percent every time would have scored about twenty-five hundredths. You lost to the plain benchmark by about twelve percent.</p>
+      <p data-who="Trader">Ouch. Where did it go wrong?</p>
+      <p data-who="Quant">The high-confidence calls. Your eighty and ninety percent calls came true half the time, no better than your fifty percent calls. The score splits into parts, and they show both problems: the numbers were inflated, and they barely separated good calls from bad ones.</p>
+      <p data-who="Trader">Does that matter if I still made money?</p>
+      <p data-who="Quant">It matters for size. At even odds, if you believe you are right sixty-six percent of the time, Kelly says risk a third of the bankroll. Your record supports a tenth. That is more than three times too big, past the point where growth turns negative.</p>
+      <p data-who="Trader">And I can't just shade my numbers to score better?</p>
+      <p data-who="Quant">No. The score is built so that writing your honest belief always does best on average. Any shading costs you, call after call.</p>
+      <p data-who="Trader">So what changes next quarter?</p>
+      <p data-who="Quant">Swap your felt numbers for your measured ones. And keep one simple rule: until your eighty and ninety percent calls beat your sixty percent calls, they all get the same size.</p>
+      <p data-who="Trader">The one-line version?</p>
+      <p data-who="Quant">Write a number on every call, count the hits, and size from what you measured, not what you felt.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -117,6 +186,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">How the Brier score splits into three parts, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{BS} = \color{#fbbf24}{\frac{1}{N}\sum_{i=1}^{N} (f_i - o_i)^2} \]</div>
+      <p>Start with the score itself: the average squared gap between what you wrote and what happened. A 70% call that comes true costs 0.09; one that fails costs 0.49.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{BS} = \color{#fbbf24}{\bar o\,(1-\bar o)} \quad \text{if you quote the base rate on every call} \]</div>
+      <p>Now the benchmark. Someone who writes the base rate \(\bar o\) on every call scores exactly \(\bar o(1-\bar o)\). This is the uncertainty term: it depends only on the outcomes, not on you. At \(\bar o = 0.55\) it is 0.2475.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{BS} = \color{#fbbf24}{\frac{1}{N}\sum_k n_k (f_k - \bar o_k)^2} + \bar o\,(1-\bar o) \]</div>
+      <p>Add the reliability term. Each bucket pays for the gap between its stated number and its hit rate. It is zero only if every bucket comes true as often as it says. In the worked example it is 0.0321.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{BS} = \frac{1}{N}\sum_k n_k (f_k - \bar o_k)^2 \color{#fbbf24}{\;-\; \frac{1}{N}\sum_k n_k (\bar o_k - \bar o)^2} + \bar o\,(1-\bar o) \]</div>
+      <p>Subtract the resolution term. Buckets whose hit rates differ from the base rate earn you a reward. Calls that all come true at the same rate earn nothing. In the worked example it is only 0.0021.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\text{BS} = \text{reliability} - \text{resolution} + \text{uncertainty} = 0.0321 - 0.0021 + 0.2475 = 0.2775} \]</div>
+      <p>The full split. You beat the base-rate quoter only when resolution is bigger than reliability. Here it is not, so the record scores worse than 0.2475.</p>
+    </div>
+  </div>
 
   <h3>1. Write calls that can be scored</h3>
   <p>
@@ -314,6 +407,10 @@
   <div class="tl-chart interactive" id="cb-tool">
     <div class="tl-chart-label">Calibration scorer — enter your own calls</div>
     <p class="tl-hint" style="font-style:normal;font-size:12px;margin:0 0 4px">Phrase every call as the side you think likelier, round its probability to the nearest 10%, and log the outcome with ✓ or ✗ — or type the totals. It starts with the worked example; press Clear to use your own. Your tally is kept in this browser only.</p>
+    <div class="tl-predict" data-answer="-12.1" data-tol="3" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With the worked example loaded (40 calls, 22 came true), what will the "skill vs base rate" tile show? Positive means you beat quoting 55% on every call. Lock in a guess, then press "Load the worked example" below and read the third tile.</div>
+      <div class="tl-predict-reveal"><p><strong>−12.1%.</strong> The Brier score is 11.10 / 40 = 0.2775. Quoting the 55% base rate every time scores 0.55 × 0.45 = 0.2475. Skill is 1 − 0.2775 / 0.2475 = −12.1%: the record loses to the plain benchmark. Now set the calls on the 80% and 90% rows to 0. Skill climbs to about −0.7%, so almost all the damage came from those ten high-confidence calls.</p></div>
+    </div>
     <div class="cb-rows" id="cb-rows"></div>
     <div class="tl-btnrow" style="margin-top:10px">
       <button type="button" class="tl-btn" id="cb-example">Load the worked example</button>
@@ -369,6 +466,12 @@
     <div class="tl-chain-arrow">→</div>
     <div class="tl-chain-link end"><b>Outcome</b>Size matches the edge that exists; over-betting stops</div>
   </div>
+
+  <!-- WB:action_calibration_scoring:START -->
+  <div class="wb" id="wb-action_calibration_scoring" data-title="Scoring your own calls, step by step">
+    <script type="application/json">{"w":600,"h":720,"intro":"A quarter of written calls, scored the way weather forecasts are scored. Every number is the lesson's worked example. Press play, or step through.","steps":[{"cap":"A weather forecaster says \"70% chance of rain\". You cannot grade that one day: rain does not prove her right, and sunshine does not prove her wrong.","do":[{"icon":"fc","name":"person","x":30,"y":14,"s":0.7,"tone":"blue","label":"forecaster","lsize":17},{"icon":"umb","name":"umbrella","x":130,"y":14,"s":0.7,"tone":"blue","label":"\"70% rain\"","lsize":17}]},{"cap":"So collect every day she said 70%, and count. If it rained on 7 of 10, her 70% means 70%. That is calibration: grading the numbers, not the luck.","do":[{"chip":"d0","x":290,"y":52,"text":"☔","tone":"blue"},{"chip":"d1","x":320,"y":52,"text":"☔","tone":"blue"},{"chip":"d2","x":350,"y":52,"text":"☔","tone":"blue"},{"chip":"d3","x":380,"y":52,"text":"☔","tone":"blue"},{"chip":"d4","x":410,"y":52,"text":"☔","tone":"blue"},{"chip":"d5","x":440,"y":52,"text":"☔","tone":"blue"},{"chip":"d6","x":470,"y":52,"text":"☔","tone":"blue"},{"chip":"d7","x":500,"y":52,"text":"☀","tone":"amber"},{"chip":"d8","x":530,"y":52,"text":"☀","tone":"amber"},{"chip":"d9","x":560,"y":52,"text":"☀","tone":"amber"},{"note":"dn","x":435,"y":120,"text":"7 of 10 rained → 70% means 70%","size":18,"anchor":"middle","tone":"green"}]},{"cap":"Now your own journal: 40 calls in a quarter, each written with a probability before the outcome and rounded into buckets of 50%, 60%, 70%, 80% and 90%.","do":[{"hide":"d0"},{"hide":"d1"},{"hide":"d2"},{"hide":"d3"},{"hide":"d4"},{"hide":"d5"},{"hide":"d6"},{"hide":"d7"},{"hide":"d8"},{"hide":"d9"},{"hide":"dn"},{"hide":"umb"},{"hide":"fc"},{"icon":"jr","name":"scroll","x":40,"y":14,"s":0.75,"tone":"purple","label":"40 calls","lsize":17},{"note":"bk","x":360,"y":70,"text":"said 50% · 60% · 70% · 80% · 90%\ncalls  8  ·  12  ·  10  ·  6  ·  4","size":18,"anchor":"middle"},{"chart":"rel","x":10,"y":196,"w":580,"h":262,"title":"What came true, against what you said","xd":[0.45,0.95],"yd":[0.4,1.0],"yt":[[0.5,"50%"],[0.7,"70%"],[0.9,"90%"]],"xt":[[0.5,"50%"],[0.6,"60%"],[0.7,"70%"],[0.8,"80%"],[0.9,"90%"]],"pl":52,"pr":96},{"series":"diag","chart":"rel","pts":[[0.45,0.45],[0.95,0.95]],"tone":null,"dash":true,"ms":700,"label":"calibrated","lat":[0.95,0.95],"ldx":6,"ldy":4,"lanchor":"start","lsize":16}]},{"cap":"Plot each bucket's hit rate. The 50% calls came true 4 of 8 times, right on the line. The 60% and 70% calls landed at 58% and 60%, a little below it.","do":[{"series":"pts","chart":"rel","pts":[[0.5,0.5],[0.6,0.583],[0.7,0.6],[0.8,0.5],[0.9,0.5]],"tone":"purple","ms":1200},{"dot":"p0","chart":"rel","at":[0.5,0.5],"text":"","tone":"purple"},{"dot":"p1","chart":"rel","at":[0.6,0.583],"text":"","tone":"purple"},{"dot":"p2","chart":"rel","at":[0.7,0.6],"text":"","tone":"purple"},{"dot":"p3","chart":"rel","at":[0.8,0.5],"text":"","tone":"purple"},{"dot":"p4","chart":"rel","at":[0.9,0.5],"text":"","tone":"purple"},{"series":"base","chart":"rel","pts":[[0.45,0.55],[0.95,0.55]],"tone":"amber","dash":true,"ms":500,"label":"base 55%","lat":[0.95,0.55],"ldx":6,"ldy":4,"lanchor":"start","lsize":16}]},{"cap":"The 80% and 90% calls came true only half the time. Points below the diagonal are overconfidence: the bigger the red gap, the more your number overstated your record.","do":[{"series":"g8","chart":"rel","pts":[[0.8,0.5],[0.8,0.8]],"tone":"red","dash":true,"ms":500},{"series":"g9","chart":"rel","pts":[[0.9,0.5],[0.9,0.9]],"tone":"red","dash":true,"ms":500},{"note":"gl","chart":"rel","at":[0.85,0.45],"text":"said 80–90%, came true 50%","tone":"red","size":16,"anchor":"middle","dx":0,"dy":0},{"pulse":"p3"},{"pulse":"p4"}]},{"cap":"The Brier score grades each call by its squared miss. A 70% call that comes true costs (0.7 − 1)² = 0.09. One that fails costs 0.7² = 0.49. Confident misses hurt most.","do":[{"hide":"jr"},{"hide":"bk"},{"box":"hit","x":10,"y":20,"w":280,"h":74,"text":"70% call comes true\ncosts 0.09","tone":"green","size":19},{"box":"miss","x":310,"y":20,"w":280,"h":74,"text":"70% call fails\ncosts 0.49","tone":"red","size":19}]},{"cap":"All 40 calls average 11.10 / 40 = 0.2775. Quoting the 55% base rate on every call would have scored 0.55 × 0.45 = 0.2475. Lower is better, so the record lost to the plain benchmark: a skill of −12.1%.","do":[{"chart":"sc","x":10,"y":474,"w":280,"h":236,"title":"Brier score (lower is better)","xd":[0.4,2.6],"yd":[0,0.32],"yt":[[0,"0"],[0.1,"0.10"],[0.2,"0.20"],[0.3,"0.30"]],"xt":[[1,"you"],[2,"quote 55%"]],"pl":50},{"bars":"scb","chart":"sc","data":[[1,0.2775,"0.2775","purple"],[2,0.2475,"0.2475","blue"]],"bw":56,"ms":1000}]},{"cap":"Why? The score splits into three parts: reliability 0.0321 minus resolution 0.0021 plus uncertainty 0.2475. The numbers are inflated, and they barely separate good calls from bad.","do":[{"hide":"hit"},{"hide":"miss"},{"box":"dec","x":10,"y":20,"w":580,"h":74,"text":"0.0321 − 0.0021 + 0.2475 = 0.2775\nreliability − resolution + uncertainty","tone":"purple","size":19}]},{"cap":"Is it just bad luck? Pool the 70% to 90% calls: you expected 15.4 hits and got 11. That is 2.38 standard errors short, beyond what luck usually produces.","do":[{"box":"z","x":10,"y":106,"w":580,"h":74,"text":"70–90% calls: expected 15.4 hits, got 11\nz = −2.38: overconfident beyond luck","tone":"red","size":19}]},{"cap":"It costs money through size. At even odds, Kelly from your stated average of 66.5% is 33% of the bankroll. Your record of 55% supports 10%. That is 3.3 times Kelly, where growth turns negative.","do":[{"chart":"kc","x":310,"y":474,"w":280,"h":236,"title":"Kelly size at even odds","xd":[0.4,2.6],"yd":[0,0.4],"yt":[[0,"0"],[0.1,"10%"],[0.2,"20%"],[0.3,"30%"]],"xt":[[1,"felt 66.5%"],[2,"record 55%"]],"pl":50},{"bars":"kb","chart":"kc","data":[[1,0.33,"33%","red"],[2,0.1,"10%","green"]],"bw":56,"ms":1000}]},{"cap":"The fix: swap felt numbers for measured ones, shrunk toward the base rate. Your 90% becomes 53.6%. And one rule: until your 80% and 90% calls beat your 60% calls, they get the same size.","do":[{"hide":"z"},{"hide":"dec"},{"box":"fix","x":10,"y":20,"w":580,"h":74,"text":"next quarter: 90% → 53.6%, 80% → 53.1%","tone":"green","size":19},{"box":"rule","x":10,"y":106,"w":580,"h":74,"text":"same size for every call until\nthe high-confidence calls earn more","tone":"green","size":19}]}]}</script>
+  </div>
+  <!-- WB:action_calibration_scoring:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>It actually happened: people who keep score</h2>
@@ -488,6 +591,19 @@
     <p style="margin-bottom:0"><strong>Ignoring the base rate.</strong> "I'm right 60% of the time" means nothing until you know how often the event happens anyway.</p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative quarterly review</div>
+    <h3>Your next call feels like a 90%</h3>
+    <p>You have just scored a quarter of 40 calls, the same tally as the worked example. Your ten calls written at 80% or 90% came true five times. Your twelve 60% calls came true seven times. The next morning a setup appears that feels like a 90% call, at an even payoff. How do you size it?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Size it as a 90% call. This one really is different.<div class="tl-drill-why">At even payoff, Kelly from 90% is 2(0.9) − 1 = 80% of the bankroll. Your 90% calls have come true about half the time, so that is many times the size your record supports. Every high-confidence call felt different too.</div></li>
+      <li data-verdict="good">Use the corrected number from your table, about 54%, and size it the same as your ordinary calls.<div class="tl-drill-why">The shrunk hit rate for the 90% bucket is 53.6%, which gives a Kelly fraction of about 7%. This follows the rule the review produced: until your 80% and 90% calls beat your 60% calls, they get the same size.</div></li>
+      <li data-verdict="bad">Halve what the 90% would say, to be safe.<div class="tl-drill-why">Half of 80% is 40% of the bankroll. That still sizes off the felt number. Against a measured edge near 54%, it is more than five times the Kelly fraction, deep in the zone where growth turns negative.</div></li>
+      <li data-verdict="ok">Skip the trade until you have more calls on record.<div class="tl-drill-why">It cannot over-bet, but the call still looks better than a coin flip, and you only learn your calibration by making and scoring calls. Taking it at the corrected size does both.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the numbers say.</strong> This is an illustrative review built on the lesson's worked example, not a real trade. The felt 90% would size at 80% of the bankroll; the measured 53.6% sizes at about 7%. The gap between those two numbers is what an unscored confidence costs. Keep scoring: if the next 40 calls show your high-confidence calls pulling ahead, the table will let them earn more size.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -540,6 +656,27 @@
     <li><a href="process-vs-outcome-decision-journals.html">Judge the Decision, Not the Result</a>, <a href="overconfidence-overtrading.html">Overconfidence and Overtrading</a> and <a href="kelly-criterion.html">Kelly Criterion</a> — the journal, the bias and the sizing this lesson connects.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="process-vs-outcome-decision-journals.html">Judge the Decision, Not the Result</a> <span>· where the written calls come from</span></li>
+        <li><a href="primer-probability.html">Probability &amp; Random Variables</a> <span>· what a stated 70% is meant to mean</span></li>
+        <li><a href="overconfidence-overtrading.html">Overconfidence and the Cost of Trading Too Much</a> <span>· why most people's numbers run high</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="action-base-rates.html">Base Rates First</a> <span>· the bar every call has to beat</span></li><!-- DESK:END -->
+        <li><a href="kelly-criterion.html">The Kelly Criterion &amp; Position Sizing</a> <span>· turning a calibrated probability into a size</span></li>
+        <li><a href="entropy-kl-mutual-information.html">Entropy, KL Divergence &amp; Mutual Information</a> <span>· the log score's information-theory roots</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every bet size multiplies by a probability, so a confidence that runs ten points too high makes every position too big.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="action-vol-to-size.html">← From a Volatility Forecast to a Position Size</a>
@@ -723,10 +860,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

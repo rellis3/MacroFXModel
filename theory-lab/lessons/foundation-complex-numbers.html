@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Complex Numbers — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -42,6 +43,66 @@
       <li><strong>How it reached trading:</strong> through the characteristic function, which let Heston (1993) price options under stochastic volatility and Carr and Madan (1999) price a whole strike grid at once with the fast Fourier transform.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The complex plane, with the real axis across and the imaginary axis up. The number 3 plus 4i is plotted as a point 3 across and 4 up, joined to the origin by a line of length 5 at an angle of 53.13 degrees. A dashed unit circle around the origin marks e to the i pi, which equals minus 1, on the left, and e to the i pi over 2, which equals i, at the top. Three boxes on the right give the same number two ways, rectangular 3 plus 4i and polar 5 at 53.13 degrees, and Euler's formula, e to the i theta equals cos theta plus i sin theta, a point on the unit circle.">
+      <line class="tlp-line" x1="40" y1="205" x2="300" y2="205"/>
+      <line class="tlp-line" x1="110" y1="20" x2="110" y2="240"/>
+      <text class="tlp-text3" x="300" y="222" text-anchor="end" font-size="12">real →</text>
+      <text class="tlp-text3" x="116" y="28" font-size="12">imaginary ↑</text>
+      <circle class="tlp-line dash" cx="110" cy="205" r="36"/>
+      <line class="tlp-line purple dash" x1="110" y1="205" x2="218" y2="205"/>
+      <line class="tlp-line amber dash" x1="218" y1="205" x2="218" y2="61"/>
+      <line class="tlp-line blue thick" x1="110" y1="205" x2="218" y2="61"/>
+      <path class="tlp-line green" d="M136,205 A26,26 0 0 0 125.6,184.2"/>
+      <text class="tlp-green" x="142" y="198" font-size="12" font-weight="700">53.13°</text>
+      <text class="tlp-purple" x="164" y="222" text-anchor="middle" font-size="13" font-weight="700">3</text>
+      <text class="tlp-amber" x="226" y="137" font-size="13" font-weight="700">4</text>
+      <text class="tlp-blue" x="150" y="122" text-anchor="end" font-size="13" font-weight="700">|z| = 5</text>
+      <circle class="tlp-blue" cx="218" cy="61" r="6"/>
+      <text class="tlp-blue" x="228" y="57" font-size="14" font-weight="700">z = 3 + 4i</text>
+      <circle class="tlp-red" cx="74" cy="205" r="5"/>
+      <text class="tlp-red" x="70" y="226" text-anchor="end" font-size="12" font-weight="700">e<tspan dy="-5" font-size="9">iπ</tspan><tspan dy="5"> = −1</tspan></text>
+      <circle class="tlp-green" cx="110" cy="169" r="5"/>
+      <text class="tlp-green" x="102" y="160" text-anchor="end" font-size="12" font-weight="700">e<tspan dy="-5" font-size="9">iπ/2</tspan><tspan dy="5"> = i</tspan></text>
+      <rect class="tlp-box blue" x="330" y="20" width="260" height="60" rx="8"/>
+      <text class="tlp-blue" x="460" y="45" text-anchor="middle" font-size="14" font-weight="700">Rectangular: 3 + 4i</text>
+      <text class="tlp-text2" x="460" y="66" text-anchor="middle" font-size="12">3 across, 4 up</text>
+      <rect class="tlp-box green" x="330" y="94" width="260" height="60" rx="8"/>
+      <text class="tlp-green" x="460" y="119" text-anchor="middle" font-size="14" font-weight="700">Polar: 5 at 53.13°</text>
+      <text class="tlp-text2" x="460" y="140" text-anchor="middle" font-size="12">the same point: a distance and a direction</text>
+      <rect class="tlp-box purple" x="330" y="168" width="260" height="60" rx="8"/>
+      <text class="tlp-purple" x="460" y="193" text-anchor="middle" font-size="14" font-weight="700">e<tspan dy="-6" font-size="10">iθ</tspan><tspan dy="6"> = cos θ + i sin θ</tspan></text>
+      <text class="tlp-text2" x="460" y="214" text-anchor="middle" font-size="12">Euler: a point on the unit circle</text>
+    </svg>
+    <figcaption>A complex number is just a point: so many steps across and so many up. The same point can be given as a distance and a direction, and Euler's formula says e raised to an imaginary power is a point on the circle.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Imaginary numbers. I switched off at school the moment someone said "the square root of minus one".</p>
+      <p data-who="Quant">Fair enough. Let's start somewhere friendlier. At some point, someone asked what three take away five is, and there was no answer. So people invented negative numbers.</p>
+      <p data-who="Trader">And fractions, for sharing things out that don't divide evenly.</p>
+      <p data-who="Quant">Exactly. Each time a question had no answer, we built a new kind of number that answers it. No ordinary number times itself gives minus one, because every square is zero or positive. So we invent one that does, and call it i.</p>
+      <p data-who="Trader">But where does it live? It's not on the number line.</p>
+      <p data-who="Quant">Right, so give it its own direction. Ordinary numbers run left and right. The i part runs up and down. A complex number is just a point on a flat map: so many steps across, so many steps up.</p>
+      <p data-who="Trader">Give me one.</p>
+      <p data-who="Quant">Three plus four i. Walk three steps east, then four steps north. Or describe the same spot another way: five steps in one straight line, at an angle of about fifty-three degrees.</p>
+      <p data-who="Trader">Five, because three, four, five is the classic right-angled triangle.</p>
+      <p data-who="Quant">That's it. The distance is called the modulus, and the angle is the argument. Two sets of directions to the same spot.</p>
+      <p data-who="Trader">And what's the famous formula everyone puts on posters?</p>
+      <p data-who="Quant">Euler's formula. It says that e raised to an imaginary power is a point on a circle of radius one. Growth and rotation turn out to be built from the same gears. Go halfway round the circle and you land on minus one.</p>
+      <p data-who="Trader">This is lovely, but why would a trader care?</p>
+      <p data-who="Quant">Because of option pricing. In nineteen ninety-three Steven Heston built a model where volatility itself moves. Its usual formula for probabilities couldn't be written down, but a complex-valued version of it could. He worked in complex numbers and got real prices out at the end.</p>
+      <p data-who="Trader">Complex in the middle, real at the end.</p>
+      <p data-who="Quant">Yes. And in nineteen ninety-nine Carr and Madan showed how to price a whole row of strikes in one fast pass the same way. That trick goes back to fifteen seventy-two, when Bombelli used these numbers to solve equations whose answers were perfectly ordinary.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">A complex number is a point: across and up, or a distance and an angle. Don't panic when one appears halfway through a calculation, check that the final answer comes out real.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -136,6 +197,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where Euler's formula comes from, one step at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ e^x = \color{#fbbf24}{1 + x + \frac{x^2}{2!} + \frac{x^3}{3!} + \frac{x^4}{4!} + \cdots} \]</div>
+      <p>Start with \(e^x\) written as an endless sum of powers. You don't need to derive this yet; it is built properly in the calculus lessons.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ e^{\color{#fbbf24}{i\theta}} = 1 + i\theta + \frac{(i\theta)^2}{2!} + \frac{(i\theta)^3}{3!} + \frac{(i\theta)^4}{4!} + \cdots \]</div>
+      <p>Now feed in an imaginary input, \(x = i\theta\). Every term now carries a power of \(i\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ e^{i\theta} = 1 + i\theta \color{#fbbf24}{- \frac{\theta^2}{2!} - i\frac{\theta^3}{3!} + \frac{\theta^4}{4!}} + \cdots \]</div>
+      <p>Simplify the powers of \(i\): \(i^2 = -1\), \(i^3 = -i\), \(i^4 = 1\), and then the pattern repeats every four.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ e^{i\theta} = \color{#fbbf24}{\left(1 - \frac{\theta^2}{2!} + \frac{\theta^4}{4!} - \cdots\right)} + i\color{#fbbf24}{\left(\theta - \frac{\theta^3}{3!} + \cdots\right)} \]</div>
+      <p>Gather the terms with no \(i\) in one bracket and the terms with an \(i\) in another. These two brackets are exactly the series for cosine and sine.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{e^{i\theta} = \cos\theta + i\sin\theta} \]</div>
+      <p>That is Euler's formula: a point on the unit circle at angle \(\theta\). Put in \(\theta = \pi\) and you get \(\cos\pi + i\sin\pi = -1\).</p>
+    </div>
+  </div>
 
   <h3>Defining \(i\), and real vs. imaginary parts</h3>
   <p>
@@ -403,6 +488,10 @@
       instantly (using a two-argument arctangent under the hood, so the
       quadrant is always handled correctly — see the pitfall named below).
     </p>
+    <div class="tl-predict" data-answer="10" data-tol="0.5" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> \(3 + 4i\) sits at distance 5 from the origin. What is the distance for \(6 + 8i\), with both parts doubled? And does the angle change? Lock in a guess for the distance, then type 6 and 8 into the boxes below to check.</div>
+      <div class="tl-predict-reveal"><p><strong>10, and the angle stays 53.13°.</strong> \(\sqrt{6^2 + 8^2} = \sqrt{36 + 64} = \sqrt{100} = 10\). Doubling both parts walks twice as far in exactly the same direction. Now try \(-3\) and \(-4\): the distance is still 5, but the angle jumps to the opposite side of the circle.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Real part \(a\)</span></div>
@@ -422,6 +511,12 @@
     </div>
     <button type="button" id="cn-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
+
+  <!-- WB:foundation_complex_numbers:START -->
+  <div class="wb" id="wb-foundation_complex_numbers" data-title="Complex numbers: a point, a turn and a circle">
+    <script type="application/json">{"w":600,"h":560,"intro":"Where the square root of minus one lives, and why e to an imaginary power is a point on a circle. Real numbers from the lesson. Press play, or step through.","steps":[{"cap":"Ordinary numbers live on a line, running left and right. Every one of them squared is zero or positive, so no ordinary number squared gives −1.","do":[{"chart":"pl","x":10,"y":10,"w":400,"h":420,"title":"The complex plane","xd":[-2.2,5.6],"yd":[-2.2,5.6],"yt":[[-1,"−1"],[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"xt":[[-1,"−1"],[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"zero":true,"pl":36,"pr":12},{"series":"rl","chart":"pl","pts":[[-2.1,0],[5.5,0]],"tone":"blue","ms":800},{"note":"rln","chart":"pl","at":[4.4,0],"text":"real numbers","tone":"blue","size":17,"anchor":"middle","dx":0,"dy":-12}]},{"cap":"So invent a number that does: i, with i × i = −1. Give it its own direction, straight up. Multiplying by i turns a number a quarter of the way round: 1 becomes i, and i becomes −1.","do":[{"dot":"one","chart":"pl","at":[1,0],"text":"1","tone":"blue","dx":8,"dy":18,"anchor":"start"},{"dot":"ii","chart":"pl","at":[0,1],"text":"i","tone":"green","dx":10,"dy":-6,"anchor":"start"},{"series":"q1","chart":"pl","pts":[[1.0,0.0],[0.9914,0.1305],[0.9659,0.2588],[0.9239,0.3827],[0.866,0.5],[0.7934,0.6088],[0.7071,0.7071],[0.6088,0.7934],[0.5,0.866],[0.3827,0.9239],[0.2588,0.9659],[0.1305,0.9914],[0.0,1.0]],"tone":"green","ms":700},{"dot":"m1","chart":"pl","at":[-1,0],"text":"−1","tone":"red","dx":-8,"dy":18,"anchor":"end"},{"series":"q2","chart":"pl","pts":[[0.0,1.0],[-0.1305,0.9914],[-0.2588,0.9659],[-0.3827,0.9239],[-0.5,0.866],[-0.6088,0.7934],[-0.7071,0.7071],[-0.7934,0.6088],[-0.866,0.5],[-0.9239,0.3827],[-0.9659,0.2588],[-0.9914,0.1305],[-1.0,0.0]],"tone":"red","ms":700}]},{"cap":"A complex number is a point on this map. z = 3 + 4i means: walk 3 steps across (the real part), then 4 steps up (the imaginary part).","do":[{"series":"re","chart":"pl","pts":[[0,0],[3,0]],"tone":"purple","ms":700},{"series":"im","chart":"pl","pts":[[3,0],[3,4]],"tone":"amber","ms":700},{"note":"ren","chart":"pl","at":[2.3,0],"text":"3 across","tone":"purple","size":17,"anchor":"middle","dx":0,"dy":24},{"note":"imn","chart":"pl","at":[3,2],"text":"4 up","tone":"amber","size":17,"anchor":"start","dx":10,"dy":0},{"dot":"z","chart":"pl","at":[3,4],"text":"z = 3 + 4i","tone":"blue","dx":-10,"dy":-12,"anchor":"end"}]},{"cap":"The same point, described another way: how far, and which way. The distance is √(3² + 4²) = √25 = 5. This is the modulus, |z| = 5.","do":[{"series":"mod","chart":"pl","pts":[[0,0],[3,4]],"tone":"blue","ms":800},{"note":"modn","chart":"pl","at":[1.5,2],"text":"|z| = 5","tone":"blue","size":18,"anchor":"end","dx":-10,"dy":0}]},{"cap":"The direction is the angle from the real axis: tan⁻¹(4/3) = 0.9273 radians, or 53.13°. This is the argument. So 3 + 4i is also \"5 at 53.13°\".","do":[{"series":"ang","chart":"pl","pts":[[0.75,0.0],[0.7478,0.0579],[0.7411,0.1155],[0.7299,0.1723],[0.7145,0.2281],[0.6947,0.2826],[0.6708,0.3354],[0.6429,0.3862],[0.6112,0.4347],[0.5758,0.4806],[0.537,0.5236],[0.495,0.5635],[0.45,0.6]],"tone":"green","ms":600},{"note":"angn","chart":"pl","at":[0.95,0.42],"text":"53.13°","tone":"green","size":16,"anchor":"start","dx":0,"dy":0},{"box":"pol","x":420,"y":20,"w":170,"h":110,"text":"polar form\n5 at 53.13°","tone":"green","size":19}]},{"cap":"Euler's formula: e raised to an imaginary power, e^(iθ), is the point on the circle of radius 1 at angle θ. As θ grows, e^(iθ) walks round the circle.","do":[{"series":"uc","chart":"pl","pts":[[1.0,0.0],[0.9945,0.1045],[0.9781,0.2079],[0.9511,0.309],[0.9135,0.4067],[0.866,0.5],[0.809,0.5878],[0.7431,0.6691],[0.6691,0.7431],[0.5878,0.809],[0.5,0.866],[0.4067,0.9135],[0.309,0.9511],[0.2079,0.9781],[0.1045,0.9945],[0.0,1.0],[-0.1045,0.9945],[-0.2079,0.9781],[-0.309,0.9511],[-0.4067,0.9135],[-0.5,0.866],[-0.5878,0.809],[-0.6691,0.7431],[-0.7431,0.6691],[-0.809,0.5878],[-0.866,0.5],[-0.9135,0.4067],[-0.9511,0.309],[-0.9781,0.2079],[-0.9945,0.1045],[-1.0,0.0],[-0.9945,-0.1045],[-0.9781,-0.2079],[-0.9511,-0.309],[-0.9135,-0.4067],[-0.866,-0.5],[-0.809,-0.5878],[-0.7431,-0.6691],[-0.6691,-0.7431],[-0.5878,-0.809],[-0.5,-0.866],[-0.4067,-0.9135],[-0.309,-0.9511],[-0.2079,-0.9781],[-0.1045,-0.9945],[-0.0,-1.0],[0.1045,-0.9945],[0.2079,-0.9781],[0.309,-0.9511],[0.4067,-0.9135],[0.5,-0.866],[0.5878,-0.809],[0.6691,-0.7431],[0.7431,-0.6691],[0.809,-0.5878],[0.866,-0.5],[0.9135,-0.4067],[0.9511,-0.309],[0.9781,-0.2079],[0.9945,-0.1045],[1.0,-0.0]],"tone":"purple","dash":true,"ms":1400},{"box":"eul","x":420,"y":142,"w":170,"h":110,"text":"e^(iθ) =\ncos θ + i sin θ","tone":"purple","size":19}]},{"cap":"A quarter turn, θ = π/2, lands on i: e^(iπ/2) = i. Half a turn, θ = π, lands on −1: e^(iπ) = −1. Add 1 and you get Euler's identity, e^(iπ) + 1 = 0.","do":[{"pulse":"ii"},{"pulse":"m1"},{"box":"id","x":420,"y":264,"w":170,"h":80,"text":"e^(iπ) + 1 = 0","tone":"red","size":20}]},{"cap":"Arithmetic works like ordinary brackets, with one extra rule: swap i × i for −1. (2 + 3i)(1 − i) = 2 − 2i + 3i − 3i² = 5 + i.","do":[{"box":"mul","x":420,"y":356,"w":170,"h":74,"text":"(2 + 3i)(1 − i)\n= 5 + i","tone":"blue","size":18}]},{"cap":"Why a trader meets these: models like Heston (1993) have no usable formula for the probabilities, but a complex-valued version, the characteristic function, can be written down. Price in complex numbers, and the answer comes out real.","do":[{"box":"fin","x":10,"y":446,"w":580,"h":104,"text":"Heston 1993, Carr & Madan 1999:\ncomplex in the middle, a real option price at the end","tone":"amber","size":19}]}]}</script>
+  </div>
+  <!-- WB:foundation_complex_numbers:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -490,6 +585,19 @@
       whether the final output is real as it should be, is a common early
       mistake.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative spreadsheet check</div>
+    <h3>The angle that came out on the wrong side</h3>
+    <p>You need the argument of \(z = -3 - 4i\). A spreadsheet works out the angle as \(\tan^{-1}(b/a)\). Since \(-4/-3 = 4/3\), it reports 53.13°. A colleague wants to use that number. What do you say?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Use 53.13°. The formula came straight from the lesson.<div class="tl-drill-why">The ratio \(-4/-3\) is the same as \(4/3\), so the formula cannot tell \(-3 - 4i\) from \(3 + 4i\). 53.13° points up and to the right, but this number sits down and to the left.</div></li>
+      <li data-verdict="good">Check the signs first. Both parts are negative, so the point is in the third quadrant: 53.13° + 180° = 233.13°. Or use a two-argument arctangent, which handles this itself.<div class="tl-drill-why">This places the point correctly. Check it: \(5\cos 233.13° = -3\) and \(5\sin 233.13° = -4\), the number you started with.</div></li>
+      <li data-verdict="ok">Sketch it on the plane and read off "about 230°".<div class="tl-drill-why">The sketch puts it in the right place, which is the most important check. But a drawing only gives a rough angle. Use it as the check and the two-argument arctangent for the number.</div></li>
+      <li data-verdict="bad">Skip the angle and just use the distance, 5.<div class="tl-drill-why">The distance alone describes a whole circle of points. Without the angle you cannot tell \(-3 - 4i\) from \(3 + 4i\), or from any other point 5 away.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>How it works out.</strong> This is an illustrative check, not a real event. The correct argument is 233.13° (the same direction as −126.87°). This is the quadrant pitfall from this lesson, and it fails silently: no error appears, just a number on the wrong side of the circle. The habit that catches it is the one used throughout: convert back and see whether you get the number you started with.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -572,6 +680,26 @@
     <li>Richard Feynman, <em>The Feynman Lectures on Physics</em>, Vol. I, Chapter 22 ("Algebra"), Addison-Wesley, 1963 — Feynman's own well-known walkthrough of Euler's formula and identity, praised for its plain-language motivation of exactly the Taylor-series argument previewed on this page.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="foundation-algebra-functions.html">Algebra &amp; Functions Refresher</a> <span>· expanding brackets, used for every multiplication here</span></li>
+        <li><a href="foundation-trig-logs-exponentials.html">Trigonometry, Logarithms &amp; Exponentials</a> <span>· the unit circle and e, which Euler's formula joins</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="fourier-analysis-frequency-domain.html">Fourier Analysis &amp; the Frequency Domain</a> <span>· rotating complex numbers used to find cycles</span></li>
+        <li><a href="heston-model.html">The Heston Model</a> <span>· a model priced through its characteristic function</span></li>
+        <li><a href="fft-option-pricing-carr-madan.html">FFT Option Pricing (Carr-Madan)</a> <span>· a whole row of strikes priced in one pass</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the models that price options with moving volatility are solved in complex numbers, and the price only comes out real at the end.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="foundation-trig-logs-exponentials.html">← Trigonometry, Logarithms &amp; Exponentials</a>
@@ -730,7 +858,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>
 </content>

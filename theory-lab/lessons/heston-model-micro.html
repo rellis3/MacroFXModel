@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Heston Model — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -217,7 +218,19 @@
       <p class="sl-p">This isn't Heston's actual option-pricing formula — it's the deterministic-drift half-life of the mean-reversion term alone, the same ln(2)/κ used for any OU-style "rubber band." It's a fast, honest sanity check on a calibrated κ: does a half-life of 126 days sound like a plausible speed for volatility regimes to fade, or does it imply something absurd?</p>
     </section>
 
+    <!-- WB:heston_model-deck:START -->
     <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Heston: when volatility moves with the price</h2>
+      <!-- WB:heston_model:START -->
+      <div class="wb" data-title="Heston: when volatility moves with the price">
+        <script type="application/json">{"w":600,"h":710,"intro":"Black-Scholes freezes volatility at one number. Heston lets it move, and ties its moves to the price. Watch what that does to a path, and to the smile. Press play, or step through.","steps":[{"cap":"Black-Scholes: one number for volatility, from today to expiry. Here it is 20%, a flat line.","do":[{"chart":"vol","x":10,"y":10,"w":580,"h":230,"title":"Volatility over one year","xd":[0,365],"yd":[10,36],"yt":[[20,"20%"],[30,"30%"]],"xt":[[0,"today"],[126,"126 d"],[365,"1 yr"]],"pl":48,"pr":14},{"series":"bs","chart":"vol","pts":[[0,20],[365,20]],"tone":null,"dash":true,"ms":600,"label":"Black-Scholes: flat 20%","lat":[365,20],"ldx":-4,"ldy":16,"lanchor":"end"}]},{"cap":"Heston: volatility is its own process. Today it is 30% (a variance of 0.09). Its long-run level is 20% (a variance of 0.04).","do":[{"dot":"v0","chart":"vol","at":[0,30],"text":"today 30%","tone":"blue","dx":8,"dy":-14,"anchor":"start"}]},{"cap":"The rubber band: the drift κ(θ − v) pulls variance back toward its long-run level. With κ = 2, half the gap closes in ln 2 ÷ 2 = 0.35 years, about 126 days.","do":[{"series":"rev","chart":"vol","pts":[[0,30.0],[5,29.77],[10,29.55],[15,29.34],[20,29.12],[25,28.91],[30,28.71],[35,28.51],[40,28.31],[45,28.12],[50,27.93],[55,27.75],[60,27.57],[65,27.39],[70,27.22],[75,27.05],[80,26.88],[85,26.72],[90,26.56],[95,26.4],[100,26.25],[105,26.1],[110,25.95],[115,25.81],[120,25.67],[125,25.54],[130,25.4],[135,25.27],[140,25.14],[145,25.02],[150,24.9],[155,24.78],[160,24.66],[165,24.54],[170,24.43],[175,24.32],[180,24.22],[185,24.11],[190,24.01],[195,23.91],[200,23.81],[205,23.72],[210,23.63],[215,23.54],[220,23.45],[225,23.36],[230,23.28],[235,23.19],[240,23.11],[245,23.03],[250,22.96],[255,22.88],[260,22.81],[265,22.74],[270,22.67],[275,22.6],[280,22.53],[285,22.47],[290,22.41],[295,22.35],[300,22.28],[305,22.23],[310,22.17],[315,22.11],[320,22.06],[325,22.01],[330,21.95],[335,21.9],[340,21.85],[345,21.81],[350,21.76],[355,21.71],[360,21.67],[365,21.63]],"tone":"green","ms":1400},{"dot":"hl","chart":"vol","at":[126.5,25.5],"text":"half-life: 126 days","tone":"green","dx":8,"dy":-16,"anchor":"start"}]},{"cap":"Add vol of vol: variance also gets its own random shocks, sized ξ√v. Here is one illustrative path, with ξ = 0.3 assumed. It wanders, but the band keeps pulling it back toward 20%.","do":[{"dim":"rev"},{"dim":"bs"},{"hide":"hl"},{"series":"vp","chart":"vol","pts":[[0.0,30.0],[4.3,27.6],[8.7,26.35],[13.0,26.91],[17.4,23.92],[21.7,25.3],[26.1,20.8],[30.4,18.73],[34.8,18.03],[39.1,17.82],[43.5,17.99],[47.8,17.01],[52.1,19.05],[56.5,18.72],[60.8,16.48],[65.2,17.18],[69.5,16.51],[73.9,16.53],[78.2,17.0],[82.6,19.14],[86.9,19.8],[91.2,18.78],[95.6,19.97],[99.9,20.31],[104.3,19.55],[108.6,18.37],[113.0,18.29],[117.3,18.38],[121.7,17.38],[126.0,20.47],[130.4,21.69],[134.7,20.42],[139.0,20.57],[143.4,19.66],[147.7,20.48],[152.1,22.64],[156.4,20.64],[160.8,21.52],[165.1,24.88],[169.5,22.6],[173.8,20.14],[178.2,20.72],[182.5,18.6],[186.8,18.81],[191.2,18.83],[195.5,19.0],[199.9,16.68],[204.2,17.35],[208.6,18.1],[212.9,14.76],[217.3,15.38],[221.6,17.12],[226.0,18.18],[230.3,19.86],[234.6,24.22],[239.0,26.14],[243.3,25.46],[247.7,24.76],[252.0,25.24],[256.4,28.43],[260.7,32.06],[265.1,31.67],[269.4,30.48],[273.8,28.51],[278.1,29.64],[282.4,27.47],[286.8,29.73],[291.1,30.2],[295.5,27.12],[299.8,25.66],[304.2,25.33],[308.5,22.55],[312.9,21.21],[317.2,22.39],[321.5,21.68],[325.9,20.48],[330.2,22.99],[334.6,23.37],[338.9,23.53],[343.3,23.18],[347.6,24.83],[352.0,24.74],[356.3,21.59],[360.7,19.94],[365.0,21.98]],"tone":"blue","ms":1800}]},{"cap":"Now the price, on the same days. Its shocks are tied to the vol shocks with correlation ρ = −0.7. This illustrative path starts at 100.","do":[{"chart":"px","x":10,"y":250,"w":580,"h":210,"title":"Price, same illustrative year","xd":[0,365],"yd":[85,130],"yt":[[100,"100"],[120,"120"]],"xt":[[0,"today"],[182,"6 mo"],[365,"1 yr"]],"pl":48,"pr":14},{"series":"sp","chart":"px","pts":[[0.0,100.0],[4.3,103.59],[8.7,104.87],[13.0,105.73],[17.4,110.02],[21.7,108.27],[26.1,113.89],[30.4,115.98],[34.8,118.41],[39.1,117.54],[43.5,110.92],[47.8,109.81],[52.1,107.3],[56.5,107.28],[60.8,109.55],[65.2,109.07],[69.5,109.68],[73.9,107.4],[78.2,108.15],[82.6,107.01],[86.9,104.04],[91.2,108.47],[95.6,107.93],[99.9,107.49],[104.3,108.0],[108.6,109.95],[113.0,112.57],[117.3,114.37],[121.7,117.62],[126.0,114.0],[130.4,109.61],[134.7,110.28],[139.0,109.38],[143.4,107.63],[147.7,107.39],[152.1,105.53],[156.4,108.93],[160.8,105.59],[165.1,104.86],[169.5,107.75],[173.8,110.81],[178.2,112.45],[182.5,116.22],[186.8,115.29],[191.2,116.37],[195.5,117.82],[199.9,118.15],[204.2,118.54],[208.6,118.77],[212.9,122.33],[217.3,122.81],[221.6,122.65],[226.0,121.53],[230.3,116.89],[234.6,111.66],[239.0,110.33],[243.3,110.15],[247.7,113.6],[252.0,112.3],[256.4,108.44],[260.7,102.36],[265.1,101.16],[269.4,100.25],[273.8,101.83],[278.1,100.74],[282.4,105.39],[286.8,97.51],[291.1,98.91],[295.5,100.32],[299.8,101.75],[304.2,102.75],[308.5,105.01],[312.9,105.02],[317.2,103.33],[321.5,106.34],[325.9,107.41],[330.2,104.53],[334.6,106.83],[338.9,103.53],[343.3,104.88],[347.6,102.68],[352.0,103.02],[356.3,105.78],[360.7,106.98],[365.0,106.16]],"tone":"purple","ms":1800}]},{"cap":"Look where they line up. After about seven months the price peaks at 121.5 with volatility down at 18%. Over the next six weeks or so it falls 19.7% to 97.6, and volatility jumps to 33%.","do":[{"dot":"pk","chart":"px","at":[226.0,121.5],"text":"peak 121.5","tone":"purple","dx":-8,"dy":-14,"anchor":"end"},{"dot":"lo","chart":"px","at":[266.5,97.6],"text":"97.6 (-19.7%)","tone":"red","dx":8,"dy":16,"anchor":"start"},{"dot":"vq","chart":"vol","at":[226.0,18.2],"text":"18%","tone":"blue","dy":18},{"dot":"vs","chart":"vol","at":[266.5,32.8],"text":"spike 33%","tone":"red","dx":8,"dy":-14,"anchor":"start"}]},{"cap":"That is the leverage effect, built in by the negative correlation: falls tend to arrive with a volatility spike. Big down moves happen in wild markets, so the left tail is fatter than the right.","do":[{"pulse":"lo"},{"pulse":"vs"}]},{"cap":"Price options under these dynamics and back out a Black-Scholes vol for each strike. Low strikes come out higher: a put pays off in exactly the state where volatility has jumped. That is the skew (stylized here).","do":[{"chart":"sm","x":10,"y":470,"w":330,"h":230,"title":"Implied vol by strike","xd":[-1,1],"yd":[16,31],"yt":[[18,"ATM"]],"xt":[[-1,"puts"],[0,"ATM"],[1,"calls"]],"pl":48,"pr":14},{"series":"flat","chart":"sm","pts":[[-1,18],[1,18]],"tone":null,"dash":true,"ms":500},{"series":"sk","chart":"sm","pts":[[-1.0,29.6],[-0.9,27.9],[-0.8,26.32],[-0.7,24.86],[-0.6,23.52],[-0.5,22.3],[-0.4,21.2],[-0.3,20.22],[-0.2,19.36],[-0.1,18.62],[0.0,18.0],[0.1,17.5],[0.2,17.12],[0.3,16.86],[0.4,16.72],[0.5,16.7],[0.6,16.8],[0.7,17.02],[0.8,17.36],[0.9,17.82],[1.0,18.4]],"tone":"red","ms":1200,"label":"ρ = −0.7","lat":[-1,29.6],"ldx":14,"ldy":10,"lanchor":"start"}]},{"cap":"Set ρ to zero and the tilt goes: vol of vol alone bends a symmetric smile. Take vol of vol to zero as well and you are back to the flat Black-Scholes line.","do":[{"series":"sm0","chart":"sm","pts":[[-1.0,24.0],[-0.9,22.86],[-0.8,21.84],[-0.7,20.94],[-0.6,20.16],[-0.5,19.5],[-0.4,18.96],[-0.3,18.54],[-0.2,18.24],[-0.1,18.06],[0.0,18.0],[0.1,18.06],[0.2,18.24],[0.3,18.54],[0.4,18.96],[0.5,19.5],[0.6,20.16],[0.7,20.94],[0.8,21.84],[0.9,22.86],[1.0,24.0]],"tone":"purple","dash":true,"ms":1000,"label":"ρ = 0","lat":[1,24],"ldx":-4,"ldy":-14,"lanchor":"end"}]},{"cap":"A check on any fit, the Feller condition: 2κθ ≥ ξ² keeps variance off zero. With κ = 2 and θ = 0.04 that is 0.16, so ξ up to 0.4 passes. Many real calibrations break it.","do":[{"box":"fel","x":360,"y":470,"w":230,"h":104,"text":"Feller: 2κθ ≥ ξ²\n2 × 2 × 0.04 = 0.16\nξ ≤ 0.4 passes","tone":"amber","size":18}]},{"cap":"On a desk, five numbers (κ, θ, ξ, ρ, v₀) are fitted to the option surface every day. They are a risk-neutral snapshot, not a law, and a good fit is not a trading edge.","do":[{"box":"cal","x":360,"y":590,"w":230,"h":110,"text":"fit κ, θ, ξ, ρ, v₀\nto today's surface:\na snapshot, not a law","tone":"blue","size":18}]}]}</script>
+      </div>
+      <!-- WB:heston_model:END -->
+    </section>
+    <!-- WB:heston_model-deck:END -->
+
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Realism isn't free</h2>
       <p class="sl-sub">What Heston costs, compared to what it buys.</p>
@@ -247,7 +260,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Heston isn't the last word, and it isn't free of traps</h2>
       <div class="sl-icard-grid">
@@ -262,7 +275,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -313,7 +326,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -444,5 +457,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

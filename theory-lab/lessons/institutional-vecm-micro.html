@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vector Error Correction Models — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -104,7 +105,19 @@
       <p class="sl-p">All three scenarios are perfectly valid, cointegrated systems — nothing about cointegration itself prefers one over another. Only a fitted VECM's α_Y and α_X actually tell you which world a real pair is in.</p>
     </section>
 
+    <!-- WB:institutional_vecm-deck:START -->
     <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Error correction: who closes the gap</h2>
+      <!-- WB:institutional_vecm:START -->
+      <div class="wb" data-title="Error correction: who closes the gap">
+        <script type="application/json">{"w":600,"h":780,"intro":"Two currencies on a leash, and the question cointegration never answers: when the leash goes taut, who gets pulled? The lesson's own toy numbers. Press play, or step through.","steps":[{"cap":"Two prices on a leash: AUD/USD and NZD/USD. Cointegration says AUD/USD minus 1.10 times NZD/USD is stationary. However far they wander, that spread keeps coming home.","do":[{"box":"Y","x":20,"y":20,"w":210,"h":84,"text":"AUD/USD  (Y)","tone":"blue","sub":"0.6600","size":20},{"box":"X","x":370,"y":20,"w":210,"h":84,"text":"NZD/USD  (X)","tone":"purple","sub":"0.6000","size":20},{"arrow":["Y","X"],"label":"leash: Y − 1.10·X","tone":"green","dash":true,"id":"leash"}]},{"cap":"Five periods of the lesson's toy history. AUD/USD (blue) is drawn against 1.10 times NZD/USD (purple), so the vertical gap between the lines is the spread.","do":[{"chart":"lv","x":10,"y":150,"w":580,"h":250,"title":"Levels: Y and 1.10·X","xd":[0.7,6.3],"yd":[0.6585,0.6715],"yt":[[0.66,"0.6600"],[0.665,"0.6650"],[0.67,"0.6700"]],"xt":[[1,"t=1"],[2,"t=2"],[3,"t=3"],[4,"t=4"],[5,"t=5"]],"pl":74,"pr":16},{"series":"sy","chart":"lv","pts":[[1,0.66],[2,0.666],[3,0.67],[4,0.669],[5,0.665]],"tone":"blue","ms":1300,"label":"Y","lat":[3,0.67],"ldy":-14},{"series":"sx","chart":"lv","pts":[[1,0.66],[2,0.6611],[3,0.66165],[4,0.6633],[5,0.66]],"tone":"purple","ms":1300,"label":"1.10·X","lat":[2,0.6611],"ldy":18},{"count":"Y","from":0.66,"to":0.665,"dp":4}]},{"cap":"The gap opens: AUD/USD runs up faster than its partner. The spread goes from zero to 49 pips, peaks at 83.5 pips in period 3, then starts back: 57, then 50.","do":[{"gap":"gz","chart":"lv","top":[[1,0.66],[2,0.666],[3,0.67],[4,0.669],[5,0.665]],"bot":[[1,0.66],[2,0.6611],[3,0.66165],[4,0.6633],[5,0.66]],"tone":"green","op":0.25},{"chart":"zc","x":10,"y":420,"w":300,"h":230,"title":"Spread Z, pips","xd":[0.4,6.6],"yd":[0,100],"yt":[[50,"50"],[100,"100"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"next"]],"pl":44,"pr":8,"pt":48},{"bars":"zb","chart":"zc","data":[[1,0.0,"0","green"],[2,49.0,"49","green"],[3,83.5,"83.5","green"],[4,57.0,"57","green"],[5,50.0,"50","green"]],"bw":30,"ms":1100}]},{"cap":"The question cointegration cannot answer: the spread is 50 pips wide. Will AUD fall back, will NZD rise to meet it, or both? The leash proves they stay close, not who moves.","do":[{"pulse":"leash"},{"note":"q","x":455,"y":470,"text":"who closes\nthe 50 pips?","size":24,"anchor":"middle","tone":"amber"}]},{"cap":"A VECM fits each price's next change on last period's spread. AUD's adjustment speed comes out at −0.35: it closes 35% of the gap per period by falling.","do":[{"hide":"q"},{"box":"ay","x":330,"y":420,"w":260,"h":66,"text":"ΔY = −0.35 × 50 pips","tone":"blue","size":19},{"series":"fy","chart":"lv","pts":[[5,0.665],[6,0.66325]],"tone":"blue","dash":true,"ms":700},{"dot":"dy","chart":"lv","at":[6,0.66325],"text":"−17.5 pips","tone":"blue","dx":0,"dy":-16}]},{"cap":"NZD's speed is +0.15: it closes some of the gap by rising. 0.15 × 50 pips = +7.5 pips. Both legs move the way that shrinks the spread.","do":[{"box":"ax","x":330,"y":500,"w":260,"h":66,"text":"ΔX = +0.15 × 50 pips","tone":"purple","size":19},{"series":"fx","chart":"lv","pts":[[5,0.66],[6,0.660825]],"tone":"purple","dash":true,"ms":700},{"dot":"dx","chart":"lv","at":[6,0.660825],"text":"+7.5 pips","tone":"purple","dx":0,"dy":18}]},{"cap":"Put the forecast together: the spread is expected to shrink from 50 pips to about 24 next period (our arithmetic from the same numbers, with the lag terms held at zero).","do":[{"bars":"zb6","chart":"zc","data":[[6,24.25,"≈24","amber"]],"bw":30,"ms":700},{"note":"z6","x":455,"y":600,"text":"50 → ≈ 24 pips","size":22,"anchor":"middle","tone":"green"}]},{"cap":"Compare the speeds: 0.35 ÷ 0.15 ≈ 2.3. AUD does about 2.3 times as much of the correcting. AUD is the follower; NZD sits closer to the anchor.","do":[{"hide":"z6"},{"note":"ratio","x":455,"y":600,"text":"AUD ≈ 2.3× the correcting","size":21,"anchor":"middle","tone":"green"},{"pulse":"ay"}]},{"cap":"An extreme case: if NZD's speed were exactly zero, NZD would ignore the gap completely and AUD would do all the work. That is weak exogeneity, a pure anchor.","do":[{"note":"weak","x":300,"y":690,"text":"α_X = 0: X never responds (weak exogeneity)","size":19,"anchor":"middle","tone":"purple"}]},{"cap":"Both speeds zero is impossible for a cointegrated pair: nothing would pull the spread home. The Granger Representation Theorem (Engle and Granger, 1987) says cointegration and error correction are the same fact.","do":[{"box":"zero","x":10,"y":712,"w":280,"h":56,"text":"α_Y = α_X = 0 ?","tone":"red","size":19},{"cross":"zero"}]},{"cap":"And the signs must point home. AUD speed above zero with NZD below zero would push the 50 pips wider every period: that is not error correction at all.","do":[{"box":"sign","x":310,"y":712,"w":280,"h":56,"text":"α_Y > 0, α_X < 0 ?","tone":"red","size":19},{"cross":"sign"}]},{"cap":"So: cointegration tells you there is a leash. The two adjustment speeds tell you who gets pulled, and how hard. That is the first real handle on which price leads.","do":[{"hide":"weak"},{"note":"end","x":300,"y":690,"text":"leash = cointegration · who moves = α_Y vs α_X","size":19,"anchor":"middle","tone":"green"},{"pulse":"leash"}]}]}</script>
+      </div>
+      <!-- WB:institutional_vecm:END -->
+    </section>
+    <!-- WB:institutional_vecm-deck:END -->
+
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Watch the correction happen</h2>
       <p class="sl-sub">Y overshoots well above X, then gets pulled back down. X barely moves throughout.</p>
@@ -126,7 +139,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The formal guarantee: Granger Representation Theorem</h2>
       <div class="sl-callout amber">
@@ -136,7 +149,7 @@
       <p class="sl-p">One consequence worth remembering: α_Y and α_X can't <em>both</em> be exactly zero. If neither series ever responded to the disequilibrium, nothing would pull Z back toward zero, and the pair wouldn't be cointegrated in the first place. At least one of the two has to be doing real work — the fitted model just says which, and how much.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Comparing α_Y and α_X is the whole point</h2>
       <div class="sl-compare">
@@ -163,7 +176,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Drag the error-correction term, watch both forecasts move</h2>
       <p class="sl-sub">α_Y = −0.35, α_X = +0.15 fixed. Only Z_{t-1} changes. Watch which bar moves further.</p>
@@ -185,7 +198,7 @@
       <p class="sl-p">Drag Z_{t-1} toward either extreme and both bars grow — but the blue Y bar always grows more than twice as fast as the purple X bar, because |α_Y|=0.35 is more than twice |α_X|=0.15. That fixed ratio, not the size of any one shock, is what marks Y as the follower.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Compute the full forecast yourself</h2>
       <p class="sl-sub">ΔY_t = α_Y·Z_{t-1}, ΔX_t = α_X·Z_{t-1}. Change any input, live.</p>
@@ -213,7 +226,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The worked example, start to finish</h2>
       <p class="sl-sub">Continuing the Cointegration lesson's own AUD/USD-vs-NZD/USD numbers, one step further.</p>
@@ -237,7 +250,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this quietly goes wrong</h2>
       <div class="sl-icard-grid">
@@ -248,7 +261,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -299,7 +312,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -421,5 +434,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

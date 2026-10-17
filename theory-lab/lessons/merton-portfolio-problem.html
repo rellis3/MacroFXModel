@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Merton's Continuous-Time Portfolio Problem — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,62 @@
       <li><strong>Real-world episode:</strong> LTCM, where Robert Merton was a partner, ran about 25-to-1 in 1998. At that leverage a constant fraction means a 1% fall in the positions forces selling about a quarter of the book, and after Russia's default the market knew the positions, so the rebalancing the model assumes free could not be done.<!-- DESK:START --> Sizing by the Merton fraction is untested on this desk.<!-- DESK:END --></li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A falling curve of the optimal share of wealth in the risky asset against risk aversion gamma, for an asset with a 6% excess return and 25% volatility. At gamma 1, log utility, the share is 96%, which is the Kelly fraction. At gamma 2 it is 48%, half-Kelly. At gamma 4 it is 24%, quarter-Kelly. Same edge throughout; only the investor's risk aversion changes.">
+      <line class="tlp-line" x1="70" y1="200" x2="570" y2="200"/>
+      <line class="tlp-line" x1="70" y1="30" x2="70" y2="200"/>
+      <line class="tlp-line dash" x1="70" y1="62.5" x2="570" y2="62.5" opacity=".5"/>
+      <line class="tlp-line dash" x1="70" y1="131.3" x2="570" y2="131.3" opacity=".5"/>
+      <polyline class="tlp-line purple thick" points="146.8,35.0 151.6,44.7 156.4,53.3 161.2,61.1 166.0,68.0 170.8,74.3 175.6,80.0 180.4,85.2 185.2,90.0 190.0,94.4 194.8,98.5 199.6,102.2 204.4,105.7 209.2,109.0 214.0,112.0 218.8,114.8 223.6,117.5 228.4,120.0 233.2,122.4 238.0,124.6 242.8,126.7 247.6,128.6 252.4,130.5 257.2,132.3 262.0,134.0 266.8,135.6 271.6,137.1 276.4,138.6 281.2,140.0 286.0,141.3 290.8,142.6 295.6,143.8 300.4,145.0 305.2,146.1 310.0,147.2 314.8,148.2 319.6,149.2 324.4,150.2 329.2,151.1 334.0,152.0 338.8,152.9 343.6,153.7 348.4,154.5 353.2,155.3 358.0,156.0 362.8,156.7 367.6,157.4 372.4,158.1 377.2,158.7 382.0,159.4 386.8,160.0 391.6,160.6 396.4,161.2 401.2,161.7 406.0,162.3 410.8,162.8 415.6,163.3 420.4,163.8 425.2,164.3 430.0,164.8 434.8,165.3 439.6,165.7 444.4,166.2 449.2,166.6 454.0,167.0 458.8,167.4 463.6,167.8 468.4,168.2 473.2,168.6 478.0,168.9 482.8,169.3 487.6,169.7 492.4,170.0 497.2,170.3 502.0,170.7 506.8,171.0 511.6,171.3 516.4,171.6 521.2,171.9 526.0,172.2 530.8,172.5 535.6,172.8 540.4,173.1 545.2,173.3 550.0,173.6"/>
+      <circle class="tlp-green" cx="166" cy="68" r="7"/>
+      <circle class="tlp-blue" cx="262" cy="134" r="6"/>
+      <circle class="tlp-amber" cx="454" cy="167" r="6"/>
+      <text class="tlp-green" x="180" y="56" font-size="15" font-weight="700">γ = 1 · Kelly · 96%</text>
+      <text class="tlp-blue" x="276" y="124" font-size="14" font-weight="700">γ = 2 · half-Kelly · 48%</text>
+      <text class="tlp-amber" x="470" y="149" text-anchor="middle" font-size="14" font-weight="700">γ = 4 · quarter-Kelly · 24%</text>
+      <text class="tlp-purple" x="570" y="22" text-anchor="end" font-size="13" font-weight="700">f* = edge ÷ (γ × variance)</text>
+      <text class="tlp-text3" x="62" y="204" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="62" y="135" text-anchor="end" font-size="12">50%</text>
+      <text class="tlp-text3" x="62" y="66" text-anchor="end" font-size="12">100%</text>
+      <text class="tlp-text3" x="166" y="216" text-anchor="middle" font-size="12">1</text>
+      <text class="tlp-text3" x="262" y="216" text-anchor="middle" font-size="12">2</text>
+      <text class="tlp-text3" x="358" y="216" text-anchor="middle" font-size="12">3</text>
+      <text class="tlp-text3" x="454" y="216" text-anchor="middle" font-size="12">4</text>
+      <text class="tlp-text3" x="550" y="216" text-anchor="middle" font-size="12">5</text>
+      <text class="tlp-text3" x="570" y="234" text-anchor="end" font-size="12">risk aversion γ →</text>
+      <text class="tlp-text3" x="76" y="22" font-size="12">share of wealth at risk ↑</text>
+    </svg>
+    <figcaption>One edge (6% a year over cash, 25% volatility), many investors. The best share to hold is the edge divided by risk aversion times variance. Set risk aversion to 1 and you get Kelly; at 2 you get exactly half-Kelly. Fractional Kelly is just a different investor's exact answer.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Kelly told me to bet my edge over my variance. Where does Merton come in?</p>
+      <p data-who="Quant">Kelly answers one narrow question: what bet grows my money fastest in the long run. Merton asks the bigger one. How much should I hold in a risky asset, at every moment, given how much I personally dislike risk?</p>
+      <p data-who="Trader">And he solved that?</p>
+      <p data-who="Quant">In two papers, in 1969 and 1971. The investor re-decides at every instant, so he needs a tool for choices made through time. It is called the Hamilton-Jacobi-Bellman equation.</p>
+      <p data-who="Trader">That sounds heavy.</p>
+      <p data-who="Quant">The idea is a sat nav. For every place and time it knows the best remaining journey from there. Merton's version knows the best you can do from every level of wealth. Once you know that, the best move right now is a simple comparison.</p>
+      <p data-who="Trader">So what comes out at the end?</p>
+      <p data-who="Quant">One clean rule. The share to hold is your edge, divided by your risk aversion times the variance. And it is a constant. It does not change with how rich you are or how long you have left.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Say the asset beats cash by six percent a year, with twenty-five percent volatility. Square the volatility and you get a variance of six and a quarter percent. Six divided by six and a quarter is ninety-six percent. That is the answer for a risk aversion of one.</p>
+      <p data-who="Trader">And a risk aversion of one is Kelly?</p>
+      <p data-who="Quant">Exactly Kelly, not roughly. Risk aversion of one is log utility, and maximising expected log wealth is what Kelly does. Same problem, same answer.</p>
+      <p data-who="Trader">What if I'm more nervous than that?</p>
+      <p data-who="Quant">Set it to two and the answer halves, to forty-eight percent. That is half-Kelly. Not a safety discount on the true answer. It is the true answer for someone with your stomach.</p>
+      <p data-who="Trader">Where does it go wrong?</p>
+      <p data-who="Quant">It assumes you can rebalance for free, all the time. Take Long-Term Capital Management, where Merton was a partner. By early 1998 it ran about twenty-five to one. At that leverage, a one percent fall in the positions cuts wealth by about a quarter, so holding the fraction steady means selling about a quarter of the book.</p>
+      <p data-who="Trader">And after Russia defaulted, everyone knew what they held.</p>
+      <p data-who="Quant">So every sale moved the price against them. About four point six billion dollars was lost, and on the twenty-third of September fourteen banks and brokers put in about three point six billion to take the portfolio over.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Hold your edge divided by your risk aversion times variance, be honest about your risk aversion, and never size so big that the rebalancing itself becomes the risk.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -119,6 +176,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the Merton fraction, f* = μ/(γσ²), comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ dW_t = \big[(r + \color{#fbbf24}{f_t\mu})W_t - C_t\big]\,dt \]</div>
+      <p>Start with the drift. Cash earns \(r\); the share \(f_t\) you put in the risky asset earns the extra \(\mu\) on top. Consumption \(C_t\) leaves the pot.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ dW_t = \big[(r + f_t\mu)W_t - C_t\big]\,dt + \color{#fbbf24}{f_t\sigma W_t\,dZ_t} \]</div>
+      <p>Add the shock. The more you hold, the bigger the random swing: the noise scales with \(f_t\) too.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ f^* = \color{#fbbf24}{-\frac{J_W}{W\,J_{WW}}}\cdot\frac{\mu}{\sigma^2} \]</div>
+      <p>Solve the HJB equation's first-order condition for \(f\). The edge-over-variance term from Kelly appears, multiplied by the investor's risk tolerance, read off the value function \(J\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ f^* = \color{#fbbf24}{\frac{1}{\gamma}}\cdot\frac{\mu}{\sigma^2} = \color{#10b981}{\frac{\mu}{\gamma\,\sigma^2}} \]</div>
+      <p>For CRRA utility the risk tolerance is a constant, \(1/\gamma\). The best share no longer depends on wealth or time left. That is the Merton fraction.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ f^*\Big|_{\color{#fbbf24}{\gamma=1}} = \color{#10b981}{\frac{\mu}{\sigma^2} = f^*_{Kelly}} \]</div>
+      <p>Set \(\gamma = 1\), log utility, and Kelly falls straight out. Set \(\gamma = 2\) and you get exactly half-Kelly.</p>
+    </div>
+  </div>
   <p>
     <strong>Setting up the control problem.</strong> An investor holds wealth
     \(W_t\), split between a riskless asset earning rate \(r\) and a risky
@@ -409,6 +490,10 @@
 
   <div class="tl-chart interactive">
     <div class="tl-chart-label">Optimal allocation f* vs. risk-aversion parameter γ, at fixed μ, σ</div>
+    <div class="tl-predict" data-answer="25" data-tol="2" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At \(\gamma = 1\) you hold full Kelly. An investor with \(\gamma = 4\) has the same edge and the same volatility. What percentage of full Kelly should they hold? Lock in a guess, then drag the slider below to 4.0 to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>25%, a quarter of full Kelly.</strong> \(f^* = \mu/(\gamma\sigma^2)\), so four times the risk aversion means one quarter of the share: \(1/4 = 0.25\). The readout shows 0.25 × f*_Kelly. With a 6% excess return and 25% volatility, that is 96% of wealth for Kelly and 24% at \(\gamma = 4\). Now try \(\gamma = 0.5\) and see the share double past full Kelly, into leverage.</p></div>
+    </div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of Merton's optimal allocation fraction f-star against the risk-aversion parameter gamma. The curve declines smoothly from a high value at low gamma toward zero as gamma increases, following f-star equals mu over gamma sigma squared. Gamma equals 1 is marked as the Kelly, log-utility point. A slider selects gamma and shows the corresponding optimal fraction on the fixed curve.">
       <line x1="70" y1="30" x2="70" y2="270" style="stroke:var(--border)"/>
       <line x1="70" y1="270" x2="610" y2="270" style="stroke:var(--border)"/>
@@ -494,6 +579,12 @@
     update();
   })();
   </script>
+
+  <!-- WB:merton_portfolio_problem:START -->
+  <div class="wb" id="wb-merton_portfolio_problem" data-title="The Merton fraction, from Kelly to 25 to 1">
+    <script type="application/json">{"w":600,"h":800,"intro":"One risky asset, one safe one, and a dial for how much you dislike risk. Then what the clean answer assumes, at 25 to 1. Press play, or step through.","steps":[{"cap":"You hold wealth in two places: cash, which earns the safe rate, and a risky asset that beats cash by 6% a year on average, with 25% volatility.","do":[{"icon":"cash","name":"piggy","x":30,"y":10,"s":0.75,"tone":"blue","label":"cash\nearns r","sym":"$","lsize":17},{"icon":"you","name":"person","x":262,"y":10,"s":0.75,"label":"you","lsize":17},{"icon":"risky","name":"up","x":480,"y":10,"s":0.75,"tone":"purple","label":"risky asset\n+6%/yr, 25% vol","lsize":17}]},{"cap":"At every instant you choose one number: the share f of your wealth to hold in the risky asset. The rest, 1 − f, sits in cash. Merton asked how to set f for life, not for one bet.","do":[{"chip":"f","x":300,"y":150,"text":"share f","tone":"purple"},{"move":"f","x":470,"y":150,"ms":1000},{"chip":"rest","x":300,"y":150,"text":"1 − f","tone":"blue"},{"move":"rest","x":110,"y":150,"ms":1000}]},{"cap":"Merton solved it in 1969 and 1971 with the HJB equation. For an investor with constant relative risk aversion γ, the best share is the edge divided by γ times the variance.","do":[{"note":"rule","x":300,"y":205,"text":"f* = edge ÷ (γ × variance) = 6% ÷ (γ × 6.25%)","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"Draw that share against risk aversion. The edge and the volatility never change on this chart: only the investor does.","do":[{"chart":"fg","x":10,"y":240,"w":580,"h":270,"title":"Best share in the risky asset vs risk aversion γ","xd":[0,5.2],"yd":[0,1.25],"yt":[[0,"0"],[0.5,"50%"],[1,"100%"]],"xt":[[1,"γ = 1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]]},{"series":"curve","chart":"fg","pts":[[0.77,1.2468],[0.81,1.1852],[0.85,1.1294],[0.89,1.0787],[0.93,1.0323],[0.97,0.9897],[1.01,0.9505],[1.05,0.9143],[1.09,0.8807],[1.13,0.8496],[1.17,0.8205],[1.21,0.7934],[1.25,0.768],[1.29,0.7442],[1.33,0.7218],[1.37,0.7007],[1.41,0.6809],[1.45,0.6621],[1.49,0.6443],[1.53,0.6275],[1.57,0.6115],[1.61,0.5963],[1.65,0.5818],[1.69,0.568],[1.73,0.5549],[1.77,0.5424],[1.81,0.5304],[1.85,0.5189],[1.89,0.5079],[1.93,0.4974],[1.97,0.4873],[2.01,0.4776],[2.05,0.4683],[2.09,0.4593],[2.13,0.4507],[2.17,0.4424],[2.21,0.4344],[2.25,0.4267],[2.29,0.4192],[2.33,0.412],[2.37,0.4051],[2.41,0.3983],[2.45,0.3918],[2.49,0.3855],[2.53,0.3794],[2.57,0.3735],[2.61,0.3678],[2.65,0.3623],[2.69,0.3569],[2.73,0.3516],[2.77,0.3466],[2.81,0.3416],[2.85,0.3368],[2.89,0.3322],[2.93,0.3276],[2.97,0.3232],[3.01,0.3189],[3.05,0.3148],[3.09,0.3107],[3.13,0.3067],[3.17,0.3028],[3.21,0.2991],[3.25,0.2954],[3.29,0.2918],[3.33,0.2883],[3.37,0.2849],[3.41,0.2815],[3.45,0.2783],[3.49,0.2751],[3.53,0.272],[3.57,0.2689],[3.61,0.2659],[3.65,0.263],[3.69,0.2602],[3.73,0.2574],[3.77,0.2546],[3.81,0.252],[3.85,0.2494],[3.89,0.2468],[3.93,0.2443],[3.97,0.2418],[4.01,0.2394],[4.05,0.237],[4.09,0.2347],[4.13,0.2324],[4.17,0.2302],[4.21,0.228],[4.25,0.2259],[4.29,0.2238],[4.33,0.2217],[4.37,0.2197],[4.41,0.2177],[4.45,0.2157],[4.49,0.2138],[4.53,0.2119],[4.57,0.2101],[4.61,0.2082],[4.65,0.2065],[4.69,0.2047],[4.73,0.203],[4.77,0.2013],[4.81,0.1996],[4.85,0.1979],[4.89,0.1963],[4.93,0.1947],[4.97,0.1932]],"tone":"purple","ms":1500}]},{"cap":"Risk aversion of 1 is log utility, which is exactly what Kelly maximises. So the answer here, 6 ÷ 6.25 = 96% of wealth, is precisely the Kelly fraction. Kelly is one point on Merton's dial.","do":[{"dot":"k1","chart":"fg","at":[1,0.96],"text":"Kelly (γ = 1): 96%","tone":"green","dx":14,"dy":-10,"anchor":"start"}]},{"cap":"Risk aversion of 2: the share halves, to 48%. That is half-Kelly, exactly. At 4 it is 24%, quarter-Kelly. Each is the correct answer for that investor, not a discount on the \"real\" one.","do":[{"dot":"k2","chart":"fg","at":[2,0.48],"text":"γ = 2: 48%, half-Kelly","tone":"blue","dx":12,"dy":-14,"anchor":"start"},{"dot":"k4","chart":"fg","at":[4,0.24],"text":"γ = 4: 24%","tone":"amber","dy":-22}]},{"cap":"And the share is a constant. For this kind of investor it does not change with how rich you are or how long you have left. Wealth goes up or down, you rebalance back to the same f.","do":[{"box":"const","x":330,"y":282,"w":250,"h":74,"text":"rich or poor, young or old:\nthe same share f","tone":"blue","size":18}]},{"cap":"That rebalancing is assumed to be free and instant. Now take a very large f. In early 1998 Long-Term Capital Management, where Merton was a partner, ran about 25 to 1: well over $100 billion of positions on under $5 billion of capital.","do":[{"dim":"fg"},{"dim":"curve"},{"dim":"k1"},{"dim":"k2"},{"dim":"k4"},{"dim":"const"},{"box":"ltcm","x":10,"y":528,"w":270,"h":96,"text":"LTCM, early 1998\n~25 to 1: $100bn+\non under $5bn","tone":"red","size":18}]},{"cap":"Start with wealth 1 and positions of 25. A 1% fall in the positions loses 0.25: a quarter of your wealth. To stay at 25 times the new wealth of 0.75, positions must drop to 18.75. You must sell 6, about a quarter of everything you own.","do":[{"chart":"reb","x":300,"y":528,"w":290,"h":222,"title":"Positions, in units of capital","xd":[0.4,3.6],"yd":[0,31],"yt":[[0,"0"],[25,"25"]],"xt":[[1,"before"],[2,"after −1%"],[3,"target"]],"pl":36},{"bars":"rb","chart":"reb","data":[[1,25,"25","blue"],[2,24.75,"24.75","amber"],[3,18.75,"18.75","green"]],"bw":46,"ms":1100}]},{"cap":"After Russia devalued and defaulted on 17 August 1998, LTCM's spreads widened together and lenders demanded collateral. Much of the market knew roughly what it held, so every sale moved prices against it and deepened the next mark.","do":[{"box":"sell","x":10,"y":668,"w":270,"h":70,"text":"market knows the book:\nevery sale moves the price","tone":"red","size":17},{"arrow":["ltcm","sell"],"tone":"red"}]},{"cap":"By late September about $4.6 billion was gone. On 23 September fourteen banks and brokers put in about $3.6 billion to take the portfolio over. Merton's rule is sound; its free-rebalancing assumption is what breaks when f is far above 1.","do":[{"note":"out","x":300,"y":778,"text":"~$4.6bn lost · $3.6bn takeover by 14 banks, 23 Sep 1998","size":18,"anchor":"middle","tone":"red"}]}]}</script>
+  </div>
+  <!-- WB:merton_portfolio_problem:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: LTCM, 1998, and the rebalancing nobody could do</h2>
@@ -665,6 +756,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="1998-08-17">
+    <div class="tl-drill-label">Scenario drill · 17 August 1998</div>
+    <h3>Russia has defaulted, and you are running 25 to 1</h3>
+    <p>You run a book of small convergence trades at roughly 25 to 1: well over $100 billion of positions on under $5 billion of capital. You keep the leverage at a constant fraction of wealth. Today Russia devalued and defaulted, investors are rushing into the most liquid bonds, and your spreads are starting to widen together. Much of the market knows roughly what you hold. At this leverage, every 1% fall in the positions means selling about a quarter of the book to stay at your fraction. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Hold the book. The trades are right and the spreads must converge.<div class="tl-drill-why">The trades may well be right, but at 25 to 1 a 1% fall cuts wealth by about a quarter. You do not get to choose when to de-lever: your lenders will, by demanding collateral, at the worst prices.</div></li>
+      <li data-verdict="bad">Add to the trades. Wider spreads mean a bigger edge.<div class="tl-drill-why">A bigger edge does not help if the variance has jumped too, and adding raises the fraction further above 1. Every extra unit of leverage makes the next forced sale bigger, in a market that already knows your positions.</div></li>
+      <li data-verdict="good">Bring the leverage down now, in sizes the market can absorb, and take the loss while you still choose the timing.<div class="tl-drill-why">Above a fraction of 1, the constant-fraction rule sells into losses, and the sale scales with the fraction minus 1. Cutting the fraction early shrinks every future forced sale. It costs money today, but it keeps you in charge of the trades instead of your lenders.</div></li>
+      <li data-verdict="ok">Follow the rule to the letter: after each 1% fall, sell a quarter of the book at whatever bid is there.<div class="tl-drill-why">It is what the model prescribes, but the model assumes you trade instantly and for free at the quoted price. When the market knows what you hold, a sale that big moves prices against you and deepens the next mark.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Long-Term Capital Management, where Merton himself was a partner, could not rebalance at quoted prices. Its spreads widened together, lenders demanded more collateral, and because the market knew roughly what it held, every sale moved prices against it. By late September it had lost about $4.6 billion. On 23 September 1998 the New York Fed brought together fourteen banks and brokers, who put in about $3.6 billion to take over the portfolio and wind it down. Many of the trades converged later, after the fund could no longer hold them.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -777,6 +881,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="kelly-criterion.html">The Kelly Criterion &amp; Position Sizing</a> <span>· the formula this lesson derives as one special case</span></li>
+        <li><a href="ito-lemma.html">Itô's Lemma</a> <span>· the tool that moves a value function through a random instant</span></li>
+        <li><a href="mdp-bellman-equation.html">MDPs, Value Functions &amp; the Bellman Equation</a> <span>· the same "best from here on" idea in discrete steps</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="drawdowns-risk-of-ruin.html">Drawdowns, Risk of Ruin, and Why Good Systems Get Abandoned</a> <span>· the ride each choice of risk aversion puts you on</span></li>
+        <li><a href="merton-jump-diffusion.html">The Merton Jump-Diffusion Model</a> <span>· what changes when prices gap instead of glide</span></li>
+        <!-- DESK:START --><li><a href="action-vol-to-size.html">From a Volatility Forecast to a Position Size</a> <span>· turning a vol forecast into a size</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> it tells you that sizing below full Kelly is a correct answer for most people, not a timid one, and it shows where any constant-fraction rule breaks at high leverage.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="alpha-beta-separation.html">← Alpha vs. Beta Separation</a>
     <a href="../hub.html">Theory Lab hub →</a>
@@ -806,6 +931,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

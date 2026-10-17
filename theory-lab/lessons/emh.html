@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Efficient Market Hypothesis — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -41,6 +42,62 @@
     <li><strong>Real-world episode:</strong> McLean &amp; Pontiff (2016) found 97 published stock-return predictors earned about 58% less after publication (26% less in the gap before it), as investors traded them<!-- DESK:START -->; and this desk's own "priced in" tests, where conditioning on what yields did into a release scored 49.3% against a shuffled placebo's 51.5%<!-- DESK:END -->.</li>
   </ul>
 </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top: a number line for the lag-1 autocorrelation of 500 daily returns, with a shaded noise band from about minus 0.09 to plus 0.09, two standard errors either side of zero. An estimate of 0.03 sits inside the band and is labelled noise; an estimate of 0.15 sits outside, about 3.4 standard errors, labelled a signal but not yet an edge. Bottom: three bars for 97 published stock-return predictors. Taking returns in the original sample as 100%, they were about 74% in the gap before publication and about 42% after publication.">
+      <text class="tlp-text" x="20" y="20" font-size="14" font-weight="700">Does yesterday's return predict today's? 500 daily returns</text>
+      <rect class="tlp-box blue" x="183.7" y="48" width="232.6" height="40" rx="5"/>
+      <line class="tlp-line" x1="40" y1="68" x2="560" y2="68"/>
+      <line class="tlp-line" x1="300" y1="62" x2="300" y2="74"/>
+      <text class="tlp-text3" x="170" y="104" text-anchor="middle" font-size="12">−0.1</text>
+      <text class="tlp-text3" x="300" y="104" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="430" y="104" text-anchor="middle" font-size="12">0.1</text>
+      <text class="tlp-blue" x="190" y="42" font-size="13" font-weight="700">noise band: ±2 SE ≈ ±0.09</text>
+      <circle class="tlp-blue" cx="339" cy="68" r="6"/>
+      <text class="tlp-text2" x="339" y="104" text-anchor="middle" font-size="12" font-weight="700">0.03</text>
+      <circle class="tlp-amber" cx="495" cy="68" r="7"/>
+      <text class="tlp-amber" x="495" y="42" text-anchor="middle" font-size="13" font-weight="700">0.15 · 3.4 SE</text>
+      <text class="tlp-amber" x="495" y="121" text-anchor="middle" font-size="12">signal, not yet an edge</text>
+      <text class="tlp-text" x="20" y="140" font-size="14" font-weight="700">97 published predictors, returns vs. the original sample</text>
+      <text class="tlp-text2" x="238" y="168" text-anchor="end" font-size="13">original sample</text>
+      <rect class="tlp-blue" x="250" y="155" width="300" height="18" rx="3"/>
+      <text class="tlp-text2" x="238" y="196" text-anchor="end" font-size="13">before publication</text>
+      <rect class="tlp-amber" x="250" y="183" width="222" height="18" rx="3"/>
+      <text class="tlp-amber" x="480" y="196" font-size="13" font-weight="700">≈ 74%</text>
+      <text class="tlp-text2" x="238" y="224" text-anchor="end" font-size="13">after publication</text>
+      <rect class="tlp-red" x="250" y="211" width="126" height="18" rx="3"/>
+      <text class="tlp-red" x="384" y="224" font-size="13" font-weight="700">≈ 42%</text>
+    </svg>
+    <figcaption>Efficiency is the null: a small autocorrelation is just noise, and a large one is only where research starts. When an edge is published, investors trade it and most of it goes. McLean and Pontiff found returns about 58% lower after publication.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">There's an old joke. An economist walks past a twenty-dollar bill on the pavement and says it can't be real, or someone would have picked it up.</p>
+      <p data-who="Quant">That joke is the efficient market hypothesis. And on a pavement as crowded as a market, it is mostly right. A free edge in plain sight gets traded until it is gone.</p>
+      <p data-who="Trader">So prices are always right?</p>
+      <p data-who="Quant">No. The claim is narrower. Prices already reflect what is cheap and available to know, so you cannot use that information to predict the next surprise. Your best guess for tomorrow's price is today's price.</p>
+      <p data-who="Trader">How would I test that?</p>
+      <p data-who="Quant">Ask whether yesterday's return helps predict today's. Take five hundred daily returns. If there is no real link, the correlation you measure still wobbles by about point zero four five, just from noise. That is one over the square root of five hundred.</p>
+      <p data-who="Trader">And if I measure point zero three?</p>
+      <p data-who="Quant">Less than one standard error. Routine noise. Building a strategy on it would be a mistake.</p>
+      <p data-who="Trader">What about point one five?</p>
+      <p data-who="Quant">That is more than three standard errors. A real statistical signal in that sample. But it is the start of a research question, not an edge. You still don't know if it holds out of sample, if it survives costs, or why it would exist at all.</p>
+      <p data-who="Trader">Why the last one?</p>
+      <p data-who="Quant">Because of the joint-hypothesis problem. To call a return abnormal you need a model of normal. If you find excess returns, either the market is inefficient or your model missed a risk you are being paid to carry. No test separates the two.</p>
+      <p data-who="Trader">Does anyone actually watch edges disappear?</p>
+      <p data-who="Quant">Yes. David McLean and Jeffrey Pontiff followed ninety-seven published stock-return predictors. Returns were about twenty-six percent lower in the gap before publication, and about fifty-eight percent lower after it, as investors read the papers and traded them.</p>
+      <p data-who="Trader">So the bill gets picked up once someone prints the map.</p>
+      <p data-who="Quant">Exactly. And what was left sat in stocks that are expensive to trade. The bill lingers where bending down costs money.</p>
+      <p data-who="Trader">So I can never make money?</p>
+      <p data-who="Quant">You can. Efficiency forbids a free lunch, not getting paid for risk others won't carry, like carry or illiquidity. The question for any edge is who is paying you, and why.</p>
+      <p data-who="Trader">One-line version?</p>
+      <p data-who="Quant">Treat the market as efficient until you can show, out of sample and after costs, why the twenty-dollar bill is still there.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -173,6 +230,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From "price plus a surprise" to a testable noise band, one piece at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P_t = P_{t-1} + \color{#fbbf24}{\epsilon_t} \]</div>
+      <p>Today's price is yesterday's price plus a surprise. Everything the model says lives in what we assume about that surprise.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P_t = P_{t-1} + \epsilon_t, \qquad E[\epsilon_t \mid \color{#fbbf24}{\mathcal{F}_{t-1}}] = 0 \]</div>
+      <p>Given everything known yesterday, your best forecast of the surprise is zero. Its size can be forecast; its direction cannot.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ E[P_t \mid \mathcal{F}_{t-1}] = \color{#fbbf24}{P_{t-1}} \]</div>
+      <p>Take expectations of the first line: the best forecast of tomorrow's price is today's price. That is a martingale, the object EMH actually predicts.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \rho_1 = \mathrm{Corr}(r_t,\, r_{t-1}) = \color{#fbbf24}{0} \]</div>
+      <p>The checkable consequence: yesterday's return should not predict today's. The true lag-1 autocorrelation is zero.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \mathrm{SE}(\hat\rho_1) \approx \color{#10b981}{\frac{1}{\sqrt{n}}} \]</div>
+      <p>A sample estimate still wobbles around zero by about \(1/\sqrt{n}\). With 500 returns that is 0.045, so \(\hat\rho_1 = 0.03\) is noise and \(\hat\rho_1 = 0.15\), more than three standard errors out, is a signal worth investigating.</p>
+    </div>
+  </div>
   <p>
   EMH itself is a qualitative claim about information, but it has a precise, testable mathematical
   consequence: if a market is efficient, prices should behave like a <strong>random walk</strong>
@@ -381,6 +462,10 @@
       the significance verdict all recalculate instantly — try pushing
       \(\hat\rho_1\) up toward 15% to see the second case from above.
     </p>
+    <div class="tl-predict" data-answer="1.34" data-tol="0.15" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With \(n = 500\), \(\hat\rho_1 = 3\%\) gives \(t \approx 0.67\): noise. Keep \(\hat\rho_1\) at 3% but quadruple the sample to \(n = 2{,}000\). What t-statistic do you get? Lock in a guess, then type 2000 into the sample-size field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 1.34.</strong> The standard error is \(1/\sqrt{2000} \approx 0.0224\), half of what it was, so \(t = 0.03/0.0224 \approx 1.34\). Four times the data only doubles the t-statistic, because noise shrinks with the square root of \(n\). It is still below 2. Now find roughly how big \(n\) must be before 3% clears two standard errors.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Sample size \(n\)</span></div>
@@ -504,6 +589,12 @@
   </div>
   <!-- DESK:END -->
 
+  <!-- WB:emh:START -->
+  <div class="wb" id="wb-emh" data-title="The $20 bill: testing for, and losing, an edge">
+    <script type="application/json">{"w":600,"h":780,"intro":"Why a free edge should not last, how you test it, and what happened to 97 edges once they were published. Press play, or step through.","steps":[{"cap":"Model a price as yesterday's price plus a surprise. Here are 60 simulated days, purely illustrative. Each day's move is a fresh draw with an average of zero.","do":[{"chart":"px","x":10,"y":10,"w":580,"h":180,"title":"60 simulated days: price = yesterday + surprise","xd":[0,72],"yd":[96.90026306878295,104.53078319893781],"yt":[[100,"100"]],"xt":[[0,"day 0"],[30,"30"],[60,"60"]],"pl":50,"pr":16},{"series":"pp","chart":"px","pts":[[0,100.0],[1,100.02],[2,100.3],[3,100.03],[4,100.24],[5,100.79],[6,101.04],[7,101.98],[8,101.45],[9,101.49],[10,101.06],[11,100.59],[12,100.48],[13,100.62],[14,100.87],[15,101.17],[16,102.51],[17,103.03],[18,102.07],[19,102.2],[20,101.82],[21,101.51],[22,102.3],[23,102.16],[24,100.99],[25,101.18],[26,101.0],[27,100.3],[28,99.75],[29,99.37],[30,99.36],[31,99.1],[32,99.14],[33,100.25],[34,99.77],[35,99.28],[36,99.13],[37,99.79],[38,99.37],[39,100.23],[40,99.44],[41,98.82],[42,98.79],[43,98.27],[44,97.9],[45,98.17],[46,98.61],[47,98.67],[48,98.51],[49,99.32],[50,99.56],[51,99.42],[52,100.14],[53,99.6],[54,99.7],[55,100.1],[56,100.09],[57,99.75],[58,99.96],[59,99.63],[60,99.28]],"tone":"blue","ms":1800}]},{"cap":"If the market already holds everything knowable, the best forecast of tomorrow is simply today's price. Up and down are equally likely from here. That is a martingale.","do":[{"series":"fc","chart":"px","pts":[[60,99.28],[72,99.28]],"tone":"amber","dash":true,"ms":600},{"note":"fcl","chart":"px","at":[66,99.28],"text":"best guess\n= today","tone":"amber","size":17,"anchor":"middle","dx":0,"dy":-46},{"dot":"now","chart":"px","at":[60,99.28],"text":"","tone":"amber"}]},{"cap":"The test: does yesterday's return predict today's? With 500 daily returns and no real link, the measured correlation still wobbles by about 1 ÷ √500 = 0.045. Two standard errors either side of zero is the noise band.","do":[{"chart":"ac","x":10,"y":206,"w":580,"h":120,"title":"Lag-1 autocorrelation, 500 returns","xd":[-0.2,0.2],"yd":[0,1],"yt":[],"xt":[[-0.1,"−0.1"],[0,"0"],[0.1,"0.1"],[0.2,"0.2"]],"pl":20,"pr":20,"pt":30,"pb":26},{"gap":"band","chart":"ac","top":[[-0.0894,1],[0.0894,1]],"bot":[[-0.0894,0],[0.0894,0]],"tone":"blue","op":0.25},{"note":"bl","chart":"ac","at":[-0.045,0.62],"text":"noise: ±0.09","tone":"blue","size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Measure 0.03. That is 0.67 standard errors: well inside the band. Routine noise from a perfectly unpredictable series. Building a strategy on it would be a mistake.","do":[{"dot":"r03","chart":"ac","at":[0.03,0.25],"text":"0.03","tone":"blue","dy":-16}]},{"cap":"Measure 0.15 instead. That is about 3.4 standard errors out: a real statistical signal in this sample. But it is only where the research starts.","do":[{"dot":"r15","chart":"ac","at":[0.15,0.25],"text":"0.15","tone":"amber","dy":-16},{"note":"r15n","chart":"ac","at":[0.15,0.25],"text":"3.4 SE","tone":"amber","size":17,"anchor":"middle","dx":0,"dy":22}]},{"cap":"Three questions stand between a signal and an edge. Does it hold on data it has never seen? Does it survive trading costs? And why has nobody traded it away?","do":[{"chip":"q1","x":105,"y":352,"text":"out of sample?","tone":"amber"},{"chip":"q2","x":300,"y":352,"text":"after costs?","tone":"amber"},{"chip":"q3","x":495,"y":352,"text":"why still here?","tone":"amber"}]},{"cap":"The joint-hypothesis problem. To call a return abnormal you need a model of normal. An excess return means the market is inefficient, or your model missed a risk you are being paid to carry. No test can tell you which.","do":[{"box":"ineff","x":10,"y":386,"w":220,"h":76,"text":"market\ninefficient?","tone":"red","size":18},{"icon":"sc","name":"scales","x":255,"y":380,"s":0.9,"tone":"amber"},{"box":"model","x":370,"y":386,"w":220,"h":76,"text":"model missing\na risk?","tone":"blue","size":18}]},{"cap":"Now the $20 bill on a crowded pavement. Academics spent decades documenting stock-return predictors. McLean and Pontiff followed 97 of them as the papers came out.","do":[{"icon":"bill","name":"cash","x":40,"y":476,"s":0.62,"tone":"green","label":"97 published\npredictors","sym":"$","lsize":17}]},{"cap":"Publication prints the map to the bill. Arbitrageurs can now find the trade cheaply, and if they don't take it a competitor will. Their orders push prices towards the information.","do":[{"icon":"crowd","name":"crowd","x":34,"y":648,"s":0.72,"tone":"blue","label":"arbitrageurs","lsize":17},{"arrow":["bill","crowd"],"tone":"blue"}]},{"cap":"Taking returns in the original sample as 100%, they were about 74% in the gap before publication, partly the luck of the original search, and about 42% after it. Roughly 58% of the edge went once investors could read about it.","do":[{"chart":"mp","x":200,"y":488,"w":390,"h":280,"title":"Predictor returns vs. original sample","xd":[0.4,3.6],"yd":[0,118],"yt":[[0,"0"],[50,"50%"],[100,"100%"]],"xt":[[1,"in sample"],[2,"pre-pub"],[3,"after"]],"pl":58,"pr":16},{"bars":"mpb","chart":"mp","data":[[1,100,"100%","blue"],[2,74,"≈ 74%","amber"],[3,42,"≈ 42%","red"]],"bw":56,"ms":1400},{"arrow":["crowd","mp"],"tone":"blue"}]},{"cap":"The fall was biggest for the predictors with the largest in-sample returns, and what was left sat in stocks that are expensive to trade. The bill gets picked up where bending down is cheap.","do":[{"pulse":"mpb"},{"pulse":"bill"}]},{"cap":"So efficiency is the null, not a wall. It forbids a free lunch, not getting paid for a risk others will not carry. Every edge has to say who is paying, and why.","do":[{"dim":"ineff"},{"dim":"model"},{"pulse":"q3"}]}]}</script>
+  </div>
+  <!-- WB:emh:END -->
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -591,6 +682,19 @@
       the two overstates how strong a given piece of evidence actually is.
       </li>
     </ul>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative research meeting</div>
+    <h3>A strong anomaly, freshly published</h3>
+    <p>A journal has just published a stock-return predictor with an impressive record over decades of data in the original study. A colleague wants to start trading it next week, sized on the paper's historical returns. What do you recommend?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Trade it at full size. Decades of significant returns cannot be luck.<div class="tl-drill-why">The in-sample record is the most optimistic number you will ever see. Part of it is the luck of the original search, and once a predictor is published investors trade it. Sizing on the paper's returns oversizes the trade.</div></li>
+      <li data-verdict="good">Assume much of the edge has gone, test it on data from after the study's sample, with costs, and ask what friction would let it survive.<div class="tl-drill-why">This is the evidence and the logic of the lesson together. Returns on published predictors fell by about 58% on average after publication, and an edge needs a reason it is not arbitraged away. If it survives that test, size it on the out-of-sample result.</div></li>
+      <li data-verdict="ok">Trade it only in illiquid, hard-to-arbitrage stocks, where the effect held up better.<div class="tl-drill-why">That matches McLean and Pontiff: predictor returns were higher where arbitrage is costly. But the same costs that protect the effect also eat into your returns, so it needs a cost-inclusive test before any money goes in.</div></li>
+      <li data-verdict="bad">Ignore it. Efficient markets mean no strategy can ever make money.<div class="tl-drill-why">That misreads the hypothesis. It forbids a riskless free lunch, not every profit. On average published predictors lost a large share of their returns, not all of them, and a priced risk can still pay.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the research shows.</strong> This is an illustrative situation, not a dated event. The evidence behind the answer is real: McLean and Pontiff (<em>Journal of Finance</em>, 2016) followed 97 published predictors and found returns about 26% lower in the gap between the end of the study's sample and publication, and about 58% lower after publication. The decline was larger for the predictors with the biggest in-sample returns, and returns held up better where arbitrage is expensive.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -691,6 +795,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-probability.html">Probability &amp; Random Variables</a> <span>· expectation, the E in the martingale</span></li>
+        <li><a href="primer-returns-compounding.html">Returns, Log-Returns &amp; Compounding</a> <span>· the returns the autocorrelation test is run on</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="bayesian-inference.html">Bayesian Inference &amp; Updating</a> <span>· how far one result should move your prior</span></li>
+        <li><a href="multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere Effect</a> <span>· why the luck of the search inflates published edges</span></li>
+        <li><a href="hurst-variance-ratio.html">The Hurst Exponent &amp; Variance Ratio Test</a> <span>· a formal test of the random walk</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every edge you find has to answer one question first: if this is real, why has nobody traded it away?</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -774,10 +898,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

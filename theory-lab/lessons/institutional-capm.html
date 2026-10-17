@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Capital Asset Pricing Model (CAPM) — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,68 @@
       <li><strong>How it reached trading:</strong> Sharpe (1964) and Lintner (1965) gave every asset a market beta; Jensen's 1968 alpha made it the yardstick for fund skill, and beta is still the first hedge ratio and the first risk number a desk looks at.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 258" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The Security Market Line from the lesson's worked example: expected return equals 2 percent plus beta times a 5-point market premium, a straight line from 2 percent at beta 0 through the market's 7 percent at beta 1. Asset A, beta 0.5, earned 4.5 percent and sits on the line with zero alpha. Asset B, beta 1.5, was predicted 9.5 percent but earned 13.5 percent, an alpha of plus 4.0. Asset C, beta 0.8, was predicted 6.0 percent but earned 3.6 percent, an alpha of minus 2.4. A note says Fama and French found real stocks sit off this line far more than CAPM allows.">
+      <text class="tlp-amber" x="80" y="26" font-size="14" font-weight="700">E[R] = 2% + β × 5% market premium</text>
+      <line class="tlp-line" x1="70" y1="210" x2="560" y2="210"/>
+      <line class="tlp-line" x1="70" y1="40" x2="70" y2="210"/>
+      <text class="tlp-text3" x="62" y="190" text-anchor="end" font-size="12">2%</text>
+      <text class="tlp-text3" x="62" y="130" text-anchor="end" font-size="12">7%</text>
+      <text class="tlp-text3" x="62" y="70" text-anchor="end" font-size="12">12%</text>
+      <text class="tlp-text3" x="70" y="226" text-anchor="middle" font-size="12">β 0</text>
+      <text class="tlp-text3" x="190" y="226" text-anchor="middle" font-size="12">0.5</text>
+      <text class="tlp-text3" x="310" y="226" text-anchor="middle" font-size="12">1.0</text>
+      <text class="tlp-text3" x="430" y="226" text-anchor="middle" font-size="12">1.5</text>
+      <text class="tlp-text3" x="550" y="226" text-anchor="middle" font-size="12">2.0</text>
+      <line class="tlp-line amber thick" x1="70" y1="186" x2="550" y2="66"/>
+      <text class="tlp-amber" x="556" y="66" font-size="13" font-weight="700">SML</text>
+      <circle class="tlp-text3" cx="70" cy="186" r="4"/>
+      <text class="tlp-text3" x="80" y="202" font-size="12">risk-free 2%</text>
+      <circle class="tlp-text3" cx="310" cy="126" r="4"/>
+      <text class="tlp-text3" x="318" y="142" font-size="12">market, β 1</text>
+      <circle class="tlp-green" cx="190" cy="156" r="6"/>
+      <text class="tlp-green" x="190" y="180" text-anchor="middle" font-size="13" font-weight="700">A · α = 0</text>
+      <line class="tlp-line blue dash" x1="430" y1="96" x2="430" y2="48"/>
+      <circle class="tlp-blue" cx="430" cy="96" r="3"/>
+      <circle class="tlp-blue" cx="430" cy="48" r="6"/>
+      <text class="tlp-blue" x="420" y="52" text-anchor="end" font-size="13" font-weight="700">B · α = +4.0</text>
+      <line class="tlp-line red dash" x1="262" y1="138" x2="262" y2="166.8"/>
+      <circle class="tlp-red" cx="262" cy="138" r="3"/>
+      <circle class="tlp-red" cx="262" cy="166.8" r="6"/>
+      <text class="tlp-red" x="272" y="184" font-size="13" font-weight="700">C · α = −2.4</text>
+      <text class="tlp-red" x="300" y="250" text-anchor="middle" font-size="13" font-weight="700">Fama &amp; French (1992): real stocks sit off this line far more than CAPM allows.</text>
+    </svg>
+    <figcaption>One number per asset, beta, sets where it should sit on the line. The gap between what an asset actually earned and where the line says it should be is alpha. CAPM says every alpha should be zero; the data says otherwise, and that gap is what the rest of the factor models are built to explain.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Every risk screen shows me a beta. Where does that number actually come from?</p>
+      <p data-who="Quant">From the Capital Asset Pricing Model. William Sharpe in 1964, John Lintner in 1965, building on Markowitz.</p>
+      <p data-who="Trader">What's the idea?</p>
+      <p data-who="Quant">Suppose every investor has the same beliefs and optimizes the Markowitz way. Then everyone wants the same mix of risky assets. The cautious blend it with cash; the bold borrow to hold more of it.</p>
+      <p data-who="Trader">And if everyone holds the same mix?</p>
+      <p data-who="Quant">Every share still has to be owned by someone. So that mix has to be the whole market, every asset at its market weight. Then the only risk you get paid for is how much you move with the market. That sensitivity is beta.</p>
+      <p data-who="Trader">How do I measure it?</p>
+      <p data-who="Quant">It's just a regression slope: how much the asset moves with the market, divided by how much the market moves on its own. Same formula as the regression primer.</p>
+      <p data-who="Trader">Numbers, please.</p>
+      <p data-who="Quant">The lesson's toy market averages seven percent a year, with a risk-free rate of two. So the market premium is five points. Asset B has a beta of one and a half. CAPM says it should earn two, plus one and a half times five: nine and a half percent.</p>
+      <p data-who="Trader">And what did it earn?</p>
+      <p data-who="Quant">Thirteen and a half. Four points more than its beta justifies. That leftover is alpha.</p>
+      <p data-who="Trader">So B's manager is a genius.</p>
+      <p data-who="Quant">Maybe. Or B carries some other risk CAPM leaves out. Or five years is just noise. One regression cannot tell those apart.</p>
+      <p data-who="Trader">Does CAPM hold up on real stocks?</p>
+      <p data-who="Quant">Not well. Fama and French, in 1992, found beta explains far less of average returns than CAPM promises. Small companies and value stocks earned more than their betas said they should.</p>
+      <p data-who="Trader">So why does every desk still use beta?</p>
+      <p data-who="Quant">Because it's useful on its own terms. It sets the index hedge on an equity book, and Jensen's alpha from 1968 still splits a manager's return into market and skill.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Beta tells you how much market risk you carry; CAPM's claim that it explains all of your return is the baseline the better models were built to beat.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -128,6 +191,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">The CAPM pricing equation, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ E[R_i] = \color{#fbbf24}{R_f} \]</div>
+      <p>Start with the floor: an asset with no exposure to the market should earn only the risk-free rate. In the worked example, 2%.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ E[R_i] = R_f + \color{#fbbf24}{\big(E[R_m] - R_f\big)} \]</div>
+      <p>Add the market risk premium: what investors demand for holding the market at all. With the toy market averaging 7%, that is \(7 - 2 = 5\) points. An asset that moves exactly with the market earns all of it.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ E[R_i] = R_f + \color{#fbbf24}{\beta_i}\big(E[R_m] - R_f\big), \qquad \color{#fbbf24}{\beta_i = \frac{\mathrm{Cov}(R_i, R_m)}{\mathrm{Var}(R_m)}} \]</div>
+      <p>Scale the premium by how much of the market's risk this asset carries. Beta is the regression slope: for Asset A, \(17.0/34 = 0.50\). Diversifiable, asset-specific risk earns nothing.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{E[R_A] = 2 + 0.50 \times 5 = 4.5\%} \]</div>
+      <p>The Security Market Line, used: Asset A should earn 4.5%, and did. Asset B, beta 1.50, should earn 9.5% but earned 13.5%. That 4.0-point gap is alpha, which CAPM says should be zero.</p>
+    </div>
+  </div>
   <p>
     The derivation in full requires more optimization machinery than this
     lesson re-derives from scratch (it's a constrained-optimization argument
@@ -356,6 +439,12 @@
     <tr><td>SML</td><td>Security Market Line — return vs. β alone; every correctly-priced asset, efficient or not, belongs on it.</td></tr>
   </table></div>
 
+  <!-- WB:institutional_capm:START -->
+  <div class="wb" id="wb-institutional_capm" data-title="CAPM: from one shared portfolio to the Security Market Line">
+    <script type="application/json">{"w":600,"h":760,"intro":"The lesson's toy universe: one market index, three assets, five years of invented returns and a 2% risk-free rate. Press play, or step through.","steps":[{"cap":"Start from Markowitz. If every investor shares the same beliefs, everyone computes the same best risky portfolio. The cautious mix it with the risk-free asset; the bold borrow to hold more of it.","do":[{"icon":"crowd","name":"crowd","x":255,"y":10,"s":0.9,"tone":"blue","label":"every investor,\nsame beliefs","lsize":17},{"icon":"rf","name":"bank","x":30,"y":10,"s":0.85,"tone":"amber","label":"risk-free 2%","sym":"$","lsize":17},{"icon":"mkt","name":"globe","x":470,"y":10,"s":0.85,"tone":"purple","label":"one risky portfolio","lsize":17},{"arrow":["crowd","rf"],"tone":"amber"},{"arrow":["crowd","mkt"],"tone":"purple"}]},{"cap":"If everyone holds the same risky portfolio, every share outstanding must still be held by someone. The only portfolio that works is all risky assets at their market weights: the market portfolio.","do":[{"note":"mk","x":468,"y":152,"text":"= the market portfolio","size":17,"anchor":"middle","tone":"purple"}]},{"cap":"So the only risk that is paid for is exposure to the market. Measure it with a regression: each asset's return against the market's, over the five years. Here is Asset A.","do":[{"chart":"sc","x":10,"y":172,"w":290,"h":262,"title":"Asset vs market return (%)","xd":[-5,17],"yd":[-6,27],"yt":[[0,"0"],[10,"10"],[20,"20"]],"xt":[[-3,"−3"],[7,"7"],[15,"15"]],"zero":true,"pl":36},{"dot":"a0","chart":"sc","at":[8,5],"text":"","tone":"green","r":4.5},{"dot":"a1","chart":"sc","at":[-3,-0.5],"text":"","tone":"green","r":4.5},{"dot":"a2","chart":"sc","at":[15,8.5],"text":"","tone":"green","r":4.5},{"dot":"a3","chart":"sc","at":[6,4],"text":"","tone":"green","r":4.5},{"dot":"a4","chart":"sc","at":[9,5.5],"text":"","tone":"green","r":4.5},{"series":"fa","chart":"sc","pts":[[-4,-1.0],[16,9.0]],"tone":"green","ms":700,"label":"A","lat":[16,9.0],"ldx":-4,"ldy":16,"lanchor":"end"}]},{"cap":"The slope is beta, the same OLS formula as the regression primer: covariance over variance. The market's variance is 34; A's covariance with it is 17.0. Beta = 17.0 ÷ 34 = 0.50.","do":[{"box":"beta","x":10,"y":452,"w":290,"h":90,"text":"β = Cov ÷ Var\nA: 17.0 ÷ 34 = 0.50","tone":"green","size":19}]},{"cap":"Same for the others. B moves 1.5 times as much as the market: beta 1.50. C: beta 0.80.","do":[{"dot":"b0","chart":"sc","at":[8,15],"text":"","tone":"blue","r":4.5},{"dot":"b1","chart":"sc","at":[-3,-1.5],"text":"","tone":"blue","r":4.5},{"dot":"b2","chart":"sc","at":[15,25.5],"text":"","tone":"blue","r":4.5},{"dot":"b3","chart":"sc","at":[6,12],"text":"","tone":"blue","r":4.5},{"dot":"b4","chart":"sc","at":[9,16.5],"text":"","tone":"blue","r":4.5},{"series":"fb","chart":"sc","pts":[[-4,-3.0],[16,27.0]],"tone":"blue","ms":700,"label":"B","lat":[10,18],"ldx":-8,"ldy":-8,"lanchor":"end"},{"dot":"c0","chart":"sc","at":[8,4.4],"text":"","tone":"red","r":4.5},{"dot":"c1","chart":"sc","at":[-3,-4.4],"text":"","tone":"red","r":4.5},{"dot":"c2","chart":"sc","at":[15,10],"text":"","tone":"red","r":4.5},{"dot":"c3","chart":"sc","at":[6,2.8],"text":"","tone":"red","r":4.5},{"dot":"c4","chart":"sc","at":[9,5.2],"text":"","tone":"red","r":4.5},{"series":"fc","chart":"sc","pts":[[-4,-5.2],[16,10.8]],"tone":"red","ms":700,"label":"C","lat":[16,10.8],"ldx":-4,"ldy":-16,"lanchor":"end"}]},{"cap":"CAPM turns beta into a required return: E[R] = 2% + β × (7% − 2%). A line starting at the risk-free rate with slope equal to the 5-point market premium: the Security Market Line.","do":[{"chart":"sml","x":310,"y":172,"w":280,"h":262,"title":"Security Market Line","xd":[0,2],"yd":[0,15],"yt":[[2,"2%"],[7,"7%"],[12,"12%"]],"xt":[[0,"β 0"],[1,"1"],[2,"2"]],"pl":40},{"series":"line","chart":"sml","pts":[[0,2],[2,12]],"tone":"amber","ms":900,"label":"SML","lat":[2,12],"ldx":-4,"ldy":-14,"lanchor":"end"},{"dot":"rfd","chart":"sml","at":[0,2],"text":"R_f","tone":null,"dx":8,"dy":12,"anchor":"start"}]},{"cap":"The predictions: A 4.5%, B 9.5%, C 6.0%. Every correctly priced asset should sit on this line, whatever its other risks.","do":[{"dot":"pA","chart":"sml","at":[0.5,4.5],"text":"","tone":"green","r":4},{"dot":"pB","chart":"sml","at":[1.5,9.5],"text":"","tone":"blue","r":4},{"dot":"pC","chart":"sml","at":[0.8,6.0],"text":"","tone":"red","r":4}]},{"cap":"Now the realized averages. A earned 4.5%: exactly on the line, alpha 0. B earned 13.5%: alpha +4.0. C earned 3.6%: alpha −2.4. The gap between realized and predicted is alpha.","do":[{"dot":"rA","chart":"sml","at":[0.5,4.5],"text":"A: α 0","tone":"green","dx":-8,"dy":-14,"anchor":"end"},{"series":"gB","chart":"sml","pts":[[1.5,9.5],[1.5,13.5]],"tone":"blue","dash":true,"ms":500},{"dot":"rB","chart":"sml","at":[1.5,13.5],"text":"B: α +4.0","tone":"blue","dx":-8,"dy":-2,"anchor":"end"},{"series":"gC","chart":"sml","pts":[[0.8,6.0],[0.8,3.6]],"tone":"red","dash":true,"ms":500},{"dot":"rC","chart":"sml","at":[0.8,3.6],"text":"C: α −2.4","tone":"red","dx":8,"dy":14,"anchor":"start"}]},{"cap":"A positive alpha is not proof of skill. It could be real mispricing, pay for a risk CAPM leaves out, or noise in five years of data. One regression cannot tell these apart.","do":[{"box":"amb","x":310,"y":452,"w":280,"h":90,"text":"α +4.0 = skill?\nmissing factor? luck?","tone":"amber","size":19}]},{"cap":"The real-world test: Fama and French (1992) found beta explains average stock returns far less well than CAPM says. Small companies and value stocks earned more than their betas predicted.","do":[{"box":"ff","x":10,"y":562,"w":580,"h":76,"text":"Fama & French 1992: beta alone leaves a lot unexplained\n(small and value stocks beat their beta)","tone":"red","size":18}]},{"cap":"Beta still earns its keep. It sets the index hedge on an equity book and splits a manager's return into market and alpha, even though as a full pricing model CAPM is only the baseline.","do":[{"box":"use","x":10,"y":656,"w":580,"h":76,"text":"beta: the first hedge ratio and the first risk number\nCAPM: the baseline every factor model extends","tone":"green","size":18}]}]}</script>
+  </div>
+  <!-- WB:institutional_capm:END -->
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>The assumptions — and why stating them plainly matters</h2>
   <p>
@@ -467,6 +556,10 @@
       above. Try pasting in Asset B's or Asset C's numbers by hand to
       reproduce their nonzero alphas.
     </p>
+    <div class="tl-predict" data-answer="-1" data-tol="0.2" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With Asset A's returns and \(R_f = 2\%\), alpha is exactly 0. Change only the risk-free rate, to 4%. What alpha does Asset A show now? Lock in a guess, then type 4 into the risk-free field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>−1.0%.</strong> Beta stays 0.50, because it only depends on how the returns move together. But the prediction becomes \(4 + 0.50 \times (7 - 4) = 5.5\%\), and A still averaged 4.5%, so alpha is \(4.5 - 5.5 = -1.0\%\). Alpha is always measured against a chosen benchmark and risk-free rate; change them and the "skill" changes too. Now try \(R_f = 0\): alpha flips to +1.0%.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Risk-free rate \(R_f\) (%)</span></div>
@@ -663,6 +756,19 @@
     that this already <em>is</em> CAPM.
   </div><!-- DESK:END -->
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative allocation meeting</div>
+    <h3>A manager with four points of alpha</h3>
+    <p>A manager's fund looks like the lesson's Asset B: over five years its beta to the market was 1.50 and it averaged 13.5%, against a market average of 7% and a risk-free rate of 2%. CAPM predicts 9.5%, so the pitch is "four points of alpha a year". The fund holds mostly small, cheap-looking companies. Do you pay for the alpha?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Yes. Four points above the Security Market Line is skill.<div class="tl-drill-why">A single-factor alpha cannot separate skill from pay for a risk CAPM leaves out, or from luck in five annual observations. A tilt to small and value stocks is exactly the kind of exposure that showed up as "CAPM alpha" in the data.</div></li>
+      <li data-verdict="good">Re-measure the alpha after adding size and value factors, and ask for a much longer record before calling it skill.<div class="tl-drill-why">This is the lesson's own warning, and the next lesson's tool. If most of the four points disappears once size and value are accounted for, you would be paying active fees for a factor tilt you could buy cheaply.</div></li>
+      <li data-verdict="ok">Hedge out the beta with index futures and keep the rest.<div class="tl-drill-why">Sensible portfolio engineering: beta is the right hedge ratio. But hedging the market does not answer whether the remaining return is skill, a size and value tilt, or noise.</div></li>
+      <li data-verdict="bad">Reject it. CAPM's assumptions are false, so the alpha means nothing.<div class="tl-drill-why">False assumptions make CAPM a baseline, not a useless one. The alpha is a real measurement against that baseline; the question is what explains it, not whether to ignore it.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What this teaches.</strong> This is an illustrative case built on the lesson's toy Asset B, not a real fund. The real-world counterpart is well documented: Fama and French (1992) found that small and value stocks earned more than their betas predicted, so a small-value tilt shows up as positive CAPM alpha. That is why alpha is now judged against multi-factor models, not beta alone.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -776,6 +882,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> <span>· beta is exactly that lesson's OLS slope</span></li>
+        <li><a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a> <span>· the efficient portfolio everyone ends up holding</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-fama-french-carhart.html">Fama-French &amp; Carhart: Beyond the Single Factor</a> <span>· the extra factors that explain CAPM's misses</span></li><!-- DESK:END -->
+        <li><a href="alpha-beta-separation.html">Alpha vs. Beta Separation</a> <span>· using beta to split market exposure from skill</span></li>
+        <li><a href="kalman-filter.html">The Kalman Filter &amp; Adaptive Relationships</a> <span>· a beta that is allowed to drift over time</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> beta is the first hedge ratio and the first risk number on any desk, and knowing what it leaves out stops you paying for alpha that is really a factor tilt.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
     <a href="institutional-fama-french-carhart.html">Fama-French &amp; Carhart →</a>
@@ -805,7 +931,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var rf = document.getElementById('capm-scratch-rf');
@@ -890,5 +1017,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

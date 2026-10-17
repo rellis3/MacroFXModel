@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bipower Variation — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -77,7 +78,19 @@
       <p class="sl-p">Same mechanism throughout: RV treats a jump quadratically (r² of the jump itself); BV treats it linearly (the jump times an ordinary neighbor). That asymmetry — not a fitted parameter, not a threshold — is the entire reason BV stays robust to jumps while RV does not.</p>
     </section>
 
+    <!-- WB:institutional_bipower_variation-deck:START -->
     <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Bipower variation: squares versus neighbours</h2>
+      <!-- WB:institutional_bipower_variation:START -->
+      <div class="wb" data-title="Bipower variation: squares versus neighbours">
+        <script type="application/json">{"w":600,"h":700,"intro":"The lesson's quiet session with one 46 bp jump, measured two ways. Watch one measure explode and the other barely move. Press play, or step through.","steps":[{"cap":"A quiet session: fifteen one-minute returns, each about 1 basis point up or down. Drawn to scale, they barely leave the line.","do":[{"chart":"r","x":10,"y":14,"w":580,"h":200,"title":"One-minute returns, bp (to scale)","xd":[0.3,15.7],"yd":[-5,50],"yt":[[0,"0"],[20,"20"],[40,"40"]],"xt":[[1,"1"],[5,"5"],[9,"9"],[15,"15"]],"zero":true,"pl":36,"pr":8},{"bars":"q1","chart":"r","data":[[1,1.2,"","blue"],[2,-0.8,"","blue"],[3,1.5,"","blue"],[4,-1.1,"","blue"],[5,0.9,"","blue"],[6,-1.3,"","blue"],[7,1.0,"","blue"],[8,-0.7,"","blue"]],"bw":18,"ms":700}]},{"cap":"Minute 9: a news release. The price jumps 46 bp in one bar, then goes back to ordinary 1 bp wiggles.","do":[{"bars":"jb","chart":"r","data":[[9,46.0,"+46","red"]],"bw":18,"ms":600},{"bars":"q2","chart":"r","data":[[10,-0.9,"","blue"],[11,1.1,"","blue"],[12,-1.4,"","blue"],[13,0.8,"","blue"],[14,-1.0,"","blue"],[15,1.3,"","blue"]],"bw":18,"ms":600}]},{"cap":"Realized variance squares each return and adds them up. Watch its running total: it creeps along, then leaps at minute 9. One minute supplies 99.2% of the day's total.","do":[{"chart":"c","x":10,"y":236,"w":580,"h":230,"title":"Running total, units of 10⁻⁶","xd":[0,15.3],"yd":[0,23],"yt":[[0,"0"],[10,"10"],[20,"20"]],"xt":[[0,"0"],[9,"9"],[15,"15"]],"pl":36,"pr":8},{"series":"crv","chart":"c","pts":[[0,0],[1,0.014],[2,0.021],[3,0.043],[4,0.055],[5,0.063],[6,0.08],[7,0.09],[8,0.095],[9,21.255],[10,21.263],[11,21.276],[12,21.295],[13,21.302],[14,21.312],[15,21.328]],"tone":"red","ms":1500,"label":"RV 21.33","lat":[15,21.328],"ldx":-4,"ldy":-14,"lanchor":"end","lsize":17}]},{"cap":"Bipower variation multiplies each return's size by its neighbour's instead. Its running total barely moves at minute 9.","do":[{"series":"cbv","chart":"c","pts":[[0,0],[1,0.0],[2,0.015],[3,0.034],[4,0.06],[5,0.075],[6,0.094],[7,0.114],[8,0.125],[9,0.631],[10,1.281],[11,1.297],[12,1.321],[13,1.339],[14,1.351],[15,1.372]],"tone":"green","ms":1500,"label":"BV 1.37","lat":[15,1.372],"ldx":-4,"ldy":-14,"lanchor":"end","lsize":17}]},{"cap":"Why: the jump's neighbours are ordinary. Squared, the jump counts 46 × 46. Paired, it counts 46 × 0.7 and 46 × 0.9: big times ordinary, never big times big.","do":[{"box":"sq","x":20,"y":486,"w":260,"h":70,"text":"RV: 46 × 46 = 2116","tone":"red","size":20},{"box":"pr","x":320,"y":486,"w":260,"h":70,"text":"BV: 46 × 0.7, 46 × 0.9","tone":"green","size":20}]},{"cap":"The π/2 in front is an exact correction. The average size of a normal move is smaller than its spread, so products of sizes come out short by 2/π. With no jump, π/2 makes the two measures agree.","do":[{"note":"pi","x":300,"y":582,"text":"π/2 corrects for E[|Z|]² = 2/π","size":19,"anchor":"middle","tone":"purple"}]},{"cap":"The gap is the jump: J = RV − BV = 21.33 − 1.37 = 19.96. That recovers about 94% of the jump's own squared size.","do":[{"gap":"jg","chart":"c","top":[[9,21.255],[15,21.328]],"bot":[[9,0.631],[15,1.372]],"tone":"amber","op":0.25},{"note":"jl","chart":"c","at":[12,11],"text":"J = 19.96","tone":"amber","size":20,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Drag the jump back to zero and the two agree: RV 0.17, BV 0.22. Sampling noise puts BV slightly above, so J is floored at zero rather than reported negative.","do":[{"box":"zero","x":20,"y":608,"w":560,"h":44,"text":"no jump → RV ≈ BV → J = max(RV − BV, 0) = 0","tone":"blue","size":18}]},{"cap":"J is one number for the whole session: how much of the day was jumps. It does not say which minute. Finding the minute is a separate, return-by-return test.","do":[{"note":"which","x":300,"y":680,"text":"how much, not which minute","size":20,"anchor":"middle","tone":"amber"},{"pulse":"jb"}]},{"cap":"One trap: two jumps side by side. Then a jump's neighbour is not ordinary, the product is big times big, and the trick breaks. Truncated and multipower versions exist for that.","do":[{"pulse":"pr"}]}]}</script>
+      </div>
+      <!-- WB:institutional_bipower_variation:END -->
+    </section>
+    <!-- WB:institutional_bipower_variation-deck:END -->
+
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Watch it happen, bar by bar</h2>
       <p class="sl-sub">Fifteen 1-minute returns, one jump at bar 9. Below: cumulative RV and cumulative BV as each bar is processed, left to right.</p>
@@ -117,7 +130,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">The π/2 isn't decoration — it's an exact correction</h2>
       <p class="sl-sub">For a standard normal Z, E[|Z|] = √(2/π). That one identity is the entire reason the constant is there.</p>
@@ -137,7 +150,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Drag the jump size — watch RV and BV split apart</h2>
       <p class="sl-sub">Fourteen background returns held fixed; only the size of the ninth return (the "jump") changes. RV and BV both start equal at zero jump size, then pull apart.</p>
@@ -159,7 +172,7 @@
       <p class="sl-p">Slide it up toward 100bp and RV races toward the top of the chart while BV barely lifts off the floor. Bring it back to zero and the two bars converge back to nearly equal heights — RV and BV are only estimating different things when a jump is actually present.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Compute RV, BV and J yourself</h2>
       <p class="sl-sub">Five one-minute returns (bp). Edit any of them — a small jump is pre-loaded at r₃.</p>
@@ -182,7 +195,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">What J tells you — and what it doesn't</h2>
       <div class="sl-callout blue">
@@ -202,7 +215,7 @@
       <p class="sl-p">Same underlying bipower math, applied at two different resolutions — a session-level split here, a return-by-return detector next.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">A different fix, for a different contaminant</h2>
       <div class="sl-icard-grid">
@@ -213,7 +226,7 @@
     </section>
 
 <!-- DESK:START -->
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Measured on real data — and honestly reported when it didn't pay off</h2>
       <div class="sl-callout amber">
@@ -227,7 +240,7 @@
     </section>
 <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">The clean theory needs help in small, real samples</h2>
       <div class="sl-compare">
@@ -250,7 +263,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -303,7 +316,7 @@
 <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -452,5 +465,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

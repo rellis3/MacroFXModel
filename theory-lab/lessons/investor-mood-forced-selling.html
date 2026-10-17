@@ -41,6 +41,62 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 252" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A margin spiral drawn as a loop of four boxes, with the lesson's worked example. Prices fall 10 percent, so assets go from 500 to 450. Equity halves from 100 to 50 and leverage jumps from 5 to 9 times. To get back to the lender's 5 times, the fund must sell 200 of its 450, which is 44 percent. It sells into a book half as deep: 300 units now reach 50 basis points below the mid instead of 30. That pushes prices and volatility further, which starts the loop again.">
+      <text class="tlp-text" x="300" y="16" text-anchor="middle" font-size="14" font-weight="700">A margin spiral, with the lesson's numbers</text>
+      <rect class="tlp-box red" x="20" y="30" width="250" height="68" rx="6"/>
+      <text class="tlp-red" x="145" y="58" text-anchor="middle" font-size="14" font-weight="700">Prices fall 10%</text>
+      <text class="tlp-text2" x="145" y="80" text-anchor="middle" font-size="13">assets 500 → 450</text>
+      <rect class="tlp-box amber" x="330" y="30" width="250" height="68" rx="6"/>
+      <text class="tlp-amber" x="455" y="58" text-anchor="middle" font-size="14" font-weight="700">Equity 100 → 50</text>
+      <text class="tlp-text2" x="455" y="80" text-anchor="middle" font-size="13">leverage 5× → 9×</text>
+      <rect class="tlp-box red" x="330" y="150" width="250" height="68" rx="6"/>
+      <text class="tlp-red" x="455" y="178" text-anchor="middle" font-size="14" font-weight="700">Must sell 200 of 450</text>
+      <text class="tlp-text2" x="455" y="200" text-anchor="middle" font-size="13">44%, to get back to 5×</text>
+      <rect class="tlp-box amber" x="20" y="150" width="250" height="68" rx="6"/>
+      <text class="tlp-amber" x="145" y="178" text-anchor="middle" font-size="14" font-weight="700">Into a book half as deep</text>
+      <text class="tlp-text2" x="145" y="200" text-anchor="middle" font-size="13">300 units: −30bp → −50bp</text>
+      <line class="tlp-line" x1="272" y1="64" x2="320" y2="64"/>
+      <polygon class="tlp-arrow" points="328,64 320,59.6 320,68.4"/>
+      <line class="tlp-line" x1="455" y1="100" x2="455" y2="140"/>
+      <polygon class="tlp-arrow" points="455,148 450.6,140 459.4,140"/>
+      <line class="tlp-line" x1="328" y1="184" x2="280" y2="184"/>
+      <polygon class="tlp-arrow" points="272,184 280,179.6 280,188.4"/>
+      <line class="tlp-line red thick" x1="145" y1="148" x2="145" y2="108"/>
+      <polygon class="tlp-red" points="145,100 140,109 150,109"/>
+      <text class="tlp-text2" x="463" y="128" font-size="12">lender's 5× limit</text>
+      <text class="tlp-red" x="153" y="128" font-size="12" font-weight="700">price and vol pushed further</text>
+      <text class="tlp-text2" x="300" y="244" text-anchor="middle" font-size="12">A voluntary seller with a 99.70 floor sells 140 and waits. A forced seller cannot.</text>
+    </svg>
+    <figcaption>Nothing about the asset changed: the seller did. At 5× leverage a 10% fall forces a 44% sale, and it lands in a book that dealers have thinned because volatility rose. The sale pushes prices and volatility further, and the loop goes round again.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">The screen says a hundred. So that's what the asset is worth, right?</p>
+      <p data-who="Quant">It's where the last willing buyer met the last willing seller, for whatever small size they traded. Try to sell a lot and you walk down the order book, filling at worse and worse prices.</p>
+      <p data-who="Trader">And people sell because they're scared.</p>
+      <p data-who="Quant">Usually because their view changed. But there's a fourth kind of move people forget, after optimism, fear and uncertainty: systematic. Margin calls, redemptions, risk limits and volatility targets make people sell whatever they think.</p>
+      <p data-who="Trader">How big can that get?</p>
+      <p data-who="Quant">Take a fund with five hundred of assets, a loan of four hundred, and a hundred of its own money. That's five times leverage, the lender's maximum. Prices fall ten percent. Assets are four fifty, the loan is still four hundred, so its own money has halved to fifty.</p>
+      <p data-who="Trader">So now it's nine times levered.</p>
+      <p data-who="Quant">And to get back to five, it has to sell two hundred of its four hundred and fifty. Forty-four percent of everything, because prices fell ten.</p>
+      <p data-who="Trader">And it sells into a calm market?</p>
+      <p data-who="Quant">The opposite. Dealers run fixed risk limits. Double the volatility and they can hold half as much. On the lesson's toy book, three hundred units used to reach thirty basis points below the mid. With volatility doubled, the same order reaches fifty.</p>
+      <p data-who="Trader">Which makes volatility worse.</p>
+      <p data-who="Quant">That's the spiral. And forced sellers sell what they can, not what they want: the liquid stuff, often the winners. That's why correlations go to one.</p>
+      <p data-who="Trader">Has that happened to safe assets?</p>
+      <p data-who="Quant">March twenty twenty. For several days, Treasury yields rose while stocks fell. The world's safe asset was dumped because it was the easiest thing to sell. Even gold fell for a stretch. It calmed after the Fed cut to near zero on the fifteenth and made its bond buying open-ended on the twenty-third.</p>
+      <p data-who="Trader">And when several forced sellers hold the same thing?</p>
+      <p data-who="Quant">It becomes a race. Archegos, March twenty twenty-one. It couldn't meet its margin calls, and on Friday the twenty-sixth banks began dumping huge blocks of the same stocks. The early sellers limited their losses. Credit Suisse later reported about five and a half billion dollars lost, and Nomura close to three.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">When everything falls together, ask whether the move was forced, not just whether the market is scared. Forced selling stops when the forcing stops.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -86,6 +142,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>What a price is, and who is forced to sell</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">How a 10% fall becomes a 44% forced sale, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ E = A - \color{#fbbf24}{L} \]</div>
+      <p>Start with a leveraged fund. Its own money is its assets minus its loan. In the worked example, \(500 - 400 = 100\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \lambda = \frac{A}{\color{#fbbf24}{E}} \]</div>
+      <p>Leverage is assets over equity: \(500 / 100 = 5\), which is the lender's maximum.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ E' = \color{#fbbf24}{(1-x)\,A} - L \]</div>
+      <p>Prices fall by \(x = 10\%\). Assets drop to 450 but the loan does not move, so equity halves to 50 and leverage jumps to 9.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{S = A' - \lambda_{\max}\,E' = 450 - 5 \times 50 = 200} \]</div>
+      <p>To get back within the lender's limit, the fund must sell 200 of its 450: 44% of everything, at any price. And lenders tend to cut \(\lambda_{\max}\) when markets get volatile, which makes the sale bigger still.</p>
+    </div>
+  </div>
 
   <h3>1. The quote: where the marginal buyer meets the marginal seller</h3>
   <p>
@@ -247,6 +323,10 @@
 
   <div class="tl-chart interactive">
     <div class="tl-chart-label">Walk the book: forced versus voluntary selling into a thinning market</div>
+    <div class="tl-predict" data-answer="-60" data-tol="10" data-unit="bp">
+      <div class="tl-predict-q"><strong>Predict first.</strong> A forced seller dumps 300 units. At normal volatility the last fill lands 30bp below the mid; at 2× it lands 50bp below. Now volatility triples. How far below the mid, in basis points, will the last fill land? Type it as a negative number, lock it in, then set size 300 and volatility 3× to check.</div>
+      <div class="tl-predict-reveal"><p><strong>−60bp.</strong> At 3× each level holds a third of its normal size and dealers pull the top two levels, so the same 300 units walk all the way down to 99.40, the last level in view. The average fill is about −41bp. Now push volatility to 4×: the 300 units no longer fit, and the readout shows units left unsold with no bids in view.</p></div>
+    </div>
     <svg id="ob-svg" viewBox="0 0 640 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A depth chart of an order book. Bids are green bars to the left of a central price column, asks red bars to the right. A sell order eats into the bids from the top; consumed size is shaded, and a marker shows the new best bid.">
       <text x="160" y="16" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" style="fill:var(--green)">Bids (buyers) — size at each price</text>
       <text x="490" y="16" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" style="fill:var(--red)">Asks (sellers)</text>
@@ -493,6 +573,18 @@
     <p style="margin-bottom:0"><strong>Treating visible positioning as the fuel.</strong><!-- DESK:START --> Retail positioning data tested null as squeeze fuel.<!-- DESK:END --> The big forced sellers — swaps at prime brokers, LDI hedges, vol-target funds — rarely show up on a free feed.</p>
   </div>
 
+  <div class="tl-drill" data-date="2021-03-26">
+    <div class="tl-drill-label">Scenario drill · 26 March 2021</div>
+    <h3>A client has missed its margin calls, and other banks hold the same stocks</h3>
+    <p>You run risk at a prime broker. A family office, Archegos Capital Management, has built very large, concentrated positions in a handful of stocks, including ViacomCBS and several US-listed Chinese companies, mostly through total return swaps with you and several other banks. This week ViacomCBS fell after announcing a share sale, and Archegos cannot meet its margin calls. You hold the stock as the hedge on your swaps. So do the other banks. What do you do this morning?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Hold the stock and wait for prices to recover. Selling now only locks in the loss.<div class="tl-drill-why">You are a forced seller whether you admit it or not: the client cannot pay, and the collateral is all you have. Waiting while other holders of the same stocks sell means you walk a thinner book later.</div></li>
+      <li data-verdict="ok">Agree with the other banks to sell slowly together, so nobody crashes the price.<div class="tl-drill-why">In principle that limits the damage for everyone. In practice it relies on every other forced seller holding back. If one breaks ranks, the ones still waiting are the slowest sellers, and the slowest seller walks the book the furthest.</div></li>
+      <li data-verdict="good">Sell the collateral promptly in large blocks, accepting a worse price now, because several forced sellers hold the same thing and this is a race.<div class="tl-drill-why">This is the lesson's point about shared holders. When the selling is forced and the holdings overlap, the book is only so deep, and the first sellers get the best of it.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Friday 26 March, banks began selling large blocks of the underlying stocks: price-insensitive sales driven by collateral, not by any view on the companies. Banks that sold early limited their losses. Credit Suisse later reported a loss of about $5.5 billion, and Nomura close to $3 billion.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -546,6 +638,26 @@
     <li><a href="limit-order-books.html">Limit Order Books</a>, <a href="market-impact-almgren-chriss.html">Market Impact (Almgren-Chriss)</a> and <a href="collateral-margin-repo-markets.html">Collateral, Margin &amp; Repo Markets</a> — the mechanics behind this lesson in depth.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="domino-chain-cross-asset.html">The Domino Effect: One Shock Through the Whole Board</a> <span>· the repricing that forced sellers turn into a rout</span></li>
+        <li><a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a> <span>· what it means to walk the book</span></li>
+        <li><a href="collateral-margin-repo-markets.html">Collateral, Margin &amp; Repo Markets</a> <span>· where margin calls come from</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="vix-uncertainty-not-fear.html">The VIX Is an Uncertainty Index, Not a Fear Gauge</a> <span>· reading the volatility the spiral feeds</span></li>
+        <li><a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a> <span>· how to sell size without walking the book</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the worst days in markets are driven by people who have to sell, and spotting that a move is forced tells you what ends it: the forcing stopping, not the news improving.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="domino-chain-cross-asset.html">← The Domino Effect</a>
@@ -680,7 +792,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

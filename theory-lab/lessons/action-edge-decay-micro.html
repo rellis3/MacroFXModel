@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>When an Edge Has Stopped Working — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <style>
   .ed-table{width:100%;border-collapse:collapse;font-size:12.5px;margin:10px 0}
@@ -173,7 +174,19 @@
       </div>
     </section>
 
+    <!-- WB:action_edge_decay-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">A decay verdict, step by step</h2>
+      <!-- WB:action_edge_decay:START -->
+      <div class="wb" data-title="A decay verdict, step by step">
+        <script type="application/json">{"w":600,"h":720,"intro":"A system tested at 55% wins, 180 live trades, and a losing streak at the end. Is the edge gone, or is this the usual noise? Press play, or step through.","steps":[{"cap":"The system was tested out of sample at 55% wins, with the average win equal to the average loss. So break-even is 50%. Live, it has made 180 trades and won 88, ending with seven losses in a row.","do":[{"box":"sys","x":10,"y":10,"w":280,"h":80,"text":"tested: 55% wins\nbreak-even 50%","tone":"blue","size":19},{"box":"live","x":310,"y":10,"w":280,"h":80,"text":"live: 88 of 180 wins\nthen 7 losses in a row","tone":"red","size":19}]},{"cap":"Start with the streak, because it feels the loudest. At 55%, a run of 7 or more losses turns up somewhere in 180 trades 30.6% of the time. About one live record in three has one. On its own, it is not evidence.","do":[{"box":"streak","x":10,"y":102,"w":580,"h":78,"text":"a 7-loss run in 180 trades:\n30.6% likely even at 55%","tone":"amber","size":19}]},{"cap":"Now the whole record. At 55%, 180 trades should give 99 wins, give or take 6.67 from luck. You have 88: z = (88 − 99) ÷ 6.67 = −1.65. Suggestive, not conclusive. That is the amber band.","do":[{"hide":"streak"},{"box":"z","x":10,"y":102,"w":580,"h":78,"text":"expected 99 ± 6.67, got 88\nz = −1.65 → AMBER","tone":"amber","size":19}]},{"cap":"How far should it move you? The record is 3.7 times likelier if the edge has gone. But the system passed an honest test: say odds of 3 to 1 that it is real. Combined, about a 55% chance it has gone. A coin flip.","do":[{"hide":"sys"},{"hide":"live"},{"box":"lr","x":10,"y":10,"w":280,"h":80,"text":"LR 3.7, prior 3 : 1\n→ about 55% gone","tone":"purple","size":19},{"box":"pw","x":310,"y":10,"w":280,"h":80,"text":"180 trades: 38% power\n80% needs ~615 trades","tone":"red","size":19}]},{"cap":"And 180 trades can barely tell. The chance of spotting a fall from 55% to 50% is only about 38%. You would need about 615 trades for 80%. The test is weak, not the evidence clean.","do":[{"pulse":"pw"}]},{"cap":"A CUSUM watches every trade instead. Each win scores −0.095, each loss +0.105, and the running total is never allowed below zero. The alarm is set in advance at h = 3. The first 120 trades went roughly to plan, 67 wins, so the total stays low.","do":[{"chart":"cu","x":10,"y":192,"w":580,"h":266,"title":"CUSUM after each trade (trade order illustrative)","xd":[0,180],"yd":[0,3.4],"yt":[[0,"0"],[1,"1"],[2,"2"],[3,"h = 3"]],"xt":[[0,"0"],[60,"60"],[120,"120"],[180,"180"]],"pl":58,"pr":20},{"series":"hl","chart":"cu","pts":[[0,3],[180,3]],"tone":"amber","dash":true,"ms":500},{"series":"c1","chart":"cu","pts":[[0,0],[1,0.0],[2,0.105],[3,0.01],[4,0.0],[5,0.105],[6,0.211],[7,0.316],[8,0.421],[9,0.326],[10,0.231],[11,0.136],[12,0.04],[13,0.0],[14,0.105],[15,0.211],[16,0.316],[17,0.421],[18,0.527],[19,0.431],[20,0.336],[21,0.241],[22,0.146],[23,0.251],[24,0.156],[25,0.06],[26,0.166],[27,0.271],[28,0.176],[29,0.08],[30,0.186],[31,0.291],[32,0.396],[33,0.502],[34,0.607],[35,0.713],[36,0.818],[37,0.723],[38,0.627],[39,0.532],[40,0.637],[41,0.542],[42,0.447],[43,0.552],[44,0.457],[45,0.562],[46,0.668],[47,0.572],[48,0.477],[49,0.582],[50,0.487],[51,0.392],[52,0.497],[53,0.602],[54,0.708],[55,0.612],[56,0.517],[57,0.422],[58,0.326],[59,0.432],[60,0.337],[61,0.241],[62,0.146],[63,0.051],[64,0.156],[65,0.261],[66,0.367],[67,0.472],[68,0.377],[69,0.482],[70,0.387],[71,0.492],[72,0.597],[73,0.703],[74,0.808],[75,0.713],[76,0.618],[77,0.522],[78,0.427],[79,0.532],[80,0.638],[81,0.743],[82,0.648],[83,0.552],[84,0.457],[85,0.562],[86,0.467],[87,0.573],[88,0.477],[89,0.382],[90,0.287],[91,0.191],[92,0.297],[93,0.201],[94,0.307],[95,0.412],[96,0.317],[97,0.422],[98,0.527],[99,0.633],[100,0.538],[101,0.442],[102,0.548],[103,0.452],[104,0.357],[105,0.262],[106,0.367],[107,0.272],[108,0.176],[109,0.081],[110,0.186],[111,0.091],[112,0.0],[113,0.0],[114,0.0],[115,0.105],[116,0.01],[117,0.0],[118,0.0],[119,0.0],[120,0.0]],"tone":"purple","ms":1600}]},{"cap":"Then the last 60 trades: 21 wins and 39 losses, ending in the seven-loss run. The losses push the total up to about 2.2. Close to the alarm, but not over it.","do":[{"series":"c2","chart":"cu","pts":[[120,0.0],[121,0.0],[122,0.105],[123,0.01],[124,0.115],[125,0.02],[126,0.125],[127,0.231],[128,0.336],[129,0.442],[130,0.547],[131,0.652],[132,0.557],[133,0.462],[134,0.366],[135,0.472],[136,0.376],[137,0.482],[138,0.587],[139,0.692],[140,0.597],[141,0.703],[142,0.607],[143,0.713],[144,0.818],[145,0.723],[146,0.627],[147,0.733],[148,0.637],[149,0.743],[150,0.848],[151,0.753],[152,0.858],[153,0.963],[154,1.069],[155,0.974],[156,1.079],[157,1.184],[158,1.29],[159,1.395],[160,1.5],[161,1.405],[162,1.31],[163,1.214],[164,1.119],[165,1.224],[166,1.129],[167,1.235],[168,1.34],[169,1.445],[170,1.551],[171,1.656],[172,1.561],[173,1.465],[174,1.571],[175,1.676],[176,1.781],[177,1.887],[178,1.992],[179,2.097],[180,2.203]],"tone":"red","ms":1400},{"dot":"ce","chart":"cu","at":[180,2.203],"text":"2.2","tone":"red","dx":-10,"dy":-16,"anchor":"end"}]},{"cap":"Why h = 3? It is the smoke-alarm trade-off. From the lesson's simulation: a healthy 55% system trips the alarm within 300 trades 21.1% of the time at h = 2, 3.5% at h = 3, 0.5% at h = 4.","do":[{"chart":"th","x":10,"y":470,"w":580,"h":240,"title":"% of runs: false alarm (red), decay caught (green)","xd":[0.5,4.5],"yd":[0,128],"yt":[[0,"0"],[50,"50"],[100,"100"]],"xt":[[1,"h = 2"],[2,"h = 3"],[3,"h = 4"],[4,"h = 5"]],"pl":50},{"bars":"fa","chart":"th","data":[[0.8,21.1,"21%","red"],[1.8,3.5,"3.5%","red"],[2.8,0.5,"0.5%","red"],[3.8,0.05,"0.05%","red"]],"bw":34,"ms":1000}]},{"cap":"The other side of the trade-off: how often a real fall to 50% is caught within 1,000 trades. 99.6% at h = 2, 95.4% at h = 3, 86.5% at h = 4. No setting is fast and quiet at once.","do":[{"bars":"ca","chart":"th","data":[[1.2,99.6,"99.6%","green"],[2.2,95.4,"95%","green"],[3.2,86.5,"87%","green"],[4.2,73.6,"74%","green"]],"bw":34,"ms":1000}]},{"cap":"The verdict, from rules written before launch: AMBER. Halve the size and look for a named cause: costs, fills, a data change, a new regime. Red, and stop, if the CUSUM reaches 3 or z falls to −2.33. Never re-fit the system on its losing stretch.","do":[{"hide":"lr"},{"hide":"pw"},{"hide":"z"},{"box":"ver","x":10,"y":10,"w":580,"h":170,"text":"AMBER: half size, find a cause\nRED if CUSUM ≥ 3 or z ≤ −2.33\nnever re-fit on the losing stretch","tone":"amber","size":21}]}]}</script>
+      </div>
+      <!-- WB:action_edge_decay:END -->
+    </section>
+    <!-- WB:action_edge_decay-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">How an edge dies</h2>
       <div class="sl-chain">
@@ -189,7 +202,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9 · It actually happened</div>
       <h2 class="sl-h2">Slow decay, sudden shocks</h2>
       <div class="sl-compare">
@@ -198,7 +211,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · The desk's verdict</div>
       <h2 class="sl-h2">What was tested here</h2>
       <div class="sl-stamp untested"><span class="sl-stamp-tag">Not tested here</span><span><strong>"A losing streak means the edge has decayed."</strong> A streak can't settle it, and no desk strategy has run live long enough for a full decay test.</span></div>
@@ -206,7 +219,7 @@
       <div class="sl-stamp context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10"><span class="sl-stamp-tag">Desk data: base rate</span><span><strong>Check the backtest first.</strong> A Fibonacci-level system: 85.7% backtest win rate vs 39.6% live. A gap like that from day one isn't decay — the backtest saw something live couldn't.</span></div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11 · Template</div>
       <h2 class="sl-h2">The decay review</h2>
       <div class="sl-icard-grid">
@@ -217,7 +230,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -255,7 +268,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -416,5 +429,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

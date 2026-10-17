@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>One Honestly Tested Strategy — Capstone — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theory.css">
+<style>
+  /* Local: the workbench's number grid, as-of lines and note boxes. */
+  .cw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0}
+  .cw-field label{display:block;font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--text2);margin-bottom:4px}
+  .cw-asof{display:block;font-family:'DM Mono',monospace;font-size:10.5px;line-height:1.45;color:var(--text3);margin-top:4px;overflow-wrap:anywhere}
+  .cw-note-label{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--purple);margin:14px 0 6px}
+  textarea.cw-note{min-height:84px;resize:vertical;font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5}
+  .cw-learn{font-size:12px;margin-top:6px}
+  .cw-step .tl-readout{line-height:1.6}
+  .cw-actions{margin:22px 0}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="hub.html">Theory Lab</a> · <a href="paths.html#deliverable">Learning paths</a> · System Building capstone</div>
+  <div class="tl-kicker">Capstone · 🛠️ System Building path</div>
+  <h1 class="tl-title">One Honestly Tested Strategy</h1>
+  <p class="tl-dek">One strategy idea taken from a written hypothesis to a verdict, documented so someone else could rebuild it and would believe the result, including when the result is null.</p>
+  <div class="tl-meta"><span class="tl-status course">CAPSTONE WORKBENCH</span><span>~35 min</span><span>Your notes stay in this browser</span></div>
+
+  <div class="tl-callout"><strong>How to use it.</strong> Each step has a box for <em>your</em> words and, where there is arithmetic, a calculator with worked defaults you can overwrite. Do the steps in order: the pass bar in step 1 is written before you see any result, and steps 4 and 5 use the same trial count. A null result written up honestly is a finished capstone.</div>
+
+  <section class="tl-box cw-step" data-step="1">
+    <div class="tl-box-label">Step 1 of 8</div>
+    <h3>Write the hypothesis, the base rate and the pass bar first</h3>
+    <p>Before you load any data: one sentence on what you expect and why, the base rate it has to beat, and the exact result that would count as a pass. A pass bar written after the test is not a pass bar.</p>
+    <label class="cw-note-label" for="n-hyp">Hypothesis</label>
+    <textarea id="n-hyp" class="tl-scratch-input cw-note" data-note="hyp" placeholder="e.g. After a 2σ down day, EURUSD recovers part of the move over the next three sessions, because…"></textarea>
+    <label class="cw-note-label" for="n-base">Base rate</label>
+    <textarea id="n-base" class="tl-scratch-input cw-note" data-note="base" placeholder="e.g. On all days, the next-3-session return is up 51% of the time, average +0.02%."></textarea>
+    <label class="cw-note-label" for="n-bar">Pass bar</label>
+    <textarea id="n-bar" class="tl-scratch-input cw-note" data-note="bar" placeholder="e.g. Mean next-3 return above +0.10%, a 95% interval clear of zero, the same sign in both halves of the sample."></textarea>
+    <div class="cw-learn">Learn it in: <a href="lessons/research-pipeline-hypothesis-to-backtest.html">The Research Pipeline: Hypothesis to Honest Backtest</a> · <a href="lessons/bayesian-inference.html">Bayesian Inference &amp; Updating</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="2">
+    <div class="tl-box-label">Step 2 of 8</div>
+    <h3>Build the dataset point-in-time</h3>
+    <p>Every value must be what you could have known on that date: no later revisions, no instruments chosen because they survived. List the sources, the as-of rule and what you did about dead instruments.</p>
+    <label class="cw-note-label" for="n-data">Your data note</label>
+    <textarea id="n-data" class="tl-scratch-input cw-note" data-note="data" placeholder="e.g. Daily closes from …, no revised macro series, delisted pairs kept, first usable date …"></textarea>
+    <div class="cw-learn">Learn it in: <a href="lessons/point-in-time-data-survivorship-bias.html">Point-in-Time Data &amp; Survivorship Bias</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="3">
+    <div class="tl-box-label">Step 3 of 8</div>
+    <h3>Check every feature for leakage</h3>
+    <p>For each feature, write when it becomes known and when you use it. Any feature that is computed with data from the same bar it predicts is a leak. Record the code version and the data snapshot so someone else can rebuild the exact result.</p>
+    <label class="cw-note-label" for="n-leak">Your leakage check</label>
+    <textarea id="n-leak" class="tl-scratch-input cw-note" data-note="leak" placeholder="e.g. Signal uses close of day t, trade enters at open of t+1. Volatility uses t−20…t−1. Code at commit …, data snapshot …"></textarea>
+    <div class="cw-learn">Learn it in: <a href="lessons/feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="4">
+    <div class="tl-box-label">Step 4 of 8</div>
+    <h3>Test it walk-forward, and count what you tried</h3>
+    <p>Fit on the past, test on the next unseen block, roll forward, and leave a gap between the two so overlapping labels cannot leak. Then count every variant you ran: each parameter, filter or instrument choice is a trial. Pure luck alone produces a best Sharpe this high.</p>
+    <div class="cw-grid"><div class="cw-field"><label for="f-trials">Variants tried, N</label><input id="f-trials" class="tl-scratch-input" data-k="trials" data-default="50" inputmode="decimal"><span class="cw-asof" data-asof="trials"></span></div><div class="cw-field"><label for="f-sdsr">Spread of Sharpe across them (annual)</label><input id="f-sdsr" class="tl-scratch-input" data-k="sdsr" data-default="0.66" inputmode="decimal"><span class="cw-asof" data-asof="sdsr"></span></div></div>
+    <div class="tl-readout" data-calc="luck"></div>
+    <label class="cw-note-label" for="n-wf">Your walk-forward note</label>
+    <textarea id="n-wf" class="tl-scratch-input cw-note" data-note="wf" placeholder="e.g. 5-year fit, 1-year test, 10-day purge gap, rolled 8 times. 50 variants tried in total, all logged."></textarea>
+    <div class="cw-learn">Learn it in: <a href="lessons/walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> · <a href="lessons/multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere Effect</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="5">
+    <div class="tl-box-label">Step 5 of 8</div>
+    <h3>Report the deflated Sharpe ratio, not the raw one</h3>
+    <p>The deflated Sharpe ratio asks how likely the true Sharpe is above zero once you allow for the number of trials and for fat tails. The defaults reproduce the lesson's worked example.</p>
+    <div class="cw-grid"><div class="cw-field"><label for="f-sr">Best Sharpe found (annual)</label><input id="f-sr" class="tl-scratch-input" data-k="sr" data-default="1.8" inputmode="decimal"><span class="cw-asof" data-asof="sr"></span></div><div class="cw-field"><label for="f-years">Years of daily data</label><input id="f-years" class="tl-scratch-input" data-k="years" data-default="10" inputmode="decimal"><span class="cw-asof" data-asof="years"></span></div><div class="cw-field"><label for="f-skew">Skewness of daily returns</label><input id="f-skew" class="tl-scratch-input" data-k="skew" data-default="-0.4" inputmode="decimal"><span class="cw-asof" data-asof="skew"></span></div><div class="cw-field"><label for="f-kurt">Kurtosis of daily returns</label><input id="f-kurt" class="tl-scratch-input" data-k="kurt" data-default="7" inputmode="decimal"><span class="cw-asof" data-asof="kurt"></span></div></div>
+    <div class="tl-readout" data-calc="dsr"></div>
+    <label class="cw-note-label" for="n-dsr">Your sentence</label>
+    <textarea id="n-dsr" class="tl-scratch-input cw-note" data-note="dsr" placeholder="e.g. Raw Sharpe 1.8, but after 50 trials the deflated Sharpe is 0.82: an 18% chance this is luck. Below my 0.95 bar, so not a pass."></textarea>
+    <div class="cw-learn">Learn it in: <a href="lessons/sharpe-family-deflated.html">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="6">
+    <div class="tl-box-label">Step 6 of 8</div>
+    <h3>Subtract realistic costs</h3>
+    <p>Spread, commission and slippage come off every round trip. An edge that is a few basis points per trade can vanish entirely.</p>
+    <div class="cw-grid"><div class="cw-field"><label for="f-gross">Gross edge per trade (bp)</label><input id="f-gross" class="tl-scratch-input" data-k="gross" data-default="6" inputmode="decimal"><span class="cw-asof" data-asof="gross"></span></div><div class="cw-field"><label for="f-cost">Round-trip cost per trade (bp)</label><input id="f-cost" class="tl-scratch-input" data-k="cost" data-default="2.5" inputmode="decimal"><span class="cw-asof" data-asof="cost"></span></div><div class="cw-field"><label for="f-ntr">Trades per year</label><input id="f-ntr" class="tl-scratch-input" data-k="ntr" data-default="200" inputmode="decimal"><span class="cw-asof" data-asof="ntr"></span></div></div>
+    <div class="tl-readout" data-calc="cost"></div>
+    <label class="cw-note-label" for="n-cost">Your sentence</label>
+    <textarea id="n-cost" class="tl-scratch-input cw-note" data-note="cost" placeholder="e.g. Costs take 42% of the gross edge. Net 3.5bp per trade, 7% a year before sizing. Survives, but not if costs double."></textarea>
+    <div class="cw-learn">Learn it in: <a href="lessons/execution-algorithms.html">Execution Algorithms: TWAP, VWAP, POV, IS</a> · <a href="lessons/market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="7">
+    <div class="tl-box-label">Step 7 of 8</div>
+    <h3>Size it, and face the drawdowns you will have to sit through</h3>
+    <p>Size from the edge and the volatility, then look at the pain that size brings: how likely a deep fall is, and how long a losing streak to expect.</p>
+    <div class="cw-grid"><div class="cw-field"><label for="f-mu">Expected annual return, unlevered (%)</label><input id="f-mu" class="tl-scratch-input" data-k="mu" data-default="7" inputmode="decimal"><span class="cw-asof" data-asof="mu"></span></div><div class="cw-field"><label for="f-vol">Annual volatility, unlevered (%)</label><input id="f-vol" class="tl-scratch-input" data-k="vol" data-default="10" inputmode="decimal"><span class="cw-asof" data-asof="vol"></span></div><div class="cw-field"><label for="f-lev">Leverage you plan to run</label><input id="f-lev" class="tl-scratch-input" data-k="lev" data-default="2" inputmode="decimal"><span class="cw-asof" data-asof="lev"></span></div><div class="cw-field"><label for="f-dd">Drawdown you could not stomach (%)</label><input id="f-dd" class="tl-scratch-input" data-k="dd" data-default="25" inputmode="decimal"><span class="cw-asof" data-asof="dd"></span></div><div class="cw-field"><label for="f-win">Win rate per trade (%)</label><input id="f-win" class="tl-scratch-input" data-k="win" data-default="54" inputmode="decimal"><span class="cw-asof" data-asof="win"></span></div></div>
+    <div class="tl-readout" data-calc="size"></div>
+    <label class="cw-note-label" for="n-size">Your sentence</label>
+    <textarea id="n-size" class="tl-scratch-input cw-note" data-note="size" placeholder="e.g. Full Kelly is 7× leverage; I run 2×, under a third of Kelly. Even so there is a … chance of a 25% fall, and a losing streak of about … trades within a year."></textarea>
+    <div class="cw-learn">Learn it in: <a href="lessons/kelly-criterion.html">The Kelly Criterion &amp; Position Sizing</a> · <a href="lessons/drawdowns-risk-of-ruin.html">Drawdowns, Risk of Ruin, and Why Good Systems Get Abandoned</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="8">
+    <div class="tl-box-label">Step 8 of 8</div>
+    <h3>Log the decision before you know how it turns out</h3>
+    <p>Write the decision, what you expect, and what result would make you stop. Read it again in three months, judging the decision, not the outcome.</p>
+    <label class="cw-note-label" for="n-journal">Your journal entry</label>
+    <textarea id="n-journal" class="tl-scratch-input cw-note" data-note="journal" placeholder="Decision: … · Expected over the next 3 months: … · I stop if: … · Reviewed on: …" style="min-height:140px"></textarea>
+    <div class="cw-learn">Learn it in: <a href="lessons/process-vs-outcome-decision-journals.html">Judge the Decision, Not the Result</a></div>
+  </section>
+
+  <div class="tl-btnrow cw-actions">
+    <button type="button" class="tl-btn active" id="cw-download">⬇ Download as text</button>
+    <button type="button" class="tl-btn" id="cw-clear">Clear my notes</button>
+    <span class="tl-hint">Saved in this browser only. Download to keep a copy or hand it in.</span>
+  </div>
+  <div class="tl-footer-nav"><a href="paths.html#deliverable">← System Building path</a><a href="capstone-risk.html">A one-page risk report →</a></div>
+</div>
+<script>
+window.TL_CAPSTONE = {
+  id: 'systems', file: 'tested-strategy', title: 'One honestly tested strategy',
+  calc: function (a) {
+    var EG = 0.5772156649;
+    function Phi(x) { var t = 1 / (1 + 0.2316419 * Math.abs(x)), d = 0.3989422804 * Math.exp(-x * x / 2), p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return x > 0 ? 1 - p : p; }
+    function iPhi(p) { // Acklam's rational approximation
+      var a = [-39.69683028665376, 220.9460984245205, -275.9285104469687, 138.357751867269, -30.66479806614716, 2.506628277459239], b = [-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155288572],
+          c = [-0.007784894002430293, -0.3223964580411365, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783], d = [0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416], q, r;
+      if (p < 0.02425) { q = Math.sqrt(-2 * Math.log(p)); return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+      if (p > 1 - 0.02425) { q = Math.sqrt(-2 * Math.log(1 - p)); return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+      q = p - 0.5; r = q * q; return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+    }
+    var N = a.num('trials'), sd = a.num('sdsr'), sr0 = null;
+    if (N != null && N >= 2 && sd != null && sd >= 0) {
+      sr0 = sd * ((1 - EG) * iPhi(1 - 1 / N) + EG * iPhi(1 - 1 / (N * Math.E)));
+      a.set('luck', 'Expected best Sharpe from ' + a.fmt(N, 0) + ' variants with no edge at all: <b>' + a.fmt(sr0, 2) + '</b><br>Your result has to beat this, not zero.');
+    } else a.set('luck', 'Enter the number of variants (at least 2) and how spread out their Sharpe ratios were.');
+    var sr = a.num('sr'), yrs = a.num('years'), sk = a.num('skew'), ku = a.num('kurt');
+    if (sr0 != null && sr != null && yrs > 0 && sk != null && ku != null) {
+      var T = Math.round(252 * yrs), k = Math.sqrt(252), s = sr / k, s0 = sr0 / k, den = 1 - sk * s + (ku - 1) / 4 * s * s;
+      if (den > 0) {
+        var z = (s - s0) * Math.sqrt(T - 1) / Math.sqrt(den), dsr = Phi(z);
+        a.set('dsr', 'Daily Sharpe ' + a.fmt(s, 4) + ' against a luck bar of ' + a.fmt(s0, 4) + ', over ' + a.fmt(T, 0) + ' days<br>z = ' + a.fmt(z, 2) + ' → deflated Sharpe ratio <b>' + a.fmt(dsr, 2) + '</b>: ' + (dsr >= 0.95 ? 'clears the usual 0.95 bar.' : 'below the usual 0.95 bar. The chance this edge is luck: ' + a.fmt(100 * (1 - dsr), 0) + '%.'));
+      } else a.set('dsr', 'These skew and kurtosis values make the correction undefined. Check them.');
+    } else a.set('dsr', 'Fill in step 4 first, then the best Sharpe, the years of data, skew and kurtosis.');
+    var g = a.num('gross'), c = a.num('cost'), n = a.num('ntr');
+    if (g != null && c != null && n != null) {
+      var net = g - c;
+      a.set('cost', 'Net edge per trade = ' + a.fmt(g, 1) + ' − ' + a.fmt(c, 1) + ' = <b>' + a.fmt(net, 1) + ' bp</b>' + (g > 0 ? ' (costs take ' + a.fmt(100 * c / g, 0) + '% of the gross edge)' : '') + '<br>Per year, unlevered: gross ' + a.fmt(g * n / 100, 2) + '%, net <b>' + a.fmt(net * n / 100, 2) + '%</b>' + (net <= 0 ? '<br><b>The edge does not survive costs.</b>' : '<br>If costs doubled, net per trade would be ' + a.fmt(g - 2 * c, 1) + ' bp.'));
+    } else a.set('cost', 'Enter the gross edge, the round-trip cost and the trades per year.');
+    var mu = a.num('mu'), vo = a.num('vol'), L = a.num('lev'), dd = a.num('dd'), w = a.num('win');
+    if (mu != null && vo > 0 && L > 0 && dd > 0 && dd < 100) {
+      var m = mu / 100, v = vo / 100, kel = m / (v * v), lm = L * m, lv = L * v, drift = lm - lv * lv / 2, dist = -Math.log(1 - dd / 100);
+      var pr = drift <= 0 ? 1 : Math.exp(-2 * drift * dist / (lv * lv));
+      var h = 'Full Kelly leverage = μ ÷ σ² = ' + a.fmt(m, 3) + ' ÷ ' + a.fmt(v * v, 4) + ' = <b>' + a.fmt(kel, 1) + '×</b>; you plan ' + a.fmt(L, 1) + '× = ' + a.fmt(100 * L / kel, 0) + '% of Kelly<br>Growth rate at that leverage ≈ ' + a.fmt(100 * drift, 2) + '% a year' + (drift <= 0 ? ' <b>(negative: this size shrinks the account)</b>' : '') + '<br>Chance of ever falling ' + a.fmt(dd, 0) + '% below today\'s level: <b>' + a.fmt(100 * pr, 0) + '%</b>';
+      if (w != null && w > 0 && w < 100 && n != null && n > 1) { var q = 1 - w / 100; h += '<br>Longest losing streak to expect in ' + a.fmt(n, 0) + ' trades: about <b>' + a.fmt(Math.log(n * w / 100) / Math.log(1 / q), 0) + '</b> in a row'; }
+      a.set('size', h);
+    } else a.set('size', 'Enter the return, volatility, leverage and the drawdown you could not stomach (between 0 and 100%).');
+  }
+};
+</script>
+<script src="assets/capstone.js"></script>
+</body>
+</html>

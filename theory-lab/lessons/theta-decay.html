@@ -42,6 +42,52 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The value of the lesson's at-the-money call, spot and strike 100, 20% volatility, 2% rates, as the last 30 days run out with spot unchanged. It falls slowly at first and then fast: $2.37 with 30 days left while losing about $0.041 a day, $1.12 with 7 days left at $0.082 a day, $0.42 with 1 day left at $0.21 a day, and zero at expiry. A dashed straight line shows the trap of multiplying today's theta by the days left, which leaves $1.14 at expiry instead of zero.">
+      <line class="tlp-line" x1="50" y1="200" x2="560" y2="200"/>
+      <line class="tlp-line dash" x1="60" y1="48.4" x2="540" y2="126.8"/>
+      <polyline class="tlp-line red thick" points="60,48.4 76,51.1 92,53.7 108,56.5 124,59.2 140,62 156,64.9 172,67.8 188,70.8 204,73.9 220,77 236,80.2 252,83.5 268,86.9 284,90.3 300,93.9 316,97.6 332,101.4 348,105.3 364,109.4 380,113.7 396,118.3 412,123 428,128.1 444,133.5 460,139.4 476,145.8 492,153.2 508,161.9 524,173.1 528,176.7 532,181 536,186.6 538.4,191.5 540,200"/>
+      <circle class="tlp-blue" cx="60" cy="48.4" r="6"/>
+      <circle class="tlp-amber" cx="428" cy="128.1" r="6"/>
+      <circle class="tlp-red" cx="524" cy="173.1" r="6"/>
+      <text class="tlp-blue" x="70" y="32" font-size="14" font-weight="700">30 days: $2.37, −$0.041/day</text>
+      <text class="tlp-amber" x="416" y="156" text-anchor="end" font-size="14" font-weight="700">7 days: $1.12, −$0.082/day</text>
+      <text class="tlp-red" x="512" y="188" text-anchor="end" font-size="14" font-weight="700">1 day: $0.42, −$0.21/day</text>
+      <text class="tlp-text2" x="590" y="66" text-anchor="end" font-size="12">dashed: 30 × $0.041 a day, the straight-line trap</text>
+      <text class="tlp-text3" x="60" y="218" text-anchor="middle" font-size="12">30 days left</text>
+      <text class="tlp-text3" x="316" y="218" text-anchor="middle" font-size="12">14</text>
+      <text class="tlp-text3" x="428" y="218" text-anchor="middle" font-size="12">7</text>
+      <text class="tlp-text3" x="540" y="218" text-anchor="middle" font-size="12">expiry</text>
+    </svg>
+    <figcaption>Same at-the-money call, spot stuck at 100: only time passes. The value melts slowly a month out and fast in the last week, because theta grows like one over the square root of the time left, just like gamma. Theta is the rent you pay for that gamma.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I bought a call, the market went nowhere, and I still lost money. Where did it go?</p>
+      <p data-who="Quant">Time decay. Theta. Every day you hold an option there's one less day for the price to move your way, so the option is worth a bit less.</p>
+      <p data-who="Trader">Is it like a fee?</p>
+      <p data-who="Quant">Think of it as rent. You're renting the right to gain from big moves in either direction. That right is gamma. Nobody rents it to you for free.</p>
+      <p data-who="Trader">How much rent are we talking about?</p>
+      <p data-who="Quant">Take an at-the-money call: spot and strike at a hundred, twenty percent volatility, two percent rates. With thirty days left it's worth about two dollars thirty-seven, and it loses about four cents a day.</p>
+      <p data-who="Trader">So thirty days at four cents, about a dollar twenty in total?</p>
+      <p data-who="Quant">That's the trap. It loses the whole two dollars thirty-seven if the price doesn't move. The melt speeds up. With seven days left it's about eight cents a day. On the last day it's about twenty-one cents, five times the rate a month out.</p>
+      <p data-who="Trader">Why does it speed up like that?</p>
+      <p data-who="Quant">Because theta is tied to gamma. For a hedged option, theta is just gamma times a constant: half the volatility squared, times the price squared. Gamma explodes near expiry, so theta does too.</p>
+      <p data-who="Trader">So is paying the rent a good deal or not?</p>
+      <p data-who="Quant">It depends on one comparison. The rent was priced at twenty percent volatility. If the market actually moves more than that, your hedging gains beat the rent. If it moves less, you lose, even with no view on direction at all.</p>
+      <p data-who="Trader">And the dealer who sold me the option?</p>
+      <p data-who="Quant">Collects the rent. They're long theta, and by the same equation they're short gamma. Same fact, read two ways.</p>
+      <p data-who="Trader">Selling options for income sounds pretty good, then.</p>
+      <p data-who="Quant">Until it isn't. In November twenty eighteen, a firm called OptionSellers ran accounts selling far out-of-the-money natural gas calls. On the fourteenth of November gas jumped by double digits in a single session. Hundreds of accounts were wiped out, and some ended up owing their broker money.</p>
+      <p data-who="Trader">Picking up nickels in front of a steamroller.</p>
+      <p data-who="Quant">Exactly. Theta comes in small and daily. Gamma gets paid all at once. Know which side of that you're on.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -106,6 +152,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where "theta pays for gamma" comes from, one step at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\frac{\partial V}{\partial t}} + rS\frac{\partial V}{\partial S} + \tfrac{1}{2}\sigma^2 S^2\frac{\partial^2 V}{\partial S^2} - rV = 0 \]</div>
+      <p>Start from the Black-Scholes PDE. The time derivative is the term this lesson is after.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\Theta} + rS\color{#fbbf24}{\Delta} + \tfrac{1}{2}\sigma^2S^2\color{#fbbf24}{\Gamma} - rC = 0 \]</div>
+      <p>Give each derivative its Greek name. The PDE is now a statement purely about the Greeks.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \Theta = \color{#fbbf24}{rC - rS\Delta} - \tfrac{1}{2}\sigma^2S^2\Gamma \]</div>
+      <p>Isolate theta. The financing terms carry the option and its hedge at the risk-free rate; the last term is convexity.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \Theta \approx \color{#10b981}{-\tfrac{1}{2}\sigma^2S^2\Gamma} \]</div>
+      <p>For a delta-hedged position the financing terms are small, so theta is gamma times a negative constant. At 30 days, \(-200 \times 0.0696 = -13.92\) a year against the full closed form's \(-14.89\): theta is the rent paid for gamma.</p>
+    </div>
+  </div>
   <p>
     Three things build on top of the Black-Scholes PDE: the rearrangement
     that isolates theta, the closed-form solution for a European call, and
@@ -482,6 +548,10 @@
       exact closed form \(\Theta = -S\varphi(d_1)\sigma/(2\sqrt{\tau}) -
       rKe^{-r\tau}N(d_2)\).
     </p>
+    <div class="tl-predict" data-answer="2.2" data-tol="0.3" data-unit="¢">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With 30 days left this call loses about 4.1¢ a day. With 120 days left, four times as long, how many cents a day does it lose? Lock in a guess, then type 120 into the days-to-expiry field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 2.2¢ a day</strong> (the readout shows \(-0.0217\)). Four times the time does not cut theta to a quarter. The convexity term shrinks with \(\sqrt{\tau}\), so it only halves, from about 13.9 to about 6.9 a year, while the financing term stays near 1.0: \((6.9 + 1.0)/365 \approx 0.022\). Now try 1 day and see the same call lose about 21¢.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Spot \(S\)</span></div>
@@ -780,6 +850,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2018-11-14">
+    <div class="tl-drill-label">Scenario drill · 14 November 2018</div>
+    <h3>Your "income" calls are waking up</h3>
+    <p>It is the morning of 14 November 2018. Your account sells far out-of-the-money call options on natural gas futures for the premium, and the theta has come in steadily for months. The positions are not delta-hedged. Natural gas has been rallying hard on early cold-weather forecasts and low storage, and the calls that looked nearly worthless are starting to gain value. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Hold. The strikes are still well above the price, and the theta keeps coming in every day.<div class="tl-drill-why">Long theta is short gamma, by the same identity. Being far out of the money only means delta is small for now. A jump makes it large all at once, and the daily rent you collected is tiny next to that bill.</div></li>
+      <li data-verdict="bad">Sell more calls further up, since the premium is richer now.<div class="tl-drill-why">Richer premium is the market telling you the gamma bill is getting bigger. Adding more short calls doubles down on exactly the exposure that is hurting you, with margin already under pressure.</div></li>
+      <li data-verdict="good">Cap the risk now: buy back the calls, or buy calls further up to turn them into spreads, so no single jump can exceed what the account can carry.<div class="tl-drill-why">This fixes the real problem, an unlimited short-gamma position with no hedge. Paying up to close or cap it costs some of the premium collected. It keeps a jump from turning months of small gains into a margin call you cannot meet.</div></li>
+      <li data-verdict="ok">Delta-hedge by buying some natural gas futures.<div class="tl-drill-why">Better than nothing: it offsets part of the directional loss. But you stay short gamma, and a hedge set this morning is too small after a double-digit jump. Margin calls still arrive before you can rebalance.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 14 November the front-month natural gas contract jumped by double digits in percentage terms in a single session. Calls that had looked close to worthless gained delta and value very quickly. OptionSellers.com's accounts could not meet the margin calls, and the clearing broker liquidated them into the move. Hundreds of client accounts were wiped out, and some ended with negative balances, owing the broker money on top of everything they had deposited.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -900,6 +983,26 @@
     <li>Espen Gaarder Haug, <em>The Complete Guide to Option Pricing Formulas</em>, 2nd ed., McGraw-Hill, 2007 — a comprehensive reference for closed-form Greek formulas (including theta) across option types and model variants, useful once the plain European case here needs extending.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> <span>· the PDE theta falls out of</span></li>
+        <li><a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a> <span>· gamma's one-over-root-time climb into expiry</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a> <span>· where the implied vol in the rent comes from</span></li>
+        <li><a href="covered-call-equals-short-put.html">The Covered Call Is a Short Put</a> <span>· why "income" strategies are short options</span></li>
+        <li><a href="tail-risk-hedging-convexity.html">Tail Risk Hedging &amp; Portfolio Convexity</a> <span>· the side that pays theta for gamma on purpose</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every option you own costs rent and every option you sell collects it, and knowing what that rent buys tells you which side of a jump you are on.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="open-interest-walls-max-pain.html">← Open Interest Walls, Max Pain &amp; Squeeze Trading</a>
@@ -1090,7 +1193,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

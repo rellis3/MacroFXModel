@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Active Portfolio Management — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,62 @@
       <li><strong>Real-world episode:</strong> in the August 2007 "quant quake", quant equity funds with thousands of positions each found their books overlapped, so one fund's forced unwind made every "independent" bet lose at once and effective breadth collapsed toward one.<!-- DESK:START --> On this desk's seven USD crosses, breadth is too thin to detect a realistic edge (underpowered).<!-- DESK:END --></li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A rising, flattening curve of the Information Ratio against breadth for a fixed skill of IC 0.10, following IR equals 0.10 times the square root of breadth. Thirty-six calls a year taken as independent gives an IR of 0.60. If they are really one dollar view refreshed four times a year, breadth is 4 and the IR is only 0.20. In August 2007, thousands of quant positions turned out to be close to one bet.">
+      <line class="tlp-line" x1="70" y1="200" x2="570" y2="200"/>
+      <line class="tlp-line" x1="70" y1="30" x2="70" y2="200"/>
+      <text class="tlp-text3" x="76" y="22" font-size="12">Information Ratio ↑</text>
+      <text class="tlp-text3" x="62" y="204" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="62" y="164" text-anchor="end" font-size="12">0.2</text>
+      <text class="tlp-text3" x="62" y="84" text-anchor="end" font-size="12">0.6</text>
+      <polyline class="tlp-line purple thick" points="70.0,200.0 71.9,190.0 73.8,185.9 77.7,180.0 81.5,175.5 85.3,171.7 93.0,165.4 100.6,160.0 115.9,151.0 131.2,143.4 146.6,136.8 161.9,130.7 177.2,125.2 192.5,120.0 207.8,115.1 223.1,110.6 238.4,106.2 253.8,102.0 269.1,98.0 284.4,94.2 299.7,90.5 315.0,86.9 330.3,83.4 345.6,80.0 360.9,76.7 376.2,73.5 391.6,70.4 406.9,67.3 422.2,64.4 437.5,61.4 452.8,58.6 468.1,55.8 483.4,53.0 498.8,50.3 514.1,47.7 529.4,45.1 544.7,42.5 560.0,40.0"/>
+      <line class="tlp-line green dash" x1="345.6" y1="80" x2="345.6" y2="200"/>
+      <line class="tlp-line red dash" x1="100.6" y1="160" x2="100.6" y2="200"/>
+      <circle class="tlp-green" cx="345.6" cy="80" r="6"/>
+      <circle class="tlp-red" cx="100.6" cy="160" r="6"/>
+      <text class="tlp-green" x="356" y="100" font-size="13" font-weight="700">36 calls taken as independent</text>
+      <text class="tlp-green" x="356" y="117" font-size="13">IR ≈ 0.10 × √36 = 0.60</text>
+      <text class="tlp-red" x="114" y="170" font-size="13" font-weight="700">really one dollar view</text>
+      <text class="tlp-red" x="114" y="187" font-size="13">4 bets a year: IR 0.20</text>
+      <text class="tlp-amber" x="84" y="46" font-size="13" font-weight="700">August 2007: thousands of quant positions</text>
+      <text class="tlp-amber" x="84" y="63" font-size="13">turned out to be close to one bet</text>
+      <text class="tlp-text3" x="100.6" y="216" text-anchor="middle" font-size="12">4</text>
+      <text class="tlp-text3" x="345.6" y="216" text-anchor="middle" font-size="12">36</text>
+      <text class="tlp-text3" x="560" y="216" text-anchor="middle" font-size="12">64</text>
+      <text class="tlp-text3" x="570" y="234" text-anchor="end" font-size="12">breadth: independent bets per year →</text>
+      <text class="tlp-text2" x="190" y="234" text-anchor="middle" font-size="12">same skill, IC = 0.10</text>
+    </svg>
+    <figcaption>Skill per bet stays fixed at 0.10. Only the number of truly independent bets changes. Counting correlated calls as separate bets triples the Information Ratio on paper, and nothing in the arithmetic warns you.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Our new forecaster says his calls have a correlation of point one with what actually happens. That sounds like almost nothing.</p>
+      <p data-who="Quant">It sounds like nothing, but it is genuinely good. That number is the information coefficient: skill per call, measured across all the calls. Professionals are happy with anything from point zero five to point one.</p>
+      <p data-who="Trader">So how does a tiny edge turn into a track record?</p>
+      <p data-who="Quant">By repeating it. Grinold and Kahn's fundamental law says your information ratio is roughly your skill per call times the square root of how many independent calls you make in a year.</p>
+      <p data-who="Trader">And the information ratio is what, exactly?</p>
+      <p data-who="Quant">Your return over the benchmark, divided by how much that gap wobbles. A Sharpe ratio measured against the benchmark instead of against cash.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">He re-ranks nine currency pairs every quarter. Nine times four is thirty-six calls a year. The square root of thirty-six is six. Point one times six is an information ratio of point six. That matches three percent a year over the benchmark with five percent tracking error.</p>
+      <p data-who="Trader">Point six is decent.</p>
+      <p data-who="Quant">Only if those thirty-six calls are independent. If all nine rankings are really one view on the dollar, he makes one call a quarter, four a year. The square root of four is two. Point one times two is point two. Same skill, a third of the result.</p>
+      <p data-who="Trader">And nothing in the arithmetic warns you.</p>
+      <p data-who="Quant">Nothing. You have to check how correlated the calls are. Breadth means independent bets, not trade tickets.</p>
+      <p data-who="Trader">Has that ever gone wrong at scale?</p>
+      <p data-who="Quant">August 2007, the quant quake. Quant equity funds held thousands of longs and shorts each, a small edge on every name. But many ranked stocks on similar ideas, so their books overlapped. In the week of the sixth of August, a large unwind, probably one fund raising cash, pushed against all of them at once. Goldman's Global Equity Opportunities fund was reported to have lost more than thirty percent in about a week.</p>
+      <p data-who="Trader">Thousands of bets, all losing together.</p>
+      <p data-who="Quant">Which independent bets never do. Effective breadth fell towards one. Prices snapped back on Friday the tenth, after many funds had already cut.</p>
+      <p data-who="Trader">And when I'm judging a fund I pay fees to?</p>
+      <p data-who="Quant">Look at its holdings, not just its returns. Active share measures how different the positions are from the benchmark. A low active share with a decent tracking error often means a benchmark copy with one big side bet. And remember the floor: before costs the average active dollar earns the market, so after costs it must lag.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Skill per bet matters, but only count the bets that are truly independent.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -93,6 +150,27 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From the Information Ratio to the Fundamental Law, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ IR = \frac{\color{#fbbf24}{\alpha}}{\omega} \]</div>
+      <p>Start with what you are scored on: your annual return over the benchmark, \(\alpha\), per unit of tracking error \(\omega\). In the worked example, \(3.0\% / 5.0\% = 0.60\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ IR \approx \color{#fbbf24}{IC} \]</div>
+      <p>Where does that ratio come from? With a single bet a year, it is roughly your skill on that bet: the correlation \(IC\) between your forecast and what happened.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ IR \approx IC \times \color{#fbbf24}{\sqrt{BR}} \]</div>
+      <p>Repeat the call on \(BR\) independent bets a year. The noise partly cancels while the edge adds up, so the ratio grows with the square root of breadth.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{IR \approx IC \times \sqrt{BR}} = 0.10 \times \sqrt{36} = 0.60 \]</div>
+      <p>Nine pairs re-ranked four times a year gives \(BR = 36\) and \(IR \approx 0.60\), the same number as \(\alpha/\omega\). If the nine calls are really one dollar view, \(BR = 4\) and the law predicts only \(0.20\).</p>
+    </div>
+  </div>
 
   <div class="tl-steps">
     <div class="tl-step">
@@ -409,6 +487,10 @@
       \(IR\) is really coming from \(IC\) versus from an assumption of
       independence across bets.
     </p>
+    <div class="tl-predict" data-answer="0.20" data-tol="0.02">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Keep \(IC = 0.10\). Suppose the nine pairs are really one dollar view, so there is one independent call, re-ranked four times a year. What Information Ratio does the law predict? Lock in a guess, then set the pairs field to 1 below to check.</div>
+      <div class="tl-predict-reveal"><p><strong>0.20.</strong> Breadth falls from \(9 \times 4 = 36\) to \(1 \times 4 = 4\), so \(IR \approx 0.10 \times \sqrt{4} = 0.20\). A ninefold drop in breadth cuts the ratio only threefold, because of the square root, but it is still a third of what the headline promised. Now try \(IC = 0.30\) with breadth 4: that is the skill you would need to get back to 0.60.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Information Coefficient \(IC\)</span></div>
@@ -554,6 +636,12 @@
   </div>
   <!-- DESK:END -->
 
+  <!-- WB:active_portfolio_management:START -->
+  <div class="wb" id="wb-active_portfolio_management" data-title="Skill, breadth and the August 2007 quant quake, step by step">
+    <script type="application/json">{"w":600,"h":630,"intro":"How a small edge per call becomes a strong track record, and how correlated calls fake it. The lesson's own numbers, then August 2007. Press play, or step through.","steps":[{"cap":"Meet a forecaster. His calls correlate with what actually happens at 0.10. That is his information coefficient, IC: skill per call. It sounds tiny, but 0.05 to 0.10 is genuinely good.","do":[{"icon":"fc","name":"person","x":20,"y":8,"s":0.75,"tone":"blue","label":"forecaster","lsize":17},{"box":"ic","x":130,"y":18,"w":210,"h":72,"text":"skill per call","tone":"blue","sub":"IC = 0.10","size":20}]},{"cap":"He re-ranks nine G10 currency pairs, four times a year. Taken at face value, that is 9 × 4 = 36 separate calls a year: his breadth, BR.","do":[{"chip":"p0","x":80,"y":132,"text":"pair 1","tone":"purple"},{"chip":"p1","x":190,"y":132,"text":"pair 2","tone":"purple"},{"chip":"p2","x":300,"y":132,"text":"pair 3","tone":"purple"},{"chip":"p3","x":410,"y":132,"text":"pair 4","tone":"purple"},{"chip":"p4","x":520,"y":132,"text":"pair 5","tone":"purple"},{"chip":"p5","x":80,"y":176,"text":"pair 6","tone":"purple"},{"chip":"p6","x":190,"y":176,"text":"pair 7","tone":"purple"},{"chip":"p7","x":300,"y":176,"text":"pair 8","tone":"purple"},{"chip":"p8","x":410,"y":176,"text":"pair 9","tone":"purple"},{"note":"n9","x":300,"y":226,"text":"9 pairs × 4 re-ranks = 36 calls a year","size":19,"anchor":"middle","tone":"purple"}]},{"cap":"The Fundamental Law: IR ≈ IC × √BR. Independent bets let the noise cancel while the edge adds up, so the Information Ratio grows with the square root of breadth. Here: 0.10 × √36 = 0.10 × 6 = 0.60.","do":[{"chart":"law","x":10,"y":330,"w":580,"h":290,"title":"Information Ratio vs breadth, at IC = 0.10","xd":[0,64],"yd":[0,0.8],"yt":[[0,"0"],[0.2,"0.2"],[0.4,"0.4"],[0.6,"0.6"]],"xt":[[4,"4"],[16,"16"],[36,"36"],[64,"64"]],"pl":50,"pr":20},{"series":"curve","chart":"law","pts":[[0,0.0],[0.25,0.05],[0.5,0.0707],[1,0.1],[2,0.1414],[3,0.1732],[4,0.2],[6,0.2449],[8,0.2828],[10,0.3162],[12,0.3464],[14,0.3742],[16,0.4],[18,0.4243],[20,0.4472],[22,0.469],[24,0.4899],[26,0.5099],[28,0.5292],[30,0.5477],[32,0.5657],[34,0.5831],[36,0.6],[38,0.6164],[40,0.6325],[42,0.6481],[44,0.6633],[46,0.6782],[48,0.6928],[50,0.7071],[52,0.7211],[54,0.7348],[56,0.7483],[58,0.7616],[60,0.7746],[62,0.7874],[64,0.8]],"tone":"purple","ms":1500},{"dot":"d36","chart":"law","at":[36,0.6],"text":"36 calls → 0.60","tone":"green","dx":-8,"dy":-18,"anchor":"end"}]},{"cap":"A check from the other side: 3.0% a year over the benchmark, with 5.0% tracking error, gives IR = 3.0 ÷ 5.0 = 0.60. The same number, two ways.","do":[{"box":"chk","x":370,"y":18,"w":215,"h":72,"text":"α ÷ ω = 3.0% ÷ 5.0%","tone":"green","sub":"IR = 0.60","size":19}]},{"cap":"But are those nine pairs nine separate views? In a dollar-strength regime, all nine move together with the dollar. Nine rankings, one view.","do":[{"hide":"n9"},{"line":"one","points":[[14,108],[586,108],[586,198],[14,198],[14,108]],"tone":"red","width":3,"ms":900},{"note":"n1","x":300,"y":226,"text":"really one dollar view: 1 × 4 = 4 calls a year","size":19,"anchor":"middle","tone":"red"}]},{"cap":"True breadth is 4, not 36. The law now predicts 0.10 × √4 = 0.20. Same skill, a third of the Information Ratio. Nothing in the arithmetic warns you: only checking how correlated the calls are does.","do":[{"dot":"d4","chart":"law","at":[4,0.2],"text":"4 → 0.20","tone":"red","dx":14,"dy":16,"anchor":"start"},{"pulse":"d4"}]},{"cap":"August 2007. Quant equity funds were this law at industrial scale: thousands of longs and shorts each, a small edge per stock, market beta hedged out. On paper, enormous breadth.","do":[{"hide":"fc"},{"hide":"ic"},{"hide":"n9"},{"hide":"chk"},{"hide":"box1"},{"hide":"one"},{"hide":"p0"},{"hide":"p1"},{"hide":"p2"},{"hide":"p3"},{"hide":"p4"},{"hide":"p5"},{"hide":"p6"},{"hide":"p7"},{"hide":"p8"},{"hide":"n1"},{"icon":"funds","name":"crowd","x":30,"y":8,"s":0.85,"tone":"blue","label":"quant funds","lsize":17},{"box":"box1","x":170,"y":22,"w":250,"h":80,"text":"thousands of positions each\nsmall edge per stock","tone":"blue","size":18}]},{"cap":"But many ranked stocks on similar ideas: value, momentum, earnings quality, short-term reversal. So their books overlapped. Thousands of bets shared one hidden factor: what crowded quant funds owned.","do":[{"note":"same","x":300,"y":150,"text":"similar models → overlapping books","size":20,"anchor":"middle","tone":"amber"}]},{"cap":"In the week of 6 August, a large fund is thought to have unwound its quant book fast, probably to raise cash (Khandani and Lo's hypothesis). Its selling hit everyone's longs and lifted everyone's shorts.","do":[{"icon":"unw","name":"fire","x":470,"y":8,"s":0.8,"tone":"red","label":"one big unwind","lsize":17},{"arrow":["unw","box1"],"label":"sells","tone":"red"}]},{"cap":"Every fund lost at once and hit its limits, so they cut the same positions, deepening the move. Goldman's Global Equity Opportunities fund was reported down more than 30% in about a week.","do":[{"hide":"same"},{"box":"geo","x":120,"y":190,"w":360,"h":72,"text":"Goldman GEO fund","tone":"red","sub":"> −30% in about a week","size":19}]},{"cap":"In this lesson's terms, effective breadth collapsed towards one: thousands of positions behaved like a single bet. Prices rebounded sharply on Friday 10 August, after many funds had already cut.","do":[{"dot":"d1","chart":"law","at":[1,0.1],"text":"breadth ≈ 1","tone":"amber","dx":14,"dy":20,"anchor":"start"},{"pulse":"d1"}]},{"cap":"The rule to carry away: breadth counts independent bets, not trade tickets. Check how correlated your calls are before you trust the square root.","do":[{"note":"rule","x":300,"y":296,"text":"breadth = independent bets, not tickets","size":21,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:active_portfolio_management:END -->
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -640,6 +728,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2007-08-08">
+    <div class="tl-drill-label">Scenario drill · 8 August 2007</div>
+    <h3>Thousands of independent bets are all losing at once</h3>
+    <p>You run a quant long/short equity book: a small edge on each of thousands of names, market beta hedged out, sized on the breadth those thousands of bets were supposed to give you. Since Monday the book has lost heavily, day after day, and the losses have little to do with which way the broad market is moving. Your models call the moves many-standard-deviation events. Your risk limits are close. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Add to the positions. Thousands of independent bets cannot all be wrong, so this is a fluke.<div class="tl-drill-why">The bets are plainly not independent: they are losing together, which independent bets never do. The "many sigma" reading comes from a risk model that assumed the breadth was real. Adding doubles down on one crowded bet.</div></li>
+      <li data-verdict="bad">Dump the whole book at the market today.<div class="tl-drill-why">You would be selling the same names as every other crowded fund, into the worst prices of the move. Forced, all-at-once selling is exactly the mechanism deepening the losses.</div></li>
+      <li data-verdict="good">Re-measure the book's risk as if it were one crowded bet, and cut gross in steps to a size you could survive if it lost again tomorrow.<div class="tl-drill-why">This is the lesson read honestly: effective breadth has collapsed towards one, so size it like one bet. Cutting in steps keeps you alive without dumping everything at the bottom, and leaves you holding part of the book if prices recover.</div></li>
+      <li data-verdict="ok">Hold the full size and wait for it to pass.<div class="tl-drill-why">The positions may well recover, but you are holding one bet sized as if it were thousands. If the unwind runs another week, your limits force you out at even worse prices.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Many quant funds hit their limits and cut the same positions, deepening the move. Goldman Sachs's Global Equity Opportunities fund was reported to have lost more than 30% in about a week, and Goldman and outside investors put roughly $3 billion into it in mid-August. Prices rebounded sharply on Friday 10 August, after many funds had already cut. Khandani and Lo's best-documented account traces it to the hypothesised fast unwind of one large quant book.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -690,6 +791,27 @@
     <li>Martijn Cremers &amp; Antti Petajisto, "How Active Is Your Fund Manager? A New Measure That Predicts Performance," <em>Review of Financial Studies</em>, 22(9), 3329-3365, 2009 — the source for the Active Share measure and the closet-indexing pattern discussed in the scenario above.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="alpha-beta-separation.html">Alpha vs. Beta Separation</a> <span>· how the alpha being judged here is isolated</span></li>
+        <li><a href="sharpe-family-deflated.html">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a> <span>· the cash-relative ratio the IR is built on</span></li>
+        <li><a href="factor-based-portfolio-construction.html">Factor-Based Portfolio Construction</a> <span>· the factor tilts that hide inside "active" returns</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="correlation-networks-mst.html">Correlation Networks &amp; Minimum Spanning Trees</a> <span>· see which bets are really the same bet</span></li>
+        <li><a href="ou-mean-reversion.html">The Ornstein-Uhlenbeck Process &amp; Mean Reversion</a> <span>· the same August 2007 week, told as mean reversion</span></li>
+        <li><a href="multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere Effect</a> <span>· why a short, strong track record proves little</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> before you pay for an edge, or trust your own, you need to know how much of it is skill and how many truly separate bets it rests on.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="factor-based-portfolio-construction.html">← Factor-Based Portfolio Construction</a>
@@ -759,10 +881,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

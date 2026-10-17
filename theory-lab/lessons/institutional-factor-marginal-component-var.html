@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Factor VaR, Marginal VaR &amp; Component VaR — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -50,6 +51,56 @@
       <li><strong>How it reached trading:</strong> After RiskMetrics (1994) made firm-wide VaR standard, Litterman's 1996 "hot spots" and Garman's marginal and component VaR let banks split that number by position and factor, the basis of risk budgeting today.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two horizontal bars of exactly the same length. The top bar is cut into three slices: position A's component VaR of 2,567 dollars, position B's of 2,621 dollars and position C's of 1,084 dollars. The bottom bar is total one-day 95% VaR of 6,272 dollars. Below, the rule: each slice is the position's weight times its marginal VaR, so for the short position C, minus 50,000 times minus 0.02168 gives plus 1,084.">
+      <text class="tlp-text2" x="40" y="30" font-size="13" font-weight="700">Component VaR, one slice per position</text>
+      <rect class="tlp-box purple" x="40" y="40" width="204.6" height="40" rx="4"/>
+      <rect class="tlp-box blue" x="244.6" y="40" width="208.9" height="40" rx="4"/>
+      <rect class="tlp-box amber" x="453.6" y="40" width="86.4" height="40" rx="4"/>
+      <text class="tlp-purple" x="142.3" y="65" text-anchor="middle" font-size="14" font-weight="700">A $2,567</text>
+      <text class="tlp-blue" x="349.1" y="65" text-anchor="middle" font-size="14" font-weight="700">B $2,621</text>
+      <text class="tlp-amber" x="496.8" y="65" text-anchor="middle" font-size="14" font-weight="700">C $1,084</text>
+      <text class="tlp-text2" x="40" y="114" font-size="13" font-weight="700">Total portfolio VaR, 95%, one day</text>
+      <rect class="tlp-box green" x="40" y="124" width="500" height="40" rx="4"/>
+      <text class="tlp-green" x="290" y="149" text-anchor="middle" font-size="14" font-weight="700">$6,272 = 1.645 × $3,813</text>
+      <line class="tlp-line dash" x1="540.0" y1="34" x2="540.0" y2="172"/>
+      <text class="tlp-text3" x="548" y="106" font-size="12">exact</text>
+      <text class="tlp-text" x="40" y="198" font-size="14" font-weight="700">slice = weight × marginal VaR</text>
+      <text class="tlp-text2" x="40" y="220" font-size="13">C (short): −$50,000 × −0.02168 = +$1,084. A short can still add risk.</text>
+    </svg>
+    <figcaption>One VaR number, split by position. Each slice is the position's size times how fast VaR grows with it, and Euler's theorem makes the slices add up to the total with nothing left over.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">The risk report says my book's VaR is six thousand two hundred and seventy-two dollars. The first thing my boss asks is: where's it coming from?</p>
+      <p data-who="Quant">And one number can't answer that. It was built from every position and every correlation at once, and it threw away who did what.</p>
+      <p data-who="Trader">So how do I split it up fairly?</p>
+      <p data-who="Quant">Think of a restaurant bill. Splitting it evenly is lazy. Itemise what each person ordered, and the shares add up to the bill exactly. Component VaR is the itemised bill.</p>
+      <p data-who="Trader">How is it built?</p>
+      <p data-who="Quant">In two steps. First, marginal VaR: add one more dollar to a position, hold everything else, and see how much the total VaR moves. That's a sensitivity, a what-if.</p>
+      <p data-who="Trader">And the second step?</p>
+      <p data-who="Quant">Multiply that sensitivity by the size of the position. That's its component, its slice of today's VaR.</p>
+      <p data-who="Trader">Give me the numbers.</p>
+      <p data-who="Quant">The lesson's book has three positions. A is long a hundred thousand dollars, B is long a hundred and fifty thousand, C is short fifty thousand. Their slices come out at about two thousand five hundred and sixty-seven, two thousand six hundred and twenty-one, and one thousand and eighty-four. Add them up and you get six thousand two hundred and seventy-two. To the cent.</p>
+      <p data-who="Trader">Why exactly? Most risk splits leave some mystery bit over.</p>
+      <p data-who="Quant">Because of a neat piece of calculus. Double every position and, with normal returns, VaR exactly doubles. Any number that scales like that has a property found by Euler: size times sensitivity, summed over everything, gives back the whole. No residual.</p>
+      <p data-who="Trader">C is a short that partly hedges A. Shouldn't its slice be negative?</p>
+      <p data-who="Quant">It could be, and a negative slice would mark a true diversifier. Here it isn't. C still adds about a thousand and eighty-four dollars, just less than its size alone would suggest.</p>
+      <p data-who="Trader">So if I close C, VaR drops by that much?</p>
+      <p data-who="Quant">No, and that's a classic slip. The slice is built from a local slope. Close the whole position and VaR falls to about five thousand six hundred and forty-two, a saving of about six hundred and thirty, not a thousand and eighty-four. That's incremental VaR, a different number.</p>
+      <p data-who="Trader">Can I split by theme instead of by trade?</p>
+      <p data-who="Quant">Yes. The same trick works one level up, across a few common factors like the dollar, emerging-market risk or carry, plus one bucket for risk the factors don't explain.</p>
+      <p data-who="Trader">What's the catch?</p>
+      <p data-who="Quant">Two. The clean split assumes normal returns, and fat tails break the formula. And the correlations are estimated, so they can shift in a stress, exactly when you need them.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Size times sensitivity gives every position its exact slice of VaR, and the slices always add up to the whole.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -134,6 +185,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Why the Component VaRs add up exactly to VaR, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{VaR}_p = z_p\,\color{#fbbf24}{\sqrt{\mathbf{w}^\top\Sigma\mathbf{w}}} \]</div>
+      <p>Under normal returns, VaR is a quantile times portfolio volatility. In the worked example: \(1.645 \times \$3{,}812.81 = \$6{,}272.07\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Marginal VaR}_i = \frac{\partial \text{VaR}_p}{\partial w_i} = \color{#fbbf24}{z_p\,\frac{(\Sigma\mathbf{w})_i}{\sigma_p}} \]</div>
+      <p>Differentiate with respect to one position. This is a what-if: extra VaR per extra dollar. For position A it is \(1.645 \times 59.5 / 3{,}812.81 \approx 0.02567\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Component VaR}_i = \color{#fbbf24}{w_i} \times \text{Marginal VaR}_i \]</div>
+      <p>Multiply by the position's size to turn the what-if into a slice of today's VaR. A: \(100{,}000 \times 0.02567 \approx \$2{,}567\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{VaR}_p(\color{#fbbf24}{\lambda}\mathbf{w}) = \lambda\,\text{VaR}_p(\mathbf{w}) \]</div>
+      <p>Scale every position by \(\lambda\) and VaR scales by exactly \(\lambda\). VaR is homogeneous of degree 1, which is what Euler's theorem needs.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\sum_{i=1}^n \text{Component VaR}_i = \sum_{i=1}^n w_i\,\frac{\partial \text{VaR}_p}{\partial w_i} = \text{VaR}_p} \]</div>
+      <p>Euler's theorem: the slices sum to the whole, exactly. \(\$2{,}567.07 + \$2{,}621.00 + \$1{,}083.99 = \$6{,}272.07\).</p>
+    </div>
+  </div>
 
   <h3>1. Setup: portfolio VaR under normal returns</h3>
   <p>
@@ -282,6 +357,12 @@
     <tr><td>\(\mathbf{x}=\mathbf{B}^\top\mathbf{w}\)</td><td>The portfolio's net dollar exposure to each of the \(k\) factors.</td></tr>
     <tr><td>\(D\)</td><td>Diagonal covariance matrix of idiosyncratic (specific) returns, uncorrelated with the factors and with each other.</td></tr>
   </table></div>
+
+  <!-- WB:institutional_factor_marginal_component_var:START -->
+  <div class="wb" id="wb-institutional_factor_marginal_component_var" data-title="Component VaR: slicing one number exactly">
+    <script type="application/json">{"w":600,"h":720,"intro":"The lesson's three-position FX book: one VaR number, then where it comes from. Press play, or step through.","steps":[{"cap":"Three FX positions. A is long $100,000 with 2% daily volatility. B is long $150,000 at 1.5%. C is short $50,000 at 3%.","do":[{"box":"A","x":20,"y":14,"w":160,"h":76,"text":"A  long","tone":"purple","sub":"$100,000 · 2%","size":20},{"box":"B","x":220,"y":14,"w":160,"h":76,"text":"B  long","tone":"blue","sub":"$150,000 · 1.5%","size":20},{"box":"C","x":420,"y":14,"w":160,"h":76,"text":"C  short","tone":"amber","sub":"−$50,000 · 3%","size":20}]},{"cap":"They are correlated: A and B by 0.30, A and C by −0.20, B and C by 0.10. Together these make the covariance matrix.","do":[{"line":"ab","points":[[180,52],[220,52]],"tone":null,"width":3,"ms":400},{"line":"bc","points":[[380,52],[420,52]],"tone":null,"width":3,"ms":400},{"note":"rab","x":200,"y":112,"text":"0.30","size":18,"anchor":"middle"},{"note":"rbc","x":400,"y":112,"text":"0.10","size":18,"anchor":"middle"},{"note":"rac","x":300,"y":134,"text":"A with C: −0.20","size":18,"anchor":"middle"}]},{"cap":"Assume normal returns. Portfolio volatility is the square root of wᵀΣw: $3,813 a day. One-day 95% VaR is 1.645 × $3,813 = $6,272. One number. Where is it coming from?","do":[{"box":"tot","x":100,"y":158,"w":400,"h":58,"text":"VaR = 1.645 × $3,813 = $6,272","tone":"green","size":21}]},{"cap":"Marginal VaR: nudge one position by one more dollar, hold the rest, and see how much VaR moves. A adds 2.6 cents per dollar, B 1.7 cents. C's is negative: more short C would lower VaR.","do":[{"chart":"mv","x":10,"y":236,"w":285,"h":250,"title":"Marginal VaR, $ per $","xd":[0.4,3.6],"yd":[-0.032,0.036],"yt":[[-0.02,"−.02"],[0,"0"],[0.02,".02"]],"xt":[[1,"A"],[2,"B"],[3,"C"]],"zero":true,"pl":46,"pr":10},{"bars":"mvb","chart":"mv","data":[[1,0.02567,"+0.026","purple"],[2,0.01747,"+0.017","blue"],[3,-0.02168,"−0.022","amber"]],"bw":34,"ms":1100}]},{"cap":"Component VaR is weight times marginal VaR. A: $100,000 × 0.02567 = $2,567. B: $150,000 × 0.01747 = $2,621. C: −$50,000 × −0.02168 = +$1,084.","do":[{"chart":"cv","x":305,"y":236,"w":285,"h":250,"title":"Component VaR ($)","xd":[0.4,5.4],"yd":[0,7000],"yt":[[0,"0"],[3000,"3k"],[6000,"6k"]],"xt":[[1,"A"],[2,"B"],[3,"C"],[4.6,"sum"]],"pl":40,"pr":10},{"bars":"cvb","chart":"cv","data":[[1,2567.07,"2,567","purple"],[2,2621.0,"2,621","blue"],[3,1083.99,"1,084","amber"]],"bw":30,"ms":1100}]},{"cap":"Stack the three slices: 2,567 + 2,621 + 1,084 = $6,272. Exactly the total VaR. Nothing left over, nothing counted twice.","do":[{"gap":"sa","chart":"cv","top":[[4.25,2567.07],[4.95,2567.07]],"bot":[[4.25,0],[4.95,0]],"tone":"purple","op":0.7},{"gap":"sb","chart":"cv","top":[[4.25,5188.07],[4.95,5188.07]],"bot":[[4.25,2567.07],[4.95,2567.07]],"tone":"blue","op":0.7},{"gap":"sc","chart":"cv","top":[[4.25,6272.07],[4.95,6272.07]],"bot":[[4.25,5188.07],[4.95,5188.07]],"tone":"amber","op":0.7},{"series":"vl","chart":"cv","pts":[[0.5,6272.07],[5.3,6272.07]],"tone":"green","dash":true,"ms":600},{"note":"vll","chart":"cv","at":[2,6272.07],"text":"$6,272","tone":"green","size":17,"anchor":"middle","dx":0,"dy":-14},{"pulse":"tot"}]},{"cap":"Why exact? Double every position and VaR doubles: it is homogeneous of degree 1. Euler's theorem then says the weights times their marginal VaRs add up to the whole.","do":[{"box":"eu","x":10,"y":504,"w":580,"h":58,"text":"double every position → VaR doubles → slices sum exactly","tone":"purple","size":19}]},{"cap":"C is short and partly hedges A, yet its slice is still +$1,084. Being short still adds risk here, just less than its size would suggest.","do":[{"pulse":"C"},{"pulse":"cvb"}]},{"cap":"But marginal VaR is a local slope. Close C completely and VaR falls only to $5,642, a saving of $630, not $1,084. Removing a whole position is incremental VaR, a different number.","do":[{"box":"inc","x":10,"y":578,"w":580,"h":58,"text":"close C: VaR $6,272 → $5,642 (saves $630, not $1,084)","tone":"amber","size":19}]},{"cap":"The same trick works one level up: split VaR across a few common factors, plus one specific-risk bucket. It all rests on normal returns and a covariance matrix that is itself an estimate.","do":[{"note":"end","x":300,"y":680,"text":"exact slices, as long as the assumptions hold","size":20,"anchor":"middle","tone":"red"}]}]}</script>
+  </div>
+  <!-- WB:institutional_factor_marginal_component_var:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Factor VaR — the same decomposition, one level up</h2>
@@ -506,6 +587,15 @@
       (positive-semidefinite) covariance matrix show "—" instead of
       breaking the formula.
     </p>
+    <div class="tl-predict">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Position C's Component VaR is $1,084. If you close C completely, typing 0 into the w_C field, what happens to total VaR of $6,272? Pick one, then check it below.</div>
+      <ul class="tl-predict-options">
+        <li>It falls by C's full slice, to about $5,188.</li>
+        <li data-correct>It falls by less, to about $5,642.</li>
+        <li>It rises, because C was a hedge.</li>
+      </ul>
+      <div class="tl-predict-reveal"><p><strong>About $5,642.</strong> With only A and B left, \(\sigma_p \approx \$3{,}429.65\) and \(\text{VaR}_p = 1.645 \times 3{,}429.65 \approx \$5{,}641.77\): a saving of about $630, not $1,084. Component VaR is built from a local slope, so it is not what removing a whole position saves; that is incremental VaR. Look at C's Marginal VaR once it is zero: still negative, so a small short in C would lower VaR again.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Weight w_A ($)</span></div>
@@ -680,6 +770,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative morning</div>
+    <h3>VaR jumped 14% overnight, and nobody traded</h3>
+    <p>You run the lesson's three-position book: A long $100,000, B long $150,000, C short $50,000. Overnight, total 95% VaR rose from $6,272 to $7,177, about 14%. No position changed size and no volatility estimate moved. The new breakdown shows A's slice up from $2,567 to $3,092, B's up from $2,621 to $3,139, and C's down from $1,084 to $947. The risk committee wants an answer and an action. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Nothing changed in the book, so the VaR figure must be a data error. Ignore it.<div class="tl-drill-why">Sizes and volatilities are only part of the input. The covariance matrix also holds correlations, and a shift there moves VaR with no trade at all.</div></li>
+      <li data-verdict="good">Read the breakdown as a correlation shift between A and B, which now move together more, and trim or hedge that pair.<div class="tl-drill-why">A and B both grew while their sizes and volatilities stood still, and C's slice shrank. That pattern points at the A and B correlation, so the fix is targeted. Trimming A and B by a fifth each, keeping C, brings VaR to about $5,949.</div></li>
+      <li data-verdict="ok">Cut every position by 14% to get back to yesterday's number.<div class="tl-drill-why">It restores the headline, to about $6,173, but it cuts C too, whose slice actually fell. Across-the-board de-risking spends effort where the risk did not come from.</div></li>
+      <li data-verdict="bad">Close C. Shorts are the risky part of any book.<div class="tl-drill-why">C was not the cause. Closing it leaves VaR at about $6,634, still above yesterday, and removes a position that partly hedges A.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the numbers say.</strong> This is an illustrative case on the lesson's worked-example book, not a real episode: the jump comes from raising the A and B correlation from 0.30 to 0.80 and recomputing every number with the lesson's formulas. It shows the lesson's own point. A component breakdown separates "one position got riskier" from "positions started moving together", which a single VaR number cannot do.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -785,6 +888,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> <span>· the VaR this lesson splits up</span></li>
+        <li><a href="foundation-multivariable-calculus.html">Partial Derivatives &amp; Multivariable Calculus</a> <span>· the partial derivative behind marginal VaR</span></li>
+        <li><a href="linear-algebra-matrices.html">Linear Algebra &amp; Matrices</a> <span>· the covariance matrix and wᵀΣw</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="risk-parity-erc.html">Risk Parity &amp; Equal Risk Contribution</a> <span>· set the slices equal on purpose</span></li>
+        <!-- DESK:START --><li><a href="institutional-barra-risk-models.html">Barra-Style Risk Models</a> <span>· where the factor model for Factor VaR comes from</span></li><!-- DESK:END -->
+        <!-- DESK:START --><li><a href="institutional-ledoit-wolf-shrinkage.html">Ledoit-Wolf Covariance Shrinkage</a> <span>· a steadier covariance matrix to feed it</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> when risk is too high, this tells you which position or theme to cut, instead of cutting everything.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-hill-estimator.html">← Hill Estimator &amp; Tail-Index Estimation</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -815,7 +939,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var ids = ['wA','wB','wC','volA','volB','volC','rAB','rAC','rBC'];
@@ -927,5 +1052,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

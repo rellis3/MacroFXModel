@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Combining Signals That Disagree — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -60,6 +61,71 @@
       <li><strong>The desk's own test:</strong> agreement across three macro domains did <em>not</em> predict forward direction (77 episodes, 2009–2026); two genuinely different yield-spread signals with a 0.30 correlation <em>did</em> combine into a better book than either alone.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: five scores on EUR/USD. Three trend signals read +1.2, +1.0 and +1.5 and form one family worth about 1.15 independent signals; the rates signal reads −1.0 and positioning −0.5. Right: the same screen judged three ways. Counting votes says long, 3 to 2. Adding the scores says long, +2.2. Shrinking each record and counting the trend family once gives z of −0.32 and a 50.6% lean short: no view.">
+      <text class="tlp-text3" x="30" y="14" font-size="12">five readings on EUR/USD, in standard deviations</text>
+      <text class="tlp-amber" x="30" y="30" font-size="12" font-weight="700">trend family: 3 lines ≈ 1.15 signals</text>
+      <line class="tlp-line amber" x1="40" y1="38" x2="160" y2="38"/>
+      <line class="tlp-line amber" x1="40" y1="38" x2="40" y2="44"/>
+      <line class="tlp-line amber" x1="160" y1="38" x2="160" y2="44"/>
+      <line class="tlp-line" x1="30" y1="120" x2="300" y2="120"/>
+      <rect class="tlp-green" x="40" y="76.8" width="30" height="43.2" rx="3"/>
+      <rect class="tlp-green" x="85" y="84" width="30" height="36" rx="3"/>
+      <rect class="tlp-green" x="130" y="66" width="30" height="54" rx="3"/>
+      <rect class="tlp-red" x="195" y="120" width="30" height="36" rx="3"/>
+      <rect class="tlp-red" x="245" y="120" width="30" height="18" rx="3"/>
+      <text class="tlp-green" x="55" y="71" text-anchor="middle" font-size="13" font-weight="700">+1.2</text>
+      <text class="tlp-green" x="100" y="78" text-anchor="middle" font-size="13" font-weight="700">+1.0</text>
+      <text class="tlp-green" x="145" y="61" text-anchor="middle" font-size="13" font-weight="700">+1.5</text>
+      <text class="tlp-red" x="210" y="172" text-anchor="middle" font-size="13" font-weight="700">−1.0</text>
+      <text class="tlp-red" x="260" y="154" text-anchor="middle" font-size="13" font-weight="700">−0.5</text>
+      <text class="tlp-text2" x="55" y="200" text-anchor="middle" font-size="12">momentum</text>
+      <text class="tlp-text2" x="100" y="216" text-anchor="middle" font-size="12">MA cross</text>
+      <text class="tlp-text2" x="145" y="200" text-anchor="middle" font-size="12">breakout</text>
+      <text class="tlp-text2" x="210" y="216" text-anchor="middle" font-size="12">rates</text>
+      <text class="tlp-text2" x="262" y="200" text-anchor="middle" font-size="12">positioning</text>
+      <rect class="tlp-box red" x="325" y="26" width="265" height="50" rx="6"/>
+      <text class="tlp-text" x="337" y="46" font-size="13">Count the votes: 3 long, 2 short</text>
+      <text class="tlp-red" x="337" y="66" font-size="13" font-weight="700">→ LONG</text>
+      <rect class="tlp-box red" x="325" y="88" width="265" height="50" rx="6"/>
+      <text class="tlp-text" x="337" y="108" font-size="13">Add the scores: +2.2</text>
+      <text class="tlp-red" x="337" y="128" font-size="13" font-weight="700">→ LONG</text>
+      <rect class="tlp-box green" x="325" y="150" width="265" height="60" rx="6"/>
+      <text class="tlp-text" x="337" y="171" font-size="13">Shrink records, count the family once</text>
+      <text class="tlp-green" x="337" y="194" font-size="14" font-weight="700">z = −0.32, 50.6% → NO VIEW</text>
+      <text class="tlp-text3" x="457" y="232" text-anchor="middle" font-size="12">same screen, three methods</text>
+    </svg>
+    <figcaption>Three trend lines that move together are one opinion, not three. Once each record is shrunk by its length and the trend family is counted once, a screen that "looks long" is a coin flip, and the honest output is no view.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Three of my five indicators say buy EUR/USD. Two say sell. Three beats two, so I'm long.</p>
+      <p data-who="Quant">Which three?</p>
+      <p data-who="Trader">Twenty-day momentum, the fifty and two hundred day cross, and a three-month breakout.</p>
+      <p data-who="Quant">Those are three ways of measuring the same thing: trend. It's like asking five friends about rain when three of them read the same newspaper. That's one opinion, said three times.</p>
+      <p data-who="Trader">But they're different formulas.</p>
+      <p data-who="Quant">Different formulas, same input. If they move together with a correlation of point eight, the three are worth about one point one five independent signals. Add two more trend indicators and you only reach about one point two. However many you stack, you never get past one point two five.</p>
+      <p data-who="Trader">So how should I weigh them?</p>
+      <p data-who="Quant">By track record, but carefully. Each signal has a measured correlation with the returns that followed. Real ones are small. Around five hundredths is good.</p>
+      <p data-who="Trader">My positioning signal has a great record.</p>
+      <p data-who="Quant">Over how many observations?</p>
+      <p data-who="Trader">About fifty.</p>
+      <p data-who="Quant">Then most of that record is noise. With fifty observations you keep about a ninth of it. With four hundred you keep about half. A signal with no record gets no weight, however good its chart looks.</p>
+      <p data-who="Trader">So what does my screen actually say?</p>
+      <p data-who="Quant">Count the trend family once, shrink each record, and let a regression do the weighting. The rates signal pulls short, the trend family pulls long, and they nearly cancel. You're left with about a fifty-fifty call, a faint lean short. No view.</p>
+      <p data-who="Trader">That feels like a cop-out.</p>
+      <p data-who="Quant">It's an output. Write the rule before you look: no trade if the combined reading is weak, or the expected move doesn't clear twice the cost. A desk that always has a view isn't measuring.</p>
+      <p data-who="Trader">Has counting the same idea twice ever really hurt anyone?</p>
+      <p data-who="Quant">August two thousand seven. Many quant equity funds, each sure its blend of signals was its own, lost heavily within a few days while the market barely moved. Andrew Lo and Amir Khandani found their positions overlapped far more than anyone knew. Many signals had become one crowded trade.</p>
+      <p data-who="Trader">The one-line version?</p>
+      <p data-who="Quant">Count families, not indicators, trust each record only as much as its length deserves, and treat no view as a real answer.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -122,6 +188,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">How many opinions you really have, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Var}(\text{average of } N \text{ scores}) = \color{#fbbf24}{\frac{1}{N}} \]</div>
+      <p>If the \(N\) standardised signals were independent, averaging them would cut the noise to \(1/N\). Five signals, a fifth of the noise.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Var}(\text{average of } N \text{ scores}) = \frac{1 + \color{#fbbf24}{(N-1)\,\rho}}{N} \]</div>
+      <p>Correlation adds back a shared part that averaging cannot remove. Each signal's error overlaps with the other \(N-1\) by \(\rho\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\frac{1}{N_{\text{eff}}}} = \frac{1 + (N-1)\,\rho}{N} \]</div>
+      <p>Ask how many independent signals would give the same noise. Call that number \(N_{\text{eff}}\) and set the two equal.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{N_{\text{eff}} = \frac{N}{1 + (N-1)\,\rho}} \]</div>
+      <p>Three trend signals at \(\rho = 0.8\): \(3/2.6 = 1.15\). As \(N\) grows, \(N_{\text{eff}}\) never passes \(1/\rho = 1.25\). More of the same indicator makes the screen louder, not wiser.</p>
+    </div>
+  </div>
 
   <h3>1. Put every signal on the same scale</h3>
   <p>
@@ -161,6 +247,10 @@
 
   <div class="tl-chart interactive">
     <div class="tl-chart-label">How many opinions do you really have?</div>
+    <div class="tl-predict" data-answer="1.9" data-tol="0.25" data-unit=" signals">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Five trend signals at a correlation of 0.8 are worth only 1.19 independent signals. Suppose your screen instead holds 20 indicators with an average correlation of 0.5. How many independent signals are they worth? Lock in a guess, then set N to 20 and ρ to 0.50 below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 1.90.</strong> \(20/(1 + 19 \times 0.5) = 20/10.5 = 1.90\). Twenty lines on the screen, fewer than two opinions: the screen sounds about 10.5 times louder than it is. The ceiling at this correlation is \(1/0.5 = 2\). Now drop ρ to 0.1 and watch how fast genuinely different signals add up.</p></div>
+    </div>
     <svg id="ne-svg" class="cs-svg" viewBox="0 0 640 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Effective number of signals against the number of signals, for the chosen correlation. The dashed diagonal shows what you would have if the signals were independent; the curve flattens toward one over the correlation.">
       <g id="ne-g"></g>
     </svg>
@@ -455,6 +545,12 @@
     <p>When some friends say "go left" and some say "go right", don't just count hands. Ask who actually knows the way, notice which friends are just copying each other, and if it is still a muddle, stay where you are until someone knows.</p>
   </div>
 
+  <!-- WB:action_combining_signals:START -->
+  <div class="wb" id="wb-action_combining_signals" data-title="Combining signals that disagree, drawn step by step">
+    <script type="application/json">{"w":600,"h":800,"intro":"Five readings on EUR/USD: three say long, two say short. Count them honestly and see what they really add up to. Press play, or step through.","steps":[{"cap":"Your screen for a one-month EUR/USD view: five signals, each scored in its own standard deviations. Momentum +1.2, the moving-average cross +1.0, a breakout +1.5, the yield spread −1.0, positioning −0.5.","do":[{"chart":"sc","x":10,"y":10,"w":580,"h":230,"title":"Today's scores","xd":[0.4,5.6],"yd":[-1.9,2.9],"yt":[[2,"+2"],[1,"+1"],[0,"0"],[-1,"−1"]],"xt":[[1,"mom"],[2,"cross"],[3,"break"],[4,"rates"],[5,"posit."]],"zero":true,"pl":46,"pr":12},{"bars":"scb","chart":"sc","data":[[1,1.2,"+1.2","green"],[2,1.0,"+1.0","green"],[3,1.5,"+1.5","green"],[4,-1.0,"−1.0","red"],[5,-0.5,"−0.5","red"]],"bw":46,"ms":1200}]},{"cap":"Count the votes: three long, two short. The vote says long. Adding the scores says long too: +2.2.","do":[{"note":"vote","x":470,"y":58,"text":"3 vs 2 → LONG?","size":20,"anchor":"middle","tone":"amber"}]},{"cap":"But the three long votes all measure one thing: trend. They move together with a correlation of 0.8. Like three friends who read the same newspaper, they are one opinion said three times.","do":[{"line":"fam","points":[[93,68],[93,62],[340,62],[340,68]],"tone":"amber","width":3,"ms":600},{"note":"famt","x":216,"y":50,"text":"trend family: one input","size":18,"anchor":"middle","tone":"amber"}]},{"cap":"How many opinions is that? N ÷ (1 + (N − 1) × ρ). Three trend signals at 0.8 are worth 3 ÷ 2.6 = 1.15. Ten of them would be worth only 1.22, and no number of them passes 1 ÷ 0.8 = 1.25.","do":[{"chart":"ne","x":10,"y":258,"w":280,"h":220,"title":"worth, at ρ = 0.8","xd":[1,10],"yd":[0,10],"yt":[[1,"1"],[5,"5"],[10,"10"]],"xt":[[1,"1"],[5,"5"],[10,"10"]],"pl":40,"pr":14},{"series":"diag","chart":"ne","pts":[[1,1],[10,10]],"tone":null,"dash":true,"ms":500,"label":"if independent","lat":[7,7],"ldx":-8,"ldy":-6,"lanchor":"end","lsize":14},{"series":"neff","chart":"ne","pts":[[1,1.0],[2,1.111],[3,1.154],[4,1.176],[5,1.19],[6,1.2],[7,1.207],[8,1.212],[9,1.216],[10,1.22]],"tone":"purple","ms":1200},{"dot":"n3","chart":"ne","at":[3,1.154],"text":"1.15","tone":"amber","dy":-16}]},{"cap":"Next, track records. Each signal's past correlation with the returns that followed, its IC, is small: 0.04 for each trend signal, 0.08 for rates, 0.06 for positioning. But positioning rests on only 50 observations, the rest on 400.","do":[{"box":"rec","x":305,"y":258,"w":285,"h":104,"text":"IC: trend 0.04 (n 400)\nrates 0.08 (n 400)\npositioning 0.06 (n 50)","tone":"blue","size":17}]},{"cap":"Shrink every record by its length. With 400 observations you keep half the measured IC; with 50, about a ninth. Shrunk: trend 0.020 each, rates 0.040, positioning 0.0067. A signal with no record would get nothing.","do":[{"box":"shr","x":305,"y":374,"w":285,"h":104,"text":"keep: n 400 → 50%\nn 50 → 11%","tone":"purple","size":18}]},{"cap":"Now combine with weights that undo the double-counting. The trend family shares one signal's worth of weight: each gets 0.020 ÷ 2.6 = 0.0077. Rates gets 0.040, positioning 0.0067.","do":[{"chart":"ct","x":10,"y":496,"w":360,"h":230,"title":"Pull on the forecast (×1,000)","xd":[0.4,3.6],"yd":[-60,36],"yt":[[25,"+25"],[0,"0"],[-25,"−25"]],"xt":[[1,"trend ×3"],[2,"rates"],[3,"positioning"]],"zero":true,"pl":50,"pr":12}]},{"cap":"Weight times score. The whole trend family pulls long: 0.0077 × (1.2 + 1.0 + 1.5) = +0.0285. Rates pulls short: −0.040. Positioning adds −0.0033. They nearly cancel: F = −0.0149.","do":[{"bars":"ctb","chart":"ct","data":[[1,28.5,"+28.5","green"],[2,-40.0,"−40.0","red"],[3,-3.3,"−3.3","red"]],"bw":50,"ms":1300}]},{"cap":"In its own standard deviations that is z = −0.32. The chance the direction is right is 50.6%, a faint lean short. Under the written rule, |z| under 1 means no trade. The honest output is \"no view\".","do":[{"cross":"vote"},{"box":"nv","x":385,"y":496,"w":205,"h":110,"text":"z = −0.32\n50.6% → NO VIEW","tone":"amber","size":19}]},{"cap":"What would make this a trade? Independent agreement. If the yield spread read +1.0 instead, the same arithmetic gives z = +1.42, an expected move of +0.13% and a 52.6% chance of being right: a modest, legitimate long.","do":[{"box":"flip","x":385,"y":616,"w":205,"h":110,"text":"rates +1.0?\nz = +1.42 → small long","tone":"green","size":18}]},{"cap":"It happened at scale in August 2007. Many quant equity funds, each sure its blend of signals was its own, lost heavily within a few days while the market barely moved. Their \"independent\" signals had become one crowded position.","do":[{"note":"quake","x":300,"y":760,"text":"Aug 2007: many signals, one crowded trade","size":19,"anchor":"middle","tone":"red"}]},{"cap":"The habit: count families, not indicators. Trust each record only as much as its length deserves. And write the no-view rule before you look at today's screen.","do":[{"pulse":"nv"},{"pulse":"famt"}]}]}</script>
+  </div>
+  <!-- WB:action_combining_signals:END -->
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>It actually happened: "independent" bets that were one bet</h2>
 
@@ -571,6 +667,19 @@
     <p style="margin-bottom:0"><strong>Treating "no view" as weakness.</strong> A desk that always has a view is either very good or not measuring. Written no-view rules are what make the views it does take mean something.</p>
   </div>
 
+  <div class="tl-drill" data-date="2007-08-06">
+    <div class="tl-drill-label">Scenario drill · week of 6 August 2007</div>
+    <h3>Your "diversified" quant book is losing fast</h3>
+    <p>You run a market-neutral equity book built from many signals: value, momentum, earnings quality and more. You sized it for many separate sources of return, so you run it with leverage. This week it is losing unusually fast, while the stock market as a whole is moving comparatively little. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Add to it. With so many independent signals, losses this fast must be noise.<div class="tl-drill-why">This counts the signals instead of measuring them. If the losses are coming all at once across "different" signals, that is evidence they are not independent right now. Adding doubles down on one crowded position.</div></li>
+      <li data-verdict="good">Measure how correlated your positions are right now, not in calm times. Treat the book as the number of bets it really is, and cut risk to fit.<div class="tl-drill-why">This is the effective-number idea applied to positions. Correlations measured in calm periods can understate how much a set of different-looking bets is one bet. Sizing to the honest count keeps you in the game whatever happens next.</div></li>
+      <li data-verdict="ok">Hold and wait. Each signal still has a long record.<div class="tl-drill-why">The records may be real, but they do not tell you the book is diversified this week. Holding leveraged risk that is really one position is a bet on surviving the path, not a decision about it.</div></li>
+      <li data-verdict="bad">Switch off the signals that are losing most and keep the rest.<div class="tl-drill-why">If the losses come from a shared crowded position, the signals you keep are likely in the same trade. Cutting by recent pain rather than by measured overlap leaves the real exposure in place.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In the week beginning 6 August 2007 a number of large quantitative equity funds suffered unusually large losses within a few days, while the market moved comparatively little. Amir Khandani and Andrew Lo later explained that many funds had arrived at similar portfolios from similar signals. When one or more large portfolios were unwound quickly, the selling pushed prices against everyone holding the same positions, forcing further selling. A sharp partial rebound followed within days. The diversification had been counted, not measured.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -623,6 +732,27 @@
     <li><a href="active-portfolio-management.html">Active Portfolio Management</a>, <a href="institutional-ledoit-wolf-shrinkage.html">Ledoit-Wolf Shrinkage</a> and <a href="hierarchical-bayesian-models.html">Hierarchical Bayesian Models</a> — the lessons behind the formulas used here.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> <span>· the regression that does the counting</span></li>
+        <li><a href="hierarchical-bayesian-models.html">Hierarchical Bayesian Models &amp; Partial Pooling</a> <span>· why short records get shrunk hardest</span></li>
+        <!-- DESK:START --><li><a href="action-expected-value.html">Thinking in Expected Value</a> <span>· what the combined probability feeds into</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="action-edge-after-costs.html">Does the Edge Survive Costs?</a> <span>· the cost check a view must pass</span></li><!-- DESK:END -->
+        <li><a href="active-portfolio-management.html">Active Portfolio Management</a> <span>· skill, breadth and the fundamental law</span></li>
+        <li><a href="multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere Effect</a> <span>· choosing a combination is a test too</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a screen full of agreeing indicators feels like confirmation, and the only way to know if it is one is to count families and trust records by their length.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="action-expected-value.html">← Thinking in Expected Value</a>
@@ -826,10 +956,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ledoit-Wolf Covariance Shrinkage — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -49,6 +50,78 @@
       <li><strong>How it reached trading:</strong> Ledoit &amp; Wolf (2003–04) gave a tuning-free fix for the "error maximisation" of optimisers fed a noisy sample covariance, and it is now the default first step before any optimisation or covariance-based risk number.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three 3-by-3 covariance matrices from the lesson's worked example. The noisy sample matrix has off-diagonal entries 1.80, 0.90 and 2.10. The constant-correlation target, built from the average correlation of 0.356, has 2.13, 1.07 and 1.60. Blending 0.70 of the sample with 0.30 of the target gives 1.90, 0.95 and 1.95. The diagonal variances 4.00, 9.00 and 2.25 are the same in all three.">
+      <text class="tlp-red" x="95" y="34" text-anchor="middle" font-size="13" font-weight="700">sample Σ̂ · noisy</text>
+      <text class="tlp-blue" x="300" y="34" text-anchor="middle" font-size="13" font-weight="700">target F · stable</text>
+      <text class="tlp-green" x="505" y="34" text-anchor="middle" font-size="13" font-weight="700">shrunk · δ = 0.30</text>
+      <rect class="tlp-box" x="20" y="46" width="150" height="108" rx="6"/>
+      <text class="tlp-text3" x="45" y="69" text-anchor="middle" font-size="13">4.00</text>
+      <text class="tlp-red" x="95" y="69" text-anchor="middle" font-size="13" font-weight="700">1.80</text>
+      <text class="tlp-red" x="145" y="69" text-anchor="middle" font-size="13" font-weight="700">0.90</text>
+      <text class="tlp-red" x="45" y="105" text-anchor="middle" font-size="13" font-weight="700">1.80</text>
+      <text class="tlp-text3" x="95" y="105" text-anchor="middle" font-size="13">9.00</text>
+      <text class="tlp-red" x="145" y="105" text-anchor="middle" font-size="13" font-weight="700">2.10</text>
+      <text class="tlp-red" x="45" y="141" text-anchor="middle" font-size="13" font-weight="700">0.90</text>
+      <text class="tlp-red" x="95" y="141" text-anchor="middle" font-size="13" font-weight="700">2.10</text>
+      <text class="tlp-text3" x="145" y="141" text-anchor="middle" font-size="13">2.25</text>
+      <rect class="tlp-box" x="225" y="46" width="150" height="108" rx="6"/>
+      <text class="tlp-text3" x="250" y="69" text-anchor="middle" font-size="13">4.00</text>
+      <text class="tlp-blue" x="300" y="69" text-anchor="middle" font-size="13" font-weight="700">2.13</text>
+      <text class="tlp-blue" x="350" y="69" text-anchor="middle" font-size="13" font-weight="700">1.07</text>
+      <text class="tlp-blue" x="250" y="105" text-anchor="middle" font-size="13" font-weight="700">2.13</text>
+      <text class="tlp-text3" x="300" y="105" text-anchor="middle" font-size="13">9.00</text>
+      <text class="tlp-blue" x="350" y="105" text-anchor="middle" font-size="13" font-weight="700">1.60</text>
+      <text class="tlp-blue" x="250" y="141" text-anchor="middle" font-size="13" font-weight="700">1.07</text>
+      <text class="tlp-blue" x="300" y="141" text-anchor="middle" font-size="13" font-weight="700">1.60</text>
+      <text class="tlp-text3" x="350" y="141" text-anchor="middle" font-size="13">2.25</text>
+      <rect class="tlp-box" x="430" y="46" width="150" height="108" rx="6"/>
+      <text class="tlp-text3" x="455" y="69" text-anchor="middle" font-size="13">4.00</text>
+      <text class="tlp-green" x="505" y="69" text-anchor="middle" font-size="13" font-weight="700">1.90</text>
+      <text class="tlp-green" x="555" y="69" text-anchor="middle" font-size="13" font-weight="700">0.95</text>
+      <text class="tlp-green" x="455" y="105" text-anchor="middle" font-size="13" font-weight="700">1.90</text>
+      <text class="tlp-text3" x="505" y="105" text-anchor="middle" font-size="13">9.00</text>
+      <text class="tlp-green" x="555" y="105" text-anchor="middle" font-size="13" font-weight="700">1.95</text>
+      <text class="tlp-green" x="455" y="141" text-anchor="middle" font-size="13" font-weight="700">0.95</text>
+      <text class="tlp-green" x="505" y="141" text-anchor="middle" font-size="13" font-weight="700">1.95</text>
+      <text class="tlp-text3" x="555" y="141" text-anchor="middle" font-size="13">2.25</text>
+      <text class="tlp-text2" x="197" y="106" text-anchor="middle" font-size="18" font-weight="700">+</text>
+      <text class="tlp-text2" x="402" y="106" text-anchor="middle" font-size="18" font-weight="700">=</text>
+      <text class="tlp-red" x="95" y="174" text-anchor="middle" font-size="13">weight 0.70</text>
+      <text class="tlp-blue" x="300" y="174" text-anchor="middle" font-size="13">weight 0.30</text>
+      <text class="tlp-green" x="505" y="174" text-anchor="middle" font-size="13">entry by entry</text>
+      <text class="tlp-text2" x="20" y="204" font-size="13">Diagonal untouched: each asset keeps its own variance.</text>
+      <text class="tlp-text2" x="20" y="224" font-size="13">Off-diagonals move 30% of the way to the average-correlation target.</text>
+    </svg>
+    <figcaption>A noisy sample matrix and a simple, stable target, blended in one proportion. A little deliberate bias buys a large cut in noise, and Ledoit and Wolf give a formula for how much to blend.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I fed two years of daily returns on forty FX pairs and factors into an optimiser. The weights it gave me are absurd. Huge longs, huge shorts.</p>
+      <p data-who="Quant">That's the covariance matrix talking. Richard Michaud called it error maximisation back in 1989: the optimiser bets hardest exactly where risk is most underestimated.</p>
+      <p data-who="Trader">But the sample covariance is unbiased. Isn't that the honest estimate?</p>
+      <p data-who="Quant">Unbiased, yes. But noisy. With forty series and about five hundred days, there are hundreds of pairwise correlations, each estimated from too little data. The biggest risks look too big and the smallest look too small, and the optimiser inverts the matrix, so the smallest ones blow up.</p>
+      <p data-who="Trader">So what's the fix?</p>
+      <p data-who="Quant">Blend it with something simple and stable. A target matrix: say every pair gets the same average correlation, while each asset keeps its own variance. That target is wrong in detail, but it barely moves from sample to sample.</p>
+      <p data-who="Trader">A wrong matrix helps?</p>
+      <p data-who="Quant">Think of a blurry photo of a face and a clean stock drawing of a face. The photo is the real person but noisy. The drawing is clean but generic. The right mix can look more like the person than either one alone.</p>
+      <p data-who="Trader">Show me numbers.</p>
+      <p data-who="Quant">The lesson's three-asset example. The sample covariance between assets one and two is one point eight. The target, built from the average correlation of about zero point three six, says two point one three. Blend thirty percent target with seventy percent sample and you get one point nine. Every variance on the diagonal stays exactly where it was.</p>
+      <p data-who="Trader">Who picks the thirty percent?</p>
+      <p data-who="Quant">That's Ledoit and Wolf's real contribution, from their papers around 2003 and 2004. A formula that sets the blend from the data alone. It weighs how noisy the sample is against how wrong the target is.</p>
+      <p data-who="Trader">And with more history?</p>
+      <p data-who="Quant">The sample gets less noisy, so the formula shrinks less. Short history, many assets: shrink more.</p>
+      <p data-who="Trader">Does that fix my optimiser?</p>
+      <p data-who="Quant">Half of it. It calms the risk side, so the weights stop chasing noise in the matrix. Shaky expected returns are a separate problem, which Black-Litterman deals with. And shrinkage can't save you from a genuine regime change inside your data window.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Don't trust a noisy covariance matrix raw: blend it with a simple target by the amount the data says, before you invert it or size anything off it.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -143,6 +216,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From the raw sample matrix to Ledoit-Wolf's δ̂*, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \Sigma_{\text{shrunk}} = \color{#fbbf24}{\hat\Sigma} \]</div>
+      <p>Start with the plain sample covariance matrix: unbiased, but noisy whenever \(N\) is not tiny relative to \(T\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \Sigma_{\text{shrunk}} = \color{#fbbf24}{\delta\,F} + (1-\delta)\,\hat\Sigma \]</div>
+      <p>Mix in a structured target \(F\) with weight \(\delta\). In the worked example, at \(\delta = 0.30\): \(0.30(2.1333) + 0.70(1.80) = 1.90\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \delta^* = \arg\min_{\delta\in[0,1]}\; \color{#fbbf24}{E\Big[\big\lVert \delta F + (1-\delta)\hat\Sigma - \Sigma \big\rVert_F^2\Big]} \]</div>
+      <p>Choose the blend that minimises expected squared error against the true matrix. Some \(\delta\) between 0 and 1 can beat both extremes.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\hat\delta^* \;\approx\; \frac{\hat\pi - \hat\rho}{\hat\gamma} \Big/ T} \]</div>
+      <p>Ledoit and Wolf estimate that optimum from the sample alone: noise not shared with the target, over how wrong the target is, divided by the history length. Clip it to \([0,1]\).</p>
+    </div>
+  </div>
   <h3>Step 1 — the shrinkage estimator itself</h3>
   <p>
     Let \(\hat\Sigma\) be the ordinary sample covariance matrix — the same
@@ -550,6 +643,10 @@
       the shrunk matrix should exactly match \(\hat\Sigma\); drag all the way
       to 100% and it should exactly match \(F\).
     </p>
+    <div class="tl-predict" data-answer="1.97" data-tol="0.03" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At \(\delta = 30\%\) the shrunk entry \(\Sigma_{12}\) is 1.90, between the sample's 1.80 and the target's 2.1333. Keep the worked-example numbers and move the slider to 50%. What will \(\Sigma_{12}\) be? Lock in a guess, then drag the slider below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 1.97.</strong> \(0.50(2.1333) + 0.50(1.80) = 1.9667\), shown as 1.97: exactly halfway, because \(\delta\) is a straight-line dial between the two matrices. The diagonal stays at 4.00, 9.00 and 2.25 however far you drag. Now try 0% and 100% to see the two boundary cases.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>σ₁</span></div>
@@ -614,6 +711,12 @@
     </div>
     <button type="button" id="lw-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
+
+  <!-- WB:institutional_ledoit_wolf_shrinkage:START -->
+  <div class="wb" id="wb-institutional_ledoit_wolf_shrinkage" data-title="Ledoit-Wolf: one dial between noise and bias">
+    <script type="application/json">{"w":600,"h":720,"intro":"The lesson's three-asset example: a noisy sample matrix, a stable target, and one dial between them. Press play, or step through.","steps":[{"cap":"A sample covariance matrix is like a blurry photo of a real face: about the right thing, but noisy, because the history is short. Unbiased on average, unreliable in any one sample.","do":[{"box":"samp","x":10,"y":10,"w":190,"h":84,"text":"sample Σ̂\nunbiased · noisy","tone":"red","size":19}]},{"cap":"A shrinkage target is a clean stock drawing of a face: simple, stable, and wrong in the details. Here every pair gets the basket's average correlation, 0.356, and each asset keeps its own variance.","do":[{"box":"targ","x":400,"y":10,"w":190,"h":84,"text":"target F\nstable · biased","tone":"blue","size":19}]},{"cap":"One dial between them: Σ_shrunk = δ F + (1 − δ) Σ̂. At δ = 0 you get the sample, at δ = 1 the target. Anything between blends every entry in the same proportion.","do":[{"box":"dial","x":245,"y":18,"w":110,"h":68,"text":"δ","tone":"green","sub":"0.00","size":20},{"arrow":["samp","dial"],"tone":"red"},{"arrow":["targ","dial"],"tone":"blue"}]},{"cap":"The lesson's sample matrix: covariances of 1.80, 0.90 and 2.10 between the three pairs of assets, from volatilities of 2, 3 and 1.5.","do":[{"chart":"ch","x":10,"y":120,"w":580,"h":300,"title":"Off-diagonal covariances","xd":[0.5,3.5],"yd":[0,2.6],"yt":[[0,"0"],[1,"1"],[2,"2"]],"xt":[[1,"Σ₁₂"],[2,"Σ₁₃"],[3,"Σ₂₃"]],"pl":40,"pr":12},{"bars":"sb","chart":"ch","data":[[0.73,1.8,"1.80","red"],[1.73,0.9,"0.90","red"],[2.73,2.1,"2.10","red"]],"bw":26,"ms":1000}]},{"cap":"The constant-correlation target puts 0.356 on every pair: 2.13, 1.07 and 1.60. It pulls the low correlations up and the high one down.","do":[{"bars":"fb","chart":"ch","data":[[1.0,2.1333,"2.13","blue"],[2.0,1.0667,"1.07","blue"],[3.0,1.6,"1.60","blue"]],"bw":26,"ms":1000}]},{"cap":"Turn the dial to δ = 0.30. Each entry moves 30% of the way from the sample to the target: 1.80 becomes 1.90, 0.90 becomes 0.95, 2.10 becomes 1.95.","do":[{"count":"dial","from":0,"to":0.3,"dp":2,"ms":1000},{"bars":"xb","chart":"ch","data":[[1.27,1.9,"1.90","green"],[2.27,0.95,"0.95","green"],[3.27,1.95,"1.95","green"]],"bw":26,"ms":1000}]},{"cap":"The diagonal does not move. With this target each asset keeps its own variance, 4.00, 9.00 and 2.25. Only the correlation structure is pulled toward the average.","do":[{"note":"diag","x":300,"y":446,"text":"variances 4.00 · 9.00 · 2.25: unchanged","size":20,"anchor":"middle","tone":"green"}]},{"cap":"Why a blend can beat both: the target adds a little bias, but removes a lot of noise. Squared error counts bias squared and variance in full, so the right mix has lower total error than either extreme.","do":[{"box":"bv","x":10,"y":476,"w":580,"h":58,"text":"a little bias, a lot less noise → lower total error","tone":"purple","size":19}]},{"cap":"Ledoit and Wolf's contribution: a formula for the best δ from the data alone. Noise in the sample, over how wrong the target is, divided by the history length. More history, less shrinkage.","do":[{"box":"lw","x":10,"y":548,"w":580,"h":58,"text":"δ̂* ≈ (π̂ − ρ̂) ÷ γ̂ ÷ T, clipped to [0, 1]","tone":"green","size":20},{"pulse":"dial"}]},{"cap":"Why traders care: an optimiser inverts this matrix. Shrinkage pulls the smallest eigenvalues up and the largest down, so the inverse is calmer and the weights stop chasing noise.","do":[{"box":"opt","x":10,"y":620,"w":285,"h":62,"text":"calmer inverse,\ncalmer weights","tone":"blue","size":18}]},{"cap":"What it cannot do: fix a regime change inside the data window, or rescue a badly chosen target. It treats estimation noise, nothing more.","do":[{"box":"lim","x":305,"y":620,"w":285,"h":62,"text":"not a cure for\nstructural breaks","tone":"red","size":18}]}]}</script>
+  </div>
+  <!-- WB:institutional_ledoit_wolf_shrinkage:END -->
 
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>How practitioners actually use this</h2>
@@ -755,6 +858,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative rebalance</div>
+    <h3>Forty series, two years of data, and an optimiser that wants extreme positions</h3>
+    <p>You are building a diversified overlay across 40 FX pairs and macro factors from two years of daily returns, about 500 days, as in the lesson's scenario. Fed the raw sample covariance matrix, the mean-variance optimiser returns very large long and short weights, and they change sharply when you shift the data window by a month. What do you change first?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Nothing. The sample covariance is unbiased, so the weights are the honest answer.<div class="tl-drill-why">Unbiased is not the same as accurate. With 40 series and 500 days the smallest eigenvalues are biased low, and inverting the matrix turns that noise into oversized positions.</div></li>
+      <li data-verdict="bad">Replace the matrix with a scaled identity: equal variances, no correlations.<div class="tl-drill-why">That is shrinkage with the dial at 1 toward the most aggressive target. It throws away every real correlation in the basket, which is all bias and no data.</div></li>
+      <li data-verdict="good">Shrink the covariance toward a structured target with the Ledoit-Wolf intensity, and handle expected returns separately, for example with Black-Litterman.<div class="tl-drill-why">Shrinkage fixes the covariance side: a better-conditioned matrix and weights less sensitive to the window. The expected-return side is a separate source of the same symptom and needs its own fix.</div></li>
+      <li data-verdict="ok">Apply Ledoit-Wolf shrinkage and treat the problem as solved.<div class="tl-drill-why">A real improvement, and the right first step on the risk side. But noisy expected returns can still drive extreme weights on their own.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson says.</strong> This is an illustrative case built on the lesson's own scenario, not a real episode. With \(q = 40/500 = 0.08\), the sample matrix sits in the regime where Random Matrix Theory predicts real eigenvalue distortion. Shrinkage pulls the smallest eigenvalues up and the largest down, which is why the shrunk matrix inverts more calmly. It still cannot fix a structural break inside the two-year window.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -865,6 +981,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="random-matrix-theory.html">Random Matrix Theory &amp; the Marchenko-Pastur Law</a> <span>· the eigenvalue distortion shrinkage treats</span></li>
+        <li><a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a> <span>· why a noisy matrix wrecks an optimiser</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-barra-risk-models.html">Barra-Style Risk Models</a> <span>· the factor structure behind a single-factor target</span></li><!-- DESK:END -->
+        <li><a href="risk-parity-erc.html">Risk Parity &amp; Equal Risk Contribution</a> <span>· a weighting scheme that needs a stable matrix</span></li>
+        <li><a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a> <span>· another way to avoid inverting a noisy matrix</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every optimiser, risk-parity weight and covariance-based VaR you run inherits the noise in its covariance matrix, and shrinkage is the cheap, standard fix.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-breeden-litzenberger-variance-swaps.html">← Breeden-Litzenberger &amp; Variance Swaps</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -895,7 +1031,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var DASH = '—';
@@ -993,5 +1130,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

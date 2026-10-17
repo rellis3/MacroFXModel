@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Extreme Value Theory &amp; Tail Risk — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -41,6 +42,62 @@
       <li><strong>Real-world episode:</strong> on 19 October 1987 the S&amp;P 500 fell about 20% in one session, on the order of twenty standard deviations for a market whose daily moves were then around 1%, and the Dow's 22.6% fall nearly doubled the worst days of 1929. A heavy tail (\(\xi&gt;0\)) makes such a day rare but possible; a normal makes it impossible.<!-- DESK:START --> Whether a GPD tail estimate is breached at its advertised rate out of sample is <strong>untested here</strong>, and "something follows a rare move" is tested null (<code>mv-extreme-forward</code>).<!-- DESK:END --></li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="On a log scale, the chance that a day's loss is this bad or worse, against the loss measured in daily standard deviations. A dashed line at 1 in 500 marks the edge of 500 days of data: above it losses are measured, below it they are extrapolated from the fitted tail shape. A normal curve falls off a cliff and is gone by about 5 standard deviations. An illustrative heavy tail with positive shape parameter declines slowly and still has some probability at 20 standard deviations, where 19 October 1987 sits: the S&amp;P 500 fell about 20%, roughly twenty standard deviations, impossible under a normal and rare under a heavy tail.">
+      <line class="tlp-line" x1="80" y1="36" x2="80" y2="205"/>
+      <line class="tlp-line" x1="80" y1="205" x2="590" y2="205"/>
+      <text class="tlp-text3" x="86" y="26" font-size="12">chance a day is this bad or worse (log scale)</text>
+      <text class="tlp-text3" x="74" y="74" text-anchor="end" font-size="12">1 in 100</text>
+      <text class="tlp-text3" x="74" y="134" text-anchor="end" font-size="12">1 in 10,000</text>
+      <text class="tlp-text3" x="74" y="194" text-anchor="end" font-size="12">1 in 1m</text>
+      <text class="tlp-text3" x="80" y="221" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="200" y="221" text-anchor="middle" font-size="12">5σ</text>
+      <text class="tlp-text3" x="320" y="221" text-anchor="middle" font-size="12">10σ</text>
+      <text class="tlp-text3" x="440" y="221" text-anchor="middle" font-size="12">15σ</text>
+      <text class="tlp-text3" x="560" y="221" text-anchor="middle" font-size="12">20σ daily loss</text>
+      <line class="tlp-line dash" x1="80" y1="91" x2="590" y2="91"/>
+      <text class="tlp-text3" x="588" y="85" text-anchor="end" font-size="12">edge of 500 days of data (1 in 500)</text>
+      <text class="tlp-green" x="588" y="62" text-anchor="end" font-size="13" font-weight="700">↑ measured: real days to count</text>
+      <text class="tlp-amber" x="588" y="112" text-anchor="end" font-size="13" font-weight="700">↓ extrapolated: the fitted shape talking</text>
+      <polyline class="tlp-line red thick dash" points="118.4,47.8 120.8,50.5 123.2,53.3 125.6,56.3 128.0,59.3 130.4,62.4 132.8,65.7 135.2,69.1 137.6,72.6 140.0,76.2 142.4,79.9 144.8,83.8 147.2,87.8 149.6,91.9 152.0,96.1 154.4,100.4 156.8,104.9 159.2,109.5 161.6,114.2 164.0,119.0 166.4,123.9 168.8,129.0 171.2,134.2 173.6,139.5 176.0,145.0 178.4,150.5 180.8,156.2 183.2,162.1 185.6,168.0 188.0,174.1 190.4,180.3 192.8,186.6 195.2,193.0 197.6,199.6 198.6,205.0"/>
+      <polyline class="tlp-line purple thick" points="118.4,53.8 123.2,57.4 128.0,60.8 132.8,64.0 137.6,66.9 142.4,69.7 147.2,72.3 152.0,74.8 164.0,80.4 176.0,85.3 188.0,89.7 200.0,93.7 212.0,97.3 224.0,100.7 236.0,103.7 248.0,106.6 260.0,109.2 272.0,111.7 284.0,114.1 296.0,116.3 308.0,118.4 320.0,120.4 332.0,122.2 344.0,124.1 356.0,125.8 368.0,127.4 380.0,129.0 392.0,130.5 404.0,132.0 416.0,133.4 428.0,134.8 440.0,136.1 452.0,137.4 464.0,138.6 476.0,139.8 488.0,141.0 500.0,142.1 512.0,143.2 524.0,144.3 536.0,145.3 548.0,146.3 560.0,147.3"/>
+      <text class="tlp-red" x="206" y="186" font-size="13" font-weight="700">normal: gone by 5σ</text>
+      <text class="tlp-purple" x="250" y="162" font-size="13" font-weight="700">heavy tail, ξ &gt; 0 (illustrative)</text>
+      <circle class="tlp-red" cx="560" cy="147.3" r="6"/>
+      <text class="tlp-red" x="588" y="178" text-anchor="end" font-size="13" font-weight="700">19 Oct 1987: S&amp;P −20%, ≈ 20σ</text>
+      <text class="tlp-text2" x="588" y="194" text-anchor="end" font-size="12">normal: impossible · heavy tail: rare</text>
+    </svg>
+    <figcaption>Above the dashed line you have real days to count. Below it, every number is the fitted tail shape talking. A normal curve says a twenty-sigma day cannot happen; a heavy tail says it is rare but possible. Peaks-over-threshold fits that tail shape from the worst days you do have.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My backtest has two years of daily data, and my worst day is in there. Is that my worst case?</p>
+      <p data-who="Quant">It is your worst day so far. Not your worst possible day. Two years is about five hundred days. That tells you a lot about an ordinary day and almost nothing about a one-in-two-thousand-day event.</p>
+      <p data-who="Trader">Why almost nothing?</p>
+      <p data-who="Quant">Do the arithmetic. A one-in-two-thousand-day loss turns up about once every eight years. In five hundred days you probably have not seen one. Even the one-in-two-hundred-day level gets read off between your second and third worst days.</p>
+      <p data-who="Trader">So the historical number is really just naming my worst day or two.</p>
+      <p data-who="Quant">Exactly. Shift the window a little and it can swing a lot. Extreme value theory is the honest way to say something about losses you have not seen yet.</p>
+      <p data-who="Trader">How does it do that?</p>
+      <p data-who="Quant">Pick a high bar, say the ninetieth percentile of your losses. With five hundred days, about fifty days clear it. Throw everything else away and study only how far past the bar those fifty went.</p>
+      <p data-who="Trader">Why does throwing data away help?</p>
+      <p data-who="Quant">Because of a theorem. Whatever the original data looked like, the overshoots past a high enough bar settle into one family of shapes, the generalized Pareto. It is the tail version of averages turning into a bell curve.</p>
+      <p data-who="Trader">And the shape tells me what?</p>
+      <p data-who="Quant">One number, the shape parameter, tells you the kind of tail. Positive means a heavy tail, where huge losses fade away slowly. Zero is a plain, medium tail. Negative means a hard ceiling. Financial losses usually come out positive.</p>
+      <p data-who="Trader">Then I just read the one-in-two-thousand loss off the fitted curve.</p>
+      <p data-who="Quant">You can, and the formula will give you a number. But past your data, that number is the fitted shape talking. Report it next to the historical number, and treat the gap between them as how much you are leaning on the model.</p>
+      <p data-who="Trader">Has a normal curve ever been badly wrong out there?</p>
+      <p data-who="Quant">The nineteenth of October 1987. The S and P 500 fell about twenty percent in one session. Daily moves had been running around one percent, so that was roughly twenty standard deviations. A normal model calls that impossible. A heavy tail calls it rare.</p>
+      <p data-who="Trader">So the heavy tail got it right.</p>
+      <p data-who="Quant">Closer, not perfect. The extreme days came in a cluster that week, and the crash had its own mechanism: forced selling into market plumbing that could not keep up. Both strain the theory's own assumptions.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Your worst day so far is not your worst day possible. Fit the tail honestly, and remember that past your data it is an assumption, not a measurement.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -96,6 +153,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From a fitted tail to a VaR you can extrapolate, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P(Y > y \mid X > u) = \left(1 + \color{#fbbf24}{\xi} \frac{y}{\color{#fbbf24}{\beta}}\right)^{-1/\color{#fbbf24}{\xi}} \]</div>
+      <p>Start with the tail shape. Past a high threshold \(u\), the overshoot \(Y = X - u\) follows the Generalized Pareto Distribution. The shape \(\xi\) says what kind of tail it is; the scale \(\beta\) says how big the overshoots run.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P(X > u + y) = \color{#fbbf24}{\frac{n_u}{n}} \left(1 + \xi \frac{y}{\beta}\right)^{-1/\xi} \]</div>
+      <p>To be beyond \(u + y\) you first have to clear the bar at all. The observed exceedance rate \(n_u/n\) estimates that chance: with \(n = 500\) days and \(u\) at the 90th percentile, it is \(50/500\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{n_u}{n} \left(1 + \xi \frac{y}{\beta}\right)^{-1/\xi} = \color{#fbbf24}{1 - p} \]</div>
+      <p>VaR at confidence \(p\) is the loss exceeded with probability \(1 - p\). Set the tail probability equal to it. For a 1-in-2,000-day loss, \(1 - p = 0.0005\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\widehat{\text{VaR}}_p = u + \frac{\beta}{\xi}\left[ \left(\frac{n}{n_u}(1-p)\right)^{-\xi} - 1 \right]} \]</div>
+      <p>Solve for \(y\) and add back \(u\). Everything here is observed (\(u, n, n_u\)) or fitted (\(\xi, \beta\)), and because it is smooth in \(p\) it can be evaluated past the edge of your data. That is the extrapolation, and the assumption.</p>
+    </div>
+  </div>
   <p>
   We'll build this in the order a practitioner actually uses it: first define VaR and CVaR precisely
   (the two numbers you're ultimately trying to estimate), then show exactly why the plain historical
@@ -386,6 +463,15 @@
 
   <div class="tl-chart">
     <div class="tl-chart-label">Illustrative — normal fit vs. GPD tail fit on a fat-tailed return histogram</div>
+    <div class="tl-predict">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The threshold below starts at the 90th percentile. Before you touch it, picture dragging the slider up to the 98th. Where does the amber threshold line go, and what happens to the red tail fit?</div>
+      <ul class="tl-predict-options">
+        <li>It moves right, towards the peak, and the red tail fit gets longer.</li>
+        <li data-correct>It moves far left, almost to the edge of the losses, and the red tail fit shrinks to a short stub.</li>
+        <li>It barely moves. The threshold only changes how the fit is coloured.</li>
+      </ul>
+      <div class="tl-predict-reveal"><p><strong>Far left, to a short stub.</strong> A higher percentile is a more extreme loss, so the bar moves deeper into the sparse left tail. With 500 days, the 90th percentile leaves 500 × 10% = 50 exceedances to fit; the 98th leaves only 500 × 2% = 10. The tail is purer but the fit rests on far less data. Now slide back down to the 80th: plenty of data, but some of it is ordinary days, not tail.</p></div>
+    </div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Schematic histogram of returns with a fat left tail, overlaid with a normal-distribution curve that undershoots the tail and a Generalized Pareto Distribution curve that tracks it closely beyond a threshold u">
       <line x1="40" y1="250" x2="626" y2="250" style="stroke:var(--border);stroke-width:1"></line>
       <rect x="40"  y="242" width="28" height="8"   style="fill:var(--s3);stroke:var(--border)"></rect>
@@ -512,6 +598,12 @@
     update();
   })();
   </script>
+
+  <!-- WB:extreme_value_theory:START -->
+  <div class="wb" id="wb-extreme_value_theory" data-title="Peaks over threshold, drawn step by step">
+    <script type="application/json">{"w":600,"h":610,"intro":"Your worst day so far is not your worst possible day. Peaks-over-threshold, drawn step by step on 500 simulated days whose true tail we know. Press play, or step through.","steps":[{"cap":"Two years of daily P&L is about 500 trading days. Here they are as losses, in units of a typical day's move σ. They are simulated from a fat-tailed process, so we know the truth. Most days are small; a few spike.","do":[{"chart":"A","x":10,"y":10,"w":580,"h":250,"title":"Daily loss, 500 days, in σ (simulated)","xd":[1,500],"yd":[-6.4,5.6],"yt":[[-4,"−4"],[0,"0"],[4,"4σ"]],"xt":[[1,"day 1"],[500,"day 500"]],"zero":true,"pl":44,"pr":36},{"series":"loss","chart":"A","pts":[[1,-1.78],[2,0.61],[3,0.2],[4,0.26],[5,0.84],[6,0.11],[7,-0.01],[8,0.36],[9,-1.44],[10,-1.06],[11,-0.45],[12,-0.74],[13,-0.13],[14,0.7],[15,-0.67],[16,-0.8],[17,-0.3],[18,0.46],[19,-0.37],[20,-0.07],[21,2.19],[22,-0.66],[23,-2.07],[24,0.4],[25,0.76],[26,-0.36],[27,-0.32],[28,0.31],[29,0.46],[30,-0.78],[31,0.0],[32,-0.16],[33,0.11],[34,-0.09],[35,-0.06],[36,-4.34],[37,0.32],[38,-0.5],[39,0.98],[40,-0.2],[41,-0.47],[42,-0.29],[43,0.19],[44,-0.5],[45,-0.46],[46,-0.13],[47,0.71],[48,-0.24],[49,-0.21],[50,1.26],[51,0.65],[52,0.15],[53,0.07],[54,-5.25],[55,0.3],[56,-0.47],[57,-1.21],[58,-0.69],[59,-0.31],[60,0.23],[61,0.33],[62,-1.49],[63,0.71],[64,0.73],[65,-0.08],[66,-0.16],[67,0.77],[68,-0.43],[69,0.07],[70,0.4],[71,0.1],[72,0.62],[73,0.5],[74,1.2],[75,0.55],[76,1.32],[77,-0.14],[78,-0.93],[79,0.07],[80,-0.24],[81,0.02],[82,-0.07],[83,-0.1],[84,-0.8],[85,0.08],[86,0.38],[87,-0.31],[88,-0.01],[89,0.05],[90,-0.18],[91,-1.38],[92,0.06],[93,-0.15],[94,-0.77],[95,-0.35],[96,-1.24],[97,-0.17],[98,-0.24],[99,-0.34],[100,0.31],[101,-0.34],[102,1.6],[103,-0.51],[104,0.25],[105,0.46],[106,0.59],[107,-0.46],[108,-0.84],[109,-0.33],[110,0.7],[111,0.84],[112,0.64],[113,-0.08],[114,-0.84],[115,-0.17],[116,0.44],[117,-0.18],[118,0.45],[119,0.33],[120,0.93],[121,-0.23],[122,-0.12],[123,-0.95],[124,0.38],[125,0.11],[126,-0.63],[127,1.1],[128,-0.08],[129,0.42],[130,-0.13],[131,0.06],[132,0.27],[133,-0.46],[134,-0.26],[135,-0.89],[136,0.99],[137,0.18],[138,-0.5],[139,-0.41],[140,-0.05],[141,1.52],[142,0.98],[143,-0.58],[144,0.92],[145,0.64],[146,0.65],[147,0.04],[148,0.59],[149,-0.51],[150,0.02],[151,0.18],[152,0.48],[153,-0.47],[154,-0.01],[155,-1.38],[156,-0.19],[157,-1.6],[158,-0.4],[159,0.2],[160,-0.46],[161,-0.68],[162,-0.64],[163,-0.54],[164,-0.05],[165,-1.02],[166,-0.25],[167,0.0],[168,0.26],[169,-0.87],[170,0.02],[171,0.52],[172,-0.82],[173,-0.49],[174,0.15],[175,0.51],[176,0.14],[177,-1.28],[178,0.19],[179,0.27],[180,0.68],[181,0.68],[182,0.01],[183,1.48],[184,-0.76],[185,3.89],[186,0.34],[187,0.53],[188,-0.26],[189,-0.42],[190,-2.48],[191,0.24],[192,-1.07],[193,-1.54],[194,0.11],[195,-0.36],[196,-0.19],[197,-0.92],[198,1.46],[199,0.15],[200,-0.67],[201,0.78],[202,0.72],[203,-0.18],[204,-1.31],[205,0.11],[206,-0.69],[207,0.06],[208,0.41],[209,0.12],[210,0.2],[211,-0.85],[212,1.27],[213,-0.12],[214,-0.68],[215,0.16],[216,0.05],[217,-0.73],[218,0.02],[219,0.17],[220,-1.01],[221,0.37],[222,-0.25],[223,0.13],[224,0.35],[225,0.09],[226,0.88],[227,-0.41],[228,0.43],[229,0.07],[230,0.05],[231,-0.72],[232,0.2],[233,0.72],[234,0.59],[235,0.11],[236,-0.3],[237,0.76],[238,0.48],[239,0.45],[240,-0.21],[241,0.46],[242,-0.59],[243,0.09],[244,0.68],[245,0.73],[246,0.84],[247,0.33],[248,-0.14],[249,0.25],[250,-0.02],[251,0.19],[252,0.82],[253,0.08],[254,0.92],[255,1.06],[256,-0.16],[257,0.67],[258,0.92],[259,-0.32],[260,-0.12],[261,3.48],[262,-0.42],[263,-0.03],[264,-0.45],[265,-1.38],[266,0.91],[267,-0.49],[268,0.49],[269,-0.08],[270,-1.36],[271,-1.04],[272,1.22],[273,0.4],[274,2.78],[275,1.33],[276,0.67],[277,-0.53],[278,-0.83],[279,0.46],[280,0.63],[281,1.24],[282,-0.24],[283,0.1],[284,4.78],[285,-0.72],[286,0.72],[287,-0.05],[288,-0.16],[289,0.52],[290,-0.82],[291,1.2],[292,1.88],[293,-0.83],[294,-0.33],[295,-0.98],[296,0.48],[297,0.77],[298,-0.56],[299,-0.06],[300,-0.89],[301,-0.94],[302,0.26],[303,2.68],[304,-1.08],[305,0.57],[306,0.35],[307,-0.1],[308,-3.17],[309,-0.08],[310,-0.23],[311,-0.45],[312,0.02],[313,0.19],[314,1.36],[315,0.19],[316,-0.46],[317,-0.55],[318,-0.98],[319,-0.23],[320,0.49],[321,-0.02],[322,0.12],[323,-0.33],[324,-1.47],[325,0.25],[326,0.46],[327,-0.19],[328,-0.14],[329,4.24],[330,-0.57],[331,0.07],[332,-0.15],[333,-0.05],[334,0.81],[335,0.22],[336,0.54],[337,-0.83],[338,2.6],[339,0.41],[340,0.33],[341,-0.64],[342,0.18],[343,0.06],[344,3.25],[345,-0.55],[346,0.72],[347,0.58],[348,-0.75],[349,-0.37],[350,0.31],[351,0.74],[352,-0.62],[353,0.59],[354,1.4],[355,0.58],[356,-0.02],[357,-0.23],[358,-1.03],[359,-0.68],[360,-0.67],[361,-0.44],[362,0.5],[363,3.0],[364,0.51],[365,-0.64],[366,-1.95],[367,-0.5],[368,1.18],[369,-0.4],[370,-0.74],[371,-0.12],[372,1.26],[373,-0.2],[374,-0.21],[375,0.41],[376,-0.16],[377,1.09],[378,0.18],[379,0.17],[380,1.59],[381,-0.83],[382,0.22],[383,0.72],[384,-0.8],[385,-2.01],[386,-0.54],[387,-0.23],[388,0.14],[389,0.48],[390,-0.48],[391,-0.21],[392,1.08],[393,-0.06],[394,-0.71],[395,-0.69],[396,-0.15],[397,-0.57],[398,0.15],[399,-1.37],[400,-0.65],[401,-0.59],[402,0.21],[403,0.36],[404,0.48],[405,0.37],[406,0.91],[407,-1.11],[408,-0.01],[409,-0.04],[410,0.25],[411,0.14],[412,-1.1],[413,-2.54],[414,-0.41],[415,-0.38],[416,1.4],[417,-0.61],[418,0.33],[419,-0.35],[420,-0.38],[421,-3.02],[422,-0.15],[423,0.67],[424,0.12],[425,0.48],[426,-0.96],[427,0.04],[428,-0.36],[429,-0.27],[430,-0.01],[431,-0.4],[432,0.45],[433,-0.81],[434,-0.97],[435,-1.71],[436,0.87],[437,0.13],[438,-0.02],[439,-0.61],[440,-0.27],[441,0.08],[442,-0.1],[443,0.02],[444,0.52],[445,-0.34],[446,0.99],[447,-0.29],[448,-0.19],[449,-0.59],[450,-0.35],[451,0.43],[452,0.21],[453,-0.15],[454,-0.93],[455,-0.69],[456,-0.81],[457,-1.45],[458,-0.53],[459,-0.44],[460,-0.34],[461,-0.25],[462,1.56],[463,-0.06],[464,0.06],[465,-1.06],[466,0.07],[467,0.02],[468,0.48],[469,-0.58],[470,-0.31],[471,-0.4],[472,1.61],[473,1.75],[474,2.58],[475,-0.52],[476,0.14],[477,-1.81],[478,0.65],[479,0.69],[480,-0.25],[481,0.84],[482,-0.64],[483,0.6],[484,3.87],[485,0.31],[486,0.86],[487,0.45],[488,-0.76],[489,-0.34],[490,0.02],[491,-0.41],[492,-0.02],[493,0.54],[494,0.25],[495,-6.13],[496,-0.37],[497,-1.55],[498,-0.1],[499,-0.69],[500,0.47]],"tone":"blue","ms":2200,"width":1.4}]},{"cap":"Historical VaR reads the answer straight off these days. The 99.5% level, a 1-in-200-day loss, rests on 500 × 0.005 = 2.5 days: it is read between your 2nd-worst day (4.2σ) and your 3rd-worst (3.9σ). Change the window and those days change.","do":[{"dot":"w2","chart":"A","at":[329,4.24],"text":"2nd 4.2σ","tone":"amber","dx":8,"dy":-6,"anchor":"start"},{"dot":"w3","chart":"A","at":[185,3.89],"text":"3rd 3.9σ","tone":"amber","dx":-8,"dy":-6,"anchor":"end"},{"box":"emp","x":10,"y":530,"w":285,"h":70,"text":"Historical 99.5% VaR","tone":"amber","sub":"≈ 4σ: two days decide it","size":18}]},{"cap":"And a 1-in-2,000-day loss? You would need about 8 years of daily data to expect even one. In 500 days the plain method can only hand back your single worst day, 4.8σ, and call it a statistic.","do":[{"dot":"w1","chart":"A","at":[284,4.78],"text":"worst 4.8σ","tone":"red","dx":-8,"dy":-6,"anchor":"end"},{"box":"emp2","x":305,"y":530,"w":285,"h":70,"text":"Historical 1 in 2,000","tone":"red","sub":"= the worst day, 4.8σ","size":18}]},{"cap":"Peaks-over-threshold. Set a high bar u at the 90th percentile of losses, here 0.86σ. That leaves 500 × 10% = 50 days above it. Everything below the bar is thrown away.","do":[{"series":"uline","chart":"A","pts":[[1,0.86],[500,0.86]],"tone":"amber","dash":true,"ms":600,"label":"u = 0.86σ, 90th percentile","lat":[500,0.86],"ldx":-4,"ldy":-28,"lanchor":"end","lsize":16},{"note":"abv","chart":"A","at":[250,-5.0],"text":"50 days clear the bar ↑","tone":"amber","size":18,"anchor":"middle","dx":0,"dy":0},{"dim":"loss"}]},{"cap":"For each of those 50 days, measure how far past the bar it landed: the exceedance Y = X − u. Sorted biggest first: a few big overshoots, many small ones.","do":[{"chart":"B","x":10,"y":280,"w":285,"h":230,"title":"Overshoots past u, sorted (σ)","xd":[0.5,50.5],"yd":[0,4.6],"yt":[[0,"0"],[2,"2"],[4,"4"]],"xt":[[1,"1st"],[50,"50th"]],"pl":34},{"bars":"exb","chart":"B","data":[[1,3.91,"","red"],[2,3.37,"","red"],[3,3.03,"","red"],[4,3.01,"","red"],[5,2.61,"","red"],[6,2.38,"","red"],[7,2.14,"","red"],[8,1.92,"","red"],[9,1.82,"","red"],[10,1.74,"","red"],[11,1.72,"","red"],[12,1.33,"","red"],[13,1.01,"","red"],[14,0.89,"","red"],[15,0.75,"","red"],[16,0.73,"","red"],[17,0.73,"","red"],[18,0.7,"","red"],[19,0.66,"","red"],[20,0.62,"","red"],[21,0.59,"","red"],[22,0.54,"","red"],[23,0.54,"","red"],[24,0.5,"","red"],[25,0.46,"","red"],[26,0.45,"","red"],[27,0.4,"","red"],[28,0.39,"","red"],[29,0.39,"","red"],[30,0.37,"","red"],[31,0.36,"","red"],[32,0.34,"","red"],[33,0.33,"","red"],[34,0.32,"","red"],[35,0.23,"","red"],[36,0.23,"","red"],[37,0.21,"","red"],[38,0.19,"","red"],[39,0.13,"","red"],[40,0.13,"","red"],[41,0.12,"","red"],[42,0.11,"","red"],[43,0.07,"","red"],[44,0.06,"","red"],[45,0.06,"","red"],[46,0.06,"","red"],[47,0.05,"","red"],[48,0.05,"","red"],[49,0.01,"","red"],[50,0.01,"","red"]],"bw":3.4,"ms":1100}]},{"cap":"The Balkema-de Haan-Pickands theorem: past a high enough bar, overshoots follow a Generalized Pareto shape, whatever the data looked like. Fitted to these 50 days by maximum likelihood: ξ ≈ 0.26, β ≈ 0.65.","do":[{"series":"gq","chart":"B","pts":[[1,4.45],[2,3.3],[3,2.72],[4,2.35],[5,2.07],[6,1.86],[7,1.69],[8,1.55],[9,1.42],[10,1.32],[11,1.23],[12,1.14],[13,1.07],[14,1.0],[15,0.94],[16,0.88],[17,0.83],[18,0.78],[19,0.73],[20,0.69],[21,0.65],[22,0.61],[23,0.58],[24,0.54],[25,0.51],[26,0.48],[27,0.45],[28,0.42],[29,0.4],[30,0.37],[31,0.35],[32,0.32],[33,0.3],[34,0.28],[35,0.26],[36,0.24],[37,0.22],[38,0.2],[39,0.18],[40,0.16],[41,0.15],[42,0.13],[43,0.11],[44,0.1],[45,0.08],[46,0.07],[47,0.05],[48,0.04],[49,0.03],[50,0.01]],"tone":"purple","ms":1200,"label":"GPD fit","lat":[8,1.55],"ldx":10,"ldy":-22,"lanchor":"start"}]},{"cap":"ξ is the payload: it tells you the kind of tail. ξ > 0 is heavy and Pareto-type, fading slowly. ξ = 0 is exponential. ξ < 0 has a hard ceiling. Each curve is the chance an overshoot is bigger than y.","do":[{"chart":"C","x":305,"y":280,"w":285,"h":230,"title":"Chance overshoot > y","xd":[0,4.2],"yd":[0,1.05],"yt":[[0,"0"],[1,"1"]],"xt":[[0,"0"],[2,"2"],[4,"4"]],"pl":30},{"series":"sp","chart":"C","pts":[[0.0,1.0],[0.1,0.906],[0.2,0.823],[0.3,0.75],[0.4,0.685],[0.5,0.628],[0.6,0.576],[0.7,0.53],[0.8,0.488],[0.9,0.451],[1.0,0.417],[1.1,0.387],[1.2,0.359],[1.3,0.334],[1.4,0.311],[1.5,0.29],[1.6,0.271],[1.7,0.253],[1.8,0.237],[1.9,0.222],[2.0,0.209],[2.1,0.196],[2.2,0.185],[2.3,0.174],[2.4,0.164],[2.5,0.155],[2.6,0.146],[2.7,0.138],[2.8,0.131],[2.9,0.124],[3.0,0.118],[3.1,0.112],[3.2,0.106],[3.3,0.101],[3.4,0.096],[3.5,0.091],[3.6,0.087],[3.7,0.083],[3.8,0.079],[3.9,0.076],[4.0,0.072],[4.1,0.069],[4.2,0.066]],"tone":"red","ms":900,"label":"ξ > 0","lat":[2.2,0.88],"ldx":0,"ldy":0,"lanchor":"start"},{"series":"sz","chart":"C","pts":[[0.0,1.0],[0.1,0.905],[0.2,0.819],[0.3,0.741],[0.4,0.67],[0.5,0.607],[0.6,0.549],[0.7,0.497],[0.8,0.449],[0.9,0.407],[1.0,0.368],[1.1,0.333],[1.2,0.301],[1.3,0.273],[1.4,0.247],[1.5,0.223],[1.6,0.202],[1.7,0.183],[1.8,0.165],[1.9,0.15],[2.0,0.135],[2.1,0.122],[2.2,0.111],[2.3,0.1],[2.4,0.091],[2.5,0.082],[2.6,0.074],[2.7,0.067],[2.8,0.061],[2.9,0.055],[3.0,0.05],[3.1,0.045],[3.2,0.041],[3.3,0.037],[3.4,0.033],[3.5,0.03],[3.6,0.027],[3.7,0.025],[3.8,0.022],[3.9,0.02],[4.0,0.018],[4.1,0.017],[4.2,0.015]],"tone":"amber","ms":900,"label":"ξ = 0","lat":[2.2,0.7],"ldx":0,"ldy":0,"lanchor":"start"},{"series":"sn","chart":"C","pts":[[0.0,1.0],[0.1,0.903],[0.2,0.814],[0.3,0.73],[0.4,0.653],[0.5,0.582],[0.6,0.516],[0.7,0.456],[0.8,0.401],[0.9,0.35],[1.0,0.305],[1.1,0.263],[1.2,0.226],[1.3,0.193],[1.4,0.163],[1.5,0.136],[1.6,0.113],[1.7,0.093],[1.8,0.075],[1.9,0.06],[2.0,0.047],[2.1,0.036],[2.2,0.027],[2.3,0.02],[2.4,0.014],[2.5,0.01],[2.6,0.006],[2.7,0.004],[2.8,0.002],[2.9,0.001],[3.0,0.0],[3.1,0.0],[3.2,0.0],[3.3,0.0],[3.33,0.0]],"tone":"green","ms":900,"label":"ξ < 0: ceiling","lat":[2.2,0.52],"ldx":0,"ldy":0,"lanchor":"start"}]},{"cap":"Now extrapolate. On a log scale, the green line is the 50 real days beyond u. The fitted GPD (purple) carries on past the last real day. Beyond that point it is the fitted shape talking, not data.","do":[{"hide":"A"},{"hide":"loss"},{"hide":"w1"},{"hide":"w2"},{"hide":"w3"},{"hide":"uline"},{"hide":"abv"},{"chart":"D","x":10,"y":10,"w":580,"h":250,"title":"Chance a day is this bad or worse (log scale)","xd":[0,21],"yd":[-5.3,-0.8],"yt":[[-1,"1 in 10"],[-2,"1 in 100"],[-3.3,"1 in 2,000"],[-5,"1 in 100k"]],"xt":[[0,"0"],[5,"5σ"],[10,"10σ"],[15,"15σ"],[20,"20σ"]],"pl":96,"pr":16},{"series":"empl","chart":"D","pts":[[4.78,-2.699],[4.24,-2.398],[3.89,-2.222],[3.87,-2.097],[3.48,-2.0],[3.25,-1.921],[3.0,-1.854],[2.78,-1.796],[2.68,-1.745],[2.6,-1.699],[2.58,-1.658],[2.19,-1.62],[1.88,-1.585],[1.75,-1.553],[1.61,-1.523],[1.6,-1.495],[1.59,-1.469],[1.56,-1.444],[1.52,-1.42],[1.48,-1.398],[1.46,-1.377],[1.4,-1.357],[1.4,-1.337],[1.36,-1.319],[1.33,-1.301],[1.32,-1.284],[1.27,-1.268],[1.26,-1.252],[1.26,-1.237],[1.24,-1.222],[1.22,-1.208],[1.2,-1.194],[1.2,-1.18],[1.18,-1.167],[1.1,-1.155],[1.09,-1.143],[1.08,-1.131],[1.06,-1.119],[0.99,-1.108],[0.99,-1.097],[0.98,-1.086],[0.98,-1.076],[0.93,-1.066],[0.92,-1.056],[0.92,-1.046],[0.92,-1.036],[0.91,-1.027],[0.91,-1.018],[0.88,-1.009],[0.87,-1.0]],"tone":"green","ms":900,"label":"50 real days","lat":[4.78,-2.699],"ldx":8,"ldy":10,"lanchor":"start"},{"series":"fit","chart":"D","pts":[[0.86,-0.998],[1.11,-1.157],[1.36,-1.303],[1.61,-1.437],[1.86,-1.561],[2.11,-1.677],[2.36,-1.785],[2.61,-1.887],[2.86,-1.983],[3.11,-2.074],[3.36,-2.161],[3.61,-2.243],[3.86,-2.321],[4.11,-2.396],[4.36,-2.468],[4.61,-2.537],[4.86,-2.603],[5.11,-2.667],[5.36,-2.728],[5.61,-2.787],[5.86,-2.844],[6.11,-2.9],[6.36,-2.953],[6.61,-3.005],[6.86,-3.056],[7.11,-3.105],[7.36,-3.152],[7.61,-3.199],[7.86,-3.244],[8.11,-3.288],[8.36,-3.33],[8.61,-3.372],[8.86,-3.413],[9.11,-3.453],[9.36,-3.491],[9.61,-3.529],[9.86,-3.567],[10.11,-3.603],[10.36,-3.639],[10.61,-3.673],[10.86,-3.708],[11.11,-3.741],[11.36,-3.774],[11.61,-3.806],[11.86,-3.838],[12.11,-3.869],[12.36,-3.899],[12.61,-3.929],[12.86,-3.959],[13.11,-3.988],[13.36,-4.016],[13.61,-4.044],[13.86,-4.072],[14.11,-4.099],[14.36,-4.125],[14.61,-4.152],[14.86,-4.177],[15.11,-4.203],[15.36,-4.228],[15.61,-4.253],[15.86,-4.277],[16.11,-4.301],[16.36,-4.325],[16.61,-4.348],[16.86,-4.371],[17.11,-4.394],[17.36,-4.416],[17.61,-4.439],[17.86,-4.46],[18.11,-4.482],[18.36,-4.503],[18.61,-4.524],[18.86,-4.545],[19.11,-4.566],[19.36,-4.586],[19.61,-4.606],[19.86,-4.626],[20.11,-4.645],[20.36,-4.665],[20.61,-4.684],[20.86,-4.703]],"tone":"purple","ms":1500,"label":"GPD, extrapolated","lat":[14,-4.072],"ldy":-18}]},{"cap":"Read off 1 in 2,000 days. A normal fitted to the same days says 3.3σ. The worst day you saw was 4.8σ. The GPD says 8.2σ, far past anything in the sample. At 1 in 200 it says 3.8σ, close to the historical ≈ 4σ.","do":[{"series":"l2k","chart":"D","pts":[[0,-3.301],[21,-3.301]],"tone":null,"dash":true,"ms":500},{"series":"nrm","chart":"D","pts":[[1.28,-0.999],[1.38,-1.077],[1.48,-1.158],[1.58,-1.244],[1.68,-1.333],[1.78,-1.426],[1.88,-1.522],[1.98,-1.622],[2.08,-1.727],[2.18,-1.835],[2.28,-1.947],[2.38,-2.063],[2.48,-2.182],[2.58,-2.306],[2.68,-2.434],[2.78,-2.566],[2.88,-2.702],[2.98,-2.841],[3.08,-2.985],[3.18,-3.133],[3.28,-3.285],[3.38,-3.441],[3.48,-3.601],[3.58,-3.765],[3.68,-3.933],[3.78,-4.106],[3.88,-4.282],[3.98,-4.463],[4.08,-4.647],[4.18,-4.836],[4.28,-5.029],[4.38,-5.227]],"tone":"red","dash":true,"ms":800,"label":"normal","lat":[4.4,-4.7],"ldx":8,"ldy":0,"lanchor":"start"},{"dot":"dn","chart":"D","at":[3.29,-3.301],"text":"","tone":"red"},{"dot":"dg","chart":"D","at":[8.2,-3.301],"text":"8.2σ","tone":"purple","dx":-6,"dy":20,"anchor":"end"},{"sub":"emp","text":"historical ≈ 4σ · GPD 3.8σ"},{"sub":"emp2","text":"worst 4.8σ · GPD 8.2σ"}]},{"cap":"Where does 19 October 1987 sit on this axis? The S&P 500 fell about 20% when daily moves ran near 1%: about 20σ. Under the normal that is effectively impossible. Under a heavy tail it is rare but possible.","do":[{"series":"v87","chart":"D","pts":[[20,-5.3],[20,-0.8]],"tone":"red","dash":true,"ms":500},{"note":"n87","chart":"D","at":[20,-1.25],"text":"19 Oct 1987 ≈ 20σ","tone":"red","size":17,"anchor":"end","dx":-8,"dy":0},{"dot":"d87","chart":"D","at":[20,-4.637],"text":"","tone":"red"}]},{"cap":"The catch: 50 points give a noisy ξ. Draw seven separate 500-day samples from the same process and refit: ξ comes out anywhere from −0.32, which claims a ceiling, to 0.34. Always ask how many exceedances sit behind ξ, and test other thresholds.","do":[{"hide":"C"},{"hide":"sp"},{"hide":"sz"},{"hide":"sn"},{"chart":"E","x":305,"y":280,"w":285,"h":230,"title":"ξ, 7 samples, one process","xd":[0.4,7.6],"yd":[-0.45,0.5],"yt":[[-0.3,"−0.3"],[0,"0"],[0.3,"0.3"]],"xt":[[1,"1"],[4,"4"],[7,"7"]],"zero":true,"pl":44},{"bars":"xb","chart":"E","data":[[1,0.23,"0.23","purple"],[2,0.11,"0.11","purple"],[3,0.26,"0.26","purple"],[4,0.01,"0.01","purple"],[5,0.03,"0.03","purple"],[6,0.34,"0.34","purple"],[7,-0.32,"−0.32","red"]],"bw":22,"size":13,"ms":1000}]},{"cap":"And 1987 strained EVT's own assumptions: the extremes came in a cluster (the Dow fell about 4.6% the Friday before and rose about 10% two days after), and a crisis-only mechanism switched on. Report the historical and the fitted number together. The gap between them is how much you lean on the model.","do":[{"hide":"emp"},{"hide":"emp2"},{"note":"end","x":300,"y":565,"text":"beyond your data: an assumption, not a measurement","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:extreme_value_theory:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: 19 October 1987, the day a normal curve forbids</h2>
@@ -679,6 +771,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill" data-date="1987-10-16">
+    <div class="tl-drill-label">Scenario drill · Friday 16 October 1987</div>
+    <h3>A heavy week, and your risk model says relax</h3>
+    <p>You run a leveraged long book in US stocks. It has been a week of heavy falls, and today the Dow fell about 4.6%. Your risk model is a normal distribution fitted to recent years, when daily index moves had a standard deviation of roughly 1%. On that model, a fall several times larger than today's is so unlikely it is not worth a thought. What do you do with the leverage over the weekend?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Keep the leverage. The model says another big fall is vanishingly unlikely.<div class="tl-drill-why">A normal curve has far too little mass in the tail, so it calls large losses impossible rather than rare. And extreme days cluster: a heavy week is exactly when the next extreme is most likely, not least.</div></li>
+      <li data-verdict="bad">Add to the book. After a fall this large, a bounce is due.<div class="tl-drill-why">A rare move is a measurement, not a forecast. It tells you the tail is live, which is a reason to hold less, not more.</div></li>
+      <li data-verdict="good">Cut leverage until a loss far beyond anything in your sample is survivable, sizing off a heavy-tailed or stress loss rather than the normal VaR.<div class="tl-drill-why">This is what EVT is for: a heavy tail makes a much worse day rare but possible, and sizing has to survive it. Accept that the extrapolated number is an assumption and leave a margin for it.</div></li>
+      <li data-verdict="ok">Cut leverage a little, using the worst day in your own sample as the stress loss.<div class="tl-drill-why">Better than trusting the normal, but historical VaR this far out just names your worst observed day. The next extreme need not respect it.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Monday 19 October 1987 the S&amp;P 500 fell about 20% and the Dow 22.6%, nearly doubling the 12–13% falls of the worst 1929 days. Against daily moves of about 1%, that was on the order of twenty standard deviations: impossible under a normal model. The sessions after swung violently both ways, including a Dow rise of about 10% on 21 October. The extremes came as a cluster around one event.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -798,6 +903,26 @@
   its place.
   </div>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="merton-jump-diffusion.html">The Merton Jump-Diffusion Model</a> <span>· where fat tails come from</span></li>
+        <li><a href="kelly-criterion.html">The Kelly Criterion &amp; Position Sizing</a> <span>· sizing that a calm-sample σ gets wrong</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> <span>· why CVaR beats VaR in the tail</span></li>
+        <li><a href="stress-testing-scenario-analysis.html">Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</a> <span>· turning a tail shape into scenarios</span></li>
+        <!-- DESK:START --><li><a href="institutional-hill-estimator.html">The Hill Estimator</a> <span>· another way to estimate the tail index</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the day that ends a leveraged book is usually one you have never seen, and this is the honest way to put a number on it.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="kelly-criterion.html">← Kelly Criterion &amp; Position Sizing</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -828,10 +953,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>From a View to a Trade Plan — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -56,6 +57,57 @@
       <li><strong>The desk's verdicts:</strong> a zone strategy with an 8-pip stop against ~46-pip structure tripled its stop-outs (and had no edge anyway); a validated range study says aim for the 75th-percentile band rather than the median; "writing the plan first improves results" is not tested here.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A price ladder for a EUR/USD long. Entry 1.0850, invalidation 1.0780 from the analysis, stop 1.0764 just beyond it, target 1.1000. A grey band of half an ATR either side of entry marks ordinary noise; a 20-pip pain stop at 1.0830 sits inside it. The stop is 86 pips, 1.32 ATR, away; the target is 150 pips, 1.74R, so break-even is 36.4%; size is $500 divided by 86 pips times $10, which is 0.58 lots.">
+      <text class="tlp-text2" x="20" y="22" font-size="13">EUR/USD long: five numbers, all written before entry</text>
+      <rect class="tlp-box" x="179.6" y="94" width="125.2" height="32" rx="4" opacity=".7"/>
+      <rect class="tlp-red" x="76.6" y="104" width="165.6" height="12" opacity=".55"/>
+      <rect class="tlp-green" x="242.2" y="104" width="288.9" height="12" opacity=".55"/>
+      <line class="tlp-line red thick" x1="76.6" y1="90" x2="76.6" y2="130"/>
+      <line class="tlp-line amber thick" x1="107.4" y1="90" x2="107.4" y2="130"/>
+      <line class="tlp-line red dash" x1="203.7" y1="90" x2="203.7" y2="130"/>
+      <line class="tlp-line thick" x1="242.2" y1="84" x2="242.2" y2="136"/>
+      <line class="tlp-line green thick" x1="531.1" y1="90" x2="531.1" y2="130"/>
+      <text class="tlp-text" x="242.2" y="60" text-anchor="middle" font-size="14" font-weight="700">entry 1.0850</text>
+      <text class="tlp-green" x="531.1" y="60" text-anchor="middle" font-size="14" font-weight="700">target 1.1000</text>
+      <text class="tlp-amber" x="100" y="82" text-anchor="middle" font-size="13" font-weight="700">invalidation 1.0780</text>
+      <text class="tlp-red" x="70" y="150" text-anchor="middle" font-size="13" font-weight="700">stop 1.0764</text>
+      <text class="tlp-red" x="150" y="150" font-size="13">pain stop 1.0830: 0.31 ATR, inside the noise ✗</text>
+      <text class="tlp-text3" x="242.2" y="168" text-anchor="middle" font-size="12">grey: ±½ ATR, ordinary noise</text>
+      <text class="tlp-text3" x="390" y="98" text-anchor="middle" font-size="12">150 pips</text>
+      <text class="tlp-red" x="20" y="198" font-size="13">stop: 86 pips = 1.32 ATR, outside the noise</text>
+      <text class="tlp-green" x="320" y="198" font-size="13">target: 1.74R → break-even 36.4%</text>
+      <text class="tlp-purple" x="20" y="226" font-size="14" font-weight="700">size last: $500 ÷ (86 pips × $10) = 0.58 lots</text>
+    </svg>
+    <figcaption>Invalidation comes from the analysis, and the stop sits just beyond it, outside a normal day's wiggle. The money you will lose is chosen first; the stop distance then decides the size. A "comfortable" 20-pip stop sits inside the noise and gets hit by an ordinary morning.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">EUR/USD looks cheap. The rate spread says it should recover. I'm buying.</p>
+      <p data-who="Quant">That's a view. Where do you get in, where are you wrong, where do you take profit, and how big is it?</p>
+      <p data-who="Trader">In at ten eight fifty. I'll risk twenty pips. That's what I'm comfortable losing.</p>
+      <p data-who="Quant">Twenty pips is a pain limit, not a reason. Does anything about your thesis change at ten eight thirty?</p>
+      <p data-who="Trader">Not really. The spread model is just as right there.</p>
+      <p data-who="Quant">Then the stop is in the wrong place. A normal day moves about sixty-five pips from high to low. Twenty pips is about a third of that. A quiet morning can stop you out, and then the trade does exactly what you said it would.</p>
+      <p data-who="Trader">So where should it go?</p>
+      <p data-who="Quant">Start from the reason. What price proves you wrong?</p>
+      <p data-who="Trader">The March low at ten seven eighty held even when the spread was at its widest. A close below it means the market sees something my model doesn't.</p>
+      <p data-who="Quant">That's your invalidation. Put the stop a little beyond it, a quarter of a day's range, so sixteen pips. Stop at ten seven sixty-four. That's eighty-six pips away.</p>
+      <p data-who="Trader">Eighty-six pips? That's four times what I wanted to lose.</p>
+      <p data-who="Quant">No. That's where the fear belongs: in the size, not the stop. Decide the money first. Half a percent of a hundred thousand is five hundred dollars. Divide by eighty-six pips at ten dollars a pip. That's point five eight lots. Wrong costs you five hundred dollars either way.</p>
+      <p data-who="Trader">And the target?</p>
+      <p data-who="Quant">From the analysis too. Eleven hundred is a hundred and fifty pips away. That's one point seven four times your risk, so you break even if you win about thirty-six percent of the time, before costs.</p>
+      <p data-who="Trader">And if the stop just works, I'm safe.</p>
+      <p data-who="Quant">A stop is an order, not a guarantee. In January twenty fifteen the Swiss central bank dropped its floor under the franc without warning. Stops just under one twenty filled far lower. Some traders lost many times what they planned, and a broker went under. Around pegs, events and weekends, size for the gap.</p>
+      <p data-who="Trader">The one-line version?</p>
+      <p data-who="Quant">Find where the reason breaks, put the stop just past it, and let that distance set your size.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -151,6 +203,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The five numbers, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the rule build</div>
+    <div class="tl-eqbuild-title">From the reason to the size, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P_{\text{stop}} = \color{#fbbf24}{P_{\text{inv}}} \]</div>
+      <p>Start from the reason, not the money: the price where the thesis is wrong. In the worked example, the March low at 1.0780.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P_{\text{stop}} = P_{\text{inv}} \color{#fbbf24}{- s\cdot b\cdot \text{ATR}} \]</div>
+      <p>Push the stop just beyond invalidation by a slice of ordinary noise. A quarter of a 65-pip ATR is 16 pips, so the stop is 1.0764.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{D = \lvert P_{\text{entry}} - P_{\text{stop}} \rvert} \]</div>
+      <p>The stop distance falls out of the analysis: \(1.0850 - 1.0764 = 86\) pips, or 1.32 ATR. You did not choose it to feel comfortable.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{lots} = \frac{\color{#fbbf24}{r \cdot E}}{D_{\text{pips}} \times v_{\text{pip}}} \]</div>
+      <p>Only now does the money come in: the amount you will lose if the stop is hit, divided by what one lot loses over that distance.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\text{lots} = \frac{0.005 \times 100{,}000}{86 \times 10} = 0.581 \;\to\; 0.58} \]</div>
+      <p>Round down so the risk never exceeds the plan: 0.58 lots risks $498.80. A wider honest stop means fewer lots, never a bigger loss.</p>
+    </div>
+  </div>
 
   <h3>1. Invalidation: where the reason stops being true</h3>
   <p>
@@ -280,6 +356,10 @@
 
   <div class="tl-chart interactive" id="tp-tool">
     <div class="tl-chart-label">Trade-plan calculator: fill it in, copy the card</div>
+    <div class="tl-predict" data-answer="0.30" data-tol="0.03" data-unit=" lots">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The calculator opens on the worked example: invalidation 1.0780, 86-pip stop, 0.58 lots for $500 of risk. Suppose your analysis put invalidation at 1.0700 instead. Same buffer, same 0.5% risk. How many lots? Lock in a guess, then type 1.0700 into the invalidation field to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>0.30 lots.</strong> The stop moves to \(1.0700 - 0.0016 = 1.0684\), so \(D = 166\) pips. Lots \(= 500/(166 \times 10) = 0.301\), rounded down to 0.30. The stop roughly doubled, so the size roughly halved, and the loss if wrong is still about $500 ($498). Notice the calculator's warning too: the target is now under 1R. A wider honest stop can tell you the trade is not worth taking.</p></div>
+    </div>
     <div class="tp-grid">
       <div class="tp-field"><label for="tp-inst">Instrument</label>
         <select id="tp-inst" class="tp-in">
@@ -383,6 +463,12 @@
       </div>
     </div>
   </div>
+
+  <!-- WB:action_trade_plan:START -->
+  <div class="wb" id="wb-action_trade_plan" data-title="From a view to a trade plan, drawn step by step">
+    <script type="application/json">{"w":600,"h":720,"intro":"One view, turned into five numbers written before you click: entry, invalidation, stop, target and size. Press play, or step through.","steps":[{"cap":"A view: EUR/USD looks cheap against the 2-year rate spread and should recover toward 1.1000 over about three weeks. Price is 1.0850. A view has a direction and a reason, but no prices and no size.","do":[{"icon":"you","name":"person","x":20,"y":10,"s":0.7,"tone":"blue","label":"you","lsize":18},{"icon":"view","name":"scroll","x":130,"y":10,"s":0.7,"tone":"blue","label":"the view","lsize":18},{"note":"vnote","x":410,"y":60,"text":"direction + reason","size":19,"anchor":"middle","tone":"blue"},{"note":"vnote2","x":410,"y":92,"text":"no prices, no size","size":19,"anchor":"middle","tone":"red"}]},{"cap":"First number: entry at 1.0850. An ordinary day moves about 65 pips from high to low. That is the ATR, the yardstick for noise.","do":[{"chart":"px","x":10,"y":170,"w":580,"h":330,"title":"EUR/USD: the plan on a price chart","xd":[0,15],"yd":[1.068,1.103],"yt":[[1.07,"1.0700"],[1.08,"1.0800"],[1.09,"1.0900"],[1.1,"1.1000"]],"xt":[[0,"entry"],[5,"5"],[10,"10"],[15,"15 sessions"]],"pl":62,"pr":128},{"series":"entry","chart":"px","pts":[[0,1.085],[15,1.085]],"tone":null,"ms":500,"label":"entry 1.0850","lat":[15,1.085],"ldx":6,"ldy":-10,"lanchor":"start","lsize":15},{"chip":"atr","x":470,"y":120,"text":"ATR 65 pips","tone":"blue"}]},{"cap":"Second number, from the analysis: the March low at 1.0780 held even when the spread was at its widest. A daily close below it means the reason is wrong. That price is the invalidation level.","do":[{"series":"inv","chart":"px","pts":[[0,1.078],[15,1.078]],"tone":"amber","ms":500,"label":"invalid. 1.0780","lat":[15,1.078],"ldx":6,"ldy":-9,"lanchor":"start","lsize":15}]},{"cap":"Third: the stop goes just beyond invalidation, by a quarter of an ATR. 0.25 × 65 ≈ 16 pips, so the stop is 1.0764. That is 86 pips from entry, or 1.32 ATR.","do":[{"series":"stop","chart":"px","pts":[[0,1.0764],[15,1.0764]],"tone":"red","ms":500,"label":"stop 1.0764","lat":[15,1.0764],"ldx":6,"ldy":10,"lanchor":"start","lsize":15}]},{"cap":"Shade half an ATR either side of entry: a normal day's wiggle. The stop sits well outside it, so if it is hit, that means something. The reason was wrong.","do":[{"gap":"noise","chart":"px","top":[[0,1.08825],[15,1.08825]],"bot":[[0,1.08175],[15,1.08175]],"tone":"blue","op":0.18},{"note":"nlab","chart":"px","at":[0.3,1.08825],"text":"± ½ ATR: noise","tone":"blue","size":16,"anchor":"start","dx":0,"dy":-10}]},{"cap":"A trader who only wants to risk 20 pips puts the stop at 1.0830 instead: 0.31 ATR, inside the noise. Nothing about the thesis changes at 1.0830. A quiet morning can hit it.","do":[{"series":"pain","chart":"px","pts":[[0,1.083],[15,1.083]],"tone":"red","dash":true,"ms":500,"label":"pain stop 1.0830","lat":[15,1.083],"ldx":6,"ldy":2,"lanchor":"start","lsize":15}]},{"cap":"Fourth: the target, also from the analysis: 1.1000, 150 pips away. That is 150 ÷ 86 = 1.74R, so the trade breaks even before costs if it wins 36.4% of the time.","do":[{"series":"tgt","chart":"px","pts":[[0,1.1],[15,1.1]],"tone":"green","ms":500,"label":"target 1.1000","lat":[15,1.1],"ldx":6,"ldy":0,"lanchor":"start","lsize":15},{"box":"rr","x":10,"y":515,"w":280,"h":84,"text":"target = 150 pips = 1.74R\nbreak-even win rate 36.4%","tone":"green","size":18}]},{"cap":"Fifth, and last: the size. Decide the money first: 0.5% of $100,000 is $500. One lot loses 86 × $10 = $860 over the stop distance, so $500 ÷ $860 = 0.58 lots, rounded down.","do":[{"box":"size","x":310,"y":515,"w":280,"h":84,"text":"size = $500 ÷ (86 × $10)","tone":"purple","sub":"0.00 lots","size":18},{"count":"size","from":0,"to":0.58,"dp":2,"suf":" lots","ms":1400}]},{"cap":"One illustrative path: an ordinary dip on day 2 takes out the 20-pip pain stop. Then price climbs to 1.1000. The analysis stop never came close, and at target the plan makes 0.58 × 150 × $10 = $870.","do":[{"dim":"noise"},{"dim":"nlab"},{"series":"path","chart":"px","pts":[[0,1.085],[1,1.0838],[2,1.0815],[3,1.0832],[4,1.0861],[5,1.0849],[6,1.0884],[7,1.0905],[8,1.0893],[9,1.0932],[10,1.0951],[11,1.0974],[12,1.1]],"tone":"purple","ms":1800,"label":"illustrative path","lat":[9,1.0932],"ldx":10,"ldy":14,"lanchor":"start","lsize":15},{"dot":"hitpain","chart":"px","at":[2,1.0815],"text":"pain stop hit","tone":"red","dx":8,"dy":20,"anchor":"start"},{"dot":"hittgt","chart":"px","at":[12,1.1],"text":"+$870","tone":"green","dy":-16}]},{"cap":"A stop is an order, not a guarantee. If a weekend gap opened at 1.0700, the stop would fill there: a loss of 0.58 × 150 × $10 = $870, 1.74 times the plan. Around weekends and events, size for the gap.","do":[{"series":"gapl","chart":"px","pts":[[0,1.07],[15,1.07]],"tone":"red","dash":true,"ms":500,"label":"gap fill 1.0700","lat":[15,1.07],"ldx":6,"ldy":8,"lanchor":"start","lsize":15},{"box":"gapbox","x":10,"y":614,"w":280,"h":96,"text":"weekend gap to 1.0700?\nthe stop fills there:\nloss $870, not $500","tone":"red","size":18}]},{"cap":"It happened: on 15 January 2015 the Swiss National Bank dropped its 1.20 floor under EUR/CHF without warning. Stops just under 1.20 filled far lower, and losses were many times what plans allowed.","do":[{"box":"snb","x":310,"y":614,"w":280,"h":96,"text":"SNB, 15 Jan 2015:\nstops under 1.20\nfilled far lower","tone":"amber","size":18}]},{"cap":"Five numbers, written before you click: entry, invalidation, stop, target and size. The reason sets the stop, and the stop sets the size. Fear belongs in the size, never in the stop.","do":[{"hide":"vnote"},{"hide":"vnote2"},{"note":"sum","x":410,"y":60,"text":"reason → stop → size","size":20,"anchor":"middle","tone":"green"},{"note":"sum2","x":410,"y":92,"text":"written before entry","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:action_trade_plan:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: when the stop isn't the exit</h2>
@@ -508,6 +594,19 @@
     <p style="margin-bottom:0"><strong>Treating the stop as a guaranteed exit.</strong> Gaps, pegs and illiquid moments fill stops far beyond their level. Size for the gap when one is possible.</p>
   </div>
 
+  <div class="tl-drill" data-date="2015-01-14">
+    <div class="tl-drill-label">Scenario drill · 14 January 2015</div>
+    <h3>Long EUR/CHF just above the 1.20 floor</h3>
+    <p>Since September 2011 the Swiss National Bank has held a minimum rate of 1.20 francs per euro, promising unlimited purchases to defend it. For more than three years EUR/CHF has sat just above 1.20. You are long EUR/CHF near the floor with a stop a little below it. Your analysis says the floor is the invalidation level: below 1.20, the thesis is dead. How do you size the trade?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Size it to the short stop as usual. The stop is close, so a big position only risks a small amount.<div class="tl-drill-why">This assumes the stop fills near its level. A stop is an order, not a guarantee. If the floor goes, there may be no prices between 1.20 and wherever the market lands, and a big position turns a small planned loss into a huge one.</div></li>
+      <li data-verdict="good">Keep the floor as invalidation, but add a gap line: the loss if price jumps far past the stop. Size so that loss is one you can survive.<div class="tl-drill-why">The invalidation is right; the exit assumption is the weak point. When a thesis rests on a policy or a peg, the plan sizes for the gap, not for the stop. That usually means a much smaller position.</div></li>
+      <li data-verdict="ok">Skip the trade. A peg can break at any moment.<div class="tl-drill-why">Safe, and sometimes right. But the thesis may be sound. The problem is size, and a small position with a written gap line lets you take the trade without betting the account on the stop.</div></li>
+      <li data-verdict="bad">Remove the stop. The central bank has promised unlimited purchases, so it cannot break.<div class="tl-drill-why">This turns an analysis into a belief. A plan with no exit for being wrong has no maximum loss at all.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On the morning of 15 January 2015 the SNB abandoned the floor without warning. The franc jumped in minutes and EUR/CHF briefly traded well below parity. Stops placed just under 1.20 were filled far lower, wherever the next real price was. Losses were many times what plans had allowed, some retail clients ended with negative balances, the UK arm of the broker Alpari went into insolvency, and FXCM needed an emergency rescue loan.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -558,6 +657,26 @@
     <li><a href="action-expected-value.html">Thinking in Expected Value</a>, <a href="action-vol-to-size.html">From a Volatility Forecast to a Position Size</a> and <a href="process-vs-outcome-decision-journals.html">Judge the Decision, Not the Result</a>: where this plan's numbers go next.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="research-pipeline-hypothesis-to-backtest.html">The Research Pipeline: Hypothesis to Honest Backtest</a> <span>· where a view with a reason comes from</span></li>
+        <li><a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a> <span>· forecasting the noise a stop has to clear</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="action-expected-value.html">Thinking in Expected Value</a> <span>· does your hit rate clear the break-even bar?</span></li><!-- DESK:END -->
+        <!-- DESK:START --><li><a href="action-vol-to-size.html">From a Volatility Forecast to a Position Size</a> <span>· turning a vol forecast into the stop and the size</span></li><!-- DESK:END -->
+        <li><a href="process-vs-outcome-decision-journals.html">Judge the Decision, Not the Result</a> <span>· grading the plan, not the P&amp;L</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the same correct view can win or lose depending on where the stop sits and how big the position is, and those numbers are only easy to choose before you click.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
@@ -711,10 +830,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

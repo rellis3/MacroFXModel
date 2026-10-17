@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Particle Filter — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -179,7 +180,19 @@
       <p class="sl-p">Degeneracy is what motivates step 4 of the cycle in the first place: without resampling, one particle's weight tends to dominate almost completely after enough steps, and the population of N particles is effectively wasted on candidates that no longer matter. A common rule of thumb triggers resampling whenever N_eff drops below N/2.</p>
     </section>
 
+    <!-- WB:particle_filter-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">A particle filter: weigh the crowd, then resample</h2>
+      <!-- WB:particle_filter:START -->
+      <div class="wb" data-title="A particle filter: weigh the crowd, then resample">
+        <script type="application/json">{"w":600,"h":660,"intro":"Five guesses, one observation, then a jump. The lesson's own particles and numbers. Press play, or step through.","steps":[{"cap":"You are tracking a hidden value, say a hedge ratio, that you never see directly. Instead of one best guess, hold a crowd of guesses: here, the lesson's five particles. Each starts with an equal weight of 0.2.","do":[{"chart":"st","x":10,"y":10,"w":580,"h":290,"title":"Particle weights","xd":[1.0,1.66],"yd":[0,1.12],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[1.05,"1.05"],[1.15,"1.15"],[1.25,"1.25"],[1.4,"1.40"],[1.6,"1.60"]],"pl":46,"pr":14},{"bars":"b0","chart":"st","data":[[1.05,0.2,".20","blue"],[1.15,0.2,".20","blue"],[1.2,0.2,".20","blue"],[1.25,0.2,".20","blue"],[1.4,0.2,".20","blue"]],"bw":30,"ms":1000}]},{"cap":"Propagate: each guess moves forward under the model with its own random shock. In the lesson's model, 90% of shocks are small nudges and 10% are large jumps. No single bell curve can describe that mixture; a crowd can.","do":[{"box":"mix","x":10,"y":312,"w":280,"h":92,"text":"shocks: 90% small,\n10% large jumps","tone":"purple","size":19}]},{"cap":"An observation arrives: y = 1.30, from a sensor with noise variance R = 0.05.","do":[{"series":"o1","chart":"st","pts":[[1.3,0],[1.3,1.08]],"tone":"amber","dash":true,"ms":500,"label":"y = 1.30","lat":[1.3,1.08],"ldx":8,"ldy":6,"lanchor":"start"}]},{"cap":"Weigh each guess by how well it explains 1.30. The closest, at 1.25, gets the most: 0.237. The furthest, at 1.05, gets 0.130. The crowd has learned something, but nobody dominates.","do":[{"hide":"b0"},{"bars":"b1","chart":"st","data":[[1.05,0.13,".13","blue"],[1.15,0.194,".19","blue"],[1.2,0.22,".22","blue"],[1.25,0.237,".24","blue"],[1.4,0.22,".22","blue"]],"bw":30,"ms":1000}]},{"cap":"Check the crowd's health: N_eff = 1 ÷ (sum of squared weights) = 4.83 out of 5. Above the usual trigger of N/2 = 2.5, so there is no need to resample.","do":[{"box":"neff","x":310,"y":312,"w":280,"h":92,"text":"N_eff","tone":"green","sub":"4.83 of 5","size":20}]},{"cap":"Now the fat tail fires: the state jumps, and the next observation is y = 1.60, from a sharper sensor, R = 0.01.","do":[{"hide":"o1"},{"dim":"b1"},{"series":"o2","chart":"st","pts":[[1.6,0],[1.6,1.08]],"tone":"red","dash":true,"ms":500,"label":"y = 1.60","lat":[1.6,1.08],"ldx":-8,"ldy":6,"lanchor":"end"}]},{"cap":"Only one guess is anywhere near 1.60: the one at 1.40. It takes 0.981 of the weight and the other four are almost worthless. The crowd has collapsed onto a single opinion.","do":[{"hide":"b1"},{"bars":"b2","chart":"st","data":[[1.05,0.0,"","red"],[1.15,0.0,"","red"],[1.2,0.002,"","red"],[1.25,0.016,".02","red"],[1.4,0.981,"0.981","red"]],"bw":30,"ms":1000}]},{"cap":"N_eff drops to 1.04, far below 2.5. That is particle degeneracy: five particles, but effectively one.","do":[{"count":"neff","from":4.83,"to":1.04,"dp":2,"suf":" of 5"},{"pulse":"neff"}]},{"cap":"Resample. Systematic resampling lays the weights end to end and picks five evenly spaced points. About 9 times in 10 all five land on the 1.40 guess, as here: the new crowd is five equal-weight clones of the survivor.","do":[{"chart":"cnt","x":10,"y":420,"w":580,"h":160,"title":"Copies kept after resampling","xd":[1.0,1.66],"yd":[0,6],"yt":[[0,"0"],[5,"5"]],"xt":[[1.05,"1.05"],[1.15,"1.15"],[1.25,"1.25"],[1.4,"1.40"]],"pl":46,"pr":14},{"bars":"cb","chart":"cnt","data":[[1.05,0,"0",null],[1.15,0,"0",null],[1.2,0,"0",null],[1.25,0,"0",null],[1.4,5,"5","green"]],"bw":30,"ms":900}]},{"cap":"Next bar, the clones propagate again, each with its own shock, so the crowd spreads out around the new level. The filter jumped with the data instead of crawling after it.","do":[{"box":"next","x":10,"y":592,"w":580,"h":60,"text":"next step: clones spread out again","tone":"green","size":19}]},{"cap":"The costs: cloning is not new information, so repeated resampling can leave many copies of few guesses. The crowd you need grows fast with the number of hidden variables. And a rerun with a new seed gives a slightly different answer.","do":[{"hide":"next"},{"box":"cost","x":10,"y":592,"w":580,"h":60,"text":"clones ≠ new information · rerun ≠ same answer","tone":"amber","size":18}]}]}</script>
+      </div>
+      <!-- WB:particle_filter:END -->
+    </section>
+    <!-- WB:particle_filter-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Reweight a swarm live, and watch N_eff move</h2>
       <p class="sl-sub">Particles (blue dots) sit at fixed positions along the state axis; size and opacity encode weight. Drag the slider to change how many particles are in play.</p>
@@ -208,7 +221,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Compute N_eff yourself</h2>
       <p class="sl-sub">Type any set of unnormalized likelihood values below — the calculator normalizes them into weights and computes N_eff, live.</p>
@@ -232,7 +245,7 @@
       <p class="sl-p">The defaults are five particles' raw likelihoods against one observation — the exact numbers work out to N_eff ≈ 4.83 out of 5, a healthy swarm. Zero out every field to see the guard against dividing by zero; leave one blank to see the guard against missing input.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Resampling isn't a free fix</h2>
       <p class="sl-sub">Cloning a credible particle isn't the same as generating new information about where the state actually is.</p>
@@ -257,7 +270,7 @@
       <div class="sl-quote">The fix for both failure modes is the same one already on the diagnostic slide: resample only when N_eff actually drops below a threshold, commonly N/2 — not unconditionally, and not never. Resampling is a real trade-off between fighting degeneracy and preserving diversity, not a correction with no cost.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What a swarm can track that one bell curve can't</h2>
       <p class="sl-sub">Picture a hedge ratio that usually drifts slowly — but around a scheduled rate decision, it sometimes re-prices in a single discontinuous jump instead.</p>
@@ -281,7 +294,7 @@
       <div class="sl-note">This is presented as an illustration of what the method is for, not a claim that this exact hedge-ratio scenario has been built, backtested, or shown to add anything over the existing linear approach.</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where this shows up<!-- DESK:START --> — and what's actually running here<!-- DESK:END --></h2>
       <div class="sl-icard-grid">
@@ -298,7 +311,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -349,7 +362,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -531,5 +544,9 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

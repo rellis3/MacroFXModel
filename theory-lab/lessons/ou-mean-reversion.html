@@ -42,6 +42,58 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Expected distance from the long-run mean over 30 days, starting 40 pips away. With an AR(1) coefficient of 0.90 the gap halves every 6.6 days: 20 pips after 6.6 days and 10 pips after 13.2 days. With a coefficient of 0.98 the half-life is 34.3 days and the gap is still about 22 pips after 30 days. A random walk, theta equal to zero, has no expected pull back: the line stays flat at 40.">
+      <line class="tlp-line" x1="60" y1="200" x2="565" y2="200"/>
+      <line class="tlp-line" x1="60" y1="200" x2="60" y2="40"/>
+      <line class="tlp-line red dash" x1="60" y1="50" x2="560" y2="50"/>
+      <text class="tlp-red" x="560" y="40" text-anchor="end" font-size="13" font-weight="700">θ = 0, random walk: no pull back</text>
+      <polyline class="tlp-line amber thick" points="60.0,50.0 76.7,53.0 93.3,55.9 110.0,58.8 126.7,61.6 143.3,64.4 160.0,67.1 176.7,69.8 193.3,72.4 210.0,74.9 226.7,77.4 243.3,79.9 260.0,82.3 276.7,84.6 293.3,86.9 310.0,89.2 326.7,91.4 343.3,93.6 360.0,95.7 376.7,97.8 393.3,99.9 410.0,101.9 426.7,103.8 443.3,105.7 460.0,107.6 476.7,109.5 493.3,111.3 510.0,113.1 526.7,114.8 543.3,116.5 560.0,118.2"/>
+      <polyline class="tlp-line blue thick" points="60.0,50.0 76.7,65.0 93.3,78.5 110.0,90.6 126.7,101.6 143.3,111.4 160.0,120.3 176.7,128.3 193.3,135.4 210.0,141.9 226.7,147.7 243.3,152.9 260.0,157.6 276.7,161.9 293.3,165.7 310.0,169.1 326.7,172.2 343.3,175.0 360.0,177.5 376.7,179.7 393.3,181.8 410.0,183.6 426.7,185.2 443.3,186.7 460.0,188.0 476.7,189.2 493.3,190.3 510.0,191.3 526.7,192.1 543.3,192.9 560.0,193.6"/>
+      <line class="tlp-line dash" x1="169.7" y1="125" x2="169.7" y2="200"/>
+      <circle class="tlp-green" cx="169.7" cy="125" r="6"/>
+      <circle class="tlp-green" cx="279.3" cy="162.5" r="5"/>
+      <text class="tlp-green" x="182" y="120" font-size="13" font-weight="700">φ = 0.90: half-life 6.6 days, 40 → 20 pips</text>
+      <text class="tlp-green" x="290" y="156" font-size="13">another 6.6 days: 10 pips</text>
+      <text class="tlp-amber" x="556" y="140" text-anchor="end" font-size="13" font-weight="700">φ = 0.98: half-life 34.3 days</text>
+      <text class="tlp-text3" x="54" y="54" text-anchor="end" font-size="12">40</text>
+      <text class="tlp-text3" x="54" y="129" text-anchor="end" font-size="12">20</text>
+      <text class="tlp-text3" x="54" y="204" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="66" y="30" font-size="12">expected gap to the mean, pips</text>
+      <text class="tlp-text3" x="60" y="216" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="226.7" y="216" text-anchor="middle" font-size="12">10</text>
+      <text class="tlp-text3" x="393.3" y="216" text-anchor="middle" font-size="12">20</text>
+      <text class="tlp-text3" x="560" y="216" text-anchor="end" font-size="12">30 days</text>
+    </svg>
+    <figcaption>The pull back is a fixed fraction of the gap, so the expected gap shrinks by half every half-life, \(\ln 2 / \theta\). That is the expected path only: a single path, or a crowded trade, can widen first.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Everyone says this spread is mean-reverting. What does that actually mean, in numbers?</p>
+      <p data-who="Quant">Picture a ball tied to a post with a rubber band, in a tub of choppy water. The water knocks it about at random. The band pulls it back, harder the further it strays. That is the Ornstein-Uhlenbeck process.</p>
+      <p data-who="Trader">And a random walk?</p>
+      <p data-who="Quant">Cut the band. Nothing pulls the ball back, so it can drift off forever. That is the special case where the pull is zero.</p>
+      <p data-who="Trader">How do I measure the band?</p>
+      <p data-who="Quant">By its stiffness, the speed of reversion. The most useful way to say it out loud is a half-life: how long until the expected gap to the mean is cut in half. It is the log of two divided by the speed.</p>
+      <p data-who="Trader">I don't have a speed. I have daily closes.</p>
+      <p data-who="Quant">Then regress today's value on yesterday's. Say the coefficient comes back at point nine. Take minus the natural log of that and you get a speed of about point one oh five per day. The half-life is about six and a half days.</p>
+      <p data-who="Trader">So if the spread is forty pips rich today…</p>
+      <p data-who="Quant">You would expect about twenty pips after six or seven trading days, and about ten after another six or seven. If the coefficient had been point nine eight instead, the half-life would be about thirty-four days. Still mean-reverting, but far too slow for a short fade.</p>
+      <p data-who="Trader">And if it comes back at one or more?</p>
+      <p data-who="Quant">Then there is no band at all. Don't force a half-life out of it. The model simply does not apply.</p>
+      <p data-who="Trader">If I trust the half-life, I just hold the fade for about that long?</p>
+      <p data-who="Quant">Careful. The half-life describes the average path, not the path you will get. August 2007 is the warning. Many quant funds held the same short-term reversion trades. On the seventh, eighth and ninth of August, forced selling pushed prices further from fair value, day after day.</p>
+      <p data-who="Trader">And then?</p>
+      <p data-who="Quant">On Friday the tenth the reversion came, sharply. Funds forced out on the Wednesday and Thursday sold near the bottom and missed it. The band is held by traders with capital, and when they are the ones being forced out, the pull weakens exactly when the gap is widest.</p>
+      <p data-who="Trader">One-line version?</p>
+      <p data-who="Quant">Mean reversion has a speed you can measure, but only size the trade so you can survive the gap getting wider first.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -170,6 +222,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From a random walk to a half-life in days, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ dX_t = \color{#fbbf24}{\sigma\,dW_t} \]</div>
+      <p>Start with noise alone: a random walk. Nothing knows where the mean is, so the process can wander anywhere.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ dX_t = \color{#fbbf24}{\theta(\mu - X_t)\,dt} + \sigma\,dW_t \]</div>
+      <p>Add the rubber band. The pull is the gap to \(\mu\) times the stiffness \(\theta\): the further away, the harder the pull. Set \(\theta = 0\) and you are back to the random walk.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \mathbb{E}[X_t - \mu] = (X_0 - \mu)\,\color{#fbbf24}{e^{-\theta t}} \]</div>
+      <p>The noise averages to zero, so the expected gap just decays exponentially at rate \(\theta\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ e^{-\theta t_{1/2}} = \frac{1}{2} \quad\Longrightarrow\quad t_{1/2} = \color{#fbbf24}{\frac{\ln 2}{\theta}} \]</div>
+      <p>Set the decay factor to one half and solve. The half-life is \(\ln 2 \approx 0.693\) divided by the speed.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \theta = -\ln(0.90) \approx 0.105 \text{ per day} \quad\Longrightarrow\quad \color{#10b981}{t_{1/2} \approx \frac{0.6931}{0.10536} \approx 6.58 \text{ days}} \]</div>
+      <p>From data: fit an AR(1) to daily closes, get \(\phi = 0.90\), and convert with \(\theta = -\ln(\phi)/\Delta t\). A 40-pip gap is expected to be about 20 pips in six or seven trading days.</p>
+    </div>
+  </div>
   <p>
     The OU process is defined by a stochastic differential equation (SDE) — an
     equation that describes how a random quantity changes over an infinitesimally
@@ -471,6 +547,10 @@
       half-life recalculate instantly from \(\theta=-\ln(\phi)/\Delta t\) and
       \(t_{1/2}=\ln(2)/\theta\).
     </p>
+    <div class="tl-predict" data-answer="13.5" data-tol="1.5" data-unit=" days">
+      <div class="tl-predict-q"><strong>Predict first.</strong> A daily fit of \(\phi = 0.90\) gives a half-life of 6.58 days. Suppose the fit had come back at \(\phi = 0.95\) instead. What is the half-life now, in days? Lock in a guess, then type 0.95 into the \(\phi\) field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 13.5 days.</strong> \(\theta = -\ln(0.95) \approx 0.0513\) per day, so \(t_{1/2} \approx 0.6931/0.0513 \approx 13.51\) days. Halving the distance from 1, from 0.10 to 0.05, roughly doubled the half-life. Near 1, small changes in \(\phi\) make big changes in the half-life. Now try 0.99, and then 1.00, where the model stops applying.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>AR(1) coefficient \(\phi\)</span></div>
@@ -683,6 +763,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2007-08-09">
+    <div class="tl-drill-label">Scenario drill · 9 August 2007</div>
+    <h3>Your reversion book has gone the wrong way for three days</h3>
+    <p>You run a leveraged, market-neutral equity book built on short-horizon mean reversion: buy recent losers, sell recent winners, and wait for the pull back. Since Tuesday your positions have moved steadily against you, with no obvious news in the stocks themselves. The gaps to fair value are now the widest your model has ever seen, and you are close to your risk limit. What do you do with the book?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Add to it. The gaps are the widest ever, so the expected snap back is the biggest ever.<div class="tl-drill-why">The half-life describes the expected path, not this path. The push is a steady stream of selling, not random noise, and adding leverage near your limit means one more bad day forces you out completely.</div></li>
+      <li data-verdict="good">Cut leverage to a size you could hold even if the gaps widen for several more days, and keep the rest of the book.<div class="tl-drill-why">You stay in the trade but take the decision away from your risk limit. The aim is to survive the path, because a book that is forced out cannot collect the reversion when it comes.</div></li>
+      <li data-verdict="ok">Liquidate everything now, before it gets any worse.<div class="tl-drill-why">It caps the damage and is defensible risk control. But it sells into the same one-way flow that is causing the losses, locks them in near the extremes, and leaves nothing to benefit if the reversion arrives.</div></li>
+      <li data-verdict="bad">Change nothing. The fitted half-life says the gap will close within days.<div class="tl-drill-why">A constant \(\theta\) is a model assumption. The pull back is supplied by traders with capital, and when those traders are being forced out, the pull weakens exactly when the gap is widest. Doing nothing leaves the decision to your risk limit.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In Khandani and Lo's reconstruction, a simple strategy of buying the previous day's losers and selling its winners lost heavily on 7, 8 and 9 August 2007, then rebounded sharply on Friday 10 August. Their explanation, offered as a hypothesis, was that at least one large fund unwound a quant equity book quickly, and similar funds hit their limits and sold too. Funds forced to cut on the Wednesday and Thursday sold near the bottom and missed the rebound.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -796,6 +889,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a> <span>· the AR(1) and why a series needs a home level</span></li>
+        <li><a href="emh.html">The Efficient Market Hypothesis</a> <span>· the random walk this model is tested against</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="hurst-variance-ratio.html">The Hurst Exponent &amp; Variance Ratio Test</a> <span>· testing whether a series reverts at all</span></li>
+        <li><a href="cointegration.html">Cointegration &amp; Statistical Arbitrage</a> <span>· building a spread worth fitting</span></li>
+        <li><a href="short-rate-models-vasicek-cir-hull-white.html">Short-Rate Models: Vasicek, CIR &amp; Hull-White</a> <span>· the same equation, applied to interest rates</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every fade trade is a bet on a rubber band, and the half-life tells you how long to wait while sizing tells you whether you survive the wait.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="multiple-testing.html">← Multiple Testing &amp; the Look-Elsewhere Effect</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -871,7 +984,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

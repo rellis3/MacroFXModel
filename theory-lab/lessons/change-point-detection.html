@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Change-Point Detection — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -50,6 +51,63 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The CUSUM running tally from the worked example, plotted over twelve steps. It sits at zero for steps one to seven while the data are ordinary noise. The mean shifts at step eight and the tally climbs to 2.2, then 4.0 at step nine, crossing the dashed alarm line at 3.5, so the alarm fires one step after the real change. The tally keeps climbing to 10.5 by step twelve.">
+      <rect class="tlp-box amber" x="375" y="18" width="45" height="182" rx="4" opacity=".45"/>
+      <line class="tlp-line" x1="60" y1="200" x2="575" y2="200"/>
+      <line class="tlp-line" x1="60" y1="24" x2="60" y2="200"/>
+      <line class="tlp-line amber dash" x1="60" y1="146.8" x2="575" y2="146.8"/>
+      <line class="tlp-line red dash" x1="375" y1="18" x2="375" y2="200"/>
+      <polyline class="tlp-line purple thick" points="60,200 105,200 150,200 195,200 240,200 285,200 330,200 375,166.6 420,139.2 465,101.2 510,69.3 555,40.4"/>
+      <circle class="tlp-purple" cx="375" cy="166.6" r="5"/>
+      <circle class="tlp-red" cx="420" cy="139.2" r="7"/>
+      <circle class="tlp-purple" cx="465" cy="101.2" r="4"/>
+      <circle class="tlp-purple" cx="510" cy="69.3" r="4"/>
+      <circle class="tlp-purple" cx="555" cy="40.4" r="4"/>
+      <text class="tlp-red" x="368" y="34" text-anchor="end" font-size="14" font-weight="700">mean shifts at step 8</text>
+      <text class="tlp-text2" x="368" y="52" text-anchor="end" font-size="12">tally 2.2: not enough yet</text>
+      <text class="tlp-red" x="432" y="170" font-size="14" font-weight="700">alarm at step 9</text>
+      <text class="tlp-text2" x="432" y="187" font-size="12">tally 4.0: one step late</text>
+      <text class="tlp-amber" x="68" y="140" font-size="13" font-weight="700">alarm line h = 3.5</text>
+      <text class="tlp-text2" x="68" y="191" font-size="13">ordinary noise: the tally resets to 0</text>
+      <text class="tlp-text3" x="68" y="36" font-size="12">running tally ↑</text>
+      <text class="tlp-text3" x="52" y="204" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="60" y="218" text-anchor="middle" font-size="12">1</text>
+      <text class="tlp-text3" x="375" y="218" text-anchor="middle" font-size="12">8</text>
+      <text class="tlp-text3" x="420" y="218" text-anchor="middle" font-size="12">9</text>
+      <text class="tlp-text3" x="555" y="218" text-anchor="middle" font-size="12">12</text>
+      <text class="tlp-text3" x="575" y="232" text-anchor="end" font-size="12">step →</text>
+      <text class="tlp-purple" x="563" y="44" font-size="13" font-weight="700">10.5</text>
+    </svg>
+    <figcaption>The worked example in one line. Noise never builds up because the tally resets to zero. A real shift does build up, and crosses the alarm line one step after it starts. That shaded gap is the detection delay you accept in exchange for few false alarms.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I want an alarm that tells me when my strategy, or the market, has changed. Do I need a full regime model for that?</p>
+      <p data-who="Quant">Usually not. A regime model tries to describe every state and every switch, across all of history. You are asking something narrower. Has something changed recently, and roughly when?</p>
+      <p data-who="Trader">So what does the narrow tool look like?</p>
+      <p data-who="Quant">The classic is called CUSUM, from a statistician named Page in 1954. It was built for factory lines. Think of it as a jar of coins.</p>
+      <p data-who="Trader">Go on.</p>
+      <p data-who="Quant">Each day you measure how far the data sit above normal. You forgive a small amount, called the allowance. Whatever is left goes into the jar. If the jar would go below empty, you reset it to empty. When the jar gets heavier than a set line, the alarm rings.</p>
+      <p data-who="Trader">Why the reset?</p>
+      <p data-who="Quant">So calm days can't build up a credit. One wild day gets emptied straight back out. Only a run of off days keeps filling the jar.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">Normal is zero, the allowance is one, and the alarm line is three and a half. For seven steps the data hover near zero, so the jar stays empty. At step eight the mean jumps to about three. The first reading is three point two. Take off the allowance and two point two goes in the jar. Not enough. Next reading, two point eight, adds one point eight. The jar holds four. That crosses three and a half, and the alarm rings at step nine.</p>
+      <p data-who="Trader">One step after the real change.</p>
+      <p data-who="Quant">Yes, and that is not a bug. Make the allowance or the line smaller and you catch changes faster, but noise trips you more often. Make them bigger and you get fewer false alarms, but you hear about real changes later. You have to pick a point on that trade-off.</p>
+      <p data-who="Trader">What about the Bayesian version I keep hearing about?</p>
+      <p data-who="Quant">That one keeps a probability for every answer to the question, how long since the last change? One step, five steps, twenty steps. It updates them all with each new point. It also assumes a change is equally likely on any day, however long it's been quiet. That is an assumption, not a fact.</p>
+      <p data-who="Trader">Did any of this help in a real crash?</p>
+      <p data-who="Quant">Take February 2020. The S and P 500 hit a record on the nineteenth. Look back at the year afterwards and the break sits around the twentieth to the twenty-fourth, a cliff. But a detector tuned to stay quiet through calm 2019 needed several big down days to fill its jar. By the twenty-seventh the index was already more than ten percent off its high.</p>
+      <p data-who="Trader">So the alarm confirms what my profit and loss already told me.</p>
+      <p data-who="Quant">Often, yes. The one-line version: a change detector tells you that something changed and roughly when, never why, and it is always a little late by design.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -92,6 +150,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where Page's CUSUM comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{x_t - \mu_0} \]</div>
+      <p>Start with today's surprise: how far the new observation sits from the in-control mean. In the worked example \(\mu_0 = 0\), so at \(t = 8\) the surprise is \(3.2\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ x_t - \mu_0 \color{#fbbf24}{- k} \]</div>
+      <p>Forgive a little. The allowance \(k\) is subtracted every step, so ordinary noise comes out negative. With \(k = 1.0\), every one of the first seven points gives a negative number.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{S_{t-1} +} (x_t - \mu_0 - k) \]</div>
+      <p>Accumulate. Add today's evidence to the running total, so a run of moderate surprises can build up even if no single point is extreme.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ S_t = \color{#fbbf24}{\max\bigl(0,}\; S_{t-1} + (x_t - \mu_0 - k)\color{#fbbf24}{\bigr)} \]</div>
+      <p>Floor it at zero. Calm days can never bank a credit against a future alarm, which is why \(S_t\) sits at exactly 0 through \(t = 7\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\text{alarm at the first } t \text{ with } S_t > h} \]</div>
+      <p>Compare with the threshold. With \(h = 3.5\): \(S_8 = 2.2\) is not enough, \(S_9 = 2.2 + 1.8 = 4.0\) is. The change began at \(t = 8\) and is flagged at \(t = 9\).</p>
+    </div>
+  </div>
   <h3>CUSUM — Page's cumulative sum control chart</h3>
   <p>
     CUSUM was introduced by E. S. Page in "Continuous Inspection Schemes" (Biometrika, 1954, cited below) as a
@@ -326,6 +408,10 @@
       and the allowance-adjusted deviation, the new \(S_t\), and whether it flags a change all recalculate
       instantly from the one-step CUSUM update.
     </p>
+    <div class="tl-predict" data-answer="3.5" data-tol="0.05" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With the allowance at \(k = 1.0\), this step gives \(S_t = 4.0\) and flags a change. Keep everything else the same but raise the allowance to \(k = 1.5\). What is the new \(S_t\), and does it still flag? Lock in a guess, then type 1.5 into the allowance field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>3.5, and no flag.</strong> The deviation is \(2.8 - 0 - 1.5 = 1.3\), so \(S_t = \max(0,\, 2.2 + 1.3) = 3.5\). That lands exactly on \(h = 3.5\), and the rule needs \(S_t\) to <em>exceed</em> \(h\), so the alarm stays quiet this step. Half a unit more allowance bought you one more step of delay. Now set \(k = 0.5\) and see how much earlier the tally would have crossed.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Running statistic \(S_{t-1}\)</span></div>
@@ -377,6 +463,12 @@
       backtested, or shown to add value over simply eyeballing a rolling P&amp;L chart<!-- DESK:START --> in this repo<!-- DESK:END -->.
     </p>
   </div>
+
+  <!-- WB:change_point_detection:START -->
+  <div class="wb" id="wb-change_point_detection" data-title="CUSUM: a jar that fills when the mean moves">
+    <script type="application/json">{"w":600,"h":760,"intro":"CUSUM, the classic change detector, as a jar you drop coins into. The lesson's own twelve numbers, its allowance and its alarm line. Press play, or step through.","steps":[{"cap":"Meet the process: a machine that should sit at a mean of 0. Each step we see one new number, and we want to know if the mean has moved.","do":[{"icon":"mach","name":"factory","x":50,"y":6,"s":0.75,"tone":"blue","label":"process, mean 0","lsize":17},{"box":"jar","x":230,"y":18,"w":160,"h":74,"text":"the jar: S","tone":"purple","sub":"0","size":20},{"box":"h","x":430,"y":18,"w":160,"h":74,"text":"alarm line h","tone":"amber","sub":"3.5","size":20}]},{"cap":"The rule: take each number, subtract the mean and an allowance of k = 1, and add what is left to the jar. If the jar would go below empty, reset it to empty.","do":[{"note":"rule","x":300,"y":128,"text":"S = max(0, S + x − 0 − 1)","size":21,"anchor":"middle","tone":"purple"}]},{"cap":"Steps 1 to 7: the numbers hover near 0. Each one minus the allowance is negative, so the jar is reset to 0 every time. One odd day never builds up.","do":[{"hide":"rule"},{"chart":"xc","x":10,"y":148,"w":580,"h":200,"title":"The observations","xd":[0.5,12.5],"yd":[-1,4],"yt":[[0,"0"],[3,"3"]],"xt":[[1,"1"],[4,"4"],[8,"8"],[9,"9"],[12,"12"]],"zero":true,"pl":40,"pr":16},{"series":"x1","chart":"xc","pts":[[1,0.2],[2,-0.3],[3,0.5],[4,-0.1],[5,0.3],[6,-0.2],[7,0.1]],"tone":"blue","ms":1400},{"chart":"sc","x":10,"y":362,"w":580,"h":250,"title":"The jar S, step by step","xd":[0.5,12.5],"yd":[0,11.5],"yt":[[0,"0"],[3.5,"3.5"],[10,"10"]],"xt":[[1,"1"],[4,"4"],[8,"8"],[9,"9"],[12,"12"]],"pl":40,"pr":16},{"series":"s1","chart":"sc","pts":[[1,0.0],[2,0.0],[3,0.0],[4,0.0],[5,0.0],[6,0.0],[7,0.0]],"tone":"purple","ms":1400},{"series":"hl","chart":"sc","pts":[[0.5,3.5],[12.5,3.5]],"tone":"amber","dash":true,"ms":600}]},{"cap":"Step 8: the mean really moves. The reading is 3.2, and 3.2 − 0 − 1 leaves 2.2 in the jar. That is still under the 3.5 line, so no alarm yet.","do":[{"series":"x2","chart":"xc","pts":[[7,0.1],[8,3.2]],"tone":"red","ms":700},{"dot":"d8","chart":"xc","at":[8,3.2],"text":"3.2","tone":"red","dx":-8,"dy":-14,"anchor":"end"},{"series":"s2","chart":"sc","pts":[[7,0],[8,2.2]],"tone":"purple","ms":700},{"count":"jar","from":0,"to":2.2,"dp":1,"ms":700}]},{"cap":"Step 9: the reading is 2.8, which adds 1.8. The jar holds 2.2 + 1.8 = 4.0, more than 3.5. The alarm rings.","do":[{"series":"x3","chart":"xc","pts":[[8,3.2],[9,2.8]],"tone":"red","ms":600},{"series":"s3","chart":"sc","pts":[[8,2.2],[9,4.0]],"tone":"purple","ms":600},{"count":"jar","from":2.2,"to":4.0,"dp":1,"ms":600},{"dot":"al","chart":"sc","at":[9,4.0],"text":"alarm at step 9","tone":"red","dx":-10,"dy":-16,"anchor":"end"},{"pulse":"h"}]},{"cap":"The change began at step 8 and the alarm came at step 9: one step late. That delay is the price of a jar that ignores ordinary noise. It is not a bug.","do":[{"note":"late","x":300,"y":128,"text":"change at 8 → alarm at 9: one step of delay","size":20,"anchor":"middle","tone":"red"}]},{"cap":"Once the mean has moved, every new reading adds to the jar: 6.5, 8.6, then 10.5 by step 12. A real, lasting shift keeps piling up.","do":[{"series":"x4","chart":"xc","pts":[[9,2.8],[10,3.5],[11,3.1],[12,2.9]],"tone":"red","ms":900},{"series":"s4","chart":"sc","pts":[[9,4.0],[10,6.5],[11,8.6],[12,10.5]],"tone":"purple","ms":900},{"count":"jar","from":4.0,"to":10.5,"dp":1,"ms":900}]},{"cap":"Move the alarm line and the delay moves with it. With h = 2 the same jar would have rung at step 8. With h = 6 it waits until step 10, when the jar holds 6.5.","do":[{"hide":"late"},{"series":"h2","chart":"sc","pts":[[0.5,2],[12.5,2]],"tone":"red","dash":true,"ms":500},{"series":"h6","chart":"sc","pts":[[0.5,6],[12.5,6]],"tone":"green","dash":true,"ms":500},{"dot":"a8","chart":"sc","at":[8,2.2],"text":"h = 2: step 8","tone":"red","dx":-10,"dy":-12,"anchor":"end"},{"dot":"a10","chart":"sc","at":[10,6.5],"text":"h = 6: step 10","tone":"green","dx":-10,"dy":-12,"anchor":"end"}]},{"cap":"That is the trade-off. A low line or a small allowance catches changes sooner but trips on noise more often. A high one stays calm but hears about real changes later. Every choice is a point on that curve.","do":[{"note":"trade","x":300,"y":128,"text":"lower line: sooner but noisier · higher: calmer but later","size":17,"anchor":"middle","tone":"amber"}]},{"cap":"In February 2020 each step was a trading day. The S&P 500 closed at a record on 19 February. Markets fell hard from Monday 24 February.","do":[{"hide":"trade"},{"box":"rec","x":10,"y":636,"w":160,"h":110,"text":"19 Feb 2020\nrecord high","tone":"blue","size":18},{"box":"fall","x":220,"y":636,"w":160,"h":110,"text":"24 Feb\nheavy falls\nbegin","tone":"amber","size":18},{"arrow":["rec","fall"]}]},{"cap":"A detector tuned to stay quiet through calm 2019 needed several big days to fill its jar. By 27 February the index was already more than 10% below its record, in six sessions.","do":[{"box":"ten","x":430,"y":636,"w":160,"h":110,"text":"27 Feb\nmore than 10%\nbelow record","tone":"red","size":18},{"arrow":["fall","ten"]},{"pulse":"ten"}]},{"cap":"Looking back over the whole year, an offline fit puts the break around 20 to 24 February: a cliff. But it used data from after the break. Real time sees it late. The jar tells you that something changed and roughly when, never why.","do":[{"note":"hind","x":300,"y":128,"text":"hindsight finds the break; real time finds it late","size":19,"anchor":"middle","tone":"red"}]}]}</script>
+  </div>
+  <!-- WB:change_point_detection:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: February–March 2020, a break everyone can see afterwards</h2>
@@ -528,6 +620,19 @@
     what the new regime actually is, only that something changed and roughly when.
   </div>
 
+  <div class="tl-drill" data-date="2020-02-24">
+    <div class="tl-drill-label">Scenario drill · 24 February 2020</div>
+    <h3>The market is falling hard, and your detector is still quiet</h3>
+    <p>You watch S&amp;P 500 daily returns with a CUSUM. You tuned its allowance and threshold so it stayed quiet through 2019, a calm year with plenty of single bad days that led nowhere. The index closed at a record on Wednesday 19 February. Over the weekend the outbreak in northern Italy showed the virus had spread well beyond China, and today, Monday, markets are falling hard. Your CUSUM has not crossed its threshold. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Wait for the alarm. It was tuned on a full year of data, so trust it.<div class="tl-drill-why">The detector was tuned to ignore single bad days, so by design it needs several large deviations to build up before it crosses. Silence on the first big day is the detection delay, not an all-clear.</div></li>
+      <li data-verdict="good">Treat the quiet alarm as late by design. Check volatility directly, cut risk as it jumps, and read any later alarm as confirmation.<div class="tl-drill-why">This uses the tool for what it is. A mean-shift CUSUM tuned on a calm year is slow, and it is watching only the mean while the variance is shifting too. Acting on the volatility jump does not wait for evidence to pile up inside the delay, which is where the costliest part of the move sits.</div></li>
+      <li data-verdict="ok">Lower the threshold right now so the detector fires today.<div class="tl-drill-why">You are right that the alarm is late, but this is your judgement wearing the detector's clothes. A threshold picked after seeing today's move will also fire on every ordinary bad day later, so the alarm stops meaning anything.</div></li>
+      <li data-verdict="bad">Fit an offline change-point model to the year so far and act on where it puts the break.<div class="tl-drill-why">An offline fit decides where the break was by using data from after it. Today there is almost no post-break data, so it cannot see the break yet. Weeks later it will place it neatly at 20 to 24 February: that is hindsight, not a signal you could have traded.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> By 27 February the S&amp;P 500 was more than 10% below its record, the fastest correction from an all-time high on record, in six trading days. On 16 March it fell about 12% in one session and the VIX closed above 82, a record. By 23 March the index was roughly a third below its February high. An offline fit later put the break at 20 to 24 February. An online detector quiet enough for 2019 could only flag it after several large days had piled up, so its alarm mostly confirmed what the P&amp;L already showed.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -616,6 +721,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="hidden-markov-models.html">Hidden Markov Models &amp; Regime Detection</a> <span>· the full regime model this lesson trades for a lighter question</span></li>
+        <li><a href="regime-switching-state-space.html">Regime-Switching State Space Models</a> <span>· the heavier machinery change detection avoids needing</span></li>
+        <li><a href="bayesian-inference.html">Bayesian Inference &amp; Updating</a> <span>· the updating logic behind the run-length posterior</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a> <span>· the 2020 break was in variance as much as in the mean</span></li>
+        <li><a href="bayesian-conjugate-priors.html">Conjugate Priors &amp; Bayesian Updating in Practice</a> <span>· the predictive term BOCPD needs inside each run</span></li>
+        <!-- DESK:START --><li><a href="action-edge-decay.html">When an Edge Has Stopped Working</a> <span>· watching your own P&amp;L for a break</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every strategy and every market eventually changes, and knowing how late your alarm will ring is as important as having one.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="regime-switching-state-space.html">← Regime-Switching State Space Models</a>
     <a href="../hub.html">Theory Lab hub →</a>
@@ -687,6 +813,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

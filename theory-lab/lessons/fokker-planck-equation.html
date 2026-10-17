@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Fokker-Planck Equation — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,65 @@
       <li>How it reached trading: Bachelier's 1900 bond-price thesis already had it; Breeden &amp; Litzenberger (1978) read the market's density from option prices and Dupire (1994) wrote the forward equation in strikes, which is how local-vol models are calibrated to the smile.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 275" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two rows running in opposite directions in time. Top row, forward, the Fokker-Planck equation: a tall narrow spike at the known start point spreads into a lower, wider bell that also drifts right, ending as a whole distribution at time T. Bottom row, backward, the Kolmogorov or Black-Scholes equation: a hockey-stick payoff known at time T is smoothed into a curve going back in time, read off as one price today.">
+      <line class="tlp-line" x1="40" y1="100" x2="580" y2="100"/>
+      <line class="tlp-line" x1="40" y1="232" x2="580" y2="232"/>
+      <polyline class="tlp-line blue thick" points="50.0,100.0 53.0,100.0 56.0,100.0 59.0,100.0 62.0,100.0 65.0,100.0 68.0,100.0 71.0,100.0 74.0,100.0 77.0,100.0 80.0,99.9 83.0,99.7 86.0,99.1 89.0,97.4 92.0,93.6 95.0,86.2 98.0,74.0 101.0,57.5 104.0,39.6 107.0,25.4 110.0,20.0 113.0,25.4 116.0,39.6 119.0,57.5 122.0,74.0 125.0,86.2 128.0,93.6 131.0,97.4 134.0,99.1 137.0,99.7 140.0,99.9 143.0,100.0 146.0,100.0 149.0,100.0 152.0,100.0 155.0,100.0 158.0,100.0 161.0,100.0 164.0,100.0 167.0,100.0 170.0,100.0"/>
+      <line class="tlp-line" x1="110" y1="100" x2="110" y2="107"/>
+      <polyline class="tlp-line blue thick" points="240.0,100.0 243.0,100.0 246.0,99.9 249.0,99.9 252.0,99.8 255.0,99.6 258.0,99.4 261.0,99.0 264.0,98.5 267.0,97.7 270.0,96.7 273.0,95.3 276.0,93.5 279.0,91.2 282.0,88.5 285.0,85.4 288.0,82.0 291.0,78.4 294.0,74.8 297.0,71.4 300.0,68.5 303.0,66.2 306.0,64.7 309.0,64.2 312.0,64.7 315.0,66.2 318.0,68.5 321.0,71.4 324.0,74.8 327.0,78.4 330.0,82.0 333.0,85.4 336.0,88.5 339.0,91.2 342.0,93.5 345.0,95.3 348.0,96.7 351.0,97.7 354.0,98.5 357.0,99.0 360.0,99.4"/>
+      <line class="tlp-line" x1="300" y1="100" x2="300" y2="107"/>
+      <polyline class="tlp-line blue thick" points="430.0,99.9 433.0,99.8 436.0,99.7 439.0,99.6 442.0,99.4 445.0,99.1 448.0,98.8 451.0,98.4 454.0,97.9 457.0,97.2 460.0,96.4 463.0,95.4 466.0,94.2 469.0,92.9 472.0,91.3 475.0,89.6 478.0,87.8 481.0,85.8 484.0,83.8 487.0,81.8 490.0,79.9 493.0,78.1 496.0,76.5 499.0,75.1 502.0,74.2 505.0,73.5 508.0,73.3 511.0,73.5 514.0,74.2 517.0,75.1 520.0,76.5 523.0,78.1 526.0,79.9 529.0,81.8 532.0,83.8 535.0,85.8 538.0,87.8 541.0,89.6 544.0,91.3 547.0,92.9 550.0,94.2"/>
+      <line class="tlp-line" x1="490" y1="100" x2="490" y2="107"/>
+      <polyline class="tlp-line amber thick" points="50.0,230.8 53.0,230.5 56.0,230.2 59.0,229.7 62.0,229.3 65.0,228.7 68.0,228.2 71.0,227.5 74.0,226.8 77.0,226.1 80.0,225.3 83.0,224.4 86.0,223.5 89.0,222.5 92.0,221.5 95.0,220.4 98.0,219.3 101.0,218.1 104.0,216.8 107.0,215.6 110.0,214.2 113.0,212.9 116.0,211.5 119.0,210.0 122.0,208.5 125.0,207.0 128.0,205.4 131.0,203.8 134.0,202.2 137.0,200.5 140.0,198.9 143.0,197.1 146.0,195.4 149.0,193.6 152.0,191.8 155.0,190.0 158.0,188.2 161.0,186.3 164.0,184.4 167.0,182.5 170.0,180.6"/>
+      <polyline class="tlp-line amber thick" points="240.0,232.0 243.0,232.0 246.0,232.0 249.0,231.9 252.0,231.9 255.0,231.8 258.0,231.7 261.0,231.5 264.0,231.4 267.0,231.1 270.0,230.8 273.0,230.4 276.0,230.0 279.0,229.4 282.0,228.8 285.0,228.1 288.0,227.3 291.0,226.3 294.0,225.3 297.0,224.2 300.0,223.0 303.0,221.8 306.0,220.4 309.0,219.0 312.0,217.4 315.0,215.8 318.0,214.2 321.0,212.4 324.0,210.7 327.0,208.8 330.0,207.0 333.0,205.0 336.0,203.1 339.0,201.1 342.0,199.0 345.0,197.0 348.0,194.9 351.0,192.8 354.0,190.7 357.0,188.5 360.0,186.4"/>
+      <polyline class="tlp-line amber thick" points="430.0,232.0 433.0,232.0 436.0,232.0 439.0,232.0 442.0,232.0 445.0,232.0 448.0,232.0 451.0,232.0 454.0,232.0 457.0,232.0 460.0,232.0 463.0,232.0 466.0,232.0 469.0,232.0 472.0,232.0 475.0,232.0 478.0,232.0 481.0,232.0 484.0,232.0 487.0,232.0 490.0,232.0 493.0,229.8 496.0,227.5 499.0,225.2 502.0,223.0 505.0,220.8 508.0,218.5 511.0,216.2 514.0,214.0 517.0,211.8 520.0,209.5 523.0,207.2 526.0,205.0 529.0,202.8 532.0,200.5 535.0,198.2 538.0,196.0 541.0,193.8 544.0,191.5 547.0,189.2 550.0,187.0"/>
+      <circle class="tlp-amber" cx="110" cy="214.2" r="5.5"/>
+      <text class="tlp-blue" x="580" y="22" text-anchor="end" font-size="14" font-weight="700">Forward: Fokker-Planck</text>
+      <text class="tlp-text2" x="580" y="39" text-anchor="end" font-size="13">unknown: a density p(x, t)</text>
+      <text class="tlp-text2" x="135" y="30" font-size="13">drift shifts it, diffusion spreads it</text>
+      <text class="tlp-text3" x="110" y="120" text-anchor="middle" font-size="12">t₀: start known</text>
+      <text class="tlp-text3" x="300" y="120" text-anchor="middle" font-size="12">later</text>
+      <text class="tlp-text3" x="490" y="120" text-anchor="middle" font-size="12">T: whole distribution</text>
+      <line class="tlp-line blue" x1="60" y1="133" x2="566" y2="133"/>
+      <polygon class="tlp-blue" points="576,133 564,127.5 564,138.5"/>
+      <text class="tlp-amber" x="580" y="156" text-anchor="end" font-size="14" font-weight="700">Backward: Kolmogorov / Black-Scholes</text>
+      <text class="tlp-text2" x="580" y="173" text-anchor="end" font-size="13">unknown: a value u(x, t)</text>
+      <text class="tlp-text3" x="110" y="250" text-anchor="middle" font-size="12">today: one price</text>
+      <text class="tlp-text3" x="300" y="250" text-anchor="middle" font-size="12">earlier</text>
+      <text class="tlp-text3" x="490" y="250" text-anchor="middle" font-size="12">T: payoff known</text>
+      <line class="tlp-line amber" x1="54" y1="264" x2="570" y2="264"/>
+      <polygon class="tlp-amber" points="44,264 56,258.5 56,269.5"/>
+    </svg>
+    <figcaption>Same drift, same noise, opposite directions. The forward equation starts from a known point and spreads it into the whole distribution of where you might end up. The backward equation starts from a known payoff and smooths it back into what it is worth today. Ask which end you know before you pick a solver.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I know Itô's Lemma tells me how a function of a random price moves. What does Fokker-Planck add?</p>
+      <p data-who="Quant">It asks the mirror question. Forget any one path. If you ran the price from the same start a million times, how does the whole cloud of outcomes change shape over time?</p>
+      <p data-who="Trader">A cloud of possible prices.</p>
+      <p data-who="Quant">Exactly. Picture a puff of smoke in a breeze. The breeze carries the whole puff sideways without changing its shape. That is the drift. And the smoke spreads out on its own, breeze or no breeze. That is the diffusion. The equation is just the rule for both happening at once.</p>
+      <p data-who="Trader">But every particle is random. How can the rule not be random?</p>
+      <p data-who="Quant">That is the surprising part. Each particle bounces unpredictably, but the shape of the cloud evolves in a completely predictable way. All the randomness has been soaked up into the shape. The equation for the shape has no noise in it at all.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Take a price that drifts up five percent a year with twenty percent volatility. Work in the log of the price, and the cloud's centre moves up only three percent a year. Five, minus half of twenty percent squared, which is two. That is the same volatility drag Itô's Lemma gives you, and the lesson checks that the textbook lognormal shape really does solve the equation.</p>
+      <p data-who="Trader">This looks a lot like the Black-Scholes equation.</p>
+      <p data-who="Quant">It is its mirror image, and mixing them up is the classic mistake. Fokker-Planck runs forward. You know where you start, and you get the whole distribution of where you might end up.</p>
+      <p data-who="Trader">And Black-Scholes runs backward.</p>
+      <p data-who="Quant">Right. You know the payoff at expiry, and you march back to one number today: the price. Same drift, same noise, opposite ends of the time line. Black-Scholes adds one discounting term to turn an expected payoff into today's money.</p>
+      <p data-who="Trader">Does anyone on a desk actually run it forward?</p>
+      <p data-who="Quant">Yes, for calibration. Breeden and Litzenberger showed in 1978 that option prices contain the market's own distribution. Dupire in 1994 wrote the forward equation in strikes and maturities. One forward solve prices every strike and maturity at once, which is how local volatility models get fitted to the smile.</p>
+      <p data-who="Trader">And the danger?</p>
+      <p data-who="Quant">Reusing a backward pricing solver for a forward risk question. It will not crash. It will quietly compute the wrong thing.</p>
+      <p data-who="Trader">One line to remember?</p>
+      <p data-who="Quant">If you know where you start and want the spread of outcomes, run forward; if you know the payoff and want today's value, run backward.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -118,6 +178,27 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From Itô's generator to the forward equation, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \mathcal{L}f = \color{#fbbf24}{\mu f' + \tfrac12\sigma^2 f''} \]</div>
+      <p>Start with the generator: the non-random part of Itô's Lemma. It says how the expected value of a function \(f\) of the process changes, given where the process is now.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{\partial u}{\partial t} + \mathcal{L}u = 0, \qquad \color{#fbbf24}{u(x,T) = g(x)} \]</div>
+      <p>Use it directly with a payoff fixed at the end, and you get the backward equation: solve from \(T\) back to today. Black-Scholes is this with \(\mu = rS\), plus a discounting term \(-rV\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \mathcal{L}^*p = \color{#fbbf24}{-\frac{\partial}{\partial x}\big[\mu\,p\big] + \frac{1}{2}\frac{\partial^2}{\partial x^2}\big[\sigma^2 p\big]} \]</div>
+      <p>Integrate by parts to move the derivatives off \(f\) and onto the density \(p\). Each move flips a sign. The result is the adjoint: a drift term that shifts \(p\) and a diffusion term that spreads it.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\frac{\partial p}{\partial t} = -\frac{\partial}{\partial x}\big[\mu\,p\big] + \frac{1}{2}\frac{\partial^2}{\partial x^2}\big[\sigma^2 p\big], \qquad p(x,t_0) = \delta(x-x_0)} \]</div>
+      <p>Set the density's rate of change equal to the adjoint and start it from a known point. That is the Fokker-Planck equation, solved forward in time from the start.</p>
+    </div>
+  </div>
+
   <p>
     Start from the same general SDE <code>sde-existence-uniqueness.html</code>
     and <code>ito-lemma.html</code> both use:
@@ -370,6 +451,11 @@
     <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Verifying that GBM's own lognormal density solves its own Fokker-Planck equation</h3>
+    <div class="tl-predict">
+      <div class="tl-predict-q"><strong>Predict first.</strong> After the change of variable \(y = \ln x\) below, the GBM equation turns into one with a constant drift. If the price drifts at \(\mu = 5\%\) a year with \(\sigma = 20\%\) volatility, what is that constant drift? Pick one, then check it against step 4.</div>
+      <ul class="tl-predict-options"><li>5% a year, the same as the price</li><li data-correct>3% a year</li><li>7% a year</li><li>0%, because the noise cancels the drift</li></ul>
+      <div class="tl-predict-reveal"><p><strong>3% a year.</strong> Step 4 shows the drift becomes \(a = \mu - \sigma^2/2 = 0.05 - \tfrac12(0.20)^2 = 0.05 - 0.02 = 0.03\). It is the same volatility drag Itô's Lemma gives for \(\ln X_t\). Now try \(\sigma = 40\%\): the drag is 8%, and the log drift turns negative, at −3%.</p></div>
+    </div>
     <p>
       Geometric Brownian motion, \(dX_t=\mu X_t\,dt+\sigma X_t\,dW_t\)
       (\(X_0=x_0>0\)) — the process behind <code>black-scholes.html</code> —
@@ -538,6 +624,12 @@
     <p>Even though each individual particle in the cloud is bouncing around unpredictably, the cloud's overall shape evolves in a perfectly predictable, deterministic way — like knowing exactly how a wave of dye will spread through water, even though you can't predict any single dye molecule's path. That's the whole point being set up here: a stochastic PDE is what you get when you stop being so lucky, and the shape itself starts wiggling randomly too.</p>
   </div>
 
+  <!-- WB:fokker_planck_equation:START -->
+  <div class="wb" id="wb-fokker_planck_equation" data-title="Fokker-Planck: a cloud of paths, a predictable shape">
+    <script type="application/json">{"w":600,"h":790,"intro":"A cloud of particles, all released from one point. Watch individual paths stay unpredictable while the cloud's shape follows a fixed rule. Press play, or step through.","steps":[{"cap":"Release a cloud of particles, all from the same point, x = 0. Each follows the same rule: a steady drift of 0.5 per unit of time, plus random kicks of size 1. These are illustrative numbers.","do":[{"chart":"pc","x":10,"y":10,"w":580,"h":250,"title":"Five particles, position over time","xd":[0,4.5],"yd":[-5,7],"yt":[[-4,"−4"],[0,"0"],[4,"4"]],"xt":[[0,"0"],[1.2,"1.2"],[2.5,"2.5"],[4.5,"4.5 time"]],"zero":true,"pl":40,"pr":40},{"dot":"st","chart":"pc","at":[0,0],"text":"start","tone":"amber","dx":8,"dy":-12,"anchor":"start"}]},{"cap":"Here are five of them. Each path is one possible future, jagged and unpredictable. Nothing here tells you where the next particle will go.","do":[{"series":"p0","chart":"pc","pts":[[0,0],[0.05,0.13],[0.1,0.17],[0.15,-0.07],[0.2,0.16],[0.25,0.26],[0.3,0.37],[0.35,0.44],[0.4,0.83],[0.45,1.08],[0.5,1.4],[0.55,1.36],[0.6,1.28],[0.65,1.07],[0.7,1.04],[0.75,0.43],[0.8,0.84],[0.85,0.91],[0.9,0.96],[0.95,1.19],[1.0,1.13],[1.05,1.22],[1.1,1.44],[1.15,1.09],[1.2,1.54],[1.25,1.6],[1.3,1.78],[1.35,1.56],[1.4,1.44],[1.45,1.87],[1.5,1.78],[1.55,1.71],[1.6,1.85],[1.65,2.23],[1.7,1.68],[1.75,2.06],[1.8,2.15],[1.85,2.4],[1.9,2.18],[1.95,2.29],[2.0,2.7],[2.05,2.71],[2.1,2.59],[2.15,2.51],[2.2,2.42],[2.25,2.64],[2.3,2.72],[2.35,2.63],[2.4,2.85],[2.45,2.61],[2.5,2.3],[2.55,2.92],[2.6,2.8],[2.65,3.22],[2.7,3.23],[2.75,3.2],[2.8,3.36],[2.85,3.18],[2.9,3.01],[2.95,2.99],[3.0,2.93],[3.05,3.13],[3.1,3.63],[3.15,3.37],[3.2,3.19],[3.25,3.4],[3.3,3.56],[3.35,3.86],[3.4,3.71],[3.45,3.88],[3.5,3.9],[3.55,3.54],[3.6,3.67],[3.65,3.33],[3.7,3.49],[3.75,3.41],[3.8,3.39],[3.85,3.94],[3.9,4.33],[3.95,4.47],[4.0,4.59],[4.05,4.44],[4.1,4.76],[4.15,4.94],[4.2,4.77],[4.25,4.4],[4.3,4.43],[4.35,4.41],[4.4,4.65],[4.45,4.44],[4.5,4.25]],"tone":"blue","ms":700},{"series":"p1","chart":"pc","pts":[[0,0],[0.05,0.13],[0.1,0.18],[0.15,0.44],[0.2,0.74],[0.25,0.55],[0.3,0.01],[0.35,0.06],[0.4,-0.09],[0.45,0.0],[0.5,-0.62],[0.55,-0.61],[0.6,-0.56],[0.65,-0.67],[0.7,-0.51],[0.75,-0.46],[0.8,-0.37],[0.85,-0.03],[0.9,0.31],[0.95,0.63],[1.0,0.75],[1.05,0.82],[1.1,0.98],[1.15,1.09],[1.2,0.94],[1.25,1.07],[1.3,1.32],[1.35,1.25],[1.4,1.02],[1.45,1.19],[1.5,1.04],[1.55,0.71],[1.6,0.68],[1.65,0.36],[1.7,0.47],[1.75,0.38],[1.8,0.43],[1.85,0.73],[1.9,1.03],[1.95,1.04],[2.0,0.53],[2.05,0.45],[2.1,0.2],[2.15,0.44],[2.2,0.85],[2.25,1.05],[2.3,1.23],[2.35,1.39],[2.4,1.59],[2.45,1.53],[2.5,1.78],[2.55,1.73],[2.6,1.49],[2.65,1.53],[2.7,1.94],[2.75,1.93],[2.8,1.54],[2.85,1.86],[2.9,1.95],[2.95,2.11],[3.0,2.03],[3.05,2.18],[3.1,2.6],[3.15,2.47],[3.2,2.67],[3.25,2.79],[3.3,2.61],[3.35,2.68],[3.4,2.86],[3.45,2.69],[3.5,3.0],[3.55,2.76],[3.6,3.07],[3.65,3.25],[3.7,3.34],[3.75,3.19],[3.8,3.03],[3.85,2.53],[3.9,2.56],[3.95,2.56],[4.0,2.72],[4.05,3.0],[4.1,3.08],[4.15,3.03],[4.2,3.3],[4.25,3.33],[4.3,3.35],[4.35,3.1],[4.4,3.39],[4.45,3.26],[4.5,3.75]],"tone":"green","ms":700},{"series":"p2","chart":"pc","pts":[[0,0],[0.05,-0.17],[0.1,-0.26],[0.15,-0.21],[0.2,-0.34],[0.25,-0.66],[0.3,-0.9],[0.35,-1.06],[0.4,-1.09],[0.45,-0.82],[0.5,-0.63],[0.55,-0.52],[0.6,-0.3],[0.65,-0.79],[0.7,-0.9],[0.75,-1.0],[0.8,-1.22],[0.85,-1.07],[0.9,-1.2],[0.95,-1.43],[1.0,-1.18],[1.05,-1.31],[1.1,-1.34],[1.15,-1.66],[1.2,-1.42],[1.25,-1.38],[1.3,-1.0],[1.35,-0.45],[1.4,-0.26],[1.45,-0.31],[1.5,-0.47],[1.55,-0.04],[1.6,-0.06],[1.65,0.12],[1.7,0.21],[1.75,-0.56],[1.8,-0.49],[1.85,-0.42],[1.9,-0.35],[1.95,-0.35],[2.0,-0.26],[2.05,-0.47],[2.1,-0.29],[2.15,-0.38],[2.2,-0.31],[2.25,0.11],[2.3,0.2],[2.35,-0.02],[2.4,0.1],[2.45,-0.21],[2.5,-0.14],[2.55,0.23],[2.6,0.01],[2.65,0.0],[2.7,-0.17],[2.75,-0.1],[2.8,0.01],[2.85,0.08],[2.9,0.05],[2.95,-0.37],[3.0,-0.55],[3.05,-0.63],[3.1,-0.4],[3.15,-0.84],[3.2,-0.55],[3.25,-0.7],[3.3,-1.07],[3.35,-0.69],[3.4,-0.58],[3.45,-0.77],[3.5,-0.68],[3.55,-0.5],[3.6,-0.81],[3.65,-0.48],[3.7,-0.65],[3.75,-0.42],[3.8,-0.52],[3.85,-0.87],[3.9,-0.98],[3.95,-1.07],[4.0,-1.01],[4.05,-1.37],[4.1,-1.58],[4.15,-1.47],[4.2,-1.53],[4.25,-1.63],[4.3,-1.49],[4.35,-1.77],[4.4,-1.27],[4.45,-1.42],[4.5,-1.3]],"tone":"purple","ms":700},{"series":"p3","chart":"pc","pts":[[0,0],[0.05,-0.01],[0.1,0.25],[0.15,0.18],[0.2,0.03],[0.25,0.11],[0.3,0.29],[0.35,0.28],[0.4,0.79],[0.45,1.0],[0.5,1.35],[0.55,1.68],[0.6,1.95],[0.65,1.94],[0.7,2.35],[0.75,2.29],[0.8,2.36],[0.85,2.71],[0.9,2.96],[0.95,2.74],[1.0,2.7],[1.05,2.52],[1.1,2.82],[1.15,2.76],[1.2,2.79],[1.25,2.66],[1.3,2.57],[1.35,2.76],[1.4,2.55],[1.45,2.59],[1.5,2.51],[1.55,2.45],[1.6,2.18],[1.65,2.48],[1.7,2.13],[1.75,1.87],[1.8,1.8],[1.85,1.85],[1.9,1.7],[1.95,1.34],[2.0,1.26],[2.05,1.05],[2.1,0.92],[2.15,1.32],[2.2,0.87],[2.25,0.89],[2.3,1.0],[2.35,0.93],[2.4,0.87],[2.45,1.15],[2.5,1.12],[2.55,0.75],[2.6,0.68],[2.65,0.79],[2.7,0.73],[2.75,0.62],[2.8,0.68],[2.85,0.59],[2.9,0.65],[2.95,0.82],[3.0,0.7],[3.05,0.36],[3.1,0.69],[3.15,0.8],[3.2,0.65],[3.25,0.34],[3.3,0.37],[3.35,0.44],[3.4,0.58],[3.45,0.68],[3.5,0.61],[3.55,0.53],[3.6,0.21],[3.65,0.06],[3.7,-0.03],[3.75,0.24],[3.8,-0.04],[3.85,0.42],[3.9,0.65],[3.95,0.55],[4.0,0.44],[4.05,0.51],[4.1,0.63],[4.15,0.81],[4.2,0.44],[4.25,0.38],[4.3,0.52],[4.35,0.75],[4.4,0.88],[4.45,0.88],[4.5,0.98]],"tone":"amber","ms":700},{"series":"p4","chart":"pc","pts":[[0,0],[0.05,-0.1],[0.1,0.32],[0.15,0.56],[0.2,0.67],[0.25,0.57],[0.3,0.58],[0.35,0.69],[0.4,0.73],[0.45,1.13],[0.5,1.63],[0.55,1.89],[0.6,1.64],[0.65,1.83],[0.7,1.74],[0.75,1.76],[0.8,2.24],[0.85,1.87],[0.9,1.58],[0.95,1.46],[1.0,1.66],[1.05,1.59],[1.1,1.16],[1.15,1.28],[1.2,1.45],[1.25,1.76],[1.3,1.81],[1.35,2.1],[1.4,1.99],[1.45,2.22],[1.5,2.52],[1.55,2.48],[1.6,2.42],[1.65,2.73],[1.7,2.58],[1.75,2.4],[1.8,2.44],[1.85,2.6],[1.9,2.84],[1.95,2.75],[2.0,2.9],[2.05,2.73],[2.1,2.49],[2.15,3.08],[2.2,2.94],[2.25,2.61],[2.3,2.71],[2.35,2.57],[2.4,2.76],[2.45,2.21],[2.5,1.98],[2.55,2.25],[2.6,2.34],[2.65,2.15],[2.7,2.52],[2.75,2.79],[2.8,2.74],[2.85,3.03],[2.9,3.19],[2.95,2.93],[3.0,2.78],[3.05,2.85],[3.1,2.63],[3.15,2.29],[3.2,2.2],[3.25,2.38],[3.3,2.44],[3.35,2.23],[3.4,1.68],[3.45,1.88],[3.5,1.84],[3.55,2.04],[3.6,2.04],[3.65,1.93],[3.7,2.0],[3.75,1.85],[3.8,1.74],[3.85,1.54],[3.9,1.05],[3.95,1.3],[4.0,1.56],[4.05,1.44],[4.1,1.36],[4.15,1.9],[4.2,2.04],[4.25,1.96],[4.3,1.69],[4.35,2.1],[4.4,2.41],[4.45,2.24],[4.5,2.41]],"tone":null,"ms":700}]},{"cap":"Now stop following paths and look at the whole cloud. The shaded band holds about 95% of all particles: its centre moves up 0.5 per unit of time, and its half-width grows as 2 times the square root of time.","do":[{"dim":"p0"},{"dim":"p1"},{"dim":"p2"},{"dim":"p3"},{"dim":"p4"},{"gap":"band","chart":"pc","top":[[0,0],[0.1,0.682],[0.2,0.994],[0.3,1.245],[0.4,1.465],[0.5,1.664],[0.6,1.849],[0.7,2.023],[0.8,2.189],[0.9,2.347],[1.0,2.5],[1.1,2.648],[1.2,2.791],[1.3,2.93],[1.4,3.066],[1.5,3.199],[1.6,3.33],[1.7,3.458],[1.8,3.583],[1.9,3.707],[2.0,3.828],[2.1,3.948],[2.2,4.066],[2.3,4.183],[2.4,4.298],[2.5,4.412],[2.6,4.525],[2.7,4.636],[2.8,4.747],[2.9,4.856],[3.0,4.964],[3.1,5.071],[3.2,5.178],[3.3,5.283],[3.4,5.388],[3.5,5.492],[3.6,5.595],[3.7,5.697],[3.8,5.799],[3.9,5.9],[4.0,6.0],[4.1,6.1],[4.2,6.199],[4.3,6.297],[4.4,6.395],[4.5,6.493]],"bot":[[0,0],[0.1,-0.582],[0.2,-0.794],[0.3,-0.945],[0.4,-1.065],[0.5,-1.164],[0.6,-1.249],[0.7,-1.323],[0.8,-1.389],[0.9,-1.447],[1.0,-1.5],[1.1,-1.548],[1.2,-1.591],[1.3,-1.63],[1.4,-1.666],[1.5,-1.699],[1.6,-1.73],[1.7,-1.758],[1.8,-1.783],[1.9,-1.807],[2.0,-1.828],[2.1,-1.848],[2.2,-1.866],[2.3,-1.883],[2.4,-1.898],[2.5,-1.912],[2.6,-1.925],[2.7,-1.936],[2.8,-1.947],[2.9,-1.956],[3.0,-1.964],[3.1,-1.971],[3.2,-1.978],[3.3,-1.983],[3.4,-1.988],[3.5,-1.992],[3.6,-1.995],[3.7,-1.997],[3.8,-1.999],[3.9,-2.0],[4.0,-2.0],[4.1,-2.0],[4.2,-1.999],[4.3,-1.997],[4.4,-1.995],[4.5,-1.993]],"tone":"blue","op":0.2},{"series":"mid","chart":"pc","pts":[[0,0],[4.5,2.25]],"tone":"blue","dash":true,"ms":600}]},{"cap":"Slice the cloud at t = 0.4. Where are the particles? A tall, narrow bell centred at 0.2, with a spread of 0.63.","do":[{"chart":"dc","x":10,"y":274,"w":580,"h":240,"title":"Density of the cloud, p(x, t)","xd":[-5,7],"yd":[0,0.7],"yt":[[0.25,"0.25"],[0.5,"0.5"]],"xt":[[-4,"−4"],[0,"0"],[4,"4"],[7,"x"]],"pl":48,"pr":16},{"series":"d1","chart":"dc","pts":[[-5.0,0.0],[-4.8,0.0],[-4.6,0.0],[-4.4,0.0],[-4.2,0.0],[-4.0,0.0],[-3.8,0.0],[-3.6,0.0],[-3.4,0.0],[-3.2,0.0],[-3.0,0.0],[-2.8,0.0],[-2.6,0.0],[-2.4,0.0001],[-2.2,0.0005],[-2.0,0.0015],[-1.8,0.0043],[-1.6,0.011],[-1.4,0.0257],[-1.2,0.0544],[-1.0,0.1043],[-0.8,0.1807],[-0.6,0.2834],[-0.4,0.4022],[-0.2,0.5164],[0.0,0.6],[0.2,0.6308],[0.4,0.6],[0.6,0.5164],[0.8,0.4022],[1.0,0.2834],[1.2,0.1807],[1.4,0.1043],[1.6,0.0544],[1.8,0.0257],[2.0,0.011],[2.2,0.0043],[2.4,0.0015],[2.6,0.0005],[2.8,0.0001],[3.0,0.0],[3.2,0.0],[3.4,0.0],[3.6,0.0],[3.8,0.0],[4.0,0.0],[4.2,0.0],[4.4,0.0],[4.6,0.0],[4.8,0.0],[5.0,0.0],[5.2,0.0],[5.4,0.0],[5.6,0.0],[5.8,0.0],[6.0,0.0],[6.2,0.0],[6.4,0.0],[6.6,0.0],[6.8,0.0],[7.0,0.0]],"tone":"blue","ms":900},{"dot":"k1","chart":"dc","at":[0.2,0.631],"text":"t = 0.4","tone":"blue","dx":10,"dy":-4,"anchor":"start"}]},{"cap":"At t = 1.2 the bell has moved to 0.6 (that is the drift) and widened to 1.10 (that is the diffusion). It is lower too, because the area under it is still exactly 1: no probability is lost.","do":[{"series":"d2","chart":"dc","pts":[[-5.0,0.0],[-4.8,0.0],[-4.6,0.0],[-4.4,0.0],[-4.2,0.0],[-4.0,0.0001],[-3.8,0.0001],[-3.6,0.0002],[-3.4,0.0005],[-3.2,0.0009],[-3.0,0.0016],[-2.8,0.0029],[-2.6,0.0051],[-2.4,0.0086],[-2.2,0.0139],[-2.0,0.0218],[-1.8,0.033],[-1.6,0.0485],[-1.4,0.0688],[-1.2,0.0944],[-1.0,0.1253],[-0.8,0.1609],[-0.6,0.1999],[-0.4,0.2401],[-0.2,0.2789],[0.0,0.3135],[0.2,0.3407],[0.4,0.3582],[0.6,0.3642],[0.8,0.3582],[1.0,0.3407],[1.2,0.3135],[1.4,0.2789],[1.6,0.2401],[1.8,0.1999],[2.0,0.1609],[2.2,0.1253],[2.4,0.0944],[2.6,0.0688],[2.8,0.0485],[3.0,0.033],[3.2,0.0218],[3.4,0.0139],[3.6,0.0086],[3.8,0.0051],[4.0,0.0029],[4.2,0.0016],[4.4,0.0009],[4.6,0.0005],[4.8,0.0002],[5.0,0.0001],[5.2,0.0001],[5.4,0.0],[5.6,0.0],[5.8,0.0],[6.0,0.0],[6.2,0.0],[6.4,0.0],[6.6,0.0],[6.8,0.0],[7.0,0.0]],"tone":"green","ms":900},{"dot":"k2","chart":"dc","at":[0.6,0.364],"text":"t = 1.2","tone":"green","dx":12,"dy":-6,"anchor":"start"}]},{"cap":"At t = 2.5 and t = 4.5 the centre reaches 1.25 and 2.25, the spread 1.58 and 2.12. No single particle was predictable, yet the shape changes in a completely predictable way.","do":[{"series":"d3","chart":"dc","pts":[[-5.0,0.0001],[-4.8,0.0002],[-4.6,0.0003],[-4.4,0.0004],[-4.2,0.0007],[-4.0,0.001],[-3.8,0.0015],[-3.6,0.0023],[-3.4,0.0033],[-3.2,0.0048],[-3.0,0.0068],[-2.8,0.0095],[-2.6,0.013],[-2.4,0.0176],[-2.2,0.0233],[-2.0,0.0305],[-1.8,0.0393],[-1.6,0.0497],[-1.4,0.0619],[-1.2,0.076],[-1.0,0.0917],[-0.8,0.1089],[-0.6,0.1273],[-0.4,0.1464],[-0.2,0.1657],[0.0,0.1846],[0.2,0.2024],[0.4,0.2184],[0.6,0.2319],[0.8,0.2423],[1.0,0.2492],[1.2,0.2522],[1.4,0.2512],[1.6,0.2462],[1.8,0.2375],[2.0,0.2255],[2.2,0.2106],[2.4,0.1937],[2.6,0.1752],[2.8,0.156],[3.0,0.1368],[3.2,0.1179],[3.4,0.1001],[3.6,0.0836],[3.8,0.0687],[4.0,0.0556],[4.2,0.0443],[4.4,0.0347],[4.6,0.0267],[4.8,0.0203],[5.0,0.0152],[5.2,0.0111],[5.4,0.0081],[5.6,0.0057],[5.8,0.004],[6.0,0.0028],[6.2,0.0019],[6.4,0.0013],[6.6,0.0008],[6.8,0.0005],[7.0,0.0003]],"tone":"amber","ms":800},{"series":"d4","chart":"dc","pts":[[-5.0,0.0005],[-4.8,0.0008],[-4.6,0.001],[-4.4,0.0014],[-4.2,0.0018],[-4.0,0.0025],[-3.8,0.0032],[-3.6,0.0042],[-3.4,0.0054],[-3.2,0.0069],[-3.0,0.0088],[-2.8,0.0111],[-2.6,0.0138],[-2.4,0.017],[-2.2,0.0208],[-2.0,0.0253],[-1.8,0.0304],[-1.6,0.0362],[-1.4,0.0428],[-1.2,0.0501],[-1.0,0.0582],[-0.8,0.0669],[-0.6,0.0763],[-0.4,0.0862],[-0.2,0.0965],[0.0,0.1072],[0.2,0.1179],[0.4,0.1286],[0.6,0.139],[0.8,0.1489],[1.0,0.1581],[1.2,0.1664],[1.4,0.1736],[1.6,0.1794],[1.8,0.1839],[2.0,0.1868],[2.2,0.188],[2.4,0.1876],[2.6,0.1855],[2.8,0.1818],[3.0,0.1767],[3.2,0.1701],[3.4,0.1624],[3.6,0.1536],[3.8,0.144],[4.0,0.1338],[4.2,0.1233],[4.4,0.1125],[4.6,0.1018],[4.8,0.0913],[5.0,0.0812],[5.2,0.0715],[5.4,0.0624],[5.6,0.054],[5.8,0.0464],[6.0,0.0394],[6.2,0.0332],[6.4,0.0277],[6.6,0.023],[6.8,0.0188],[7.0,0.0153]],"tone":"purple","ms":800},{"dot":"k4","chart":"dc","at":[2.25,0.188],"text":"t = 4.5","tone":"purple","dx":14,"dy":-8,"anchor":"start"}]},{"cap":"The Fokker-Planck equation is the rule for that shape, instant by instant. It has no noise term of its own: all the randomness is already soaked into the shape of p.","do":[{"box":"fp","x":20,"y":532,"w":560,"h":70,"text":"∂p/∂t = −∂ₓ[μp] + ½ ∂ₓ²[σ²p]","tone":"purple","size":22}]},{"cap":"Two terms, two jobs. The drift term carries the whole bell along without changing its shape, like a breeze moving a puff of smoke. The diffusion term spreads it out, like the smoke blurring on its own.","do":[{"box":"dr","x":20,"y":618,"w":270,"h":66,"text":"−∂ₓ[μp]\ndrift: shifts","tone":"blue","size":19},{"box":"df","x":310,"y":618,"w":270,"h":66,"text":"½ ∂ₓ²[σ²p]\ndiffusion: spreads","tone":"amber","size":19}]},{"cap":"Its mirror image runs the other way. Forward: start known, get the whole distribution later. Backward: payoff known at expiry, march back to one value today. Black-Scholes is a backward equation, plus a discounting term −rV.","do":[{"box":"fw","x":20,"y":704,"w":270,"h":70,"text":"FORWARD\nstart → distribution","tone":"blue","size":18},{"box":"bw","x":310,"y":704,"w":270,"h":70,"text":"BACKWARD\npayoff at T → price now","tone":"amber","size":18}]},{"cap":"Where desks use the forward direction: calibration. Breeden and Litzenberger (1978) read the market's density off option prices; Dupire (1994) wrote the forward equation in strikes, so one forward solve prices every strike and maturity.","do":[{"hide":"dr"},{"hide":"df"},{"box":"cal","x":20,"y":618,"w":560,"h":66,"text":"calibrate a smile: run forward, once, for every strike","tone":"green","size":19}]},{"cap":"The trap: reuse a backward pricing solver for a forward risk question and it will not crash. It will give a stable, confident answer to the wrong question. Ask which end you know before you solve.","do":[{"hide":"cal"},{"box":"trap","x":20,"y":618,"w":560,"h":66,"text":"backward solver + forward question = wrong answer, no crash","tone":"red","size":18},{"pulse":"fw"},{"pulse":"bw"}]}]}</script>
+  </div>
+  <!-- WB:fokker_planck_equation:END -->
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -610,6 +702,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative risk meeting</div>
+    <h3>Risk wants a six-month distribution, and the pricer is right there</h3>
+    <p>Your risk team asks for the full distribution of where a currency pair could sit in six months, under the same drift and volatility your option pricer uses. A colleague suggests reusing the pricer's PDE solver, which marches the Black-Scholes equation backward from a payoff at expiry. The deadline is tonight. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Reuse the pricer as it is, with the payoff set to the spot level at six months.<div class="tl-drill-why">The pricer solves a backward problem: a terminal condition and the plain generator. It returns today's value of one payoff, not a distribution. It will run cleanly and give a stable answer to the wrong question.</div></li>
+      <li data-verdict="good">Run the forward equation: start from a spike at today's spot and march the Fokker-Planck equation six months ahead.<div class="tl-drill-why">This is exactly the forward question: a known start, an unknown spread of outcomes. Same drift, same noise, but the adjoint operator and an initial condition, which is what a distribution needs.</div></li>
+      <li data-verdict="ok">Simulate many paths from today's spot and build a histogram of where they end.<div class="tl-drill-why">A valid estimate of the same density, and often what risk systems actually do. It is noisier and slower to converge than a direct forward solve, so check that you ran enough paths.</div></li>
+      <li data-verdict="bad">Read the distribution off the pricer's grid at today's date.<div class="tl-drill-why">The pricer's grid holds option values for each possible spot, not probabilities. Those numbers do not sum to one and are not a density of anything.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>The lesson.</strong> This is an illustrative situation, not a dated event. The check that catches the mistake is the lesson's one-sentence rule: "given where I start, where might I end up" is forward; "given what I want at the end, what is it worth now" is backward. A backward solver used for a forward question does not crash. It quietly computes the wrong quantity.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -666,6 +771,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="ito-lemma.html">Itô's Lemma</a> <span>· the generator this equation is the mirror of</span></li>
+        <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> <span>· the backward equation, in disguise</span></li>
+        <li><a href="sde-existence-uniqueness.html">Existence &amp; Uniqueness of SDE Solutions</a> <span>· no unique solution, no density to evolve</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="stochastic-pdes.html">Stochastic PDEs</a> <span>· put noise back into the PDE itself</span></li>
+        <li><a href="bootstrapping-monte-carlo.html">Bootstrapping &amp; Monte Carlo Simulation</a> <span>· a histogram of paths estimates the same density</span></li>
+        <!-- DESK:START --><li><a href="institutional-dupire-local-vol.html">Dupire's Local Volatility Model</a> <span>· the forward equation, written in strikes</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> any time you ask what the distribution of a price looks like at a future date, you are asking a forward question, and the wrong solver will answer a different one without complaint.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="short-rate-models-vasicek-cir-hull-white.html">← Short-Rate Models: Vasicek, CIR &amp; Hull-White</a>
     <a href="stochastic-pdes.html">Stochastic PDEs →</a>
@@ -695,6 +821,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

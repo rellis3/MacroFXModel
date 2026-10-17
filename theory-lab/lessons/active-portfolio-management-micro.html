@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Active Portfolio Management — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -272,7 +273,19 @@
       </div>
     </section>
 
+    <!-- WB:active_portfolio_management-deck:START -->
     <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Skill, breadth and the August 2007 quant quake, step by step</h2>
+      <!-- WB:active_portfolio_management:START -->
+      <div class="wb" data-title="Skill, breadth and the August 2007 quant quake, step by step">
+        <script type="application/json">{"w":600,"h":630,"intro":"How a small edge per call becomes a strong track record, and how correlated calls fake it. The lesson's own numbers, then August 2007. Press play, or step through.","steps":[{"cap":"Meet a forecaster. His calls correlate with what actually happens at 0.10. That is his information coefficient, IC: skill per call. It sounds tiny, but 0.05 to 0.10 is genuinely good.","do":[{"icon":"fc","name":"person","x":20,"y":8,"s":0.75,"tone":"blue","label":"forecaster","lsize":17},{"box":"ic","x":130,"y":18,"w":210,"h":72,"text":"skill per call","tone":"blue","sub":"IC = 0.10","size":20}]},{"cap":"He re-ranks nine G10 currency pairs, four times a year. Taken at face value, that is 9 × 4 = 36 separate calls a year: his breadth, BR.","do":[{"chip":"p0","x":80,"y":132,"text":"pair 1","tone":"purple"},{"chip":"p1","x":190,"y":132,"text":"pair 2","tone":"purple"},{"chip":"p2","x":300,"y":132,"text":"pair 3","tone":"purple"},{"chip":"p3","x":410,"y":132,"text":"pair 4","tone":"purple"},{"chip":"p4","x":520,"y":132,"text":"pair 5","tone":"purple"},{"chip":"p5","x":80,"y":176,"text":"pair 6","tone":"purple"},{"chip":"p6","x":190,"y":176,"text":"pair 7","tone":"purple"},{"chip":"p7","x":300,"y":176,"text":"pair 8","tone":"purple"},{"chip":"p8","x":410,"y":176,"text":"pair 9","tone":"purple"},{"note":"n9","x":300,"y":226,"text":"9 pairs × 4 re-ranks = 36 calls a year","size":19,"anchor":"middle","tone":"purple"}]},{"cap":"The Fundamental Law: IR ≈ IC × √BR. Independent bets let the noise cancel while the edge adds up, so the Information Ratio grows with the square root of breadth. Here: 0.10 × √36 = 0.10 × 6 = 0.60.","do":[{"chart":"law","x":10,"y":330,"w":580,"h":290,"title":"Information Ratio vs breadth, at IC = 0.10","xd":[0,64],"yd":[0,0.8],"yt":[[0,"0"],[0.2,"0.2"],[0.4,"0.4"],[0.6,"0.6"]],"xt":[[4,"4"],[16,"16"],[36,"36"],[64,"64"]],"pl":50,"pr":20},{"series":"curve","chart":"law","pts":[[0,0.0],[0.25,0.05],[0.5,0.0707],[1,0.1],[2,0.1414],[3,0.1732],[4,0.2],[6,0.2449],[8,0.2828],[10,0.3162],[12,0.3464],[14,0.3742],[16,0.4],[18,0.4243],[20,0.4472],[22,0.469],[24,0.4899],[26,0.5099],[28,0.5292],[30,0.5477],[32,0.5657],[34,0.5831],[36,0.6],[38,0.6164],[40,0.6325],[42,0.6481],[44,0.6633],[46,0.6782],[48,0.6928],[50,0.7071],[52,0.7211],[54,0.7348],[56,0.7483],[58,0.7616],[60,0.7746],[62,0.7874],[64,0.8]],"tone":"purple","ms":1500},{"dot":"d36","chart":"law","at":[36,0.6],"text":"36 calls → 0.60","tone":"green","dx":-8,"dy":-18,"anchor":"end"}]},{"cap":"A check from the other side: 3.0% a year over the benchmark, with 5.0% tracking error, gives IR = 3.0 ÷ 5.0 = 0.60. The same number, two ways.","do":[{"box":"chk","x":370,"y":18,"w":215,"h":72,"text":"α ÷ ω = 3.0% ÷ 5.0%","tone":"green","sub":"IR = 0.60","size":19}]},{"cap":"But are those nine pairs nine separate views? In a dollar-strength regime, all nine move together with the dollar. Nine rankings, one view.","do":[{"hide":"n9"},{"line":"one","points":[[14,108],[586,108],[586,198],[14,198],[14,108]],"tone":"red","width":3,"ms":900},{"note":"n1","x":300,"y":226,"text":"really one dollar view: 1 × 4 = 4 calls a year","size":19,"anchor":"middle","tone":"red"}]},{"cap":"True breadth is 4, not 36. The law now predicts 0.10 × √4 = 0.20. Same skill, a third of the Information Ratio. Nothing in the arithmetic warns you: only checking how correlated the calls are does.","do":[{"dot":"d4","chart":"law","at":[4,0.2],"text":"4 → 0.20","tone":"red","dx":14,"dy":16,"anchor":"start"},{"pulse":"d4"}]},{"cap":"August 2007. Quant equity funds were this law at industrial scale: thousands of longs and shorts each, a small edge per stock, market beta hedged out. On paper, enormous breadth.","do":[{"hide":"fc"},{"hide":"ic"},{"hide":"n9"},{"hide":"chk"},{"hide":"box1"},{"hide":"one"},{"hide":"p0"},{"hide":"p1"},{"hide":"p2"},{"hide":"p3"},{"hide":"p4"},{"hide":"p5"},{"hide":"p6"},{"hide":"p7"},{"hide":"p8"},{"hide":"n1"},{"icon":"funds","name":"crowd","x":30,"y":8,"s":0.85,"tone":"blue","label":"quant funds","lsize":17},{"box":"box1","x":170,"y":22,"w":250,"h":80,"text":"thousands of positions each\nsmall edge per stock","tone":"blue","size":18}]},{"cap":"But many ranked stocks on similar ideas: value, momentum, earnings quality, short-term reversal. So their books overlapped. Thousands of bets shared one hidden factor: what crowded quant funds owned.","do":[{"note":"same","x":300,"y":150,"text":"similar models → overlapping books","size":20,"anchor":"middle","tone":"amber"}]},{"cap":"In the week of 6 August, a large fund is thought to have unwound its quant book fast, probably to raise cash (Khandani and Lo's hypothesis). Its selling hit everyone's longs and lifted everyone's shorts.","do":[{"icon":"unw","name":"fire","x":470,"y":8,"s":0.8,"tone":"red","label":"one big unwind","lsize":17},{"arrow":["unw","box1"],"label":"sells","tone":"red"}]},{"cap":"Every fund lost at once and hit its limits, so they cut the same positions, deepening the move. Goldman's Global Equity Opportunities fund was reported down more than 30% in about a week.","do":[{"hide":"same"},{"box":"geo","x":120,"y":190,"w":360,"h":72,"text":"Goldman GEO fund","tone":"red","sub":"> −30% in about a week","size":19}]},{"cap":"In this lesson's terms, effective breadth collapsed towards one: thousands of positions behaved like a single bet. Prices rebounded sharply on Friday 10 August, after many funds had already cut.","do":[{"dot":"d1","chart":"law","at":[1,0.1],"text":"breadth ≈ 1","tone":"amber","dx":14,"dy":20,"anchor":"start"},{"pulse":"d1"}]},{"cap":"The rule to carry away: breadth counts independent bets, not trade tickets. Check how correlated your calls are before you trust the square root.","do":[{"note":"rule","x":300,"y":296,"text":"breadth = independent bets, not tickets","size":21,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:active_portfolio_management:END -->
+    </section>
+    <!-- WB:active_portfolio_management-deck:END -->
+
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <!-- DESK:START -->
       <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
@@ -289,7 +302,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -340,7 +353,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -463,5 +476,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Obizhaeva-Wang Transient Price Impact — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <style>
   /* Scoped to this lesson only — mirrors the full lesson's own local
@@ -153,7 +154,19 @@
       </div>
     </section>
 
+    <!-- WB:institutional_obizhaeva_wang_impact-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Transient impact: slicing into a book that heals</h2>
+      <!-- WB:institutional_obizhaeva_wang_impact:START -->
+      <div class="wb" data-title="Transient impact: slicing into a book that heals">
+        <script type="application/json">{"w":600,"h":800,"intro":"Selling 100 units in five slices, into a book that heals at a finite speed. The lesson's own toy numbers. Press play, or step through.","steps":[{"cap":"You must sell 100 units in five trades at evenly spaced times. The resting bids near the mid are a reservoir: each sale drains some, and liquidity providers refill it, but not instantly.","do":[{"icon":"you","name":"person","x":24,"y":4,"s":0.62,"tone":"blue","label":"you: sell 100","lsize":17},{"icon":"bk","name":"crowd","x":480,"y":4,"s":0.62,"tone":"green","label":"book refills","lsize":17},{"arrow":["you","bk"],"label":"5 slices","tone":"blue","dash":true,"id":"sl"}]},{"cap":"Track one number: D, how far your own trading has pushed the price. First slice, 20 units: D jumps by κ × 20 = 0.01 × 20 = 0.2.","do":[{"chart":"dt","x":10,"y":112,"w":580,"h":270,"title":"Impact D(t): even split, 5 × 20","xd":[0,1.25],"yd":[0,0.62],"yt":[[0.2,"0.2"],[0.4,"0.4"],[0.6,"0.6"]],"xt":[[0,"0"],[0.25,".25"],[0.5,".5"],[0.75,".75"],[1,"1"]],"pl":46,"pr":14},{"series":"e1","chart":"dt","pts":[[0,0],[0,0.2]],"tone":"purple","ms":500},{"note":"j1","chart":"dt","at":[0,0.2],"text":"+0.2","tone":"purple","size":17,"anchor":"start","dx":8,"dy":-6}]},{"cap":"Between trades the book heals: D decays at resilience ρ = 2, a half-life of about 0.35. By the next slice, 0.12 of the push is still there.","do":[{"series":"e2","chart":"dt","pts":[[0,0.2],[0.0312,0.1879],[0.0625,0.1765],[0.0938,0.1658],[0.125,0.1558],[0.1562,0.1463],[0.1875,0.1375],[0.2188,0.1291],[0.25,0.1213]],"tone":"purple","ms":900},{"dot":"lo","chart":"dt","at":[0.25,0.1213],"text":"0.12 left","tone":"amber","dy":16}]},{"cap":"The second slice lands on top of that leftover. It pays the 0.12 still in the book, plus half its own push. D jumps to 0.32.","do":[{"series":"e3","chart":"dt","pts":[[0.25,0.1213],[0.25,0.3213]],"tone":"purple","ms":400}]},{"cap":"Keep going: the book never fully heals before the next slice, so the leftover ratchets up to about 0.47. Total even-split cost: 26.45, of which 10.00 is self-impact and 16.45 is fighting your own leftover.","do":[{"series":"e4","chart":"dt","pts":[[0.25,0.3213],[0.2812,0.3018],[0.3125,0.2836],[0.3438,0.2664],[0.375,0.2502],[0.4062,0.2351],[0.4375,0.2208],[0.4688,0.2075],[0.5,0.1949],[0.5,0.3949],[0.5312,0.371],[0.5625,0.3485],[0.5938,0.3274],[0.625,0.3075],[0.6562,0.2889],[0.6875,0.2714],[0.7188,0.255],[0.75,0.2395],[0.75,0.4395],[0.7812,0.4129],[0.8125,0.3879],[0.8438,0.3644],[0.875,0.3423],[0.9062,0.3216],[0.9375,0.3021],[0.9688,0.2838],[1.0,0.2666],[1.0,0.4666],[1.0625,0.4118],[1.125,0.3634],[1.1875,0.3207],[1.25,0.283]],"tone":"purple","ms":1600},{"chart":"c","x":10,"y":400,"w":300,"h":240,"title":"Total cost","xd":[0.4,4.6],"yd":[0,58],"yt":[[25,"25"],[50,"50"]],"xt":[[1,"block"],[2,"even"],[3,"ends"],[4,"2×50"]],"pl":36,"pr":8},{"bars":"be","chart":"c","data":[[2,26.45,"26.45","purple"]],"bw":40,"ms":800}]},{"cap":"Compare one block of 100 at the start: no leftover at all, but the full self-impact of the whole size, ½ × 0.01 × 100² = 50.00. Nearly twice the even split.","do":[{"bars":"bb","chart":"c","data":[[1,50,"50.00","red"]],"bw":40,"ms":800}]},{"cap":"Why the ends are special: at the start the book is fully rested, so there is nothing to fight. At the end, whatever you leave behind never meets another of your trades.","do":[{"box":"ends","x":330,"y":400,"w":260,"h":76,"text":"start: rested book\nend: no later trade","tone":"green","size":18},{"pulse":"e1"}]},{"cap":"So trade bigger at the ends: 40 first, 6.67 three times, 40 last. The leftover the middle slices fight stays lower. Total 25.92: 16.67 self-impact plus only 9.25 leftover.","do":[{"dim":"e1"},{"dim":"e2"},{"dim":"e3"},{"dim":"e4"},{"dim":"lo"},{"dim":"j1"},{"series":"fb","chart":"dt","pts":[[0,0],[0,0.4],[0.0312,0.3758],[0.0625,0.353],[0.0938,0.3316],[0.125,0.3115],[0.1562,0.2926],[0.1875,0.2749],[0.2188,0.2583],[0.25,0.2426],[0.25,0.3093],[0.2812,0.2905],[0.3125,0.2729],[0.3438,0.2564],[0.375,0.2409],[0.4062,0.2263],[0.4375,0.2126],[0.4688,0.1997],[0.5,0.1876],[0.5,0.2543],[0.5312,0.2388],[0.5625,0.2244],[0.5938,0.2108],[0.625,0.198],[0.6562,0.186],[0.6875,0.1747],[0.7188,0.1642],[0.75,0.1542],[0.75,0.2209],[0.7812,0.2075],[0.8125,0.1949],[0.8438,0.1831],[0.875,0.172],[0.9062,0.1616],[0.9375,0.1518],[0.9688,0.1426],[1.0,0.134],[1.0,0.534],[1.0625,0.4712],[1.125,0.4159],[1.1875,0.367],[1.25,0.3239]],"tone":"green","ms":1800,"label":"ends-loaded","lat":[0.5,0.2543],"ldy":-16},{"bars":"bf","chart":"c","data":[[3,25.92,"25.92","green"]],"bw":40,"ms":800}]},{"cap":"Only about 2% cheaper, because bigger blocks pay more for their own push. Push the idea too far, two blocks of 50 and nothing between, and it costs 28.38: worse than even.","do":[{"bars":"b2","chart":"c","data":[[4,28.38,"28.38","amber"]],"bw":40,"ms":800},{"box":"bal","x":330,"y":492,"w":260,"h":76,"text":"ends bigger, not\nas big as possible","tone":"amber","size":18}]},{"cap":"It all hinges on healing. If the book never healed, ρ = 0, every schedule would cost the same 50.00 as one block. Slicing only helps because the book refills.","do":[{"box":"r0","x":330,"y":584,"w":260,"h":56,"text":"ρ = 0 → every schedule 50.00","tone":"red","size":17}]},{"cap":"Three kinds of memory: Kyle's impact is permanent, Almgren-Chriss's temporary impact vanishes the instant you slow down, and Obizhaeva-Wang's has a real half-life.","do":[{"box":"m1","x":10,"y":660,"w":180,"h":64,"text":"Kyle: never decays","tone":"amber","size":17},{"box":"m2","x":210,"y":660,"w":180,"h":64,"text":"AC: no memory","tone":"blue","size":17},{"box":"m3","x":410,"y":660,"w":180,"h":64,"text":"OW: half-life","tone":"purple","size":17}]},{"cap":"The catch: the resilience rate is hard to estimate and probably moves through the day. Space your slices to let the book heal, and trade bigger where your footprint cannot hurt you.","do":[{"note":"end","x":300,"y":768,"text":"let it heal · bigger at the ends · not all at once","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:institutional_obizhaeva_wang_impact:END -->
+    </section>
+    <!-- WB:institutional_obizhaeva_wang_impact-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Compare even-split vs. front-and-back, live</h2>
       <p class="sl-sub">Front-and-back puts 40% of Q at the first and last of N evenly-spaced trades, spreading 20% evenly across the middle. Same cost formula as Section 3 and the full lesson's own calculator.</p>
@@ -175,7 +188,7 @@
       </div>
     </section>
 
-    <!-- DESK:START --><section class="sl-slide" data-slide="9">
+    <!-- DESK:START --><section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">What's actually in this repo</h2>
       <div class="sl-icard-grid">
@@ -186,7 +199,7 @@
       <div class="sl-quote">Very few desks solve a full Obizhaeva-Wang-style optimization by hand — but the resilience framing informally justifies why real execution algorithms sometimes "wait out" thin depth, or avoid clustering large child orders too close together in time.</div>
     </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this model is a stylized approximation</h2>
       <div class="sl-icard-grid">
@@ -196,7 +209,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -247,7 +260,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -446,5 +459,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

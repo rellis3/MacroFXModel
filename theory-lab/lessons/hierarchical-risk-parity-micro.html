@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hierarchical Risk Parity — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -152,7 +153,19 @@
       <p class="sl-p">EURUSD/GBPUSD merge first (most correlated), then USDJPY/USDCHF, then AUDUSD joins the first pair to form a "risk-on" bloc; the risk-on bloc and the "safe-haven" bloc only merge at the root — the point of <em>lowest</em> cross-bloc correlation. No one had to hand-label these groups; the clustering discovered them from correlation alone, the same way the MST lesson's network revealed structure without hand-labeling.</p>
     </section>
 
+    <!-- WB:hierarchical_risk_parity-deck:START -->
     <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Build the tree, then pour the weight down it: HRP step by step</h2>
+      <!-- WB:hierarchical_risk_parity:START -->
+      <div class="wb" data-title="Build the tree, then pour the weight down it: HRP step by step">
+        <script type="application/json">{"w":600,"h":720,"intro":"Five currency pairs, a tree built from their correlations, and weight poured down it one fork at a time. Press play, or step through.","steps":[{"cap":"Five FX pairs, with the lesson's illustrative volatilities. An optimizer would invert their whole covariance matrix at once. HRP never does.","do":[{"box":"lE","x":6,"y":392,"w":108,"h":76,"text":"EURUSD\nσ 8%","tone":"blue","sub":"","size":17},{"box":"lG","x":121,"y":392,"w":108,"h":76,"text":"GBPUSD\nσ 9%","tone":"blue","sub":"","size":17},{"box":"lA","x":236,"y":392,"w":108,"h":76,"text":"AUDUSD\nσ 11%","tone":"blue","sub":"","size":17},{"box":"lJ","x":366,"y":392,"w":108,"h":76,"text":"USDJPY\nσ 7%","tone":"amber","sub":"","size":17},{"box":"lC","x":481,"y":392,"w":108,"h":76,"text":"USDCHF\nσ 6%","tone":"amber","sub":"","size":17}]},{"cap":"Stage 1: turn correlation into distance, d = √(½(1 − ρ)). EURUSD and GBPUSD move together at ρ = 0.80, so d = 0.32: they merge first.","do":[{"line":"eg","points":[[60,392],[60,252],[175,252],[175,392]],"tone":"blue","width":3,"ms":600},{"note":"deg","x":117.5,"y":278,"text":"d 0.32","size":17,"anchor":"middle","tone":"blue"}]},{"cap":"USDJPY and USDCHF, the safe havens, merge next at ρ = 0.65, d = 0.42.","do":[{"line":"jc","points":[[420,392],[420,212],[535,212],[535,392]],"tone":"amber","width":3,"ms":600},{"note":"djc","x":477.5,"y":238,"text":"d 0.42","size":17,"anchor":"middle","tone":"amber"}]},{"cap":"AUDUSD joins the euro and sterling pair at d = 0.47. That completes a risk-on bloc.","do":[{"line":"ega","points":[[117.5,252],[117.5,192],[290,192],[290,392]],"tone":"blue","width":3,"ms":600},{"note":"dl","x":203.75,"y":218,"text":"d 0.47","size":17,"anchor":"middle","tone":"blue"}]},{"cap":"The two blocs only meet at the root, d = 0.72: their cross-bloc correlations are the lowest in the basket. Reading the leaves left to right is Stage 2, the quasi-diagonal order.","do":[{"line":"root","points":[[203.75,192],[203.75,92],[477.5,92],[477.5,212]],"tone":"purple","width":3,"ms":600},{"box":"top","x":270.625,"y":14,"w":140,"h":56,"text":"100%","tone":"purple","size":22}]},{"cap":"Stage 3: split the 100% between the blocs. Risk-on has cluster variance 0.00276, safe-haven 0.00208. The calmer side gets more: 1 − 0.00276 ÷ 0.00484 = 42.9% left, 57.1% right.","do":[{"chip":"wL","x":153.75,"y":142.0,"text":"42.9%","tone":"blue"},{"chip":"wR","x":527.5,"y":152.0,"text":"57.1%","tone":"amber"}]},{"cap":"Inside the risk-on bloc, euro plus sterling versus AUDUSD: 0.772 to 0.228. Of the 42.9%, that is 33.1% and 9.8%.","do":[{"chip":"wEG","x":71.5,"y":222.0,"text":"33.1%","tone":"blue"},{"sub":"lA","text":"9.8%"},{"pulse":"lA"}]},{"cap":"Split again at every fork, calmer side first. EURUSD 18.5%, GBPUSD 14.6%, USDJPY 24.2%, USDCHF 32.9%. Each weight is the product of the splits on its path. Nothing was inverted.","do":[{"sub":"lE","text":"18.5%"},{"sub":"lG","text":"14.6%"},{"sub":"lJ","text":"24.2%"},{"sub":"lC","text":"32.9%"}]},{"cap":"Autumn 2008. After Lehman failed on 15 September, carry trades unwound together. The high-yielders fell as one block, and within it correlations rose toward one.","do":[{"icon":"lehman","name":"domino","x":20,"y":500,"s":0.6,"tone":"red","label":"Lehman fails\n15 Sept 2008","lsize":16},{"pulse":"ega"},{"pulse":"eg"}]},{"cap":"AUD/USD fell by more than a third between its July high and late October, while the yen rose sharply. Five \"different\" carry trades had become one bet, and a covariance matrix with near-duplicate rows is close to singular.","do":[{"icon":"aud","name":"down","x":230,"y":500,"s":0.6,"tone":"red","label":"AUD/USD down\nover a third","lsize":16},{"arrow":["lehman","aud"],"tone":"red"}]},{"cap":"That is the curse HRP avoids: no inversion. But it still reads its tree and variances from past data. A tree built in the calm summer would have weighted the falling bloc on calm variances.","do":[{"box":"catch","x":410,"y":500,"w":180,"h":110,"text":"no inversion,\nbut the same\npast data","tone":"amber","size":18},{"arrow":["aud","catch"],"tone":"amber"}]}]}</script>
+      </div>
+      <!-- WB:hierarchical_risk_parity:END -->
+    </section>
+    <!-- WB:hierarchical_risk_parity-deck:END -->
+
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Splitting weight down the tree, live</h2>
       <p class="sl-sub">Drag the slider to change AUDUSD's volatility. Watch how its share of the tree's weight shifts — and how the split fractions at each level respond.</p>
@@ -182,7 +195,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The split formula, live — try any two clusters</h2>
       <p class="sl-sub">A simplified 2-cluster recursive bisection: given each side's aggregate variance, split the parent's weight by inverse variance.</p>
@@ -208,7 +221,7 @@
       <p class="sl-p">This is Stage 3's formula applied to just one branch. Set both to the worked example's root-level bloc variances (V₁=0.00276 for the risk-on bloc, V₂=0.00208 for the safe-haven bloc) and it reproduces the 42.9% / 57.1% root split from the dendrogram slide — the lower-variance safe-haven bloc gets the larger share, exactly as the formula's construction guarantees.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Why this tends to be more robust</h2>
       <div class="sl-compare">
@@ -238,7 +251,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">A 12-pair basket where this actually matters</h2>
       <p class="sl-sub">Consider a G10 basket with commodity-bloc crosses (AUD, NZD, CAD) that move together on risk sentiment, and a separate safe-haven bloc (JPY, CHF) that tends to move the other way — plus European crosses somewhere in between.</p>
@@ -250,7 +263,7 @@
       <p class="sl-p">This is the practical case HRP is built for: large, highly correlated universes — broad equity universes, credit baskets, or an FX universe with several currencies sharing common blocs — where a literal matrix inversion is either numerically unreliable or produces weights that swing dramatically between re-estimation periods.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9 · It actually happened</div>
       <h2 class="sl-h2">Autumn 2008: five carry trades became one</h2>
       <div class="sl-callout amber">
@@ -270,7 +283,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <!-- DESK:START --><h2 class="sl-h2">What this desk can say, and where the textbook breaks</h2><!-- DESK:END -->
       <!-- DESK:START -->
@@ -285,7 +298,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -337,7 +350,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Not built here — worth being explicit about</h2>
       <div class="sl-callout amber">
@@ -348,7 +361,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -512,5 +525,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

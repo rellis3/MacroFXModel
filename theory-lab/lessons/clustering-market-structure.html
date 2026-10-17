@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Clustering for Market Structure — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,98 @@
       <li><strong>How it reached trading:</strong> Mantegna (1999) built a correlation tree of US stocks that recovered industry groups from prices alone, and López de Prado's Hierarchical Risk Parity (2016) turned that tree into an allocation method.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three panels of the lesson's worked example: six points, A, B and C bottom left and D, E and F top right, clustered by k-means with k equal to 2. Panel 1, a bad start: both centroids sit in the left group, on A and B, so only A joins the first cluster. Panel 2: the second centroid jumps to the mean of its five points, 4.4, 5.0, and B and C switch to the first cluster. Panel 3: the centroids settle at 1.33, 1.67 and 6.33, 7.0 and nothing changes, so the algorithm has converged on the obvious split. Crosses mark the centroids.">
+      <text class="tlp-text" x="10" y="22" font-size="13" font-weight="700">1 · bad start</text>
+      <text class="tlp-text" x="210" y="22" font-size="13" font-weight="700">2 · update, reassign</text>
+      <text class="tlp-text" x="410" y="22" font-size="13" font-weight="700">3 · converged</text>
+      <rect class="tlp-box" x="10" y="30" width="180" height="164" rx="6"/>
+      <circle class="tlp-blue" cx="40" cy="166" r="4"/>
+      <text class="tlp-text2" x="31" y="170" text-anchor="end" font-size="12">A</text>
+      <circle class="tlp-amber" cx="40" cy="148" r="4"/>
+      <text class="tlp-text2" x="31" y="152" text-anchor="end" font-size="12">B</text>
+      <circle class="tlp-amber" cx="60" cy="148" r="4"/>
+      <text class="tlp-text2" x="68" y="152" font-size="12">C</text>
+      <circle class="tlp-amber" cx="140" cy="76" r="4"/>
+      <text class="tlp-text2" x="148" y="80" font-size="12">D</text>
+      <circle class="tlp-amber" cx="160" cy="58" r="4"/>
+      <text class="tlp-text2" x="168" y="62" font-size="12">E</text>
+      <circle class="tlp-amber" cx="140" cy="40" r="4"/>
+      <text class="tlp-text2" x="148" y="44" font-size="12">F</text>
+      <path class="tlp-line blue thick" d="M31.0,166.0 H49.0 M40.0,157.0 V175.0"/>
+      <path class="tlp-line amber thick" d="M31.0,148.0 H49.0 M40.0,139.0 V157.0"/>
+      <rect class="tlp-box" x="210" y="30" width="180" height="164" rx="6"/>
+      <circle class="tlp-blue" cx="240" cy="166" r="4"/>
+      <text class="tlp-text2" x="231" y="170" text-anchor="end" font-size="12">A</text>
+      <circle class="tlp-blue" cx="240" cy="148" r="4"/>
+      <text class="tlp-text2" x="231" y="152" text-anchor="end" font-size="12">B</text>
+      <circle class="tlp-blue" cx="260" cy="148" r="4"/>
+      <text class="tlp-text2" x="268" y="152" font-size="12">C</text>
+      <circle class="tlp-amber" cx="340" cy="76" r="4"/>
+      <text class="tlp-text2" x="348" y="80" font-size="12">D</text>
+      <circle class="tlp-amber" cx="360" cy="58" r="4"/>
+      <text class="tlp-text2" x="368" y="62" font-size="12">E</text>
+      <circle class="tlp-amber" cx="340" cy="40" r="4"/>
+      <text class="tlp-text2" x="348" y="44" font-size="12">F</text>
+      <line class="tlp-line amber dash" x1="240" y1="148" x2="308" y2="94"/>
+      <path class="tlp-line blue thick" d="M231.0,166.0 H249.0 M240.0,157.0 V175.0"/>
+      <path class="tlp-line amber thick" d="M299.0,94.0 H317.0 M308.0,85.0 V103.0"/>
+      <rect class="tlp-box" x="410" y="30" width="180" height="164" rx="6"/>
+      <circle class="tlp-blue" cx="440" cy="166" r="4"/>
+      <text class="tlp-text2" x="431" y="170" text-anchor="end" font-size="12">A</text>
+      <circle class="tlp-blue" cx="440" cy="148" r="4"/>
+      <text class="tlp-text2" x="431" y="152" text-anchor="end" font-size="12">B</text>
+      <circle class="tlp-blue" cx="460" cy="148" r="4"/>
+      <text class="tlp-text2" x="468" y="152" font-size="12">C</text>
+      <circle class="tlp-amber" cx="540" cy="76" r="4"/>
+      <text class="tlp-text2" x="548" y="80" font-size="12">D</text>
+      <circle class="tlp-amber" cx="560" cy="58" r="4"/>
+      <text class="tlp-text2" x="568" y="62" font-size="12">E</text>
+      <circle class="tlp-amber" cx="540" cy="40" r="4"/>
+      <text class="tlp-text2" x="548" y="44" font-size="12">F</text>
+      <path class="tlp-line blue thick" d="M437.7,154.0 H455.7 M446.7,145.0 V163.0"/>
+      <path class="tlp-line amber thick" d="M537.7,58.0 H555.7 M546.7,49.0 V67.0"/>
+      <text class="tlp-text3" x="200" y="116" text-anchor="middle" font-size="15">→</text>
+      <text class="tlp-text3" x="400" y="116" text-anchor="middle" font-size="15">→</text>
+      <text class="tlp-text2" x="100" y="212" text-anchor="middle" font-size="12">both centroids on the left</text>
+      <text class="tlp-text2" x="100" y="228" text-anchor="middle" font-size="12">only A joins μ₁</text>
+      <text class="tlp-amber" x="300" y="212" text-anchor="middle" font-size="12" font-weight="700">μ₂ jumps to (4.4, 5.0)</text>
+      <text class="tlp-text2" x="300" y="228" text-anchor="middle" font-size="12">B and C switch to μ₁</text>
+      <text class="tlp-blue" x="500" y="212" text-anchor="middle" font-size="12" font-weight="700">μ₁ (1.33, 1.67)</text>
+      <text class="tlp-amber" x="500" y="228" text-anchor="middle" font-size="12" font-weight="700">μ₂ (6.33, 7.0)</text>
+      <text class="tlp-red" x="300" y="254" text-anchor="middle" font-size="13" font-weight="700">It always finds k groups, even in noise: check them against what it never saw.</text>
+    </svg>
+    <figcaption>Assign every point to its nearest centroid, move each centroid to the mean of its points, repeat until nothing changes. Here even a bad start recovers the obvious split in two rounds. What the loop cannot tell you is whether the groups mean anything.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Sector labels say a bank stock is a financial. Clustering says it might really trade like a bond. How does it decide?</p>
+      <p data-who="Quant">By behavior, not by label. You hand it a set of things with no answer key, and it asks one question: which of these look alike?</p>
+      <p data-who="Trader">There are two methods in the lesson. Start with k-means.</p>
+      <p data-who="Quant">You choose the number of groups first. Then a two-step loop. Every point joins its nearest centre. Then each centre moves to the average of its points. Repeat until nobody switches.</p>
+      <p data-who="Trader">Walk me through the example.</p>
+      <p data-who="Quant">Six points, three bottom left and three top right. Ask for two groups, and start badly, with both centres in the bottom-left group. On the first pass, only one point joins the first centre. The other five pile onto the second.</p>
+      <p data-who="Trader">That's obviously wrong.</p>
+      <p data-who="Quant">It is, but watch the update. The second centre moves to the average of its five points, which drags it up to about four and a half, five. Now two of the bottom-left points are closer to the first centre, so they switch. One more update and nothing moves. It found the obvious split in two rounds.</p>
+      <p data-who="Trader">Does a bad start always fix itself?</p>
+      <p data-who="Quant">No. It can settle in a poor spot. That's why you run it several times from different starts and keep the best.</p>
+      <p data-who="Trader">And how do I pick the number of groups?</p>
+      <p data-who="Quant">Honestly, by judgment. The total squared distance always falls as you add groups, so you look for the bend in that curve, or a silhouette score. On real data the two can disagree.</p>
+      <p data-who="Trader">And the other method?</p>
+      <p data-who="Quant">Hierarchical clustering. Every point starts on its own. You keep merging the two closest groups and record each merge, which builds a tree. You choose the number of groups only at the end, by cutting the tree.</p>
+      <p data-who="Trader">Has this worked on real markets?</p>
+      <p data-who="Quant">Rosario Mantegna built that kind of tree from US stock correlations in 1999, and it recovered industry groups from prices alone. Hierarchical Risk Parity, in 2016, used the same tree to allocate risk.</p>
+      <p data-who="Trader">So what's the trap?</p>
+      <p data-who="Quant">It always finds groups. Ask for three and you get three, even from pure noise. A clean picture proves only that the algorithm ran. You have to check the groups against something it never saw, like known stress dates.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Clustering is a fast way to propose structure, never a way to prove it.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -137,6 +230,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">What k-means minimizes, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\|x - \mu_i\|^2} \]</div>
+      <p>One point's squared distance to one centroid. In the worked example, \(B=(1,2)\) is 1.00 from \(\mu_1=(1,1)\) and 20.56 from \(\mu_2=(4.4,5.0)\). The assign step picks the smaller.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\sum_{x \in C_i}} \|x - \mu_i\|^2 \]</div>
+      <p>Add it up over every point assigned to cluster \(i\). For a fixed set of points this sum is smallest when \(\mu_i\) sits at their mean, which is exactly what the update step does.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\sum_{i=1}^{k}} \sum_{x \in C_i} \|x - \mu_i\|^2 \]</div>
+      <p>Add over all \(k\) clusters: the within-cluster sum of squares, WCSS. For the converged split \(\{A,B,C\}\), \(\{D,E,F\}\) it is 4.0.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\min_{\{\mu_1,\dots,\mu_k\}}} \ \sum_{i=1}^{k} \sum_{x \in C_i} \|x - \mu_i\|^2 \]</div>
+      <p>Choose the centroids, and the assignments that go with them, to make WCSS as small as possible. Each assign and each update can only lower it, so the loop converges, but possibly to a local optimum. And a bigger \(k\) always lowers it, which is why WCSS alone cannot choose \(k\).</p>
+    </div>
+  </div>
 
   <h3>k-means — the assign/update loop</h3>
   <p>
@@ -445,6 +558,10 @@
       resulting assignment, recompute instantly — this is exactly the
       \(\|x-\mu_i\|^2\) comparison the assign step performs for every point.
     </p>
+    <div class="tl-predict" data-answer="14.76" data-tol="0.3" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Keep both centroids where they are and check point \(C=(2,2)\) instead of \(B\). What is its squared distance to \(\mu_2=(4.4,5.0)\)? Lock in a guess, then set Point x to 2 below (Point y is already 2) to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>14.76.</strong> \((2-4.4)^2 + (2-5)^2 = 5.76 + 9 = 14.76\), against only \((2-1)^2 + (2-1)^2 = 2\) to \(\mu_1\). So \(C\) switches to cluster 1, just like \(B\). Now try \(D=(6,6)\): it is 50 from \(\mu_1\) and only 3.56 from \(\mu_2\), so it stays put.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Point x</span></div>
@@ -564,6 +681,12 @@
     finding, not just an algorithm's output.
   </div>
 
+  <!-- WB:clustering_market_structure:START -->
+  <div class="wb" id="wb-clustering_market_structure" data-title="k-means from a bad start, then the tree">
+    <script type="application/json">{"w":600,"h":730,"intro":"The lesson's six points, k-means from a deliberately bad start, then the same points built into a tree. Press play, or step through.","steps":[{"cap":"Six points with no labels: A, B and C bottom left, D, E and F top right. Nobody has told the algorithm which belong together. It has to find out.","do":[{"chart":"sc","x":10,"y":10,"w":330,"h":320,"title":"The six points","xd":[0,8.5],"yd":[0,9],"yt":[[0,"0"],[4,"4"],[8,"8"]],"xt":[[0,"0"],[4,"4"],[8,"8"]],"pl":34},{"dot":"pA","chart":"sc","at":[1,1],"text":"A","tone":null,"dx":-10,"dy":6,"anchor":"end"},{"dot":"pB","chart":"sc","at":[1,2],"text":"B","tone":null,"dx":-10,"dy":-6,"anchor":"end"},{"dot":"pC","chart":"sc","at":[2,2],"text":"C","tone":null,"dx":10,"dy":-10,"anchor":"start"},{"dot":"pD","chart":"sc","at":[6,6],"text":"D","tone":null,"dx":10,"dy":12,"anchor":"start"},{"dot":"pE","chart":"sc","at":[7,7],"text":"E","tone":null,"dx":10,"dy":-10,"anchor":"start"},{"dot":"pF","chart":"sc","at":[6,8],"text":"F","tone":null,"dx":-10,"dy":-4,"anchor":"end"}]},{"cap":"Ask for k = 2, and start badly on purpose: both centroids inside the left-hand group, μ₁ on A and μ₂ on B.","do":[{"dot":"m1","chart":"sc","at":[1,1],"text":"μ₁","tone":"blue","r":9,"dx":14,"dy":8,"anchor":"start"},{"dot":"m2","chart":"sc","at":[1,2],"text":"μ₂","tone":"amber","r":9,"dx":14,"dy":-12,"anchor":"start"}]},{"cap":"Assign: every point joins its nearest centroid. Only A is closest to μ₁. B, C, D, E and F all join μ₂. A clearly wrong split.","do":[{"dot":"pAblue","chart":"sc","at":[1,1],"text":"A","tone":"blue","dx":-10,"dy":6,"anchor":"end"},{"dot":"pBamber","chart":"sc","at":[1,2],"text":"B","tone":"amber","dx":-10,"dy":-6,"anchor":"end"},{"dot":"pCamber","chart":"sc","at":[2,2],"text":"C","tone":"amber","dx":10,"dy":-10,"anchor":"start"},{"dot":"pDamber","chart":"sc","at":[6,6],"text":"D","tone":"amber","dx":10,"dy":12,"anchor":"start"},{"dot":"pEamber","chart":"sc","at":[7,7],"text":"E","tone":"amber","dx":10,"dy":-10,"anchor":"start"},{"dot":"pFamber","chart":"sc","at":[6,8],"text":"F","tone":"amber","dx":-10,"dy":-4,"anchor":"end"}]},{"cap":"Update: move each centroid to the mean of its points. μ₁ stays on A. μ₂ jumps to the mean of its five points, (4.4, 5.0). This split has a within-cluster sum of squares, WCSS, of 61.2.","do":[{"hide":"m2"},{"series":"jump","chart":"sc","pts":[[1,2],[4.4,5.0]],"tone":"amber","dash":true,"ms":700},{"dot":"m2b","chart":"sc","at":[4.4,5.0],"text":"μ₂","tone":"amber","r":9,"dx":14,"dy":2,"anchor":"start"},{"box":"wc","x":360,"y":14,"w":230,"h":84,"text":"WCSS","tone":"purple","sub":"61.2","size":20}]},{"cap":"Assign again. B is 1.00 from μ₁ but 20.56 from μ₂ (squared distances), so it switches. So does C (2.00 against 14.76). Now the split is A, B, C against D, E, F.","do":[{"dot":"pBblue","chart":"sc","at":[1,2],"text":"B","tone":"blue","dx":-10,"dy":-6,"anchor":"end"},{"dot":"pCblue","chart":"sc","at":[2,2],"text":"C","tone":"blue","dx":10,"dy":-10,"anchor":"start"}]},{"cap":"Update again: μ₁ moves to (1.33, 1.67), μ₂ to (6.33, 7.0). WCSS falls to 4.0. Assign once more and nothing changes, so it has converged: the obvious split, despite the bad start.","do":[{"hide":"m1"},{"hide":"m2b"},{"hide":"jump"},{"dot":"m1c","chart":"sc","at":[1.33,1.67],"text":"μ₁","tone":"blue","r":9,"dx":14,"dy":10,"anchor":"start"},{"dot":"m2c","chart":"sc","at":[6.33,7.0],"text":"μ₂","tone":"amber","r":9,"dx":-14,"dy":10,"anchor":"end"},{"count":"wc","from":61.2,"to":4.0,"dp":1,"ms":1200}]},{"cap":"How many groups? The best WCSS for k = 1 to 6 is 84.2, 4.0, 2.33, 1.33, 0.5 and 0. It always falls as k grows, so you look for the bend: here a sharp elbow at k = 2. On real data the bend is rarely this clear.","do":[{"chart":"el","x":360,"y":112,"w":230,"h":218,"title":"Best WCSS by k","xd":[0.4,6.6],"yd":[0,95],"yt":[[0,"0"],[50,"50"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"6"]],"pl":34},{"bars":"elb","chart":"el","data":[[1,84.17,"84","purple"],[2,4.0,"4.0","green"],[3,2.33,"2.3","purple"],[4,1.33,"1.3","purple"],[5,0.5,"0.5","purple"],[6,0.0,"0","purple"]],"bw":22,"ms":1100}]},{"cap":"Hierarchical clustering needs no k up front. Start with every point on its own and keep merging the two closest groups (average linkage). A and B merge first, at distance 1.0. C joins them at 1.21.","do":[{"chart":"dg","x":10,"y":350,"w":580,"h":262,"title":"Dendrogram: merge distance","xd":[0.4,6.6],"yd":[0,8],"yt":[[0,"0"],[2,"2"],[4,"4"],[6,"6"],[8,"8"]],"xt":[[1,"A"],[2,"B"],[3,"C"],[4,"D"],[5,"E"],[6,"F"]],"pl":40},{"series":"ab","chart":"dg","pts":[[1,0],[1,1.0],[2,1.0],[2,0]],"tone":"blue","ms":700},{"series":"cab","chart":"dg","pts":[[1.5,1.0],[1.5,1.21],[3,1.21],[3,0]],"tone":"blue","ms":700}]},{"cap":"On the right, D and E merge at 1.41 and F joins at 1.71. The two groups only meet at the very top, at 7.35. The long gap before that last merge is the structure.","do":[{"series":"de","chart":"dg","pts":[[4,0],[4,1.41],[5,1.41],[5,0]],"tone":"amber","ms":700},{"series":"fde","chart":"dg","pts":[[4.5,1.41],[4.5,1.71],[6,1.71],[6,0]],"tone":"amber","ms":700},{"series":"root","chart":"dg","pts":[[2.25,1.21],[2.25,7.35],[5.25,7.35],[5.25,1.71]],"tone":"purple","ms":900}]},{"cap":"Choose k only at the end, by cutting the tree. A cut at height 4 crosses two branches: the same two groups k-means found. Cut lower and you get more groups, all from the same tree.","do":[{"series":"cut","chart":"dg","pts":[[0.5,4],[6.5,4]],"tone":"green","dash":true,"ms":600},{"note":"cutl","chart":"dg","at":[6.5,4],"text":"cut → 2 groups","tone":"green","size":17,"anchor":"end","dx":0,"dy":-14}]},{"cap":"The catch. Both methods return groups from any data at all, even pure noise. A clean split proves only that the algorithm did its job. Check the groups against something it never saw: known dates, sectors, other evidence.","do":[{"box":"noise","x":20,"y":630,"w":270,"h":84,"text":"it finds k groups\nin anything","tone":"red","size":19},{"box":"check","x":310,"y":630,"w":270,"h":84,"text":"check against what\nit never saw","tone":"green","size":19}]}]}</script>
+  </div>
+  <!-- WB:clustering_market_structure:END -->
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -647,6 +770,19 @@
       dendrogram is not "the" dendrogram, and the choice should be stated
       and justified, not left as an unexamined default.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative research meeting</div>
+    <h3>Three regimes, found with no labels</h3>
+    <p>A researcher ran k-means with \(k=3\) on two years of daily features: realized volatility, trend strength, cross-asset correlation and credit-spread momentum. The three clusters look like "calm trending", "calm range-bound" and "stressed" days, and the plot is beautifully separated. The proposal is to switch strategies by cluster from Monday. What do you ask for first?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Nothing more. The clusters are well separated and match intuition, so the regimes are real.<div class="tl-drill-why">k-means returns three groups whenever you ask for three, from any data, including noise. A clean picture proves only that the algorithm reduced its objective. Matching intuition is the algorithm confirming its own output.</div></li>
+      <li data-verdict="good">Check the "stressed" days against dates known to be volatile from other evidence, and see whether the split survives a perturbed feature set and \(k=4\).<div class="tl-drill-why">This is the independent sanity check the lesson asks for. Groups that line up with evidence the clustering never saw, and that hold up when the inputs shift a little, are a finding. Anything less is a hypothesis.</div></li>
+      <li data-verdict="ok">Rerun k-means from several random starts and keep the lowest-WCSS result.<div class="tl-drill-why">Necessary practice, because one run can land in a poor local optimum. But it only makes the clustering more stable. It still says nothing about whether the groups mean anything.</div></li>
+      <li data-verdict="bad">Pick \(k\) by the highest silhouette score instead. If it says 2, use two regimes.<div class="tl-drill-why">The silhouette score is a heuristic, not a calculator for the right \(k\), and it can favor a small \(k\) that is useless for the question. It also does nothing to validate the groups.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What this teaches.</strong> This is an illustrative case built on the lesson's own regime-discovery scenario, not a historical event. Clustering is unsupervised: there is no answer key inside the process. A regime map earns trust only by surviving checks against evidence the algorithm never had.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -765,6 +901,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> <span>· correlation is what most market clustering measures</span></li>
+        <li><a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a> <span>· the same tree, used to allocate risk</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="correlation-networks-mst.html">Correlation Networks &amp; Minimum Spanning Trees</a> <span>· drawing the market's correlation structure as a network</span></li>
+        <li><a href="anomaly-detection-isolation-autoencoders.html">Anomaly Detection: Isolation Forests &amp; Autoencoders</a> <span>· what to do with the points that fit no cluster</span></li>
+        <li><a href="hidden-markov-models.html">Hidden Markov Models &amp; Regime Detection</a> <span>· regimes with a model of how they switch</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> diversification depends on how assets actually move together, and sector labels can be wrong about that.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="regularized-regression-lasso-ridge.html">← Regularized Regression: LASSO &amp; Ridge</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -845,6 +1001,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Efficient Market Hypothesis — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -284,7 +285,19 @@
       </div>
     </section>
 
+    <!-- WB:emh-deck:START -->
     <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">The $20 bill: testing for, and losing, an edge</h2>
+      <!-- WB:emh:START -->
+      <div class="wb" data-title="The $20 bill: testing for, and losing, an edge">
+        <script type="application/json">{"w":600,"h":780,"intro":"Why a free edge should not last, how you test it, and what happened to 97 edges once they were published. Press play, or step through.","steps":[{"cap":"Model a price as yesterday's price plus a surprise. Here are 60 simulated days, purely illustrative. Each day's move is a fresh draw with an average of zero.","do":[{"chart":"px","x":10,"y":10,"w":580,"h":180,"title":"60 simulated days: price = yesterday + surprise","xd":[0,72],"yd":[96.90026306878295,104.53078319893781],"yt":[[100,"100"]],"xt":[[0,"day 0"],[30,"30"],[60,"60"]],"pl":50,"pr":16},{"series":"pp","chart":"px","pts":[[0,100.0],[1,100.02],[2,100.3],[3,100.03],[4,100.24],[5,100.79],[6,101.04],[7,101.98],[8,101.45],[9,101.49],[10,101.06],[11,100.59],[12,100.48],[13,100.62],[14,100.87],[15,101.17],[16,102.51],[17,103.03],[18,102.07],[19,102.2],[20,101.82],[21,101.51],[22,102.3],[23,102.16],[24,100.99],[25,101.18],[26,101.0],[27,100.3],[28,99.75],[29,99.37],[30,99.36],[31,99.1],[32,99.14],[33,100.25],[34,99.77],[35,99.28],[36,99.13],[37,99.79],[38,99.37],[39,100.23],[40,99.44],[41,98.82],[42,98.79],[43,98.27],[44,97.9],[45,98.17],[46,98.61],[47,98.67],[48,98.51],[49,99.32],[50,99.56],[51,99.42],[52,100.14],[53,99.6],[54,99.7],[55,100.1],[56,100.09],[57,99.75],[58,99.96],[59,99.63],[60,99.28]],"tone":"blue","ms":1800}]},{"cap":"If the market already holds everything knowable, the best forecast of tomorrow is simply today's price. Up and down are equally likely from here. That is a martingale.","do":[{"series":"fc","chart":"px","pts":[[60,99.28],[72,99.28]],"tone":"amber","dash":true,"ms":600},{"note":"fcl","chart":"px","at":[66,99.28],"text":"best guess\n= today","tone":"amber","size":17,"anchor":"middle","dx":0,"dy":-46},{"dot":"now","chart":"px","at":[60,99.28],"text":"","tone":"amber"}]},{"cap":"The test: does yesterday's return predict today's? With 500 daily returns and no real link, the measured correlation still wobbles by about 1 ÷ √500 = 0.045. Two standard errors either side of zero is the noise band.","do":[{"chart":"ac","x":10,"y":206,"w":580,"h":120,"title":"Lag-1 autocorrelation, 500 returns","xd":[-0.2,0.2],"yd":[0,1],"yt":[],"xt":[[-0.1,"−0.1"],[0,"0"],[0.1,"0.1"],[0.2,"0.2"]],"pl":20,"pr":20,"pt":30,"pb":26},{"gap":"band","chart":"ac","top":[[-0.0894,1],[0.0894,1]],"bot":[[-0.0894,0],[0.0894,0]],"tone":"blue","op":0.25},{"note":"bl","chart":"ac","at":[-0.045,0.62],"text":"noise: ±0.09","tone":"blue","size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Measure 0.03. That is 0.67 standard errors: well inside the band. Routine noise from a perfectly unpredictable series. Building a strategy on it would be a mistake.","do":[{"dot":"r03","chart":"ac","at":[0.03,0.25],"text":"0.03","tone":"blue","dy":-16}]},{"cap":"Measure 0.15 instead. That is about 3.4 standard errors out: a real statistical signal in this sample. But it is only where the research starts.","do":[{"dot":"r15","chart":"ac","at":[0.15,0.25],"text":"0.15","tone":"amber","dy":-16},{"note":"r15n","chart":"ac","at":[0.15,0.25],"text":"3.4 SE","tone":"amber","size":17,"anchor":"middle","dx":0,"dy":22}]},{"cap":"Three questions stand between a signal and an edge. Does it hold on data it has never seen? Does it survive trading costs? And why has nobody traded it away?","do":[{"chip":"q1","x":105,"y":352,"text":"out of sample?","tone":"amber"},{"chip":"q2","x":300,"y":352,"text":"after costs?","tone":"amber"},{"chip":"q3","x":495,"y":352,"text":"why still here?","tone":"amber"}]},{"cap":"The joint-hypothesis problem. To call a return abnormal you need a model of normal. An excess return means the market is inefficient, or your model missed a risk you are being paid to carry. No test can tell you which.","do":[{"box":"ineff","x":10,"y":386,"w":220,"h":76,"text":"market\ninefficient?","tone":"red","size":18},{"icon":"sc","name":"scales","x":255,"y":380,"s":0.9,"tone":"amber"},{"box":"model","x":370,"y":386,"w":220,"h":76,"text":"model missing\na risk?","tone":"blue","size":18}]},{"cap":"Now the $20 bill on a crowded pavement. Academics spent decades documenting stock-return predictors. McLean and Pontiff followed 97 of them as the papers came out.","do":[{"icon":"bill","name":"cash","x":40,"y":476,"s":0.62,"tone":"green","label":"97 published\npredictors","sym":"$","lsize":17}]},{"cap":"Publication prints the map to the bill. Arbitrageurs can now find the trade cheaply, and if they don't take it a competitor will. Their orders push prices towards the information.","do":[{"icon":"crowd","name":"crowd","x":34,"y":648,"s":0.72,"tone":"blue","label":"arbitrageurs","lsize":17},{"arrow":["bill","crowd"],"tone":"blue"}]},{"cap":"Taking returns in the original sample as 100%, they were about 74% in the gap before publication, partly the luck of the original search, and about 42% after it. Roughly 58% of the edge went once investors could read about it.","do":[{"chart":"mp","x":200,"y":488,"w":390,"h":280,"title":"Predictor returns vs. original sample","xd":[0.4,3.6],"yd":[0,118],"yt":[[0,"0"],[50,"50%"],[100,"100%"]],"xt":[[1,"in sample"],[2,"pre-pub"],[3,"after"]],"pl":58,"pr":16},{"bars":"mpb","chart":"mp","data":[[1,100,"100%","blue"],[2,74,"≈ 74%","amber"],[3,42,"≈ 42%","red"]],"bw":56,"ms":1400},{"arrow":["crowd","mp"],"tone":"blue"}]},{"cap":"The fall was biggest for the predictors with the largest in-sample returns, and what was left sat in stocks that are expensive to trade. The bill gets picked up where bending down is cheap.","do":[{"pulse":"mpb"},{"pulse":"bill"}]},{"cap":"So efficiency is the null, not a wall. It forbids a free lunch, not getting paid for a risk others will not carry. Every edge has to say who is paying, and why.","do":[{"dim":"ineff"},{"dim":"model"},{"pulse":"q3"}]}]}</script>
+      </div>
+      <!-- WB:emh:END -->
+    </section>
+    <!-- WB:emh-deck:END -->
+
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">"It's priced in"<!-- DESK:START -->: what this desk found<!-- DESK:END --></h2>
       <!-- DESK:START --><p class="sl-sub">The trader's everyday version of efficiency, tested as a forecast of direction and of size.</p><!-- DESK:END -->
@@ -306,7 +319,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -357,7 +370,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -436,5 +449,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

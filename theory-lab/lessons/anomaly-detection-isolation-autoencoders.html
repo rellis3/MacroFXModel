@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Anomaly Detection: Isolation Forests &amp; Autoencoders — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,79 @@
       <li><strong>How it reached trading:</strong> Single-variable bad-tick filters (e.g. Brownlees &amp; Gallo, 2006) came first; Isolation Forest and autoencoders brought multivariate checks to data quality and trade surveillance.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: a crowd of fourteen ordinary points and one outlier far from them. Two random cuts, one vertical and one horizontal, are enough to wall the outlier off on its own. Right: the Isolation Forest score, 2 to the power of minus average cuts over c of n, plotted against the average number of cuts for 256 points, where c is about 10.24. The score falls as the cuts rise. The lesson's anomaly, isolated in 3.2 cuts on average, scores 0.805. An ordinary point at 9.8 cuts scores about 0.52, close to the 0.5 line that marks an ordinary point.">
+      <text class="tlp-text" x="10" y="18" font-size="13" font-weight="700">Random cuts isolate the odd one fast</text>
+      <rect class="tlp-box" x="10" y="30" width="225" height="180" rx="6"/>
+      <circle class="tlp-blue" cx="81.6" cy="118.2" r="3.5"/>
+      <circle class="tlp-blue" cx="93.0" cy="128.5" r="3.5"/>
+      <circle class="tlp-blue" cx="104.6" cy="111.5" r="3.5"/>
+      <circle class="tlp-blue" cx="87.6" cy="104.6" r="3.5"/>
+      <circle class="tlp-blue" cx="116.2" cy="125.1" r="3.5"/>
+      <circle class="tlp-blue" cx="97.0" cy="135.4" r="3.5"/>
+      <circle class="tlp-blue" cx="108.4" cy="121.8" r="3.5"/>
+      <circle class="tlp-blue" cx="77.6" cy="131.8" r="3.5"/>
+      <circle class="tlp-blue" cx="120.0" cy="114.9" r="3.5"/>
+      <circle class="tlp-blue" cx="100.8" cy="97.9" r="3.5"/>
+      <circle class="tlp-blue" cx="112.4" cy="104.6" r="3.5"/>
+      <circle class="tlp-blue" cx="85.4" cy="121.8" r="3.5"/>
+      <circle class="tlp-blue" cx="127.6" cy="128.5" r="3.5"/>
+      <circle class="tlp-blue" cx="93.0" cy="114.9" r="3.5"/>
+      <line class="tlp-line amber dash" x1="88.2" y1="34" x2="88.2" y2="206"/>
+      <line class="tlp-line purple dash" x1="88.2" y1="69.9" x2="231" y2="69.9"/>
+      <circle class="tlp-red" cx="193" cy="57" r="6"/>
+      <text class="tlp-red" x="186" y="50" text-anchor="end" font-size="12" font-weight="700">outlier</text>
+      <text class="tlp-amber" x="94" y="196" font-size="12">cut 1</text>
+      <text class="tlp-purple" x="228" y="86" text-anchor="end" font-size="12">cut 2: alone</text>
+      <text class="tlp-text2" x="122" y="230" text-anchor="middle" font-size="12">outlier: alone after 2 cuts</text>
+      <text class="tlp-text2" x="122" y="246" text-anchor="middle" font-size="12">a crowd point: many more</text>
+      <text class="tlp-text" x="290" y="18" font-size="13" font-weight="700">Fewer cuts on average → higher score</text>
+      <line class="tlp-line" x1="290" y1="200" x2="580" y2="200"/>
+      <line class="tlp-line" x1="290" y1="36" x2="290" y2="200"/>
+      <text class="tlp-text3" x="284" y="44" text-anchor="end" font-size="12">1</text>
+      <text class="tlp-text3" x="284" y="124" text-anchor="end" font-size="12">0.5</text>
+      <text class="tlp-text3" x="284" y="204" text-anchor="end" font-size="12">0</text>
+      <line class="tlp-line dash" x1="290" y1="120" x2="580" y2="120"/>
+      <polyline class="tlp-line purple thick" points="290.0,40.0 297.2,45.3 304.5,50.5 311.8,55.4 319.0,60.2 326.2,64.9 333.5,69.4 340.8,73.7 348.0,77.9 355.2,82.0 362.5,85.9 369.8,89.7 377.0,93.4 384.2,96.9 391.5,100.4 398.8,103.7 406.0,106.9 413.2,110.0 420.5,113.0 427.8,115.9 435.0,118.7 442.2,121.4 449.5,124.0 456.8,126.5 464.0,129.0 471.2,131.3 478.5,133.6 485.8,135.8 493.0,137.9 500.2,140.0 507.5,142.0 514.8,143.9 522.0,145.8 529.2,147.6 536.5,149.3 543.8,151.0 551.0,152.7 558.2,154.2 565.5,155.8 572.8,157.2 580.0,158.7"/>
+      <circle class="tlp-red" cx="336.4" cy="71.2" r="6"/>
+      <circle class="tlp-blue" cx="432.1" cy="117.6" r="6"/>
+      <text class="tlp-red" x="348" y="62" font-size="13" font-weight="700">3.2 cuts → 0.805: anomaly</text>
+      <text class="tlp-blue" x="442" y="104" font-size="13" font-weight="700">9.8 → about 0.52</text>
+      <text class="tlp-text3" x="578" y="136" text-anchor="end" font-size="12">0.5 = ordinary</text>
+      <text class="tlp-text3" x="580" y="218" text-anchor="end" font-size="12">average cuts to isolate, 256 points →</text>
+      <text class="tlp-text3" x="580" y="234" text-anchor="end" font-size="12">c(256) ≈ 10.24 cuts is "ordinary"</text>
+    </svg>
+    <figcaption>Isolation Forest never measures distance. It cuts the data at random and counts how many cuts it takes to get a point alone. Few and different points fall out fast and score near 1. An autoencoder gets to the same idea another way: the score is how badly it rebuilds the point.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My data filter already throws out any tick that sits too far from its recent median. What does anomaly detection add?</p>
+      <p data-who="Quant">Your filter looks at one number at a time. Some bad ticks are normal on every single number. Spread normal, volume normal, quote rate normal. It is the combination that has never happened before.</p>
+      <p data-who="Trader">And a one-at-a-time filter can't see a combination.</p>
+      <p data-who="Quant">Right. The lesson has two tools that can. The first is Isolation Forest, from 2008. Its idea is that anomalies are few and different.</p>
+      <p data-who="Trader">How does it use that?</p>
+      <p data-who="Quant">It asks random questions. Pick a feature at random, cut it at a random value, and repeat until the point you care about is alone. A point far from the crowd gets walled off in a couple of cuts. A point buried in the crowd takes many more.</p>
+      <p data-who="Trader">So the number of cuts is the signal.</p>
+      <p data-who="Quant">Averaged over many random trees, yes. Then it is turned into a score between zero and one. Take two hundred and fifty-six points. An ordinary point needs about ten cuts. One that needs only three point two on average scores about point eight. Near one means likely anomaly. Around a half means ordinary.</p>
+      <p data-who="Trader">And the second tool?</p>
+      <p data-who="Quant">An autoencoder. A neural network that squeezes each tick through a narrow bottleneck and then tries to rebuild it. Trained on mostly normal ticks, it gets good at rebuilding normal patterns and stays bad at strange ones.</p>
+      <p data-who="Trader">So the miss is the score.</p>
+      <p data-who="Quant">Exactly. How far the rebuild lands from the original. The quantity it trained on and the anomaly score are the same thing.</p>
+      <p data-who="Trader">Great. So a high score means a bad tick I should delete, or a move I should trade?</p>
+      <p data-who="Quant">Neither, and that is the most important part. The score says unusual. Not wrong. Not a trading opportunity. A real news move can score exactly like a bad print.</p>
+      <p data-who="Trader">What else bites?</p>
+      <p data-who="Quant">Regimes. Train it on a calm year and a volatile but perfectly real market looks like one long anomaly. It has simply never seen anything like it.</p>
+      <p data-who="Trader">So where does it sit on a desk?</p>
+      <p data-who="Quant">At the front of the pipeline, flagging ticks for a person to check before they reach a model or a risk number. It hands you a ranked list, not a verdict.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">These models catch strange combinations that one-number filters miss, and a human still decides what the strangeness means.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -115,6 +189,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">How a count of random cuts becomes an anomaly score, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{h(x)} \]</div>
+      <p>In one random tree, count how many random cuts it took to get point \(x\) alone in its own leaf. Few and different points need only a handful.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{E[}h(x)\color{#fbbf24}{]} \]</div>
+      <p>One tree can be lucky or unlucky, so average the count over the whole forest. In the worked example, the candidate point averages 3.2 cuts across 100 trees.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{E[h(x)]}{\color{#fbbf24}{c(n)}} \]</div>
+      <p>Divide by \(c(n)\), the cuts an ordinary point would need in a dataset of \(n\) points. For \(n = 256\), \(c \approx 10.24\), so the ratio is \(3.2/10.24 = 0.3125\): this point fell out in under a third of the usual cuts.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{s(x,n) = 2^{-\,\frac{E[h(x)]}{c(n)}}} \]</div>
+      <p>Raise 2 to minus that ratio. A ratio near 0 gives a score near 1, a likely anomaly. A ratio of 1, an ordinary path, gives exactly 0.5. Here \(2^{-0.3125} \approx 0.805\): well above 0.5, so it is flagged.</p>
+    </div>
+  </div>
   <h3>Isolation Forest — anomalies are few and different</h3>
   <p>
   Fei Tony Liu, Kai Ming Ting &amp; Zhi-Hua Zhou introduced Isolation Forest in "Isolation Forest," Proceedings
@@ -320,6 +414,10 @@
     either field and both the normalization constant \(c(n)\) and the anomaly score \(s(x,n)\) recalculate
     instantly from the same formulas derived above.
     </p>
+    <div class="tl-predict" data-answer="10.24" data-tol="0.3" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Keep \(n = 256\). What average path length \(E[h(x)]\) gives a score of exactly 0.5, the mark of a perfectly ordinary point? Lock in a guess, then type it into the first field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 10.24, the value of \(c(256)\) itself.</strong> When the average path equals \(c(n)\), the exponent is \(-1\) and \(2^{-1} = 0.5\). That is what \(c(n)\) means: the cuts an ordinary point needs. Now try 20, twice the ordinary path: the score drops to about 0.26, a point buried deep in the crowd.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Avg. path length E[h(x)]</span></div>
@@ -377,6 +475,12 @@
     both look identical to it: unfamiliar.
   </div>
 
+  <!-- WB:anomaly_detection_isolation_autoencoders:START -->
+  <div class="wb" id="wb-anomaly_detection_isolation_autoencoders" data-title="Isolation Forest and autoencoders, drawn step by step">
+    <script type="application/json">{"w":600,"h":800,"intro":"Two ways to spot \"this doesn't look like the rest\": cut the data at random and count the cuts, or compress and rebuild it and measure the miss. Press play, or step through.","steps":[{"cap":"Fifteen ticks described by two features (illustrative data). Fourteen sit in a crowd. One sits far out on both features at once.","do":[{"chart":"L","x":10,"y":10,"w":285,"h":282,"title":"Isolate the outlier","xd":[0,10],"yd":[0,10],"yt":[[0,"0"],[5,"5"],[10,"10"]],"xt":[[0,"0"],[5,"5"],[10,"10"]],"pl":34},{"dot":"l0","chart":"L","at":[3.08,5.11],"text":"","tone":"blue","r":4},{"dot":"l1","chart":"L","at":[3.65,4.47],"text":"","tone":"blue","r":4},{"dot":"l2","chart":"L","at":[4.23,5.53],"text":"","tone":"blue","r":4},{"dot":"l3","chart":"L","at":[3.38,5.96],"text":"","tone":"blue","r":4},{"dot":"l4","chart":"L","at":[4.81,4.68],"text":"","tone":"blue","r":4},{"dot":"l5","chart":"L","at":[3.85,4.04],"text":"","tone":"blue","r":4},{"dot":"l6","chart":"L","at":[4.42,4.89],"text":"","tone":"blue","r":4},{"dot":"l7","chart":"L","at":[2.88,4.26],"text":"","tone":"blue","r":4},{"dot":"l8","chart":"L","at":[5.0,5.32],"text":"","tone":"blue","r":4},{"dot":"l9","chart":"L","at":[4.04,6.38],"text":"","tone":"blue","r":4},{"dot":"l10","chart":"L","at":[4.62,5.96],"text":"","tone":"blue","r":4},{"dot":"l11","chart":"L","at":[3.27,4.89],"text":"","tone":"blue","r":4},{"dot":"l12","chart":"L","at":[5.38,4.47],"text":"","tone":"blue","r":4},{"dot":"l13","chart":"L","at":[3.65,5.32],"text":"","tone":"blue","r":4},{"dot":"lodd","chart":"L","at":[8.65,8.94],"text":"outlier","tone":"red","r":6,"dx":-10,"dy":-12,"anchor":"end"}]},{"cap":"Isolation Forest asks random questions. Pick a feature at random, then a cut at random between its smallest and largest value. First cut: feature 1 at 3.41. The outlier lands on the side with only a few points.","do":[{"series":"ls1","chart":"L","pts":[[3.41,0],[3.41,10]],"tone":"amber","dash":true,"ms":600}]},{"cap":"Second cut: feature 2 at 8.13, inside that side. The outlier is now alone. Path length: 2 cuts. Few and different means quick to wall off.","do":[{"series":"ls2","chart":"L","pts":[[3.41,8.13],[10,8.13]],"tone":"purple","dash":true,"ms":600},{"note":"l2n","chart":"L","at":[7.0,6.6],"text":"alone after 2","tone":"red","size":18,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Now try to isolate an ordinary point buried in the crowd (zoomed in on the right). The first three random cuts barely thin out its neighbours.","do":[{"chart":"R","x":305,"y":10,"w":285,"h":282,"title":"Isolate a crowd point (zoom)","xd":[2.5,6.5],"yd":[3.5,7.0],"yt":[[4,"4"],[6,"6"]],"xt":[[3,"3"],[5,"5"]],"pl":34},{"dot":"r0","chart":"R","at":[3.08,5.11],"text":"","tone":"blue","r":4},{"dot":"r1","chart":"R","at":[3.65,4.47],"text":"","tone":"blue","r":4},{"dot":"r2","chart":"R","at":[4.23,5.53],"text":"","tone":"blue","r":4},{"dot":"r3","chart":"R","at":[3.38,5.96],"text":"","tone":"blue","r":4},{"dot":"r4","chart":"R","at":[4.81,4.68],"text":"","tone":"blue","r":4},{"dot":"r5","chart":"R","at":[3.85,4.04],"text":"","tone":"blue","r":4},{"dot":"r6","chart":"R","at":[4.42,4.89],"text":"","tone":"blue","r":4},{"dot":"r7","chart":"R","at":[2.88,4.26],"text":"","tone":"blue","r":4},{"dot":"r8","chart":"R","at":[5.0,5.32],"text":"","tone":"blue","r":4},{"dot":"r9","chart":"R","at":[4.04,6.38],"text":"","tone":"blue","r":4},{"dot":"r10","chart":"R","at":[4.62,5.96],"text":"","tone":"blue","r":4},{"dot":"r11","chart":"R","at":[3.27,4.89],"text":"","tone":"blue","r":4},{"dot":"r12","chart":"R","at":[5.38,4.47],"text":"","tone":"blue","r":4},{"dot":"rt","chart":"R","at":[3.65,5.32],"text":"target","tone":"green","r":6,"dx":-10,"dy":-14,"anchor":"end"},{"series":"rs0","chart":"R","pts":[[2.5,5.36],[6.5,5.36]],"tone":"amber","dash":true,"ms":450},{"series":"rs1","chart":"R","pts":[[2.5,4.22],[6.5,4.22]],"tone":"amber","dash":true,"ms":450},{"series":"rs2","chart":"R","pts":[[5.37,4.22],[5.37,5.36]],"tone":"amber","dash":true,"ms":450}]},{"cap":"Three more cuts, each in a smaller box, before the target is finally alone. Path length: 6 cuts, three times as many as the outlier needed.","do":[{"series":"rs3","chart":"R","pts":[[2.5,4.55],[5.37,4.55]],"tone":"purple","dash":true,"ms":450},{"series":"rs4","chart":"R","pts":[[2.5,5.12],[5.37,5.12]],"tone":"purple","dash":true,"ms":450},{"series":"rs5","chart":"R","pts":[[4.4,5.12],[4.4,5.36]],"tone":"purple","dash":true,"ms":450},{"note":"r6n","chart":"R","at":[4.5,3.9],"text":"alone after 6","tone":"green","size":18,"anchor":"middle","dx":0,"dy":0}]},{"cap":"One tree can be lucky, so build many and average. Over 20,000 random trees on these points, the outlier takes 1.6 cuts on average and the crowd point 6.2. An ordinary point in 15 is expected to take c(15) = 4.57.","do":[{"chart":"pl","x":10,"y":310,"w":285,"h":210,"title":"Average cuts to isolate","xd":[0.4,2.6],"yd":[0,8],"yt":[[0,"0"],[4,"4"],[8,"8"]],"xt":[[1,"outlier"],[2,"crowd point"]],"pl":34},{"bars":"plb","chart":"pl","data":[[1,1.61,"1.6","red"],[2,6.22,"6.2","green"]],"bw":46,"ms":1000},{"series":"cn","chart":"pl","pts":[[0.5,4.57],[2.5,4.57]],"tone":"amber","dash":true,"ms":500},{"note":"cnl","chart":"pl","at":[2.5,4.57],"text":"c(15) = 4.57","tone":"amber","size":16,"anchor":"end","dx":0,"dy":-12}]},{"cap":"Turn that into a score: s = 2 to the power of minus (average cuts ÷ c). The outlier scores 0.78, the crowd point 0.39. Near 1 means likely anomaly; around 0.5 or below means ordinary. The lesson's example: 3.2 cuts with 256 points gives 0.805.","do":[{"chart":"sc","x":305,"y":310,"w":285,"h":210,"title":"Score s = 2^(−E[h]/c)","xd":[0,10],"yd":[0,1],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[0,"0"],[5,"5"],[10,"10"]],"pl":40},{"series":"sline","chart":"sc","pts":[[0.0,1.0],[0.25,0.963],[0.5,0.927],[0.75,0.892],[1.0,0.859],[1.25,0.827],[1.5,0.796],[1.75,0.767],[2.0,0.738],[2.25,0.711],[2.5,0.684],[2.75,0.659],[3.0,0.634],[3.25,0.611],[3.5,0.588],[3.75,0.566],[4.0,0.545],[4.25,0.525],[4.5,0.505],[4.75,0.486],[5.0,0.468],[5.25,0.451],[5.5,0.434],[5.75,0.418],[6.0,0.402],[6.25,0.387],[6.5,0.373],[6.75,0.359],[7.0,0.346],[7.25,0.333],[7.5,0.32],[7.75,0.308],[8.0,0.297],[8.25,0.286],[8.5,0.275],[8.75,0.265],[9.0,0.255],[9.25,0.246],[9.5,0.236],[9.75,0.228],[10.0,0.219]],"tone":"purple","ms":1000},{"series":"half","chart":"sc","pts":[[0,0.5],[10,0.5]],"tone":null,"dash":true,"ms":300},{"dot":"so","chart":"sc","at":[1.61,0.784],"text":"0.78","tone":"red","dx":10,"dy":-6,"anchor":"start"},{"dot":"st","chart":"sc","at":[6.22,0.389],"text":"0.39","tone":"green","dx":4,"dy":18,"anchor":"start"}]},{"cap":"The second method, an autoencoder: squeeze a tick through a narrow bottleneck and rebuild it. Trained on mostly normal ticks, it only learns to rebuild normal patterns well.","do":[{"box":"inp","x":10,"y":540,"w":165,"h":116,"text":"tick x\nspread 2.10\nvolume 1.40\nquotes 0.90","tone":"blue","size":18},{"box":"z","x":225,"y":562,"w":130,"h":72,"text":"squeeze\nthrough z","tone":"amber","size":18},{"box":"out","x":405,"y":540,"w":185,"h":116,"text":"rebuilt x̂\nspread 2.05\nvolume 1.35\nquotes 2.80","tone":"red","size":18},{"arrow":["inp","z"]},{"arrow":["z","out"]}]},{"cap":"Compare original and rebuild. Spread and volume come back almost exactly. Quote frequency comes back at 2.80 instead of 0.90. The mean squared miss, 1.205, is the anomaly score: this combination never fitted what it practiced.","do":[{"note":"mse","x":300,"y":684,"text":"score = mean of (x − x̂)² = 1.205","size":19,"anchor":"middle","tone":"red"}]},{"cap":"Both flag a combination no single-variable filter can see. But a score says only \"unusual\". Not \"wrong\", not \"a trade\". And a model trained on a calm regime flags a new, legitimate regime as one long anomaly.","do":[{"box":"nw","x":20,"y":712,"w":270,"h":72,"text":"unusual ≠ wrong\nunusual ≠ opportunity","tone":"amber","size":18},{"box":"hr","x":310,"y":712,"w":270,"h":72,"text":"a human decides\nwhat to do with it","tone":"green","size":18}]}]}</script>
+  </div>
+  <!-- WB:anomaly_detection_isolation_autoencoders:END -->
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -432,6 +536,19 @@
       <li><strong>Treating the score as calibrated probability.</strong> Isolation Forest's \(s(x,n)\) and an autoencoder's reconstruction error are both relative, model-specific quantities, not probabilities that a point is "truly" anomalous with some percent confidence.</li>
       <li><strong>Skipping the human-judgment step.</strong> What counts as "unusual enough to act on" is a threshold decision that depends entirely on context (what asset, what regime, what the downstream consequence of a false positive is) — the model surfaces a ranked list of candidates, it does not make that call.</li>
     </ul>
+  </div>
+
+  <div class="tl-drill" data-date="2015-01-15">
+    <div class="tl-drill-label">Scenario drill · 15 January 2015</div>
+    <h3>Every EUR/CHF tick is flagged at once</h3>
+    <p>You run an Isolation Forest over every incoming FX tick, trained on months of recent data. For years EUR/CHF has traded just above the 1.20 floor the Swiss National Bank has defended. This morning, within minutes, almost every EUR/CHF tick scores near 1: prices far below 1.20, spreads blown out, quote rates unlike anything in the training data. Your pipeline is set to drop flagged ticks automatically. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Let the pipeline drop them. The detector says they are anomalies, so they are bad data.<div class="tl-drill-why">A score measures rarity, not correctness. A genuine, sharp news-driven move scores exactly like a data error. Dropping these ticks would erase a real move from your prices, your models and your risk numbers.</div></li>
+      <li data-verdict="good">Stop the automatic drop, have a person check the flagged ticks against the news and other venues, and keep them if the move is real.<div class="tl-drill-why">This is the human-judgment step the lesson insists on. The model surfaces a ranked list of unusual ticks; a person decides whether unusual means wrong. Here a quick check shows a policy announcement, not a broken feed.</div></li>
+      <li data-verdict="bad">Buy the move. A score this high means the market is mispriced.<div class="tl-drill-why">Nothing about an anomaly score implies the pattern is profitable or repeatable. It describes rarity relative to history. It is not a forecast of edge.</div></li>
+      <li data-verdict="ok">Retrain the detector on today's data so it stops flagging everything.<div class="tl-drill-why">Sensible later, once the new regime is understood. A model trained on the calm, floor-defended regime will keep flagging the new one. But retraining in the middle of the event does not answer today's question: are these ticks real?</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 15 January 2015 the Swiss National Bank announced it was abandoning the 1.20 minimum exchange rate for EUR/CHF. The franc jumped and EUR/CHF traded well below 1.00 within minutes. The ticks were unusual and entirely real. A detector trained on the floor years was right that nothing like it had been seen, and a pipeline that equated "anomalous" with "wrong" would have deleted some of the most important prints of that year.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -512,6 +629,25 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="data-cleaning-outliers-missing-data.html">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</a> <span>· the one-variable filters these models extend</span></li>
+        <li><a href="clustering-market-structure.html">Clustering for Market Structure: k-Means &amp; Hierarchical Clustering</a> <span>· what normal groups look like before you hunt for misfits</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="change-point-detection.html">Change-Point Detection</a> <span>· when the flags start to cluster in time</span></li>
+        <li><a href="data-pipeline-raw-to-trading-ready.html">The Data Pipeline: Raw Feeds to Trading-Ready Data</a> <span>· where the check sits in the flow of data</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> one bad tick can poison a model or a risk number, and these tools catch the ones a single-number filter cannot see.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="clustering-market-structure.html">← Clustering &amp; Market Structure</a>
     <a href="nlp-trading-signals-sentiment.html">NLP for Trading Signals: Sentiment, Embeddings &amp; FinBERT →</a>
@@ -580,6 +716,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Convex Optimization — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,63 @@
       <li>How it reached trading: Markowitz (1952–56) posed and solved portfolio choice as a constrained convex problem, and the KKT conditions certify the answer; every long-only or capped optimiser on a desk is checking them.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two curves side by side. Left, a convex bowl, f of x equals 0.15 x squared, with a straight chord drawn from x equals 1 to x equals 8. Halfway along, the curve sits at 3.04, below the chord at 4.87, and the bowl has a single bottom, so any local minimum is the global one. Right, a non-convex egg carton with two dips: a solver can stop in the shallower dip and never find the deeper one.">
+      <line class="tlp-line" x1="30" y1="195" x2="285" y2="195"/>
+      <line class="tlp-line" x1="340" y1="195" x2="585" y2="195"/>
+      <text class="tlp-blue" x="30" y="22" font-size="14" font-weight="700">Convex: one bowl</text>
+      <text class="tlp-text3" x="30" y="40" font-size="12">f(x) = 0.15x², chord from x = 1 to x = 8</text>
+      <polyline class="tlp-line blue thick" points="30.0,190.0 36.9,189.9 43.9,189.6 50.8,189.0 57.8,188.3 64.7,187.3 71.7,186.1 78.6,184.7 85.6,183.1 92.5,181.2 99.4,179.2 106.4,176.9 113.3,174.4 120.3,171.7 127.2,168.8 134.2,165.7 141.1,162.3 148.1,158.7 155.0,155.0 161.9,150.9 168.9,146.7 175.8,142.3 182.8,137.6 189.7,132.8 196.7,127.7 203.6,122.4 210.6,116.9 217.5,111.1 224.4,105.2 231.4,99.0 238.3,92.6 245.3,86.0 252.2,79.2 259.2,72.2 266.1,65.0 273.1,57.5 280.0,49.8"/>
+      <line class="tlp-line purple dash" x1="57.8" y1="188.3" x2="252.2" y2="79.2"/>
+      <line class="tlp-line dash" x1="155" y1="155" x2="155" y2="133.8"/>
+      <circle class="tlp-purple" cx="57.8" cy="188.3" r="4"/>
+      <circle class="tlp-purple" cx="252.2" cy="79.2" r="4"/>
+      <circle class="tlp-purple" cx="155" cy="133.8" r="5.5"/>
+      <circle class="tlp-blue" cx="155" cy="155" r="5.5"/>
+      <text class="tlp-purple" x="147" y="122" text-anchor="end" font-size="13" font-weight="700">chord 4.87</text>
+      <text class="tlp-blue" x="164" y="176" font-size="13" font-weight="700">curve 3.04</text>
+      <circle class="tlp-green" cx="30" cy="190" r="6.5"/>
+      <text class="tlp-green" x="30" y="214" font-size="13" font-weight="700">one bottom: local = global</text>
+      <text class="tlp-red" x="345" y="22" font-size="14" font-weight="700">Not convex: an egg carton</text>
+      <polyline class="tlp-line red thick" points="345.0,80.7 350.9,113.5 356.8,139.2 362.6,158.5 368.5,172.3 374.4,181.3 380.2,186.3 386.1,187.9 392.0,186.8 397.9,183.5 403.8,178.6 409.6,172.6 415.5,166.0 421.4,159.0 427.2,152.1 433.1,145.6 439.0,139.7 444.9,134.7 450.8,130.6 456.6,127.7 462.5,125.9 468.4,125.4 474.2,126.1 480.1,127.8 486.0,130.6 491.9,134.2 497.8,138.4 503.6,143.1 509.5,147.7 515.4,152.1 521.2,155.8 527.1,158.4 533.0,159.4 538.9,158.3 544.8,154.4 550.6,147.1 556.5,135.8 562.4,119.8 568.2,98.2 574.1,70.3 580.0,35.1"/>
+      <circle class="tlp-green" cx="386.4" cy="187.9" r="6.5"/>
+      <circle class="tlp-amber" cx="533" cy="159.4" r="6.5"/>
+      <text class="tlp-amber" x="533" y="182" text-anchor="middle" font-size="13" font-weight="700">solver stops here</text>
+      <text class="tlp-green" x="386" y="214" text-anchor="middle" font-size="13" font-weight="700">true bottom</text>
+      <text class="tlp-text2" x="468" y="108" text-anchor="middle" font-size="12.5">two dips, no warning</text>
+      <text class="tlp-text3" x="300" y="236" text-anchor="middle" font-size="12.5">Add "hold at most 10 of 60 names" and a bowl turns into an egg carton.</text>
+    </svg>
+    <figcaption>On the left the curve never rises above a straight line joining two of its points, so it has one bottom and any solver that stops has found it. On the right a solver can stop in the shallow dip with zero slope and every sign of success. The right-hand curve is an illustrative shape.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Every optimizer I run says it converged. Does that mean it found the best portfolio?</p>
+      <p data-who="Quant">Only if the problem is convex. Converged means the slope is zero where it stopped. Whether that spot is the best one depends on the shape of the problem.</p>
+      <p data-who="Trader">What shape do I want?</p>
+      <p data-who="Quant">A bowl. Drop a marble anywhere in a bowl and it ends up at the one bottom. Now picture an egg carton. The marble settles in whichever dip it lands in, and a deeper dip might be right next door.</p>
+      <p data-who="Trader">And the solver is the marble.</p>
+      <p data-who="Quant">Exactly. It only feels the slope under its feet. From inside one dip, it cannot tell a bowl from an egg carton.</p>
+      <p data-who="Trader">So how do I know I've got a bowl?</p>
+      <p data-who="Quant">Pick any two points on the curve and join them with a straight line. In a bowl, the curve never pokes above that line. Take the lesson's simple bowl and two points on it, at one and at eight. Halfway between them the curve sits at about three. The straight line sits at about four point nine. The curve is below the line, and that holds wherever you look.</p>
+      <p data-who="Trader">And if that holds, any bottom I find is the bottom?</p>
+      <p data-who="Quant">Yes, and that's the payoff. If a lower point existed somewhere else, the straight line towards it would dip below your spot, right next to you. Then your spot was never a bottom at all. So any local minimum of a convex function is the global one.</p>
+      <p data-who="Trader">Is portfolio risk a bowl?</p>
+      <p data-who="Quant">Always. Portfolio variance is built from a covariance matrix, and a real covariance matrix can never give a negative variance for any mix of assets. That makes risk a bowl, which is why Markowitz minimum variance is reliably solvable.</p>
+      <p data-who="Trader">And my rules? No shorting, position caps?</p>
+      <p data-who="Quant">Those are straight-line rules, so the allowed region stays convex too. The solver checks a short list called the KKT conditions. One of them says each rule is either pressing on the answer or doing nothing at all.</p>
+      <p data-who="Trader">Then my portfolio manager says, just add one more rule. Hold at most ten names.</p>
+      <p data-who="Quant">That one breaks everything. It is not a limit on how big a weight is. It is a choice of which ten names to use. From sixty names there are about seventy-five billion possible choices. The allowed region shatters into separate pieces, and the bowl becomes an egg carton.</p>
+      <p data-who="Trader">So what do I do?</p>
+      <p data-who="Quant">Keep the convex solver as the engine and put a heuristic on top. Pick the names greedily, then re-solve the convex problem on those ten. Or use a mixed-integer solver and accept that it is slower, with weaker guarantees. And say so before promising a quick turnaround.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">A bowl has one bottom. Keep your problem a bowl, and know which rules turn it into an egg carton.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -132,6 +190,31 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Why convex means "local bottom = global bottom", one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\theta x + (1-\theta) y} \]</div>
+      <p>Start with two points, \(x\) and \(y\), and a weight \(\theta\) between 0 and 1. This mix is a point on the straight segment between them: \(\theta = 1\) is \(x\), \(\theta = 0\) is \(y\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{f(}\theta x + (1-\theta) y\color{#fbbf24}{)} \]</div>
+      <p>Feed that point into the function. This is the height of the actual curve, part way between \(x\) and \(y\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ f(\theta x + (1-\theta) y) \;\le\; \color{#fbbf24}{\theta f(x) + (1-\theta) f(y)} \]</div>
+      <p>The right side is the height of the straight chord joining \((x, f(x))\) and \((y, f(y))\) at the same spot. Convex means the curve never rises above its chord. That is the whole definition.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ f(4.5) = \color{#fbbf24}{3.04} \;\le\; 0.5(0.15) + 0.5(9.6) \approx \color{#fbbf24}{4.87} \]</div>
+      <p>Check it on the chart's curve \(f(x) = 0.15x^2\), with \(x = 1\), \(y = 8\) and \(\theta = 0.5\). The curve sits well under the chord.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ f(\theta x^\* + (1-\theta)y) \le \theta f(x^\*) + (1-\theta) f(y) \color{#10b981}{< f(x^\*)} \]</div>
+      <p>Now the payoff. If some \(y\) were lower than a local bottom \(x^\*\), the chord towards it would dip below \(f(x^\*)\) right next to \(x^\*\). So \(x^\*\) was not a bottom after all. No lower \(y\) can exist: in a convex problem, every local minimum is the global minimum.</p>
+    </div>
+  </div>
 
   <h3>Defining a convex function</h3>
   <p>
@@ -562,6 +645,10 @@
       eigenvalues recompute instantly — push \(\rho\) toward \(\pm1\) to watch
       the determinant, and the smaller eigenvalue, collapse toward zero.
     </p>
+    <div class="tl-predict" data-answer="0" data-tol="0.002" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At \(\rho = 0.2\) the smaller eigenvalue \(\lambda_2\) is 0.0373, comfortably positive. Keep the vols at 20% and 30% and set the correlation to exactly 1. What does \(\lambda_2\) become? Lock in a guess, then type 1 into the correlation field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>0.</strong> The covariance becomes \(1 \times 0.20 \times 0.30 = 0.0600\), so \(\det(\Sigma) = 0.0400 \times 0.0900 - 0.0600^2 = 0.0036 - 0.0036 = 0\). A zero determinant means one eigenvalue is zero: \(\Sigma\) is only positive <em>semi</em>-definite. The bowl now has a flat direction, so the minimum is no longer unique. Try 0.9 next and watch \(\lambda_2\) shrink towards zero before it gets there.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Vol \(\sigma_1\) (%)</span></div>
@@ -618,6 +705,12 @@
       worth stating plainly before promising a quick turnaround.
     </p>
   </div>
+
+  <!-- WB:convex_optimization:START -->
+  <div class="wb" id="wb-convex_optimization" data-title="A bowl, an egg carton and a portfolio">
+    <script type="application/json">{"w":600,"h":700,"intro":"A bowl has one bottom; an egg carton has many. The chord test that tells them apart, then the lesson's own two-asset portfolio. Press play, or step through.","steps":[{"cap":"Two landscapes for a solver to search. On the left, a bowl: the curve f(x) = 0.15x². On the right, an egg carton: a wavy curve with two dips (an illustrative shape).","do":[{"chart":"bowl","x":10,"y":10,"w":285,"h":230,"title":"A bowl (convex)","xd":[0,9],"yd":[0,13],"yt":[[0,"0"],[6,"6"],[12,"12"]],"xt":[[0,"0"],[1,"1"],[4.5,"4.5"],[8,"8"]]},{"series":"fb","chart":"bowl","pts":[[0.0,0.0],[0.25,0.009],[0.5,0.037],[0.75,0.084],[1.0,0.15],[1.25,0.234],[1.5,0.337],[1.75,0.459],[2.0,0.6],[2.25,0.759],[2.5,0.938],[2.75,1.134],[3.0,1.35],[3.25,1.584],[3.5,1.838],[3.75,2.109],[4.0,2.4],[4.25,2.709],[4.5,3.037],[4.75,3.384],[5.0,3.75],[5.25,4.134],[5.5,4.537],[5.75,4.959],[6.0,5.4],[6.25,5.859],[6.5,6.337],[6.75,6.834],[7.0,7.35],[7.25,7.884],[7.5,8.438],[7.75,9.009],[8.0,9.6],[8.25,10.209],[8.5,10.837],[8.75,11.484],[9.0,12.15]],"tone":"blue","ms":1100},{"chart":"egg","x":305,"y":10,"w":285,"h":230,"title":"An egg carton (not convex)","xd":[-1.6,1.6],"yd":[-1.0,3.0],"yt":[[0,"0"],[2,"2"]],"xt":[[-1,"−1"],[0,"0"],[1,"1"]]},{"series":"fe","chart":"egg","pts":[[-1.6,1.954],[-1.52,1.261],[-1.44,0.721],[-1.36,0.314],[-1.28,0.024],[-1.2,-0.166],[-1.12,-0.271],[-1.04,-0.305],[-0.96,-0.282],[-0.88,-0.213],[-0.8,-0.11],[-0.72,0.016],[-0.64,0.157],[-0.56,0.303],[-0.48,0.448],[-0.4,0.586],[-0.32,0.71],[-0.24,0.816],[-0.16,0.901],[-0.08,0.963],[0.0,1.0],[0.08,1.011],[0.16,0.997],[0.24,0.96],[0.32,0.902],[0.4,0.826],[0.48,0.736],[0.56,0.639],[0.64,0.541],[0.72,0.448],[0.8,0.37],[0.88,0.315],[0.96,0.294],[1.04,0.319],[1.12,0.401],[1.2,0.554],[1.28,0.792],[1.36,1.13],[1.44,1.585],[1.52,2.173],[1.6,2.914]],"tone":"red","ms":1100}]},{"cap":"A solver only feels the slope under its feet, like a marble. Dropped in the bowl, it rolls to the one bottom. Dropped on the egg carton's right side, it settles in the nearer dip and stops: zero slope, every sign of success.","do":[{"chip":"m1","x":270,"y":54,"text":"solver","tone":"blue"},{"move":"m1","x":66,"y":195,"ms":1200},{"chip":"m2","x":571,"y":68,"text":"solver","tone":"amber"},{"move":"m2","x":531,"y":141,"ms":1200}]},{"cap":"But the egg carton has a deeper dip on the left. From inside the right-hand dip, the solver has no way to know it is there.","do":[{"dot":"glob","chart":"egg","at":[-1.0355803,-0.305],"text":"deeper dip","tone":"green","dy":20},{"pulse":"m2"}]},{"cap":"The test for a bowl: join two points with a straight line, a chord. Here x = 1 and x = 8. Halfway along, at x = 4.5, the curve sits at 3.04 and the chord at 4.87. The curve stays under its chord, and that holds for every pair of points.","do":[{"hide":"m1"},{"series":"cb","chart":"bowl","pts":[[1,0.15],[8,9.6]],"tone":"purple","dash":true,"ms":600},{"dot":"cb1","chart":"bowl","at":[4.5,4.875],"text":"4.87","tone":"purple","dx":-8,"dy":-16,"anchor":"end"},{"dot":"cb2","chart":"bowl","at":[4.5,3.037],"text":"3.04","tone":"blue","dx":10,"dy":14,"anchor":"start"}]},{"cap":"Try it on the egg carton, joining its two dips. Halfway between them the curve rises to about 1.0, while the chord sits near 0. The curve pokes above its own chord: not convex.","do":[{"hide":"m2"},{"series":"ce","chart":"egg","pts":[[-1.0355803,-0.305],[0.9601496,0.294]],"tone":"purple","dash":true,"ms":600},{"dot":"loc","chart":"egg","at":[0.9601496,0.294],"text":"","tone":"amber"},{"dot":"ce1","chart":"egg","at":[-0.038,0.986],"text":"curve ≈ 1.0","tone":"red","dy":-16}]},{"cap":"That is the payoff. If a lower point existed anywhere in a bowl, the chord towards it would dip below your spot, right next to you. So in a convex problem any bottom you find is the bottom.","do":[{"note":"pay","x":300,"y":268,"text":"convex: any local bottom is the global bottom","size":20,"anchor":"middle","tone":"green"}]},{"cap":"Portfolio risk is always a bowl. The lesson's two assets: 20% and 30% volatility, correlation 0.2. Risk bottoms out with 73.6% in asset 1, at 18.1% volatility.","do":[{"chart":"pv","x":10,"y":300,"w":580,"h":250,"title":"Portfolio volatility vs weight in asset 1","xd":[-0.5,2.0],"yd":[8,46],"yt":[[10,"10%"],[20,"20%"],[30,"30%"],[40,"40%"]],"xt":[[-0.5,"−50%"],[0,"0%"],[0.5,"50%"],[1,"100%"],[1.5,"150%"],[2,"200%"]],"pl":52},{"series":"v2","chart":"pv","pts":[[-0.5,44.1],[-0.45,42.62],[-0.4,41.15],[-0.35,39.7],[-0.3,38.25],[-0.25,36.83],[-0.2,35.42],[-0.15,34.03],[-0.1,32.66],[-0.05,31.32],[0.0,30.0],[0.05,28.72],[0.1,27.47],[0.15,26.26],[0.2,25.11],[0.25,24.01],[0.3,22.97],[0.35,22.0],[0.4,21.11],[0.45,20.31],[0.5,19.62],[0.55,19.04],[0.6,18.59],[0.65,18.27],[0.7,18.09],[0.75,18.06],[0.8,18.18],[0.85,18.44],[0.9,18.83],[0.95,19.36],[1.0,20.0],[1.05,20.75],[1.1,21.6],[1.15,22.54],[1.2,23.55],[1.25,24.62],[1.3,25.76],[1.35,26.94],[1.4,28.17],[1.45,29.44],[1.5,30.74],[1.55,32.07],[1.6,33.43],[1.65,34.81],[1.7,36.21],[1.75,37.63],[1.8,39.07],[1.85,40.52],[1.9,41.98],[1.95,43.46],[2.0,44.94]],"tone":"blue","ms":1200,"label":"correlation 0.2","lat":[1.7,36.2],"ldx":-10,"ldy":0,"lanchor":"end"},{"dot":"m02","chart":"pv","at":[0.736,18.06],"text":"73.6% · 18.1%","tone":"blue","dx":-10,"dy":18,"anchor":"end"}]},{"cap":"Add the rule \"no shorting\": the weight in asset 1 must sit between 0% and 100% (shaded). The bottom is already inside, so the rule is slack. Complementary slackness says its multiplier is zero: it shapes nothing.","do":[{"gap":"ok","chart":"pv","top":[[0,45],[1,45]],"bot":[[0,9],[1,9]],"tone":"green","op":0.14},{"note":"okl","chart":"pv","at":[0.5,42],"text":"no shorting","tone":"green","size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Push the correlation to 0.9. Now the bowl's bottom sits at 164% in asset 1, which means shorting asset 2. The no-short rule binds: the answer is pinned at 100%, with 20% volatility, and the rule's multiplier turns positive.","do":[{"dim":"v2"},{"dim":"m02"},{"series":"v9","chart":"pv","pts":[[-0.5,36.26],[-0.45,35.62],[-0.4,34.97],[-0.35,34.34],[-0.3,33.7],[-0.25,33.07],[-0.2,32.45],[-0.15,31.83],[-0.1,31.21],[-0.05,30.6],[0.0,30.0],[0.05,29.4],[0.1,28.81],[0.15,28.23],[0.2,27.66],[0.25,27.09],[0.3,26.53],[0.35,25.98],[0.4,25.44],[0.45,24.91],[0.5,24.39],[0.55,23.89],[0.6,23.39],[0.65,22.91],[0.7,22.45],[0.75,21.99],[0.8,21.56],[0.85,21.14],[0.9,20.74],[0.95,20.36],[1.0,20.0],[1.05,19.66],[1.1,19.34],[1.15,19.05],[1.2,18.78],[1.25,18.54],[1.3,18.32],[1.35,18.14],[1.4,17.98],[1.45,17.85],[1.5,17.75],[1.55,17.68],[1.6,17.64],[1.65,17.63],[1.7,17.66],[1.75,17.71],[1.8,17.8],[1.85,17.92],[1.9,18.06],[1.95,18.24],[2.0,18.44]],"tone":"amber","ms":1200,"label":"correlation 0.9","lat":[-0.45,33],"ldx":4,"ldy":-16,"lanchor":"start"},{"dot":"m09","chart":"pv","at":[1.636,17.63],"text":"164%: not allowed","tone":"red","dy":-18},{"dot":"pin","chart":"pv","at":[1,20],"text":"pinned at 100%","tone":"green","dx":8,"dy":27,"anchor":"start"}]},{"cap":"Straight-line rules like these keep the problem a bowl. Now the mandate says: hold at most 10 of 60 names. That is a choice of which names, and there are over 75 billion ways to pick 10 from 60.","do":[{"icon":"dice","name":"dice","x":14,"y":568,"s":0.62,"tone":"red"},{"box":"subs","x":90,"y":566,"w":500,"h":64,"text":"ways to choose 10 of 60 names","tone":"red","sub":"0","size":19},{"count":"subs","from":0,"to":75394027566,"dp":0,"ms":1500}]},{"cap":"Each choice is its own separate piece, so the allowed set shatters and the bowl becomes an egg carton. The usual fix: keep the convex solver as the engine, pick the names greedily or with a mixed-integer solver, then re-solve on the chosen 10. A good candidate, not a proven best.","do":[{"pulse":"fe"},{"box":"fix","x":90,"y":640,"w":500,"h":52,"text":"greedy pick of 10, then a convex re-solve","tone":"amber","size":19}]}]}</script>
+  </div>
+  <!-- WB:convex_optimization:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -691,6 +784,19 @@
       itself is only interpretable once you've confirmed the corresponding
       constraint is actually binding.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative Monday</div>
+    <h3>"Just add a max-10-names rule"</h3>
+    <p>You run a minimum-variance optimizer across a 60-name universe. It is a convex quadratic program with a no-short rule, and it solves to a guaranteed optimum in under a second. Your portfolio manager says the mandate now allows only 10 positions at once, and asks you to "just add that as a constraint" before the afternoon rebalance. What do you tell them?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">"Easy. I'll add it as one more line and the solver will hand back the optimum as usual."<div class="tl-drill-why">"At most 10 nonzero weights" is not a linear rule. It is a choice among about 75 billion subsets of 60 names, and the allowed set is no longer convex. The convex solver cannot even express it, and nothing guarantees that a local answer is the best one.</div></li>
+      <li data-verdict="bad">"I'll cap every weight at 10%. That does the same job."<div class="tl-drill-why">A 10% cap is linear and keeps the problem convex, but it does the opposite job. With weights summing to 100%, a 10% cap forces you to hold <em>at least</em> 10 names, never at most 10.</div></li>
+      <li data-verdict="good">"That rule breaks convexity. I'll pick 10 names with a greedy selection, then re-solve the convex problem on those 10. It's a strong candidate, not a proven optimum. If we need a better guarantee, a mixed-integer solver can run overnight."<div class="tl-drill-why">This keeps the convex solver as the engine, delivers on time, and is honest about what the answer is. It is the standard practitioner pattern from the lesson: heuristic selection on top, convex re-solve underneath.</div></li>
+      <li data-verdict="ok">"I'll add an \(\ell_1\) penalty to push the portfolio towards fewer names."<div class="tl-drill-why">The \(\ell_1\) relaxation keeps the problem convex and does encourage sparsity, so it is a sensible tool. But it does not force exactly 10 or fewer names; you would still have to tune it and check the count.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happens.</strong> This is an illustrative situation, built on the lesson's own scenario, not a specific historical event. The point it makes is general: a rule that limits <em>how big</em> weights are (caps, no shorting, budgets) keeps the problem a bowl; a rule that limits <em>how many</em> names you hold turns it into an egg carton. Spot which kind a request is before promising a turnaround.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -790,6 +896,27 @@
     <li>Robert Tibshirani, "Regression Shrinkage and Selection via the Lasso," <em>Journal of the Royal Statistical Society, Series B</em>, 1996 — the original LASSO paper; a direct example of using an ℓ₁-penalty as a convex, tractable relaxation of a combinatorial cardinality/sparsity goal, exactly the trick referenced in the practitioner section above.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="newton-raphson-gradient-descent.html">Newton-Raphson &amp; Gradient Descent</a> <span>· how a solver walks down to a zero slope</span></li>
+        <li><a href="linear-algebra-matrices.html">Linear Algebra &amp; Matrices</a> <span>· what positive semi-definite means for a matrix</span></li>
+        <li><a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a> <span>· the portfolio problem convexity makes solvable</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="linear-quadratic-programming.html">Linear &amp; Quadratic Programming</a> <span>· the convex family solvers handle best</span></li>
+        <li><a href="regularized-regression-lasso-ridge.html">Regularized Regression: LASSO &amp; Ridge</a> <span>· the convex trick that nudges towards fewer names</span></li>
+        <li><a href="risk-parity-erc.html">Risk Parity &amp; Equal Risk Contribution</a> <span>· another allocation built on a convex solve</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> when an optimizer hands you a portfolio, convexity is what tells you whether it is the best one or just the first dip the solver fell into.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="newton-raphson-gradient-descent.html">← Newton-Raphson &amp; Gradient Descent</a>
@@ -934,6 +1061,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

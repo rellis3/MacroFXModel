@@ -43,6 +43,72 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 245" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: one Kalman update on a number line for a hedge ratio. The prediction is 1.20, the new reading is 1.35, and the gain of 0.804 moves the estimate 80% of the way, to 1.321. On day 2 a reading of 1.30 with a gain of 0.471 moves it to 1.311. Right: the gain for days 1 to 10 as bars, falling from 0.804 to 0.471 and then settling near a steady state of about 0.26 that depends only on the ratio of Q to R.">
+      <text class="tlp-text3" x="20" y="24" font-size="12">one update: blend by the gain</text>
+      <line class="tlp-line" x1="40" y1="120" x2="285" y2="120"/>
+      <path class="tlp-line green thick" d="M90,110 Q146,70 200,110"/>
+      <polygon class="tlp-green" points="203,113 192,110 199,101"/>
+      <circle class="tlp-blue" cx="88" cy="120" r="7"/>
+      <circle class="tlp-text3" cx="232" cy="120" r="7"/>
+      <circle class="tlp-green" cx="204" cy="120" r="7"/>
+      <text class="tlp-green" x="146" y="62" text-anchor="middle" font-size="14" font-weight="700">gain 0.804: 80% of the way</text>
+      <text class="tlp-text2" x="250" y="100" text-anchor="middle" font-size="13">reading 1.35</text>
+      <text class="tlp-blue" x="88" y="146" text-anchor="middle" font-size="13">prediction 1.20</text>
+      <text class="tlp-green" x="210" y="146" text-anchor="middle" font-size="13" font-weight="700">estimate 1.321</text>
+      <text class="tlp-text2" x="20" y="186" font-size="13">Day 2: reading 1.30, gain 0.471 → 1.311</text>
+      <text class="tlp-text3" x="20" y="210" font-size="12">Q = 0.0009 (drift) · R = 0.0100 (noise)</text>
+      <text class="tlp-text3" x="350" y="24" font-size="12">the gain, day by day</text>
+      <line class="tlp-line" x1="345" y1="200" x2="585" y2="200"/>
+      <rect class="tlp-box purple" x="354" y="55.4" width="16" height="144.6" rx="2"/>
+      <rect class="tlp-box purple" x="377" y="115.1" width="16" height="84.9" rx="2"/>
+      <rect class="tlp-box purple" x="400" y="135.2" width="16" height="64.8" rx="2"/>
+      <rect class="tlp-box purple" x="423" y="144.2" width="16" height="55.8" rx="2"/>
+      <rect class="tlp-box purple" x="446" y="148.6" width="16" height="51.4" rx="2"/>
+      <rect class="tlp-box purple" x="469" y="150.8" width="16" height="49.2" rx="2"/>
+      <rect class="tlp-box purple" x="492" y="152.0" width="16" height="48.0" rx="2"/>
+      <rect class="tlp-box purple" x="515" y="152.7" width="16" height="47.3" rx="2"/>
+      <rect class="tlp-box purple" x="538" y="153.1" width="16" height="46.9" rx="2"/>
+      <rect class="tlp-box purple" x="561" y="153.3" width="16" height="46.7" rx="2"/>
+      <line class="tlp-line amber dash" x1="345" y1="153.5" x2="585" y2="153.5"/>
+      <text class="tlp-purple" x="374" y="48" font-size="14" font-weight="700">0.804</text>
+      <text class="tlp-purple" x="398" y="108" font-size="14" font-weight="700">0.471</text>
+      <text class="tlp-amber" x="470" y="138" text-anchor="middle" font-size="13">steady ≈ 0.26</text>
+      <text class="tlp-text3" x="362" y="216" text-anchor="middle" font-size="12">day 1</text>
+      <text class="tlp-text3" x="569" y="216" text-anchor="middle" font-size="12">day 10</text>
+      <text class="tlp-text2" x="465" y="236" text-anchor="middle" font-size="12">set only by Q ÷ R: no window chosen</text>
+    </svg>
+    <figcaption>Each new reading pulls the estimate part of the way towards it, by the gain. Early on the filter is unsure, so the gain is big. As its uncertainty shrinks the gain falls on its own, and settles at a level set only by how much the truth drifts against how noisy each reading is.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I hedge one asset with another. I get my hedge ratio from a sixty-day regression. What's wrong with that?</p>
+      <p data-who="Quant">Two things. Day sixty-one counts for nothing, and yesterday counts the same as two months ago. So your ratio can jump just because an old, boring day fell out of the window. And the true ratio itself drifts over time.</p>
+      <p data-who="Trader">So what does the Kalman filter do instead?</p>
+      <p data-who="Quant">Picture tracking a boat at night with a noisy radar ping once a minute. Before the ping, you guess the boat is about where it was, but you're a bit less sure, because time has passed. That's the predict step.</p>
+      <p data-who="Trader">And when the ping arrives?</p>
+      <p data-who="Quant">You don't jump to the ping, because radar is noisy. You don't ignore it either. You move part of the way towards it. That fraction is the Kalman gain. That's the update step.</p>
+      <p data-who="Trader">How big a fraction?</p>
+      <p data-who="Quant">It depends on two uncertainties: how unsure your prediction is, and how noisy the reading is. Unsure prediction and a clean reading, move a lot. Confident prediction and a noisy reading, barely move.</p>
+      <p data-who="Trader">Give me the numbers.</p>
+      <p data-who="Quant">Start with a hedge ratio of one point two, and wide uncertainty. Day one's reading is one point three five. The gain works out at about point eight, so the estimate moves eighty percent of the way, to about one point three two.</p>
+      <p data-who="Trader">And day two?</p>
+      <p data-who="Quant">The reading is one point three. But now the filter is more confident, so the gain drops to about point four seven, with no setting changed. The estimate barely moves, to about one point three one. Keep going and the gain settles at a steady level, set only by how much the truth drifts against how noisy the readings are.</p>
+      <p data-who="Trader">So nobody picks a window.</p>
+      <p data-who="Quant">Right. The effective memory falls out of those two noise settings. And the update is exactly Bayes' rule: the prediction is the prior, the reading is the evidence, the new estimate is the posterior.</p>
+      <p data-who="Trader">Where did this come from?</p>
+      <p data-who="Quant">Rudolf Kálmán published it in 1960, and it guided the Apollo spacecraft by fusing noisy sensor readings. Pairs traders later used it to track hedge ratios that drift.</p>
+      <p data-who="Trader">What's the trap?</p>
+      <p data-who="Quant">The two noise settings are still choices. If you tune them until the backtest looks great, you've just hidden the window-length overfit inside a fancier model.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Predict, then move part of the way towards each new reading, by a gain the maths works out for you, and don't tune the noise settings on your backtest.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -135,6 +201,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the Kalman update comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \hat{x}_{t\mid t} = \color{#fbbf24}{\hat{x}_{t\mid t-1}} \]</div>
+      <p>Start with the prediction: yesterday's estimate, carried forward unchanged. With no new data, that is the best guess.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \hat{x}_{t\mid t} = \hat{x}_{t\mid t-1} + \color{#fbbf24}{e_t}, \qquad e_t = y_t - H_t\hat{x}_{t\mid t-1} \]</div>
+      <p>Add the surprise: what you saw minus what the prediction said you would see. Adding all of it would mean trusting the noisy reading completely.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \hat{x}_{t\mid t} = \hat{x}_{t\mid t-1} + \color{#fbbf24}{K_t}\, e_t \]</div>
+      <p>So take only a fraction of the surprise. That fraction is the Kalman gain.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ K_t = \frac{P_{t\mid t-1}\, H_t}{\color{#fbbf24}{H_t^2 P_{t\mid t-1} + R}} \]</div>
+      <p>The gain is the prediction's uncertainty over the total uncertainty, prediction plus reading noise \(R\). Unsure prediction, big gain; noisy reading, small gain.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \hat{x}_{1\mid 1} = 1.20 + 0.804 \times (1.35 - 1.20) \approx \color{#10b981}{1.321} \]</div>
+      <p>Day 1 of the worked example: prediction 1.20, reading 1.35, gain \(0.0409 / 0.0509 \approx 0.804\). The estimate moves 80% of the way, to 1.321.</p>
+    </div>
+  </div>
 
   <div class="tl-icard-grid">
     <div class="tl-icard">
@@ -467,6 +557,10 @@
       example). Edit any field and the predict step, the gain, and the
       update step all recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="0.506" data-tol="0.03" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> On Day 1 the gain is 0.804. Suppose the readings were four times noisier: observation variance \(R = 0.0400\) instead of 0.0100, everything else unchanged. What would Day 1's gain be? Lock in a guess, then type 0.04 into the observation-variance field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 0.506.</strong> The prediction's uncertainty is still \(0.0400 + 0.0009 = 0.0409\), so \(K_1 = 0.0409 / (0.0409 + 0.0400) \approx 0.506\). The estimate now moves only about half way, to about 1.276 instead of 1.321. Noisier readings, smaller gain. Now try \(R = 0.0010\) and watch the gain jump towards 1.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Prior estimate &#x0078;&#x0302;<sub>t-1|t-1</sub></span></div>
@@ -675,6 +769,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative Monday</div>
+    <h3>One reading way off your hedge ratio</h3>
+    <p>You track a hedge ratio with the lesson's filter: \(Q = 0.0009\), \(R = 0.0100\), started at 1.20. After the two worked-example days your estimate is 1.311, with uncertainty about 0.0047. This morning's reading comes in at 1.60, far above anything you have seen. What do you do with the hedge?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Move the hedge straight to 1.60. The latest data is the best data.<div class="tl-drill-why">That is a gain of 1, trusting one noisy reading completely. With \(R = 0.0100\) a single reading has a standard deviation of 0.10, so one print is weak evidence on its own.</div></li>
+      <li data-verdict="good">Run the update as specified and use its estimate, about 1.415, then watch the next few readings.<div class="tl-drill-why">The prediction's uncertainty is \(0.0047 + 0.0009 = 0.0056\), so the gain is \(0.0056 / 0.0156 \approx 0.36\), and the estimate moves about a third of the way: \(1.311 + 0.36 \times 0.289 \approx 1.415\). If the drift is real, the next readings will keep pulling it up.</div></li>
+      <li data-verdict="bad">Raise \(Q\) until the filter would have caught this jump, then re-run the backtest.<div class="tl-drill-why">That is tuning the noise settings on the result you want. It relocates the window-length overfit into \(Q\) and \(R\), and a large \(Q\) makes the filter chase every noisy print from now on.</div></li>
+      <li data-verdict="ok">Ignore the reading as an outlier and keep 1.311.<div class="tl-drill-why">Cautious, and right if it was a bad print. But if the relationship really has moved, you have thrown away the only new information you have. The filter's partial step already guards against a fluke.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happens.</strong> This is an illustrative situation, not a historical episode. The point is the arithmetic: with the lesson's settings the filter moves about a third of the way, to roughly 1.415. One wild reading cannot drag it all the way, and several readings in a row can move it steadily. That balance is set by \(Q\) and \(R\), chosen in advance, not by the outcome.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -787,6 +894,27 @@
     <li>Robert H. Shumway &amp; David S. Stoffer, <em>Time Series Analysis and Its Applications: With R Examples</em>, Springer — the rigorous state-space and dynamic linear model treatment, including multivariate generalizations beyond the scalar case covered here.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="bayesian-inference.html">Bayesian Inference &amp; Updating</a> <span>· every update step is one prior-to-posterior pass</span></li>
+        <li><a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> <span>· the rolling OLS hedge ratio this replaces</span></li>
+        <li><a href="hidden-markov-models.html">Hidden Markov Models &amp; Regime Detection</a> <span>· the same hidden-state idea with discrete states</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="cointegration.html">Cointegration &amp; Statistical Arbitrage</a> <span>· where a drifting hedge ratio earns its keep</span></li>
+        <li><a href="kalman-smoother-ekf-ukf.html">The Kalman Smoother &amp; Extended/Unscented Kalman Filters</a> <span>· hindsight estimates and nonlinear cases</span></li>
+        <li><a href="particle-filter.html">The Particle Filter (Sequential Monte Carlo)</a> <span>· when the noise is not Gaussian</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> any hedge ratio or beta you trade with drifts, and this tracks it smoothly with an honest error bar instead of a jumpy fixed window.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="hidden-markov-models.html">← Hidden Markov Models &amp; Regime Detection</a>
@@ -976,7 +1104,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

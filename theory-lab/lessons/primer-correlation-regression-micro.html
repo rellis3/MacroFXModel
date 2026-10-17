@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Correlation &amp; Linear Regression — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -282,7 +283,19 @@
       </div>
     </section>
 
+    <!-- WB:primer_correlation_regression-deck:START -->
     <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">From "move together" to the best-fit line, and two traps</h2>
+      <!-- WB:primer_correlation_regression:START -->
+      <div class="wb" data-title="From "move together" to the best-fit line, and two traps">
+        <script type="application/json">{"w":600,"h":862,"intro":"The lesson's five points, taken from \"do they move together?\" to the best-fit line, and then the two ways a correlation misleads. Press play, or step through.","steps":[{"cap":"Take the lesson's five pairs: x = 1 to 5, and y = 2.1, 3.9, 6.2, 7.8, 10.1. Roughly y = 2x, with a little noise. Do they move together?","do":[{"chart":"sc","x":10,"y":10,"w":370,"h":290,"title":"Five paired observations","xd":[0,6],"yd":[0,11.5],"yt":[[0,"0"],[5,"5"],[10,"10"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"pl":40,"pr":14},{"dot":"p0","chart":"sc","at":[1,2.1],"text":"","tone":"blue","r":6},{"dot":"p1","chart":"sc","at":[2,3.9],"text":"","tone":"blue","r":6},{"dot":"p2","chart":"sc","at":[3,6.2],"text":"","tone":"blue","r":6},{"dot":"p3","chart":"sc","at":[4,7.8],"text":"","tone":"blue","r":6},{"dot":"p4","chart":"sc","at":[5,10.1],"text":"","tone":"blue","r":6}]},{"cap":"Mark the averages: x̄ = 3 and ȳ = 6.02. They split the picture into four corners around the center of the data.","do":[{"series":"mx","chart":"sc","pts":[[3,0.2],[3,11.2]],"tone":null,"dash":true,"label":"x̄ = 3","lat":[3,0.2],"ldx":8,"ldy":-10,"lanchor":"start"},{"series":"my","chart":"sc","pts":[[0.1,6.02],[5.9,6.02]],"tone":null,"dash":true,"label":"ȳ = 6.02","lat":[0.1,6.02],"ldx":4,"ldy":-12,"lanchor":"start"}]},{"cap":"For each point, multiply its distance from x̄ by its distance from ȳ. Both above, or both below, gives a positive product. Here every product is positive or zero: 7.84, 2.12, 0, 1.78 and 8.16.","do":[{"gap":"q1","chart":"sc","top":[[3,11.2],[5.9,11.2]],"bot":[[3,6.02],[5.9,6.02]],"tone":"green","op":0.13},{"gap":"q3","chart":"sc","top":[[0.1,6.02],[3,6.02]],"bot":[[0.1,0.2],[3,0.2]],"tone":"green","op":0.13},{"chart":"pr","x":10,"y":316,"w":280,"h":214,"title":"Deviation products","xd":[0.4,5.6],"yd":[-1,10],"yt":[[0,"0"],[8,"8"]],"xt":[[1,"x=1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"zero":true,"pl":34,"pr":10},{"bars":"pb","chart":"pr","data":[[1,7.84,"7.84","green"],[2,2.12,"2.12","green"],[3,0,"0","green"],[4,1.78,"1.78","green"],[5,8.16,"8.16","green"]],"bw":30,"ms":1100}]},{"cap":"Add them up and average: 19.9 ÷ 5 = 3.98. That is the covariance. Positive, so x and y move together. But its size depends on the units you measure in.","do":[{"box":"cov","x":392,"y":14,"w":198,"h":62,"text":"Cov = 19.9 ÷ 5","tone":"blue","sub":"= 3.98","size":18}]},{"cap":"Divide by both standard deviations, 1.41 for x and 2.82 for y, and the units cancel. The result, r ≈ 0.999, lives on a ruler from −1 to +1. That is the correlation.","do":[{"box":"r","x":392,"y":86,"w":198,"h":62,"text":"r = Cov ÷ (σx σy)","tone":"purple","sub":"≈ 0.999","size":18}]},{"cap":"Now the best straight line. Divide the covariance by the variance of x alone: 3.98 ÷ 2 = 1.99. That is the least-squares slope. The line runs through the center, so the intercept is 6.02 − 1.99 × 3 = 0.05.","do":[{"series":"fit","chart":"sc","pts":[[0.3,0.647],[5.6,11.194]],"tone":"green","ms":1000},{"box":"fitb","x":392,"y":158,"w":198,"h":62,"text":"slope = Cov ÷ Var(x)","tone":"green","sub":"3.98 ÷ 2 = 1.99","size":18}]},{"cap":"The gaps from each point to the line are the residuals: +0.06, −0.13, +0.18, −0.21, +0.10. They sum to zero. Squared and added, they make 0.107, against 39.708 of total spread in y. So R² = 1 − 0.107 ÷ 39.708 ≈ 0.997, which is exactly r².","do":[{"chart":"rs","x":310,"y":316,"w":280,"h":214,"title":"Residuals (y minus the line)","xd":[0.4,5.6],"yd":[-0.3,0.3],"yt":[[0.2,"+0.2"],[-0.2,"−0.2"]],"xt":[[1,"x=1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"zero":true,"pl":44,"pr":10},{"bars":"rb","chart":"rs","data":[[1,0.06,"+0.06"],[2,-0.13,"-0.13"],[3,0.18,"+0.18"],[4,-0.21,"-0.21"],[5,0.1,"+0.10"]],"bw":30,"ms":1000},{"box":"r2","x":392,"y":230,"w":198,"h":62,"text":"R² = 1 − SSR ÷ SST","tone":"amber","sub":"≈ 0.997 = r²","size":18}]},{"cap":"Trap one: correlation only sees straight lines. Here y = x², for x from −5 to 5. y is completely fixed by x, yet the best straight line is flat and r = 0. Always look at the scatter.","do":[{"chart":"sq","x":10,"y":546,"w":280,"h":216,"title":"y = x²: perfectly linked","xd":[-5.6,5.6],"yd":[0,27],"yt":[],"xt":[[-5,"−5"],[0,"0"],[5,"5"]],"pl":14,"pr":14},{"series":"pq","chart":"sq","pts":[[-5.2,27.040000000000003],[-4.8,23.04],[-4.4,19.360000000000003],[-4.0,16.0],[-3.6,12.96],[-3.2,10.240000000000002],[-2.8,7.839999999999999],[-2.4,5.76],[-2.0,4.0],[-1.6,2.5600000000000005],[-1.2,1.44],[-0.8,0.6400000000000001],[-0.4,0.16000000000000003],[0.0,0.0],[0.4,0.16000000000000003],[0.8,0.6400000000000001],[1.2,1.44],[1.6,2.5600000000000005],[2.0,4.0],[2.4,5.76],[2.8,7.839999999999999],[3.2,10.240000000000002],[3.6,12.96],[4.0,16.0],[4.4,19.360000000000003],[4.8,23.04],[5.2,27.040000000000003]],"tone":null,"dash":true,"ms":800},{"dot":"q0","chart":"sq","at":[-5,25],"text":"","tone":"blue"},{"dot":"q1","chart":"sq","at":[-4,16],"text":"","tone":"blue"},{"dot":"q2","chart":"sq","at":[-3,9],"text":"","tone":"blue"},{"dot":"q3","chart":"sq","at":[-2,4],"text":"","tone":"blue"},{"dot":"q4","chart":"sq","at":[-1,1],"text":"","tone":"blue"},{"dot":"q5","chart":"sq","at":[0,0],"text":"","tone":"blue"},{"dot":"q6","chart":"sq","at":[1,1],"text":"","tone":"blue"},{"dot":"q7","chart":"sq","at":[2,4],"text":"","tone":"blue"},{"dot":"q8","chart":"sq","at":[3,9],"text":"","tone":"blue"},{"dot":"q9","chart":"sq","at":[4,16],"text":"","tone":"blue"},{"dot":"q10","chart":"sq","at":[5,25],"text":"","tone":"blue"},{"series":"flat","chart":"sq","pts":[[-5.4,10],[5.4,10]],"tone":"amber","ms":600,"label":"r = 0","lat":[0,10],"ldx":0,"ldy":-16}]},{"cap":"Trap two: correlation is not causation. Ice cream sales and drownings rise together, but neither causes the other. Warm weather drives both. In markets, two currencies can move together because both follow the dollar.","do":[{"box":"sun","x":310,"y":620,"w":120,"h":64,"text":"warm\nweather","tone":"amber","size":19},{"box":"ice","x":470,"y":548,"w":120,"h":64,"text":"ice cream\nsales","tone":"blue","size":18},{"box":"drown","x":470,"y":690,"w":120,"h":64,"text":"drownings","tone":"blue","size":18},{"arrow":["sun","ice"],"tone":"amber"},{"arrow":["sun","drown"],"tone":"amber"},{"note":"nc","x":530,"y":645,"text":"r high,\nno cause","size":17,"anchor":"middle","tone":"red"}]},{"cap":"On a desk, the slope is the working number. Sharpe (1963–64) made a stock's beta a regression slope against the market. Ederington (1979) used the same slope as the hedge ratio for financial futures. What is left over is the alpha, or the spread.","do":[{"box":"beta","x":10,"y":778,"w":580,"h":74,"text":"beta and hedge ratio = Cov ÷ Var\nSharpe 1963–64 · Ederington 1979","tone":"green","size":19}]}]}</script>
+      </div>
+      <!-- WB:primer_correlation_regression:END -->
+    </section>
+    <!-- WB:primer_correlation_regression-deck:END -->
+
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">A great-looking correlation can still be lying to you</h2>
       <p class="sl-sub">Two currencies correlated at 0.9 in a backtest could be causally linked, driven by a shared factor, or just coincidentally aligned over that one window — r alone cannot tell you which.</p>
@@ -310,7 +323,7 @@
       <p class="sl-p">A rolling correlation matrix across a universe of instruments is the standard, cheap first pass for finding relationships worth investigating — and precisely because it's cheap and fast, it's also easy to over-trust. "Correlated in returns" is a necessary but far from sufficient condition for a tradeable relationship.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this shows up on a desk</h2>
       <div class="sl-icard-grid">
@@ -322,7 +335,7 @@
       <div class="sl-quote">A pairs trade only works because a hedge ratio — a regression slope — is assumed stable enough that hedging one leg against the other cancels out most of the shared risk. When that slope drifts, the "hedge" quietly stops hedging, which is exactly why the Kalman Filter lesson tracks a <strong>time-varying</strong> version of this same β̂ instead of trusting one fixed-window estimate forever.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -373,7 +386,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -523,5 +536,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

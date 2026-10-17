@@ -500,3 +500,120 @@ body.tl-tts-open #page{padding-bottom:calc(var(--tl-tts-bar-h, 90px) + 20px)}
 @media (max-width:600px){.tl-role dl{grid-template-columns:1fr}.tl-role dt{padding-top:6px}}
 .tl-verdict-scope{margin-top:8px;font-size:12px;line-height:1.55;color:var(--text3);border-top:1px dashed var(--border2);padding-top:7px}
 @media (max-width:600px){.tl-verdict{flex-direction:column;gap:8px}.tl-verdict-tag{align-self:flex-start}}
+
+/* ── VARK layer: every lesson teaches the same idea four ways ─────────────────────────────
+   Visual: .tl-picture (one summary diagram under the TL;DR) and .tl-eqbuild (a key equation
+   built term by term). Aural: .tl-listen (a two-voice spoken version) and the "Quiz me aloud"
+   bar vark.js adds to the self-test. Kinesthetic: .tl-predict (guess before you move the
+   sliders) and .tl-drill (a dated decision you commit to before seeing what happened).
+   Guidance: .tl-fits (read first / read next). Behaviour lives in assets/vark.js; without
+   JS every block shows in full, so nothing is ever hidden from a reader. */
+
+/* summary picture */
+.tl-picture{background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:var(--rl);padding:14px 18px 12px;margin:-12px 0 28px}
+.tl-picture-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);margin-bottom:8px}
+.tl-picture svg{width:100%;height:auto;display:block;overflow:visible}
+.tl-picture figcaption{font-size:12.5px;color:var(--text2);margin-top:8px;line-height:1.55}
+.tl-picture text{font-family:'DM Sans',sans-serif}
+.tlp-blue{fill:var(--blue)}.tlp-green{fill:var(--green)}.tlp-red{fill:var(--red)}.tlp-amber{fill:var(--amber)}.tlp-purple{fill:var(--purple)}
+.tlp-text{fill:var(--text)}.tlp-text2{fill:var(--text2)}.tlp-text3{fill:var(--text3)}
+.tlp-box{fill:var(--s2);stroke:var(--border2);stroke-width:1.2}
+.tlp-box.blue{fill:var(--blue-bg);stroke:var(--blue-bd)}.tlp-box.green{fill:var(--green-bg);stroke:var(--green-bd)}
+.tlp-box.red{fill:var(--red-bg);stroke:var(--red-bd)}.tlp-box.amber{fill:var(--amber-bg);stroke:var(--amber-bd)}
+.tlp-box.purple{fill:var(--purple-bg);stroke:var(--purple-bd)}
+.tlp-line{fill:none;stroke:var(--text3);stroke-width:1.6}
+.tlp-line.blue{stroke:var(--blue)}.tlp-line.green{stroke:var(--green)}.tlp-line.red{stroke:var(--red)}
+.tlp-line.amber{stroke:var(--amber)}.tlp-line.purple{stroke:var(--purple)}
+.tlp-line.thick{stroke-width:2.6}.tlp-line.dash{stroke-dasharray:5,4}
+.tlp-arrow{fill:var(--text3)}
+
+/* equation build-up */
+.tl-eqbuild{background:var(--s1);border:1px solid var(--purple-bd);border-radius:var(--rl);padding:14px 18px;margin:18px 0}
+.tl-eqbuild-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--purple);margin-bottom:6px}
+.tl-eqbuild-title{font-size:14px;font-weight:700;color:var(--text);margin:0 0 6px}
+.tl-eqbuild-step .tl-math{margin:10px 0 8px}
+.tl-eqbuild-step p{font-size:13.5px;margin-bottom:6px}
+.tl-eqbuild.js .tl-eqbuild-step{display:none}
+.tl-eqbuild.js .tl-eqbuild-step.on{display:block;animation:tl-fadein .35s ease}
+.tl-eqbuild.js.all .tl-eqbuild-step{display:block;border-top:1px dashed var(--border);padding-top:6px}
+.tl-eqbuild.js.all .tl-eqbuild-step:first-of-type{border-top:0}
+.tl-eqbuild-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.tl-eqbuild-count{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-left:auto}
+@keyframes tl-fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* listen: two-voice spoken version */
+.tl-listen{background:var(--s1);border:1px solid var(--green-bd);border-left:3px solid var(--green);border-radius:var(--rl);padding:14px 18px;margin:0 0 28px}
+.tl-listen-head{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--green);margin-bottom:6px}
+.tl-listen-intro{font-size:13.5px;margin-bottom:8px}
+.tl-listen-script p{margin-bottom:8px;font-size:14px}
+.tl-listen-script p[data-who]::before{content:attr(data-who) ": ";font-weight:700;color:var(--text)}
+.tl-listen-script p[data-who="Quant"]::before{color:var(--purple)}
+.tl-listen-script p[data-who="Trader"]::before{color:var(--amber)}
+.tl-listen.js .tl-listen-script{display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px}
+.tl-listen.js.show .tl-listen-script{display:block}
+.tl-listen-script p.speaking{color:var(--text);background:var(--green-bg);border-radius:6px;box-shadow:0 0 0 4px var(--green-bg)}
+.tl-listen-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tl-listen-status{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)}
+.tl-listen-select{background:var(--s2);border:1px solid var(--border);border-radius:20px;color:var(--text2);font-size:11.5px;padding:5px 8px;font-family:'DM Sans',sans-serif}
+
+/* quiz me aloud (built by vark.js above the first .tl-quiz) */
+.tl-quizaloud{background:var(--s1);border:1px solid var(--green-bd);border-radius:var(--r);padding:10px 14px;margin:6px 0 12px}
+.tl-quizaloud-q{font-size:13.5px;color:var(--text);margin:8px 0 4px}
+.tl-quizaloud-timer{font-family:'DM Mono',monospace;font-size:12px;color:var(--amber)}
+
+/* predict first */
+.tl-predict{background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r);padding:12px 14px;margin:10px 0 14px}
+.tl-predict-q{font-size:14px;color:var(--text);margin-bottom:8px}
+.tl-predict-q strong{color:var(--amber)}
+.tl-predict-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tl-predict-form .tl-scratch-input{width:130px}
+.tl-predict-options{list-style:none;margin:0 0 8px;padding:0}
+.tl-predict-options li{margin:4px 0}
+.tl-predict-options label{display:flex;gap:8px;align-items:flex-start;cursor:pointer;font-size:13.5px;color:var(--text2)}
+.tl-predict-options li.right label{color:var(--green)}
+.tl-predict-options li.wrong label{color:var(--red)}
+.tl-predict-verdict{font-size:13px;font-weight:600;margin:8px 0 4px}
+.tl-predict-verdict.close{color:var(--green)}.tl-predict-verdict.far{color:var(--amber)}
+.tl-predict-reveal{font-size:13.5px;border-top:1px dashed var(--amber-bd);margin-top:8px;padding-top:8px}
+.tl-predict-reveal p:last-child{margin-bottom:0}
+.tl-predict.js .tl-predict-reveal{display:none}
+.tl-predict.js.locked .tl-predict-reveal{display:block;animation:tl-fadein .35s ease}
+
+/* scenario drill */
+.tl-drill{background:var(--s1);border:1px solid var(--amber-bd);border-left:3px solid var(--amber);border-radius:var(--rl);padding:16px 18px;margin:22px 0}
+.tl-drill-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);margin-bottom:4px}
+.tl-drill h3{margin-top:2px}
+.tl-drill-options{list-style:none;margin:10px 0;padding:0}
+.tl-drill-options>li{border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin:8px 0;background:var(--s2)}
+.tl-drill-options label{display:flex;gap:10px;align-items:flex-start;cursor:pointer;color:var(--text)}
+.tl-drill-why{font-size:13px;color:var(--text2);margin-top:6px}
+.tl-drill-options>li[data-verdict="good"] .tl-drill-why::before{content:"✓ Best call. ";font-weight:700;color:var(--green)}
+.tl-drill-options>li[data-verdict="ok"] .tl-drill-why::before{content:"~ Defensible. ";font-weight:700;color:var(--amber)}
+.tl-drill-options>li[data-verdict="bad"] .tl-drill-why::before{content:"✗ Costly. ";font-weight:700;color:var(--red)}
+.tl-drill input,.tl-predict input[type=radio]{accent-color:var(--blue)}
+.tl-drill.js.done .tl-drill-options>li.picked{box-shadow:0 0 0 2px var(--blue)}
+.tl-drill-options>li.picked label::after{content:"your call";margin-left:auto;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);white-space:nowrap;padding-left:8px}
+.tl-drill-outcome{background:var(--s2);border-radius:var(--r);padding:10px 12px;font-size:13.5px;margin-top:8px}
+.tl-drill-outcome p:last-child{margin-bottom:0}
+.tl-drill.js .tl-drill-why,.tl-drill.js .tl-drill-outcome{display:none}
+.tl-drill.js.done .tl-drill-why,.tl-drill.js.done .tl-drill-outcome{display:block;animation:tl-fadein .35s ease}
+.tl-drill.js.done .tl-drill-options>li[data-verdict="good"]{border-color:var(--green-bd)}
+.tl-drill.js.done .tl-drill-options>li[data-verdict="bad"]{border-color:var(--red-bd)}
+
+/* where this fits */
+.tl-fits{background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:14px 18px;margin:24px 0 8px;display:grid;grid-template-columns:1fr 1fr;gap:6px 20px}
+.tl-fits-label{grid-column:1/-1;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3)}
+.tl-fits-col{min-width:0}
+.tl-fits-k{font-size:12px;font-weight:700;color:var(--text);margin:4px 0}
+.tl-fits ul{margin:0 0 4px 18px;font-size:13px}
+.tl-fits li span{color:var(--text3)}
+.tl-fits-why{grid-column:1/-1;font-size:13px;margin:6px 0 0}
+@media (max-width:600px){.tl-fits{grid-template-columns:1fr}}
+
+/* spaced review card (hub + start; assets/review.js) */
+.tl-review{background:var(--s1);border:1px solid var(--blue-bd);border-left:3px solid var(--blue);border-radius:var(--rl);padding:14px 18px;margin:18px 0}
+.tl-review-head{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);margin-bottom:6px}
+.tl-review-sub,.tl-review-empty{font-size:13.5px;margin-bottom:8px}
+.tl-review-item{margin:10px 0}
+.tl-review-from{font-size:12px;color:var(--text3);margin-bottom:4px}
+.tl-review-rate{margin-top:10px}

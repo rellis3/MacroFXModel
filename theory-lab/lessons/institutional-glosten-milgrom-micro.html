@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Glosten-Milgrom — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -185,7 +186,19 @@
       <p class="sl-p">Notice the spread (the gap between the blue and amber lines) shrinks as consecutive buys or consecutive sells push &delta; toward certainty — and widens back up the moment a contrarian trade arrives.</p>
     </section>
 
+    <!-- WB:institutional_glosten_milgrom-deck:START -->
     <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Glosten-Milgrom: a quote that learns from every trade</h2>
+      <!-- WB:institutional_glosten_milgrom:START -->
+      <div class="wb" data-title="Glosten-Milgrom: a quote that learns from every trade">
+        <script type="application/json">{"w":600,"h":724,"intro":"A market maker sees one anonymous order at a time. Each buy or sell is a clue about the true value, and the quote moves with the clue. Press play, or step through.","steps":[{"cap":"The asset is worth either 105 or 95. The market maker cannot tell which, so it starts at 50/50. Orders arrive one at a time from two kinds of trader.","do":[{"icon":"inf","name":"person","x":36,"y":6,"s":0.62,"tone":"amber","label":"informed 30%","lsize":16},{"icon":"noise","name":"crowd","x":150,"y":6,"s":0.62,"tone":"blue","label":"noise 70%","lsize":16},{"icon":"mm","name":"bank","x":470,"y":6,"s":0.7,"tone":"purple","label":"market maker","lsize":16},{"box":"delta","x":10,"y":140,"w":138,"h":70,"text":"belief in 105","tone":"purple","sub":"δ = 0.5000","size":17}]},{"cap":"Informed traders know the value: they buy only if it is 105 and sell only if it is 95. Noise traders buy or sell at random. So a buy is more likely if the value is high: 0.65 against 0.35.","do":[{"note":"lik","x":300,"y":240,"text":"P(buy | 105) = 0.3 + 0.7 × ½ = 0.65   ·   P(buy | 95) = 0.35","size":17,"anchor":"middle","tone":"amber"}]},{"cap":"Quote at break-even. The ask is the expected value given that a buy arrives, 101.50. The bid is the expected value given a sell, 98.50. The 3.00 gap pays for being picked off by informed traders.","do":[{"box":"ask","x":158,"y":140,"w":138,"h":70,"text":"Ask","tone":"green","sub":"101.50","size":18},{"box":"bid","x":306,"y":140,"w":138,"h":70,"text":"Bid","tone":"red","sub":"98.50","size":18},{"box":"spr","x":454,"y":140,"w":136,"h":70,"text":"Spread","tone":"blue","sub":"3.00","size":18},{"chart":"sc","x":10,"y":272,"w":580,"h":296,"title":"Spread against belief δ, 30% informed","xd":[0,1],"yd":[0,3.6],"yt":[[1,"1.00"],[2,"2.00"],[3,"3.00"]],"xt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"pl":56,"pr":16},{"series":"curve","chart":"sc","pts":[[0.0,0.0],[0.025,0.3184],[0.05,0.6148],[0.075,0.8904],[0.1,1.146],[0.125,1.3825],[0.15,1.6006],[0.175,1.801],[0.2,1.9843],[0.225,2.1511],[0.25,2.3018],[0.275,2.4369],[0.3,2.5568],[0.325,2.6618],[0.35,2.7523],[0.375,2.8284],[0.4,2.8904],[0.425,2.9385],[0.45,2.9727],[0.475,2.9932],[0.5,3.0],[0.525,2.9932],[0.55,2.9727],[0.575,2.9385],[0.6,2.8904],[0.625,2.8284],[0.65,2.7523],[0.675,2.6618],[0.7,2.5568],[0.725,2.4369],[0.75,2.3018],[0.775,2.1511],[0.8,1.9843],[0.825,1.801],[0.85,1.6006],[0.875,1.3825],[0.9,1.146],[0.925,0.8904],[0.95,0.6148],[0.975,0.3184],[1.0,-0.0]],"tone":"purple","ms":1200},{"dot":"p0","chart":"sc","at":[0.5,3.0],"text":"open: 3.00","tone":"blue","dy":-16,"size":16}]},{"cap":"A buy arrives. By Bayes, belief in 105 rises from 0.50 to 0.65. The market maker requotes: 102.75 / 100.00. Less is left to be unsure about, so the spread narrows to 2.75.","do":[{"chip":"c1","x":190,"y":60,"text":"BUY","tone":"green"},{"move":"c1","x":440,"y":60,"ms":1000},{"hide":"c1"},{"count":"delta","from":0.5,"to":0.65,"dp":4,"pre":"δ = "},{"count":"ask","from":101.5,"to":102.75,"dp":2},{"count":"bid","from":98.5,"to":100.0,"dp":2},{"count":"spr","from":3.0,"to":2.75,"dp":2},{"dot":"p1","chart":"sc","at":[0.65,2.7522935779816464],"text":"1: buy → 2.75","tone":"green","size":16,"dx":10,"dy":-14,"anchor":"start"}]},{"cap":"Another buy. Belief rises to 0.7752 and the quote moves to 103.65 / 101.50. The spread narrows again, to 2.15.","do":[{"chip":"c2","x":190,"y":60,"text":"BUY","tone":"green"},{"move":"c2","x":440,"y":60,"ms":1000},{"hide":"c2"},{"count":"delta","from":0.65,"to":0.7752,"dp":4,"pre":"δ = "},{"count":"ask","from":102.75,"to":103.65,"dp":2},{"count":"bid","from":100.0,"to":101.5,"dp":2},{"count":"spr","from":2.75,"to":2.15,"dp":2},{"dot":"p2","chart":"sc","at":[0.7752293577981652,2.149606299212593],"text":"2: buy → 2.15","tone":"green","size":16,"dx":10,"dy":-14,"anchor":"start"}]},{"cap":"Then a sell, contrary evidence. Belief falls back to 0.65 exactly, one buy's worth of evidence net, and the quote returns to 102.75 / 100.00. The spread widens back to 2.75.","do":[{"chip":"c3","x":190,"y":60,"text":"SELL","tone":"red"},{"move":"c3","x":440,"y":60,"ms":1000},{"hide":"c3"},{"count":"delta","from":0.7752,"to":0.65,"dp":4,"pre":"δ = "},{"count":"ask","from":103.65,"to":102.75,"dp":2},{"count":"bid","from":101.5,"to":100.0,"dp":2},{"count":"spr","from":2.15,"to":2.75,"dp":2},{"dot":"p3","chart":"sc","at":[0.6500000000000001,2.7522935779816606],"text":"3: sell → 2.75","tone":"red","size":16,"dx":-12,"dy":22,"anchor":"end","r":3.5}]},{"cap":"The shape: the spread is widest at δ = 0.5, maximum doubt, and shrinks as belief heads toward 0 or 1. A run of same-side trades narrows it; a contrary trade widens it again.","do":[{"pulse":"curve"}]},{"cap":"Set the informed share to zero and a buy tells you nothing. Belief never moves, and ask = bid: no spread at all. In this model the whole spread exists because some traders know more.","do":[{"series":"zero","chart":"sc","pts":[[0,0.02],[1,0.02]],"tone":"amber","dash":true,"ms":500,"label":"no informed traders: spread 0","lat":[0.5,0.02],"ldy":-14,"lsize":16}]},{"cap":"The testable prediction: before a scheduled release more of the flow is informed, so dealers widen. After it, early one-sided trades settle the belief fast and the spread compresses within minutes.","do":[{"box":"news","x":20,"y":584,"w":270,"h":84,"text":"before news:\nmore informed flow → wider","tone":"amber","size":18},{"box":"after","x":310,"y":584,"w":270,"h":84,"text":"after news:\none-sided trades → tighter","tone":"green","size":18}]}]}</script>
+      </div>
+      <!-- WB:institutional_glosten_milgrom:END -->
+    </section>
+    <!-- WB:institutional_glosten_milgrom-deck:END -->
+
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Compute a quote yourself</h2>
       <p class="sl-sub">Ask = E[V | buy], Bid = E[V | sell], computed live from Bayes' rule. Change any input.</p>
@@ -211,7 +224,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">A genuine, testable prediction</h2>
       <div class="sl-icard-grid">
@@ -222,7 +235,7 @@
       <div class="sl-quote">See <strong>Central Bank Policy</strong>, elsewhere in this Theory Lab, for what actually drives the outcome uncertainty behind a rate decision — this model is the formal reason that uncertainty shows up in the spread at all.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this gets misread</h2>
       <div class="sl-compare">
@@ -247,7 +260,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -298,7 +311,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -465,5 +478,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Coherent Risk Measures — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -216,7 +217,19 @@
       </div>
     </section>
 
+    <!-- WB:coherent_risk_measures-deck:START -->
     <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Two safe bonds, one unsafe VaR, drawn step by step</h2>
+      <!-- WB:coherent_risk_measures:START -->
+      <div class="wb" data-title="Two safe bonds, one unsafe VaR, drawn step by step">
+        <script type="application/json">{"w":600,"h":700,"intro":"Two bonds that each look safe on their own, one risk limit, and what happens when you put them in the same book. Press play, or step through.","steps":[{"cap":"Two corporate bonds, A and B. Each has a 4% chance of defaulting over the horizon, and on default it loses its full $100. Otherwise it loses nothing. They are independent.","do":[{"icon":"a","name":"scroll","x":30,"y":8,"s":0.6,"tone":"blue","label":"bond A\n4% · −$100","lsize":17},{"icon":"b","name":"scroll","x":180,"y":8,"s":0.6,"tone":"blue","label":"bond B\n4% · −$100","lsize":17}]},{"cap":"The risk rule: 95% VaR, the smallest loss you exceed at most 5% of the time. Anything with a 5% chance or less sits in the tail the limit ignores.","do":[{"box":"rule","x":360,"y":16,"w":220,"h":90,"text":"95% VaR","tone":"amber","sub":"tail = 5%","size":20}]},{"cap":"Bond A alone: the chance of losing anything is 4%, under the 5% line. So its 95th-percentile outcome is \"no default\", and VaR(A) = $0.","do":[{"chart":"odds","x":10,"y":130,"w":580,"h":250,"title":"Chance of losing anything (%)","xd":[0.4,3.6],"yd":[0,10],"yt":[[0,"0"],[5,"5%"],[10,"10%"]],"xt":[[1,"A alone"],[2,"B alone"],[3,"A + B"]],"pl":52},{"series":"cut","chart":"odds","pts":[[0.4,5],[3.6,5]],"tone":"amber","dash":true,"ms":500,"label":"5% tail","lat":[3.6,5],"ldx":-4,"ldy":-12,"lanchor":"end","lsize":16},{"bars":"o1","chart":"odds","data":[[1,4,"","blue"]],"bw":60,"ms":800},{"note":"o1l","chart":"odds","at":[1,2],"text":"4%","tone":null,"size":19,"anchor":"middle","dx":0,"dy":0},{"note":"va","x":300,"y":412,"text":"VaR(A) = $0","size":19,"anchor":"middle","tone":"blue"}]},{"cap":"Bond B is identical: 4%, VaR(B) = $0. Added up, the two bonds carry $0 of measured risk.","do":[{"bars":"o2","chart":"odds","data":[[2,4,"","blue"]],"bw":60,"ms":800},{"note":"o2l","chart":"odds","at":[2,2],"text":"4%","tone":null,"size":19,"anchor":"middle","dx":0,"dy":0},{"hide":"va"},{"note":"sum0","x":300,"y":412,"text":"VaR(A) + VaR(B) = $0 + $0 = $0","size":19,"anchor":"middle","tone":"blue"}]},{"cap":"Now hold both. Three outcomes: no default 92.16%, exactly one 7.68%, both 0.16%. The chance of losing anything is 7.84%, over the 5% line.","do":[{"bars":"o3","chart":"odds","data":[[3,7.84,"7.84%","red"]],"bw":60,"ms":900},{"pulse":"rule"}]},{"cap":"So the pair's 95th-percentile outcome is \"one default\": VaR(A + B) = $100. Two \"riskless\" bonds, combined, show $100 of risk. That breaks sub-additivity.","do":[{"hide":"sum0"},{"note":"viol","x":300,"y":412,"text":"VaR(A + B) = $100  >  $0 + $0","size":20,"anchor":"middle","tone":"red"}]},{"cap":"Same bonds, CVaR instead: average the worst 5% of outcomes. For one bond that is the 4% default at $100 plus 1% of \"no default\" at $0: (0.04 × 100 + 0.01 × 0) ÷ 0.05 = $80. Two bonds: $160.","do":[{"chart":"cmp","x":10,"y":440,"w":580,"h":250,"title":"Measured risk ($)","xd":[0.4,4.6],"yd":[0,180],"yt":[[0,"$0"],[100,"$100"],[160,"$160"]],"xt":[[1,"VaR sum"],[2,"VaR A+B"],[3,"CVaR sum"],[4,"CVaR A+B"]],"pl":58},{"bars":"c1","chart":"cmp","data":[[1,0,"$0","blue"],[2,100,"$100","red"]],"bw":56,"ms":900},{"bars":"c3","chart":"cmp","data":[[3,160,"$160","green"]],"bw":56,"ms":900}]},{"cap":"For the pair, the worst 5% is 0.16% at $200 plus 4.84% at $100: (0.0016 × 200 + 0.0484 × 100) ÷ 0.05 = $103.20. Below $160. Combining lowers the risk, as diversification should.","do":[{"bars":"c4","chart":"cmp","data":[[4,103.2,"$103.20","green"]],"bw":56,"ms":900}]},{"cap":"The reason: VaR reads one point, the edge of the tail, so it jumps when the joint chance crosses 5%. CVaR averages the whole tail, so it cannot be fooled by where that edge lands. It passes all four of Artzner's rules.","do":[{"hide":"viol"},{"note":"why","x":300,"y":412,"text":"VaR: a point · CVaR: the tail average","size":20,"anchor":"middle","tone":"green"}]},{"cap":"One limit on all of it: coherence is a property of the formula. In 2012 a new VaR model roughly halved the London Whale book's risk with no position cut, and losses passed $6 billion. A CVaR fed by the same broken model would have been wrong too.","do":[{"hide":"rule"},{"icon":"warn","name":"warn","x":430,"y":8,"s":0.6,"tone":"red","label":"the model\nunder it?","lsize":17}]}]}</script>
+      </div>
+      <!-- WB:coherent_risk_measures:END -->
+    </section>
+    <!-- WB:coherent_risk_measures-deck:END -->
+
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Try it yourself — the two-bond example, live</h2>
       <p class="sl-sub">Change the default probability, face value, or confidence level. Both VaR and CVaR recompute instantly — find inputs where sub-additivity holds, and inputs where it doesn't.</p>
@@ -244,7 +257,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">VaR &amp; CVaR under a normal-loss assumption</h2>
       <p class="sl-sub">A more general calculator: assume daily losses are normally distributed with mean μ and standard deviation σ, then read off VaR and CVaR at any confidence level.</p>
@@ -272,7 +285,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this shows up<!-- DESK:START --> — and a check against this repo's code<!-- DESK:END --></h2>
       <div class="sl-icard-grid">
@@ -290,7 +303,7 @@
       <p class="sl-p">This is the first Risk Deep Dive in the curriculum, but not the first place these ideas surface. <a href="extreme-value-theory-micro.html">Extreme Value Theory, or How Bad It Gets, Given That It's Already Bad</a> already builds the peaks-over-threshold machinery<!-- DESK:START --> behind <code>evtTail.js</code>'s fitted VaR/CVaR<!-- DESK:END -->, and <a href="sharpe-family-deflated-micro.html">The Sharpe Ratio Doesn't Know How Many Times You Tried</a> covers the companion question of whether a risk-adjusted return number can be trusted at all.</p>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Ways coherence gets misread</h2>
       <div class="sl-icard-grid">
@@ -301,7 +314,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13 · It actually happened</div>
       <h2 class="sl-h2">The London Whale, 2012: half the risk, gone overnight</h2>
       <div class="sl-callout amber">
@@ -321,7 +334,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <!-- DESK:START -->
       <h2 class="sl-h2">What this desk can say, and where the textbook breaks</h2>
@@ -338,7 +351,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -389,7 +402,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="17">
+    <section class="sl-slide" data-slide="18">
       <div class="sl-kicker">Section 16</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -611,5 +624,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

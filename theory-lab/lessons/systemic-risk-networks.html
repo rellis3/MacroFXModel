@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Systemic Risk &amp; Financial Contagion Networks — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,89 @@
       <li><strong>Real-world episode:</strong> AIG in September 2008 had sold credit protection to many banks at once. A downgrade triggered collateral calls it could not meet, and the Fed lent up to $85 billion because the failure would have spread down every edge together: too interconnected to fail.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: four banks. Bank C defaults, distress 1.00. Red arrows carry its distress to A with impact factor 0.1, to B with 0.4, and to D with 0.3. After the cascade settles, A is at 0.24, B at 0.48 and D at 0.32. Right: two bars. The initial shock is 1.00. The distress induced in A, B and D adds up to 1.04, slightly taller than the shock.">
+      <text class="tlp-text3" x="180" y="14" text-anchor="middle" font-size="12">distress spreads from C</text>
+      <line class="tlp-line" x1="180" y1="45" x2="180" y2="205"/>
+      <line class="tlp-line" x1="180" y1="45" x2="300" y2="125"/>
+      <line class="tlp-line" x1="180" y1="205" x2="300" y2="125"/>
+      <line class="tlp-line red thick" x1="80.8" y1="111.1" x2="149.2" y2="65.5"/>
+      <line class="tlp-line red thick" x1="80.8" y1="138.9" x2="149.2" y2="184.5"/>
+      <line class="tlp-line red thick" x1="85" y1="125" x2="263" y2="125"/>
+      <polygon class="tlp-red" points="157.5,60.0 152.0,69.7 146.4,61.4"/>
+      <polygon class="tlp-red" points="157.5,190.0 146.4,188.6 152.0,180.3"/>
+      <polygon class="tlp-red" points="273.0,125.0 263.0,130.0 263.0,120.0"/>
+      <circle class="tlp-box" cx="60" cy="125" r="24"/>
+      <circle class="tlp-box" cx="180" cy="45" r="24"/>
+      <circle class="tlp-box" cx="180" cy="205" r="24"/>
+      <circle class="tlp-box" cx="300" cy="125" r="24"/>
+      <circle class="tlp-red" cx="60" cy="125" r="24"/>
+      <circle class="tlp-red" cx="180" cy="45" r="24" opacity=".24"/>
+      <circle class="tlp-red" cx="180" cy="205" r="24" opacity=".48"/>
+      <circle class="tlp-red" cx="300" cy="125" r="24" opacity=".32"/>
+      <circle class="tlp-line red" cx="180" cy="45" r="24"/>
+      <circle class="tlp-line red" cx="180" cy="205" r="24"/>
+      <circle class="tlp-line red" cx="300" cy="125" r="24"/>
+      <text class="tlp-text" x="60" y="130" text-anchor="middle" font-size="15" font-weight="700">C</text>
+      <text class="tlp-text" x="180" y="50" text-anchor="middle" font-size="15" font-weight="700">A</text>
+      <text class="tlp-text" x="180" y="210" text-anchor="middle" font-size="15" font-weight="700">B</text>
+      <text class="tlp-text" x="300" y="130" text-anchor="middle" font-size="15" font-weight="700">D</text>
+      <text class="tlp-red" x="104" y="78" text-anchor="end" font-size="12" font-weight="700">0.1</text>
+      <text class="tlp-red" x="104" y="182" text-anchor="end" font-size="12" font-weight="700">0.4</text>
+      <text class="tlp-red" x="130" y="118" text-anchor="middle" font-size="12" font-weight="700">0.3</text>
+      <text class="tlp-red" x="60" y="166" text-anchor="middle" font-size="12" font-weight="700">1.00 default</text>
+      <text class="tlp-text2" x="212" y="50" font-size="13" font-weight="700">0.24</text>
+      <text class="tlp-text2" x="212" y="210" font-size="13" font-weight="700">0.48</text>
+      <text class="tlp-text2" x="300" y="165" text-anchor="middle" font-size="13" font-weight="700">0.32</text>
+      <text class="tlp-text3" x="60" y="232" text-anchor="middle" font-size="12">arrow = impact factor</text>
+      <line class="tlp-line dash" x1="350" y1="10" x2="350" y2="240"/>
+      <text class="tlp-text3" x="475" y="14" text-anchor="middle" font-size="12">total damage vs the shock</text>
+      <line class="tlp-line" x1="375" y1="210" x2="580" y2="210"/>
+      <rect class="tlp-box red" x="395" y="60" width="62" height="150" rx="3"/>
+      <rect class="tlp-box blue" x="497" y="174" width="62" height="36" rx="3"/>
+      <rect class="tlp-box red" x="497" y="102" width="62" height="72" rx="3"/>
+      <rect class="tlp-box amber" x="497" y="54" width="62" height="48" rx="3"/>
+      <line class="tlp-line dash" x1="390" y1="60" x2="566" y2="60"/>
+      <text class="tlp-red" x="426" y="50" text-anchor="middle" font-size="13" font-weight="700">1.00</text>
+      <text class="tlp-amber" x="528" y="44" text-anchor="middle" font-size="13" font-weight="700">1.04</text>
+      <text class="tlp-text2" x="528" y="196" text-anchor="middle" font-size="12">A 0.24</text>
+      <text class="tlp-text2" x="528" y="142" text-anchor="middle" font-size="12">B 0.48</text>
+      <text class="tlp-text2" x="528" y="83" text-anchor="middle" font-size="12">D 0.32</text>
+      <text class="tlp-text2" x="426" y="140" text-anchor="middle" font-size="12">C fails</text>
+      <text class="tlp-text3" x="426" y="228" text-anchor="middle" font-size="12">the shock</text>
+      <text class="tlp-text3" x="528" y="228" text-anchor="middle" font-size="12">induced</text>
+    </svg>
+    <figcaption>One bank fails and its distress flows down every edge, scaled by how much of each bank's capital is exposed. Weakened banks then pass smaller hits to each other. When it settles, the damage induced in the others (1.04) is bigger than the shock that started it (1.00).</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">When a bank fails, everyone asks who lent to it. Isn't that the whole story?</p>
+      <p data-who="Quant">That's only the first round. The banks that lent to it are now weaker, and they owe money too. So their lenders take a smaller hit, and so on. Damage travels.</p>
+      <p data-who="Trader">How do you measure how far?</p>
+      <p data-who="Quant">DebtRank, from Battiston and colleagues in 2012. Give every bank a distress dial, from zero for healthy to one for defaulted. Then for each pair, ask how much of one bank's own capital it would lose if the other failed. That share is the impact factor.</p>
+      <p data-who="Trader">Walk me through one.</p>
+      <p data-who="Quant">Four banks. Bank C fails completely. Bank B's impact factor on C is point four, so B's dial jumps to point four straight away. A's is point one, D's is point three.</p>
+      <p data-who="Trader">And then?</p>
+      <p data-who="Quant">Round two. A is exposed to B, and B just got hurt. So A picks up point three times point four, another point one two. A goes from point one to point two two.</p>
+      <p data-who="Trader">Doesn't that echo back and forth forever?</p>
+      <p data-who="Quant">No, because only the new distress moves on each round. The hits shrink, and after about seven or eight rounds the system settles. A ends near point two four, B near point four eight, D near point three two.</p>
+      <p data-who="Trader">Add those up.</p>
+      <p data-who="Quant">One point zero four. That's the point. The shock was one bank failing, a size of one. The damage it caused in everyone else is bigger than that. The network didn't just share the loss around. It added to it.</p>
+      <p data-who="Trader">Has this ever mattered for real?</p>
+      <p data-who="Quant">September 2008. AIG had sold credit protection to many big banks at once. On the fifteenth, the same day Lehman filed, AIG was downgraded and faced collateral calls it couldn't meet. The next day the New York Fed agreed to lend it up to eighty five billion dollars.</p>
+      <p data-who="Trader">Because it was big?</p>
+      <p data-who="Quant">Because it was connected. Its failure would have hit every bank whose hedge it had written, all at once. Too interconnected to fail, not just too big.</p>
+      <p data-who="Trader">Can I run this on my own book?</p>
+      <p data-who="Quant">Not really. The bilateral exposure data is mostly confidential and sits with regulators. It's a financial stability tool, not a trading signal.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">A failure's damage is measured down the whole web of exposures, not one row of it, and the total can be bigger than the shock.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -103,6 +187,31 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">The distress update, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ h_i(t+1) = \color{#fbbf24}{h_i(t)} \]</div>
+      <p>Start with what bank \(i\) already has. Distress never heals inside the cascade: next round begins from this round's level.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ h_i(t+1) = h_i(t) + \color{#fbbf24}{W_{ij}}\,h_j \]</div>
+      <p>Add a hit from one counterparty \(j\), scaled by the impact factor: the share of \(i\)'s capital exposed to \(j\). With \(W_{BC}=0.4\) and C defaulted, B takes 0.40.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ h_i(t+1) = h_i(t) + W_{ij}\,\color{#fbbf24}{\big[h_j(t)-h_j(t-1)\big]} \]</div>
+      <p>Pass on only \(j\)'s newest distress, the change since last round. Otherwise the same loss would be counted again every time it echoed between two banks.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ h_i(t+1) = h_i(t) + \color{#fbbf24}{\sum_j} W_{ij}\,\big[h_j(t)-h_j(t-1)\big] \]</div>
+      <p>Add up the hits from every counterparty at once. In round 2, A picks up \(0.3 \times 0.40 = 0.12\) from B's new distress.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{h_i(t+1) = \min\!\Big(1,\; h_i(t) + \sum_j W_{ij}\,\big[h_j(t) - h_j(t-1)\big]\Big)} \]</div>
+      <p>Cap it at 1, because a defaulted bank cannot default any further. Run it until nothing changes: A 0.24, B 0.48, D 0.32, a total of 1.04 from a shock of 1.00.</p>
+    </div>
+  </div>
 
   <h3>Step 1 — the exposure network</h3>
   <p>
@@ -254,7 +363,7 @@
       <strong>Round 2.</strong> Now each bank also absorbs its exposure to
       whichever <em>other</em> banks just got newly distressed in round 1:
       \(h_A(2) = 0.10 + W_{AB}\times(h_B(1){-}0) = 0.10 + 0.3\times0.40 =
-      0.22\); \(h_B(2) = 0.40 + W_{BA}\times0.10 = 0.40+0.2\times0.10=0.42\);
+      0.22\); \(h_B(2) = 0.40 + W_{BA}\times0.10 + W_{BD}\times0.30 = 0.40+0.02+0.03=0.45\);
       \(h_D(2) = 0.30 + W_{DA}\times0.10 = 0.30+0.1\times0.10=0.31\).
     </p>
     <p>
@@ -295,6 +404,10 @@
       above (the cross-exposures \(W_{AB}=0.3\), \(W_{BA}=0.2\),
       \(W_{DA}=0.1\) stay fixed at the worked example's matrix).
     </p>
+    <div class="tl-predict" data-answer="0.16" data-tol="0.01" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Bank A's own exposure to C stays at 0.1. Suppose B halves its exposure to C, so \(W_{BC}\) falls from 0.4 to 0.2. What is A's distress after round 2? Lock in a guess, then set \(W_{BC}\) to 0.2 below and read \(h_A\) in the round 2 line.</div>
+      <div class="tl-predict-reveal"><p><strong>0.16.</strong> Round 1: A still takes \(0.1 \times 1 = 0.10\), and B now takes only 0.20. Round 2: A adds \(W_{AB} \times 0.20 = 0.3 \times 0.20 = 0.06\), so \(h_A = 0.16\) instead of 0.22. A changed nothing, yet it is safer, because the bank it lends to is less exposed. That is contagion in one line: your risk depends on your counterparties' exposures, not only your own. Now try setting \(W_{AC}\) to 0 and see that A still gets hurt in round 2.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Bank C's shock \(h_C(0)\)</span></div>
@@ -317,7 +430,7 @@
       Round 1: h<sub>A</sub>=<b id="srn-scratch-a1">0.10</b>&emsp;h<sub>B</sub>=<b id="srn-scratch-b1">0.40</b>&emsp;h<sub>D</sub>=<b id="srn-scratch-d1">0.30</b>
     </div>
     <div class="tl-readout">
-      Round 2: h<sub>A</sub>=<b id="srn-scratch-a2">0.22</b>&emsp;h<sub>B</sub>=<b id="srn-scratch-b2">0.42</b>&emsp;h<sub>D</sub>=<b id="srn-scratch-d2">0.31</b>
+      Round 2: h<sub>A</sub>=<b id="srn-scratch-a2">0.22</b>&emsp;h<sub>B</sub>=<b id="srn-scratch-b2">0.45</b>&emsp;h<sub>D</sub>=<b id="srn-scratch-d2">0.31</b>
       <span id="srn-scratch-note" class="tl-scratch-note"></span>
     </div>
     <button type="button" id="srn-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
@@ -397,6 +510,12 @@
       regulators reason about network contagion.
     </p>
   </div>
+
+  <!-- WB:systemic_risk_networks:START -->
+  <div class="wb" id="wb-systemic_risk_networks" data-title="One default, four banks: the cascade round by round">
+    <script type="application/json">{"w":600,"h":650,"intro":"Four banks, one default, and the lesson's cascade rule run round by round. Press play, or step through.","steps":[{"cap":"Four banks, A to D. Each one has lent to, or bought protection from, some of the others. (Illustrative numbers, not real institutions.)","do":[{"icon":"C","name":"bank","x":30,"y":150,"s":0.7,"tone":"blue","label":"Bank C","lsize":18},{"icon":"A","name":"bank","x":265,"y":14,"s":0.7,"tone":"blue","label":"Bank A","lsize":18},{"icon":"B","name":"bank","x":265,"y":262,"s":0.7,"tone":"blue","label":"Bank B","lsize":18},{"icon":"D","name":"bank","x":500,"y":170,"s":0.7,"tone":"blue","label":"Bank D","lsize":18}]},{"cap":"An impact factor says how much of a bank's own capital it would lose if a counterparty failed completely. B's impact factor on C is 0.4: if C fails, B loses 40% of its capital on that exposure alone.","do":[{"arrow":["C","B"],"label":"0.4","tone":"red","id":"cb"}]},{"cap":"A is less exposed to C, at 0.1. D sits in between, at 0.3. The arrows show which way distress would flow.","do":[{"arrow":["C","A"],"label":"0.1","tone":"red","id":"ca"},{"arrow":["C","D"],"label":"0.3","tone":"red","id":"cd"}]},{"cap":"Give every bank a distress dial: 0 is healthy, 1 is defaulted. All four start at 0. Then Bank C fails outright: its dial goes to 1.","do":[{"box":"hA","x":345,"y":22,"w":112,"h":56,"text":"distress","tone":"amber","sub":"0.00","size":18},{"box":"hB","x":345,"y":276,"w":112,"h":56,"text":"distress","tone":"amber","sub":"0.00","size":18},{"box":"hD","x":472,"y":284,"w":118,"h":56,"text":"distress","tone":"amber","sub":"0.00","size":18},{"box":"hC","x":10,"y":262,"w":120,"h":56,"text":"distress","tone":"red","sub":"0.00","size":18},{"count":"hC","from":0,"to":1,"dp":2,"ms":700},{"cross":"C"}]},{"cap":"Round 1. Each bank takes its impact factor times C's full distress. A goes to 0.10, B to 0.40, D to 0.30.","do":[{"count":"hA","from":0,"to":0.1,"dp":2,"ms":900},{"count":"hB","from":0,"to":0.4,"dp":2,"ms":900},{"count":"hD","from":0,"to":0.3,"dp":2,"ms":900},{"pulse":"cb"}]},{"cap":"Round 2. Now the weakened banks pass a smaller hit to each other. A is exposed to B at 0.3, and B just took on 0.40 of distress. So A picks up 0.3 times 0.40, which is 0.12 more: A reaches 0.22.","do":[{"dim":"ca"},{"dim":"cb"},{"dim":"cd"},{"arrow":["hB","hA"],"label":"0.3","tone":"amber","bend":-20,"id":"ba"},{"count":"hA","from":0.1,"to":0.22,"dp":2,"ms":900}]},{"cap":"Only the newest distress moves on each round, so the same loss is not counted twice. The hits shrink each round, and after about seven or eight rounds nothing new is moving.","do":[{"chart":"ln","x":10,"y":396,"w":372,"h":236,"title":"Distress by round","xd":[0,8],"yd":[0,0.6],"yt":[[0,"0"],[0.2,"0.2"],[0.4,"0.4"]],"xt":[[0,"0"],[2,"2"],[4,"4"],[6,"6"],[8,"8"]],"pl":48,"pr":56},{"series":"pB","chart":"ln","pts":[[0,0],[1,0.4],[2,0.45],[3,0.475],[4,0.479],[5,0.481],[6,0.481],[7,0.481],[8,0.481]],"tone":"red","ms":1300,"label":"B 0.48","lat":[8,0.481],"ldx":4,"ldy":-14,"lanchor":"end","lsize":17},{"series":"pD","chart":"ln","pts":[[0,0],[1,0.3],[2,0.31],[3,0.322],[4,0.324],[5,0.324],[6,0.324],[7,0.324],[8,0.324]],"tone":"amber","ms":1300,"label":"D 0.32","lat":[8,0.324],"ldx":4,"ldy":-14,"lanchor":"end","lsize":17},{"series":"pA","chart":"ln","pts":[[0,0],[1,0.1],[2,0.22],[3,0.235],[4,0.242],[5,0.244],[6,0.244],[7,0.244],[8,0.244]],"tone":"blue","ms":1300,"label":"A 0.24","lat":[8,0.244],"ldx":4,"ldy":16,"lanchor":"end","lsize":17}]},{"cap":"Settled: A 0.24, B 0.48, D 0.32. B ends most distressed, because it had the biggest direct exposure to C.","do":[{"count":"hA","from":0.22,"to":0.24,"dp":2,"ms":900},{"count":"hB","from":0.4,"to":0.48,"dp":2,"ms":900},{"count":"hD","from":0.3,"to":0.32,"dp":2,"ms":900}]},{"cap":"Add it up. The distress induced in the other three banks is 0.24 + 0.48 + 0.32 = 1.04. That is more than the shock that started it, 1.00. The network did not just share the loss out. It added to it.","do":[{"chart":"br","x":394,"y":396,"w":196,"h":236,"title":"Shock vs. induced","xd":[0.3,2.7],"yd":[0,1.25],"yt":[[0,"0"],[0.5,"0.5"],[1.0,"1.0"]],"xt":[[1,"shock"],[2,"induced"]],"pl":40,"pr":8},{"bars":"bb","chart":"br","data":[[1,1.0,"1.00","red"],[2,1.04,"1.04","amber"]],"bw":46,"ms":1000}]},{"cap":"That one number, total distress induced, is the DebtRank of Bank C. Run it for every bank and you can rank them by the damage their failure would do, not by their size.","do":[{"pulse":"hC"}]},{"cap":"September 2008: AIG had sold credit protection to many big banks at once, so it was a node with large impact factors into all of them. On 16 September the New York Fed agreed to lend it up to $85 billion. It was judged too interconnected to fail.","do":[{"hide":"ba"},{"hide":"ca"},{"hide":"cb"},{"hide":"cd"},{"arrow":["C","A"],"tone":"red","id":"x1"},{"arrow":["C","B"],"tone":"red","id":"x2"},{"arrow":["C","D"],"tone":"red","id":"x3"},{"note":"aig","x":70,"y":342,"text":"C = AIG","size":20,"anchor":"middle","tone":"red"}]}]}</script>
+  </div>
+  <!-- WB:systemic_risk_networks:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: AIG, September 2008</h2>
@@ -544,6 +663,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2008-09-15">
+    <div class="tl-drill-label">Scenario drill · 15 September 2008</div>
+    <h3>Your hedge was written by AIG</h3>
+    <p>You run risk at a large bank. You hold super-senior slices of mortgage-backed CDOs, hedged with credit default swaps bought from AIG's Financial Products unit, so the position has been treated as close to riskless. This morning Lehman Brothers filed for bankruptcy. Today the rating agencies downgraded AIG, which triggers collateral calls it cannot meet. AIG wrote the same kind of protection to many other banks. How do you treat your position?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Nothing has changed. The CDO risk is hedged, so the position stays near riskless.<div class="tl-drill-why">The hedge is a claim on one node. If AIG's distress goes to 1, the protection fails at the moment you need it, and your CDOs are suddenly unhedged in a falling market.</div></li>
+      <li data-verdict="good">Treat the hedge as exposure to AIG, assume its failure would hit every bank it wrote protection for at once, and size the position as if it might be unhedged.<div class="tl-drill-why">This is the network view. AIG is a node with large impact factors into many banks at once, so its failure would not hit you alone: your counterparties would be weakened in the same week, and their distress would pass on to you in later rounds too.</div></li>
+      <li data-verdict="ok">Buy credit protection on AIG itself to cover the counterparty risk.<div class="tl-drill-why">It addresses the right risk, but the seller of that protection is another node in the same web, and buying it on the day of a downgrade is expensive. It moves the exposure rather than removing it.</div></li>
+      <li data-verdict="bad">Only count AIG's direct losses. It is a huge insurer with plenty of capital, so it will absorb them.<div class="tl-drill-why">That is the "too big to fail" view, and it misses the point of the lesson. What mattered was not AIG's own loss but the distress its failure would induce across everyone connected to it.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 16 September 2008 the Federal Reserve Bank of New York agreed to lend AIG up to $85 billion, and the US government took a stake of about four-fifths of the company. Support later grew well beyond that first loan. When the CDOs were bought out of the swaps that November, the bank counterparties received the full value of the protection they had bought. Their hedges held because of the rescue, not because of AIG.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -650,6 +782,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="graph-theory-centrality.html">Graph Theory Fundamentals &amp; Centrality Measures</a> <span>· eigenvector centrality, the static cousin of DebtRank</span></li>
+        <li><a href="correlation-networks-mst.html">Correlation Networks &amp; Minimum Spanning Trees</a> <span>· a correlation network, which is not an exposure network</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="stress-testing-scenario-analysis.html">Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</a> <span>· where cascade models feed in</span></li>
+        <li><a href="rehypothecation-collateral-chains.html">Rehypothecation &amp; Collateral Chains</a> <span>· how collateral calls travel as cash</span></li>
+        <!-- DESK:START --><li><a href="institutional-covar.html">CoVaR: Conditional Value-at-Risk for Systemic Risk</a> <span>· a market-data measure of the same spillover</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a counterparty's risk includes everyone it is connected to, and in a crisis the hedge you bought can fail along with the market it hedges.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="correlation-networks-mst.html">← Correlation Networks &amp; Minimum Spanning Trees</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -673,7 +825,7 @@
 
   // Cross-exposures fixed at the worked example's matrix (not user inputs)
   // so this stays a two-round illustration rather than a full 4x4 solver.
-  var W_AB = 0.3, W_BA = 0.2, W_DA = 0.1;
+  var W_AB = 0.3, W_BA = 0.2, W_BD = 0.1, W_DA = 0.1;
 
   var DEFAULTS = { hc0: 1.0, wac: 0.1, wbc: 0.4, wdc: 0.3 };
 
@@ -695,7 +847,7 @@
     var hD1 = wdc * hC0;
 
     var hA2 = hA1 + W_AB * hB1;
-    var hB2 = hB1 + W_BA * hA1;
+    var hB2 = hB1 + W_BA * hA1 + W_BD * hD1;
     var hD2 = hD1 + W_DA * hA1;
 
     a1Out.textContent = hA1.toFixed(2);
@@ -743,9 +895,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

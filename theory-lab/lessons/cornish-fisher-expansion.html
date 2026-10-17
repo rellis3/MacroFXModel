@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cornish-Fisher Expansion — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,71 @@
       <li><strong>Real-world episode:</strong> in March 2020 (S&amp;P 500 −12% on March 16) bank VaR models calibrated on a calm year recorded exceptions far more often than 1 in 100, and the ECB temporarily cut the capital multiplier those exceptions would have raised. Cornish-Fisher can only correct for the skew and kurtosis your sample has seen.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two rulers of daily VaR in percent, for the lesson's return series with sigma 1.20%, skewness minus 0.5 and excess kurtosis 3. At 95% confidence the plain Gaussian VaR is 1.974% and the Cornish-Fisher VaR is 2.066%, about 4.7% bigger. At 99% the Gaussian VaR is 2.792% and the Cornish-Fisher VaR is 3.962%, about 42% bigger. Same formula, only the quantile z moves.">
+      <text class="tlp-text2" x="300" y="24" text-anchor="middle" font-size="13" font-weight="700">Same formula, VaR = −μ − z·σ. Only the mark z moves.</text>
+      <text class="tlp-text" x="20" y="98" font-size="15" font-weight="700">95%</text>
+      <text class="tlp-amber" x="20" y="116" font-size="13" font-weight="700">+4.7%</text>
+      <line class="tlp-line" x1="90" y1="100" x2="580" y2="100"/>
+      <line class="tlp-line" x1="90" y1="94" x2="90" y2="106"/>
+      <line class="tlp-line" x1="200" y1="94" x2="200" y2="106"/>
+      <line class="tlp-line" x1="310" y1="94" x2="310" y2="106"/>
+      <line class="tlp-line" x1="420" y1="94" x2="420" y2="106"/>
+      <line class="tlp-line" x1="530" y1="94" x2="530" y2="106"/>
+      <circle class="tlp-blue" cx="307.1" cy="100" r="6"/>
+      <circle class="tlp-red" cx="317.3" cy="100" r="6"/>
+      <text class="tlp-blue" x="298" y="84" text-anchor="end" font-size="13" font-weight="700">Gaussian 1.974%</text>
+      <text class="tlp-red" x="326" y="84" font-size="13" font-weight="700">Cornish-Fisher 2.066%</text>
+      <text class="tlp-text" x="20" y="178" font-size="15" font-weight="700">99%</text>
+      <text class="tlp-amber" x="20" y="196" font-size="13" font-weight="700">+42%</text>
+      <line class="tlp-line" x1="90" y1="180" x2="580" y2="180"/>
+      <line class="tlp-line" x1="90" y1="174" x2="90" y2="186"/>
+      <line class="tlp-line" x1="200" y1="174" x2="200" y2="186"/>
+      <line class="tlp-line" x1="310" y1="174" x2="310" y2="186"/>
+      <line class="tlp-line" x1="420" y1="174" x2="420" y2="186"/>
+      <line class="tlp-line" x1="530" y1="174" x2="530" y2="186"/>
+      <line class="tlp-line red thick" x1="404" y1="180" x2="510" y2="180"/>
+      <polygon class="tlp-red" points="519.7,180 509.7,174.5 509.7,185.5"/>
+      <circle class="tlp-blue" cx="397.1" cy="180" r="6"/>
+      <circle class="tlp-red" cx="525.7" cy="180" r="6"/>
+      <text class="tlp-blue" x="397.1" y="204" text-anchor="middle" font-size="13" font-weight="700">Gaussian 2.792%</text>
+      <text class="tlp-red" x="585" y="164" text-anchor="end" font-size="13" font-weight="700">Cornish-Fisher 3.962%</text>
+      <text class="tlp-text3" x="90" y="224" text-anchor="middle" font-size="12">0%</text>
+      <text class="tlp-text3" x="200" y="224" text-anchor="middle" font-size="12">1%</text>
+      <text class="tlp-text3" x="310" y="224" text-anchor="middle" font-size="12">2%</text>
+      <text class="tlp-text3" x="420" y="224" text-anchor="middle" font-size="12">3%</text>
+      <text class="tlp-text3" x="530" y="224" text-anchor="middle" font-size="12">4%</text>
+      <text class="tlp-text3" x="335" y="244" text-anchor="middle" font-size="12">daily VaR · σ = 1.20%, skew S = −0.5, excess kurtosis K = 3</text>
+    </svg>
+    <figcaption>The worked example's return series, at two confidence levels. Cornish-Fisher keeps the Gaussian formula and nudges only the quantile for skew and fat tails. The further into the tail you go, the bigger the nudge: a small correction at 95%, a 42% bigger loss threshold at 99%.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Our daily Value at Risk is mean and standard deviation, times one point six four five for ninety-five percent. Everyone does it. What's wrong with it?</p>
+      <p data-who="Quant">It assumes your returns are a bell curve. Symmetric, with thin tails. Real returns usually aren't. Crashes are sharper than rallies, and extreme days come more often than a bell curve says.</p>
+      <p data-who="Trader">So I need a whole new model of the distribution?</p>
+      <p data-who="Quant">That's the nice part: you don't. Think of a tailor who always marks a hem one point six four five inches up, because that suits a perfectly average customer. Cornish and Fisher, back in 1938, worked out how to nudge that mark for a customer who isn't average.</p>
+      <p data-who="Trader">Nudge it using what?</p>
+      <p data-who="Quant">Two numbers you can already compute. Skewness: are the nasty surprises bigger than the nice ones? And excess kurtosis: how much fatter are the tails than a bell curve? The formula stays the same. Only the multiplier moves.</p>
+      <p data-who="Trader">Give me a worked number.</p>
+      <p data-who="Quant">A daily series with a standard deviation of one point two percent, skew of minus a half, excess kurtosis of three. The plain bell-curve answer at ninety-five percent is about one point nine seven percent. With the nudge it's about two point oh seven. Roughly five percent bigger.</p>
+      <p data-who="Trader">That's hardly worth the trouble.</p>
+      <p data-who="Quant">At ninety-five percent, fair enough. Push to ninety-nine and the same series goes from about two point eight percent to almost four. The deeper into the tail, the bigger the nudge, because that's where the skew and fat tails live.</p>
+      <p data-who="Trader">So why not use it everywhere?</p>
+      <p data-who="Quant">Two catches. First, it's a polynomial patch. Feed it extreme enough skew and kurtosis and it breaks: the ninety-nine percent number can come out smaller than the ninety-five. That's not a valid answer at all.</p>
+      <p data-who="Trader">And the second?</p>
+      <p data-who="Quant">It only knows the skew and kurtosis in the sample you give it. Going into 2020, most risk models were looking back at a calm year. Then on March the sixteenth the S and P 500 fell about twelve percent in a day, its worst since October 1987, and the VIX closed above eighty-two.</p>
+      <p data-who="Trader">And the models?</p>
+      <p data-who="Quant">Banks that expect a loss beyond their ninety-nine percent number about one day in a hundred saw it far more often, bunched into a few weeks. In April, the European Central Bank temporarily cut the capital multiplier those misses would have pushed up. A calm window had no storms for the correction to learn from.</p>
+      <p data-who="Trader">So what's the one-line version?</p>
+      <p data-who="Quant">Cornish-Fisher is a cheap, honest nudge for skew and fat tails, but only inside a sensible range, and only for the tail your data has actually seen.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -79,6 +145,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the adjusted quantile z_CF comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ z_{CF} = \color{#fbbf24}{z_\alpha} \]</div>
+      <p>Start from the plain normal quantile. At 95% confidence, \(z_{0.05} = -1.645\). If returns were truly normal you would stop here.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ z_{CF} = z_\alpha + \color{#fbbf24}{\frac{(z_\alpha^2-1)S}{6}} \]</div>
+      <p>Add the main skew correction. With \(S = -0.5\) it is \(-0.14217\): negative skew pushes the quantile further into the loss tail.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ z_{CF} = z_\alpha + \frac{(z_\alpha^2-1)S}{6} + \color{#fbbf24}{\frac{(z_\alpha^3-3z_\alpha)K}{24}} \]</div>
+      <p>Add the fat-tail correction. With \(K = 3\) it is \(+0.06045\). At 95% it pulls the quantile slightly back in; beyond about 95.8% confidence it pushes it out.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ z_{CF} = z_\alpha + \frac{(z_\alpha^2-1)S}{6} + \frac{(z_\alpha^3-3z_\alpha)K}{24} \color{#fbbf24}{- \frac{(2z_\alpha^3-5z_\alpha)S^2}{36}} \]</div>
+      <p>Add the second-order skew term, \(+0.00471\) here. In total \(z_{CF} \approx -1.7220\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\text{VaR}_\alpha^{CF} = -\mu - z_{CF}\,\sigma = -0\% - (-1.7220)(1.20\%) = 2.066\%} \]</div>
+      <p>Drop \(z_{CF}\) into the unchanged Gaussian formula. The plain answer was 1.974%; the adjusted one is about 4.7% larger, from the same \(\mu\) and \(\sigma\).</p>
+    </div>
+  </div>
 
   <h3>Recall: the Gaussian VaR formula</h3>
   <p>
@@ -267,6 +357,10 @@
       correction terms, \(z_{CF}\), and both VaR numbers recalculate instantly — try pushing \(S\) toward 0
       to watch the Cornish-Fisher VaR collapse back onto the plain Gaussian one.
     </p>
+    <div class="tl-predict" data-answer="3.96" data-tol="0.15" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At 95% the nudge is small: 1.974% becomes 2.066%. Keep the same series (σ = 1.20%, S = −0.5, K = 3) and raise the confidence to 99%. The Gaussian VaR becomes 2.792%. What will the Cornish-Fisher VaR be? Lock in a guess, then type 99 into "Confidence" below to check.</div>
+      <div class="tl-predict-reveal"><p><strong>About 3.96%.</strong> At 99%, \(z_\alpha = -2.326\). The skew term is now \(-0.368\) and the kurtosis term has flipped sign to \(-0.701\), because \(|z_\alpha|\) is past \(\sqrt{3}\). With \(+0.094\) from the last term, \(z_{CF} \approx -3.301\), so the VaR is \(3.301 \times 1.20\% \approx 3.96\%\): about 42% above the Gaussian 2.792%. Now try S = −3 with K = 0 at 95% and then 99%: the 99% number comes out smaller, the breakdown the pitfalls warn about.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Mean \(\mu\) (%)</span></div>
@@ -317,6 +411,12 @@
     by feeding two already-computable sample statistics into the adjusted quantile formula above.
     </p>
   </div>
+
+  <!-- WB:cornish_fisher_expansion:START -->
+  <div class="wb" id="wb-cornish_fisher_expansion" data-title="Same VaR formula, a moved mark: Cornish-Fisher step by step">
+    <script type="application/json">{"w":600,"h":800,"intro":"A VaR formula that assumes a bell curve, a return series that isn't one, and a single number that gets nudged. Press play, or step through.","steps":[{"cap":"The everyday VaR recipe assumes returns follow a bell curve: VaR = −μ − z·σ. At 95% confidence z = −1.645. With μ = 0 and σ = 1.20% a day, VaR is 1.974%.","do":[{"box":"f","x":15,"y":15,"w":330,"h":84,"text":"VaR = −μ − z·σ","tone":"purple","sub":"μ = 0 · σ = 1.20%","size":22},{"box":"var","x":385,"y":15,"w":200,"h":84,"text":"95% VaR","tone":"blue","sub":"1.974%","size":20}]},{"cap":"Think of z as a mark on a ruler. For a perfect bell curve, the 95% mark sits at −1.645.","do":[{"line":"ruler","points":[[50,176],[550,176]],"tone":"chalk","width":3,"ms":700},{"note":"t1","x":50,"y":210,"text":"−2.0","size":17,"anchor":"middle"},{"note":"t2","x":150,"y":210,"text":"−1.9","size":17,"anchor":"middle"},{"note":"t3","x":250,"y":210,"text":"−1.8","size":17,"anchor":"middle"},{"note":"t4","x":350,"y":210,"text":"−1.7","size":17,"anchor":"middle"},{"note":"t5","x":450,"y":210,"text":"−1.6","size":17,"anchor":"middle"},{"note":"t6","x":550,"y":210,"text":"−1.5","size":17,"anchor":"middle"},{"note":"dir","x":170,"y":142,"text":"← further into the loss tail","size":17,"anchor":"middle","tone":"red"},{"chip":"z","x":405.0,"y":176,"text":"z","tone":"blue"},{"box":"zv","x":190,"y":236,"w":220,"h":70,"text":"the mark z","tone":"blue","sub":"−1.645","size":19}]},{"cap":"But this series is not a bell curve. Its skewness is S = −0.5: crashes are bigger than rallies. Its excess kurtosis is K = 3: extreme days come more often than a bell curve says.","do":[{"box":"S","x":15,"y":324,"w":270,"h":70,"text":"skew S = −0.5","tone":"amber","size":20},{"box":"K","x":315,"y":324,"w":270,"h":70,"text":"excess kurtosis K = 3","tone":"purple","size":20}]},{"cap":"Cornish and Fisher, 1938: keep the formula, nudge the mark. First the skew term, (z² − 1)·S ÷ 6 = −0.142. Negative skew drags the mark further into the loss tail.","do":[{"pulse":"S"},{"move":"z","x":263.0,"y":176,"ms":1000},{"count":"zv","from":-1.645,"to":-1.787,"dp":3,"ms":1000}]},{"cap":"Then the fat-tail term, (z³ − 3z)·K ÷ 24 = +0.060. At 95% it pulls the mark slightly back in. Beyond about 95.8% confidence it pushes the other way.","do":[{"pulse":"K"},{"move":"z","x":323.6,"y":176,"ms":900},{"count":"zv","from":-1.787,"to":-1.726,"dp":3,"ms":900}]},{"cap":"A small second skew term, +0.005, and the mark settles at z_CF ≈ −1.722.","do":[{"move":"z","x":328.3,"y":176,"ms":600},{"count":"zv","from":-1.726,"to":-1.722,"dp":3,"ms":600},{"sub":"zv","text":"z_CF ≈ −1.722"}]},{"cap":"Drop the new mark into the unchanged formula: −(−1.722) × 1.20% = 2.066%. Same μ, same σ, a VaR about 4.7% bigger.","do":[{"pulse":"f"},{"count":"var","from":1.974,"to":2.066,"dp":3,"suf":"%","ms":1000}]},{"cap":"Go deeper into the tail and the nudge grows. At 99% the same series has a Gaussian VaR of 2.792% and a Cornish-Fisher VaR of 3.962%: 42% bigger.","do":[{"chart":"ch","x":10,"y":420,"w":580,"h":260,"title":"Daily VaR (%): blue Gaussian, red Cornish-Fisher","xd":[0.4,4.9],"yd":[0,5.2],"yt":[[0,"0"],[2,"2%"],[4,"4%"]],"xt":[[1,"95%"],[2,"99%"],[3.4,"95%"],[4.4,"99%"]],"pl":52},{"bars":"bg","chart":"ch","data":[[0.8,1.974,"1.97","blue"],[1.8,2.792,"2.79","blue"]],"bw":34,"ms":900},{"bars":"bc","chart":"ch","data":[[1.2,2.066,"2.07","red"],[2.2,3.962,"3.96","red"]],"bw":34,"ms":900}]},{"cap":"The patch has limits. Feed it extreme skew, S = −3 with K = 0, and the 95% VaR comes out at 2.79% but the 99% VaR at only 1.37%. A 99% loss smaller than a 95% one is not a valid quantile.","do":[{"note":"bk","chart":"ch","at":[3.9,4.0],"text":"S = −3, K = 0","tone":"amber","size":17,"anchor":"middle","dx":0,"dy":0},{"bars":"bb","chart":"ch","data":[[3.4,2.794,"2.79","amber"],[4.4,1.374,"1.37","amber"]],"bw":34,"ms":900},{"cross":"bb"}]},{"cap":"And it only knows the sample it is fed. Going into 2020, risk models looked back at a calm year, so S and K were mild and the corrected mark sat close to the Gaussian one.","do":[{"icon":"calm","name":"umbrella","x":30,"y":690,"s":0.55,"tone":"blue","label":"calm look-back\nmild S and K","lsize":16}]},{"cap":"On 16 March 2020 the S&P 500 fell about 12%, its worst day since October 1987, and the VIX closed above 82. Losses beyond 99% VaR came far more often than 1 day in 100.","do":[{"icon":"crash","name":"fire","x":250,"y":690,"s":0.55,"tone":"red","label":"S&P −12%\n16 March","lsize":16},{"arrow":["calm","crash"],"tone":"red"}]},{"cap":"Too many exceptions would have raised banks' capital multipliers mid-crisis, so in April 2020 the ECB temporarily cut them. The correction had no storms in its window to learn from.","do":[{"icon":"ecb","name":"bank","x":470,"y":690,"s":0.55,"tone":"amber","label":"ECB cuts the\nmultiplier, April","sym":"€","lsize":16},{"arrow":["crash","ecb"],"tone":"amber"}]}]}</script>
+  </div>
+  <!-- WB:cornish_fisher_expansion:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: March 2020, when VaR models met the tail</h2>
@@ -466,6 +566,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill" data-date="2020-03-16">
+    <div class="tl-drill-label">Scenario drill · 16 March 2020</div>
+    <h3>Your skew-adjusted VaR keeps getting beaten</h3>
+    <p>You run a desk's daily 99% VaR: mean and standard deviation from a one-year look-back, with a Cornish-Fisher nudge for the window's skew and kurtosis. The look-back year was calm, so the nudge has been small. Today the S&amp;P 500 fell about 12%, its worst day since October 1987, and the VIX closed above 82. Losses beyond your VaR are piling up far faster than 1 day in 100. What do you do with the model?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Keep it as it is. Cornish-Fisher already corrects for skew and fat tails.<div class="tl-drill-why">It corrects for the skew and kurtosis in the sample you feed it. A calm year had almost none, so the corrected quantile still sits close to the Gaussian one.</div></li>
+      <li data-verdict="bad">Re-estimate skew and kurtosis from the last week alone and plug them straight in.<div class="tl-drill-why">Higher moments from a handful of days are dominated by one or two extreme observations. Extreme inputs can also push the expansion into the range where it is no longer a valid quantile, and the "adjusted VaR" becomes an artifact.</div></li>
+      <li data-verdict="good">Report the exceptions honestly, treat the model as broken for this regime, and set risk off a number that already contains a stress period, cutting size to it.<div class="tl-drill-why">The correction can only fix the tail shape its window has seen. Measuring against a window that includes a real crisis, and sizing to that, deals with the actual problem instead of tuning the patch.</div></li>
+      <li data-verdict="ok">Shorten the look-back window to a month so the moments catch up faster.<div class="tl-drill-why">It reacts to the new regime, which helps. But a month of data gives noisy skew and kurtosis, and the model will swing back to calm as soon as the window rolls past the crash.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Days of 5% and more, up and down, came one after another. Many bank trading desks that report a 99% daily VaR recorded exceptions far more often than 1 day in 100, clustered in a few weeks. Under the Basel rules, too many exceptions in a year raise the multiplier a bank applies to its VaR when it sets market-risk capital, so capital was about to rise in the middle of the crisis. In April 2020 the European Central Bank temporarily reduced that multiplier for the banks it supervises, citing the extraordinary market volatility.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -545,6 +658,26 @@
     <li>See also <a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> for the underlying VaR definition this lesson builds on, and <a href="quantile-regression.html">Quantile Regression</a> for a fundamentally different, conditional approach to the same underlying question.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> <span>· the VaR definition this lesson adjusts</span></li>
+        <li><a href="primer-stats-normal.html">Descriptive Statistics &amp; the Normal Distribution</a> <span>· z-scores, skewness and kurtosis</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a> <span>· purpose-built models for the far tail</span></li>
+        <li><a href="quantile-regression.html">Quantile Regression</a> <span>· tail quantiles that move with conditions</span></li>
+        <!-- DESK:START --><li><a href="institutional-hill-estimator.html">The Hill Estimator</a> <span>· measuring how fat the tail is directly</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> most quoted VaR numbers assume a bell curve, and this shows you how much a skewed, fat-tailed book is being under-reported, and where that fix stops working.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="stress-testing-scenario-analysis.html">← Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</a>
@@ -655,9 +788,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

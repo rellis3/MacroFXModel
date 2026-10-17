@@ -43,6 +43,62 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 226" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the problem with raw Markowitz. Nudging the risky pair's expected return from 4 to 4.5 percent moves its optimal weight from 37.6 percent to 47.9 percent, a ten-point swing from a half-point forecast change. Right: the Black-Litterman fix. A dial runs from the market prior of 5 percent to your view of 7 percent; at 40 percent confidence the posterior sits at 5.80 percent, and at 100 percent confidence it would be the raw view, which is what raw Markowitz uses.">
+      <text class="tlp-text" x="16" y="22" font-size="14" font-weight="700">1 · Raw Markowitz: tiny nudge, big swing</text>
+      <line class="tlp-line" x1="40" y1="170" x2="280" y2="170"/>
+      <rect class="tlp-box blue" x="70" y="94.9" width="70" height="75.1" rx="4"/>
+      <rect class="tlp-box red" x="180" y="74.2" width="70" height="95.8" rx="4"/>
+      <text class="tlp-blue" x="105" y="86" text-anchor="middle" font-size="14" font-weight="700">37.6%</text>
+      <text class="tlp-red" x="215" y="66" text-anchor="middle" font-size="14" font-weight="700">47.9%</text>
+      <text class="tlp-text3" x="105" y="186" text-anchor="middle" font-size="12">risky at 4.0%</text>
+      <text class="tlp-text3" x="215" y="186" text-anchor="middle" font-size="12">risky at 4.5%</text>
+      <text class="tlp-text2" x="160" y="44" text-anchor="middle" font-size="12">best weight in the risky pair</text>
+      <text class="tlp-red" x="150" y="212" text-anchor="middle" font-size="12" font-weight="700">+0.5 pt of forecast → +10 pts of weight</text>
+      <line class="tlp-line dash" x1="300" y1="14" x2="300" y2="214"/>
+      <text class="tlp-text" x="316" y="22" font-size="14" font-weight="700">2 · Black-Litterman: blend by confidence</text>
+      <text class="tlp-text2" x="455" y="54" text-anchor="middle" font-size="12">prior = what the market already holds</text>
+      <line class="tlp-line thick" x1="350" y1="120" x2="560" y2="120"/>
+      <circle class="tlp-blue" cx="360" cy="120" r="7"/>
+      <circle class="tlp-amber" cx="550" cy="120" r="7"/>
+      <circle class="tlp-green" cx="436" cy="120" r="8"/>
+      <text class="tlp-blue" x="360" y="98" text-anchor="middle" font-size="13" font-weight="700">market 5%</text>
+      <text class="tlp-amber" x="550" y="98" text-anchor="middle" font-size="13" font-weight="700">your view 7%</text>
+      <text class="tlp-green" x="436" y="150" text-anchor="middle" font-size="14" font-weight="700">posterior 5.80%</text>
+      <text class="tlp-green" x="436" y="167" text-anchor="middle" font-size="12">at 40% confidence: 5% + 0.4 × 2</text>
+      <text class="tlp-text3" x="455" y="200" text-anchor="middle" font-size="12">at 100%: the raw view, as in raw Markowitz</text>
+    </svg>
+    <figcaption>Raw Markowitz takes every forecast as exact, so a half-point nudge swings the answer. Black-Litterman starts from the returns the market's own holdings imply and moves toward your view only as far as your stated confidence allows.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I have views on a handful of currency pairs. Why not hand them to an optimizer and let it pick the weights?</p>
+      <p data-who="Quant">Because of what happened when people did exactly that. But first, the good part. Harry Markowitz showed in 1952 that a portfolio's risk is not the average of its parts. It depends on how the parts move together.</p>
+      <p data-who="Trader">So two loosely linked pairs can be safer together than either alone.</p>
+      <p data-who="Quant">Right. Take a safe pair returning three percent with eight percent volatility, and a risky one returning four percent with fifteen, correlation zero point three. The least risky mix is under eight percent risk, below the safe pair on its own. Find the least risk for every target return and you have the efficient frontier.</p>
+      <p data-who="Trader">That sounds like exactly what I want.</p>
+      <p data-who="Quant">Here is the catch. With cash at two percent, the best mix puts thirty-seven and a half percent in the risky pair. Now nudge its forecast from four percent to four and a half. Half a point, well inside anyone's error. The optimal weight jumps to nearly forty-eight percent.</p>
+      <p data-who="Trader">Ten points of weight from half a point of guess.</p>
+      <p data-who="Quant">And with ten correlated pairs and shorting allowed, it gets far worse: huge long and short corners. The optimizer treats every number as exact, so it piles into whichever assets your errors flatter. Richard Michaud called it error maximization in 1989.</p>
+      <p data-who="Trader">Was that just theory?</p>
+      <p data-who="Quant">No. For two decades managers who fed real forecasts in got weights no committee would sign. Chopra and Ziemba found errors in expected returns cost about ten times as much as errors in variances.</p>
+      <p data-who="Trader">So what is the fix?</p>
+      <p data-who="Quant">Fischer Black and Robert Litterman, at Goldman Sachs around 1990, working with clients in global bonds and currencies. Do not start from a blank page. Run the optimizer backwards on what the market already holds. That gives returns the market implicitly believes. Use those as the starting point.</p>
+      <p data-who="Trader">And my views?</p>
+      <p data-who="Quant">You state a few, each with a confidence. Say the market implies five percent and you think seven, with forty percent confidence. The blend moves forty percent of the way: five point eight. A modest view gives a modest tilt.</p>
+      <p data-who="Trader">And at full confidence?</p>
+      <p data-who="Quant">You get your raw seven percent, which is exactly what plain Markowitz does with every forecast. Confidence is the lever.</p>
+      <p data-who="Trader">Does any of it beat simply holding equal weights?</p>
+      <p data-who="Quant">That is the humbling part. In 2009 DeMiguel, Garlappi and Uppal tested fourteen optimizers against equal weights, and none consistently won out of sample.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">The maths of diversification is right; your return forecasts are the weak link, so anchor them to the market and move only as far as your confidence earns.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -108,6 +164,31 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From portfolio return to the Black-Litterman blend, one piece at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ E[R_p] = \color{#fbbf24}{w^\top \mu} \]</div>
+      <p>Return is a plain weighted average: 60% at 2% and 40% at 5% gives 3.2%.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ E[R_p] = w^\top \mu, \qquad \text{Var}(R_p) = \color{#fbbf24}{w^\top \Sigma w} \]</div>
+      <p>Risk is not an average. It is a quadratic form: the covariance matrix acting on the weights, then dotted with the weights again.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Var}(R_p) = w_1^2 \sigma_1^2 + w_2^2 \sigma_2^2 + \color{#fbbf24}{2 w_1 w_2\, \text{Cov}(R_1, R_2)} \]</div>
+      <p>For two assets the cross term appears. Small or negative, it pulls risk down: that is diversification, and it is why the frontier curves.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\Pi = \delta\, \Sigma\, w_{mkt}} \]</div>
+      <p>The optimizer is hypersensitive to \(\mu\), so Black-Litterman replaces a blank-page forecast with a prior: the returns that make today's market weights optimal.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\mu_{\text{post}} = \frac{\mu_0/\sigma_0^2 + \mu_1/\sigma_1^2}{1/\sigma_0^2 + 1/\sigma_1^2}} \]</div>
+      <p>Blend the prior \(\mu_0\) with your view \(\mu_1\), each weighted by its precision. A low-confidence view barely moves the answer; the master formula is this same blend in matrix form.</p>
+    </div>
+  </div>
   <p>
     This builds directly on the matrix-vector notation from the Linear
     Algebra &amp; Matrices lesson — a portfolio's risk and return are both,
@@ -482,6 +563,11 @@
       pair's expected return from 4% up toward 4.5% — the same half-point
       change the box above describes — and watch the weight swing live.
     </p>
+
+    <div class="tl-predict" data-answer="47.88" data-tol="3" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> On the default numbers the risky pair's tangency weight is 37.55%. Nudge only its expected return, from 4% to 4.5%. What does the risky weight become? Lock in a guess, then type 4.5 into the "Risky pair" field below.</div>
+      <div class="tl-predict-reveal"><p><strong>About 47.88%.</strong> The risky pair's excess return over the 2% risk-free rate goes from 2% to 2.5%, a quarter more, and the optimizer moves more than ten points of weight into it. Nothing about the two assets changed, only a guess well inside any forecaster's error. Now try 5%: the swing keeps going.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Safe pair &mu;&#8321; (%)</span></div>
@@ -870,6 +956,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · around 1990, a global bond and currency book</div>
+    <h3>The optimizer's answer nobody will sign</h3>
+    <p>You manage a global bond and currency portfolio. You feed your expected-return forecasts for each market into a mean-variance optimizer. It comes back with huge long and short positions in a few markets, and when you revise one forecast by a fraction of a point the weights jump again. The investment committee meets tomorrow. What do you take to it?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">The optimizer's output as it stands. The maths is right, so the weights are right.<div class="tl-drill-why">The maths is right for exact inputs, and your forecasts are not exact. The optimizer piles into whichever markets your errors happen to flatter: error maximization. Those corners are artifacts of noise, not conviction.</div></li>
+      <li data-verdict="ok">Keep the forecasts but add tight position limits so no weight can go extreme.<div class="tl-drill-why">Limits stop the worst corners, which is why desks used them. But the answer then sits on whatever limits you chose, and it still jumps around when forecasts move. It hides the problem rather than fixing the input.</div></li>
+      <li data-verdict="good">Start from the returns implied by the market's own holdings, and move away from them only where you hold a specific view, by as much as your confidence justifies.<div class="tl-drill-why">This is Black and Litterman's fix. The prior is sensible and stable, each view is a precision-weighted nudge, and a modest view gives a modest tilt rather than a corner.</div></li>
+      <li data-verdict="bad">Spend another month refining every market's forecast to two decimal places, then rerun.<div class="tl-drill-why">Extra decimals are not extra accuracy. The optimizer's sensitivity to expected returns is the problem; more precise-looking guesses make it no less sensitive.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> This is the documented pattern rather than one dated day. Managers who fed real forecasts into an optimizer kept getting extreme, unstable weights; Michaud named it error maximization in 1989. Fischer Black and Robert Litterman, working with Goldman Sachs clients who managed global bond and currency portfolios, published their fix as a Goldman paper in 1990 and in the <em>Financial Analysts Journal</em> in 1992. Later, DeMiguel, Garlappi and Uppal (2009) found none of fourteen optimization-based models consistently beat equal weights out of sample.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -1004,6 +1103,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="linear-algebra-matrices.html">Linear Algebra &amp; Matrices</a> <span>· the quadratic form behind portfolio risk</span></li>
+        <li><a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> <span>· the co-movement diversification feeds on</span></li>
+        <li><a href="bayesian-inference.html">Bayesian Inference &amp; Updating</a> <span>· the prior-plus-evidence blend Black-Litterman uses</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="random-matrix-theory.html">Random Matrix Theory &amp; the Marchenko-Pastur Law</a> <span>· cleaning the covariance matrix before optimizing</span></li>
+        <li><a href="risk-parity-erc.html">Risk Parity &amp; Equal Risk Contribution</a> <span>· weights that need no return forecasts at all</span></li>
+        <li><a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a> <span>· a robust alternative to inverting the matrix</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the moment you hold more than one position, sizing them together is a portfolio decision, and this is where its biggest trap lives.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="fractional-brownian-motion.html">← Fractional Brownian Motion</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -1102,7 +1222,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

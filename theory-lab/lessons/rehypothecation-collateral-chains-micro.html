@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rehypothecation &amp; Collateral Chains — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -157,7 +158,19 @@
       <p class="sl-p">The number of re-pledge links is always one fewer than the number of parties — and every party downstream of the original owner is now exposed to a failure anywhere upstream of them in the chain, not just to the counterparty they personally dealt with. Length itself is the risk multiplier: nothing about any single link looks unusual, but the chain as a whole is only as strong as its weakest one.</p>
     </section>
 
+    <!-- WB:rehypothecation_collateral_chains-deck:START -->
     <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">One asset, many claims, drawn step by step</h2>
+      <!-- WB:rehypothecation_collateral_chains:START -->
+      <div class="wb" data-title="One asset, many claims, drawn step by step">
+        <script type="application/json">{"w":600,"h":740,"intro":"One pool of securities, passed down a chain of promises. Then what the rules allow, and two failures that tested them. Press play, or step through.","steps":[{"cap":"A hedge fund, A, owns $10 million of securities. It needs margin for a leveraged position, so it will post them to its prime broker.","do":[{"icon":"a","name":"piggy","x":20,"y":14,"s":0.75,"tone":"blue","label":"A: hedge fund","sym":"$","lsize":16},{"chip":"sec","x":58,"y":140,"text":"$10m bonds","tone":"purple"}]},{"cap":"A posts the $10 million to its prime broker, B. A now has a claim on B: give the securities back when I close my position.","do":[{"icon":"b","name":"bank","x":175,"y":14,"s":0.75,"tone":"green","label":"B: prime broker","lsize":16},{"move":"sec","x":213,"y":140,"ms":1100},{"arrow":["a","b"],"label":"claim","tone":"blue"}]},{"cap":"B is allowed to rehypothecate. It re-pledges the same securities to a funder, C, to raise its own cash in repo. Now B has a claim on C.","do":[{"icon":"c","name":"bank","x":330,"y":14,"s":0.75,"tone":"amber","label":"C: funder","lsize":16},{"move":"sec","x":368,"y":140,"ms":1100},{"arrow":["b","c"],"label":"claim","tone":"green"}]},{"cap":"C, if its own agreement allows, re-pledges them again to D. Still one set of securities. Three promises are now stacked on top of it.","do":[{"icon":"d","name":"bank","x":485,"y":14,"s":0.75,"tone":"red","label":"D: next funder","lsize":16},{"move":"sec","x":523,"y":140,"ms":1100},{"arrow":["c","d"],"label":"claim","tone":"amber"}]},{"cap":"Count them. The securities that exist: $10 million. The claims resting on them: A on B, B on C, C on D, $30 million in all. A re-use multiplier of about 3.","do":[{"box":"real","x":20,"y":178,"w":270,"h":70,"text":"securities that exist","tone":"green","sub":"$10m","size":19},{"box":"claims","x":310,"y":178,"w":270,"h":70,"text":"claims resting on them","tone":"amber","sub":"$0m","size":19},{"count":"claims","from":0,"to":30,"dp":0,"pre":"$","suf":"m","ms":1400}]},{"cap":"Now C fails. It cannot hand the securities back up to B, and the pledge D was relying on is in doubt. One break, felt in both directions at once.","do":[{"cross":"c"},{"pulse":"b"},{"pulse":"d"},{"note":"both","x":300,"y":276,"text":"← B is owed by C  ·  D relied on C's pledge →","size":18,"anchor":"middle","tone":"red"}]},{"cap":"How much may a broker re-use? In the US, SEC Rule 15c3-3 caps it at about 140% of what the customer owes the broker. If A owed B $5 million (illustrative), B could re-use about $7 million, not all $10 million. The UK rules that applied to Lehman's London arm in 2008 had no equivalent cap.","do":[{"chart":"cap","x":10,"y":300,"w":580,"h":210,"title":"US cap on re-use, $m (illustrative debit)","xd":[0.4,3.6],"yd":[0,11.5],"yt":[[0,"0"],[5,"5"],[10,"10"]],"xt":[[1,"posted"],[2,"owed by A"],[3,"US cap 140%"]],"pl":40},{"bars":"capb","chart":"cap","data":[[1,10,"$10m","purple"],[2,5,"$5m","blue"],[3,7,"$7m","green"]],"bw":64,"ms":1100}]},{"cap":"2008: Lehman Brothers International (Europe) went into UK administration. Client assets it had re-used under the looser UK rules were tied up, and clients who thought their collateral was simply held found themselves waiting as creditors.","do":[{"note":"lbie","x":300,"y":534,"text":"Lehman, 2008: \"held\" collateral turned out to be \"used\"","size":18,"anchor":"middle","tone":"amber"}]},{"cap":"2011: MF Global, a large US futures broker with a euro-bond book of about $6.3 billion, ran short of cash and failed on 31 October. Customer accounts that should have been segregated came up about $1.6 billion short.","do":[{"chart":"mf","x":10,"y":556,"w":580,"h":150,"title":"MF Global, $ billion","xd":[0.4,2.6],"yd":[0,7.5],"yt":[[0,"0"],[3,"3"],[6,"6"]],"xt":[[1,"euro-bond book"],[2,"customer shortfall"]],"pl":40},{"bars":"mfb","chart":"mf","data":[[1,6.3,"≈ $6.3bn","amber"],[2,1.6,"≈ $1.6bn","red"]],"bw":90,"ms":1100}]},{"cap":"The lesson of both: \"my collateral\" is a legal claim, not a thing in a drawer. Know what your broker may do with it, cap the re-use, and spread collateral across firms.","do":[{"note":"end","x":300,"y":724,"text":"a claim on paper, not a thing in a drawer","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:rehypothecation_collateral_chains:END -->
+    </section>
+    <!-- WB:rehypothecation_collateral_chains-deck:END -->
+
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Lehman Brothers, 2008 — the case that made this concrete</h2>
       <div class="sl-card">
@@ -172,7 +185,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">The jurisdictional gap that made it worse</h2>
       <p class="sl-sub">A global prime brokerage relationship could be subject to very different rehypothecation limits, depending purely on which legal entity and jurisdiction it was booked through.</p>
@@ -193,7 +206,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">How much could a broker legally re-use?</h2>
       <p class="sl-sub">Given a client's originally posted collateral and a jurisdiction or agreement's maximum-rehypothecation percentage of that collateral, compute the legal re-use limit.</p>
@@ -215,7 +228,7 @@
       <p class="sl-p">SEC Rule 15c3-3 uses a related but distinct formula: it caps US rehypothecation at roughly 140% of a customer's <em>debit balance</em> — what the customer owes the broker — not a percentage of the posted collateral itself, which is why that figure can legitimately exceed 100%. The calculator above models a simpler shape a negotiated cap can take: a straight percentage of the collateral posted. Either way, the UK-law practice applied to LBIE had no directly comparable regulatory percentage at all — a different kind of gap than just "a bigger number": one regime bounds the practice with a formula, the other relied on contractual terms with no equivalent regulatory ceiling.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">A collateral chain is a real exposure network</h2>
       <p class="sl-sub">This is the direct link back to the earlier lesson on systemic risk and contagion — not an analogy stretched to fit.</p>
@@ -232,7 +245,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">How practitioners actually respond to this risk</h2>
       <div class="sl-icard-grid">
@@ -244,7 +257,7 @@
       <div class="sl-quote">None of this treats rehypothecation itself as illegitimate — it's a widespread, legal, commercially ordinary practice within whatever limits apply. The risk sophisticated clients and regulators actually manage is in the scale, the jurisdictional gaps, and the hidden interconnectedness a long chain can create — not in the existence of the practice.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">What people get wrong about this</h2>
       <div class="sl-compare">
@@ -273,7 +286,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">MF Global, October 2011: the segregated money wasn't there</h2>
       <div class="sl-callout amber">
@@ -293,7 +306,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk can say<!-- DESK:END --></h2>
       <!-- DESK:START -->
@@ -308,7 +321,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -359,7 +372,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -517,5 +530,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

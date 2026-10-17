@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Data Pipeline: Raw Feeds to Trading-Ready Data — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -108,7 +109,19 @@
       </div>
     </section>
 
+    <!-- WB:data_pipeline_raw_to_trading_ready-deck:START -->
     <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Raw feed to trading-ready, drawn step by step</h2>
+      <!-- WB:data_pipeline_raw_to_trading_ready:START -->
+      <div class="wb" data-title="Raw feed to trading-ready, drawn step by step">
+        <script type="application/json">{"w":600,"h":640,"intro":"A raw feed on its way to a backtest: six stations, one very bad afternoon, and the choice of clock that builds the bars. Press play, or step through.","steps":[{"cap":"Raw data arrives from the exchange or vendor: trade prints and quotes, exactly as transmitted. 6 May 2010, mid-afternoon: one of them says Accenture traded at one cent.","do":[{"icon":"feed","name":"megaphone","x":20,"y":6,"s":0.75,"tone":"blue","label":"exchange feed","lsize":16},{"chip":"t1","x":120,"y":30,"text":"ACN $0.01","tone":"red"},{"chip":"t2","x":120,"y":64,"text":"EUR/USD 1.27","tone":"blue"}]},{"cap":"Station 1, ingestion: capture every message as it arrived, unopened. The one-cent print is stored too. Fixing it now would destroy the only record of what the feed actually said.","do":[{"box":"ing","x":20,"y":120,"w":150,"h":64,"text":"1 · ingest","tone":"blue","size":19},{"move":"t1","x":110,"y":206,"ms":1100},{"move":"t2","x":200,"y":30,"ms":600}]},{"cap":"Station 2, validation: schema checks, gap checks, sanity bounds. The one-cent print fails the sanity bound. Validation flags it; it does not fix it.","do":[{"box":"val","x":225,"y":120,"w":150,"h":64,"text":"2 · validate","tone":"purple","size":19},{"arrow":["ing","val"]},{"icon":"flag","name":"warn","x":224,"y":190,"s":0.32,"tone":"amber"}]},{"cap":"Station 3, cleaning. That afternoon the fix needed information from after the close: the venues cancelled over 20,000 trades, in more than 300 securities, priced more than 60% from 2:40 p.m. Applied as a separate, dated step, so both versions of the day survive.","do":[{"box":"cln","x":430,"y":120,"w":150,"h":64,"text":"3 · clean","tone":"red","size":19},{"arrow":["val","cln"]},{"hide":"t1"},{"chip":"t1c","x":110,"y":206,"text":"ACN $0.01: cancelled","tone":"red"}]},{"cap":"Station 4, normalization: adjust for splits, dividends and futures rolls, so a fake jump in the raw price is not read as a real return.","do":[{"box":"nrm","x":430,"y":240,"w":150,"h":64,"text":"4 · normalize","tone":"amber","size":19},{"arrow":["cln","nrm"]}]},{"cap":"Station 5, storage: one versioned copy everyone reads, not five teams each recomputing \"the adjusted close\" and slowly drifting apart.","do":[{"box":"sto","x":225,"y":240,"w":150,"h":64,"text":"5 · store","tone":"green","size":19},{"arrow":["nrm","sto"]}]},{"cap":"Station 6, point-in-time serving: asked about a past date, hand out only what was knowable then. \"Clean as of the close\" and \"clean as of next morning\" are different datasets for 6 May.","do":[{"box":"srv","x":20,"y":240,"w":150,"h":64,"text":"6 · serve as of X","tone":"blue","size":18},{"arrow":["sto","srv"]},{"icon":"clk","name":"clock","x":70,"y":304,"s":0.3,"tone":"blue"}]},{"cap":"One more choice hides in ingestion: the clock that groups ticks into bars. The lesson's hour: a 15-minute lull, a 5-minute release burst, a 40-minute quiet stretch. One-minute time bars give them 15, 5 and 40 bars.","do":[{"chart":"bc","x":10,"y":350,"w":580,"h":270,"title":"Bars per stretch of the hour","xd":[0.4,3.6],"yd":[0,76],"yt":[[20,"20"],[40,"40"],[60,"60"]],"xt":[[1,"lull 15 min"],[2,"release 5 min"],[3,"quiet 40 min"]],"pl":46,"pr":14},{"bars":"tb","chart":"bc","data":[[0.82,15,"15","blue"],[1.82,5,"5","blue"],[2.82,40,"40","blue"]],"bw":34,"ms":1000}]},{"cap":"But about 4,000 of the hour's 4,500 ticks, 89%, fall in the release burst. A volume clock closes a bar every 75 ticks or so: 2 to 3 bars in the lull, 50 to 55 in the burst, about 4 after.","do":[{"bars":"vb","chart":"bc","data":[[1.18,2.5,"2–3","green"],[2.18,53,"50–55","green"],[3.18,4,"≈4","green"]],"bw":34,"ms":1000},{"note":"lt","chart":"bc","at":[0.5,71],"text":"blue = time bars · green = volume bars","tone":null,"size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"Time bars oversample the quiet and undersample the burst. Volume and dollar bars keep each bar to a similar slice of activity, so their returns sit closer to the well-behaved shape most models assume.","do":[{"pulse":"vb"}]},{"cap":"Only data that has passed all six stations, on a clock chosen on purpose, is fit to build a feature or a backtest on.","do":[{"pulse":"ing"},{"pulse":"val"},{"pulse":"cln"},{"pulse":"nrm"},{"pulse":"sto"},{"pulse":"srv"}]}]}</script>
+      </div>
+      <!-- WB:data_pipeline_raw_to_trading_ready:END -->
+    </section>
+    <!-- WB:data_pipeline_raw_to_trading_ready-deck:END -->
+
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Before any of that: how do ticks become bars?</h2>
       <p class="sl-sub">A "bar" is one open/high/low/close snapshot. The question is what triggers the shutter to click.</p>
@@ -121,7 +134,7 @@
       <p class="sl-p">These four standard sampling clocks come from Marcos López de Prado's <em>Advances in Financial Machine Learning</em> (Wiley, 2018), Chapter 2. Bar construction is a choice made at ingestion — though the bars themselves are best built from ticks that have already been validated and cleaned — and it's the choice this deck spends the rest of its time on.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Same 14 ticks, three different sampling clocks</h2>
       <p class="sl-sub">A quiet 5 minutes, then a short burst of activity, then quiet again — a realistic 10-minute slice of an FX pair. Watch where each clock draws its bar boundaries.</p>
@@ -234,7 +247,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The default is the weak one</h2>
       <p class="sl-p">Trading activity is not smooth across a session — it clusters around the open, the close, and news releases, and thins out in between. A fixed wall-clock interval doesn't know this: it samples the same way regardless. A time bar during a quiet stretch is built from a handful of ticks (oversampling a period with little genuine information turnover), while a time bar during a burst is built from a huge pile of ticks compressed into the same fixed window (undersampling a period where a great deal actually happened).</p>
@@ -245,7 +258,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Turn up the intensity</h2>
       <p class="sl-sub">Same fixed 5-minute window. Drag the slider to make trading activity inside it burstier, and watch what each clock does.</p>
@@ -276,7 +289,7 @@
       <p class="sl-p">The time-bar count never moves — it's a property of the clock, not the market. The volume-bar count tracks the slider directly, because it's a property of trading activity itself. This is the entire oversampling/undersampling effect from the last slide, made draggable.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">One hour, one news release, two very different bar counts</h2>
       <p class="sl-sub">A liquid FX pair, one trading hour with a scheduled data release 20 minutes in: ~200 ticks in the 15 minutes before, a burst of ~4,000 ticks in the 5 minutes around it, ~300 ticks in the remaining 40 minutes.</p>
@@ -293,7 +306,7 @@
       <div class="sl-quote">The time-bar version has quietly under-represented the single most informative five minutes of the hour, and over-represented the quiet stretches either side of it — the same oversampling/undersampling pattern from Section 6, made concrete with actual tick counts.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Try it — how many bars would your data produce?</h2>
       <p class="sl-sub">Change the numbers below. Left: a volume-bar day. Right: a fixed time-bar day, for comparison.</p>
@@ -327,7 +340,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this quietly breaks down in practice</h2>
       <div class="sl-icard-grid">
@@ -338,7 +351,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11 · It actually happened</div>
       <h2 class="sl-h2">6 May 2010: the Flash Crash</h2>
       <div class="sl-callout amber">
@@ -358,7 +371,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <!-- DESK:START -->
       <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
@@ -375,7 +388,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -426,7 +439,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -594,5 +607,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

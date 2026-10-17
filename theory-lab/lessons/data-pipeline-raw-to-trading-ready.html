@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Data Pipeline: Raw Feeds to Trading-Ready Data — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,179 @@
       <li><strong>Real-world episode:</strong> in the 6 May 2010 Flash Crash, firms' own data-integrity checks paused their trading, Accenture printed at one cent, and after the close the venues cancelled over 20,000 trades more than 60% from the 2:40 p.m. price. The "raw" record changed after capture.<!-- DESK:START --> Whether this desk's historical bars match what its live feed showed is untested.<!-- DESK:END --></li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 235" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One trading hour from the lesson's worked example, split into a 15-minute lull with about 200 ticks, a 5-minute release burst with about 4,000 ticks, and a 40-minute quiet stretch with about 300 ticks. One-minute time bars give those stretches 15, 5 and 40 bars: evenly spaced, whatever happens. Volume bars sized for about 60 bars an hour give them 2 to 3, 50 to 55 and about 4 bars, crowding into the burst. The release window holds 89% of the ticks but only 5 of the 60 time bars.">
+      <rect class="tlp-box blue" x="110" y="69" width="117.5" height="3"/>
+      <rect class="tlp-amber" x="227.5" y="22" width="39.2" height="50" opacity=".85"/>
+      <rect class="tlp-box blue" x="266.7" y="70" width="313.3" height="2"/>
+      <line class="tlp-line" x1="110" y1="72" x2="580" y2="72"/>
+      <line class="tlp-line blue" x1="110.0" y1="92" x2="110.0" y2="118"/>
+      <line class="tlp-line blue" x1="117.8" y1="92" x2="117.8" y2="118"/>
+      <line class="tlp-line blue" x1="125.7" y1="92" x2="125.7" y2="118"/>
+      <line class="tlp-line blue" x1="133.5" y1="92" x2="133.5" y2="118"/>
+      <line class="tlp-line blue" x1="141.3" y1="92" x2="141.3" y2="118"/>
+      <line class="tlp-line blue" x1="149.2" y1="92" x2="149.2" y2="118"/>
+      <line class="tlp-line blue" x1="157.0" y1="92" x2="157.0" y2="118"/>
+      <line class="tlp-line blue" x1="164.8" y1="92" x2="164.8" y2="118"/>
+      <line class="tlp-line blue" x1="172.7" y1="92" x2="172.7" y2="118"/>
+      <line class="tlp-line blue" x1="180.5" y1="92" x2="180.5" y2="118"/>
+      <line class="tlp-line blue" x1="188.3" y1="92" x2="188.3" y2="118"/>
+      <line class="tlp-line blue" x1="196.2" y1="92" x2="196.2" y2="118"/>
+      <line class="tlp-line blue" x1="204.0" y1="92" x2="204.0" y2="118"/>
+      <line class="tlp-line blue" x1="211.8" y1="92" x2="211.8" y2="118"/>
+      <line class="tlp-line blue" x1="219.7" y1="92" x2="219.7" y2="118"/>
+      <line class="tlp-line blue" x1="227.5" y1="92" x2="227.5" y2="118"/>
+      <line class="tlp-line blue" x1="235.3" y1="92" x2="235.3" y2="118"/>
+      <line class="tlp-line blue" x1="243.2" y1="92" x2="243.2" y2="118"/>
+      <line class="tlp-line blue" x1="251.0" y1="92" x2="251.0" y2="118"/>
+      <line class="tlp-line blue" x1="258.8" y1="92" x2="258.8" y2="118"/>
+      <line class="tlp-line blue" x1="266.7" y1="92" x2="266.7" y2="118"/>
+      <line class="tlp-line blue" x1="274.5" y1="92" x2="274.5" y2="118"/>
+      <line class="tlp-line blue" x1="282.3" y1="92" x2="282.3" y2="118"/>
+      <line class="tlp-line blue" x1="290.2" y1="92" x2="290.2" y2="118"/>
+      <line class="tlp-line blue" x1="298.0" y1="92" x2="298.0" y2="118"/>
+      <line class="tlp-line blue" x1="305.8" y1="92" x2="305.8" y2="118"/>
+      <line class="tlp-line blue" x1="313.7" y1="92" x2="313.7" y2="118"/>
+      <line class="tlp-line blue" x1="321.5" y1="92" x2="321.5" y2="118"/>
+      <line class="tlp-line blue" x1="329.3" y1="92" x2="329.3" y2="118"/>
+      <line class="tlp-line blue" x1="337.2" y1="92" x2="337.2" y2="118"/>
+      <line class="tlp-line blue" x1="345.0" y1="92" x2="345.0" y2="118"/>
+      <line class="tlp-line blue" x1="352.8" y1="92" x2="352.8" y2="118"/>
+      <line class="tlp-line blue" x1="360.7" y1="92" x2="360.7" y2="118"/>
+      <line class="tlp-line blue" x1="368.5" y1="92" x2="368.5" y2="118"/>
+      <line class="tlp-line blue" x1="376.3" y1="92" x2="376.3" y2="118"/>
+      <line class="tlp-line blue" x1="384.2" y1="92" x2="384.2" y2="118"/>
+      <line class="tlp-line blue" x1="392.0" y1="92" x2="392.0" y2="118"/>
+      <line class="tlp-line blue" x1="399.8" y1="92" x2="399.8" y2="118"/>
+      <line class="tlp-line blue" x1="407.7" y1="92" x2="407.7" y2="118"/>
+      <line class="tlp-line blue" x1="415.5" y1="92" x2="415.5" y2="118"/>
+      <line class="tlp-line blue" x1="423.3" y1="92" x2="423.3" y2="118"/>
+      <line class="tlp-line blue" x1="431.2" y1="92" x2="431.2" y2="118"/>
+      <line class="tlp-line blue" x1="439.0" y1="92" x2="439.0" y2="118"/>
+      <line class="tlp-line blue" x1="446.8" y1="92" x2="446.8" y2="118"/>
+      <line class="tlp-line blue" x1="454.7" y1="92" x2="454.7" y2="118"/>
+      <line class="tlp-line blue" x1="462.5" y1="92" x2="462.5" y2="118"/>
+      <line class="tlp-line blue" x1="470.3" y1="92" x2="470.3" y2="118"/>
+      <line class="tlp-line blue" x1="478.2" y1="92" x2="478.2" y2="118"/>
+      <line class="tlp-line blue" x1="486.0" y1="92" x2="486.0" y2="118"/>
+      <line class="tlp-line blue" x1="493.8" y1="92" x2="493.8" y2="118"/>
+      <line class="tlp-line blue" x1="501.7" y1="92" x2="501.7" y2="118"/>
+      <line class="tlp-line blue" x1="509.5" y1="92" x2="509.5" y2="118"/>
+      <line class="tlp-line blue" x1="517.3" y1="92" x2="517.3" y2="118"/>
+      <line class="tlp-line blue" x1="525.2" y1="92" x2="525.2" y2="118"/>
+      <line class="tlp-line blue" x1="533.0" y1="92" x2="533.0" y2="118"/>
+      <line class="tlp-line blue" x1="540.8" y1="92" x2="540.8" y2="118"/>
+      <line class="tlp-line blue" x1="548.7" y1="92" x2="548.7" y2="118"/>
+      <line class="tlp-line blue" x1="556.5" y1="92" x2="556.5" y2="118"/>
+      <line class="tlp-line blue" x1="564.3" y1="92" x2="564.3" y2="118"/>
+      <line class="tlp-line blue" x1="572.2" y1="92" x2="572.2" y2="118"/>
+      <line class="tlp-line blue" x1="580.0" y1="92" x2="580.0" y2="118"/>
+      <line class="tlp-line green" x1="110.0" y1="154" x2="110.0" y2="180"/>
+      <line class="tlp-line green" x1="154.1" y1="154" x2="154.1" y2="180"/>
+      <line class="tlp-line green" x1="198.1" y1="154" x2="198.1" y2="180"/>
+      <line class="tlp-line green" x1="227.7" y1="154" x2="227.7" y2="180"/>
+      <line class="tlp-line green" x1="228.5" y1="154" x2="228.5" y2="180"/>
+      <line class="tlp-line green" x1="229.2" y1="154" x2="229.2" y2="180"/>
+      <line class="tlp-line green" x1="229.9" y1="154" x2="229.9" y2="180"/>
+      <line class="tlp-line green" x1="230.7" y1="154" x2="230.7" y2="180"/>
+      <line class="tlp-line green" x1="231.4" y1="154" x2="231.4" y2="180"/>
+      <line class="tlp-line green" x1="232.2" y1="154" x2="232.2" y2="180"/>
+      <line class="tlp-line green" x1="232.9" y1="154" x2="232.9" y2="180"/>
+      <line class="tlp-line green" x1="233.6" y1="154" x2="233.6" y2="180"/>
+      <line class="tlp-line green" x1="234.4" y1="154" x2="234.4" y2="180"/>
+      <line class="tlp-line green" x1="235.1" y1="154" x2="235.1" y2="180"/>
+      <line class="tlp-line green" x1="235.8" y1="154" x2="235.8" y2="180"/>
+      <line class="tlp-line green" x1="236.6" y1="154" x2="236.6" y2="180"/>
+      <line class="tlp-line green" x1="237.3" y1="154" x2="237.3" y2="180"/>
+      <line class="tlp-line green" x1="238.0" y1="154" x2="238.0" y2="180"/>
+      <line class="tlp-line green" x1="238.8" y1="154" x2="238.8" y2="180"/>
+      <line class="tlp-line green" x1="239.5" y1="154" x2="239.5" y2="180"/>
+      <line class="tlp-line green" x1="240.2" y1="154" x2="240.2" y2="180"/>
+      <line class="tlp-line green" x1="241.0" y1="154" x2="241.0" y2="180"/>
+      <line class="tlp-line green" x1="241.7" y1="154" x2="241.7" y2="180"/>
+      <line class="tlp-line green" x1="242.4" y1="154" x2="242.4" y2="180"/>
+      <line class="tlp-line green" x1="243.2" y1="154" x2="243.2" y2="180"/>
+      <line class="tlp-line green" x1="243.9" y1="154" x2="243.9" y2="180"/>
+      <line class="tlp-line green" x1="244.6" y1="154" x2="244.6" y2="180"/>
+      <line class="tlp-line green" x1="245.4" y1="154" x2="245.4" y2="180"/>
+      <line class="tlp-line green" x1="246.1" y1="154" x2="246.1" y2="180"/>
+      <line class="tlp-line green" x1="246.8" y1="154" x2="246.8" y2="180"/>
+      <line class="tlp-line green" x1="247.6" y1="154" x2="247.6" y2="180"/>
+      <line class="tlp-line green" x1="248.3" y1="154" x2="248.3" y2="180"/>
+      <line class="tlp-line green" x1="249.0" y1="154" x2="249.0" y2="180"/>
+      <line class="tlp-line green" x1="249.8" y1="154" x2="249.8" y2="180"/>
+      <line class="tlp-line green" x1="250.5" y1="154" x2="250.5" y2="180"/>
+      <line class="tlp-line green" x1="251.2" y1="154" x2="251.2" y2="180"/>
+      <line class="tlp-line green" x1="252.0" y1="154" x2="252.0" y2="180"/>
+      <line class="tlp-line green" x1="252.7" y1="154" x2="252.7" y2="180"/>
+      <line class="tlp-line green" x1="253.4" y1="154" x2="253.4" y2="180"/>
+      <line class="tlp-line green" x1="254.2" y1="154" x2="254.2" y2="180"/>
+      <line class="tlp-line green" x1="254.9" y1="154" x2="254.9" y2="180"/>
+      <line class="tlp-line green" x1="255.7" y1="154" x2="255.7" y2="180"/>
+      <line class="tlp-line green" x1="256.4" y1="154" x2="256.4" y2="180"/>
+      <line class="tlp-line green" x1="257.1" y1="154" x2="257.1" y2="180"/>
+      <line class="tlp-line green" x1="257.9" y1="154" x2="257.9" y2="180"/>
+      <line class="tlp-line green" x1="258.6" y1="154" x2="258.6" y2="180"/>
+      <line class="tlp-line green" x1="259.3" y1="154" x2="259.3" y2="180"/>
+      <line class="tlp-line green" x1="260.1" y1="154" x2="260.1" y2="180"/>
+      <line class="tlp-line green" x1="260.8" y1="154" x2="260.8" y2="180"/>
+      <line class="tlp-line green" x1="261.5" y1="154" x2="261.5" y2="180"/>
+      <line class="tlp-line green" x1="262.3" y1="154" x2="262.3" y2="180"/>
+      <line class="tlp-line green" x1="263.0" y1="154" x2="263.0" y2="180"/>
+      <line class="tlp-line green" x1="263.7" y1="154" x2="263.7" y2="180"/>
+      <line class="tlp-line green" x1="264.5" y1="154" x2="264.5" y2="180"/>
+      <line class="tlp-line green" x1="265.2" y1="154" x2="265.2" y2="180"/>
+      <line class="tlp-line green" x1="265.9" y1="154" x2="265.9" y2="180"/>
+      <line class="tlp-line green" x1="266.7" y1="154" x2="266.7" y2="180"/>
+      <line class="tlp-line green" x1="345.0" y1="154" x2="345.0" y2="180"/>
+      <line class="tlp-line green" x1="423.3" y1="154" x2="423.3" y2="180"/>
+      <line class="tlp-line green" x1="501.7" y1="154" x2="501.7" y2="180"/>
+      <line class="tlp-line green" x1="580.0" y1="154" x2="580.0" y2="180"/>
+      <text class="tlp-text" x="10" y="62" font-size="13" font-weight="700">ticks / min</text>
+      <text class="tlp-blue" x="10" y="110" font-size="13" font-weight="700">time bars</text>
+      <text class="tlp-text3" x="10" y="126" font-size="12">every minute</text>
+      <text class="tlp-green" x="10" y="172" font-size="13" font-weight="700">volume bars</text>
+      <text class="tlp-text3" x="10" y="188" font-size="12">every 75 ticks</text>
+      <text class="tlp-text3" x="168.8" y="62" text-anchor="middle" font-size="12">lull ≈ 13</text>
+      <text class="tlp-amber" x="276" y="36" font-size="13" font-weight="700">release burst ≈ 800 ticks/min</text>
+      <text class="tlp-text3" x="423.3" y="62" text-anchor="middle" font-size="12">quiet ≈ 8</text>
+      <text class="tlp-blue" x="168.8" y="136" text-anchor="middle" font-size="13" font-weight="700">15</text>
+      <text class="tlp-blue" x="247.1" y="136" text-anchor="middle" font-size="13" font-weight="700">5</text>
+      <text class="tlp-blue" x="423.3" y="136" text-anchor="middle" font-size="13" font-weight="700">40</text>
+      <text class="tlp-green" x="168.8" y="198" text-anchor="middle" font-size="13" font-weight="700">2–3</text>
+      <text class="tlp-green" x="247.1" y="198" text-anchor="middle" font-size="13" font-weight="700">50–55</text>
+      <text class="tlp-green" x="423.3" y="198" text-anchor="middle" font-size="13" font-weight="700">≈ 4</text>
+      <text class="tlp-text2" x="345" y="224" text-anchor="middle" font-size="13">the release's 5 minutes: 89% of the ticks, 5 of 60 time bars</text>
+    </svg>
+    <figcaption>Same hour, same ticks, two clocks. The time clock spaces its bars evenly and gives the most informative five minutes only 5 of 60 bars. The activity clock speeds up when trading does, so each bar carries a similar amount of real activity.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I download prices from a vendor and backtest on them. What's wrong with that?</p>
+      <p data-who="Quant">Nothing, if six things already happened in between. A raw feed is groceries off the truck, not a plated meal.</p>
+      <p data-who="Trader">Six things?</p>
+      <p data-who="Quant">Capture the feed exactly as it arrived. Check it: missing fields, gaps, impossible prices. Clean what the checks flagged. Adjust for splits, dividends and futures rolls. Store one versioned copy everyone uses. And finally, when someone asks about a past date, only hand out what was knowable on that date.</p>
+      <p data-who="Trader">Why not fix bad ticks the moment they arrive?</p>
+      <p data-who="Quant">Because then you lose the original record. You can never check your fix, or show what the feed really said. Capture first, fix later, in a separate step you can audit.</p>
+      <p data-who="Trader">Where do bars come in?</p>
+      <p data-who="Quant">That is a choice hiding inside capture. Most people close a bar every minute. That is a time clock. You can also close a bar every so many trades, or every so much volume, or every so many dollars traded.</p>
+      <p data-who="Trader">Does it matter which?</p>
+      <p data-who="Quant">Take an hour with a data release in it. About four thousand of the hour's four and a half thousand ticks land in five minutes around the release. That is eighty-nine percent of the activity. One-minute bars give those five minutes just five bars out of sixty. A volume clock tuned to sixty bars an hour gives them about fifty.</p>
+      <p data-who="Trader">So time bars blur the busiest part.</p>
+      <p data-who="Quant">And over-sample the quiet parts. Returns from volume or dollar bars tend to sit closer to the well-behaved shape most statistical tools assume. Time bars aren't wrong, they're just the weaker default.</p>
+      <p data-who="Trader">Has the raw record itself ever changed?</p>
+      <p data-who="Quant">The Flash Crash, sixth of May, twenty ten. The Dow fell close to a thousand points in minutes. Accenture traded at one cent. After the close, the venues cancelled over twenty thousand trades that were more than sixty percent away from the twenty to three price. So there are two versions of that afternoon: the raw tape and the corrected one.</p>
+      <p data-who="Trader">And my dataset holds which one?</p>
+      <p data-who="Quant">That's the point. It depends on when it was built and how. A pipeline that kept the raw prints and applied the cancellations as a dated step can tell you. One that didn't, can't.</p>
+      <p data-who="Trader">One line to remember?</p>
+      <p data-who="Quant">Capture everything as it arrived, correct it in separate steps you can audit, and choose your bar clock on purpose.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -232,8 +406,39 @@
     </div>
   </div>
 
+  <!-- WB:data_pipeline_raw_to_trading_ready:START -->
+  <div class="wb" id="wb-data_pipeline_raw_to_trading_ready" data-title="Raw feed to trading-ready, drawn step by step">
+    <script type="application/json">{"w":600,"h":640,"intro":"A raw feed on its way to a backtest: six stations, one very bad afternoon, and the choice of clock that builds the bars. Press play, or step through.","steps":[{"cap":"Raw data arrives from the exchange or vendor: trade prints and quotes, exactly as transmitted. 6 May 2010, mid-afternoon: one of them says Accenture traded at one cent.","do":[{"icon":"feed","name":"megaphone","x":20,"y":6,"s":0.75,"tone":"blue","label":"exchange feed","lsize":16},{"chip":"t1","x":120,"y":30,"text":"ACN $0.01","tone":"red"},{"chip":"t2","x":120,"y":64,"text":"EUR/USD 1.27","tone":"blue"}]},{"cap":"Station 1, ingestion: capture every message as it arrived, unopened. The one-cent print is stored too. Fixing it now would destroy the only record of what the feed actually said.","do":[{"box":"ing","x":20,"y":120,"w":150,"h":64,"text":"1 · ingest","tone":"blue","size":19},{"move":"t1","x":110,"y":206,"ms":1100},{"move":"t2","x":200,"y":30,"ms":600}]},{"cap":"Station 2, validation: schema checks, gap checks, sanity bounds. The one-cent print fails the sanity bound. Validation flags it; it does not fix it.","do":[{"box":"val","x":225,"y":120,"w":150,"h":64,"text":"2 · validate","tone":"purple","size":19},{"arrow":["ing","val"]},{"icon":"flag","name":"warn","x":224,"y":190,"s":0.32,"tone":"amber"}]},{"cap":"Station 3, cleaning. That afternoon the fix needed information from after the close: the venues cancelled over 20,000 trades, in more than 300 securities, priced more than 60% from 2:40 p.m. Applied as a separate, dated step, so both versions of the day survive.","do":[{"box":"cln","x":430,"y":120,"w":150,"h":64,"text":"3 · clean","tone":"red","size":19},{"arrow":["val","cln"]},{"hide":"t1"},{"chip":"t1c","x":110,"y":206,"text":"ACN $0.01: cancelled","tone":"red"}]},{"cap":"Station 4, normalization: adjust for splits, dividends and futures rolls, so a fake jump in the raw price is not read as a real return.","do":[{"box":"nrm","x":430,"y":240,"w":150,"h":64,"text":"4 · normalize","tone":"amber","size":19},{"arrow":["cln","nrm"]}]},{"cap":"Station 5, storage: one versioned copy everyone reads, not five teams each recomputing \"the adjusted close\" and slowly drifting apart.","do":[{"box":"sto","x":225,"y":240,"w":150,"h":64,"text":"5 · store","tone":"green","size":19},{"arrow":["nrm","sto"]}]},{"cap":"Station 6, point-in-time serving: asked about a past date, hand out only what was knowable then. \"Clean as of the close\" and \"clean as of next morning\" are different datasets for 6 May.","do":[{"box":"srv","x":20,"y":240,"w":150,"h":64,"text":"6 · serve as of X","tone":"blue","size":18},{"arrow":["sto","srv"]},{"icon":"clk","name":"clock","x":70,"y":304,"s":0.3,"tone":"blue"}]},{"cap":"One more choice hides in ingestion: the clock that groups ticks into bars. The lesson's hour: a 15-minute lull, a 5-minute release burst, a 40-minute quiet stretch. One-minute time bars give them 15, 5 and 40 bars.","do":[{"chart":"bc","x":10,"y":350,"w":580,"h":270,"title":"Bars per stretch of the hour","xd":[0.4,3.6],"yd":[0,76],"yt":[[20,"20"],[40,"40"],[60,"60"]],"xt":[[1,"lull 15 min"],[2,"release 5 min"],[3,"quiet 40 min"]],"pl":46,"pr":14},{"bars":"tb","chart":"bc","data":[[0.82,15,"15","blue"],[1.82,5,"5","blue"],[2.82,40,"40","blue"]],"bw":34,"ms":1000}]},{"cap":"But about 4,000 of the hour's 4,500 ticks, 89%, fall in the release burst. A volume clock closes a bar every 75 ticks or so: 2 to 3 bars in the lull, 50 to 55 in the burst, about 4 after.","do":[{"bars":"vb","chart":"bc","data":[[1.18,2.5,"2–3","green"],[2.18,53,"50–55","green"],[3.18,4,"≈4","green"]],"bw":34,"ms":1000},{"note":"lt","chart":"bc","at":[0.5,71],"text":"blue = time bars · green = volume bars","tone":null,"size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"Time bars oversample the quiet and undersample the burst. Volume and dollar bars keep each bar to a similar slice of activity, so their returns sit closer to the well-behaved shape most models assume.","do":[{"pulse":"vb"}]},{"cap":"Only data that has passed all six stations, on a clock chosen on purpose, is fit to build a feature or a backtest on.","do":[{"pulse":"ing"},{"pulse":"val"},{"pulse":"cln"},{"pulse":"nrm"},{"pulse":"sto"},{"pulse":"srv"}]}]}</script>
+  </div>
+  <!-- WB:data_pipeline_raw_to_trading_ready:END -->
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Bar construction: how raw ticks become the bars a strategy sees</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the rule build</div>
+    <div class="tl-eqbuild-title">How much activity one bar carries, under each clock</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{ticks per bar} = \color{#fbbf24}{\frac{\text{ticks in a window}}{\text{bars in that window}}} \]</div>
+      <p>The question that separates the clocks: how much real trading sits inside one bar? Use the worked example below: one hour, about 4,500 ticks.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{release, 1-min bars:}\quad \frac{4{,}000}{5} = \color{#fbbf24}{800} \]</div>
+      <p>The five minutes around the release hold about 4,000 ticks, and a one-minute clock gives them 5 bars. Each bar is stuffed with about 800 ticks.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{quiet stretch, 1-min bars:}\quad \frac{300}{40} = \color{#fbbf24}{7.5} \]</div>
+      <p>The last 40 minutes hold about 300 ticks across 40 bars. Same clock, about a hundred times less activity per bar.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{volume clock:}\quad \frac{4{,}500 \text{ ticks}}{60 \text{ bars}} = \color{#fbbf24}{75 \text{ ticks per bar}} \]</div>
+      <p>Now fix the activity per bar instead of the time. Sized to give about 60 bars an hour, each bar closes after about 75 ticks, assuming volume roughly tracks tick count.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\text{release, volume bars:}\quad \frac{4{,}000}{75} \approx 53 \text{ bars}} \]</div>
+      <p>The burst now gets about 53 of the hour's bars, in line with the worked example's 50 to 55. The clock speeds up when trading does, so every bar carries a comparable slice of activity.</p>
+    </div>
+  </div>
+
   <p>
   Alongside ingestion sits one foundational choice (the bars themselves are best built from ticks that have
   already been validated and cleaned, so a bad print never lands in a bar's high or low): how are
@@ -317,6 +522,10 @@
     <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Same hour, two sampling clocks, very different bar counts</h3>
+    <div class="tl-predict" data-answer="89" data-tol="3" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The hour below has about 200 ticks in a 15-minute lull, about 4,000 in the 5 minutes around a data release, and about 300 in the last 40 minutes. What share of the hour's ticks lands in those 5 release minutes? Lock in a guess, then check it against the time-bar paragraph below.</div>
+      <div class="tl-predict-reveal"><p><strong>About 89%.</strong> \(4{,}000 / 4{,}500 \approx 0.89\). Yet a one-minute clock gives those minutes 5 of its 60 bars, about 8%. Read on to see how a volume clock hands the same burst 50 to 55 bars instead.</p></div>
+    </div>
     <p>
     Consider one trading hour in a liquid FX pair that includes a scheduled data release 20 minutes in.
     Suppose the raw tick feed shows roughly 200 ticks in the 15 minutes before the release, a burst of
@@ -465,6 +674,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill" data-date="2010-05-06">
+    <div class="tl-drill-label">Scenario drill · 6 May 2010</div>
+    <h3>Your backtest loves the Flash Crash afternoon</h3>
+    <p>You are building one-minute bars for US stocks to backtest a buy-the-dip strategy. Your vendor's tape for 6 May 2010 shows Accenture trading at one cent in the afternoon, and the backtest books a spectacular profit buying it there. You know the venues later cancelled many trades from that afternoon. What do you do with the data?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Keep the raw prints in the bars. They really printed, so they are real data.<div class="tl-drill-why">They printed, and many were then cancelled. A bar built from them has a low no one could have traded at the size a backtest assumes. The profit is an artefact of the data, not of the strategy.</div></li>
+      <li data-verdict="bad">Delete the whole day from the dataset so it can't distort anything.<div class="tl-drill-why">Removing a stressed day quietly makes the backtest look calmer than history was. The strategy's behaviour on a day like that is exactly what you need to see, on a version of the tape that reflects tradeable prices.</div></li>
+      <li data-verdict="good">Keep the raw capture, apply the venues' cancellations as a separate, dated cleaning step, build bars from the corrected tape, and record which version the backtest used.<div class="tl-drill-why">Capture first, correct in a logged step. You can serve either version, explain the difference, and the backtest no longer books fills at prices that were cancelled.</div></li>
+      <li data-verdict="ok">Swap in a vendor's already-corrected tape and discard the raw one.<div class="tl-drill-why">The bars will be closer to tradeable, but you lose the record of what a live system would have seen that afternoon, and you can't audit how the correction was made.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> According to the joint SEC–CFTC staff report, a large fund's algorithm sold 75,000 E-mini S&amp;P 500 contracts, about $4.1 billion, into a thinning market. The Dow fell close to 1,000 points, about 9%, then recovered most of it in roughly half an hour. After the close the exchanges and FINRA cancelled over 20,000 trades in more than 300 securities that were more than 60% from each stock's 2:40 p.m. price. Single-stock circuit breakers and a ban on stub quotes followed later that year.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -546,6 +768,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-returns-compounding.html">Returns, Log-Returns &amp; Compounding</a> <span>· the returns every bar feeds into</span></li>
+        <li><a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a> <span>· what "closer to IID" means in practice</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="data-cleaning-outliers-missing-data.html">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</a> <span>· stage 3 in depth</span></li>
+        <li><a href="corporate-actions-series-continuity.html">Corporate Actions &amp; Series Continuity</a> <span>· stage 4 in depth</span></li>
+        <li><a href="point-in-time-data-survivorship-bias.html">Point-in-Time Data &amp; Survivorship Bias</a> <span>· stage 6, the most often mishandled</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every backtest number you trust is only as good as the bars underneath it, and those bars are built from choices most people never see.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
     <a href="data-cleaning-outliers-missing-data.html">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data →</a>
@@ -575,9 +817,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

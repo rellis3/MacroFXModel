@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Anomaly Detection — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -171,7 +172,19 @@
       </div>
     </section>
 
+    <!-- WB:anomaly_detection_isolation_autoencoders-deck:START -->
     <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Isolation Forest and autoencoders, drawn step by step</h2>
+      <!-- WB:anomaly_detection_isolation_autoencoders:START -->
+      <div class="wb" data-title="Isolation Forest and autoencoders, drawn step by step">
+        <script type="application/json">{"w":600,"h":800,"intro":"Two ways to spot \"this doesn't look like the rest\": cut the data at random and count the cuts, or compress and rebuild it and measure the miss. Press play, or step through.","steps":[{"cap":"Fifteen ticks described by two features (illustrative data). Fourteen sit in a crowd. One sits far out on both features at once.","do":[{"chart":"L","x":10,"y":10,"w":285,"h":282,"title":"Isolate the outlier","xd":[0,10],"yd":[0,10],"yt":[[0,"0"],[5,"5"],[10,"10"]],"xt":[[0,"0"],[5,"5"],[10,"10"]],"pl":34},{"dot":"l0","chart":"L","at":[3.08,5.11],"text":"","tone":"blue","r":4},{"dot":"l1","chart":"L","at":[3.65,4.47],"text":"","tone":"blue","r":4},{"dot":"l2","chart":"L","at":[4.23,5.53],"text":"","tone":"blue","r":4},{"dot":"l3","chart":"L","at":[3.38,5.96],"text":"","tone":"blue","r":4},{"dot":"l4","chart":"L","at":[4.81,4.68],"text":"","tone":"blue","r":4},{"dot":"l5","chart":"L","at":[3.85,4.04],"text":"","tone":"blue","r":4},{"dot":"l6","chart":"L","at":[4.42,4.89],"text":"","tone":"blue","r":4},{"dot":"l7","chart":"L","at":[2.88,4.26],"text":"","tone":"blue","r":4},{"dot":"l8","chart":"L","at":[5.0,5.32],"text":"","tone":"blue","r":4},{"dot":"l9","chart":"L","at":[4.04,6.38],"text":"","tone":"blue","r":4},{"dot":"l10","chart":"L","at":[4.62,5.96],"text":"","tone":"blue","r":4},{"dot":"l11","chart":"L","at":[3.27,4.89],"text":"","tone":"blue","r":4},{"dot":"l12","chart":"L","at":[5.38,4.47],"text":"","tone":"blue","r":4},{"dot":"l13","chart":"L","at":[3.65,5.32],"text":"","tone":"blue","r":4},{"dot":"lodd","chart":"L","at":[8.65,8.94],"text":"outlier","tone":"red","r":6,"dx":-10,"dy":-12,"anchor":"end"}]},{"cap":"Isolation Forest asks random questions. Pick a feature at random, then a cut at random between its smallest and largest value. First cut: feature 1 at 3.41. The outlier lands on the side with only a few points.","do":[{"series":"ls1","chart":"L","pts":[[3.41,0],[3.41,10]],"tone":"amber","dash":true,"ms":600}]},{"cap":"Second cut: feature 2 at 8.13, inside that side. The outlier is now alone. Path length: 2 cuts. Few and different means quick to wall off.","do":[{"series":"ls2","chart":"L","pts":[[3.41,8.13],[10,8.13]],"tone":"purple","dash":true,"ms":600},{"note":"l2n","chart":"L","at":[7.0,6.6],"text":"alone after 2","tone":"red","size":18,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Now try to isolate an ordinary point buried in the crowd (zoomed in on the right). The first three random cuts barely thin out its neighbours.","do":[{"chart":"R","x":305,"y":10,"w":285,"h":282,"title":"Isolate a crowd point (zoom)","xd":[2.5,6.5],"yd":[3.5,7.0],"yt":[[4,"4"],[6,"6"]],"xt":[[3,"3"],[5,"5"]],"pl":34},{"dot":"r0","chart":"R","at":[3.08,5.11],"text":"","tone":"blue","r":4},{"dot":"r1","chart":"R","at":[3.65,4.47],"text":"","tone":"blue","r":4},{"dot":"r2","chart":"R","at":[4.23,5.53],"text":"","tone":"blue","r":4},{"dot":"r3","chart":"R","at":[3.38,5.96],"text":"","tone":"blue","r":4},{"dot":"r4","chart":"R","at":[4.81,4.68],"text":"","tone":"blue","r":4},{"dot":"r5","chart":"R","at":[3.85,4.04],"text":"","tone":"blue","r":4},{"dot":"r6","chart":"R","at":[4.42,4.89],"text":"","tone":"blue","r":4},{"dot":"r7","chart":"R","at":[2.88,4.26],"text":"","tone":"blue","r":4},{"dot":"r8","chart":"R","at":[5.0,5.32],"text":"","tone":"blue","r":4},{"dot":"r9","chart":"R","at":[4.04,6.38],"text":"","tone":"blue","r":4},{"dot":"r10","chart":"R","at":[4.62,5.96],"text":"","tone":"blue","r":4},{"dot":"r11","chart":"R","at":[3.27,4.89],"text":"","tone":"blue","r":4},{"dot":"r12","chart":"R","at":[5.38,4.47],"text":"","tone":"blue","r":4},{"dot":"rt","chart":"R","at":[3.65,5.32],"text":"target","tone":"green","r":6,"dx":-10,"dy":-14,"anchor":"end"},{"series":"rs0","chart":"R","pts":[[2.5,5.36],[6.5,5.36]],"tone":"amber","dash":true,"ms":450},{"series":"rs1","chart":"R","pts":[[2.5,4.22],[6.5,4.22]],"tone":"amber","dash":true,"ms":450},{"series":"rs2","chart":"R","pts":[[5.37,4.22],[5.37,5.36]],"tone":"amber","dash":true,"ms":450}]},{"cap":"Three more cuts, each in a smaller box, before the target is finally alone. Path length: 6 cuts, three times as many as the outlier needed.","do":[{"series":"rs3","chart":"R","pts":[[2.5,4.55],[5.37,4.55]],"tone":"purple","dash":true,"ms":450},{"series":"rs4","chart":"R","pts":[[2.5,5.12],[5.37,5.12]],"tone":"purple","dash":true,"ms":450},{"series":"rs5","chart":"R","pts":[[4.4,5.12],[4.4,5.36]],"tone":"purple","dash":true,"ms":450},{"note":"r6n","chart":"R","at":[4.5,3.9],"text":"alone after 6","tone":"green","size":18,"anchor":"middle","dx":0,"dy":0}]},{"cap":"One tree can be lucky, so build many and average. Over 20,000 random trees on these points, the outlier takes 1.6 cuts on average and the crowd point 6.2. An ordinary point in 15 is expected to take c(15) = 4.57.","do":[{"chart":"pl","x":10,"y":310,"w":285,"h":210,"title":"Average cuts to isolate","xd":[0.4,2.6],"yd":[0,8],"yt":[[0,"0"],[4,"4"],[8,"8"]],"xt":[[1,"outlier"],[2,"crowd point"]],"pl":34},{"bars":"plb","chart":"pl","data":[[1,1.61,"1.6","red"],[2,6.22,"6.2","green"]],"bw":46,"ms":1000},{"series":"cn","chart":"pl","pts":[[0.5,4.57],[2.5,4.57]],"tone":"amber","dash":true,"ms":500},{"note":"cnl","chart":"pl","at":[2.5,4.57],"text":"c(15) = 4.57","tone":"amber","size":16,"anchor":"end","dx":0,"dy":-12}]},{"cap":"Turn that into a score: s = 2 to the power of minus (average cuts ÷ c). The outlier scores 0.78, the crowd point 0.39. Near 1 means likely anomaly; around 0.5 or below means ordinary. The lesson's example: 3.2 cuts with 256 points gives 0.805.","do":[{"chart":"sc","x":305,"y":310,"w":285,"h":210,"title":"Score s = 2^(−E[h]/c)","xd":[0,10],"yd":[0,1],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[0,"0"],[5,"5"],[10,"10"]],"pl":40},{"series":"sline","chart":"sc","pts":[[0.0,1.0],[0.25,0.963],[0.5,0.927],[0.75,0.892],[1.0,0.859],[1.25,0.827],[1.5,0.796],[1.75,0.767],[2.0,0.738],[2.25,0.711],[2.5,0.684],[2.75,0.659],[3.0,0.634],[3.25,0.611],[3.5,0.588],[3.75,0.566],[4.0,0.545],[4.25,0.525],[4.5,0.505],[4.75,0.486],[5.0,0.468],[5.25,0.451],[5.5,0.434],[5.75,0.418],[6.0,0.402],[6.25,0.387],[6.5,0.373],[6.75,0.359],[7.0,0.346],[7.25,0.333],[7.5,0.32],[7.75,0.308],[8.0,0.297],[8.25,0.286],[8.5,0.275],[8.75,0.265],[9.0,0.255],[9.25,0.246],[9.5,0.236],[9.75,0.228],[10.0,0.219]],"tone":"purple","ms":1000},{"series":"half","chart":"sc","pts":[[0,0.5],[10,0.5]],"tone":null,"dash":true,"ms":300},{"dot":"so","chart":"sc","at":[1.61,0.784],"text":"0.78","tone":"red","dx":10,"dy":-6,"anchor":"start"},{"dot":"st","chart":"sc","at":[6.22,0.389],"text":"0.39","tone":"green","dx":4,"dy":18,"anchor":"start"}]},{"cap":"The second method, an autoencoder: squeeze a tick through a narrow bottleneck and rebuild it. Trained on mostly normal ticks, it only learns to rebuild normal patterns well.","do":[{"box":"inp","x":10,"y":540,"w":165,"h":116,"text":"tick x\nspread 2.10\nvolume 1.40\nquotes 0.90","tone":"blue","size":18},{"box":"z","x":225,"y":562,"w":130,"h":72,"text":"squeeze\nthrough z","tone":"amber","size":18},{"box":"out","x":405,"y":540,"w":185,"h":116,"text":"rebuilt x̂\nspread 2.05\nvolume 1.35\nquotes 2.80","tone":"red","size":18},{"arrow":["inp","z"]},{"arrow":["z","out"]}]},{"cap":"Compare original and rebuild. Spread and volume come back almost exactly. Quote frequency comes back at 2.80 instead of 0.90. The mean squared miss, 1.205, is the anomaly score: this combination never fitted what it practiced.","do":[{"note":"mse","x":300,"y":684,"text":"score = mean of (x − x̂)² = 1.205","size":19,"anchor":"middle","tone":"red"}]},{"cap":"Both flag a combination no single-variable filter can see. But a score says only \"unusual\". Not \"wrong\", not \"a trade\". And a model trained on a calm regime flags a new, legitimate regime as one long anomaly.","do":[{"box":"nw","x":20,"y":712,"w":270,"h":72,"text":"unusual ≠ wrong\nunusual ≠ opportunity","tone":"amber","size":18},{"box":"hr","x":310,"y":712,"w":270,"h":72,"text":"a human decides\nwhat to do with it","tone":"green","size":18}]}]}</script>
+      </div>
+      <!-- WB:anomaly_detection_isolation_autoencoders:END -->
+    </section>
+    <!-- WB:anomaly_detection_isolation_autoencoders-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Autoencoders: compress it, then try to rebuild it</h2>
       <p class="sl-sub">A neural network with two halves — an encoder that squeezes the input down, a decoder that tries to expand it back out.</p>
@@ -199,7 +212,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Compute the reconstruction error yourself</h2>
       <p class="sl-sub">Three features from one FX tick — spread, volume, and quote-update frequency — each with the autoencoder's original value and its reconstructed value.</p>
@@ -232,7 +245,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Two mechanisms, one question</h2>
       <p class="sl-sub">Both ask "how hard is this point to explain," just in structurally different ways.</p>
@@ -260,7 +273,7 @@
       <p class="sl-p">Isolation Forest is the default workhorse for tabular, many-column data — fast and low-maintenance. Autoencoders earn their extra complexity when the data has structure a tree ensemble handles less naturally, or when inspecting <em>which</em> dimension drove the error matters.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">A combination that never happened before</h2>
       <div class="sl-quote">One FX tick, three variables: spread sits at the 60th percentile of its own history, volume at the 55th, quote-update frequency at the 65th. Every single variable, on its own, is completely unremarkable — a rolling MAD filter run on each series separately would flag <strong>none</strong> of them. But wide spreads and heavy quote activity ordinarily co-occur with clearly high or clearly low volume, not a bland middle value — and that specific <em>combination</em> has essentially never occurred in this pair's history. An Isolation Forest would isolate it in a handful of splits; an autoencoder would reconstruct it poorly. Either way, what's flagged is the joint structure — not any one number.</div>
@@ -270,7 +283,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where each one actually gets used</h2>
       <div class="sl-compare">
@@ -297,7 +310,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -348,7 +361,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -470,5 +483,9 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

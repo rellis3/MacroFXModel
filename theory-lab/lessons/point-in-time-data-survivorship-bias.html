@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Point-in-Time Data &amp; Survivorship Bias — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,80 @@
       <li><strong>Real-world episode:</strong> in 1992 Brown, Goetzmann, Ibbotson &amp; Ross showed that a survivors-only fund database can manufacture apparent "hot hands" persistence among managers with no skill at all.<!-- DESK:START --> On this desk, a level-touch study's Sharpe 5.36 turned out to be the same kind of filter, and the honest re-test was null (<code>level-touch</code>).<!-- DESK:END --></li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two panels. Left: a timeline for one March GDP figure. The period ends on March 31, the first print of 1.9% comes on April 28, a first revision to 1.6% on May 26 and a second revision to 1.4% on June 25. A query as of May 30 must return 1.6%, never the later 1.4%. Right: ten squares, each standing for ten funds. Eight are green, the funds still open, averaging 9% a year. Two are red and crossed out, the funds that closed, averaging minus 15% a year. A bar for the survivors only reaches 9%, while a bar for all 100 funds reaches only 4.2%.">
+      <text class="tlp-text" x="20" y="28" font-size="14" font-weight="700">1 · What was known, and when</text>
+      <text class="tlp-text3" x="20" y="50" font-size="12">Same March GDP, three vintages</text>
+      <line class="tlp-line" x1="22" y1="120" x2="288" y2="120"/>
+      <circle class="tlp-text3" cx="30" cy="120" r="4"/>
+      <circle class="tlp-blue" cx="104.2" cy="120" r="6"/>
+      <circle class="tlp-amber" cx="178.4" cy="120" r="7"/>
+      <circle class="tlp-green" cx="257.9" cy="120" r="6"/>
+      <text class="tlp-text3" x="104.2" y="82" text-anchor="middle" font-size="12">first print</text>
+      <text class="tlp-text3" x="178.4" y="82" text-anchor="middle" font-size="12">1st rev.</text>
+      <text class="tlp-text3" x="257.9" y="82" text-anchor="middle" font-size="12">2nd rev.</text>
+      <text class="tlp-blue" x="104.2" y="102" text-anchor="middle" font-size="14" font-weight="700">1.9%</text>
+      <text class="tlp-amber" x="178.4" y="102" text-anchor="middle" font-size="14" font-weight="700">1.6%</text>
+      <text class="tlp-green" x="257.9" y="102" text-anchor="middle" font-size="14" font-weight="700">1.4%</text>
+      <text class="tlp-text2" x="30" y="142" text-anchor="middle" font-size="12">Mar 31</text>
+      <text class="tlp-text2" x="104.2" y="142" text-anchor="middle" font-size="12">Apr 28</text>
+      <text class="tlp-text2" x="178.4" y="142" text-anchor="middle" font-size="12">May 26</text>
+      <text class="tlp-text2" x="257.9" y="142" text-anchor="middle" font-size="12">Jun 25</text>
+      <path class="tlp-red" d="M189,158 l-6,11 h12 z"/>
+      <text class="tlp-red" x="150" y="190" text-anchor="middle" font-size="13" font-weight="700">a query as of May 30</text>
+      <text class="tlp-red" x="150" y="208" text-anchor="middle" font-size="13">returns 1.6%, never the later 1.4%</text>
+      <line class="tlp-line dash" x1="300" y1="14" x2="300" y2="220"/>
+      <text class="tlp-text" x="318" y="28" font-size="14" font-weight="700">2 · Who is still in the database</text>
+      <rect class="tlp-green" x="318" y="50" width="22" height="22" rx="3"/>
+      <rect class="tlp-green" x="345" y="50" width="22" height="22" rx="3"/>
+      <rect class="tlp-green" x="372" y="50" width="22" height="22" rx="3"/>
+      <rect class="tlp-green" x="399" y="50" width="22" height="22" rx="3"/>
+      <rect class="tlp-green" x="426" y="50" width="22" height="22" rx="3"/>
+      <rect class="tlp-green" x="318" y="77" width="22" height="22" rx="3"/>
+      <rect class="tlp-green" x="345" y="77" width="22" height="22" rx="3"/>
+      <rect class="tlp-green" x="372" y="77" width="22" height="22" rx="3"/>
+      <rect class="tlp-box red" x="399" y="77" width="22" height="22" rx="3"/><line class="tlp-line red" x1="402" y1="80" x2="418" y2="96"/>
+      <rect class="tlp-box red" x="426" y="77" width="22" height="22" rx="3"/><line class="tlp-line red" x1="429" y1="80" x2="445" y2="96"/>
+      <text class="tlp-green" x="318" y="124" font-size="13" font-weight="700">80 still open: 9% a year</text>
+      <text class="tlp-red" x="318" y="142" font-size="13" font-weight="700">20 closed: −15% a year</text>
+      <text class="tlp-text3" x="318" y="162" font-size="12">each square = 10 funds</text>
+      <line class="tlp-line" x1="462" y1="200" x2="590" y2="200"/>
+      <rect class="tlp-box amber" x="470" y="92" width="40" height="108" rx="3"/>
+      <rect class="tlp-box green" x="535" y="149.6" width="40" height="50.4" rx="3"/>
+      <text class="tlp-amber" x="490" y="84" text-anchor="middle" font-size="14" font-weight="700">9%</text>
+      <text class="tlp-green" x="555" y="141" text-anchor="middle" font-size="14" font-weight="700">4.2%</text>
+      <text class="tlp-text2" x="490" y="217" text-anchor="middle" font-size="12">survivors</text>
+      <text class="tlp-text2" x="555" y="217" text-anchor="middle" font-size="12">all 100</text>
+    </svg>
+    <figcaption>Two ways a history lies without a single wrong number. On the left, the right answer depends on the date you ask: only the vintage published by then counts. On the right, dropping the funds that closed lifts the average from 4.2% to 9%.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My backtest uses the official history for every number. How can that leak the future?</p>
+      <p data-who="Quant">Because the official history today is not the history you would have seen back then. Take a March GDP figure. It comes out at the end of April as one point nine percent.</p>
+      <p data-who="Trader">And that's the number?</p>
+      <p data-who="Quant">For now. A month later it is revised to one point six. A month after that, to one point four. Three numbers, all called March GDP.</p>
+      <p data-who="Trader">So which one belongs in my backtest?</p>
+      <p data-who="Quant">The one that was published on or before the day you are pretending to trade. On the thirtieth of May, that is one point six. Never the one point four. Nobody had that yet.</p>
+      <p data-who="Trader">And on the fifteenth of April?</p>
+      <p data-who="Quant">Nothing at all. March had ended, but the figure had not been published. The month a number describes and the day it became known are two different dates. Your queries have to use the second one.</p>
+      <p data-who="Trader">My database just keeps the latest value for each month.</p>
+      <p data-who="Quant">Then the first revision already wiped out what was known at the time. A store you can trust never overwrites. It adds each revision as a new dated record, so every old version is still there.</p>
+      <p data-who="Trader">Fine. What's the other trap?</p>
+      <p data-who="Quant">Missing rows. Say a hundred funds start a decade. Twenty do so badly they close, averaging minus fifteen percent a year. The eighty survivors average nine percent.</p>
+      <p data-who="Trader">And a database of funds open today only has the eighty.</p>
+      <p data-who="Quant">So it reports nine percent. Put the twenty back and the true average is four point two. More than half the apparent return came from forgetting the losers. Elton, Gruber and Blake measured this bias in real fund data in 1996.</p>
+      <p data-who="Trader">That's a level being off. Can it do worse?</p>
+      <p data-who="Quant">Yes. In 1992 Brown, Goetzmann, Ibbotson and Ross simulated managers with no skill at all, and closed the funds that did badly. The standard test then found that winners kept winning. The filter made the pattern, not the managers.</p>
+      <p data-who="Trader">So a clean-looking dataset can invent a whole strategy.</p>
+      <p data-who="Quant">It can. The one-line version: ask what was known on the day, and who was still in the room, before you trust any backtest.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -183,6 +258,26 @@
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Survivorship bias, defined precisely</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">How the missing funds change the average, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \bar{r}_{surv} = \frac{\color{#fbbf24}{80 \times 0.09}}{80} = 9\% \]</div>
+      <p>Start with what a database of funds open today can see: the 80 survivors, averaging 9% a year. Nothing in this number is wrong.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \bar{r}_{true} = \frac{80 \times 0.09 + \color{#fbbf24}{20 \times (-0.15)}}{80 + \color{#fbbf24}{20}} \]</div>
+      <p>Put back the 20 funds that closed, on top and underneath. They averaged \(-15\%\) a year before folding, and the honest universe is every fund that started.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \bar{r}_{true} = \frac{7.2 \color{#fbbf24}{- 3.0}}{100} = 4.2\% \]</div>
+      <p>Do the sums. The dead funds take 3.0 points off a total of 7.2, spread over 100 funds: 4.2%.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \bar{r}_{surv} - \bar{r}_{true} = 9\% - 4.2\% = \color{#10b981}{4.8 \text{ points of bias}} \]</div>
+      <p>The survivors-only figure overstates the truth by more than a factor of two, only because the worst fifth of the rows went missing.</p>
+    </div>
+  </div>
   <p>
   Survivorship bias occurs when a dataset used to evaluate historical performance only includes entities
   that are still active, listed, or reporting <em>today</em> — silently dropping anything that failed,
@@ -220,6 +315,10 @@
     9%. Suppose, generously, that the 20 funds that disappeared averaged a return of \(-15\%\) annualized
     before folding (a plausible pattern, since poor performance is a common reason funds get shut down).
     </p>
+    <div class="tl-predict" data-answer="4.2" data-tol="0.5" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> A database of today's funds shows only the 80 survivors, averaging 9%. What is the true average return across all 100 funds that started? Lock in a guess, then check it against the formula just below.</div>
+      <div class="tl-predict-reveal"><p><strong>4.2%.</strong> \((80 \times 9 + 20 \times (-15)) / 100 = (720 - 300) / 100 = 4.2\). The survivors-only 9% is more than double the truth. Now try it with 30 closures instead of 20, same returns: \((70 \times 9 - 30 \times 15)/100 = 1.8\%\). The more funds that die, the bigger the lie.</p></div>
+    </div>
     <p>
     A database built from today's survivors reports the average return as simply <strong>9%</strong> —
     that's all that's left to average. The true, complete-universe average across all 100 original funds
@@ -255,6 +354,12 @@
     underperformance and disappearance from the database are correlated, not independent.
     </p>
   </div>
+
+  <!-- WB:point_in_time_data_survivorship_bias:START -->
+  <div class="wb" id="wb-point_in_time_data_survivorship_bias" data-title="Vintages and survivors, drawn step by step">
+    <script type="application/json">{"w":600,"h":775,"intro":"One March GDP figure and three answers, then a hundred funds and the twenty nobody remembers. Press play, or step through.","steps":[{"cap":"A statistics office will publish a figure for March GDP. On 31 March the month is over, but the number does not exist yet.","do":[{"icon":"stat","name":"govt","x":60,"y":6,"s":0.7,"tone":"blue","label":"statistics office","lsize":17},{"line":"tl","points":[[30,170],[575,170]],"tone":null,"width":3,"ms":900},{"line":"t0","points":[[40.0,160],[40.0,180]],"width":3,"ms":200},{"note":"d0","x":48.0,"y":196,"text":"Mar 31","size":17,"anchor":"middle"}]},{"cap":"28 April: the first print. March GDP is 1.9%. Two kinds of store record it: one keeps a single current value, the other keeps every dated version.","do":[{"line":"t1","points":[[202.4,160],[202.4,180]],"width":3,"ms":200},{"chip":"v1","x":202.4,"y":136,"text":"1.9%","tone":"blue"},{"note":"d1","x":202.4,"y":196,"text":"Apr 28","size":17,"anchor":"middle","tone":"blue"},{"box":"over","x":20,"y":262,"w":260,"h":80,"text":"current-value table","tone":"red","sub":"March: 1.9%","size":19},{"box":"snap","x":320,"y":262,"w":260,"h":80,"text":"dated snapshot store","tone":"green","sub":"1.9 (Apr 28)","size":19}]},{"cap":"First, a test. A backtest asks: what was March GDP as of 15 April? The honest answer is nothing. The month had ended, but the figure was not published until 28 April.","do":[{"chip":"q1","x":127.0,"y":230,"text":"as of Apr 15: none","tone":"red"}]},{"cap":"26 May: the first revision. March GDP is now 1.6%. The current-value table overwrites 1.9 in place, so the first print is gone. The snapshot store adds a new dated record.","do":[{"hide":"q1"},{"line":"t2","points":[[364.8,160],[364.8,180]],"width":3,"ms":200},{"chip":"v2","x":364.8,"y":136,"text":"1.6%","tone":"amber"},{"note":"d2","x":364.8,"y":196,"text":"May 26","size":17,"anchor":"middle","tone":"amber"},{"sub":"over","text":"March: 1.6%"},{"pulse":"over"},{"sub":"snap","text":"1.9 · 1.6"}]},{"cap":"25 June: the second revision, 1.4%. Three different numbers, all called March GDP. The table now only knows the last one.","do":[{"line":"t3","points":[[538.8,160],[538.8,180]],"width":3,"ms":200},{"chip":"v3","x":538.8,"y":136,"text":"1.4%","tone":"green"},{"note":"d3","x":528.8,"y":196,"text":"Jun 25","size":17,"anchor":"middle","tone":"green"},{"sub":"over","text":"March: 1.4%"},{"pulse":"over"},{"sub":"snap","text":"1.9 · 1.6 · 1.4"}]},{"cap":"Now a backtest asks for March GDP as of 30 May. The snapshot store returns 1.6%, the last version published by then. The current-value table returns 1.4%, a number nobody had until 25 June. That is lookahead hiding in an ordinary-looking history.","do":[{"chip":"q2","x":398.0,"y":230,"text":"as of May 30?","tone":"red"},{"note":"a1","x":150,"y":364,"text":"says 1.4%: from the future","size":18,"anchor":"middle","tone":"red"},{"note":"a2","x":450,"y":364,"text":"says 1.6%: correct","size":18,"anchor":"middle","tone":"green"},{"cross":"over"}]},{"cap":"The second trap is about which rows exist at all. A hundred funds start a decade. Each square here is ten funds.","do":[{"box":"f0","x":20,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f1","x":76,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f2","x":132,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f3","x":188,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f4","x":244,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f5","x":300,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f6","x":356,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f7","x":412,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f8","x":468,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f9","x":524,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17}]},{"cap":"Twenty of them do so badly they are closed or merged away, averaging −15% a year before they fold. They vanish from any list of funds that are open today.","do":[{"cross":"f8"},{"cross":"f9"},{"dim":"f8"},{"dim":"f9"},{"note":"gone","x":512,"y":470,"text":"20 closed","size":18,"anchor":"middle","tone":"red"}]},{"cap":"A database of funds open today can only average the 80 survivors: 9% a year. No single number in it is wrong.","do":[{"chart":"avg","x":20,"y":488,"w":340,"h":240,"title":"Average return, % a year","xd":[0.4,3.6],"yd":[-23,14],"yt":[[-15,"−15"],[0,"0"],[9,"9"]],"xt":[[1,"survivors"],[2,"all 100"],[3,"closed"]],"zero":true,"pl":44,"pt":48},{"bars":"b1","chart":"avg","data":[[1,9,"9%","amber"]],"bw":48,"ms":900}]},{"cap":"Put the 20 back. 80 × 9 minus 20 × 15 is 720 − 300 = 420, spread over 100 funds: 4.2%. The survivors-only figure is more than double the truth.","do":[{"bars":"b2","chart":"avg","data":[[3,-15,"−15%","red"]],"bw":48,"ms":900},{"bars":"b3","chart":"avg","data":[[2,4.2,"4.2%","green"]],"bw":48,"ms":900}]},{"cap":"It can do worse than shift an average. In 1992 Brown, Goetzmann, Ibbotson and Ross simulated managers with no skill at all, closed the funds whose results fell far enough, and the standard test then found winners kept winning. The filter made the pattern.","do":[{"hide":"gone"},{"box":"hot","x":378,"y":496,"w":202,"h":160,"text":"1992:\nno-skill managers\n+ a closing rule\n= \"hot hands\"","tone":"red","size":18}]},{"cap":"Two rules follow. Key every query to the date a number was published, and keep the dead in the universe.","do":[{"note":"end","x":300,"y":756,"text":"ask what was known on the day, and who was still in the room","size":18,"anchor":"middle","tone":"amber"}]}]}</script>
+  </div>
+  <!-- WB:point_in_time_data_survivorship_bias:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>It actually happened: the "hot hands" a database could manufacture</h2>
@@ -389,6 +494,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill" data-date="2024-08-21">
+    <div class="tl-drill-label">Scenario drill · 21 August 2024</div>
+    <h3>The payroll history under your backtest just changed</h3>
+    <p>You are testing a strategy that trades the US dollar on the monthly payrolls report. Your backtest reads payroll figures from a table that keeps one current value per month. Today the Bureau of Labor Statistics publishes its preliminary annual benchmark revision: job growth in the twelve months to March 2024 was likely overstated by about 818,000. Your data vendor will fold the revision into the history. What do you do with the backtest?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Re-run it on the updated table. Better data makes a better backtest.<div class="tl-drill-why">Better data about the economy, worse data about what traders saw. The strategy traded the first-print number on release day. The revised figure did not exist then, so feeding it in is lookahead that looks like ordinary history.</div></li>
+      <li data-verdict="ok">Drop the twelve revised months and keep everything else.<div class="tl-drill-why">It removes this one leak, but payroll figures are revised routinely, month after month and again each year. The rest of the history has the same problem, just less visibly.</div></li>
+      <li data-verdict="good">Rebuild the history from first-release vintages, each tagged with the date it was published, and test on those.<div class="tl-drill-why">This is what a live system could have known on each day. Public archives that keep every vintage, such as the St. Louis Fed's ALFRED, exist for exactly this reason. Store the revisions as new dated records, never as overwrites.</div></li>
+      <li data-verdict="bad">Freeze the table as it stands today so nothing changes again.<div class="tl-drill-why">Freezing keeps every revision that was already folded in place before today. You still cannot tell which numbers were first prints. What you need is the publication date on every value, not a frozen copy.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 21 August 2024 the Bureau of Labor Statistics published a preliminary benchmark revision cutting payroll growth for the year to March 2024 by about 818,000 jobs. Any backtest run afterwards on a current-value table would quietly trade on weaker numbers that nobody had seen when those reports came out. The prices moved on the first prints, months earlier. Only a vintage-aware history can tell the two apart.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -468,6 +586,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> <span>· what one feature needs to be computable on the day</span></li>
+        <li><a href="data-pipeline-raw-to-trading-ready.html">The Data Pipeline: Raw Feeds to Trading-Ready Data</a> <span>· where the raw numbers come from</span></li>
+        <li><a href="corporate-actions-series-continuity.html">Corporate Actions &amp; Series Continuity</a> <span>· the other way history gets quietly rewritten</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="data-architecture-storage-versioning.html">Data Architecture for Systematic Trading: Storage, Versioning &amp; Reproducibility</a> <span>· how to build a store that never forgets</span></li>
+        <li><a href="research-pipeline-hypothesis-to-backtest.html">The Research Pipeline: Hypothesis to Honest Backtest</a> <span>· where clean data meets an honest test</span></li>
+        <li><a href="multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere Effect</a> <span>· the other way a backtest finds patterns that are not there</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a backtest built on revised numbers or on survivors only can look like an edge when it is just the data remembering the wrong things.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="corporate-actions-series-continuity.html">← Corporate Actions &amp; Series Continuity</a>
     <a href="data-architecture-storage-versioning.html">Data Architecture for Systematic Trading →</a>
@@ -497,10 +636,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

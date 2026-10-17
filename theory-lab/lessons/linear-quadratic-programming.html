@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Linear &amp; Quadratic Programming — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,62 @@
       <li>How it reached trading: Markowitz's portfolio problem is a QP (Wolfe's 1959 algorithm solved it), and LPs entered finance through bond cash-flow matching and, from 2000, expected-shortfall optimisation (Rockafellar &amp; Uryasev).</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left, a linear program: a five-cornered allowed region for x up to 4, y up to 6 and 3x plus 2y up to 18, with Z equal to 3x plus 5y written at each corner: 0, 12, 27, 36 and 30. The level line 3x plus 5y equals 36 just touches the corner at 2, 6, the best plan. Right, a quadratic program: the same kind of flat-walled region with the contour rings of a bowl, whose lowest point sits inside the region rather than at a corner.">
+      <text class="tlp-blue" x="30" y="20" font-size="14" font-weight="700">LP: a ramp, so the best plan is a corner</text>
+      <polygon class="tlp-box blue" points="40,230 248,230 248,155 144,80 40,80"/>
+      <line class="tlp-line purple thick dash" x1="40" y1="50" x2="300" y2="125"/>
+      <circle class="tlp-text3" cx="40" cy="230" r="4.5"/>
+      <circle class="tlp-text3" cx="248" cy="230" r="4.5"/>
+      <circle class="tlp-text3" cx="248" cy="155" r="4.5"/>
+      <circle class="tlp-text3" cx="40" cy="80" r="4.5"/>
+      <circle class="tlp-green" cx="144" cy="80" r="7"/>
+      <text class="tlp-purple" x="48" y="43" font-size="12.5" font-weight="700">3x + 5y = 36</text>
+      <text class="tlp-green" x="154" y="72" font-size="14" font-weight="700">(2, 6): Z = 36, best</text>
+      <text class="tlp-text2" x="48" y="100" font-size="13">(0, 6): Z = 30</text>
+      <text class="tlp-text2" x="257" y="160" font-size="13">(4, 3): Z = 27</text>
+      <text class="tlp-text2" x="248" y="249" text-anchor="middle" font-size="13">(4, 0): Z = 12</text>
+      <text class="tlp-text2" x="40" y="249" text-anchor="middle" font-size="13">Z = 0</text>
+      <text class="tlp-text3" x="144" y="168" text-anchor="middle" font-size="12.5">allowed plans</text>
+      <text class="tlp-purple" x="360" y="20" font-size="14" font-weight="700">QP: a bowl, same flat walls</text>
+      <polygon class="tlp-box" points="375,230 575,230 575,140 500,90 375,90"/>
+      <ellipse class="tlp-line purple" cx="455" cy="170" rx="84" ry="51"/>
+      <ellipse class="tlp-line purple" cx="455" cy="170" rx="56" ry="34"/>
+      <ellipse class="tlp-line purple" cx="455" cy="170" rx="28" ry="17"/>
+      <circle class="tlp-green" cx="455" cy="170" r="7"/>
+      <text class="tlp-green" x="475" y="249" text-anchor="middle" font-size="13" font-weight="700">the bottom can sit inside</text>
+    </svg>
+    <figcaption>A linear objective rises at a steady rate, so the best plan is always a corner: here (2, 6), worth $36,000. A quadratic objective is a bowl, so its lowest point can sit in the middle or against a wall, and checking corners is no longer enough. The right-hand bowl is an illustrative shape.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">The last lesson said convex problems are the solvable kind. Which ones do I actually meet?</p>
+      <p data-who="Quant">Mostly two families: linear programs and quadratic programs. In both, every rule is a straight line, like a cap or a budget. The difference is the thing you are trying to maximize or minimize.</p>
+      <p data-who="Trader">Start with the linear one.</p>
+      <p data-who="Quant">Picture a room with flat walls. Your rules are the walls. The thing you want, say profit, rises at a steady rate as you walk one way. Where do you stop?</p>
+      <p data-who="Trader">When I hit a wall, I suppose.</p>
+      <p data-who="Quant">Then you slide along the wall until you jam into a corner. So the best answer of a linear program is always at a corner. You never need to search the open floor.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">Two strategies. Each unit of A earns three thousand dollars, each unit of B five thousand. A is capped at four units, B at six, and a shared margin budget limits the mix. The allowed region has five corners. Check them: zero, twelve, twenty-seven, thirty-six and thirty. The best is two units of A and six of B, for thirty-six thousand.</p>
+      <p data-who="Trader">And the simplex method just walks those corners?</p>
+      <p data-who="Quant">Yes. Start at one corner, step to a better neighbour, and stop when no neighbour is better. George Dantzig, 1947.</p>
+      <p data-who="Trader">Now the quadratic one.</p>
+      <p data-who="Quant">Same flat walls, but now you are minimizing a bowl. Portfolio variance is the classic bowl, so Markowitz mean-variance is exactly a quadratic program. A bowl's bottom can sit in the open middle of the room, so checking corners is no longer enough.</p>
+      <p data-who="Trader">But Markowitz has a formula. Invert a matrix and you're done.</p>
+      <p data-who="Quant">Only when every rule is an equality, like weights summing to one. Add no shorting or a position cap, and you no longer know in advance which rules will bind. The right equations depend on the answer. So a solver guesses which rules bind, solves, checks the guess, and adjusts.</p>
+      <p data-who="Trader">Can't I just clip the weights to the cap?</p>
+      <p data-who="Quant">It sounds fine, and it fails. Clip sixty-five percent to a fifty percent cap, leave the other asset at thirty-five, then rescale so they add up to one. Asset one comes back at about fifty-nine percent, over the cap again.</p>
+      <p data-who="Trader">So what does the job look like in practice?</p>
+      <p data-who="Quant">Nobody writes the solver; off-the-shelf libraries do that. Your job is writing the problem down correctly, and checking the rules are today's rules. A stale cap gives no error message. It gives a perfectly optimal answer to the wrong problem.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">A ramp in a flat room ends at a corner, a bowl can end anywhere, and the solver is only as good as the walls you hand it.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -126,6 +183,31 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From a linear program to the real portfolio QP, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \min_{x} \; \color{#fbbf24}{c^\top x} \]</div>
+      <p>Start with a linear objective: each unknown in \(x\) adds a fixed amount per unit, set by \(c\). On its own this has no answer; you could push \(x\) forever.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \min_{x} \; c^\top x \quad \text{subject to} \quad \color{#fbbf24}{Ax \le b} \]</div>
+      <p>Add the flat walls. Every cap, budget and limit is one row of \(Ax \le b\). This is a linear program, and its best point is always a corner of the walls.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \min_{x} \; \color{#fbbf24}{\tfrac{1}{2}x^\top H x} + c^\top x \quad \text{subject to} \quad Ax \le b \]</div>
+      <p>Swap the ramp for a bowl by adding a quadratic term with a positive semi-definite \(H\). This is a quadratic program: same walls, but the bottom can sit anywhere inside them.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \min_{w} \; \color{#fbbf24}{w^\top \Sigma w} \quad \text{subject to} \quad \textstyle\sum w_i = 1, \;\; w^\top \mu = R^\* \]</div>
+      <p>Markowitz is this template with \(H = 2\Sigma\) and no linear term. With only these two equality rules there is a closed-form answer: one matrix inversion.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \min_{w} \; w^\top \Sigma w \quad \text{subject to} \quad \textstyle\sum w_i = 1, \;\; w^\top \mu = R^\*, \;\; \color{#10b981}{0 \le w_i \le 0.40} \]</div>
+      <p>Add the box rules every real mandate has: no shorting and a 40% cap. Now nobody knows in advance which rules bind, the closed form is gone, and this is the input you hand to a QP solver.</p>
+    </div>
+  </div>
 
   <h3>Linear programming — standard form</h3>
   <p>
@@ -421,6 +503,10 @@
       which vertex wins — recompute instantly, the same vertex-enumeration
       argument from the worked example, just re-run on a different objective.
     </p>
+    <div class="tl-predict" data-answer="47" data-tol="0.5" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With \(Z = 3x + 5y\) the best corner is \((2,6)\) with \(Z = 36\). Suppose Strategy A's payoff jumps from 3 to 8 per unit, and B stays at 5. What is the new best \(Z\)? Lock in a guess, then type 8 into the first field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>47, at the corner \((4,3)\).</strong> Check the corners: \((4,0)\) gives 32, \((4,3)\) gives \(8(4) + 5(3) = 47\), \((2,6)\) gives \(16 + 30 = 46\) and \((0,6)\) gives 30. The walls did not move, but a steeper objective tips the winner to a different corner, still a corner. Now try 7.5 and watch two corners tie.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Coefficient on \(x\)</span></div>
@@ -473,6 +559,12 @@
       actually require that day.
     </p>
   </div>
+
+  <!-- WB:linear_quadratic_programming:START -->
+  <div class="wb" id="wb-linear_quadratic_programming" data-title="Corners for a ramp, walls for a bowl">
+    <script type="application/json">{"w":600,"h":720,"intro":"A linear program: flat walls and a ramp, so the best point is a corner. Then a quadratic program: the same walls around a bowl. The lesson's own numbers. Press play, or step through.","steps":[{"cap":"A desk splits risk capital between Strategy A (x units) and Strategy B (y units). Each unit of A is expected to earn 3 and each unit of B 5, in $ thousands. The goal: make Z = 3x + 5y as big as possible.","do":[{"chart":"lp","x":10,"y":10,"w":380,"h":300,"title":"Units of A (across) and B (up)","xd":[0,5],"yd":[0,7],"yt":[[0,"0"],[3,"3"],[6,"6"]],"xt":[[0,"0"],[2,"2"],[4,"4"]]},{"box":"obj","x":400,"y":10,"w":190,"h":64,"text":"maximize","tone":"purple","sub":"Z = 3x + 5y","size":19}]},{"cap":"Three flat rules. A's capacity: x ≤ 4. B's capacity: y ≤ 6. A shared margin budget: 3x + 2y ≤ 18. Each rule is a straight wall.","do":[{"series":"wx","chart":"lp","pts":[[4,0],[4,7]],"tone":"blue","ms":500},{"series":"wy","chart":"lp","pts":[[0,6],[5,6]],"tone":"blue","ms":500},{"series":"wm","chart":"lp","pts":[[1.3333333333333333,7],[5,1.5]],"tone":"amber","ms":600},{"box":"r1","x":400,"y":92,"w":190,"h":52,"text":"x ≤ 4","tone":"blue","size":19},{"box":"r2","x":400,"y":156,"w":190,"h":52,"text":"y ≤ 6","tone":"blue","size":19},{"box":"r3","x":400,"y":220,"w":190,"h":52,"text":"3x + 2y ≤ 18","tone":"amber","size":19}]},{"cap":"Inside all three walls, with x and y not negative, is the set of allowed plans: a pentagon with five corners.","do":[{"gap":"feas","chart":"lp","top":[[0,6],[2,6],[4,3],[4,0]],"bot":[[0,0],[4,0]],"tone":"blue","op":0.2},{"dot":"v0","chart":"lp","at":[0,0],"text":"","tone":null},{"dot":"v1","chart":"lp","at":[4,0],"text":"","tone":null},{"dot":"v2","chart":"lp","at":[4,3],"text":"","tone":null},{"dot":"v3","chart":"lp","at":[2,6],"text":"","tone":null},{"dot":"v4","chart":"lp","at":[0,6],"text":"","tone":null}]},{"cap":"Every point on the line 3x + 5y = 20 earns the same 20. This line cuts through the middle, so you can slide it up and earn more. Z rises at a steady rate, so you only stop when you hit a corner.","do":[{"series":"z20","chart":"lp","pts":[[0,4],[5,1]],"tone":"purple","dash":true,"ms":600,"label":"Z = 20","lat":[0.15,4],"ldx":4,"ldy":-14,"lanchor":"start"}]},{"cap":"The simplex method walks corner to corner. Start at (0,0), where Z = 0. Its neighbours are (4,0) with Z = 12 and (0,6) with Z = 30. Step to the better one.","do":[{"dim":"z20"},{"chip":"sx","x":86,"y":262,"text":"Z = 0","tone":"green"},{"dot":"n1","chart":"lp","at":[4,0],"text":"12","tone":"chalk","dy":-16},{"move":"sx","x":86,"y":100,"ms":1100},{"sub":"obj","text":"(0,6): Z = 30"}]},{"cap":"From (0,6) the next corner along the edge is (2,6), where Z = 36. From there both neighbours are worse: (0,6) at 30 and (4,3) at 27. The walk stops. Best plan: 2 units of A and 6 of B, $36,000.","do":[{"move":"sx","x":211,"y":100,"ms":900},{"dot":"n2","chart":"lp","at":[4,3],"text":"27","tone":"chalk","dx":14,"dy":0,"anchor":"start"},{"dot":"best","chart":"lp","at":[2,6],"text":"36","tone":"green","dy":-16},{"sub":"obj","text":"(2,6): Z = 36"}]},{"cap":"The line 3x + 5y = 36 just touches the pentagon at (2,6). B's cap and the margin budget bind there. A's cap has slack, so it shapes nothing.","do":[{"hide":"sx"},{"series":"z36","chart":"lp","pts":[[0.3333333333333333,7],[5,4.2]],"tone":"green","dash":true,"ms":600},{"pulse":"r2"},{"pulse":"r3"},{"dim":"r1"}]},{"cap":"A quadratic program swaps the ramp for a bowl. Two assets whose weights sum to 100%, with variances 2 and 5 and covariance 3. Variance along that line is a bowl, and its bottom is at 200% in asset 1, shorting asset 2 by 100%.","do":[{"chart":"qp","x":10,"y":330,"w":580,"h":250,"title":"Portfolio variance vs weight in asset 1","xd":[-0.2,3.2],"yd":[0,6],"yt":[[1,"1"],[3,"3"],[5,"5"]],"xt":[[0,"0%"],[0.6,"60%"],[1,"100%"],[2,"200%"],[3,"300%"]],"pl":44},{"series":"bw","chart":"qp","pts":[[-0.2,5.84],[-0.1,5.41],[0.0,5.0],[0.1,4.61],[0.2,4.24],[0.3,3.89],[0.4,3.56],[0.5,3.25],[0.6,2.96],[0.7,2.69],[0.8,2.44],[0.9,2.21],[1.0,2.0],[1.1,1.81],[1.2,1.64],[1.3,1.49],[1.4,1.36],[1.5,1.25],[1.6,1.16],[1.7,1.09],[1.8,1.04],[1.9,1.01],[2.0,1.0],[2.1,1.01],[2.2,1.04],[2.3,1.09],[2.4,1.16],[2.5,1.25],[2.6,1.36],[2.7,1.49],[2.8,1.64],[2.9,1.81],[3.0,2.0],[3.1,2.21],[3.2,2.44]],"tone":"purple","ms":1100},{"dot":"b0","chart":"qp","at":[2,1],"text":"bottom: 200%","tone":"red","dy":-18}]},{"cap":"Add no shorting: asset 1 must sit between 0% and 100% (shaded). The bowl's bottom is outside, so the answer snaps to the nearest wall: 100% in asset 1, 0% in asset 2, variance 2.","do":[{"gap":"ns","chart":"qp","top":[[0,5.8],[1,5.8]],"bot":[[0,0.1],[1,0.1]],"tone":"blue","op":0.16},{"dot":"b1","chart":"qp","at":[1,2],"text":"100%","tone":"blue","dx":12,"dy":-6,"anchor":"start"}]},{"cap":"Now add a 60% cap on each asset, so asset 1 sits between 40% and 60%. The answer snaps again, to 60% and 40%. Same bowl every time; the walls decided. A solver cannot know which walls bind until it has solved, so there is no single formula to plug into.","do":[{"dim":"b1"},{"dim":"ns"},{"gap":"cap","chart":"qp","top":[[0.4,5.8],[0.6,5.8]],"bot":[[0.4,0.1],[0.6,0.1]],"tone":"green","op":0.3},{"dot":"b2","chart":"qp","at":[0.6,2.96],"text":"60%","tone":"green","dx":12,"dy":-6,"anchor":"start"}]},{"cap":"And the tempting shortcut fails. Clip a 65% weight to a 50% cap, leave the other asset at 35%, then rescale both to sum to 100%: asset 1 becomes 50 ÷ 85 = 58.8%, back over the cap. A QP solver only searches plans that obey every rule at once.","do":[{"icon":"warn","name":"warn","x":14,"y":596,"s":0.6,"tone":"red"},{"box":"clip","x":90,"y":594,"w":500,"h":70,"text":"clip 65% → 50%, rescale","tone":"red","sub":"50 ÷ 85 = 58.8% > 50% cap","size":19},{"box":"solve","x":90,"y":674,"w":500,"h":40,"text":"hand the walls to a QP solver","tone":"green","size":18}]}]}</script>
+  </div>
+  <!-- WB:linear_quadratic_programming:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -557,6 +649,19 @@
       be. Regularizing the covariance matrix (shrinkage, a small ridge term
       added to the diagonal) is a standard practical fix.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative evening</div>
+    <h3>The nightly rebalance says "optimal", with yesterday's cap</h3>
+    <p>You run the overnight rebalance for a systematic multi-asset fund. Every night a QP sets new weights under fixed rules: no instrument above 15%, no asset class net short, and position caps from the prime broker that move with volatility. After a volatile day the prime broker has cut one instrument's cap to 10%. The solver ran with the old 15% cap, reports "optimal" and puts 15% in that instrument. What do you do before the orders go out?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Send the orders. The solver converged and reported an optimal solution.<div class="tl-drill-why">The answer is optimal for the wrong rules. A stale cap never throws an error; it quietly changes what "optimal" means. The book would breach the prime broker's limit at the open.</div></li>
+      <li data-verdict="bad">Clip that weight to 10% and rescale everything else to sum to 100%.<div class="tl-drill-why">Clip-and-rescale is not a QP solve. Rescaling can push other weights back over their own caps, and the result is no longer the minimum-risk portfolio under the real rules. It looks fixed and is not.</div></li>
+      <li data-verdict="good">Update the cap to 10% and re-run the QP, then add a nightly check of every constraint input against the mandate and the prime broker's current limits.<div class="tl-drill-why">Re-solving with the right walls gives the true optimum under tonight's rules; the solver works out which other constraints now bind. The check stops the same silent failure next time.</div></li>
+      <li data-verdict="ok">Keep yesterday's weights until operations confirm the new caps.<div class="tl-drill-why">Safe from a breach only if yesterday's weights already respect the new 10% cap, and it skips a rebalance the fund wanted. Defensible as a stop-gap, not as the fix.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happens.</strong> This is an illustrative situation built on the lesson's own rebalance scenario, not a specific historical event. Its lesson is general: a QP solver is only as trustworthy as the constraint set it is given, and which constraints bind changes from night to night, so there is no shortcut around solving again.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -663,6 +768,27 @@
     <li>Bartolomeo Stellato, Goran Banjac, Paul Goulart, Alberto Bemporad &amp; Stephen Boyd, "OSQP: An Operator Splitting Solver for Quadratic Programs," <em>Mathematical Programming Computation</em>, 2020 — the paper behind one of the most widely used open-source QP solvers in modern quantitative finance and robotics.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="convex-optimization.html">Convex Optimization</a> <span>· why a local optimum here is the global one</span></li>
+        <li><a href="foundation-optimization-basics.html">Optimization Basics: Unconstrained &amp; Constrained</a> <span>· Lagrange multipliers and binding constraints</span></li>
+        <li><a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a> <span>· the mean-variance problem this lesson solves with rules</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="factor-based-portfolio-construction.html">Factor-Based Portfolio Construction</a> <span>· QPs with factor-exposure bands</span></li>
+        <li><a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> <span>· why CVaR limits become a linear program</span></li>
+        <li><a href="risk-parity-erc.html">Risk Parity &amp; Equal Risk Contribution</a> <span>· another allocation run through a solver</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> almost every real portfolio with caps, no-short rules or a turnover budget is built by an LP or QP solver, and knowing what it can and cannot tell you is how you catch a wrong answer.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="convex-optimization.html">← Convex Optimization</a>
@@ -818,6 +944,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

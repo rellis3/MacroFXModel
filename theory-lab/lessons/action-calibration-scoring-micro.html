@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Scoring Your Own Calls — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <style>
   .cb-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
@@ -124,7 +125,19 @@
       <div class="sl-callout amber"><div class="sl-callout-label">The output</div><p>A correction table (80% → 53%, 90% → 54% after shrinking toward the base rate) and a rule: until 80–90% calls beat 60% calls, they get the same size.</p></div>
     </section>
 
+    <!-- WB:action_calibration_scoring-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Scoring your own calls, step by step</h2>
+      <!-- WB:action_calibration_scoring:START -->
+      <div class="wb" data-title="Scoring your own calls, step by step">
+        <script type="application/json">{"w":600,"h":720,"intro":"A quarter of written calls, scored the way weather forecasts are scored. Every number is the lesson's worked example. Press play, or step through.","steps":[{"cap":"A weather forecaster says \"70% chance of rain\". You cannot grade that one day: rain does not prove her right, and sunshine does not prove her wrong.","do":[{"icon":"fc","name":"person","x":30,"y":14,"s":0.7,"tone":"blue","label":"forecaster","lsize":17},{"icon":"umb","name":"umbrella","x":130,"y":14,"s":0.7,"tone":"blue","label":"\"70% rain\"","lsize":17}]},{"cap":"So collect every day she said 70%, and count. If it rained on 7 of 10, her 70% means 70%. That is calibration: grading the numbers, not the luck.","do":[{"chip":"d0","x":290,"y":52,"text":"☔","tone":"blue"},{"chip":"d1","x":320,"y":52,"text":"☔","tone":"blue"},{"chip":"d2","x":350,"y":52,"text":"☔","tone":"blue"},{"chip":"d3","x":380,"y":52,"text":"☔","tone":"blue"},{"chip":"d4","x":410,"y":52,"text":"☔","tone":"blue"},{"chip":"d5","x":440,"y":52,"text":"☔","tone":"blue"},{"chip":"d6","x":470,"y":52,"text":"☔","tone":"blue"},{"chip":"d7","x":500,"y":52,"text":"☀","tone":"amber"},{"chip":"d8","x":530,"y":52,"text":"☀","tone":"amber"},{"chip":"d9","x":560,"y":52,"text":"☀","tone":"amber"},{"note":"dn","x":435,"y":120,"text":"7 of 10 rained → 70% means 70%","size":18,"anchor":"middle","tone":"green"}]},{"cap":"Now your own journal: 40 calls in a quarter, each written with a probability before the outcome and rounded into buckets of 50%, 60%, 70%, 80% and 90%.","do":[{"hide":"d0"},{"hide":"d1"},{"hide":"d2"},{"hide":"d3"},{"hide":"d4"},{"hide":"d5"},{"hide":"d6"},{"hide":"d7"},{"hide":"d8"},{"hide":"d9"},{"hide":"dn"},{"hide":"umb"},{"hide":"fc"},{"icon":"jr","name":"scroll","x":40,"y":14,"s":0.75,"tone":"purple","label":"40 calls","lsize":17},{"note":"bk","x":360,"y":70,"text":"said 50% · 60% · 70% · 80% · 90%\ncalls  8  ·  12  ·  10  ·  6  ·  4","size":18,"anchor":"middle"},{"chart":"rel","x":10,"y":196,"w":580,"h":262,"title":"What came true, against what you said","xd":[0.45,0.95],"yd":[0.4,1.0],"yt":[[0.5,"50%"],[0.7,"70%"],[0.9,"90%"]],"xt":[[0.5,"50%"],[0.6,"60%"],[0.7,"70%"],[0.8,"80%"],[0.9,"90%"]],"pl":52,"pr":96},{"series":"diag","chart":"rel","pts":[[0.45,0.45],[0.95,0.95]],"tone":null,"dash":true,"ms":700,"label":"calibrated","lat":[0.95,0.95],"ldx":6,"ldy":4,"lanchor":"start","lsize":16}]},{"cap":"Plot each bucket's hit rate. The 50% calls came true 4 of 8 times, right on the line. The 60% and 70% calls landed at 58% and 60%, a little below it.","do":[{"series":"pts","chart":"rel","pts":[[0.5,0.5],[0.6,0.583],[0.7,0.6],[0.8,0.5],[0.9,0.5]],"tone":"purple","ms":1200},{"dot":"p0","chart":"rel","at":[0.5,0.5],"text":"","tone":"purple"},{"dot":"p1","chart":"rel","at":[0.6,0.583],"text":"","tone":"purple"},{"dot":"p2","chart":"rel","at":[0.7,0.6],"text":"","tone":"purple"},{"dot":"p3","chart":"rel","at":[0.8,0.5],"text":"","tone":"purple"},{"dot":"p4","chart":"rel","at":[0.9,0.5],"text":"","tone":"purple"},{"series":"base","chart":"rel","pts":[[0.45,0.55],[0.95,0.55]],"tone":"amber","dash":true,"ms":500,"label":"base 55%","lat":[0.95,0.55],"ldx":6,"ldy":4,"lanchor":"start","lsize":16}]},{"cap":"The 80% and 90% calls came true only half the time. Points below the diagonal are overconfidence: the bigger the red gap, the more your number overstated your record.","do":[{"series":"g8","chart":"rel","pts":[[0.8,0.5],[0.8,0.8]],"tone":"red","dash":true,"ms":500},{"series":"g9","chart":"rel","pts":[[0.9,0.5],[0.9,0.9]],"tone":"red","dash":true,"ms":500},{"note":"gl","chart":"rel","at":[0.85,0.45],"text":"said 80–90%, came true 50%","tone":"red","size":16,"anchor":"middle","dx":0,"dy":0},{"pulse":"p3"},{"pulse":"p4"}]},{"cap":"The Brier score grades each call by its squared miss. A 70% call that comes true costs (0.7 − 1)² = 0.09. One that fails costs 0.7² = 0.49. Confident misses hurt most.","do":[{"hide":"jr"},{"hide":"bk"},{"box":"hit","x":10,"y":20,"w":280,"h":74,"text":"70% call comes true\ncosts 0.09","tone":"green","size":19},{"box":"miss","x":310,"y":20,"w":280,"h":74,"text":"70% call fails\ncosts 0.49","tone":"red","size":19}]},{"cap":"All 40 calls average 11.10 / 40 = 0.2775. Quoting the 55% base rate on every call would have scored 0.55 × 0.45 = 0.2475. Lower is better, so the record lost to the plain benchmark: a skill of −12.1%.","do":[{"chart":"sc","x":10,"y":474,"w":280,"h":236,"title":"Brier score (lower is better)","xd":[0.4,2.6],"yd":[0,0.32],"yt":[[0,"0"],[0.1,"0.10"],[0.2,"0.20"],[0.3,"0.30"]],"xt":[[1,"you"],[2,"quote 55%"]],"pl":50},{"bars":"scb","chart":"sc","data":[[1,0.2775,"0.2775","purple"],[2,0.2475,"0.2475","blue"]],"bw":56,"ms":1000}]},{"cap":"Why? The score splits into three parts: reliability 0.0321 minus resolution 0.0021 plus uncertainty 0.2475. The numbers are inflated, and they barely separate good calls from bad.","do":[{"hide":"hit"},{"hide":"miss"},{"box":"dec","x":10,"y":20,"w":580,"h":74,"text":"0.0321 − 0.0021 + 0.2475 = 0.2775\nreliability − resolution + uncertainty","tone":"purple","size":19}]},{"cap":"Is it just bad luck? Pool the 70% to 90% calls: you expected 15.4 hits and got 11. That is 2.38 standard errors short, beyond what luck usually produces.","do":[{"box":"z","x":10,"y":106,"w":580,"h":74,"text":"70–90% calls: expected 15.4 hits, got 11\nz = −2.38: overconfident beyond luck","tone":"red","size":19}]},{"cap":"It costs money through size. At even odds, Kelly from your stated average of 66.5% is 33% of the bankroll. Your record of 55% supports 10%. That is 3.3 times Kelly, where growth turns negative.","do":[{"chart":"kc","x":310,"y":474,"w":280,"h":236,"title":"Kelly size at even odds","xd":[0.4,2.6],"yd":[0,0.4],"yt":[[0,"0"],[0.1,"10%"],[0.2,"20%"],[0.3,"30%"]],"xt":[[1,"felt 66.5%"],[2,"record 55%"]],"pl":50},{"bars":"kb","chart":"kc","data":[[1,0.33,"33%","red"],[2,0.1,"10%","green"]],"bw":56,"ms":1000}]},{"cap":"The fix: swap felt numbers for measured ones, shrunk toward the base rate. Your 90% becomes 53.6%. And one rule: until your 80% and 90% calls beat your 60% calls, they get the same size.","do":[{"hide":"z"},{"hide":"dec"},{"box":"fix","x":10,"y":20,"w":580,"h":74,"text":"next quarter: 90% → 53.6%, 80% → 53.1%","tone":"green","size":19},{"box":"rule","x":10,"y":106,"w":580,"h":74,"text":"same size for every call until\nthe high-confidence calls earn more","tone":"green","size":19}]}]}</script>
+      </div>
+      <!-- WB:action_calibration_scoring:END -->
+    </section>
+    <!-- WB:action_calibration_scoring-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Score yourself</h2>
       <div class="sl-card">
@@ -141,7 +154,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">It takes many calls</h2>
       <p class="sl-sub">If you really are calibrated at f, a bucket of n calls lands within f ± 1.96·√(f(1−f)/n) about 95% of the time.</p>
@@ -158,7 +171,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where scoring sits</h2>
       <div class="sl-chain">
@@ -174,14 +187,14 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">The people who keep score</h2>
       <p class="sl-p"><strong>Weather forecasters.</strong> Murphy and Winkler found US National Weather Service precipitation forecasts remarkably well calibrated in the 1970s: many similar calls, fast outcomes, every one scored. Nate Silver later described a "wet bias" in some TV forecasts — rain chances overstated on purpose. Different incentive, worse calibration.</p>
       <p class="sl-p"><strong>Tetlock's forecasters.</strong> Two decades of scored expert predictions (2005) found most experts barely beat simple rules. In the IARPA tournament from 2011, the Good Judgment Project's best "superforecasters", Brier-scored, kept outperforming year after year — skill, not luck. Their shared habit: precise probabilities and keeping score.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11 · The desk's verdict</div>
       <h2 class="sl-h2">What was tested here</h2>
       <div class="sl-stamp untested"><span class="sl-stamp-tag">Not tested here</span><span><strong>"The confidence on our calls matches our hit rate."</strong> The desk's ledger scores signals, not the probabilities written on calls. No Brier score for those yet.</span></div>
@@ -189,7 +202,7 @@
       <div class="sl-stamp null" data-evidence="rates-pivot-lead" data-evidence-date="2026-09-25"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>54.1% against a 54.1% base rate.</strong> After confirmed rates lows the Nasdaq rose 54.1% of the time — exactly the base rate. Calibrated, zero resolution, zero skill.</span></div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -227,7 +240,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -343,5 +356,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

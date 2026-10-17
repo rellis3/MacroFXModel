@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Regularized Regression: LASSO &amp; Ridge — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,74 @@
       <li><strong>How it reached trading:</strong> Jorion (1986) and Ledoit &amp; Wolf (2003–04) brought shrinkage to portfolio and covariance estimates, and in the 2010s the LASSO became a standard way to pick from the "factor zoo".</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of the lesson's worked example, where the true coefficients are 2, 0 and 0. Plain least squares gives 3.4 for the real signal, minus 1.3 for its near-duplicate and 0.4 for pure noise. Ridge shrinks them to 2.2, minus 0.2 and 0.36, none exactly zero. LASSO gives 1.9, 0 and 0, deleting the duplicate and the noise. A dashed line marks the true value of 2.0.">
+      <line class="tlp-line" x1="80" y1="140" x2="560" y2="140"/>
+      <text class="tlp-text3" x="74" y="144" text-anchor="end" font-size="12">0</text>
+      <rect class="tlp-blue" x="99" y="38" width="30" height="102" rx="2"/>
+      <rect class="tlp-amber" x="135" y="140" width="30" height="39" rx="2"/>
+      <rect class="tlp-purple" x="171" y="128" width="30" height="12" rx="2"/>
+      <rect class="tlp-blue" x="269" y="74" width="30" height="66" rx="2"/>
+      <rect class="tlp-amber" x="305" y="140" width="30" height="6" rx="2"/>
+      <rect class="tlp-purple" x="341" y="129.2" width="30" height="10.8" rx="2"/>
+      <rect class="tlp-blue" x="439" y="83" width="30" height="57" rx="2"/>
+      <line class="tlp-line green dash" x1="80" y1="80" x2="575" y2="80"/>
+      <text class="tlp-green" x="575" y="96" text-anchor="end" font-size="12" font-weight="700">true β₁ = 2.0</text>
+      <text class="tlp-blue" x="114" y="32" text-anchor="middle" font-size="13" font-weight="700">3.4</text>
+      <text class="tlp-amber" x="150" y="193" text-anchor="middle" font-size="13" font-weight="700">−1.3</text>
+      <text class="tlp-purple" x="186" y="122" text-anchor="middle" font-size="13" font-weight="700">0.4</text>
+      <text class="tlp-blue" x="284" y="68" text-anchor="middle" font-size="13" font-weight="700">2.2</text>
+      <text class="tlp-amber" x="320" y="160" text-anchor="middle" font-size="13" font-weight="700">−0.2</text>
+      <text class="tlp-purple" x="356" y="123" text-anchor="middle" font-size="13" font-weight="700">0.36</text>
+      <text class="tlp-blue" x="454" y="72" text-anchor="middle" font-size="13" font-weight="700">1.9</text>
+      <text class="tlp-amber" x="490" y="134" text-anchor="middle" font-size="13" font-weight="700">0</text>
+      <text class="tlp-purple" x="526" y="134" text-anchor="middle" font-size="13" font-weight="700">0</text>
+      <text class="tlp-red" x="150" y="214" text-anchor="middle" font-size="14" font-weight="700">OLS: unstable</text>
+      <text class="tlp-blue" x="320" y="214" text-anchor="middle" font-size="14" font-weight="700">Ridge: all shrink</text>
+      <text class="tlp-amber" x="490" y="214" text-anchor="middle" font-size="14" font-weight="700">LASSO: exact zeros</text>
+      <text class="tlp-text3" x="150" y="230" text-anchor="middle" font-size="12">3.4 − 1.3 = 2.1, split wildly</text>
+      <text class="tlp-text3" x="320" y="230" text-anchor="middle" font-size="12">none is exactly zero</text>
+      <text class="tlp-text3" x="490" y="230" text-anchor="middle" font-size="12">duplicate and noise deleted</text>
+      <rect class="tlp-blue" x="90" y="243" width="10" height="10" rx="2"/>
+      <text class="tlp-text2" x="105" y="252" font-size="12">x₁ real signal</text>
+      <rect class="tlp-amber" x="235" y="243" width="10" height="10" rx="2"/>
+      <text class="tlp-text2" x="250" y="252" font-size="12">x₂ near-duplicate</text>
+      <rect class="tlp-purple" x="400" y="243" width="10" height="10" rx="2"/>
+      <text class="tlp-text2" x="415" y="252" font-size="12">x₃ pure noise</text>
+    </svg>
+    <figcaption>Same data, three fits. Least squares gets the pair's total about right but splits it wildly and gives the noise some weight. Ridge tames every coefficient but keeps all three. LASSO keeps one and sets the other two to exactly zero.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I have fifteen macro predictors for a currency pair. Why not throw them all into one regression and let it sort them out?</p>
+      <p data-who="Quant">Because plain least squares only cares about fit. Hand it predictors that overlap, or that are pure noise, and it will happily fit the noise.</p>
+      <p data-who="Trader">Show me how bad it gets.</p>
+      <p data-who="Quant">Take a toy case. The truth is that the target is two times one predictor, plus noise. A second predictor is a near-twin of the first. A third is pure noise. So the right answer is two, zero and zero.</p>
+      <p data-who="Trader">And least squares says?</p>
+      <p data-who="Quant">Three point four, minus one point three, and zero point four. The twins add up to about two, which is right. But it splits the credit wildly, with a wrong sign on one of them. And the noise gets some weight too.</p>
+      <p data-who="Trader">So what's the fix?</p>
+      <p data-who="Quant">Make big coefficients cost something. Keep the fit term, and add a penalty on the size of the coefficients, with a dial for how hard to push.</p>
+      <p data-who="Trader">And Ridge and LASSO are two kinds of penalty?</p>
+      <p data-who="Quant">Right. Ridge, from 1970, charges for the squares. It shrinks everything: here two point two, minus zero point two, and about zero point four. Calmer, but nothing is ever exactly zero.</p>
+      <p data-who="Trader">And LASSO?</p>
+      <p data-who="Quant">LASSO, from 1996, charges for the plain sizes instead. It gives one point nine, zero and zero. The twin and the noise are deleted outright.</p>
+      <p data-who="Trader">Why does such a small change delete things?</p>
+      <p data-who="Quant">Geometry. The penalty is a budget. Ridge's budget is a circle, smooth all round. LASSO's is a diamond, and its corners sit exactly where one coefficient is zero. The best fit keeps catching on a corner.</p>
+      <p data-who="Trader">How do I set the dial?</p>
+      <p data-who="Quant">Cross-validation, on data the fit never saw. Never by in-sample fit, because in-sample always prefers no penalty at all. And standardize the predictors first, or you are penalizing units, not importance.</p>
+      <p data-who="Trader">Any trap with LASSO?</p>
+      <p data-who="Quant">Which twin it keeps is close to a coin flip. Rerun on slightly different data and it might keep the other one. So a selected list is not proof of a true driver. Elastic Net blends both penalties to keep groups together.</p>
+      <p data-who="Trader">Where does this show up in real finance?</p>
+      <p data-who="Quant">Everywhere there are too many predictors and too few years. Shrunk covariance matrices in risk models, and the LASSO picking through what John Cochrane in 2011 called the factor zoo.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Pay a little bias for a lot less wobble: Ridge if most predictors matter a little, LASSO if most are noise.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -145,6 +214,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From plain least squares to the LASSO, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \hat\beta = \arg\min_\beta \ \color{#fbbf24}{\|y - X\beta\|^2} \]</div>
+      <p>Plain least squares: fit the data and nothing else. With near-duplicate predictors this gives the worked example's unstable \((3.4,\ -1.3,\ 0.4)\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \hat\beta_{Ridge} = \arg\min_\beta \ \|y - X\beta\|^2 + \color{#fbbf24}{\lambda\|\beta\|_2^2} \]</div>
+      <p>Add a price on size: \(\lambda\) times the sum of squared coefficients. At \(\lambda = 0\) you are back to plain least squares; larger \(\lambda\) shrinks harder.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \hat\beta_{Ridge} = \color{#fbbf24}{\frac{\hat\beta_{OLS}}{1+\lambda}} \]</div>
+      <p>For a single coefficient (the calculator's simplified case), Ridge just divides. With \(\hat\beta_{OLS} = 3.4\) and \(\lambda = 1\) it gives 1.7. Dividing never reaches zero.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \hat\beta_{LASSO} = \arg\min_\beta \ \|y - X\beta\|^2 + \lambda\color{#fbbf24}{\|\beta\|_1} \]</div>
+      <p>Swap the squares for absolute values. The budget changes from a circle to a diamond whose corners sit on the axes.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\hat\beta_{LASSO} = \text{sign}(\hat\beta_{OLS})\cdot\max\big(|\hat\beta_{OLS}| - \lambda,\ 0\big)} \]</div>
+      <p>For a single coefficient, LASSO subtracts instead of dividing: \(3.4 - 1 = 2.4\). Once \(\lambda\) reaches the coefficient's size it stops at exactly zero. That floor is the feature selection.</p>
+    </div>
+  </div>
   <p>
     Start from plain least squares. Given a design matrix \(X\) (rows are
     observations, columns are predictors) and a target vector \(y\), OLS
@@ -439,6 +532,10 @@
       \(\hat\beta_{OLS}\) or \(\lambda\) and both penalties' shrunk
       coefficients recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="3.4" data-tol="0.1" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Keep \(\hat\beta_{OLS} = 3.4\). What is the smallest \(\lambda\) that makes the LASSO coefficient exactly zero? Lock in a guess, then type it into the \(\lambda\) field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>3.4.</strong> LASSO subtracts \(\lambda\) from the coefficient's size and stops at zero: \(\max(3.4 - 3.4,\ 0) = 0\). At the same \(\lambda\), Ridge gives \(3.4 / 4.4 \approx 0.77\), still clearly nonzero. Now try a bigger \(\lambda\), say 10: LASSO stays at zero, while Ridge only creeps down to about 0.31.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>OLS coefficient \(\hat\beta_{OLS}\)</span></div>
@@ -537,6 +634,12 @@
     </p>
   </div>
 
+  <!-- WB:regularized_regression_lasso_ridge:START -->
+  <div class="wb" id="wb-regularized_regression_lasso_ridge" data-title="Ridge shrinks, LASSO deletes">
+    <script type="application/json">{"w":600,"h":840,"intro":"The lesson's toy regression: one real signal, one near-duplicate, one column of pure noise. Watch plain least squares get it wrong, then two penalties fix it in two different ways. Press play, or step through.","steps":[{"cap":"Three predictors. x1 is the real driver: the truth is y = 2.0 × x1 plus noise. x2 is a near-duplicate of x1, about 0.9 correlated. x3 is pure noise. The true coefficients are 2, 0 and 0.","do":[{"box":"x1","x":15,"y":14,"w":170,"h":84,"text":"x1","tone":"blue","sub":"real signal, β = 2","size":19},{"box":"x2","x":215,"y":14,"w":170,"h":84,"text":"x2","tone":"amber","sub":"twin, ρ ≈ 0.9","size":19},{"box":"x3","x":415,"y":14,"w":170,"h":84,"text":"x3","tone":"purple","sub":"pure noise","size":19}]},{"cap":"Plain least squares only cares about fit. It gives 3.4, −1.3 and 0.4: a big positive weight on x1, a compensating negative one on x2, and a little weight on the noise.","do":[{"chart":"co","x":10,"y":128,"w":580,"h":250,"title":"Fitted coefficients","xd":[0.4,9.6],"yd":[-2.3,4.0],"yt":[[0,"0"],[2,"2"]],"xt":[[2,"OLS"],[5,"Ridge"],[8,"LASSO"]],"zero":true,"pl":36},{"bars":"ols","chart":"co","data":[[1,3.4,"3.4","blue"],[2,-1.3,"−1.3","amber"],[3,0.4,"0.4","purple"]],"bw":34,"ms":1100}]},{"cap":"The pair's sum, 3.4 − 1.3 = 2.1, is close to the true 2.0. OLS cannot tell which twin deserves the credit, so it splits it wildly. Rerun on a slightly different sample and the split can swing.","do":[{"series":"true","chart":"co","pts":[[0.5,2.0],[9.5,2.0]],"tone":"green","dash":true,"ms":600},{"note":"tl","chart":"co","at":[9.5,2.0],"text":"true 2.0","tone":"green","size":17,"anchor":"end","dx":0,"dy":-14}]},{"cap":"The fix: make big coefficients cost something. Keep the fit term and add a penalty on coefficient size, scaled by a dial λ. At λ = 0 you are back to plain OLS.","do":[{"box":"pen","x":110,"y":392,"w":380,"h":56,"text":"fit error  +  λ × (size of the coefficients)","tone":"chalk","size":19}]},{"cap":"Ridge measures size as the sum of squares. All three shrink: 2.2, −0.2 and 0.36. The sign-flip almost vanishes, but nothing is exactly zero. Ridge shrinks; it does not select.","do":[{"bars":"rdg","chart":"co","data":[[4,2.2,"2.2","blue"],[5,-0.2,"−0.2","amber"],[6,0.36,"0.36","purple"]],"bw":34,"ms":1100}]},{"cap":"LASSO measures size as the sum of absolute values. It gives 1.9, 0 and 0: the duplicate and the noise are set to exactly zero, and the real signal keeps nearly all its weight.","do":[{"bars":"las","chart":"co","data":[[7,1.9,"1.9","blue"],[8,0.0001,"0","amber"],[9,0.0001,"0","purple"]],"bw":34,"ms":1100}]},{"cap":"Why the exact zeros? Picture two coefficients. The fit error makes tilted oval contours around the OLS answer. The penalty is a budget: a circle for Ridge, a diamond for LASSO. (Illustrative shapes.)","do":[{"chart":"geo","x":10,"y":466,"w":290,"h":290,"title":"Two coefficients (illustrative)","xd":[-1.3,2.5],"yd":[-1.3,2.4],"yt":[[0,"0"],[1,"1"]],"xt":[[0,"0"],[1,"β₁ = 1"]],"pl":40},{"series":"ax","chart":"geo","pts":[[-1.3,0],[2.5,0]],"tone":null,"dash":true,"ms":300},{"series":"ay","chart":"geo","pts":[[0,-1.3],[0,2.4]],"tone":null,"dash":true,"ms":300},{"series":"circ","chart":"geo","pts":[[1.0,0.0],[0.991,0.131],[0.966,0.259],[0.924,0.383],[0.866,0.5],[0.793,0.609],[0.707,0.707],[0.609,0.793],[0.5,0.866],[0.383,0.924],[0.259,0.966],[0.131,0.991],[0.0,1.0],[-0.131,0.991],[-0.259,0.966],[-0.383,0.924],[-0.5,0.866],[-0.609,0.793],[-0.707,0.707],[-0.793,0.609],[-0.866,0.5],[-0.924,0.383],[-0.966,0.259],[-0.991,0.131],[-1.0,0.0],[-0.991,-0.131],[-0.966,-0.259],[-0.924,-0.383],[-0.866,-0.5],[-0.793,-0.609],[-0.707,-0.707],[-0.609,-0.793],[-0.5,-0.866],[-0.383,-0.924],[-0.259,-0.966],[-0.131,-0.991],[-0.0,-1.0],[0.131,-0.991],[0.259,-0.966],[0.383,-0.924],[0.5,-0.866],[0.609,-0.793],[0.707,-0.707],[0.793,-0.609],[0.866,-0.5],[0.924,-0.383],[0.966,-0.259],[0.991,-0.131],[1.0,-0.0]],"tone":"blue","ms":900},{"series":"dia","chart":"geo","pts":[[1,0],[0,1],[-1,0],[0,-1],[1,0]],"tone":"amber","ms":900},{"dot":"ols","chart":"geo","at":[1.3,0.9],"text":"OLS","tone":null,"dx":12,"dy":-12,"anchor":"start"}]},{"cap":"Grow the oval until it first touches each budget. It meets the smooth circle at a side point, about (0.85, 0.53): both coefficients nonzero. It meets the diamond at its corner, (1, 0): β₂ is exactly zero. Corners sit on the axes, and they catch the oval for a wide range of shapes.","do":[{"series":"c2","chart":"geo","pts":[[0.722,1.902],[0.661,1.855],[0.612,1.793],[0.574,1.715],[0.549,1.623],[0.536,1.519],[0.537,1.404],[0.551,1.28],[0.577,1.15],[0.616,1.016],[0.666,0.88],[0.728,0.744],[0.799,0.611],[0.879,0.483],[0.966,0.361],[1.059,0.249],[1.155,0.149],[1.255,0.061],[1.355,-0.013],[1.454,-0.071],[1.55,-0.112],[1.643,-0.136],[1.729,-0.142],[1.808,-0.131],[1.878,-0.102],[1.939,-0.055],[1.988,0.007],[2.026,0.085],[2.051,0.177],[2.064,0.281],[2.063,0.396],[2.049,0.52],[2.023,0.65],[1.984,0.784],[1.934,0.92],[1.872,1.056],[1.801,1.189],[1.721,1.317],[1.634,1.439],[1.541,1.551],[1.445,1.651],[1.345,1.739],[1.245,1.813],[1.146,1.871],[1.05,1.912],[0.957,1.936],[0.871,1.942],[0.792,1.931],[0.722,1.902]],"tone":"purple","ms":900},{"series":"c1","chart":"geo","pts":[[0.524,2.245],[0.442,2.183],[0.376,2.099],[0.325,1.994],[0.291,1.871],[0.275,1.731],[0.275,1.576],[0.294,1.411],[0.329,1.236],[0.382,1.056],[0.45,0.873],[0.532,0.691],[0.628,0.512],[0.735,0.34],[0.851,0.177],[0.976,0.027],[1.106,-0.109],[1.239,-0.227],[1.374,-0.325],[1.507,-0.403],[1.636,-0.459],[1.76,-0.491],[1.876,-0.5],[1.982,-0.484],[2.076,-0.445],[2.158,-0.383],[2.224,-0.299],[2.275,-0.194],[2.309,-0.071],[2.325,0.069],[2.325,0.224],[2.306,0.389],[2.271,0.564],[2.218,0.744],[2.15,0.927],[2.068,1.109],[1.972,1.288],[1.865,1.46],[1.749,1.623],[1.624,1.773],[1.494,1.909],[1.361,2.027],[1.226,2.125],[1.093,2.203],[0.964,2.259],[0.84,2.291],[0.724,2.3],[0.618,2.284],[0.524,2.245]],"tone":null,"ms":900},{"dot":"t2","chart":"geo","at":[0.846,0.533],"text":"Ridge","tone":"blue","dx":-8,"dy":-16,"anchor":"end"},{"dot":"t1","chart":"geo","at":[1,0],"text":"","tone":"amber"},{"note":"t1l","chart":"geo","at":[1.75,-0.95],"text":"LASSO: β₂ = 0","tone":"amber","size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"One coefficient, the calculator's formulas, starting from OLS 3.4. Ridge divides by (1 + λ): it falls but never reaches zero. LASSO subtracts λ: at λ = 3.4 it hits exactly zero and stays there. Ridge is still 0.77 at that point.","do":[{"chart":"sh","x":310,"y":466,"w":280,"h":290,"title":"Shrinking β = 3.4","xd":[0,5],"yd":[0,3.8],"yt":[[0,"0"],[1,"1"],[2,"2"],[3,"3"]],"xt":[[0,"λ 0"],[3.4,"3.4"],[5,"5"]],"pl":36},{"series":"rp","chart":"sh","pts":[[0.0,3.4],[0.1,3.091],[0.2,2.833],[0.3,2.615],[0.4,2.429],[0.5,2.267],[0.6,2.125],[0.7,2.0],[0.8,1.889],[0.9,1.789],[1.0,1.7],[1.1,1.619],[1.2,1.545],[1.3,1.478],[1.4,1.417],[1.5,1.36],[1.6,1.308],[1.7,1.259],[1.8,1.214],[1.9,1.172],[2.0,1.133],[2.1,1.097],[2.2,1.062],[2.3,1.03],[2.4,1.0],[2.5,0.971],[2.6,0.944],[2.7,0.919],[2.8,0.895],[2.9,0.872],[3.0,0.85],[3.1,0.829],[3.2,0.81],[3.3,0.791],[3.4,0.773],[3.5,0.756],[3.6,0.739],[3.7,0.723],[3.8,0.708],[3.9,0.694],[4.0,0.68],[4.1,0.667],[4.2,0.654],[4.3,0.642],[4.4,0.63],[4.5,0.618],[4.6,0.607],[4.7,0.596],[4.8,0.586],[4.9,0.576],[5.0,0.567]],"tone":"blue","ms":1100,"label":"Ridge","lat":[1.0,1.7],"ldx":-6,"ldy":20,"lanchor":"end"},{"series":"lp","chart":"sh","pts":[[0.0,3.4],[0.1,3.3],[0.2,3.2],[0.3,3.1],[0.4,3.0],[0.5,2.9],[0.6,2.8],[0.7,2.7],[0.8,2.6],[0.9,2.5],[1.0,2.4],[1.1,2.3],[1.2,2.2],[1.3,2.1],[1.4,2.0],[1.5,1.9],[1.6,1.8],[1.7,1.7],[1.8,1.6],[1.9,1.5],[2.0,1.4],[2.1,1.3],[2.2,1.2],[2.3,1.1],[2.4,1.0],[2.5,0.9],[2.6,0.8],[2.7,0.7],[2.8,0.6],[2.9,0.5],[3.0,0.4],[3.1,0.3],[3.2,0.2],[3.3,0.1],[3.4,0.0],[3.5,0],[3.6,0],[3.7,0],[3.8,0],[3.9,0],[4.0,0],[4.1,0],[4.2,0],[4.3,0],[4.4,0],[4.5,0],[4.6,0],[4.7,0],[4.8,0],[4.9,0],[5.0,0]],"tone":"amber","ms":1100,"label":"LASSO","lat":[0.6,2.8],"ldx":10,"ldy":-12,"lanchor":"start"},{"dot":"z","chart":"sh","at":[3.4,0],"text":"exactly 0","tone":"amber","dy":-18},{"dot":"rz","chart":"sh","at":[3.4,0.773],"text":"0.77","tone":"blue","dy":-16}]},{"cap":"Choose λ by cross-validation, never by in-sample fit: in-sample error is always lowest at λ = 0, so in-sample fit would always say \"don't regularize\". And standardize the predictors first, or the penalty punishes units, not importance.","do":[{"box":"cv","x":20,"y":770,"w":270,"h":60,"text":"λ by cross-validation","tone":"green","size":19}]},{"cap":"One warning. Which twin LASSO keeps is close to a coin flip: a slightly different sample might keep x2 instead. A selected list is not proof of a true driver. Elastic Net blends both penalties so correlated groups survive together.","do":[{"box":"en","x":310,"y":770,"w":270,"h":60,"text":"LASSO's pick can flip","tone":"red","size":19},{"pulse":"x1"},{"pulse":"x2"}]}]}</script>
+  </div>
+  <!-- WB:regularized_regression_lasso_ridge:END -->
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -617,6 +720,19 @@
       the same non-stationarity concern that shows up throughout this
       project's other validation discipline.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative month-end refit</div>
+    <h3>LASSO changed its mind about the yield curve</h3>
+    <p>You run the lesson's FX model: fifteen standardized macro predictors for a currency pair's monthly return, with \(\lambda\) chosen by cross-validation. Last month LASSO kept six predictors, including the 5-year spread, and zeroed the 2-year and 10-year spreads. This month's refit, on one extra month of data, keeps the 10-year spread instead and zeroes the 5-year. A colleague wants to write up "the 10-year spread is the real driver". What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Agree. LASSO selected it, so the 10-year spread is the true driver.<div class="tl-drill-why">The tenor spreads move almost in lockstep, and among correlated predictors LASSO's pick is close to a coin flip. One fit's selected list is not a validated claim about which predictor really matters.</div></li>
+      <li data-verdict="good">Check how often each spread is selected across bootstrap resamples, and compare with an Elastic Net fit that keeps the correlated group together.<div class="tl-drill-why">This is the lesson's own remedy. Selection stability tells you whether the pick means anything, and Elastic Net stops the arbitrary all-or-nothing choice among a correlated group.</div></li>
+      <li data-verdict="bad">Lower \(\lambda\) until both spreads stay in, using in-sample \(R^2\) to decide.<div class="tl-drill-why">In-sample fit always prefers \(\lambda = 0\), so this quietly undoes the regularization. \(\lambda\) has to come from held-out folds.</div></li>
+      <li data-verdict="ok">Switch to Ridge so all fifteen predictors stay in, shrunk.<div class="tl-drill-why">Defensible if you believe most of the fifteen carry a little signal: Ridge spreads weight across the correlated spreads instead of picking one. But you lose the short, interpretable model, and you still have not tested which view fits the data better.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What this teaches.</strong> This is an illustrative situation built on the lesson's fifteen-predictor example, not a historical event. A flip like this is exactly what the lesson warns about: when predictors come in correlated groups, LASSO's choice within a group is unstable, so treat its selection as informative, not definitive, and test stability before you tell a story about it.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -735,6 +851,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> <span>· the plain least-squares fit this lesson penalizes</span></li>
+        <li><a href="regression-diagnostics.html">Regression Diagnostics: Durbin-Watson, Breusch-Pagan &amp; Jarque-Bera</a> <span>· what goes wrong with the inference, one step later</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> <span>· how to choose λ without fooling yourself</span></li>
+        <li><a href="decision-trees-random-forests.html">Decision Trees &amp; Random Forests</a> <span>· the nonlinear answer to too many predictors</span></li>
+        <!-- DESK:START --><li><a href="institutional-ledoit-wolf-shrinkage.html">Ledoit-Wolf Covariance Shrinkage</a> <span>· the same bias-for-stability trade on a covariance matrix</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> any model that combines many signals will fit noise unless something reins it in, and this is the cheapest, most interpretable way to do it.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="attention-transformers-time-series.html">← Attention &amp; Transformers for Time Series</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -765,7 +901,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var DEFAULTS = { beta: 3.4, lambda: 1 };
@@ -820,5 +957,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

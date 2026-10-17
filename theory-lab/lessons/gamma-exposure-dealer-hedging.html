@@ -42,6 +42,58 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dealer gamma exposure per 1% move for the lesson's toy three-strike book, with spot at 100 and 7 days to expiry, under the standard convention. The put-heavy 95 strike is minus $0.60 million and the put-heavy 100 strike is minus $1.44 million: there dealers are short gamma and their hedging chases the move. The call-heavy 105 strike is plus $1.12 million: there dealers are long gamma and their hedging leans against the move. A gamma flip sits between 100 and 105, and the book totals about minus $0.92 million.">
+      <text class="tlp-text3" x="20" y="18" font-size="12">dealer GEX per 1% move</text>
+      <line class="tlp-line" x1="80" y1="120" x2="430" y2="120"/>
+      <rect class="tlp-red" x="120" y="120" width="60" height="33.3" opacity=".65"/>
+      <rect class="tlp-red" x="240" y="120" width="60" height="80" opacity=".65"/>
+      <rect class="tlp-green" x="360" y="57.8" width="60" height="62.2" opacity=".65"/>
+      <text class="tlp-text2" x="150" y="112" text-anchor="middle" font-size="13">strike 95</text>
+      <text class="tlp-text2" x="270" y="112" text-anchor="middle" font-size="13">strike 100</text>
+      <text class="tlp-text2" x="390" y="138" text-anchor="middle" font-size="13">strike 105</text>
+      <text class="tlp-red" x="150" y="172" text-anchor="middle" font-size="14" font-weight="700">−$0.60M</text>
+      <text class="tlp-red" x="270" y="218" text-anchor="middle" font-size="14" font-weight="700">−$1.44M</text>
+      <text class="tlp-green" x="390" y="50" text-anchor="middle" font-size="14" font-weight="700">+$1.12M</text>
+      <line class="tlp-line amber dash" x1="330" y1="42" x2="330" y2="212"/>
+      <text class="tlp-amber" x="330" y="34" text-anchor="middle" font-size="13" font-weight="700">gamma flip</text>
+      <text class="tlp-text2" x="20" y="234" font-size="13" font-weight="700">book total ≈ −$0.92M</text>
+      <text class="tlp-green" x="446" y="70" font-size="13" font-weight="700">dealers long gamma:</text>
+      <text class="tlp-text2" x="446" y="88" font-size="12">sell rallies, buy dips</text>
+      <text class="tlp-text2" x="446" y="104" font-size="12">→ moves get damped</text>
+      <text class="tlp-red" x="446" y="160" font-size="13" font-weight="700">dealers short gamma:</text>
+      <text class="tlp-text2" x="446" y="178" font-size="12">buy rallies, sell dips</text>
+      <text class="tlp-text2" x="446" y="194" font-size="12">→ moves get amplified</text>
+    </svg>
+    <figcaption>The lesson's toy book, with dealers assumed long the calls and short the puts. Gamma is biggest at the strike nearest spot, so the 100 strike dominates despite the smallest net open interest. Which way each bar points is set by who owns the options, and that sign decides whether hedging calms a move or feeds it.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Everyone talks about dealer gamma. Why should I care what the dealers are doing?</p>
+      <p data-who="Quant">Because they have to hedge, and the hedging is forced. A dealer who sold you an option holds stock against it, and that hedge has to change every time the price moves. Gamma is how fast it has to change.</p>
+      <p data-who="Trader">So big gamma means big hedging flow.</p>
+      <p data-who="Quant">Right. And it grows sharply near expiry. An at-the-money option a month out has a gamma of about point zero seven. With a week left it's about point one four, roughly double. With one day left it's about point three eight, five and a half times the monthly figure.</p>
+      <p data-who="Trader">How do you turn that into a number for the whole market?</p>
+      <p data-who="Quant">Multiply gamma by the open interest, by a hundred shares per contract, by the price, and by one percent of the price. That gives the dollars of stock dealers must trade for a one percent move. People call it GEX.</p>
+      <p data-who="Trader">And whether that flow pushes the market up or down?</p>
+      <p data-who="Quant">That depends on one thing open interest can't show you: which side the dealer is on. A call and a put at the same strike have exactly the same gamma. What matters is whether the dealer bought it or sold it.</p>
+      <p data-who="Trader">Walk me through both.</p>
+      <p data-who="Quant">If dealers are short gamma, they buy as price rises and sell as it falls. Their hedging has the same sign as the move, so it adds fuel. If they are long gamma, they sell rallies and buy dips. That calms things down.</p>
+      <p data-who="Trader">And who's on which side?</p>
+      <p data-who="Quant">The usual convention says customers buy puts for protection and sell calls for income. So dealers are short the puts and long the calls. In the lesson's little three-strike book that puts two strikes negative, one positive, and the total at about minus nine hundred and twenty thousand dollars per one percent move. But it's an assumption, not a fact you can read off the data.</p>
+      <p data-who="Trader">Has short gamma ever blown something up?</p>
+      <p data-who="Quant">The fifth of February, twenty eighteen. Funds that were short VIX futures had to rebalance every day near the close. When futures rose, the rule made them buy, the same shape as a short-gamma hedge. The VIX went from about seventeen to about thirty-seven, up roughly one hundred and fifteen percent in a day.</p>
+      <p data-who="Trader">And they all had to buy at the same time.</p>
+      <p data-who="Quant">Into the same window, at a size anyone could work out in advance. The biggest note, XIV, lost more than ninety percent of its value and was shut down.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Gamma tells you how hard the hedging pushes, and who owns the options tells you which way. Open interest only gives you the first half.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -107,6 +159,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where dealer GEX comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\Gamma_k} \]</div>
+      <p>Start with one option's gamma: how much its delta changes for a $1 move in the underlying. Calls and puts at the same strike share it exactly.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \Gamma_k \times \color{#fbbf24}{\text{OI}_k \times 100} \]</div>
+      <p>Scale up by every contract outstanding at the strike, each covering 100 shares. This is the hedge-flow rate: shares the dealers must trade per $1 move.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \Gamma_k \times \text{OI}_k \times 100 \times \color{#fbbf24}{S} \]</div>
+      <p>Multiply by the share price to turn a share count into dollars.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{GEX}_k = \Gamma_k \times \text{OI}_k \times 100 \times S \times \color{#fbbf24}{(S \times 0.01)} \]</div>
+      <p>Quote it per 1% move instead of per $1, so a $20 stock and a $2,000 index can be compared. The two factors of \(S\) become \(S^2\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\text{DealerGEX}_k = s_k \times \Gamma_k \times \text{OI}_k \times 100 \times S^2 \times 0.01} \]</div>
+      <p>Finally the sign: \(s_k = +1\) where dealers are assumed long the open interest (hedging dampens), \(-1\) where they are assumed short (hedging amplifies). Summed over the toy book, about \(-\$0.92\text{M}\).</p>
+    </div>
+  </div>
   <p>
     Three pieces build on top of the Black-Scholes Greeks: a formula for a
     single strike's dealer gamma exposure, a rule for the sign of that
@@ -527,6 +603,10 @@
       \(\sigma=20\%\)). Edit any field and \(T\), \(\sigma\sqrt{T}\), and
       \(\Gamma_{\text{ATM}}\) recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="0.1906" data-tol="0.01" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With one day to expiry, at-the-money gamma is about 0.3811. With four days left instead, same spot and vol, what is it? Lock in a guess, then type 4 into the days-to-expiry field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 0.1906, exactly half.</strong> Gamma scales with \(1/\sqrt{T}\), so four times the time cuts it by \(\sqrt{4} = 2\), not by 4: \(0.3989/(100 \times 0.20 \times \sqrt{4/365}) \approx 0.1906\). Now try 7 and 30 days to see the doubling the worked example describes.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Spot \(S\)</span></div>
@@ -767,6 +847,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2018-02-05">
+    <div class="tl-drill-label">Scenario drill · 5 February 2018</div>
+    <h3>You own an inverse-VIX product, and the VIX is soaring</h3>
+    <p>It is the afternoon of Monday 5 February 2018. You hold an inverse-VIX exchange-traded product that paid steadily through the calm of 2017. After Friday's 2% drop, the S&amp;P 500 is falling hard again and the VIX is soaring from Friday's close of 17.31. You know the product rebalances every day near the close: after a rise in VIX futures, its rule makes it buy them back. What do you do before the close?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Hold. It has always come back, and the daily rebalance is just mechanical noise.<div class="tl-drill-why">The rebalance is the problem, not noise. A −1× rule must buy about twice the day's move in futures, the same sign as the move and bigger the bigger it is. Every similar product does the same in the same window, so the close is likely to make things worse.</div></li>
+      <li data-verdict="bad">Buy more. A VIX this high has to fall back, so this is the cheap entry.<div class="tl-drill-why">Volatility may well mean-revert later, but you have to survive the path first. You would be adding to a position whose own rulebook is short gamma, on the day that rule is forced to run at full size.</div></li>
+      <li data-verdict="good">Cut the position before the close, because the product is short gamma by its own rule and that buying is known in advance.<div class="tl-drill-why">This is the lesson's sign logic applied to a rulebook. Same-sign hedging into one visible window is the amplifying case, and nothing about it is hidden. Getting out before the forced buying lands takes the loss you can see instead of the one you can't size.</div></li>
+      <li data-verdict="ok">Keep it, but buy some VIX calls as a hedge.<div class="tl-drill-why">It caps part of the damage, which is better than doing nothing. But you are buying protection after the VIX has already jumped, and you still hold a product that can lose almost everything in one session.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The S&amp;P 500 fell 4.1% and the VIX closed at 37.32, up about 115% in a day, the biggest one-day percentage jump in its history. VIX futures jumped again after the stock market closed, which is when the products' rebalancing purchases were being made. XIV's indicative value fell by more than 90%, enough to trigger a clause letting Credit Suisse redeem the note, and the bank announced the next day that it would. SVXY also lost most of its value, and ProShares later cut its target to −0.5×.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -903,6 +996,26 @@
       <li><a href="second-order-greeks.html">Second-Order Greeks: Vanna, Charm, Vomma &amp; More</a> — the cross-derivatives (Vanna, Charm, Vomma, Speed, Color, Zomma), including dollar Vanna/Charm exposure formulas that generalize this lesson's dealer-GEX math to vol-driven and time-driven dealer flows.</li>
     </ul>
   </div>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> <span>· where delta and gamma come from</span></li>
+        <li><a href="options-four-positions.html">The Four Option Positions</a> <span>· why whoever sells an option is short gamma</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="open-interest-walls-max-pain.html">Open Interest Walls, Max Pain &amp; Squeeze Trading</a> <span>· walls, pins and squeezes on a real chain</span></li>
+        <li><a href="second-order-greeks.html">Second-Order Greeks: Vanna, Charm, Vomma &amp; More</a> <span>· dealer flows driven by vol and time, not price</span></li>
+        <li><a href="vix-uncertainty-not-fear.html">The VIX Is an Uncertainty Index, Not a Fear Gauge</a> <span>· what the VIX measured on 5 February 2018</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the same open interest can calm a market or launch a squeeze, and knowing which side the hedgers are on tells you which to expect.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="black-scholes.html">← Black-Scholes-Merton Option Pricing</a>
@@ -1045,7 +1158,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

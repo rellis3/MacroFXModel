@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NLP for Trading Signals — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -278,7 +279,19 @@
       </div>
     </section>
 
+    <!-- WB:nlp_trading_signals_sentiment-deck:START -->
     <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">From a Fed sentence to a score, and the tweet that fooled everyone</h2>
+      <!-- WB:nlp_trading_signals_sentiment:START -->
+      <div class="wb" data-title="From a Fed sentence to a score, and the tweet that fooled everyone">
+        <script type="application/json">{"w":600,"h":770,"intro":"How a model turns a Fed sentence into a number, step by step, and then the famous time a text score fooled everyone. Press play, or step through.","steps":[{"cap":"Start with a sentence an analyst reads by eye: a classic hedge phrase that reads hawkish. The job is to turn it into a number a system can use.","do":[{"note":"sent","x":300,"y":24,"text":"“the committee remains highly attentive to inflation risks”","size":17,"anchor":"middle","tone":"purple"}]},{"cap":"The crude way counts words. Each word is just a 1 in one slot of a huge list: \"inflation\" is no closer to \"risks\" than to \"coffee\". No meaning at all.","do":[{"chip":"w1","x":95,"y":66,"text":"committee","tone":null},{"chip":"w2","x":235,"y":66,"text":"attentive","tone":null},{"chip":"w3","x":375,"y":66,"text":"inflation","tone":null},{"chip":"w4","x":505,"y":66,"text":"risks","tone":null}]},{"cap":"Word2Vec (2013) learns a short vector for each word from the company it keeps. Words used in similar contexts land close together: a hawkish neighborhood and a dovish one. (Illustrative positions.)","do":[{"chart":"emb","x":10,"y":100,"w":330,"h":250,"title":"Word vectors (illustrative)","xd":[0,10],"yd":[0,10],"yt":[],"xt":[],"pl":16,"pb":14},{"dot":"d0","chart":"emb","at":[2.0,7.25],"text":"dovish","tone":"blue","dx":8,"dy":-10,"anchor":"start","size":15},{"dot":"d1","chart":"emb","at":[1.5,5.69],"text":"ease","tone":"blue","dx":8,"dy":-10,"anchor":"start","size":15},{"dot":"d2","chart":"emb","at":[2.42,4.9],"text":"cut","tone":"blue","dx":8,"dy":-10,"anchor":"start","size":15},{"dot":"d3","chart":"emb","at":[1.25,3.33],"text":"stimulus","tone":"blue","dx":8,"dy":-10,"anchor":"start","size":15},{"dot":"h0","chart":"emb","at":[7.67,7.06],"text":"hawkish","tone":"red","dx":-8,"dy":-10,"anchor":"end","size":15},{"dot":"h1","chart":"emb","at":[8.17,5.49],"text":"tighten","tone":"red","dx":-8,"dy":-10,"anchor":"end","size":15},{"dot":"h2","chart":"emb","at":[7.25,4.71],"text":"raise","tone":"red","dx":-8,"dy":-10,"anchor":"end","size":15},{"dot":"h3","chart":"emb","at":[8.0,3.33],"text":"inflation risk","tone":"red","dx":-8,"dy":-10,"anchor":"end","size":15}]},{"cap":"The catch: Word2Vec gives every word one fixed vector. \"Hold\" in \"the Fed will hold rates\" gets exactly the same vector as \"hold\" in \"hold my coffee\".","do":[{"box":"fixed","x":360,"y":100,"w":230,"h":110,"text":"one vector per word:\n“hold rates” =\n“hold my coffee”","tone":"red","size":18}]},{"cap":"BERT (2019) reads the whole sentence at once, in both directions, using attention. Each word's vector is built from every other word around it, so \"hold\" means what its sentence says.","do":[{"arrow":["w1","w4"],"tone":"green","bend":-26,"id":"fw"},{"arrow":["w4","w2"],"tone":"green","bend":-16,"id":"bw"},{"box":"bert","x":360,"y":228,"w":230,"h":122,"text":"BERT reads both ways:\neach word gets\nits context","tone":"green","size":18}]},{"cap":"FinBERT (2019) is BERT trained further on financial text, so \"attentive to inflation risks\" reads as the loaded phrase it is. Out comes a hawkish score. Across three statements (illustrative): +0.10, +0.55, +0.35.","do":[{"chart":"sc","x":10,"y":372,"w":330,"h":222,"title":"Hawkish score by meeting","xd":[0.4,3.6],"yd":[0,0.75],"yt":[[0,"0"],[0.5,"+0.5"]],"xt":[[1,"t−2"],[2,"t−1"],[3,"t"]],"pl":44},{"bars":"scb","chart":"sc","data":[[1,0.1,"+0.10","amber"],[2,0.55,"+0.55","red"],[3,0.35,"+0.35","amber"]],"bw":46,"ms":1100}]},{"cap":"One reading is noisy: sarcasm, negation and hedges trip models up, and 0.55 is not a 55% chance of anything. The trend across meetings carries the information: a hawkish jump, then a partial, data-dependent retreat.","do":[{"series":"tr","chart":"sc","pts":[[1,0.1],[2,0.55],[3,0.35]],"tone":"purple","dash":true,"ms":800}]},{"cap":"Now the famous case. Bollen, Mao and Zeng took about 9.8 million tweets from 2008 and turned each day's text into seven series: one positive/negative score and six \"moods\".","do":[{"box":"tw","x":360,"y":372,"w":230,"h":92,"text":"9.8 million tweets\n→ 7 daily series","tone":"blue","size":19}]},{"cap":"Positive/negative did not predict the Dow. But one mood of six, \"Calm\", seemed to lead it by a few days, and called the daily direction with 87.6% accuracy, on a test of a few weeks in December 2008.","do":[{"box":"calm","x":360,"y":478,"w":230,"h":116,"text":"1 mood of 6, “Calm”,\nat a few days' lag:\n87.6% on a few weeks","tone":"amber","size":18}]},{"cap":"Many series, several lags, a test window of weeks: many chances to find something by luck. A fund launched in 2011 to trade it closed within about a year. A 2017 replication could not recover the result.","do":[{"box":"fail","x":10,"y":610,"w":580,"h":62,"text":"fund closed within about a year · 2017 replication: no result","tone":"red","size":19},{"cross":"calm"}]},{"cap":"The lesson in one board: turning text into a number always works. Whether that number predicts anything is a separate claim, and only an out-of-sample test can settle it.","do":[{"note":"end","x":300,"y":704,"text":"Text → number: always works.\nNumber → edge: test it out of sample.","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:nlp_trading_signals_sentiment:END -->
+    </section>
+    <!-- WB:nlp_trading_signals_sentiment-deck:END -->
+
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <!-- DESK:START -->
@@ -293,7 +306,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -344,7 +357,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -443,5 +456,9 @@
 })();
 </script>
 <script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

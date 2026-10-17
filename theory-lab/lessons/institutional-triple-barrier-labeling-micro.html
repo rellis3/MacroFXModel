@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Triple-Barrier Labelling &amp; Meta-Labelling — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -158,7 +159,19 @@
       <p class="sl-p">Vertical barrier held fixed at 10 bars here. With the defaults (4×σ upper, 3×σ lower) the path never reaches either barrier in the first 10 bars — it times out at the vertical barrier instead. Drag the lower width down toward 2×: the path dips to −14 pips at bar 5, so a 2×σ (−10 pip) stop gets hit well within that same window — the outcome flips from a neutral time-limit exit to a clean −1, without the price path itself changing at all.</p>
     </section>
 
+    <!-- WB:institutional_triple_barrier_labeling-deck:START -->
     <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">The barrier race, then the meta-label filter</h2>
+      <!-- WB:institutional_triple_barrier_labeling:START -->
+      <div class="wb" data-title="The barrier race, then the meta-label filter">
+        <script type="application/json">{"w":600,"h":806,"intro":"A trade ends at its stop, its target or its time limit, whichever comes first. Label it the same way. Press play, or step through.","steps":[{"cap":"You go long EUR/USD at 1.0850. A point-in-time volatility estimate says about 5 pips a bar.","do":[{"icon":"you","name":"person","x":20,"y":4,"s":0.66,"tone":"blue","label":"long 1.0850","lsize":17},{"note":"sig","x":360,"y":40,"text":"σ̂ = 5 pips a bar, known at entry","size":19,"anchor":"middle"}]},{"cap":"Set three barriers before you look at the path: a take-profit 4σ up at 1.0870, a stop 3σ down at 1.0835, and a time limit 10 bars out.","do":[{"chart":"w","x":10,"y":92,"w":580,"h":236,"title":"Worked example: pips from entry","xd":[0,10],"yd":[-20,28],"yt":[[20,"+20"],[0,"0"],[-15,"−15"]],"xt":[[0,"0"],[5,"5"],[10,"10 bars"]],"pl":46,"pr":110},{"series":"u","chart":"w","pts":[[0,20],[10,20]],"tone":"green","dash":true,"ms":500,"label":"U 1.0870","lat":[10,20],"ldx":8,"ldy":0,"lanchor":"start","lsize":16},{"series":"l","chart":"w","pts":[[0,-15],[10,-15]],"tone":"red","dash":true,"ms":500,"label":"L 1.0835","lat":[10,-15],"ldx":8,"ldy":0,"lanchor":"start","lsize":16},{"series":"v","chart":"w","pts":[[10,-20],[10,28]],"tone":"amber","dash":true,"ms":400,"label":"V","lat":[10,26],"ldx":8,"ldy":0,"lanchor":"start","lsize":16}]},{"cap":"Walk forward bar by bar, in order, exactly as an open position would. Through bar 6 the price stays between the barriers: the high so far is 1.0865.","do":[{"series":"p6","chart":"w","pts":[[0,0],[1,5],[2,-2],[3,7],[4,12],[5,0],[6,15]],"tone":"blue","ms":1400}]},{"cap":"Bar 7 trades at 1.0872, at or above the upper barrier. The walk stops here: the label is +1.","do":[{"series":"p7","chart":"w","pts":[[6,15],[7,22]],"tone":"blue","ms":500},{"dot":"t7","chart":"w","at":[7,22],"text":"+1 at bar 7","tone":"green","dy":-16}]},{"cap":"Bars 8 to 10 no longer matter. A real position closed by its take-profit at bar 7 never sees them, so the label ignores them too.","do":[{"note":"moot","chart":"w","at":[8.6,2],"text":"bars 8–10:\nmoot","tone":null,"size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Now the lesson's 20-bar path, with the stop tightened to 2σ, 10 pips below entry. At bar 5 the price is 14 pips down. The stop is hit first: the label is −1.","do":[{"chart":"s","x":10,"y":346,"w":580,"h":236,"title":"Same idea, the 20-bar path: pips from entry","xd":[0,20],"yd":[-30,36],"yt":[[20,"+20"],[0,"0"],[-10,"−10"]],"xt":[[0,"0"],[5,"5"],[10,"10"],[20,"20 bars"]],"pl":46,"pr":110},{"series":"u2","chart":"s","pts":[[0,20],[20,20]],"tone":"green","dash":true,"ms":500,"label":"U +20","lat":[20,20],"ldx":8,"ldy":0,"lanchor":"start","lsize":16},{"series":"l2","chart":"s","pts":[[0,-10],[20,-10]],"tone":"red","dash":true,"ms":500,"label":"L −10","lat":[20,-10],"ldx":8,"ldy":0,"lanchor":"start","lsize":16},{"series":"v2","chart":"s","pts":[[10,-30],[10,36]],"tone":"amber","dash":true,"ms":400},{"series":"q5","chart":"s","pts":[[0,0],[1,3],[2,-4],[3,2],[4,-9],[5,-14]],"tone":"blue","ms":1200},{"dot":"t5","chart":"s","at":[5,-14],"text":"−1 at bar 5","tone":"red","dy":22}]},{"cap":"A fixed 10-bar label ignores the path and checks only bar 10, where price is 9 pips up. It calls this +1. A real trade with that stop had already lost.","do":[{"series":"q10","chart":"s","pts":[[5,-14],[6,-7],[7,-11],[8,-3],[9,5],[10,9]],"tone":null,"dash":true,"ms":700},{"dot":"f10","chart":"s","at":[10,9],"text":"fixed 10-bar label: +1","tone":"amber","dx":-8,"dy":-18,"anchor":"end"}]},{"cap":"Meta-labelling is a second idea. A primary signal fired 10 times and won 5: a coin flip. A separate model gives each fired signal a probability of winning.","do":[{"chart":"m","x":10,"y":600,"w":580,"h":196,"title":"Ten fired signals: meta-probability, and the outcome","xd":[0.4,10.6],"yd":[0,1.5],"yt":[[0.6,"0.60"]],"xt":[[1,"1"],[10,"10"]],"pl":50,"pr":14,"pt":36},{"bars":"mb","chart":"m","data":[[1,0.82,"","green"],[2,0.71,"","green"],[3,0.65,"","green"],[4,0.61,"","red"],[5,0.58,"","green"],[6,0.54,"","red"],[7,0.47,"","red"],[8,0.39,"","green"],[9,0.33,"","red"],[10,0.22,"","red"]],"bw":30,"ms":1100},{"note":"key","chart":"m","at":[5.5,1.13],"text":"green = target first (+1) · red = stop first (−1)","tone":null,"size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Take only signals above 0.60. Four clear the bar and three of them win: 75% instead of 50%, from 4 trades instead of 10.","do":[{"series":"thr","chart":"m","pts":[[0.4,0.6],[10.6,0.6]],"tone":"amber","dash":true,"ms":500},{"hide":"key"},{"note":"kept","chart":"m","at":[5.5,1.36],"text":"above 0.60: 4 taken · 3 win = 75%","tone":"green","size":18,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Compare taking every signal: 5 wins from 10, 50%. Higher precision costs trades. And the filter can only rank a signal with real information in it. On pure noise it finds splits that vanish out of sample.","do":[{"note":"warn","chart":"m","at":[5.5,1.13],"text":"all signals: 10 taken · 5 win = 50%","tone":null,"size":17,"anchor":"middle","dx":0,"dy":0}]}]}</script>
+      </div>
+      <!-- WB:institutional_triple_barrier_labeling:END -->
+    </section>
+    <!-- WB:institutional_triple_barrier_labeling-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Why the barriers scale with volatility, not a fixed distance</h2>
       <div class="sl-icard-grid">
@@ -169,7 +182,7 @@
       <div class="sl-quote">Two lessons back, the GARCH conditional-variance framework and a family of range-based (open/high/low/close) volatility estimators were built for their own sake. Here they show up again as a direct, practical input: whatever the barrier width should be today depends on today's volatility estimate, not on a number chosen once and left alone.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Meta-labelling: a second, separate idea</h2>
       <p class="sl-sub">Not "how do I label a trade" — "given that a signal already fired, should I take it, and how big?"</p>
@@ -186,7 +199,7 @@
       <div class="sl-quote">A mediocre stock-picking friend, right about 52% of the time, isn't worth trusting blindly. But if they're right far more often when they <em>sound</em> confident, you don't need them to become a better picker — you just start listening only when they sound sure. The friend is the primary signal; learning when to trust their confidence is the meta-model.</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Ten fired signals, filtered by confidence</h2>
       <p class="sl-sub">Same ten historical instances, same triple-barrier outcomes — filter by the meta-model's predicted win-probability.</p>
@@ -202,7 +215,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Recompute the filtered win rate at any threshold</h2>
       <p class="sl-sub">Same ten signals. Change the threshold — the filtered count and win rate recalculate live.</p>
@@ -226,7 +239,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this quietly goes wrong</h2>
       <div class="sl-callout amber">
@@ -240,7 +253,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Verified against this repo's actual code</h2>
       <div class="sl-callout green">
@@ -250,13 +263,13 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Closing this category: one question, two angles</h2>
       <div class="sl-quote">The previous lesson asked whether an apparent backtested edge, once you account for having tried many strategies, actually reflects something real rather than the best-looking result of a big enough search. This lesson asked whether the training label a model learned from ever described a real, tradable payoff to begin with. Both exist because a backtest can look convincing for reasons that have nothing to do with a genuine, persistent relationship — one from testing too many things, the other from measuring the wrong thing.</div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -307,7 +320,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -502,5 +515,6 @@
   // ── Fixed vs triple-barrier label tabs, and worked-walk tabs, are handled by the deck's generic .sl-tabs wiring ──
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

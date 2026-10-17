@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quantile Regression — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,99 @@
       <li><strong>Real-world episode:</strong> "Vulnerable Growth" (Adrian, Boyarchenko &amp; Giannone, 2019) fitted quantile regressions of US GDP growth on financial conditions: as conditions tightened, as in 2008, the lower quantiles fell sharply while the median barely moved. The IMF built its Growth-at-Risk framework on it, though out-of-sample studies later found the tail signal weaker.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the lesson's 40-point toy scatter whose spread widens with x, with three fitted lines. The OLS mean line runs through the middle; the tau 0.1 quantile line hugs the bottom edge and the tau 0.9 line the top edge. The shaded band between them is 0.80 wide at x equals 1 and 4.97 wide at x equals 10. Right: the pinball loss at tau 0.05, a lopsided V. Guessing too high costs 0.95 per unit, guessing too low costs 0.05 per unit, nineteen times less.">
+      <text class="tlp-text2" x="56" y="24" font-size="13" font-weight="700">Same 40 points, three lines</text>
+      <polygon class="tlp-amber" opacity=".18" points="77.6,178.5 326.2,44.2 326.2,89.0 77.6,185.7"/>
+      <line class="tlp-line" x1="50" y1="215" x2="340" y2="215"/>
+      <line class="tlp-line" x1="50" y1="35" x2="50" y2="215"/>
+      <circle class="tlp-text3" cx="88.4" cy="173.8" r="2.6"/>
+      <circle class="tlp-text3" cx="93.4" cy="172.3" r="2.6"/>
+      <circle class="tlp-text3" cx="101.1" cy="176.6" r="2.6"/>
+      <circle class="tlp-text3" cx="109.4" cy="166.2" r="2.6"/>
+      <circle class="tlp-text3" cx="109.9" cy="166.8" r="2.6"/>
+      <circle class="tlp-text3" cx="116.0" cy="163.1" r="2.6"/>
+      <circle class="tlp-text3" cx="124.9" cy="153.1" r="2.6"/>
+      <circle class="tlp-text3" cx="126.0" cy="157.9" r="2.6"/>
+      <circle class="tlp-text3" cx="134.0" cy="149.8" r="2.6"/>
+      <circle class="tlp-text3" cx="134.2" cy="155.3" r="2.6"/>
+      <circle class="tlp-text3" cx="158.5" cy="140.8" r="2.6"/>
+      <circle class="tlp-text3" cx="165.7" cy="133.2" r="2.6"/>
+      <circle class="tlp-text3" cx="169.6" cy="155.6" r="2.6"/>
+      <circle class="tlp-text3" cx="169.9" cy="142.2" r="2.6"/>
+      <circle class="tlp-text3" cx="186.7" cy="136.2" r="2.6"/>
+      <circle class="tlp-text3" cx="187.8" cy="137.9" r="2.6"/>
+      <circle class="tlp-text3" cx="189.5" cy="132.5" r="2.6"/>
+      <circle class="tlp-text3" cx="193.6" cy="106.7" r="2.6"/>
+      <circle class="tlp-text3" cx="194.5" cy="138.1" r="2.6"/>
+      <circle class="tlp-text3" cx="195.8" cy="112.6" r="2.6"/>
+      <circle class="tlp-text3" cx="215.4" cy="141.4" r="2.6"/>
+      <circle class="tlp-text3" cx="234.8" cy="112.2" r="2.6"/>
+      <circle class="tlp-text3" cx="237.8" cy="102.5" r="2.6"/>
+      <circle class="tlp-text3" cx="244.2" cy="92.1" r="2.6"/>
+      <circle class="tlp-text3" cx="247.5" cy="88.2" r="2.6"/>
+      <circle class="tlp-text3" cx="251.1" cy="84.9" r="2.6"/>
+      <circle class="tlp-text3" cx="262.7" cy="99.4" r="2.6"/>
+      <circle class="tlp-text3" cx="266.0" cy="100.1" r="2.6"/>
+      <circle class="tlp-text3" cx="266.8" cy="75.0" r="2.6"/>
+      <circle class="tlp-text3" cx="270.1" cy="93.0" r="2.6"/>
+      <circle class="tlp-text3" cx="271.2" cy="113.2" r="2.6"/>
+      <circle class="tlp-text3" cx="273.2" cy="109.7" r="2.6"/>
+      <circle class="tlp-text3" cx="282.3" cy="101.8" r="2.6"/>
+      <circle class="tlp-text3" cx="283.4" cy="73.1" r="2.6"/>
+      <circle class="tlp-text3" cx="291.1" cy="76.2" r="2.6"/>
+      <circle class="tlp-text3" cx="299.7" cy="60.5" r="2.6"/>
+      <circle class="tlp-text3" cx="308.0" cy="80.2" r="2.6"/>
+      <circle class="tlp-text3" cx="318.2" cy="62.4" r="2.6"/>
+      <circle class="tlp-text3" cx="319.0" cy="51.5" r="2.6"/>
+      <circle class="tlp-text3" cx="320.1" cy="71.9" r="2.6"/>
+      <line class="tlp-line amber thick" x1="77.6" y1="178.5" x2="326.2" y2="44.2"/>
+      <line class="tlp-line thick" x1="77.6" y1="182.3" x2="326.2" y2="63.7"/>
+      <line class="tlp-line blue thick" x1="77.6" y1="185.7" x2="326.2" y2="89.0"/>
+      <text class="tlp-amber" x="332" y="48" font-size="13" font-weight="700">τ = 0.9</text>
+      <text class="tlp-text2" x="332" y="68" font-size="13" font-weight="700">mean</text>
+      <text class="tlp-blue" x="332" y="93" font-size="13" font-weight="700">τ = 0.1</text>
+      <text class="tlp-text3" x="56" y="234" font-size="12">x = 1: band 0.80 wide</text>
+      <text class="tlp-text3" x="340" y="234" text-anchor="end" font-size="12">x = 10: band 4.97 wide</text>
+      <line class="tlp-line dash" x1="392" y1="12" x2="392" y2="240"/>
+      <text class="tlp-text2" x="500" y="24" text-anchor="middle" font-size="13" font-weight="700">Pinball loss, τ = 0.05</text>
+      <line class="tlp-line" x1="440" y1="190" x2="584" y2="190"/>
+      <polyline class="tlp-line purple thick" points="446,76 510,190 574,184"/>
+      <text class="tlp-red" x="470" y="100" font-size="13" font-weight="700">too high: × 0.95</text>
+      <text class="tlp-blue" x="584" y="170" text-anchor="end" font-size="13" font-weight="700">too low: × 0.05</text>
+      <text class="tlp-text3" x="584" y="210" text-anchor="end" font-size="12">u = Y − q →</text>
+      <text class="tlp-text3" x="500" y="232" text-anchor="middle" font-size="12">19× penalty pulls the guess</text>
+      <text class="tlp-text3" x="500" y="247" text-anchor="middle" font-size="12">down to the 5th percentile</text>
+    </svg>
+    <figcaption>Change the penalty, and the line you fit changes what it estimates. A lopsided "pinball" penalty makes the fitted line aim at a quantile instead of the mean, so the quantile lines can fan apart where the outcomes get riskier, which one mean line cannot show.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I regress tomorrow's return on today's volatility and get a nice line. Why isn't that my risk model?</p>
+      <p data-who="Quant">Because that line is the average outcome given today's conditions. Risk is about the bad outcome given today's conditions. Different question.</p>
+      <p data-who="Trader">Can't I just put a confidence band around the average?</p>
+      <p data-who="Quant">The fix isn't a band bolted on. It's a different penalty. Ordinary regression punishes a miss above the line exactly as hard as a miss below it, so the best line runs through the middle.</p>
+      <p data-who="Trader">And if I punish one side harder?</p>
+      <p data-who="Quant">Then the best guess moves. Say guessing too high costs you nineteen times more than guessing too low. You'd learn to guess low, low enough that you're too high only five percent of the time. That guess is the fifth percentile.</p>
+      <p data-who="Trader">That's the whole trick?</p>
+      <p data-who="Quant">That's the whole trick. It's called the pinball loss, from Koenker and Bassett in 1978. Same idea as fitting a line, different penalty, and the line lands on a quantile instead of the mean.</p>
+      <p data-who="Trader">What does that show me that the average doesn't?</p>
+      <p data-who="Quant">Take the lesson's toy data, forty points whose spread grows as you move right. Fit a line at the tenth percentile and one at the ninetieth. At the left end, the band between them is about point eight wide. At the right end, it's about five. Roughly six times wider.</p>
+      <p data-who="Trader">And the average line?</p>
+      <p data-who="Quant">One number at every point. It has no way to say the outcomes got riskier.</p>
+      <p data-who="Trader">Has anyone used this on something real?</p>
+      <p data-who="Quant">"Vulnerable Growth", by Adrian, Boyarchenko and Giannone, published in 2019. They fitted quantile regressions of future US growth on a financial conditions index. When conditions tightened, as in 2008, the bottom of the forecast fell sharply while the middle barely moved.</p>
+      <p data-who="Trader">So a forecaster watching the middle would have been calm.</p>
+      <p data-who="Quant">Exactly. The IMF built its Growth-at-Risk framework on that idea. One honest note: later out-of-sample studies found the tail signal weaker than the in-sample fits, and the index tightens as a crisis unfolds, not years before it.</p>
+      <p data-who="Trader">So what's the one-line version?</p>
+      <p data-who="Quant">Change the penalty and you change what the line estimates: aim it at the bad tail, and it shows you when conditions make bad days worse even while the average stays put.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -82,6 +176,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From the pinball loss to a conditional quantile, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ u = \color{#fbbf24}{Y - q} \]</div>
+      <p>Start with the miss: the actual outcome \(Y\) minus your guess \(q\). Positive means you guessed too low, negative too high.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \rho_\tau(u) = u\,\color{#fbbf24}{\tau} \]</div>
+      <p>Charge a guess that was too low at weight \(\tau\). At \(\tau = 0.05\), a miss of 1 below the outcome costs 0.05.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \rho_\tau(u) = u\big(\tau \color{#fbbf24}{- \mathbb{1}\{u &lt; 0\}}\big) \]</div>
+      <p>When the guess was too high, the indicator switches on and the weight becomes \(1 - \tau\). At \(\tau = 0.05\) that is 0.95: nineteen times the penalty for the same-sized miss.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \min_q E[\rho_\tau(Y-q)] \;\Rightarrow\; \color{#fbbf24}{F(q) = \tau} \]</div>
+      <p>Choose the guess that minimizes the average penalty. The balance point is where a fraction \(\tau\) of outcomes lie below \(q\): the \(\tau\)-th quantile, not the mean.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{q_\tau(x) = x^\top\beta_\tau, \quad \beta_\tau = \arg\min_\beta \textstyle\sum_i \rho_\tau(y_i - x_i^\top\beta)} \]</div>
+      <p>Let the guess depend on predictors \(x\) and fit \(\beta_\tau\) on the data. The fitted quantile now moves with today's conditions. In the toy example below, \(\hat{q}_{0.1}(x) = 2.062 + 1.194x\).</p>
+    </div>
+  </div>
 
   <h3>The pinball (check) loss function</h3>
   <p>
@@ -361,6 +479,10 @@
       \(\tau\) or the residual \(u=Y-q\) below and the pinball loss
       \(\rho_\tau(u)\) recalculates instantly.
     </p>
+    <div class="tl-predict" data-answer="0.2" data-tol="0.02" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Now aim at the top of the distribution: set \(\tau\) to 90% and the residual \(u\) to −2, a guess that came out 2 too high. What pinball loss does it get? Lock in a guess, then type 90 and −2 into the fields below to check.</div>
+      <div class="tl-predict-reveal"><p><strong>0.2.</strong> The guess was too high, so the weight is \(1 - \tau = 0.10\), and \(\rho_{0.9}(-2) = 2 \times 0.10 = 0.2\). At \(\tau = 0.9\) the lopsidedness flips: guessing too low is now the expensive side. Change \(u\) to +2 and the loss is \(2 \times 0.90 = 1.8\), nine times more, which pushes the fitted line up toward the 90th percentile.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Quantile level \(\tau\) (%)</span></div>
@@ -399,6 +521,12 @@
     skew and kurtosis, typically on a slow, periodic basis, not day-to-day as conditions actually shift.
     </p>
   </div>
+
+  <!-- WB:quantile_regression:START -->
+  <div class="wb" id="wb-quantile_regression" data-title="Three lines through the same points: quantile regression step by step">
+    <script type="application/json">{"w":600,"h":770,"intro":"The lesson's 40 toy points, one ordinary regression, and two lines fitted with a lopsided penalty instead. Press play, or step through.","steps":[{"cap":"Forty points from the lesson's toy dataset. As x grows, the outcomes spread out: the risk itself changes with x.","do":[{"chart":"sc","x":10,"y":10,"w":580,"h":380,"title":"Toy data: outcome y against predictor x","xd":[0,10.5],"yd":[0,20],"yt":[[0,"0"],[10,"10"],[20,"20"]],"xt":[[1,"1"],[4,"4"],[7,"7"],[10,"10"]],"pl":50,"pr":74},{"dot":"p0","chart":"sc","at":[1.39,4.58],"text":"","tone":null},{"dot":"p1","chart":"sc","at":[1.57,4.74],"text":"","tone":null},{"dot":"p2","chart":"sc","at":[1.85,4.27],"text":"","tone":null},{"dot":"p3","chart":"sc","at":[2.15,5.42],"text":"","tone":null},{"dot":"p4","chart":"sc","at":[2.17,5.35],"text":"","tone":null},{"dot":"p5","chart":"sc","at":[2.39,5.77],"text":"","tone":null},{"dot":"p6","chart":"sc","at":[2.71,6.88],"text":"","tone":null},{"dot":"p7","chart":"sc","at":[2.75,6.34],"text":"","tone":null},{"dot":"p8","chart":"sc","at":[3.04,7.25],"text":"","tone":null},{"dot":"p9","chart":"sc","at":[3.05,6.63],"text":"","tone":null},{"dot":"p10","chart":"sc","at":[3.93,8.25],"text":"","tone":null},{"dot":"p11","chart":"sc","at":[4.19,9.09],"text":"","tone":null},{"dot":"p12","chart":"sc","at":[4.33,6.6],"text":"","tone":null},{"dot":"p13","chart":"sc","at":[4.34,8.09],"text":"","tone":null},{"dot":"p14","chart":"sc","at":[4.95,8.75],"text":"","tone":null},{"dot":"p15","chart":"sc","at":[4.99,8.57],"text":"","tone":null},{"dot":"p16","chart":"sc","at":[5.05,9.17],"text":"","tone":null},{"dot":"p17","chart":"sc","at":[5.2,12.03],"text":"","tone":null},{"dot":"p18","chart":"sc","at":[5.23,8.54],"text":"","tone":null},{"dot":"p19","chart":"sc","at":[5.28,11.38],"text":"","tone":null},{"dot":"p20","chart":"sc","at":[5.99,8.18],"text":"","tone":null},{"dot":"p21","chart":"sc","at":[6.69,11.42],"text":"","tone":null},{"dot":"p22","chart":"sc","at":[6.8,12.5],"text":"","tone":null},{"dot":"p23","chart":"sc","at":[7.03,13.65],"text":"","tone":null},{"dot":"p24","chart":"sc","at":[7.15,14.09],"text":"","tone":null},{"dot":"p25","chart":"sc","at":[7.28,14.46],"text":"","tone":null},{"dot":"p26","chart":"sc","at":[7.7,12.84],"text":"","tone":null},{"dot":"p27","chart":"sc","at":[7.82,12.77],"text":"","tone":null},{"dot":"p28","chart":"sc","at":[7.85,15.56],"text":"","tone":null},{"dot":"p29","chart":"sc","at":[7.97,13.55],"text":"","tone":null},{"dot":"p30","chart":"sc","at":[8.01,11.31],"text":"","tone":null},{"dot":"p31","chart":"sc","at":[8.08,11.7],"text":"","tone":null},{"dot":"p32","chart":"sc","at":[8.41,12.58],"text":"","tone":null},{"dot":"p33","chart":"sc","at":[8.45,15.77],"text":"","tone":null},{"dot":"p34","chart":"sc","at":[8.73,15.42],"text":"","tone":null},{"dot":"p35","chart":"sc","at":[9.04,17.17],"text":"","tone":null},{"dot":"p36","chart":"sc","at":[9.34,14.98],"text":"","tone":null},{"dot":"p37","chart":"sc","at":[9.71,16.96],"text":"","tone":null},{"dot":"p38","chart":"sc","at":[9.74,18.17],"text":"","tone":null},{"dot":"p39","chart":"sc","at":[9.78,15.9],"text":"","tone":null}]},{"cap":"Ordinary least squares punishes a miss above the line exactly as hard as a miss below it. The best line then runs through the middle: the conditional mean, ŷ = 2.172 + 1.464x.","do":[{"series":"ols","chart":"sc","pts":[[1,3.636],[10,16.812]],"tone":null,"ms":1100,"label":"mean","lat":[10,16.812],"ldx":8,"ldy":0,"lanchor":"start","lsize":17}]},{"cap":"Now make the penalty lopsided. At τ = 0.1, a guess that comes out too high costs 0.9 per unit, a guess too low only 0.1. That is the pinball loss.","do":[{"chart":"pb","x":10,"y":400,"w":285,"h":220,"title":"Pinball loss","xd":[-2,2],"yd":[0,2.2],"yt":[[0,"0"],[1,"1"],[2,"2"]],"xt":[[-1.6,"too high"],[0,"0"],[1.6,"too low"]],"pl":40,"pr":20},{"series":"pb1","chart":"pb","pts":[[-2,1.8],[0,0],[2,0.2]],"tone":"blue","ms":900},{"note":"pl1","chart":"pb","at":[-1.0,1.75],"text":"τ = 0.1","tone":"blue","size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Minimizing that penalty drags the line down to the bottom edge of the cloud: the conditional 10th percentile, 2.062 + 1.194x. Only a few points sit below it.","do":[{"series":"q1","chart":"sc","pts":[[1,3.256],[10,14.002]],"tone":"blue","ms":1100,"label":"τ = 0.1","lat":[10,14.002],"ldx":8,"ldy":0,"lanchor":"start","lsize":17}]},{"cap":"Flip the weights for τ = 0.9: now guessing too low is the expensive side, 0.9 per unit against 0.1.","do":[{"series":"pb9","chart":"pb","pts":[[-2,0.2],[0,0],[2,1.8]],"tone":"amber","ms":900},{"note":"pl9","chart":"pb","at":[0.9,1.75],"text":"τ = 0.9","tone":"amber","size":17,"anchor":"middle","dx":0,"dy":0},{"dim":"pb1"}]},{"cap":"That line rides the top edge: the 90th percentile, 2.395 + 1.658x. Three lines with three different slopes, all from the same points.","do":[{"series":"q9","chart":"sc","pts":[[1,4.053],[10,18.975]],"tone":"amber","ms":1100,"label":"τ = 0.9","lat":[10,18.975],"ldx":8,"ldy":0,"lanchor":"start","lsize":17}]},{"cap":"The band between the two is the story. At x = 1 it is 0.80 wide. At x = 10 it is 4.97 wide, roughly six times wider. Risk grows with x.","do":[{"gap":"band","chart":"sc","top":[[1,4.053],[10,18.975]],"bot":[[1,3.256],[10,14.002]],"tone":"amber","op":0.2},{"note":"w1","chart":"sc","at":[1.2,6.253],"text":"0.80","tone":"amber","size":17,"anchor":"middle","dx":0,"dy":0},{"note":"w10","chart":"sc","at":[8.6,19.2],"text":"4.97 wide","tone":"amber","size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"The mean line reports one number at every x. It has no way to say that the outcomes got riskier. That needs a line aimed at the tail.","do":[{"box":"one","x":310,"y":410,"w":280,"h":96,"text":"mean: one number per x\nno word on the spread","size":18}]},{"cap":"The real version: \"Vulnerable Growth\" (2019) fitted quantile regressions of future US growth on a financial conditions index. As conditions tightened, as in 2008, the median barely moved.","do":[{"icon":"fci","name":"thermo","x":70,"y":636,"s":0.6,"tone":"red","label":"financial\nconditions\ntighten","lsize":16},{"box":"med","x":240,"y":636,"w":345,"h":54,"text":"median growth: barely moves","tone":"blue","size":18},{"arrow":["fci","med"],"tone":"blue"}]},{"cap":"But the lower quantiles of next year's growth fell sharply. Tight conditions changed how bad things could get, not the typical outcome.","do":[{"box":"low","x":240,"y":704,"w":345,"h":54,"text":"5th percentile: falls sharply","tone":"red","size":18},{"arrow":["fci","low"],"tone":"red"}]},{"cap":"The IMF built its Growth-at-Risk framework on it, from October 2017. Honest postscript: out-of-sample, the tail signal looked weaker, and the index tightens as a crisis unfolds, not years before it.","do":[{"box":"gar","x":310,"y":520,"w":280,"h":96,"text":"Growth-at-Risk:\nthe 5th percentile, given x","tone":"amber","size":18}]}]}</script>
+  </div>
+  <!-- WB:quantile_regression:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: "Vulnerable Growth" and the 2008 recession</h2>
@@ -546,6 +674,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill" data-date="2008-09-15">
+    <div class="tl-drill-label">Scenario drill · 15 September 2008</div>
+    <h3>The central forecast barely moved. Do you trust it?</h3>
+    <p>Lehman Brothers has filed for bankruptcy this morning. Credit spreads are widening, volatility is rising and funding markets are seizing up: every input to a financial conditions index is tightening at once. Your economists' central forecast for next year's US growth has been cut, but only in a small step, and it still shows modest growth. You size a macro book on next year's growth. What do you size it on?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">The central forecast. It has only moved a little, so the outlook has only changed a little.<div class="tl-drill-why">A central forecast is a conditional mean. Tight financial conditions mostly change how bad things can get, not the typical outcome, so the mean is the number least likely to show the danger.</div></li>
+      <li data-verdict="good">The lower tail of the growth outlook given today's conditions: ask how far the bad-case quantile has fallen, and cut risk to that, even if the median looks steady.<div class="tl-drill-why">This is the conditional-quantile question. The same predictor can move the 5th percentile far more than the median, and only a tail-targeted fit shows it.</div></li>
+      <li data-verdict="ok">A fixed downside buffer taken from the long-run spread of past growth outcomes.<div class="tl-drill-why">Better than the mean alone, but it is a static adjustment: the same buffer every year, blind to the fact that today's conditions have just made the bad tail much fatter.</div></li>
+      <li data-verdict="bad">Wait for the economists to cut the central forecast properly before changing anything.<div class="tl-drill-why">Central forecasts tend to be cut in steps as data arrive. By the time the mean has caught up, the bad outcome may already be under way.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Central forecasts were cut, but in steps, and the recession that followed was far deeper than the central path had suggested. The fourth quarter of 2008 was the US economy's worst quarter in decades. Almost a decade later, "Vulnerable Growth" (Adrian, Boyarchenko and Giannone, 2019) fitted quantile regressions of future US growth on financial conditions and found exactly this pattern: as conditions tightened, the lower quantiles fell sharply while the median barely moved. The IMF built its Growth-at-Risk framework on the idea. Later out-of-sample studies found the tail signal weaker, and mostly at short horizons.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -632,6 +773,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> <span>· the mean-fitting line this lesson changes</span></li>
+        <li><a href="regression-diagnostics.html">Regression Diagnostics: Durbin-Watson, Breusch-Pagan &amp; Jarque-Bera</a> <span>· spotting a spread that grows with x</span></li>
+        <li><a href="cornish-fisher-expansion.html">Cornish-Fisher Expansion</a> <span>· the static answer to the same tail question</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a> <span>· a model for how the spread itself moves</span></li>
+        <li><a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a> <span>· when the tail is too thin to fit a low quantile</span></li>
+        <li><a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> <span>· what a tail quantile does and does not tell you</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the conditions that matter for risk often move the bad tail while leaving the average alone, and this is the tool that measures that directly.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="cornish-fisher-expansion.html">← Cornish-Fisher Expansion</a>
     <a href="../hub.html">Theory Lab hub →</a>
@@ -704,10 +866,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

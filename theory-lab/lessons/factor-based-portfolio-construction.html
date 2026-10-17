@@ -41,6 +41,61 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A carry-against-momentum plane. AUDUSD's loadings point to carry 1.0, momentum 0.2. USDJPY's point to carry minus 0.8, momentum 0.6. Taking 0.789 of AUDUSD and minus 0.263 of USDJPY and adding the two arrows lands exactly on the target: carry plus 1.0, momentum 0. With 30 pairs and 3 factors there are 126 numbers to estimate instead of 435 pairwise covariances.">
+      <line class="tlp-line" x1="40" y1="165" x2="580" y2="165"/>
+      <line class="tlp-line" x1="220" y1="25" x2="220" y2="200"/>
+      <text class="tlp-text3" x="228" y="34" font-size="12">momentum ↑</text>
+      <text class="tlp-text3" x="580" y="182" text-anchor="end" font-size="12">carry →</text>
+      <text class="tlp-text3" x="212" y="182" text-anchor="end" font-size="12">0</text>
+      <line class="tlp-line blue dash" x1="220" y1="165" x2="420" y2="125"/>
+      <polygon class="tlp-blue" points="420.0,125.0 411.2,131.9 409.2,122.1"/>
+      <line class="tlp-line blue dash" x1="220" y1="165" x2="60" y2="45"/>
+      <polygon class="tlp-blue" points="60.0,45.0 71.0,47.0 65.0,55.0"/>
+      <text class="tlp-blue" x="428" y="128" font-size="13" font-weight="700">AUDUSD (1.0, 0.2)</text>
+      <text class="tlp-blue" x="74" y="38" font-size="13" font-weight="700">USDJPY (−0.8, 0.6)</text>
+      <line class="tlp-line amber thick" x1="220" y1="165" x2="377.8" y2="133.4"/>
+      <polygon class="tlp-amber" points="377.8,133.4 369.0,140.3 367.0,130.5"/>
+      <text class="tlp-amber" x="300" y="128" text-anchor="middle" font-size="13" font-weight="700">× 0.789, long</text>
+      <line class="tlp-line purple thick" x1="377.8" y1="133.4" x2="420" y2="165"/>
+      <text class="tlp-purple" x="430" y="152" font-size="13" font-weight="700">× −0.263, short</text>
+      <line class="tlp-line green thick" x1="220" y1="165" x2="410" y2="165"/>
+      <polygon class="tlp-green" points="420.0,165.0 410.0,170.0 410.0,160.0"/>
+      <circle class="tlp-green" cx="420" cy="165" r="4"/>
+      <text class="tlp-green" x="236" y="190" font-size="14" font-weight="700">target hit: carry +1.0, momentum 0</text>
+      <text class="tlp-text2" x="300" y="226" text-anchor="middle" font-size="13">30 pairs, 3 factors: 126 numbers to estimate, not 435 pairwise covariances</text>
+    </svg>
+    <figcaption>Each pair is an arrow of factor loadings. A portfolio is a weighted sum of arrows, so you can solve for the weights that land exactly on the exposure you want. Landing on the exposure does not make the factor pay.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I trade a basket of currency pairs. My risk model wants a number for how every pair moves with every other pair. Is there a simpler way?</p>
+      <p data-who="Quant">There is. Describe each pair by a few shared traits instead. How much carry it has, how much momentum, how much value. Those traits are the factors.</p>
+      <p data-who="Trader">And that means fewer numbers?</p>
+      <p data-who="Quant">Far fewer. Take thirty pairs. Every pair against every other is four hundred and thirty-five numbers, each one a noisy guess. With three factors you need about one hundred and twenty-six. They are steadier too, because every pair is measured against the same few factor series.</p>
+      <p data-who="Trader">Fine. So I know each pair's traits. Then what?</p>
+      <p data-who="Quant">Then your whole book's exposure is just a weighted sum. How much you hold of each pair, times that pair's carry, all added up. The same for momentum.</p>
+      <p data-who="Trader">So I can run it backwards. Pick the exposure I want and solve for the sizes.</p>
+      <p data-who="Quant">Exactly. Say you want long carry and no momentum at all, because you already run a separate trend book and don't want to double up.</p>
+      <p data-who="Trader">Then I just buy the Aussie dollar. It's the carry currency.</p>
+      <p data-who="Quant">In the lesson's example, Aussie has a carry loading of one, but it also has a little momentum, zero point two. Buy it on its own and you pick up momentum you never asked for.</p>
+      <p data-who="Trader">So I need something to cancel that.</p>
+      <p data-who="Quant">Dollar yen. Its carry loading is minus zero point eight and its momentum loading is zero point six. Solve the two equations and you get long about seventy-nine percent in Aussie and short about twenty-six percent in dollar yen. Carry comes out at exactly one. Momentum comes out at exactly zero.</p>
+      <p data-who="Trader">And if I have more pairs than factors?</p>
+      <p data-who="Quant">Then lots of different books hit the same target, and you need a second rule to pick one, like the smallest positions or the least leftover risk. That tiebreak is a real choice, not a detail.</p>
+      <p data-who="Trader">Sounds like it can't go wrong.</p>
+      <p data-who="Quant">The construction can't. The factor can. Value is one of the best-documented premiums in finance, and from 2018 to 2020 it had, by many measures, its deepest drawdown on record. Value-tilted books held exactly the tilt they solved for, so they earned exactly the factor's return. Negative, for years.</p>
+      <p data-who="Trader">And people gave up.</p>
+      <p data-who="Quant">Many did, near the low. Then on the ninth of November 2020 Pfizer announced its vaccine results, and value had one of its sharpest one-day reversals in years. It went on to outperform through 2021 and 2022.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Solving for the exposure is the easy part. Whether the factor pays you, over a stretch you can sit through, is the hard part.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -93,6 +148,31 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From one factor to target-hitting weights, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ r_i = \color{#fbbf24}{\beta_{i1} f_1} \]</div>
+      <p>Start with one factor. If \(f_1\) is the market's excess return, this is the single-index model from the Alpha vs. Beta lesson: the asset moves \(\beta_{i1}\) units for each unit the factor moves.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ r_i = \beta_{i1} f_1 + \color{#fbbf24}{\sum_{k=2}^{K} \beta_{ik} f_k} \]</div>
+      <p>Add more named factors, such as carry, momentum and value. Each asset now has one loading per factor.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ r_i = \sum_{k=1}^{K} \beta_{ik} f_k + \color{#fbbf24}{\varepsilon_i} \]</div>
+      <p>Add the leftover: whatever the factors do not explain, assumed unrelated across assets. This is the full factor model.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ B_{p,k} = \color{#fbbf24}{\sum_i w_i}\, \beta_{ik} \]</div>
+      <p>Hold weights \(w_i\) and the portfolio's exposure to factor \(k\) is the weighted sum of the assets' loadings. In matrix form, \(B_p = w^\top B\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{B^\top w = q} \]</div>
+      <p>Run it backwards. Set the exposure equal to the target \(q\) you want and solve for \(w\). In the worked example, \(q\) = (carry +1.0, momentum 0) gives 78.9% long AUDUSD and 26.3% short USDJPY.</p>
+    </div>
+  </div>
 
   <div class="tl-steps">
     <div class="tl-step">
@@ -398,6 +478,10 @@
       the solved weights \(w_1\) (AUDUSD), \(w_2\) (USDJPY) recalculate
       instantly by solving \(B^\top w = q\) directly.
     </p>
+    <div class="tl-predict" data-answer="100" data-tol="3" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> AUDUSD needs a short USDJPY leg only because its momentum loading is 0.2. Suppose AUDUSD were pure carry, with momentum loading \(M_1 = 0\). What would the AUDUSD weight \(w_1\) be? Lock in a guess, then set \(M_1\) to 0 below to check.</div>
+      <div class="tl-predict-reveal"><p><strong>100%.</strong> With \(M_1 = 0\), \(\det(B) = 1.0 \times 0.6 - (-0.8)(0) = 0.6\), so \(w_1 = 0.6 / 0.6 = 1\) and \(w_2 = 0\). Nothing needs cancelling, so the USDJPY leg disappears and AUDUSD alone delivers carry +1.0. Now try \(M_1 = 0.4\) and watch the short USDJPY leg grow to cancel the extra momentum.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>AUDUSD carry \(C_1\)</span></div>
@@ -625,6 +709,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2020-10-30">
+    <div class="tl-drill-label">Scenario drill · late October 2020</div>
+    <h3>Your value tilt has lost for years. Do you keep it?</h3>
+    <p>You run a multi-factor book with a deliberate value tilt, built exactly the way this lesson builds a target exposure. You have checked the loadings, and the book holds the tilt you solved for. But value has just been through its deepest drawdown on record, 2018 to 2020, and clients are asking why you still hold it. The committee meets today. What do you do with the tilt?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Cut the value tilt to zero. Years of losses prove the premium is gone.<div class="tl-drill-why">The construction worked: you held exactly the exposure you asked for, so you earned exactly the factor's return. A long negative run is what a factor with a positive average can do. Cutting near the low turns a drawdown you sat through into a loss you lock in.</div></li>
+      <li data-verdict="bad">Swap the tilt for growth, because that is what has been working.<div class="tl-drill-why">This sells the cheap factor after its worst run and buys the expensive side after its best. Nothing in the model says recent factor returns predict the next ones, and you would be paying the crowd that is already selling.</div></li>
+      <li data-verdict="good">Keep the tilt, but at a size you could hold through a drawdown this long again, and tell clients that in advance.<div class="tl-drill-why">The model promises the exposure, not the premium over your horizon. The right lever is size: a tilt small enough that years of underperformance do not force you out. That is the only way to still be holding the factor when it turns.</div></li>
+      <li data-verdict="ok">Halve the tilt and wait for value to show signs of life.<div class="tl-drill-why">It lowers the pain, and a smaller tilt is easier to defend. But "wait for signs of life" means buying back after the rebound, which is exactly when the premium is paid. Better to choose a size you can hold and then hold it.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 9 November 2020 Pfizer announced its vaccine trial results, and value had one of its sharpest one-day reversals in years. It went on to outperform through 2021 and 2022. Many investors had cut their value tilts near the bottom and missed the turn, and value managers such as AQR had already seen their assets fall substantially through the drawdown.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -686,6 +783,27 @@
     <li>Eugene Fama &amp; Kenneth French's multi-factor equity models — already referenced in the Alpha vs. Beta Separation lesson's Further Reading as the natural single-to-multi-factor extension this lesson generalizes in an FX/macro context.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="alpha-beta-separation.html">Alpha vs. Beta Separation</a> <span>· the one-factor version of this model</span></li>
+        <li><a href="pca-factors.html">Principal Component Analysis &amp; Factor Regimes</a> <span>· factors found from the data, without names</span></li>
+        <li><a href="linear-algebra-matrices.html">Linear Algebra &amp; Matrices</a> <span>· the 2×2 solve behind the target weights</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="active-portfolio-management.html">Active Portfolio Management</a> <span>· how much each independent bet is worth</span></li>
+        <li><a href="drawdowns-risk-of-ruin.html">Drawdowns, Risk of Ruin, and Why Good Systems Get Abandoned</a> <span>· why investors quit a factor near its low</span></li>
+        <!-- DESK:START --><li><a href="institutional-barra-risk-models.html">Barra-Style Risk Models</a> <span>· the industrial version of the factor risk model</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a factor model tells you what you really own across a basket of pairs, and lets you dial in the exposure you want instead of collecting it by accident.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="hierarchical-risk-parity.html">← Hierarchical Risk Parity</a>
@@ -771,7 +889,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

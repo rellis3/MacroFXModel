@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Garman-Klass &amp; Yang-Zhang — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -153,7 +154,19 @@
       <div class="sl-quote">Overnight fixes Garman-Klass's blind spot. Rogers-Satchell fixes the zero-drift assumption. k blends them at the mathematically optimal weight. That's the whole design in one sentence.</div>
     </section>
 
+    <!-- WB:institutional_garman_klass_yang_zhang-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Four ways to read a daily bar</h2>
+      <!-- WB:institutional_garman_klass_yang_zhang:START -->
+      <div class="wb" data-title="Four ways to read a daily bar">
+        <script type="application/json">{"w":600,"h":690,"intro":"The lesson's eight EURUSD-style daily bars, read four ways. Watch what each estimator looks at, and what it misses. Press play, or step through.","steps":[{"cap":"Eight daily bars from the lesson. Each bar has four prices: where it opened, the highest and lowest it reached, and where it closed.","do":[{"chart":"px","x":10,"y":14,"w":580,"h":290,"title":"Eight daily bars (synthetic EURUSD)","xd":[0.3,8.7],"yd":[1.0782,1.0893],"yt":[[1.08,"1.0800"],[1.085,"1.0850"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"6"],[7,"7"],[8,"8"]],"pl":66,"pr":10},{"series":"w0","chart":"px","pts":[[1,1.0808],[1,1.0845]],"tone":"green","ms":250},{"gap":"k0","chart":"px","top":[[0.72,1.0838],[1.28,1.0838]],"bot":[[0.72,1.082],[1.28,1.082]],"tone":"green","op":0.55},{"series":"w1","chart":"px","pts":[[2,1.082],[2,1.0858]],"tone":"green","ms":250},{"gap":"k1","chart":"px","top":[[1.72,1.0851],[2.2800000000000002,1.0851]],"bot":[[1.72,1.0833],[2.2800000000000002,1.0833]],"tone":"green","op":0.55},{"series":"w2","chart":"px","pts":[[3,1.0826],[3,1.0866]],"tone":"red","ms":250},{"gap":"k2","chart":"px","top":[[2.7199999999999998,1.0858],[3.2800000000000002,1.0858]],"bot":[[2.7199999999999998,1.0828],[3.2800000000000002,1.0828]],"tone":"red","op":0.55},{"series":"w3","chart":"px","pts":[[4,1.0791],[4,1.0833]],"tone":"red","ms":250},{"gap":"k3","chart":"px","top":[[3.7199999999999998,1.0821],[4.28,1.0821]],"bot":[[3.7199999999999998,1.0805],[4.28,1.0805]],"tone":"red","op":0.55},{"series":"w4","chart":"px","pts":[[5,1.0798],[5,1.0851]],"tone":"red","ms":250},{"gap":"k4","chart":"px","top":[[4.72,1.0843],[5.28,1.0843]],"bot":[[4.72,1.0822],[5.28,1.0822]],"tone":"red","op":0.55},{"series":"w5","chart":"px","pts":[[6,1.0812],[6,1.0847]],"tone":"green","ms":250},{"gap":"k5","chart":"px","top":[[5.72,1.084],[6.28,1.084]],"bot":[[5.72,1.0828],[6.28,1.0828]],"tone":"green","op":0.55},{"series":"w6","chart":"px","pts":[[7,1.0803],[7,1.0844]],"tone":"red","ms":250},{"gap":"k6","chart":"px","top":[[6.72,1.0833],[7.28,1.0833]],"bot":[[6.72,1.0811],[7.28,1.0811]],"tone":"red","op":0.55},{"series":"w7","chart":"px","pts":[[8,1.0795],[8,1.0829]],"tone":"red","ms":250},{"gap":"k7","chart":"px","top":[[7.72,1.0819],[8.28,1.0819]],"bot":[[7.72,1.0817],[8.28,1.0817]],"tone":"red","op":0.55}]},{"cap":"Close-to-close volatility looks at one price a day: the close. Seven returns between eight closes. It reads 3.08% a year.","do":[{"dot":"c0","chart":"px","at":[1,1.0838],"text":"","tone":"amber"},{"dot":"c1","chart":"px","at":[2,1.0851],"text":"","tone":"amber"},{"dot":"c2","chart":"px","at":[3,1.0828],"text":"","tone":"amber"},{"dot":"c3","chart":"px","at":[4,1.0805],"text":"","tone":"amber"},{"dot":"c4","chart":"px","at":[5,1.0822],"text":"","tone":"amber"},{"dot":"c5","chart":"px","at":[6,1.084],"text":"","tone":"amber"},{"dot":"c6","chart":"px","at":[7,1.0811],"text":"","tone":"amber"},{"dot":"c7","chart":"px","at":[8,1.0817],"text":"","tone":"amber"},{"series":"cl","chart":"px","pts":[[1,1.0838],[2,1.0851],[3,1.0828],[4,1.0805],[5,1.0822],[6,1.084],[7,1.0811],[8,1.0817]],"tone":"amber","dash":true,"ms":900}]},{"cap":"Parkinson looks at how far each day travelled, high to low, and ignores the open and close. Day 4, for example, ranged 42 pips. About 5 times as efficient as closes alone: 3.56%.","do":[{"dim":"cl"},{"note":"r4","chart":"px","at":[4,1.0833],"text":"42 pips","tone":"blue","size":17,"anchor":"middle","dx":0,"dy":-14},{"pulse":"w3"}]},{"cap":"Garman-Klass adds where each bar opened and closed, weighted so the noise is as small as possible. About 7.4 times as efficient: 3.81%.","do":[{"pulse":"k0"},{"pulse":"k5"}]},{"cap":"But look between day 4 and day 5. Day 4 closed at 1.0805. Day 5 opened at 1.0843: a 38-pip gap, like a weekend headline. It happened between two bars.","do":[{"series":"gp","chart":"px","pts":[[4.15,1.0805],[4.85,1.0843]],"tone":"amber","dash":true,"ms":700},{"note":"gpl","chart":"px","at":[4.5,1.0879],"text":"38-pip gap","tone":"amber","size":18,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Parkinson and Garman-Klass only look inside each bar, so the gap is invisible to both. That is Garman-Klass's real blind spot: it assumes no gap between bars.","do":[{"note":"eye","chart":"px","at":[5.5,1.0879],"text":"← blind spot","tone":"red","size":18,"anchor":"start","dx":0,"dy":0}]},{"cap":"Yang-Zhang adds an overnight term: the spread of the close-to-open jumps. It also uses Rogers-Satchell's range measure, which a trending day does not fool.","do":[{"box":"yz","x":10,"y":324,"w":580,"h":60,"text":"Yang-Zhang = overnight + k · open-close + (1 − k) · Rogers-Satchell","tone":"green","size":17}]},{"cap":"For an 8-day window the weight k = 0.34 / (1.34 + 9/7) ≈ 0.13. Put together, the four readings on the same eight bars:","do":[{"chart":"rd","x":10,"y":400,"w":360,"h":210,"title":"Annualised σ, same 8 bars (%)","xd":[0.4,4.6],"yd":[0,5],"yt":[[0,"0"],[2,"2"],[4,"4"]],"xt":[[1,"close"],[2,"Park."],[3,"GK"],[4,"YZ"]],"pl":34,"pr":6},{"bars":"rb","chart":"rd","data":[[1,3.08,"3.08","amber"],[2,3.56,"3.56","blue"],[3,3.81,"3.81","purple"],[4,4.27,"4.27","green"]],"bw":40,"ms":1200}]},{"cap":"Yang-Zhang reads highest, 4.27%, because it is the only one that saw day 5's gap.","do":[{"pulse":"yz"},{"pulse":"gp"}]},{"cap":"Why bother: in the lesson's own simulation, close-to-close needed about 25 days of data to be as precise as the range estimators were after just 5.","do":[{"box":"days","x":390,"y":420,"w":200,"h":110,"text":"same precision:\nclose-close 25 days\nrange-based 5 days","tone":"blue","size":17}]},{"cap":"One limit for all four: they measure how much bars already moved. Turning that into tomorrow's forecast is a separate job.","do":[{"note":"end","x":300,"y":660,"text":"a measurement, not a forecast","size":20,"anchor":"middle","tone":"amber"}]}]}</script>
+      </div>
+      <!-- WB:institutional_garman_klass_yang_zhang:END -->
+    </section>
+    <!-- WB:institutional_garman_klass_yang_zhang-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">How much data does each one actually need?</h2>
       <p class="sl-sub">Drag the slider. Shorter bars mean less sampling noise for the same window length — watch how much faster the range-based estimators shrink.</p>
@@ -173,7 +186,7 @@
       <p class="sl-p">Flip it around: close-to-close needed roughly 25 trading days to reach the same ~15% noise level Parkinson, Garman-Klass, and Yang-Zhang all reached with just 5 days — verified by simulation, not assumed from the textbook multiplier alone.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">All four, on the same eight days</h2>
       <p class="sl-sub">A synthetic EURUSD-style week, with one 38-pip weekend-style gap on day 5.</p>
@@ -190,7 +203,7 @@
       <p class="sl-p">Every number above was actually computed from an eight-bar OHLC table, not written to look plausible — the same table and the same live-recalculating candlestick chart are in the full lesson.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Compute Garman-Klass yourself</h2>
       <p class="sl-sub">Enter one day's O/H/L/C. Invalid combinations are caught, not silently turned into NaN.</p>
@@ -224,14 +237,14 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">A quiet week, then a weekend gap</h2>
       <div class="sl-quote">A desk sizes stops off a 30-day Garman-Klass figure all week — fine, because nothing gapped. Then a Friday-evening headline moves rates expectations, and price gaps meaningfully over the weekend rollover. Garman-Klass's rolling estimate barely reacts: the gap happened entirely between two bars, in the exact blind spot its no-gap assumption creates. Yang-Zhang's estimate jumps immediately, because its overnight term is built specifically to measure a move like this one.</div>
       <p class="sl-p">A desk sizing risk off Garman-Klass alone that week would be working from a volatility figure that quietly understated exactly the kind of move that just happened — the dollars-and-stops version of "GK assumes no gap," not just an abstract limitation.</p>
     </section>
 
-    <!-- DESK:START --><section class="sl-slide" data-slide="13">
+    <!-- DESK:START --><section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Genuinely built here — verified, not assumed</h2>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
@@ -241,7 +254,7 @@
       <p class="sl-p">Every formula in this deck was checked line-by-line against the actual implementation — not assumed from the estimator's name.</p>
     </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -292,7 +305,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -466,5 +479,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

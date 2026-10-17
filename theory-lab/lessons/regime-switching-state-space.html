@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Regime-Switching State Space Models — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -54,6 +55,53 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two regime branches that both end in the calm regime: one that stayed calm, centred at 1.30 with variance 0.004 and weight 0.75, and one that switched from turbulent, centred at 1.10 with variance 0.010 and weight 0.25. Kim's filter merges them into one bell curve centred at 1.25 with variance 0.0130, wider than either branch. Exact filtering with 2 regimes over 30 steps would need over a billion branches.">
+      <line class="tlp-line" x1="60" y1="200" x2="560" y2="200"/>
+      <polyline class="tlp-line amber thick" points="60.0,199.7 66.2,199.6 72.5,199.4 78.8,199.2 85.0,199.0 91.3,198.7 97.5,198.3 103.8,197.9 110.0,197.3 116.2,196.7 122.5,196.0 128.8,195.1 135.0,194.1 141.2,192.9 147.5,191.7 153.8,190.3 160.0,188.8 166.3,187.1 172.5,185.4 178.7,183.7 185.0,181.9 191.2,180.0 197.5,178.3 203.8,176.6 210.0,175.0 216.2,173.6 222.5,172.4 228.8,171.4 235.0,170.7 241.3,170.2 247.5,170.1 253.8,170.2 260.0,170.7 266.3,171.4 272.5,172.4 278.8,173.6 285.0,175.0 291.2,176.6 297.5,178.3 303.7,180.0 310.0,181.9 316.2,183.7 322.5,185.4 328.7,187.1 335.0,188.8 341.2,190.3 347.5,191.7 353.8,192.9 360.0,194.1 366.2,195.1 372.5,196.0 378.8,196.7 385.0,197.3 391.2,197.9 397.5,198.3 403.8,198.7 410.0,199.0 416.3,199.2 422.5,199.4 428.8,199.6 435.0,199.7 441.3,199.8 447.5,199.8 453.8,199.9 460.0,199.9 466.3,199.9 472.5,200.0 478.8,200.0 485.0,200.0 491.3,200.0 497.5,200.0 503.8,200.0 510.0,200.0 516.2,200.0 522.5,200.0 528.8,200.0 535.0,200.0 541.2,200.0 547.5,200.0 553.8,200.0 560.0,200.0"/>
+      <polyline class="tlp-line blue thick" points="60.0,200.0 66.2,200.0 72.5,200.0 78.8,200.0 85.0,200.0 91.3,200.0 97.5,200.0 103.8,200.0 110.0,200.0 116.2,200.0 122.5,200.0 128.8,200.0 135.0,200.0 141.2,200.0 147.5,200.0 153.8,200.0 160.0,200.0 166.3,200.0 172.5,200.0 178.7,200.0 185.0,200.0 191.2,200.0 197.5,200.0 203.8,200.0 210.0,200.0 216.2,199.9 222.5,199.9 228.8,199.8 235.0,199.7 241.3,199.4 247.5,199.0 253.8,198.4 260.0,197.5 266.3,196.2 272.5,194.2 278.8,191.5 285.0,187.8 291.2,182.8 297.5,176.5 303.7,168.7 310.0,159.3 316.2,148.4 322.5,136.2 328.7,123.1 335.0,109.5 341.2,96.2 347.5,83.8 353.8,73.2 360.0,65.0 366.2,59.8 372.5,58.1 378.8,59.8 385.0,65.0 391.2,73.2 397.5,83.8 403.8,96.2 410.0,109.5 416.3,123.1 422.5,136.2 428.8,148.4 435.0,159.3 441.3,168.7 447.5,176.5 453.8,182.8 460.0,187.8 466.3,191.5 472.5,194.2 478.8,196.2 485.0,197.5 491.3,198.4 497.5,199.0 503.8,199.4 510.0,199.7 516.2,199.8 522.5,199.9 528.8,199.9 535.0,200.0 541.2,200.0 547.5,200.0 553.8,200.0 560.0,200.0"/>
+      <polyline class="tlp-line purple thick dash" points="60.0,200.0 66.2,199.9 72.5,199.9 78.8,199.9 85.0,199.8 91.3,199.8 97.5,199.7 103.8,199.6 110.0,199.5 116.2,199.3 122.5,199.1 128.8,198.8 135.0,198.4 141.2,198.0 147.5,197.4 153.8,196.7 160.0,195.9 166.3,194.9 172.5,193.6 178.7,192.2 185.0,190.5 191.2,188.5 197.5,186.3 203.8,183.7 210.0,180.8 216.2,177.5 222.5,173.8 228.8,169.8 235.0,165.5 241.3,160.8 247.5,155.8 253.8,150.6 260.0,145.2 266.3,139.7 272.5,134.1 278.8,128.5 285.0,123.1 291.2,117.9 297.5,113.1 303.7,108.6 310.0,104.7 316.2,101.3 322.5,98.6 328.7,96.6 335.0,95.4 341.2,95.0 347.5,95.4 353.8,96.6 360.0,98.6 366.2,101.3 372.5,104.7 378.8,108.6 385.0,113.1 391.2,117.9 397.5,123.1 403.8,128.5 410.0,134.1 416.3,139.7 422.5,145.2 428.8,150.6 435.0,155.8 441.3,160.8 447.5,165.5 453.8,169.8 460.0,173.8 466.3,177.5 472.5,180.8 478.8,183.7 485.0,186.3 491.3,188.5 497.5,190.5 503.8,192.2 510.0,193.6 516.2,194.9 522.5,195.9 528.8,196.7 535.0,197.4 541.2,198.0 547.5,198.4 553.8,198.8 560.0,199.1"/>
+      <text class="tlp-amber" x="20" y="100" font-size="13" font-weight="700">from turbulent</text>
+      <text class="tlp-amber" x="20" y="116" font-size="12">1.10 · var 0.010</text>
+      <text class="tlp-amber" x="20" y="132" font-size="12">weight 0.25</text>
+      <text class="tlp-blue" x="430" y="58" font-size="13" font-weight="700">stayed calm</text>
+      <text class="tlp-blue" x="430" y="74" font-size="12">1.30 · var 0.004</text>
+      <text class="tlp-blue" x="430" y="90" font-size="12">weight 0.75</text>
+      <text class="tlp-purple" x="430" y="114" font-size="13" font-weight="700">merged: 1.25 · var 0.0130</text>
+      <text class="tlp-purple" x="430" y="130" font-size="12">wider than either branch</text>
+      <text class="tlp-text3" x="60.0" y="216" text-anchor="middle" font-size="12">0.8</text><text class="tlp-text3" x="185.0" y="216" text-anchor="middle" font-size="12">1.0</text><text class="tlp-text3" x="310.0" y="216" text-anchor="middle" font-size="12">1.2</text><text class="tlp-text3" x="435.0" y="216" text-anchor="middle" font-size="12">1.4</text><text class="tlp-text3" x="560.0" y="216" text-anchor="middle" font-size="12">1.6</text>
+      <text class="tlp-text2" x="20" y="240" font-size="13">Exact filtering: 2 regimes over 30 steps means over a billion branches.</text>
+      <text class="tlp-text" x="20" y="257" font-size="13" font-weight="700">Kim's filter merges back to 2 at every step, like this, and pays in width.</text>
+    </svg>
+    <figcaption>Two branches agree we are now calm but disagree on where the state is. Merging them into one bell curve keeps the computation small, and the disagreement shows up as extra width: 0.0130, more than either branch's own variance.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My hedge ratio drifts slowly in calm markets and goes wild in a risk-off unwind. One Kalman filter can't do both, can it?</p>
+      <p data-who="Quant">No. A single filter has one setting for how fast the state moves. Set it for calm days and it lags in a crisis. Set it for a crisis and it twitches every calm day.</p>
+      <p data-who="Trader">So switch the settings by regime.</p>
+      <p data-who="Quant">Exactly. A regime-switching state-space model keeps the Kalman filter's moving state, but which settings are active depends on a hidden regime, calm or turbulent, which follows its own Markov chain, like in the hidden Markov model lesson.</p>
+      <p data-who="Trader">But I can't see the regime.</p>
+      <p data-who="Quant">That's the hard part. To be exact you'd keep a separate filter for every possible history of regimes. With two regimes, that doubles every step. After thirty steps it's over a billion.</p>
+      <p data-who="Trader">Nobody runs a billion filters.</p>
+      <p data-who="Quant">So Kim's filter, from nineteen ninety-four, cheats sensibly. At each step it merges all the branches that agree on today's regime into one bell curve. You only ever carry one per regime.</p>
+      <p data-who="Trader">What does merging cost?</p>
+      <p data-who="Quant">The lesson's example has two branches that both end up calm. One stayed calm and says one point three, fairly sure. One just switched from turbulent and says one point one. The calm branch carries three quarters of the weight.</p>
+      <p data-who="Trader">So the merged answer is about one point two five.</p>
+      <p data-who="Quant">Right. And here's the surprise: the merged uncertainty is bigger than either branch's. The two disagreed by point two, and that disagreement becomes extra width. Merging opinions that disagree is never free.</p>
+      <p data-who="Trader">Has this worked on real data?</p>
+      <p data-who="Quant">The famous case is US recessions. Chauvet's model runs a hidden business-cycle factor through four monthly indicators, with expansion and recession regimes. With Piger she showed it called turning points ahead of the official committee. The 2008 recession was only announced in December 2008, a year after it started. The model called it months earlier.</p>
+      <p data-who="Trader">So I should trade off it.</p>
+      <p data-who="Quant">Careful. The neat chart you see online is smoothed on revised data. That's hindsight. Judge it only on what it said in real time. And 2020 was far bigger than any recession it was fitted on.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Let a hidden regime pick the filter's settings, merge the branches to stay tractable, and remember a regime call describes the backdrop; it isn't a trade.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -99,6 +147,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the regime-switching model and Kim's collapse come from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ x_t = A\, x_{t-1} + w_t, \qquad y_t = H\, x_t + v_t \]</div>
+      <p>Start with the Kalman filter's state-space model: one fixed set of dynamics for the whole series.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ x_t = A_{\color{#fbbf24}{S_t}}\, x_{t-1} + w_t, \quad w_t \sim \mathcal{N}(0, Q_{\color{#fbbf24}{S_t}}), \qquad y_t = H_{\color{#fbbf24}{S_t}}\, x_t + v_t, \quad v_t \sim \mathcal{N}(0, R_{\color{#fbbf24}{S_t}}) \]</div>
+      <p>Give every coefficient a regime subscript. The hidden regime \(S_t\) follows a Markov chain and picks which set of dynamics is active.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{regime paths to track} = \color{#fbbf24}{N^T} \]</div>
+      <p>Because \(S_t\) is hidden, an exact filter must branch over every regime history. With \(N = 2\) and \(T = 30\), that is over a billion.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \hat{x}_t^{(j)} = \sum_i \pi_{i\mid j}\, \hat{x}_t^{(i,j)}, \qquad \color{#10b981}{P_t^{(j)} = \sum_i \pi_{i\mid j} \left[ P_t^{(i,j)} + \left(\hat{x}_t^{(j)} - \hat{x}_t^{(i,j)}\right)^2 \right]} \]</div>
+      <p>Kim's filter merges the branches that share today's regime into one Gaussian. In the worked example: mean 1.250, variance \(0.0055 + 0.0075 = 0.0130\).</p>
+    </div>
+  </div>
   <p>
     Reuse both prior lessons' notation directly. The hidden discrete regime \(S_t \in \{1, \ldots, N\}\)
     follows a Markov chain with the same transition matrix \(A\) from the Hidden Markov Model lesson
@@ -320,6 +388,10 @@
       weighted-average-of-variances term, the weighted-variance-of-means term, and the total collapsed
       variance all recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="0.0056" data-tol="0.0008" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The two branches disagreed by 0.20 and the merged variance came out at 0.0130. Suppose instead they nearly agreed: branch 2's mean is 1.28 rather than 1.10, with everything else unchanged. What is the merged variance \(P_t^{(j)}\)? Lock in a guess, then type 1.28 into the branch 2 mean field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 0.0056.</strong> The average of the branch variances is still 0.0055, but the disagreement term almost vanishes: \(0.75(1.295-1.30)^2 + 0.25(1.295-1.28)^2 \approx 0.0001\). When branches agree, merging costs almost nothing. Now try 0.90 and watch the disagreement term reach 0.03.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Branch 1 mean \(\hat{x}^{(1,j)}\)</span></div>
@@ -371,6 +443,12 @@
       \(Q\)/\(R\)-tuning caution across every one of its \(N\) regimes at once, rather than resolving it.
     </p>
   </div>
+
+  <!-- WB:regime_switching_state_space:START -->
+  <div class="wb" id="wb-regime_switching_state_space" data-title="Regime switching: branch, merge, and call the recession">
+    <script type="application/json">{"w":600,"h":660,"intro":"A Kalman filter whose settings switch with a hidden regime: why it explodes, how Kim's filter tames it, and the recession it called early. Press play, or step through.","steps":[{"cap":"One hedge ratio, two behaviours. In a calm regime it drifts slowly, so the filter wants a small process variance Q. In a turbulent regime it moves fast, so it wants a large Q. One fixed setting serves both badly.","do":[{"box":"calm","x":20,"y":20,"w":230,"h":84,"text":"calm regime","tone":"blue","sub":"small Q, tight R","size":20},{"box":"turb","x":350,"y":20,"w":230,"h":84,"text":"turbulent regime","tone":"red","sub":"large Q","size":20}]},{"cap":"So let a hidden regime pick the settings. The regime itself follows a Markov chain, as in the hidden Markov model lesson: each step it may stay or switch. You never see it directly.","do":[{"arrow":["calm","turb"],"label":"switch?","tone":"amber","bend":-22},{"arrow":["turb","calm"],"label":"switch?","tone":"amber","bend":-22}]},{"cap":"Because the regime is hidden, an exact filter must keep a separate Kalman estimate for every possible regime history. With two regimes the count doubles each step: 2, 4, 8, 16, 32 … After 30 steps it is over a billion.","do":[{"chart":"br","x":10,"y":136,"w":260,"h":210,"title":"Branches to track","xd":[0.4,5.6],"yd":[0,36],"yt":[[0,"0"],[16,"16"],[32,"32"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5 steps"]],"pl":40,"pr":10},{"bars":"ex","chart":"br","data":[[0.8200000000000001,2,"2","red"],[1.82,4,"4","red"],[2.82,8,"8","red"],[3.82,16,"16","red"],[4.82,32,"32","red"]],"bw":16,"ms":1200}]},{"cap":"Kim's filter, from 1994, keeps it at two. After each step it merges every branch that agrees on today's regime into one bell curve. The count never grows, however long the series.","do":[{"bars":"km","chart":"br","data":[[1.18,2,"","green"],[2.18,2,"","green"],[3.18,2,"","green"],[4.18,2,"","green"],[5.18,2,"","green"]],"bw":16,"ms":900},{"note":"kml","x":140,"y":236,"text":"Kim: 2","size":18,"anchor":"middle","tone":"green"}]},{"cap":"Here is one merge. Two branches both end in the calm regime. One stayed calm and says 1.30, fairly sure, weight 0.75. One just switched from turbulent and says 1.10, less sure, weight 0.25.","do":[{"chart":"den","x":280,"y":136,"w":310,"h":210,"title":"Two branches, now calm","xd":[0.8,1.6],"yd":[0,5.2],"yt":[],"xt":[[1.0,"1.0"],[1.2,"1.2"],[1.4,"1.4"]],"pl":14,"pr":10},{"series":"b1","chart":"den","pts":[[0.8,0.0],[0.81,0.0],[0.82,0.0],[0.83,0.0],[0.84,0.0],[0.85,0.0],[0.86,0.0],[0.87,0.0],[0.88,0.0],[0.89,0.0],[0.9,0.0],[0.91,0.0],[0.92,0.0],[0.93,0.0],[0.94,0.0],[0.95,0.0],[0.96,0.0],[0.97,0.0],[0.98,0.0],[0.99,0.0],[1.0,0.0],[1.01,0.0],[1.02,0.0],[1.03,0.001],[1.04,0.001],[1.05,0.002],[1.06,0.004],[1.07,0.006],[1.08,0.011],[1.09,0.019],[1.1,0.032],[1.11,0.052],[1.12,0.082],[1.13,0.128],[1.14,0.193],[1.15,0.284],[1.16,0.408],[1.17,0.572],[1.18,0.782],[1.19,1.042],[1.2,1.355],[1.21,1.719],[1.22,2.126],[1.23,2.564],[1.24,3.017],[1.25,3.461],[1.26,3.873],[1.27,4.227],[1.28,4.5],[1.29,4.672],[1.3,4.731],[1.31,4.672],[1.32,4.5],[1.33,4.227],[1.34,3.873],[1.35,3.461],[1.36,3.017],[1.37,2.564],[1.38,2.126],[1.39,1.719],[1.4,1.355],[1.41,1.042],[1.42,0.782],[1.43,0.572],[1.44,0.408],[1.45,0.284],[1.46,0.193],[1.47,0.128],[1.48,0.082],[1.49,0.052],[1.5,0.032],[1.51,0.019],[1.52,0.011],[1.53,0.006],[1.54,0.004],[1.55,0.002],[1.56,0.001],[1.57,0.001],[1.58,0.0],[1.59,0.0],[1.6,0.0]],"tone":"blue","ms":900,"label":"1.30","lat":[1.3,4.73],"ldx":10,"ldy":-2,"lanchor":"start"},{"series":"b2","chart":"den","pts":[[0.8,0.011],[0.81,0.015],[0.82,0.02],[0.83,0.026],[0.84,0.034],[0.85,0.044],[0.86,0.056],[0.87,0.071],[0.88,0.089],[0.89,0.11],[0.9,0.135],[0.91,0.164],[0.92,0.197],[0.93,0.235],[0.94,0.277],[0.95,0.324],[0.96,0.374],[0.97,0.428],[0.98,0.485],[0.99,0.545],[1.0,0.605],[1.01,0.665],[1.02,0.724],[1.03,0.781],[1.04,0.833],[1.05,0.88],[1.06,0.921],[1.07,0.953],[1.08,0.978],[1.09,0.992],[1.1,0.997],[1.11,0.992],[1.12,0.978],[1.13,0.953],[1.14,0.921],[1.15,0.88],[1.16,0.833],[1.17,0.781],[1.18,0.724],[1.19,0.665],[1.2,0.605],[1.21,0.545],[1.22,0.485],[1.23,0.428],[1.24,0.374],[1.25,0.324],[1.26,0.277],[1.27,0.235],[1.28,0.197],[1.29,0.164],[1.3,0.135],[1.31,0.11],[1.32,0.089],[1.33,0.071],[1.34,0.056],[1.35,0.044],[1.36,0.034],[1.37,0.026],[1.38,0.02],[1.39,0.015],[1.4,0.011],[1.41,0.008],[1.42,0.006],[1.43,0.004],[1.44,0.003],[1.45,0.002],[1.46,0.002],[1.47,0.001],[1.48,0.001],[1.49,0.0],[1.5,0.0],[1.51,0.0],[1.52,0.0],[1.53,0.0],[1.54,0.0],[1.55,0.0],[1.56,0.0],[1.57,0.0],[1.58,0.0],[1.59,0.0],[1.6,0.0]],"tone":"amber","ms":900,"label":"1.10","lat":[0.97,0.55],"ldx":-4,"ldy":-10,"lanchor":"end"}]},{"cap":"Merge them into one Gaussian. The mean is the weighted average: 0.75 × 1.30 + 0.25 × 1.10 = 1.25.","do":[{"series":"mg","chart":"den","pts":[[0.8,0.001],[0.81,0.002],[0.82,0.003],[0.83,0.004],[0.84,0.005],[0.85,0.007],[0.86,0.01],[0.87,0.014],[0.88,0.018],[0.89,0.024],[0.9,0.031],[0.91,0.041],[0.92,0.053],[0.93,0.068],[0.94,0.087],[0.95,0.11],[0.96,0.138],[0.97,0.172],[0.98,0.212],[0.99,0.26],[1.0,0.316],[1.01,0.382],[1.02,0.457],[1.03,0.544],[1.04,0.642],[1.05,0.751],[1.06,0.873],[1.07,1.006],[1.08,1.151],[1.09,1.307],[1.1,1.473],[1.11,1.646],[1.12,1.827],[1.13,2.011],[1.14,2.197],[1.15,2.382],[1.16,2.562],[1.17,2.735],[1.18,2.898],[1.19,3.047],[1.2,3.178],[1.21,3.29],[1.22,3.38],[1.23,3.446],[1.24,3.486],[1.25,3.499],[1.26,3.486],[1.27,3.446],[1.28,3.38],[1.29,3.29],[1.3,3.178],[1.31,3.047],[1.32,2.898],[1.33,2.735],[1.34,2.562],[1.35,2.382],[1.36,2.197],[1.37,2.011],[1.38,1.827],[1.39,1.646],[1.4,1.473],[1.41,1.307],[1.42,1.151],[1.43,1.006],[1.44,0.873],[1.45,0.751],[1.46,0.642],[1.47,0.544],[1.48,0.457],[1.49,0.382],[1.5,0.316],[1.51,0.26],[1.52,0.212],[1.53,0.172],[1.54,0.138],[1.55,0.11],[1.56,0.087],[1.57,0.068],[1.58,0.053],[1.59,0.041],[1.6,0.031]],"tone":"purple","dash":true,"ms":1000,"label":"1.25","lat":[1.25,3.5],"ldx":-10,"ldy":-6,"lanchor":"end"}]},{"cap":"The merged variance is the average of the branch variances, 0.0055, plus their disagreement about the mean, 0.0075: 0.0130 in all. That is wider than either branch on its own. Merging opinions that disagree is never free.","do":[{"box":"pv","x":280,"y":356,"w":310,"h":80,"text":"P = 0.0055 + 0.0075\n= 0.0130","tone":"purple","size":19}]},{"cap":"Had the branches nearly agreed, say 1.30 and 1.28, the disagreement term would almost vanish and the merged variance would be 0.0056. The cost of merging is the size of the disagreement.","do":[{"box":"agree","x":10,"y":356,"w":260,"h":80,"text":"branches agree:\nP = 0.0056","tone":"green","size":19}]},{"cap":"Real data. US recessions are dated by an NBER committee that waits for revised data. The recession that began in December 2007 was only announced on 1 December 2008, nearly a year later. Chauvet and Piger's regime-switching model of four monthly indicators called it months earlier.","do":[{"chart":"tl","x":10,"y":450,"w":580,"h":120,"title":"Recession dating, 2007 to 2010","xd":[2007.5,2011.0],"yd":[0,1],"yt":[],"xt":[[2008,"2008"],[2009,"2009"],[2010,"2010"]],"pl":14,"pr":14,"pt":30,"pb":24},{"series":"tln","chart":"tl","pts":[[2007.5,0.45],[2011.0,0.45]],"tone":null,"ms":500,"width":2},{"dot":"p07","chart":"tl","at":[2007.92,0.45],"text":"peak Dec 2007","tone":"red","dy":-16},{"dot":"a08","chart":"tl","at":[2008.92,0.45],"text":"announced 1 Dec 2008","tone":"amber","dy":20}]},{"cap":"Its end, in June 2009, was announced in September 2010. In 2020 the model's recession probability went to near certainty as the spring data arrived; the NBER named the February peak on 8 June 2020.","do":[{"dot":"t09","chart":"tl","at":[2009.42,0.45],"text":"trough Jun 2009","tone":"green","dy":-16},{"dot":"a10","chart":"tl","at":[2010.67,0.45],"text":"announced Sep 2010","tone":"amber","dx":12,"dy":20,"anchor":"end"}]},{"cap":"Two cautions. The neat historical charts are smoothed on revised data, which is hindsight: judge the model only on its real-time readings. And a regime call describes the backdrop; it is not, by itself, a trade.","do":[{"box":"warn","x":10,"y":584,"w":580,"h":66,"text":"smoothed + revised = hindsight · a regime call is not a trade","tone":"red","size":18}]}]}</script>
+  </div>
+  <!-- WB:regime_switching_state_space:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: calling the 2008 and 2020 recessions before the official date</h2>
@@ -520,6 +598,19 @@
     fewer moving parts.
   </div>
 
+  <div class="tl-drill" data-date="2008-12-01">
+    <div class="tl-drill-label">Scenario drill · 1 December 2008</div>
+    <h3>The committee confirms what the model said months ago</h3>
+    <p>Today the NBER announces that the US recession began in December 2007, nearly a year ago. A dynamic-factor Markov-switching model of four monthly indicators, of the kind Chauvet and Piger tested, had moved into its recession regime months before this. You want a rule for next time: turn defensive when the model's recession probability crosses 50%. To backtest that rule over past cycles, which probability history do you use?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">The smoothed recession probabilities published on FRED, computed on today's revised data.<div class="tl-drill-why">Smoothed probabilities use data from after each month, and revised data were not available at the time either. The chart lines up with the recessions more neatly than any real-time reading did, so the backtest would flatter the rule.</div></li>
+      <li data-verdict="good">Filtered probabilities, recomputed month by month from the data as first released.<div class="tl-drill-why">That is what a live model could actually have said each month. It is how Chauvet and Piger judged real-time performance, and it is the only honest test of a trading rule.</div></li>
+      <li data-verdict="bad">The NBER's own recession dates.<div class="tl-drill-why">The dates are fixed long after the fact: this recession's start was announced about a year late, and its June 2009 end only in September 2010. Using them in a backtest is lookahead of a year or more.</div></li>
+      <li data-verdict="ok">The smoothed probabilities, but with the signal delayed by a month to allow for lag.<div class="tl-drill-why">It admits the problem but guesses at its size. Smoothing and revisions do not create a fixed one-month lag, so the real-time history is still the right test.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The NBER announced on 1 December 2008 that the recession had begun in December 2007; its end, in June 2009, was announced in September 2010. In their real-time comparison, Chauvet and Piger found the dynamic-factor Markov-switching model dated turning points accurately and, on average, well ahead of the NBER's announcements. In 2020 the model's recession probability went to near certainty as the spring data arrived, and the NBER announced the February peak on 8 June 2020. A regime call describes the backdrop; whether it pays as a trade is a separate test.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -609,6 +700,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="hidden-markov-models.html">Hidden Markov Models &amp; Regime Detection</a> <span>· the hidden discrete regime</span></li>
+        <li><a href="kalman-filter.html">The Kalman Filter &amp; Adaptive Relationships</a> <span>· the continuous state it switches</span></li>
+        <li><a href="particle-filter.html">The Particle Filter (Sequential Monte Carlo)</a> <span>· the sampling alternative to Kim's collapse</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="change-point-detection.html">Change-Point Detection</a> <span>· spotting a break without assuming it repeats</span></li>
+        <li><a href="model-selection-aic-bic.html">Model Selection: AIC &amp; BIC</a> <span>· whether the extra regimes earn their parameters</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> relationships behave differently in calm and in stress, and this is the model that lets the tracking change gear with the regime, if the data can support it.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="kalman-smoother-ekf-ukf.html">← The Kalman Smoother &amp; Extended/Unscented Kalman Filters</a>
     <a href="change-point-detection.html">Change-Point Detection →</a>
@@ -688,7 +799,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

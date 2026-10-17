@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Market Depth &amp; Order-Book Slope — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -98,7 +99,19 @@
       </div>
     </section>
 
+    <!-- WB:institutional_market_depth_slope-deck:START -->
     <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Depth, slope and imbalance: what sits behind the quote</h2>
+      <!-- WB:institutional_market_depth_slope:START -->
+      <div class="wb" data-title="Depth, slope and imbalance: what sits behind the quote">
+        <script type="application/json">{"w":600,"h":800,"intro":"What sits behind a one-pip quote: the lesson's own three-level book, measured three ways. Press play, or step through.","steps":[{"cap":"A screen quote: 1.10040 bid, 1.10050 offer, one pip apart. That is all most screens show. It says nothing about how much you can trade there.","do":[{"box":"bid","x":70,"y":10,"w":200,"h":64,"text":"bid 1.10040","tone":"green","size":20},{"box":"ask","x":330,"y":10,"w":200,"h":64,"text":"offer 1.10050","tone":"red","size":20}]},{"cap":"Behind the quote sits a ladder of resting orders. Bids: 300 at the touch, then 250 and 400 one and two ticks below. Offers: 200, then 150 and 180 above.","do":[{"chart":"bk","x":10,"y":92,"w":580,"h":236,"title":"Resting size by price","xd":[-3.7,3.7],"yd":[0,470],"yt":[[200,"200"],[400,"400"]],"xt":[[-3,".10020"],[-2,".10030"],[-1,".10040"],[1,".10050"],[2,".10060"],[3,".10070"]],"pl":44,"pr":10},{"bars":"bb","chart":"bk","data":[[-1,300,"300","green"],[-2,250,"250","green"],[-3,400,"400","green"]],"bw":50,"ms":900},{"bars":"ba","chart":"bk","data":[[1,200,"200","red"],[2,150,"150","red"],[3,180,"180","red"]],"bw":50,"ms":900}]},{"cap":"Level-1 depth is just the size at the touch: 300 on the bid, 200 on the offer. Sell more than 300 and you must reach further down the bid ladder.","do":[{"pulse":"bid"},{"pulse":"ask"}]},{"cap":"Cumulative depth adds up the levels as you step away: bids 300, 550, 950; offers 200, 350, 530. This is how much you can fill before the price is n ticks worse.","do":[{"chart":"cm","x":10,"y":344,"w":290,"h":224,"title":"Cumulative depth D(n)","xd":[0.6,3.4],"yd":[0,1050],"yt":[[500,"500"],[1000,"1000"]],"xt":[[1,"n=1"],[2,"n=2"],[3,"n=3"]],"pl":50,"pr":14},{"series":"cb","chart":"cm","pts":[[1,300],[2,550],[3,950]],"tone":"green","ms":1000,"label":"bids 950","lat":[3,950],"ldx":-6,"ldy":-14,"lanchor":"end"},{"series":"ca","chart":"cm","pts":[[1,200],[2,350],[3,530]],"tone":"red","ms":1000,"label":"offers 530","lat":[3,530],"ldx":-4,"ldy":30,"lanchor":"end"}]},{"cap":"Slope: the extra depth gained per tick from the touch, averaged. Bids: (250 + 325) ÷ 2 = 287.5. Offers: (150 + 165) ÷ 2 = 157.5. The bid side builds about 1.8 times faster.","do":[{"box":"sl","x":320,"y":344,"w":270,"h":70,"text":"slope: bid 287.5\noffer 157.5","tone":"purple","size":18}]},{"cap":"A cheaper cross-check, the ratio of depth three levels out to depth at the touch: 950 ÷ 300 ≈ 3.17 for bids, 530 ÷ 200 = 2.65 for offers. Same story.","do":[{"box":"r","x":320,"y":426,"w":270,"h":60,"text":"R(3): 3.17 vs 2.65","tone":"blue","size":18}]},{"cap":"The word trap: here a bigger slope means a deeper book. But a trader walking the book plots price against size filled, and then a thin book looks steep. Always ask which axis \"slope\" runs on.","do":[{"box":"st","x":320,"y":498,"w":270,"h":70,"text":"\"steep\" = deep here,\nthin when walking it","tone":"amber","size":17}]},{"cap":"Depth imbalance at the touch: (300 − 200) ÷ (300 + 200) = 0.20, mildly bid-heavy. It is exactly the queue imbalance from the order-flow lesson.","do":[{"box":"d1","x":10,"y":590,"w":280,"h":64,"text":"DI at the touch\n= 0.20","tone":"blue","size":18}]},{"cap":"Across three levels: (950 − 530) ÷ (950 + 530) = 420 ÷ 1480 ≈ 0.284. More bid-heavy deeper in the book. Which depth you measure over is a real choice.","do":[{"box":"d3","x":310,"y":590,"w":280,"h":64,"text":"DI over 3 levels\n≈ 0.284","tone":"purple","size":18}]},{"cap":"The touch imbalance feeds the microprice: mid 1.100450 plus half-spread 0.00005 × 0.20 = 1.100460, a tenth of a pip above the mid.","do":[{"note":"mp","x":300,"y":684,"text":"microprice = 1.100450 + 0.00005 × 0.20 = 1.100460","size":18,"anchor":"middle","tone":"chalk"}]},{"cap":"Depth imbalance is a photograph of what rests now. Order flow imbalance is a flip-book of how the book has been changing. A heavy side can still be draining fast.","do":[{"note":"ph","x":300,"y":722,"text":"photo (depth)  ≠  flip-book (order flow)","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"Real stakes: on 15 October 2014 the 10-year Treasury yield fell about 16 bp and came back in roughly 12 minutes, and the official report documented thin book depth around it. Size child orders to the depth, not the quote.","do":[{"note":"end","x":300,"y":770,"text":"size to the depth, not to the quote","size":21,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:institutional_market_depth_slope:END -->
+    </section>
+    <!-- WB:institutional_market_depth_slope-deck:END -->
+
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Drag the depth, watch the book's shape change</h2>
       <p class="sl-sub">Two levels per side. Slope here reduces to one number: how much extra depth level 2 adds beyond level 1.</p>
@@ -131,7 +144,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Depth imbalance is exactly QI — reused, not reinvented</h2>
       <div class="sl-card">
@@ -148,7 +161,7 @@
       <p class="sl-p">What's genuinely new: extending the same ratio to cumulative depth, DI(n) = (D_b(n) − D_a(n)) / (D_b(n) + D_a(n)) — useful once an order is larger than what's resting at the touch alone.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Level-1 vs. cumulative — they can disagree</h2>
       <p class="sl-sub">Same toy book throughout: bid 300/250/400 across 3 levels, ask 200/150/180.</p>
@@ -176,7 +189,7 @@
       <p class="sl-p">Same book, same instant — only how many levels are included changes the answer. This is a real design choice, not a rounding difference.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Compute it yourself, from any inputs</h2>
       <p class="sl-sub">Change any of the six sizes — cumulative depth, both slopes, both depth imbalances, and the microprice all recompute live.</p>
@@ -209,7 +222,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this quietly goes wrong</h2>
       <div class="sl-icard-grid">
@@ -220,7 +233,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -280,7 +293,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -425,5 +438,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>
