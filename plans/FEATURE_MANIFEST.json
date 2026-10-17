@@ -1080,6 +1080,111 @@
       "firstAsof": "2026-10-16T20:58:17.952Z",
       "lastAsof": "2026-10-16T20:58:17.952Z",
       "builtAt": "2026-10-17T06:54:54Z"
+    },
+    {
+      "id": "y2_usd",
+      "kind": "series",
+      "label": "US 2-year constant maturity (daily)",
+      "source": "fred",
+      "sourceRef": "DGS2",
+      "cadence": "daily",
+      "asofRule": "close+1h",
+      "revises": false,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_daily",
+      "unit": "pct",
+      "note": "H.15 same-afternoon publication; no ALFRED vintages for DGS2 (same as DGS10). Registered 2026-10-17 for the step-2 yield-spread reproduction.",
+      "status": "built",
+      "rows": 6700,
+      "firstAsof": "2000-01-03T22:00:00Z",
+      "lastAsof": "2026-10-15T22:00:00Z",
+      "builtAt": "2026-10-17T08:21:52Z"
+    },
+    {
+      "id": "y2m_usd",
+      "kind": "series",
+      "label": "US 2-year constant maturity, monthly average (GS2)",
+      "source": "fred",
+      "sourceRef": "GS2",
+      "cadence": "monthly",
+      "asofRule": "vintage",
+      "revises": true,
+      "countries": [
+        "US"
+      ],
+      "builder": "fred_vintage",
+      "unit": "pct",
+      "note": "The US leg the validated yield-spread sleeve actually used (js/zscoreSpreadEngine.js ZSCORE_PAIRS baseSeries). Registered 2026-10-17 so the step-2 reproduction runs on the sleeve's own inputs.",
+      "status": "built",
+      "rows": 322,
+      "firstAsof": "2000-02-08T23:59:59Z",
+      "lastAsof": "2026-10-01T23:59:59Z",
+      "builtAt": "2026-10-17T08:21:52Z"
+    },
+    {
+      "id": "rate_on_de",
+      "kind": "series",
+      "label": "Germany immediate (call-money) rate",
+      "source": "fred",
+      "sourceRef": "IRSTCI01DEM156N",
+      "cadence": "monthly",
+      "asofRule": "vintage",
+      "revises": true,
+      "countries": [
+        "EU"
+      ],
+      "builder": "fred_vintage",
+      "unit": "pct",
+      "note": "The sleeve's EURUSD foreign leg. Not the same series as rate3m_eur (EZ 3m interbank).",
+      "status": "built",
+      "rows": 956,
+      "firstAsof": "2013-06-03T23:59:59Z",
+      "lastAsof": "2026-10-15T23:59:59Z",
+      "builtAt": "2026-10-17T08:21:53Z"
+    },
+    {
+      "id": "rate_on_jp",
+      "kind": "series",
+      "label": "Japan immediate (call-money) rate",
+      "source": "fred",
+      "sourceRef": "IRSTCI01JPM156N",
+      "cadence": "monthly",
+      "asofRule": "vintage",
+      "revises": true,
+      "countries": [
+        "JP"
+      ],
+      "builder": "fred_vintage",
+      "unit": "pct",
+      "note": "The sleeve's USDJPY foreign leg.",
+      "status": "built",
+      "rows": 762,
+      "firstAsof": "2013-06-03T23:59:59Z",
+      "lastAsof": "2026-10-15T23:59:59Z",
+      "builtAt": "2026-10-17T08:21:54Z"
+    },
+    {
+      "id": "rate_on_ca",
+      "kind": "series",
+      "label": "Canada immediate (call-money) rate",
+      "source": "fred",
+      "sourceRef": "IRSTCI01CAM156N",
+      "cadence": "monthly",
+      "asofRule": "vintage",
+      "revises": true,
+      "countries": [
+        "CA"
+      ],
+      "builder": "fred_vintage",
+      "unit": "pct",
+      "note": "The sleeve's USDCAD foreign leg.",
+      "status": "built",
+      "rows": 1171,
+      "firstAsof": "2013-06-03T23:59:59Z",
+      "lastAsof": "2026-10-15T23:59:59Z",
+      "builtAt": "2026-10-17T08:21:55Z"
     }
   ]
 }

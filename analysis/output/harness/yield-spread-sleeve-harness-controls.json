@@ -1,0 +1,543 @@
+{
+ "id": "yield-spread-sleeve-harness-controls",
+ "ranAt": "2026-10-17T08:40:09.506Z",
+ "doc": "MD files/YIELD_SPREAD_STRATEGY.md",
+ "claim": "The US-vs-foreign 2-year yield spread, z-scored, mean-reverts, and FX follows it",
+ "domain": "macro",
+ "spec": {
+  "universe": [
+   "eurusd",
+   "usdjpy",
+   "usdcad",
+   "audusd",
+   "usdchf",
+   "gbpusd"
+  ],
+  "horizonDays": 20,
+  "rebalance": "1d",
+  "sample": {
+   "from": "2015-01-01",
+   "to": "2026-10-16",
+   "isEnd": "2021-07-01"
+  },
+  "primary": "pnl",
+  "tuned": true,
+  "cells": [
+   "ctl-origlags-2-126",
+   "ctl-uslag-only-2-126",
+   "ctl-forlag-only-2-126"
+  ],
+  "entryHourUtc": 22
+ },
+ "fixed": {
+  "volTarget": 0.1,
+  "volSpan": 60,
+  "maxLeverage": 3,
+  "entryHourUtc": 22,
+  "closeAsofHour": "22:00:00Z",
+  "nBoot": 1000,
+  "seed": 2654435769,
+  "fdrQ": 0.1,
+  "pboSplits": 16,
+  "minIsYears": 2,
+  "warmupDays": 400,
+  "meanBlockDays": 20,
+  "meanBlockSteps": 20
+ },
+ "costs": {
+  "rule": "half of the measured 22:00 UTC spread per unit turnover (spread_profile feature); indices charged the worst measured FX pair",
+  "entryHourUtc": 22,
+  "measured": {
+   "eurusd": {
+    "spreadPriceUnits": 0.000086,
+    "pips": 0.86
+   },
+   "usdjpy": {
+    "spreadPriceUnits": 0.0187,
+    "pips": 1.87
+   },
+   "usdcad": {
+    "spreadPriceUnits": 0.000211,
+    "pips": 2.11
+   },
+   "audusd": {
+    "spreadPriceUnits": 0.000149,
+    "pips": 1.49
+   },
+   "usdchf": {
+    "spreadPriceUnits": 0.000178,
+    "pips": 1.78
+   },
+   "gbpusd": {
+    "spreadPriceUnits": 0.000156,
+    "pips": 1.56
+   }
+  },
+  "unmeasured": [],
+  "worstFx": {
+   "inst": "usdchf",
+   "roundTripBp": 2.23
+  }
+ },
+ "walkForward": {
+  "applied": false,
+  "reason": "no fitted parameters (spec.fit absent)"
+ },
+ "dependence": {
+  "ok": true,
+  "n": 6,
+  "rows": 3060,
+  "pc1Share": 0.554,
+  "effN": 2.8,
+  "eigenvalues": [
+   3.321,
+   1.048,
+   0.557,
+   0.488,
+   0.294,
+   0.292
+  ]
+ },
+ "fdr": {
+  "q": 0.1,
+  "m": 3,
+  "rejected": 2,
+  "threshold": 0.006
+ },
+ "pbo": {
+  "ok": true,
+  "pbo": 0,
+  "nCombos": 12870,
+  "splits": 16,
+  "cells": 3,
+  "periods": 3092,
+  "meanLogit": 0.565
+ },
+ "cells": [
+  {
+   "key": "ctl-origlags-2-126",
+   "params": {
+    "entry": 2,
+    "window": 126,
+    "usLeg": "y2m_usd",
+    "usLag": 2,
+    "forLag": 45
+   },
+   "ic": {
+    "oos": {
+     "ok": true,
+     "n": 8130,
+     "nClusters": 1355,
+     "meanBlock": 20,
+     "nBoot": 1000,
+     "obs": 0.09745,
+     "se": 0.05963,
+     "ci95": [
+      -0.02232,
+      0.21448
+     ],
+     "pValue": 0.1179,
+     "method": "moving-block bootstrap of date clusters; percentile interval; two-sided p vs 0"
+    },
+    "brickRowBlocks": {
+     "ic": 0.0974,
+     "pValue": 0.001,
+     "meanBlockRows": 20
+    },
+    "is": -0.0068,
+    "oosHalves": {
+     "firstHalf": 0.1553,
+     "secondHalf": 0.0238,
+     "splitAt": "2024-02-08"
+    },
+    "nRowsOos": 8130,
+    "nDatesOos": 1355
+   },
+   "pnl": {
+    "sharpeOos": 1.294,
+    "sharpeIs": 0.077,
+    "sharpeAll": 0.653,
+    "sharpeGrossOos": 1.321,
+    "meanDailyOos": 0.0002,
+    "meanDailyOosCi95": [
+     0.00007,
+     0.00033
+    ],
+    "pValueOos": 0.002,
+    "tradesOos": 136,
+    "winOos": 0.647,
+    "pfOos": 2.975,
+    "meanTradeOosPct": 1.2108,
+    "maxDrawdownOosPct": 3.32,
+    "perYearOosPct": {
+     "2021": 1.545,
+     "2022": 8.222,
+     "2023": 3.94,
+     "2024": 5.872,
+     "2025": -0.421,
+     "2026": 8.322
+    },
+    "yearsPositiveOos": "5/6",
+    "costDragAnnBp": 9.44,
+    "carryAnnBp": -3.83,
+    "turnoverPerYear": 12.6,
+    "skewOos": 1.254,
+    "kurtOos": 11.672,
+    "nDaysOos": 1375,
+    "decisions": 18419,
+    "nullSignals": 0
+   },
+   "legs": {
+    "eurusd": {
+     "trades": 47,
+     "tradesOos": 25,
+     "winOos": 0.72,
+     "pfOos": 4.53,
+     "sharpeOos": 0.929,
+     "meanTradeOosPct": 1.214,
+     "icOos": 0.1413
+    },
+    "usdjpy": {
+     "trades": 48,
+     "tradesOos": 22,
+     "winOos": 0.636,
+     "pfOos": 3.861,
+     "sharpeOos": 1.179,
+     "meanTradeOosPct": 1.959,
+     "icOos": 0.0851
+    },
+    "usdcad": {
+     "trades": 53,
+     "tradesOos": 25,
+     "winOos": 0.56,
+     "pfOos": 2.798,
+     "sharpeOos": 0.939,
+     "meanTradeOosPct": 1.1615,
+     "icOos": 0.0348
+    },
+    "audusd": {
+     "trades": 47,
+     "tradesOos": 22,
+     "winOos": 0.545,
+     "pfOos": 1.797,
+     "sharpeOos": 0.552,
+     "meanTradeOosPct": 0.8754,
+     "icOos": 0.0292
+    },
+    "usdchf": {
+     "trades": 45,
+     "tradesOos": 20,
+     "winOos": 0.7,
+     "pfOos": 3.52,
+     "sharpeOos": 0.844,
+     "meanTradeOosPct": 1.1663,
+     "icOos": 0.124
+    },
+    "gbpusd": {
+     "trades": 48,
+     "tradesOos": 22,
+     "winOos": 0.727,
+     "pfOos": 2.933,
+     "sharpeOos": 0.657,
+     "meanTradeOosPct": 0.8907,
+     "icOos": 0.1662
+    }
+   },
+   "primary": {
+    "kind": "pnl",
+    "pValue": 0.002,
+    "passesFdr": true
+   },
+   "dsr": {
+    "dsr": 0.9178,
+    "sr0": 0.04561,
+    "z": 1.391,
+    "nTrials": 4,
+    "varTrialSr": 0.0018794855887079751
+   }
+  },
+  {
+   "key": "ctl-uslag-only-2-126",
+   "params": {
+    "entry": 2,
+    "window": 126,
+    "usLeg": "y2m_usd",
+    "usLag": 2
+   },
+   "ic": {
+    "oos": {
+     "ok": true,
+     "n": 8130,
+     "nClusters": 1355,
+     "meanBlock": 20,
+     "nBoot": 1000,
+     "obs": 0.08074,
+     "se": 0.06141,
+     "ci95": [
+      -0.04566,
+      0.19947
+     ],
+     "pValue": 0.2238,
+     "method": "moving-block bootstrap of date clusters; percentile interval; two-sided p vs 0"
+    },
+    "brickRowBlocks": {
+     "ic": 0.0807,
+     "pValue": 0.006,
+     "meanBlockRows": 20
+    },
+    "is": 0.0049,
+    "oosHalves": {
+     "firstHalf": 0.1232,
+     "secondHalf": 0.0243,
+     "splitAt": "2024-02-08"
+    },
+    "nRowsOos": 8130,
+    "nDatesOos": 1355
+   },
+   "pnl": {
+    "sharpeOos": 1.098,
+    "sharpeIs": 0.101,
+    "sharpeAll": 0.57,
+    "sharpeGrossOos": 1.124,
+    "meanDailyOos": 0.00017,
+    "meanDailyOosCi95": [
+     0.00003,
+     0.00032
+    ],
+    "pValueOos": 0.006,
+    "tradesOos": 137,
+    "winOos": 0.62,
+    "pfOos": 2.356,
+    "meanTradeOosPct": 1.044,
+    "maxDrawdownOosPct": 4.03,
+    "perYearOosPct": {
+     "2021": 1.374,
+     "2022": 8.487,
+     "2023": 2.598,
+     "2024": 4.412,
+     "2025": -0.533,
+     "2026": 7.54
+    },
+    "yearsPositiveOos": "5/6",
+    "costDragAnnBp": 9.49,
+    "carryAnnBp": -2.06,
+    "turnoverPerYear": 12.72,
+    "skewOos": 0.874,
+    "kurtOos": 10.552,
+    "nDaysOos": 1375,
+    "decisions": 18419,
+    "nullSignals": 0
+   },
+   "legs": {
+    "eurusd": {
+     "trades": 49,
+     "tradesOos": 24,
+     "winOos": 0.708,
+     "pfOos": 3.311,
+     "sharpeOos": 0.768,
+     "meanTradeOosPct": 1.016,
+     "icOos": 0.1283
+    },
+    "usdjpy": {
+     "trades": 50,
+     "tradesOos": 23,
+     "winOos": 0.652,
+     "pfOos": 3.842,
+     "sharpeOos": 1.122,
+     "meanTradeOosPct": 1.8006,
+     "icOos": 0.079
+    },
+    "usdcad": {
+     "trades": 48,
+     "tradesOos": 23,
+     "winOos": 0.565,
+     "pfOos": 2.578,
+     "sharpeOos": 0.896,
+     "meanTradeOosPct": 1.2,
+     "icOos": 0.0332
+    },
+    "audusd": {
+     "trades": 52,
+     "tradesOos": 22,
+     "winOos": 0.591,
+     "pfOos": 1.77,
+     "sharpeOos": 0.582,
+     "meanTradeOosPct": 0.9275,
+     "icOos": 0.0112
+    },
+    "usdchf": {
+     "trades": 43,
+     "tradesOos": 18,
+     "winOos": 0.444,
+     "pfOos": 1.394,
+     "sharpeOos": 0.202,
+     "meanTradeOosPct": 0.3601,
+     "icOos": 0.0702
+    },
+    "gbpusd": {
+     "trades": 50,
+     "tradesOos": 27,
+     "winOos": 0.704,
+     "pfOos": 2.144,
+     "sharpeOos": 0.659,
+     "meanTradeOosPct": 0.8421,
+     "icOos": 0.1731
+    }
+   },
+   "primary": {
+    "kind": "pnl",
+    "pValue": 0.006,
+    "passesFdr": true
+   },
+   "dsr": {
+    "dsr": 0.8146,
+    "sr0": 0.04561,
+    "z": 0.895,
+    "nTrials": 4,
+    "varTrialSr": 0.0018794855887079751
+   }
+  },
+  {
+   "key": "ctl-forlag-only-2-126",
+   "params": {
+    "entry": 2,
+    "window": 126,
+    "usLeg": "y2m_usd",
+    "forLag": 45
+   },
+   "ic": {
+    "oos": {
+     "ok": true,
+     "n": 8130,
+     "nClusters": 1355,
+     "meanBlock": 20,
+     "nBoot": 1000,
+     "obs": -0.00663,
+     "se": 0.06486,
+     "ci95": [
+      -0.12868,
+      0.12482
+     ],
+     "pValue": 0.8871,
+     "method": "moving-block bootstrap of date clusters; percentile interval; two-sided p vs 0"
+    },
+    "brickRowBlocks": {
+     "ic": -0.0066,
+     "pValue": 0.8172,
+     "meanBlockRows": 20
+    },
+    "is": 0.0054,
+    "oosHalves": {
+     "firstHalf": 0.0413,
+     "secondHalf": -0.0752,
+     "splitAt": "2024-02-08"
+    },
+    "nRowsOos": 8130,
+    "nDatesOos": 1355
+   },
+   "pnl": {
+    "sharpeOos": 0.016,
+    "sharpeIs": -0.622,
+    "sharpeAll": -0.335,
+    "sharpeGrossOos": 0.043,
+    "meanDailyOos": 0,
+    "meanDailyOosCi95": [
+     -0.00014,
+     0.00013
+    ],
+    "pValueOos": 0.997,
+    "tradesOos": 145,
+    "winOos": 0.455,
+    "pfOos": 1.021,
+    "meanTradeOosPct": 0.024,
+    "maxDrawdownOosPct": 15.08,
+    "perYearOosPct": {
+     "2021": 3.018,
+     "2022": 2.378,
+     "2023": -2.101,
+     "2024": -4.05,
+     "2025": -0.721,
+     "2026": 1.822
+    },
+    "yearsPositiveOos": "3/6",
+    "costDragAnnBp": 8.75,
+    "carryAnnBp": -1.96,
+    "turnoverPerYear": 11.69,
+    "skewOos": -0.015,
+    "kurtOos": 8.71,
+    "nDaysOos": 1375,
+    "decisions": 18419,
+    "nullSignals": 0
+   },
+   "legs": {
+    "eurusd": {
+     "trades": 46,
+     "tradesOos": 26,
+     "winOos": 0.5,
+     "pfOos": 1.019,
+     "sharpeOos": 0.01,
+     "meanTradeOosPct": 0.0179,
+     "icOos": 0.0671
+    },
+    "usdjpy": {
+     "trades": 48,
+     "tradesOos": 25,
+     "winOos": 0.48,
+     "pfOos": 1.036,
+     "sharpeOos": 0.03,
+     "meanTradeOosPct": 0.0521,
+     "icOos": -0.0599
+    },
+    "usdcad": {
+     "trades": 48,
+     "tradesOos": 23,
+     "winOos": 0.478,
+     "pfOos": 1.026,
+     "sharpeOos": 0.011,
+     "meanTradeOosPct": 0.0292,
+     "icOos": -0.0412
+    },
+    "audusd": {
+     "trades": 44,
+     "tradesOos": 23,
+     "winOos": 0.478,
+     "pfOos": 1.513,
+     "sharpeOos": 0.358,
+     "meanTradeOosPct": 0.4979,
+     "icOos": -0.0757
+    },
+    "usdchf": {
+     "trades": 47,
+     "tradesOos": 23,
+     "winOos": 0.348,
+     "pfOos": 0.543,
+     "sharpeOos": -0.502,
+     "meanTradeOosPct": -0.6385,
+     "icOos": -0.0461
+    },
+    "gbpusd": {
+     "trades": 45,
+     "tradesOos": 25,
+     "winOos": 0.44,
+     "pfOos": 1.187,
+     "sharpeOos": 0.131,
+     "meanTradeOosPct": 0.1707,
+     "icOos": 0.1293
+    }
+   },
+   "primary": {
+    "kind": "pnl",
+    "pValue": 0.997,
+    "passesFdr": false
+   },
+   "dsr": {
+    "dsr": 0.0491,
+    "sr0": 0.04561,
+    "z": -1.653,
+    "nTrials": 4,
+    "varTrialSr": 0.0018794855887079751
+   }
+  }
+ ],
+ "notes": []
+}
