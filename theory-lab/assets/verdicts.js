@@ -73,6 +73,8 @@
         d.appendChild(el('p', null, 'Claim tested: ' + e.claim));
         d.appendChild(el('p', null, 'Result: ' + e.result));
         body.appendChild(d);
+        // Only the education admin is sent the ledger's use line (server.js): how the desk is allowed to use the finding.
+        if (e.use) { var u = el('div', 'tl-verdict-use'); u.appendChild(el('strong', null, 'How the desk uses it: ')); u.appendChild(document.createTextNode(e.use)); body.appendChild(u); }
         if (e.verdict === 'null' || e.verdict === 'underpowered') addScope(box);
         box.setAttribute('data-evidence-live', '1');
       });

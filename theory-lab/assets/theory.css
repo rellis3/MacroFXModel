@@ -673,6 +673,8 @@ body.tl-tts-open #page{padding-bottom:calc(var(--tl-tts-bar-h, 90px) + 20px)}
 .tl-desktool{font-size:13px;background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:var(--r);padding:8px 12px;margin:12px 0}
 .tl-howtotest{font-size:12.5px;color:var(--text2);border-top:1px dashed var(--amber-bd);margin-top:8px;padding-top:6px}
 .tl-howtotest strong{color:var(--amber)}
+.tl-verdict-use{font-size:12.5px;color:var(--text2);margin-top:6px}
+.tl-verdict-use strong{color:var(--blue)}
 
 /* ── Print: the lesson as a clean handout ─────────────────────────────────────── */
 /* Practice page (practice.html, assets/practice.js) */

@@ -591,6 +591,23 @@
     <button type="button" id="har-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The HAR-RV forecast, as in the worked example: \(RV_{t+1} = \beta_0 + \beta_d RV_t + \beta_w RV^{(w)}_t + \beta_m RV^{(m)}_t\) in %², then \(\sigma = \sqrt{RV_{t+1}}\) daily and \(\sigma\times\sqrt{252}\) annualized.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Same coefficients as the worked example (0.03, 0.35, 0.41, 0.20). Today \(RV_t = 0.50\), weekly average 0.55, monthly average 0.70. \(RV_{t+1} = 0.03 + 0.175 + 0.2255 + 0.14 = 0.5705\), so daily \(\sigma = 0.755\%\). Annualized, that is <span class="tl-blank" data-answer="11.99" data-tol="0.02" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Coefficients \(\beta_0 = 0.02\), \(\beta_d = 0.40\), \(\beta_w = 0.35\), \(\beta_m = 0.20\). \(RV_t = 0.25\), weekly 0.30, monthly 0.28. \(RV_{t+1} =\) <span class="tl-blank" data-answer="0.281" data-tol="0.0005"></span> %², daily \(\sigma =\) <span class="tl-blank" data-answer="0.530" data-tol="0.0006" data-unit="%"></span>, annualized <span class="tl-blank" data-answer="8.41" data-tol="0.02" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Worked-example coefficients. The last five days' RV, oldest first: 0.81, 0.64, 0.72, 0.90, 1.00 (today). The 22-day average is 0.60. Weekly average: <span class="tl-blank" data-answer="0.814" data-tol="0.0005"></span>. \(RV_{t+1} =\) <span class="tl-blank" data-answer="0.8337" data-tol="0.0006"></span> %². Daily \(\sigma =\) <span class="tl-blank" data-answer="0.913" data-tol="0.0006" data-unit="%"></span>. Annualized: <span class="tl-blank" data-answer="14.49" data-tol="0.02" data-unit="%"></span>. This time the month is calmer than today, so HAR forecasts below the naive "same as today" 15.87%.</p>
+    </div>
+  </div>
+
   <!-- DESK:START --><div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Is HAR-RV actually built here? Yes — as a live daily challenger, not (yet) the primary</h2>
   <p>
@@ -659,7 +676,8 @@
     structurally read low right as a fresh regime shift is still under way —
     the same lag-versus-reactivity tradeoff the GARCH lesson raised about
     flat trailing windows, one level up the sophistication ladder.
-  </p><!-- DESK:END -->
+  </p>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../har-shadow.html">HAR Shadow Ladder</a> forward-tests a range ladder built on the stored HAR σ beside the live ladder, regime by regime, and <a href="../../vol-horse-race.html">Vol Horse Race</a> scores HAR-RV against the other σ forecasters per instrument.</div><!-- DESK:END -->
 
   <div class="tl-chart">
     <div class="tl-chart-label">The three horizon components feeding the worked example's forecast</div>

@@ -623,7 +623,8 @@
       from a specific signal, built and tested on this repo's own data,
       clearing an honest out-of-sample bar. Here, it didn't.
     </p>
-  </div><!-- DESK:END -->
+  </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../system-fx-momentum.html">P5 · FX Cross-Sectional Momentum</a> backtests the FX cousin of UMD: rank seven USD pairs by N-day momentum, go long the top and short the bottom, and see what the factor portfolio itself earns.</div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Worked example — the extra factors move the prediction</h2>
@@ -734,6 +735,23 @@
       <span id="ffc-note" class="tl-scratch-note"></span>
     </div>
     <button type="button" id="ffc-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Build the four-factor prediction \(\hat{R} = \alpha + \beta_{MKT}\,MKT + \beta_{SMB}\,SMB + \beta_{HML}\,HML + \beta_{UMD}\,UMD\) for new stocks, then compare it with what happened. All values in percent.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(\alpha = 0.10\), loadings \(0.9, -0.2, 0.4, 0.3\); factor returns MKT 1.5, SMB 2.0, HML −1.0, UMD 2.5. Terms: \(0.9\times1.5 = 1.35\), \(-0.2\times2.0 = -0.40\), \(0.4\times(-1.0) = -0.40\), \(0.3\times2.5 = 0.75\). So \(\hat{R} = 0.10 + 1.35 - 0.40 - 0.40 + 0.75 =\) <span class="tl-blank" data-answer="1.40" data-tol="0.005" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(\alpha = -0.20\), loadings \(1.2, 0.5, -0.3, 0.2\); factor returns MKT −1.0, SMB 0.8, HML 1.5, UMD −2.0. The market term is \(-1.20\), size \(+0.40\), momentum \(-0.40\). The value term is <span class="tl-blank" data-answer="-0.45" data-tol="0.005" data-unit="%"></span>, so \(\hat{R} =\) <span class="tl-blank" data-answer="-1.85" data-tol="0.005" data-unit="%"></span>. The stock actually returned −1.60%, so the model's error (actual minus predicted) is <span class="tl-blank" data-answer="0.25" data-tol="0.005" data-unit="pts"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(\alpha = 0.05\), loadings \(0.7, 1.1, 0.9, -0.4\); factor returns MKT 3.0, SMB −0.5, HML 2.2, UMD 1.0. A one-factor CAPM fit gives \(\beta_{CAPM} = 0.95\). The stock returned 3.30%. Four-factor \(\hat{R} =\) <span class="tl-blank" data-answer="3.18" data-tol="0.005" data-unit="%"></span>. CAPM's prediction \(=\) <span class="tl-blank" data-answer="2.85" data-tol="0.005" data-unit="%"></span>. CAPM's error \(=\) <span class="tl-blank" data-answer="0.45" data-tol="0.005" data-unit="pts"></span>, against the four-factor model's 0.12.</p>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>

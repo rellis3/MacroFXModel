@@ -443,6 +443,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>New funds, new falls. After a fall the assets are \(A'\), the loan \(L\) is unchanged, equity is \(E' = A' - L\), leverage is \(A'/E'\), and the forced sale back to the lender's maximum is \(S = A' - \lambda_{\max} E'\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>A fund holds \(A = 600\) with a loan \(L = 480\), so \(E = 120\) and leverage is 5×, the lender's maximum. Prices fall 8%: \(A' = 552\), \(E' = 72\), leverage \(552/72 = 7.67\)×. The forced sale is \(S = 552 - 5 \times 72 =\) <span class="tl-blank" data-answer="192" data-tol="0.5"></span>, about 35% of what it owns.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(A = 1{,}000\), \(L = 750\), \(\lambda_{\max} = 4\). Prices fall 6%, so \(A' = 940\) and \(E' = 190\). Leverage is now <span class="tl-blank" data-answer="4.947" data-tol="0.006" data-unit="×"></span>. The forced sale is <span class="tl-blank" data-answer="180" data-tol="0.5"></span>, which is <span class="tl-blank" data-answer="19.15" data-tol="0.06" data-unit="%"></span> of the fund's assets.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(A = 800\), \(L = 700\), \(\lambda_{\max} = 8\). Prices fall 5%. Equity after the fall <span class="tl-blank" data-answer="60" data-tol="0.5"></span>. Leverage <span class="tl-blank" data-answer="12.67" data-tol="0.01" data-unit="×"></span>. Forced sale <span class="tl-blank" data-answer="280" data-tol="0.5"></span>, or <span class="tl-blank" data-answer="36.84" data-tol="0.06" data-unit="%"></span> of assets: a 5% fall forces more than a third of the book out, because the fund started with so little equity.</p>
+    </div>
+  </div>
+
   <!-- WB:forced:START -->
   <div class="wb" id="wb-forced" data-title="Forced selling, drawn step by step">
     <script type="application/json">{"w":600,"h":700,"intro":"A leveraged fund, a 10% fall and a margin call: watch what it is forced to sell, and why unrelated assets then fall together. Press play, or step through.","steps":[{"cap":"Meet a leveraged fund. It owns Treasuries, big liquid stocks, some gold, and one holding it now likes least: its worst idea.","do":[{"box":"fund","x":200,"y":10,"w":385,"h":190,"text":"Leveraged fund","tone":"purple","top":true,"size":22},{"icon":"tsy","name":"scroll","x":222,"y":62,"s":0.5,"tone":"blue","label":"Treasuries","lsize":16},{"icon":"stk","name":"up","x":316,"y":62,"s":0.5,"tone":"green","label":"big stocks","lsize":16},{"icon":"gld","name":"gold","x":410,"y":62,"s":0.5,"tone":"amber","label":"gold","lsize":16},{"icon":"bad","name":"factory","x":504,"y":62,"s":0.5,"tone":"red","label":"worst idea","lsize":16}]},{"cap":"It paid for 500 of assets with 100 of its own money and 400 borrowed from a lender. That is 5× leverage, the most the lender allows.","do":[{"icon":"lend","name":"bank","x":18,"y":40,"s":0.8,"tone":"blue","label":"lender","sym":"$"},{"icon":"loan","name":"cash","x":102,"y":128,"s":0.45,"tone":"green","sym":"$"},{"move":"loan","x":142,"y":128,"ms":900},{"hide":"loan"},{"arrow":["lend","fund"],"label":"loan 400","tone":"blue","id":"la","size":17},{"box":"A","x":20,"y":228,"w":170,"h":70,"text":"Assets","tone":"chalk","sub":"500","size":20},{"box":"L","x":215,"y":228,"w":170,"h":70,"text":"Loan","tone":"blue","sub":"400","size":20},{"box":"E","x":410,"y":228,"w":170,"h":70,"text":"Own money","tone":"green","sub":"100","size":20},{"note":"lev","x":300,"y":322,"text":"leverage = 500 ÷ 100 = 5×  (the lender's max)","size":18,"anchor":"middle"}]},{"cap":"Prices fall 10%. Assets drop to 450, but the loan is still 400, so the fund's own money halves to 50. Leverage jumps to 450 ÷ 50 = 9×.","do":[{"count":"A","from":500,"to":450,"dp":0,"ms":1200},{"count":"E","from":100,"to":50,"dp":0,"ms":1200},{"hide":"lev"},{"note":"lev2","x":300,"y":322,"text":"leverage = 450 ÷ 50 = 9×","size":19,"anchor":"middle","tone":"red"}]},{"cap":"Margin call. To get back to 5× it must sell 450 − 5 × 50 = 200: 44% of everything it owns, because prices fell 10%. And it must sell now.","do":[{"icon":"mc","name":"megaphone","x":60,"y":348,"s":0.62,"tone":"red"},{"note":"sell","x":140,"y":366,"text":"margin call: sell 200","size":22,"anchor":"start","tone":"red"},{"note":"sell2","x":140,"y":400,"text":"= 450 − 5 × 50: 44% of the fund, today","size":18,"anchor":"start","tone":"red"}]},{"cap":"Left to choose, it would sell its worst idea, slowly, over days. A forced seller has no such choice: it needs cash fast, at the least cost per dollar raised.","do":[{"pulse":"bad"},{"note":"slow","x":529,"y":160,"text":"not today","size":16,"anchor":"middle","tone":"red"}]},{"cap":"So it sells what turns into cash fastest, often its winners: Treasuries, big stocks, gold. The good assets go out of the door, and the bad one stays.","do":[{"icon":"s1","name":"scroll","x":222,"y":62,"s":0.38,"tone":"blue"},{"icon":"s2","name":"up","x":316,"y":62,"s":0.38,"tone":"green"},{"icon":"s3","name":"gold","x":410,"y":62,"s":0.38,"tone":"amber"},{"icon":"mkt","name":"crowd","x":510,"y":360,"s":0.6},{"note":"mktl","x":540,"y":346,"text":"buyers","size":17,"anchor":"middle"},{"move":"s1","x":512,"y":400,"ms":900},{"move":"s2","x":524,"y":400,"ms":800},{"move":"s3","x":536,"y":400,"ms":700},{"hide":"s1"},{"hide":"s2"},{"hide":"s3"},{"dim":"tsy"},{"dim":"stk"},{"dim":"gld"},{"pulse":"mkt"}]},{"cap":"Every fund like it does the same, at once. In mid-March 2020 Treasuries were sold (their yields rose) while stocks fell, and for a stretch even gold fell. The world's safe asset was dumped because it was the easiest thing to sell.","do":[{"chart":"px","x":20,"y":470,"w":360,"h":190,"title":"Prices, mid-March 2020 (shape only)","xd":[0,10],"yd":[0,10],"yt":[],"xt":[],"pt":38,"pl":16},{"series":"p1","chart":"px","pts":[[0,8.6],[3,7.4],[6,5.6],[10,3.4]],"tone":"green","label":"stocks","lat":[10,3.4],"ldx":-4,"ldy":16,"lanchor":"end","ms":900},{"series":"p2","chart":"px","pts":[[0,8.2],[3,7.6],[6,6.2],[10,5.0]],"tone":"blue","label":"Treasuries","lat":[10,5.0],"ldx":-4,"ldy":-14,"lanchor":"end","ms":900},{"series":"p3","chart":"px","pts":[[0,7.0],[3,6.6],[6,5.4],[10,4.4]],"tone":"amber","label":"gold","lat":[0,7.0],"ldx":2,"ldy":16,"lanchor":"start","ms":900}]},{"cap":"Assets with nothing in common fall together, because they share a holder who is selling, not a fundamental. That is what \"correlations go to one\" means.","do":[{"note":"one","chart":"px","at":[0.3,1.3],"text":"shared holder, not shared news","tone":"purple","size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"And it feeds itself. Lower prices cut the next fund's equity and trigger more margin calls, and lenders cut the leverage they allow when markets get volatile, so the required sale grows just when selling is most costly.","do":[{"arrow":["px","mc"],"tone":"red","id":"spiral"},{"note":"spl","x":150,"y":440,"text":"↺ lower prices → more margin calls","size":18,"anchor":"start","tone":"red"}]},{"cap":"It stopped in March 2020 when a buyer with no risk limit arrived. The Fed cut rates to near zero on 15 March with at least $700bn of purchases, then made them open-ended on 23 March.","do":[{"icon":"fed","name":"bank","x":470,"y":500,"s":0.72,"tone":"blue","label":"the Fed\nno risk limit","sym":"$","lsize":17},{"arrow":["fed","mkt"],"label":"buys","tone":"blue","id":"fb","size":17}]},{"cap":"Nothing about the Treasuries or the gold changed. The seller did. Forced selling stops when the forcing stops, not when the news improves.","do":[{"note":"end","x":300,"y":682,"text":"Forced sellers sell what is liquid, not what is bad.","size":20,"anchor":"middle","tone":"amber"}]}]}</script>
@@ -487,21 +504,21 @@
   <!-- DESK:END -->
 
   <!-- DESK:START -->
-  <div class="tl-verdict null" data-evidence="fear-gold" data-evidence-date="2026-09-21">
+  <div class="tl-verdict null" data-evidence="squeeze-fuel" data-evidence-date="2026-09-13">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>"A crowded, underwater retail position is squeeze fuel" (<code>squeeze-fuel</code>, 2026-09-13).</strong> Crowded-and-underwater days were not wider than matched days on any of four instruments over nine years; direction flat. Retail is ~60% long on every major every day. Visible positioning is descriptive only — the forced sellers that matter are usually not the ones you can see.</span>
   </div>
   <!-- DESK:END -->
 
   <!-- DESK:START -->
-  <div class="tl-verdict null">
+  <div class="tl-verdict null" data-evidence="fear-gold" data-evidence-date="2026-09-21">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>"Fear buys gold" (<code>fear-gold</code>, 2026-09-21).</strong> 58 VIX spikes 2010–2026: gold's excess return +0.07% [−0.42, +0.30] at five sessions and −1.19% [−2.30, −0.48] at twenty. Consistent with this lesson: in a liquidation gold is something to <em>sell</em> for cash, not a reliable haven.</span>
   </div>
   <!-- DESK:END -->
 
   <!-- DESK:START -->
-  <div class="tl-verdict null">
+  <div class="tl-verdict null" data-evidence="funding-stress" data-evidence-date="2026-10-02">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>"A drawn backstop warns of a wider tape" (<code>funding-stress</code>, 2026-10-02).</strong> When the Standing Repo Facility was drawn (21 episodes), SPX500's next-5-session range was −0.561 ATR [−0.984, −0.181] versus control — <em>calmer</em>, not wider — and the facility is drawn on 667 of 2,123 sessions (31%). Routine plumbing, not a stress marker; and the sample contains no pre-2018 crisis, so it says nothing about a 2008-style crisis.</span>
   </div>
@@ -510,7 +527,7 @@
   <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
-    <span><strong>"The thing that caused the rally leads the decline."</strong> Not tested here. A fair test must control for beta: the leading sector is usually the high-beta one, which falls more in <em>any</em> sell-off, so a naive version would look true for the wrong reason. Logged as a candidate, with fourteen sector ETFs and about six years of data in hand.</span>
+    <span><strong>"The thing that caused the rally leads the decline."</strong> Not tested here. Logged as a candidate, with fourteen sector ETFs and about six years of daily data in hand.<div class="tl-howtotest"><strong>How to test it:</strong> A fair test must control for beta: the leading sector is usually the high-beta one, which falls more in <em>any</em> sell-off, so a naive version would look true for the wrong reason. On the fourteen sector ETFs' daily closes, call the leader the sector with the best 60-session return into each broad-index peak, and take every fall of 5% or more from that peak as an episode. The metric is the leader's decline-period return minus what its trailing 60-day beta to the index predicts, against the same residual for the other sectors, with an episode-block bootstrap. Fixed in advance: the claim holds only if the leader's beta-adjusted residual is negative with a 95% interval excluding zero over at least 10 episodes; the baseline is "every sector falls by beta × the index", and a tradeable version must also clear one round trip of ETF spread per episode.</div></span>
   </div>
   <!-- DESK:END -->
 
@@ -562,6 +579,7 @@
       from its price fingerprint rather than from margin balances.
     </p>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../book-stress.html">Book Stress</a> recomputes the effective number of independent bets inside declared crisis windows, March 2020 among them; it is where you see unrelated markets falling together, the fingerprint of a shared forced seller.</div>
   <!-- DESK:END -->
 
   <div class="tl-box pitfall">
@@ -583,7 +601,7 @@
       <li data-verdict="ok">Agree with the other banks to sell slowly together, so nobody crashes the price.<div class="tl-drill-why">In principle that limits the damage for everyone. In practice it relies on every other forced seller holding back. If one breaks ranks, the ones still waiting are the slowest sellers, and the slowest seller walks the book the furthest.</div></li>
       <li data-verdict="good">Sell the collateral promptly in large blocks, accepting a worse price now, because several forced sellers hold the same thing and this is a race.<div class="tl-drill-why">This is the lesson's point about shared holders. When the selling is forced and the holdings overlap, the book is only so deep, and the first sellers get the best of it.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Friday 26 March, banks began selling large blocks of the underlying stocks: price-insensitive sales driven by collateral, not by any view on the companies. Banks that sold early limited their losses. Credit Suisse later reported a loss of about $5.5 billion, and Nomura close to $3 billion.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Friday 26 March, banks began selling large blocks of the underlying stocks: price-insensitive sales driven by collateral, not by any view on the companies. Banks that sold early limited their losses. Credit Suisse later reported a loss of about $5.5 billion, and Nomura close to $3 billion.</p><p class="tl-drill-sources">Sources: <a href="https://www.sec.gov/news/press-release/2022-70">SEC press release 2022-70, charges against Archegos and its founder, 27 Apr 2022</a>; CNBC, "The Archegos blowup and its ripple effect across markets", 29 Mar 2021; Credit Suisse Special Committee report on Archegos (Paul, Weiss), 29 Jul 2021; Reuters, Nomura and Credit Suisse loss warnings, 29 Mar 2021.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

@@ -296,6 +296,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The Hill recipe on new loss lists (bps, largest first): take logs of the top \(k\) against the \((k{+}1)\)-th value, average them, then \(\hat\alpha = 1/\text{average}\) and \(\hat\xi = 1/\hat\alpha\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Losses 250, 180, 150, 130, 120 with \(k = 4\), so 120 is the reference. Logs: \(\ln(250/120) = 0.7340\), \(\ln(180/120) = 0.4055\), \(\ln(150/120) = 0.2231\), \(\ln(130/120) = 0.0800\). Sum 1.4426, average 0.3607. So \(\hat\alpha_4 \approx\) <span class="tl-blank" data-answer="2.77" data-tol="0.006"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Losses 95, 80, 72, 66, 61, 57 with \(k = 5\), so 57 is the reference. The five log-ratios are 0.5108, 0.3390, 0.2336, 0.1466 and 0.0678. Their sum is <span class="tl-blank" data-answer="1.2978" data-tol="0.0003"></span>, so \(\hat\alpha_5 \approx\) <span class="tl-blank" data-answer="3.85" data-tol="0.006"></span> and \(\hat\xi_5 \approx\) <span class="tl-blank" data-answer="0.260" data-tol="0.0006"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Losses 410, 300, 260, 230, 210, 200, 190. With \(k = 6\) (reference 190): \(\hat\alpha_6 \approx\) <span class="tl-blank" data-answer="3.19" data-tol="0.006"></span> and \(\hat\xi_6 \approx\) <span class="tl-blank" data-answer="0.314" data-tol="0.0006"></span>. With \(k = 3\) (reference 230): \(\hat\alpha_3 \approx\) <span class="tl-blank" data-answer="3.10" data-tol="0.006"></span>. Same list, two answers, which is the choice-of-\(k\) problem the next section is about.</p>
+    </div>
+  </div>
+
   <!-- WB:institutional_hill_estimator:START -->
   <div class="wb" id="wb-institutional_hill_estimator" data-title="The Hill estimator: sort, average, flip">
     <script type="application/json">{"w":600,"h":720,"intro":"The lesson's six worked-example losses run through the Hill recipe, then the same recipe at different k. Press play, or step through.","steps":[{"cap":"Six of the worst daily losses in the lesson's toy sample, in basis points, sorted largest first: 187, 152, 134, 121, 109 and 98. How fat is the tail they come from?","do":[{"chart":"v","x":10,"y":10,"w":285,"h":270,"title":"Top losses (bps)","xd":[0.4,6.6],"yd":[0,215],"yt":[[0,"0"],[100,"100"],[200,"200"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"6"]],"pl":48,"pr":10},{"bars":"vb","chart":"v","data":[[1,187,"187","blue"],[2,152,"152","blue"],[3,134,"134","blue"],[4,121,"121","blue"],[5,109,"109","blue"],[6,98,"98","blue"]],"bw":26,"ms":1100}]},{"cap":"Pick k = 5. The top five feed the estimate. The sixth, 98, is the reference that every one of them is measured against.","do":[{"series":"ref","chart":"v","pts":[[0.5,98],[6.5,98]],"tone":"amber","dash":true,"ms":600},{"bars":"rb","chart":"v","data":[[6,98,"","amber"]],"bw":26,"ms":500}]},{"cap":"For each of the top five, ask how many times bigger it is than 98, and take the log. 187 is 1.91 times 98, and its log is 0.65. The five logs are 0.65, 0.44, 0.31, 0.21 and 0.11.","do":[{"chart":"lr","x":305,"y":10,"w":285,"h":270,"title":"ln(loss ÷ 98)","xd":[0.4,5.6],"yd":[0,0.75],"yt":[[0,"0"],[0.25,".25"],[0.5,".50"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"pl":46,"pr":10},{"bars":"lb","chart":"lr","data":[[1,0.6461,"0.65","purple"],[2,0.4389,"0.44","purple"],[3,0.3129,"0.31","purple"],[4,0.2108,"0.21","purple"],[5,0.1064,"0.11","purple"]],"bw":26,"ms":1100}]},{"cap":"Average the five logs: 1.715 ÷ 5 = 0.343. A thin tail gives small logs, because the top values are not much bigger than the reference. A fat tail gives big ones.","do":[{"series":"avg","chart":"lr","pts":[[3.55,0.343],[5.6,0.343]],"tone":"green","dash":true,"ms":700},{"note":"avgl","chart":"lr","at":[5.6,0.343],"text":"average 0.343","tone":"green","size":17,"anchor":"end","dx":0,"dy":-16}]},{"cap":"Flip the average: α̂ = 1 ÷ 0.343 ≈ 2.92. That is the tail index. As a GPD shape it is ξ = 1/α ≈ 0.34: the same fact in another unit.","do":[{"box":"res","x":10,"y":296,"w":580,"h":58,"text":"α̂ = 1 ÷ 0.343 ≈ 2.92 · so ξ̂ = 1/α̂ ≈ 0.34","tone":"green","size":21}]},{"cap":"Why logs? If the tail is a power law, those log-ratios behave like draws from an exponential distribution whose rate is α. The textbook estimate of that rate is one over the average. Hill is exactly that.","do":[{"pulse":"avg"},{"pulse":"res"}]},{"cap":"Now the catch. Same six numbers, different k. k = 1 gives 4.83, k = 2 gives 4.35, k = 3 gives 3.92, k = 4 gives 3.38 and k = 5 gives 2.92. The answer depends on how many points you trust.","do":[{"chart":"bk","x":10,"y":370,"w":285,"h":270,"title":"α̂ at each k","xd":[0.4,5.6],"yd":[0,5.6],"yt":[[0,"0"],[2,"2"],[4,"4"]],"xt":[[1,"k=1"],[2,"k=2"],[3,"k=3"],[4,"k=4"],[5,"k=5"]],"pl":40,"pr":10},{"bars":"kb","chart":"bk","data":[[1,4.83,"4.83","amber"],[2,4.35,"4.35","amber"],[3,3.92,"3.92","amber"],[4,3.38,"3.38","amber"],[5,2.92,"2.92","green"]],"bw":28,"ms":1200}]},{"cap":"On a bigger sample it gets worse. The lesson simulates 300 draws with a true tail index of 3. The Hill plot jumps to 4.25 at k = 6, falls to 2.18 at k = 7, then wanders near 2.","do":[{"chart":"hp","x":305,"y":370,"w":285,"h":270,"title":"Hill plot, n = 300","xd":[2,27],"yd":[1.5,4.5],"yt":[[2,"2"],[3,"3"],[4,"4"]],"xt":[[2,"2"],[7,"7"],[27,"27"]],"pl":36,"pr":12},{"series":"true","chart":"hp","pts":[[2,3],[27,3]],"tone":"green","dash":true,"ms":500,"label":"true 3","lat":[27,3],"lanchor":"end","ldy":-12},{"series":"hc","chart":"hp","pts":[[2,3.531],[3,2.94],[4,3.887],[5,3.863],[6,4.252],[7,2.182],[8,2.143],[9,2.166],[10,2.27],[11,1.733],[12,1.808],[13,1.873],[14,2.004],[15,1.849],[16,1.868],[17,1.982],[18,1.992],[19,1.916],[20,1.923],[21,1.931],[22,1.975],[23,2.04],[24,2.109],[25,2.162],[26,2.151],[27,2.173]],"tone":"red","ms":1500},{"dot":"k6","chart":"hp","at":[6,4.252],"text":"4.25","tone":"red","dx":14,"dy":-2,"anchor":"start"},{"dot":"k7","chart":"hp","at":[7,2.182],"text":"2.18","tone":"red","dx":10,"dy":18,"anchor":"start"}]},{"cap":"Small k: built from a handful of points, so it jumps. Large k: ordinary days leak into the \"tail\" and bias it. No formula picks the right k, so show the estimate across a range.","do":[{"note":"kk","x":300,"y":666,"text":"small k → noisy · large k → biased","size":20,"anchor":"middle","tone":"amber"}]},{"cap":"Hill gives only the exponent, never a loss level at a chosen confidence. Its job is the cheap screen: rank the tails, then build a full GPD fit for the fat ones.","do":[{"note":"end","x":300,"y":700,"text":"a ruler for tail heaviness, not a VaR","size":20,"anchor":"middle","tone":"green"}]}]}</script>
@@ -363,7 +380,7 @@
         <div class="tl-hint">Small k (left) = noisy, jumps around with every extra point. Large k (right) = smoother, but drifting away from the true α=3 as ordinary observations dilute the tail.</div>
       </div>
     </div>
-    <div class="tl-readout" id="hill-readout">k = 5 → α̂ ≈ — , ξ̂ = 1/α̂ ≈ —</div>
+    <div class="tl-readout" id="hill-readout">k = 5 → α̂ ≈ 3.863, ξ̂ = 1/α̂ ≈ 0.259</div>
     <div id="hill-strip" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px" aria-label="Which order statistics are currently in the top-k sum"></div>
     <div class="tl-chart-caption" id="hill-caption">
     The dots below the chart are this sample's 30 largest order statistics, largest at left. Blue dots
@@ -516,6 +533,7 @@
     use, and one entirely unused, ready-made Hill estimator sitting beside the first of them.
     </p>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../analytics-desk.html">Analytics Desk</a> shows each instrument's live GPD shape ξ on daily losses in its Tail card. A Hill \(\hat\xi = 1/\hat\alpha\) on the same losses is the cheap cross-check for that number.</div>
   <!-- DESK:END -->
 
   <div class="tl-box scenario">

@@ -368,6 +368,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Label new long entries: \(U = P_0 + k_u\hat\sigma\), \(L = P_0 - k_l\hat\sigma\), then walk the path bar by bar until a barrier is touched or the vertical barrier arrives. Label \(+1\) for upper, \(-1\) for lower, 0 for a time-out.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Entry 1.2700, \(\hat\sigma = 0.0006\), \(k_u = 3\), \(k_l = 2\), vertical at bar 10. So \(U = 1.2718\) and \(L = 1.2688\). Path from bar 1: 1.2705, 1.2696, 1.2690, 1.2686, 1.2720. Bar 4 (1.2686) is the first price at or beyond a barrier, the lower one; bar 5's 1.2720 never counts. The label is <span class="tl-blank" data-answer="-1" data-tol="0.01"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Entry 1.1000, \(\hat\sigma = 0.0004\), \(k_u = k_l = 2\), vertical at bar 6. Path from bar 1: 1.1003, 1.0997, 1.1006, 1.1009, 1.0990. \(U =\) <span class="tl-blank" data-answer="1.1008" data-tol="0.00005"></span>. \(L =\) <span class="tl-blank" data-answer="1.0992" data-tol="0.00005"></span>. The first touch is at bar \(\tau =\) <span class="tl-blank" data-answer="4" data-tol="0.01"></span>, so the label is \(+1\).</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Entry 0.6600, \(\hat\sigma = 0.0005\), \(k_u = 4\), \(k_l = 3\), vertical at bar 5. Path from bar 1: 0.6608, 0.6594, 0.6611, 0.6603, 0.6597, 0.6625. \(U =\) <span class="tl-blank" data-answer="0.6620" data-tol="0.00005"></span>. \(L =\) <span class="tl-blank" data-answer="0.6585" data-tol="0.00005"></span>. The walk stops at bar <span class="tl-blank" data-answer="5" data-tol="0.01"></span>, and the return banked there is <span class="tl-blank" data-answer="-3" data-tol="0.05" data-unit="pips"></span> (label 0, or that return if you use \(r_\tau\)).</p>
+    </div>
+  </div>
+
   <div class="tl-chart interactive">
     <div class="tl-chart-label">Try it — drag the barrier widths and holding time against a fixed synthetic path</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Interactive triple-barrier chart on a fixed 20-bar synthetic price path, with sliders controlling the upper barrier width, lower barrier width, and vertical barrier length, redrawing live which barrier is touched first" id="tb-live-svg">
@@ -600,6 +617,7 @@
       not an oversight.
     </p>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../sltp-distribution.html">Fixed SL/TP Distribution</a> runs this first-touch race on real M1 paths for a grid of stop and target widths, per asset and per six-month window; it is the signal-free baseline any triple-barrier-labelled strategy has to beat.</div>
   <!-- DESK:END -->
 
   <p>

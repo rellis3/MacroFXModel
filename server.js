@@ -36712,13 +36712,17 @@ if (HIDE_DRILL_PRACTICE) {
 // here, so a re-run study updates every lesson citing it with no lesson edit.
 // Lives under /theory-lab/ (education zone) because js/deskEvidence.js itself is
 // main-zone; only the requested ids and only the public fields go out -- never
-// the ledger's `doc` paths or its prompt-facing `use` directives.
+// the ledger's `doc` paths. Its `use` line (how the desk may use a finding) goes to the
+// education admin only, never to a shared-password reader.
 app.get('/theory-lab/desk-verdicts.json', (req, res) => {
   if (HIDE_DESK_EDUCATION && !isEducationAdmin(req)) return res.status(404).json({ error: 'not found' });
   const ids = String(req.query.ids || '').split(',').filter(id => /^[a-z0-9-]{1,64}$/.test(id)).slice(0, 60);
+  const admin = isEducationAdmin(req);
   const entries = {};
   for (const e of _DESK_EVIDENCE) {
-    if (ids.includes(e.id)) entries[e.id] = { verdict: e.verdict, date: e.date, claim: _lessonSafe(e.claim), result: _lessonSafe(e.result) };
+    if (!ids.includes(e.id)) continue;
+    entries[e.id] = { verdict: e.verdict, date: e.date, claim: _lessonSafe(e.claim), result: _lessonSafe(e.result) };
+    if (admin && e.use) entries[e.id].use = _lessonSafe(e.use);
   }
   res.set('Cache-Control', 'no-cache').json({ entries });
 });

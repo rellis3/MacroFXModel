@@ -455,6 +455,7 @@
       backtest, no claim of edge anywhere in that work.
     </p>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../jump-diffusion.html">Jump vs Diffusion</a> shows today's jump share per pair and the times a Lee-Mykland test flagged, after the intraday cycle is removed; read them against the pair's own percentiles.</div>
   <!-- DESK:END -->
 
   <div class="tl-eli5">
@@ -517,6 +518,23 @@
       \(L_6=63.75/11.60=5.50\), correctly above threshold. The plain test
       got both bars backwards; the corrected test gets both right.
     </p>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Judge one bar the BCL way: periodicity factor \(f\) = the bar's typical size ÷ the session-average typical size, deseasonalised return \(\tilde r = r/f\), then \(L = \tilde r/\hat\sigma\) against the 5.40 bar for a full 5-minute session (\(n=288\), \(\alpha=1\%\)). The local yardstick \(\hat\sigma\) is given each time. New bars, not the ones above.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Session-average typical move 12 bp. A midday bar whose typical move is 4.8 bp jumps +28 bp, and \(\hat\sigma = 12.5\) bp. Factor \(f = 4.8/12 = 0.40\). Deseasonalised return \(\tilde r = 28/0.40 = 70.0\) bp. So \(L = 70.0/12.5 =\) <span class="tl-blank" data-answer="5.60" data-tol="0.01"></span>, which clears 5.40. (The plain read, \(28/12.5 = 2.24\), would have waved it through.)</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Session-average typical move 12 bp. An open bar whose typical move is 21 bp goes +49 bp, and \(\hat\sigma = 13.0\) bp on the deseasonalised returns. Factor \(f = 21/12 =\) <span class="tl-blank" data-answer="1.75" data-tol="0.005"></span>. Deseasonalised return \(\tilde r =\) <span class="tl-blank" data-answer="28.0" data-tol="0.1" data-unit="bp"></span>. So \(L =\) <span class="tl-blank" data-answer="2.154" data-tol="0.01"></span>, well under 5.40, even though a plain read against a 9 bp whole-day yardstick (\(49/9 = 5.44\)) would have flagged it.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Session-average typical move 10 bp. A midday bar whose typical move is 3.5 bp goes +20 bp, and \(\hat\sigma = 10.4\) bp. Factor \(f =\) <span class="tl-blank" data-answer="0.35" data-tol="0.005"></span>. Deseasonalised return \(\tilde r =\) <span class="tl-blank" data-answer="57.14" data-tol="0.1" data-unit="bp"></span>. \(L =\) <span class="tl-blank" data-answer="5.495" data-tol="0.015"></span>. The smallest raw return in this bar that would clear 5.40 is <span class="tl-blank" data-answer="19.66" data-tol="0.05" data-unit="bp"></span>.</p>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

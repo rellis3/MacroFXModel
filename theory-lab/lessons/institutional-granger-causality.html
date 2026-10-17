@@ -48,7 +48,7 @@
       <li>\(X\) <strong>Granger-causes</strong> \(Y\) means one precise, narrow thing: adding \(X\)'s lagged values to a regression that already contains \(Y\)'s own lags significantly improves the forecast of \(Y\). Nothing more, nothing metaphysical — a statistical, incremental-predictive-power claim, not a structural one.</li>
       <li>The test is a nested-regression F-test: fit a <strong>restricted</strong> model (\(Y_t\) on its own lags only) and an <strong>unrestricted</strong> model (\(Y_t\) on its own lags plus \(X\)'s lags), then test whether the \(X\) coefficients are jointly zero via \(F = \frac{(RSS_r - RSS_u)/q}{RSS_u/(n-k)}\), where \(q\) is the number of dropped \(X\) lags and \(k\) is the unrestricted model's parameter count.</li>
       <li>Two mandatory pre-checks, both skippable in ways that silently break the test: pick the lag order \(p\) with AIC/BIC <em>before</em> testing (the <a href="model-selection-aic-bic.html">Model Selection: AIC &amp; BIC</a> lesson derives both criteria), and confirm both series are stationary first (test on returns, not price levels — unless the pair is cointegrated, in which case the <a href="institutional-vecm.html">VECM</a> lesson's error-correction framework is the correct home for this question, not a plain differenced VAR).</li>
-      <li>A worked toy example below fits both regressions on 12 observations and gets \(F \approx 38.6\) against \(q=1\), \(n-k=9\) degrees of freedom — comfortably past even the 1% critical value of 10.56, a clean reject-the-null result computed end to end and hand-checkable.</li>
+      <li>A worked toy example below fits both regressions on 12 observations and gets \(F \approx 38.65\) against \(q=1\), \(n-k=9\) degrees of freedom — comfortably past even the 1% critical value of 10.56, a clean reject-the-null result computed end to end and hand-checkable.</li>
       <li>Run the test in <strong>both directions</strong>. \(X\) Granger-causing \(Y\) and \(Y\) Granger-causing \(X\) are two separate hypotheses on two separate regressions; both can be significant at once (genuine feedback), one can be, or neither.</li>
       <li>Cross-correlation of returns at various lags — \(\text{corr}(X_t, Y_{t+k})\) for a range of \(k\) — is the simpler, non-regression cousin of the identical lead-lag question, and unlike Granger causality it does <strong>not</strong> control for \(Y\)'s own persistence.<!-- DESK:START --> This repo genuinely runs several versions of that simpler tool in production; grep results are in "How practitioners actually use this" below. No Granger F-test exists anywhere in the codebase.<!-- DESK:END --></li>
       <li><strong>How it reached trading:</strong> Granger (1969) gave the definition; 1980s lead-lag studies such as Kawaller, Koch &amp; Koch (1987) found futures leading cash, and it remains the first screen on any lead-lag signal.</li>
@@ -57,14 +57,14 @@
 
   <figure class="tl-picture">
     <div class="tl-picture-label">The whole idea in one picture</div>
-    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: forecast error, as residual sum of squares, for two regressions of Y on the worked example's twelve observations. Using only Y's own past leaves 0.4260; adding X's past cuts it to 0.0806. Right: an F scale from 0 to 40. The 5% critical value of F with 1 and 9 degrees of freedom is 5.12 and the 1% value is 10.56; the worked example's F of about 38.6 sits far beyond both, so X Granger-causes Y in this toy sample.">
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: forecast error, as residual sum of squares, for two regressions of Y on the worked example's twelve observations. Using only Y's own past leaves 0.4283; adding X's past cuts it to 0.0809. Right: an F scale from 0 to 40. The 5% critical value of F with 1 and 9 degrees of freedom is 5.12 and the 1% value is 10.56; the worked example's F of about 38.65 sits far beyond both, so X Granger-causes Y in this toy sample.">
       <text class="tlp-text2" x="160" y="30" text-anchor="middle" font-size="13" font-weight="700">forecast error left over</text>
       <text class="tlp-text2" x="30" y="62" font-size="13">Y's own past only</text>
       <rect class="tlp-box amber" x="30" y="70" width="260" height="26" rx="4"/>
-      <text class="tlp-text" x="282" y="88" text-anchor="end" font-size="13" font-weight="700">RSS 0.4260</text>
+      <text class="tlp-text" x="282" y="88" text-anchor="end" font-size="13" font-weight="700">RSS 0.4283</text>
       <text class="tlp-text2" x="30" y="128" font-size="13">Y's past + X's past</text>
       <rect class="tlp-box green" x="30" y="136" width="49" height="26" rx="4"/>
-      <text class="tlp-green" x="88" y="154" font-size="13" font-weight="700">RSS 0.0806</text>
+      <text class="tlp-green" x="88" y="154" font-size="13" font-weight="700">RSS 0.0809</text>
       <text class="tlp-text3" x="30" y="190" font-size="12">same 12 observations, lag 1</text>
       <text class="tlp-green" x="30" y="222" font-size="13" font-weight="700">X's lag removes about 81% of the error</text>
       <text class="tlp-text2" x="455" y="30" text-anchor="middle" font-size="13" font-weight="700">is the drop bigger than noise?</text>
@@ -75,7 +75,7 @@
       <text class="tlp-amber" x="362" y="114" text-anchor="middle" font-size="12" font-weight="700">5%: 5.12</text>
       <text class="tlp-red" x="396" y="90" text-anchor="middle" font-size="12" font-weight="700">1%: 10.56</text>
       <circle class="tlp-green" cx="571" cy="150" r="7"/>
-      <text class="tlp-green" x="571" y="130" text-anchor="end" font-size="14" font-weight="700">F ≈ 38.6</text>
+      <text class="tlp-green" x="571" y="130" text-anchor="end" font-size="14" font-weight="700">F ≈ 38.65</text>
       <text class="tlp-text3" x="330" y="168" text-anchor="middle" font-size="12">0</text>
       <text class="tlp-text3" x="455" y="168" text-anchor="middle" font-size="12">20</text>
       <text class="tlp-text3" x="580" y="168" text-anchor="middle" font-size="12">40</text>
@@ -224,7 +224,7 @@
       <p>The denominator: the unrestricted model's own noise per spare degree of freedom. It is the yardstick for an unremarkable gain.</p>
     </div>
     <div class="tl-eqbuild-step">
-      <div class="tl-math">\[ \color{#10b981}{F = \frac{(0.4260 - 0.0806)/1}{0.0806/9} \approx 38.57} \]</div>
+      <div class="tl-math">\[ \color{#10b981}{F = \frac{(0.4283 - 0.0809)/1}{0.0809/9} \approx 38.65} \]</div>
       <p>The worked example: far above the \(F(1,9)\) critical values of 5.12 (5%) and 10.56 (1%), so X Granger-causes Y in this toy sample.</p>
     </div>
   </div>
@@ -439,11 +439,11 @@
     </p>
     <div class="tl-table-wrap"><table class="tl-tbl">
       <tr><th>Model</th><th>Fitted equation</th><th>RSS</th></tr>
-      <tr><td>Restricted</td><td>\(\hat Y_t = -0.0495 + 0.0750\,Y_{t-1}\)</td><td class="tl-num">RSS_r = 0.4260</td></tr>
-      <tr><td>Unrestricted</td><td>\(\hat Y_t = 0.0113 + 0.1766\,Y_{t-1} + 0.5872\,X_{t-1}\)</td><td class="tl-num">RSS_u = 0.0806</td></tr>
+      <tr><td>Restricted</td><td>\(\hat Y_t = -0.0493 + 0.0747\,Y_{t-1}\)</td><td class="tl-num">RSS_r = 0.4283</td></tr>
+      <tr><td>Unrestricted</td><td>\(\hat Y_t = 0.0117 + 0.1770\,Y_{t-1} + 0.5890\,X_{t-1}\)</td><td class="tl-num">RSS_u = 0.0809</td></tr>
     </table></div>
     <p>
-      Adding \(X_{t-1}\) drops the RSS from 0.4260 to 0.0806 — a large
+      Adding \(X_{t-1}\) drops the RSS from 0.4283 to 0.0809 — a large
       apparent improvement, but "large" only means something once it's
       weighed against how much RSS a single extra, genuinely useless
       regressor would be expected to shave off by chance. That's exactly what
@@ -455,10 +455,10 @@
       <div class="tl-eq-chip c3"><code>n = 12</code><span>observations in the regression sample</span></div>
       <div class="tl-eq-chip c4"><code>n − k = 9</code><span>denominator degrees of freedom</span></div>
     </div>
-    <div class="tl-math">\[ F = \frac{(0.4260 - 0.0806)/1}{0.0806/9} = \frac{0.3454}{0.008956} \approx 38.57 \]</div>
+    <div class="tl-math">\[ F = \frac{(0.4283 - 0.0809)/1}{0.0809/9} = \frac{0.3474}{0.008989} \approx 38.65 \]</div>
     <p>
       Compared against the standard \(F(1,9)\) critical values — 5.12 at the
-      5% level, 10.56 at the 1% level — \(F \approx 38.57\) clears both by a
+      5% level, 10.56 at the 1% level — \(F \approx 38.65\) (38.66 if you carry the RSS values unrounded) clears both by a
       wide margin. In this toy sample, \(X\) Granger-causes \(Y\) at lag 1,
       well past the 1% significance level. Nothing here claims this specific
       dataset reflects any real traded instrument; the arithmetic is exact
@@ -478,18 +478,18 @@
       readout</strong> — this lookup is deliberately compact, not a full
       F-distribution calculator.
     </p>
-    <div class="tl-predict" data-answer="1.09" data-tol="0.3" data-unit="">
-      <div class="tl-predict-q"><strong>Predict first.</strong> In the worked example, adding X's lag cuts the error from 0.4260 to 0.0806 and F is about 38.57. Suppose instead it had only cut the error to 0.3800, with q, n and k unchanged. What would F be, and would you still reject? Lock in a guess, then type 0.38 into the RSS unrestricted field below.</div>
-      <div class="tl-predict-reveal"><p><strong>About 1.09: fail to reject.</strong> \(F = (0.4260 - 0.3800)/1 \div (0.3800/9) = 0.046 / 0.0422 \approx 1.09\), far below the 5% critical value of 5.12. A drop of about 11% in the error is the kind of gain one useless extra regressor can buy by chance. Now put 0.0806 back and set q to 3 and k to 7, as if you had used three lags, and watch how the extra parameters weaken the test.</p></div>
+    <div class="tl-predict" data-answer="1.14" data-tol="0.3" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> In the worked example, adding X's lag cuts the error from 0.4283 to 0.0809 and F is about 38.65. Suppose instead it had only cut the error to 0.3800, with q, n and k unchanged. What would F be, and would you still reject? Lock in a guess, then type 0.38 into the RSS unrestricted field below.</div>
+      <div class="tl-predict-reveal"><p><strong>About 1.14: fail to reject.</strong> \(F = (0.4283 - 0.3800)/1 \div (0.3800/9) = 0.0483 / 0.0422 \approx 1.14\), far below the 5% critical value of 5.12. A drop of about 11% in the error is the kind of gain one useless extra regressor can buy by chance. Now put 0.0809 back and set q to 3 and k to 7, as if you had used three lags, and watch how the extra parameters weaken the test.</p></div>
     </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>RSS restricted (RSS_r)</span></div>
-        <input type="number" id="gc-calc-RSSr" class="tl-scratch-input" value="0.4260" step="0.001" min="0">
+        <input type="number" id="gc-calc-RSSr" class="tl-scratch-input" value="0.4283" step="0.001" min="0">
       </div>
       <div class="tl-control">
         <div class="tl-control-head"><span>RSS unrestricted (RSS_u)</span></div>
-        <input type="number" id="gc-calc-RSSu" class="tl-scratch-input" value="0.0806" step="0.001" min="0">
+        <input type="number" id="gc-calc-RSSu" class="tl-scratch-input" value="0.0809" step="0.001" min="0">
       </div>
       <div class="tl-control">
         <div class="tl-control-head"><span>Restrictions dropped (q)</span></div>
@@ -509,13 +509,30 @@
       <button type="button" class="tl-btn" id="gc-calc-alpha01" data-alpha="0.01">α = 0.01</button>
     </div>
     <div class="tl-readout tl-scratch-readout">
-      df₁ = q = <b id="gc-calc-df1">1</b>&emsp;df₂ = n−k = <b id="gc-calc-df2">9</b>&emsp;F = <b id="gc-calc-F">38.57</b>
+      df₁ = q = <b id="gc-calc-df1">1</b>&emsp;df₂ = n−k = <b id="gc-calc-df2">9</b>&emsp;F = <b id="gc-calc-F">38.65</b>
     </div>
     <div class="tl-readout">
-      <span id="gc-calc-verdict">Tabulated F(1,9) critical value at α=0.05 ≈ <b>5.12</b> — 38.57 &gt; 5.12, so <b>reject H₀</b>: X Granger-causes Y at this significance level.</span>
+      <span id="gc-calc-verdict">Tabulated F(1,9) critical value at α=0.05 ≈ <b>5.12</b> — 38.65 &gt; 5.12, so <b>reject H₀</b>: X Granger-causes Y at this significance level.</span>
     </div>
     <div class="tl-hint" id="gc-calc-hint" style="margin-top:8px">Honesty note: this calculator hardcodes standard F critical values only for q = 1–5 and a fixed grid of denominator degrees of freedom (5, 6, 7, 8, 9, 10, 12, 15, 20, 25, 30, 40, 60, 120). A df₂ that falls between two tabulated values is matched to the <em>nearest</em> tabulated one, not interpolated — the displayed critical value is an approximation, not an exact lookup, and gets less precise the further your df₂ sits from the table's grid points. For q &gt; 5, exact p-values, or serious use, compute the F-statistic here and check significance with real statistical software.</div>
     <button type="button" id="gc-calc-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The Granger F-statistic, as in the worked example: \(F = \dfrac{(RSS_r - RSS_u)/q}{RSS_u/(n-k)}\). Each round gives the 5% critical value so you can make the call.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(RSS_r = 0.950\), \(RSS_u = 0.800\), one lag of X (\(q = 1\)), \(n = 40\), \(k = 3\). Numerator: \(0.150/1 = 0.150\). Denominator: \(0.800/37 = 0.021622\). So \(F =\) <span class="tl-blank" data-answer="6.94" data-tol="0.01"></span>, against a 5% critical value of 4.11 for \(F(1,37)\): reject.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Two lags of X (\(q = 2\)), \(k = 5\), \(n = 60\), \(RSS_r = 2.40\), \(RSS_u = 2.10\). Numerator per restriction: <span class="tl-blank" data-answer="0.15" data-tol="0.0005"></span>. Denominator: <span class="tl-blank" data-answer="0.038182" data-tol="0.00002"></span>. \(F =\) <span class="tl-blank" data-answer="3.93" data-tol="0.01"></span>, against 3.16 for \(F(2,55)\) at 5%.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Three lags (\(q = 3\)), \(k = 7\), \(n = 100\), \(RSS_r = 1.30\), \(RSS_u = 1.25\). Denominator degrees of freedom: <span class="tl-blank" data-answer="93" data-tol="0.5"></span>. \(F =\) <span class="tl-blank" data-answer="1.24" data-tol="0.01"></span>. The 5% critical value for \(F(3,93)\) is 2.70, so you fail to reject: a 3.8% cut in the error is what three useless lags can buy by chance.</p>
+    </div>
   </div>
 
   <div class="tl-chart">
@@ -559,7 +576,7 @@
 
   <!-- WB:institutional_granger_causality:START -->
   <div class="wb" id="wb-institutional_granger_causality" data-title="Granger causality: does the extra clue help?">
-    <script type="application/json">{"w":600,"h":800,"intro":"Two forecasters, one with an extra clue. Granger's test asks whether the clue really helps, using the lesson's own twelve observations. Press play, or step through.","steps":[{"cap":"Two return series. The question is narrow: does X's past help forecast Y, beyond what Y's own past already tells you?","do":[{"box":"X","x":20,"y":10,"w":190,"h":70,"text":"X: leader?","tone":"purple","size":21},{"box":"Y","x":390,"y":10,"w":190,"h":70,"text":"Y: follower?","tone":"blue","size":21},{"arrow":["X","Y"],"label":"helps?","tone":"amber","dash":true,"id":"xy"}]},{"cap":"Y's returns over the twelve periods of the toy sample, t = 2 to 13. This is what both forecasters must predict.","do":[{"chart":"ts","x":10,"y":100,"w":580,"h":250,"title":"Y returns (%), and two forecasts","xd":[1.5,13.5],"yd":[-0.42,0.42],"yt":[[-0.3,"−0.3"],[0,"0"],[0.3,"0.3"]],"xt":[[2,"t=2"],[5,"5"],[8,"8"],[11,"11"],[13,"13"]],"zero":true,"pl":52,"pr":14},{"series":"y","chart":"ts","pts":[[2,0.15],[3,-0.06],[4,-0.15],[5,-0.27],[6,-0.18],[7,0.03],[8,-0.15],[9,-0.28],[10,0.25],[11,0.31],[12,-0.21],[13,-0.08]],"tone":"blue","ms":1500,"label":"Y","lat":[11,0.31],"ldy":-14}]},{"cap":"Forecaster A sees only Y's own past. The best fit barely uses it: a slope of 0.075, so the forecast hugs −0.05 and misses almost every move.","do":[{"series":"fr","chart":"ts","pts":[[2,-0.0563],[3,-0.0383],[4,-0.054],[5,-0.0607],[6,-0.0698],[7,-0.063],[8,-0.0473],[9,-0.0607],[10,-0.0705],[11,-0.0308],[12,-0.0263],[13,-0.0653]],"tone":"amber","ms":1200,"label":"own past only","lat":[3,-0.0383],"ldy":22,"lanchor":"start"}]},{"cap":"Add up A's squared misses: the restricted model leaves RSS = 0.4260.","do":[{"chart":"rss","x":10,"y":366,"w":250,"h":220,"title":"Error left over (RSS)","xd":[0.4,2.6],"yd":[0,0.5],"yt":[[0.2,"0.2"],[0.4,"0.4"]],"xt":[[1,"A"],[2,"B"]],"pl":44,"pr":10},{"bars":"br","chart":"rss","data":[[1,0.426,"0.4260","amber"]],"bw":46,"ms":900}]},{"cap":"Forecaster B also sees X's past. X's last move gets a weight of 0.59, and the forecast now tracks most of Y's swings.","do":[{"dim":"fr"},{"series":"fu","chart":"ts","pts":[[2,0.1774],[3,0.0495],[4,-0.1226],[5,-0.2794],[6,-0.1068],[7,-0.0733],[8,-0.2476],[9,-0.2794],[10,0.2555],[11,0.1435],[12,-0.0925],[13,-0.0669]],"tone":"green","ms":1400,"label":"+ X's past","lat":[10,0.2555],"ldx":-8,"ldy":-14,"lanchor":"end"}]},{"cap":"B's leftover error: RSS = 0.0806. About 81% of A's error is gone.","do":[{"bars":"bu","chart":"rss","data":[[2,0.0806,"0.0806","green"]],"bw":46,"ms":900}]},{"cap":"But any extra regressor helps a little, even a useless one. So weigh the gain per added coefficient against B's own noise per spare data point: 12 observations minus 3 parameters leaves 9.","do":[{"box":"f","x":10,"y":596,"w":580,"h":66,"text":"F = (0.4260 − 0.0806)/1 ÷ (0.0806/9)","tone":"purple","sub":"","size":20}]},{"cap":"That gives F ≈ 38.57. Under \"X adds nothing\", F(1, 9) passes 5.12 only 5% of the time and 10.56 only 1% of the time.","do":[{"sub":"f","text":"≈ 38.57"},{"chart":"fs","x":280,"y":366,"w":310,"h":220,"title":"Where F lands","xd":[0,42],"yd":[0,1],"yt":[],"xt":[[0,"0"],[20,"20"],[40,"40"]],"pl":20,"pr":14},{"series":"c5","chart":"fs","pts":[[5.12,0],[5.12,0.62]],"tone":"amber","dash":true,"ms":400},{"series":"c1","chart":"fs","pts":[[10.56,0],[10.56,0.86]],"tone":"red","dash":true,"ms":400},{"note":"n5","chart":"fs","at":[5.12,0.62],"text":"5%","tone":"amber","size":16,"anchor":"middle","dx":0,"dy":-12},{"note":"n1","chart":"fs","at":[10.56,0.86],"text":"1%","tone":"red","size":16,"anchor":"middle","dx":0,"dy":-12},{"dot":"fd","chart":"fs","at":[38.57,0.12],"text":"F ≈ 38.6","tone":"green","dx":-6,"dy":-18,"anchor":"end"}]},{"cap":"Far past both cut-offs: reject. In this toy sample, X Granger-causes Y at lag 1. That means X's past helps forecast Y. It does not mean X makes Y move.","do":[{"pulse":"fd"},{"hide":"xy"},{"arrow":["X","Y"],"label":"helps","tone":"green","id":"xy2"}]},{"cap":"Trap one: a shared driver. News that reaches X's price feed a few seconds before Y's gives the same clean result, with no link between X and Y at all.","do":[{"icon":"glb","name":"globe","x":14,"y":672,"s":0.6,"tone":"red"},{"box":"p1","x":80,"y":676,"w":210,"h":76,"text":"shared driver\nhits X first","tone":"red","size":18}]},{"cap":"Trap two: timing. If X's market closes hours before Y's, X's recorded price is just older, and it will look like it leads. Check timestamps and market hours first.","do":[{"icon":"clk","name":"clock","x":308,"y":672,"s":0.6,"tone":"red"},{"box":"p2","x":374,"y":676,"w":216,"h":76,"text":"X closes earlier:\nits price is older","tone":"red","size":18}]},{"cap":"So: test returns, not levels; choose the lags before testing; run both directions, because feedback is a real outcome. A lead is only real if the leader's past still helps after the follower's own past has had its say.","do":[{"note":"end","x":300,"y":780,"text":"returns · lags first · both directions · check the clocks","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+    <script type="application/json">{"w":600,"h":800,"intro":"Two forecasters, one with an extra clue. Granger's test asks whether the clue really helps, using the lesson's own twelve observations. Press play, or step through.","steps":[{"cap":"Two return series. The question is narrow: does X's past help forecast Y, beyond what Y's own past already tells you?","do":[{"box":"X","x":20,"y":10,"w":190,"h":70,"text":"X: leader?","tone":"purple","size":21},{"box":"Y","x":390,"y":10,"w":190,"h":70,"text":"Y: follower?","tone":"blue","size":21},{"arrow":["X","Y"],"label":"helps?","tone":"amber","dash":true,"id":"xy"}]},{"cap":"Y's returns over the twelve periods of the toy sample, t = 2 to 13. This is what both forecasters must predict.","do":[{"chart":"ts","x":10,"y":100,"w":580,"h":250,"title":"Y returns (%), and two forecasts","xd":[1.5,13.5],"yd":[-0.42,0.42],"yt":[[-0.3,"−0.3"],[0,"0"],[0.3,"0.3"]],"xt":[[2,"t=2"],[5,"5"],[8,"8"],[11,"11"],[13,"13"]],"zero":true,"pl":52,"pr":14},{"series":"y","chart":"ts","pts":[[2,0.15],[3,-0.06],[4,-0.15],[5,-0.27],[6,-0.18],[7,0.03],[8,-0.15],[9,-0.28],[10,0.25],[11,0.31],[12,-0.21],[13,-0.08]],"tone":"blue","ms":1500,"label":"Y","lat":[11,0.31],"ldy":-14}]},{"cap":"Forecaster A sees only Y's own past. The best fit barely uses it: a slope of 0.075, so the forecast hugs −0.05 and misses almost every move.","do":[{"series":"fr","chart":"ts","pts":[[2,-0.056],[3,-0.0381],[4,-0.0538],[5,-0.0605],[6,-0.0695],[7,-0.0627],[8,-0.0471],[9,-0.0605],[10,-0.0702],[11,-0.0306],[12,-0.0261],[13,-0.065]],"tone":"amber","ms":1200,"label":"own past only","lat":[3,-0.0381],"ldy":22,"lanchor":"start"}]},{"cap":"Add up A's squared misses: the restricted model leaves RSS = 0.4283.","do":[{"chart":"rss","x":10,"y":366,"w":250,"h":220,"title":"Error left over (RSS)","xd":[0.4,2.6],"yd":[0,0.5],"yt":[[0.2,"0.2"],[0.4,"0.4"]],"xt":[[1,"A"],[2,"B"]],"pl":44,"pr":10},{"bars":"br","chart":"rss","data":[[1,0.4283,"0.4283","amber"]],"bw":46,"ms":900}]},{"cap":"Forecaster B also sees X's past. X's last move gets a weight of 0.59, and the forecast now tracks most of Y's swings.","do":[{"dim":"fr"},{"series":"fu","chart":"ts","pts":[[2,0.1784],[3,0.05],[4,-0.1226],[5,-0.2799],[6,-0.1068],[7,-0.0732],[8,-0.248],[9,-0.2799],[10,0.2566],[11,0.1443],[12,-0.0925],[13,-0.0667]],"tone":"green","ms":1400,"label":"+ X's past","lat":[10,0.2566],"ldx":-8,"ldy":-14,"lanchor":"end"}]},{"cap":"B's leftover error: RSS = 0.0809. About 81% of A's error is gone.","do":[{"bars":"bu","chart":"rss","data":[[2,0.0809,"0.0809","green"]],"bw":46,"ms":900}]},{"cap":"But any extra regressor helps a little, even a useless one. So weigh the gain per added coefficient against B's own noise per spare data point: 12 observations minus 3 parameters leaves 9.","do":[{"box":"f","x":10,"y":596,"w":580,"h":66,"text":"F = (0.4283 − 0.0809)/1 ÷ (0.0809/9)","tone":"purple","sub":"","size":20}]},{"cap":"That gives F ≈ 38.65. Under \"X adds nothing\", F(1, 9) passes 5.12 only 5% of the time and 10.56 only 1% of the time.","do":[{"sub":"f","text":"≈ 38.65"},{"chart":"fs","x":280,"y":366,"w":310,"h":220,"title":"Where F lands","xd":[0,42],"yd":[0,1],"yt":[],"xt":[[0,"0"],[20,"20"],[40,"40"]],"pl":20,"pr":14},{"series":"c5","chart":"fs","pts":[[5.12,0],[5.12,0.62]],"tone":"amber","dash":true,"ms":400},{"series":"c1","chart":"fs","pts":[[10.56,0],[10.56,0.86]],"tone":"red","dash":true,"ms":400},{"note":"n5","chart":"fs","at":[5.12,0.62],"text":"5%","tone":"amber","size":16,"anchor":"middle","dx":0,"dy":-12},{"note":"n1","chart":"fs","at":[10.56,0.86],"text":"1%","tone":"red","size":16,"anchor":"middle","dx":0,"dy":-12},{"dot":"fd","chart":"fs","at":[38.65,0.12],"text":"F ≈ 38.65","tone":"green","dx":-6,"dy":-18,"anchor":"end"}]},{"cap":"Far past both cut-offs: reject. In this toy sample, X Granger-causes Y at lag 1. That means X's past helps forecast Y. It does not mean X makes Y move.","do":[{"pulse":"fd"},{"hide":"xy"},{"arrow":["X","Y"],"label":"helps","tone":"green","id":"xy2"}]},{"cap":"Trap one: a shared driver. News that reaches X's price feed a few seconds before Y's gives the same clean result, with no link between X and Y at all.","do":[{"icon":"glb","name":"globe","x":14,"y":672,"s":0.6,"tone":"red"},{"box":"p1","x":80,"y":676,"w":210,"h":76,"text":"shared driver\nhits X first","tone":"red","size":18}]},{"cap":"Trap two: timing. If X's market closes hours before Y's, X's recorded price is just older, and it will look like it leads. Check timestamps and market hours first.","do":[{"icon":"clk","name":"clock","x":308,"y":672,"s":0.6,"tone":"red"},{"box":"p2","x":374,"y":676,"w":216,"h":76,"text":"X closes earlier:\nits price is older","tone":"red","size":18}]},{"cap":"So: test returns, not levels; choose the lags before testing; run both directions, because feedback is a real outcome. A lead is only real if the leader's past still helps after the follower's own past has had its say.","do":[{"note":"end","x":300,"y":780,"text":"returns · lags first · both directions · check the clocks","size":19,"anchor":"middle","tone":"green"}]}]}</script>
   </div>
   <!-- WB:institutional_granger_causality:END -->
 
@@ -626,6 +643,7 @@
       unrestricted Granger comparison either.
     </p>
   </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../credit-leadlag.html">Credit → Risk-vol Lead-Lag Study</a> shows the lead-lag correlation of credit velocity against forward vol at each lag, the cross-correlation cousin of this test. It does not control for the target's own persistence, which is the gap the Granger F-test closes.</div>
   <!-- DESK:END -->
 
   <div class="tl-box scenario">
@@ -897,7 +915,7 @@
 <script src="../assets/vark.js?v=2" defer></script>
 <script>
 (function(){
-  var DEFAULTS = { RSSr: 0.4260, RSSu: 0.0806, q: 1, n: 12, k: 3 };
+  var DEFAULTS = { RSSr: 0.4283, RSSu: 0.0809, q: 1, n: 12, k: 3 };
   var fields = ['RSSr', 'RSSu', 'q', 'n', 'k'];
   var inputs = {};
   fields.forEach(function(f){ inputs[f] = document.getElementById('gc-calc-' + f); });

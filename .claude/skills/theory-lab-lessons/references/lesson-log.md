@@ -30,3 +30,9 @@ Format: `YYYY-MM-DD — slug (full + micro) — category — source notes / why`
   correlation-networks-mst longest edge, numerical-integration 15^7 count, newton-raphson f(y1)/P'(y0),
   sde-numerical-schemes strong-error chart, hamiltonian-monte-carlo-nuts leapfrog (interior kicks were ε/2),
   institutional-kyle-obizhaeva-invariance scaling exponents, institutional-avellaneda-stoikov inventory sign.
+- 2026-10-17 (second pass): four new lessons, fx-fixings-wm-reuters, fx-options-quoting-rr-bf, trade-management-exits
+  and event-trading-playbook, each with a deck, whiteboard, drill and story. Every deck gained the picture, listen block
+  and drill as slides. Every lesson gained a faded worked example (§5.23), drill sources, desk tool links and
+  how-to-test notes (§5.24), and its static readouts were reconciled with its calculators (§5.25). New pages:
+  practice.html, errors.html, checklist.html, journal.html, cheatsheet.html, replay.html (desk only); the hub's Today
+  card (desk only). Recorded dialogues in theory-lab/audio (Kokoro, built locally by build_audio.py).

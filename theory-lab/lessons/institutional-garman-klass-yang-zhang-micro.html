@@ -258,7 +258,7 @@
         </div>
         <div class="sl-sliderhead"><span>Window length (trading days, k)</span><span class="sl-live" id="eff-kval">k = 60</span></div>
         <input type="range" class="sl-slider" id="eff-slider" min="5" max="100" step="1" value="60">
-        <div class="sl-note" id="eff-readout">At k=60: close-close ≈9.0% relative sampling noise · Parkinson ≈4.0% · Garman-Klass ≈3.2% · Yang-Zhang ≈3.3% (800-path Monte Carlo, true vol fixed at 8% annualized).</div>
+        <div class="sl-note" id="eff-readout">At k=60: close-close ≈9.0% relative sampling noise · Parkinson ≈4.0% · Garman-Klass ≈3.2% · Yang-Zhang ≈3.3% (scaled from an 800-path Monte Carlo at k=60, true vol fixed at 8% annualized).</div>
       </div>
       <p class="sl-p">Flip it around: close-to-close needed roughly 25 trading days to reach the same ~15% noise level Parkinson, Garman-Klass, and Yang-Zhang all reached with just 5 days — verified by simulation, not assumed from the textbook multiplier alone.</p>
     </section>
@@ -307,7 +307,7 @@
           <div class="sl-calc-op">→</div>
           <div class="sl-calc-result">
             <div class="sl-calc-result-label">k = 0.34/(1.34+(n+1)/(n−1))</div>
-            <div class="sl-calc-result-val" id="yzk-result">0.1937</div>
+            <div class="sl-calc-result-val" id="yzk-result">0.1411</div>
           </div>
         </div>
         <div class="sl-note">n must be an integer of at least 2 — the formula divides by (n−1).</div>

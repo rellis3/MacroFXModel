@@ -408,6 +408,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>The covered-parity forward \(F^\ast = S \times (1+r_d)/(1+r_f)\) for new pairs, with USD as the domestic currency and one-year rates, then the arbitrage when the market forward is off.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>GBP: spot \(S = 1.30\) USD/GBP, \(r_d = 4.00\%\), \(r_f = 5.00\%\). The rate ratio is \(1.04/1.05 = 0.990476\). So \(F^\ast = 1.30 \times 0.990476 =\) <span class="tl-blank" data-answer="1.2876" data-tol="0.00006"></span> USD/GBP: the higher-yielding pound trades at a forward discount.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>AUD: spot \(S = 0.6500\) USD/AUD, \(r_d = 5.00\%\), \(r_f = 4.00\%\). Rate ratio <span class="tl-blank" data-answer="1.009615" data-tol="0.000002"></span>. \(F^\ast =\) <span class="tl-blank" data-answer="0.65625" data-tol="0.000006"></span> USD/AUD. Forward premium \(F^\ast/S - 1 =\) <span class="tl-blank" data-answer="0.9615" data-tol="0.0006" data-unit="%"></span>, a little under the 1.00-point rate gap.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>EUR: spot \(S = 1.08\) USD/EUR, \(r_d = 4.50\%\), \(r_f = 2.50\%\), and the market forward is quoted at 1.12. \(F^\ast =\) <span class="tl-blank" data-answer="1.1011" data-tol="0.00006"></span>. The quote is too high, so borrow \$1,000,000, convert at spot and invest the euros: after a year you hold € <span class="tl-blank" data-answer="949074.07" data-tol="1"></span>. Sold forward at 1.12 that is \$ <span class="tl-blank" data-answer="1062962.96" data-tol="1"></span>. After repaying \$1,045,000 the riskless profit is \$ <span class="tl-blank" data-answer="17962.96" data-tol="1"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -734,6 +751,7 @@
     mean-reversion of a z-scored 2-year spread, a different claim from collecting carry, and it is not cited here as
     carry evidence. Covered parity itself, and the cross-currency basis, are untested on this desk.
   </p>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../rate-matrix.html">Rate Differential Matrix</a> shows today's short-rate and 10-year gaps across the majors; each cell is the \(r_d - r_f\) that sets the forward premium in this lesson, and the carry a UIP failure would pay.</div>
 <!-- DESK:END -->
 
   <div class="tl-eli5">
@@ -844,7 +862,7 @@
       <li data-verdict="bad">Add. Uncovered parity fails, so the carry is close to free money, and a lower price is a better entry.<div class="tl-drill-why">A failure of uncovered parity is not an arbitrage. It is a risk-bearing bet, and the risk it bears is exactly a sudden yen rally like this one.</div></li>
       <li data-verdict="ok">Keep the position, but place a stop a few percent lower.<div class="tl-drill-why">It caps the loss in a slow move, so it is defensible. In a fast, one-way unwind a stop fills at whatever price is there, and it is not a hedge.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> A soft US payrolls report days later revived US recession fears at the same time. Yen-funded carry was unwound across the board, and the yen rose sharply against nearly everything. AUD/JPY fell about 17% from its 11 July high to its 5 August low, roughly three and a half weeks, much of it in the sessions after the hike. On $10,000,000 that is about $1,700,000: around four years of that $420,000 carry, gone in a few weeks.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> A soft US payrolls report days later revived US recession fears at the same time. Yen-funded carry was unwound across the board, and the yen rose sharply against nearly everything. AUD/JPY fell about 17% from its 11 July high to its 5 August low, roughly three and a half weeks, much of it in the sessions after the hike. On $10,000,000 that is about $1,700,000: around four years of that $420,000 carry, gone in a few weeks.</p><p class="tl-drill-sources">Sources: <a href="https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2024/k240731a.pdf">Bank of Japan, change in the guideline for money market operations, 31 Jul 2024</a> (call rate to around 0.25%); <a href="https://www.rba.gov.au/statistics/cash-rate/">Reserve Bank of Australia, cash rate target</a> (4.35% through the period); <a href="https://www.bls.gov/news.release/archives/empsit_08022024.htm">US Bureau of Labor Statistics, Employment Situation for July 2024, 2 Aug 2024</a>; <a href="https://www.bis.org/publ/bisbull90.htm">BIS Bulletin No 90, "The market turbulence and carry trade unwind of August 2024", 27 Aug 2024</a>. AUD/JPY high and low (about 109.35 and 90.12): Continuum Economics and FXStreet market notes, July and August 2024.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -859,7 +877,7 @@
 <!-- DESK:START -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing in this repo computes CIP or UIP, and its one carry test is underpowered.</strong> The forward premium puzzle is well-replicated in the broader literature — that is a different claim from a validated OOS edge on this repo's own data.</span></div>
 <!-- DESK:END -->
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Even the identity needs someone to fund it<!-- DESK:START -->, and carry is not an edge on this desk's data<!-- DESK:END -->.</strong> In autumn 2008 CIP broke until the Fed's swap lines supplied the dollars arbitrageurs lacked.<!-- DESK:START --> This desk's carry basket (fx-factor-book-v2, UNDERPOWERED) made +0.61 out of sample, 1.5 SE, with an in-sample of −0.12.<!-- DESK:END --></span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Even the identity needs someone to fund it<!-- DESK:START -->, and carry is not an edge on this desk's data<!-- DESK:END -->.</strong> In autumn 2008 CIP broke until the Fed's swap lines supplied the dollars arbitrageurs lacked.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

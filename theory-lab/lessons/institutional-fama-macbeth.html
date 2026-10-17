@@ -684,6 +684,23 @@
     <button type="button" id="fm-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Stage 2 and the final average, as in the worked example: \(\hat\lambda_t = \mathrm{Cov}_i(\hat\beta, R_t)/\mathrm{Var}_i(\hat\beta)\) each period, then \(\bar\lambda\), \(s_\lambda\) (divide by \(T-1\)), \(SE = s_\lambda/\sqrt{T}\) and \(t = \bar\lambda/SE\).</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Four monthly prices of risk: 2.0, −1.0, 3.0, 1.0. \(\bar\lambda = 5.0/4 = 1.25\). Squared deviations \(0.5625 + 5.0625 + 3.0625 + 0.0625 = 8.75\); divided by 3 gives 2.9167, so \(s_\lambda = 1.7078\) and \(SE = 1.7078/2 = 0.8539\). The t-statistic is <span class="tl-blank" data-answer="1.46" data-tol="0.006"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Betas \(0.5,\ 1.0,\ 1.5\) (mean 1.0, \(\mathrm{Var}_i(\hat\beta) = 0.5/3 = 0.1667\)). This month's returns: −1.0%, 0.5%, 1.0% (mean 0.1667). \(\mathrm{Cov}_i(\hat\beta, R_t) =\) <span class="tl-blank" data-answer="0.3333" data-tol="0.0006"></span>, so \(\hat\lambda_t =\) <span class="tl-blank" data-answer="2.0" data-tol="0.005"></span>. If the other three months gave 1.0, 2.5 and −0.5, then \(\bar\lambda =\) <span class="tl-blank" data-answer="1.25" data-tol="0.005"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Five monthly prices of risk: 1.2, 0.8, 2.0, 1.6, 0.4. \(\bar\lambda =\) <span class="tl-blank" data-answer="1.2" data-tol="0.005"></span>, \(s_\lambda =\) <span class="tl-blank" data-answer="0.6325" data-tol="0.0006"></span>, \(SE =\) <span class="tl-blank" data-answer="0.2828" data-tol="0.0005"></span>, \(t =\) <span class="tl-blank" data-answer="4.24" data-tol="0.01"></span>. Fewer swings than the worked example, so a smaller average still clears \(|t| > 2\) easily.</p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>

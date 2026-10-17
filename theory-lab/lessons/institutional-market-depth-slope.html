@@ -479,6 +479,23 @@
     </p>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>New three-level books. Cumulative depth \(D(n)\) adds the sizes; slope averages \((D(i)-D(1))/(i-1)\) over levels 2 and 3; depth imbalance is \((D_b - D_a)/(D_b + D_a)\), at the touch or over all three levels.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Bid sizes 200, 300, 500; ask sizes 400, 200, 150. Cumulative \(D_b = 200, 500, 1000\) and \(D_a = 400, 600, 750\). Slope\(_{\text{bid}} = (300 + 400)/2 = 350\); slope\(_{\text{ask}} = (200 + 175)/2 = 187.5\). At the touch \(DI^{(1)} = (200-400)/600 = -0.333\), ask-heavy. Over three levels \(DI(3) = (1000-750)/(1000+750) =\) <span class="tl-blank" data-answer="0.1429" data-tol="0.0006"></span>: the sign flips once you look past the touch.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Bid sizes 150, 250, 300; ask sizes 250, 350, 200. Cumulative \(D_b = 150, 400, 700\) and \(D_a = 250, 600, 800\). Slope\(_{\text{bid}} =\) <span class="tl-blank" data-answer="262.5" data-tol="0.1"></span>. Slope\(_{\text{ask}} =\) <span class="tl-blank" data-answer="312.5" data-tol="0.1"></span>. \(DI(3) =\) <span class="tl-blank" data-answer="-0.0667" data-tol="0.0006"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Bid sizes 500, 100, 200; ask sizes 300, 300, 400. Slope\(_{\text{bid}} =\) <span class="tl-blank" data-answer="125" data-tol="0.1"></span>. Slope\(_{\text{ask}} =\) <span class="tl-blank" data-answer="325" data-tol="0.1"></span>. \(DI^{(1)} =\) <span class="tl-blank" data-answer="0.25" data-tol="0.002"></span>. \(DI(3) =\) <span class="tl-blank" data-answer="-0.1111" data-tol="0.0006"></span>. The touch says bid-heavy; the book three levels deep says the opposite.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>
@@ -692,7 +709,7 @@
       <li data-verdict="bad">The quoted spread is still one tick, so size the slices as you would on a normal day.<div class="tl-drill-why">The quote shows only the front door. Depth and slope are what tell you the cost of size, and both are saying this is not a normal day.</div></li>
       <li data-verdict="ok">Hold the whole order until depth recovers, then trade normally.<div class="tl-drill-why">It avoids walking a thin book, but you carry the full position and its price risk while you wait, and you still have a deadline. Patient slicing gets some of it done safely.</div></li>
     </ol>
-    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Between about 9:33 and 9:45 a.m. New York time, the 10-year Treasury yield fell roughly 16 basis points and then came back, with no clear news to explain it. The US agencies' joint staff report on the event documented how thin order book depth was around the move. A large order sent into that book would have paid heavily for walking it.</p></div>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Between about 9:33 and 9:45 a.m. New York time, the 10-year Treasury yield fell roughly 16 basis points and then came back, with no clear news to explain it. The US agencies' joint staff report on the event documented how thin order book depth was around the move. A large order sent into that book would have paid heavily for walking it.</p><p class="tl-drill-sources">Sources: <a href="https://www.newyorkfed.org/newsevents/news/aboutthefed/2015/oa150713.html">Federal Reserve Bank of New York, release of the Joint Staff Report on October 15, 2014, 13 Jul 2015</a>; <a href="https://libertystreeteconomics.newyorkfed.org/2019/10/from-the-vault-a-look-back-at-the-october-15-2014-flash-rally">Liberty Street Economics, "A look back at the October 15, 2014 flash rally", 15 Oct 2019</a>.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>

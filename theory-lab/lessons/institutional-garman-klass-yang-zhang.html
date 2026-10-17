@@ -590,6 +590,23 @@
     <button type="button" id="gkyz-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example day 1</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Single-bar estimators, as in the calculator above: Parkinson \(\ln(H/L)^2/(4\ln2)\), Garman-Klass \(0.5\ln(H/L)^2 - (2\ln2-1)\ln(C/O)^2\), Rogers-Satchell \(\ln(H/C)\ln(H/O) + \ln(L/C)\ln(L/O)\). Each gives a daily variance; take the square root and multiply by \(\sqrt{252} = 15.8745\). Answers in percent, two decimals.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>A GBPUSD bar: O 1.2500, H 1.2560, L 1.2470, C 1.2540. \(\ln(H/L) = 0.0071914\), \(\ln(C/O) = 0.0031949\). Parkinson: \(0.0071914^2/2.7726 = 1.8653\times10^{-5}\), so \(\sigma_P = 6.86\%\). Garman-Klass variance: \(0.5\times0.0071914^2 - 0.3863\times0.0031949^2 = 2.1915\times10^{-5}\). So \(\sigma_{GK} =\) <span class="tl-blank" data-answer="7.43" data-tol="0.012" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>A USDJPY bar: O 150.20, H 150.95, L 149.80, C 150.10. \(\ln(H/L) = 0.0076476\), \(\ln(C/O) = -0.0006660\). \(\sigma_P =\) <span class="tl-blank" data-answer="7.29" data-tol="0.012" data-unit="%"></span> and \(\sigma_{GK} =\) <span class="tl-blank" data-answer="8.56" data-tol="0.012" data-unit="%"></span>. The bar closed almost where it opened, so Garman-Klass subtracts almost nothing and sits well above Parkinson.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>An AUDUSD bar: O 0.6600, H 0.6631, L 0.6578, C 0.6585. \(\sigma_P =\) <span class="tl-blank" data-answer="7.65" data-tol="0.012" data-unit="%"></span>, \(\sigma_{GK} =\) <span class="tl-blank" data-answer="8.72" data-tol="0.012" data-unit="%"></span>, \(\sigma_{RS} =\) <span class="tl-blank" data-answer="9.55" data-tol="0.012" data-unit="%"></span>. And for a 20-day Yang-Zhang window, \(k = 0.34/(1.34 + 21/19) =\) <span class="tl-blank" data-answer="0.1390" data-tol="0.0006"></span></p>
+    </div>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -647,7 +664,8 @@
       <h4>Rogers-Satchell — gold's dedicated shadow estimator</h4>
       <p><code>js/volForecast.js</code>'s <code>rsEwmaVolSeries()</code> is the legacy/shadow EWMA estimator specifically for the commodity (gold) asset class, and the same function is mirrored in <code>DynAnchorBot/dyn_anchor_mt5_bot.py</code>'s live MT5 bot ("GARCH(1,1) for fx/index, Rogers-Satchell EWMA for commodity — mirrors dashboard").</p>
     </div>
-  </div><!-- DESK:END -->
+  </div>
+  <div class="tl-desktool">🛠 On the desk: <a href="../../estimator-ab.html">Vol Estimator A/B</a> runs Yang-Zhang against realized variance with HAR as the σ input to the same bands, and <a href="../../vol-forecast-bench.html">Vol-Forecast Benchmark</a> scores forecasters against a Garman-Klass realized-variance target.</div><!-- DESK:END -->
 
   <!-- DESK:START -->
   <div class="tl-box repo">

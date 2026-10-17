@@ -434,6 +434,23 @@
     <button type="button" id="bl-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Recover the risk-neutral density at the middle strike from three call prices, exactly as in the worked example: butterfly price, divide by \(h^2\), then multiply by \(e^{rT}\). Give densities to six decimal places.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(K = 50\), \(h = 2\), \(r = 3\%\), \(T = 0.25\). Calls: \(C(48) = 3.7916\), \(C(50) = 2.6737\), \(C(52) = 1.8072\). The butterfly costs \(3.7916 - 5.3474 + 1.8072 = 0.2514\), so the second derivative is \(0.2514/4 = 0.062850\). With \(e^{rT} = e^{0.0075} = 1.007528\), the density is \(f_Q(50) \approx\) <span class="tl-blank" data-answer="0.063323" data-tol="0.000003"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(K = 200\), \(h = 10\), \(r = 1\%\), \(T = 1\). Calls: \(C(190) = 18.5000\), \(C(200) = 12.9190\), \(C(210) = 8.6429\). The butterfly costs <span class="tl-blank" data-answer="1.3049" data-tol="0.00005"></span>, the second derivative is <span class="tl-blank" data-answer="0.013049" data-tol="0.000002"></span>, and \(f_Q(200) \approx\) <span class="tl-blank" data-answer="0.013180" data-tol="0.000003"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(K = 100\), \(h = 4\), \(r = 4\%\), \(T = 0.75\). Calls: \(C(96) = 10.6318\), \(C(100) = 8.3785\), \(C(104) = 6.4798\). Butterfly: <span class="tl-blank" data-answer="0.3546" data-tol="0.00005"></span>. Second derivative: <span class="tl-blank" data-answer="0.022163" data-tol="0.000003"></span>. Density \(f_Q(100) \approx\) <span class="tl-blank" data-answer="0.022837" data-tol="0.000004"></span></p>
+    </div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Part 2 — The math, step by step: variance swaps and the options strip</h2>
   <p>
@@ -1014,6 +1031,7 @@
     </div>
     <p class="tl-fits-why"><strong>Why you'd care:</strong> option prices already tell you what the market fears and what it charges for volatility, and these two results read both off without trusting any model.</p>
   </nav>
+  <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../fx-vol-carry-backtest.html">FX/Gold Vol-Carry Backtester</a> sets CME CVOL implied vol against the desk's realized vol, the same implied-versus-realized gap a variance swap pays out on. The desk trades spot only, so it uses the gap as a gate, not as a swap.</div><!-- DESK:END -->
 
   <div class="tl-footer-nav">
     <a href="institutional-dupire-local-vol.html">← Dupire Local Volatility</a>

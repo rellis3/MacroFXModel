@@ -69,7 +69,7 @@
       <text class="tlp-blue" x="370" y="101" text-anchor="middle" font-size="13" font-weight="700">∂²C/∂K² ≈ 0.01867</text>
       <rect class="tlp-box green" x="290" y="122" width="160" height="32" rx="6"/>
       <text class="tlp-green" x="370" y="143" text-anchor="middle" font-size="13" font-weight="700">∂C/∂T ≈ 6.4190</text>
-      <text class="tlp-purple" x="290" y="182" font-size="13" font-weight="700">σ²_local = 3.7564 ÷ 93.33</text>
+      <text class="tlp-purple" x="290" y="182" font-size="13" font-weight="700">σ²_local = 3.7564 ÷ 93.34</text>
       <text class="tlp-text3" x="460" y="101" font-size="16">→</text>
       <rect class="tlp-box green" x="480" y="56" width="108" height="84" rx="8"/>
       <text class="tlp-text2" x="534" y="80" text-anchor="middle" font-size="12">local vol</text>
@@ -198,11 +198,11 @@
     </div>
     <div class="tl-eqbuild-step">
       <div class="tl-math">\[ \sigma_{\text{local}}^2(K,T) = \frac{\color{#fbbf24}{\dfrac{\partial C}{\partial T}}}{\color{#fbbf24}{\dfrac12 K^2\,\dfrac{\partial^2 C}{\partial K^2}}} \]</div>
-      <p>With zero rates, local variance is the calendar slope of the call price over its strike convexity, which is the risk-neutral density at \(K\). In the worked example: 6.4190 over 93.33.</p>
+      <p>With zero rates, local variance is the calendar slope of the call price over its strike convexity, which is the risk-neutral density at \(K\). In the worked example: 6.4190 over 93.34.</p>
     </div>
     <div class="tl-eqbuild-step">
       <div class="tl-math">\[ \color{#10b981}{\sigma_{\text{local}}^2(K,T) = \frac{\dfrac{\partial C}{\partial T} + rK\,\dfrac{\partial C}{\partial K}}{\dfrac12 K^2\,\dfrac{\partial^2 C}{\partial K^2}}} \]</div>
-      <p>Add the carry correction for discounting the strike. \((6.4190 - 2.6626)/93.33 = 0.04025\), so \(\sigma_{\text{local}} \approx 20.06\%\), against the true 20%.</p>
+      <p>Add the carry correction for discounting the strike. \((6.4190 - 2.6626)/93.34 = 0.04024\), so \(\sigma_{\text{local}} \approx 20.06\%\), against the true 20%.</p>
     </div>
   </div>
   <p>
@@ -411,9 +411,9 @@ C(K,   T+Δt)= C(100, 1.1) = 11.0820</pre>
           <h4>Assemble numerator, denominator, and the ratio</h4>
           <div class="tl-math">
             \[ \text{numerator} = 6.4190 + (0.05)(100)(-0.5325) = 6.4190 - 2.6626 = 3.7564 \]
-            \[ \text{denominator} = \tfrac12(100)^2(0.01867) = 93.33 \]
-            \[ \sigma_{\text{local}}^2(100, 1.0) \approx \frac{3.7564}{93.33} = 0.04025 \]
-            \[ \sigma_{\text{local}}(100, 1.0) \approx \sqrt{0.04025} \approx 20.06\% \]
+            \[ \text{denominator} = \tfrac12(100)^2(0.018668) = 93.34 \]
+            \[ \sigma_{\text{local}}^2(100, 1.0) \approx \frac{3.7564}{93.34} = 0.04024 \]
+            \[ \sigma_{\text{local}}(100, 1.0) \approx \sqrt{0.04024} \approx 20.06\% \]
           </div>
         </div>
       </div>
@@ -444,7 +444,7 @@ C(K,   T+Δt)= C(100, 1.1) = 11.0820</pre>
     </p>
     <div class="tl-predict" data-answer="22.59" data-tol="1" data-unit="%">
       <div class="tl-predict-q"><strong>Predict first.</strong> Real quotes carry noise. Keep everything else at the worked example and change only the middle price, C(K, T), from 10.4506 to 10.50: about a 0.5% nudge. What will σ<sub>local</sub> be? Lock in a guess, then type 10.50 into the C(K, T) field below to check it.</div>
-      <div class="tl-predict-reveal"><p><strong>About 22.59%.</strong> The strike curvature is a second difference, \((8.0214 - 2 \times 10.50 + 13.3465)/25 = 0.01472\), down from 0.01867. The denominator falls from 93.33 to 73.58, so \(\sigma^2_{\text{local}} = 3.7564/73.58 \approx 0.0511\). A 5-cent nudge to one quote moved local vol by over 2.5 points. Now try 10.40: it drops to about 18.19%. This is why desks smooth the surface before differentiating.</p></div>
+      <div class="tl-predict-reveal"><p><strong>About 22.59%.</strong> The strike curvature is a second difference, \((8.0214 - 2 \times 10.50 + 13.3465)/25 = 0.01472\), down from 0.01867. The denominator falls from 93.34 to 73.58, so \(\sigma^2_{\text{local}} = 3.7564/73.58 \approx 0.0511\). A 5-cent nudge to one quote moved local vol by over 2.5 points. Now try 10.40: it drops to about 18.19%. This is why desks smooth the surface before differentiating.</p></div>
     </div>
     <div class="tl-controls">
       <div class="tl-control">
@@ -488,10 +488,27 @@ C(K,   T+Δt)= C(100, 1.1) = 11.0820</pre>
       ∂C/∂K ≈ <b id="dup-scratch-dCdK">−0.5325</b>&emsp;∂²C/∂K² ≈ <b id="dup-scratch-d2CdK2">0.01867</b>&emsp;∂C/∂T ≈ <b id="dup-scratch-dCdT">6.4190</b>
     </div>
     <div class="tl-readout">
-      σ²_local ≈ <b id="dup-scratch-sig2">0.04025</b>&emsp;σ_local ≈ <b id="dup-scratch-sig">20.06%</b>
+      σ²_local ≈ <b id="dup-scratch-sig2">0.04024</b>&emsp;σ_local ≈ <b id="dup-scratch-sig">20.06%</b>
       <span id="dup-scratch-note" class="tl-scratch-note"></span>
     </div>
     <button type="button" id="dup-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Run the discretized Dupire formula on a new five-point stencil, as in the worked example: \(\sigma^2_{\text{local}} = \big(\partial C/\partial T + rK\,\partial C/\partial K\big) \big/ \big(\tfrac12 K^2\,\partial^2 C/\partial K^2\big)\). Each set of prices comes from a flat Black-Scholes vol, so you can see how close you land.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>\(K = 50\), \(r = 2\%\), \(T = 0.5\), \(h = 2\), \(\Delta t = 0.05\). Prices: \(C(48) = 4.8137\), \(C(50) = 3.7584\), \(C(52) = 2.8811\), \(C(50, 0.45) = 3.5551\), \(C(50, 0.55) = 3.9527\). Then \(\partial C/\partial K = -0.48315\), \(\partial^2 C/\partial K^2 = 0.0445\), \(\partial C/\partial T = 3.9760\). Numerator \(3.9760 + 0.02\times50\times(-0.48315) = 3.4929\); denominator \(\tfrac12\times50^2\times0.0445 = 55.625\); \(\sigma^2_{\text{local}} = 0.06279\). So \(\sigma_{\text{local}} \approx\) <span class="tl-blank" data-answer="25.06" data-tol="0.02" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>\(K = 100\), \(r = 3\%\), \(T = 1\), \(h = 5\), \(\Delta t = 0.1\). Prices: \(C(95) = 10.4705\), \(C(100) = 7.4851\), \(C(105) = 5.1340\), \(C(100, 0.9) = 7.0289\), \(C(100, 1.1) = 7.9260\). \(\partial C/\partial K = -0.53365\) and \(\partial C/\partial T = 4.4855\), so the numerator is 2.88455. \(\partial^2 C/\partial K^2 =\) <span class="tl-blank" data-answer="0.025372" data-tol="0.000006"></span>, the denominator is <span class="tl-blank" data-answer="126.86" data-tol="0.06"></span>, and \(\sigma_{\text{local}} \approx\) <span class="tl-blank" data-answer="15.08" data-tol="0.03" data-unit="%"></span></p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>\(K = 200\), \(r = 4\%\), \(T = 2\), \(h = 10\), \(\Delta t = 0.2\). Prices: \(C(190) = 45.3091\), \(C(200) = 40.5597\), \(C(210) = 36.2439\), \(C(200, 1.8) = 38.2222\), \(C(200, 2.2) = 42.7998\). \(\partial C/\partial K =\) <span class="tl-blank" data-answer="-0.45326" data-tol="0.0001"></span>, \(\partial^2 C/\partial K^2 =\) <span class="tl-blank" data-answer="0.004336" data-tol="0.000003"></span>, \(\partial C/\partial T =\) <span class="tl-blank" data-answer="11.444" data-tol="0.001"></span>, and \(\sigma_{\text{local}} \approx\) <span class="tl-blank" data-answer="30.03" data-tol="0.04" data-unit="%"></span></p>
+    </div>
   </div>
 
   <div class="tl-chart">
@@ -540,7 +557,7 @@ C(K,   T+Δt)= C(100, 1.1) = 11.0820</pre>
 
   <!-- WB:institutional_dupire_local_vol:START -->
   <div class="wb" id="wb-institutional_dupire_local_vol" data-title="Dupire: reading local vol off the price surface">
-    <script type="application/json">{"w":600,"h":680,"intro":"Three ways to handle a smile, then Dupire's formula run on the lesson's own five call prices. Press play, or step through.","steps":[{"cap":"Black-Scholes glues the volatility dial in place: one number, forever. Real option markets never quote one flat volatility, so something has to give.","do":[{"box":"bs","x":10,"y":10,"w":180,"h":92,"text":"Black-Scholes\nσ fixed","tone":"blue","size":19}]},{"cap":"Heston and SABR let the dial wander on its own: volatility gets its own random shock, a second source of randomness alongside the price.","do":[{"box":"sv","x":210,"y":10,"w":180,"h":92,"text":"Heston / SABR\nσ random: 2 shocks","tone":"purple","size":19}]},{"cap":"Dupire's local vol does something else. The dial is not random at all: it is read off a map, σ_local(S, t). Know the spot and the time, and the volatility is a number you look up. One source of randomness.","do":[{"box":"lv","x":410,"y":10,"w":180,"h":92,"text":"Local vol\nσ(S, t): a lookup","tone":"green","size":19}]},{"cap":"Dupire (1994): hand me every call price C(K, T), and there is exactly one such map that reprices them all. It comes straight from the slopes of the price surface. Here are five prices around strike 100, one year, from a world with a flat 20% vol.","do":[{"box":"c","x":120,"y":246,"w":100,"h":60,"text":"K, T","tone":"amber","sub":"10.4506","size":18},{"box":"l","x":10,"y":246,"w":100,"h":60,"text":"K − 5","tone":"blue","sub":"13.3465","size":18},{"box":"r","x":230,"y":246,"w":100,"h":60,"text":"K + 5","tone":"blue","sub":"8.0214","size":18},{"box":"u","x":120,"y":170,"w":100,"h":60,"text":"T + 0.1","tone":"green","sub":"11.0820","size":18},{"box":"d","x":120,"y":322,"w":100,"h":60,"text":"T − 0.1","tone":"green","sub":"9.7982","size":18},{"note":"ax","x":170,"y":148,"text":"strike across · maturity up","size":17,"anchor":"middle"}]},{"cap":"Across strikes: the slope is (8.0214 − 13.3465) ÷ 10 = −0.5325, and the curvature is 0.01867. That curvature is the risk-neutral density at 100, the denominator of the formula.","do":[{"box":"dk","x":350,"y":170,"w":240,"h":52,"text":"∂C/∂K ≈ −0.5325","tone":"blue","size":19},{"box":"dkk","x":350,"y":234,"w":240,"h":52,"text":"∂²C/∂K² ≈ 0.01867","tone":"blue","size":19},{"pulse":"l"},{"pulse":"r"}]},{"cap":"Across time: the calendar slope is (11.0820 − 9.7982) ÷ 0.2 = 6.4190. A call for a little longer costs a little more.","do":[{"box":"dt","x":350,"y":298,"w":240,"h":52,"text":"∂C/∂T ≈ 6.4190","tone":"green","size":19},{"pulse":"u"},{"pulse":"d"}]},{"cap":"Assemble: numerator 6.4190 − 0.05 × 100 × 0.5325 = 3.7564; denominator ½ × 100² × 0.01867 = 93.33. Local variance 0.04025, so local vol ≈ 20.06%. The true flat vol was 20%: the formula hands it back.","do":[{"box":"res","x":350,"y":362,"w":240,"h":66,"text":"σ_local ≈ 20.06%","tone":"green","sub":"true: 20%","size":21}]},{"cap":"Real quotes are noisy. Nudge just the middle price by 5 cents, from 10.4506 to 10.50. The curvature drops to 0.01472 and local vol jumps to 22.59%. A second derivative amplifies noise.","do":[{"sub":"c","text":"10.50 (+5¢)"},{"pulse":"c"},{"box":"nz","x":10,"y":448,"w":580,"h":58,"text":"5¢ on one quote: σ_local 20.06% → 22.59%","tone":"red","size":20}]},{"cap":"So production desks never differentiate raw quotes. They fit a smooth, arbitrage-free surface first, a spline or a SABR smile, and differentiate that.","do":[{"sub":"c","text":"10.4506"},{"box":"sm","x":10,"y":522,"w":285,"h":70,"text":"smooth the surface\nfirst, then differentiate","tone":"amber","size":18}]},{"cap":"Local vol reprices every vanilla today by construction, like tracing paper. But its forward smile is typically too flat. That is why desks use it to price exotics consistently, and blend it with stochastic vol in SLV hybrids.","do":[{"box":"fw","x":305,"y":522,"w":285,"h":70,"text":"exact today,\ntoo flat tomorrow","tone":"red","size":18},{"note":"end","x":300,"y":636,"text":"a calibration device, not a model of how smiles move","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+    <script type="application/json">{"w":600,"h":680,"intro":"Three ways to handle a smile, then Dupire's formula run on the lesson's own five call prices. Press play, or step through.","steps":[{"cap":"Black-Scholes glues the volatility dial in place: one number, forever. Real option markets never quote one flat volatility, so something has to give.","do":[{"box":"bs","x":10,"y":10,"w":180,"h":92,"text":"Black-Scholes\nσ fixed","tone":"blue","size":19}]},{"cap":"Heston and SABR let the dial wander on its own: volatility gets its own random shock, a second source of randomness alongside the price.","do":[{"box":"sv","x":210,"y":10,"w":180,"h":92,"text":"Heston / SABR\nσ random: 2 shocks","tone":"purple","size":19}]},{"cap":"Dupire's local vol does something else. The dial is not random at all: it is read off a map, σ_local(S, t). Know the spot and the time, and the volatility is a number you look up. One source of randomness.","do":[{"box":"lv","x":410,"y":10,"w":180,"h":92,"text":"Local vol\nσ(S, t): a lookup","tone":"green","size":19}]},{"cap":"Dupire (1994): hand me every call price C(K, T), and there is exactly one such map that reprices them all. It comes straight from the slopes of the price surface. Here are five prices around strike 100, one year, from a world with a flat 20% vol.","do":[{"box":"c","x":120,"y":246,"w":100,"h":60,"text":"K, T","tone":"amber","sub":"10.4506","size":18},{"box":"l","x":10,"y":246,"w":100,"h":60,"text":"K − 5","tone":"blue","sub":"13.3465","size":18},{"box":"r","x":230,"y":246,"w":100,"h":60,"text":"K + 5","tone":"blue","sub":"8.0214","size":18},{"box":"u","x":120,"y":170,"w":100,"h":60,"text":"T + 0.1","tone":"green","sub":"11.0820","size":18},{"box":"d","x":120,"y":322,"w":100,"h":60,"text":"T − 0.1","tone":"green","sub":"9.7982","size":18},{"note":"ax","x":170,"y":148,"text":"strike across · maturity up","size":17,"anchor":"middle"}]},{"cap":"Across strikes: the slope is (8.0214 − 13.3465) ÷ 10 = −0.5325, and the curvature is 0.01867. That curvature is the risk-neutral density at 100, the denominator of the formula.","do":[{"box":"dk","x":350,"y":170,"w":240,"h":52,"text":"∂C/∂K ≈ −0.5325","tone":"blue","size":19},{"box":"dkk","x":350,"y":234,"w":240,"h":52,"text":"∂²C/∂K² ≈ 0.01867","tone":"blue","size":19},{"pulse":"l"},{"pulse":"r"}]},{"cap":"Across time: the calendar slope is (11.0820 − 9.7982) ÷ 0.2 = 6.4190. A call for a little longer costs a little more.","do":[{"box":"dt","x":350,"y":298,"w":240,"h":52,"text":"∂C/∂T ≈ 6.4190","tone":"green","size":19},{"pulse":"u"},{"pulse":"d"}]},{"cap":"Assemble: numerator 6.4190 − 0.05 × 100 × 0.5325 = 3.7564; denominator ½ × 100² × 0.018668 = 93.34. Local variance 0.04024, so local vol ≈ 20.06%. The true flat vol was 20%: the formula hands it back.","do":[{"box":"res","x":350,"y":362,"w":240,"h":66,"text":"σ_local ≈ 20.06%","tone":"green","sub":"true: 20%","size":21}]},{"cap":"Real quotes are noisy. Nudge just the middle price by 5 cents, from 10.4506 to 10.50. The curvature drops to 0.01472 and local vol jumps to 22.59%. A second derivative amplifies noise.","do":[{"sub":"c","text":"10.50 (+5¢)"},{"pulse":"c"},{"box":"nz","x":10,"y":448,"w":580,"h":58,"text":"5¢ on one quote: σ_local 20.06% → 22.59%","tone":"red","size":20}]},{"cap":"So production desks never differentiate raw quotes. They fit a smooth, arbitrage-free surface first, a spline or a SABR smile, and differentiate that.","do":[{"sub":"c","text":"10.4506"},{"box":"sm","x":10,"y":522,"w":285,"h":70,"text":"smooth the surface\nfirst, then differentiate","tone":"amber","size":18}]},{"cap":"Local vol reprices every vanilla today by construction, like tracing paper. But its forward smile is typically too flat. That is why desks use it to price exotics consistently, and blend it with stochastic vol in SLV hybrids.","do":[{"box":"fw","x":305,"y":522,"w":285,"h":70,"text":"exact today,\ntoo flat tomorrow","tone":"red","size":18},{"note":"end","x":300,"y":636,"text":"a calibration device, not a model of how smiles move","size":19,"anchor":"middle","tone":"green"}]}]}</script>
   </div>
   <!-- WB:institutional_dupire_local_vol:END -->
 

@@ -428,6 +428,23 @@
     </div>
   </div>
 
+  <div class="tl-fade">
+    <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+    <p>Price small schedules the same way: each trade pays \(q_i D_{t_i^-} + \tfrac12\kappa q_i^2\); after a trade the state jumps by \(\kappa q_i\), and between trades it shrinks by \(e^{-\rho\,\Delta t}\). New schedules and new \(\rho\), \(\kappa\) each round.</p>
+    <div class="tl-fade-round">
+      <h4>Round 1 · one value left to you</h4>
+      <p>Sell 60 units as two trades of 30 at \(t=0\) and \(t=0.5\), with \(\rho=1\), \(\kappa=0.02\). Self-impact: each trade pays \(\tfrac12(0.02)(30^2) = 9\), so 18 in all. After the first trade \(D = 0.02 \times 30 = 0.60\), which decays to \(0.60\,e^{-0.5} = 0.3639\) by the second trade. Residual cost \(30 \times 0.3639 = 10.92\). Total cost = <span class="tl-blank" data-answer="28.92" data-tol="0.02"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 2 · new inputs, more left to you</h4>
+      <p>Sell 50 units as two trades of 25 at \(t=0\) and \(t=1\), with \(\rho=1.5\), \(\kappa=0.04\). Self-impact: \(2 \times \tfrac12(0.04)(25^2) = 25\). After the first trade \(D = 1.00\). The state just before the second trade is <span class="tl-blank" data-answer="0.2231" data-tol="0.0005"></span>. Residual cost <span class="tl-blank" data-answer="5.578" data-tol="0.015"></span>. Total cost <span class="tl-blank" data-answer="30.58" data-tol="0.02"></span>.</p>
+    </div>
+    <div class="tl-fade-round">
+      <h4>Round 3 · on your own</h4>
+      <p>Sell 60 units as three trades of 20 at \(t=0,\ 0.5,\ 1\), with \(\rho=2\), \(\kappa=0.03\). Total self-impact <span class="tl-blank" data-answer="18" data-tol="0.01"></span>. State just before the second trade <span class="tl-blank" data-answer="0.2207" data-tol="0.0005"></span>. State just before the third trade <span class="tl-blank" data-answer="0.3019" data-tol="0.0006"></span>. Total cost <span class="tl-blank" data-answer="28.45" data-tol="0.03"></span>.</p>
+    </div>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧪</div>
     <div class="tl-box-label">Try it yourself</div>

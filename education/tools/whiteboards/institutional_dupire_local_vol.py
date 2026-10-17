@@ -39,7 +39,7 @@ DUP = dict(w=600, h=680, intro="Three ways to handle a smile, then Dupire's form
     step('Across time: the calendar slope is (11.0820 − 9.7982) ÷ 0.2 = 6.4190. A call for a little longer costs a little more.',
          box('dt', 350, 298, 240, 52, '∂C/∂T ≈ 6.4190', 'green', size=19),
          dict(pulse='u'), dict(pulse='d')),
-    step('Assemble: numerator 6.4190 − 0.05 × 100 × 0.5325 = 3.7564; denominator ½ × 100² × 0.01867 = 93.33. Local variance 0.04025, so local vol ≈ 20.06%. The true flat vol was 20%: the formula hands it back.',
+    step('Assemble: numerator 6.4190 − 0.05 × 100 × 0.5325 = 3.7564; denominator ½ × 100² × 0.018668 = 93.34. Local variance 0.04024, so local vol ≈ 20.06%. The true flat vol was 20%: the formula hands it back.',
          box('res', 350, 362, 240, 66, 'σ_local ≈ 20.06%', 'green', sub='true: 20%', size=21)),
     step('Real quotes are noisy. Nudge just the middle price by 5 cents, from 10.4506 to 10.50. The curvature drops to 0.01472 and local vol jumps to 22.59%. A second derivative amplifies noise.',
          dict(sub='c', text='10.50 (+5¢)'), dict(pulse='c'),

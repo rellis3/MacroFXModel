@@ -680,6 +680,62 @@ Start page) with up to three self-test questions from lessons the reader finishe
 ago, fetched from the lesson pages themselves. "I knew it" spaces the next review out
 (7 → 21 → 60 → 150 days); "Shaky" brings it back in 7. State: `localStorage.theoryLabReview`.
 
+### 5.22 Practice and read/write layer (added by `vark.js`, no markup needed)
+
+Every lesson gets these from `assets/vark.js` with no extra markup:
+
+- **Confidence.** Predict-first guesses and drill calls ask "How sure?" (50–100%). Stored with the
+  answer as `{v, c, ok, at}` in `localStorage.theoryLabVark`; `practice.html` charts hit rate against
+  confidence and the Brier score.
+- **Self-test.** A text box before each `details.tl-quiz`; the answer stays shut until something is
+  typed (a second click reveals anyway). Got it / Partly / Missed grades go to `theoryLabQuiz`; 70%+
+  of the lesson's questions marks it mastered (paths page, practice page). Spaced review asks missed
+  questions first. The score banner has `id="tl-selftest"` for deep links.
+- **In your own words.** A note box after the first `.tl-box.intuition` (`theoryLabNotes`).
+- **Flashcards.** "⬇ Flashcards for Anki" exports the self-test and the takeaways as Anki's
+  tab-separated import (`#html:true`, tags column). The paths page exports a whole path.
+- **Light theme, print.** A ☀/☾ toggle (`theoryLabTheme`; every page applies it in the head before
+  paint). Printing opens every fold and shows every equation step; controls are hidden.
+- **Recorded audio.** When `theory-lab/audio/manifest.json` holds a recording whose hash matches the
+  page's `.tl-listen` dialogue, Listen plays it (with a download link); otherwise browser voices.
+  Re-render with `python3 education/tools/build_audio.py --models DIR [slug…]`.
+
+A visual guide (`-micro.html`) shares its lesson's answers and recording (the slug drops `-micro`), and
+carries the lesson's picture, listen block and drill as slides with class `sl-vark`.
+
+### 5.23 Faded worked example — `.tl-fade`
+
+The worked example again with new inputs, in rounds that leave more to the reader each time
+(all but the last value, then two or three blanks, then every step). Put it right after the worked
+example. Each `.tl-blank` becomes an input with Check / Show buttons:
+
+```html
+<div class="tl-fade">
+  <div class="tl-fade-label">✎ Your turn · the same calculation, less help each round</div>
+  <p>What is computed, and the new inputs.</p>
+  <div class="tl-fade-round"><h4>Round 1 · one value left to you</h4>
+    <p>… so growth is <span class="tl-blank" data-answer="0.0050" data-tol="0.0002" data-unit="%"></span> per bet.</p></div>
+  <div class="tl-fade-round"><h4>Round 2 · …</h4> …</div>
+  <div class="tl-fade-round"><h4>Round 3 · on your own</h4> …</div>
+</div>
+```
+`data-tol` must accept honest rounding. Compute every answer in code; a wrong key is worse than none.
+
+### 5.24 Drill sources, desk tool links, how to test it
+
+- `<p class="tl-drill-sources">Sources: …</p>`, last thing inside `.tl-drill-outcome` of a drill set on
+  a real date. Primary sources first; link only URLs that were opened or are canonical.
+- `<!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../page.html">Page</a> what to look at
+  there.</div><!-- DESK:END -->`, one or two per lesson, only to a dashboard page that shows the idea.
+- `<div class="tl-howtotest"><strong>How to test it:</strong> data, rule, metric, gate fixed in advance,
+  baseline, costs.</div>` inside the text of every `.tl-verdict.untested`.
+
+### 5.25 Readouts must match their calculators
+
+`node js/lessonReadouts.e2e.mjs [slug…]` (CI job `readouts`) loads each page with JavaScript off and on
+and fails when a number written in a readout, chart, box or slide differs from what the page's own
+script computes on load. Write static readouts by running the calculator, not by hand.
+
 ## 6. Color system — what each color means
 
 There's no single universal meaning across every component (a few are purely
