@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Does the Edge Survive Costs? — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -54,6 +55,71 @@
       <li><strong>The desk's own record agrees:</strong> with spread/ATR above 0.15, zero of 30 strategy × timeframe cells were profitable (held up); a VWAP-extension fade was positive gross and 3–8× under cost (nothing found).</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: a waterfall for a fast EUR/USD fade, in pips per round trip. The gross edge is +0.9; the spread takes 0.4, slippage on both sides 0.4 and commission 0.5, leaving a net edge of −0.4. The gross t-statistic is 3.29, so the effect is real, but it cannot pay its way. Right: the same signal traded three ways, as edge divided by cost: the fast fade 0.69, below break-even at 1; a filtered version 2.31, just past a 2 times margin; a slow USD/JPY swing 13.3.">
+      <text class="tlp-text2" x="30" y="16" font-size="13">Fast EUR/USD fade, pips per round trip</text>
+      <line class="tlp-line amber dash" x1="34" y1="50" x2="345" y2="50"/>
+      <line class="tlp-line" x1="34" y1="140" x2="345" y2="140"/>
+      <rect class="tlp-blue" x="40" y="50" width="44" height="90" rx="3"/>
+      <rect class="tlp-red" x="102" y="50" width="44" height="40" rx="3" opacity=".7"/>
+      <rect class="tlp-red" x="164" y="90" width="44" height="40" rx="3" opacity=".7"/>
+      <rect class="tlp-red" x="226" y="130" width="44" height="50" rx="3" opacity=".7"/>
+      <rect class="tlp-red" x="288" y="140" width="44" height="40" rx="3"/>
+      <text class="tlp-blue" x="62" y="44" text-anchor="middle" font-size="13" font-weight="700">+0.9</text>
+      <text class="tlp-red" x="124" y="44" text-anchor="middle" font-size="13" font-weight="700">−0.4</text>
+      <text class="tlp-red" x="186" y="84" text-anchor="middle" font-size="13" font-weight="700">−0.4</text>
+      <text class="tlp-red" x="248" y="124" text-anchor="middle" font-size="13" font-weight="700">−0.5</text>
+      <text class="tlp-red" x="310" y="196" text-anchor="middle" font-size="14" font-weight="700">−0.4</text>
+      <text class="tlp-text3" x="62" y="214" text-anchor="middle" font-size="12">gross</text>
+      <text class="tlp-text3" x="124" y="214" text-anchor="middle" font-size="12">spread</text>
+      <text class="tlp-text3" x="186" y="214" text-anchor="middle" font-size="12">slip ×2</text>
+      <text class="tlp-text3" x="248" y="214" text-anchor="middle" font-size="12">comm.</text>
+      <text class="tlp-text3" x="310" y="214" text-anchor="middle" font-size="12">net</text>
+      <text class="tlp-amber" x="345" y="34" text-anchor="end" font-size="12">dashed: break-even cost 0.9</text>
+      <text class="tlp-text" x="30" y="238" font-size="13">gross t = 3.29: <tspan class="tlp-green" font-weight="700">real</tspan> · net −0.4 a trade: <tspan class="tlp-red" font-weight="700">dead</tspan></text>
+      <text class="tlp-text2" x="380" y="16" font-size="13">Same signal, three ways:</text>
+      <text class="tlp-text2" x="380" y="33" font-size="13">edge ÷ cost</text>
+      <text class="tlp-text" x="380" y="58" font-size="12">fast fade · 0.69</text>
+      <rect class="tlp-red" x="380" y="64" width="31" height="14" rx="3"/>
+      <text class="tlp-text" x="380" y="104" font-size="12">filtered top 20% · 2.31</text>
+      <rect class="tlp-amber" x="380" y="110" width="104" height="14" rx="3"/>
+      <text class="tlp-text" x="380" y="150" font-size="12">slow USD/JPY swing · 13.3</text>
+      <rect class="tlp-green" x="380" y="156" width="180" height="14" rx="3"/>
+      <text class="tlp-green" x="566" y="168" font-size="13" font-weight="700">→</text>
+      <path class="tlp-line dash" d="M425,61 V81 M425,107 V127 M425,153 V178"/>
+      <path class="tlp-line green dash" d="M470,61 V81 M470,107 V127 M470,153 V178"/>
+      <text class="tlp-text3" x="425" y="194" text-anchor="middle" font-size="12">1: break-even</text>
+      <text class="tlp-green" x="482" y="210" font-size="12">2: margin</text>
+    </svg>
+    <figcaption>A real effect is not the same as a tradeable one. The fast fade's 0.9-pip edge is statistically solid and still smaller than the 1.3 pips it costs to collect. Trade the same idea less often, on bigger moves, and the cost shrinks against the edge.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I've found an intraday fade on EUR/USD. Three thousand trades out of sample, and the edge is highly significant.</p>
+      <p data-who="Quant">How big is it per trade?</p>
+      <p data-who="Trader">Nine tenths of a pip, on average.</p>
+      <p data-who="Quant">And what does one round trip cost you?</p>
+      <p data-who="Trader">The spread is only four tenths of a pip.</p>
+      <p data-who="Quant">You cross the whole spread, but that's not all. Slippage of two tenths on the way in and two tenths on the way out. Commission of five dollars a lot, which is half a pip. Add it up: one point three pips a trade.</p>
+      <p data-who="Trader">So I make nine tenths and pay one point three.</p>
+      <p data-who="Quant">You lose four tenths of a pip on every trade, about four hundred pips a year at a thousand trades. With great statistical confidence.</p>
+      <p data-who="Trader">But the edge is real. The test said so.</p>
+      <p data-who="Quant">It is real. That's the trap. Significance grows with the square root of the number of trades. The edge per trade doesn't grow at all. A huge sample can make a tiny edge look certain. Only its size, against the cost, tells you whether it pays.</p>
+      <p data-who="Trader">So what number should I look at first?</p>
+      <p data-who="Quant">The gross edge is your break-even cost. Here that's nine tenths of a pip. Can you trade this for less than that, every time, bad fills included? Then ask for a margin: edge at least twice the cost, and still positive if costs double.</p>
+      <p data-who="Trader">What if I trade less often?</p>
+      <p data-who="Quant">Often that's the fix. Keep only the strongest fifth of setups and the edge per trade can rise to three pips against the same one point three of cost. A slow USD/JPY swing makes forty pips a trade and pays three. Same cost per trip, much bigger moves.</p>
+      <p data-who="Trader">Has this tripped up real money?</p>
+      <p data-who="Quant">Value Line's stock rankings did well on paper for decades. Its real fund, trading the same rankings, earned far less. André Perold used that gap in nineteen eighty-eight to define implementation shortfall: the rankings weren't wrong, but the paper portfolio never paid to trade.</p>
+      <p data-who="Trader">The one-line version?</p>
+      <p data-who="Quant">Real is not the same as tradeable: compare the edge per trade with the full round-trip cost, and demand room to spare.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -117,6 +183,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From gross edge to what you keep, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ c = \color{#fbbf24}{s} \]</div>
+      <p>One round trip crosses the whole bid–ask spread: the ask on the way in, the bid on the way out. In the worked example, 0.4 pips.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ c = s + \color{#fbbf24}{2\,\ell} \]</div>
+      <p>Slippage is paid twice, once on each side. At 0.2 pips a side, that adds 0.4.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ c = s + 2\,\ell + \color{#fbbf24}{m + f} \]</div>
+      <p>Then commission and financing. A $5 round-trip commission is 0.5 pips; flat by the close, no financing. Total \(c = 1.3\) pips.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\mu_{\text{net}} = \mu - c = 0.9 - 1.3 = -0.4} \]</div>
+      <p>Take the cost off the gross edge. The gross edge of 0.9 pips is the break-even cost \(c^{*}\): pay more than that per round trip and the strategy loses, however significant it is.</p>
+    </div>
+  </div>
 
   <h3>1. What one round trip costs</h3>
   <p>
@@ -261,6 +347,10 @@
 
   <div class="tl-chart interactive" id="ac-tool">
     <div class="tl-chart-label">From gross edge to net edge, per round trip</div>
+    <div class="tl-predict" data-answer="0.1" data-tol="0.05" data-unit=" pips">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The calculator opens on the fast EUR/USD fade: 0.9 pips gross against 1.3 pips of cost. Suppose you found a broker with no commission at all. What is the net edge per trade now? Lock in a guess, then move the commission slider to 0 and read the net edge below.</div>
+      <div class="tl-predict-reveal"><p><strong>+0.1 pips.</strong> \(c = 0.4 + 2(0.2) + 0 + 0 = 0.8\), so \(0.9 - 0.8 = +0.1\) pips a trade. It now makes money, but the net t is only about 0.37 and doubling the cost wipes it out, so the verdict is "marginal". Free commission did not rescue it. Now try the "Filtered version" preset to see what a bigger edge per trade does.</p></div>
+    </div>
     <div class="ac-presets">
       <button type="button" class="tl-btn" data-preset="fast">Fast EUR/USD fade</button>
       <button type="button" class="tl-btn" data-preset="filtered">Filtered version</button>
@@ -407,6 +497,12 @@
     </div>
   </div>
 
+  <!-- WB:action_edge_after_costs:START -->
+  <div class="wb" id="wb-action_edge_after_costs" data-title="Does the edge survive costs? Drawn step by step">
+    <script type="application/json">{"w":600,"h":790,"intro":"A real edge, and everything it costs to collect it. Watch what is left after each step. Press play, or step through.","steps":[{"cap":"A backtest of an intraday EUR/USD fade: 3,000 trades over three years out of sample, about 1,000 a year. Average gross profit 0.9 pips a trade, with a standard deviation of 15 pips.","do":[{"icon":"bt","name":"up","x":20,"y":10,"s":0.75,"tone":"blue","label":"backtest","lsize":17},{"chip":"mu","x":130,"y":40,"text":"+0.9 pips a trade","tone":"blue"}]},{"cap":"Is the edge real? The standard error is 15 ÷ √3,000 = 0.27 pips, so t = 0.9 ÷ 0.27 = 3.29. Very probably not zero. Hold that thought.","do":[{"box":"treal","x":330,"y":18,"w":260,"h":76,"text":"t = 3.29\nreal","tone":"green","size":19}]},{"cap":"Now the costs of one round trip, starting from the 0.9-pip gross edge. Watch what is left after each one.","do":[{"chart":"wf","x":10,"y":130,"w":280,"h":260,"title":"Pips left per trade","xd":[0.4,4.6],"yd":[-0.7,1.15],"yt":[[0.9,"0.9"],[0,"0"],[-0.4,"−0.4"]],"xt":[[1,"gross"],[2,"spread"],[3,"slip"],[4,"comm."]],"zero":true,"pl":50,"pr":10},{"bars":"w1","chart":"wf","data":[[1,0.9,"+0.9","blue"]],"bw":40,"ms":700}]},{"cap":"The spread: you buy at the ask and sell at the bid, so one full spread per round trip. 0.4 pips. 0.5 left.","do":[{"bars":"w2","chart":"wf","data":[[2,0.5,"0.5","amber"]],"bw":40,"ms":700}]},{"cap":"Slippage, paid twice: 0.2 pips on the way in and 0.2 on the way out. 0.1 left.","do":[{"bars":"w3","chart":"wf","data":[[3,0.1,"0.1","amber"]],"bw":40,"ms":700}]},{"cap":"Commission: $5 a standard lot round trip is 0.5 pips. Total cost 1.3 pips, and the net edge is −0.4 pips a trade. Over a year: 900 pips gross, 1,300 of cost, −400 net.","do":[{"bars":"w4","chart":"wf","data":[[4,-0.4,"−0.4","red"]],"bw":40,"ms":700},{"box":"year","x":330,"y":18,"w":260,"h":76,"text":"a year: +900 gross\n−1,300 cost = −400","tone":"red","size":18}]},{"cap":"Significance is not size. As trades pile up, t grows with the square root of their number, but the edge per trade stays at 0.9 pips. Gross t climbs past 2; net t sinks the other way. At 3,000 trades: +3.29 and −1.46.","do":[{"hide":"treal"},{"chart":"tn","x":300,"y":130,"w":290,"h":260,"title":"t as trades pile up","xd":[2,4],"yd":[-3.2,6.6],"yt":[[2,"+2"],[0,"0"],[-2,"−2"]],"xt":[[2,"100"],[3,"1,000"],[4,"10,000"]],"zero":true,"pl":40,"pr":12},{"series":"t2","chart":"tn","pts":[[2,2],[4,2]],"tone":null,"dash":true,"ms":400},{"series":"tg","chart":"tn","pts":[[2.0,0.6],[2.301,0.85],[2.699,1.34],[3.0,1.9],[3.301,2.68],[3.477,3.29],[3.699,4.24],[4.0,6.0]],"tone":"blue","ms":1300,"label":"gross","lat":[4,6.0],"ldx":-4,"ldy":-14,"lanchor":"end","lsize":15},{"series":"tnn","chart":"tn","pts":[[2.0,-0.27],[2.301,-0.38],[2.699,-0.6],[3.0,-0.84],[3.301,-1.19],[3.477,-1.46],[3.699,-1.89],[4.0,-2.67]],"tone":"red","ms":1300,"label":"net","lat":[2.3,-0.38],"ldx":0,"ldy":18,"lanchor":"start","lsize":15},{"dot":"g3","chart":"tn","at":[3.477,3.29],"text":"3.29","tone":"blue","dx":-8,"dy":-12,"anchor":"end"},{"dot":"n3","chart":"tn","at":[3.477,-1.46],"text":"−1.46","tone":"red","dx":-6,"dy":18,"anchor":"end"}]},{"cap":"The gross edge is the break-even cost. Pay more than 0.9 pips a round trip and the strategy loses. The useful ratio is edge ÷ cost: here 0.9 ÷ 1.3 = 0.69, below 1.","do":[{"chart":"rho","x":10,"y":410,"w":280,"h":240,"title":"edge ÷ cost","xd":[0.4,3.6],"yd":[0,4.6],"yt":[[1,"1"],[2,"2"],[4,"4"]],"xt":[[1,"fast"],[2,"filtered"],[3,"slow"]],"pl":40,"pr":10},{"series":"r1","chart":"rho","pts":[[1.45,1],[3.6,1]],"tone":null,"dash":true,"ms":400},{"series":"r2","chart":"rho","pts":[[0.4,2],[3.6,2]],"tone":"green","dash":true,"ms":400},{"bars":"rb1","chart":"rho","data":[[1,0.69,"0.69","red"]],"bw":44,"ms":800}]},{"cap":"Trade the same signal differently. Keep only the strongest fifth of setups: 3 pips a trade for the same 1.3 of cost, a ratio of 2.31. A slow USD/JPY daily swing makes 40 pips and pays 3: a ratio of 13.3, far off this scale.","do":[{"bars":"rb2","chart":"rho","data":[[2,2.31,"2.31","amber"],[3,4.4,"13.3 ↑","green"]],"bw":44,"ms":1000}]},{"cap":"A quick gate: spread ÷ ATR. On 5-minute bars with an ATR of about 4 pips, 0.4 ÷ 4 = 0.10, inside the 0.15 line. The fast fade passes the gate and still loses. The gate is necessary, not sufficient.","do":[{"box":"gate","x":300,"y":410,"w":290,"h":110,"text":"spread ÷ ATR = 0.10\npasses the gate…\n…still loses","tone":"amber","size":18}]},{"cap":"It happened. Value Line's stock rankings did well on paper for decades; its real fund, trading the same rankings, earned far less. André Perold used that gap in 1988 to define implementation shortfall.","do":[{"box":"vl","x":300,"y":540,"w":290,"h":110,"text":"Value Line, 1988:\npaper beat real,\ncosts took the gap","tone":"blue","size":18}]},{"cap":"The habit: compare the edge per trade with the full round-trip cost. Ask for an edge at least twice the cost, a net t of 2 or more, and a profit that survives double the cost.","do":[{"note":"card","x":300,"y":700,"text":"edge ≥ 2 × cost · net t ≥ 2 · survives 2 × cost","size":19,"anchor":"middle","tone":"green"},{"note":"card2","x":300,"y":740,"text":"real is not the same as tradeable","size":19,"anchor":"middle","tone":"amber"}]}]}</script>
+  </div>
+  <!-- WB:action_edge_after_costs:END -->
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>How it goes wrong — and it actually happened</h2>
 
@@ -516,6 +612,19 @@
     <p style="margin-bottom:0"><strong>Rescuing a dead strategy by filtering on the results.</strong> Keeping "only the best setups" chosen after the fact raises the gross edge on paper and nowhere else. Fix the filter first, then test it on fresh data.</p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative research review</div>
+    <h3>A "highly significant" fade lands on your desk</h3>
+    <p>A colleague brings you an intraday EUR/USD fade: 3,000 trades over three years out of sample, about 1,000 a year, average gross profit 0.9 pips, standard deviation 15 pips. The t-statistic is 3.29. All-in cost per round trip, measured honestly, is 1.3 pips. They want to start trading it on Monday. What do you say?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Go ahead. A t of 3.29 means the edge is real.<div class="tl-drill-why">Real, yes, and smaller than its cost. At 0.9 pips gross and 1.3 pips a round trip, every trade loses 0.4 pips on average, about 400 pips a year. More trades make the loss more certain, not smaller.</div></li>
+      <li data-verdict="good">Not as it is. Its break-even cost is 0.9 pips, under the 1.3 it pays. Rework it to trade less on bigger moves, fix any filter in advance, and test it again on fresh data.<div class="tl-drill-why">This is the cost-check card: compare the edge per trade with the full round-trip cost, then look for a version with room to spare. A filter chosen after seeing the results has to be confirmed on data it was not chosen on.</div></li>
+      <li data-verdict="ok">Trade it, but with a cheaper broker to cut commission.<div class="tl-drill-why">Cutting cost is the right instinct, but even free commission leaves 0.1 pips a trade, a net t near 0.37, and a loss if costs double. It is marginal at best, not a strategy.</div></li>
+      <li data-verdict="bad">Trade it at double the size to make the small edge worth the effort.<div class="tl-drill-why">Size multiplies the net edge, and the net edge is negative. Bigger size also tends to mean worse fills, which raises the cost further.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>The point.</strong> This drill is illustrative: it uses the lesson's worked example, not a real fund. The same pattern is documented in the real world. Perold's 1988 paper showed Value Line's real fund earning far less than its paper portfolio, and Novy-Marx and Velikov (2016) found that many high-turnover stock anomalies lost most or all of their premium to realistic trading costs.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -565,6 +674,27 @@
     <li><a href="execution-algorithms.html">Execution Algorithms</a>, <a href="market-impact-almgren-chriss.html">Market Impact</a>, <a href="institutional-roll-spread-estimator.html">Roll Spread Estimator</a> and <a href="multiple-testing.html">Multiple Testing</a> — the lessons on measuring and reducing cost, and on how high the significance bar should be.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <!-- DESK:START --><li><a href="action-expected-value.html">Thinking in Expected Value</a> <span>· the cost term inside expected value</span></li><!-- DESK:END -->
+        <li><a href="sharpe-family-deflated.html">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a> <span>· the Sharpe that costs drag down</span></li>
+        <li><a href="research-pipeline-hypothesis-to-backtest.html">The Research Pipeline: Hypothesis to Honest Backtest</a> <span>· where the gross numbers come from</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="execution-algorithms.html">Execution Algorithms: TWAP, VWAP, POV, IS</a> <span>· how desks keep costs down</span></li>
+        <li><a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a> <span>· the cost that grows with size</span></li>
+        <!-- DESK:START --><li><a href="action-vol-to-size.html">From a Volatility Forecast to a Position Size</a> <span>· sizing an edge that survives</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> costs are the most common reason good research never makes money, and the gross edge per trade tells you exactly how much you can afford to pay.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="action-combining-signals.html">← Combining Signals That Disagree</a>
@@ -728,10 +858,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

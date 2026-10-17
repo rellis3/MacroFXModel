@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gradient Boosting — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,76 @@
       <li><strong>How it reached trading:</strong> Gu, Kelly &amp; Xiu (2020) included boosted trees among the models that beat linear regressions on stock returns, and XGBoost and LightGBM made them standard quant tooling.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: five training points with targets 3, 5, 6, 9 and 12. The starting guess is their mean, 7, drawn as a dashed line, and red sticks show the leftovers: minus 4, minus 2, minus 1, plus 2 and plus 5. After one round, a tree fit to those leftovers and added at half strength moves the prediction to 5.833 for x up to 3 and 8.75 above. Right: the total leftover error, the sum of absolute residuals, falls from 14 before the round to 7.33 after it.">
+      <text class="tlp-text" x="20" y="22" font-size="14" font-weight="700">Each tree fits what is still wrong</text>
+      <line class="tlp-line amber dash" x1="22" y1="38" x2="38" y2="38"/><text class="tlp-amber" x="44" y="42" font-size="12">start: the mean, F₀ = 7</text>
+      <line class="tlp-line green thick" x1="22" y1="56" x2="38" y2="56"/><text class="tlp-green" x="44" y="60" font-size="12">F₁ after one round, ν = 0.5</text>
+      <line class="tlp-line" x1="25" y1="200" x2="325" y2="200"/>
+      <line class="tlp-line amber dash" x1="25" y1="109" x2="325" y2="109"/>
+      <line class="tlp-line red" x1="50" y1="109" x2="50" y2="161"/>
+      <line class="tlp-line red" x1="112" y1="109" x2="112" y2="135"/>
+      <line class="tlp-line red" x1="174" y1="109" x2="174" y2="122"/>
+      <line class="tlp-line red" x1="236" y1="109" x2="236" y2="83"/>
+      <line class="tlp-line red" x1="298" y1="109" x2="298" y2="44"/>
+      <polyline class="tlp-line green thick" points="25.2,124.17 205.0,124.17 205.0,86.25 322.8,86.25"/>
+      <circle class="tlp-text" cx="50" cy="161" r="4.5"/>
+      <circle class="tlp-text" cx="112" cy="135" r="4.5"/>
+      <circle class="tlp-text" cx="174" cy="122" r="4.5"/>
+      <circle class="tlp-text" cx="236" cy="83" r="4.5"/>
+      <circle class="tlp-text" cx="298" cy="44" r="4.5"/>
+      <text class="tlp-red" x="50" y="178" text-anchor="middle" font-size="12" font-weight="700">−4</text>
+      <text class="tlp-red" x="112" y="152" text-anchor="middle" font-size="12" font-weight="700">−2</text>
+      <text class="tlp-red" x="174" y="139" text-anchor="middle" font-size="12" font-weight="700">−1</text>
+      <text class="tlp-red" x="236" y="74" text-anchor="middle" font-size="12" font-weight="700">+2</text>
+      <text class="tlp-red" x="298" y="35" text-anchor="middle" font-size="12" font-weight="700">+5</text>
+      <text class="tlp-text3" x="50" y="216" text-anchor="middle" font-size="12">1</text>
+      <text class="tlp-text3" x="112" y="216" text-anchor="middle" font-size="12">2</text>
+      <text class="tlp-text3" x="174" y="216" text-anchor="middle" font-size="12">3</text>
+      <text class="tlp-text3" x="236" y="216" text-anchor="middle" font-size="12">4</text>
+      <text class="tlp-text3" x="298" y="216" text-anchor="middle" font-size="12">5</text>
+      <line class="tlp-line dash" x1="340" y1="10" x2="340" y2="222"/>
+      <text class="tlp-text" x="360" y="22" font-size="14" font-weight="700">Total leftover error</text>
+      <text class="tlp-text3" x="360" y="42" font-size="12">sum of the sizes of the residuals</text>
+      <line class="tlp-line" x1="360" y1="190" x2="590" y2="190"/>
+      <rect class="tlp-red" opacity=".85" x="385" y="64" width="64" height="126" rx="3"/>
+      <rect class="tlp-green" opacity=".85" x="495" y="124.0" width="64" height="66.0" rx="3"/>
+      <text class="tlp-red" x="417" y="56" text-anchor="middle" font-size="14" font-weight="700">14</text>
+      <text class="tlp-green" x="527" y="116.0" text-anchor="middle" font-size="14" font-weight="700">7.33</text>
+      <text class="tlp-text2" x="417" y="207" text-anchor="middle" font-size="12">before</text>
+      <text class="tlp-text2" x="527" y="207" text-anchor="middle" font-size="12">after round 1</text>
+    </svg>
+    <figcaption>Start from the average, measure what is still wrong, fit a small tree to exactly that, and add only part of its correction. One round on the worked example's five points roughly halves the total error; every later round repeats the same move on whatever is left.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">A random forest grows lots of trees side by side. What does boosting do differently?</p>
+      <p data-who="Quant">It grows them one after another, and each new tree has one job: fix what the trees before it still get wrong.</p>
+      <p data-who="Trader">How does a tree know what's wrong?</p>
+      <p data-who="Quant">You show it the leftovers instead of the targets. Take five points with values three, five, six, nine and twelve. The first guess is just their average, seven.</p>
+      <p data-who="Trader">Which is wrong for every one of them.</p>
+      <p data-who="Quant">Right. The first point is four too high, the last is five too low. Those gaps are the residuals. The next tree is trained on the gaps, not on the original numbers.</p>
+      <p data-who="Trader">And what does it learn?</p>
+      <p data-who="Quant">One split. For the first three points, come down by about two and a third. For the last two, go up by three and a half.</p>
+      <p data-who="Trader">So you add that and you're done?</p>
+      <p data-who="Quant">You add only half of it. That half is the shrinkage rate. The first point goes from seven to about five point eight, not all the way to four point six.</p>
+      <p data-who="Trader">Why hold back?</p>
+      <p data-who="Quant">Because each tree also fits a little of that round's noise. Small steps mean no single tree can drag the whole model off course. You need more rounds, but the result generalises better.</p>
+      <p data-who="Trader">How much better after one round?</p>
+      <p data-who="Quant">The total size of the leftovers falls from fourteen to about seven point three. Roughly halved. Then the next tree does the same to what's left.</p>
+      <p data-who="Trader">And this is what XGBoost does?</p>
+      <p data-who="Quant">Same core loop, with extra penalties on tree size and a lot of speed. Chen and Guestrin published XGBoost in twenty sixteen. Gu, Kelly and Xiu then included boosted trees among the models that beat linear regressions on US stock returns.</p>
+      <p data-who="Trader">So it's the best tool for my feature table.</p>
+      <p data-who="Quant">It's the strongest general tool. That says nothing about whether your features hold an edge. It fits noise very convincingly, so it needs the strictest out-of-sample test you have.</p>
+      <p data-who="Trader">The one-line version?</p>
+      <p data-who="Quant">Each tree fixes part of what's left. Take small steps, stop early on data held out in time, and never mistake a great method for a proven signal.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -135,6 +206,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the boosting update comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ F_1(x) = \color{#fbbf24}{F_0} \]</div>
+      <p>Start with one constant guess. For squared error it is the mean of the targets: in the worked example, \(F_0 = 7\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ F_1(x) = F_0 + \color{#fbbf24}{h_1(x)} \]</div>
+      <p>Add a small tree trained on what is still wrong, the residuals \(y_i - F_0\). Here it says \(-2.333\) for \(x \le 3\) and \(+3.5\) above.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ F_1(x) = F_0 + \color{#fbbf24}{\nu} \cdot h_1(x) \]</div>
+      <p>Apply only part of the correction. With \(\nu = 0.5\): \(7 + 0.5(-2.333) = 5.833\) on the left and \(7 + 0.5(3.5) = 8.75\) on the right.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ F_m(x) = \color{#fbbf24}{F_{m-1}(x)} + \nu \cdot h_m(x) \]</div>
+      <p>Repeat. Each round starts from the ensemble so far, and its tree is fit to that ensemble's leftover error (the negative gradient of the loss).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{F_M(x) = F_0(x) + \sum_{m=1}^{M} \nu\, h_m(x)} \]</div>
+      <p>Unroll the loop and the final model is the starting guess plus every round's shrunk correction, added up.</p>
+    </div>
+  </div>
   <p>
     <strong>The general algorithm (Friedman, 2001).</strong> Gradient boosting
     builds an additive model \(F_M(x) = F_0(x) + \sum_{m=1}^{M} \nu\, h_m(x)\)
@@ -380,6 +475,10 @@
       \(\nu=0.5\). Change any input and the round-0 residual, the updated
       prediction \(F_1\), and the new residual \(r_1\) recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="4.667" data-tol="0.05" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Keep \(y = 3\), \(F_0 = 7\) and the leaf \(h_1 = -2.333\), but turn off shrinkage: set \(\nu = 1\). What is the new prediction \(F_1\) for this point? Lock in a guess, then type 1 into the shrinkage field below.</div>
+      <div class="tl-predict-reveal"><p><strong>4.667.</strong> \(7 + 1 \times (-2.333) = 4.667\), so this point's residual shrinks to \(-1.667\) in one go. But the whole leaf moves together: the point at \(x = 3\), with \(y = 6\), now sits at \(+1.333\) instead of \(+0.167\). A full-strength step chases this round's leaf average too hard. Try \(\nu = 0.1\) to see how small a careful step is.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Actual \(y\)</span></div>
@@ -462,6 +561,12 @@
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>Being told "this is the best-selling, most versatile kitchen knife in the world" tells you the knife is genuinely great — but it tells you nothing about whether it's the right tool for the specific recipe you're making tonight. Gradient boosting being the best general-purpose method for tabular data is the "great knife" claim. Whether it actually finds something real and tradeable in a specific set of FX features is a completely separate question that has to be tested on its own, every single time.</p>
   </div>
+
+  <!-- WB:gradient_boosting:START -->
+  <div class="wb" id="wb-gradient_boosting" data-title="Boosting round by round, on five points">
+    <script type="application/json">{"w":600,"h":640,"intro":"Five points, one starting guess, and a chain of small trees, each fit to what the ones before it still get wrong. Press play, or step through.","steps":[{"cap":"Five training points: y = 3, 5, 6, 9 and 12 at x = 1 to 5. We want a model that predicts y from x, built out of small trees.","do":[{"chart":"fit","x":10,"y":8,"w":580,"h":260,"title":"The data and the model so far","xd":[0.5,5.5],"yd":[0,13.5],"yt":[[0,"0"],[3,"3"],[6,"6"],[9,"9"],[12,"12"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"pl":40,"pr":46},{"dot":"p0","chart":"fit","at":[1,3],"text":"","tone":null},{"dot":"p1","chart":"fit","at":[2,5],"text":"","tone":null},{"dot":"p2","chart":"fit","at":[3,6],"text":"","tone":null},{"dot":"p3","chart":"fit","at":[4,9],"text":"","tone":null},{"dot":"p4","chart":"fit","at":[5,12],"text":"","tone":null}]},{"cap":"Round 0: start from one constant guess. For squared error that is the mean, (3 + 5 + 6 + 9 + 12) ÷ 5 = 7. Wrong for every point, but a fair start.","do":[{"series":"f0","chart":"fit","pts":[[0.6,7],[5.4,7]],"tone":"amber","dash":true,"label":"F₀ = 7","lat":[0.6,7],"ldx":-2,"ldy":-14,"lanchor":"start","lsize":16}]},{"cap":"What is still wrong? The residuals, y minus the guess: −4, −2, −1, +2 and +5. These gaps, not the original y values, are what the next tree is trained on.","do":[{"series":"st0","chart":"fit","pts":[[1,7],[1,3]],"tone":"red","dash":true,"ms":300},{"series":"st1","chart":"fit","pts":[[2,7],[2,5]],"tone":"red","dash":true,"ms":300},{"series":"st2","chart":"fit","pts":[[3,7],[3,6]],"tone":"red","dash":true,"ms":300},{"series":"st3","chart":"fit","pts":[[4,7],[4,9]],"tone":"red","dash":true,"ms":300},{"series":"st4","chart":"fit","pts":[[5,7],[5,12]],"tone":"red","dash":true,"ms":300},{"note":"rl0","chart":"fit","at":[1,3],"text":"−4","tone":"red","size":17,"anchor":"start","dx":10,"dy":10},{"note":"rl1","chart":"fit","at":[2,5],"text":"−2","tone":"red","size":17,"anchor":"start","dx":10,"dy":10},{"note":"rl2","chart":"fit","at":[3,6],"text":"−1","tone":"red","size":17,"anchor":"start","dx":10,"dy":10},{"note":"rl3","chart":"fit","at":[4,9],"text":"+2","tone":"red","size":17,"anchor":"start","dx":10,"dy":-10},{"note":"rl4","chart":"fit","at":[5,12],"text":"+5","tone":"red","size":17,"anchor":"start","dx":10,"dy":-10}]},{"cap":"Fit a one-split tree to the residuals. Its best cut is x ≤ 3: the left leaf averages (−4 − 2 − 1) ÷ 3 = −2.333 and the right leaf (2 + 5) ÷ 2 = 3.5.","do":[{"chart":"res","x":10,"y":282,"w":280,"h":230,"title":"Residuals and tree h₁","xd":[0.5,5.5],"yd":[-5,6],"yt":[[-4,"−4"],[0,"0"],[5,"+5"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"zero":true,"pl":36},{"bars":"rb","chart":"res","data":[[1,-4,"","red"],[2,-2,"","red"],[3,-1,"","red"],[4,2,"","red"],[5,5,"","red"]],"bw":24,"ms":800},{"series":"h1","chart":"res","pts":[[0.6,-2.333],[3.5,-2.333],[3.5,3.5],[5.4,3.5]],"tone":"amber","ms":900,"label":"h₁","lat":[4,3.5],"ldx":0,"ldy":-14,"lsize":16}]},{"cap":"Add only half of that correction (shrinkage ν = 0.5): 7 + 0.5 × (−2.333) = 5.833 on the left, 7 + 0.5 × 3.5 = 8.75 on the right. That is F₁.","do":[{"hide":"st0"},{"hide":"st1"},{"hide":"st2"},{"hide":"st3"},{"hide":"st4"},{"hide":"rl0"},{"hide":"rl1"},{"hide":"rl2"},{"hide":"rl3"},{"hide":"rl4"},{"series":"f1","chart":"fit","pts":[[0.6,5.833],[1.5,5.833],[1.5,5.833],[2.5,5.833],[2.5,5.833],[3.5,5.833],[3.5,8.75],[4.5,8.75],[4.5,8.75],[5.4,8.75]],"tone":"green","ms":1000,"label":"F₁","lat":[5.4,8.75],"ldx":8,"ldy":0,"lanchor":"start","lsize":16}]},{"cap":"Total leftover error, the sum of the sizes of the residuals, falls from 14 to 7.333 after one round: roughly halved.","do":[{"chart":"err","x":310,"y":282,"w":280,"h":230,"title":"Σ|residual| by round","xd":[-0.6,6.6],"yd":[0,16.5],"yt":[[0,"0"],[7,"7"],[14,"14"]],"xt":[[0,"0"],[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"6"]],"pl":34},{"bars":"e01","chart":"err","data":[[0,14.0,"14","red"],[1,7.333,"7.33","amber"]],"bw":26,"ms":900}]},{"cap":"Round 2 repeats the same steps on the new residuals. The best cut is now x ≤ 4, and half its correction lifts the last point to 10.375. Error: 5.708.","do":[{"dim":"f1"},{"dim":"h1"},{"dim":"rb"},{"series":"f2","chart":"fit","pts":[[0.6,5.427],[1.5,5.427],[1.5,5.427],[2.5,5.427],[2.5,5.427],[3.5,5.427],[3.5,8.344],[4.5,8.344],[4.5,10.375],[5.4,10.375]],"tone":"blue","ms":1000},{"bars":"e2","chart":"err","data":[[2,5.708,"5.71","amber"]],"bw":26,"ms":700}]},{"cap":"Rounds 3 to 6, same four steps each time. The error falls to 3.89, 2.05, 1.45 and 1.00, and the fit hugs the points ever more closely.","do":[{"dim":"f2"},{"series":"f6","chart":"fit","pts":[[0.6,3.301],[1.5,3.301],[1.5,5.195],[2.5,5.195],[2.5,6.005],[3.5,6.005],[3.5,8.922],[4.5,8.922],[4.5,11.577],[5.4,11.577]],"tone":"green","ms":1200,"label":"F₆","lat":[5.4,11.576548258463543],"ldx":8,"ldy":0,"lanchor":"start","lsize":16},{"bars":"e36","chart":"err","data":[[3,3.888,"3.9","green"],[4,2.053,"2.1","green"],[5,1.445,"1.4","green"],[6,1.003,"1.0","green"]],"bw":26,"ms":1100}]},{"cap":"That is the danger too. Every round can only lower the training error, so with enough rounds a boosted model fits the noise as well as the signal. Stop early, on data held out in time, never on the training curve.","do":[{"note":"warn","x":300,"y":552,"text":"training error always falls: stop on held-out data","size":19,"anchor":"middle","tone":"red"}]},{"cap":"XGBoost, LightGBM and CatBoost run this same loop, with penalties on tree size and a lot of speed. A strong method is still not an edge: the features need an honest out-of-sample test with costs.","do":[{"note":"end","x":300,"y":598,"text":"great method ≠ proven signal","size":20,"anchor":"middle","tone":"amber"}]}]}</script>
+  </div>
+  <!-- WB:gradient_boosting:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -550,6 +655,19 @@
       previous lesson — the fix (prefer permutation importance, or a proper
       held-out validation check) is unchanged.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative afternoon</div>
+    <h3>The loss curve that never stops falling</h3>
+    <p>You are fitting a boosted-tree model to a table of daily FX features, predicting next-day returns, with shrinkage 0.1. After a few thousand rounds the training loss is still falling. The validation loss, measured on a random 20% of rows held out from the same years, is falling too. A colleague says the curves prove the model generalises and wants to size it up. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Agree. Both curves still fall, so add more rounds and trade it.<div class="tl-drill-why">Each round can only lower the training loss, so that curve proves nothing. And a validation set drawn at random from the same years shares regimes and neighbouring days with the training rows: it can fall right along with an overfit model.</div></li>
+      <li data-verdict="bad">Raise the shrinkage to 1 so it converges in far fewer rounds.<div class="tl-drill-why">A full-strength step lets each tree chase that round's noise harder. It speeds up fitting, not generalising, and it does nothing about the leaky validation split.</div></li>
+      <li data-verdict="good">Re-split by time, holding out a later period with a purge gap, use early stopping on that set, and test the result net of costs.<div class="tl-drill-why">Early stopping only works on a genuine validation set, and for market data genuine means later in time and free of leakage. A model this flexible needs the strictest test, not the most flattering one.</div></li>
+      <li data-verdict="ok">Lower the shrinkage to 0.01 and let it run for many more rounds.<div class="tl-drill-why">Smaller steps usually generalise better, so this is not wrong. But with the same random-row validation set you still cannot tell when to stop or whether anything real was learned.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>The point.</strong> This afternoon is illustrative, not a historical event. It applies the lesson's own pitfalls: training loss always falls under boosting, a leaked validation split can fall with it, and only early stopping on data held out in time, with costs, says whether the model learned signal or noise.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -642,6 +760,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="decision-trees-random-forests.html">Decision Trees &amp; Random Forests</a> <span>· the trees boosting is built from, grown in parallel</span></li>
+        <li><a href="newton-raphson-gradient-descent.html">Newton-Raphson &amp; Gradient Descent</a> <span>· the "step against the gradient" idea in its plain form</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> <span>· the honest validation early stopping needs</span></li>
+        <li><a href="sharpe-family-deflated.html">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a> <span>· discounting for every variant you tried</span></li>
+        <li><a href="recurrent-networks-lstm-gru.html">Recurrent Networks for Sequential Data: LSTM &amp; GRU</a> <span>· when the order of the rows is the signal</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> boosted trees are the model most likely to find a real pattern in your feature table, and the one most likely to convince you of a fake one.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="decision-trees-random-forests.html">← Decision Trees &amp; Random Forests</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -671,7 +809,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var DEFAULTS = { y: 3, F0: 7, h: -2.333, nu: 0.5 };
@@ -721,5 +860,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

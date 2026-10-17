@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Decision Trees &amp; Random Forests — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -300,7 +301,19 @@
       </div>
     </section>
 
+    <!-- WB:decision_trees_random_forests-deck:START -->
     <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">One deep tree vs. an averaged forest, step by step</h2>
+      <!-- WB:decision_trees_random_forests:START -->
+      <div class="wb" data-title="One deep tree vs. an averaged forest, step by step">
+        <script type="application/json">{"w":600,"h":745,"intro":"Eight points, two of them noise. One tree that never stops asking, then three small trees averaged. Press play, or step through.","steps":[{"cap":"Eight training points, one feature x from 1 to 8. The true rule is a step: 0 on the left, 1 on the right. Two labels are noise: x = 4 flipped to 1, and x = 5 flipped to 0.","do":[{"chart":"pts","x":10,"y":8,"w":580,"h":240,"title":"Training data: x and its label y","xd":[0.5,8.5],"yd":[-0.3,1.35],"yt":[[0,"0"],[1,"1"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"6"],[7,"7"],[8,"8"]],"pl":36},{"dot":"p1","chart":"pts","at":[1,0],"text":"","tone":null,"dy":18},{"dot":"p2","chart":"pts","at":[2,0],"text":"","tone":null,"dy":18},{"dot":"p3","chart":"pts","at":[3,0],"text":"","tone":null,"dy":18},{"dot":"p4","chart":"pts","at":[4,1],"text":"noise","tone":"red","dy":-16},{"dot":"p5","chart":"pts","at":[5,0],"text":"noise","tone":"red","dy":18},{"dot":"p6","chart":"pts","at":[6,1],"text":"","tone":null,"dy":-16},{"dot":"p7","chart":"pts","at":[7,1],"text":"","tone":null,"dy":-16},{"dot":"p8","chart":"pts","at":[8,1],"text":"","tone":null,"dy":-16}]},{"cap":"The root holds all eight points. Four are ones, so its mean is 0.5 and its impurity, the variance around that mean, is 0.25.","do":[{"series":"mean","chart":"pts","pts":[[0.6,0.5],[8.4,0.5]],"tone":"blue","dash":true,"label":"mean 0.5 · impurity 0.25","lat":[6.4,0.5],"ldy":-14,"lsize":16}]},{"cap":"The tree tries a cut between every pair of neighbours and scores each by its impurity reduction. Cuts at 3.5 and 5.5 tie for best at 0.15. The middle cut at 4.5 scores only 0.0625, because each side keeps one noisy point.","do":[{"chart":"di","x":10,"y":260,"w":580,"h":172,"title":"Impurity reduction for each cut","xd":[1,8],"yd":[0,0.2],"yt":[[0,"0"],[0.15,"0.15"]],"xt":[[1.5,"1.5"],[2.5,"2.5"],[3.5,"3.5"],[4.5,"4.5"],[5.5,"5.5"],[6.5,"6.5"],[7.5,"7.5"]],"pl":46},{"bars":"dib","chart":"di","data":[[1.5,0.0357,"0.0357","blue"],[2.5,0.0833,"0.0833","blue"],[3.5,0.15,"0.15","green"],[4.5,0.0625,"0.0625","blue"],[5.5,0.15,"0.15","green"],[6.5,0.0833,"0.0833","blue"],[7.5,0.0357,"0.0357","blue"]],"bw":40,"ms":1200}]},{"cap":"Greedy: take the best cut, x ≤ 3.5. The left group is {0, 0, 0}, already pure, so it becomes a leaf predicting 0. Then the same search runs again on each side.","do":[{"hide":"mean"},{"series":"cut","chart":"pts","pts":[[3.5,-0.25],[3.5,1.25]],"tone":"green","dash":true,"ms":500}]},{"cap":"With no depth limit it never stops. It cuts at 4.5, then at 5.5, until every point sits in a box that matches its label. The red fit passes through every point, both noisy ones included. Training error: zero.","do":[{"hide":"cut"},{"series":"deep","chart":"pts","pts":[[0.6,0],[3.5,0],[3.5,1],[4.5,1],[4.5,0],[5.5,0],[5.5,1],[8.4,1]],"tone":"red","ms":1600,"label":"one deep tree","lat":[1.6,0],"ldy":-16,"lsize":16}]},{"cap":"That zero is the warning sign. The tree has memorised the noise, so its answer for a new point at x = 4.5 depends on one mislabelled neighbour, not on where the real step is.","do":[{"dot":"q","chart":"pts","at":[4.5,0.5],"text":"x = 4.5: ?","tone":"red","dx":0,"dy":-14}]},{"cap":"Bagging: draw three bootstrap resamples of the eight rows, with replacement, and grow a one-cut tree on each. Each resample leans on different points; say the three cuts land at 3.5, 4.5 and 5.5.","do":[{"dim":"deep"},{"hide":"q"},{"series":"c1","chart":"pts","pts":[[3.5,-0.25],[3.5,1.25]],"tone":"amber","dash":true,"ms":400},{"series":"c2","chart":"pts","pts":[[4.5,-0.25],[4.5,1.25]],"tone":"amber","dash":true,"ms":400},{"series":"c3","chart":"pts","pts":[[5.5,-0.25],[5.5,1.25]],"tone":"amber","dash":true,"ms":400}]},{"cap":"Average the three votes. Below 3.5 all three say 0. Between 3.5 and 4.5 one in three says 1; between 4.5 and 5.5, two in three; above 5.5, all three. A gentler step, centred near the true boundary, with neither noise point owning a box.","do":[{"series":"avg","chart":"pts","pts":[[0.6,0],[3.5,0],[3.5,0.333],[4.5,0.333],[4.5,0.667],[5.5,0.667],[5.5,1],[8.4,1]],"tone":"green","ms":1600,"label":"average of 3","lat":[7.4,1],"ldy":-16,"lsize":16}]},{"cap":"Why averaging helps, and where it stops. The variance of an average of B trees is ρσ² + (1 − ρ)σ²/B, where ρ is how correlated the trees are. Take one tree's variance as 1 (illustrative). Look-alike trees, ρ = 0.6: adding trees flattens out at 0.6.","do":[{"chart":"var","x":10,"y":446,"w":580,"h":240,"title":"Variance of the average vs number of trees (illustrative)","xd":[1,50],"yd":[0,1.08],"yt":[[0,"0"],[0.2,"0.2"],[0.6,"0.6"],[1,"1"]],"xt":[[1,"1"],[10,"10"],[25,"25"],[50,"50"]],"pl":42,"pr":16},{"series":"f6","chart":"var","pts":[[1,0.6],[50,0.6]],"tone":"amber","dash":true,"ms":400},{"series":"v6","chart":"var","pts":[[1,1.0],[2,0.8],[3,0.7333],[4,0.7],[5,0.68],[6,0.6667],[7,0.6571],[8,0.65],[9,0.6444],[10,0.64],[11,0.6364],[12,0.6333],[13,0.6308],[14,0.6286],[15,0.6267],[16,0.625],[17,0.6235],[18,0.6222],[19,0.6211],[20,0.62],[21,0.619],[22,0.6182],[23,0.6174],[24,0.6167],[25,0.616],[26,0.6154],[27,0.6148],[28,0.6143],[29,0.6138],[30,0.6133],[31,0.6129],[32,0.6125],[33,0.6121],[34,0.6118],[35,0.6114],[36,0.6111],[37,0.6108],[38,0.6105],[39,0.6103],[40,0.61],[41,0.6098],[42,0.6095],[43,0.6093],[44,0.6091],[45,0.6089],[46,0.6087],[47,0.6085],[48,0.6083],[49,0.6082],[50,0.608]],"tone":"amber","ms":1400,"label":"ρ = 0.6","lat":[40,0.6],"ldy":-16,"lsize":16}]},{"cap":"Random feature subsets at each split make the trees disagree. With ρ = 0.2 the same number of trees falls to a floor of 0.2. Lowering ρ moves the floor; more trees never do.","do":[{"series":"f2","chart":"var","pts":[[1,0.2],[50,0.2]],"tone":"green","dash":true,"ms":400},{"series":"v2","chart":"var","pts":[[1,1.0],[2,0.6],[3,0.4667],[4,0.4],[5,0.36],[6,0.3333],[7,0.3143],[8,0.3],[9,0.2889],[10,0.28],[11,0.2727],[12,0.2667],[13,0.2615],[14,0.2571],[15,0.2533],[16,0.25],[17,0.2471],[18,0.2444],[19,0.2421],[20,0.24],[21,0.2381],[22,0.2364],[23,0.2348],[24,0.2333],[25,0.232],[26,0.2308],[27,0.2296],[28,0.2286],[29,0.2276],[30,0.2267],[31,0.2258],[32,0.225],[33,0.2242],[34,0.2235],[35,0.2229],[36,0.2222],[37,0.2216],[38,0.2211],[39,0.2205],[40,0.22],[41,0.2195],[42,0.219],[43,0.2186],[44,0.2182],[45,0.2178],[46,0.2174],[47,0.217],[48,0.2167],[49,0.2163],[50,0.216]],"tone":"green","ms":1400,"label":"ρ = 0.2","lat":[40,0.2],"ldy":-16,"lsize":16}]},{"cap":"A forest is strong, general machinery. Whether your own features carry an edge is a separate question, answered only by a purged, walk-forward test with costs.","do":[{"note":"end","x":300,"y":716,"text":"a strong method is not an edge: test it out of sample","size":19,"anchor":"middle","tone":"amber"}]}]}</script>
+      </div>
+      <!-- WB:decision_trees_random_forests:END -->
+    </section>
+    <!-- WB:decision_trees_random_forests-deck:END -->
+
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Compute the variance floor yourself</h2>
       <p class="sl-sub">Var(ensemble) = ρσ² + (1 − ρ)σ²/N. Change any input, live.</p>
@@ -327,7 +340,7 @@
       <p class="sl-p">Notice that pushing N from 50 toward a very large number barely moves the result once ρ is fixed — the second term is already small. Pushing ρ down, instead, moves both terms. That's the whole practical argument for random forest's feature-subsampling trick over "just add more trees."</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What a trained forest hands you for free</h2>
       <div class="sl-icard-grid">
@@ -341,7 +354,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -392,7 +405,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -516,5 +529,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

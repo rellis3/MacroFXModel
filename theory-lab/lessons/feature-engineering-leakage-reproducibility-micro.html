@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Feature Engineering, Leakage &amp; Reproducibility — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -204,7 +205,19 @@
       <p class="sl-p">Neither one is a single feature reaching across time the way the three headline patterns are — a non-stationary level is a modeling-assumption failure wearing a feature-importance costume, and survivorship bias is a leak in the dataset's row list rather than any one row's values. Both produce the exact same symptom as the other three: a backtest that looks calmer than a live system, operating in real time with no foreknowledge of the future, would actually have experienced.</p>
     </section>
 
+    <!-- WB:feature_engineering_leakage_reproducibility-deck:START -->
     <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Building a feature from only what was known, step by step</h2>
+      <!-- WB:feature_engineering_leakage_reproducibility:START -->
+      <div class="wb" data-title="Building a feature from only what was known, step by step">
+        <script type="application/json">{"w":600,"h":620,"intro":"The lesson's six-number z-score, built the leaky way and the honest way, then the other places the future sneaks in. Press play, or step through.","steps":[{"cap":"Six days of a spread reading: 1.0, 1.2, 0.9, 1.4, then a one-off news spike to 3.8, then 1.1. We want a feature for day 3: how unusual is today's reading?","do":[{"chart":"ch","x":10,"y":10,"w":580,"h":300,"title":"A spread reading, day by day","xd":[0.5,6.5],"yd":[0,4.2],"yt":[[0,"0"],[1,"1"],[2,"2"],[3,"3"],[4,"4"]],"xt":[[1,"day 1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"6"]],"pl":46,"pr":16},{"series":"pts","chart":"ch","pts":[[1,1.0],[2,1.2],[3,0.9],[4,1.4],[5,3.8],[6,1.1]],"tone":"blue","ms":1400},{"dot":"d0","chart":"ch","at":[1,1.0],"text":"1.0","tone":"blue","dy":-16},{"dot":"d1","chart":"ch","at":[2,1.2],"text":"1.2","tone":"blue","dy":-16},{"dot":"d2","chart":"ch","at":[3,0.9],"text":"today 0.9","tone":"purple","dy":22},{"dot":"d3","chart":"ch","at":[4,1.4],"text":"1.4","tone":"blue","dy":-16},{"dot":"d4","chart":"ch","at":[5,3.8],"text":"3.8","tone":"red","dy":-16},{"dot":"d5","chart":"ch","at":[6,1.1],"text":"1.1","tone":"blue","dy":-16}]},{"cap":"On day 3, days 4 to 6 have not happened yet. A live system computing the feature that morning cannot see them, including the spike.","do":[{"gap":"fut","chart":"ch","top":[[3.5,4.2],[6.5,4.2]],"bot":[[3.5,0],[6.5,0]],"tone":"red","op":0.16},{"note":"futl","chart":"ch","at":[5,0.45],"text":"not happened yet on day 3","tone":"red","size":18,"anchor":"middle","dx":0,"dy":0}]},{"cap":"The leaky way: take the mean and standard deviation of all six days. Mean 1.567, standard deviation 1.011, so day 3 scores (0.9 − 1.567) ÷ 1.011 = −0.66. Fairly ordinary.","do":[{"series":"mf","chart":"ch","pts":[[0.6,1.5666666666666667],[6.4,1.5666666666666667]],"tone":"red","dash":true,"ms":800,"label":"mean of all 6: 1.567","lat":[0.6,1.5666666666666667],"ldx":0,"ldy":-16,"lanchor":"start","lsize":16},{"box":"zf","x":20,"y":330,"w":270,"h":92,"text":"all six days\nz = −0.66","tone":"red","size":20}]},{"cap":"Look why: the spike on day 5, which had not happened yet, is what stretches the standard deviation to 1.011. Without it the other five days spread by only about 0.17. A future value makes day 3 look tame.","do":[{"pulse":"d4"},{"pulse":"zf"}]},{"cap":"The honest way: use only days 1 to 3. Mean 1.033, standard deviation 0.125, so day 3 scores (0.9 − 1.033) ÷ 0.125 = −1.07. Clearly unusual.","do":[{"series":"m3","chart":"ch","pts":[[0.6,1.0333333333333332],[3.4,1.0333333333333332]],"tone":"green","dash":true,"ms":700},{"box":"z3","x":310,"y":330,"w":270,"h":92,"text":"days 1 to 3 only\nz = −1.07","tone":"green","size":20}]},{"cap":"Same reading, same day, two different signals. A model trained on the leaky version is fed a future-informed sense of \"unusual\" on every single row, which no live system could ever produce.","do":[{"note":"same","x":300,"y":455,"text":"same day: −0.66 leaky vs −1.07 honest","size":20,"anchor":"middle","tone":"amber"}]},{"cap":"The same leak hides in a calendar join. March inflation is labelled March, but it is published weeks later: in the lesson's example, on 10 April. Join it to 31 March and every March row can see a number nobody had yet.","do":[{"hide":"ch"},{"hide":"pts"},{"hide":"fut"},{"hide":"mf"},{"hide":"m3"},{"hide":"zf"},{"hide":"z3"},{"hide":"same"},{"hide":"d0"},{"hide":"d1"},{"hide":"d2"},{"hide":"d3"},{"hide":"d4"},{"hide":"d5"},{"hide":"futl"},{"box":"feb","x":20,"y":30,"w":170,"h":54,"text":"February","tone":"blue","size":18},{"box":"mar","x":210,"y":30,"w":170,"h":54,"text":"March","tone":"red","size":18},{"box":"apr","x":400,"y":30,"w":180,"h":54,"text":"April","tone":"green","size":18},{"chip":"cpi1","x":295,"y":118,"text":"naive: dated 31 Mar","tone":"red"},{"chip":"cpi2","x":490,"y":118,"text":"true: usable 10 Apr","tone":"green"}]},{"cap":"Target leakage: using today's close to predict whether today closes up. The two columns look separate, but they describe the same event. The feature restates the label.","do":[{"box":"feat","x":20,"y":170,"w":220,"h":72,"text":"feature:\ntoday's close","tone":"amber","size":18},{"box":"lab","x":360,"y":170,"w":220,"h":72,"text":"label: did today\nclose up?","tone":"blue","size":18},{"arrow":["feat","lab"],"label":"restates it","tone":"red"}]},{"cap":"Survivorship: build an emerging-market carry universe from today's vendor list, and the pegs that collapsed are simply missing. Those were the carry trade's worst cases, so the backtest looks calmer than the real history.","do":[{"chip":"surv","x":150,"y":290,"text":"still listed today","tone":"green"},{"box":"dead","x":330,"y":262,"w":250,"h":56,"text":"collapsed pegs","tone":"red","size":18},{"cross":"dead"}]},{"cap":"And reproducible is not the same as right. Reinhart and Rogoff's 2010 spreadsheet gave −0.1% growth above 90% debt every time it ran. In 2013 Herndon, Ash and Pollin rebuilt it: five countries left out of an average, some years dropped, odd weighting. Corrected: about 2.2%.","do":[{"box":"rr","x":120,"y":340,"w":360,"h":84,"text":"growth above 90% debt","tone":"purple","sub":"−0.1%","size":19},{"count":"rr","from":-0.1,"to":2.2,"dp":1,"suf":"%","ms":1500}]},{"cap":"The rule: build every feature as if it had to run live that morning, from what was known that morning. Then hand the whole pipeline, data, code and choices, to someone who can disagree with it.","do":[{"note":"rule","x":300,"y":480,"text":"only what was known that morning","size":22,"anchor":"middle","tone":"green"},{"note":"rule2","x":300,"y":530,"text":"then let someone else rebuild it","size":20,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:feature_engineering_leakage_reproducibility:END -->
+    </section>
+    <!-- WB:feature_engineering_leakage_reproducibility-deck:END -->
+
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Reproducibility is a separate, equally practical problem</h2>
       <p class="sl-sub">Proving a result wasn't leaked is the job of everything above. Proving it can be rebuilt months later, and get the same answer, is a different job entirely.</p>
@@ -225,7 +238,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Does this repo actually practice any of this?</h2>
       <p class="sl-sub">Checked against the actual source code, not just assumed from the surrounding discipline.</p>
@@ -240,7 +253,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">The checklist that catches most of this</h2>
       <div class="sl-icard-grid">
@@ -251,7 +264,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12 · It actually happened</div>
       <h2 class="sl-h2">2010–2013: the spreadsheet behind the 90% threshold</h2>
       <div class="sl-callout amber">
@@ -271,7 +284,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <!-- DESK:START --><h2 class="sl-h2">What this desk found, and where the textbook breaks</h2><!-- DESK:END -->
       <!-- DESK:START -->
@@ -286,7 +299,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -337,7 +350,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -502,5 +515,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

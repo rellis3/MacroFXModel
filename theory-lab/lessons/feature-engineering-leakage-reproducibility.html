@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Feature Engineering, Leakage &amp; Reproducibility — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,70 @@
       <li><strong>Real-world episode:</strong> Reinhart and Rogoff's 2010 finding of −0.1% average growth above 90% debt became about 2.2% when a graduate student rebuilt it from their spreadsheet in 2013 (five countries left out of an average, plus exclusion and weighting choices).<!-- DESK:START --> On this desk, a volatility tool's "wins" were 95% scored before entry (<code>backtest-artifacts</code>, context).<!-- DESK:END --></li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Six daily readings of a spread: 1.0, 1.2, 0.9, 1.4, 3.8 and 1.1, with a one-off spike to 3.8 on day 5. The z-score for day 3 is built two ways. Using the full sample, mean 1.57, including the future spike, it is minus 0.66. Using only days 1 to 3, mean 1.03, which is all that was known on day 3, it is minus 1.07. The future spike made today look less unusual than it really was.">
+      <rect class="tlp-box green" x="40" y="32" width="180" height="173" rx="4" opacity=".45"/>
+      <rect class="tlp-box red" x="220" y="32" width="175" height="173" rx="4" opacity=".45"/>
+      <text class="tlp-green" x="130" y="24" text-anchor="middle" font-size="13" font-weight="700">known on day 3</text>
+      <text class="tlp-red" x="308" y="24" text-anchor="middle" font-size="13" font-weight="700">not happened yet</text>
+      <line class="tlp-line" x1="40" y1="205" x2="395" y2="205"/>
+      <line class="tlp-line red dash" x1="40" y1="152" x2="395" y2="152"/>
+      <text class="tlp-red" x="228" y="144" font-size="12">full-sample mean 1.57</text>
+      <line class="tlp-line green dash" x1="40" y1="176" x2="220" y2="176"/>
+      <text class="tlp-green" x="46" y="200" font-size="12">mean of days 1–3: 1.03</text>
+      <circle class="tlp-blue" cx="70" cy="177.5" r="5"/>
+      <circle class="tlp-blue" cx="130" cy="168.5" r="5"/>
+      <circle class="tlp-purple" cx="190" cy="182" r="7"/>
+      <circle class="tlp-blue" cx="250" cy="159.5" r="5"/>
+      <circle class="tlp-red" cx="310" cy="51.5" r="6"/>
+      <circle class="tlp-blue" cx="370" cy="173" r="5"/>
+      <text class="tlp-red" x="322" y="56" font-size="13" font-weight="700">3.8 spike</text>
+      <text class="tlp-text3" x="70" y="222" text-anchor="middle" font-size="12">day 1</text>
+      <text class="tlp-text3" x="130" y="222" text-anchor="middle" font-size="12">2</text>
+      <text class="tlp-purple" x="190" y="222" text-anchor="middle" font-size="12" font-weight="700">3 (today)</text>
+      <text class="tlp-text3" x="250" y="222" text-anchor="middle" font-size="12">4</text>
+      <text class="tlp-text3" x="310" y="222" text-anchor="middle" font-size="12">5</text>
+      <text class="tlp-text3" x="370" y="222" text-anchor="middle" font-size="12">6</text>
+      <rect class="tlp-box red" x="408" y="34" width="182" height="78" rx="6"/>
+      <text class="tlp-text" x="499" y="56" text-anchor="middle" font-size="13" font-weight="700">full-sample z, day 3</text>
+      <text class="tlp-red" x="499" y="82" text-anchor="middle" font-size="20" font-weight="700">−0.66</text>
+      <text class="tlp-text2" x="499" y="102" text-anchor="middle" font-size="12">muted by a future spike</text>
+      <rect class="tlp-box green" x="408" y="126" width="182" height="78" rx="6"/>
+      <text class="tlp-text" x="499" y="148" text-anchor="middle" font-size="13" font-weight="700">point-in-time z, day 3</text>
+      <text class="tlp-green" x="499" y="174" text-anchor="middle" font-size="20" font-weight="700">−1.07</text>
+      <text class="tlp-text2" x="499" y="194" text-anchor="middle" font-size="12">days 1–3 only</text>
+    </svg>
+    <figcaption>The same reading on the same day gets two different z-scores. The full-sample version quietly uses a spike that had not happened yet, so day 3 looks ordinary. Built only from what was known on day 3, it is clearly unusual.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My new model looks brilliant in the backtest. The out-of-sample split is clean. What else could be wrong?</p>
+      <p data-who="Quant">The features. Every input has to be something you could actually have computed on the day it's dated, from what was known that day. Not a minute later.</p>
+      <p data-who="Trader">Obviously. I don't use tomorrow's prices.</p>
+      <p data-who="Quant">Most leaks are quieter than that. Take inflation. The March number is labelled March, but it's published weeks later, in April. Join it to the end of March and every March row in your data can see a number nobody had yet.</p>
+      <p data-who="Trader">Fine, that's a dating mistake. What else?</p>
+      <p data-who="Quant">Normalizing. Say you z-score a spread, to ask how unusual today's reading is. Six days of readings: one, one point two, point nine, one point four, then a news spike to three point eight, then one point one.</p>
+      <p data-who="Trader">And I want the score for day three.</p>
+      <p data-who="Quant">If you use the mean and spread of all six days, day three scores about minus point six six. Fairly ordinary. But that calculation includes the spike on day five, which hadn't happened yet. It widens everything.</p>
+      <p data-who="Trader">And using only what I knew on day three?</p>
+      <p data-who="Quant">Minus one point oh seven. Clearly unusual. Same reading, same day, a different signal, because the first version borrowed from the future.</p>
+      <p data-who="Trader">Any other traps?</p>
+      <p data-who="Quant">Two big ones. Target leakage: using today's close to predict whether today closes up. That's restating the answer. And survivorship: building your currency universe from today's vendor list, which quietly drops the pegs that blew up. Those are exactly the cases your strategy most needed to face.</p>
+      <p data-who="Trader">And reproducibility? I save my code.</p>
+      <p data-who="Quant">Code alone isn't enough. Pin the data, the code and the settings together, and keep the data as it stood at the time, because macro numbers get revised. But here's the twist. Reproducible isn't the same as right.</p>
+      <p data-who="Trader">Meaning?</p>
+      <p data-who="Quant">In 2010, Reinhart and Rogoff found that countries with debt above ninety percent of output averaged about minus point one percent growth. It was cited everywhere in the austerity debate. In 2013 a graduate student, Thomas Herndon, couldn't reproduce it and asked for their spreadsheet. An average had left out five countries, some years were excluded, and episodes were weighted oddly. Corrected, growth came out at about two point two percent.</p>
+      <p data-who="Trader">And their spreadsheet gave minus point one every time they ran it.</p>
+      <p data-who="Quant">Exactly. Perfectly reproducible, and still wrong. Only an independent rebuild caught it.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Build every feature as if it had to run live that morning, and hand the whole pipeline to someone who can disagree with it.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -88,6 +153,27 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>Point-in-time computability — the foundational requirement</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the rule build</div>
+    <div class="tl-eqbuild-title">From "a feature is a function of data" to an honest z-score</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ F(i) = f\big(\color{#fbbf24}{\text{data}}\big) \]</div>
+      <p>A feature dated at time \(i\) is some function of data. Which data is the whole question.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ F(i) = f\big(\text{data known as of } \color{#fbbf24}{i}\big) \]</div>
+      <p>Only what was published and observable at \(i\), in the vintage that existed then. March inflation joins on the day it was published, not on 31 March.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ z_i = \frac{x_i - \color{#fbbf24}{\mu_{full}}}{\color{#fbbf24}{\sigma_{full}}} \]</div>
+      <p>A common way to break the rule: normalize with the mean and standard deviation of the whole sample, future rows included. In the worked example, day 3 scores \(-0.659\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{z_i = \frac{x_i - \mu_{\le i}}{\sigma_{\le i}}} = \frac{0.9 - 1.033}{0.125} \approx -1.07 \]</div>
+      <p>The fix: statistics from data up to \(i\) only, recomputed at every point in time. Day 3 now reads as clearly unusual, which is what a live system would have seen.</p>
+    </div>
+  </div>
+
   <p>
   A feature \(F(i)\) computed for time index \(i\) is <strong>point-in-time computable</strong> if
   every input it depends on was genuinely available — published and observable — at or before
@@ -305,6 +391,15 @@
     <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Contaminated vs. point-in-time z-scores on the same six numbers</h3>
+    <div class="tl-predict">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Day 5's reading of 3.8 is a one-off spike. Compared with a z-score for day 3 built from all six days, will the honest one, built only from days 1 to 3, be smaller or larger in size?</div>
+      <ul class="tl-predict-options">
+        <li>Smaller: the honest score is closer to zero.</li>
+        <li>About the same: two days of data don't change much.</li>
+        <li data-correct>Larger: day 3 looks more unusual using only the past.</li>
+      </ul>
+      <div class="tl-predict-reveal"><p><strong>Larger.</strong> The full-sample score is about \(-0.66\); the point-in-time score is about \(-1.07\). Day 5's spike, which had not happened yet on day 3, inflates the full-sample standard deviation from about 0.125 to about 1.011, so day 3 looks more ordinary than it was. Check both calculations in the two halves of the example below.</p></div>
+    </div>
     <p>
     Take a short series of a hypothetical spread reading over six days:
     \(x = [1.0,\ 1.2,\ 0.9,\ 1.4,\ 3.8,\ 1.1]\) — day 5's reading of 3.8 is a one-off spike (say, a
@@ -363,6 +458,12 @@
     input universe that never gave the strategy a chance to fail the way it plausibly would have.
     </p>
   </div>
+
+  <!-- WB:feature_engineering_leakage_reproducibility:START -->
+  <div class="wb" id="wb-feature_engineering_leakage_reproducibility" data-title="Building a feature from only what was known, step by step">
+    <script type="application/json">{"w":600,"h":620,"intro":"The lesson's six-number z-score, built the leaky way and the honest way, then the other places the future sneaks in. Press play, or step through.","steps":[{"cap":"Six days of a spread reading: 1.0, 1.2, 0.9, 1.4, then a one-off news spike to 3.8, then 1.1. We want a feature for day 3: how unusual is today's reading?","do":[{"chart":"ch","x":10,"y":10,"w":580,"h":300,"title":"A spread reading, day by day","xd":[0.5,6.5],"yd":[0,4.2],"yt":[[0,"0"],[1,"1"],[2,"2"],[3,"3"],[4,"4"]],"xt":[[1,"day 1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"6"]],"pl":46,"pr":16},{"series":"pts","chart":"ch","pts":[[1,1.0],[2,1.2],[3,0.9],[4,1.4],[5,3.8],[6,1.1]],"tone":"blue","ms":1400},{"dot":"d0","chart":"ch","at":[1,1.0],"text":"1.0","tone":"blue","dy":-16},{"dot":"d1","chart":"ch","at":[2,1.2],"text":"1.2","tone":"blue","dy":-16},{"dot":"d2","chart":"ch","at":[3,0.9],"text":"today 0.9","tone":"purple","dy":22},{"dot":"d3","chart":"ch","at":[4,1.4],"text":"1.4","tone":"blue","dy":-16},{"dot":"d4","chart":"ch","at":[5,3.8],"text":"3.8","tone":"red","dy":-16},{"dot":"d5","chart":"ch","at":[6,1.1],"text":"1.1","tone":"blue","dy":-16}]},{"cap":"On day 3, days 4 to 6 have not happened yet. A live system computing the feature that morning cannot see them, including the spike.","do":[{"gap":"fut","chart":"ch","top":[[3.5,4.2],[6.5,4.2]],"bot":[[3.5,0],[6.5,0]],"tone":"red","op":0.16},{"note":"futl","chart":"ch","at":[5,0.45],"text":"not happened yet on day 3","tone":"red","size":18,"anchor":"middle","dx":0,"dy":0}]},{"cap":"The leaky way: take the mean and standard deviation of all six days. Mean 1.567, standard deviation 1.011, so day 3 scores (0.9 − 1.567) ÷ 1.011 = −0.66. Fairly ordinary.","do":[{"series":"mf","chart":"ch","pts":[[0.6,1.5666666666666667],[6.4,1.5666666666666667]],"tone":"red","dash":true,"ms":800,"label":"mean of all 6: 1.567","lat":[0.6,1.5666666666666667],"ldx":0,"ldy":-16,"lanchor":"start","lsize":16},{"box":"zf","x":20,"y":330,"w":270,"h":92,"text":"all six days\nz = −0.66","tone":"red","size":20}]},{"cap":"Look why: the spike on day 5, which had not happened yet, is what stretches the standard deviation to 1.011. Without it the other five days spread by only about 0.17. A future value makes day 3 look tame.","do":[{"pulse":"d4"},{"pulse":"zf"}]},{"cap":"The honest way: use only days 1 to 3. Mean 1.033, standard deviation 0.125, so day 3 scores (0.9 − 1.033) ÷ 0.125 = −1.07. Clearly unusual.","do":[{"series":"m3","chart":"ch","pts":[[0.6,1.0333333333333332],[3.4,1.0333333333333332]],"tone":"green","dash":true,"ms":700},{"box":"z3","x":310,"y":330,"w":270,"h":92,"text":"days 1 to 3 only\nz = −1.07","tone":"green","size":20}]},{"cap":"Same reading, same day, two different signals. A model trained on the leaky version is fed a future-informed sense of \"unusual\" on every single row, which no live system could ever produce.","do":[{"note":"same","x":300,"y":455,"text":"same day: −0.66 leaky vs −1.07 honest","size":20,"anchor":"middle","tone":"amber"}]},{"cap":"The same leak hides in a calendar join. March inflation is labelled March, but it is published weeks later: in the lesson's example, on 10 April. Join it to 31 March and every March row can see a number nobody had yet.","do":[{"hide":"ch"},{"hide":"pts"},{"hide":"fut"},{"hide":"mf"},{"hide":"m3"},{"hide":"zf"},{"hide":"z3"},{"hide":"same"},{"hide":"d0"},{"hide":"d1"},{"hide":"d2"},{"hide":"d3"},{"hide":"d4"},{"hide":"d5"},{"hide":"futl"},{"box":"feb","x":20,"y":30,"w":170,"h":54,"text":"February","tone":"blue","size":18},{"box":"mar","x":210,"y":30,"w":170,"h":54,"text":"March","tone":"red","size":18},{"box":"apr","x":400,"y":30,"w":180,"h":54,"text":"April","tone":"green","size":18},{"chip":"cpi1","x":295,"y":118,"text":"naive: dated 31 Mar","tone":"red"},{"chip":"cpi2","x":490,"y":118,"text":"true: usable 10 Apr","tone":"green"}]},{"cap":"Target leakage: using today's close to predict whether today closes up. The two columns look separate, but they describe the same event. The feature restates the label.","do":[{"box":"feat","x":20,"y":170,"w":220,"h":72,"text":"feature:\ntoday's close","tone":"amber","size":18},{"box":"lab","x":360,"y":170,"w":220,"h":72,"text":"label: did today\nclose up?","tone":"blue","size":18},{"arrow":["feat","lab"],"label":"restates it","tone":"red"}]},{"cap":"Survivorship: build an emerging-market carry universe from today's vendor list, and the pegs that collapsed are simply missing. Those were the carry trade's worst cases, so the backtest looks calmer than the real history.","do":[{"chip":"surv","x":150,"y":290,"text":"still listed today","tone":"green"},{"box":"dead","x":330,"y":262,"w":250,"h":56,"text":"collapsed pegs","tone":"red","size":18},{"cross":"dead"}]},{"cap":"And reproducible is not the same as right. Reinhart and Rogoff's 2010 spreadsheet gave −0.1% growth above 90% debt every time it ran. In 2013 Herndon, Ash and Pollin rebuilt it: five countries left out of an average, some years dropped, odd weighting. Corrected: about 2.2%.","do":[{"box":"rr","x":120,"y":340,"w":360,"h":84,"text":"growth above 90% debt","tone":"purple","sub":"−0.1%","size":19},{"count":"rr","from":-0.1,"to":2.2,"dp":1,"suf":"%","ms":1500}]},{"cap":"The rule: build every feature as if it had to run live that morning, from what was known that morning. Then hand the whole pipeline, data, code and choices, to someone who can disagree with it.","do":[{"note":"rule","x":300,"y":480,"text":"only what was known that morning","size":22,"anchor":"middle","tone":"green"},{"note":"rule2","x":300,"y":530,"text":"then let someone else rebuild it","size":20,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:feature_engineering_leakage_reproducibility:END -->
 
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Reproducibility, kept practical</h2>
@@ -558,6 +659,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill" data-date="2013-01">
+    <div class="tl-drill-label">Scenario drill · early 2013</div>
+    <h3>A famous threshold, and a trade built on it</h3>
+    <p>Since 2010, Reinhart and Rogoff's finding has been cited everywhere: advanced economies with public debt above 90% of GDP averaged about −0.1% a year growth. Your team wants to build a macro trade around countries crossing that line. The paper is by two highly respected economists in a top journal. What do you do before putting risk on it?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Use the number as it stands. The authors and the journal are about as credible as it gets.<div class="tl-drill-why">Credibility is not a substitute for a rebuild. Nobody outside the authors had re-run the number from the raw data, and that is the only check that catches a mistake baked into the procedure.</div></li>
+      <li data-verdict="ok">Ask for the authors' spreadsheet, rerun it, and confirm you get −0.1%.<div class="tl-drill-why">Better than nothing, and it does catch drift. But their spreadsheet gave −0.1% every time it was run. Reproducing a result with the same file confirms the file, not the answer.</div></li>
+      <li data-verdict="good">Rebuild the number yourself from the raw country data, checking which countries and years are in and how each episode is weighted.<div class="tl-drill-why">This is the independent rebuild the lesson argues for. It tests the choices as well as the arithmetic: which rows count, which years are dropped, and how a one-year episode weighs against a nineteen-year one.</div></li>
+      <li data-verdict="bad">Search the data for the debt level where growth falls the most, and trade that threshold instead.<div class="tl-drill-why">This replaces one unchecked number with a data-mined one. Scanning for the best threshold is the multiple-testing trap, and it still rests on the same unverified dataset.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In 2013 Thomas Herndon, a graduate student at the University of Massachusetts Amherst, could not reproduce the result for a class assignment and obtained the spreadsheet. With Michael Ash and Robert Pollin he found an average that left out five countries, some excluded years, and equal weighting of episodes of very different length. Corrected, average growth above 90% debt was about 2.2%: slower than at lower debt, but no cliff. Reinhart and Rogoff acknowledged the spreadsheet error and defended their other choices.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -661,6 +775,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a> <span>· why a raw level can fake predictive power</span></li>
+        <li><a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> <span>· the leaks at the train/test boundary</span></li>
+        <li><a href="research-pipeline-hypothesis-to-backtest.html">The Research Pipeline: Hypothesis to Honest Backtest</a> <span>· where feature building sits in the process</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="point-in-time-data-survivorship-bias.html">Point-in-Time Data &amp; Survivorship Bias</a> <span>· vintages and dead instruments in depth</span></li>
+        <li><a href="data-architecture-storage-versioning.html">Data Architecture for Systematic Trading: Storage, Versioning &amp; Reproducibility</a> <span>· building the snapshots this lesson asks for</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a leaked feature makes a backtest look better than anything you could trade, and you only find out with real money.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="research-pipeline-hypothesis-to-backtest.html">← The Research Pipeline: Hypothesis to Honest Backtest</a>
     <a href="../hub.html">Theory Lab hub →</a>
@@ -690,10 +824,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

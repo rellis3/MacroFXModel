@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Data Architecture for Systematic Trading: Storage, Versioning &amp; Reproducibility — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,64 @@
       <li><strong>Real-world episode:</strong> on 1 August 2012 Knight Capital deployed new router code to seven of eight servers; a reused flag still meant "run the old Power Peg code" on the eighth, and about $440 million was lost in roughly 45 minutes.<!-- DESK:START --> On this desk, backtest-to-live gaps (85.7% vs 39.6% win rate on one system) were audited as machinery first (<code>backtest-artifacts</code>, context).<!-- DESK:END --></li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two panels. Left, copies that drift: Knight Capital on 1 August 2012 ran its order router on eight servers. Seven got the new code and one kept the old code, so the same flag meant a retail liquidity order on seven servers and run the old Power Peg code on the eighth. About 440 million dollars was lost in about 45 minutes. Right, one versioned source of truth: raw ticks and corporate actions flow through a cleaning stage tagged code v3.2.1 and an adjustment stage tagged code v1.4.0 into one adjusted close tagged schema v2, which everyone reads and anyone can rebuild.">
+      <text class="tlp-red" x="20" y="26" font-size="14" font-weight="700">Copies that drift</text>
+      <text class="tlp-text3" x="20" y="46" font-size="12">Knight Capital, 1 Aug 2012: eight router servers</text>
+      <rect class="tlp-box green" x="20" y="60" width="54" height="36" rx="4"/><text class="tlp-green" x="47" y="83" text-anchor="middle" font-size="13" font-weight="700">new</text>
+      <rect class="tlp-box green" x="84" y="60" width="54" height="36" rx="4"/><text class="tlp-green" x="111" y="83" text-anchor="middle" font-size="13" font-weight="700">new</text>
+      <rect class="tlp-box green" x="148" y="60" width="54" height="36" rx="4"/><text class="tlp-green" x="175" y="83" text-anchor="middle" font-size="13" font-weight="700">new</text>
+      <rect class="tlp-box green" x="212" y="60" width="54" height="36" rx="4"/><text class="tlp-green" x="239" y="83" text-anchor="middle" font-size="13" font-weight="700">new</text>
+      <rect class="tlp-box green" x="20" y="106" width="54" height="36" rx="4"/><text class="tlp-green" x="47" y="129" text-anchor="middle" font-size="13" font-weight="700">new</text>
+      <rect class="tlp-box green" x="84" y="106" width="54" height="36" rx="4"/><text class="tlp-green" x="111" y="129" text-anchor="middle" font-size="13" font-weight="700">new</text>
+      <rect class="tlp-box green" x="148" y="106" width="54" height="36" rx="4"/><text class="tlp-green" x="175" y="129" text-anchor="middle" font-size="13" font-weight="700">new</text>
+      <rect class="tlp-box red" x="212" y="106" width="54" height="36" rx="4"/><text class="tlp-red" x="239" y="129" text-anchor="middle" font-size="13" font-weight="700">old</text>
+      <text class="tlp-text" x="20" y="170" font-size="13" font-weight="700">one flag, two meanings:</text>
+      <text class="tlp-green" x="20" y="188" font-size="12">7 servers: handle a retail liquidity order</text>
+      <text class="tlp-red" x="20" y="205" font-size="12">1 server: run the old Power Peg code</text>
+      <text class="tlp-red" x="20" y="228" font-size="14" font-weight="700">≈ $440m lost in ≈ 45 minutes</text>
+      <line class="tlp-line dash" x1="300" y1="12" x2="300" y2="230"/>
+      <text class="tlp-green" x="320" y="26" font-size="14" font-weight="700">One versioned source of truth</text>
+      <rect class="tlp-box blue" x="320" y="44" width="262" height="30" rx="5"/><text class="tlp-text" x="451" y="64" text-anchor="middle" font-size="13" font-weight="700">raw ticks + corp. actions</text>
+      <line class="tlp-line" x1="451" y1="74" x2="451" y2="86"/><path class="tlp-arrow" d="M446,84 l5,7 l5,-7 z"/>
+      <rect class="tlp-box blue" x="320" y="92" width="262" height="30" rx="5"/><text class="tlp-text" x="451" y="112" text-anchor="middle" font-size="13" font-weight="700">clean · code v3.2.1</text>
+      <line class="tlp-line" x1="451" y1="122" x2="451" y2="134"/><path class="tlp-arrow" d="M446,132 l5,7 l5,-7 z"/>
+      <rect class="tlp-box blue" x="320" y="140" width="262" height="30" rx="5"/><text class="tlp-text" x="451" y="160" text-anchor="middle" font-size="13" font-weight="700">adjust · code v1.4.0</text>
+      <line class="tlp-line" x1="451" y1="170" x2="451" y2="182"/><path class="tlp-arrow" d="M446,180 l5,7 l5,-7 z"/>
+      <rect class="tlp-box green" x="320" y="188" width="262" height="30" rx="5"/><text class="tlp-green" x="451" y="208" text-anchor="middle" font-size="13" font-weight="700">adjusted close · schema v2</text>
+      <text class="tlp-text2" x="451" y="234" text-anchor="middle" font-size="12">everyone reads it; anyone can rebuild it</text>
+    </svg>
+    <figcaption>On the left, one component existed in two versions and a field meant two things, with nothing to catch it. On the right, one pipeline owns the value, every stage carries its code version, and the output carries its schema version, so the value can be traced and rebuilt.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Data architecture sounds like plumbing. Why should a trader care?</p>
+      <p data-who="Quant">Because when the plumbing leaks, it looks exactly like your edge dying. A slow pipeline bug and real alpha decay draw the same equity curve.</p>
+      <p data-who="Trader">How does a pipeline go bad without anyone noticing?</p>
+      <p data-who="Quant">The commonest way is two copies of the same sum. Say research and risk each build their own adjusted close from the same raw feed. On day one they match.</p>
+      <p data-who="Trader">And then?</p>
+      <p data-who="Quant">Research fixes how it handles a rare zero-volume day. Risk changes how it rounds a dividend factor. Each change is sensible. Two years later the numbers disagree, and nobody can say why.</p>
+      <p data-who="Trader">So keep one copy.</p>
+      <p data-who="Quant">One authoritative pipeline that everyone reads. And a record of which raw inputs and which code version made every value, so you can rebuild it months later.</p>
+      <p data-who="Trader">What's the other trap?</p>
+      <p data-who="Quant">A field that changes meaning without a label. A spread column has always been in basis points. A typical reading is one point eight. Someone switches it to a decimal fraction, so the same spread is now zero point zero zero zero one eight.</p>
+      <p data-who="Trader">And the cost model still thinks it's basis points.</p>
+      <p data-who="Quant">So it understates every cost by a factor of ten thousand. No error, no crash. The backtest just turns quietly optimistic from that day on.</p>
+      <p data-who="Trader">Has that kind of thing ever blown up for real?</p>
+      <p data-who="Quant">Knight Capital, the first of August twenty twelve. Their order router ran on eight servers. New code reached seven. The eighth kept the old code.</p>
+      <p data-who="Trader">And that mattered because?</p>
+      <p data-who="Quant">The new code reused a flag. On seven servers it meant a new kind of retail order. On the eighth it still meant run an old function called Power Peg, which could no longer see its fills. So it kept sending orders.</p>
+      <p data-who="Trader">How bad?</p>
+      <p data-who="Quant">About four hundred and forty million dollars in roughly forty-five minutes. And when they rolled back the new code, all eight servers started behaving like the stale one.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">One source for every number, a version on every stage and every field, and when performance slips, rule out the plumbing before you blame the market.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -153,6 +212,30 @@
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Data lineage, audit trails, and schema versioning</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the rule build</div>
+    <div class="tl-eqbuild-title">What one stored value really depends on, one piece at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{adjusted close} = f(\color{#fbbf24}{\text{raw ticks}}) \]</div>
+      <p>Every stored value is a function of raw inputs. Start with the tick feed, as delivered by its vendor on that date.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{adjusted close} = f(\text{raw ticks},\ \color{#fbbf24}{\text{corp. actions}}) \]</div>
+      <p>Add the second input: the corporate-action feed, with its split table. Change either input and the value changes.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{adjusted close} = \text{adjust}_{\color{#fbbf24}{v1.4.0}}\big(\text{clean}_{\color{#fbbf24}{v3.2.1}}(\text{raw ticks}),\ \text{corp. actions}\big) \]</div>
+      <p>The function is really two stages of code, each with a version. Fix a bug in either stage and the same inputs give a different output.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{adjusted close}_{\,\color{#fbbf24}{\text{schema } v2}} = \text{adjust}_{v1.4.0}\big(\text{clean}_{v3.2.1}(\text{raw ticks}),\ \text{corp. actions}\big) \]</div>
+      <p>Tag the output with the schema version: which columns exist, in which units. A reader can then tell if the meaning has changed.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\text{lineage} = (\text{raw ticks},\ \text{corp. actions},\ v3.2.1,\ v1.4.0,\ \text{schema } v2)} \]</div>
+      <p>Record all five and the value can be rebuilt exactly, months later. Lose any one and you are guessing.</p>
+    </div>
+  </div>
 
   <div class="tl-compare">
     <div class="tl-compare-card blue">
@@ -248,6 +331,10 @@
     member reasonably thought a fraction was the more standard unit, and updated the column in place
     without adding a version tag or renaming the column.
     </p>
+    <div class="tl-predict" data-answer="10000" data-tol="0" data-unit="×">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The cost model still reads the column as basis points. Where it used to see 1.8 it now sees 0.00018. By what factor does it now understate the cost of every trade? Type a plain number, no commas, then check it in the next paragraph.</div>
+      <div class="tl-predict-reveal"><p><strong>10,000 times.</strong> \(1.8 / 0.00018 = 10{,}000\), because one basis point is \(10^{-4}\). Nothing errors: the column has the same name and the same type, so the backtest simply becomes far too optimistic about costs from that day on. A version tag or a new name such as <code>spread_frac</code> would have turned the change into a visible break.</p></div>
+    </div>
     <p>
     A downstream cost model that reads this column and was built assuming basis points now silently
     understates every trade's assumed cost by a factor of roughly \(1.8/0.00018 = 10{,}000\) — treating
@@ -364,6 +451,12 @@
   </div>
   <!-- DESK:END -->
 
+  <!-- WB:data_architecture_storage_versioning:START -->
+  <div class="wb" id="wb-data_architecture_storage_versioning" data-title="Knight Capital: eight copies and one stale flag">
+    <script type="application/json">{"w":600,"h":730,"intro":"One firm, eight copies of one program, and a flag that meant two things. Then the same failure in slow motion. Press play, or step through.","steps":[{"cap":"1 August 2012. The New York Stock Exchange launches its Retail Liquidity Program, and Knight Capital updates its automated order router to support it. The router runs on eight servers.","do":[{"note":"t","x":300,"y":22,"text":"Knight Capital's order router: eight servers","size":19,"anchor":"middle"},{"box":"s0","x":20,"y":46,"w":58,"h":50,"text":"1","size":20},{"box":"s1","x":92,"y":46,"w":58,"h":50,"text":"2","size":20},{"box":"s2","x":164,"y":46,"w":58,"h":50,"text":"3","size":20},{"box":"s3","x":236,"y":46,"w":58,"h":50,"text":"4","size":20},{"box":"s4","x":308,"y":46,"w":58,"h":50,"text":"5","size":20},{"box":"s5","x":380,"y":46,"w":58,"h":50,"text":"6","size":20},{"box":"s6","x":452,"y":46,"w":58,"h":50,"text":"7","size":20},{"box":"s7","x":524,"y":46,"w":58,"h":50,"text":"8","size":20}]},{"cap":"A technician copies the new code to seven of the eight servers. The eighth keeps the old code. Nobody checks.","do":[{"chip":"n0","x":49,"y":120,"text":"new","tone":"green"},{"chip":"n1","x":121,"y":120,"text":"new","tone":"green"},{"chip":"n2","x":193,"y":120,"text":"new","tone":"green"},{"chip":"n3","x":265,"y":120,"text":"new","tone":"green"},{"chip":"n4","x":337,"y":120,"text":"new","tone":"green"},{"chip":"n5","x":409,"y":120,"text":"new","tone":"green"},{"chip":"n6","x":481,"y":120,"text":"new","tone":"green"},{"chip":"o7","x":553,"y":120,"text":"old","tone":"red"},{"pulse":"s7"}]},{"cap":"The new code reuses an old flag. On the seven updated servers, the flag now means: handle this as a Retail Liquidity order.","do":[{"note":"m1","x":20,"y":160,"text":"flag on 1–7: \"retail liquidity order\"","size":19,"anchor":"start","tone":"green"}]},{"cap":"On the eighth, the same flag still means \"run Power Peg\": an old function unused since 2003 but never removed. An earlier change had broken how Power Peg tracked filled orders.","do":[{"note":"m2","x":20,"y":192,"text":"flag on 8: \"run Power Peg\" (dead since 2003)","size":19,"anchor":"start","tone":"red"}]},{"cap":"Before the open, automated error emails go out. Nobody acts on them.","do":[{"icon":"mail","name":"warn","x":30,"y":208,"s":0.5,"tone":"amber","label":"error emails","lsize":17},{"note":"m3","x":110,"y":234,"text":"sent before the open: ignored","size":18,"anchor":"start","tone":"amber"}]},{"cap":"The market opens. Server 8 receives the flag, runs Power Peg, cannot see that its orders have filled, and keeps sending child orders, again and again.","do":[{"icon":"mkt","name":"globe","x":492,"y":214,"s":0.7,"tone":"blue","label":"the market","lsize":17},{"arrow":["s7","mkt"],"label":"orders","tone":"red","bend":-30}]},{"cap":"Staff try to stop it. They remove the new code from the seven good servers. Now all eight run the old code, all eight read the flag as Power Peg, and the fault spreads.","do":[{"hide":"n0"},{"hide":"n1"},{"hide":"n2"},{"hide":"n3"},{"hide":"n4"},{"hide":"n5"},{"hide":"n6"},{"chip":"r0","x":49,"y":120,"text":"old","tone":"red"},{"chip":"r1","x":121,"y":120,"text":"old","tone":"red"},{"chip":"r2","x":193,"y":120,"text":"old","tone":"red"},{"chip":"r3","x":265,"y":120,"text":"old","tone":"red"},{"chip":"r4","x":337,"y":120,"text":"old","tone":"red"},{"chip":"r5","x":409,"y":120,"text":"old","tone":"red"},{"chip":"r6","x":481,"y":120,"text":"old","tone":"red"},{"dim":"m1"},{"note":"m4","x":20,"y":306,"text":"rollback: old code + new meaning = 8 broken copies","size":18,"anchor":"start","tone":"red"}]},{"cap":"In about 45 minutes the router produces more than 4 million executions in 154 stocks, building billions of dollars of positions nobody wanted.","do":[{"box":"ex","x":20,"y":326,"w":270,"h":76,"text":"executions","tone":"red","sub":"0","size":19},{"count":"ex","from":0,"to":4,"dp":0,"suf":" million+","ms":1400},{"box":"st","x":310,"y":326,"w":270,"h":76,"text":"stocks hit","tone":"red","sub":"0","size":19},{"count":"st","from":0,"to":154,"dp":0,"ms":1400}]},{"cap":"The bill: about $440 million by the firm's own estimate that week; more than $460 million in the SEC's 2013 order, which also fined Knight $12 million. Knight needed emergency outside capital within days and was later acquired.","do":[{"chart":"loss","x":20,"y":418,"w":560,"h":214,"title":"Knight Capital, $ million","xd":[0.4,3.6],"yd":[0,520],"yt":[[0,"0"],[200,"200"],[400,"400"]],"xt":[[1,"loss, firm est."],[2,"loss, SEC 2013"],[3,"SEC fine"]],"pl":48},{"bars":"lb","chart":"loss","data":[[1,440,"≈ $440m","red"],[2,460,"> $460m","red"],[3,12,"$12m","amber"]],"bw":64,"ms":1100}]},{"cap":"The same failure in slow motion: a spread column switches from basis points to a fraction with no version tag. A cost model still reading 1.8 basis points as 0.00018 understates every cost 10,000 times, and nothing errors.","do":[{"note":"slow","x":300,"y":656,"text":"slow version: 1.8 bp stored as 0.00018\n→ costs read 10,000 times too small","size":18,"anchor":"middle","tone":"amber"}]},{"cap":"The fix is the same in both. One authoritative version, checked on every copy before it runs, and a version on the meaning of every field, so a rollback restores code and meaning together.","do":[{"note":"fix","x":300,"y":712,"text":"one version, checked everywhere, meaning included","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:data_architecture_storage_versioning:END -->
+
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -405,6 +498,19 @@
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>If your car starts getting worse gas mileage, that could mean the engine is genuinely wearing out — or it could mean your gas gauge is broken and lying to you. From the dashboard alone, both look exactly the same: the number just keeps getting worse. The only way to tell them apart is to actually check the engine and the gauge separately, not just stare harder at the dashboard. Same idea here — you have to check the data pipeline itself, not just squint at the declining performance chart.</p>
+  </div>
+
+  <div class="tl-drill" data-date="2012-08-01">
+    <div class="tl-drill-label">Scenario drill · 1 August 2012</div>
+    <h3>New router code, eight servers, and error emails before the open</h3>
+    <p>You run a large US equity market maker's automated order router. The New York Stock Exchange's new Retail Liquidity Program starts today, and new router code has been deployed for it. The router runs on eight servers. The new code reuses an old flag that once switched on a retired function. Before the open, automated emails start arriving that flag errors. The bell is minutes away. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Open on schedule. The deployment was checked on the servers you looked at.<div class="tl-drill-why">"The servers you looked at" is the gap. A copy you did not verify is a second version of the truth, and a reused flag means whatever the code on that copy says it means.</div></li>
+      <li data-verdict="good">Hold the router back until every server is confirmed on the same code version and the reused flag means the same thing everywhere.<div class="tl-drill-why">This treats the error emails as a version check failing. One authoritative version, verified on every copy before it trades, is the single-source-of-truth rule applied at market speed. Missing the first minutes of a new program costs little next to an unbounded order loop.</div></li>
+      <li data-verdict="bad">Open on schedule, and if anything misbehaves, roll every server back to the previous version.<div class="tl-drill-why">A rollback of code alone is only safe if the meaning of every flag rolls back with it. Here the old code would read the new flag as "run the retired function", so a rollback spreads the fault instead of removing it.</div></li>
+      <li data-verdict="ok">Open on schedule but with tight order-rate and position limits on the router.<div class="tl-drill-why">Limits shrink the damage, which is worth a lot. But you would still be trading on a version mismatch you were warned about, and hoping the limits catch whatever it does.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Knight Capital opened on schedule. The new code had reached seven of eight servers; on the eighth, the reused flag still started the old Power Peg function, which could no longer track fills and kept sending orders. The error emails were not acted on. Staff then removed the new code from the seven good servers, which made all eight behave like the stale one. In about 45 minutes the router produced more than 4 million executions in 154 stocks. The loss was about $440 million by the firm's own estimate; the SEC's 2013 order put it at more than $460 million and fined Knight $12 million. Knight needed emergency outside capital within days and was later acquired.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>
@@ -490,6 +596,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="data-pipeline-raw-to-trading-ready.html">The Data Pipeline: Raw Feeds to Trading-Ready Data</a> <span>· the stages whose output this layer stores</span></li>
+        <li><a href="point-in-time-data-survivorship-bias.html">Point-in-Time Data &amp; Survivorship Bias</a> <span>· why every vintage has to be kept</span></li>
+        <li><a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> <span>· "the data hasn't changed" is rarely true</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="research-pipeline-hypothesis-to-backtest.html">The Research Pipeline: Hypothesis to Honest Backtest</a> <span>· pinning data, code and parameters together</span></li>
+        <li><a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> <span>· testing honestly on a pinned history</span></li>
+        <!-- DESK:START --><li><a href="action-edge-decay.html">When an Edge Has Stopped Working</a> <span>· once the pipeline is ruled out, is the edge really dead?</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> when a strategy starts slipping, versioned data is the only way to know whether the market changed or your numbers did.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="point-in-time-data-survivorship-bias.html">← Point-in-Time Data &amp; Survivorship Bias</a>
     <a href="../hub.html">Theory Lab hub →</a>
@@ -519,10 +646,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

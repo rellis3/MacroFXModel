@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Numerical Integration — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -252,7 +253,19 @@
       </div>
     </section>
 
+    <!-- WB:numerical_integration-deck:START -->
     <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Strips, parabolas and darts</h2>
+      <!-- WB:numerical_integration:START -->
+      <div class="wb" data-title="Strips, parabolas and darts">
+        <script type="application/json">{"w":600,"h":640,"intro":"An area under a curve, measured three ways: straight-topped strips, parabolas, and random darts. Then why the darts win once there are many dimensions. Press play, or step through.","steps":[{"cap":"Many prices and probabilities are an area under a curve. Here is the normal bell curve. The shaded area from 0 to 1 is the chance a standard normal lands there: Φ(1) − Φ(0) = 0.34134. Pretend we could not look it up.","do":[{"chart":"phi","x":10,"y":10,"w":400,"h":250,"title":"The normal density φ(z)","xd":[-0.3,1.3],"yd":[0,0.45],"yt":[[0.2,"0.2"],[0.4,"0.4"]],"xt":[[0,"z = 0"],[0.5,"0.5"],[1,"z = 1"]],"pl":48},{"series":"c","chart":"phi","pts":[[-0.3,0.3814],[-0.25,0.3867],[-0.2,0.391],[-0.15,0.3945],[-0.1,0.397],[-0.05,0.3984],[0.0,0.3989],[0.05,0.3984],[0.1,0.397],[0.15,0.3945],[0.2,0.391],[0.25,0.3867],[0.3,0.3814],[0.35,0.3752],[0.4,0.3683],[0.45,0.3605],[0.5,0.3521],[0.55,0.3429],[0.6,0.3332],[0.65,0.323],[0.7,0.3123],[0.75,0.3011],[0.8,0.2897],[0.85,0.278],[0.9,0.2661],[0.95,0.2541],[1.0,0.242],[1.05,0.2299],[1.1,0.2179],[1.15,0.2059],[1.2,0.1942],[1.25,0.1826],[1.3,0.1714]],"tone":"blue","ms":1100},{"gap":"area","chart":"phi","top":[[0.0,0.3989],[0.05,0.3984],[0.1,0.397],[0.15,0.3945],[0.2,0.391],[0.25,0.3867],[0.3,0.3814],[0.35,0.3752],[0.4,0.3683],[0.45,0.3605],[0.5,0.3521],[0.55,0.3429],[0.6,0.3332],[0.65,0.323],[0.7,0.3123],[0.75,0.3011],[0.8,0.2897],[0.85,0.278],[0.9,0.2661],[0.95,0.2541],[1.0,0.242]],"bot":[[0,0],[1,0]],"tone":"blue","op":0.18},{"box":"est","x":420,"y":40,"w":170,"h":76,"text":"area estimate","tone":"blue","sub":"true: 0.34134","size":18}]},{"cap":"The trapezoidal rule: replace the curve with a straight line and measure the trapezoid. One strip gives 0.32046, short by 0.02089. The straight top cuts off the bulge of the curve.","do":[{"series":"t1","chart":"phi","pts":[[0,0],[0,0.3989],[1,0.242],[1,0]],"tone":"amber","ms":900},{"sub":"est","text":"1 strip: 0.32046"},{"chart":"err","x":10,"y":275,"w":285,"h":230,"title":"Error, in thousandths","xd":[0.4,5.6],"yd":[0,24],"yt":[[10,"10"],[20,"20"]],"xt":[[1,"n=1"],[2,"2"],[3,"4"],[4,"8"],[5,"S4"]],"pl":52},{"bars":"e1","chart":"err","data":[[1,20.89,"20.9","amber"]],"bw":30}]},{"cap":"Two strips of half the width: 0.33626, short by 0.00508. Halving the width cut the error to about a quarter.","do":[{"hide":"t1"},{"series":"t2","chart":"phi","pts":[[0,0],[0.0,0.3989],[0.5,0.3521],[0.5,0],[0.5,0.3521],[1.0,0.242],[1.0,0]],"tone":"amber","ms":1000},{"sub":"est","text":"2 strips: 0.33626"},{"bars":"e2","chart":"err","data":[[2,5.08,"5.1","amber"]],"bw":30}]},{"cap":"Four strips, h = 0.25: the lesson's worked example, 0.34008, short by 0.00126. A quarter again. That is the O(h²) rule: halve the step, quarter the error.","do":[{"hide":"t2"},{"series":"t4","chart":"phi","pts":[[0,0],[0.0,0.3989],[0.25,0.3867],[0.25,0],[0.25,0.3867],[0.5,0.3521],[0.5,0],[0.5,0.3521],[0.75,0.3011],[0.75,0],[0.75,0.3011],[1.0,0.242],[1.0,0]],"tone":"amber","ms":1100},{"sub":"est","text":"4 strips: 0.34008"},{"bars":"e3","chart":"err","data":[[3,1.26,"1.3","amber"]],"bw":30}]},{"cap":"Eight strips: 0.34103, short by 0.00032. Still a quarter each time.","do":[{"bars":"e4","chart":"err","data":[[4,0.32,"0.3","amber"]],"bw":30}]},{"cap":"Simpson's rule fits a parabola through every three points instead of a straight line. With the same four strips it gives 0.34136, off by only 0.00001: a hundred times closer than the trapezoids, for the same five points. Its error shrinks with h⁴.","do":[{"dim":"t4"},{"sub":"est","text":"Simpson, 4: 0.34136"},{"bars":"e5","chart":"err","data":[[5,0.01,"0.01","green"]],"bw":30},{"pulse":"c"}]},{"cap":"Monte Carlo throws darts instead. Pick 12 random points between 0 and 1, read the curve's height at each, and average. Average height times width 1 is the area. This illustrative draw gives 0.34393.","do":[{"hide":"t4"},{"dot":"d0","chart":"phi","at":[0.134,0.3954],"text":"","tone":"purple","r":4.5},{"dot":"d1","chart":"phi","at":[0.847,0.2787],"text":"","tone":"purple","r":4.5},{"dot":"d2","chart":"phi","at":[0.764,0.298],"text":"","tone":"purple","r":4.5},{"dot":"d3","chart":"phi","at":[0.255,0.3862],"text":"","tone":"purple","r":4.5},{"dot":"d4","chart":"phi","at":[0.495,0.3529],"text":"","tone":"purple","r":4.5},{"dot":"d5","chart":"phi","at":[0.449,0.3607],"text":"","tone":"purple","r":4.5},{"dot":"d6","chart":"phi","at":[0.652,0.3226],"text":"","tone":"purple","r":4.5},{"dot":"d7","chart":"phi","at":[0.789,0.2922],"text":"","tone":"purple","r":4.5},{"dot":"d8","chart":"phi","at":[0.094,0.3972],"text":"","tone":"purple","r":4.5},{"dot":"d9","chart":"phi","at":[0.028,0.3988],"text":"","tone":"purple","r":4.5},{"dot":"d10","chart":"phi","at":[0.836,0.2813],"text":"","tone":"purple","r":4.5},{"dot":"d11","chart":"phi","at":[0.433,0.3632],"text":"","tone":"purple","r":4.5},{"sub":"est","text":"12 darts: 0.34393"}]},{"cap":"That draw landed close by luck. With 12 darts the typical error is about 0.014, ten times the four-strip trapezoid's. Monte Carlo error shrinks like 1 over the square root of N: four times the darts for half the error. In one dimension, the grid wins easily.","do":[{"note":"mcse","x":505,"y":160,"text":"typical error\n≈ 0.014\nat N = 12","size":18,"anchor":"middle","tone":"purple"}]},{"cap":"Now add dimensions. A grid with 10 points per axis needs 10 points in one dimension, 100 in two, 1,000 in three, and 10 billion in ten. A basket on ten underlyings is a ten-dimensional integral.","do":[{"chart":"dim","x":305,"y":275,"w":285,"h":230,"title":"Grid points (log scale)","xd":[0.4,5.6],"yd":[0,11],"yt":[[1,"10"],[3,"10³"],[6,"10⁶"],[10,"10¹⁰"]],"xt":[[1,"d=1"],[2,"2"],[3,"3"],[5,"10"]],"pl":52},{"bars":"g","chart":"dim","data":[[1,1,"10","red"],[2,2,"100","red"],[3,3,"1,000","red"],[5,10,"10 billion","red"]],"bw":30,"ms":1300}]},{"cap":"Monte Carlo's cost does not care. A million random draws in ten dimensions is still a million draws, and the error still shrinks like 1 over the square root of N.","do":[{"series":"mc","chart":"dim","pts":[[0.5,6],[5.5,6]],"tone":"green","dash":true,"ms":600,"label":"Monte Carlo: 1 million draws","lat":[0.6,6],"ldx":0,"ldy":-14,"lanchor":"start"}]},{"cap":"So the rule of thumb: one or two smooth dimensions, use quadrature like Simpson's rule; many dimensions, simulate. Either way, the answer is only as good as the curve you hand it.","do":[{"box":"rule","x":10,"y":520,"w":580,"h":110,"text":"one or two dimensions: quadrature\nmany dimensions: Monte Carlo","tone":"green","size":20}]}]}</script>
+      </div>
+      <!-- WB:numerical_integration:END -->
+    </section>
+    <!-- WB:numerical_integration-deck:END -->
+
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Where practitioners actually reach for each</h2>
       <div class="sl-icard-grid">
@@ -266,7 +279,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this goes wrong in practice</h2>
       <div class="sl-icard-grid">
@@ -282,7 +295,7 @@
 <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -333,7 +346,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -473,5 +486,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

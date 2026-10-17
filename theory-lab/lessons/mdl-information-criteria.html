@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Minimum Description Length &amp; Information Criteria — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,56 @@
     <li>How it reached trading: Rissanen's 1978 MDL criterion matches BIC, and mainly reached markets through BIC-style lag, factor and regime choices — plus the habit of asking whether a backtest compresses the data or memorises it.</li>
   </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two stacked bars from the worked example, measured in bits. Model A, with 2 parameters, costs 6.6 bits to state and 72.1 bits for what it leaves unexplained, 78.78 bits in total. Model B, with 5 parameters, costs 16.6 bits to state and 67.8 bits for its leftovers, 84.42 bits in total. Model B's three extra parameters cost 9.97 bits and save only 8.66, so Model A gives the shorter message, the same choice BIC makes.">
+      <text class="tlp-text2" x="20" y="36" font-size="13" font-weight="700">Model A · 2 parameters</text>
+      <text class="tlp-green" x="540" y="36" text-anchor="end" font-size="14" font-weight="700">78.78 bits</text>
+      <rect class="tlp-box amber" x="20" y="44" width="43.8" height="36" rx="3"/>
+      <rect class="tlp-box blue" x="63.8" y="44" width="476.2" height="36" rx="3"/>
+      <text class="tlp-amber" x="41.9" y="67" text-anchor="middle" font-size="12" font-weight="700">6.6</text>
+      <text class="tlp-blue" x="302" y="67" text-anchor="middle" font-size="13" font-weight="700">72.1 bits the model leaves unexplained</text>
+      <text class="tlp-text2" x="20" y="114" font-size="13" font-weight="700">Model B · 5 parameters</text>
+      <text class="tlp-red" x="577" y="114" text-anchor="end" font-size="14" font-weight="700">84.42 bits</text>
+      <rect class="tlp-box amber" x="20" y="122" width="109.6" height="36" rx="3"/>
+      <rect class="tlp-box blue" x="129.6" y="122" width="447.5" height="36" rx="3"/>
+      <text class="tlp-amber" x="74.8" y="145" text-anchor="middle" font-size="13" font-weight="700">16.6 model</text>
+      <text class="tlp-blue" x="353" y="145" text-anchor="middle" font-size="13" font-weight="700">67.8 bits left unexplained</text>
+      <rect class="tlp-box amber" x="20" y="176" width="12" height="12" rx="2"/>
+      <text class="tlp-text3" x="38" y="186" font-size="12">bits to state the model</text>
+      <rect class="tlp-box blue" x="200" y="176" width="12" height="12" rx="2"/>
+      <text class="tlp-text3" x="218" y="186" font-size="12">bits for what it leaves over</text>
+      <text class="tlp-red" x="20" y="208" font-size="13" font-weight="700">B's 3 extra parameters cost 9.97 bits and save only 8.66</text>
+      <text class="tlp-green" x="20" y="226" font-size="13" font-weight="700">shortest total message wins: Model A, the same pick as BIC</text>
+    </svg>
+    <figcaption>Occam's razor with a ruler. Every parameter has to be written down, and it only earns its place if it shortens the leftovers by more than it costs. Here it does not, so the simpler model sends the shorter message.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Every time I add a rule to a strategy, the backtest gets better. When should I stop?</p>
+      <p data-who="Quant">Here's one way to think about it. Imagine you have to send your model and your data to someone over a slow line, and you pay for every bit.</p>
+      <p data-who="Trader">Why would that help?</p>
+      <p data-who="Quant">Because you send two things. First the model itself, every rule and parameter. Then whatever the model fails to explain, the leftovers. A good model is cheap to state and leaves small leftovers. The best model is the one with the shortest total message.</p>
+      <p data-who="Trader">And a model with a parameter for every quirk?</p>
+      <p data-who="Quant">Its leftovers are tiny, but the model itself is expensive to write down. Memorising the data is often the longest message of all.</p>
+      <p data-who="Trader">How much does one parameter cost?</p>
+      <p data-who="Quant">Jorma Rissanen, a compression engineer at IBM, worked that out in 1978. You only need to state a parameter as precisely as your data can pin it down. That comes to about half the base-two log of the sample size, in bits. With a hundred observations, about three and a third bits per parameter.</p>
+      <p data-who="Trader">Give me the comparison.</p>
+      <p data-who="Quant">A hundred observations. Model A has two parameters. It costs about six and a half bits to state and leaves seventy-two bits of leftovers. About seventy-nine in total. Model B has five parameters and fits better. Its leftovers drop to about sixty-eight bits, but stating it costs over sixteen. About eighty-four in total.</p>
+      <p data-who="Trader">So the three extra parameters lose.</p>
+      <p data-who="Quant">They cost about ten bits to write down and save fewer than nine. A losing trade, in bits.</p>
+      <p data-who="Trader">This sounds a lot like BIC.</p>
+      <p data-who="Quant">It is BIC. Multiply the message length by a fixed constant, about one point four, and you get BIC exactly: one hundred and nine for Model A, one hundred and seventeen for Model B. Gideon Schwarz got BIC from Bayesian probability in 1978. Rissanen got the same penalty from compression, the same year, independently.</p>
+      <p data-who="Trader">Two roads, one answer.</p>
+      <p data-who="Quant">Which is good evidence the penalty measures something real. Two cautions, though. The shortest message is only the best of the models you tried, not the true model. And this exact match is with BIC, not AIC.</p>
+      <p data-who="Trader">So what do I ask of my next backtest?</p>
+      <p data-who="Quant">The one-line version: does this model compress the data, or does it just memorise it? Every parameter has to pay for itself in bits.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -107,6 +158,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From "shortest message" to BIC, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ DL(M) = \color{#fbbf24}{L(M)} \]</div>
+      <p>First you pay to state the model: its form and its fitted parameters.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ DL(M) = L(M) + \color{#fbbf24}{L(D \mid M)} \]</div>
+      <p>Then you pay to state what the model leaves unexplained. A better fit means fewer bits here.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ DL(M) = L(M) + \color{#fbbf24}{\bigl(-\log_2 \hat L(M)\bigr)} \]</div>
+      <p>Shannon's coding theorem prices the leftovers: the shortest code for the data is minus the log of its likelihood under the model. For Model A that is \(50/\ln 2 \approx 72.135\) bits.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ DL(M) = \color{#fbbf24}{\frac{k}{2}\log_2(n)} + \bigl(-\log_2 \hat L(M)\bigr) \]</div>
+      <p>Rissanen prices the model: each of \(k\) parameters, stated only as precisely as \(n\) observations allow, costs about \(\tfrac12\log_2 n\) bits. With \(n = 100\) and \(k = 2\), that is 6.644 bits, so \(DL(M_A) \approx 78.779\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{2\ln(2)\cdot DL(M) = k\ln(n) - 2\ln\hat L(M) = \text{BIC}(M)} \]</div>
+      <p>Rescale bits to the BIC convention with the fixed constant \(2\ln 2 \approx 1.386\), and the message length is BIC exactly: \(1.386 \times 78.779 \approx 109.21\). Same argmin, so the same model wins.</p>
+    </div>
+  </div>
 
   <h3>The two-part code</h3>
   <p>
@@ -304,6 +379,10 @@
       feel how many extra bits of residual fit a model needs to save to earn
       back the bits its extra parameters cost to state.
     </p>
+    <div class="tl-predict" data-answer="86.2" data-tol="1" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Model B's three extra parameters cost about 9.97 bits to state, so B loses at \(-2\ln\hat L_B = 94\). How low would Model B's \(-2\ln\hat L\) have to fall before Model B gives the shorter message? Lock in a guess, then try values in the "Model B: \(-2\ln\hat L\)" field below to find the switch point.</div>
+      <div class="tl-predict-reveal"><p><strong>About 86.2.</strong> Model B wins once its fit saves more bits than its extra parameters cost: \((100 - x)/(2\ln 2) > 3 \times \tfrac12\log_2 100 \approx 9.97\), so \(100 - x > 13.8\) and \(x < 86.2\). Type 86 and Model B wins by 0.13 bits; type 87 and Model A still wins. In BIC units each extra parameter must buy \(\ln 100 \approx 4.6\) points of fit. Now set \(n\) to 1000 and see how much higher the bar gets.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>n (observations)</span></div>
@@ -364,6 +443,12 @@
     winner here: Model A.
     </div>
   </div>
+
+  <!-- WB:mdl_information_criteria:START -->
+  <div class="wb" id="wb-mdl_information_criteria" data-title="MDL: the shortest message wins">
+    <script type="application/json">{"w":600,"h":790,"intro":"Occam's razor with a ruler: send a model and its data down a wire, paying for every bit. The lesson's own two models. Press play, or step through.","steps":[{"cap":"You must send a model, and the data it describes, to someone over a slow wire. You pay for every bit. Whoever sends the shorter total message wins.","do":[{"icon":"snd","name":"person","x":30,"y":8,"s":0.7,"tone":"blue","label":"you","lsize":17},{"icon":"rcv","name":"person","x":500,"y":8,"s":0.7,"tone":"blue","label":"receiver","lsize":17},{"arrow":["snd","rcv"],"label":"pay per bit","tone":"amber"}]},{"cap":"Model A has 2 parameters, fitted to 100 observations. Stating each one as precisely as 100 points allow costs ½ log₂ 100 ≈ 3.32 bits, so 6.64 bits for the model.","do":[{"chart":"dl","x":10,"y":130,"w":370,"h":350,"title":"Message length, bits","xd":[0,3],"yd":[0,95],"yt":[[0,"0"],[40,"40"],[80,"80"]],"xt":[[0.95,"Model A"],[2.05,"Model B"]],"pl":46},{"gap":"am","chart":"dl","top":[[0.6,6.644],[1.3,6.644]],"bot":[[0.6,0],[1.3,0]],"tone":"amber","op":0.55},{"note":"aml","chart":"dl","at":[1.35,3.322],"text":"6.64","tone":"amber","size":16,"anchor":"start","dx":0,"dy":0}]},{"cap":"Then the leftovers: whatever Model A does not explain, priced by Shannon's rule at 72.14 bits. Total for Model A: 78.78 bits.","do":[{"gap":"ad","chart":"dl","top":[[0.6,78.77900000000001],[1.3,78.77900000000001]],"bot":[[0.6,6.644],[1.3,6.644]],"tone":"blue","op":0.55},{"note":"at","chart":"dl","at":[0.95,78.78],"text":"78.78","tone":"green","size":18,"anchor":"middle","dx":0,"dy":-14},{"note":"adl","chart":"dl","at":[0.95,42.7115],"text":"72.14\nleftover","tone":"blue","size":16,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Model B has 5 parameters. Writing them down costs 2.5 × 6.64 = 16.61 bits, more than double Model A's.","do":[{"gap":"bm","chart":"dl","top":[[1.7,16.61],[2.4,16.61]],"bot":[[1.7,0],[2.4,0]],"tone":"amber","op":0.55},{"note":"bml","chart":"dl","at":[2.45,8.305],"text":"16.61","tone":"amber","size":16,"anchor":"start","dx":0,"dy":0}]},{"cap":"Model B fits better, so its leftovers are shorter: 67.81 bits. But its total is 84.42 bits, longer than Model A's.","do":[{"gap":"bd","chart":"dl","top":[[1.7,84.417],[2.4,84.417]],"bot":[[1.7,16.61],[2.4,16.61]],"tone":"blue","op":0.55},{"note":"bt","chart":"dl","at":[2.05,84.42],"text":"84.42","tone":"red","size":18,"anchor":"middle","dx":0,"dy":-14},{"note":"bdl","chart":"dl","at":[2.05,50.5135],"text":"67.81\nleftover","tone":"blue","size":16,"anchor":"middle","dx":0,"dy":0}]},{"cap":"The trade: three extra parameters cost 9.97 bits to state and saved only 8.66 bits of leftovers. A losing trade, so Model A sends the shorter message.","do":[{"box":"tr","x":400,"y":130,"w":190,"h":160,"text":"3 extra params\n+9.97 bits to state\n−8.66 bits leftover\n→ A wins","tone":"red","size":18},{"pulse":"at"}]},{"cap":"Why ½ log₂ n per parameter? More data pins a parameter down more finely, so stating it to that precision costs a little more. The cost grows slowly with the sample size.","do":[{"chart":"pc","x":10,"y":500,"w":370,"h":280,"title":"Bits per parameter, ½ log₂ n","xd":[1,4],"yd":[0,7.5],"yt":[[0,"0"],[3.32,"3.32"],[6.64,"6.64"]],"xt":[[1,"10"],[2,"100"],[3,"1,000"],[4,"10,000"]],"pl":50},{"series":"pcs","chart":"pc","pts":[[1.0,1.661],[1.1,1.827],[1.2,1.993],[1.3,2.159],[1.4,2.325],[1.5,2.491],[1.6,2.658],[1.7,2.824],[1.8,2.99],[1.9,3.156],[2.0,3.322],[2.1,3.488],[2.2,3.654],[2.3,3.82],[2.4,3.986],[2.5,4.152],[2.6,4.319],[2.7,4.485],[2.8,4.651],[2.9,4.817],[3.0,4.983],[3.1,5.149],[3.2,5.315],[3.3,5.481],[3.4,5.647],[3.5,5.813],[3.6,5.979],[3.7,6.146],[3.8,6.312],[3.9,6.478],[4.0,6.644]],"tone":"purple","ms":1300},{"dot":"p100","chart":"pc","at":[2,3.322],"text":"n = 100","tone":"purple","dx":10,"dy":12,"anchor":"start"}]},{"cap":"Now multiply each message length by a fixed constant, 2 ln 2 ≈ 1.386. Model A: 78.78 × 1.386 = 109.21. Model B: 84.42 × 1.386 = 117.03.","do":[{"box":"bic","x":400,"y":310,"w":190,"h":170,"text":"× 2 ln 2 ≈ 1.386\nA: 109.21\nB: 117.03","tone":"purple","size":19}]},{"cap":"Those are exactly the two models' BIC values. Shortest message and lowest BIC are the same number, rescaled, so they always pick the same model.","do":[{"note":"eq","x":300,"y":118,"text":"BIC = 2 ln 2 × message length","size":20,"anchor":"middle","tone":"purple"},{"pulse":"bic"}]},{"cap":"Two roads, one answer. Schwarz got BIC from Bayesian probability in 1978. Rissanen got the same penalty from compression the same year, independently.","do":[{"box":"sch","x":400,"y":500,"w":190,"h":130,"text":"Schwarz 1978:\nBayes","tone":"blue","size":19},{"box":"ris","x":400,"y":650,"w":190,"h":130,"text":"Rissanen 1978:\ncompression","tone":"green","size":19}]},{"cap":"Two cautions. The shortest message is only the best of the models you tried, not the true model. And this exact match is with BIC, not AIC.","do":[{"hide":"eq"},{"note":"cv","x":300,"y":118,"text":"best among candidates, not \"true\"","size":20,"anchor":"middle","tone":"amber"}]},{"cap":"The question to ask of any backtest: does it compress the data, or just memorise it? Every parameter has to pay for itself in bits.","do":[{"hide":"cv"},{"note":"q","x":300,"y":118,"text":"compress, or memorise?","size":22,"anchor":"middle","tone":"green"},{"pulse":"tr"}]}]}</script>
+  </div>
+  <!-- WB:mdl_information_criteria:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -453,6 +538,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative model review</div>
+    <h3>One lag or five for a mean-reversion spread?</h3>
+    <p>You have 100 days of a mean-reversion spread and two autoregressive models. The 5-lag model fits better in sample. Its four extra coefficients would cost about 13.3 bits to state at the precision 100 days support, and they cut the bits needed for the leftovers by about 8.66. BIC prefers the 1-lag model by about 7.8 points. Which model do you take forward, and what do you say about it?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">The 5-lag model. It fits the data better, and fit is what matters.<div class="tl-drill-why">In-sample fit always improves when you add parameters. The extra lags cost more bits to write down than they save, which is the signature of describing this sample's quirks rather than the spread's behaviour.</div></li>
+      <li data-verdict="good">The 1-lag model, as the shortest total description among the two you compared, then check it out of sample.<div class="tl-drill-why">This is what both MDL and BIC say, and it states the claim at its true size: the best compression of this data among the candidates tried. The out-of-sample check is the next test, not something the code length already proves.</div></li>
+      <li data-verdict="ok">The 1-lag model, described in the write-up as the true model of the spread.<div class="tl-drill-why">Right model, wrong claim. A shorter code is a relative verdict among the models you compared. It does not certify that the winner is correct, or that it carries a trading edge.</div></li>
+      <li data-verdict="bad">Switch to AIC, which penalises parameters less, and keep the 5-lag model if AIC prefers it.<div class="tl-drill-why">Choosing the criterion after seeing which answer you like is a hidden form of overfitting. AIC also targets a different question, expected out-of-sample KL divergence, so the exact coding argument here does not carry over to it.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson says.</strong> This is an illustrative case built on the lesson's own lag-selection scenario, not a dated episode. Describing the four extra lag coefficients costs more bits than the story they tell about the spread is worth, so the 1-lag model is the shorter message, the same verdict BIC gives. It wins among the candidates compared; whether it holds up is a question for out-of-sample data.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -497,6 +595,26 @@
     <li>Thomas M. Cover &amp; Joy A. Thomas, <em>Elements of Information Theory</em> (2nd ed., Wiley, 2006) — Chapter 5 (data compression) and its coverage of the relationship between coding theory and statistical model selection.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="model-selection-aic-bic.html">Model Selection: AIC &amp; BIC</a> <span>· the BIC this lesson rederives from coding</span></li>
+        <li><a href="entropy-kl-mutual-information.html">Entropy, KL Divergence &amp; Mutual Information</a> <span>· why the shortest code is minus the log of the probability</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> <span>· the out-of-sample check a short code does not replace</span></li>
+        <li><a href="sharpe-family-deflated.html">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a> <span>· charging a backtest for the trials behind it</span></li>
+        <li><a href="change-point-detection.html">Change-Point Detection</a> <span>· one place MDL is used to split a series into regimes</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a strategy with enough rules can fit any history, and this gives you a concrete test for whether it learned something or just memorised the past.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="transfer-entropy-causality.html">← Transfer Entropy &amp; Information-Theoretic Causality</a>
@@ -580,9 +698,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

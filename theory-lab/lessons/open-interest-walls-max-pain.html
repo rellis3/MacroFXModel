@@ -42,6 +42,66 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The lesson's seven-strike chain read as a map. A U-shaped curve shows the total payout option writers would owe if the instrument settled at each strike: 204,000 at 235, 127,500 at 240, 89,500 at 245, a minimum of 74,500 at 250, 83,000 at 255, 113,500 at 260 and 191,000 at 265. The put wall sits at 240 with 6,500 puts, the call wall at 260 with 7,800 calls, and spot is near 255. Max pain, the minimum, is at 250: neither wall.">
+      <text class="tlp-text3" x="20" y="14" font-size="12">writers' total payout if it settles here</text>
+      <line class="tlp-line" x1="50" y1="200" x2="540" y2="200"/>
+      <line class="tlp-line red" x1="145" y1="38" x2="145" y2="200"/>
+      <line class="tlp-line blue" x1="445" y1="38" x2="445" y2="200"/>
+      <line class="tlp-line dash" x1="370" y1="38" x2="370" y2="200"/>
+      <text class="tlp-red" x="145" y="32" text-anchor="middle" font-size="13" font-weight="700">put wall 240</text>
+      <text class="tlp-blue" x="445" y="32" text-anchor="middle" font-size="13" font-weight="700">call wall 260</text>
+      <text class="tlp-text2" x="364" y="32" text-anchor="end" font-size="12">spot ≈ 255</text>
+      <polyline class="tlp-line purple thick" points="70,40.1 145,100 220,129.8 295,141.6 370,134.9 445,111 520,50.3"/>
+      <circle class="tlp-purple" cx="70" cy="40.1" r="4"/>
+      <circle class="tlp-purple" cx="145" cy="100" r="4"/>
+      <circle class="tlp-purple" cx="220" cy="129.8" r="4"/>
+      <circle class="tlp-green" cx="295" cy="141.6" r="7"/>
+      <circle class="tlp-purple" cx="370" cy="134.9" r="4"/>
+      <circle class="tlp-purple" cx="445" cy="111" r="4"/>
+      <circle class="tlp-purple" cx="520" cy="50.3" r="4"/>
+      <text class="tlp-purple" x="62" y="44" text-anchor="end" font-size="12">204k</text>
+      <text class="tlp-purple" x="508" y="54" text-anchor="end" font-size="12">191k</text>
+      <text class="tlp-green" x="295" y="166" text-anchor="middle" font-size="14" font-weight="700">max pain 250</text>
+      <text class="tlp-text2" x="295" y="183" text-anchor="middle" font-size="12">74,500, the minimum</text>
+      <text class="tlp-text3" x="70" y="218" text-anchor="middle" font-size="12">235</text>
+      <text class="tlp-text3" x="145" y="218" text-anchor="middle" font-size="12">240</text>
+      <text class="tlp-text3" x="220" y="218" text-anchor="middle" font-size="12">245</text>
+      <text class="tlp-text3" x="295" y="218" text-anchor="middle" font-size="12">250</text>
+      <text class="tlp-text3" x="370" y="218" text-anchor="middle" font-size="12">255</text>
+      <text class="tlp-text3" x="445" y="218" text-anchor="middle" font-size="12">260</text>
+      <text class="tlp-text3" x="520" y="218" text-anchor="middle" font-size="12">265</text>
+      <text class="tlp-text3" x="295" y="233" text-anchor="middle" font-size="12">settlement price (strike)</text>
+    </svg>
+    <figcaption>Two kinds of landmark on the same chain. The walls are the biggest single piles of open interest, either side of spot. Max pain is a whole-chain minimum, the price where writers as a group pay least, and it sits at neither wall. Both describe a snapshot of positions, not where price must go.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">An options chain is just a spreadsheet of strikes and open interest. What am I meant to see in it?</p>
+      <p data-who="Quant">A map. Every big number is a place where hedging flow can build up. The two landmarks people look for are the walls and max pain.</p>
+      <p data-who="Trader">Start with the walls.</p>
+      <p data-who="Quant">A wall is an outlier, not just a big number. In the lesson's chain, the two-sixty strike has seven thousand eight hundred calls, against two thousand two hundred next door. That's three and a half times, past the usual three-times bar, so it's the call wall. Below spot, two-forty has six thousand five hundred puts against two thousand six hundred: a put wall.</p>
+      <p data-who="Trader">And the usual read is a range between them.</p>
+      <p data-who="Quant">Roughly two-forty to two-sixty, while that open interest stays put. That last part matters more than people think.</p>
+      <p data-who="Trader">So what is max pain?</p>
+      <p data-who="Quant">A different idea. At expiry, option writers pay out on everything that finishes in the money. Pick a settlement price and add up what they'd owe across the whole chain. Do it at every strike. The cheapest one for the writers is max pain.</p>
+      <p data-who="Trader">Give me the number.</p>
+      <p data-who="Quant">Settle at two-fifty and the calls below cost thirty-four thousand, the puts above forty thousand five hundred. Seventy-four thousand five hundred in all, the lowest of any strike. So max pain is two-fifty. Notice it isn't either wall.</p>
+      <p data-who="Trader">And price gets pulled there into expiry?</p>
+      <p data-who="Quant">That's the folk claim. The logic is real, it's the outcome writers like best. But tests of max pain as a magnet haven't supported it. It describes who loses least. Nobody enforces it.</p>
+      <p data-who="Trader">What about walls breaking?</p>
+      <p data-who="Quant">Walls are snapshots. In the lesson's scenario the put wall holds once, then profit-taking thins it to about five thousand one hundred, and the next test goes straight through. The strike didn't change. The open interest did.</p>
+      <p data-who="Trader">And GameStop?</p>
+      <p data-who="Quant">January twenty twenty-one. Retail buyers piled into short-dated calls, the call walls were overrun and rebuilt higher within days, and the stock went from under twenty dollars to an intraday four hundred and eighty-three. Whether dealers hedging those calls drove it is still contested.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Walls and max pain tell you where positions sit today. Re-read them every session, and don't mistake them for a forecast.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -82,6 +142,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where max pain comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\max(0,\, S-k)} \]</div>
+      <p>Start with one call struck at \(k\). If the instrument settles at \(S\) above the strike, its writer pays \(S-k\); otherwise nothing.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{CallPain}(S) = \color{#fbbf24}{\sum_k \text{OI}_k^{\text{call}}} \times \max(0,\, S-k) \]</div>
+      <p>Multiply by the open interest at each strike and add across the whole chain: every call writer's bill at that one settlement price.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{TotalPain}(S) = \text{CallPain}(S) + \color{#fbbf24}{\sum_k \text{OI}_k^{\text{put}} \times \max(0,\, k-S)} \]</div>
+      <p>Add the mirror image for puts, which pay when the settlement is below the strike.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{TotalPain}(250) = 34{,}000 + 40{,}500 = \color{#10b981}{74{,}500 = \min_S \text{TotalPain}(S)} \]</div>
+      <p>Evaluate it at every strike and take the smallest. On the lesson's chain that is 250, so max pain is 250, sitting at neither wall.</p>
+    </div>
+  </div>
 
   <h3>Max pain — the correct aggregate formula</h3>
   <p>
@@ -400,6 +480,10 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
       field and both ratios recompute instantly against this lesson's
       "3×+ = strong wall" threshold from Step 1 above.
     </p>
+    <div class="tl-predict" data-answer="1.96" data-tol="0.1" data-unit="×">
+      <div class="tl-predict-q"><strong>Predict first.</strong> In the scenario below, profit-taking thins the 240 put wall from 6,500 to about 5,100 contracts, with 2,600 still next door. What ratio does the wall show now? Lock in a guess, then type 5100 into the "Put OI at candidate wall" field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 1.96×.</strong> \(5{,}100 / 2{,}600 \approx 1.96\): not even twice its neighbour, let alone the 3× bar. For the put side to count as a strong wall with 2,600 next door, it would need \(3 \times 2{,}600 = 7{,}800\) contracts. Try 7800 to see the verdict flip, then cut the call wall's 7,800 by a third and watch it fall below the bar too.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Call OI at candidate wall</span></div>
@@ -625,6 +709,19 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
     <p>A wall is like a crowd standing near a doorway — it only actually blocks the door if those people are the type who'll rush to hold it shut. Some of the "crowd" counted in the open-interest number is really just people standing nearby for unrelated reasons (a static bet, a hedge on something else entirely) and won't lift a finger to defend the level. The headline number counts everyone; only some of them actually do the pushing.</p>
   </div>
 
+  <div class="tl-drill" data-date="2021-01-27">
+    <div class="tl-drill-label">Scenario drill · 27 January 2021</div>
+    <h3>The chain says one thing, the tape says another</h3>
+    <p>It is the evening of 27 January 2021. GameStop has gone from under \$20 at the start of the month to hundreds of dollars. Its short interest is reported above 100% of the free float, Melvin Capital has needed about \$2.75 billion from Citadel and Point72, and retail buyers keep piling into short-dated, out-of-the-money calls. A max-pain calculation for Friday's expiry sits far below the price, and there are big call walls above it. How do you use the chain for tomorrow?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Short the shares and wait for the price to drift down to max pain into Friday.<div class="tl-drill-why">Max pain only describes where writers would lose least, and tests of it as a magnet have not supported the pull. Here the chain is also rebuilt higher every day, and with short interest above the float you would be joining the most crowded side of the trade.</div></li>
+      <li data-verdict="bad">Write calls at the next big strike up, because a call wall is resistance.<div class="tl-drill-why">A call wall leans against a rally only when dealers are long those calls. Here customers bought them, so the writers who hedge are short them and must buy shares as price climbs toward the strike. Each strike was being overrun and rebuilt higher within days.</div></li>
+      <li data-verdict="good">Treat the chain as a snapshot that may be stale by the afternoon: stand aside, or keep any position small with risk you can define in advance.<div class="tl-drill-why">This is the lesson's own warning at its most extreme. Walls and max pain describe where positions sat this morning. When open interest is rebuilt daily and trading conditions can change overnight, neither one gives you a level you can lean on.</div></li>
+      <li data-verdict="ok">Buy the shares to ride the squeeze, with a stop below.<div class="tl-drill-why">The wall-break momentum read is a real one, and the call walls are a plausible accelerant. But how much of the buying was hedging has never been measured, and in a market this violent a stop can fill far from where you set it. Defensible only at a small size.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 28 January GameStop hit an intraday high of \$483. That day Robinhood and several other brokers restricted customers to selling the stock, not buying it; Robinhood said its clearing-house deposit requirement had jumped. The price fell sharply from its high. The SEC staff report in October 2021 attributed the rise mainly to a broad wave of buying, with short covering only a small part, and how much came from dealers hedging the calls they had written has never been measured in public. Nobody was enforcing any max-pain level.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -739,6 +836,26 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
     </ul>
   </div>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a> <span>· the hedging mechanism behind every wall</span></li>
+        <li><a href="options-four-positions.html">The Four Option Positions</a> <span>· who owes what at expiry</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="second-order-greeks.html">Second-Order Greeks: Vanna, Charm, Vomma &amp; More</a> <span>· why hedging flows shift into expiry</span></li>
+        <li><a href="theta-decay.html">Theta Decay</a> <span>· why option writers are paid to wait</span></li>
+        <li><a href="herding-narratives-bubbles.html">Herding, Narratives and Bubbles</a> <span>· the crowd side of January 2021</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> walls and max pain are on every options screen, and reading them as a snapshot of positions, not a forecast, keeps you out of the most common trap.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="gamma-exposure-dealer-hedging.html">← Gamma Exposure &amp; Dealer Hedging Flows</a>
     <a href="../hub.html">Theory Lab hub →</a>
@@ -831,7 +948,8 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Stochastic PDEs — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -181,7 +182,19 @@
       </div>
     </section>
 
+    <!-- WB:stochastic_pdes-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">SPDEs: the whole curve, and what a short-rate model keeps</h2>
+      <!-- WB:stochastic_pdes:START -->
+      <div class="wb" data-title="SPDEs: the whole curve, and what a short-rate model keeps">
+        <script type="application/json">{"w":600,"h":726,"intro":"One forward curve, from a single point to the whole moving band, and back down to a short-rate model. Press play, or step through.","steps":[{"cap":"Start with one number: the short rate, 3.00% in the lesson's example. A short-rate model like Vasicek or Hull-White watches only this point.","do":[{"chart":"fc","x":10,"y":10,"w":580,"h":270,"title":"Forward rate, % by tenor (years)","xd":[0,15],"yd":[2.5,4.9],"yt":[[3,"3%"],[4,"4%"]],"xt":[[0,"0"],[5,"5"],[10,"10"],[15,"15 yr"]],"pl":46,"pr":24},{"dot":"r0","chart":"fc","at":[0,3.0],"text":"short rate 3.00%","tone":"green","dx":12,"dy":12,"anchor":"start"}]},{"cap":"But the market has a rate for every maturity. Here is the lesson's forward curve: 3.80% at 5 years, 4.20% at 10, 4.35% at 15. The real object is this whole curve.","do":[{"series":"crv","chart":"fc","pts":[[0,3.0],[5,3.8],[10,4.2],[15,4.35]],"tone":"purple","ms":1200},{"dot":"r5","chart":"fc","at":[5,3.8],"text":"3.80%","tone":"blue","dx":6,"dy":18,"anchor":"start"},{"dot":"r10","chart":"fc","at":[10,4.2],"text":"4.20%","tone":"blue","dx":6,"dy":18,"anchor":"start"},{"dot":"r15","chart":"fc","at":[15,4.35],"text":"4.35%","tone":"blue","dx":-6,"dy":20,"anchor":"end"}]},{"cap":"The whole curve moves at once, like a rubber band flexing along its length. Here is one simulated year from the lesson, at three tenors. The front ranges from 2.94% to 3.20%; the 10-year only from 4.17% to 4.33%.","do":[{"chart":"pc","x":10,"y":296,"w":580,"h":250,"title":"Three tenors over one simulated year, %","xd":[0,1],"yd":[2.8,4.5],"yt":[[3,"3%"],[3.5,"3.5%"],[4,"4%"]],"xt":[[0,"0"],[0.5,"6 mo"],[1,"1 yr"]],"pl":56,"pr":20},{"series":"pf","chart":"pc","pts":[[0.0,3.0],[0.017,2.992],[0.034,3.031],[0.051,3.048],[0.068,3.051],[0.085,3.084],[0.102,3.023],[0.119,3.024],[0.136,2.943],[0.153,2.994],[0.169,3.008],[0.186,3.039],[0.203,3.003],[0.22,3.04],[0.237,2.982],[0.254,2.99],[0.271,3.009],[0.288,2.974],[0.305,3.003],[0.322,2.958],[0.339,3.039],[0.356,3.115],[0.373,3.079],[0.39,3.076],[0.407,3.111],[0.424,3.139],[0.441,3.084],[0.458,3.075],[0.475,3.055],[0.492,3.02],[0.508,3.018],[0.525,3.077],[0.542,3.016],[0.559,3.083],[0.576,3.058],[0.593,3.026],[0.61,3.103],[0.627,2.966],[0.644,2.938],[0.661,3.037],[0.678,3.109],[0.695,3.108],[0.712,3.035],[0.729,3.159],[0.746,3.077],[0.763,3.169],[0.78,3.191],[0.797,3.183],[0.814,3.182],[0.831,3.138],[0.847,3.108],[0.864,3.181],[0.881,3.195],[0.898,3.145],[0.915,3.175],[0.932,3.18],[0.949,3.153],[0.966,3.15],[0.983,3.113],[1.0,3.119]],"tone":"green","ms":1300,"label":"front","lat":[1,3.119],"ldx":-4,"ldy":-16,"lanchor":"end"},{"series":"pm","chart":"pc","pts":[[0.0,3.8],[0.017,3.795],[0.034,3.791],[0.051,3.784],[0.068,3.791],[0.085,3.795],[0.102,3.802],[0.119,3.799],[0.136,3.79],[0.153,3.783],[0.169,3.807],[0.186,3.761],[0.203,3.736],[0.22,3.702],[0.237,3.703],[0.254,3.731],[0.271,3.753],[0.288,3.734],[0.305,3.729],[0.322,3.699],[0.339,3.718],[0.356,3.718],[0.373,3.75],[0.39,3.76],[0.407,3.779],[0.424,3.762],[0.441,3.792],[0.458,3.814],[0.475,3.759],[0.492,3.773],[0.508,3.782],[0.525,3.809],[0.542,3.836],[0.559,3.834],[0.576,3.88],[0.593,3.843],[0.61,3.866],[0.627,3.885],[0.644,3.862],[0.661,3.828],[0.678,3.814],[0.695,3.776],[0.712,3.803],[0.729,3.812],[0.746,3.808],[0.763,3.757],[0.78,3.804],[0.797,3.789],[0.814,3.783],[0.831,3.794],[0.847,3.802],[0.864,3.8],[0.881,3.816],[0.898,3.849],[0.915,3.885],[0.932,3.947],[0.949,3.944],[0.966,3.954],[0.983,3.896],[1.0,3.874]],"tone":"blue","ms":1100,"label":"5y","lat":[1,3.874],"ldx":-4,"ldy":-16,"lanchor":"end"},{"series":"pl","chart":"pc","pts":[[0.0,4.2],[0.017,4.199],[0.034,4.178],[0.051,4.175],[0.068,4.192],[0.085,4.181],[0.102,4.2],[0.119,4.208],[0.136,4.214],[0.153,4.219],[0.169,4.203],[0.186,4.167],[0.203,4.18],[0.22,4.192],[0.237,4.188],[0.254,4.197],[0.271,4.204],[0.288,4.197],[0.305,4.23],[0.322,4.24],[0.339,4.251],[0.356,4.23],[0.373,4.209],[0.39,4.205],[0.407,4.237],[0.424,4.229],[0.441,4.22],[0.458,4.209],[0.475,4.194],[0.492,4.211],[0.508,4.213],[0.525,4.217],[0.542,4.222],[0.559,4.248],[0.576,4.249],[0.593,4.246],[0.61,4.255],[0.627,4.261],[0.644,4.26],[0.661,4.253],[0.678,4.247],[0.695,4.249],[0.712,4.248],[0.729,4.266],[0.746,4.269],[0.763,4.282],[0.78,4.29],[0.797,4.271],[0.814,4.298],[0.831,4.274],[0.847,4.284],[0.864,4.267],[0.881,4.272],[0.898,4.272],[0.915,4.279],[0.932,4.281],[0.949,4.3],[0.966,4.315],[0.983,4.317],[1.0,4.327]],"tone":"purple","ms":1000,"label":"10y","lat":[1,4.327],"ldx":-4,"ldy":-16,"lanchor":"end"}]},{"cap":"Noise hits every tenor at every instant. Nearby tenors move alike, distant ones less so. In its purest form, space-time white noise, it is so rough it has no value at any single point: it only makes sense averaged over a stretch.","do":[{"box":"wn","x":20,"y":562,"w":560,"h":70,"text":"noise at every tenor, every instant\nonly meaningful once averaged over a stretch","tone":"amber","size":18}]},{"cap":"The solution is built like the one-number case: carry today's curve forward with the noise-free dynamics, then add every past burst of noise, each carried forward to now. That is the mild solution.","do":[{"box":"mild","x":20,"y":648,"w":560,"h":62,"text":"u(t) = S(t) u(0) + ∫ S(t − s) dW(s)","tone":"purple","size":21}]},{"cap":"In Musiela's form, written by time to maturity, there is a curve-slide term: each tenor slides down the slope as time passes. At the front the slope is 0.16 points per year of tenor, then 0.08, then 0.03. Traders call it rolling down the curve.","do":[{"note":"s1","chart":"fc","at":[2.5,3.4],"text":"+0.16/yr","tone":"amber","size":17,"anchor":"end","dx":-8,"dy":-8},{"note":"s2","chart":"fc","at":[7.5,4.0],"text":"+0.08/yr","tone":"amber","size":17,"anchor":"end","dx":-8,"dy":-10},{"note":"s3","chart":"fc","at":[12.5,4.28],"text":"+0.03/yr","tone":"amber","size":17,"anchor":"end","dx":-6,"dy":-14}]},{"cap":"No-arbitrage pins the rest of the drift. Choose how volatile each tenor is, and the drift is forced: volatility at x times the volatility summed from the short end out to x. It is not a free choice.","do":[{"hide":"wn"},{"hide":"mild"},{"box":"hjm","x":20,"y":562,"w":560,"h":70,"text":"HJM drift:  α(t,x) = σ(t,x) ∫₀ˣ σ(t,u) du\npick the volatility; the drift follows","tone":"purple","size":18}]},{"cap":"Sample the curve at four tenors and the one SPDE becomes four coupled SDEs: an ordinary vector SDE, the machinery of the multivariate lesson.","do":[{"box":"four","x":20,"y":648,"w":560,"h":62,"text":"4 tenor points → 4 coupled SDEs","tone":"blue","size":20},{"pulse":"r0"},{"pulse":"r5"},{"pulse":"r10"},{"pulse":"r15"}]},{"cap":"Now keep only the short end. Everything else is thrown away, and one mean-reverting equation is left: a Hull-White style short-rate model.","do":[{"dim":"crv"},{"dim":"r5"},{"dim":"r10"},{"dim":"r15"},{"dim":"s1"},{"dim":"s2"},{"dim":"s3"},{"pulse":"r0"},{"hide":"four"},{"box":"hw","x":20,"y":648,"w":560,"h":62,"text":"keep x = 0 only → dr = [θ(t) − a r] dt + σ dW","tone":"green","size":19}]},{"cap":"The cost: one factor moves every tenor with the same shock, so the curve can only shift in lockstep (dashed, illustrative). A steepener, front down and long end up, is a shape it cannot produce.","do":[{"series":"up","chart":"fc","pts":[[0,3.25],[5,4.05],[10,4.45],[15,4.6]],"tone":"blue","dash":true,"ms":900,"label":"one factor: shift","lat":[15,4.6],"ldx":-4,"ldy":-14,"lanchor":"end"},{"series":"st","chart":"fc","pts":[[0,2.8],[5,3.75],[10,4.35],[15,4.6]],"tone":"red","dash":true,"ms":900},{"note":"stl","chart":"fc","at":[5,3.75],"text":"steepener","tone":"red","size":17,"anchor":"start","dx":10,"dy":34}]},{"cap":"The same idea runs filtering. The filter's belief about a hidden state is itself a whole curve, and it evolves by an SPDE, the Zakai equation. The Kalman filter solves it exactly when everything is linear and Gaussian; the particle filter approximates it otherwise.","do":[{"hide":"pf"},{"hide":"pm"},{"hide":"pl"},{"hide":"pc"},{"box":"zk","x":20,"y":300,"w":560,"h":60,"text":"Zakai (1969): the filter's density is an SPDE too","tone":"amber","size":19},{"box":"kf","x":20,"y":412,"w":250,"h":70,"text":"Kalman\nexact, linear-Gaussian","tone":"blue","size":18},{"box":"pfl","x":330,"y":412,"w":250,"h":70,"text":"Particle filter\nMonte Carlo, general","tone":"purple","size":18},{"arrow":["zk","kf"],"tone":"blue"},{"arrow":["zk","pfl"],"tone":"purple"}]},{"cap":"Full SPDE machinery is rare outside specialist curve desks and filtering research. Its value is knowing what your one-point or few-factor model has thrown away, and whether your risk lives there.","do":[{"pulse":"st"},{"pulse":"r0"}]}]}</script>
+      </div>
+      <!-- WB:stochastic_pdes:END -->
+    </section>
+    <!-- WB:stochastic_pdes-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Nudge time forward, watch it wiggle</h2>
       <p class="sl-sub">Same illustrative curve, now advanced step by step. Each step applies a new seeded random perturbation — front end noisier than the back end — and redraws the whole shape.</p>
@@ -208,7 +221,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The no-arbitrage drift, computed live</h2>
       <p class="sl-sub">Once a volatility structure σ(t,x) is specified, HJM's drift condition α(t,x) = σ(t,x) · ∫₀ˣσ(t,u)du is not optional — it's forced. Try different vol inputs below.</p>
@@ -230,7 +243,7 @@
       <p class="sl-p">0.010 × 0.045 = 0.00045, or <strong>4.5 basis points</strong> of forced drift at that tenor. The modeller never gets to pick α independently — specify σ(t,x) across the whole curve, and the drift at every tenor is already decided.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The Zakai equation: filtering's own SPDE</h2>
       <p class="sl-sub">A second, completely different named SPDE — this one from continuous-time filtering, not term-structure modelling.</p>
@@ -252,7 +265,7 @@
       <div class="sl-quote">Neither the Kalman filter nor the particle filter lesson earlier in this curriculum names the object both are — in different senses — solving. This is it: one linear SPDE governing how confidence about a hidden state evolves, given noisy continuous evidence.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Genuinely advanced<!-- DESK:START --> — and genuinely not what's running in this repo<!-- DESK:END --></h2>
       <p class="sl-sub">Worth being explicit about where this machinery actually gets used, and where it doesn't.</p>
@@ -269,7 +282,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -320,7 +333,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -459,5 +472,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

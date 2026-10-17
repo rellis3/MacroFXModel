@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Does the Edge Survive Costs? — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <style>
   .ac-table{width:100%;border-collapse:collapse;font-size:12.5px;margin:10px 0}
@@ -147,7 +148,19 @@
       </div>
     </section>
 
+    <!-- WB:action_edge_after_costs-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Does the edge survive costs? Drawn step by step</h2>
+      <!-- WB:action_edge_after_costs:START -->
+      <div class="wb" data-title="Does the edge survive costs? Drawn step by step">
+        <script type="application/json">{"w":600,"h":790,"intro":"A real edge, and everything it costs to collect it. Watch what is left after each step. Press play, or step through.","steps":[{"cap":"A backtest of an intraday EUR/USD fade: 3,000 trades over three years out of sample, about 1,000 a year. Average gross profit 0.9 pips a trade, with a standard deviation of 15 pips.","do":[{"icon":"bt","name":"up","x":20,"y":10,"s":0.75,"tone":"blue","label":"backtest","lsize":17},{"chip":"mu","x":130,"y":40,"text":"+0.9 pips a trade","tone":"blue"}]},{"cap":"Is the edge real? The standard error is 15 ÷ √3,000 = 0.27 pips, so t = 0.9 ÷ 0.27 = 3.29. Very probably not zero. Hold that thought.","do":[{"box":"treal","x":330,"y":18,"w":260,"h":76,"text":"t = 3.29\nreal","tone":"green","size":19}]},{"cap":"Now the costs of one round trip, starting from the 0.9-pip gross edge. Watch what is left after each one.","do":[{"chart":"wf","x":10,"y":130,"w":280,"h":260,"title":"Pips left per trade","xd":[0.4,4.6],"yd":[-0.7,1.15],"yt":[[0.9,"0.9"],[0,"0"],[-0.4,"−0.4"]],"xt":[[1,"gross"],[2,"spread"],[3,"slip"],[4,"comm."]],"zero":true,"pl":50,"pr":10},{"bars":"w1","chart":"wf","data":[[1,0.9,"+0.9","blue"]],"bw":40,"ms":700}]},{"cap":"The spread: you buy at the ask and sell at the bid, so one full spread per round trip. 0.4 pips. 0.5 left.","do":[{"bars":"w2","chart":"wf","data":[[2,0.5,"0.5","amber"]],"bw":40,"ms":700}]},{"cap":"Slippage, paid twice: 0.2 pips on the way in and 0.2 on the way out. 0.1 left.","do":[{"bars":"w3","chart":"wf","data":[[3,0.1,"0.1","amber"]],"bw":40,"ms":700}]},{"cap":"Commission: $5 a standard lot round trip is 0.5 pips. Total cost 1.3 pips, and the net edge is −0.4 pips a trade. Over a year: 900 pips gross, 1,300 of cost, −400 net.","do":[{"bars":"w4","chart":"wf","data":[[4,-0.4,"−0.4","red"]],"bw":40,"ms":700},{"box":"year","x":330,"y":18,"w":260,"h":76,"text":"a year: +900 gross\n−1,300 cost = −400","tone":"red","size":18}]},{"cap":"Significance is not size. As trades pile up, t grows with the square root of their number, but the edge per trade stays at 0.9 pips. Gross t climbs past 2; net t sinks the other way. At 3,000 trades: +3.29 and −1.46.","do":[{"hide":"treal"},{"chart":"tn","x":300,"y":130,"w":290,"h":260,"title":"t as trades pile up","xd":[2,4],"yd":[-3.2,6.6],"yt":[[2,"+2"],[0,"0"],[-2,"−2"]],"xt":[[2,"100"],[3,"1,000"],[4,"10,000"]],"zero":true,"pl":40,"pr":12},{"series":"t2","chart":"tn","pts":[[2,2],[4,2]],"tone":null,"dash":true,"ms":400},{"series":"tg","chart":"tn","pts":[[2.0,0.6],[2.301,0.85],[2.699,1.34],[3.0,1.9],[3.301,2.68],[3.477,3.29],[3.699,4.24],[4.0,6.0]],"tone":"blue","ms":1300,"label":"gross","lat":[4,6.0],"ldx":-4,"ldy":-14,"lanchor":"end","lsize":15},{"series":"tnn","chart":"tn","pts":[[2.0,-0.27],[2.301,-0.38],[2.699,-0.6],[3.0,-0.84],[3.301,-1.19],[3.477,-1.46],[3.699,-1.89],[4.0,-2.67]],"tone":"red","ms":1300,"label":"net","lat":[2.3,-0.38],"ldx":0,"ldy":18,"lanchor":"start","lsize":15},{"dot":"g3","chart":"tn","at":[3.477,3.29],"text":"3.29","tone":"blue","dx":-8,"dy":-12,"anchor":"end"},{"dot":"n3","chart":"tn","at":[3.477,-1.46],"text":"−1.46","tone":"red","dx":-6,"dy":18,"anchor":"end"}]},{"cap":"The gross edge is the break-even cost. Pay more than 0.9 pips a round trip and the strategy loses. The useful ratio is edge ÷ cost: here 0.9 ÷ 1.3 = 0.69, below 1.","do":[{"chart":"rho","x":10,"y":410,"w":280,"h":240,"title":"edge ÷ cost","xd":[0.4,3.6],"yd":[0,4.6],"yt":[[1,"1"],[2,"2"],[4,"4"]],"xt":[[1,"fast"],[2,"filtered"],[3,"slow"]],"pl":40,"pr":10},{"series":"r1","chart":"rho","pts":[[1.45,1],[3.6,1]],"tone":null,"dash":true,"ms":400},{"series":"r2","chart":"rho","pts":[[0.4,2],[3.6,2]],"tone":"green","dash":true,"ms":400},{"bars":"rb1","chart":"rho","data":[[1,0.69,"0.69","red"]],"bw":44,"ms":800}]},{"cap":"Trade the same signal differently. Keep only the strongest fifth of setups: 3 pips a trade for the same 1.3 of cost, a ratio of 2.31. A slow USD/JPY daily swing makes 40 pips and pays 3: a ratio of 13.3, far off this scale.","do":[{"bars":"rb2","chart":"rho","data":[[2,2.31,"2.31","amber"],[3,4.4,"13.3 ↑","green"]],"bw":44,"ms":1000}]},{"cap":"A quick gate: spread ÷ ATR. On 5-minute bars with an ATR of about 4 pips, 0.4 ÷ 4 = 0.10, inside the 0.15 line. The fast fade passes the gate and still loses. The gate is necessary, not sufficient.","do":[{"box":"gate","x":300,"y":410,"w":290,"h":110,"text":"spread ÷ ATR = 0.10\npasses the gate…\n…still loses","tone":"amber","size":18}]},{"cap":"It happened. Value Line's stock rankings did well on paper for decades; its real fund, trading the same rankings, earned far less. André Perold used that gap in 1988 to define implementation shortfall.","do":[{"box":"vl","x":300,"y":540,"w":290,"h":110,"text":"Value Line, 1988:\npaper beat real,\ncosts took the gap","tone":"blue","size":18}]},{"cap":"The habit: compare the edge per trade with the full round-trip cost. Ask for an edge at least twice the cost, a net t of 2 or more, and a profit that survives double the cost.","do":[{"note":"card","x":300,"y":700,"text":"edge ≥ 2 × cost · net t ≥ 2 · survives 2 × cost","size":19,"anchor":"middle","tone":"green"},{"note":"card2","x":300,"y":740,"text":"real is not the same as tradeable","size":19,"anchor":"middle","tone":"amber"}]}]}</script>
+      </div>
+      <!-- WB:action_edge_after_costs:END -->
+    </section>
+    <!-- WB:action_edge_after_costs-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">How a real effect loses money</h2>
       <div class="sl-chain">
@@ -163,7 +176,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9 · It actually happened</div>
       <h2 class="sl-h2">Paper versus reality</h2>
       <div class="sl-compare">
@@ -173,7 +186,7 @@
       <div class="sl-quote">In both cases the effect was real in the data. What it cost to collect decided whether it was worth anything.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · The desk's verdict</div>
       <h2 class="sl-h2">What was tested here</h2>
       <div class="sl-stamp validated" data-evidence="execution-gate" data-evidence-date="2026-09-02"><span class="sl-stamp-tag">Desk test: held up</span><span><strong>Spread/ATR above 0.15:</strong> zero of 30 strategy × timeframe cells profitable. Cost outruns edge as the timeframe speeds up. Run this check first.</span></div>
@@ -181,7 +194,7 @@
       <div class="sl-stamp null" data-evidence="daily-band-fade" data-evidence-date="2026-09-23"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>Daily band fade, costs on:</strong> Sharpe 0.14 ± 0.30 on 485 trades, under a random-entry control's 95th percentile (0.40); 0.05 at 2× cost.</span></div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11 · Template</div>
       <h2 class="sl-h2">The cost check card</h2>
       <div class="sl-icard-grid">
@@ -192,7 +205,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -230,7 +243,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -311,5 +324,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

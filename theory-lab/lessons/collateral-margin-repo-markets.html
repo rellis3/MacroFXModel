@@ -43,6 +43,76 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: a repo is a loan with a cushion. A dealer hands a money market fund 100 million dollars of Treasuries and receives 98 million dollars of cash; the 2 percent haircut, 2 million dollars, is the lender's cushion, and the dealer buys the bonds back tomorrow at a slightly higher price. Right: the margin spiral. Volatility jumps, so margins and haircuts rise, which forces sales, which makes prices fall, which raises volatility again. In March 2020 the Fed broke the loop by buying roughly a trillion dollars of Treasuries within about a month.">
+      <defs><marker id="tlp-cm-arr" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path class="tlp-arrow" d="M0,0 L8,4 L0,8 Z"/></marker></defs>
+      <text class="tlp-text" x="20" y="22" font-size="14" font-weight="700">A repo: a loan with a cushion</text>
+      <rect class="tlp-box blue" x="20" y="38" width="104" height="46" rx="6"/>
+      <text class="tlp-text" x="72" y="58" text-anchor="middle" font-size="13" font-weight="700">dealer</text>
+      <text class="tlp-text3" x="72" y="75" text-anchor="middle" font-size="12">borrows cash</text>
+      <rect class="tlp-box green" x="186" y="38" width="104" height="46" rx="6"/>
+      <text class="tlp-text" x="238" y="58" text-anchor="middle" font-size="13" font-weight="700">money fund</text>
+      <text class="tlp-text3" x="238" y="75" text-anchor="middle" font-size="12">lends cash</text>
+      <line class="tlp-line purple thick" x1="126" y1="52" x2="180" y2="52" marker-end="url(#tlp-cm-arr)"/>
+      <line class="tlp-line green thick" x1="184" y1="72" x2="130" y2="72" marker-end="url(#tlp-cm-arr)"/>
+      <text class="tlp-purple" x="155" y="104" text-anchor="middle" font-size="12" font-weight="700">$100m Treasuries →</text>
+      <text class="tlp-green" x="155" y="120" text-anchor="middle" font-size="12" font-weight="700">← $98m cash</text>
+      <rect class="tlp-green" x="20" y="134" width="264.6" height="26" rx="3" opacity=".8"/>
+      <rect class="tlp-amber" x="284.6" y="134" width="5.4" height="26"/>
+      <text class="tlp-text" x="34" y="152" font-size="12" font-weight="700">$98m lent against $100m of bonds</text>
+      <line class="tlp-line amber" x1="287.3" y1="162" x2="287.3" y2="176"/>
+      <text class="tlp-amber" x="290" y="190" text-anchor="end" font-size="12" font-weight="700">2% haircut = $2m cushion</text>
+      <text class="tlp-text2" x="20" y="216" font-size="12">buy back tomorrow for a little more:</text>
+      <text class="tlp-text2" x="20" y="231" font-size="12">that extra is the repo interest</text>
+      <line class="tlp-line dash" x1="300" y1="10" x2="300" y2="230"/>
+      <text class="tlp-text" x="310" y="22" font-size="14" font-weight="700">When volatility jumps: the spiral</text>
+      <rect class="tlp-box amber" x="390" y="40" width="120" height="28" rx="5"/>
+      <text class="tlp-amber" x="450" y="59" text-anchor="middle" font-size="13" font-weight="700">volatility up</text>
+      <rect class="tlp-box red" x="470" y="96" width="120" height="28" rx="5"/>
+      <text class="tlp-red" x="530" y="115" text-anchor="middle" font-size="13" font-weight="700">margins up</text>
+      <rect class="tlp-box red" x="390" y="152" width="120" height="28" rx="5"/>
+      <text class="tlp-red" x="450" y="171" text-anchor="middle" font-size="13" font-weight="700">forced sales</text>
+      <rect class="tlp-box red" x="310" y="96" width="120" height="28" rx="5"/>
+      <text class="tlp-red" x="370" y="115" text-anchor="middle" font-size="13" font-weight="700">prices fall</text>
+      <line class="tlp-line" x1="500" y1="70" x2="520" y2="92" marker-end="url(#tlp-cm-arr)"/>
+      <line class="tlp-line" x1="520" y1="126" x2="500" y2="148" marker-end="url(#tlp-cm-arr)"/>
+      <line class="tlp-line" x1="400" y1="150" x2="380" y2="128" marker-end="url(#tlp-cm-arr)"/>
+      <line class="tlp-line" x1="380" y1="94" x2="400" y2="72" marker-end="url(#tlp-cm-arr)"/>
+      <text class="tlp-text3" x="450" y="114" text-anchor="middle" font-size="12">repeat</text>
+      <text class="tlp-red" x="310" y="210" font-size="12" font-weight="700">March 2020: the Fed bought ≈ $1 trillion</text>
+      <text class="tlp-text2" x="310" y="226" font-size="12">of Treasuries within about a month</text>
+    </svg>
+    <figcaption>Left: in a repo the lender advances less cash than the bonds are worth, and that haircut is its protection. Right: haircuts and margins are sized for normal volatility. When volatility jumps they rise, borrowers must sell to find the cash, and the selling feeds the volatility.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Margin, haircuts, repo. Is this anything more than back-office plumbing?</p>
+      <p data-who="Quant">It's the plumbing under every leveraged position. And when it backs up, it sets prices.</p>
+      <p data-who="Trader">Start with margin. Isn't margin just margin?</p>
+      <p data-who="Quant">There are two kinds. Initial margin is a cushion you post up front, against what might go wrong before anyone can react. Variation margin is settling up for what already moved, usually every day.</p>
+      <p data-who="Trader">A deposit, then rent.</p>
+      <p data-who="Quant">Exactly. Then haircuts. If you post a hundred dollars of a shaky bond with a five percent haircut, it only counts as ninety-five. The lender knows it might have to sell in a hurry.</p>
+      <p data-who="Trader">And repo?</p>
+      <p data-who="Quant">A loan dressed up as two trades. A dealer sells Treasuries to a money market fund today and agrees to buy them back tomorrow for slightly more. The difference is the interest.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Fifty million dollars overnight at five point three percent. Interest counts days over three hundred and sixty, so one night costs about seven thousand three hundred and sixty dollars.</p>
+      <p data-who="Trader">And the dealer rolls that every night.</p>
+      <p data-who="Quant">For months, sometimes. Which is fine while the lender keeps lending on the same terms. The overnight Treasury repo market is even what the main dollar reference rate, SOFR, is measured from.</p>
+      <p data-who="Trader">So where does it go wrong?</p>
+      <p data-who="Quant">March twenty twenty. Hedge funds ran the Treasury basis trade: buy the bond, sell the future, finance the bond in repo on a thin haircut. Tiny gap, lots of leverage.</p>
+      <p data-who="Trader">Then the dash for cash.</p>
+      <p data-who="Quant">Volatility jumped. The exchange raised futures margin, variation margin came due every day, and repo lenders wanted bigger haircuts. The funds had to find cash on the same days, so they sold Treasuries. Yields rose while stocks were falling.</p>
+      <p data-who="Trader">And it fed on itself.</p>
+      <p data-who="Quant">The Bank for International Settlements called it a margin spiral. The Fed stopped it by buying roughly a trillion dollars of Treasuries within about a month.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">A haircut is not a fixed fact about the collateral. It rises with volatility, right when you can least afford it, so size leverage for the haircut you'd face in a panic.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -200,6 +270,26 @@
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>The repo mechanism</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">What a dealer pays to get its bonds back, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Repurchase price} = \color{#fbbf24}{\text{Sale price}} \]</div>
+      <p>Start with the cash the dealer receives today for its Treasuries. In the worked example below, $50,000,000. With no interest, it would simply hand the same amount back.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Repurchase price} = \text{Sale price} \times \left(1 + \color{#fbbf24}{r}\right) \]</div>
+      <p>Add interest at the repo rate \(r\), an annual rate. Here 5.30%. Charged for a whole year, that would be far too much for one night.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Repurchase price} = \text{Sale price} \times \left(1 + r \times \color{#fbbf24}{\frac{\text{term (days)}}{360}}\right) \]</div>
+      <p>Scale it to the term. US repo counts actual days over a 360-day year, and most repo is overnight: one day.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ 50{,}000{,}000 \times \left(1 + 0.0530 \times \tfrac{1}{360}\right) = \color{#10b981}{\$50{,}007{,}361.11} \]</div>
+      <p>The dealer pays back $7,361.11 more than it received. Legally that was two sales; economically it was one night's interest on a secured loan.</p>
+    </div>
+  </div>
   <p>
   A <strong>repurchase agreement</strong>, almost universally shortened to "repo," is a transaction in which one
   party sells a security to a second party today, with a simultaneous, legally binding agreement to repurchase
@@ -334,6 +424,10 @@
     Starts on the worked example's exact numbers: $50,000,000 overnight at 5.30%, actual/360. Change any field
     and the interest and total repurchase price recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="22083" data-tol="300" data-unit=" dollars">
+      <div class="tl-predict-q"><strong>Predict first.</strong> A repo agreed on a Friday usually runs to Monday, so it accrues three days, not one. Same $50,000,000 at 5.30%: how much interest does the dealer pay? Lock in a guess in dollars, then type 3 into the term field below.</div>
+      <div class="tl-predict-reveal"><p><strong>$22,083.33.</strong> \(50{,}000{,}000 \times 0.0530 \times 3/360 = 22{,}083.33\), exactly three times the overnight $7,361.11, because the formula is linear in the day count. Now try 30 days: a one-month term repo at the same rate costs $220,833.33.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Notional ($)</span></div>
@@ -578,6 +672,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill" data-date="2020-03-16">
+    <div class="tl-drill-label">Scenario drill · 16 March 2020</div>
+    <h3>Your "safest" trade needs cash today</h3>
+    <p>You run a Treasury cash-futures basis trade: long Treasury bonds financed overnight in repo on a thin haircut, short the matching futures, with initial margin posted at the exchange. The dash for cash is on, and investors everywhere are selling even Treasuries. Volatility has jumped. The exchange has raised initial margin on Treasury futures, variation margin is due every day as prices swing, and your repo lenders want bigger haircuts or will lend less. Yesterday, Sunday, the Fed said it would buy Treasuries in size. What do you do this morning?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Hold everything. The trade is hedged and the bond and future must converge.<div class="tl-drill-why">It is hedged against prices, not against funding. Margin and haircut calls must be met in cash today, whatever happens at expiry. A hedged trade you cannot fund is a trade someone else will close for you.</div></li>
+      <li data-verdict="bad">Add to it. Bonds have cheapened, so the gap should pay more when it converges.<div class="tl-drill-why">A bigger position needs more margin and more haircut cash at exactly the moment both are rising. This is how a margin spiral turns a small gap into a forced sale.</div></li>
+      <li data-verdict="good">Cut the position to a size you can fund under the new margins and haircuts, while the Fed's buying means there is a buyer for the bonds.<div class="tl-drill-why">This sizes leverage to the haircut you face now, not the one you had. Selling into a market with a large buyer costs less than being forced to sell later into one without.</div></li>
+      <li data-verdict="ok">Meet the calls by posting other assets you hold as collateral.<div class="tl-drill-why">It buys time, but those assets face bigger haircuts too in a volatility spike, and it ties up the last of your spare collateral. It delays the decision rather than making it.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Funds running the basis trade had to raise cash for higher futures margin, daily variation margin and tighter repo terms on the same days, and the way to raise it was to sell the bonds. Dealers, with balance sheets already full, could not absorb the flow, and Treasury yields rose sharply in mid-March while stocks were falling. From 15 March the Fed bought Treasuries in enormous size, roughly a trillion dollars' worth within about a month, and greatly expanded its repo operations. Economists at the Bank for International Settlements (Schrimpf, Shin and Sushko, 2020) called it a margin spiral.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -658,6 +765,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="bond-pricing-ytm.html">Bond Pricing &amp; Yield to Maturity</a> <span>· what the collateral is and why its price moves</span></li>
+        <li><a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a> <span>· where SOFR, built from repo, gets used</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="rehypothecation-collateral-chains.html">Rehypothecation &amp; Collateral Chains</a> <span>· what happens to collateral once it is posted</span></li>
+        <li><a href="fed-corridor-iorb-srf-discount-window.html">The Fed's Corridor: IORB, the SRF and the Discount Window</a> <span>· what caps a repo rate spike</span></li>
+        <li><a href="qe-qt-balance-sheet.html">QE and QT: What the Fed's Balance Sheet Actually Does</a> <span>· the buying that ended March 2020's spiral</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every leveraged position lives on someone's haircut, and haircuts rise exactly when markets fall.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
     <a href="rehypothecation-collateral-chains.html">Rehypothecation &amp; Collateral Chains →</a>
@@ -734,7 +861,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

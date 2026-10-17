@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Numerical Integration — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,69 @@
       <li>How it reached trading: Boyle (1977) priced options by Monte Carlo, quasi-Monte Carlo followed for high-dimensional products (Paskov &amp; Traub, 1995), Gauss quadrature became standard for Heston-type integrals, and expected shortfall under FRTB (2016) made tail integration a capital number.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left, the normal bell curve from z equals 0 to 1, with the area under it filled by four trapezoids. Four strips give 0.34008 against the true 0.34134, an error of 0.00126. Right, bars on a log scale for how many points a grid needs with 10 points per axis: 10 in one dimension, 100 in two, 1,000 in three and 10 billion in ten, while a Monte Carlo estimate with 1 million draws costs the same in any dimension.">
+      <text class="tlp-blue" x="30" y="20" font-size="14" font-weight="700">One dimension: slice the area</text>
+      <polygon class="tlp-box blue" points="50,180 50,48.3 105,52.4 105,180"/>
+      <polygon class="tlp-box blue" points="105,180 105,52.4 160,63.8 160,180"/>
+      <polygon class="tlp-box blue" points="160,180 160,63.8 215,80.6 215,180"/>
+      <polygon class="tlp-box blue" points="215,180 215,80.6 270,100.1 270,180"/>
+      <polyline class="tlp-line purple thick" points="28.0,49.0 39.0,48.5 50.0,48.3 61.0,48.5 72.0,49.0 83.0,49.8 94.0,51.0 105.0,52.4 116.0,54.1 127.0,56.2 138.0,58.5 149.0,61.0 160.0,63.8 171.0,66.8 182.0,70.0 193.0,73.4 204.0,77.0 215.0,80.6 226.0,84.4 237.0,88.3 248.0,92.2 259.0,96.2 270.0,100.1 281.0,104.1 292.0,108.1"/>
+      <line class="tlp-line" x1="20" y1="180" x2="295" y2="180"/>
+      <text class="tlp-text3" x="50" y="196" text-anchor="middle" font-size="12">z = 0</text>
+      <text class="tlp-text3" x="270" y="196" text-anchor="middle" font-size="12">z = 1</text>
+      <text class="tlp-text" x="160" y="140" text-anchor="middle" font-size="13" font-weight="700">4 strips</text>
+      <text class="tlp-blue" x="30" y="218" font-size="13" font-weight="700">4 strips: 0.34008 · true: 0.34134</text>
+      <text class="tlp-green" x="30" y="238" font-size="13" font-weight="700">error 0.00126, under 0.4%</text>
+      <text class="tlp-red" x="340" y="20" font-size="14" font-weight="700">Many dimensions: grids explode</text>
+      <line class="tlp-line" x1="345" y1="180" x2="590" y2="180"/>
+      <rect class="tlp-box red" x="355" y="167" width="30" height="13"/>
+      <rect class="tlp-box red" x="405" y="154" width="30" height="26"/>
+      <rect class="tlp-box red" x="455" y="141" width="30" height="39"/>
+      <rect class="tlp-box red" x="545" y="50" width="30" height="130"/>
+      <text class="tlp-text2" x="370" y="161" text-anchor="middle" font-size="12">10</text>
+      <text class="tlp-text2" x="420" y="148" text-anchor="middle" font-size="12">100</text>
+      <text class="tlp-text2" x="470" y="135" text-anchor="middle" font-size="12">1,000</text>
+      <text class="tlp-red" x="560" y="44" text-anchor="middle" font-size="12.5" font-weight="700">10 billion</text>
+      <text class="tlp-text3" x="515" y="176" text-anchor="middle" font-size="13">…</text>
+      <line class="tlp-line green thick dash" x1="345" y1="102" x2="590" y2="102"/>
+      <text class="tlp-green" x="350" y="95" font-size="12.5" font-weight="700">Monte Carlo: 1M draws, any d</text>
+      <text class="tlp-text3" x="370" y="196" text-anchor="middle" font-size="12">d = 1</text>
+      <text class="tlp-text3" x="420" y="196" text-anchor="middle" font-size="12">2</text>
+      <text class="tlp-text3" x="470" y="196" text-anchor="middle" font-size="12">3</text>
+      <text class="tlp-text3" x="560" y="196" text-anchor="middle" font-size="12">10</text>
+      <text class="tlp-red" x="345" y="218" font-size="13" font-weight="700">a grid needs 10 points per axis, so 10ᵈ</text>
+      <text class="tlp-green" x="345" y="238" font-size="13" font-weight="700">Monte Carlo: error 1/√N in any d</text>
+    </svg>
+    <figcaption>In one dimension, four straight-topped strips already land within 0.4% of the true area, and Simpson's parabolas do far better. Each extra dimension multiplies a grid's cost by its points per axis, so ten dimensions need 10 billion points. Monte Carlo pays the same N draws whatever the dimension. Bar heights are on a log scale.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Why does a lesson on areas under curves belong in a trading course?</p>
+      <p data-who="Quant">Because most prices are one. An option's fair value is its expected payoff, and an expectation is an area: the payoff weighted by how likely each outcome is. Expected shortfall is the same, an average over the loss tail.</p>
+      <p data-who="Trader">And Black-Scholes just hands me a formula.</p>
+      <p data-who="Quant">For the simple case, yes. Change the payoff or the distribution and the formula disappears. Then you have to measure the area numerically.</p>
+      <p data-who="Trader">How?</p>
+      <p data-who="Quant">The oldest trick is slicing. Chop the area into thin strips, draw a straight line across the top of each, and add up the trapezoids. That is the trapezoidal rule.</p>
+      <p data-who="Trader">Does it work?</p>
+      <p data-who="Quant">Take the bell curve between zero and one. The true area is about point three four one three. Four strips give point three four zero one. That is off by about a thousandth, under half a percent, from five numbers and plain arithmetic.</p>
+      <p data-who="Trader">And with more strips?</p>
+      <p data-who="Quant">Halve the strip width and the error drops to about a quarter. Simpson's rule does better again. It fits a gentle curve through every three points instead of a straight line, and its error falls with the fourth power of the width.</p>
+      <p data-who="Trader">Where does Monte Carlo come in?</p>
+      <p data-who="Quant">It is the same job done with darts. Pick random points, read the curve's height at each, and average. Average height times width is the area. In one dimension it loses to the grid badly. Its error only halves when you quadruple the number of draws.</p>
+      <p data-who="Trader">So why does anyone use it?</p>
+      <p data-who="Quant">Dimensions. A grid needs points along every axis. Ten points per axis is ten points in one dimension, a hundred in two, and ten billion in ten. A basket option on ten stocks is a ten-dimensional area. Monte Carlo doesn't care: a million draws is a million draws in any number of dimensions.</p>
+      <p data-who="Trader">Has this changed how things are priced?</p>
+      <p data-who="Quant">Phelim Boyle brought Monte Carlo to option pricing in 1977. In 1995 Paskov and Traub used structured quasi-random points on a mortgage security with three hundred and sixty dimensions. And since the 2016 market-risk rules, the tail integral behind expected shortfall feeds straight into bank capital.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">One or two smooth dimensions, slice it. Many dimensions, simulate it. And either way, the answer is only as good as the curve you feed in.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -138,6 +202,27 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">The composite trapezoidal rule, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Area}_i \approx \color{#fbbf24}{\frac{f(x_i) + f(x_{i+1})}{2} \cdot h} \]</div>
+      <p>One strip. Replace the curve over a strip of width \(h\) with a straight line. The strip becomes a trapezoid: average height times width.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \int_a^b f(x)\,dx \;\approx\; \color{#fbbf24}{\sum_{i=0}^{n-1}} \frac{f(x_i) + f(x_{i+1})}{2} \cdot h \]</div>
+      <p>Add up all \(n\) strips, with \(h = (b-a)/n\), to cover the whole interval from \(a\) to \(b\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \int_a^b f(x)\,dx \;\approx\; \frac{h}{2}\Big[f(x_0) + \color{#fbbf24}{2f(x_1) + \cdots + 2f(x_{n-1})} + f(x_n)\Big] \]</div>
+      <p>Every interior point is the right edge of one trapezoid and the left edge of the next, so it is counted twice. The two endpoints are counted once.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \int_0^1 \varphi(z)\,dz \approx \frac{0.25}{2}\Big[0.39894 + 2(0.38667) + 2(0.35207) + 2(0.30114) + 0.24197\Big] = \color{#10b981}{0.34008} \]</div>
+      <p>The worked example: the normal curve from 0 to 1 with four strips. The true value is 0.34134, so five function values get within 0.00126. Halve \(h\) and the error falls to about a quarter.</p>
+    </div>
+  </div>
 
   <h3>The trapezoidal rule</h3>
   <p>
@@ -439,6 +524,10 @@
       between them recompute instantly, using the same erf-based normal CDF
       as the interactive chart above.
     </p>
+    <div class="tl-predict" data-answer="4" data-tol="0.5" data-unit="×">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With 4 strips the error is −0.00126. Double the strips to 8, halving \(h\). How many times smaller will the error be? Lock in a guess, then type 8 into the strips field below and divide the two errors to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 4×.</strong> The error goes from −0.00126 to −0.00032, a ratio of about 3.9. The trapezoidal rule's error shrinks with \(h^2\): halve \(h\) and the error is roughly a quarter. Now try 16 strips: the error falls to −0.00008, a quarter again.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Lower bound \(a\)</span></div>
@@ -495,6 +584,12 @@
       method's exponential wall.
     </p>
   </div>
+
+  <!-- WB:numerical_integration:START -->
+  <div class="wb" id="wb-numerical_integration" data-title="Strips, parabolas and darts">
+    <script type="application/json">{"w":600,"h":640,"intro":"An area under a curve, measured three ways: straight-topped strips, parabolas, and random darts. Then why the darts win once there are many dimensions. Press play, or step through.","steps":[{"cap":"Many prices and probabilities are an area under a curve. Here is the normal bell curve. The shaded area from 0 to 1 is the chance a standard normal lands there: Φ(1) − Φ(0) = 0.34134. Pretend we could not look it up.","do":[{"chart":"phi","x":10,"y":10,"w":400,"h":250,"title":"The normal density φ(z)","xd":[-0.3,1.3],"yd":[0,0.45],"yt":[[0.2,"0.2"],[0.4,"0.4"]],"xt":[[0,"z = 0"],[0.5,"0.5"],[1,"z = 1"]],"pl":48},{"series":"c","chart":"phi","pts":[[-0.3,0.3814],[-0.25,0.3867],[-0.2,0.391],[-0.15,0.3945],[-0.1,0.397],[-0.05,0.3984],[0.0,0.3989],[0.05,0.3984],[0.1,0.397],[0.15,0.3945],[0.2,0.391],[0.25,0.3867],[0.3,0.3814],[0.35,0.3752],[0.4,0.3683],[0.45,0.3605],[0.5,0.3521],[0.55,0.3429],[0.6,0.3332],[0.65,0.323],[0.7,0.3123],[0.75,0.3011],[0.8,0.2897],[0.85,0.278],[0.9,0.2661],[0.95,0.2541],[1.0,0.242],[1.05,0.2299],[1.1,0.2179],[1.15,0.2059],[1.2,0.1942],[1.25,0.1826],[1.3,0.1714]],"tone":"blue","ms":1100},{"gap":"area","chart":"phi","top":[[0.0,0.3989],[0.05,0.3984],[0.1,0.397],[0.15,0.3945],[0.2,0.391],[0.25,0.3867],[0.3,0.3814],[0.35,0.3752],[0.4,0.3683],[0.45,0.3605],[0.5,0.3521],[0.55,0.3429],[0.6,0.3332],[0.65,0.323],[0.7,0.3123],[0.75,0.3011],[0.8,0.2897],[0.85,0.278],[0.9,0.2661],[0.95,0.2541],[1.0,0.242]],"bot":[[0,0],[1,0]],"tone":"blue","op":0.18},{"box":"est","x":420,"y":40,"w":170,"h":76,"text":"area estimate","tone":"blue","sub":"true: 0.34134","size":18}]},{"cap":"The trapezoidal rule: replace the curve with a straight line and measure the trapezoid. One strip gives 0.32046, short by 0.02089. The straight top cuts off the bulge of the curve.","do":[{"series":"t1","chart":"phi","pts":[[0,0],[0,0.3989],[1,0.242],[1,0]],"tone":"amber","ms":900},{"sub":"est","text":"1 strip: 0.32046"},{"chart":"err","x":10,"y":275,"w":285,"h":230,"title":"Error, in thousandths","xd":[0.4,5.6],"yd":[0,24],"yt":[[10,"10"],[20,"20"]],"xt":[[1,"n=1"],[2,"2"],[3,"4"],[4,"8"],[5,"S4"]],"pl":52},{"bars":"e1","chart":"err","data":[[1,20.89,"20.9","amber"]],"bw":30}]},{"cap":"Two strips of half the width: 0.33626, short by 0.00508. Halving the width cut the error to about a quarter.","do":[{"hide":"t1"},{"series":"t2","chart":"phi","pts":[[0,0],[0.0,0.3989],[0.5,0.3521],[0.5,0],[0.5,0.3521],[1.0,0.242],[1.0,0]],"tone":"amber","ms":1000},{"sub":"est","text":"2 strips: 0.33626"},{"bars":"e2","chart":"err","data":[[2,5.08,"5.1","amber"]],"bw":30}]},{"cap":"Four strips, h = 0.25: the lesson's worked example, 0.34008, short by 0.00126. A quarter again. That is the O(h²) rule: halve the step, quarter the error.","do":[{"hide":"t2"},{"series":"t4","chart":"phi","pts":[[0,0],[0.0,0.3989],[0.25,0.3867],[0.25,0],[0.25,0.3867],[0.5,0.3521],[0.5,0],[0.5,0.3521],[0.75,0.3011],[0.75,0],[0.75,0.3011],[1.0,0.242],[1.0,0]],"tone":"amber","ms":1100},{"sub":"est","text":"4 strips: 0.34008"},{"bars":"e3","chart":"err","data":[[3,1.26,"1.3","amber"]],"bw":30}]},{"cap":"Eight strips: 0.34103, short by 0.00032. Still a quarter each time.","do":[{"bars":"e4","chart":"err","data":[[4,0.32,"0.3","amber"]],"bw":30}]},{"cap":"Simpson's rule fits a parabola through every three points instead of a straight line. With the same four strips it gives 0.34136, off by only 0.00001: a hundred times closer than the trapezoids, for the same five points. Its error shrinks with h⁴.","do":[{"dim":"t4"},{"sub":"est","text":"Simpson, 4: 0.34136"},{"bars":"e5","chart":"err","data":[[5,0.01,"0.01","green"]],"bw":30},{"pulse":"c"}]},{"cap":"Monte Carlo throws darts instead. Pick 12 random points between 0 and 1, read the curve's height at each, and average. Average height times width 1 is the area. This illustrative draw gives 0.34393.","do":[{"hide":"t4"},{"dot":"d0","chart":"phi","at":[0.134,0.3954],"text":"","tone":"purple","r":4.5},{"dot":"d1","chart":"phi","at":[0.847,0.2787],"text":"","tone":"purple","r":4.5},{"dot":"d2","chart":"phi","at":[0.764,0.298],"text":"","tone":"purple","r":4.5},{"dot":"d3","chart":"phi","at":[0.255,0.3862],"text":"","tone":"purple","r":4.5},{"dot":"d4","chart":"phi","at":[0.495,0.3529],"text":"","tone":"purple","r":4.5},{"dot":"d5","chart":"phi","at":[0.449,0.3607],"text":"","tone":"purple","r":4.5},{"dot":"d6","chart":"phi","at":[0.652,0.3226],"text":"","tone":"purple","r":4.5},{"dot":"d7","chart":"phi","at":[0.789,0.2922],"text":"","tone":"purple","r":4.5},{"dot":"d8","chart":"phi","at":[0.094,0.3972],"text":"","tone":"purple","r":4.5},{"dot":"d9","chart":"phi","at":[0.028,0.3988],"text":"","tone":"purple","r":4.5},{"dot":"d10","chart":"phi","at":[0.836,0.2813],"text":"","tone":"purple","r":4.5},{"dot":"d11","chart":"phi","at":[0.433,0.3632],"text":"","tone":"purple","r":4.5},{"sub":"est","text":"12 darts: 0.34393"}]},{"cap":"That draw landed close by luck. With 12 darts the typical error is about 0.014, ten times the four-strip trapezoid's. Monte Carlo error shrinks like 1 over the square root of N: four times the darts for half the error. In one dimension, the grid wins easily.","do":[{"note":"mcse","x":505,"y":160,"text":"typical error\n≈ 0.014\nat N = 12","size":18,"anchor":"middle","tone":"purple"}]},{"cap":"Now add dimensions. A grid with 10 points per axis needs 10 points in one dimension, 100 in two, 1,000 in three, and 10 billion in ten. A basket on ten underlyings is a ten-dimensional integral.","do":[{"chart":"dim","x":305,"y":275,"w":285,"h":230,"title":"Grid points (log scale)","xd":[0.4,5.6],"yd":[0,11],"yt":[[1,"10"],[3,"10³"],[6,"10⁶"],[10,"10¹⁰"]],"xt":[[1,"d=1"],[2,"2"],[3,"3"],[5,"10"]],"pl":52},{"bars":"g","chart":"dim","data":[[1,1,"10","red"],[2,2,"100","red"],[3,3,"1,000","red"],[5,10,"10 billion","red"]],"bw":30,"ms":1300}]},{"cap":"Monte Carlo's cost does not care. A million random draws in ten dimensions is still a million draws, and the error still shrinks like 1 over the square root of N.","do":[{"series":"mc","chart":"dim","pts":[[0.5,6],[5.5,6]],"tone":"green","dash":true,"ms":600,"label":"Monte Carlo: 1 million draws","lat":[0.6,6],"ldx":0,"ldy":-14,"lanchor":"start"}]},{"cap":"So the rule of thumb: one or two smooth dimensions, use quadrature like Simpson's rule; many dimensions, simulate. Either way, the answer is only as good as the curve you hand it.","do":[{"box":"rule","x":10,"y":520,"w":580,"h":110,"text":"one or two dimensions: quadrature\nmany dimensions: Monte Carlo","tone":"green","size":20}]}]}</script>
+  </div>
+  <!-- WB:numerical_integration:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -598,6 +693,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative pricing request</div>
+    <h3>A basket option on ten underlyings, priced by tomorrow</h3>
+    <p>A client wants a price on a basket call: the payoff depends on the weighted average of ten correlated stocks at expiry. That makes the price a ten-dimensional integral of the payoff against the joint distribution of the ten stocks. A colleague who has just learned Simpson's rule suggests laying a grid over all ten dimensions. You need a price you can defend by tomorrow morning. How do you compute it?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Simpson's rule on a grid with 10 points per axis. It has the best error rate in the lesson.<div class="tl-drill-why">Ten points per axis is \(10^{10}\), ten billion payoff evaluations, and ten points per axis is still a coarse grid. Simpson's better rate per point is irrelevant once the number of points grows exponentially with the dimension.</div></li>
+      <li data-verdict="good">Monte Carlo: draw a million joint scenarios from the calibrated model, average the discounted payoff, and report the standard error alongside the price.<div class="tl-drill-why">The cost is a million evaluations whatever the dimension, and the standard error tells you how much of the number is noise. If it is too wide, quadrupling the draws halves it.</div></li>
+      <li data-verdict="ok">Quasi-Monte Carlo with a Sobol sequence instead of random draws.<div class="tl-drill-why">A real, widely used choice that keeps the dimension-free cost and often converges faster for smooth payoffs. The catch is that you lose the clean probabilistic error bar, so check it against a plain Monte Carlo run.</div></li>
+      <li data-verdict="bad">Monte Carlo with 1,000 draws, quoting the price to four decimal places.<div class="tl-drill-why">Right method, wrong confidence. The error shrinks like one over the square root of the draws, so 1,000 draws are about 32 times noisier than a million. Quoting the point estimate without its standard error overstates the precision.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happens.</strong> This is an illustrative request, not a specific historical trade. The general lesson is well documented: high-dimensional pricing problems such as basket and path-dependent options are priced by simulation, while one- or two-dimensional pricing integrals, such as the Heston Fourier integral, are done with quadrature.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -698,6 +806,27 @@
     <li>Russel E. Caflisch, "Monte Carlo and Quasi-Monte Carlo Methods," <em>Acta Numerica</em>, 1998 — a widely cited survey directly addressing the curse of dimensionality and quasi-Monte Carlo's role as a middle ground between deterministic quadrature and pure Monte Carlo.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-probability.html">Probability &amp; Random Variables</a> <span>· why an expectation is an area</span></li>
+        <li><a href="bootstrapping-monte-carlo.html">Bootstrapping &amp; Monte Carlo Simulation</a> <span>· the sampling machinery reused here</span></li>
+        <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> <span>· the case where the integral has a formula</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="fft-option-pricing-carr-madan.html">FFT Option Pricing (Carr-Madan)</a> <span>· one pricing integral, a whole strike grid at once</span></li>
+        <li><a href="heston-model.html">The Heston Model</a> <span>· a price that is a one-dimensional integral</span></li>
+        <li><a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> <span>· expected shortfall is a tail integral</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> whenever a price or a risk number comes from a model rather than a formula, someone chose how to integrate it, and that choice sets both its speed and its error.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="linear-quadratic-programming.html">← Linear &amp; Quadratic Programming</a>
@@ -847,9 +976,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

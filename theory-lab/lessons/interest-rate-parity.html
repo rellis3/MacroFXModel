@@ -43,6 +43,67 @@
   </ul>
 </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two routes for $1,000,000 over one year. Route 1 stays in dollars at 5% and ends at $1,050,000. Route 2 converts at the 1.10 spot rate to €909,090.91, earns 3% to €936,363.64, and sells those euros forward today at 1.1214, also ending at $1,050,000. Same answer both ways: covered parity, no free lunch. Below, the uncovered version skips the forward: parity says the higher-yielding currency should fall by about the rate gap, but in the data high-yielders held up on average (Fama, slope about −0.88 rather than +1), then crashed, as AUD/JPY did by about 17% in July and August 2024.">
+      <polyline class="tlp-line blue" points="60,95 60,52 540,52 540,89"/>
+      <polygon class="tlp-blue" points="534,87 546,87 540,96"/>
+      <text class="tlp-blue" x="300" y="44" text-anchor="middle" font-size="13" font-weight="700">route 1: stay in dollars at 5%</text>
+      <text class="tlp-purple" x="300" y="86" text-anchor="middle" font-size="13" font-weight="700">route 2: euros at 3%, forward signed today</text>
+      <rect class="tlp-box" x="10" y="98" width="100" height="44" rx="6"/>
+      <rect class="tlp-box purple" x="150" y="98" width="115" height="44" rx="6"/>
+      <rect class="tlp-box purple" x="315" y="98" width="115" height="44" rx="6"/>
+      <rect class="tlp-box green" x="490" y="98" width="100" height="44" rx="6"/>
+      <text class="tlp-text" x="60" y="125" text-anchor="middle" font-size="14" font-weight="700">$1,000,000</text>
+      <text class="tlp-text" x="207.5" y="125" text-anchor="middle" font-size="14" font-weight="700">€909,090.91</text>
+      <text class="tlp-text" x="372.5" y="125" text-anchor="middle" font-size="14" font-weight="700">€936,363.64</text>
+      <text class="tlp-green" x="540" y="125" text-anchor="middle" font-size="14" font-weight="700">$1,050,000</text>
+      <line class="tlp-line purple" x1="110" y1="120" x2="143" y2="120"/>
+      <polygon class="tlp-purple" points="142,115 150,120 142,125"/>
+      <line class="tlp-line purple" x1="265" y1="120" x2="308" y2="120"/>
+      <polygon class="tlp-purple" points="307,115 315,120 307,125"/>
+      <line class="tlp-line purple" x1="430" y1="120" x2="483" y2="120"/>
+      <polygon class="tlp-purple" points="482,115 490,120 482,125"/>
+      <text class="tlp-text3" x="60" y="158" text-anchor="middle" font-size="12">today</text>
+      <text class="tlp-text3" x="207.5" y="158" text-anchor="middle" font-size="12">÷ 1.10 at spot</text>
+      <text class="tlp-text3" x="372.5" y="158" text-anchor="middle" font-size="12">× 1.03, a year</text>
+      <text class="tlp-text3" x="540" y="158" text-anchor="middle" font-size="12">× 1.1214 forward</text>
+      <text class="tlp-green" x="300" y="186" text-anchor="middle" font-size="14" font-weight="700">Same $1,050,000 both ways: covered parity, no free lunch</text>
+      <line class="tlp-line amber dash" x1="40" y1="200" x2="560" y2="200"/>
+      <text class="tlp-amber" x="300" y="220" text-anchor="middle" font-size="13" font-weight="700">Skip the forward and it is a bet. Uncovered parity: the 5% currency should fall ≈ 2%.</text>
+      <text class="tlp-text2" x="300" y="238" text-anchor="middle" font-size="13">In the data, high-yielders held up on average (Fama: slope ≈ −0.88, not +1)…</text>
+      <text class="tlp-red" x="300" y="256" text-anchor="middle" font-size="13" font-weight="700">…then crashed: AUD/JPY about −17% from 11 July to 5 August 2024.</text>
+    </svg>
+    <figcaption>Above the line, the forward is locked in today, so both routes are riskless and must pay the same: that is covered parity, an identity. Below it, nothing forces the answer, and the extra interest turns out to be pay for carrying crash risk.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Everyone says the dollar is strong because rates are high. What is the actual link between interest rates and exchange rates?</p>
+      <p data-who="Quant">There are two links, and people mix them up. One is close to an accounting identity. The other is a forecast, and it is famously wrong.</p>
+      <p data-who="Trader">Start with the identity.</p>
+      <p data-who="Quant">Think of an interest rate as the rental price of money. You have a million dollars for a year. Route one: leave it in dollars at five percent and you end with one million and fifty thousand.</p>
+      <p data-who="Trader">And route two?</p>
+      <p data-who="Quant">Swap it into euros at one ten, which gives you about nine hundred and nine thousand euros. Earn three percent on those. And today, sign a forward contract to sell the euros back for dollars in a year. The fair forward rate works out at about one point one two one four.</p>
+      <p data-who="Trader">Which turns the euros back into…</p>
+      <p data-who="Quant">One million and fifty thousand dollars. Exactly the same. Both routes are riskless, so they have to pay the same, or someone gets free money.</p>
+      <p data-who="Trader">What if the forward were quoted at one fifteen instead?</p>
+      <p data-who="Quant">Then the round trip pays about twenty-six thousand eight hundred dollars for nothing. Banks would run it at size until the forward came back into line. That arbitrage is what keeps covered parity pinned.</p>
+      <p data-who="Trader">So that's covered parity. What's the uncovered version?</p>
+      <p data-who="Quant">Same trip, but you skip the forward and convert back at whatever the rate turns out to be. The theory says the higher-yielding currency should be expected to fall by about the rate gap, so you gain nothing on average.</p>
+      <p data-who="Trader">Does it?</p>
+      <p data-who="Quant">No. Fama tested it in 1984. Parity needs a slope of plus one. Across studies the average came out around minus nought point eight eight. High-yielding currencies tended to hold up, or even rise. That gap is the whole carry trade.</p>
+      <p data-who="Trader">So carry is free money.</p>
+      <p data-who="Quant">It is pay for standing in the road. Borrow yen near zero, buy Australian dollars at four point three five percent, and on ten million you collect about four hundred and twenty thousand a year. Then in July 2024 the Bank of Japan hiked, and Aussie-yen fell about seventeen percent in three and a half weeks. Roughly four years of carry, gone.</p>
+      <p data-who="Trader">And covered parity always holds, at least?</p>
+      <p data-who="Quant">Even that broke in autumn 2008. After Lehman, banks outside the US scrambled for dollars, and nobody had the balance sheet to arbitrage the gap. It narrowed once the Fed's swap lines went unlimited.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Covered parity is an identity that someone has to fund. Uncovered parity fails, and the extra interest you collect is the price of a crash you are short.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -110,6 +171,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where covered parity comes from, one route at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Route 1:}\quad \color{#fbbf24}{1 + r_d} \]</div>
+      <p>Stay home. One unit of domestic currency deposited at the domestic rate becomes \(1 + r_d\) at \(T\), with no exchange-rate risk at all.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ 1 + r_d \quad\text{vs.}\quad \color{#fbbf24}{\frac{1}{S}\,(1+r_f)} \]</div>
+      <p>Route 2 starts abroad. Convert at spot to get \(1/S\) units of foreign currency, then deposit it at the foreign rate. At \(T\) you hold \((1/S)(1+r_f)\) in foreign currency.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ 1 + r_d \quad\text{vs.}\quad \frac{1}{S}\,(1+r_f)\,\color{#fbbf24}{F} \]</div>
+      <p>Today, also sell that known amount forward at \(F\). Now Route 2 pays a fixed amount of domestic currency too. Both payoffs are riskless and known today.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ 1 + r_d \;\color{#fbbf24}{=}\; \frac{F}{S}\,(1+r_f) \]</div>
+      <p>Two riskless routes from the same starting money must pay the same. If they did not, desks would borrow on the cheap route and invest on the rich one until the gap closed.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{F = S \cdot \frac{1+r_d}{1+r_f}} \]</div>
+      <p>Covered parity. With \(S = 1.10\), \(r_d = 5\%\) and \(r_f = 3\%\), \(F = 1.10 \times 1.05/1.03 \approx 1.1214\). Swap \(F\) for the expected future spot \(E_t[S_{t+T}]\) and you get uncovered parity: same shape, but now a forecast nothing enforces.</p>
+    </div>
+  </div>
   <p>
     This section builds up three ideas in order: the no-arbitrage argument
     that pins down covered interest rate parity exactly, the very different
@@ -331,6 +416,10 @@
       and the fair forward \(F^\ast\) and the implied forward premium
       recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="3.88" data-tol="0.15" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At the defaults the 2-point rate gap gives a forward premium of 1.94%. Keep spot at 1.10 and the foreign rate at 3%, and raise the domestic rate to 7%. What forward premium will the calculator show? Lock in a guess, then type 7 into the domestic-rate field below.</div>
+      <div class="tl-predict-reveal"><p><strong>3.88%.</strong> \((1.07)/(1.03) = 1.038835\), so the premium is 3.88% and \(F^\ast \approx 1.10 \times 1.038835 \approx 1.1427\). The rule of thumb \(r_d - r_f = 4\) points gets you close; the small gap is compounding. The higher the domestic rate, the deeper its currency trades at a forward discount. Now set both rates to 5%: the premium is zero and \(F^\ast\) equals spot.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Spot \(S\) (USD/EUR)</span></div>
@@ -744,6 +833,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2024-07-31">
+    <div class="tl-drill-label">Scenario drill · 31 July 2024</div>
+    <h3>The Bank of Japan has just hiked</h3>
+    <p>You are long AUD/JPY as a carry trade: $10,000,000 of Australian dollars funded in yen, with the RBA cash rate at 4.35% and Japanese rates near zero. The roughly 4.2-point gap has been paying about $420,000 a year, and AUD/JPY has already come off its 11 July high. Today the Bank of Japan raised its policy rate, against a market that had priced Japan as a permanent zero-rate funding source. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Hold. The rate gap is still about 4 points, so the carry still pays.<div class="tl-drill-why">The differential barely moved. What matters is the market's tolerance for being short the funding currency, and a hike that hits years of yen-funded positioning is exactly what makes everyone want to buy back yen at once.</div></li>
+      <li data-verdict="good">Cut the position, or hedge it, now. The funding currency is starting to rise, and that is the crash you are paid to carry.<div class="tl-drill-why">Carry is short a fat left tail. Practitioners de-risk when volatility rises or when the funding currency starts appreciating sharply, because one bad month can take years of carry. Giving up some carry is cheap next to the tail.</div></li>
+      <li data-verdict="bad">Add. Uncovered parity fails, so the carry is close to free money, and a lower price is a better entry.<div class="tl-drill-why">A failure of uncovered parity is not an arbitrage. It is a risk-bearing bet, and the risk it bears is exactly a sudden yen rally like this one.</div></li>
+      <li data-verdict="ok">Keep the position, but place a stop a few percent lower.<div class="tl-drill-why">It caps the loss in a slow move, so it is defensible. In a fast, one-way unwind a stop fills at whatever price is there, and it is not a hedge.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> A soft US payrolls report days later revived US recession fears at the same time. Yen-funded carry was unwound across the board, and the yen rose sharply against nearly everything. AUD/JPY fell about 17% from its 11 July high to its 5 August low, roughly three and a half weeks, much of it in the sessions after the hike. On $10,000,000 that is about $1,700,000: around four years of that $420,000 carry, gone in a few weeks.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -867,6 +969,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="time-value-of-money.html">Time Value of Money</a> <span>· interest as the rental price of money</span></li>
+        <li><a href="central-bank-policy.html">Central Bank Policy</a> <span>· who sets the rates in the differential</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="purchasing-power-parity.html">Purchasing Power Parity</a> <span>· the slow price anchor under exchange rates</span></li>
+        <li><a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a> <span>· the fat left tail carry is short</span></li>
+        <li><a href="collateral-margin-repo-markets.html">Collateral, Margin &amp; Repo Markets</a> <span>· who funds the arbitrage, and when they stop</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every FX position quietly earns or pays the rate gap, and this tells you which part of that is an identity and which part is a crash you are being paid to carry.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
     <a href="purchasing-power-parity.html">Purchasing Power Parity →</a>
@@ -938,7 +1060,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

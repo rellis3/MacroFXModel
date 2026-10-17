@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fourier Analysis &amp; the Frequency Domain — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,65 @@
       <li><strong>How it reached trading:</strong> Granger brought spectral analysis to economics and stock prices in the 1960s (finding mostly noise and a "typical spectral shape"), and Carr &amp; Madan's 1999 FFT method made it a standard option-pricing engine.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the worked example's ten-point series over two trading weeks, a wave that repeats every 5 steps. An arrow labelled Fourier transform points right to its periodogram for frequency index 0 to 5, which is flat at zero except for one tall spike at index 2, height 2.5, meaning a cycle every 10 divided by 2, or 5, steps. A note underneath says the transform shows which cycles and how strong, but never when.">
+      <line class="tlp-line dash" x1="20" y1="105" x2="250" y2="105"/>
+      <polyline class="tlp-line blue thick" points="20,50 43,88 66,149.5 89,149.5 112,88 135,50 158,88 181,149.5 204,149.5 227,88 250,50"/>
+      <circle class="tlp-blue" cx="20" cy="50" r="4"/><circle class="tlp-blue" cx="43" cy="88" r="4"/><circle class="tlp-blue" cx="66" cy="149.5" r="4"/>
+      <circle class="tlp-blue" cx="89" cy="149.5" r="4"/><circle class="tlp-blue" cx="112" cy="88" r="4"/><circle class="tlp-blue" cx="135" cy="50" r="4"/>
+      <circle class="tlp-blue" cx="158" cy="88" r="4"/><circle class="tlp-blue" cx="181" cy="149.5" r="4"/><circle class="tlp-blue" cx="204" cy="149.5" r="4"/>
+      <circle class="tlp-blue" cx="227" cy="88" r="4"/>
+      <text class="tlp-text3" x="20" y="34" font-size="12">time domain: the series</text>
+      <text class="tlp-blue" x="135" y="182" text-anchor="middle" font-size="13" font-weight="700">repeats every 5 steps</text>
+      <line class="tlp-line purple thick" x1="266" y1="105" x2="336" y2="105"/>
+      <polygon class="tlp-purple" points="348,105 334,98 334,112"/>
+      <text class="tlp-purple" x="306" y="92" text-anchor="middle" font-size="12" font-weight="700">Fourier</text>
+      <text class="tlp-purple" x="306" y="126" text-anchor="middle" font-size="12" font-weight="700">transform</text>
+      <line class="tlp-line" x1="364" y1="170" x2="584" y2="170"/>
+      <rect class="tlp-box" x="370" y="167" width="22" height="3"/>
+      <rect class="tlp-box" x="406" y="167" width="22" height="3"/>
+      <rect class="tlp-box red" x="442" y="44" width="22" height="126"/>
+      <rect class="tlp-box" x="478" y="167" width="22" height="3"/>
+      <rect class="tlp-box" x="514" y="167" width="22" height="3"/>
+      <rect class="tlp-box" x="550" y="167" width="22" height="3"/>
+      <text class="tlp-text3" x="381" y="186" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="417" y="186" text-anchor="middle" font-size="12">1</text>
+      <text class="tlp-red" x="453" y="186" text-anchor="middle" font-size="12" font-weight="700">2</text>
+      <text class="tlp-text3" x="489" y="186" text-anchor="middle" font-size="12">3</text>
+      <text class="tlp-text3" x="525" y="186" text-anchor="middle" font-size="12">4</text>
+      <text class="tlp-text3" x="561" y="186" text-anchor="middle" font-size="12">5</text>
+      <text class="tlp-text3" x="364" y="34" font-size="12">frequency domain: the periodogram</text>
+      <text class="tlp-red" x="472" y="62" font-size="13" font-weight="700">2.5</text>
+      <text class="tlp-red" x="472" y="80" font-size="12">period 10 / 2 = 5</text>
+      <text class="tlp-amber" x="300" y="222" text-anchor="middle" font-size="14" font-weight="700">which cycles, and how strong, but never when</text>
+    </svg>
+    <figcaption>The same ten numbers, seen two ways. In time they look like a wiggle; in frequency all their energy sits in one bar, which points straight at the 5-step cycle built into the data. The transform tells you which cycles are present, not when they happened.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">People talk about weekly cycles and monthly cycles in markets. How would I know if one is really there?</p>
+      <p data-who="Quant">Think of a piano chord. A microphone records one messy wave, but your ear hears the separate notes. Fourier analysis is that ear for a time series. It rewrites the series as a sum of pure waves at different speeds, and tells you how strong each one is.</p>
+      <p data-who="Trader">How does it find them?</p>
+      <p data-who="Quant">For each speed, it multiplies the series by a test wave of that speed and adds up the results. If the series really contains that speed, the products line up and the total is big. If it doesn't, they point every which way and cancel to nothing.</p>
+      <p data-who="Trader">Give me an example.</p>
+      <p data-who="Quant">Ten days, two trading weeks, with a pattern that repeats every five days. Test the wave that does two cycles in ten days, and the total comes out at five. Test any other speed, and it comes out at exactly zero.</p>
+      <p data-who="Trader">And the chart people show?</p>
+      <p data-who="Quant">That's the periodogram. Square the total and divide by the number of days: twenty-five over ten, two and a half. One tall bar, at two cycles in ten days, which is a cycle every five days. It found the period without being told.</p>
+      <p data-who="Trader">So I run it on my returns and look for the tall bars.</p>
+      <p data-who="Quant">Two warnings. First, a single bar is very noisy, and more data does not fix that. More data gives you more, finer bars, each just as noisy. A periodogram from ten thousand points is as jumpy, bar for bar, as one from a hundred.</p>
+      <p data-who="Trader">So how do you trust a spike?</p>
+      <p data-who="Quant">Average. Cut the data into segments, compute a periodogram for each, and average them. A real cycle survives the averaging. A noise spike melts away.</p>
+      <p data-who="Trader">And the second warning?</p>
+      <p data-who="Quant">On raw returns there's usually nothing to find. Clive Granger and Oskar Morgenstern looked at stock prices in 1963 and found spectra close to white noise: flat. The tool earns its keep on volume, volatility and seasonal series, like an intraday volume cycle around the session opens.</p>
+      <p data-who="Trader">Anything else it can't do?</p>
+      <p data-who="Quant">It tells you which cycles are in the whole sample, never when they happened. That is what wavelets fix. The one-line version: Fourier tells you which rhythms are there and how loud, but a single spike is a hint, not proof.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -95,6 +155,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From a series to its periodogram, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{x_t} \]</div>
+      <p>Start with the series. In the worked example, ten values that repeat every 5 steps: \(1.000, 0.309, -0.809, -0.809, 0.309, \ldots\)</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ x_t\,\color{#fbbf24}{e^{-i2\pi f t}} \]</div>
+      <p>Multiply each value by a test wave at frequency \(f\). By Euler's identity this one complex number holds a cosine and a sine of that speed.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ X(f) = \color{#fbbf24}{\sum_{t=0}^{N-1}} x_t\, e^{-i2\pi f t} \]</div>
+      <p>Add up the products. If the series contains that speed they line up and the sum is large; if not they cancel. In the example \(X(2) = 5\) and every other interior bin is exactly 0.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{PSD}(f) = \color{#fbbf24}{\bigl|}X(f)\color{#fbbf24}{\bigr|^2} \]</div>
+      <p>Keep only the size, squared, and drop the phase. That is the power at frequency \(f\): how much of the variance sits there.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{I(f_k) = \frac{1}{N}\,|X(f_k)|^2 = \frac{5^2}{10} = 2.5} \]</div>
+      <p>Divide by \(N\) and evaluate at the frequencies \(f_k = k/N\): the periodogram. One spike at \(k = 2\), a cycle every \(10/2 = 5\) steps. One ordinate from one sample is still a noisy estimate.</p>
+    </div>
+  </div>
   <p>
     Three pieces, built in order: (1) the discrete Fourier transform itself; (2) the power spectral density and its
     finite-sample estimate, the periodogram; (3) the periodogram's honest statistical limitation.
@@ -309,6 +393,10 @@
       and any amplitude, and the transform value, the periodogram value, and
       the recovered period all recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="10" data-tol="0.5" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With amplitude 1, the periodogram spike is \(I(k) = 2.5\). Double the amplitude to 2, same frequency. What will \(I(k)\) read? Lock in a guess, then type 2 into the amplitude field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>10.</strong> Doubling the wave doubles the transform, \(X(k) = N A / 2 = 10\), but the periodogram squares it: \(I(k) = 10^2 / 10 = 10\), four times as big. Power goes with the square of amplitude, so a cycle twice as big stands four times as tall. Now change \(k\) to 1 and see that only the recovered period moves.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Frequency index \(k\)</span></div>
@@ -346,6 +434,12 @@
       not, by itself, a trading signal until it's turned into a tested rule and cleared an honest out-of-sample bar.
     </p>
   </div>
+
+  <!-- WB:fourier_analysis_frequency_domain:START -->
+  <div class="wb" id="wb-fourier_analysis_frequency_domain" data-title="How the Fourier transform finds a cycle">
+    <script type="application/json">{"w":600,"h":800,"intro":"How the transform finds a hidden cycle, using the lesson's ten-point example, then what happens on noise. Press play, or step through.","steps":[{"cap":"Two trading weeks of a series with a day-of-week pattern: 1.000, 0.309, −0.809, −0.809, 0.309, and then the same five again. To the eye, just a wiggle.","do":[{"chart":"ts","x":10,"y":10,"w":580,"h":230,"title":"The series, 10 steps","xd":[-0.5,9.5],"yd":[-1.3,1.45],"yt":[[-1,"−1"],[0,"0"],[1,"1"]],"xt":[[0,"0"],[5,"5"],[9,"9"]],"zero":true,"pl":40},{"series":"xs","chart":"ts","pts":[[0,1.0],[1,0.309],[2,-0.809],[3,-0.809],[4,0.309],[5,1.0],[6,0.309],[7,-0.809],[8,-0.809],[9,0.309]],"tone":"blue","ms":1300},{"dot":"d0","chart":"ts","at":[0,1.0],"text":"","tone":"blue"},{"dot":"d1","chart":"ts","at":[1,0.309],"text":"","tone":"blue"},{"dot":"d2","chart":"ts","at":[2,-0.809],"text":"","tone":"blue"},{"dot":"d3","chart":"ts","at":[3,-0.809],"text":"","tone":"blue"},{"dot":"d4","chart":"ts","at":[4,0.309],"text":"","tone":"blue"},{"dot":"d5","chart":"ts","at":[5,1.0],"text":"","tone":"blue"},{"dot":"d6","chart":"ts","at":[6,0.309],"text":"","tone":"blue"},{"dot":"d7","chart":"ts","at":[7,-0.809],"text":"","tone":"blue"},{"dot":"d8","chart":"ts","at":[8,-0.809],"text":"","tone":"blue"},{"dot":"d9","chart":"ts","at":[9,0.309],"text":"","tone":"blue"}]},{"cap":"The question for one speed at a time: does the series contain a wave that does 2 cycles in 10 steps? Hold that test wave against it.","do":[{"series":"w2","chart":"ts","pts":[[0.0,1.0],[0.1,0.992],[0.2,0.969],[0.3,0.93],[0.4,0.876],[0.5,0.809],[0.6,0.729],[0.7,0.637],[0.8,0.536],[0.9,0.426],[1.0,0.309],[1.1,0.187],[1.2,0.063],[1.3,-0.063],[1.4,-0.187],[1.5,-0.309],[1.6,-0.426],[1.7,-0.536],[1.8,-0.637],[1.9,-0.729],[2.0,-0.809],[2.1,-0.876],[2.2,-0.93],[2.3,-0.969],[2.4,-0.992],[2.5,-1.0],[2.6,-0.992],[2.7,-0.969],[2.8,-0.93],[2.9,-0.876],[3.0,-0.809],[3.1,-0.729],[3.2,-0.637],[3.3,-0.536],[3.4,-0.426],[3.5,-0.309],[3.6,-0.187],[3.7,-0.063],[3.8,0.063],[3.9,0.187],[4.0,0.309],[4.1,0.426],[4.2,0.536],[4.3,0.637],[4.4,0.729],[4.5,0.809],[4.6,0.876],[4.7,0.93],[4.8,0.969],[4.9,0.992],[5.0,1.0],[5.1,0.992],[5.2,0.969],[5.3,0.93],[5.4,0.876],[5.5,0.809],[5.6,0.729],[5.7,0.637],[5.8,0.536],[5.9,0.426],[6.0,0.309],[6.1,0.187],[6.2,0.063],[6.3,-0.063],[6.4,-0.187],[6.5,-0.309],[6.6,-0.426],[6.7,-0.536],[6.8,-0.637],[6.9,-0.729],[7.0,-0.809],[7.1,-0.876],[7.2,-0.93],[7.3,-0.969],[7.4,-0.992],[7.5,-1.0],[7.6,-0.992],[7.7,-0.969],[7.8,-0.93],[7.9,-0.876],[8.0,-0.809],[8.1,-0.729],[8.2,-0.637],[8.3,-0.536],[8.4,-0.426],[8.5,-0.309],[8.6,-0.187],[8.7,-0.063],[8.8,0.063],[8.9,0.187],[9.0,0.309]],"tone":"green","dash":true,"ms":900},{"note":"w2l","chart":"ts","at":[9.4,1.2],"text":"test: 2 cycles","tone":"green","size":17,"anchor":"end","dx":0,"dy":0}]},{"cap":"Multiply the two, step by step. Every product is zero or positive, because the test wave matches the series. They add up to 5.","do":[{"chart":"pr","x":10,"y":256,"w":580,"h":236,"title":"Series × test wave, each step","xd":[-0.5,9.5],"yd":[-1.2,1.3],"yt":[[-1,"−1"],[0,"0"],[1,"1"]],"xt":[[0,"0"],[5,"5"],[9,"9"]],"zero":true,"pl":40},{"bars":"p2","chart":"pr","data":[[0,1.0,"","green"],[1,0.095,"","green"],[2,0.655,"","green"],[3,0.655,"","green"],[4,0.095,"","green"],[5,1.0,"","green"],[6,0.095,"","green"],[7,0.655,"","green"],[8,0.655,"","green"],[9,0.095,"","green"]],"bw":26,"ms":1000},{"box":"sum","x":420,"y":276,"w":160,"h":60,"text":"sum","tone":"green","sub":"5","size":18}]},{"cap":"Now test a wave that does 3 cycles in 10 steps. The products swing positive and negative, and they cancel exactly: the sum is 0. That speed is not in the series.","do":[{"hide":"w2"},{"hide":"w2l"},{"hide":"p2"},{"series":"w3","chart":"ts","pts":[[0.0,1.0],[0.1,0.982],[0.2,0.93],[0.3,0.844],[0.4,0.729],[0.5,0.588],[0.6,0.426],[0.7,0.249],[0.8,0.063],[0.9,-0.125],[1.0,-0.309],[1.1,-0.482],[1.2,-0.637],[1.3,-0.771],[1.4,-0.876],[1.5,-0.951],[1.6,-0.992],[1.7,-0.998],[1.8,-0.969],[1.9,-0.905],[2.0,-0.809],[2.1,-0.685],[2.2,-0.536],[2.3,-0.368],[2.4,-0.187],[2.5,-0.0],[2.6,0.187],[2.7,0.368],[2.8,0.536],[2.9,0.685],[3.0,0.809],[3.1,0.905],[3.2,0.969],[3.3,0.998],[3.4,0.992],[3.5,0.951],[3.6,0.876],[3.7,0.771],[3.8,0.637],[3.9,0.482],[4.0,0.309],[4.1,0.125],[4.2,-0.063],[4.3,-0.249],[4.4,-0.426],[4.5,-0.588],[4.6,-0.729],[4.7,-0.844],[4.8,-0.93],[4.9,-0.982],[5.0,-1.0],[5.1,-0.982],[5.2,-0.93],[5.3,-0.844],[5.4,-0.729],[5.5,-0.588],[5.6,-0.426],[5.7,-0.249],[5.8,-0.063],[5.9,0.125],[6.0,0.309],[6.1,0.482],[6.2,0.637],[6.3,0.771],[6.4,0.876],[6.5,0.951],[6.6,0.992],[6.7,0.998],[6.8,0.969],[6.9,0.905],[7.0,0.809],[7.1,0.685],[7.2,0.536],[7.3,0.368],[7.4,0.187],[7.5,0.0],[7.6,-0.187],[7.7,-0.368],[7.8,-0.536],[7.9,-0.685],[8.0,-0.809],[8.1,-0.905],[8.2,-0.969],[8.3,-0.998],[8.4,-0.992],[8.5,-0.951],[8.6,-0.876],[8.7,-0.771],[8.8,-0.637],[8.9,-0.482],[9.0,-0.309]],"tone":"red","dash":true,"ms":900},{"note":"w3l","chart":"ts","at":[9.4,1.2],"text":"test: 3 cycles","tone":"red","size":17,"anchor":"end","dx":0,"dy":0},{"bars":"p3","chart":"pr","data":[[0,1.0,"","green"],[1,-0.095,"","red"],[2,0.655,"","green"],[3,-0.655,"","red"],[4,0.095,"","green"],[5,-1.0,"","red"],[6,0.095,"","green"],[7,-0.655,"","red"],[8,0.655,"","green"],[9,-0.095,"","red"]],"bw":26,"ms":1000},{"count":"sum","from":5,"to":0,"dp":0,"ms":900}]},{"cap":"Do that for every speed and square each total, divided by the 10 steps. That is the periodogram: 5² / 10 = 2.5 at speed 2, and exactly 0 everywhere else.","do":[{"hide":"w3"},{"hide":"w3l"},{"chart":"pg","x":10,"y":510,"w":280,"h":280,"title":"Periodogram, k = 0 to 5","xd":[-0.6,5.6],"yd":[0,3.1],"yt":[[0,"0"],[2.5,"2.5"]],"xt":[[0,"0"],[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"pl":44},{"bars":"pgb","chart":"pg","data":[[0,0.0,"","blue"],[1,0.0,"","blue"],[2,2.5,"2.5","red"],[3,0.0,"","blue"],[4,0.0,"","blue"],[5,0.0,"","blue"]],"bw":26,"ms":1000}]},{"cap":"One spike, at 2 cycles in 10 steps: a cycle every 10 / 2 = 5 steps. The transform found the 5-day pattern without being told it was there.","do":[{"note":"per","chart":"pg","at":[2.4,2.75],"text":"period 5","tone":"red","size":18,"anchor":"start","dx":0,"dy":0}]},{"cap":"Real returns look more like noise. Here is simulated white noise, 100 points. Its raw periodogram jumps around the true flat level of 1, from 0.07 up to 2.88.","do":[{"chart":"wn","x":310,"y":510,"w":280,"h":280,"title":"Noise: raw periodogram","xd":[0,0.5],"yd":[0,3.2],"yt":[[0,"0"],[1,"1"],[2,"2"],[3,"3"]],"xt":[[0,"0"],[0.25,"0.25"],[0.5,"0.5"]],"pl":36,"pr":14},{"series":"raw","chart":"wn","pts":[[0.01,2.197],[0.02,1.23],[0.03,0.585],[0.04,0.593],[0.05,0.888],[0.06,1.125],[0.07,0.568],[0.08,0.152],[0.09,1.183],[0.1,0.248],[0.11,0.46],[0.12,0.637],[0.13,0.141],[0.14,1.484],[0.15,1.273],[0.16,0.095],[0.17,0.113],[0.18,0.966],[0.19,0.415],[0.2,0.228],[0.21,0.321],[0.22,1.668],[0.23,1.7],[0.24,1.853],[0.25,0.184],[0.26,0.209],[0.27,0.09],[0.28,0.398],[0.29,0.48],[0.3,1.173],[0.31,1.573],[0.32,0.316],[0.33,2.876],[0.34,1.083],[0.35,0.959],[0.36,0.072],[0.37,0.228],[0.38,0.613],[0.39,0.343],[0.4,0.97],[0.41,0.192],[0.42,1.62],[0.43,1.678],[0.44,0.12],[0.45,0.415],[0.46,0.618],[0.47,0.575],[0.48,0.123],[0.49,1.143],[0.5,0.264]],"tone":"amber","ms":1500},{"series":"one","chart":"wn","pts":[[0,1],[0.5,1]],"tone":"blue","dash":true,"ms":500}]},{"cap":"Its tallest bar, at a period of about 3 steps, is pure noise. Each raw bar is roughly chi-squared with 2 degrees of freedom, and more data does not make any one bar less noisy.","do":[{"dot":"pk","chart":"wn","at":[0.33,2.876],"text":"noise, not a cycle","tone":"red","dx":-6,"dy":-14,"anchor":"end"}]},{"cap":"The fix: cut the noise into 10 segments, compute a periodogram for each, and average them. The averaged spectrum stays between 0.45 and 1.09, close to the flat truth. A noise spike melts; a real cycle would survive.","do":[{"dim":"raw"},{"series":"avg","chart":"wn","pts":[[0.05,0.636],[0.1,0.452],[0.15,0.791],[0.2,0.802],[0.25,0.641],[0.3,0.67],[0.35,1.085],[0.4,0.882],[0.45,0.95],[0.5,0.479]],"tone":"green","ms":1200},{"pulse":"one"}]},{"cap":"This is the classic finding for raw stock and FX returns, going back to Granger and Morgenstern in 1963: a spectrum close to flat. The tool earns its keep on volume, volatility and seasonal series.","do":[{"note":"gm","x":300,"y":500,"text":"raw returns: close to flat","size":18,"anchor":"middle","tone":"amber"}]},{"cap":"One thing it can never say: when. The periodogram pools the whole sample, so a cycle that ran only in the first week looks like one that ran all year. Wavelets fix that.","do":[{"hide":"gm"},{"note":"wh","x":300,"y":500,"text":"which cycles, how strong, never when","size":18,"anchor":"middle","tone":"purple"},{"pulse":"pgb"}]}]}</script>
+  </div>
+  <!-- WB:fourier_analysis_frequency_domain:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -397,6 +491,19 @@
         principle, or about volatility clustering, which lives in the squared/absolute return series, not the raw
         return spectrum.</li>
     </ul>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative afternoon</div>
+    <h3>A monthly cycle in EUR/USD returns?</h3>
+    <p>A colleague computes one raw periodogram of two years of EUR/USD daily returns. Most bars are low and jagged, but one bar, at a period of about a month, stands clearly above the rest. They want to build a trade around the monthly cycle. What do you suggest?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Trade it. It is the tallest bar in the spectrum.<div class="tl-drill-why">Each raw periodogram bar is roughly chi-squared with 2 degrees of freedom: very noisy on its own. Among dozens of bars, one will always stand tallest, cycle or not. The tallest bar is not yet evidence.</div></li>
+      <li data-verdict="good">Split the data into segments, average their periodograms, and see whether the spike survives, keeping in mind that raw return spectra are usually close to flat.<div class="tl-drill-why">Averaging across segments (Bartlett or Welch style) is the standard way to trade resolution for precision. A real cycle survives it; a noise spike melts. And the prior is against a cycle in raw returns: the classic finding is a near-flat spectrum.</div></li>
+      <li data-verdict="bad">Get two more years of data and recompute the raw periodogram to sharpen the spike.<div class="tl-drill-why">More data gives you more, finer-spaced bars, not a less noisy bar. The raw periodogram is not a consistent estimator: each ordinate stays just as noisy however long the sample.</div></li>
+      <li data-verdict="ok">Drop it, and drop spectral analysis for FX altogether.<div class="tl-drill-why">Right about this spike being weak evidence, but the tool is still useful on other FX series. Volume and volatility have real calendar cycles, such as the intraday pattern around the session opens, and a periodogram is well suited to those.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson says.</strong> This is an illustrative case, not a dated episode. The lesson's honest finding is that raw FX and equity return periodograms tend to be close to flat, going back to Granger and Morgenstern's spectral studies of stock prices in 1963, and that a single unsmoothed spike is a hint, not a confirmed cycle. Smooth or average first; then, even if a cycle survives, it still has to become a tested rule before it is a signal.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -491,6 +598,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a> <span>· a spectrum only means something for a stationary series</span></li>
+        <li><a href="foundation-complex-numbers.html">Complex Numbers</a> <span>· Euler's identity, the engine inside the transform</span></li>
+        <li><a href="foundation-trig-logs-exponentials.html">Trigonometry, Logarithms &amp; Exponentials</a> <span>· sine waves, frequency and period</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="wavelets-time-frequency.html">Wavelets &amp; Time-Frequency Analysis</a> <span>· adds the "when" Fourier cannot give</span></li>
+        <li><a href="trend-cycle-filters.html">Trend/Cycle Filters: Hodrick-Prescott, Butterworth &amp; Baxter-King</a> <span>· keeping only the cycles you want</span></li>
+        <li><a href="fft-option-pricing-carr-madan.html">FFT Option Pricing (Carr-Madan)</a> <span>· the transform's biggest job on a desk today</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every claimed market cycle can be checked here first, and knowing how noisy a single spike is stops you trading a pattern that is not there.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
     <a href="wavelets-time-frequency.html">Wavelets &amp; Time-Frequency Analysis →</a>
@@ -565,9 +693,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

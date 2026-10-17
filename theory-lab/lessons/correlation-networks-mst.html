@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Correlation Networks &amp; Minimum Spanning Trees — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,79 @@
       <li><strong>Real-world episode:</strong> in March 2020's dash for cash, investors sold even Treasuries and gold, correlations converged, and every distance in the tree shrank at once.<!-- DESK:START --> On this desk, a day when every index falls is followed by a wider week (<code>breadth-all-down</code>, VALIDATED, range only), not by a predictable direction.<!-- DESK:END --></li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the Mantegna distance curve, distance against correlation. Correlation of minus 1 gives distance 2, zero gives 1.41, plus 1 gives 0. The calm EUR-GBP correlation of 0.80 sits at distance 0.63; a March 2020 style correlation of 0.9 sits at 0.45. Right: the minimum spanning tree of the lesson's five currencies. EUR is the hub, linked to GBP at 0.63, CHF at 0.77 and AUD at 1.00. JPY hangs off AUD at 1.10. Total length 3.50.">
+      <text class="tlp-text3" x="160" y="16" text-anchor="middle" font-size="12">1. turn correlation into distance</text>
+      <line class="tlp-line" x1="50" y1="205" x2="275" y2="205"/>
+      <line class="tlp-line" x1="50" y1="40" x2="50" y2="205"/>
+      <polyline class="tlp-line purple thick" points="50.0,45.0 55.5,47.0 61.0,49.1 66.5,51.1 72.0,53.2 77.5,55.3 83.0,57.5 88.5,59.7 94.0,61.9 99.5,64.1 105.0,66.4 110.5,68.8 116.0,71.1 121.5,73.5 127.0,76.0 132.5,78.5 138.0,81.1 143.5,83.7 149.0,86.3 154.5,89.1 160.0,91.9 165.5,94.7 171.0,97.7 176.5,100.7 182.0,103.8 187.5,107.0 193.0,110.3 198.5,113.8 204.0,117.4 209.5,121.1 215.0,125.0 220.5,129.1 226.0,133.4 231.5,138.1 237.0,143.0 242.5,148.4 248.0,154.4 250.8,157.7 253.5,161.2 256.2,165.0 259.0,169.2 261.8,174.0 264.5,179.7 267.2,187.1 270.0,205.0"/>
+      <circle class="tlp-purple" cx="50" cy="45" r="4.5"/>
+      <circle class="tlp-blue" cx="160" cy="91.9" r="5"/>
+      <circle class="tlp-green" cx="248" cy="154.4" r="5"/>
+      <circle class="tlp-red" cx="259" cy="169.2" r="5"/>
+      <text class="tlp-text2" x="60" y="36" font-size="12">opposite (−1): 2</text>
+      <text class="tlp-blue" x="168" y="86" font-size="12">unrelated (0): 1.41</text>
+      <text class="tlp-green" x="238" y="160" text-anchor="end" font-size="12" font-weight="700">calm EUR–GBP 0.80 → 0.63</text>
+      <text class="tlp-red" x="250" y="187" text-anchor="end" font-size="12" font-weight="700">March 2020, ρ 0.9 → 0.45</text>
+      <text class="tlp-text3" x="50" y="221" text-anchor="middle" font-size="12">−1</text>
+      <text class="tlp-text3" x="160" y="221" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="270" y="221" text-anchor="middle" font-size="12">+1</text>
+      <text class="tlp-text3" x="160" y="240" text-anchor="middle" font-size="12">correlation →</text>
+      <text class="tlp-text3" x="44" y="49" text-anchor="end" font-size="12">2</text>
+      <text class="tlp-text3" x="44" y="209" text-anchor="end" font-size="12">0</text>
+      <line class="tlp-line dash" x1="305" y1="10" x2="305" y2="240"/>
+      <text class="tlp-text3" x="455" y="16" text-anchor="middle" font-size="12">2. keep the shortest edges, no loops</text>
+      <line class="tlp-line green thick" x1="455" y1="70" x2="360" y2="70"/>
+      <line class="tlp-line green thick" x1="455" y1="70" x2="555" y2="70"/>
+      <line class="tlp-line green thick" x1="455" y1="70" x2="455" y2="148"/>
+      <line class="tlp-line green thick" x1="455" y1="148" x2="455" y2="216"/>
+      <circle class="tlp-box blue" cx="455" cy="70" r="22"/>
+      <circle class="tlp-box blue" cx="360" cy="70" r="22"/>
+      <circle class="tlp-box blue" cx="555" cy="70" r="22"/>
+      <circle class="tlp-box blue" cx="455" cy="148" r="22"/>
+      <circle class="tlp-box amber" cx="455" cy="216" r="22"/>
+      <text class="tlp-text" x="455" y="75" text-anchor="middle" font-size="13" font-weight="700">EUR</text>
+      <text class="tlp-text" x="360" y="75" text-anchor="middle" font-size="13" font-weight="700">GBP</text>
+      <text class="tlp-text" x="555" y="75" text-anchor="middle" font-size="13" font-weight="700">CHF</text>
+      <text class="tlp-text" x="455" y="153" text-anchor="middle" font-size="13" font-weight="700">AUD</text>
+      <text class="tlp-amber" x="455" y="221" text-anchor="middle" font-size="13" font-weight="700">JPY</text>
+      <text class="tlp-green" x="407" y="60" text-anchor="middle" font-size="12" font-weight="700">0.63</text>
+      <text class="tlp-green" x="505" y="60" text-anchor="middle" font-size="12" font-weight="700">0.77</text>
+      <text class="tlp-green" x="464" y="114" font-size="12" font-weight="700">1.00</text>
+      <text class="tlp-green" x="464" y="186" font-size="12" font-weight="700">1.10</text>
+      <text class="tlp-text2" x="440" y="114" text-anchor="end" font-size="12">EUR is the hub</text>
+      <text class="tlp-amber" x="484" y="220" font-size="12">outlier, via AUD</text>
+      <text class="tlp-text3" x="440" y="186" text-anchor="end" font-size="12">4 edges, total 3.50</text>
+    </svg>
+    <figcaption>Two moves. Flip correlation into a distance, so moving together means close. Then keep only the shortest edges that connect everyone without a loop. Calm data gives a hub (EUR) and an outlier (JPY). Push every correlation to 0.9, as forced selling did in March 2020, and every distance shrinks to 0.45.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I've got a correlation table for five currencies. Ten numbers. I can't see any shape in it.</p>
+      <p data-who="Quant">Nobody can. So turn it into a map. Each currency is a dot, and the distance between two dots says how differently they move.</p>
+      <p data-who="Trader">Why not just use the correlation as the distance?</p>
+      <p data-who="Quant">Because it points the wrong way. A correlation of one means identical, and identical should be zero distance. So Rosario Mantegna flipped it in 1999. Take one minus the correlation, double it, and take the square root.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Euro and sterling at a correlation of point eight. One minus point eight is point two. Double it, point four. The square root is about point six three. Unrelated pairs land at about one point four one. Perfect opposites land at two.</p>
+      <p data-who="Trader">Fine. Now I have ten distances. Still a tangle.</p>
+      <p data-who="Quant">So prune it. Keep the cheapest set of links that still reaches every currency, with no loops. That is the minimum spanning tree. For five dots it always has four links.</p>
+      <p data-who="Trader">How do you find it?</p>
+      <p data-who="Quant">Kruskal's way is simple. Sort the distances, shortest first. Take each one unless it would close a loop. Euro to sterling, keep. Euro to Swiss franc, keep. Sterling to franc, skip, they already meet through the euro.</p>
+      <p data-who="Trader">And the finished picture?</p>
+      <p data-who="Quant">The euro is the hub, touching three of the four links. The yen, weakly tied to everything, hangs off the Aussie dollar by one long link. The table had that information. The tree makes you see it.</p>
+      <p data-who="Trader">So the yen is my diversifier.</p>
+      <p data-who="Quant">In calm markets. Remember March twenty twenty. Funds needed dollars, so they sold even Treasuries and gold. Correlations converged. If every correlation in our basket went to point nine, every distance would shrink to about point four five, shorter than the tightest calm link.</p>
+      <p data-who="Trader">So the tree collapses.</p>
+      <p data-who="Quant">Into one clump. The diversifiers moved in exactly when you needed them to stay away. A tree built on January's data described a market that no longer existed by mid March.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">The tree shows you the structure of your book today. It is a picture, not a backtest, and the calm tree is not the crisis tree.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -100,6 +174,27 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Mantegna's distance, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\rho_{ij}} \]</div>
+      <p>Start with the correlation. It runs from \(-1\) to \(1\), and it runs the wrong way for a distance: the most alike pair has the biggest number.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{1-{}}\rho_{ij} \]</div>
+      <p>Subtract it from 1 to flip the direction. Now identical pairs score 0 and perfect opposites score 2.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{2}(1-\rho_{ij}) \]</div>
+      <p>Double it. For two return series standardized to mean 0 and variance 1, this is the average squared gap between them, so it measures how far apart their moves really are.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{d_{ij} = \sqrt{2(1-\rho_{ij})}} \]</div>
+      <p>Take the square root to get a proper metric that obeys the triangle inequality. Checkpoints: \(\rho=1\) gives 0, \(\rho=0\) gives \(\sqrt2\approx1.41\), \(\rho=-1\) gives 2. EUR&ndash;GBP at 0.80 gives 0.63.</p>
+    </div>
+  </div>
 
   <h3>Step 1 — turning a correlation into a distance</h3>
   <p>
@@ -303,6 +398,10 @@
       a correlation has to move before Kruskal's algorithm would pick the
       other edge first.
     </p>
+    <div class="tl-predict" data-answer="1.10" data-tol="0.05" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The EUR&ndash;GBP correlation is 0.80 and its distance is 0.63. If that correlation halved to 0.40, would the distance double to about 1.26? Write down the distance you expect, then type 0.40 into the first field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>1.10, not 1.26.</strong> \(d=\sqrt{2(1-0.40)}=\sqrt{1.2}\approx1.10\). Halving the correlation tripled \(1-\rho\), from 0.2 to 0.6, but the square root turns that into a rise of about 1.73 times in distance. The transform is curved, not straight. Now try 0.90: the distance falls to 0.45, which is what forced selling did to every edge in March 2020.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>&rho; (EUR&ndash;GBP)</span></div>
@@ -394,6 +493,12 @@
       picture tells you about structure; it does not replace a backtest.
     </p>
   </div>
+
+  <!-- WB:correlation_networks_mst:START -->
+  <div class="wb" id="wb-correlation_networks_mst" data-title="Building the minimum spanning tree, edge by edge">
+    <script type="application/json">{"w":600,"h":620,"intro":"Five currencies, ten correlations, and the four-edge backbone hiding inside them. Press play, or step through.","steps":[{"cap":"Five currencies with a plausible correlation matrix (illustrative, not measured). Every pair has a correlation, so the full graph has ten edges. Even at five nodes, it is a tangle.","do":[{"box":"GBP","x":22,"y":46,"w":76,"h":48,"text":"GBP","tone":"blue","size":20},{"box":"EUR","x":162,"y":46,"w":76,"h":48,"text":"EUR","tone":"blue","size":20},{"box":"CHF","x":22,"y":186,"w":76,"h":48,"text":"CHF","tone":"blue","size":20},{"box":"AUD","x":162,"y":186,"w":76,"h":48,"text":"AUD","tone":"blue","size":20},{"box":"JPY","x":262,"y":276,"w":76,"h":48,"text":"JPY","tone":"amber","size":20},{"line":"f0","points":[[159.0,70.0],[101.0,70.0]],"width":1.5,"ms":250},{"line":"f1","points":[[173.0,97.0],[87.0,183.0]],"width":1.5,"ms":250},{"line":"f2","points":[[60.0,97.0],[60.0,183.0]],"width":1.5,"ms":250},{"line":"f3","points":[[200.0,97.0],[200.0,183.0]],"width":1.5,"ms":250},{"line":"f4","points":[[87.0,97.0],[173.0,183.0]],"width":1.5,"ms":250},{"line":"f5","points":[[270.0,273.0],[230.0,237.0]],"width":1.5,"ms":250},{"line":"f6","points":[[101.0,210.0],[159.0,210.0]],"width":1.5,"ms":250},{"line":"f7","points":[[211.7,97.0],[288.3,273.0]],"width":1.5,"ms":250},{"line":"f8","points":[[88.2,97.0],[271.8,273.0]],"width":1.5,"ms":250},{"line":"f9","points":[[101.0,225.4],[259.0,284.6]],"width":1.5,"ms":250}]},{"cap":"Correlation says how alike two things are. A tree needs how far apart. Mantegna's transform flips it: d equals the square root of 2 times (1 minus rho). EUR–GBP at 0.80 becomes 0.63. CHF–JPY at 0.20 becomes 1.26.","do":[{"note":"fx","x":300,"y":340,"text":"d = √(2(1 − ρ)):   ρ 1 → 0,   ρ 0 → 1.41,   ρ −1 → 2","size":18,"anchor":"middle","tone":"purple"}]},{"cap":"Kruskal's algorithm, step one: sort all ten distances, shortest first.","do":[{"note":"lh","x":368,"y":22,"text":"sorted distances","size":18,"anchor":"start","tone":"purple"},{"note":"l0","x":368,"y":52,"text":"EUR–GBP  0.63","size":18,"anchor":"start"},{"note":"l1","x":368,"y":77,"text":"EUR–CHF  0.77","size":18,"anchor":"start"},{"note":"l2","x":368,"y":102,"text":"GBP–CHF  0.89","size":18,"anchor":"start"},{"note":"l3","x":368,"y":127,"text":"EUR–AUD  1.00","size":18,"anchor":"start"},{"note":"l4","x":368,"y":152,"text":"GBP–AUD  1.05","size":18,"anchor":"start"},{"note":"l5","x":368,"y":177,"text":"JPY–AUD  1.10","size":18,"anchor":"start"},{"note":"l6","x":368,"y":202,"text":"CHF–AUD  1.14","size":18,"anchor":"start"},{"note":"l7","x":368,"y":227,"text":"EUR–JPY  1.18","size":18,"anchor":"start"},{"note":"l8","x":368,"y":252,"text":"GBP–JPY  1.22","size":18,"anchor":"start"},{"note":"l9","x":368,"y":277,"text":"CHF–JPY  1.26","size":18,"anchor":"start"}]},{"cap":"Take the shortest edge, EUR–GBP at 0.63. Nothing is connected yet, so it cannot close a loop. Keep it.","do":[{"line":"t0","points":[[159.0,70.0],[101.0,70.0]],"width":5,"ms":700,"tone":"green"},{"note":"m0","x":588,"y":52,"text":"✓","size":18,"anchor":"end","tone":"green"},{"pulse":"l0"}]},{"cap":"Next, EUR–CHF at 0.77. CHF is new to the tree. Keep it.","do":[{"line":"t1","points":[[173.0,97.0],[87.0,183.0]],"width":5,"ms":700,"tone":"green"},{"note":"m1","x":588,"y":77,"text":"✓","size":18,"anchor":"end","tone":"green"},{"pulse":"l1"}]},{"cap":"Next, GBP–CHF at 0.89. But GBP and CHF already reach each other through EUR. Adding it would close a loop and connect nothing new. Skip it, even though it is short.","do":[{"note":"m2","x":588,"y":102,"text":"✗ loop","size":18,"anchor":"end","tone":"red"},{"dim":"l2"}]},{"cap":"EUR–AUD at 1.00 brings AUD in. Keep it. Then GBP–AUD at 1.05 would close another loop. Skip.","do":[{"line":"t3","points":[[200.0,97.0],[200.0,183.0]],"width":5,"ms":700,"tone":"green"},{"note":"m3","x":588,"y":127,"text":"✓","size":18,"anchor":"end","tone":"green"},{"pulse":"l3"},{"note":"m4","x":588,"y":152,"text":"✗ loop","size":18,"anchor":"end","tone":"red"},{"dim":"l4"}]},{"cap":"JPY–AUD at 1.10 connects the last node, JPY. Five nodes, four edges: the tree is done, total length 3.50. The other four edges are never needed.","do":[{"line":"t5","points":[[270.0,273.0],[230.0,237.0]],"width":5,"ms":700,"tone":"green"},{"note":"m5","x":588,"y":177,"text":"✓","size":18,"anchor":"end","tone":"green"},{"pulse":"l5"},{"dim":"l6"},{"dim":"l7"},{"dim":"l8"},{"dim":"l9"},{"hide":"f0"},{"hide":"f1"},{"hide":"f2"},{"hide":"f3"},{"hide":"f4"},{"hide":"f5"},{"hide":"f6"},{"hide":"f7"},{"hide":"f8"},{"hide":"f9"},{"hide":"fx"},{"note":"tot","x":300,"y":340,"text":"minimum spanning tree: 4 edges, total 3.50","size":19,"anchor":"middle","tone":"green"}]},{"cap":"Now read the shape. EUR touches three of the four edges: it is the hub. JPY, weakly correlated with everything, does not join the hub at all. It hangs off AUD, its least-weak link.","do":[{"pulse":"EUR"},{"pulse":"JPY"}]},{"cap":"Here are the tree's four edges in a calm market. Now March 2020: forced sellers dumped even Treasuries and gold, and correlations converged. The lesson's thought experiment: push every correlation to 0.9.","do":[{"hide":"tot"},{"chart":"ch","x":10,"y":350,"w":580,"h":232,"title":"Tree edge distances","xd":[0.4,4.6],"yd":[0,1.3],"yt":[[0,"0"],[0.5,"0.5"],[1.0,"1.0"]],"xt":[[1,"EUR–GBP"],[2,"EUR–CHF"],[3,"EUR–AUD"],[4,"JPY–AUD"]],"pl":46,"pr":14},{"bars":"calm","chart":"ch","data":[[1,0.63,"0.63","blue"],[2,0.77,"0.77","blue"],[3,1.0,"1.00","blue"],[4,1.1,"1.10","blue"]],"bw":60,"ms":900}]},{"cap":"At 0.9, every distance is 0.45, shorter than even the tightest calm edge (0.63). The hub-and-outlier shape is gone: the diversifier moved in, just when the book needed it to stay away. A calm tree is not a crisis tree.","do":[{"series":"cr","chart":"ch","pts":[[0.5,0.447],[4.5,0.447]],"tone":"red","dash":true,"ms":800},{"note":"crl","x":300,"y":604,"text":"every ρ → 0.9: every d = 0.45 (dashed line)","size":19,"anchor":"middle","tone":"red"}]}]}</script>
+  </div>
+  <!-- WB:correlation_networks_mst:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: the dash for cash, March 2020</h2>
@@ -556,6 +661,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2020-03-16">
+    <div class="tl-drill-label">Scenario drill · 16 March 2020</div>
+    <h3>Your diversifier has stopped diversifying</h3>
+    <p>You run a currency book across EUR, GBP, CHF and AUD, and you added JPY because a tree built on calm data showed it hanging far from the hub. It is Monday. Last night the Federal Reserve cut rates to zero. Funds facing margin calls are selling whatever has a bid, Treasuries and gold included, and the dollar is surging. The VIX will close at a record 82.69 today. What do you do with your tree?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Trust it. JPY is the outlier in your tree, so your book is still diversified.<div class="tl-drill-why">The tree was built on a window that described a market that no longer exists. When correlations rush towards 1, every distance shrinks towards 0, and the outlier moves into the clump. The calm tree is not the crisis tree.</div></li>
+      <li data-verdict="good">Assume the distances have collapsed, treat the book as closer to one trade, and cut gross size until you can re-estimate on recent data.<div class="tl-drill-why">This is what the transform says. If correlations go to 0.9, every distance falls to about 0.45, shorter than your tightest calm edge of 0.63. Five positions then behave like one large one, so the size that was right for five separate bets is too big.</div></li>
+      <li data-verdict="ok">Rebuild the tree on the full past year so the estimate is more stable.<div class="tl-drill-why">A longer window is steadier, but it is steadier because it is mostly calm data. It will under-report how far correlations have converged this week. Better than nothing, but it answers the wrong question.</div></li>
+      <li data-verdict="bad">Add Treasuries and gold as hedges, since they sit far from currencies and stocks in a calm tree.<div class="tl-drill-why">These are exactly the assets being sold for cash this week. Long Treasury yields were rising while equities fell, and gold was falling with stocks. A hedge chosen from a calm-window distance can fail together with the risk it hedges.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The dash for cash ran on through mid March. The S&amp;P 500 bottomed on 23 March, about a third below its February peak, the same day the Fed made its asset purchases open-ended, after large Treasury buying and wider dollar swap lines. Only after that did the old relationships start to come back. A book sized on its calm-window tree was far less diversified than it looked.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -657,6 +775,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="graph-theory-centrality.html">Graph Theory Fundamentals &amp; Centrality Measures</a> <span>· nodes, edges and hubs</span></li>
+        <li><a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> <span>· what the number on each edge means</span></li>
+        <li><a href="pca-factors.html">Principal Component Analysis &amp; Factor Regimes</a> <span>· the other lens on the same matrix</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="systemic-risk-networks.html">Systemic Risk &amp; Financial Contagion Networks</a> <span>· edges that carry losses, not just co-movement</span></li>
+        <li><a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a> <span>· sizing a book from its correlation tree</span></li>
+        <li><a href="random-matrix-theory.html">Random Matrix Theory &amp; the Marchenko-Pastur Law</a> <span>· how much of the matrix is noise</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the tree tells you how many separate bets your book really holds, and March 2020 shows that answer can shrink to one in a week.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="graph-theory-centrality.html">← Graph Theory Fundamentals &amp; Centrality Measures</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -728,10 +867,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

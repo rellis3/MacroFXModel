@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Copulas — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -142,7 +143,19 @@
       <p class="sl-p">Put in plain terms: two dependence structures tuned to have the <em>identical</em> overall rank-correlation strength produce wildly different answers to "if X is in its worst 1% of outcomes, how likely is Y also in its worst 1%?" A risk model built on the Gaussian assumption would report these two series as reasonably, stably diversified in the tail. A risk model built on Clayton would report them as behaving almost as a single position exactly when things are going badly.</p>
     </section>
 
+    <!-- WB:copulas-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Copulas: same correlation, different crashes</h2>
+      <!-- WB:copulas:START -->
+      <div class="wb" data-title="Copulas: same correlation, different crashes">
+        <script type="application/json">{"w":600,"h":790,"intro":"Two currency pairs with the same headline correlation, and two ways to link them. The lesson's worked example, then the CDO slice that depended on the difference. Press play, or step through.","steps":[{"cap":"Two currency pairs, each with its own pattern of moves, fat tails included. Their correlation is a comfortable 0.4: related, but not the same bet.","do":[{"box":"A","x":20,"y":20,"w":200,"h":76,"text":"pair A","tone":"blue","sub":"its own tails","size":21},{"box":"B","x":380,"y":20,"w":200,"h":76,"text":"pair B","tone":"blue","sub":"its own tails","size":21},{"chip":"corr","x":300,"y":58,"text":"corr ≈ 0.4","tone":"amber"}]},{"cap":"Sklar's theorem, 1959: first turn each day's move into a rank between 0 and 1 using that pair's own distribution. A rank of 0.01 means one of its worst 1% of days.","do":[{"box":"u","x":40,"y":140,"w":160,"h":64,"text":"rank u","tone":"green","sub":"0 to 1","size":19},{"box":"v","x":400,"y":140,"w":160,"h":64,"text":"rank v","tone":"green","sub":"0 to 1","size":19},{"arrow":["A","u"]},{"arrow":["B","v"]}]},{"cap":"Then a copula joins the two ranks. It holds only the link between the pairs, nothing about what each one looks like on its own. So the tails and the link can be chosen separately.","do":[{"box":"C","x":190,"y":236,"w":220,"h":72,"text":"copula C(u, v)","tone":"purple","sub":"only the link","size":20},{"arrow":["u","C"]},{"arrow":["v","C"]}]},{"cap":"Two candidate links, matched on the same Kendall's τ = 0.40 so the fight is fair: a Gaussian copula with ρ = 0.588, and a Clayton copula with θ = 1.333.","do":[{"box":"G","x":20,"y":360,"w":250,"h":64,"text":"Gaussian · ρ = 0.588","tone":"blue","size":19},{"box":"K","x":330,"y":360,"w":250,"h":64,"text":"Clayton · θ = 1.333","tone":"red","size":19},{"arrow":["C","G"]},{"arrow":["C","K"]}]},{"cap":"The question a correlation cannot answer: when pair A has one of its worst days, how often is pair B having one too? Under Clayton the answer settles at about 60%, however deep into the tail you look.","do":[{"chart":"ch","x":10,"y":440,"w":580,"h":280,"title":"A in its worst q of days: chance B is too","xd":[1,4],"yd":[0,0.72],"yt":[[0,"0"],[0.2,"20%"],[0.4,"40%"],[0.6,"60%"]],"xt":[[1,"10%"],[2,"1%"],[3,"0.1%"],[4,"0.01%"]],"pl":50,"pr":20},{"series":"cl","chart":"ch","pts":[[1.0,0.6052],[1.25,0.5995],[1.5,0.5968],[1.75,0.5956],[2.0,0.5951],[2.25,0.5948],[2.5,0.5947],[2.75,0.5947],[3.0,0.5946],[3.25,0.5946],[3.5,0.5946],[3.75,0.5946],[4.0,0.5946]],"tone":"red","ms":1300,"label":"Clayton → 0.595","lat":[4,0.5946],"ldx":-2,"ldy":-16,"lanchor":"end","lsize":18}]},{"cap":"Under the Gaussian copula the answer keeps shrinking: 38% at the worst 10% of days, 18% at the worst 1%, 4.5% at the worst 0.01%, and towards zero in the limit. Zero tail dependence.","do":[{"series":"ga","chart":"ch","pts":[[1.0,0.3816],[1.25,0.3137],[1.5,0.2594],[1.75,0.2154],[2.0,0.1795],[2.25,0.1501],[2.5,0.1257],[2.75,0.1056],[3.0,0.0888],[3.25,0.0748],[3.5,0.0631],[3.75,0.0532],[4.0,0.045]],"tone":"blue","ms":1300,"label":"Gaussian → 0","lat":[4,0.045],"ldx":-2,"ldy":-16,"lanchor":"end","lsize":18}]},{"cap":"At the worst 1% of days: 18% against 59.5%. Same τ, same headline correlation, a threefold gap in how often the two crash together. That gap is the whole lesson.","do":[{"dot":"g1","chart":"ch","at":[2,0.1795],"text":"18%","tone":"blue","dx":0,"dy":22},{"dot":"c1","chart":"ch","at":[2,0.5951],"text":"59.5%","tone":"red","dx":0,"dy":-16}]},{"cap":"Where it mattered: a CDO pools many mortgages and slices the losses. The junior slice takes the first defaults; the super-senior slice loses only if a large share of the pool defaults at the same time.","do":[{"hide":"A"},{"hide":"B"},{"hide":"corr"},{"hide":"u"},{"hide":"v"},{"hide":"C"},{"hide":"G"},{"hide":"K"},{"hide":"A>u"},{"hide":"B>v"},{"hide":"u>C"},{"hide":"v>C"},{"hide":"C>G"},{"hide":"C>K"},{"box":"ss","x":20,"y":20,"w":260,"h":84,"text":"super-senior","tone":"green","sub":"marked near riskless","size":21},{"box":"mz","x":20,"y":118,"w":260,"h":66,"text":"mezzanine","tone":"amber","size":20},{"box":"jr","x":20,"y":198,"w":260,"h":66,"text":"junior: first loss","tone":"red","size":20},{"icon":"pool","name":"house","x":420,"y":186,"s":0.8,"tone":"blue","label":"mortgage pool","lsize":18}]},{"cap":"Priced with a Gaussian copula fitted on calm years, \"most of the pool defaults together\" sits in the corner the model calls near impossible. So the super-senior slice paid a thin spread and banks kept it.","do":[{"pulse":"ss"},{"pulse":"ga"}]},{"cap":"Then US house prices fell nationwide: one common shock to every region at once, barely present in the calm years the model was fitted on. Defaults rose together and the lower slices were wiped out together.","do":[{"icon":"fall","name":"down","x":522,"y":196,"s":0.6,"tone":"red"},{"arrow":["pool","jr"],"label":"defaults together","tone":"red","bend":16},{"cross":"jr"},{"cross":"mz"}]},{"cap":"Losses climbed to the super-senior slices. Top-rated CDO tranches were downgraded in large numbers through 2007 and 2008, and UBS, Merrill Lynch and Citigroup wrote down tens of billions of dollars, much of it on slices they had kept.","do":[{"sub":"ss","text":"written down: tens of $bn"},{"pulse":"ss"},{"pulse":"cl"}]},{"cap":"The lesson is not \"copulas are wrong\". Any link fitted only on calm data can understate how tightly things crash together. Test the link against stress periods before you trust a \"diversified\" book.","do":[{"note":"end","x":300,"y":350,"text":"fitted on calm years ≠ safe in a crash","size":21,"anchor":"middle","tone":"amber"},{"note":"end2","x":300,"y":398,"text":"test the link on stress periods","size":21,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:copulas:END -->
+    </section>
+    <!-- WB:copulas-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The 2008 cautionary tale</h2>
       <p class="sl-sub">This isn't a hypothetical — it's a documented, systemic-scale example of exactly this blind spot.</p>
@@ -154,7 +167,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">A "diversified" book that isn't, exactly when it matters</h2>
       <p class="sl-p">Suppose two FX pairs show a comfortable rolling correlation of about 0.4 most of the time — the kind of number that reads, on a standard diversification check, as "meaningfully related but not redundant." Now suppose their true dependence structure has strong lower-tail dependence, in the asymmetric Clayton-style pattern from Section 4: during a risk-off shock, both pairs move sharply the same direction far more often, and far more tightly, than 0.4 correlation would ever suggest.</p>
@@ -167,7 +180,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where copula modeling goes wrong in practice</h2>
       <div class="sl-compare">
@@ -193,7 +206,7 @@
       <p class="sl-p">The Gaussian copula remains popular for the same reasons it was popular before 2008: tractable, well-understood, easy to simulate from. That's a legitimate reason to use it as a baseline — it is not evidence that it's the right description of a specific pair's tail behavior.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">The super-senior tranche: a pure bet on the joint tail</h2>
       <div class="sl-callout amber">
@@ -213,7 +226,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <!-- DESK:START -->
       <h2 class="sl-h2">What this desk can say, and where the textbook breaks</h2>
@@ -230,7 +243,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -283,7 +296,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -421,5 +434,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

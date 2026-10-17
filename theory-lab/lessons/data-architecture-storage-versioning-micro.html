@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Data Architecture, Storage &amp; Versioning — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -259,7 +260,19 @@
       </div>
     </section>
 
+    <!-- WB:data_architecture_storage_versioning-deck:START -->
     <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Knight Capital: eight copies and one stale flag</h2>
+      <!-- WB:data_architecture_storage_versioning:START -->
+      <div class="wb" data-title="Knight Capital: eight copies and one stale flag">
+        <script type="application/json">{"w":600,"h":730,"intro":"One firm, eight copies of one program, and a flag that meant two things. Then the same failure in slow motion. Press play, or step through.","steps":[{"cap":"1 August 2012. The New York Stock Exchange launches its Retail Liquidity Program, and Knight Capital updates its automated order router to support it. The router runs on eight servers.","do":[{"note":"t","x":300,"y":22,"text":"Knight Capital's order router: eight servers","size":19,"anchor":"middle"},{"box":"s0","x":20,"y":46,"w":58,"h":50,"text":"1","size":20},{"box":"s1","x":92,"y":46,"w":58,"h":50,"text":"2","size":20},{"box":"s2","x":164,"y":46,"w":58,"h":50,"text":"3","size":20},{"box":"s3","x":236,"y":46,"w":58,"h":50,"text":"4","size":20},{"box":"s4","x":308,"y":46,"w":58,"h":50,"text":"5","size":20},{"box":"s5","x":380,"y":46,"w":58,"h":50,"text":"6","size":20},{"box":"s6","x":452,"y":46,"w":58,"h":50,"text":"7","size":20},{"box":"s7","x":524,"y":46,"w":58,"h":50,"text":"8","size":20}]},{"cap":"A technician copies the new code to seven of the eight servers. The eighth keeps the old code. Nobody checks.","do":[{"chip":"n0","x":49,"y":120,"text":"new","tone":"green"},{"chip":"n1","x":121,"y":120,"text":"new","tone":"green"},{"chip":"n2","x":193,"y":120,"text":"new","tone":"green"},{"chip":"n3","x":265,"y":120,"text":"new","tone":"green"},{"chip":"n4","x":337,"y":120,"text":"new","tone":"green"},{"chip":"n5","x":409,"y":120,"text":"new","tone":"green"},{"chip":"n6","x":481,"y":120,"text":"new","tone":"green"},{"chip":"o7","x":553,"y":120,"text":"old","tone":"red"},{"pulse":"s7"}]},{"cap":"The new code reuses an old flag. On the seven updated servers, the flag now means: handle this as a Retail Liquidity order.","do":[{"note":"m1","x":20,"y":160,"text":"flag on 1–7: \"retail liquidity order\"","size":19,"anchor":"start","tone":"green"}]},{"cap":"On the eighth, the same flag still means \"run Power Peg\": an old function unused since 2003 but never removed. An earlier change had broken how Power Peg tracked filled orders.","do":[{"note":"m2","x":20,"y":192,"text":"flag on 8: \"run Power Peg\" (dead since 2003)","size":19,"anchor":"start","tone":"red"}]},{"cap":"Before the open, automated error emails go out. Nobody acts on them.","do":[{"icon":"mail","name":"warn","x":30,"y":208,"s":0.5,"tone":"amber","label":"error emails","lsize":17},{"note":"m3","x":110,"y":234,"text":"sent before the open: ignored","size":18,"anchor":"start","tone":"amber"}]},{"cap":"The market opens. Server 8 receives the flag, runs Power Peg, cannot see that its orders have filled, and keeps sending child orders, again and again.","do":[{"icon":"mkt","name":"globe","x":492,"y":214,"s":0.7,"tone":"blue","label":"the market","lsize":17},{"arrow":["s7","mkt"],"label":"orders","tone":"red","bend":-30}]},{"cap":"Staff try to stop it. They remove the new code from the seven good servers. Now all eight run the old code, all eight read the flag as Power Peg, and the fault spreads.","do":[{"hide":"n0"},{"hide":"n1"},{"hide":"n2"},{"hide":"n3"},{"hide":"n4"},{"hide":"n5"},{"hide":"n6"},{"chip":"r0","x":49,"y":120,"text":"old","tone":"red"},{"chip":"r1","x":121,"y":120,"text":"old","tone":"red"},{"chip":"r2","x":193,"y":120,"text":"old","tone":"red"},{"chip":"r3","x":265,"y":120,"text":"old","tone":"red"},{"chip":"r4","x":337,"y":120,"text":"old","tone":"red"},{"chip":"r5","x":409,"y":120,"text":"old","tone":"red"},{"chip":"r6","x":481,"y":120,"text":"old","tone":"red"},{"dim":"m1"},{"note":"m4","x":20,"y":306,"text":"rollback: old code + new meaning = 8 broken copies","size":18,"anchor":"start","tone":"red"}]},{"cap":"In about 45 minutes the router produces more than 4 million executions in 154 stocks, building billions of dollars of positions nobody wanted.","do":[{"box":"ex","x":20,"y":326,"w":270,"h":76,"text":"executions","tone":"red","sub":"0","size":19},{"count":"ex","from":0,"to":4,"dp":0,"suf":" million+","ms":1400},{"box":"st","x":310,"y":326,"w":270,"h":76,"text":"stocks hit","tone":"red","sub":"0","size":19},{"count":"st","from":0,"to":154,"dp":0,"ms":1400}]},{"cap":"The bill: about $440 million by the firm's own estimate that week; more than $460 million in the SEC's 2013 order, which also fined Knight $12 million. Knight needed emergency outside capital within days and was later acquired.","do":[{"chart":"loss","x":20,"y":418,"w":560,"h":214,"title":"Knight Capital, $ million","xd":[0.4,3.6],"yd":[0,520],"yt":[[0,"0"],[200,"200"],[400,"400"]],"xt":[[1,"loss, firm est."],[2,"loss, SEC 2013"],[3,"SEC fine"]],"pl":48},{"bars":"lb","chart":"loss","data":[[1,440,"≈ $440m","red"],[2,460,"> $460m","red"],[3,12,"$12m","amber"]],"bw":64,"ms":1100}]},{"cap":"The same failure in slow motion: a spread column switches from basis points to a fraction with no version tag. A cost model still reading 1.8 basis points as 0.00018 understates every cost 10,000 times, and nothing errors.","do":[{"note":"slow","x":300,"y":656,"text":"slow version: 1.8 bp stored as 0.00018\n→ costs read 10,000 times too small","size":18,"anchor":"middle","tone":"amber"}]},{"cap":"The fix is the same in both. One authoritative version, checked on every copy before it runs, and a version on the meaning of every field, so a rollback restores code and meaning together.","do":[{"note":"fix","x":300,"y":712,"text":"one version, checked everywhere, meaning included","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:data_architecture_storage_versioning:END -->
+    </section>
+    <!-- WB:data_architecture_storage_versioning-deck:END -->
+
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <!-- DESK:START -->
       <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
@@ -276,7 +289,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -318,7 +331,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -447,5 +460,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

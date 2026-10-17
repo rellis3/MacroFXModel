@@ -59,6 +59,67 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: 100 dollars goes up 50% to 150, then down 50% to 75. The arithmetic average return is 0%, shown as a flat dashed line at 100, but the real result is a 25% loss. Right: volatility drag, roughly sigma squared over two, against an 8% average return: about 0.5% a year at 10% volatility, 2% at 20%, and 12.5% at 50%, where the drag is bigger than the average return itself.">
+      <line class="tlp-line" x1="30" y1="190" x2="290" y2="190"/>
+      <line class="tlp-line" x1="330" y1="190" x2="580" y2="190"/>
+      <line class="tlp-line dash" x1="60" y1="121.8" x2="270" y2="121.8"/>
+      <polyline class="tlp-line blue thick" points="60,121.8 160,53.6 260,155.9"/>
+      <line class="tlp-line red thick" x1="276" y1="121.8" x2="276" y2="155.9"/>
+      <circle class="tlp-blue" cx="60" cy="121.8" r="6"/>
+      <circle class="tlp-green" cx="160" cy="53.6" r="6"/>
+      <circle class="tlp-red" cx="260" cy="155.9" r="6"/>
+      <text class="tlp-text" x="160" y="22" text-anchor="middle" font-size="14" font-weight="700">+50% then −50%</text>
+      <text class="tlp-text2" x="52" y="109.8" font-size="13">$100</text>
+      <text class="tlp-green" x="160" y="41.6" text-anchor="middle" font-size="13" font-weight="700">$150</text>
+      <text class="tlp-red" x="248" y="177.9" text-anchor="middle" font-size="13" font-weight="700">$75</text>
+      <text class="tlp-red" x="284" y="143.9" font-size="13" font-weight="700">−25%</text>
+      <text class="tlp-text3" x="100" y="141.8" text-anchor="middle" font-size="12">average 0%</text>
+      <text class="tlp-text3" x="60" y="206" text-anchor="middle" font-size="12">start</text>
+      <text class="tlp-text3" x="160" y="206" text-anchor="middle" font-size="12">period 1</text>
+      <text class="tlp-text3" x="260" y="206" text-anchor="middle" font-size="12">period 2</text>
+      <rect class="tlp-box blue" x="358" y="185" width="44" height="5"/>
+      <rect class="tlp-box amber" x="433" y="170" width="44" height="20"/>
+      <rect class="tlp-box red" x="508" y="65" width="44" height="125"/>
+      <line class="tlp-line amber dash" x1="335" y1="110" x2="578" y2="110"/>
+      <text class="tlp-text" x="455" y="22" text-anchor="middle" font-size="14" font-weight="700">drag ≈ σ²/2 a year</text>
+      <text class="tlp-amber" x="338" y="102" font-size="12" font-weight="700">8% average return</text>
+      <text class="tlp-text2" x="380" y="178" text-anchor="middle" font-size="12">0.5%</text>
+      <text class="tlp-text2" x="455" y="163" text-anchor="middle" font-size="12">2%</text>
+      <text class="tlp-red" x="530" y="58" text-anchor="middle" font-size="13" font-weight="700">12.5%</text>
+      <text class="tlp-text3" x="380" y="206" text-anchor="middle" font-size="12">σ 10%</text>
+      <text class="tlp-text3" x="455" y="206" text-anchor="middle" font-size="12">σ 20%</text>
+      <text class="tlp-text3" x="530" y="206" text-anchor="middle" font-size="12">σ 50%</text>
+    </svg>
+    <figcaption>Left: a 0% average return that loses a quarter of your money, because the −50% is taken off a bigger base than the +50% was added to. Right: that gap is volatility drag, roughly σ²/2 a year. Double the volatility and the drag quadruples; at 50% volatility it is bigger than an 8% average return.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">A strategy is up fifty percent one year and down fifty the next. Average return, zero. So I'm back where I started?</p>
+      <p data-who="Quant">No. Start with a hundred dollars. Up fifty percent takes you to a hundred and fifty. Down fifty percent of that takes you to seventy-five. You've lost a quarter of your money on a zero average.</p>
+      <p data-who="Trader">Because the loss came off a bigger number.</p>
+      <p data-who="Quant">Exactly. Returns multiply, they don't add. A gain and an equal-sized loss are not opposites once you are compounding.</p>
+      <p data-who="Trader">So which average should I trust?</p>
+      <p data-who="Quant">There are two. The plain average tells you about a typical single period. The geometric average asks: what steady rate, every period, would have turned my start into my actual finish? That one is what happened to your money. Here it is about minus thirteen percent a period.</p>
+      <p data-who="Trader">And the gap between the two?</p>
+      <p data-who="Quant">It's called volatility drag. Roughly, your real growth is the plain average minus half the variance. At twenty percent volatility, that is about two percent a year gone. Double the volatility and the drag quadruples.</p>
+      <p data-who="Trader">Where do log returns come in?</p>
+      <p data-who="Quant">They are the trick that makes multiplying behave like adding. Add up each day's log return and you get the whole period's log return exactly. That is why models work in logs.</p>
+      <p data-who="Trader">And it gives you the square-root-of-time rule?</p>
+      <p data-who="Quant">Yes. If the days are roughly independent, their variances add. So risk grows with the square root of time. Four days is twice one day's volatility, not four times.</p>
+      <p data-who="Trader">Has this drag actually hurt anyone?</p>
+      <p data-who="Quant">Leveraged and inverse funds that reset every day. In a two thousand and nine regulators' example, an index rose two percent over five months while a fund promising twice its daily return fell six percent.</p>
+      <p data-who="Trader">And the extreme case?</p>
+      <p data-who="Quant">The fifth of February, twenty eighteen. Inverse volatility notes had done brilliantly through a calm year. That afternoon the VIX more than doubled in one session. One such note lost more than ninety percent in an evening and was wound up. No run of good days can rebuild wealth that one day takes close to zero.</p>
+      <p data-who="Trader">So the one-liner?</p>
+      <p data-who="Quant">Money compounds, so volatility costs you even when the average looks fine. Always ask which average, and never let one day get near minus one hundred percent.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -114,6 +175,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where volatility drag, g ≈ R̄ − σ²/2, comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ W_T = W_0 \color{#fbbf24}{\prod_{t=1}^{T}(1+R_t)} \]</div>
+      <p>Wealth multiplies, period by period. For the worked example: \(100 \times 1.50 \times 0.50 = 75\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \ln\frac{W_T}{W_0} = \color{#fbbf24}{\sum_{t=1}^{T} r_t}, \qquad r_t = \ln(1+R_t) \]</div>
+      <p>Take logs and the product becomes a sum of log returns, exactly: \(0.4055 - 0.6931 = -0.2877 = \ln(0.75)\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ r_t = \ln(1+R_t) \approx R_t \color{#fbbf24}{- \frac{R_t^2}{2}} \]</div>
+      <p>For small moves, each log return is the simple return minus a penalty that grows with the square of the move.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \bar{r} \approx \bar{R} - \frac{\color{#fbbf24}{\sigma^2}}{2} \]</div>
+      <p>Average over many periods. The average squared return is roughly the variance, so the penalty becomes half the variance.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{g \approx \bar{R} - \frac{\sigma^2}{2}} \]</div>
+      <p>The average log return is the compounded growth rate. At 20% volatility, an 8% average return compounds at only about 6%: 2% a year of drag.</p>
+    </div>
+  </div>
   <p>
     <strong>Two definitions of return.</strong> Let \(P_t\) be a price (or
     level, or NAV) at time \(t\), and \(P_{t-1}\) the price one period
@@ -450,6 +535,10 @@
       you can feel how much a big up-then-down swing costs even when the
       simple average says "nothing happened."
     </p>
+    <div class="tl-predict" data-answer="-1" data-tol="0.3" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> +50% then −50% loses 25%. What about a gentler swing, +10% then −10%? Guess the total return, then type 10 and −10 into the two return fields below.</div>
+      <div class="tl-predict-reveal"><p><strong>−1%</strong>: $100 becomes $110, then $99. The loss is the cross term, \(0.10 \times (-0.10) = -1\%\). Swings five times smaller cost twenty-five times less, because the drag grows with the square of the move. Now try +20% then −20%, and then +100% then −50%.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Start value</span></div>
@@ -675,6 +764,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2018-02-05">
+    <div class="tl-drill-label">Scenario drill · 5 February 2018</div>
+    <h3>A product that compounds every day, after a very good year</h3>
+    <p>It is Monday 5 February 2018, before the US open. You hold an inverse-volatility note: each day it returns minus one times a VIX-futures index, then resets. Through the calm of 2017 it compounded strongly, and its average daily return looks excellent. You are deciding how big a position to keep. How should you size it?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Size it on the average daily return. It has been excellent, so a big position is justified.<div class="tl-drill-why">The arithmetic average says nothing about what one terrible day does to compounded wealth. Your result is a product of daily gross returns, and a single day near −100% wipes out the whole product, whatever the average was.</div></li>
+      <li data-verdict="good">Size it so that losing almost all of it in one day is survivable.<div class="tl-drill-why">This is the lesson in one rule. The note compounds daily, so one day near −100% leaves almost nothing to compound from, and no run of good days can rebuild it. Size for the day the product goes to zero, not for the average day.</div></li>
+      <li data-verdict="ok">Keep the size, but plan to cut if the VIX rises sharply over several days.<div class="tl-drill-why">A sensible instinct, but it assumes the damage arrives slowly. A daily-reset product can lose almost everything in one session, before any multi-day plan kicks in.</div></li>
+      <li data-verdict="bad">Add to it. Volatility drag is a slow, long-run cost, and you only plan to hold for a few weeks.<div class="tl-drill-why">Drag is the slow part of the risk. The fast part is a single jump day far outside the small-move zone, where the drag formula stops applying and the exact product, with its −100% floor, takes over.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> That afternoon the VIX index more than doubled in a single session, its largest one-day percentage rise on record. Credit Suisse's XIV note, built to return the inverse of a VIX-futures index each day, lost more than 90% of its value in one evening. That triggered a clause letting the issuer redeem it, and it was wound up. A similar ProShares fund survived but later cut its target from −1× to −0.5× the daily index.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -791,6 +893,26 @@
     in a price series at all, which is where the substantive material
     begins.
   </div>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-stats-normal.html">Descriptive Statistics &amp; the Normal Distribution</a> <span>· mean, variance and σ</span></li>
+        <li><a href="primer-probability.html">Probability &amp; Random Variables</a> <span>· why independent variances add</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="kelly-criterion.html">The Kelly Criterion &amp; Position Sizing</a> <span>· volatility drag turned into a sizing rule</span></li>
+        <li><a href="drawdowns-risk-of-ruin.html">Drawdowns, Risk of Ruin, and Why Good Systems Get Abandoned</a> <span>· what compounding losses feel like</span></li>
+        <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> <span>· normal log returns, lognormal prices</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every performance figure you read is an arithmetic or a geometric average, and only the geometric one is what your account actually does.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="primer-correlation-regression.html">← Correlation &amp; Linear Regression</a>
@@ -925,7 +1047,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

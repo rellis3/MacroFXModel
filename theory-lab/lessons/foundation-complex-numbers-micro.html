@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Complex Numbers — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -167,7 +168,19 @@
       <p class="sl-p">This is a genuinely surprising fusion: the left side, e^(iθ), is built from continuous exponential growth. The right side, cos θ + i sin θ, is built from rotation around a circle. Euler's formula says these are, in a precise sense, the same object — two toys that turn out to be built from the exact same gears underneath.</p>
     </section>
 
+    <!-- WB:foundation_complex_numbers-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Complex numbers: a point, a turn and a circle</h2>
+      <!-- WB:foundation_complex_numbers:START -->
+      <div class="wb" data-title="Complex numbers: a point, a turn and a circle">
+        <script type="application/json">{"w":600,"h":560,"intro":"Where the square root of minus one lives, and why e to an imaginary power is a point on a circle. Real numbers from the lesson. Press play, or step through.","steps":[{"cap":"Ordinary numbers live on a line, running left and right. Every one of them squared is zero or positive, so no ordinary number squared gives −1.","do":[{"chart":"pl","x":10,"y":10,"w":400,"h":420,"title":"The complex plane","xd":[-2.2,5.6],"yd":[-2.2,5.6],"yt":[[-1,"−1"],[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"xt":[[-1,"−1"],[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"zero":true,"pl":36,"pr":12},{"series":"rl","chart":"pl","pts":[[-2.1,0],[5.5,0]],"tone":"blue","ms":800},{"note":"rln","chart":"pl","at":[4.4,0],"text":"real numbers","tone":"blue","size":17,"anchor":"middle","dx":0,"dy":-12}]},{"cap":"So invent a number that does: i, with i × i = −1. Give it its own direction, straight up. Multiplying by i turns a number a quarter of the way round: 1 becomes i, and i becomes −1.","do":[{"dot":"one","chart":"pl","at":[1,0],"text":"1","tone":"blue","dx":8,"dy":18,"anchor":"start"},{"dot":"ii","chart":"pl","at":[0,1],"text":"i","tone":"green","dx":10,"dy":-6,"anchor":"start"},{"series":"q1","chart":"pl","pts":[[1.0,0.0],[0.9914,0.1305],[0.9659,0.2588],[0.9239,0.3827],[0.866,0.5],[0.7934,0.6088],[0.7071,0.7071],[0.6088,0.7934],[0.5,0.866],[0.3827,0.9239],[0.2588,0.9659],[0.1305,0.9914],[0.0,1.0]],"tone":"green","ms":700},{"dot":"m1","chart":"pl","at":[-1,0],"text":"−1","tone":"red","dx":-8,"dy":18,"anchor":"end"},{"series":"q2","chart":"pl","pts":[[0.0,1.0],[-0.1305,0.9914],[-0.2588,0.9659],[-0.3827,0.9239],[-0.5,0.866],[-0.6088,0.7934],[-0.7071,0.7071],[-0.7934,0.6088],[-0.866,0.5],[-0.9239,0.3827],[-0.9659,0.2588],[-0.9914,0.1305],[-1.0,0.0]],"tone":"red","ms":700}]},{"cap":"A complex number is a point on this map. z = 3 + 4i means: walk 3 steps across (the real part), then 4 steps up (the imaginary part).","do":[{"series":"re","chart":"pl","pts":[[0,0],[3,0]],"tone":"purple","ms":700},{"series":"im","chart":"pl","pts":[[3,0],[3,4]],"tone":"amber","ms":700},{"note":"ren","chart":"pl","at":[2.3,0],"text":"3 across","tone":"purple","size":17,"anchor":"middle","dx":0,"dy":24},{"note":"imn","chart":"pl","at":[3,2],"text":"4 up","tone":"amber","size":17,"anchor":"start","dx":10,"dy":0},{"dot":"z","chart":"pl","at":[3,4],"text":"z = 3 + 4i","tone":"blue","dx":-10,"dy":-12,"anchor":"end"}]},{"cap":"The same point, described another way: how far, and which way. The distance is √(3² + 4²) = √25 = 5. This is the modulus, |z| = 5.","do":[{"series":"mod","chart":"pl","pts":[[0,0],[3,4]],"tone":"blue","ms":800},{"note":"modn","chart":"pl","at":[1.5,2],"text":"|z| = 5","tone":"blue","size":18,"anchor":"end","dx":-10,"dy":0}]},{"cap":"The direction is the angle from the real axis: tan⁻¹(4/3) = 0.9273 radians, or 53.13°. This is the argument. So 3 + 4i is also \"5 at 53.13°\".","do":[{"series":"ang","chart":"pl","pts":[[0.75,0.0],[0.7478,0.0579],[0.7411,0.1155],[0.7299,0.1723],[0.7145,0.2281],[0.6947,0.2826],[0.6708,0.3354],[0.6429,0.3862],[0.6112,0.4347],[0.5758,0.4806],[0.537,0.5236],[0.495,0.5635],[0.45,0.6]],"tone":"green","ms":600},{"note":"angn","chart":"pl","at":[0.95,0.42],"text":"53.13°","tone":"green","size":16,"anchor":"start","dx":0,"dy":0},{"box":"pol","x":420,"y":20,"w":170,"h":110,"text":"polar form\n5 at 53.13°","tone":"green","size":19}]},{"cap":"Euler's formula: e raised to an imaginary power, e^(iθ), is the point on the circle of radius 1 at angle θ. As θ grows, e^(iθ) walks round the circle.","do":[{"series":"uc","chart":"pl","pts":[[1.0,0.0],[0.9945,0.1045],[0.9781,0.2079],[0.9511,0.309],[0.9135,0.4067],[0.866,0.5],[0.809,0.5878],[0.7431,0.6691],[0.6691,0.7431],[0.5878,0.809],[0.5,0.866],[0.4067,0.9135],[0.309,0.9511],[0.2079,0.9781],[0.1045,0.9945],[0.0,1.0],[-0.1045,0.9945],[-0.2079,0.9781],[-0.309,0.9511],[-0.4067,0.9135],[-0.5,0.866],[-0.5878,0.809],[-0.6691,0.7431],[-0.7431,0.6691],[-0.809,0.5878],[-0.866,0.5],[-0.9135,0.4067],[-0.9511,0.309],[-0.9781,0.2079],[-0.9945,0.1045],[-1.0,0.0],[-0.9945,-0.1045],[-0.9781,-0.2079],[-0.9511,-0.309],[-0.9135,-0.4067],[-0.866,-0.5],[-0.809,-0.5878],[-0.7431,-0.6691],[-0.6691,-0.7431],[-0.5878,-0.809],[-0.5,-0.866],[-0.4067,-0.9135],[-0.309,-0.9511],[-0.2079,-0.9781],[-0.1045,-0.9945],[-0.0,-1.0],[0.1045,-0.9945],[0.2079,-0.9781],[0.309,-0.9511],[0.4067,-0.9135],[0.5,-0.866],[0.5878,-0.809],[0.6691,-0.7431],[0.7431,-0.6691],[0.809,-0.5878],[0.866,-0.5],[0.9135,-0.4067],[0.9511,-0.309],[0.9781,-0.2079],[0.9945,-0.1045],[1.0,-0.0]],"tone":"purple","dash":true,"ms":1400},{"box":"eul","x":420,"y":142,"w":170,"h":110,"text":"e^(iθ) =\ncos θ + i sin θ","tone":"purple","size":19}]},{"cap":"A quarter turn, θ = π/2, lands on i: e^(iπ/2) = i. Half a turn, θ = π, lands on −1: e^(iπ) = −1. Add 1 and you get Euler's identity, e^(iπ) + 1 = 0.","do":[{"pulse":"ii"},{"pulse":"m1"},{"box":"id","x":420,"y":264,"w":170,"h":80,"text":"e^(iπ) + 1 = 0","tone":"red","size":20}]},{"cap":"Arithmetic works like ordinary brackets, with one extra rule: swap i × i for −1. (2 + 3i)(1 − i) = 2 − 2i + 3i − 3i² = 5 + i.","do":[{"box":"mul","x":420,"y":356,"w":170,"h":74,"text":"(2 + 3i)(1 − i)\n= 5 + i","tone":"blue","size":18}]},{"cap":"Why a trader meets these: models like Heston (1993) have no usable formula for the probabilities, but a complex-valued version, the characteristic function, can be written down. Price in complex numbers, and the answer comes out real.","do":[{"box":"fin","x":10,"y":446,"w":580,"h":104,"text":"Heston 1993, Carr & Madan 1999:\ncomplex in the middle, a real option price at the end","tone":"amber","size":19}]}]}</script>
+      </div>
+      <!-- WB:foundation_complex_numbers:END -->
+    </section>
+    <!-- WB:foundation_complex_numbers-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">One angle away from the internet's favorite equation</h2>
       <p class="sl-sub">Set θ = π in Euler's formula. Since cos π = −1 and sin π = 0, the imaginary part vanishes completely.</p>
@@ -180,7 +193,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Where this actually shows up on a desk</h2>
       <p class="sl-sub">In quantitative finance, complex numbers arrive almost entirely through two connected tools — both covered properly later in this curriculum, both unreadable without this page's vocabulary.</p>
@@ -195,7 +208,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Reading the angle: eyeballing it vs. checking the quadrant</h2>
       <p class="sl-sub">tan⁻¹(b/a) alone can't distinguish a first-quadrant point from a third-quadrant one — flipping both signs gives the exact same ratio.</p>
@@ -222,7 +235,7 @@
       <div class="sl-quote">The difference isn't sophistication — a calculator's tan⁻¹ button is correct exactly as far as it goes. The extra step of checking a and b's actual signs (or letting atan2 do it) is what turns a right-looking number into an actually-right angle.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -273,7 +286,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -411,5 +424,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Copulas — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -48,6 +49,62 @@
       <li><strong>Real-world episode:</strong> the super-senior CDO tranche lost money only if most of a pool defaulted together, so a zero-tail-dependence model priced it as near riskless. When US house prices fell nationwide, banks holding it wrote down tens of billions.<!-- DESK:START --> Tail dependence on this desk's own instruments is untested.<!-- DESK:END --></li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lower-tail dependence, the chance that one series is in its extreme crash tail given the other is, plotted against Kendall's tau for two copulas matched on the same tau. The Gaussian copula's line sits flat at zero for every tau. The Clayton copula's curve rises from zero towards one. At the worked example's tau of 0.40, the Gaussian gives 0 and the Clayton gives 0.595, about 60 percent.">
+      <line class="tlp-line" x1="80" y1="40" x2="80" y2="200"/>
+      <line class="tlp-line" x1="80" y1="200" x2="566" y2="200"/>
+      <text class="tlp-text3" x="72" y="204" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="72" y="124" text-anchor="end" font-size="12">0.5</text>
+      <text class="tlp-text3" x="72" y="44" text-anchor="end" font-size="12">1</text>
+      <text class="tlp-text3" x="80" y="26" font-size="12">joint-crash chance, deep in the tail ↑</text>
+      <text class="tlp-text3" x="80" y="216" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="186.7" y="216" text-anchor="middle" font-size="12">0.2</text>
+      <text class="tlp-text3" x="293.3" y="216" text-anchor="middle" font-size="12">0.4</text>
+      <text class="tlp-text3" x="400" y="216" text-anchor="middle" font-size="12">0.6</text>
+      <text class="tlp-text3" x="506.7" y="216" text-anchor="middle" font-size="12">0.8</text>
+      <text class="tlp-text3" x="320" y="234" text-anchor="middle" font-size="12">Kendall's τ, the same for both models →</text>
+      <line class="tlp-line dash" x1="293.3" y1="44" x2="293.3" y2="200"/>
+      <line class="tlp-line blue thick" x1="80" y1="200" x2="560" y2="200"/>
+      <polyline class="tlp-line red thick" points="85.3,200.0 90.7,200.0 96.0,200.0 101.3,200.0 106.7,199.8 112.0,199.3 117.3,198.4 122.7,197.0 128.0,195.2 133.3,192.9 138.7,190.3 144.0,187.4 149.3,184.3 154.7,181.0 160.0,177.6 165.3,174.1 170.7,170.5 176.0,167.0 181.3,163.5 186.7,160.0 192.0,156.6 197.3,153.2 202.7,149.9 208.0,146.6 213.3,143.4 218.7,140.3 224.0,137.3 229.3,134.4 234.7,131.5 240.0,128.7 245.3,126.0 250.7,123.4 256.0,120.8 261.3,118.4 266.7,115.9 272.0,113.6 277.3,111.3 282.7,109.1 288.0,107.0 293.3,104.9 298.7,102.8 304.0,100.9 309.3,98.9 314.7,97.1 320.0,95.2 325.3,93.5 330.7,91.8 336.0,90.1 341.3,88.5 346.7,86.9 352.0,85.3 357.3,83.8 362.7,82.3 368.0,80.9 373.3,79.5 378.7,78.1 384.0,76.8 389.3,75.5 394.7,74.2 400.0,73.0 405.3,71.8 410.7,70.6 416.0,69.5 421.3,68.3 426.7,67.2 432.0,66.2 437.3,65.1 442.7,64.1 448.0,63.1 453.3,62.1 458.7,61.1 464.0,60.2 469.3,59.2 474.7,58.3 480.0,57.5 485.3,56.6 490.7,55.7 496.0,54.9 501.3,54.1 506.7,53.3 512.0,52.5 517.3,51.7 522.7,51.0 528.0,50.2 533.3,49.5 538.7,48.8 544.0,48.1 549.3,47.4 554.7,46.7 560.0,46.0"/>
+      <circle class="tlp-red" cx="293.3" cy="104.9" r="6"/>
+      <circle class="tlp-blue" cx="293.3" cy="200" r="6"/>
+      <text class="tlp-red" x="304" y="124" font-size="13.5" font-weight="700">Clayton: ≈ 60% at τ = 0.40</text>
+      <text class="tlp-red" x="452" y="54" text-anchor="end" font-size="13" font-weight="700">Clayton</text>
+      <text class="tlp-blue" x="556" y="190" text-anchor="end" font-size="13.5" font-weight="700">Gaussian: 0% at every τ, 0.40 included</text>
+    </svg>
+    <figcaption>Tune both models to the same headline dependence, a Kendall's τ of 0.40. Ask how often the second series crashes when the first does, deep in the tail. The Gaussian copula says never; the Clayton copula says about 60% of the time. The headline number cannot tell them apart.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Two currency pairs, correlation about point four. Related, but not the same bet. A book holding both looks diversified. Agree?</p>
+      <p data-who="Quant">On an ordinary day, yes. The real question is what happens on the worst days, and that one number can't tell you.</p>
+      <p data-who="Trader">Why not? It measures how they move together.</p>
+      <p data-who="Quant">On average, and along a straight line. It blends calm days and crisis days into one figure. Two pairs can share that figure and behave completely differently when both are falling apart.</p>
+      <p data-who="Trader">So how do you see the difference?</p>
+      <p data-who="Quant">Split the problem in two. Abe Sklar showed in 1959 that any joint distribution breaks into each series' own distribution, plus a separate piece that only describes how they're linked. That linking piece is the copula.</p>
+      <p data-who="Trader">So I can choose the link separately.</p>
+      <p data-who="Quant">Exactly. Fat tails for each currency on its own, then a link that can tighten in a crash.</p>
+      <p data-who="Trader">What's the usual choice?</p>
+      <p data-who="Quant">The Gaussian copula. It's easy to use, and it has a blind spot: deep in the tail, the two become independent. However high the correlation, short of perfect, the most extreme joint crashes become unrelated events.</p>
+      <p data-who="Trader">And the alternative?</p>
+      <p data-who="Quant">Clayton is one. It's built to crash together without rallying together. Picture a bungee cord that only tightens when both are falling.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Tune both to the same rank correlation, a Kendall's tau of point four. Then ask: when one pair has one of its very worst days, how often does the other one too? The Gaussian says zero. The Clayton says about sixty percent. Same headline number.</p>
+      <p data-who="Trader">Has that gap ever cost real money?</p>
+      <p data-who="Quant">Badly. Before 2008, CDO tranches were priced with a Gaussian copula fitted on calm years. The top slice, the super-senior, only lost money if most of the pool defaulted at once. With zero tail dependence that looked nearly impossible, so the slice looked nearly riskless.</p>
+      <p data-who="Trader">And then house prices fell everywhere at once.</p>
+      <p data-who="Quant">Defaults rose together, losses climbed the structure, and banks holding super-senior slices wrote down tens of billions of dollars. The misfit was visible earlier, too: different slices of the same pool implied different correlations.</p>
+      <p data-who="Trader">So I just switch to Clayton?</p>
+      <p data-who="Quant">Not blindly. Any copula fitted only on calm data can make the same mistake. Test it against stress periods, and remember that joint crashes are rare, so any estimate of them is noisy.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Correlation describes ordinary days. Before you call two positions diversified, ask what they do together on the worst ones.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -123,6 +180,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From Sklar's split to two very different crash odds, one piece at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ H(x,y) = \color{#fbbf24}{C}\big(F_X(x),\, F_Y(y)\big) \]</div>
+      <p>Sklar's theorem: any joint distribution is each variable's own distribution fed into a copula \(C\), which holds only the link between them.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ C_\rho^{\text{Ga}}(u,v) = \color{#fbbf24}{\Phi_\rho\big(\Phi^{-1}(u),\, \Phi^{-1}(v)\big)} \quad\Rightarrow\quad \lambda_L = 0 \]</div>
+      <p>Choose the Gaussian link: turn each probability into a normal variable and join them with correlation \(\rho\). Its lower-tail dependence is zero for any \(\rho < 1\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ C_\theta^{\text{Cl}}(u,v) = \color{#fbbf24}{\big(u^{-\theta} + v^{-\theta} - 1\big)^{-1/\theta}} \quad\Rightarrow\quad \lambda_L = 2^{-1/\theta} \]</div>
+      <p>Or choose the Clayton link. Its lower-tail dependence is a fixed positive number that does not shrink as you look deeper into the tail.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \tau = 0.40:\qquad \rho = \sin(\pi\tau/2) \approx 0.588, \qquad \color{#fbbf24}{\theta = \frac{2\tau}{1-\tau} = 1.333} \]</div>
+      <p>Make it a fair fight: match both on the same Kendall's \(\tau\), so their overall dependence strength is identical.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\lambda_L^{\text{Ga}} = 0 \qquad \text{vs} \qquad \lambda_L^{\text{Cl}} = 2^{-0.75} \approx 0.595} \]</div>
+      <p>Same headline dependence, opposite answers in the corner: no joint crashes in the deep tail, or about 60% of them.</p>
+    </div>
+  </div>
   <p>
     This lesson deliberately does not derive the underlying theorem — that
     proof is real analysis, not something worth re-deriving to use the idea —
@@ -408,6 +489,10 @@
       recalculate instantly — watch how far apart \(\lambda_L\) stays even
       though both are always matched on the same \(\tau\).
     </p>
+    <div class="tl-predict" data-answer="0.79" data-tol="0.03" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At \(\tau = 0.40\) the Clayton copula's \(\lambda_L\) is 0.595. Raise the matched rank correlation to \(\tau = 0.60\). What is Clayton's \(\lambda_L\) now (a number between 0 and 1)? Lock in a guess, then type 0.60 into the field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 0.79.</strong> \(\theta = 2(0.60)/(1-0.60) = 3\), so \(\lambda_L = 2^{-1/3} \approx 0.794\). The Gaussian copula's \(\lambda_L\) is still exactly 0: a stronger correlation never gives it a crash link in the deep tail. Now try \(\tau = 0.10\): Clayton's link falls to about 0.04.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Kendall's tau \(\tau\)</span></div>
@@ -586,6 +671,12 @@
       difference in crash behavior.
     </div>
   </div>
+
+  <!-- WB:copulas:START -->
+  <div class="wb" id="wb-copulas" data-title="Copulas: same correlation, different crashes">
+    <script type="application/json">{"w":600,"h":790,"intro":"Two currency pairs with the same headline correlation, and two ways to link them. The lesson's worked example, then the CDO slice that depended on the difference. Press play, or step through.","steps":[{"cap":"Two currency pairs, each with its own pattern of moves, fat tails included. Their correlation is a comfortable 0.4: related, but not the same bet.","do":[{"box":"A","x":20,"y":20,"w":200,"h":76,"text":"pair A","tone":"blue","sub":"its own tails","size":21},{"box":"B","x":380,"y":20,"w":200,"h":76,"text":"pair B","tone":"blue","sub":"its own tails","size":21},{"chip":"corr","x":300,"y":58,"text":"corr ≈ 0.4","tone":"amber"}]},{"cap":"Sklar's theorem, 1959: first turn each day's move into a rank between 0 and 1 using that pair's own distribution. A rank of 0.01 means one of its worst 1% of days.","do":[{"box":"u","x":40,"y":140,"w":160,"h":64,"text":"rank u","tone":"green","sub":"0 to 1","size":19},{"box":"v","x":400,"y":140,"w":160,"h":64,"text":"rank v","tone":"green","sub":"0 to 1","size":19},{"arrow":["A","u"]},{"arrow":["B","v"]}]},{"cap":"Then a copula joins the two ranks. It holds only the link between the pairs, nothing about what each one looks like on its own. So the tails and the link can be chosen separately.","do":[{"box":"C","x":190,"y":236,"w":220,"h":72,"text":"copula C(u, v)","tone":"purple","sub":"only the link","size":20},{"arrow":["u","C"]},{"arrow":["v","C"]}]},{"cap":"Two candidate links, matched on the same Kendall's τ = 0.40 so the fight is fair: a Gaussian copula with ρ = 0.588, and a Clayton copula with θ = 1.333.","do":[{"box":"G","x":20,"y":360,"w":250,"h":64,"text":"Gaussian · ρ = 0.588","tone":"blue","size":19},{"box":"K","x":330,"y":360,"w":250,"h":64,"text":"Clayton · θ = 1.333","tone":"red","size":19},{"arrow":["C","G"]},{"arrow":["C","K"]}]},{"cap":"The question a correlation cannot answer: when pair A has one of its worst days, how often is pair B having one too? Under Clayton the answer settles at about 60%, however deep into the tail you look.","do":[{"chart":"ch","x":10,"y":440,"w":580,"h":280,"title":"A in its worst q of days: chance B is too","xd":[1,4],"yd":[0,0.72],"yt":[[0,"0"],[0.2,"20%"],[0.4,"40%"],[0.6,"60%"]],"xt":[[1,"10%"],[2,"1%"],[3,"0.1%"],[4,"0.01%"]],"pl":50,"pr":20},{"series":"cl","chart":"ch","pts":[[1.0,0.6052],[1.25,0.5995],[1.5,0.5968],[1.75,0.5956],[2.0,0.5951],[2.25,0.5948],[2.5,0.5947],[2.75,0.5947],[3.0,0.5946],[3.25,0.5946],[3.5,0.5946],[3.75,0.5946],[4.0,0.5946]],"tone":"red","ms":1300,"label":"Clayton → 0.595","lat":[4,0.5946],"ldx":-2,"ldy":-16,"lanchor":"end","lsize":18}]},{"cap":"Under the Gaussian copula the answer keeps shrinking: 38% at the worst 10% of days, 18% at the worst 1%, 4.5% at the worst 0.01%, and towards zero in the limit. Zero tail dependence.","do":[{"series":"ga","chart":"ch","pts":[[1.0,0.3816],[1.25,0.3137],[1.5,0.2594],[1.75,0.2154],[2.0,0.1795],[2.25,0.1501],[2.5,0.1257],[2.75,0.1056],[3.0,0.0888],[3.25,0.0748],[3.5,0.0631],[3.75,0.0532],[4.0,0.045]],"tone":"blue","ms":1300,"label":"Gaussian → 0","lat":[4,0.045],"ldx":-2,"ldy":-16,"lanchor":"end","lsize":18}]},{"cap":"At the worst 1% of days: 18% against 59.5%. Same τ, same headline correlation, a threefold gap in how often the two crash together. That gap is the whole lesson.","do":[{"dot":"g1","chart":"ch","at":[2,0.1795],"text":"18%","tone":"blue","dx":0,"dy":22},{"dot":"c1","chart":"ch","at":[2,0.5951],"text":"59.5%","tone":"red","dx":0,"dy":-16}]},{"cap":"Where it mattered: a CDO pools many mortgages and slices the losses. The junior slice takes the first defaults; the super-senior slice loses only if a large share of the pool defaults at the same time.","do":[{"hide":"A"},{"hide":"B"},{"hide":"corr"},{"hide":"u"},{"hide":"v"},{"hide":"C"},{"hide":"G"},{"hide":"K"},{"hide":"A>u"},{"hide":"B>v"},{"hide":"u>C"},{"hide":"v>C"},{"hide":"C>G"},{"hide":"C>K"},{"box":"ss","x":20,"y":20,"w":260,"h":84,"text":"super-senior","tone":"green","sub":"marked near riskless","size":21},{"box":"mz","x":20,"y":118,"w":260,"h":66,"text":"mezzanine","tone":"amber","size":20},{"box":"jr","x":20,"y":198,"w":260,"h":66,"text":"junior: first loss","tone":"red","size":20},{"icon":"pool","name":"house","x":420,"y":186,"s":0.8,"tone":"blue","label":"mortgage pool","lsize":18}]},{"cap":"Priced with a Gaussian copula fitted on calm years, \"most of the pool defaults together\" sits in the corner the model calls near impossible. So the super-senior slice paid a thin spread and banks kept it.","do":[{"pulse":"ss"},{"pulse":"ga"}]},{"cap":"Then US house prices fell nationwide: one common shock to every region at once, barely present in the calm years the model was fitted on. Defaults rose together and the lower slices were wiped out together.","do":[{"icon":"fall","name":"down","x":522,"y":196,"s":0.6,"tone":"red"},{"arrow":["pool","jr"],"label":"defaults together","tone":"red","bend":16},{"cross":"jr"},{"cross":"mz"}]},{"cap":"Losses climbed to the super-senior slices. Top-rated CDO tranches were downgraded in large numbers through 2007 and 2008, and UBS, Merrill Lynch and Citigroup wrote down tens of billions of dollars, much of it on slices they had kept.","do":[{"sub":"ss","text":"written down: tens of $bn"},{"pulse":"ss"},{"pulse":"cl"}]},{"cap":"The lesson is not \"copulas are wrong\". Any link fitted only on calm data can understate how tightly things crash together. Test the link against stress periods before you trust a \"diversified\" book.","do":[{"note":"end","x":300,"y":350,"text":"fitted on calm years ≠ safe in a crash","size":21,"anchor":"middle","tone":"amber"},{"note":"end2","x":300,"y":398,"text":"test the link on stress periods","size":21,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:copulas:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: the super-senior tranche, 2007–08</h2>
@@ -799,6 +890,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2007">
+    <div class="tl-drill-label">Scenario drill · early 2007</div>
+    <h3>Your "near riskless" slice depends on one corner of the model</h3>
+    <p>You run a bank's structured-credit book and hold a large super-senior CDO tranche. It loses money only if a large share of the mortgage-backed pool defaults at the same time. Your Gaussian copula, calibrated on calm years, marks it as near riskless. Two things bother you: tranches on the same pool imply different correlations for the junior and senior slices, and US house prices have stopped rising. What do you do with the position?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Keep it. The model says most of the pool defaulting together is close to impossible.<div class="tl-drill-why">That is the zero-tail-dependence assumption talking. The super-senior slice is a bet on the joint lower tail and almost nothing else, and the Gaussian copula prices that corner at zero by construction.</div></li>
+      <li data-verdict="good">Re-value it under a tail-dependent model and a nationwide house-price fall, and cut it to what you could survive in that stress.<div class="tl-drill-why">The position's value depends on the one corner the model cannot see, and the tranche quotes already show the model misfits. Sizing to a stress where defaults cluster is the honest test.</div></li>
+      <li data-verdict="ok">Raise the copula correlation a little and re-mark the tranche.<div class="tl-drill-why">A step in the right direction, but a Gaussian copula with any correlation below 1 still has zero tail dependence. One flat correlation could not even fit every tranche of a single pool at the same time.</div></li>
+      <li data-verdict="bad">Buy more. The spread is thin, but it is close to free money.<div class="tl-drill-why">A thin spread on a slice that loses only in a joint crash is exactly the trade where a thin-tailed model hides the risk. More size means more exposure to the corner you have not measured.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> US house prices fell nationwide, a common shock to every region at once. Mortgage defaults rose together, the lower slices inside CDOs were wiped out together, and losses reached the super-senior slices the models had treated as safe. Rating agencies downgraded top-rated CDO tranches in large numbers through 2007 and 2008. UBS, Merrill Lynch and Citigroup took write-downs running to tens of billions of dollars, much of it on super-senior CDO positions they had kept, and the chief executives of Merrill Lynch and Citigroup left in late 2007.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -925,6 +1029,25 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> <span>· the single number this lesson looks past</span></li>
+        <li><a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a> <span>· realistic fat tails for each series on its own</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> <span>· measuring the joint tail loss of a book</span></li>
+        <li><a href="stress-testing-scenario-analysis.html">Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</a> <span>· testing a model against the crisis it was not fitted on</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> diversification is only worth something if it holds on the bad days, and a correlation number cannot tell you whether it will.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="arima-var.html">← ARIMA &amp; Vector Autoregression</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -1004,9 +1127,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

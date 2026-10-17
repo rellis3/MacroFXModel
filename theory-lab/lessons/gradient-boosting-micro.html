@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gradient Boosting — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -108,7 +109,19 @@
       <p class="sl-p">Notice what never happens: no round ever looks at the original target y again after round 0. Every later tree's entire world is the residual handed to it by the round before — which is exactly why the chain can't be reordered or parallelized the way a forest's trees can.</p>
     </section>
 
+    <!-- WB:gradient_boosting-deck:START -->
     <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Boosting round by round, on five points</h2>
+      <!-- WB:gradient_boosting:START -->
+      <div class="wb" data-title="Boosting round by round, on five points">
+        <script type="application/json">{"w":600,"h":640,"intro":"Five points, one starting guess, and a chain of small trees, each fit to what the ones before it still get wrong. Press play, or step through.","steps":[{"cap":"Five training points: y = 3, 5, 6, 9 and 12 at x = 1 to 5. We want a model that predicts y from x, built out of small trees.","do":[{"chart":"fit","x":10,"y":8,"w":580,"h":260,"title":"The data and the model so far","xd":[0.5,5.5],"yd":[0,13.5],"yt":[[0,"0"],[3,"3"],[6,"6"],[9,"9"],[12,"12"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"pl":40,"pr":46},{"dot":"p0","chart":"fit","at":[1,3],"text":"","tone":null},{"dot":"p1","chart":"fit","at":[2,5],"text":"","tone":null},{"dot":"p2","chart":"fit","at":[3,6],"text":"","tone":null},{"dot":"p3","chart":"fit","at":[4,9],"text":"","tone":null},{"dot":"p4","chart":"fit","at":[5,12],"text":"","tone":null}]},{"cap":"Round 0: start from one constant guess. For squared error that is the mean, (3 + 5 + 6 + 9 + 12) ÷ 5 = 7. Wrong for every point, but a fair start.","do":[{"series":"f0","chart":"fit","pts":[[0.6,7],[5.4,7]],"tone":"amber","dash":true,"label":"F₀ = 7","lat":[0.6,7],"ldx":-2,"ldy":-14,"lanchor":"start","lsize":16}]},{"cap":"What is still wrong? The residuals, y minus the guess: −4, −2, −1, +2 and +5. These gaps, not the original y values, are what the next tree is trained on.","do":[{"series":"st0","chart":"fit","pts":[[1,7],[1,3]],"tone":"red","dash":true,"ms":300},{"series":"st1","chart":"fit","pts":[[2,7],[2,5]],"tone":"red","dash":true,"ms":300},{"series":"st2","chart":"fit","pts":[[3,7],[3,6]],"tone":"red","dash":true,"ms":300},{"series":"st3","chart":"fit","pts":[[4,7],[4,9]],"tone":"red","dash":true,"ms":300},{"series":"st4","chart":"fit","pts":[[5,7],[5,12]],"tone":"red","dash":true,"ms":300},{"note":"rl0","chart":"fit","at":[1,3],"text":"−4","tone":"red","size":17,"anchor":"start","dx":10,"dy":10},{"note":"rl1","chart":"fit","at":[2,5],"text":"−2","tone":"red","size":17,"anchor":"start","dx":10,"dy":10},{"note":"rl2","chart":"fit","at":[3,6],"text":"−1","tone":"red","size":17,"anchor":"start","dx":10,"dy":10},{"note":"rl3","chart":"fit","at":[4,9],"text":"+2","tone":"red","size":17,"anchor":"start","dx":10,"dy":-10},{"note":"rl4","chart":"fit","at":[5,12],"text":"+5","tone":"red","size":17,"anchor":"start","dx":10,"dy":-10}]},{"cap":"Fit a one-split tree to the residuals. Its best cut is x ≤ 3: the left leaf averages (−4 − 2 − 1) ÷ 3 = −2.333 and the right leaf (2 + 5) ÷ 2 = 3.5.","do":[{"chart":"res","x":10,"y":282,"w":280,"h":230,"title":"Residuals and tree h₁","xd":[0.5,5.5],"yd":[-5,6],"yt":[[-4,"−4"],[0,"0"],[5,"+5"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"zero":true,"pl":36},{"bars":"rb","chart":"res","data":[[1,-4,"","red"],[2,-2,"","red"],[3,-1,"","red"],[4,2,"","red"],[5,5,"","red"]],"bw":24,"ms":800},{"series":"h1","chart":"res","pts":[[0.6,-2.333],[3.5,-2.333],[3.5,3.5],[5.4,3.5]],"tone":"amber","ms":900,"label":"h₁","lat":[4,3.5],"ldx":0,"ldy":-14,"lsize":16}]},{"cap":"Add only half of that correction (shrinkage ν = 0.5): 7 + 0.5 × (−2.333) = 5.833 on the left, 7 + 0.5 × 3.5 = 8.75 on the right. That is F₁.","do":[{"hide":"st0"},{"hide":"st1"},{"hide":"st2"},{"hide":"st3"},{"hide":"st4"},{"hide":"rl0"},{"hide":"rl1"},{"hide":"rl2"},{"hide":"rl3"},{"hide":"rl4"},{"series":"f1","chart":"fit","pts":[[0.6,5.833],[1.5,5.833],[1.5,5.833],[2.5,5.833],[2.5,5.833],[3.5,5.833],[3.5,8.75],[4.5,8.75],[4.5,8.75],[5.4,8.75]],"tone":"green","ms":1000,"label":"F₁","lat":[5.4,8.75],"ldx":8,"ldy":0,"lanchor":"start","lsize":16}]},{"cap":"Total leftover error, the sum of the sizes of the residuals, falls from 14 to 7.333 after one round: roughly halved.","do":[{"chart":"err","x":310,"y":282,"w":280,"h":230,"title":"Σ|residual| by round","xd":[-0.6,6.6],"yd":[0,16.5],"yt":[[0,"0"],[7,"7"],[14,"14"]],"xt":[[0,"0"],[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"6"]],"pl":34},{"bars":"e01","chart":"err","data":[[0,14.0,"14","red"],[1,7.333,"7.33","amber"]],"bw":26,"ms":900}]},{"cap":"Round 2 repeats the same steps on the new residuals. The best cut is now x ≤ 4, and half its correction lifts the last point to 10.375. Error: 5.708.","do":[{"dim":"f1"},{"dim":"h1"},{"dim":"rb"},{"series":"f2","chart":"fit","pts":[[0.6,5.427],[1.5,5.427],[1.5,5.427],[2.5,5.427],[2.5,5.427],[3.5,5.427],[3.5,8.344],[4.5,8.344],[4.5,10.375],[5.4,10.375]],"tone":"blue","ms":1000},{"bars":"e2","chart":"err","data":[[2,5.708,"5.71","amber"]],"bw":26,"ms":700}]},{"cap":"Rounds 3 to 6, same four steps each time. The error falls to 3.89, 2.05, 1.45 and 1.00, and the fit hugs the points ever more closely.","do":[{"dim":"f2"},{"series":"f6","chart":"fit","pts":[[0.6,3.301],[1.5,3.301],[1.5,5.195],[2.5,5.195],[2.5,6.005],[3.5,6.005],[3.5,8.922],[4.5,8.922],[4.5,11.577],[5.4,11.577]],"tone":"green","ms":1200,"label":"F₆","lat":[5.4,11.576548258463543],"ldx":8,"ldy":0,"lanchor":"start","lsize":16},{"bars":"e36","chart":"err","data":[[3,3.888,"3.9","green"],[4,2.053,"2.1","green"],[5,1.445,"1.4","green"],[6,1.003,"1.0","green"]],"bw":26,"ms":1100}]},{"cap":"That is the danger too. Every round can only lower the training error, so with enough rounds a boosted model fits the noise as well as the signal. Stop early, on data held out in time, never on the training curve.","do":[{"note":"warn","x":300,"y":552,"text":"training error always falls: stop on held-out data","size":19,"anchor":"middle","tone":"red"}]},{"cap":"XGBoost, LightGBM and CatBoost run this same loop, with penalties on tree size and a lot of speed. A strong method is still not an edge: the features need an honest out-of-sample test with costs.","do":[{"note":"end","x":300,"y":598,"text":"great method ≠ proven signal","size":20,"anchor":"middle","tone":"amber"}]}]}</script>
+      </div>
+      <!-- WB:gradient_boosting:END -->
+    </section>
+    <!-- WB:gradient_boosting-deck:END -->
+
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Watching one point converge, round by round</h2>
       <p class="sl-sub">Following the x=5 point (true y=12) through the exact rounds from the previous slide. The gap to the dashed target line is that round's residual.</p>
@@ -148,7 +161,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Run one boosting step yourself</h2>
       <p class="sl-sub">Given the current residual's ingredients, compute the updated prediction and the new residual — this is round 1 → round 2 of the example above, at x=5.</p>
@@ -175,7 +188,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">More rounds helps — until it starts hurting</h2>
       <p class="sl-sub">Drag the slider. Training error (blue) keeps falling toward zero. Validation error (amber) falls too, but only up to a point — then rises as later rounds start fitting noise.</p>
@@ -210,7 +223,7 @@
       <p class="sl-p">This is why "early stopping on a genuine validation set" is standard practice, not an optional extra: with enough rounds and too little shrinkage, boosting can drive <em>training</em> error toward zero exactly the way one unconstrained tree can — a falling training curve alone never tells you which side of that amber line you're on.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Nobody trains the raw 2001 algorithm anymore</h2>
       <p class="sl-sub">Three production libraries dominate real-world use — same sequential-correction core, different practical engineering.</p>
@@ -222,7 +235,7 @@
       <div class="sl-quote">All three sit on top of the exact same two ideas from this lesson — a corrective step fit to the leftover error, and a shrinkage rate — without changing that core mechanism. The engineering is about training efficiently and handling messy real tabular data well, not a different underlying algorithm.</div>
     </section>
 
-    <!-- DESK:START --><section class="sl-slide" data-slide="10">
+    <!-- DESK:START --><section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Not just a concept in this repo — checked directly</h2>
       <div class="sl-callout amber">
@@ -232,7 +245,7 @@
       <p class="sl-p">Worth naming the boundary precisely: the previous lesson's forest and plain decision-tree classes still don't appear anywhere in this codebase — that finding stands. It's specifically <em>gradient-boosted</em> trees, this lesson's subject, that turn out to already be live.</p>
     </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">A great knife still needs the right recipe</h2>
       <div class="sl-quote">Being told "this is the best-selling, most versatile kitchen knife in the world" tells you the knife is genuinely great — but nothing about whether it's the right tool for the specific recipe you're making tonight. Gradient boosting being the strongest general-purpose method for tabular data is the "great knife" claim. Whether it actually finds something real and tradeable in one specific set of FX or macro features is a completely separate question, answered only by testing that exact feature set on its own — every single time.</div>
@@ -243,7 +256,7 @@
       <p class="sl-p">A powerful algorithm applied to features with no real signal doesn't fail loudly — it overfits noise, and it can do so <strong>more</strong> convincingly than a weaker method would, because it's flexible enough to trace a shape through pure randomness. That is exactly why leakage-free, honest out-of-sample testing gets <em>more</em> important as the method gets stronger, never less.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -294,7 +307,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -426,5 +439,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>
