@@ -64,10 +64,12 @@
 
   // ── paths.html ────────────────────────────────────────────────────────────
   var app = document.getElementById('tl-paths-app'); if (!app) return;
-  // Capstones with a pre-filled workbench page (today's numbers + live desk verdicts).
-  // The workbenches run on the desk's live board, so they are admin-only; the server
-  // strips the window.TL_DESK flag (inside DESK markers) for everyone else.
-  var WORKBENCH = window.TL_DESK ? { volatility: 'capstone-vol.html', macro: 'capstone-macro.html' } : {};
+  // Capstones with a workbench page. Volatility and macro are pre-filled from the desk's
+  // live board, so they are admin-only; the server strips the window.TL_DESK flag (inside
+  // DESK markers) for everyone else. Systems and risk are fill-in calculators with worked
+  // defaults and no desk data, so every reader gets them.
+  var WORKBENCH = { systems: 'capstone-systems.html', risk: 'capstone-risk.html' };
+  if (window.TL_DESK) { WORKBENCH.volatility = 'capstone-vol.html'; WORKBENCH.macro = 'capstone-macro.html'; }
   function render() {
     var sel = path(get(K_PATH, null));
     var h = '<div class="tp-grid">' + D.paths.map(function (p) {

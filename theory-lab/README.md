@@ -96,11 +96,24 @@ Details in the style guide (§5.18).
   loss aversion & prospect theory, the disposition effect, overconfidence &
   overtrading, herding & bubbles, drawdowns & risk of ruin, and judging
   decisions not results (with a decision journal). Each has a self-audit.
-- **Learning paths** (`paths.html`) — four goal-based routes (Volatility &
-  Options, Macro & FX, System Building, Risk & Portfolio) sharing one core,
-  each ending in a capstone. Defined in `assets/paths-data.js`; every lesson
+- **Learning paths** (`paths.html`) — seven goal-based routes sharing one
+  core, each ending in a capstone: four applied ones (Volatility & Options,
+  Macro & FX, System Building, Risk & Portfolio) and three for the maths
+  underneath (Maths from Scratch, Stochastic Calculus & Pricing, Quant Methods
+  & Machine Learning). Every lesson except the admin-only institutional ones
+  sits on at least one path. Defined in `assets/paths-data.js`; every lesson
   on a path shows an "On your path" bar (`assets/paths.js`). Checked by
-  `node js/lessonPaths.test.mjs`.
+  `node js/lessonPaths.test.mjs`. System Building and Risk & Portfolio have
+  public fill-in workbenches (`capstone-systems.html`, `capstone-risk.html`).
+- **Teaching four ways (VARK)** — every lesson carries the same idea as a
+  summary picture and a term-by-term equation build (visual), a two-voice
+  spoken version plus "Quiz me aloud" (aural), the text and self-test
+  (read), and a predict-first task and a dated scenario drill you commit to
+  (kinesthetic), with a "Where this fits" box pointing to what to read first
+  and next. Behaviour in `assets/vark.js`; markup in the style guide §5.19.
+- **Spaced review** — the hub and Start page show a "Due for review" card
+  with three self-test questions from lessons you finished a week or more
+  ago (`assets/review.js`, this browser only).
 - **"How it reached trading"** (`.tl-origin` + `.tl-role`) — in 59 maths/ML
   lessons: who brought the idea into markets and what it let traders do, plus
   its job in the analysis pipeline (Data → Model → Signal → Test → Size & risk

@@ -122,7 +122,8 @@ window.TL_PATHS = {
       "duration-convexity",
       "yield-curve-construction",
       "nelson-siegel-svensson",
-      "swap-curves-ois"
+      "swap-curves-ois",
+      "short-rate-models-vasicek-cir-hull-white"
      ]
     },
     {
@@ -209,7 +210,12 @@ window.TL_PATHS = {
       "hidden-markov-models",
       "kalman-filter",
       "regularized-regression-lasso-ridge",
-      "gradient-boosting"
+      "gradient-boosting",
+      "regression-diagnostics",
+      "model-selection-aic-bic",
+      "arima-var",
+      "trend-cycle-filters",
+      "change-point-detection"
      ]
     },
     {
@@ -229,7 +235,9 @@ window.TL_PATHS = {
       "execution-algorithms",
       "market-impact-almgren-chriss",
       "kelly-criterion",
-      "coherent-risk-measures"
+      "coherent-risk-measures",
+      "limit-order-books",
+      "vpin-order-flow-toxicity"
      ]
     },
     {
@@ -294,7 +302,8 @@ window.TL_PATHS = {
       "hierarchical-risk-parity",
       "factor-based-portfolio-construction",
       "active-portfolio-management",
-      "alpha-beta-separation"
+      "alpha-beta-separation",
+      "merton-portfolio-problem"
      ]
     },
     {
@@ -314,7 +323,8 @@ window.TL_PATHS = {
       "correlation-networks-mst",
       "copulas",
       "systemic-risk-networks",
-      "random-matrix-theory"
+      "random-matrix-theory",
+      "graph-theory-centrality"
      ]
     },
     {
@@ -348,6 +358,246 @@ window.TL_PATHS = {
      {
       "text": "Name the one assumption whose failure would hurt most, and how you would see it coming",
       "lesson": "copulas"
+     }
+    ]
+   }
+  },
+  {
+   "id": "foundations",
+   "name": "Maths from Scratch",
+   "icon": "🧮",
+   "who": "For anyone whose maths is rusty, or who wants the tools under every other lesson: from algebra to the solvers that fit models.",
+   "stages": [
+    {
+     "name": "Back to basics",
+     "lessons": [
+      "foundation-algebra-functions",
+      "foundation-trig-logs-exponentials",
+      "foundation-complex-numbers"
+     ]
+    },
+    {
+     "name": "Calculus that finance uses",
+     "lessons": [
+      "foundation-multivariable-calculus",
+      "calculus-for-finance",
+      "limits-integrals-annuity-factors"
+     ]
+    },
+    {
+     "name": "Matrices and optimisation",
+     "lessons": [
+      "linear-algebra-matrices",
+      "foundation-optimization-basics",
+      "convex-optimization",
+      "linear-quadratic-programming"
+     ]
+    },
+    {
+     "name": "Making a computer do it",
+     "lessons": [
+      "newton-raphson-gradient-descent",
+      "numerical-integration"
+     ]
+    },
+    {
+     "name": "The human side",
+     "lessons": [
+      "process-vs-outcome-decision-journals"
+     ]
+    }
+   ],
+   "deliverable": {
+    "title": "A bond and a portfolio, worked by hand",
+    "what": "One page where you price a bond, solve for its yield and build a two-asset minimum-variance portfolio, showing every step, then check each answer with a calculator.",
+    "steps": [
+     {
+      "text": "Turn a 5% annual return into a log return and back, and say why the two differ",
+      "lesson": "foundation-trig-logs-exponentials"
+     },
+     {
+      "text": "Price a 5-year, 4% coupon bond at a 5% yield with the annuity factor, not by summing every coupon",
+      "lesson": "limits-integrals-annuity-factors"
+     },
+     {
+      "text": "Work out how much the price moves for a 1-point change in yield, using the derivative",
+      "lesson": "calculus-for-finance"
+     },
+     {
+      "text": "Given only the price, solve for the yield with three Newton-Raphson steps and show each one",
+      "lesson": "newton-raphson-gradient-descent"
+     },
+     {
+      "text": "Write two assets' covariance as a matrix and find the minimum-variance weights",
+      "lesson": "linear-algebra-matrices"
+     },
+     {
+      "text": "Add a no-short-selling rule and say whether the answer changes, and why",
+      "lesson": "linear-quadratic-programming"
+     }
+    ]
+   }
+  },
+  {
+   "id": "stochastic",
+   "name": "Stochastic Calculus & Pricing",
+   "icon": "📐",
+   "who": "For the deep end: the continuous-time maths under option pricing and rate models, and how to simulate it when no formula exists.",
+   "stages": [
+    {
+     "name": "Calculus for random paths",
+     "lessons": [
+      "ito-lemma",
+      "sde-existence-uniqueness",
+      "girsanov-risk-neutral"
+     ]
+    },
+    {
+     "name": "Simulating and solving",
+     "lessons": [
+      "sde-numerical-schemes",
+      "multivariate-correlated-sdes",
+      "fokker-planck-equation",
+      "fft-option-pricing-carr-madan"
+     ]
+    },
+    {
+     "name": "Beyond Brownian motion",
+     "lessons": [
+      "fractional-brownian-motion",
+      "short-rate-models-vasicek-cir-hull-white",
+      "stochastic-pdes",
+      "neural-sdes-spdes"
+     ]
+    },
+    {
+     "name": "The human side",
+     "lessons": [
+      "overconfidence-overtrading"
+     ]
+    }
+   ],
+   "deliverable": {
+    "title": "One option, priced three ways",
+    "what": "A European call priced by simulation, by Fourier transform and by the Black-Scholes formula, with the three answers compared and every gap explained.",
+    "steps": [
+     {
+      "text": "Apply Ito's lemma to geometric Brownian motion and write down the distribution of the log price",
+      "lesson": "ito-lemma"
+     },
+     {
+      "text": "Switch to the risk-neutral measure and say exactly what changes in the drift, and what does not",
+      "lesson": "girsanov-risk-neutral"
+     },
+     {
+      "text": "Simulate 10,000 paths with Euler-Maruyama and price the call by Monte Carlo, with a standard error",
+      "lesson": "sde-numerical-schemes"
+     },
+     {
+      "text": "Price the same call with the Carr-Madan FFT and compare",
+      "lesson": "fft-option-pricing-carr-madan"
+     },
+     {
+      "text": "Check both against the Black-Scholes formula and explain any gap bigger than the Monte Carlo error",
+      "lesson": "black-scholes"
+     },
+     {
+      "text": "Plot the simulated terminal prices against the density the Fokker-Planck equation predicts",
+      "lesson": "fokker-planck-equation"
+     }
+    ]
+   }
+  },
+  {
+   "id": "quantml",
+   "name": "Quant Methods & Machine Learning",
+   "icon": "🤖",
+   "who": "For anyone who wants the modern toolkit: Bayesian models, filters, signal processing and machine learning, and the discipline to tell when they beat something simple.",
+   "stages": [
+    {
+     "name": "Bayesian models",
+     "lessons": [
+      "bayesian-conjugate-priors",
+      "mcmc-metropolis-gibbs",
+      "hierarchical-bayesian-models",
+      "hamiltonian-monte-carlo-nuts"
+     ]
+    },
+    {
+     "name": "Hidden states and filters",
+     "lessons": [
+      "kalman-smoother-ekf-ukf",
+      "particle-filter",
+      "regime-switching-state-space",
+      "change-point-detection"
+     ]
+    },
+    {
+     "name": "Information and signals",
+     "lessons": [
+      "entropy-kl-mutual-information",
+      "transfer-entropy-causality",
+      "mdl-information-criteria",
+      "fourier-analysis-frequency-domain",
+      "wavelets-time-frequency",
+      "graph-theory-centrality"
+     ]
+    },
+    {
+     "name": "Machine learning",
+     "lessons": [
+      "decision-trees-random-forests",
+      "clustering-market-structure",
+      "anomaly-detection-isolation-autoencoders",
+      "recurrent-networks-lstm-gru",
+      "attention-transformers-time-series",
+      "nlp-trading-signals-sentiment"
+     ]
+    },
+    {
+     "name": "Learning to act",
+     "lessons": [
+      "mdp-bellman-equation",
+      "q-learning-temporal-difference",
+      "policy-gradients-actor-critic",
+      "deep-q-networks"
+     ]
+    },
+    {
+     "name": "The human side",
+     "lessons": [
+      "overconfidence-overtrading",
+      "drawdowns-risk-of-ruin"
+     ]
+    }
+   ],
+   "deliverable": {
+    "title": "One model against a simple baseline",
+    "what": "A single machine-learning model tested honestly against a plain linear baseline on the same data, with the result reported even if the simple model wins.",
+    "steps": [
+     {
+      "text": "Write the hypothesis and the pass bar before fitting anything",
+      "lesson": "research-pipeline-hypothesis-to-backtest"
+     },
+     {
+      "text": "Fit the plain baseline and check its residuals",
+      "lesson": "regression-diagnostics"
+     },
+     {
+      "text": "Fit a random forest on the same features",
+      "lesson": "decision-trees-random-forests"
+     },
+     {
+      "text": "Compare both with purged walk-forward splits, never a random shuffle",
+      "lesson": "walk-forward-purged-cv"
+     },
+     {
+      "text": "Score both on information criteria, so extra complexity has to pay for itself",
+      "lesson": "model-selection-aic-bic"
+     },
+     {
+      "text": "Count every model and setting you tried, and correct for it",
+      "lesson": "multiple-testing"
      }
     ]
    }
@@ -772,6 +1022,276 @@ window.TL_PATHS = {
   "random-matrix-theory": {
    "t": "Random Matrix Theory & the Marchenko-Pastur Law",
    "min": 18,
+   "micro": true
+  },
+  "anomaly-detection-isolation-autoencoders": {
+   "t": "Anomaly Detection: Isolation Forests & Autoencoders",
+   "min": 17,
+   "micro": true
+  },
+  "arima-var": {
+   "t": "ARIMA & Vector Autoregression (VAR)",
+   "min": 17,
+   "micro": true
+  },
+  "attention-transformers-time-series": {
+   "t": "Attention & Transformers for Time Series",
+   "min": 19,
+   "micro": true
+  },
+  "bayesian-conjugate-priors": {
+   "t": "Conjugate Priors & Bayesian Updating in Practice",
+   "min": 16,
+   "micro": true
+  },
+  "calculus-for-finance": {
+   "t": "Calculus for Finance: Derivatives, Integrals & Taylor Series",
+   "min": 15,
+   "micro": true
+  },
+  "change-point-detection": {
+   "t": "Change-Point Detection",
+   "min": 16,
+   "micro": true
+  },
+  "clustering-market-structure": {
+   "t": "Clustering for Market Structure: k-Means & Hierarchical Clustering",
+   "min": 17,
+   "micro": true
+  },
+  "convex-optimization": {
+   "t": "Convex Optimization",
+   "min": 17,
+   "micro": true
+  },
+  "decision-trees-random-forests": {
+   "t": "Decision Trees & Random Forests",
+   "min": 16,
+   "micro": true
+  },
+  "deep-q-networks": {
+   "t": "Deep Q-Networks & Function Approximation",
+   "min": 16,
+   "micro": true
+  },
+  "entropy-kl-mutual-information": {
+   "t": "Entropy, KL Divergence & Mutual Information",
+   "min": 16,
+   "micro": true
+  },
+  "fft-option-pricing-carr-madan": {
+   "t": "FFT Option Pricing (Carr-Madan)",
+   "min": 16,
+   "micro": true
+  },
+  "fokker-planck-equation": {
+   "t": "The Fokker-Planck Equation",
+   "min": 19,
+   "micro": true
+  },
+  "foundation-algebra-functions": {
+   "t": "Algebra & Functions Refresher",
+   "min": 14,
+   "micro": true
+  },
+  "foundation-complex-numbers": {
+   "t": "Complex Numbers",
+   "min": 13,
+   "micro": true
+  },
+  "foundation-multivariable-calculus": {
+   "t": "Partial Derivatives & Multivariable Calculus",
+   "min": 14,
+   "micro": true
+  },
+  "foundation-optimization-basics": {
+   "t": "Optimization Basics: Unconstrained & Constrained",
+   "min": 15,
+   "micro": true
+  },
+  "foundation-trig-logs-exponentials": {
+   "t": "Trigonometry, Logarithms & Exponentials",
+   "min": 16,
+   "micro": true
+  },
+  "fourier-analysis-frequency-domain": {
+   "t": "Fourier Analysis & the Frequency Domain",
+   "min": 14,
+   "micro": true
+  },
+  "fractional-brownian-motion": {
+   "t": "Fractional Brownian Motion & Long Memory",
+   "min": 17,
+   "micro": true
+  },
+  "girsanov-risk-neutral": {
+   "t": "Girsanov's Theorem & the Risk-Neutral Measure",
+   "min": 17,
+   "micro": true
+  },
+  "graph-theory-centrality": {
+   "t": "Graph Theory Fundamentals & Centrality Measures",
+   "min": 17,
+   "micro": true
+  },
+  "hamiltonian-monte-carlo-nuts": {
+   "t": "Hamiltonian Monte Carlo & NUTS",
+   "min": 18,
+   "micro": true
+  },
+  "hierarchical-bayesian-models": {
+   "t": "Hierarchical Bayesian Models & Partial Pooling",
+   "min": 17,
+   "micro": true
+  },
+  "ito-lemma": {
+   "t": "Itô's Lemma",
+   "min": 18,
+   "micro": true
+  },
+  "kalman-smoother-ekf-ukf": {
+   "t": "The Kalman Smoother & Extended/Unscented Kalman Filters",
+   "min": 19,
+   "micro": true
+  },
+  "limit-order-books": {
+   "t": "Limit Order Books & Queue Dynamics",
+   "min": 15,
+   "micro": true
+  },
+  "limits-integrals-annuity-factors": {
+   "t": "Limits, Integrals & Annuity Factors",
+   "min": 18,
+   "micro": true
+  },
+  "linear-algebra-matrices": {
+   "t": "Linear Algebra & Matrices",
+   "min": 15,
+   "micro": true
+  },
+  "linear-quadratic-programming": {
+   "t": "Linear & Quadratic Programming",
+   "min": 16,
+   "micro": true
+  },
+  "mcmc-metropolis-gibbs": {
+   "t": "MCMC: Metropolis-Hastings & Gibbs Sampling",
+   "min": 17,
+   "micro": true
+  },
+  "mdl-information-criteria": {
+   "t": "Minimum Description Length & Information Criteria",
+   "min": 14,
+   "micro": true
+  },
+  "mdp-bellman-equation": {
+   "t": "MDPs, Value Functions & the Bellman Equation",
+   "min": 17,
+   "micro": true
+  },
+  "merton-portfolio-problem": {
+   "t": "Merton's Continuous-Time Portfolio Problem",
+   "min": 18,
+   "micro": true
+  },
+  "model-selection-aic-bic": {
+   "t": "Model Selection: AIC & BIC",
+   "min": 15,
+   "micro": true
+  },
+  "multivariate-correlated-sdes": {
+   "t": "Multivariate & Correlated SDEs",
+   "min": 15,
+   "micro": true
+  },
+  "neural-sdes-spdes": {
+   "t": "Neural SDEs & Neural SPDEs",
+   "min": 14,
+   "micro": true
+  },
+  "newton-raphson-gradient-descent": {
+   "t": "Newton-Raphson & Gradient Descent",
+   "min": 17,
+   "micro": true
+  },
+  "nlp-trading-signals-sentiment": {
+   "t": "NLP for Trading Signals: Sentiment, Embeddings & FinBERT",
+   "min": 18,
+   "micro": true
+  },
+  "numerical-integration": {
+   "t": "Numerical Integration",
+   "min": 16,
+   "micro": true
+  },
+  "particle-filter": {
+   "t": "The Particle Filter (Sequential Monte Carlo)",
+   "min": 18,
+   "micro": true
+  },
+  "policy-gradients-actor-critic": {
+   "t": "Policy Gradients & Actor-Critic Methods",
+   "min": 17,
+   "micro": true
+  },
+  "q-learning-temporal-difference": {
+   "t": "Q-Learning & Temporal-Difference Methods",
+   "min": 16,
+   "micro": true
+  },
+  "recurrent-networks-lstm-gru": {
+   "t": "Recurrent Networks for Sequential Data: LSTM & GRU",
+   "min": 18,
+   "micro": true
+  },
+  "regime-switching-state-space": {
+   "t": "Regime-Switching State Space Models",
+   "min": 18,
+   "micro": true
+  },
+  "regression-diagnostics": {
+   "t": "Regression Diagnostics: Durbin-Watson, Breusch-Pagan & Jarque-Bera",
+   "min": 17,
+   "micro": true
+  },
+  "sde-existence-uniqueness": {
+   "t": "Existence & Uniqueness of SDE Solutions",
+   "min": 16,
+   "micro": true
+  },
+  "sde-numerical-schemes": {
+   "t": "Numerical Schemes: Euler-Maruyama & Milstein",
+   "min": 17,
+   "micro": true
+  },
+  "short-rate-models-vasicek-cir-hull-white": {
+   "t": "Short-Rate Models: Vasicek, CIR & Hull-White",
+   "min": 18,
+   "micro": true
+  },
+  "stochastic-pdes": {
+   "t": "Stochastic PDEs",
+   "min": 18,
+   "micro": true
+  },
+  "transfer-entropy-causality": {
+   "t": "Transfer Entropy & Information-Theoretic Causality",
+   "min": 15,
+   "micro": true
+  },
+  "trend-cycle-filters": {
+   "t": "Trend/Cycle Filters: Hodrick-Prescott, Butterworth & Baxter-King",
+   "min": 16,
+   "micro": true
+  },
+  "vpin-order-flow-toxicity": {
+   "t": "Order Flow Toxicity & VPIN",
+   "min": 16,
+   "micro": true
+  },
+  "wavelets-time-frequency": {
+   "t": "Wavelets & Time-Frequency Analysis",
+   "min": 15,
    "micro": true
   }
  }

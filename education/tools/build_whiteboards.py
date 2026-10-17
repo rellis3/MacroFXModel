@@ -9,7 +9,7 @@ BOARD = dict(name, lesson, title, cfg, before, deck_after):
 Also writes theory-lab/watch.html (an index of every board) and a ▶ badge on
 the hub card of each lesson that has one.
 Re-runnable: boards sit between <!-- WB:name:START/END --> markers and are replaced.
-Run:  python3 education/tools/build_whiteboards.py [name …]
+Run:  python3 education/tools/build_whiteboards.py [--no-index] [name …]
 """
 import importlib, json, os, pkgutil, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -138,12 +138,18 @@ def write_index(boards):
     print(f'ok index: {len(boards)} boards → watch.html; ▶ badges on hub')
 
 
-only = set(sys.argv[1:])
+# --no-index: build only the named boards into their pages and skip watch.html and the hub
+# badges, so several boards can be built at once without racing on the shared pages.
+# Run once without it at the end to regenerate the index.
+args = [a for a in sys.argv[1:] if a != '--no-index']
+no_index = len(args) != len(sys.argv[1:])
+only = set(args)
 boards = []
 for mod in sorted(m.name for m in pkgutil.iter_modules(whiteboards.__path__) if not m.name.startswith('_')):
     B = importlib.import_module('whiteboards.' + mod).BOARD
     boards.append(B)
     if not only or B['name'] in only:
         build(B)
-write_index(boards)
-badge_hub({B['lesson'] for B in boards})
+if not no_index:
+    write_index(boards)
+    badge_hub({B['lesson'] for B in boards})

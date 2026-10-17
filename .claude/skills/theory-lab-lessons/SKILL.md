@@ -52,6 +52,9 @@ reference pair.**
   chart libraries and no external requests beyond Google Fonts and MathJax.
 - **Colour has meaning:** blue = concept/neutral, green = good / do this, red = trap or null, amber = caveat or
   scenario, purple = maths or example.
+- **Teach it four ways (VARK).** Every lesson carries a summary picture, a two-voice spoken version, an equation
+  build-up, a predict-first task, a dated scenario drill and a "Where this fits" box (style guide §5.20), plus a
+  whiteboard. Drills use only documented facts; when no real episode fits, label the drill illustrative.
 - **Never copy or add CSS files.** A page-local `<style>` is only for bespoke tool widgets (`tp-*` prefix, the
   `action-*` pattern).
 

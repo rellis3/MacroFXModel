@@ -106,6 +106,11 @@ doesn't apply (e.g. a pure-workflow cog lesson may have no formulas).
 14. **Further reading** (collapsed `<details class="tl-section-collapse">`) — real, correctly attributed sources.
 15. **Footer nav** (`.tl-footer-nav`) — back to hub / next lesson.
 
+Every lesson also carries the VARK layer (§5.20), slotted into this order: the summary
+picture and the spoken version straight after the TL;DR; the equation build-up straight
+after the maths `<h2>`; a predict-first task inside the main "Try it yourself" box; a
+scenario drill just before Key Takeaways; and "Where this fits" just before the footer nav.
+
 ---
 
 ## 4. Section dividers — `.tl-section-mark`
@@ -529,6 +534,151 @@ step; every caption must be as accurate as the lesson text (it is the transcript
 too). Best for causal chains, flows and mechanisms — not for derivations.
 
 ---
+
+### 5.20 Teaching four ways (VARK) — `.tl-picture`, `.tl-eqbuild`, `.tl-listen`, `.tl-predict`, `.tl-drill`, `.tl-fits`
+
+Every lesson teaches its one main idea four ways: **V**isual, **A**ural, **R**ead/write and
+**K**inesthetic. The research does not support routing a learner to a "preferred style";
+it does support giving everyone several routes into the same idea, so every lesson carries
+all of these. The text, symbols table and self-test are the read layer and already exist.
+Behaviour lives in `assets/vark.js` (load it right after `tts.js?v=6`). Without JS every
+block shows in full, so nothing is ever locked away. Reference: `kelly-criterion.html`.
+
+```html
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+```
+
+**1. Summary picture (Visual) — straight after `.tl-tldr`.** One hand-built inline SVG that
+shows the whole idea at a glance: the shape, not the detail. Use the `tlp-*` colour classes
+(they follow the colour meanings in §6), real numbers from the lesson, and a full
+`aria-label`. Keep it to about 600×200–260 and let text breathe; check it at phone width.
+
+```html
+<figure class="tl-picture">
+  <div class="tl-picture-label">The whole idea in one picture</div>
+  <svg viewBox="0 0 600 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What the picture shows, in a sentence.">
+    <!-- tlp-box [blue|green|red|amber|purple], tlp-line [colour] [thick] [dash],
+         text/shape fills: tlp-blue tlp-green tlp-red tlp-amber tlp-purple tlp-text tlp-text2 tlp-text3 -->
+  </svg>
+  <figcaption>One or two sentences: what to notice.</figcaption>
+</figure>
+```
+
+**2. Spoken version (Aural) — straight after the picture.** A dialogue between a Trader and
+a Quant, written for the ear: 14–22 short lines, about 3–5 minutes, no symbols or notation
+(say "the square root of time", not √t), one worked number, the lesson's real episode, and
+a one-line takeaway at the end. Every fact must already be in the lesson. `vark.js` gives it
+Play/Pause/Stop with two voices and a transcript toggle; the main "Listen to this lesson"
+reader skips it. `data-who` is exactly `Trader` or `Quant`.
+
+```html
+<section class="tl-listen" data-minutes="4">
+  <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+  <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+  <div class="tl-listen-script">
+    <p data-who="Trader">…</p>
+    <p data-who="Quant">…</p>
+  </div>
+</section>
+```
+
+**"Quiz me aloud" (Aural)** needs no markup: `vark.js` builds it above the first `.tl-quiz`.
+It reads each question, waits (5–30 s, the reader picks), then reads the answer.
+
+**3. Equation build-up (Visual) — straight after the maths `<h2>`.** The lesson's key formula
+assembled in 3–6 steps, one term per step, the new term highlighted with
+`\color{#fbbf24}{…}` and the finished result with `\color{#10b981}{…}`. Each step is the
+whole equation so far plus one or two sentences on what the new term does. Lessons with no
+formula build up their key relationship or rule the same way (a ratio, an identity, a
+decision rule).
+
+```html
+<div class="tl-eqbuild">
+  <div class="tl-eqbuild-label">Watch the formula build</div>
+  <div class="tl-eqbuild-title">Where X comes from, one term at a time</div>
+  <div class="tl-eqbuild-step">
+    <div class="tl-math">\[ … \color{#fbbf24}{\text{new term}} \]</div>
+    <p>What this term adds.</p>
+  </div>
+  <!-- 3–6 steps -->
+</div>
+```
+
+**4. Predict first (Kinesthetic) — inside the main "Try it yourself" box**, after its intro
+paragraph and before the controls. Ask for a number the reader can then check with the
+controls just below (numeric), or a choice (put `data-correct` on the right `<li>`). If the
+lesson has no "Try it yourself", put it at the top of the main interactive chart's box, or
+failing that at the top of the worked example, and make the reveal point at where to check
+it. The reveal gives the answer, the arithmetic, and what to try next.
+
+```html
+<div class="tl-predict" data-answer="20" data-tol="2" data-unit="%">
+  <div class="tl-predict-q"><strong>Predict first.</strong> The question, and which control to move to check it.</div>
+  <div class="tl-predict-reveal"><p><strong>20%.</strong> The arithmetic, and what to try next.</p></div>
+</div>
+<!-- choice form: -->
+<div class="tl-predict">
+  <div class="tl-predict-q"><strong>Predict first.</strong> …</div>
+  <ul class="tl-predict-options"><li>…</li><li data-correct>…</li><li>…</li></ul>
+  <div class="tl-predict-reveal"><p>…</p></div>
+</div>
+```
+
+**5. Scenario drill (Kinesthetic) — just before the Key Takeaways section mark.** A dated,
+real situation, a decision with 3–4 options, and the outcome hidden until the reader
+commits. One option is `good`, the others `ok` or `bad`; each carries its reason. Use only
+episodes you can state accurately (the lesson's own episode is the safest choice); dates,
+numbers and what happened must be documented facts. If no real episode fits, write a
+clearly labelled illustrative desk situation ("Scenario drill · an illustrative Monday")
+and say in the outcome that it is illustrative. Never invent a historical fact.
+
+```html
+<div class="tl-drill" data-date="1998-08-21">
+  <div class="tl-drill-label">Scenario drill · 21 August 1998</div>
+  <h3>A short title for the situation</h3>
+  <p>The setup: where you are, what you hold, what just happened. End with the question.</p>
+  <ol class="tl-drill-options">
+    <li data-verdict="bad">Option.<div class="tl-drill-why">Why it costs money.</div></li>
+    <li data-verdict="good">Option.<div class="tl-drill-why">Why it is the best call.</div></li>
+    <li data-verdict="ok">Option.<div class="tl-drill-why">Why it is defensible but not best.</div></li>
+  </ol>
+  <div class="tl-drill-outcome"><p><strong>What happened.</strong> …</p></div>
+</div>
+```
+
+**6. Where this fits — just before `.tl-footer-nav`.** Two or three lessons to read first
+and two or three to read next, each with a short reason, then one sentence on why a trader
+would care. Link only lessons that exist, with their exact `<h1>` titles. A link to an
+admin-only lesson (`institutional-*`, `action-*`) goes inside DESK markers, one `<li>` each.
+
+```html
+<nav class="tl-fits" aria-label="Where this lesson fits">
+  <div class="tl-fits-label">Where this fits</div>
+  <div class="tl-fits-col">
+    <div class="tl-fits-k">Read first</div>
+    <ul><li><a href="slug.html">Exact Title</a> <span>· why</span></li></ul>
+  </div>
+  <div class="tl-fits-col">
+    <div class="tl-fits-k">Read next</div>
+    <ul><li><a href="slug.html">Exact Title</a> <span>· why</span></li></ul>
+  </div>
+  <p class="tl-fits-why"><strong>Why you'd care:</strong> one sentence.</p>
+</nav>
+```
+
+**7. A whiteboard (Visual)** — every lesson also gets a "▶ Watch it" board (§5.19).
+
+All of these blocks are shared content: no desk or repo material inside them except
+DESK-wrapped links in "Where this fits". Guesses and drill choices are kept in
+`localStorage.theoryLabVark`, this browser only.
+
+### 5.21 Spaced review — `#tl-review`
+
+`assets/review.js` fills `<div id="tl-review" class="tl-review" hidden></div>` (hub and
+Start page) with up to three self-test questions from lessons the reader finished 7+ days
+ago, fetched from the lesson pages themselves. "I knew it" spaces the next review out
+(7 → 21 → 60 → 150 days); "Shaky" brings it back in 7. State: `localStorage.theoryLabReview`.
 
 ## 6. Color system — what each color means
 

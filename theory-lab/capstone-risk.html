@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A One-Page Risk Report — Capstone — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theory.css">
+<style>
+  /* Local: the workbench's number grid, as-of lines and note boxes. */
+  .cw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0}
+  .cw-field label{display:block;font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--text2);margin-bottom:4px}
+  .cw-asof{display:block;font-family:'DM Mono',monospace;font-size:10.5px;line-height:1.45;color:var(--text3);margin-top:4px;overflow-wrap:anywhere}
+  .cw-note-label{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--purple);margin:14px 0 6px}
+  textarea.cw-note{min-height:84px;resize:vertical;font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5}
+  .cw-learn{font-size:12px;margin-top:6px}
+  .cw-step .tl-readout{line-height:1.6}
+  .cw-actions{margin:22px 0}
+</style>
+</head>
+<body>
+<div id="page">
+  <div id="page">
+  <div class="tl-crumb"><a href="hub.html">Theory Lab</a> · <a href="paths.html#deliverable">Learning paths</a> · Risk &amp; Portfolio capstone</div>
+  <div class="tl-kicker">Capstone · 🧭 Risk &amp; Portfolio path</div>
+  <h1 class="tl-title">A One-Page Risk Report</h1>
+  <p class="tl-dek">A risk report for a small multi-asset portfolio that a manager could act on: what it holds in risk terms, how bad a bad month gets, and what would break the assumptions.</p>
+  <div class="tl-meta"><span class="tl-status course">CAPSTONE WORKBENCH</span><span>~30 min</span><span>Your notes stay in this browser</span></div>
+
+  <div class="tl-callout"><strong>How to use it.</strong> Step 1 describes the portfolio. Every later step reuses those numbers, so change a weight or a correlation and the whole report follows. The defaults are illustrative, not a recommendation. Write each sentence in plain words a manager could act on, then download the page as your report.</div>
+
+  <section class="tl-box cw-step" data-step="1">
+    <div class="tl-box-label">Step 1 of 6</div>
+    <h3>Describe the portfolio in risk terms</h3>
+    <p>Three holdings, their weights, volatilities and correlations. The defaults are an illustrative 40/40/20 book: overwrite them with yours. Everything after this step uses these numbers.</p>
+    <div class="cw-grid"><div class="cw-field"><label for="f-weq">Equities weight (%)</label><input id="f-weq" class="tl-scratch-input" data-k="weq" data-default="40" inputmode="decimal"><span class="cw-asof" data-asof="weq"></span></div><div class="cw-field"><label for="f-wbd">Bonds weight (%)</label><input id="f-wbd" class="tl-scratch-input" data-k="wbd" data-default="40" inputmode="decimal"><span class="cw-asof" data-asof="wbd"></span></div><div class="cw-field"><label for="f-wgd">Gold weight (%)</label><input id="f-wgd" class="tl-scratch-input" data-k="wgd" data-default="20" inputmode="decimal"><span class="cw-asof" data-asof="wgd"></span></div><div class="cw-field"><label for="f-veq">Equities volatility (%)</label><input id="f-veq" class="tl-scratch-input" data-k="veq" data-default="18" inputmode="decimal"><span class="cw-asof" data-asof="veq"></span></div><div class="cw-field"><label for="f-vbd">Bonds volatility (%)</label><input id="f-vbd" class="tl-scratch-input" data-k="vbd" data-default="7" inputmode="decimal"><span class="cw-asof" data-asof="vbd"></span></div><div class="cw-field"><label for="f-vgd">Gold volatility (%)</label><input id="f-vgd" class="tl-scratch-input" data-k="vgd" data-default="15" inputmode="decimal"><span class="cw-asof" data-asof="vgd"></span></div><div class="cw-field"><label for="f-c1">Correlation, equities–bonds</label><input id="f-c1" class="tl-scratch-input" data-k="c1" data-default="-0.2" inputmode="decimal"><span class="cw-asof" data-asof="c1"></span></div><div class="cw-field"><label for="f-c2">Correlation, equities–gold</label><input id="f-c2" class="tl-scratch-input" data-k="c2" data-default="0.1" inputmode="decimal"><span class="cw-asof" data-asof="c2"></span></div><div class="cw-field"><label for="f-c3">Correlation, bonds–gold</label><input id="f-c3" class="tl-scratch-input" data-k="c3" data-default="0.2" inputmode="decimal"><span class="cw-asof" data-asof="c3"></span></div></div>
+    <div class="tl-readout" data-calc="port"></div>
+    <div class="cw-learn">Learn it in: <a href="lessons/primer-correlation-regression.html">Correlation &amp; Linear Regression</a> · <a href="lessons/markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="2">
+    <div class="tl-box-label">Step 2 of 6</div>
+    <h3>Allocate by risk contribution, not capital, and show the two side by side</h3>
+    <p>Capital weights say where the money is. Risk contributions say where the swings come from. Equal risk contribution (risk parity) is the allocation where every holding adds the same share of risk.</p>
+    <div class="tl-readout" data-calc="rc"></div>
+    <label class="cw-note-label" for="n-rc">Your sentence</label>
+    <textarea id="n-rc" class="tl-scratch-input cw-note" data-note="rc" placeholder="e.g. Equities are 40% of the capital but about 80% of the risk. Equal risk would hold roughly … in equities and … in bonds."></textarea>
+    <div class="cw-learn">Learn it in: <a href="lessons/risk-parity-erc.html">Risk Parity &amp; Equal Risk Contribution</a> · <a href="lessons/hierarchical-risk-parity.html">Hierarchical Risk Parity</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="3">
+    <div class="tl-box-label">Step 3 of 6</div>
+    <h3>Report expected shortfall as well as VaR, with a fat-tail adjustment</h3>
+    <p>Value at risk is the loss you exceed on the worst 1 month in 20 (95%) or 1 in 100 (99%). Expected shortfall is the average loss on those bad months. The Cornish-Fisher line bends the normal answer for skew and fat tails.</p>
+    <div class="cw-grid"><div class="cw-field"><label for="f-nav">Portfolio value ($)</label><input id="f-nav" class="tl-scratch-input" data-k="nav" data-default="1000000" inputmode="decimal"><span class="cw-asof" data-asof="nav"></span></div><div class="cw-field"><label for="f-hd">Horizon (trading days)</label><input id="f-hd" class="tl-scratch-input" data-k="hd" data-default="21" inputmode="decimal"><span class="cw-asof" data-asof="hd"></span></div><div class="cw-field"><label for="f-sk">Skewness of returns</label><input id="f-sk" class="tl-scratch-input" data-k="sk" data-default="-0.5" inputmode="decimal"><span class="cw-asof" data-asof="sk"></span></div><div class="cw-field"><label for="f-xk">Excess kurtosis of returns</label><input id="f-xk" class="tl-scratch-input" data-k="xk" data-default="3" inputmode="decimal"><span class="cw-asof" data-asof="xk"></span></div></div>
+    <div class="tl-readout" data-calc="var"></div>
+    <label class="cw-note-label" for="n-var">Your sentence</label>
+    <textarea id="n-var" class="tl-scratch-input cw-note" data-note="var" placeholder="e.g. A normal 99% month loses about $…; with fat tails it is closer to $…, and the average of those bad months is $…."></textarea>
+    <div class="cw-learn">Learn it in: <a href="lessons/coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> · <a href="lessons/cornish-fisher-expansion.html">Cornish-Fisher Expansion</a> · <a href="lessons/extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="4">
+    <div class="tl-box-label">Step 4 of 6</div>
+    <h3>Run one historical and one hypothetical stress scenario</h3>
+    <p>Historical: pick a real episode and enter what each holding did in it. Hypothetical: invent the one that worries you most. The defaults are illustrative, not a record of any episode. The second default shows stocks and bonds falling together, the case a negative correlation assumption hides.</p>
+    <div class="cw-grid"><div class="cw-field"><label for="f-heq">Equities move in your historical episode (%)</label><input id="f-heq" class="tl-scratch-input" data-k="heq" data-default="-20" inputmode="decimal"><span class="cw-asof" data-asof="heq"></span></div><div class="cw-field"><label for="f-hbd">Bonds move in your historical episode (%)</label><input id="f-hbd" class="tl-scratch-input" data-k="hbd" data-default="3" inputmode="decimal"><span class="cw-asof" data-asof="hbd"></span></div><div class="cw-field"><label for="f-hgd">Gold move in your historical episode (%)</label><input id="f-hgd" class="tl-scratch-input" data-k="hgd" data-default="5" inputmode="decimal"><span class="cw-asof" data-asof="hgd"></span></div><div class="cw-field"><label for="f-yeq">Equities move in your hypothetical (%)</label><input id="f-yeq" class="tl-scratch-input" data-k="yeq" data-default="-15" inputmode="decimal"><span class="cw-asof" data-asof="yeq"></span></div><div class="cw-field"><label for="f-ybd">Bonds move in your hypothetical (%)</label><input id="f-ybd" class="tl-scratch-input" data-k="ybd" data-default="-8" inputmode="decimal"><span class="cw-asof" data-asof="ybd"></span></div><div class="cw-field"><label for="f-ygd">Gold move in your hypothetical (%)</label><input id="f-ygd" class="tl-scratch-input" data-k="ygd" data-default="-5" inputmode="decimal"><span class="cw-asof" data-asof="ygd"></span></div></div>
+    <div class="tl-readout" data-calc="stress"></div>
+    <label class="cw-note-label" for="n-stress">Your sentence</label>
+    <textarea id="n-stress" class="tl-scratch-input cw-note" data-note="stress" placeholder="e.g. In my historical episode the book loses …%. My hypothetical, stocks and bonds down together, loses …%: … times the 99% VaR."></textarea>
+    <div class="cw-learn">Learn it in: <a href="lessons/stress-testing-scenario-analysis.html">Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="5">
+    <div class="tl-box-label">Step 5 of 6</div>
+    <h3>Show how many independent bets the book really holds, and what that falls to in a crisis</h3>
+    <p>The effective number of bets reads the correlation matrix: three holdings that move together are closer to one bet. In a crisis correlations tend to rise towards one. Enter the level you expect them to reach.</p>
+    <div class="cw-grid"><div class="cw-field"><label for="f-cc">Correlation in a crisis (all pairs)</label><input id="f-cc" class="tl-scratch-input" data-k="cc" data-default="0.7" inputmode="decimal"><span class="cw-asof" data-asof="cc"></span></div></div>
+    <div class="tl-readout" data-calc="bets"></div>
+    <label class="cw-note-label" for="n-bets">Your sentence</label>
+    <textarea id="n-bets" class="tl-scratch-input cw-note" data-note="bets" placeholder="e.g. Normally the book holds about … independent bets; if correlations go to 0.7 that falls to …, and diversification mostly disappears."></textarea>
+    <div class="cw-learn">Learn it in: <a href="lessons/pca-factors.html">Principal Component Analysis &amp; Factor Regimes</a> · <a href="lessons/random-matrix-theory.html">Random Matrix Theory &amp; the Marchenko-Pastur Law</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="6">
+    <div class="tl-box-label">Step 6 of 6</div>
+    <h3>Name the one assumption whose failure would hurt most, and how you would see it coming</h3>
+    <p>Every number above rests on assumptions: volatilities stay near today's, correlations hold, returns are roughly normal. Name the one that would hurt most if it broke, and the early sign you would watch for.</p>
+    <label class="cw-note-label" for="n-assume">Your report: the one assumption, and the warning sign</label>
+    <textarea id="n-assume" class="tl-scratch-input cw-note" data-note="assume" placeholder="e.g. The book depends on bonds hedging equities. If both fall on the same day twice in a month, I cut equities to the equal-risk weight." style="min-height:140px"></textarea>
+    <div class="cw-learn">Learn it in: <a href="lessons/copulas.html">Copulas — Modeling Dependence Beyond Correlation</a> · <a href="lessons/stress-testing-scenario-analysis.html">Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</a></div>
+  </section>
+
+  <div class="tl-btnrow cw-actions">
+    <button type="button" class="tl-btn active" id="cw-download">⬇ Download as text</button>
+    <button type="button" class="tl-btn" id="cw-clear">Clear my notes</button>
+    <span class="tl-hint">Saved in this browser only. Download to keep a copy or hand it in.</span>
+  </div>
+  <div class="tl-footer-nav"><a href="paths.html#deliverable">← Risk &amp; Portfolio path</a><a href="capstone-systems.html">One honestly tested strategy →</a></div>
+</div>
+<script>
+window.TL_CAPSTONE = {
+  id: 'risk', file: 'risk-report', title: 'A one-page risk report',
+  calc: function (a) {
+    var A = ['eq', 'bd', 'gd'], NM = { eq: 'Equities', bd: 'Bonds', gd: 'Gold' };
+    function Phi(x) { var t = 1 / (1 + 0.2316419 * Math.abs(x)), d = 0.3989422804 * Math.exp(-x * x / 2), p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return x > 0 ? 1 - p : p; }
+    function phi(x) { return 0.3989422804 * Math.exp(-x * x / 2); }
+    var w = A.map(function (k) { return a.num('w' + k); }), v = A.map(function (k) { return a.num('v' + k); }), c1 = a.num('c1'), c2 = a.num('c2'), c3 = a.num('c3');
+    var ok = w.concat(v).every(function (x) { return x != null; }) && [c1, c2, c3].every(function (x) { return x != null && x >= -1 && x <= 1; });
+    function corr(r12, r13, r23) { return [[1, r12, r13], [r12, 1, r23], [r13, r23, 1]]; }
+    function cov(C) { return C.map(function (row, i) { return row.map(function (c, j) { return c * v[i] / 100 * v[j] / 100; }); }); }
+    function pvol(x, S) { var s = 0; for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++) s += x[i] * x[j] * S[i][j]; return Math.sqrt(Math.max(s, 0)); }
+    if (!ok) { ['port', 'rc', 'var', 'stress', 'bets'].forEach(function (k) { a.set(k, 'Fill in every weight, volatility and correlation in step 1 (correlations between −1 and 1).'); }); return; }
+    var C = corr(c1, c2, c3), S = cov(C), x = w.map(function (q) { return q / 100; }), sw = w.reduce(function (s, q) { return s + q; }, 0), sp = pvol(x, S);
+    a.set('port', 'Weights add up to ' + a.fmt(sw, 0) + '%' + (Math.abs(sw - 100) > 0.5 ? ' <b>(not 100%: the rest is cash or leverage)</b>' : '') + '<br>Portfolio volatility = √(wᵀΣw) = <b>' + a.fmt(100 * sp, 2) + '% a year</b>');
+    function contrib(x) { var p = pvol(x, S); return x.map(function (xi, i) { var m = 0; for (var j = 0; j < 3; j++) m += S[i][j] * x[j]; return p > 0 ? xi * m / (p * p) : 0; }); }
+    var rc = contrib(x), e = v.map(function (q) { return 1 / q; });
+    for (var it = 0; it < 500; it++) { var r = contrib(e), avg = 1 / 3; e = e.map(function (q, i) { return q * Math.pow(avg / Math.max(r[i], 1e-9), 0.5); }); var se = e.reduce(function (s, q) { return s + q; }, 0); e = e.map(function (q) { return q / se; }); }
+    a.set('rc', A.map(function (k, i) { return NM[k] + ': capital <b>' + a.fmt(w[i], 0) + '%</b> · share of risk <b>' + a.fmt(100 * rc[i], 0) + '%</b> · equal-risk weight ' + a.fmt(100 * e[i], 0) + '%'; }).join('<br>') + '<br>Equal-risk portfolio volatility: ' + a.fmt(100 * pvol(e, S), 2) + '% (scale it up with leverage to match the original ' + a.fmt(100 * sp, 2) + '% if you need the same return target)');
+    var nav = a.num('nav'), hd = a.num('hd'), sk = a.num('sk'), xk = a.num('xk');
+    if (nav > 0 && hd > 0 && sk != null && xk != null) {
+      var sh = sp * Math.sqrt(hd / 252);
+      var row = [0.95, 0.99].map(function (cl) {
+        var z = cl === 0.95 ? 1.6448536 : 2.3263479;
+        var zc = -z, zcf = zc + (zc * zc - 1) * sk / 6 + (zc * zc * zc - 3 * zc) * xk / 24 - (2 * zc * zc * zc - 5 * zc) * sk * sk / 36;
+        var vN = z * sh * nav, es = phi(z) / (1 - cl) * sh * nav, vCF = -zcf * sh * nav;
+        return a.fmt(cl * 100, 0) + '%: VaR $' + a.fmt(vN, 0) + ' (normal) · <b>$' + a.fmt(vCF, 0) + ' (fat-tail adjusted)</b> · expected shortfall $' + a.fmt(es, 0) + ' (normal)';
+      });
+      a.set('var', 'Volatility over ' + a.fmt(hd, 0) + ' days = ' + a.fmt(100 * sp, 2) + '% × √(' + a.fmt(hd, 0) + '/252) = ' + a.fmt(100 * sh, 2) + '%<br>' + row.join('<br>'));
+    } else a.set('var', 'Enter the portfolio value, the horizon in days, the skewness and the excess kurtosis.');
+    function shock(p) { var vals = A.map(function (k) { return a.num(p + k); }); if (vals.some(function (q) { return q == null; })) return null; return vals.reduce(function (s, q, i) { return s + x[i] * q; }, 0); }
+    var hs = shock('h'), ys = shock('y');
+    a.set('stress', (hs == null ? 'Enter the historical moves.' : 'Historical scenario: portfolio <b>' + a.sgn(hs, 1, '%') + '</b>' + (nav > 0 ? ' (' + (hs < 0 ? '−' : '+') + '$' + a.fmt(Math.abs(hs * nav / 100), 0) + ')' : '')) + '<br>' + (ys == null ? 'Enter the hypothetical moves.' : 'Hypothetical scenario: portfolio <b>' + a.sgn(ys, 1, '%') + '</b>' + (nav > 0 ? ' (' + (ys < 0 ? '−' : '+') + '$' + a.fmt(Math.abs(ys * nav / 100), 0) + ')' : '')));
+    function enb(C) { var s = 0; for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++) s += C[i][j] * C[i][j]; return 9 / s; }
+    var cc = a.num('cc');
+    a.set('bets', 'Effective number of independent bets = n² ÷ Σρ²: today <b>' + a.fmt(enb(C), 2) + '</b> out of 3' + (cc != null && cc >= -0.5 && cc <= 1 ? '<br>If every correlation goes to ' + a.fmt(cc, 2) + ': <b>' + a.fmt(enb(corr(cc, cc, cc)), 2) + '</b>, and portfolio volatility becomes ' + a.fmt(100 * pvol(x, cov(corr(cc, cc, cc))), 2) + '%' : '<br>Enter a crisis correlation between −0.5 and 1.'));
+  }
+};
+</script>
+<script src="assets/capstone.js"></script>
+</body>
+</html>
