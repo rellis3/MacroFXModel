@@ -43,10 +43,10 @@ validated count on today.html and evidence.html drops from 36 to 32.
 
 ## What this says about the live book
 
-The YieldSpread paper bot has been running since 2026-07 on FRED's *published* GS2 — it never had
-the lookahead and has been trading the honest version all along. Its record is the forward test
-of a Sharpe ~0.1 sleeve, not ~1.1. The 10Y sleeve is honest and positive but not significant on
-this sample. No live code is changed here; the owner decides.
+The YieldSpread bot is not trading and has not been for some time (owner, 2026-10-17); only the
+OI-gamma and vol bots are active. So there is no forward record to set against the honest Sharpe
+~0.1, and nothing live depends on this entry. The 10Y sleeve is honest and positive but not
+significant on this sample. No live code is changed here.
 
 ## Prediction scorecard
 

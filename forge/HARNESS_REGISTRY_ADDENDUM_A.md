@@ -89,9 +89,9 @@ harness, the re-run clears the entry's own original bar" — it does not). The p
   (its script could not be located; its rebuild used monthly rates with an unstated lag), the
   factor-blend entries that used the sleeve's return stream. Each is checked in Part B for which
   US series and lag it used before any status moves.
-- The live YieldSpread paper record (since 2026-07) reads FRED's *published* GS2 and therefore
-  trades the **honest** version. It is the forward test of Sharpe ~0.1, not ~1.1. Nothing in the
-  live engine is edited here (side-by-side rule); the owner decides.
+- The YieldSpread bot has not been trading for some time (owner, 2026-10-17); the only active bots
+  are the OI-gamma and vol bots. There is **no forward record** of the sleeve, honest or otherwise.
+  Nothing in the engine is edited here (side-by-side rule).
 - `MD files/YIELD_SPREAD_STRATEGY.md` §"Publication-lag lookahead" reports that moving from no lag to
   +2/+45 cut Sharpe 2.16 → 1.58 "but the edge held". The remaining lookahead was ~30 days on the US
   leg; the honest number is what the harness reports.
