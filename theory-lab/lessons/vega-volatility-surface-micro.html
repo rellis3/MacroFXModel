@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Vega &amp; the Volatility Surface — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">20</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, the put-call-parity proof, and a 6-question self-test?<a href="vega-volatility-surface.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,72 @@
       <p class="sl-lede">Every option is also a bet on "how much," not just "which way" — vega is the dollar size of that bet. Stretch it across every strike and expiry a market trades at once and a second fact appears: the market never agrees on one volatility number, and that whole grid of disagreement is the volatility surface. One practical fact anchors everything here — the underlying itself has exactly zero vega, so this Greek can only ever be hedged with other options.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two views of vega for the lesson's option with spot 100, 20% volatility and 2% rates. Left: across strikes at a 90-day expiry, vega is a bell that peaks at the money: 10.11 at the 90 strike, 19.71 at 100 and 13.68 at 110. Right: at the money across expiries, vega grows with the square root of time: 11.42 at 30 days, 19.71 at 90 days and 39.10 at one year. A note says the underlying itself has zero vega, so only other options can hedge it.">
+      <text class="tlp-text2" x="40" y="18" font-size="13" font-weight="700">across strikes, 90 days</text>
+      <line class="tlp-line" x1="34" y1="190" x2="306" y2="190"/>
+      <polyline class="tlp-line purple thick" points="40,181.2 53,174.6 66,165.2 79,152.5 92,137 105,119.3 118,100.8 131,83.2 144,68.3 157,57.5 170,52 183,52 196,57.3 209,66.9 222,79.6 235,94.2 248,109.4 261,124.1 274,137.6 287,149.4 300,159.3"/>
+      <circle class="tlp-text3" cx="105" cy="119.3" r="5"/>
+      <circle class="tlp-green" cx="170" cy="52" r="6"/>
+      <circle class="tlp-text3" cx="235" cy="94.2" r="5"/>
+      <text class="tlp-text2" x="96" y="114" text-anchor="end" font-size="13">10.11</text>
+      <text class="tlp-green" x="170" y="40" text-anchor="middle" font-size="14" font-weight="700">19.71 at the money</text>
+      <text class="tlp-text2" x="244" y="90" font-size="13">13.68</text>
+      <text class="tlp-text3" x="105" y="208" text-anchor="middle" font-size="12">90</text>
+      <text class="tlp-text3" x="170" y="208" text-anchor="middle" font-size="12">100</text>
+      <text class="tlp-text3" x="235" y="208" text-anchor="middle" font-size="12">110</text>
+      <text class="tlp-text3" x="170" y="226" text-anchor="middle" font-size="12">strike</text>
+      <line class="tlp-line dash" x1="330" y1="14" x2="330" y2="214"/>
+      <text class="tlp-text2" x="350" y="18" font-size="13" font-weight="700">at the money, by expiry</text>
+      <line class="tlp-line" x1="356" y1="190" x2="560" y2="190"/>
+      <rect class="tlp-blue" x="370" y="149.1" width="44" height="40.9" opacity=".7"/>
+      <rect class="tlp-blue" x="440" y="119.4" width="44" height="70.6" opacity=".7"/>
+      <rect class="tlp-blue" x="510" y="50" width="44" height="140" opacity=".7"/>
+      <text class="tlp-blue" x="392" y="142" text-anchor="middle" font-size="13" font-weight="700">11.42</text>
+      <text class="tlp-blue" x="462" y="112" text-anchor="middle" font-size="13" font-weight="700">19.71</text>
+      <text class="tlp-blue" x="532" y="43" text-anchor="middle" font-size="13" font-weight="700">39.10</text>
+      <text class="tlp-text3" x="392" y="208" text-anchor="middle" font-size="12">30d</text>
+      <text class="tlp-text3" x="462" y="208" text-anchor="middle" font-size="12">90d</text>
+      <text class="tlp-text3" x="532" y="208" text-anchor="middle" font-size="12">1 year</text>
+      <text class="tlp-red" x="350" y="232" font-size="12" font-weight="700">the stock itself: vega = 0</text>
+    </svg>
+    <figcaption>Vega, in dollars per 1.00 of volatility, is biggest where the outcome is most uncertain, at the money, and it keeps growing the longer the option has to run. The underlying has none at all, so a vega risk can only be hedged with other options.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">The stock didn't move, but my option's price did. What happened?</p>
+      <p data-who="Quant">The market changed its mind about how jumpy the stock will be. That's implied volatility, and how much your option cares about it is vega.</p>
+      <p data-who="Trader">How much does it care?</p>
+      <p data-who="Quant">Take a stock at a hundred, an at-the-money option, twenty percent vol, thirty days left. Each point of implied vol is worth about eleven cents on that option. Give it ninety days and it's about twenty cents. A year, about thirty-nine cents.</p>
+      <p data-who="Trader">So longer options carry more vega.</p>
+      <p data-who="Quant">It grows with the square root of time and never decays the way gamma and theta do. And for a fixed expiry it's biggest at the money, where the outcome is still a coin flip. Deep in or out of the money, the vol forecast barely matters.</p>
+      <p data-who="Trader">Is it different for calls and puts?</p>
+      <p data-who="Quant">No. At the same strike and expiry they have exactly the same vega. Direction doesn't come into it.</p>
+      <p data-who="Trader">Can I hedge it by trading the stock?</p>
+      <p data-who="Quant">Never. The stock itself has zero vega. The only thing that offsets an option's vega is another option.</p>
+      <p data-who="Trader">And the volatility surface?</p>
+      <p data-who="Quant">The market doesn't quote one volatility. It quotes one for every strike and every expiry. Across strikes, crash protection costs more: out-of-the-money puts trade at richer vol than the matching calls. Across expiries, vol jumps ahead of events. If a big announcement counts like three normal days in a five-day option, it carries about forty-three percent of that option's expected variance.</p>
+      <p data-who="Trader">Why are the puts always richer?</p>
+      <p data-who="Quant">October nineteen eighty-seven. Big investors had portfolio insurance: they copied a put by selling futures as the market fell. That copy had no vega and needed a smooth market. On the nineteenth the Dow fell twenty-two point six percent in a day, the copy fell behind, and the insurance failed. People with real puts gained on price and on vol. Crash protection has carried a premium ever since.</p>
+      <p data-who="Trader">And the expiry axis?</p>
+      <p data-who="Quant">March twenty twenty. The VIX closed at eighty-two point six nine, a record, and near-dated vol sat above longer-dated vol for weeks.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Options are a bet on how much, not just which way. Vega measures that bet, and only another option can hedge it.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">The closed form: ν = Sφ(d₁)√T</h2>
       <p class="sl-sub">Differentiate the Black-Scholes call price with respect to σ instead of S, and everything else held fixed, and the algebra collapses to three pieces multiplied together.</p>
@@ -45,7 +110,7 @@
       <p class="sl-p">φ(0) ≈ 0.3989 is φ's maximum value — the same constant the Gamma Exposure lesson used for its own at-the-money approximation. d₁ here is exactly the Black-Scholes d₁, reused unchanged: d₁ = [ln(S/K) + (r+σ²/2)T] / (σ√T).</p>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Why a call and a put share the exact same vega</h2>
       <p class="sl-sub">Put-call parity — C − P = S − Ke⁻ʳᵀ — forces this, and vega's version of the argument is even cleaner than gamma's.</p>
@@ -57,7 +122,7 @@
       <div class="sl-quote">This is the flip side of why delta <em>isn't</em> shared: delta is parity's first derivative w.r.t. S, and that derivative is 1, not 0. Vega skips the whole argument gamma needed, because σ simply never enters the no-arbitrage relationship that defines parity in the first place.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Vega grows with √T</h2>
       <p class="sl-sub">Fixed at-the-money strike (S=K=100), r=2%, σ=20%. Drag the slider — φ(d₁) barely moves near the money, so the curve's whole shape comes from √T alone.</p>
@@ -87,7 +152,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Vega peaks at-the-money, in a bell curve</h2>
       <p class="sl-sub">Fixed 90-day expiry, S=100, σ=20%, r=2% — now hold time fixed and walk across strikes instead.</p>
@@ -116,7 +181,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Recompute vega live — the same formula, any inputs</h2>
       <p class="sl-sub">Starts on the worked example's at-the-money, 30-day numbers. Edit any field.</p>
@@ -139,7 +204,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Black-Scholes assumes one σ. Markets quote a grid.</h2>
       <p class="sl-sub">A different implied volatility for essentially every (strike, expiry) pair, on the same underlying, same day — σ(K,T), the volatility surface. Two genuinely distinct axes.</p>
@@ -156,7 +221,7 @@
       <p class="sl-p">Neither axis is reproducible from a single constant σ — a one-parameter model has one degree of freedom, and the surface needs one per strike <em>and</em> a separate one per expiry. That's exactly why stochastic-volatility models (Heston, SABR) exist.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The skew: a scar left by October 1987</h2>
       <div class="sl-card">
@@ -195,7 +260,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The term structure: event spikes as an averaging effect</h2>
       <p class="sl-sub">Treat variance as roughly additive across trading days. An FOMC decision carries far more expected variance than an ordinary day.</p>
@@ -212,7 +277,7 @@
       <p class="sl-p">That's why term-structure "humps" right around a known event date collapse quickly once the event passes and that expiry is no longer the near-dated one carrying it.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The underlying itself has exactly zero vega</h2>
       <p class="sl-sub">The single most important practical fact in this whole lesson.</p>
@@ -231,7 +296,7 @@
     </section>
 
     <!-- WB:vega_volatility_surface-deck:START -->
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Vega and the volatility surface, drawn step by step</h2>
       <!-- WB:vega_volatility_surface:START -->
@@ -242,7 +307,7 @@
     </section>
     <!-- WB:vega_volatility_surface-deck:END -->
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Building the dollar VegaExposure formula, step by step</h2>
       <p class="sl-sub">νₖ × OIₖ × 100 looks arbitrary until you build it up. Step through it.</p>
@@ -269,7 +334,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Add up a toy three-strike vega book, live</h2>
       <p class="sl-sub">Fixed 90-day expiry vegas from the worked example (per vol point). Edit any OI or ν.</p>
@@ -304,7 +369,7 @@
       </div>
     </section>
 
-<!-- DESK:START -->    <section class="sl-slide" data-slide="14">
+<!-- DESK:START -->    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Fact-checked against this repo's own code</h2>
       <div class="sl-callout amber">
@@ -314,7 +379,7 @@
       </div>
     </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13 · It actually happened</div>
       <h2 class="sl-h2">October 1987: insurance that had no vega</h2>
       <div class="sl-callout amber">
@@ -335,7 +400,7 @@
       <p class="sl-p">★ is this lesson's concept. How much portfolio insurance <em>caused</em> the fall, rather than accompanied it, is still debated; that it couldn't hedge vega is not.</p>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: an inverted term structure says something about the weeks ahead.</p>
@@ -357,7 +422,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="17">
+    <section class="sl-slide" data-slide="18">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -408,7 +473,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="18">
+
+    <section class="sl-slide sl-vark" data-slide="19">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="1987-10-19">
+    <div class="tl-drill-label">Scenario drill · 19 October 1987</div>
+    <h3>Your fund's crash insurance is a trading plan</h3>
+    <p>It is the weekend before Monday 19 October 1987, after a week of sharp falls in stocks. You oversee a pension fund whose equity holdings are covered by portfolio insurance: a program that replicates a put by selling stock-index futures as the market falls, tracking the put's delta. It holds no actual options. What do you do before Monday's open?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Nothing. The program does exactly what a put would do, and it was built for a week like this.<div class="tl-drill-why">A replicated put is a delta hedge only. It has no vega and it needs a market smooth enough to keep re-hedging. If prices gap, the replication falls behind just when the protection matters, and every other insurer is trying to sell the same futures.</div></li>
+      <li data-verdict="good">Accept that you are only partly insured: cut the equity exposure directly, or buy listed index puts, even at a higher price.<div class="tl-drill-why">Real puts carry vega as well as delta, so they gain from the fall and from the jump in implied volatility, with no re-hedging needed. Cutting exposure removes the risk outright. Both cost something now; neither depends on a smooth path.</div></li>
+      <li data-verdict="ok">Keep the program, but tell the traders to sell futures faster at the open.<div class="tl-drill-why">It addresses the lag, which is the right worry. But you would be racing every other insurer to sell the same futures into a falling market, which is how the futures came to trade at a deep discount.</div></li>
+      <li data-verdict="bad">Switch the program off and buy more stocks: the fall is a bargain.<div class="tl-drill-why">That turns a partly hedged book into an unhedged, larger one on the eve of a crash. Whatever the long-run value, you have removed the protection the fund was paying for.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 19 October 1987 the Dow fell 22.6% and the S&amp;P 500 about 20% in a single session, still the largest one-day percentage falls in their history. Index futures traded at a deep discount to the stocks underneath them, and the Brady Commission found portfolio insurers' futures selling was a large part of the selling pressure that week (how much it caused the fall is still debated). The replication fell behind and the insurance failed when it was needed, while holders of actual puts gained from the fall and from the jump in implied volatility. Out-of-the-money index puts have carried an implied-vol premium ever since.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="20">
       <div class="sl-kicker">Section 16</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

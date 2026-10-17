@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Order Flow Imbalance &amp; the Microprice — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">19</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-order-flow-imbalance.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,84 @@
       <p class="sl-lede">Every other lesson in this category reconstructs something about a market from historical trade data, after the fact. This one closes the category by building the two signals a live electronic desk actually watches move, update by update, tick by tick, right now — order flow imbalance and the microprice, both built directly from the order book's own bid/ask price and size changes.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four snapshots of the top of a book. In the first three the best bid stays at 1.10040 and the best ask at 1.10050, so the midpoint stays at 1.100450, but bid size grows from 400 to 600 to 900 while ask size falls to 300. Queue imbalance rises from 0 to 0.2 to 0.5 and the microprice rises from 1.100450 to 1.100460 to 1.100475. Order flow imbalance is plus 200 and plus 400. In the fourth snapshot the price ticks up: bid 1.10050, ask 1.10060, microprice 1.100559, with order flow imbalance plus 800.">
+      <text class="tlp-text3" x="20" y="22" font-size="12">four snapshots of the top of the book</text>
+      <text class="tlp-amber" x="400" y="22" font-size="12" font-weight="700">microprice</text>
+      <text class="tlp-text3" x="478" y="22" font-size="12">dashed: midpoint</text>
+      <line class="tlp-line red" x1="76" y1="120" x2="144" y2="120"/>
+      <line class="tlp-line red" x1="216" y1="120" x2="284" y2="120"/>
+      <line class="tlp-line red" x1="356" y1="120" x2="424" y2="120"/>
+      <line class="tlp-line red" x1="496" y1="66.7" x2="564" y2="66.7"/>
+      <line class="tlp-line green" x1="76" y1="173.3" x2="144" y2="173.3"/>
+      <line class="tlp-line green" x1="216" y1="173.3" x2="284" y2="173.3"/>
+      <line class="tlp-line green" x1="356" y1="173.3" x2="424" y2="173.3"/>
+      <line class="tlp-line green" x1="496" y1="120" x2="564" y2="120"/>
+      <text class="tlp-red" x="110" y="113" text-anchor="middle" font-size="12">ask 400</text>
+      <text class="tlp-red" x="250" y="113" text-anchor="middle" font-size="12">ask 400</text>
+      <text class="tlp-red" x="390" y="113" text-anchor="middle" font-size="12" font-weight="700">ask 300</text>
+      <text class="tlp-red" x="530" y="59" text-anchor="middle" font-size="12">ask 350</text>
+      <text class="tlp-green" x="110" y="188" text-anchor="middle" font-size="12">bid 400</text>
+      <text class="tlp-green" x="250" y="188" text-anchor="middle" font-size="12" font-weight="700">bid 600</text>
+      <text class="tlp-green" x="390" y="188" text-anchor="middle" font-size="12" font-weight="700">bid 900</text>
+      <text class="tlp-green" x="530" y="135" text-anchor="middle" font-size="12">bid 500</text>
+      <polyline class="tlp-line dash" points="110,146.7 250,146.7 390,146.7 530,93.3"/>
+      <polyline class="tlp-line amber thick" points="110,146.7 250,141.3 390,133.3 530,88.6"/>
+      <circle class="tlp-amber" cx="110" cy="146.7" r="4.5"/>
+      <circle class="tlp-amber" cx="250" cy="141.3" r="4.5"/>
+      <circle class="tlp-amber" cx="390" cy="133.3" r="4.5"/>
+      <circle class="tlp-amber" cx="530" cy="88.6" r="4.5"/>
+      <text class="tlp-green" x="590" y="40" text-anchor="end" font-size="13" font-weight="700">then the price ticks up</text>
+      <text class="tlp-text3" x="20" y="214" font-size="12">QI</text>
+      <text class="tlp-text3" x="20" y="234" font-size="12">OFI</text>
+      <text class="tlp-text2" x="110" y="214" text-anchor="middle" font-size="12">0.00</text>
+      <text class="tlp-text2" x="250" y="214" text-anchor="middle" font-size="12">0.20</text>
+      <text class="tlp-text2" x="390" y="214" text-anchor="middle" font-size="12">0.50</text>
+      <text class="tlp-text2" x="530" y="214" text-anchor="middle" font-size="12">0.18</text>
+      <text class="tlp-purple" x="110" y="234" text-anchor="middle" font-size="12">·</text>
+      <text class="tlp-purple" x="250" y="234" text-anchor="middle" font-size="12" font-weight="700">+200</text>
+      <text class="tlp-purple" x="390" y="234" text-anchor="middle" font-size="12" font-weight="700">+400</text>
+      <text class="tlp-purple" x="530" y="234" text-anchor="middle" font-size="12" font-weight="700">+800</text>
+    </svg>
+    <figcaption>Bid size builds and the ask thins while neither price moves. The midpoint stays put, but the microprice leans up and order flow imbalance stays positive. Then the price ticks up, the way the book had been leaning.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Everything so far in microstructure has been after the fact. What does a fast desk actually watch, right now?</p>
+      <p data-who="Quant">The top of the order book. Not the trades, the queues: how much is resting at the best bid and the best ask, and how that changes from one update to the next.</p>
+      <p data-who="Trader">Why not just watch the trades?</p>
+      <p data-who="Quant">Trades only happen when someone crosses the spread, so they come late. Most book events are orders being added, cancelled or improved, and pressure shows up there first.</p>
+      <p data-who="Trader">So how do you turn that into a number?</p>
+      <p data-who="Quant">Order flow imbalance, from Cont, Kukanov and Stoikov in 2014. Each update, size added to the bid counts as buying pressure. Size taken off the ask also counts as buying pressure, because the sellers are thinning out. Add it up over a short window.</p>
+      <p data-who="Trader">Give me an example.</p>
+      <p data-who="Quant">Take a euro dollar style book: bid one point one zero zero four zero with four hundred resting, ask one pip higher with four hundred. Then the bid grows to six hundred. That's plus two hundred. Then the bid grows to nine hundred and the ask drops to three hundred. Plus three hundred on the bid, plus a hundred from the thinning ask: plus four hundred.</p>
+      <p data-who="Trader">And the price?</p>
+      <p data-who="Quant">Hasn't moved. The midpoint is still exactly halfway. But on the next update both prices tick up a pip. Another plus eight hundred. The book moved the way it had been leaning.</p>
+      <p data-who="Trader">Where does the microprice come in?</p>
+      <p data-who="Quant">It's a better fair value than the midpoint. You weight each side's price by the size on the other side. When nine hundred sits on the bid and only three hundred on the ask, the fair value leans toward the ask, because that side is easier to push through.</p>
+      <p data-who="Trader">By how much?</p>
+      <p data-who="Quant">The book is three to one, so the queue imbalance is a half. The microprice is the midpoint plus half the spread times that half: a quarter of a pip above the mid, while the mid hasn't budged.</p>
+      <p data-who="Trader">So a market maker leans its quotes.</p>
+      <p data-who="Quant">Right. It centres its bid and ask on the microprice, so it's not picked off on the thin ask just before the move.</p>
+      <p data-who="Trader">What can go wrong?</p>
+      <p data-who="Quant">Displayed size isn't committed size. Someone can post a big wall and cancel it, which fakes the reading. And these signals only speak to the next few ticks, and only about the very top of the book.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Watch the queues, not the prints: the book tilts before the price moves.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Seeing the next tick in the queues</h2>
       <p class="sl-sub">Order flow imbalance · Cont, Kukanov &amp; Stoikov, 2014; microprice, Stoikov, 2018 → HFT and execution algorithms</p>
@@ -40,7 +117,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Watching the lines grow, not just who got served</h2>
       <p class="sl-sub">Trade classification watches a security-camera replay of who already traded. OFI watches the two lines themselves, live.</p>
@@ -57,7 +134,7 @@
       <div class="sl-quote">The <a href="limit-order-books-micro.html">Limit Order Books</a> lesson already gave this category its bid/ask price and size notation, P<sub>b</sub>, Q<sub>b</sub>, P<sub>a</sub>, Q<sub>a</sub>. Nothing here reintroduces that structure — this deck takes it as given and asks a narrower question: given how the book just changed, which way is pressure leaning, right now?</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Building OFI, one update at a time</h2>
       <p class="sl-sub">Each side of the book contributes a signed value at every update. Step through the three cases.</p>
@@ -84,7 +161,7 @@
       <p class="sl-p">OFI<sub>n</sub> = e<sup>b</sup><sub>n</sub> − e<sup>a</sup><sub>n</sub>, summed over a short window. The subtraction is what makes the mirror logic work: whatever makes the ask side <em>less</em> of an obstacle to buyers reads as positive, exactly like the bid side building up directly.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The microprice: weight each price by the OTHER side's size</h2>
       <div class="sl-icard-grid">
@@ -96,7 +173,7 @@
       <div class="sl-quote">If ten people hold one end of a tug-of-war rope and two hold the other, you don't bet the rope stays in the middle — you bet it drifts toward the two-person end, where there's less resistance. The microprice is that bet, written as a formula.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">A lopsided book, drawn</h2>
       <p class="sl-sub">Heavy resting size on the bid, thin resting size on the ask — watch where the microprice sits relative to the naive midpoint.</p>
@@ -121,7 +198,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Queue imbalance: the number underneath the microprice</h2>
       <p class="sl-sub">QI = (Q_b − Q_a) / (Q_b + Q_a). Ranges from −1 (all size on the ask) to +1 (all size on the bid).</p>
@@ -132,7 +209,7 @@
       <p class="sl-p">QI = 0 collapses the microprice straight back to the plain midpoint — no lopsidedness, no adjustment. QI = +1 pushes the microprice all the way to the ask price; QI = −1 pushes it all the way to the bid price. The microprice can never sit outside the [P_b, P_a] range, no matter how extreme the imbalance gets.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Drag the imbalance, watch the microprice slide</h2>
       <p class="sl-sub">Fixed book: bid 1.2000, ask 1.2002. The midpoint (dashed) never moves — only the microprice (amber dot) does, exactly along the line between the bid and ask.</p>
@@ -159,7 +236,7 @@
       <p class="sl-p">Notice the microprice never overshoots past the bid or the ask, however extreme the imbalance — it is always a weighted point between the two touch prices, never beyond them.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Naive midpoint vs. microprice, same three books</h2>
       <p class="sl-sub">Same touch prices throughout (1.2000 / 1.2002) — only the resting sizes change.</p>
@@ -186,7 +263,7 @@
       <p class="sl-p">The midpoint is blind to every one of these three very different books. The microprice tells them apart immediately — that gap is the entire practical case for using it.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">A book that tilts, then actually moves that way</h2>
       <p class="sl-sub">Four snapshots. Two updates of pure lopsidedness, then a real price move — in the predicted direction.</p>
@@ -206,7 +283,7 @@
       <p class="sl-p">Every number here is the direct output of the formulas from Sections 2–5, cross-checked to six decimal places — a small hand-built illustration of the mechanism, not a live market run.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Compute it yourself</h2>
       <p class="sl-sub">Edit any bid/ask price or size. Includes a zero-total-size guard and a crossed-book guard.</p>
@@ -233,7 +310,7 @@
     </section>
 
     <!-- WB:institutional_order_flow_imbalance-deck:START -->
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Order flow imbalance: the book tilts, then the price moves</h2>
       <!-- WB:institutional_order_flow_imbalance:START -->
@@ -244,7 +321,7 @@
     </section>
     <!-- WB:institutional_order_flow_imbalance-deck:END -->
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Skewing quotes before a trade ever tells anyone anything</h2>
       <div class="sl-callout purple">
@@ -254,7 +331,7 @@
       <p class="sl-p">This is the single most common practical pairing of the two signals: OFI as the early-warning pressure gauge, the microprice as the actual reference price a desk re-centers its quoting around, tick by tick.</p>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where both signals quietly mislead</h2>
       <div class="sl-compare">
@@ -279,7 +356,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Closing the arc: five lessons, one desk's actual workflow</h2>
       <div class="sl-icard-grid">
@@ -295,7 +372,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -346,7 +423,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="17">
+
+    <section class="sl-slide sl-vark" data-slide="18">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative quoting decision</div>
+    <h3>The book tilts under your quotes</h3>
+    <p>You make prices in a currency pair and re-mark your quotes off the midpoint. Over two book updates, bid size at the touch has grown from 400 to 900 while the ask has thinned from 400 to 300. Neither touch price has moved. QI is 0.5, OFI has been +200 then +400, and the microprice sits a quarter pip above the midpoint. What do you do with your quotes?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Nothing. The midpoint hasn't moved, so fair value hasn't either.<div class="tl-drill-why">The midpoint ignores size. With the ask this thin, an informed buyer can lift it and move the price up, and your stale offer is the one that gets taken just before the move.</div></li>
+      <li data-verdict="good">Re-centre your bid and ask on the microprice, leaning both up a little, and keep updating on every book event.<div class="tl-drill-why">This is the lesson's desk use: OFI as the early warning, the microprice as the reference you quote around. You avoid being picked off on the thin side and keep earning the spread.</div></li>
+      <li data-verdict="ok">Pull your offer completely until the book rebalances.<div class="tl-drill-why">It protects you from the thin-ask move, but you stop making a two-sided market and lose flow. Leaning the quote does the same job more cheaply.</div></li>
+      <li data-verdict="bad">Skew your quotes far above the market and hold them there for the next hour.<div class="tl-drill-why">These signals speak to the next few ticks, not the next hour. The 900 on the bid can also be cancelled an instant later; a spoofed wall would leave you badly mispriced.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson says.</strong> This is an illustrative situation built on the lesson's own four-snapshot book, not a historical episode. In that example, the very next update moved both touch prices up a pip, with OFI +800, as the tilt had suggested. The lesson's cautions still apply: displayed size is not committed size, and the signal is short-horizon and top-of-book only.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="19">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

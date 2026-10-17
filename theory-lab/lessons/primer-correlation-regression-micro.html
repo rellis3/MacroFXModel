@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Correlation &amp; Linear Regression — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 5-question self-test?<a href="primer-correlation-regression.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,83 @@
       <p class="sl-lede">Every later lesson that asks "do these two things move together" or "what's the best straight line through this data" is quietly leaning on two tools: correlation and ordinary least squares regression. Cointegration's first step is a regression. The Kalman Filter tracks a hedge ratio that <em>is</em> a regression slope, just one allowed to drift. PCA decomposes a correlation matrix built from exactly the formulas below. This guide builds both tools from nothing — and spends just as much time on how convincingly they lie.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 225" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the worked example's five points with their fitted line, y-hat equals 0.05 plus 1.99 x. The slope is covariance over the variance of x, 3.98 divided by 2, and r is about 0.999 with R squared about 0.997. Right: eleven points on y equals x squared from minus 5 to 5. Y is completely determined by x, yet the best straight line is flat and the correlation is zero.">
+      <line class="tlp-line" x1="40" y1="190" x2="290" y2="190"/>
+      <line class="tlp-line" x1="40" y1="40" x2="40" y2="190"/>
+      <line class="tlp-line" x1="330" y1="190" x2="580" y2="190"/>
+      <polyline class="tlp-line green thick" points="70.9,175.8 275.7,43.2"/>
+      <circle class="tlp-blue" cx="91.8" cy="161.4" r="5"/>
+      <circle class="tlp-blue" cx="133.6" cy="137" r="5"/>
+      <circle class="tlp-blue" cx="175.4" cy="105.7" r="5"/>
+      <circle class="tlp-blue" cx="217.2" cy="83.9" r="5"/>
+      <circle class="tlp-blue" cx="259" cy="52.6" r="5"/>
+      <polyline class="tlp-line dash" points="335.4,38.6 344.6,61.0 353.8,81.6 363.0,100.4 372.2,117.4 381.4,132.7 390.6,146.1 399.8,157.7 409.0,167.6 418.2,175.7 427.4,181.9 436.6,186.4 445.8,189.1 455.0,190.0 464.2,189.1 473.4,186.4 482.6,181.9 491.8,175.7 501.0,167.6 510.2,157.7 519.4,146.1 528.6,132.7 537.8,117.4 547.0,100.4 556.2,81.6 565.4,61.0 574.6,38.6"/>
+      <circle class="tlp-blue" cx="340" cy="50.0" r="4"/>
+      <circle class="tlp-blue" cx="363" cy="100.4" r="4"/>
+      <circle class="tlp-blue" cx="386" cy="139.6" r="4"/>
+      <circle class="tlp-blue" cx="409" cy="167.6" r="4"/>
+      <circle class="tlp-blue" cx="432" cy="184.4" r="4"/>
+      <circle class="tlp-blue" cx="455" cy="190.0" r="4"/>
+      <circle class="tlp-blue" cx="478" cy="184.4" r="4"/>
+      <circle class="tlp-blue" cx="501" cy="167.6" r="4"/>
+      <circle class="tlp-blue" cx="524" cy="139.6" r="4"/>
+      <circle class="tlp-blue" cx="547" cy="100.4" r="4"/>
+      <circle class="tlp-blue" cx="570" cy="50.0" r="4"/>
+      <line class="tlp-line amber thick dash" x1="335" y1="134" x2="575" y2="134"/>
+      <text class="tlp-text" x="165" y="22" text-anchor="middle" font-size="14" font-weight="700">a straight-line fit</text>
+      <text class="tlp-green" x="50" y="62" font-size="14" font-weight="700">ŷ = 0.05 + 1.99x</text>
+      <text class="tlp-text2" x="288" y="150" text-anchor="end" font-size="13">slope = 3.98 ÷ 2 = 1.99</text>
+      <text class="tlp-text2" x="288" y="168" text-anchor="end" font-size="13">r ≈ 0.999 · R² ≈ 0.997</text>
+      <text class="tlp-red" x="455" y="22" text-anchor="middle" font-size="14" font-weight="700">y = x²: perfectly linked</text>
+      <text class="tlp-text2" x="455" y="40" text-anchor="middle" font-size="13">yet r = 0</text>
+      <text class="tlp-amber" x="455" y="155" text-anchor="middle" font-size="13" font-weight="700">best line: flat</text>
+      <text class="tlp-text3" x="91.8" y="206" text-anchor="middle" font-size="12">1</text>
+      <text class="tlp-text3" x="175.4" y="206" text-anchor="middle" font-size="12">3</text>
+      <text class="tlp-text3" x="259" y="206" text-anchor="middle" font-size="12">5</text>
+      <text class="tlp-text3" x="340" y="206" text-anchor="middle" font-size="12">−5</text>
+      <text class="tlp-text3" x="455" y="206" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="570" y="206" text-anchor="middle" font-size="12">5</text>
+      <text class="tlp-text3" x="165" y="222" text-anchor="middle" font-size="12">x</text>
+      <text class="tlp-text3" x="455" y="222" text-anchor="middle" font-size="12">x</text>
+    </svg>
+    <figcaption>Left, the worked example: the best-fit slope is covariance divided by the variance of x, 3.98 ÷ 2 = 1.99, and r ≈ 0.999. Right, y = x²: y is completely fixed by x, yet the best straight line is flat and r = 0. Correlation and regression only see straight lines, and neither one says what causes what.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">A stock rose twelve percent this year while the market rose ten. Did it do anything special?</p>
+      <p data-who="Quant">Maybe not. First you need to know how much it simply moves with the market. That is what correlation and regression measure.</p>
+      <p data-who="Trader">Start with "moves with".</p>
+      <p data-who="Quant">Take each day. Ask how far the stock was from its own average, and how far the market was from its own. Multiply the two. If they are on the same side of average, both up or both down, the product is positive. Average those products and you have the covariance.</p>
+      <p data-who="Trader">So positive covariance means they move together.</p>
+      <p data-who="Quant">Yes. But its size depends on units. Percent or basis points give wildly different numbers for the same relationship. So you divide by both standard deviations. That squeezes it onto a ruler from minus one to plus one. That is the correlation.</p>
+      <p data-who="Trader">And regression?</p>
+      <p data-who="Quant">Regression draws the one straight line that best fits the cloud of points. Best means the smallest total of squared vertical gaps. And the slope comes out beautifully simple: the covariance, divided by the variance of the thing on the bottom axis.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Five points that roughly follow y equals two x. The covariance is three point nine eight. The variance of x is two. So the slope is one point nine nine, almost exactly two. The correlation is about zero point nine nine nine.</p>
+      <p data-who="Trader">So a high correlation means a strong relationship.</p>
+      <p data-who="Quant">A strong straight-line relationship. Take y equals x squared, for x from minus five to five. y is completely fixed by x. Yet the best straight line is flat, and the correlation is zero. Always look at the scatter, not just the number.</p>
+      <p data-who="Trader">And if two things are highly correlated, one must be driving the other?</p>
+      <p data-who="Quant">No. Ice cream sales and drownings rise together. Neither causes the other. Warm weather drives both. In markets, two currencies can move together because both follow the dollar, or just by chance in the window you looked at.</p>
+      <p data-who="Trader">Where did traders start using all this?</p>
+      <p data-who="Quant">William Sharpe, in the early nineteen sixties, made a stock's beta a regression slope against the market. In nineteen seventy-nine, Louis Ederington used the same slope as the hedge ratio for the new financial futures.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">The slope is how much one thing moves per unit of the other. Correlation is how tightly it sticks to a straight line. Neither tells you why, or whether it will last.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">How much of this position is just the market?</h2>
       <div class="sl-origin">
@@ -40,7 +116,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">"Moving together" is the whole question</h2>
       <p class="sl-sub">Picture a stock's daily return plotted against the broad market's daily return, day after day.</p>
@@ -53,7 +129,7 @@
       <div class="sl-quote">A correlation coefficient silently assumes the relationship it's summarizing is linear, and says nothing whatsoever about which variable, if either, is causing the other. Keep both caveats in view — the rest of this guide is largely about what happens when they get forgotten.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Covariance: the raw, unscaled version</h2>
       <p class="sl-sub">For each day, multiply how far the stock was from its own average by how far the market was from its own average — then average that product across every day.</p>
@@ -83,7 +159,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">r: covariance, squeezed onto a ruler from −1 to +1</h2>
       <p class="sl-sub">Divide covariance by the product of each variable's own standard deviation — that single division cancels the units out entirely.</p>
@@ -97,7 +173,7 @@
       <p class="sl-p">That last point is the single most common misreading of a correlation coefficient, and it's worth sitting with before moving on: a low r never proves "no relationship." It only proves "no <em>straight-line</em> relationship" — always look at a scatter plot, not just the number.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">What different values of r actually look like</h2>
       <p class="sl-sub">Same kind of scatterplot, three different strengths of relationship. Flip between them.</p>
@@ -180,7 +256,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Regression: the one line that fits best</h2>
       <p class="sl-sub">Correlation says how strongly two things move together. Regression goes further — it hands you a specific, usable line.</p>
@@ -220,7 +296,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Try it — the slope IS covariance, just normalized by X alone</h2>
       <p class="sl-sub">x stays fixed at 1, 2, 3, 4, 5 — the same five points as the worked example in the full lesson. Edit any y and the line, r, β̂, α̂ and R² all recompute instantly.</p>
@@ -268,7 +344,7 @@
       <p class="sl-p">Try dragging y at x=1 sharply upward (to 10, say) — watch r fall and the residuals (the dashed red segments) stretch as the line stops explaining the points as well. This is the exact same mechanism a rolling correlation window uses to flag that a hedge relationship is drifting.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">R²: how much of the story the line actually explains</h2>
       <p class="sl-sub">Split Y's total variation around its own mean into two pieces: what the line explains, and what's left over in the residuals.</p>
@@ -285,7 +361,7 @@
     </section>
 
     <!-- WB:primer_correlation_regression-deck:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">From "move together" to the best-fit line, and two traps</h2>
       <!-- WB:primer_correlation_regression:START -->
@@ -296,7 +372,7 @@
     </section>
     <!-- WB:primer_correlation_regression-deck:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">A great-looking correlation can still be lying to you</h2>
       <p class="sl-sub">Two currencies correlated at 0.9 in a backtest could be causally linked, driven by a shared factor, or just coincidentally aligned over that one window — r alone cannot tell you which.</p>
@@ -324,7 +400,7 @@
       <p class="sl-p">A rolling correlation matrix across a universe of instruments is the standard, cheap first pass for finding relationships worth investigating — and precisely because it's cheap and fast, it's also easy to over-trust. "Correlated in returns" is a necessary but far from sufficient condition for a tradeable relationship.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this shows up on a desk</h2>
       <div class="sl-icard-grid">
@@ -336,7 +412,7 @@
       <div class="sl-quote">A pairs trade only works because a hedge ratio — a regression slope — is assumed stable enough that hedging one leg against the other cancels out most of the shared risk. When that slope drifts, the "hedge" quietly stops hedging, which is exactly why the Kalman Filter lesson tracks a <strong>time-varying</strong> version of this same β̂ instead of trusting one fixed-window estimate forever.</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -387,7 +463,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+
+    <section class="sl-slide sl-vark" data-slide="15">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2015-01-14">
+    <div class="tl-drill-label">Scenario drill · 14 January 2015</div>
+    <h3>A near-perfect hedge ratio, built on a policy</h3>
+    <p>Since September 2011 the Swiss National Bank has held EUR/CHF at a floor of 1.20. Because the franc is tied to the euro, USD/CHF and EUR/USD have moved almost exactly opposite each other for three years. You are long EUR/USD and hedge it with USD/CHF, using a regression slope fitted over that window. The fit is superb: the correlation is close to minus one. What does the regression tell you about tomorrow?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">With a correlation this close to minus one over three years, the hedge is near-perfect and will stay that way.<div class="tl-drill-why">A correlation describes the window it was measured in. This one exists because of a policy, the floor, not because of anything permanent in the two currencies. The number cannot tell you whether the cause will last.</div></li>
+      <li data-verdict="good">The lockstep comes from the floor, not from nature. Treat the slope as a description of the past window and size the trade as if the hedge could fail.<div class="tl-drill-why">This is the lesson's trap box in action: a high correlation proves only that two things moved together over the sample, not that the relationship survives into the next window. Ask what is causing the correlation, and what happens if it goes.</div></li>
+      <li data-verdict="ok">Re-fit the slope over a longer window that includes the years before the floor.<div class="tl-drill-why">Mixing regimes gives a different, less flattering slope, which is a useful warning. But it is still a summary of the past. It does not tell you what happens on the day the floor goes.</div></li>
+      <li data-verdict="bad">Increase the position. The hedge removes almost all the risk.<div class="tl-drill-why">A hedge is only as good as the relationship behind it. Leaning harder on a relationship that a single policy decision could end is exactly backwards.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Thursday 15 January 2015 the Swiss National Bank scrapped the 1.20 floor without warning. Within minutes the franc surged against both the euro and the dollar, and EUR/CHF traded far below 1.10 that day. The lockstep the regression had measured for three years broke in a morning. A slope fitted over a window describes that window; it is not a law.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

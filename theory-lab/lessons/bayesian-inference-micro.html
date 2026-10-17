@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Bayesian Inference — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 6-question self-test?<a href="bayesian-inference.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,64 @@
       <p class="sl-lede">A rule for turning "here is what I believed" plus "here is what I just observed" into "here is what I should believe now." Every strategy<!-- DESK:START --> in this repo<!-- DESK:END --> eventually asks the same question in disguise — given what just happened, how much should I believe X? — and the honest answer is never just yes or no. It's a number between 0 and 1, and that number depends on two things people routinely conflate: how rare X was before the evidence showed up, and how strong the evidence actually is.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A bar of 1,000 days split into 200 trend days and 800 reversion days. Below it, the days an 80% accurate classifier flags: 160 real trend days under the trend segment and 160 false alarms under the reversion segment, the same size. Of the 320 flagged days only 160 are real, so a 20% prior becomes a 50% posterior, not 80%.">
+      <text class="tlp-text" x="40" y="24" font-size="14" font-weight="700">1,000 days</text>
+      <rect class="tlp-box purple" x="40" y="34" width="104" height="34" rx="4"/>
+      <rect class="tlp-box" x="144" y="34" width="416" height="34" rx="4"/>
+      <text class="tlp-purple" x="92" y="56" text-anchor="middle" font-size="13" font-weight="700">200 trend</text>
+      <text class="tlp-text2" x="352" y="56" text-anchor="middle" font-size="13">800 reversion days</text>
+      <text class="tlp-text" x="40" y="104" font-size="14" font-weight="700">days the 80%-accurate classifier flags</text>
+      <rect class="tlp-box green" x="40" y="114" width="83.2" height="34" rx="4"/>
+      <rect class="tlp-box red" x="144" y="114" width="83.2" height="34" rx="4"/>
+      <text class="tlp-green" x="81.6" y="136" text-anchor="middle" font-size="13" font-weight="700">160 real</text>
+      <text class="tlp-red" x="185.6" y="136" text-anchor="middle" font-size="13" font-weight="700">160 false</text>
+      <text class="tlp-text2" x="250" y="128" font-size="13">80% of 200 = 160 · 20% of 800 = 160</text>
+      <text class="tlp-text2" x="250" y="146" font-size="13">320 flags, only half of them real</text>
+      <text class="tlp-purple" x="40" y="196" font-size="15" font-weight="700">prior 20%</text>
+      <line class="tlp-line thick" x1="128" y1="191" x2="200" y2="191"/>
+      <polygon class="tlp-arrow" points="210,191 198,185 198,197"/>
+      <text class="tlp-green" x="220" y="196" font-size="15" font-weight="700">posterior 50%</text>
+      <text class="tlp-red" x="350" y="196" font-size="15" font-weight="700">not the quoted 80%</text>
+      <text class="tlp-text3" x="40" y="222" font-size="12">Bayes factor 4: real evidence, but it moves the belief rather than settling it</text>
+    </svg>
+    <figcaption>Trend days are rare, so the false alarms from the big pool of reversion days catch up with the true alarms from the small pool. The flag lifts your belief from 20% to a coin flip.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My regime classifier is eighty percent accurate, and it just flagged today as a trend day. So I'm eighty percent sure, right?</p>
+      <p data-who="Quant">That is the most common mistake in this whole subject. Eighty percent is how often it fires on real trend days. You want something else: how often a flag means a real trend day.</p>
+      <p data-who="Trader">Aren't those the same thing?</p>
+      <p data-who="Quant">Only if trend days are as common as everything else. Say only twenty percent of days are trend days. Picture a thousand days. Two hundred are trend days, eight hundred are not.</p>
+      <p data-who="Trader">OK.</p>
+      <p data-who="Quant">The classifier catches eighty percent of the two hundred: one hundred and sixty real flags. But it also fires wrongly on twenty percent of the eight hundred quiet days. That is another one hundred and sixty.</p>
+      <p data-who="Trader">So three hundred and twenty flags, and only half of them are real.</p>
+      <p data-who="Quant">Exactly. Given the flag, the chance today is a trend day is fifty percent. A coin flip, not eighty. That gap is the base-rate fallacy.</p>
+      <p data-who="Trader">So the classifier is useless?</p>
+      <p data-who="Quant">No. It moved you from twenty percent to fifty. The flag is four times more likely on a trend day than on a quiet one. That ratio, the Bayes factor, is what the evidence is worth on its own. Four counts as substantial. Real, but not decisive.</p>
+      <p data-who="Trader">And this is just Bayes' theorem?</p>
+      <p data-who="Quant">Yes, and it is not a separate law. It falls out of the definition of conditional probability, written two ways. Your updated belief equals your starting belief times how strongly the evidence points, divided by how often you would see that evidence anyway.</p>
+      <p data-who="Trader">What happens when the next signal comes in?</p>
+      <p data-who="Quant">Today's answer becomes tomorrow's starting point, and you update again. Just be careful that the second signal is not the first one in disguise. Two signals reading the same thing get counted twice.</p>
+      <p data-who="Trader">Does anyone use this for real money?</p>
+      <p data-who="Quant">Fischer Black and Robert Litterman did, at Goldman Sachs in the early nineteen nineties. They took the market's own weights as the prior and a manager's views as evidence. No view, you hold the market. A strong view, you tilt towards it.</p>
+      <p data-who="Trader">So what's the habit?</p>
+      <p data-who="Quant">Before you trust any signal, ask how rare the thing it claims to detect really is.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Expected returns too noisy to plug in</h2>
       <p class="sl-sub">Black &amp; Litterman, Goldman Sachs (1990–92) — the market as the prior, the manager's views as the evidence.</p>
@@ -40,7 +97,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">A belief exists before you ever look outside</h2>
       <p class="sl-sub">Bayesian inference starts with an uncomfortable admission: you already believed something, before any evidence showed up.</p>
@@ -52,7 +109,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Bayes' theorem isn't assumed — it falls out of one definition</h2>
       <p class="sl-sub">Step through the algebra. Every line below uses nothing but the definition of conditional probability.</p>
@@ -86,7 +143,7 @@
       <p class="sl-p">This matters for the same reason rearranging a formula mattered in Lesson 1: knowing the theorem is a rearrangement of something more basic means it can't secretly be "wrong for this case" the way an unfamiliar formula might feel — it's conditional probability, twice, and a division.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Four terms, four jobs</h2>
       <div class="sl-icard-grid">
@@ -98,7 +155,7 @@
       <div class="sl-quote">Every term gets computed from a different source in practice — P(H) is usually a historical base rate, P(E&#124;H) comes from a test's validation report, and P(E) has to be <em>built</em>, not read off a sheet. Which is which matters, because mixing up P(E&#124;H) with P(H&#124;E) is the single most common way this goes wrong — the entire next few slides are about that one mix-up.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">The term nobody hands you: P(E)</h2>
       <p class="sl-sub">If H is binary, P(E) has to be built from every way E could happen — the law of total probability.</p>
@@ -116,7 +173,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">"80% accurate" is a claim about the test, not about today</h2>
       <p class="sl-sub">A regime classifier flags "trend day." Validation says it's 80% accurate. Only 20% of days actually are trend days. It just fired. How confident should you be?</p>
@@ -143,7 +200,7 @@
       <p class="sl-p">Nothing about the classifier is broken — 80% accuracy is real. What broke is the assumption that "accurate" and "trustworthy on any single flag" mean the same thing. They don't, once the thing being flagged is rare.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The same arithmetic, as things you can count</h2>
       <p class="sl-sub">Percentages hide this. Counting out of 1,000 days doesn't — Gigerenzer's "natural frequencies" trick.</p>
@@ -193,7 +250,7 @@
     </section>
 
     <!-- WB:bayes-deck:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">One flag, 1,000 days: where the 80% goes</h2>
       <!-- WB:bayes:START -->
@@ -204,7 +261,7 @@
     </section>
     <!-- WB:bayes-deck:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Watch the posterior swing — drag the base rate</h2>
       <p class="sl-sub">Same classifier throughout. Only the base rate — how rare the flagged thing actually is — changes. Watch what that alone does to your confidence in a single flagged day.</p>
@@ -238,7 +295,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Run the real formula yourself</h2>
       <p class="sl-sub">Same equation as Section 2, editable. Starts on the worked example's exact numbers.</p>
@@ -263,7 +320,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Today's posterior is tomorrow's prior</h2>
       <p class="sl-sub">Bayes' theorem doesn't care whether P(H) came from a textbook base rate or from yesterday's posterior.</p>
@@ -280,7 +337,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">"My strategy has an 80% win rate" is the same fallacy, different costume</h2>
       <div class="sl-compare">
@@ -304,7 +361,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -355,7 +412,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative morning</div>
+    <h3>The trend-day flag has just fired</h3>
+    <p>Your regime classifier, validated at 80% accuracy on both trend days and reversion days, has flagged today as a trend day. In this market only about 20% of days are trend days. You are deciding how to trade the session. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Trade it as an 80% trend day and size up.<div class="tl-drill-why">80% is \(P(E\mid H)\), how often the flag fires on real trend days. What you need is \(P(H\mid E)\), and with a 20% base rate that is only 50%. Sizing on 80% badly overstates your edge.</div></li>
+      <li data-verdict="good">Treat it as roughly a coin flip, 50%, and look for independent evidence before leaning harder.<div class="tl-drill-why">This is the posterior: 160 real flags against 160 false ones out of every 1,000 days. The flag moved you from 20% to 50%, a Bayes factor of 4. A second, genuinely independent signal could move you further.</div></li>
+      <li data-verdict="ok">Ignore the flag. The classifier is no better than a coin.<div class="tl-drill-why">Too harsh. Going from 20% to 50% is real evidence. Throwing it away wastes information. The flag should change your belief, just not as far as the headline number suggests.</div></li>
+      <li data-verdict="bad">Check a second indicator built from the same daily pivots. If it agrees, treat the day as a near-certain trend day.<div class="tl-drill-why">Two signals reading the same thing are one piece of evidence counted twice. Chaining them as if independent inflates the posterior beyond what the evidence supports.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the arithmetic says.</strong> This is an illustrative situation built on the lesson's worked example, not a dated event. Out of 1,000 days, 200 are trend days and the classifier flags 160 of them; it also flags 160 of the 800 reversion days. Of 320 flags, 160 are real: a 50% posterior. If trend days were 50% of days, the same classifier would be right 80% of the time when it fires.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

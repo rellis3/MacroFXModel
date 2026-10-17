@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">GARCH &amp; Volatility Clustering — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">18</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 6-question self-test?<a href="garch-volatility.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,69 @@
       <p class="sl-lede">The direction of tomorrow's move is close to unpredictable. The <em>size</em> of tomorrow's move is not — big days follow big days, calm follows calm, and that regularity is stable enough to build a one-day-ahead forecast on. GARCH is the model that turns "volatility has memory" into a number<!-- DESK:START -->, and it's one of the sigma estimators this project actually runs<!-- DESK:END -->.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Next-day volatility forecast after one 2.5% shock day, using alpha 0.08 and beta 0.90. Before the shock both forecasts sit at the long-run level of 0.71%. GARCH jumps to 0.98% the next day, then decays smoothly, still 0.94% ten days later and about 0.85% at its half-life of about 34 days. A flat 20-day average rises only to 0.89%, holds there for 20 days, then drops off a cliff back to 0.71% on day 21 when the shock leaves its window.">
+      <line class="tlp-line" x1="60" y1="210" x2="470" y2="210"/>
+      <line class="tlp-line" x1="60" y1="30" x2="60" y2="210"/>
+      <line class="tlp-line dash" x1="60" y1="186.4" x2="460" y2="186.4"/>
+      <polyline class="tlp-line amber thick" points="60.0,186.4 100.0,186.4 108.0,96.3 260.0,96.3 268.0,186.4 460.0,186.4"/>
+      <polyline class="tlp-line blue thick" points="60.0,186.4 100.0,186.4 108.0,50.1 116.0,52.5 124.0,54.8 132.0,57.1 140.0,59.3 148.0,61.5 156.0,63.7 164.0,65.8 172.0,67.9 180.0,70.0 188.0,72.1 196.0,74.1 204.0,76.1 212.0,78.0 220.0,79.9 228.0,81.8 236.0,83.7 244.0,85.5 252.0,87.3 260.0,89.1 268.0,90.8 276.0,92.5 284.0,94.2 292.0,95.9 300.0,97.5 308.0,99.1 316.0,100.7 324.0,102.2 332.0,103.7 340.0,105.2 348.0,106.7 356.0,108.2 364.0,109.6 372.0,111.0 380.0,112.4 388.0,113.7 396.0,115.1 404.0,116.4 412.0,117.7 420.0,118.9 428.0,120.2 436.0,121.4 444.0,122.6 452.0,123.8 460.0,124.9"/>
+      <circle class="tlp-red" cx="100" cy="186.4" r="6"/>
+      <circle class="tlp-blue" cx="108" cy="50.1" r="6"/>
+      <circle class="tlp-blue" cx="380" cy="112.4" r="5"/>
+      <text class="tlp-blue" x="118" y="38" font-size="14" font-weight="700">GARCH: 0.98% the next day</text>
+      <text class="tlp-blue" x="372" y="98" font-size="13">half-life ≈ 34 days: 0.85%</text>
+      <text class="tlp-amber" x="140" y="120" font-size="14" font-weight="700">HV20: 0.89%, flat for 20 days</text>
+      <text class="tlp-amber" x="276" y="160" font-size="13">day 21: off a cliff</text>
+      <text class="tlp-blue" x="468" y="129" font-size="13" font-weight="700">GARCH fades</text>
+      <text class="tlp-text3" x="468" y="190" font-size="13">long-run 0.71%</text>
+      <text class="tlp-text3" x="54" y="54" text-anchor="end" font-size="12">0.98</text>
+      <text class="tlp-text3" x="54" y="100" text-anchor="end" font-size="12">0.89</text>
+      <text class="tlp-text3" x="54" y="190" text-anchor="end" font-size="12">0.71</text>
+      <text class="tlp-red" x="100" y="228" text-anchor="middle" font-size="12">2.5% shock</text>
+      <text class="tlp-text3" x="264" y="228" text-anchor="middle" font-size="12">+20 days</text>
+      <text class="tlp-text3" x="460" y="228" text-anchor="middle" font-size="12">+45 days</text>
+      <text class="tlp-text3" x="66" y="24" font-size="12">next-day volatility forecast, % ↑</text>
+    </svg>
+    <figcaption>One 2.5% day, two forecasts. GARCH reacts at once and lets the shock fade slowly, at 0.98 of the excess per day. The flat 20-day average reacts less, then forgets the shock all at once on day 21, though nothing happened that day.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I can't predict which way the market goes tomorrow. So how can anyone forecast volatility?</p>
+      <p data-who="Quant">Because they are different questions. Direction is like a coin flip: it has almost no memory. Size is like the weather: a stormy day makes another stormy day more likely. Big moves, up or down, come in clumps, and calm comes in runs.</p>
+      <p data-who="Trader">Of either sign? A big up day counts too?</p>
+      <p data-who="Quant">Exactly the same. Mandelbrot noticed it in 1963: large changes follow large changes, of either sign. The model squares yesterday's move, so a two and a half percent rally and a two and a half percent fall push tomorrow's forecast up by the same amount.</p>
+      <p data-who="Trader">So what does GARCH actually do?</p>
+      <p data-who="Quant">It builds tomorrow's variance from three pieces. A small floor. A reaction to yesterday's squared move. And inertia, a big share of wherever the forecast already was. Floor, reaction, inertia.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">Take the lesson's example. The reaction weight is eight hundredths, the inertia weight is ninety hundredths. On a quiet day the model expects a move of about point seven one percent. Then a two and a half percent day hits. The next day's forecast jumps to about point nine eight percent, roughly thirty-eight percent higher.</p>
+      <p data-who="Trader">And a plain twenty-day average?</p>
+      <p data-who="Quant">It moves less, to about point eight nine, because the big day is only one of twenty. Then it holds that for twenty days and, on day twenty-one, drops straight back when the shock leaves the window. Nothing happened that day. It's a ghost.</p>
+      <p data-who="Trader">How fast does GARCH forget?</p>
+      <p data-who="Quant">Add the two weights: point nine eight. That's the persistence. Each calm day keeps ninety-eight percent of the extra variance. Ten days later the forecast is still about point nine four. It takes about thirty-four trading days to lose half the excess.</p>
+      <p data-who="Trader">And it has to stay below one?</p>
+      <p data-who="Quant">Yes. At one or above, the forecast never settles back. That's the first sanity check on any fitted model.</p>
+      <p data-who="Trader">Did this show up when it mattered?</p>
+      <p data-who="Quant">March 2020. The S and P closed at a record high on the nineteenth of February. Then came a cluster of huge days in both directions: down nine and a half percent on the twelfth of March, up over nine on the thirteenth, down about twelve on the sixteenth. The VIX closed at a record eighty-two point six nine.</p>
+      <p data-who="Trader">Did GARCH see it coming?</p>
+      <p data-who="Quant">No. It only learns from past returns, and February was calm. It reacted once the storm started, then kept volatility raised for months as it faded.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Size has memory and direction doesn't: GARCH turns yesterday's storm into today's forecast, but it can't see a storm before it starts.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">Big moves cluster — of either sign</h2>
       <p class="sl-sub">Watch the return series below. Big bars sit next to other big bars; small bars sit next to other small bars.</p>
@@ -76,7 +138,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">A flat average always lags the market</h2>
       <p class="sl-sub">Compare two ways of estimating "how big is a typical move right now."</p>
@@ -103,7 +165,7 @@
       <p class="sl-p">We need one number before any model can be written down: <strong>σ²ₜ</strong>, the <em>conditional</em> variance — the model's forecast of how large today's shock will be, using only information available through yesterday's close. "Conditional" is the whole point: it's not a historical average, it's allowed to change every single day as new information arrives.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Step 1 — ARCH: react to yesterday's squared shock</h2>
       <div class="sl-row">
@@ -121,7 +183,7 @@
       <div class="sl-quote">If shocks weren't squared, a small positive day and a small negative day could cancel out in the running average, and the model would learn nothing about the market's actual turbulence — exactly backwards from what a volatility estimate is for.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Step 2 — GARCH: give variance its own memory</h2>
       <p class="sl-p">ARCH(1) has a gap: it only remembers <em>yesterday's shock</em>, and forgets how elevated variance itself has already been running. Tim Bollerslev's 1986 generalization — the "G" in GARCH — adds a second input: yesterday's own variance forecast.</p>
@@ -146,7 +208,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">See α and β reshape the same shock</h2>
       <p class="sl-sub">Same 2.5% shock day, every time. Drag either slider and watch how sharply σₜ spikes, and how slowly it decays back to the dashed long-run level.</p>
@@ -170,7 +232,7 @@
       <p class="sl-p">Push α up and the spike gets taller — the model reacts harder to the news itself. Push β up and the curve flattens out, decaying much more slowly — the elevated regime lingers. This is the entire "reaction vs. inertia" split from the formula, made visible.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Persistence: α+β must stay under 1</h2>
       <p class="sl-p">For the recursion to describe a variance that <em>mean-reverts</em> — settling toward a stable long-run level instead of exploding or vanishing — the parameters need <strong>α + β &lt; 1</strong>. Each day, a fraction α+β of "how far variance is from its long-run average" carries forward into tomorrow. That fraction is called the <strong>persistence</strong>.</p>
@@ -191,7 +253,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Worked example: one shock day, traced forward</h2>
       <p class="sl-sub">α = 0.08, β = 0.90 (persistence 0.98), ω = 1.0×10⁻⁶.</p>
@@ -212,7 +274,7 @@
     </section>
 
     <!-- WB:garch-deck:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">One shock day, two volatility forecasts</h2>
       <!-- WB:garch:START -->
@@ -223,7 +285,7 @@
     </section>
     <!-- WB:garch-deck:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Run the recursion yourself</h2>
       <p class="sl-sub">Same formula, your numbers. Variance is in %² so the worked example's ω = 1.0×10⁻⁶ becomes ω = 0.01.</p>
@@ -257,7 +319,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this connects to MacroFXModel</h2>
       <p class="sl-p">This project runs GARCH(1,1) in production — <code>js/volForecast.js</code> (<code>garch11VolSeries()</code>) and the walk-forward backtester <code>js/volBacktestEngine.js</code> (<code>garchSigmas()</code>) implement exactly this recursion, initialized at the unconditional variance ω/(1−α−β) so the very first forecasts aren't biased by starting at zero.</p>
@@ -272,7 +334,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Why a forecaster cares — and where it breaks</h2>
       <div class="sl-icard-grid">
@@ -284,7 +346,7 @@
       <div class="sl-quote">A single large σₜ jump after a shock is the model doing exactly what it's supposed to — it doesn't mean the market permanently repriced. Check the persistence to see how fast the spike is expected to fade before treating it as a structural shift.</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11 · It actually happened</div>
       <h2 class="sl-h2">March 2020: clustering at full strength</h2>
       <div class="sl-callout amber">
@@ -305,7 +367,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <!-- DESK:START --><h2 class="sl-h2">What the desk found, and where the textbook breaks</h2><!-- DESK:END -->
       <p class="sl-sub">The claim: the pace of the market persists. A fast stretch is followed by more fast stretches.</p>
@@ -321,7 +383,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -374,7 +436,27 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="16">
+
+    <section class="sl-slide sl-vark" data-slide="17">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2020-03-12">
+    <div class="tl-drill-label">Scenario drill · 12 March 2020</div>
+    <h3>The S&amp;P has just fallen 9.5%. How big is tomorrow?</h3>
+    <p>It is the close on 12 March 2020. The S&amp;P 500 fell about 7.6% on Monday and 9.5% today, and the market-wide circuit breaker has halted trading on both days. Three weeks ago the index closed at a record high with the VIX in the mid-teens. You size a position so that its expected daily swing in dollars stays fixed, and you need tomorrow's volatility number. Which do you use?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">The volatility you fitted on the calm months before February. That is the market's normal level.<div class="tl-drill-why">That is the long-run level, and today is nowhere near it. Clustering says yesterday's storm is the best guide to tomorrow's. Sizing off calm-period volatility leaves you several times too big in the wildest days.</div></li>
+      <li data-verdict="good">A GARCH-style forecast updated with today's close, which has jumped with the two huge days, and cut the size to match.<div class="tl-drill-why">This is what the model is for. Each big day enters squared, so the forecast is now far above February's, and a fixed-risk position has to shrink. It also lets the forecast fade gradually rather than snap back.</div></li>
+      <li data-verdict="bad">Keep the size and go long. After a 9.5% fall, a bounce is due.<div class="tl-drill-why">GARCH says nothing about direction. A bounce and a further fall are both big days, and big days are exactly what the model expects next. Betting on the sign with full size leaves you exposed to either.</div></li>
+      <li data-verdict="ok">A 20-day average of squared returns, which has risen with the last two days.<div class="tl-drill-why">Better than the calm number, and it does see the shock. But it gives the two huge days only one twentieth of the weight each, so it under-reacts now, and it will drop off a cliff three weeks later when they leave the window.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The next day the S&amp;P 500 rose 9.3%. On 16 March it fell about 12%, the circuit breaker tripped again, and the VIX closed at 82.69, a record. The breaker was triggered once more on 18 March, and the index rose more than 9% on 24 March. Big days kept coming in both directions, so the up days raised the forecast as much as the down days. Volatility stayed raised for months after the worst had passed.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="18">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

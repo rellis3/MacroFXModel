@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Theta Decay — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">18</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full PDE derivation, the closed-form proof, and a 6-question self-test?<a href="theta-decay.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,60 @@
       <p class="sl-lede">Theta isn't a separate fact bolted onto an option after the fact — it falls straight out of the same Black-Scholes PDE that already gives delta and gamma. Rearrange that one equation and "options lose value over time" turns into a precise number, and "theta pays for gamma" stops being a slogan and becomes an identity: Θ ≈ −½σ²S²Γ.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The value of the lesson's at-the-money call, spot and strike 100, 20% volatility, 2% rates, as the last 30 days run out with spot unchanged. It falls slowly at first and then fast: $2.37 with 30 days left while losing about $0.041 a day, $1.12 with 7 days left at $0.082 a day, $0.42 with 1 day left at $0.21 a day, and zero at expiry. A dashed straight line shows the trap of multiplying today's theta by the days left, which leaves $1.14 at expiry instead of zero.">
+      <line class="tlp-line" x1="50" y1="200" x2="560" y2="200"/>
+      <line class="tlp-line dash" x1="60" y1="48.4" x2="540" y2="126.8"/>
+      <polyline class="tlp-line red thick" points="60,48.4 76,51.1 92,53.7 108,56.5 124,59.2 140,62 156,64.9 172,67.8 188,70.8 204,73.9 220,77 236,80.2 252,83.5 268,86.9 284,90.3 300,93.9 316,97.6 332,101.4 348,105.3 364,109.4 380,113.7 396,118.3 412,123 428,128.1 444,133.5 460,139.4 476,145.8 492,153.2 508,161.9 524,173.1 528,176.7 532,181 536,186.6 538.4,191.5 540,200"/>
+      <circle class="tlp-blue" cx="60" cy="48.4" r="6"/>
+      <circle class="tlp-amber" cx="428" cy="128.1" r="6"/>
+      <circle class="tlp-red" cx="524" cy="173.1" r="6"/>
+      <text class="tlp-blue" x="70" y="32" font-size="14" font-weight="700">30 days: $2.37, −$0.041/day</text>
+      <text class="tlp-amber" x="416" y="156" text-anchor="end" font-size="14" font-weight="700">7 days: $1.12, −$0.082/day</text>
+      <text class="tlp-red" x="512" y="188" text-anchor="end" font-size="14" font-weight="700">1 day: $0.42, −$0.21/day</text>
+      <text class="tlp-text2" x="590" y="66" text-anchor="end" font-size="12">dashed: 30 × $0.041 a day, the straight-line trap</text>
+      <text class="tlp-text3" x="60" y="218" text-anchor="middle" font-size="12">30 days left</text>
+      <text class="tlp-text3" x="316" y="218" text-anchor="middle" font-size="12">14</text>
+      <text class="tlp-text3" x="428" y="218" text-anchor="middle" font-size="12">7</text>
+      <text class="tlp-text3" x="540" y="218" text-anchor="middle" font-size="12">expiry</text>
+    </svg>
+    <figcaption>Same at-the-money call, spot stuck at 100: only time passes. The value melts slowly a month out and fast in the last week, because theta grows like one over the square root of the time left, just like gamma. Theta is the rent you pay for that gamma.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I bought a call, the market went nowhere, and I still lost money. Where did it go?</p>
+      <p data-who="Quant">Time decay. Theta. Every day you hold an option there's one less day for the price to move your way, so the option is worth a bit less.</p>
+      <p data-who="Trader">Is it like a fee?</p>
+      <p data-who="Quant">Think of it as rent. You're renting the right to gain from big moves in either direction. That right is gamma. Nobody rents it to you for free.</p>
+      <p data-who="Trader">How much rent are we talking about?</p>
+      <p data-who="Quant">Take an at-the-money call: spot and strike at a hundred, twenty percent volatility, two percent rates. With thirty days left it's worth about two dollars thirty-seven, and it loses about four cents a day.</p>
+      <p data-who="Trader">So thirty days at four cents, about a dollar twenty in total?</p>
+      <p data-who="Quant">That's the trap. It loses the whole two dollars thirty-seven if the price doesn't move. The melt speeds up. With seven days left it's about eight cents a day. On the last day it's about twenty-one cents, five times the rate a month out.</p>
+      <p data-who="Trader">Why does it speed up like that?</p>
+      <p data-who="Quant">Because theta is tied to gamma. For a hedged option, theta is just gamma times a constant: half the volatility squared, times the price squared. Gamma explodes near expiry, so theta does too.</p>
+      <p data-who="Trader">So is paying the rent a good deal or not?</p>
+      <p data-who="Quant">It depends on one comparison. The rent was priced at twenty percent volatility. If the market actually moves more than that, your hedging gains beat the rent. If it moves less, you lose, even with no view on direction at all.</p>
+      <p data-who="Trader">And the dealer who sold me the option?</p>
+      <p data-who="Quant">Collects the rent. They're long theta, and by the same equation they're short gamma. Same fact, read two ways.</p>
+      <p data-who="Trader">Selling options for income sounds pretty good, then.</p>
+      <p data-who="Quant">Until it isn't. In November twenty eighteen, a firm called OptionSellers ran accounts selling far out-of-the-money natural gas calls. On the fourteenth of November gas jumped by double digits in a single session. Hundreds of accounts were wiped out, and some ended up owing their broker money.</p>
+      <p data-who="Trader">Picking up nickels in front of a steamroller.</p>
+      <p data-who="Quant">Exactly. Theta comes in small and daily. Gamma gets paid all at once. Know which side of that you're on.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">Theta falls out of the PDE — it isn't a separate fact</h2>
       <p class="sl-sub">The Black-Scholes PDE, with each derivative already named after a Greek, rearranged to isolate Θ.</p>
@@ -50,7 +103,7 @@
       <p class="sl-p">One notation note: the PDE's ∂V/∂t moves with calendar time <em>t</em>; the closed form below is written in τ, the time <em>remaining</em> to expiry (τ = T − t). ∂/∂t = −∂/∂τ is already baked into the formula next.</p>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">The closed-form theta for a European call</h2>
       <div class="sl-card">
@@ -69,7 +122,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The key insight — theta pays for gamma</h2>
       <p class="sl-sub">Strip a delta-hedged position down: the financing terms combine into r(C − ΔS) — for a call exactly −rKe⁻ʳᵗN(d₂) — which is small next to the convexity term for a short-dated option at modest rates. What's left:</p>
@@ -88,7 +141,7 @@
       <div class="sl-quote">Whether the rent was <strong>fairly priced</strong> comes down to exactly one comparison: implied volatility (baked into theta) versus realized volatility (how much the underlying actually moved). Nothing about direction enters this decision at all.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Theta accelerates near expiry — drag the slider</h2>
       <p class="sl-sub">S = K = 100, r = 2%, σ = 20% held fixed (the lesson's own worked-example inputs) — only time to expiry changes. Computed live from the exact closed form.</p>
@@ -120,7 +173,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Worked example: 30, 7, and 1 day to expiry</h2>
       <p class="sl-sub">S = K = 100, r = 2%, σ = 20% — the same round numbers where r = σ²/2, so d₂ = 0 and N(d₂) = 0.5 exactly at every τ.</p>
@@ -138,7 +191,7 @@
       <p class="sl-p">Another roughly <strong>2.6×</strong> jump from the 7-day rate, and about <strong>5.2×</strong> the 30-day rate — the same accelerating, non-linear shape the Gamma Exposure lesson found for gamma itself (there: roughly 2.1× then 2.6×, going 30→7→1 DTE). The two aren't just similarly shaped by coincidence — they're forced to be, by the identity on the next slide.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Cross-checking against the gamma-theta identity</h2>
       <p class="sl-sub">Plug the previous lesson's own Γ_ATM values into Θ ≈ −½σ²S²Γ = −200×Γ (since ½(0.04)(10,000) = 200) and compare to the exact closed form.</p>
@@ -157,7 +210,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Recompute theta live — try your own numbers</h2>
       <p class="sl-sub">Starts on the worked example's 30-day numbers. Blank or invalid input reads "—", never NaN or Infinity.</p>
@@ -182,7 +235,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Weekend theta and calendar spreads</h2>
       <div class="sl-card">
@@ -203,7 +256,7 @@
     </section>
 
     <!-- WB:theta-deck:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Theta: watch time value melt</h2>
       <!-- WB:theta:START -->
@@ -214,7 +267,7 @@
     </section>
     <!-- WB:theta-deck:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Short gamma and long theta are the same fact</h2>
       <p class="sl-sub">Apply Θ ≈ −½σ²S²Γ to the dealer's own signed gamma at a strike, and aggregate it the same way DealerGEX aggregates gamma.</p>
@@ -233,7 +286,7 @@
       <div class="sl-quote">Applying this to the previous lesson's toy three-strike book (σ = 20%, TotalDealerGEX ≈ −$0.92M at one week to expiry, standard convention): TotalThetaExp ≈ −50(0.20)² × (−$0.92M) ≈ <strong>+$1.85M</strong> per year, illustrative. The dealer book short $0.92M of GEX is, at the same instant, long roughly $1.85M of aggregate theta exposure.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
@@ -251,7 +304,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11 · It actually happened</div>
       <h2 class="sl-h2">November 2018: natural gas calls sold "for income"</h2>
       <div class="sl-callout amber">
@@ -272,7 +325,7 @@
       <p class="sl-p">★ is this lesson's concept. "Picking up nickels in front of a steamroller": many small theta gains, then one move that takes them all back and more.</p>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: when implied vol is far above realised, premium is rich, so sell it and collect the decay.</p>
@@ -294,7 +347,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -345,7 +398,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+
+    <section class="sl-slide sl-vark" data-slide="17">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2018-11-14">
+    <div class="tl-drill-label">Scenario drill · 14 November 2018</div>
+    <h3>Your "income" calls are waking up</h3>
+    <p>It is the morning of 14 November 2018. Your account sells far out-of-the-money call options on natural gas futures for the premium, and the theta has come in steadily for months. The positions are not delta-hedged. Natural gas has been rallying hard on early cold-weather forecasts and low storage, and the calls that looked nearly worthless are starting to gain value. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Hold. The strikes are still well above the price, and the theta keeps coming in every day.<div class="tl-drill-why">Long theta is short gamma, by the same identity. Being far out of the money only means delta is small for now. A jump makes it large all at once, and the daily rent you collected is tiny next to that bill.</div></li>
+      <li data-verdict="bad">Sell more calls further up, since the premium is richer now.<div class="tl-drill-why">Richer premium is the market telling you the gamma bill is getting bigger. Adding more short calls doubles down on exactly the exposure that is hurting you, with margin already under pressure.</div></li>
+      <li data-verdict="good">Cap the risk now: buy back the calls, or buy calls further up to turn them into spreads, so no single jump can exceed what the account can carry.<div class="tl-drill-why">This fixes the real problem, an unlimited short-gamma position with no hedge. Paying up to close or cap it costs some of the premium collected. It keeps a jump from turning months of small gains into a margin call you cannot meet.</div></li>
+      <li data-verdict="ok">Delta-hedge by buying some natural gas futures.<div class="tl-drill-why">Better than nothing: it offsets part of the directional loss. But you stay short gamma, and a hedge set this morning is too small after a double-digit jump. Margin calls still arrive before you can rebalance.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 14 November the front-month natural gas contract jumped by double digits in percentage terms in a single session. Calls that had looked close to worthless gained delta and value very quickly. OptionSellers.com's accounts could not meet the margin calls, and the clearing broker liquidated them into the move. Hundreds of client accounts were wiped out, and some ended with negative balances, owing the broker money on top of everything they had deposited.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="18">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

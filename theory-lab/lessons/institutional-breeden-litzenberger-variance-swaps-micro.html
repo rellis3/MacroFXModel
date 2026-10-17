@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Breeden-Litzenberger &amp; Variance Swaps — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-breeden-litzenberger-variance-swaps.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,76 @@
       <p class="sl-lede">A full strike-by-strike grid of option prices secretly contains the market's entire probability distribution for the underlying — and, using almost the same trick, a model-free fair price for realized variance. No volatility model required for either. This deck walks through both.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left, Part 1: the risk-neutral density of the price at expiry, a bell-shaped curve. A butterfly of calls at strikes 95, 100 and 105 reads its height at 100 as about 0.0279, against a true density of 0.0282. Right, Part 2: the variance strip, five bars for out-of-the-money options at strikes 80 to 120, weighted by one over strike squared, tallest at 100. Together they price a fair volatility of about 20.62%, against a true 20%.">
+      <text class="tlp-text" x="20" y="20" font-size="13" font-weight="700">Part 1 · the density</text>
+      <line class="tlp-line" x1="30" y1="200" x2="272" y2="200"/>
+      <polyline class="tlp-line purple thick" points="30.0,199.7 38.0,199.1 46.0,197.5 54.0,194.3 62.0,188.6 70.0,179.4 78.0,166.5 86.0,150.3 94.0,131.9 102.0,113.5 110.0,97.1 118.0,84.8 126.0,77.9 134.0,76.8 142.0,81.3 150.0,90.3 158.0,102.4 166.0,116.1 174.0,130.2 182.0,143.6 190.0,155.6 198.0,166.0 206.0,174.5 214.0,181.3 222.0,186.5 230.0,190.5 238.0,193.4 246.0,195.5 254.0,196.9 262.0,198.0 270.0,198.7"/>
+      <polygon class="tlp-amber" points="123.3,201 118.3,210 128.3,210"/>
+      <polygon class="tlp-amber" points="136.7,201 131.7,210 141.7,210"/>
+      <polygon class="tlp-amber" points="150.0,201 145.0,210 155.0,210"/>
+      <line class="tlp-line green dash" x1="136.7" y1="77.8" x2="136.7" y2="200"/>
+      <circle class="tlp-green" cx="136.7" cy="77.8" r="6"/>
+      <text class="tlp-green" x="150" y="42" text-anchor="middle" font-size="13" font-weight="700">butterfly 95/100/105 → 0.0279</text>
+      <text class="tlp-text3" x="150" y="58" text-anchor="middle" font-size="12">true density at 100: 0.0282</text>
+      <text class="tlp-amber" x="150" y="226" text-anchor="middle" font-size="12">three strikes, one curvature</text>
+      <text class="tlp-text2" x="150" y="248" text-anchor="middle" font-size="13">call-price curvature = probability</text>
+      <line class="tlp-line dash" x1="300" y1="14" x2="300" y2="250" opacity=".5"/>
+      <text class="tlp-text" x="320" y="20" font-size="13" font-weight="700">Part 2 · the variance strip</text>
+      <line class="tlp-line" x1="322" y1="200" x2="590" y2="200"/>
+      <rect class="tlp-box blue" x="330" y="191.3" width="34" height="8.7" rx="3"/>
+      <text class="tlp-text3" x="347" y="218" text-anchor="middle" font-size="12">80 put</text>
+      <rect class="tlp-box blue" x="382" y="159.0" width="34" height="41.0" rx="3"/>
+      <text class="tlp-text3" x="399" y="218" text-anchor="middle" font-size="12">90 put</text>
+      <rect class="tlp-box purple" x="434" y="80.0" width="34" height="120.0" rx="3"/>
+      <text class="tlp-text3" x="451" y="218" text-anchor="middle" font-size="12">100</text>
+      <rect class="tlp-box green" x="486" y="156.4" width="34" height="43.6" rx="3"/>
+      <text class="tlp-text3" x="503" y="218" text-anchor="middle" font-size="12">110 call</text>
+      <rect class="tlp-box green" x="538" y="187.7" width="34" height="12.3" rx="3"/>
+      <text class="tlp-text3" x="555" y="218" text-anchor="middle" font-size="12">120 call</text>
+      <text class="tlp-green" x="588" y="46" text-anchor="end" font-size="14" font-weight="700">fair vol ≈ 20.62%</text>
+      <text class="tlp-text3" x="588" y="62" text-anchor="end" font-size="12">true: 20%</text>
+      <text class="tlp-text2" x="455" y="248" text-anchor="middle" font-size="13">OTM options weighted by 1/K²</text>
+    </svg>
+    <figcaption>Both halves read the whole strike ladder instead of one option. The curvature of call prices across three strikes gives the market's probability density; a 1/K²-weighted strip of out-of-the-money options gives the fair variance, with no volatility model and no forecast.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">An option price gives me one implied vol. Can it tell me what probability the market puts on a big fall?</p>
+      <p data-who="Quant">One option can't. But the whole row of strikes can. Douglas Breeden and Robert Litzenberger showed it in 1978: the market's full probability distribution is sitting in the call prices.</p>
+      <p data-who="Trader">How do I get it out?</p>
+      <p data-who="Quant">Think in spreads. Buy one call and sell one at a slightly higher strike, and you have a bet that pays if the price ends above that level. Now buy a call below, sell two in the middle and buy one above. That butterfly pays only if the price lands near the middle strike.</p>
+      <p data-who="Trader">So its price is the chance of landing there.</p>
+      <p data-who="Quant">Scaled properly, yes. Squeeze the wings together and it becomes the probability density at that strike. In calculus terms it's how curved the call price is across strikes.</p>
+      <p data-who="Trader">Numbers?</p>
+      <p data-who="Quant">The lesson takes three calls, at ninety-five, a hundred and a hundred and five, priced from a flat twenty percent world. The butterfly gives a density of about zero point oh two seven nine at a hundred. The true value is zero point oh two eight two. About one percent off, just from the strike spacing.</p>
+      <p data-who="Trader">And variance swaps?</p>
+      <p data-who="Quant">Same idea, different target. A variance swap pays realised variance against a fixed strike. Pricing it sounds like it needs a volatility forecast. It doesn't.</p>
+      <p data-who="Trader">How can that be?</p>
+      <p data-who="Quant">A contract that pays the log of the final price turns out to pay expected variance, if prices move smoothly. You can't buy that log contract, but you can build it from out-of-the-money puts and calls at every strike, weighted by one over the strike squared.</p>
+      <p data-who="Trader">And that's the VIX.</p>
+      <p data-who="Quant">Exactly. Since 2003 the CBOE has computed the VIX from a discrete version of that strip on S&amp;P 500 options. In the lesson's toy version, five strikes from eighty to a hundred and twenty give a fair vol of about twenty point six percent, against a true twenty.</p>
+      <p data-who="Trader">Why the overshoot?</p>
+      <p data-who="Quant">Too few strikes, too widely spaced. A wider, finer grid gets it to about twenty point two. Real markets only list a finite range, so there's always some truncation error.</p>
+      <p data-who="Trader">Other catches?</p>
+      <p data-who="Quant">Two. Differentiating prices twice amplifies noise, so a negative density means bad or stale quotes, never a negative probability. And the variance replication assumes no jumps. A real jump leaves something the strip doesn't capture.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Read the whole strike ladder, not one option: its curvature is the market's probability, and its one over strike squared strip is the market's fair variance.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Reading the market's whole distribution, then trading variance itself</h2>
       <p class="sl-sub">Breeden–Litzenberger, 1978 · variance swaps late 1990s · VIX methodology, 2003</p>
@@ -40,7 +109,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">One strike gives a probability. All strikes give a distribution.</h2>
       <div class="sl-card">
@@ -59,7 +128,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">A call spread is a bet on "above." A butterfly is a bet on "exactly here."</h2>
       <div class="sl-svgwrap">
@@ -83,7 +152,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The Breeden-Litzenberger formula</h2>
       <div class="sl-card">
@@ -98,7 +167,7 @@
       <p class="sl-p">Worked example: S₀=100, r=2%, T=0.5yr. C(95)=$8.9470, C(100)=$6.1207, C(105)=$3.9856 (h=5). Discrete second derivative ≈ 0.027648 → f_Q(100) ≈ e^0.01 × 0.027648 ≈ <strong>0.027926</strong>. True lognormal density at K=100: 0.028209 — about 1% off, purely from finite h.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Try it — three call prices, live density</h2>
       <p class="sl-sub">Starts on the worked-example numbers above. Change any price, spacing, rate, or time.</p>
@@ -123,7 +192,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Part 2 — pricing variance without forecasting it</h2>
       <div class="sl-card">
@@ -142,7 +211,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The strip: OTM options weighted by 1/K²</h2>
       <div class="sl-svgwrap">
@@ -165,7 +234,7 @@
       <p class="sl-p">Bar height ∝ (ΔK/K²)·e^(rT)·Q(K) — each strike's contribution to the variance sum. Contribution peaks near the reference strike closest to the forward and shrinks moving further out-of-the-money, both because 1/K² shrinks and because deep-OTM prices themselves are small.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Try it — five OTM prices, live fair variance</h2>
       <p class="sl-sub">Strikes fixed at 80/90/100/110/120 (ΔK=10, K₀=100). Change any price, the forward, rate, or time.</p>
@@ -195,7 +264,7 @@
     </section>
 
     <!-- WB:institutional_breeden_litzenberger_variance_swaps-deck:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Option prices to probabilities, and to fair variance</h2>
       <!-- WB:institutional_breeden_litzenberger_variance_swaps:START -->
@@ -206,7 +275,7 @@
     </section>
     <!-- WB:institutional_breeden_litzenberger_variance_swaps-deck:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Why these two results are actually the same idea</h2>
       <div class="sl-compare">
@@ -225,7 +294,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this quietly breaks down</h2>
       <div class="sl-icard-grid">
@@ -240,7 +309,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -300,7 +369,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+
+    <section class="sl-slide sl-vark" data-slide="15">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative morning</div>
+    <h3>The skew steepened overnight, but at-the-money vol barely moved</h3>
+    <p>You trade index options. Overnight, out-of-the-money puts got noticeably more expensive relative to out-of-the-money calls, while the at-the-money implied vol is almost unchanged. Your head of desk asks what the market is now pricing, and what you would do about it.</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Vol is up, so buy at-the-money straddles.<div class="tl-drill-why">At-the-money vol barely moved. The repricing happened in the wing, so a straddle bets on the part of the distribution that did not change.</div></li>
+      <li data-verdict="good">Smooth the surface, extract the density before and after, and see where the probability moved before choosing a tail trade.<div class="tl-drill-why">This is the lesson's own use case. The density shows the left tail thickening while the body near spot stays put: a specific statement about where the market's fear concentrated, which tells you which strikes to trade.</div></li>
+      <li data-verdict="ok">Check the variance-strip fair vol, VIX-style, and report that it rose.<div class="tl-drill-why">True and model-free, but one number. It says total priced variance went up, not where in the distribution the change sits.</div></li>
+      <li data-verdict="bad">Take butterflies straight from the raw quotes and report any negative density as a crash signal.<div class="tl-drill-why">Differencing raw quotes twice amplifies noise. A negative density is a data-quality flag, never a probability.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson says.</strong> This is an illustrative case built on the lesson's own trading scenario, not a dated episode. A Breeden-Litzenberger extraction run before and after turns "the skew steepened" into a picture: more risk-neutral probability on a sharp fall, the centre of the distribution largely unchanged. That is more specific than "vol went up", and it needs a smoothed surface, because the second derivative amplifies every wiggle in the quotes.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

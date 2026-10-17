@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Trigonometry, Logs &amp; Exponentials — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, two live calculators, and a 5-question self-test?<a href="foundation-trig-logs-exponentials.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,68 @@
       <p class="sl-lede">Two unrelated-looking topics share this lesson because they show up everywhere later for the same reason: both describe things that behave with mathematical precision — one repeats, one compounds. Sine and cosine describe anything that cycles, from seasons to intraday rhythms. e^x and ln x describe anything that grows continuously, and nearly every pricing model and returns calculation later in this curriculum is built on exactly those two functions. Get comfortable with both here, in plain form, before the notation gets dressed up in Greek letters and finance jargon.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four arrows laid end to end on a number line, one for each day's log-return in the lesson's price series 100, 102, 101, 104, 103. Day one moves right by 0.0198, day two back left by 0.0099, day three right by 0.0293, and day four back left by 0.0097. The last arrow ends at 0.0296, which is exactly the natural log of 103 over 100, the four-day total. Underneath, a reminder that simple percentage returns do not add this way: up 50% then down 50% leaves you down 25%.">
+      <text class="tlp-text2" x="20" y="24" font-size="13">Four daily log-returns, laid end to end (prices 100 → 102 → 101 → 104 → 103):</text>
+      <line class="tlp-line green thick" x1="40" y1="50" x2="261" y2="50"/><polygon class="tlp-green" points="268.8,50 259.8,44.5 259.8,55.5"/>
+      <line class="tlp-line red thick" x1="268.8" y1="72" x2="163" y2="72"/><polygon class="tlp-red" points="155,72 164,66.5 164,77.5"/>
+      <line class="tlp-line green thick" x1="155" y1="94" x2="485" y2="94"/><polygon class="tlp-green" points="493.2,94 484.2,88.5 484.2,99.5"/>
+      <line class="tlp-line red thick" x1="493.2" y1="116" x2="390" y2="116"/><polygon class="tlp-red" points="381.6,116 390.6,110.5 390.6,121.5"/>
+      <text class="tlp-green" x="154.4" y="44" text-anchor="middle" font-size="12" font-weight="700">day 1: +0.0198</text>
+      <text class="tlp-red" x="211.9" y="66" text-anchor="middle" font-size="12" font-weight="700">day 2: −0.0099</text>
+      <text class="tlp-green" x="324" y="88" text-anchor="middle" font-size="12" font-weight="700">day 3: +0.0293</text>
+      <text class="tlp-red" x="437.4" y="110" text-anchor="middle" font-size="12" font-weight="700">day 4: −0.0097</text>
+      <line class="tlp-line" x1="30" y1="150" x2="570" y2="150"/>
+      <line class="tlp-line dash" x1="40" y1="50" x2="40" y2="150"/>
+      <line class="tlp-line green dash" x1="381.6" y1="116" x2="381.6" y2="150"/>
+      <circle class="tlp-green" cx="381.6" cy="150" r="6"/>
+      <text class="tlp-text3" x="40" y="168" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="155.6" y="168" text-anchor="middle" font-size="12">0.01</text>
+      <text class="tlp-text3" x="271.1" y="168" text-anchor="middle" font-size="12">0.02</text>
+      <text class="tlp-text3" x="386.7" y="168" text-anchor="middle" font-size="12">0.03</text>
+      <text class="tlp-text3" x="502.2" y="168" text-anchor="middle" font-size="12">0.04</text>
+      <text class="tlp-green" x="300" y="196" text-anchor="middle" font-size="14" font-weight="700">Sum = 0.0296 = ln(103 ÷ 100): exactly the four-day total</text>
+      <text class="tlp-amber" x="300" y="224" text-anchor="middle" font-size="13" font-weight="700">Simple returns don't add: up 50% then down 50% leaves you down 25%</text>
+    </svg>
+    <figcaption>Logs turn multiplying into adding. Lay the daily log-returns end to end and you land exactly on the whole period's log-return, with no compounding correction needed.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Here's something that bugs me. A stock goes up fifty percent, then down fifty percent. Surely I'm back where I started?</p>
+      <p data-who="Quant">Try it with money. Start with a hundred dollars. Up fifty percent is a hundred and fifty. Down fifty percent of that is seventy-five.</p>
+      <p data-who="Trader">So I'm down a quarter. That feels wrong.</p>
+      <p data-who="Quant">It feels wrong because percentages don't add. Each one is a percentage of a different amount, so they multiply. Fifty percent of a bigger number is a bigger loss.</p>
+      <p data-who="Trader">So how do people add up returns properly?</p>
+      <p data-who="Quant">With logarithms. A log is a way of asking how much growth it took to get from one number to another. And logs have one lovely trick: they turn multiplying into adding.</p>
+      <p data-who="Trader">Show me with real numbers.</p>
+      <p data-who="Quant">Take a price over four days: a hundred, then a hundred and two, a hundred and one, a hundred and four, and finally a hundred and three. Work out the log return for each day. Add the four together and you get about three hundredths. Now take the log of the whole move, a hundred and three over a hundred. It is the same three hundredths, to six decimal places.</p>
+      <p data-who="Trader">So I can just stack the days like building blocks.</p>
+      <p data-who="Quant">Exactly. That is why most return series are stored as log returns.</p>
+      <p data-who="Trader">Where does the number e come in? People write it everywhere.</p>
+      <p data-who="Quant">It came from a money puzzle. In sixteen eighty-three Jacob Bernoulli asked what happens if a bank credits interest more and more often: yearly, monthly, daily, every instant. You earn a little more each time, but the extra shrinks, and the total settles on a number near two point seven one eight. That is e.</p>
+      <p data-who="Trader">And that's continuous compounding.</p>
+      <p data-who="Quant">Yes. One small surprise: a five percent rate paid once a year matches a continuous rate of only about four point eight eight percent. Compounding every instant needs a slightly smaller number to grow the same amount.</p>
+      <p data-who="Trader">And the sine and cosine part?</p>
+      <p data-who="Quant">Picture a point walking round a circle. Its height goes up and down in a smooth wave that repeats every lap. Anything that cycles, like a season or a daily rhythm, gets described with those waves.</p>
+      <p data-who="Trader">When did markets start thinking in logs?</p>
+      <p data-who="Quant">In nineteen fifty-nine a physicist, Osborne, argued that the log of a price, not the price, wanders like a random walk. The famous option pricing model of nineteen seventy-three was built the same way.</p>
+      <p data-who="Trader">So, one line?</p>
+      <p data-who="Quant">Percentages multiply, logs add. Convert to logs, add up the days, and convert back at the end.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Why desks work in log returns</h2>
       <div class="sl-origin">
@@ -40,7 +101,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">A point walking around a circle</h2>
       <p class="sl-sub">Draw a circle of radius 1 around the origin. Pick an angle θ, swept counterclockwise from 3 o'clock. Sine is the height of the point you land on; cosine is how far sideways it is.</p>
@@ -113,7 +174,7 @@
       <p class="sl-p">This is the whole definition — sine and cosine aren't ratios memorized from a right triangle, they're just the coordinates of a point walking around a circle of radius 1. Every trig identity used later in this curriculum ultimately traces back to this picture.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Radians measure the walk, not the wedge</h2>
       <p class="sl-sub">Degrees split a circle into 360 arbitrary pieces — a leftover convention from ancient Babylonian astronomy. Radians measure the actual arc length walked.</p>
@@ -134,7 +195,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Walk one full lap, and the wave repeats exactly</h2>
       <p class="sl-sub">Because θ + 2π lands on the same point as θ, sine and cosine repeat their values identically every 2π radians — that's periodicity.</p>
@@ -162,7 +223,7 @@
       <div class="sl-quote">This exact repeating property is the whole reason cyclical data — a seasonal effect, an intraday rhythm, a mean-reverting oscillation — is modeled using sine and cosine waves of different frequencies, added together. Decomposing a messy series into a sum of such waves, across many frequencies at once, is what a Fourier transform does — covered properly in a later Signal Processing lesson, built directly on this vocabulary.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">e — the number growth settles on</h2>
       <p class="sl-sub">Compound 100% growth over more and more sub-periods within one unit of time, and the result doesn't run away to infinity — it settles on a specific number.</p>
@@ -192,7 +253,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">ln x runs growth backward</h2>
       <p class="sl-sub">The natural logarithm is defined as the exact inverse of e^x — "what power must e be raised to, to get x?"</p>
@@ -210,7 +271,7 @@
       <div class="sl-quote">These aren't arbitrary rules to memorize — they fall straight out of the exponent rule e^a·e^b = e^(a+b). Let a = ln x and b = ln y, so x = e^a and y = e^b: then xy = e^a·e^b = e^(a+b), and taking ln of both sides gives ln(xy) = a + b = ln x + ln y. That's the whole derivation of the product rule.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">e^(rt) is compounding pushed to infinity</h2>
       <p class="sl-sub">Compounding a rate r, m times per year, for t years, gives (1 + r/m)^(mt). Push m — the compounding frequency — toward infinity, and the formula settles onto e^(rt). $100 at 8%/year for 10 years, at increasing frequency:</p>
@@ -264,7 +325,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Log-returns add up. Simple returns don't.</h2>
       <p class="sl-sub">A simple return is R = (P₁ − P₀)/P₀. A log-return is instead r = ln(P₁/P₀). Chain two periods together and the difference shows up immediately.</p>
@@ -301,7 +362,7 @@
     </section>
 
     <!-- WB:foundation_trig_logs_exponentials-deck:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Circles, compounding and returns that add up</h2>
       <!-- WB:foundation_trig_logs_exponentials:START -->
@@ -312,7 +373,7 @@
     </section>
     <!-- WB:foundation_trig_logs_exponentials-deck:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Two colleagues, one month, two different numbers</h2>
       <p class="sl-sub">A trader wants a month's performance from 21 daily returns. Two colleagues compute it two different ways.</p>
@@ -337,7 +398,7 @@
       <p class="sl-p">Colleague A's mistake is silently ignoring that gains and losses compound multiplicatively, not additively — the same "+50% then −50% is a real loss, not a wash" trap from the returns primer elsewhere in this curriculum. Colleague B's extra step, converting back at the very end with e^(·) − 1, is just the inverse of how log-returns were defined in the first place.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Why desks actually work this way</h2>
       <div class="sl-icard-grid">
@@ -348,7 +409,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">The mistakes worth knowing before you make them</h2>
       <p class="sl-sub">Same underlying math, two very different outcomes depending on whether the habit is in place.</p>
@@ -378,7 +439,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -429,7 +490,26 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative fund report</div>
+    <h3>"Up 50%, then down 50%. So we broke even?"</h3>
+    <p>A small fund made +50% in its first year and −50% in its second. A colleague drafts the report: "Two years, average return 0%, so investors are back where they started." You are asked to check the two-year return. What do you write?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">0%. Add +50% and −50%.<div class="tl-drill-why">Simple returns don't add. The −50% is a percentage of a bigger amount than the +50% was, so the loss is bigger than the gain.</div></li>
+      <li data-verdict="good">Down 25%. Chain the years properly: 1.5 × 0.5 = 0.75, or add the log-returns, ln 1.5 + ln 0.5 = −0.288, and convert back, e<sup>−0.288</sup> − 1 = −25%.<div class="tl-drill-why">Both routes give the same exact answer. \$100 became \$150, then \$75. Log-returns can be added; simple returns have to be multiplied.</div></li>
+      <li data-verdict="ok">Add the simple returns anyway, because over small moves the error is tiny.<div class="tl-drill-why">That shortcut is close for small daily moves, which is why it survives. With moves of 50% it is badly wrong: it says 0% when the truth is −25%.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>How it works out.</strong> This is an illustrative report, not a real fund. \$100 grows to \$150 and then falls to \$75, a loss of 25% over the two years. The bigger the swings, the further simple-return arithmetic drifts from the truth. Log-returns add exactly, whatever the size of the moves.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Returns, Log-Returns &amp; Compounding — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">18</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 5-question self-test?<a href="primer-returns-compounding.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,75 @@
       <p class="sl-lede">There are two mathematically distinct ways to measure "how much did the price move" — the simple percentage return everyone computes first, and the log return every stochastic model in this series is secretly built on. They agree for small moves and diverge for large ones, and that gap is the reason a volatile strategy compounds slower than its own average return suggests, the reason option pricing assumes prices are lognormal<!-- DESK:START -->, and the reason this repo scales its volatility bands by the square root of the horizon rather than the horizon itself<!-- DESK:END -->.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: 100 dollars goes up 50% to 150, then down 50% to 75. The arithmetic average return is 0%, shown as a flat dashed line at 100, but the real result is a 25% loss. Right: volatility drag, roughly sigma squared over two, against an 8% average return: about 0.5% a year at 10% volatility, 2% at 20%, and 12.5% at 50%, where the drag is bigger than the average return itself.">
+      <line class="tlp-line" x1="30" y1="190" x2="290" y2="190"/>
+      <line class="tlp-line" x1="330" y1="190" x2="580" y2="190"/>
+      <line class="tlp-line dash" x1="60" y1="121.8" x2="270" y2="121.8"/>
+      <polyline class="tlp-line blue thick" points="60,121.8 160,53.6 260,155.9"/>
+      <line class="tlp-line red thick" x1="276" y1="121.8" x2="276" y2="155.9"/>
+      <circle class="tlp-blue" cx="60" cy="121.8" r="6"/>
+      <circle class="tlp-green" cx="160" cy="53.6" r="6"/>
+      <circle class="tlp-red" cx="260" cy="155.9" r="6"/>
+      <text class="tlp-text" x="160" y="22" text-anchor="middle" font-size="14" font-weight="700">+50% then −50%</text>
+      <text class="tlp-text2" x="52" y="109.8" font-size="13">$100</text>
+      <text class="tlp-green" x="160" y="41.6" text-anchor="middle" font-size="13" font-weight="700">$150</text>
+      <text class="tlp-red" x="248" y="177.9" text-anchor="middle" font-size="13" font-weight="700">$75</text>
+      <text class="tlp-red" x="284" y="143.9" font-size="13" font-weight="700">−25%</text>
+      <text class="tlp-text3" x="100" y="141.8" text-anchor="middle" font-size="12">average 0%</text>
+      <text class="tlp-text3" x="60" y="206" text-anchor="middle" font-size="12">start</text>
+      <text class="tlp-text3" x="160" y="206" text-anchor="middle" font-size="12">period 1</text>
+      <text class="tlp-text3" x="260" y="206" text-anchor="middle" font-size="12">period 2</text>
+      <rect class="tlp-box blue" x="358" y="185" width="44" height="5"/>
+      <rect class="tlp-box amber" x="433" y="170" width="44" height="20"/>
+      <rect class="tlp-box red" x="508" y="65" width="44" height="125"/>
+      <line class="tlp-line amber dash" x1="335" y1="110" x2="578" y2="110"/>
+      <text class="tlp-text" x="455" y="22" text-anchor="middle" font-size="14" font-weight="700">drag ≈ σ²/2 a year</text>
+      <text class="tlp-amber" x="338" y="102" font-size="12" font-weight="700">8% average return</text>
+      <text class="tlp-text2" x="380" y="178" text-anchor="middle" font-size="12">0.5%</text>
+      <text class="tlp-text2" x="455" y="163" text-anchor="middle" font-size="12">2%</text>
+      <text class="tlp-red" x="530" y="58" text-anchor="middle" font-size="13" font-weight="700">12.5%</text>
+      <text class="tlp-text3" x="380" y="206" text-anchor="middle" font-size="12">σ 10%</text>
+      <text class="tlp-text3" x="455" y="206" text-anchor="middle" font-size="12">σ 20%</text>
+      <text class="tlp-text3" x="530" y="206" text-anchor="middle" font-size="12">σ 50%</text>
+    </svg>
+    <figcaption>Left: a 0% average return that loses a quarter of your money, because the −50% is taken off a bigger base than the +50% was added to. Right: that gap is volatility drag, roughly σ²/2 a year. Double the volatility and the drag quadruples; at 50% volatility it is bigger than an 8% average return.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">A strategy is up fifty percent one year and down fifty the next. Average return, zero. So I'm back where I started?</p>
+      <p data-who="Quant">No. Start with a hundred dollars. Up fifty percent takes you to a hundred and fifty. Down fifty percent of that takes you to seventy-five. You've lost a quarter of your money on a zero average.</p>
+      <p data-who="Trader">Because the loss came off a bigger number.</p>
+      <p data-who="Quant">Exactly. Returns multiply, they don't add. A gain and an equal-sized loss are not opposites once you are compounding.</p>
+      <p data-who="Trader">So which average should I trust?</p>
+      <p data-who="Quant">There are two. The plain average tells you about a typical single period. The geometric average asks: what steady rate, every period, would have turned my start into my actual finish? That one is what happened to your money. Here it is about minus thirteen percent a period.</p>
+      <p data-who="Trader">And the gap between the two?</p>
+      <p data-who="Quant">It's called volatility drag. Roughly, your real growth is the plain average minus half the variance. At twenty percent volatility, that is about two percent a year gone. Double the volatility and the drag quadruples.</p>
+      <p data-who="Trader">Where do log returns come in?</p>
+      <p data-who="Quant">They are the trick that makes multiplying behave like adding. Add up each day's log return and you get the whole period's log return exactly. That is why models work in logs.</p>
+      <p data-who="Trader">And it gives you the square-root-of-time rule?</p>
+      <p data-who="Quant">Yes. If the days are roughly independent, their variances add. So risk grows with the square root of time. Four days is twice one day's volatility, not four times.</p>
+      <p data-who="Trader">Has this drag actually hurt anyone?</p>
+      <p data-who="Quant">Leveraged and inverse funds that reset every day. In a two thousand and nine regulators' example, an index rose two percent over five months while a fund promising twice its daily return fell six percent.</p>
+      <p data-who="Trader">And the extreme case?</p>
+      <p data-who="Quant">The fifth of February, twenty eighteen. Inverse volatility notes had done brilliantly through a calm year. That afternoon the VIX more than doubled in one session. One such note lost more than ninety percent in an evening and was wound up. No run of good days can rebuild wealth that one day takes close to zero.</p>
+      <p data-who="Trader">So the one-liner?</p>
+      <p data-who="Quant">Money compounds, so volatility costs you even when the average looks fine. Always ask which average, and never let one day get near minus one hundred percent.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">The return everyone computes first</h2>
       <p class="sl-sub">The simple return is the plain percentage change — the number on a brokerage statement.</p>
@@ -46,7 +114,7 @@
       <p class="sl-p">Neither definition of "return" in this primer is more correct in the abstract — a 10% simple gain is a real, literal 10% more money, which is exactly what a P&amp;L statement should show. But the moment you start chaining periods together, simple returns and log returns behave completely differently, and that difference is the whole reason quantitative models default to log returns almost everywhere.</p>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Chain two periods, and a cross term shows up</h2>
       <p class="sl-sub">Up 10% one day, up 10% the next — is that 20% total? No.</p>
@@ -66,7 +134,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Log returns: built so the cross term disappears</h2>
       <p class="sl-sub">rₜ = ln(Pₜ / P₍t₋₁₎) — the natural log of the same price ratio.</p>
@@ -85,7 +153,7 @@
       <div class="sl-quote">This is the single most useful property in this primer. It's why models that need to reason about returns over different horizons — a day, a week, a month, an option's time to expiry — almost always work in log-return space: addition is a far simpler operation to build statistics on top of than the multiplicative compounding simple returns require.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Two rulers for the same move</h2>
       <p class="sl-sub">1 + Rₜ = Pₜ/P₍t₋₁₎ = e^rₜ, so rₜ = ln(1+Rₜ) and Rₜ = e^rₜ − 1. Try it live.</p>
@@ -114,7 +182,7 @@
       <p class="sl-p">Notice the log return (9.53%) is a little smaller than the simple return (10.00%) here — that gap grows the bigger the move gets, and it's the reason the two aren't interchangeable once volatility, not just direction, is in play.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Two different "averages" of a return series</h2>
       <p class="sl-sub">"Average return" is a trap if you don't say which average.</p>
@@ -135,7 +203,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">A symmetric round trip always leaves you short</h2>
       <p class="sl-sub">Drag the slider. Whatever the swing size, the ending balance lands below where it started — unless the swing is exactly zero.</p>
@@ -164,7 +232,7 @@
       <p class="sl-p">The −x% is always taken off a bigger base ($150 at x=50%) than the +x% was added to ($100), so the two moves are never true opposites once you're compounding. This is the +50%/−50% worked example, generalized to any swing size — and it's an exact identity, not an approximation.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The general version: g ≈ R̄ − σ²/2</h2>
       <p class="sl-sub">The two-period round trip is exact. Across many periods, the same effect shows up as an approximation called volatility drag.</p>
@@ -187,7 +255,7 @@
     </section>
 
     <!-- WB:compounding-deck:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">+50% then −50% is not break-even</h2>
       <!-- WB:compounding:START -->
@@ -198,7 +266,7 @@
     </section>
     <!-- WB:compounding-deck:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Why volatility scales with √time, not time</h2>
       <p class="sl-sub">A direct algebraic consequence of two facts already derived: log returns add, and variances of independent periods add.</p>
@@ -226,7 +294,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Turning a daily vol number into an annual one</h2>
       <!-- DESK:START --><p class="sl-sub">Exactly the calculation this repo's own engines run — daily σ scaled by √T for weekly, monthly, or annual horizons.</p><!-- DESK:END -->
@@ -251,7 +319,7 @@
       <p class="sl-p">This is the same convenience a risk desk uses to scale a 1-day 95% VaR to a 10-day VaR by multiplying by √10 rather than re-estimating the whole model — cheap, standard, and only as good as the independence assumption it rests on.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
@@ -266,7 +334,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11 · It actually happened</div>
       <h2 class="sl-h2">Products that compound every day</h2>
       <div class="sl-callout amber">
@@ -286,7 +354,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <!-- DESK:START -->
@@ -301,7 +369,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -352,7 +420,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+
+    <section class="sl-slide sl-vark" data-slide="17">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2018-02-05">
+    <div class="tl-drill-label">Scenario drill · 5 February 2018</div>
+    <h3>A product that compounds every day, after a very good year</h3>
+    <p>It is Monday 5 February 2018, before the US open. You hold an inverse-volatility note: each day it returns minus one times a VIX-futures index, then resets. Through the calm of 2017 it compounded strongly, and its average daily return looks excellent. You are deciding how big a position to keep. How should you size it?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Size it on the average daily return. It has been excellent, so a big position is justified.<div class="tl-drill-why">The arithmetic average says nothing about what one terrible day does to compounded wealth. Your result is a product of daily gross returns, and a single day near −100% wipes out the whole product, whatever the average was.</div></li>
+      <li data-verdict="good">Size it so that losing almost all of it in one day is survivable.<div class="tl-drill-why">This is the lesson in one rule. The note compounds daily, so one day near −100% leaves almost nothing to compound from, and no run of good days can rebuild it. Size for the day the product goes to zero, not for the average day.</div></li>
+      <li data-verdict="ok">Keep the size, but plan to cut if the VIX rises sharply over several days.<div class="tl-drill-why">A sensible instinct, but it assumes the damage arrives slowly. A daily-reset product can lose almost everything in one session, before any multi-day plan kicks in.</div></li>
+      <li data-verdict="bad">Add to it. Volatility drag is a slow, long-run cost, and you only plan to hold for a few weeks.<div class="tl-drill-why">Drag is the slow part of the risk. The fast part is a single jump day far outside the small-move zone, where the drag formula stops applying and the exact product, with its −100% floor, takes over.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> That afternoon the VIX index more than doubled in a single session, its largest one-day percentage rise on record. Credit Suisse's XIV note, built to return the inverse of a VIX-futures index each day, lost more than 90% of its value in one evening. That triggered a clause letting the issuer redeem it, and it was wound up. A similar ProShares fund survived but later cut its target from −1× to −0.5× the daily index.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="18">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

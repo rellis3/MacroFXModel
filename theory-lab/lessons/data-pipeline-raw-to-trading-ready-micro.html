@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">The Data Pipeline — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">18</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full stage-by-stage writeup, worked example, and a 5-question self-test?<a href="data-pipeline-raw-to-trading-ready.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,187 @@
       <p class="sl-lede">A raw vendor feed and a backtest-ready dataset are not the same object. Between them sits a chain of stages — capture, validation, cleaning, normalization, bar construction, storage — and one particular choice buried inside that chain, how raw ticks get grouped into the bars a strategy actually sees, quietly decides whether the returns a model consumes behave anything like the well-mixed, independent draws most statistics secretly assumes.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 235" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One trading hour from the lesson's worked example, split into a 15-minute lull with about 200 ticks, a 5-minute release burst with about 4,000 ticks, and a 40-minute quiet stretch with about 300 ticks. One-minute time bars give those stretches 15, 5 and 40 bars: evenly spaced, whatever happens. Volume bars sized for about 60 bars an hour give them 2 to 3, 50 to 55 and about 4 bars, crowding into the burst. The release window holds 89% of the ticks but only 5 of the 60 time bars.">
+      <rect class="tlp-box blue" x="110" y="69" width="117.5" height="3"/>
+      <rect class="tlp-amber" x="227.5" y="22" width="39.2" height="50" opacity=".85"/>
+      <rect class="tlp-box blue" x="266.7" y="70" width="313.3" height="2"/>
+      <line class="tlp-line" x1="110" y1="72" x2="580" y2="72"/>
+      <line class="tlp-line blue" x1="110.0" y1="92" x2="110.0" y2="118"/>
+      <line class="tlp-line blue" x1="117.8" y1="92" x2="117.8" y2="118"/>
+      <line class="tlp-line blue" x1="125.7" y1="92" x2="125.7" y2="118"/>
+      <line class="tlp-line blue" x1="133.5" y1="92" x2="133.5" y2="118"/>
+      <line class="tlp-line blue" x1="141.3" y1="92" x2="141.3" y2="118"/>
+      <line class="tlp-line blue" x1="149.2" y1="92" x2="149.2" y2="118"/>
+      <line class="tlp-line blue" x1="157.0" y1="92" x2="157.0" y2="118"/>
+      <line class="tlp-line blue" x1="164.8" y1="92" x2="164.8" y2="118"/>
+      <line class="tlp-line blue" x1="172.7" y1="92" x2="172.7" y2="118"/>
+      <line class="tlp-line blue" x1="180.5" y1="92" x2="180.5" y2="118"/>
+      <line class="tlp-line blue" x1="188.3" y1="92" x2="188.3" y2="118"/>
+      <line class="tlp-line blue" x1="196.2" y1="92" x2="196.2" y2="118"/>
+      <line class="tlp-line blue" x1="204.0" y1="92" x2="204.0" y2="118"/>
+      <line class="tlp-line blue" x1="211.8" y1="92" x2="211.8" y2="118"/>
+      <line class="tlp-line blue" x1="219.7" y1="92" x2="219.7" y2="118"/>
+      <line class="tlp-line blue" x1="227.5" y1="92" x2="227.5" y2="118"/>
+      <line class="tlp-line blue" x1="235.3" y1="92" x2="235.3" y2="118"/>
+      <line class="tlp-line blue" x1="243.2" y1="92" x2="243.2" y2="118"/>
+      <line class="tlp-line blue" x1="251.0" y1="92" x2="251.0" y2="118"/>
+      <line class="tlp-line blue" x1="258.8" y1="92" x2="258.8" y2="118"/>
+      <line class="tlp-line blue" x1="266.7" y1="92" x2="266.7" y2="118"/>
+      <line class="tlp-line blue" x1="274.5" y1="92" x2="274.5" y2="118"/>
+      <line class="tlp-line blue" x1="282.3" y1="92" x2="282.3" y2="118"/>
+      <line class="tlp-line blue" x1="290.2" y1="92" x2="290.2" y2="118"/>
+      <line class="tlp-line blue" x1="298.0" y1="92" x2="298.0" y2="118"/>
+      <line class="tlp-line blue" x1="305.8" y1="92" x2="305.8" y2="118"/>
+      <line class="tlp-line blue" x1="313.7" y1="92" x2="313.7" y2="118"/>
+      <line class="tlp-line blue" x1="321.5" y1="92" x2="321.5" y2="118"/>
+      <line class="tlp-line blue" x1="329.3" y1="92" x2="329.3" y2="118"/>
+      <line class="tlp-line blue" x1="337.2" y1="92" x2="337.2" y2="118"/>
+      <line class="tlp-line blue" x1="345.0" y1="92" x2="345.0" y2="118"/>
+      <line class="tlp-line blue" x1="352.8" y1="92" x2="352.8" y2="118"/>
+      <line class="tlp-line blue" x1="360.7" y1="92" x2="360.7" y2="118"/>
+      <line class="tlp-line blue" x1="368.5" y1="92" x2="368.5" y2="118"/>
+      <line class="tlp-line blue" x1="376.3" y1="92" x2="376.3" y2="118"/>
+      <line class="tlp-line blue" x1="384.2" y1="92" x2="384.2" y2="118"/>
+      <line class="tlp-line blue" x1="392.0" y1="92" x2="392.0" y2="118"/>
+      <line class="tlp-line blue" x1="399.8" y1="92" x2="399.8" y2="118"/>
+      <line class="tlp-line blue" x1="407.7" y1="92" x2="407.7" y2="118"/>
+      <line class="tlp-line blue" x1="415.5" y1="92" x2="415.5" y2="118"/>
+      <line class="tlp-line blue" x1="423.3" y1="92" x2="423.3" y2="118"/>
+      <line class="tlp-line blue" x1="431.2" y1="92" x2="431.2" y2="118"/>
+      <line class="tlp-line blue" x1="439.0" y1="92" x2="439.0" y2="118"/>
+      <line class="tlp-line blue" x1="446.8" y1="92" x2="446.8" y2="118"/>
+      <line class="tlp-line blue" x1="454.7" y1="92" x2="454.7" y2="118"/>
+      <line class="tlp-line blue" x1="462.5" y1="92" x2="462.5" y2="118"/>
+      <line class="tlp-line blue" x1="470.3" y1="92" x2="470.3" y2="118"/>
+      <line class="tlp-line blue" x1="478.2" y1="92" x2="478.2" y2="118"/>
+      <line class="tlp-line blue" x1="486.0" y1="92" x2="486.0" y2="118"/>
+      <line class="tlp-line blue" x1="493.8" y1="92" x2="493.8" y2="118"/>
+      <line class="tlp-line blue" x1="501.7" y1="92" x2="501.7" y2="118"/>
+      <line class="tlp-line blue" x1="509.5" y1="92" x2="509.5" y2="118"/>
+      <line class="tlp-line blue" x1="517.3" y1="92" x2="517.3" y2="118"/>
+      <line class="tlp-line blue" x1="525.2" y1="92" x2="525.2" y2="118"/>
+      <line class="tlp-line blue" x1="533.0" y1="92" x2="533.0" y2="118"/>
+      <line class="tlp-line blue" x1="540.8" y1="92" x2="540.8" y2="118"/>
+      <line class="tlp-line blue" x1="548.7" y1="92" x2="548.7" y2="118"/>
+      <line class="tlp-line blue" x1="556.5" y1="92" x2="556.5" y2="118"/>
+      <line class="tlp-line blue" x1="564.3" y1="92" x2="564.3" y2="118"/>
+      <line class="tlp-line blue" x1="572.2" y1="92" x2="572.2" y2="118"/>
+      <line class="tlp-line blue" x1="580.0" y1="92" x2="580.0" y2="118"/>
+      <line class="tlp-line green" x1="110.0" y1="154" x2="110.0" y2="180"/>
+      <line class="tlp-line green" x1="154.1" y1="154" x2="154.1" y2="180"/>
+      <line class="tlp-line green" x1="198.1" y1="154" x2="198.1" y2="180"/>
+      <line class="tlp-line green" x1="227.7" y1="154" x2="227.7" y2="180"/>
+      <line class="tlp-line green" x1="228.5" y1="154" x2="228.5" y2="180"/>
+      <line class="tlp-line green" x1="229.2" y1="154" x2="229.2" y2="180"/>
+      <line class="tlp-line green" x1="229.9" y1="154" x2="229.9" y2="180"/>
+      <line class="tlp-line green" x1="230.7" y1="154" x2="230.7" y2="180"/>
+      <line class="tlp-line green" x1="231.4" y1="154" x2="231.4" y2="180"/>
+      <line class="tlp-line green" x1="232.2" y1="154" x2="232.2" y2="180"/>
+      <line class="tlp-line green" x1="232.9" y1="154" x2="232.9" y2="180"/>
+      <line class="tlp-line green" x1="233.6" y1="154" x2="233.6" y2="180"/>
+      <line class="tlp-line green" x1="234.4" y1="154" x2="234.4" y2="180"/>
+      <line class="tlp-line green" x1="235.1" y1="154" x2="235.1" y2="180"/>
+      <line class="tlp-line green" x1="235.8" y1="154" x2="235.8" y2="180"/>
+      <line class="tlp-line green" x1="236.6" y1="154" x2="236.6" y2="180"/>
+      <line class="tlp-line green" x1="237.3" y1="154" x2="237.3" y2="180"/>
+      <line class="tlp-line green" x1="238.0" y1="154" x2="238.0" y2="180"/>
+      <line class="tlp-line green" x1="238.8" y1="154" x2="238.8" y2="180"/>
+      <line class="tlp-line green" x1="239.5" y1="154" x2="239.5" y2="180"/>
+      <line class="tlp-line green" x1="240.2" y1="154" x2="240.2" y2="180"/>
+      <line class="tlp-line green" x1="241.0" y1="154" x2="241.0" y2="180"/>
+      <line class="tlp-line green" x1="241.7" y1="154" x2="241.7" y2="180"/>
+      <line class="tlp-line green" x1="242.4" y1="154" x2="242.4" y2="180"/>
+      <line class="tlp-line green" x1="243.2" y1="154" x2="243.2" y2="180"/>
+      <line class="tlp-line green" x1="243.9" y1="154" x2="243.9" y2="180"/>
+      <line class="tlp-line green" x1="244.6" y1="154" x2="244.6" y2="180"/>
+      <line class="tlp-line green" x1="245.4" y1="154" x2="245.4" y2="180"/>
+      <line class="tlp-line green" x1="246.1" y1="154" x2="246.1" y2="180"/>
+      <line class="tlp-line green" x1="246.8" y1="154" x2="246.8" y2="180"/>
+      <line class="tlp-line green" x1="247.6" y1="154" x2="247.6" y2="180"/>
+      <line class="tlp-line green" x1="248.3" y1="154" x2="248.3" y2="180"/>
+      <line class="tlp-line green" x1="249.0" y1="154" x2="249.0" y2="180"/>
+      <line class="tlp-line green" x1="249.8" y1="154" x2="249.8" y2="180"/>
+      <line class="tlp-line green" x1="250.5" y1="154" x2="250.5" y2="180"/>
+      <line class="tlp-line green" x1="251.2" y1="154" x2="251.2" y2="180"/>
+      <line class="tlp-line green" x1="252.0" y1="154" x2="252.0" y2="180"/>
+      <line class="tlp-line green" x1="252.7" y1="154" x2="252.7" y2="180"/>
+      <line class="tlp-line green" x1="253.4" y1="154" x2="253.4" y2="180"/>
+      <line class="tlp-line green" x1="254.2" y1="154" x2="254.2" y2="180"/>
+      <line class="tlp-line green" x1="254.9" y1="154" x2="254.9" y2="180"/>
+      <line class="tlp-line green" x1="255.7" y1="154" x2="255.7" y2="180"/>
+      <line class="tlp-line green" x1="256.4" y1="154" x2="256.4" y2="180"/>
+      <line class="tlp-line green" x1="257.1" y1="154" x2="257.1" y2="180"/>
+      <line class="tlp-line green" x1="257.9" y1="154" x2="257.9" y2="180"/>
+      <line class="tlp-line green" x1="258.6" y1="154" x2="258.6" y2="180"/>
+      <line class="tlp-line green" x1="259.3" y1="154" x2="259.3" y2="180"/>
+      <line class="tlp-line green" x1="260.1" y1="154" x2="260.1" y2="180"/>
+      <line class="tlp-line green" x1="260.8" y1="154" x2="260.8" y2="180"/>
+      <line class="tlp-line green" x1="261.5" y1="154" x2="261.5" y2="180"/>
+      <line class="tlp-line green" x1="262.3" y1="154" x2="262.3" y2="180"/>
+      <line class="tlp-line green" x1="263.0" y1="154" x2="263.0" y2="180"/>
+      <line class="tlp-line green" x1="263.7" y1="154" x2="263.7" y2="180"/>
+      <line class="tlp-line green" x1="264.5" y1="154" x2="264.5" y2="180"/>
+      <line class="tlp-line green" x1="265.2" y1="154" x2="265.2" y2="180"/>
+      <line class="tlp-line green" x1="265.9" y1="154" x2="265.9" y2="180"/>
+      <line class="tlp-line green" x1="266.7" y1="154" x2="266.7" y2="180"/>
+      <line class="tlp-line green" x1="345.0" y1="154" x2="345.0" y2="180"/>
+      <line class="tlp-line green" x1="423.3" y1="154" x2="423.3" y2="180"/>
+      <line class="tlp-line green" x1="501.7" y1="154" x2="501.7" y2="180"/>
+      <line class="tlp-line green" x1="580.0" y1="154" x2="580.0" y2="180"/>
+      <text class="tlp-text" x="10" y="62" font-size="13" font-weight="700">ticks / min</text>
+      <text class="tlp-blue" x="10" y="110" font-size="13" font-weight="700">time bars</text>
+      <text class="tlp-text3" x="10" y="126" font-size="12">every minute</text>
+      <text class="tlp-green" x="10" y="172" font-size="13" font-weight="700">volume bars</text>
+      <text class="tlp-text3" x="10" y="188" font-size="12">every 75 ticks</text>
+      <text class="tlp-text3" x="168.8" y="62" text-anchor="middle" font-size="12">lull ≈ 13</text>
+      <text class="tlp-amber" x="276" y="36" font-size="13" font-weight="700">release burst ≈ 800 ticks/min</text>
+      <text class="tlp-text3" x="423.3" y="62" text-anchor="middle" font-size="12">quiet ≈ 8</text>
+      <text class="tlp-blue" x="168.8" y="136" text-anchor="middle" font-size="13" font-weight="700">15</text>
+      <text class="tlp-blue" x="247.1" y="136" text-anchor="middle" font-size="13" font-weight="700">5</text>
+      <text class="tlp-blue" x="423.3" y="136" text-anchor="middle" font-size="13" font-weight="700">40</text>
+      <text class="tlp-green" x="168.8" y="198" text-anchor="middle" font-size="13" font-weight="700">2–3</text>
+      <text class="tlp-green" x="247.1" y="198" text-anchor="middle" font-size="13" font-weight="700">50–55</text>
+      <text class="tlp-green" x="423.3" y="198" text-anchor="middle" font-size="13" font-weight="700">≈ 4</text>
+      <text class="tlp-text2" x="345" y="224" text-anchor="middle" font-size="13">the release's 5 minutes: 89% of the ticks, 5 of 60 time bars</text>
+    </svg>
+    <figcaption>Same hour, same ticks, two clocks. The time clock spaces its bars evenly and gives the most informative five minutes only 5 of 60 bars. The activity clock speeds up when trading does, so each bar carries a similar amount of real activity.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I download prices from a vendor and backtest on them. What's wrong with that?</p>
+      <p data-who="Quant">Nothing, if six things already happened in between. A raw feed is groceries off the truck, not a plated meal.</p>
+      <p data-who="Trader">Six things?</p>
+      <p data-who="Quant">Capture the feed exactly as it arrived. Check it: missing fields, gaps, impossible prices. Clean what the checks flagged. Adjust for splits, dividends and futures rolls. Store one versioned copy everyone uses. And finally, when someone asks about a past date, only hand out what was knowable on that date.</p>
+      <p data-who="Trader">Why not fix bad ticks the moment they arrive?</p>
+      <p data-who="Quant">Because then you lose the original record. You can never check your fix, or show what the feed really said. Capture first, fix later, in a separate step you can audit.</p>
+      <p data-who="Trader">Where do bars come in?</p>
+      <p data-who="Quant">That is a choice hiding inside capture. Most people close a bar every minute. That is a time clock. You can also close a bar every so many trades, or every so much volume, or every so many dollars traded.</p>
+      <p data-who="Trader">Does it matter which?</p>
+      <p data-who="Quant">Take an hour with a data release in it. About four thousand of the hour's four and a half thousand ticks land in five minutes around the release. That is eighty-nine percent of the activity. One-minute bars give those five minutes just five bars out of sixty. A volume clock tuned to sixty bars an hour gives them about fifty.</p>
+      <p data-who="Trader">So time bars blur the busiest part.</p>
+      <p data-who="Quant">And over-sample the quiet parts. Returns from volume or dollar bars tend to sit closer to the well-behaved shape most statistical tools assume. Time bars aren't wrong, they're just the weaker default.</p>
+      <p data-who="Trader">Has the raw record itself ever changed?</p>
+      <p data-who="Quant">The Flash Crash, sixth of May, twenty ten. The Dow fell close to a thousand points in minutes. Accenture traded at one cent. After the close, the venues cancelled over twenty thousand trades that were more than sixty percent away from the twenty to three price. So there are two versions of that afternoon: the raw tape and the corrected one.</p>
+      <p data-who="Trader">And my dataset holds which one?</p>
+      <p data-who="Quant">That's the point. It depends on when it was built and how. A pipeline that kept the raw prints and applied the cancellations as a dated step can tell you. One that didn't, can't.</p>
+      <p data-who="Trader">One line to remember?</p>
+      <p data-who="Quant">Capture everything as it arrived, correct it in separate steps you can audit, and choose your bar clock on purpose.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">A raw feed is groceries, not a plated meal</h2>
       <p class="sl-sub">Nobody eats straight off the delivery truck — and no strategy trades straight off the raw tick feed.</p>
@@ -39,7 +219,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Six stages between raw and trading-ready</h2>
       <p class="sl-sub">Each stage closes a specific way the earlier ones can still leave the data unfit to build a strategy on.</p>
@@ -54,7 +234,7 @@
       <p class="sl-p">Only data that has passed all six stages is fit to build a feature on, run a backtest against, or drive a live signal from. A dataset that merely "looks clean" hasn't necessarily passed any of them.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The pipeline, compressed into one flow</h2>
       <p class="sl-sub">Five visual stops standing in for the six above — bar construction is the one this deck lingers on.</p>
@@ -111,7 +291,7 @@
     </section>
 
     <!-- WB:data_pipeline_raw_to_trading_ready-deck:START -->
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Raw feed to trading-ready, drawn step by step</h2>
       <!-- WB:data_pipeline_raw_to_trading_ready:START -->
@@ -122,7 +302,7 @@
     </section>
     <!-- WB:data_pipeline_raw_to_trading_ready-deck:END -->
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Before any of that: how do ticks become bars?</h2>
       <p class="sl-sub">A "bar" is one open/high/low/close snapshot. The question is what triggers the shutter to click.</p>
@@ -135,7 +315,7 @@
       <p class="sl-p">These four standard sampling clocks come from Marcos López de Prado's <em>Advances in Financial Machine Learning</em> (Wiley, 2018), Chapter 2. Bar construction is a choice made at ingestion — though the bars themselves are best built from ticks that have already been validated and cleaned — and it's the choice this deck spends the rest of its time on.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Same 14 ticks, three different sampling clocks</h2>
       <p class="sl-sub">A quiet 5 minutes, then a short burst of activity, then quiet again — a realistic 10-minute slice of an FX pair. Watch where each clock draws its bar boundaries.</p>
@@ -248,7 +428,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The default is the weak one</h2>
       <p class="sl-p">Trading activity is not smooth across a session — it clusters around the open, the close, and news releases, and thins out in between. A fixed wall-clock interval doesn't know this: it samples the same way regardless. A time bar during a quiet stretch is built from a handful of ticks (oversampling a period with little genuine information turnover), while a time bar during a burst is built from a huge pile of ticks compressed into the same fixed window (undersampling a period where a great deal actually happened).</p>
@@ -259,7 +439,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Turn up the intensity</h2>
       <p class="sl-sub">Same fixed 5-minute window. Drag the slider to make trading activity inside it burstier, and watch what each clock does.</p>
@@ -290,7 +470,7 @@
       <p class="sl-p">The time-bar count never moves — it's a property of the clock, not the market. The volume-bar count tracks the slider directly, because it's a property of trading activity itself. This is the entire oversampling/undersampling effect from the last slide, made draggable.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">One hour, one news release, two very different bar counts</h2>
       <p class="sl-sub">A liquid FX pair, one trading hour with a scheduled data release 20 minutes in: ~200 ticks in the 15 minutes before, a burst of ~4,000 ticks in the 5 minutes around it, ~300 ticks in the remaining 40 minutes.</p>
@@ -307,7 +487,7 @@
       <div class="sl-quote">The time-bar version has quietly under-represented the single most informative five minutes of the hour, and over-represented the quiet stretches either side of it — the same oversampling/undersampling pattern from Section 6, made concrete with actual tick counts.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Try it — how many bars would your data produce?</h2>
       <p class="sl-sub">Change the numbers below. Left: a volume-bar day. Right: a fixed time-bar day, for comparison.</p>
@@ -341,7 +521,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this quietly breaks down in practice</h2>
       <div class="sl-icard-grid">
@@ -352,7 +532,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11 · It actually happened</div>
       <h2 class="sl-h2">6 May 2010: the Flash Crash</h2>
       <div class="sl-callout amber">
@@ -372,7 +552,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <!-- DESK:START -->
       <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
@@ -389,7 +569,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -440,7 +620,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+
+    <section class="sl-slide sl-vark" data-slide="17">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2010-05-06">
+    <div class="tl-drill-label">Scenario drill · 6 May 2010</div>
+    <h3>Your backtest loves the Flash Crash afternoon</h3>
+    <p>You are building one-minute bars for US stocks to backtest a buy-the-dip strategy. Your vendor's tape for 6 May 2010 shows Accenture trading at one cent in the afternoon, and the backtest books a spectacular profit buying it there. You know the venues later cancelled many trades from that afternoon. What do you do with the data?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Keep the raw prints in the bars. They really printed, so they are real data.<div class="tl-drill-why">They printed, and many were then cancelled. A bar built from them has a low no one could have traded at the size a backtest assumes. The profit is an artefact of the data, not of the strategy.</div></li>
+      <li data-verdict="bad">Delete the whole day from the dataset so it can't distort anything.<div class="tl-drill-why">Removing a stressed day quietly makes the backtest look calmer than history was. The strategy's behaviour on a day like that is exactly what you need to see, on a version of the tape that reflects tradeable prices.</div></li>
+      <li data-verdict="good">Keep the raw capture, apply the venues' cancellations as a separate, dated cleaning step, build bars from the corrected tape, and record which version the backtest used.<div class="tl-drill-why">Capture first, correct in a logged step. You can serve either version, explain the difference, and the backtest no longer books fills at prices that were cancelled.</div></li>
+      <li data-verdict="ok">Swap in a vendor's already-corrected tape and discard the raw one.<div class="tl-drill-why">The bars will be closer to tradeable, but you lose the record of what a live system would have seen that afternoon, and you can't audit how the correction was made.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> According to the joint SEC–CFTC staff report, a large fund's algorithm sold 75,000 E-mini S&amp;P 500 contracts, about $4.1 billion, into a thinning market. The Dow fell close to 1,000 points, about 9%, then recovered most of it in roughly half an hour. After the close the exchanges and FINRA cancelled over 20,000 trades in more than 300 securities that were more than 60% from each stock's 2:40 p.m. price. Single-stock circuit breakers and a ban on stub quotes followed later that year.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="18">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

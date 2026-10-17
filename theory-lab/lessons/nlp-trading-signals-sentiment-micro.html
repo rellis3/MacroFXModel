@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">NLP for Trading Signals — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">19</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, citations, and a 5-question self-test?<a href="nlp-trading-signals-sentiment.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,75 @@
       <p class="sl-lede">A central bank statement, a news headline, an earnings-call transcript — none of it is a number, and every trading model built so far in this curriculum only eats numbers. This lesson closes that gap: how raw text gets turned into a numeric feature, why "the committee remains attentive to inflation risks" is a loaded phrase a machine can now be taught to weigh correctly, and why the clock on a text-based signal is far easier to get quietly, catastrophically wrong than the clock on a price series ever is.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top: a pipeline of four boxes. A Fed statement's raw text goes to Word2Vec, which gives one vector per word, then to BERT, which reads the whole sentence in context, then to FinBERT, which is trained on finance text and outputs a score. Bottom: an illustrative hawkish score across three statements, plus 0.10 for 'inflation has moderated', plus 0.55 for 'highly attentive to inflation risks', and plus 0.35 for 'further tightening will depend on incoming data'. The trend carries the information. A closing line warns that turning text into a number always works, but whether the number predicts anything needs its own test.">
+      <rect class="tlp-box" x="10" y="24" width="130" height="56" rx="6"/>
+      <rect class="tlp-box blue" x="160" y="24" width="130" height="56" rx="6"/>
+      <rect class="tlp-box green" x="310" y="24" width="130" height="56" rx="6"/>
+      <rect class="tlp-box purple" x="460" y="24" width="130" height="56" rx="6"/>
+      <text class="tlp-text" x="75" y="47" text-anchor="middle" font-size="13" font-weight="700">Fed statement</text>
+      <text class="tlp-text2" x="75" y="66" text-anchor="middle" font-size="12">raw text</text>
+      <text class="tlp-blue" x="225" y="47" text-anchor="middle" font-size="13" font-weight="700">Word2Vec</text>
+      <text class="tlp-text2" x="225" y="66" text-anchor="middle" font-size="12">one vector per word</text>
+      <text class="tlp-green" x="375" y="47" text-anchor="middle" font-size="13" font-weight="700">BERT</text>
+      <text class="tlp-text2" x="375" y="66" text-anchor="middle" font-size="12">reads in context</text>
+      <text class="tlp-purple" x="525" y="47" text-anchor="middle" font-size="13" font-weight="700">FinBERT</text>
+      <text class="tlp-text2" x="525" y="66" text-anchor="middle" font-size="12">trained on finance</text>
+      <text class="tlp-text3" x="150" y="57" text-anchor="middle" font-size="14">→</text>
+      <text class="tlp-text3" x="300" y="57" text-anchor="middle" font-size="14">→</text>
+      <text class="tlp-text3" x="450" y="57" text-anchor="middle" font-size="14">→</text>
+      <text class="tlp-text" x="10" y="106" font-size="13" font-weight="700">Out comes a score. Illustrative hawkish score, three statements:</text>
+      <line class="tlp-line" x1="60" y1="214" x2="560" y2="214"/>
+      <text class="tlp-text3" x="54" y="218" text-anchor="end" font-size="12">0</text>
+      <polyline class="tlp-line amber thick" points="130,201 300,142.5 470,168.5"/>
+      <circle class="tlp-amber" cx="130" cy="201" r="6"/>
+      <circle class="tlp-red" cx="300" cy="142.5" r="7"/>
+      <circle class="tlp-amber" cx="470" cy="168.5" r="6"/>
+      <text class="tlp-amber" x="130" y="188" text-anchor="middle" font-size="13" font-weight="700">+0.10</text>
+      <text class="tlp-red" x="300" y="129" text-anchor="middle" font-size="13" font-weight="700">+0.55 hawkish jump</text>
+      <text class="tlp-amber" x="470" y="155" text-anchor="middle" font-size="13" font-weight="700">+0.35</text>
+      <text class="tlp-text2" x="130" y="234" text-anchor="middle" font-size="12">t−2 · “has moderated”</text>
+      <text class="tlp-text2" x="300" y="234" text-anchor="middle" font-size="12">t−1 · “highly attentive”</text>
+      <text class="tlp-text2" x="470" y="234" text-anchor="middle" font-size="12">t · “depends on data”</text>
+      <text class="tlp-red" x="300" y="254" text-anchor="middle" font-size="13" font-weight="700">Text into a number always works. Whether the number predicts needs its own test.</text>
+    </svg>
+    <figcaption>Each step reads text more like an analyst does: first words by the company they keep, then whole sentences, then finance language as finance means it. The scores are the lesson's illustrative example. The trend across meetings, not one reading, is what carries information.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">When the Fed statement drops, I read it and get a feel: more hawkish than last time, or less. Can a model do that?</p>
+      <p data-who="Quant">That is exactly what this lesson builds. Turn that feel into a number a system can use.</p>
+      <p data-who="Trader">Where do you start?</p>
+      <p data-who="Quant">With words. The old way just counts them, and to a counter, inflation is no closer to risk than to coffee. Word2Vec, from 2013, fixes that. It learns a short list of numbers for each word from the company it keeps.</p>
+      <p data-who="Trader">So hawkish ends up near tighten and raise.</p>
+      <p data-who="Quant">Right, without anyone labeling them. But it has a flaw. Each word gets one fixed vector. Hold, in "the Fed will hold rates", gets the same vector as hold in "hold my coffee".</p>
+      <p data-who="Trader">And BERT fixes that?</p>
+      <p data-who="Quant">Yes. BERT, from 2019, reads the whole sentence at once, in both directions, so each word is read in its context. FinBERT is BERT trained further on financial text, so it knows that "attentive to inflation risks" is a loaded phrase, not filler.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">The lesson sketches three statements. "Inflation has moderated" scores about plus zero point one on a hawkish scale. "Highly attentive to inflation risks" jumps to plus zero point five five. "Further tightening will depend on incoming data" slips back to plus zero point three five.</p>
+      <p data-who="Trader">So I'd trade the jump?</p>
+      <p data-who="Quant">Careful. One reading is noisy. Models trip on sarcasm and hedges, and zero point five five is not a fifty-five percent chance of anything. The trend across meetings is the useful part.</p>
+      <p data-who="Trader">Has text ever actually worked as a signal?</p>
+      <p data-who="Quant">The famous case says be careful. In 2010 a paper turned nearly ten million tweets into seven mood series. One mood, "Calm", called the Dow's daily direction with eighty-seven point six percent accuracy.</p>
+      <p data-who="Trader">That sounds incredible.</p>
+      <p data-who="Quant">It was tested on a few weeks of December 2008, after trying seven series at several lags. A fund launched to trade it closed within about a year, and a 2017 replication could not find the effect.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Turning text into a number always works. Whether that number predicts anything is a separate claim, and only an out-of-sample test can settle it.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · Closing the loop</div>
       <h2 class="sl-h2">Six lessons, one arc — and this is the last one</h2>
       <p class="sl-sub">Deep Learning &amp; Modern ML for Trading, start to finish. This is lesson 6 of 6 — and the final lesson of the entire Theory Lab curriculum.</p>
@@ -42,7 +110,7 @@
       <div class="sl-quote">Every lesson before this one assumed the input was already numeric — a price, a return, a spread. This lesson is the one honest admission that a huge share of real market-moving information never arrives as a number at all. It arrives as a paragraph, and something has to read it first.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">The information is real. The format is the problem.</h2>
       <p class="sl-sub">None of these arrive as a clean numeric feed — and a purely numeric model never sees them.</p>
@@ -54,7 +122,7 @@
       <p class="sl-p">A trained human analyst reads all three fluently, by eye, and forms a fast holistic impression — "this reads more hawkish than last time." This lesson's whole arc is making that impression explicit and reproducible: first teach a model what individual <strong>words</strong> mean, then teach it to read a <strong>whole sentence</strong> at once the way a human does, then specialize that reading skill for finance specifically.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Step one: give every word a location, not a label</h2>
       <p class="sl-sub">A word embedding is a dense vector — a few hundred real numbers — positioned so words used in similar contexts end up near each other.</p>
@@ -94,7 +162,7 @@
       <p class="sl-p" style="margin-top:10px">Nobody hand-labels these two neighborhoods. They fall out purely from which words tend to appear near which other words, across a huge body of ordinary text — a training signal that needs no human annotation at all, which is exactly why this technique scales.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Two ways to train the same idea</h2>
       <p class="sl-sub">Word2Vec's two objectives are mirror images of each other — both trained on nothing but raw, unlabeled text.</p>
@@ -116,7 +184,7 @@
       <p class="sl-p">A well-known side effect of this geometry: vector arithmetic starts capturing relationships, not just similarity — the classic example is vec(king) − vec(man) + vec(woman) landing close to vec(queen). The space encodes "royal" and "gender" as roughly consistent directions, entirely as a byproduct of the prediction task.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">One fixed vector per word is the limitation — attention is the fix</h2>
       <p class="sl-sub">"Hold" gets the same embedding whether it means "the Fed will hold rates" or "hold my coffee." That's the exact problem the previous lesson's architecture solves.</p>
@@ -128,7 +196,7 @@
       <div class="sl-quote">This is the payoff for having built the attention mechanism first. A transformer reading a sentence and a transformer reading a price series are the same underlying trick, pointed at two different kinds of sequence — <strong>every position attending to every other position</strong>, weighted by learned relevance, instead of information having to survive being carried forward one step at a time.</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">FinBERT: the same reader, after finance school</h2>
       <p class="sl-sub">FinBERT is stated plainly: BERT, further trained (fine-tuned) on financial text specifically.</p>
@@ -145,7 +213,7 @@
       <p class="sl-p">The output is a sentiment score produced directly from raw text — a probability over positive/negative/neutral, or, framed for a central-bank use case, a hawkish/dovish score — with no human hand-scoring that specific sentence. It's the direct computational analogue of an analyst's fluent, context-aware read.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Context-blind vs. context-aware, on the same sentence</h2>
       <p class="sl-sub">The whole reason FinBERT-style scoring replaced simple word-counting: negation.</p>
@@ -167,7 +235,7 @@
       <p class="sl-p" style="margin-top:14px">This is not a contrived edge case. Hedge phrases, qualified statements, and negation are exactly the register central bank statements and earnings-call answers are written in — a bag-of-words scorer is structurally blind to the part of the sentence that usually carries the real signal.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The timestamp on the article is not when the market saw it</h2>
       <p class="sl-sub">This is the trap that's specific to text — a price bar's timestamp is rarely in question; an article's is, constantly.</p>
@@ -193,7 +261,7 @@
       <p class="sl-p">Either error quietly leaks information from <em>after</em> the true decision moment into a backtest that thinks it's trading strictly on the "claimed" timestamp. The backtest never sees an obviously impossible input — it just silently gets to react a little earlier than any real trader ever could have.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Drag the lag — watch how much of the move gets "seen" early</h2>
       <p class="sl-sub">Assume a typical news-driven move fully plays out over 20 minutes after the true decision moment. How much of it has already happened by the time the dataset says the article existed?</p>
@@ -222,7 +290,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Put a number on the leak</h2>
       <p class="sl-sub">A simpler, general version of the same idea — how much return does a given timestamp error make improperly foreseeable?</p>
@@ -244,7 +312,7 @@
       <p class="sl-p">This is deliberately crude — real intraday moves aren't a constant bps-per-minute — but the point isn't precision, it's magnitude: a handful of minutes of timestamp error, at realistic event-driven volatility, is easily enough foreseeable return to make a backtested "text signal" look far more predictive than it could ever be live.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">The same warning, wearing a new outfit</h2>
       <p class="sl-p">This is exactly the look-ahead-bias problem from the feature-engineering lesson much earlier in this curriculum, back for one more round: a feature is only usable at the moment it was <em>actually, verifiably</em> knowable — not the moment a convenient field in a dataset claims. Text-based signals just make the violation easier to miss, because the "obviously wrong" version (a feature literally computed from the future) rarely happens; what actually happens is a timestamp that's subtly, plausibly, quietly off by a few minutes.</p>
@@ -260,7 +328,7 @@
 <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12 · It actually happened</div>
       <h2 class="sl-h2">"Twitter mood predicts the stock market"</h2>
       <div class="sl-callout amber">
@@ -281,7 +349,7 @@
     </section>
 
     <!-- WB:nlp_trading_signals_sentiment-deck:START -->
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">From a Fed sentence to a score, and the tweet that fooled everyone</h2>
       <!-- WB:nlp_trading_signals_sentiment:START -->
@@ -292,7 +360,7 @@
     </section>
     <!-- WB:nlp_trading_signals_sentiment-deck:END -->
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <!-- DESK:START -->
@@ -307,7 +375,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -358,7 +426,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="17">
+
+    <section class="sl-slide sl-vark" data-slide="18">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2011">
+    <div class="tl-drill-label">Scenario drill · 2011</div>
+    <h3>A fund wants to trade Twitter mood</h3>
+    <p>A widely reported paper says one mood series built from about 9.8 million tweets, "Calm", called the Dow's daily direction with 87.6% accuracy. The test window was a few weeks of trading days in December 2008, after seven sentiment series were tried at several lags. A new London fund will trade the signal and asks you to allocate. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Allocate. 87.6% is far above chance, and the paper is everywhere.<div class="tl-drill-why">Seven series, several lags and a test window of weeks give many chances to find something by luck. Press coverage and citations measure attention, not out-of-sample evidence.</div></li>
+      <li data-verdict="good">Ask for the signal's record on data the researchers never saw, with the number of series and lags tried counted against it, before committing anything.<div class="tl-drill-why">This is the step the lesson keeps returning to. Turning text into a score always works; whether the score adds anything has to be shown out of sample, with the search that found it taken into account.</div></li>
+      <li data-verdict="ok">Allocate a small pilot and watch the live results.<div class="tl-drill-why">A small live test limits the damage and does produce genuinely out-of-sample evidence. But it pays to run a test that a fresh historical check could have done first, and a few months of daily direction calls is itself a noisy sample.</div></li>
+      <li data-verdict="bad">Build your own version with FinBERT and more mood series, and keep whichever works best.<div class="tl-drill-why">A better text model does not fix the problem. Adding more series and keeping the winner widens the search that produced the original result, making a lucky fit more likely, not less.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The London hedge fund launched in 2011 to trade Twitter sentiment closed within about a year. In 2017 Lachanski and Pav tried to reproduce the original result and could not recover its predictive power. The text-to-number step worked as advertised. The claim that the number predicted the Dow did not survive.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="19">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

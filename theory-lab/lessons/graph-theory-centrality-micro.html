@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Graph Theory &amp; Centrality — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the hand-solved eigenvector cubic, and a 5-question self-test?<a href="graph-theory-centrality.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,87 @@
       <p class="sl-lede">A graph is nothing more than dots and lines — nodes connected by edges — but that plain idea can redraw a correlation matrix, a counterparty exposure ledger, or a network of hyperlinks as the same kind of picture. Once it's a picture, one question keeps coming up: which node matters most? This lesson builds the vocabulary to ask that question precisely, then shows the three classic ways to answer it — degree, betweenness, and eigenvector centrality — which can, and often do, crown three different winners on the exact same network.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The lesson's seven-node network: EUR, GBP and CHF form one triangle, AUD, NZD and CAD another, and JPY is the only bridge, linked to EUR and AUD. Each node shows three scores: degree, betweenness and eigenvector. EUR and AUD score 3, 8 and 1.00. JPY scores 2, 9 and 0.85. GBP, CHF, NZD and CAD score 2, 0 and 0.74. Three boxes below name the winners: degree picks EUR and AUD, betweenness picks JPY alone, eigenvector picks EUR and AUD with JPY third.">
+      <text class="tlp-text3" x="300" y="16" text-anchor="middle" font-size="12">scores shown as degree · betweenness · eigenvector</text>
+      <line class="tlp-line" x1="150" y1="52" x2="75" y2="138"/>
+      <line class="tlp-line" x1="150" y1="52" x2="225" y2="138"/>
+      <line class="tlp-line" x1="75" y1="138" x2="225" y2="138"/>
+      <line class="tlp-line" x1="450" y1="52" x2="375" y2="138"/>
+      <line class="tlp-line" x1="450" y1="52" x2="525" y2="138"/>
+      <line class="tlp-line" x1="375" y1="138" x2="525" y2="138"/>
+      <line class="tlp-line amber thick" x1="150" y1="52" x2="300" y2="95"/>
+      <line class="tlp-line amber thick" x1="300" y1="95" x2="450" y2="52"/>
+      <circle class="tlp-box blue" cx="150" cy="52" r="22"/>
+      <circle class="tlp-box blue" cx="75" cy="138" r="22"/>
+      <circle class="tlp-box blue" cx="225" cy="138" r="22"/>
+      <circle class="tlp-box amber" cx="300" cy="95" r="22"/>
+      <circle class="tlp-box blue" cx="450" cy="52" r="22"/>
+      <circle class="tlp-box blue" cx="375" cy="138" r="22"/>
+      <circle class="tlp-box blue" cx="525" cy="138" r="22"/>
+      <text class="tlp-text" x="150" y="57" text-anchor="middle" font-size="13" font-weight="700">EUR</text>
+      <text class="tlp-text" x="75" y="143" text-anchor="middle" font-size="13" font-weight="700">GBP</text>
+      <text class="tlp-text" x="225" y="143" text-anchor="middle" font-size="13" font-weight="700">CHF</text>
+      <text class="tlp-amber" x="300" y="100" text-anchor="middle" font-size="13" font-weight="700">JPY</text>
+      <text class="tlp-text" x="450" y="57" text-anchor="middle" font-size="13" font-weight="700">AUD</text>
+      <text class="tlp-text" x="375" y="143" text-anchor="middle" font-size="13" font-weight="700">NZD</text>
+      <text class="tlp-text" x="525" y="143" text-anchor="middle" font-size="13" font-weight="700">CAD</text>
+      <text class="tlp-text2" x="122" y="57" text-anchor="end" font-size="12">3 · 8 · 1.00</text>
+      <text class="tlp-text2" x="478" y="57" font-size="12">3 · 8 · 1.00</text>
+      <text class="tlp-amber" x="300" y="134" text-anchor="middle" font-size="12" font-weight="700">2 · 9 · 0.85</text>
+      <text class="tlp-text3" x="75" y="177" text-anchor="middle" font-size="12">2 · 0 · 0.74</text>
+      <text class="tlp-text3" x="225" y="177" text-anchor="middle" font-size="12">2 · 0 · 0.74</text>
+      <text class="tlp-text3" x="375" y="177" text-anchor="middle" font-size="12">2 · 0 · 0.74</text>
+      <text class="tlp-text3" x="525" y="177" text-anchor="middle" font-size="12">2 · 0 · 0.74</text>
+      <rect class="tlp-box blue" x="8" y="196" width="186" height="52" rx="6"/>
+      <rect class="tlp-box amber" x="207" y="196" width="186" height="52" rx="6"/>
+      <rect class="tlp-box purple" x="406" y="196" width="186" height="52" rx="6"/>
+      <text class="tlp-blue" x="101" y="217" text-anchor="middle" font-size="13" font-weight="700">Degree: EUR &amp; AUD</text>
+      <text class="tlp-text2" x="101" y="236" text-anchor="middle" font-size="12">most links, 3 each</text>
+      <text class="tlp-amber" x="300" y="217" text-anchor="middle" font-size="13" font-weight="700">Betweenness: JPY</text>
+      <text class="tlp-text2" x="300" y="236" text-anchor="middle" font-size="12">the only bridge, 9 routes</text>
+      <text class="tlp-purple" x="499" y="217" text-anchor="middle" font-size="13" font-weight="700">Eigenvector: EUR &amp; AUD</text>
+      <text class="tlp-text2" x="499" y="236" text-anchor="middle" font-size="12">JPY 0.85 beats 0.74</text>
+    </svg>
+    <figcaption>Same seven nodes, same eight edges, three questions. Count links and EUR and AUD win. Count the shortest routes a node sits on and JPY wins alone. Weigh each link by who is on the other end and JPY climbs above the four triangle-only nodes.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">People keep telling me some market is the most central one. What does that even mean?</p>
+      <p data-who="Quant">It means you have drawn a network. Each market is a dot, and you draw a line between two dots when they are strongly linked. Then you ask which dot matters most.</p>
+      <p data-who="Trader">Surely that has one answer.</p>
+      <p data-who="Quant">It has at least three. Take a toy network of seven currencies. The euro, the pound and the Swiss franc form one tight triangle. The Aussie, the kiwi and the Canadian dollar form another. The yen sits in the middle and links to just the euro and the Aussie.</p>
+      <p data-who="Trader">So the yen is the bridge.</p>
+      <p data-who="Quant">Exactly. Now the first answer, degree. Just count the links. The euro and the Aussie have three each. Everyone else, the yen included, has two. By that count the yen looks ordinary.</p>
+      <p data-who="Trader">And the second?</p>
+      <p data-who="Quant">Betweenness. Ask how many shortest routes between other pairs pass through you. Any trip from the European side to the commodity side has to cross the yen. There are nine such pairs, so the yen scores nine, the highest in the network. The euro and the Aussie score eight. The other four score zero.</p>
+      <p data-who="Trader">So the dull node is the gatekeeper.</p>
+      <p data-who="Quant">Yes. And the third answer is eigenvector centrality. You matter if your neighbors matter. You start everyone level, then keep passing scores along the links until they settle.</p>
+      <p data-who="Trader">Where does the yen land?</p>
+      <p data-who="Quant">Scale the top nodes to one. The euro and the Aussie sit at one. The yen settles at about point eight five. The four triangle-only nodes sit at about point seven four. The yen has only two links, but both go to the two biggest nodes.</p>
+      <p data-who="Trader">So which one do I use?</p>
+      <p data-who="Quant">The one that matches your question. Biggest direct exposure, use degree. Who carries the traffic between two parts of your book, use betweenness. Who sits nearest the important players, use eigenvector.</p>
+      <p data-who="Trader">Does anyone outside a textbook care?</p>
+      <p data-who="Quant">Very much, since 2008. Researchers built networks of banks and funds to see who passes shocks on. And interconnectedness is one of the scored categories in the Basel Committee's 2011 method for finding global systemically important banks.</p>
+      <p data-who="Trader">Any catch?</p>
+      <p data-who="Quant">Every score is one snapshot. Correlation networks shift between regimes, and on a small network one extra line can reshuffle the ranking.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">There is no single most important node. Name the question first, then pick the centrality that answers it.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Who is central when the system breaks?</h2>
       <p class="sl-sub">Market networks · Mantegna, 1999 → post-2008 connectedness: Billio et al., 2012; Diebold &amp; Yilmaz, 2014</p>
@@ -40,7 +120,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Dots and lines describing almost anything</h2>
       <p class="sl-sub">A graph G = (V, E) is a set of nodes V and a set of edges E connecting pairs of them. That's the whole definition — everything else is what you choose to call a node and an edge.</p>
@@ -53,7 +133,7 @@
       <div class="sl-quote">The reason this belongs in a finance curriculum: a correlation matrix, an exposure ledger, and a supply-chain map are three completely different-looking spreadsheets. Redraw all three as nodes and edges, and the exact same handful of questions — and the exact same three centrality measures below — apply to every one of them, unchanged.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Four words that do all the work</h2>
       <p class="sl-sub">Degree, path, connected component, weighted — nearly everything downstream is built from these four.</p>
@@ -86,7 +166,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">One small network, used for everything below</h2>
       <p class="sl-sub">Seven currency-bloc nodes: a European trio (EUR, GBP, CHF) and a commodity-bloc trio (AUD, NZD, CAD), each trio fully connected internally, joined by a single bridge node, JPY, which links to exactly one node in each trio.</p>
@@ -126,7 +206,7 @@
       <p class="sl-p">Every one of those numbers under a node — its degree — is also a full row of the adjacency matrix, the grid form of the exact same information: EUR's row has a 1 in the GBP, CHF, and JPY columns and 0s everywhere else. A matrix and this picture are two views of one object, and everything below is computed straight off it.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Degree centrality: the popularity count</h2>
       <p class="sl-sub">C_D(v) = deg(v). Normalized to [0,1] by dividing by n − 1, the maximum degree possible in a network of n nodes.</p>
@@ -153,7 +233,7 @@
       <p class="sl-p">Degree is cheap, direct, and often a genuinely useful first cut — but it's entirely <strong>local</strong>. It can't tell a node connected to three nobodies from one connected to three of the network's most important members, and it's completely blind to a node's role as a bridge between parts of the network it doesn't directly touch at all. Both of those blind spots get fixed below.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Betweenness centrality: the unavoidable route</h2>
       <p class="sl-sub">For every other pair of nodes s and t, ask what fraction of their shortest paths passes through v — and add that up across every pair.</p>
@@ -176,7 +256,7 @@
       <div class="sl-quote">A node with high betweenness isn't necessarily well-connected itself — it just happens to sit on the route between two otherwise-separate parts of the network. That's a genuinely different kind of "important" than degree measures, and it's exactly the property a risk desk cares about when asking "which single position, if it broke, would cut off information flow between two halves of the book?"</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Eigenvector centrality: important friends make you important</h2>
       <p class="sl-sub">A node's score should be proportional to the sum of its neighbors' scores. For the whole network at once: Ax = λx.</p>
@@ -188,7 +268,7 @@
       <div class="sl-quote">This is the same eigenvector equation as the leading eigenvector in the PCA lesson — solved the same mechanical way, by repeatedly multiplying by a matrix and rescaling — pointed at a completely different question: not "which direction does the data vary most," but "who is important around here." The next slide watches that repeated-multiply-and-rescale process happen, one iteration at a time.</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Power iteration: watching importance converge</h2>
       <p class="sl-sub">Start by guessing every node is equally important. Multiply by the adjacency matrix, rescale, repeat. Drag the slider through the iterations.</p>
@@ -227,7 +307,7 @@
       <p class="sl-p">Note JPY (purple bar) briefly rivaling EUR/AUD around iteration 2, before settling below them — a real feature of this network's spectrum, not a bug. For comparison, the algebraically exact converged values from the full lesson are EUR = AUD = 1.00, JPY ≈ 0.85, and GBP/CHF/NZD/CAD ≈ 0.74 — watch the bars approach those numbers as k climbs toward 8.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Same network, three different winners</h2>
       <p class="sl-sub">Same seven nodes, same eight edges. Switch measures below and watch which node turns red.</p>
@@ -356,7 +436,7 @@
     </section>
 
     <!-- WB:graph_theory_centrality-deck:START -->
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Three centralities, one network, three winners</h2>
       <!-- WB:graph_theory_centrality:START -->
@@ -367,7 +447,7 @@
     </section>
     <!-- WB:graph_theory_centrality-deck:END -->
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Disagreement is the point, not a bug</h2>
       <div class="sl-compare">
@@ -387,7 +467,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where practitioners actually use this</h2>
       <div class="sl-icard-grid">
@@ -402,7 +482,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -453,7 +533,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative risk meeting</div>
+    <h3>You can keep one hedge. Your worry is spillover between two halves of the book</h3>
+    <p>Your book looks like the lesson's toy network: a European cluster (EUR, GBP, CHF), a commodity cluster (AUD, NZD, CAD), and JPY as the only link between them. Risk tells you to drop every hedge but one. The head of desk says the danger is a shock in one cluster spreading into the other. Which node keeps its hedge, and why?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">EUR or AUD, because they have the most connections.<div class="tl-drill-why">That answers a different question: who has the most direct links. Degree scores EUR and AUD at 3, but the worry here is transmission between the clusters, and degree cannot see that at all.</div></li>
+      <li data-verdict="good">JPY, because it has the highest betweenness.<div class="tl-drill-why">Every one of the 9 cross-cluster shortest routes runs through JPY, so its betweenness of 9 is the highest in the network. The question is about traffic between the halves, and betweenness is the measure built for that question.</div></li>
+      <li data-verdict="ok">Run all three measures and hedge whichever node wins the most of them.<div class="tl-drill-why">Reporting all three is good practice, but a vote picks EUR or AUD (they win degree and eigenvector). Measures answer different questions; you should pick the one that matches the question, not count wins.</div></li>
+      <li data-verdict="bad">GBP, because its eigenvector score of 0.74 shows it is safely peripheral.<div class="tl-drill-why">A low score says GBP is not central, which is the opposite of a reason to hedge it. And no measure points to GBP as the channel between the clusters: its betweenness is zero.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What this shows.</strong> This is an illustrative situation built on the lesson's teaching network, not a real episode. The point is the one the worked example makes: the three measures crown different nodes, and the right one depends on the risk you care about. For spillover between clusters, that is betweenness, and the answer is JPY.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

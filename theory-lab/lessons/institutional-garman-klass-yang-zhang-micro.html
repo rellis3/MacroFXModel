@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Garman-Klass &amp; Yang-Zhang — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">18</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a live candlestick chart, and a 6-question self-test?<a href="institutional-garman-klass-yang-zhang.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,83 @@
       <p class="sl-lede">A closing price is a snapshot of where the day ended up. It says nothing about how far price actually traveled to get there. This deck opens a brand-new category by asking a simple question with a genuinely useful answer: what happens once a volatility estimator is allowed to read the open, high, and low too — not just the close?</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: one daily bar with its open, high, low and close, and the overnight gap from the previous close up to today's open. Right: the four estimators on the lesson's eight synthetic bars, annualised. Close-to-close, which uses closes only, reads 3.08%. Parkinson, high and low, about five times as efficient, reads 3.56%. Garman-Klass, adding open and close, about 7.4 times as efficient, reads 3.81%. Yang-Zhang, adding the overnight gap and drift-free, reads 4.27%, the highest, because only it sees day 5's 38-pip gap.">
+      <text class="tlp-text2" x="20" y="24" font-size="13" font-weight="700">One daily bar</text>
+      <line class="tlp-line" x1="30" y1="150" x2="80" y2="150"/>
+      <text class="tlp-text3" x="55" y="168" text-anchor="middle" font-size="12">prev close</text>
+      <line class="tlp-line amber dash" x1="82" y1="149" x2="128" y2="123"/>
+      <polygon class="tlp-amber" points="134,120 124,120 129,128"/>
+      <text class="tlp-amber" x="20" y="112" font-size="12" font-weight="700">overnight gap</text>
+      <line class="tlp-line green thick" x1="150" y1="44" x2="150" y2="196"/>
+      <rect class="tlp-box green" x="136" y="76" width="28" height="44" rx="2"/>
+      <text class="tlp-text" x="158" y="50" font-size="13" font-weight="700">H</text>
+      <text class="tlp-text" x="158" y="198" font-size="13" font-weight="700">L</text>
+      <text class="tlp-text" x="172" y="124" font-size="13" font-weight="700">O</text>
+      <text class="tlp-text" x="172" y="82" font-size="13" font-weight="700">C</text>
+
+      <text class="tlp-text2" x="220" y="24" font-size="13" font-weight="700">Same 8 bars, annualised σ</text>
+      <text class="tlp-text" x="220" y="56" font-size="13" font-weight="700">Close-close</text>
+      <text class="tlp-text3" x="220" y="71" font-size="12">closes only</text>
+      <circle class="tlp-red" cx="406.7" cy="62" r="6"/>
+      <text class="tlp-red" x="406.7" y="50" text-anchor="middle" font-size="13" font-weight="700">3.08%</text>
+      <text class="tlp-text" x="220" y="101" font-size="13" font-weight="700">Parkinson</text>
+      <text class="tlp-text3" x="220" y="116" font-size="12">high, low · ≈5×</text>
+      <circle class="tlp-blue" cx="461.9" cy="107" r="6"/>
+      <text class="tlp-blue" x="461.9" y="95" text-anchor="middle" font-size="13" font-weight="700">3.56%</text>
+      <text class="tlp-text" x="220" y="146" font-size="13" font-weight="700">Garman-Klass</text>
+      <text class="tlp-text3" x="220" y="161" font-size="12">+ open, close · ≈7.4×</text>
+      <circle class="tlp-purple" cx="490.7" cy="152" r="6"/>
+      <text class="tlp-purple" x="490.7" y="140" text-anchor="middle" font-size="13" font-weight="700">3.81%</text>
+      <text class="tlp-text" x="220" y="191" font-size="13" font-weight="700">Yang-Zhang</text>
+      <text class="tlp-text3" x="220" y="206" font-size="12">+ gap, drift-free</text>
+      <circle class="tlp-green" cx="543.6" cy="197" r="7"/>
+      <text class="tlp-green" x="543.6" y="185" text-anchor="middle" font-size="13" font-weight="700">4.27%</text>
+      <line class="tlp-line" x1="370" y1="216" x2="570" y2="216"/>
+      <text class="tlp-text3" x="397.5" y="232" text-anchor="middle" font-size="12">3%</text>
+      <text class="tlp-text3" x="512.5" y="232" text-anchor="middle" font-size="12">4%</text>
+      <line class="tlp-line" x1="397.5" y1="212" x2="397.5" y2="220"/>
+      <line class="tlp-line" x1="512.5" y1="212" x2="512.5" y2="220"/>
+    </svg>
+    <figcaption>Each step up the ladder uses more of the bar, so it needs fewer days to be precise (≈5× and ≈7.4× the efficiency of close-to-close). On the lesson's eight bars, Yang-Zhang reads highest because it is the only one with a term for the overnight gap: day 5 opened 38 pips away from day 4's close.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I measure volatility from daily closes. Standard deviation of the returns, scale it up to a year. What's wrong with that?</p>
+      <p data-who="Quant">It throws away three of the four prices the daily bar gives you. The open, the high and the low all tell you how far price really travelled that day.</p>
+      <p data-who="Trader">But the close is where it settled.</p>
+      <p data-who="Quant">Exactly, and that's the problem. A day that spikes eighty pips up, crashes back down and closes where it started looks dead quiet if you only look at closes. The high and low remember the chaos.</p>
+      <p data-who="Trader">So how do you use them?</p>
+      <p data-who="Quant">Michael Parkinson showed in 1980 that the high-to-low range alone measures volatility about five times as efficiently as closes. Same number of days, far less noise.</p>
+      <p data-who="Trader">And Garman-Klass?</p>
+      <p data-who="Quant">Garman and Klass, also 1980, added the open-to-close move to the range. That gets you to about seven and a half times as efficient. But it has a blind spot.</p>
+      <p data-who="Trader">Which is?</p>
+      <p data-who="Quant">It only looks inside one bar. Anything that happens between yesterday's close and today's open, like a weekend headline, it simply can't see.</p>
+      <p data-who="Trader">And Yang-Zhang fixes that.</p>
+      <p data-who="Quant">Yes. Dennis Yang and Qiang Zhang, in 2000, added a dedicated term for the overnight gap. They also borrowed a drift-proof range measure from Rogers and Satchell, so a day that trends hard doesn't fool it. Then they weight the pieces to make the total as precise as possible.</p>
+      <p data-who="Trader">Show me the difference on numbers.</p>
+      <p data-who="Quant">The lesson has eight made-up euro-dollar bars, with a thirty-eight pip gap at the open on day five. Closes alone give about three point one percent a year. Parkinson gives three point six. Garman-Klass three point eight. Yang-Zhang four point three, the highest, because it's the only one that saw the gap.</p>
+      <p data-who="Trader">And the "needs fewer days" claim. Is that real?</p>
+      <p data-who="Quant">The lesson checked it by simulation. Close-to-close needed about twenty-five days to get as precise as the range estimators were after just five.</p>
+      <p data-who="Trader">So I can forecast tomorrow with it?</p>
+      <p data-who="Quant">No. These measure how much a bar already moved. Forecasting is a separate step, and that's what models like the heterogeneous autoregression are for.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Use the whole bar, and if your market gaps, use the estimator that measures the gap.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">More volatility out of the same daily bar</h2>
       <p class="sl-sub">Range-based volatility · Parkinson; Garman &amp; Klass, 1980 → Yang &amp; Zhang, 2000</p>
@@ -40,7 +116,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">One number a day is a wasteful way to measure a day</h2>
       <p class="sl-sub">Two very different days can produce an identical closing price.</p>
@@ -53,7 +129,7 @@
       <div class="sl-quote">Think of a closing price as a single 6pm photo of someone's day. It can't tell you if that day was chaotic or calm — only how things happened to settle by evening. The high and low are the missing record of how much actually happened in between.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Parkinson (1980) — just the range</h2>
       <p class="sl-sub">The simplest range-based estimator: look only at how wide the day swung.</p>
@@ -71,7 +147,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Garman-Klass (1980) — range plus open-close</h2>
       <p class="sl-sub">Adds back exactly the information Parkinson throws away: where the bar started and ended.</p>
@@ -86,7 +162,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Three estimators, side by side</h2>
       <p class="sl-sub">What each one uses, what each one assumes, and where each one breaks.</p>
@@ -110,7 +186,7 @@
       <p class="sl-p">Each estimator in this progression fixes exactly one limitation of the one before it — the range term, then the open-close correction, then (next) drift-independence, then the overnight gap.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Rogers-Satchell — fixing the zero-drift assumption</h2>
       <p class="sl-sub">Parkinson and Garman-Klass both quietly assume the price never trends. A steadily trending day fools both of them a little.</p>
@@ -135,7 +211,7 @@
       <div class="sl-quote">Rogers-Satchell is the ingredient, not usually the finished dish. What it fixes is exactly the property Yang-Zhang needs from its own intraday-range term.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Yang-Zhang (2000) — the complete combination</h2>
       <p class="sl-sub">Three variance sources, weighted to minimize the total.</p>
@@ -156,7 +232,7 @@
     </section>
 
     <!-- WB:institutional_garman_klass_yang_zhang-deck:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Four ways to read a daily bar</h2>
       <!-- WB:institutional_garman_klass_yang_zhang:START -->
@@ -167,7 +243,7 @@
     </section>
     <!-- WB:institutional_garman_klass_yang_zhang-deck:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">How much data does each one actually need?</h2>
       <p class="sl-sub">Drag the slider. Shorter bars mean less sampling noise for the same window length — watch how much faster the range-based estimators shrink.</p>
@@ -187,7 +263,7 @@
       <p class="sl-p">Flip it around: close-to-close needed roughly 25 trading days to reach the same ~15% noise level Parkinson, Garman-Klass, and Yang-Zhang all reached with just 5 days — verified by simulation, not assumed from the textbook multiplier alone.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">All four, on the same eight days</h2>
       <p class="sl-sub">A synthetic EURUSD-style week, with one 38-pip weekend-style gap on day 5.</p>
@@ -204,7 +280,7 @@
       <p class="sl-p">Every number above was actually computed from an eight-bar OHLC table, not written to look plausible — the same table and the same live-recalculating candlestick chart are in the full lesson.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Compute Garman-Klass yourself</h2>
       <p class="sl-sub">Enter one day's O/H/L/C. Invalid combinations are caught, not silently turned into NaN.</p>
@@ -238,14 +314,14 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">A quiet week, then a weekend gap</h2>
       <div class="sl-quote">A desk sizes stops off a 30-day Garman-Klass figure all week — fine, because nothing gapped. Then a Friday-evening headline moves rates expectations, and price gaps meaningfully over the weekend rollover. Garman-Klass's rolling estimate barely reacts: the gap happened entirely between two bars, in the exact blind spot its no-gap assumption creates. Yang-Zhang's estimate jumps immediately, because its overnight term is built specifically to measure a move like this one.</div>
       <p class="sl-p">A desk sizing risk off Garman-Klass alone that week would be working from a volatility figure that quietly understated exactly the kind of move that just happened — the dollars-and-stops version of "GK assumes no gap," not just an abstract limitation.</p>
     </section>
 
-    <!-- DESK:START --><section class="sl-slide" data-slide="14">
+    <!-- DESK:START --><section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Genuinely built here — verified, not assumed</h2>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
@@ -255,7 +331,7 @@
       <p class="sl-p">Every formula in this deck was checked line-by-line against the actual implementation — not assumed from the estimator's name.</p>
     </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -306,7 +382,27 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="16">
+
+    <section class="sl-slide sl-vark" data-slide="17">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative Monday after a weekend headline</div>
+    <h3>Setting a stop after a weekend gap</h3>
+    <p>You hold a EURUSD swing position and size its stop as a multiple of 30-day volatility. The week was quiet and all your estimators agreed. Then a Friday-evening headline moved rate expectations, and EURUSD opened Monday well above Friday's close. Before Monday's bar is even finished, you need to reset the stop. Which volatility figure do you size it from?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">30-day Garman-Klass. It is about 7.4 times as efficient as close-to-close, so it is the most precise number you have.<div class="tl-drill-why">Efficient, but blind to exactly what just happened. Its formula only looks inside each bar, so the weekend gap sits in its blind spot. It barely moves, and your stop ends up sized for a quieter market than the one you are in.</div></li>
+      <li data-verdict="good">30-day Yang-Zhang, which has a dedicated term for the close-to-open gap.<div class="tl-drill-why">Its overnight term measures precisely the move Garman-Klass and Parkinson cannot see, and its range component is not fooled by drift. It reacts to the gap straight away, which is what a stop that has to survive the new market needs.</div></li>
+      <li data-verdict="ok">30-day close-to-close volatility.<div class="tl-drill-why">Once Monday closes, the close-to-close return will include the gap, so it is not blind to it. But it uses one price a day and is far noisier for the same window, so it reacts slowly and imprecisely. Defensible, not best.</div></li>
+      <li data-verdict="bad">30-day Parkinson, since a big day will show up in the range.<div class="tl-drill-why">Parkinson looks only at each bar's own high and low. A gap between Friday's close and Monday's open is outside both bars' ranges, so Parkinson cannot see it either.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the method says.</strong> This Monday is illustrative, the lesson's own trading scenario rather than a specific dated event. The lesson's eight-bar example makes the same point in numbers: with a single 38-pip gap in the window, Garman-Klass read 3.81% and Yang-Zhang 4.27%. When your market can gap, size risk off the estimator that measures the gap.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="18">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

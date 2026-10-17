@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Conjugate Priors — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">19</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, a live scratch calculator, and a 5-question self-test?<a href="bayesian-conjugate-priors.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,64 @@
       <p class="sl-lede">The Bayesian Inference lesson updated a single number — a 20% chance of a trend day became a 50% chance once a classifier fired. But most real beliefs aren't one number; they're a whole range of plausible values, like "the true trend-day rate is probably near 30%, but I'm not sure if it's 20% or 40%." Updating an entire distribution like that usually needs numerical machinery. Conjugate priors are the special, exactly-solvable case — the one every textbook starts with, because you can watch a belief visibly narrow, update after update, using nothing but addition.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three belief curves over the true trend-day rate. The prior, Beta(2,3), is low and wide, centred at 0.40 with a spread of 0.20. After 10 days with 3 trend days it becomes Beta(5,10), taller and narrower with a spread of 0.12. After 40 days with 12 trend days it becomes Beta(14,31), a tall narrow peak near the data's 0.30 with a spread of 0.07.">
+      <line class="tlp-line" x1="50" y1="190" x2="570" y2="190"/>
+      <line class="tlp-line amber dash" x1="245.0" y1="34" x2="245.0" y2="190"/>
+      <text class="tlp-amber" x="245.0" y="24" text-anchor="middle" font-size="13" font-weight="700">data: 30% trend days</text>
+      <polyline class="tlp-line blue thick" points="51.3,189.4 56.5,187.0 63.0,184.1 69.5,181.4 76.0,178.7 82.5,176.2 89.0,173.8 95.5,171.5 102.0,169.3 108.5,167.2 115.0,165.2 121.5,163.3 128.0,161.6 134.5,159.9 141.0,158.3 147.5,156.8 154.0,155.5 160.5,154.2 167.0,153.0 173.5,151.9 180.0,150.8 186.5,149.9 193.0,149.0 199.5,148.3 206.0,147.6 212.5,147.0 219.0,146.4 225.5,146.0 232.0,145.6 238.5,145.3 245.0,145.0 251.5,144.8 258.0,144.7 264.5,144.7 271.0,144.7 277.5,144.8 284.0,144.9 290.5,145.1 297.0,145.3 303.5,145.6 310.0,145.9 316.5,146.3 323.0,146.8 329.5,147.2 336.0,147.8 342.5,148.3 349.0,149.0 355.5,149.6 362.0,150.3 368.5,151.0 375.0,151.8 381.5,152.5 388.0,153.3 394.5,154.2 401.0,155.0 407.5,155.9 414.0,156.8 420.5,157.7 427.0,158.7 433.5,159.7 440.0,160.6 446.5,161.6 453.0,162.6 459.5,163.6 466.0,164.6 472.5,165.6 479.0,166.7 485.5,167.7 492.0,168.7 498.5,169.7 505.0,170.7 511.5,171.7 518.0,172.7 524.5,173.7 531.0,174.7 537.5,175.7 544.0,176.6 550.5,177.5 557.0,178.4 563.5,179.3 570.0,180.2"/>
+      <polyline class="tlp-line purple thick" points="51.3,190.0 56.5,190.0 63.0,190.0 69.5,189.8 76.0,189.5 82.5,189.0 89.0,188.1 95.5,186.8 102.0,185.1 108.5,182.8 115.0,180.1 121.5,176.9 128.0,173.2 134.5,169.2 141.0,164.8 147.5,160.1 154.0,155.2 160.5,150.1 167.0,145.1 173.5,140.1 180.0,135.2 186.5,130.5 193.0,126.1 199.5,122.0 206.0,118.4 212.5,115.1 219.0,112.4 225.5,110.1 232.0,108.4 238.5,107.2 245.0,106.6 251.5,106.4 258.0,106.8 264.5,107.6 271.0,108.9 277.5,110.7 284.0,112.8 290.5,115.2 297.0,118.0 303.5,120.9 310.0,124.1 316.5,127.5 323.0,131.0 329.5,134.6 336.0,138.2 342.5,141.8 349.0,145.4 355.5,148.9 362.0,152.3 368.5,155.7 375.0,158.8 381.5,161.9 388.0,164.8 394.5,167.5 401.0,170.0 407.5,172.3 414.0,174.5 420.5,176.5 427.0,178.3 433.5,179.9 440.0,181.3 446.5,182.6 453.0,183.8 459.5,184.8 466.0,185.7 472.5,186.4 479.0,187.1 485.5,187.6 492.0,188.1 498.5,188.5 505.0,188.8 511.5,189.1 518.0,189.3 524.5,189.4 531.0,189.6 537.5,189.7 544.0,189.8 550.5,189.8 557.0,189.9 563.5,189.9 570.0,189.9"/>
+      <polyline class="tlp-line green thick" points="51.3,190.0 56.5,190.0 63.0,190.0 69.5,190.0 76.0,190.0 82.5,190.0 89.0,190.0 95.5,190.0 102.0,190.0 108.5,189.9 115.0,189.8 121.5,189.6 128.0,189.1 134.5,188.1 141.0,186.5 147.5,183.9 154.0,180.1 160.5,174.8 167.0,167.8 173.5,159.0 180.0,148.4 186.5,136.2 193.0,122.8 199.5,108.6 206.0,94.4 212.5,80.8 219.0,68.4 225.5,58.0 232.0,50.0 238.5,44.7 245.0,42.5 251.5,43.3 258.0,47.0 264.5,53.2 271.0,61.5 277.5,71.6 284.0,82.7 290.5,94.5 297.0,106.4 303.5,118.1 310.0,129.1 316.5,139.3 323.0,148.5 329.5,156.5 336.0,163.5 342.5,169.3 349.0,174.1 355.5,178.0 362.0,181.1 368.5,183.5 375.0,185.3 381.5,186.7 388.0,187.7 394.5,188.4 401.0,189.0 407.5,189.3 414.0,189.6 420.5,189.7 427.0,189.8 433.5,189.9 440.0,189.9 446.5,190.0 453.0,190.0 459.5,190.0 466.0,190.0 472.5,190.0 479.0,190.0 485.5,190.0 492.0,190.0 498.5,190.0 505.0,190.0 511.5,190.0 518.0,190.0 524.5,190.0 531.0,190.0 537.5,190.0 544.0,190.0 550.5,190.0 557.0,190.0 563.5,190.0 570.0,190.0"/>
+      <text class="tlp-green" x="330" y="52" font-size="14" font-weight="700">40 days, 12 trend → Beta(14,31)</text>
+      <text class="tlp-green" x="330" y="68" font-size="13">mean 0.31 · spread 0.07</text>
+      <text class="tlp-purple" x="330" y="92" font-size="14" font-weight="700">10 days, 3 trend → Beta(5,10)</text>
+      <text class="tlp-purple" x="330" y="108" font-size="13">mean 0.33 · spread 0.12</text>
+      <text class="tlp-blue" x="420" y="140" font-size="14" font-weight="700">prior Beta(2,3)</text>
+      <text class="tlp-blue" x="420" y="156" font-size="13">mean 0.40 · spread 0.20</text>
+      <text class="tlp-text3" x="50" y="208" text-anchor="middle" font-size="12">0.0</text><text class="tlp-text3" x="180" y="208" text-anchor="middle" font-size="12">0.2</text><text class="tlp-text3" x="310" y="208" text-anchor="middle" font-size="12">0.4</text><text class="tlp-text3" x="440" y="208" text-anchor="middle" font-size="12">0.6</text><text class="tlp-text3" x="570" y="208" text-anchor="middle" font-size="12">0.8</text>
+      <text class="tlp-text3" x="310" y="230" text-anchor="middle" font-size="12">true trend-day rate →</text>
+    </svg>
+    <figcaption>One prior, more days. Each update just adds the new counts. The peak drifts from the prior's 0.40 toward the data's 0.30, and the spread shrinks from 0.20 to 0.12 to 0.07. The width of the curve is the confidence.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I want to know how often we really get a trend day. Not a call for tomorrow. The long-run rate.</p>
+      <p data-who="Quant">Then your belief isn't one number. It's a curve over every possible rate, from zero to a hundred percent. It's higher where you think the rate probably sits.</p>
+      <p data-who="Trader">Updating a whole curve every day sounds like a lot of work.</p>
+      <p data-who="Quant">In general it is. You'd need numerical integration or simulation. But there's a shortcut. Pick the right family of curves for your starting belief, and the updated belief lands in the same family. Only two numbers change. That's a conjugate prior.</p>
+      <p data-who="Trader">Which family for a rate?</p>
+      <p data-who="Quant">The Beta. It lives between zero and one, and it has two settings. Think of them as pretend counts: trend days you imagine you've already seen, and quiet days you imagine you've already seen.</p>
+      <p data-who="Trader">So what do I start with?</p>
+      <p data-who="Quant">Say two pretend trend days and three pretend quiet ones. That centres you at forty percent, but only weakly. Your spread is about twenty points either way.</p>
+      <p data-who="Trader">Then I watch ten real days, and three are trend days.</p>
+      <p data-who="Quant">You add. Two plus three makes five trend days. Three plus seven makes ten quiet ones. Your best guess is five out of fifteen, one third. And the spread falls to about twelve points.</p>
+      <p data-who="Trader">That's it? Just adding?</p>
+      <p data-who="Quant">Just adding. Watch thirty more days with nine trend days, and you're at fourteen and thirty-one. Your guess is about thirty-one percent and the spread is down to about seven points. The curve moved toward the data and got much narrower.</p>
+      <p data-who="Trader">Why did my starting guess fade so fast?</p>
+      <p data-who="Quant">Because it was only worth five pretend days. Forty real days outweigh five pretend ones. Start with a hundred pretend days and the same data would barely move you. How heavy your prior is, is a choice you should state out loud.</p>
+      <p data-who="Trader">And for an average return rather than a rate?</p>
+      <p data-who="Quant">Same idea with the bell curve. You weight your prior and the data by how sure each one is. Sureness, which we call precision, simply adds. So the combined belief is always tighter than either source alone.</p>
+      <p data-who="Trader">Where does that show up in markets?</p>
+      <p data-who="Quant">The Black-Litterman blend of views and market prices is exactly this case. So is the update step of the Kalman filter, run once per bar.</p>
+      <p data-who="Trader">What's the catch?</p>
+      <p data-who="Quant">Two. Real days aren't independent: trend days cluster, so the curve narrows faster than it should. And a narrow curve only describes the sample you saw. It doesn't promise the future looks the same.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Pick a starting curve that matches your data, and updating a belief becomes adding up counts.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Updating a belief every trade, in closed form</h2>
       <p class="sl-sub">Raiffa &amp; Schlaifer (1961); in markets via Black–Litterman (1990–92) and the Kalman filter.</p>
@@ -40,7 +97,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">From one number to a whole curve of belief</h2>
       <p class="sl-sub">Bayesian Inference &amp; Updating asked "how confident should I be in this one flag?" This lesson asks a harder question.</p>
@@ -52,7 +109,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">"Conjugate" has one precise meaning</h2>
       <p class="sl-sub">A prior is conjugate to a likelihood when the posterior comes out of the <em>same family</em> as the prior — only the numbers describing it change.</p>
@@ -82,7 +139,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The Beta distribution: a shape for an unknown rate</h2>
       <p class="sl-sub">θ is an unknown rate between 0 and 1 — say, the true long-run fraction of days that are trend days. Beta(α,β) is a flexible curve over exactly that range.</p>
@@ -96,7 +153,7 @@
       <p class="sl-p">Think of α and β as two jars of pretend tokens, filled in before any real data shows up. Every real success or failure observed drops one more matching token into the right jar — the new totals are the new belief. No shape gets redrawn from scratch.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Watch the posterior fall out of two kernels multiplied</h2>
       <p class="sl-sub">Bayes' theorem says posterior ∝ prior × likelihood. Drop the parts that don't involve θ and watch what's left.</p>
@@ -128,7 +185,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Three rounds of data, the same prior, a visibly narrower curve</h2>
       <p class="sl-sub">Prior Beta(2,3). True trend-day rate 30%, unknown to the observer. Step through what real data does to the shape.</p>
@@ -180,7 +237,7 @@
     </section>
 
     <!-- WB:bayesian_conjugate_priors-deck:START -->
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Conjugate updating: a belief that narrows by adding counts</h2>
       <!-- WB:bayesian_conjugate_priors:START -->
@@ -191,7 +248,7 @@
     </section>
     <!-- WB:bayesian_conjugate_priors-deck:END -->
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Drag the sample size, watch the curve redraw live</h2>
       <p class="sl-sub">Same Beta(2,3) prior. Data keeps arriving at a fixed (unknown-to-the-observer) true rate of 30%. Drag n.</p>
@@ -217,7 +274,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Run the Beta-Binomial update yourself</h2>
       <p class="sl-sub">Enter any prior and any observed data. The posterior parameters, mean, and standard deviation recompute on every keystroke.</p>
@@ -238,7 +295,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Normal-Normal: the same trick for a continuous mean</h2>
       <p class="sl-sub">Instead of an unknown rate, suppose the unknown is a mean μ — say, a strategy's true average daily return — with a known variance σ² for each observation.</p>
@@ -251,7 +308,7 @@
       <div class="sl-quote">A quick check: prior μ₀=0%, σ₀=0.5% (τ₀=4). Observe n=20 days, sample mean x̄=0.15%, known σ=1.0% (τd=20/1=20). μₙ = (4×0 + 20×0.15)/24 = <strong>0.125%</strong> — pulled most of the way toward the data because its precision (20) dwarfs the prior's (4), but not all the way. Posterior variance = 1/24 ≈ 0.0417, so σₙ ≈ <strong>0.204%</strong> — narrower than either source alone.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Run the Normal-Normal update yourself</h2>
       <p class="sl-sub">Same numbers as the check above. Change any field — the posterior mean and standard deviation recompute live.</p>
@@ -273,7 +330,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Why closed form is worth having at all</h2>
       <div class="sl-icard-grid">
@@ -285,7 +342,7 @@
       <div class="sl-quote">That last row is the whole reason this is "Bayesian Extensions 1" and not the only lesson in the series. The instant a model needs a mixture of behaviors, a bounded-but-skewed variance, or any likelihood with no algebraic closed form, conjugacy is gone — which is exactly the gap that Markov Chain Monte Carlo, the next lesson in this trio, is built to fill: computing a posterior numerically when no formula for it exists.</div>
     </section>
 
-    <!-- DESK:START --><section class="sl-slide" data-slide="14">
+    <!-- DESK:START --><section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where this already runs, live, in this repo</h2>
       <p class="sl-sub">This isn't only a textbook exercise — one of the two conjugate pairs above is running inside this repo's own regime-detection code.</p>
@@ -300,7 +357,7 @@
       </div>
     </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Where conjugate updating quietly goes wrong</h2>
       <div class="sl-compare">
@@ -324,7 +381,7 @@
       <div class="sl-quote">A tight posterior after 200 observations is not validation. It says "I'm confident about what happened in this sample" — it says nothing about whether that period was representative, or whether the process is even stationary. Conjugate updating narrows a belief about the past; it doesn't certify the future will match.</div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -375,7 +432,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="17">
+
+    <section class="sl-slide sl-vark" data-slide="18">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative trading log</div>
+    <h3>Fifteen occurrences in, and the setup looks good</h3>
+    <p>You log one setup: price touches the prior day's high with volume confirmation, and you note whether it holds as resistance. You started with an honest, mild \(\text{Beta}(3,3)\) prior. After 15 occurrences, 9 held, so your belief is \(\text{Beta}(12,9)\), mean about 0.571. This morning the setup appears again. What do you do with the estimate?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Treat 57% as the true hold rate and size the trade as if it were known.<div class="tl-drill-why">\(\text{Beta}(12,9)\) still has a spread of about 0.11. A true rate anywhere from the high 40s to the high 60s fits what you have seen. The width of the curve is the confidence, and right now it is wide.</div></li>
+      <li data-verdict="good">Trade it small, add today's result to the counts, and let the curve narrow before you size up.<div class="tl-drill-why">This is what conjugate updating is for. Each occurrence is one more count, and the spread shrinks with every one. You size to the belief you have, not the one you hope to have.</div></li>
+      <li data-verdict="bad">Switch to a heavier, more optimistic prior, now that you can see the setup works.<div class="tl-drill-why">Choosing the prior after peeking at the data is p-hacking in a Bayesian costume. The prior should be stated before the evidence that updates it.</div></li>
+      <li data-verdict="ok">Ignore the log until you have 100 occurrences.<div class="tl-drill-why">Safe, but it wastes what you already know. The posterior tells you exactly how unsure you are at 15; you do not need a magic sample size to use it.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What to take from it.</strong> This is an illustrative situation built on the lesson's own trader log, not a historical event. In the lesson, 60 more occurrences (38 held) take the belief to \(\text{Beta}(50,31)\): mean about 0.617, with the spread down from about 0.11 to about 0.05. The mean barely moved; the confidence did. Even then, a hit rate says nothing about profit after costs.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="19">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

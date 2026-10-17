@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Dupire's Local Volatility Model — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-dupire-local-vol.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,76 @@
       <p class="sl-lede">Heston and SABR make volatility stochastic — its own random process, its own source of noise. Dupire's 1994 result takes a third route entirely: keep volatility deterministic, but let it depend on the spot's own level and time. One random source instead of two, and a formula that reads the whole thing straight off the market's own option prices.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the lesson's five Black-Scholes call prices on a cross-shaped stencil around strike 100 and one year: 13.3465 at strike 95, 10.4506 at the centre, 8.0214 at strike 105, 11.0820 at 1.1 years and 9.7982 at 0.9 years. Middle: the three slopes read off them, a strike slope of minus 0.5325, a strike curvature of 0.01867 and a calendar slope of 6.4190. Right: Dupire's formula turns them into a local vol of about 20.06%, against a true flat vol of 20%.">
+      <text class="tlp-text" x="20" y="20" font-size="13" font-weight="700">Five call prices around K = 100, T = 1</text>
+      <line class="tlp-line blue dash" x1="60" y1="120" x2="240" y2="120"/>
+      <line class="tlp-line green dash" x1="150" y1="50" x2="150" y2="190"/>
+      <circle class="tlp-blue" cx="60" cy="120" r="6"/>
+      <circle class="tlp-amber" cx="150" cy="120" r="7"/>
+      <circle class="tlp-blue" cx="240" cy="120" r="6"/>
+      <circle class="tlp-green" cx="150" cy="50" r="6"/>
+      <circle class="tlp-green" cx="150" cy="190" r="6"/>
+      <text class="tlp-blue" x="60" y="106" text-anchor="middle" font-size="13" font-weight="700">13.3465</text>
+      <text class="tlp-text3" x="60" y="140" text-anchor="middle" font-size="12">K = 95</text>
+      <text class="tlp-blue" x="240" y="106" text-anchor="middle" font-size="13" font-weight="700">8.0214</text>
+      <text class="tlp-text3" x="240" y="140" text-anchor="middle" font-size="12">K = 105</text>
+      <text class="tlp-amber" x="160" y="106" font-size="13" font-weight="700">10.4506</text>
+      <text class="tlp-green" x="160" y="54" font-size="13" font-weight="700">11.0820</text>
+      <text class="tlp-text3" x="140" y="54" text-anchor="end" font-size="12">T = 1.1</text>
+      <text class="tlp-green" x="160" y="194" font-size="13" font-weight="700">9.7982</text>
+      <text class="tlp-text3" x="140" y="194" text-anchor="end" font-size="12">T = 0.9</text>
+      <rect class="tlp-box blue" x="290" y="38" width="160" height="32" rx="6"/>
+      <text class="tlp-blue" x="370" y="59" text-anchor="middle" font-size="13" font-weight="700">∂C/∂K ≈ −0.5325</text>
+      <rect class="tlp-box blue" x="290" y="80" width="160" height="32" rx="6"/>
+      <text class="tlp-blue" x="370" y="101" text-anchor="middle" font-size="13" font-weight="700">∂²C/∂K² ≈ 0.01867</text>
+      <rect class="tlp-box green" x="290" y="122" width="160" height="32" rx="6"/>
+      <text class="tlp-green" x="370" y="143" text-anchor="middle" font-size="13" font-weight="700">∂C/∂T ≈ 6.4190</text>
+      <text class="tlp-purple" x="290" y="182" font-size="13" font-weight="700">σ²_local = 3.7564 ÷ 93.33</text>
+      <text class="tlp-text3" x="460" y="101" font-size="16">→</text>
+      <rect class="tlp-box green" x="480" y="56" width="108" height="84" rx="8"/>
+      <text class="tlp-text2" x="534" y="80" text-anchor="middle" font-size="12">local vol</text>
+      <text class="tlp-green" x="534" y="104" text-anchor="middle" font-size="18" font-weight="700">20.06%</text>
+      <text class="tlp-text3" x="534" y="126" text-anchor="middle" font-size="12">true: 20%</text>
+      <text class="tlp-text2" x="20" y="228" font-size="13">One source of randomness: know the spot and the time, and the vol is a number you look up.</text>
+    </svg>
+    <figcaption>Dupire reads volatility straight off the slopes of the call-price surface. Fed the five prices of a flat 20% world, it hands back about 20.06%. Real quotes are noisy, so desks smooth the surface first.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My vanilla smile is marked. A client wants a barrier on the same pair. Which volatility do I use?</p>
+      <p data-who="Quant">Not one flat number. Price the barrier at the at-the-money vol and it disagrees with the vanillas on your own book. Someone could hedge one against the other and pick you off.</p>
+      <p data-who="Trader">So I need a model that matches every vanilla at once.</p>
+      <p data-who="Quant">That's what Bruno Dupire gave us in 1994, in a paper called Pricing with a Smile. Emanuel Derman and Iraj Kani built the same idea as a tree that same year.</p>
+      <p data-who="Trader">How is it different from Heston?</p>
+      <p data-who="Quant">Heston makes volatility random, with its own shock on top of the price shock. Two sources of randomness. Dupire keeps one. Volatility becomes a fixed map: tell me the spot and the date, and I'll read you the vol.</p>
+      <p data-who="Trader">And where does the map come from?</p>
+      <p data-who="Quant">Straight from option prices. Take how fast a call gains value as you add time, adjust for interest, and divide by how curved the call price is across strikes. That curvature is the market's probability of ending near that strike.</p>
+      <p data-who="Trader">Does it actually work?</p>
+      <p data-who="Quant">The lesson tests it. Five call prices from a world where volatility is a flat twenty percent, around a strike of a hundred and a one-year expiry. Run the formula and you get twenty point oh six percent. The tiny gap is just the coarse grid.</p>
+      <p data-who="Trader">So it fits perfectly.</p>
+      <p data-who="Quant">Today, by construction. Like tracing paper over a drawing. That's its strength and its catch. It's a calibration device, not a claim about how the market behaves.</p>
+      <p data-who="Trader">What's the catch exactly?</p>
+      <p data-who="Quant">Ask it what the smile looks like next month and its answer is typically too flat compared with what markets go on to show. For a barrier, where the path matters, that weakness bites. Many desks blend it with stochastic volatility for that reason.</p>
+      <p data-who="Trader">Anything practical to watch?</p>
+      <p data-who="Quant">Never feed it raw quotes. The curvature is a second difference, and it blows up noise. In the lesson's example, moving one quote by five cents pushes the answer from about twenty to about twenty-two and a half percent. Fit a smooth surface first.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Dupire turns today's whole option surface into a volatility map that reprices every vanilla exactly, so use it for consistency, smooth before you differentiate, and don't trust its view of tomorrow.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Pricing an exotic that agrees with every vanilla</h2>
       <p class="sl-sub">Local volatility · Dupire; Derman &amp; Kani, 1994 — equity exotics desks</p>
@@ -40,7 +109,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">One random source, or two?</h2>
       <p class="sl-sub">The distinction to keep above everything else in this deck.</p>
@@ -65,7 +134,7 @@
       <div class="sl-quote">Once you know the spot and the time, local vol's σ is a known number, not a random draw. Stochastic vol's σ has its own private history of shocks on top of that.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Dupire's formula</h2>
       <p class="sl-sub">Given a complete, arbitrage-free grid of call prices C(K,T), extract the unique local-vol surface consistent with all of it.</p>
@@ -81,7 +150,7 @@
       <p class="sl-p">This is the zero-dividend-yield form of the formula. A production version carries an extra term for a dividend/foreign rate q — exact conventions belong to Dupire's original 1994 paper and standard references like Gatheral's <em>The Volatility Surface</em>, not to any one restated version.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The finite-difference stencil</h2>
       <p class="sl-sub">Every input the formula needs, at one (K,T) point, comes from exactly five nearby call prices.</p>
@@ -119,7 +188,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Worked example: recovering a known 20% vol</h2>
       <p class="sl-sub">Five call prices generated from flat-σ Black-Scholes (S=100, r=5%, σ=20%, K=100, T=1.0, h=5, Δt=0.1) — a sanity check on the formula itself.</p>
@@ -143,7 +212,7 @@
     </section>
 
     <!-- WB:institutional_dupire_local_vol-deck:START -->
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Dupire: reading local vol off the price surface</h2>
       <!-- WB:institutional_dupire_local_vol:START -->
@@ -154,7 +223,7 @@
     </section>
     <!-- WB:institutional_dupire_local_vol-deck:END -->
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Compute σ_local from your own five prices</h2>
       <p class="sl-sub">Starts on the worked example's numbers. Change any field, live.</p>
@@ -189,7 +258,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">A tracing, not a painting</h2>
       <div class="sl-icard-grid">
@@ -199,7 +268,7 @@
       <div class="sl-quote">Asking "does local vol fit today's smile?" is a category error — of course it does, that's the mechanism. The genuinely testable question is whether its implied dynamics for tomorrow's smile look like reality.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Right today, unrealistic tomorrow</h2>
       <p class="sl-sub">The standard critique — and the industry's practical answer.</p>
@@ -210,7 +279,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Smooth the surface first</h2>
       <p class="sl-sub">Why the worked example's clean numbers aren't how real market data looks.</p>
@@ -235,7 +304,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Pitfalls<!-- DESK:START --> and what's in this repo<!-- DESK:END --></h2>
       <div class="sl-icard-grid">
@@ -248,7 +317,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -308,7 +377,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+
+    <section class="sl-slide sl-vark" data-slide="15">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative client request</div>
+    <h3>A down-and-out barrier on a pair whose smile you have already marked</h3>
+    <p>You run an FX exotics book with a full, liquid USD/JPY vanilla smile marked at one expiry, as in the lesson's scenario. A client asks for a price on a down-and-out barrier option on the same pair and expiry. Its value depends heavily on the path spot takes towards the barrier. How do you price it?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Use the at-the-money implied vol for the whole thing.<div class="tl-drill-why">One flat vol is inconsistent with your own marked smile. A client could hedge the barrier with your vanillas and trade against the mispricing.</div></li>
+      <li data-verdict="bad">Build local vol straight from the raw vanilla quotes with finite differences.<div class="tl-drill-why">The strike curvature amplifies noise. In the lesson's own numbers, a 5-cent change in one quote moves local vol from about 20.06% to 22.59%. Unsmoothed quotes can even give negative local variance.</div></li>
+      <li data-verdict="ok">Fit a smooth surface, build local vol from it, price the barrier, and stop there.<div class="tl-drill-why">The price is now consistent with every vanilla on the book. But a barrier is sensitive to how the smile moves, and local vol's forward smile is typically too flat, so this inherits that weakness unexamined.</div></li>
+      <li data-verdict="good">Fit a smooth surface, price with local vol for vanilla consistency, and check the price against a stochastic-vol or SLV model before quoting.<div class="tl-drill-why">Local vol gives the exact match to today's vanillas. A model with tested forward dynamics shows how much the barrier depends on the smile's future path, which is the part local vol gets least right.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson says.</strong> This is an illustrative case built on the lesson's own trading scenario, not a real trade. The point: local vol reprices every vanilla exactly by construction, which removes the static-hedge inconsistency, but its implied forward smile is widely considered too flat. For a path-dependent exotic like a barrier, that is exactly the risk to check, and it is why larger desks often use stochastic-local-vol hybrids for barriers.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

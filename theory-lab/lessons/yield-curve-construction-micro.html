@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Bootstrapping the Yield Curve — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">19</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, forward-rate proof, and a 5-question self-test?<a href="yield-curve-construction.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,75 @@
       <p class="sl-lede">A single bond's yield to maturity looks like "the" interest rate for that bond's maturity — but it's actually a blend across every one of its cash flows, and it's the wrong rate to use on anyone else's cash flow. Bootstrapping is the sequential technique that untangles a handful of bond prices into a genuine per-maturity zero curve: the true, single-cash-flow rate that every serious discounting, hedging, and swap-pricing operation is actually built on.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Rates at maturities of 1, 2 and 3 years. The par yields fed in are 3.00%, 3.50% and 4.00%. The bootstrapped zero rates, solved from the short end outward, are 3.00%, 3.51% and 4.03%, just above the par yields. The 1-year forward rates they imply are 3.00%, 4.02% and 5.07%, well above the zero curve because the curve slopes upward.">
+      <line class="tlp-line" x1="70" y1="205" x2="570" y2="205"/>
+      <line class="tlp-line" x1="70" y1="30" x2="70" y2="205"/>
+      <polyline class="tlp-line amber thick dash" points="130,177.5 300,121.4 470,63.6"/>
+      <polyline class="tlp-line blue thick" points="130,177.5 300,149.5 470,120.8"/>
+      <circle class="tlp-line" cx="300" cy="150" r="10" fill="none"/>
+      <circle class="tlp-line" cx="470" cy="122.5" r="10" fill="none"/>
+      <circle class="tlp-line" cx="130" cy="177.5" r="10" fill="none"/>
+      <circle class="tlp-blue" cx="130" cy="177.5" r="5"/>
+      <circle class="tlp-blue" cx="300" cy="149.5" r="5"/>
+      <circle class="tlp-blue" cx="470" cy="120.8" r="5"/>
+      <circle class="tlp-amber" cx="300" cy="121.4" r="6"/>
+      <circle class="tlp-amber" cx="470" cy="63.6" r="6"/>
+      <text class="tlp-blue" x="130" y="200" text-anchor="middle" font-size="13" font-weight="700">3.00%</text>
+      <text class="tlp-blue" x="314" y="168" font-size="13" font-weight="700">zero 3.51% · par 3.50%</text>
+      <text class="tlp-blue" x="484" y="142" font-size="13" font-weight="700">zero 4.03%</text>
+      <text class="tlp-text2" x="484" y="158" font-size="12">par 4.00%</text>
+      <text class="tlp-amber" x="290" y="108" text-anchor="end" font-size="13" font-weight="700">forward 4.02%</text>
+      <text class="tlp-amber" x="484" y="68" font-size="13" font-weight="700">forward 5.07%</text>
+      <text class="tlp-purple" x="80" y="40" font-size="13" font-weight="700">solve 1y first, then 2y, then 3y</text>
+      <text class="tlp-text3" x="80" y="58" font-size="12">each new rate uses the ones already solved</text>
+      <text class="tlp-text3" x="62" y="181" text-anchor="end" font-size="12">3%</text>
+      <text class="tlp-text3" x="62" y="126" text-anchor="end" font-size="12">4%</text>
+      <text class="tlp-text3" x="62" y="71" text-anchor="end" font-size="12">5%</text>
+      <text class="tlp-text3" x="130" y="221" text-anchor="middle" font-size="12">1 year</text>
+      <text class="tlp-text3" x="300" y="221" text-anchor="middle" font-size="12">2 years</text>
+      <text class="tlp-text3" x="470" y="221" text-anchor="middle" font-size="12">3 years</text>
+      <text class="tlp-text3" x="570" y="237" text-anchor="end" font-size="12">maturity →</text>
+    </svg>
+    <figcaption>Three par bonds go in (rings). The bootstrap turns them into one rate per maturity, the zero curve (blue), which sits just above the par yields. The forward rates (amber) fall out of the zero curve by no-arbitrage, and sit well above it because the curve slopes up.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">If I know a bond's yield, why can't I use it to discount any cash flow at that maturity?</p>
+      <p data-who="Quant">Because a yield is a blend. A five-year bond's yield mixes the rates for its year-one coupon, its year-two coupon and so on, into one number. A single payment due in five years needs the rate for year five alone. That is the zero rate.</p>
+      <p data-who="Trader">And the market doesn't quote zero rates directly.</p>
+      <p data-who="Quant">Mostly it quotes bundles. Bootstrapping unpicks them, starting from the short end. Take three bonds, all priced at a hundred: a one-year paying three percent, a two-year paying three and a half, a three-year paying four.</p>
+      <p data-who="Trader">The one-year is easy.</p>
+      <p data-who="Quant">One payment, a hundred and three in a year, for a hundred today. The one-year zero rate is three percent. No blend to unpick.</p>
+      <p data-who="Trader">Then the two-year.</p>
+      <p data-who="Quant">It pays three fifty in year one. You already know the one-year rate, so that coupon is worth about three forty today. Take it off the price and ninety-six sixty is left for the final payment. Solve, and the two-year zero rate is about three point five one percent.</p>
+      <p data-who="Trader">Just above the bond's own yield.</p>
+      <p data-who="Quant">Yes. Close, but not the same number. Do it once more for the three-year and you get about four point oh three. Short to long, one unknown at a time.</p>
+      <p data-who="Trader">Where do forward rates come in?</p>
+      <p data-who="Quant">Two ways to invest for two years: straight through at the two-year rate, or one year at three percent and then a one-year rate locked in today. With no free money, both must pay the same. That locks the one-year rate starting next year at about four point oh two percent.</p>
+      <p data-who="Trader">So the market expects rates to rise to four?</p>
+      <p data-who="Quant">Careful. That is an arbitrage identity, not a forecast. It tells you what is priced, not what will happen.</p>
+      <p data-who="Trader">What breaks it?</p>
+      <p data-who="Quant">Inputs that disagree. In March twenty twenty, everyone wanted cash and sold Treasuries at once. Dealers ran out of balance sheet, and older bonds cheapened against new ones with almost the same cash flows. There was no longer one curve to find.</p>
+      <p data-who="Trader">How did it end?</p>
+      <p data-who="Quant">The Fed cut to near zero, then bought Treasuries without limit from the twenty-third of March, and eased the banks' leverage rule on the first of April. Within weeks the bonds lined up on one curve again.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Discount each payment at its own maturity's rate, solve those rates from the short end outward, and check your inputs, because one bad short price spoils every rate after it.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">One yield, applied to every cash flow — that's the hidden assumption</h2>
       <p class="sl-sub">A 3-year bond pays three cash flows, at three different future dates. Ordinary YTM pricing discounts all three at the exact same rate.</p>
@@ -60,7 +128,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Same maturity, different coupon, different YTM</h2>
       <p class="sl-sub">Here's the concrete proof that a bond's YTM can't be "the" 5-year rate: two 5-year bonds, same underlying zero curve, different YTMs.</p>
@@ -81,7 +149,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Three rates, constantly confused with each other</h2>
       <div class="sl-icard-grid">
@@ -92,7 +160,7 @@
       <p class="sl-p">Only the spot rate answers "what is the correct discount rate for a cash flow landing at time t" — and it's exactly the quantity bootstrapping exists to recover, one maturity at a time, from the par rates the market actually quotes.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The bootstrapping algorithm, in three moves</h2>
       <p class="sl-sub">Recovering z₁, z₂, z₃, … from a set of observed bond prices — strictly shortest maturity to longest.</p>
@@ -104,7 +172,7 @@
       <div class="sl-quote">One equation, one unknown, at <strong>every</strong> stage — that's what keeps each individual solve as simple as a single bond's YTM problem, even though the curve being built up is genuinely multi-point.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Watch it solve — a 3-bond worked example</h2>
       <p class="sl-sub">Three par bonds (price = face = 100, annual coupons): 1yr at 3.00%, 2yr at 3.50%, 3yr at 4.00%. Step through the solve.</p>
@@ -131,7 +199,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The curve, built up point by point</h2>
       <p class="sl-sub">Drag the slider to replay the bootstrap — each step adds exactly one new solved point to the curve.</p>
@@ -162,7 +230,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Why it's called "bootstrapping"</h2>
       <div class="sl-quote">The name comes from the old idiom "pull yourself up by your own bootstraps" — achieving something using only resources you already have, with no outside help. Each step of this algorithm does exactly that: it solves a new zero rate using <strong>nothing but</strong> that maturity's own market price and the zero rates the algorithm <em>already solved for itself</em> at earlier steps.</div>
@@ -173,7 +241,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Forward rates fall straight out of the zero curve</h2>
       <p class="sl-sub">Once z₁ and z₂ are both known, a "1-year rate starting in 1 year" is already implied — no new market data required.</p>
@@ -193,7 +261,7 @@
     </section>
 
     <!-- WB:yield_curve_construction-deck:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Bootstrapping a curve, one maturity at a time</h2>
       <!-- WB:yield_curve_construction:START -->
@@ -204,7 +272,7 @@
     </section>
     <!-- WB:yield_curve_construction-deck:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Solve the second zero rate yourself</h2>
       <p class="sl-sub">Given a known 1-year zero rate and a 2-year par bond's coupon and price, isolate z₂ — the exact move from step 2 above.</p>
@@ -230,7 +298,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How a rates desk actually uses this</h2>
       <div class="sl-icard-grid">
@@ -241,7 +309,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this goes wrong in practice</h2>
       <div class="sl-callout amber">
@@ -252,7 +320,7 @@
       <!-- DESK:START --><div class="sl-note">Verified against this repo's current source (Sept 2026): a yield-curve <em>slope</em> engine exists in production (comparing published 2yr/10yr par yields as a macro signal) — but no bootstrapping routine or bootstrapped zero/discount curve exists anywhere in this codebase. This lesson's algorithm remains conceptual here, not implemented in production.</div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12 · It actually happened</div>
       <h2 class="sl-h2">March 2020: near-identical bonds stop agreeing</h2>
       <div class="sl-callout amber">
@@ -272,7 +340,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13<!-- DESK:START --> · Tested here<!-- DESK:END --></div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and the verdict<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: an inverted curve warns of recession, so expect weaker risk assets.</p>
@@ -285,7 +353,7 @@
       <div class="sl-quote">The bootstrap assumes the law of one price: two bonds with the same cash flows are worth the same. Arbitrage enforces that, and arbitrage needs balance sheet. In March 2020 dealers had none to spare, so "the" zero curve stopped being unique.</div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -335,7 +403,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="17">
+
+    <section class="sl-slide sl-vark" data-slide="18">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2020-03-16">
+    <div class="tl-drill-label">Scenario drill · 16 March 2020</div>
+    <h3>Near-identical Treasuries no longer agree</h3>
+    <p>You build the zero curve that a rates book is marked and hedged off. It is the dash for cash: foreign official holders, funds meeting redemptions and levered basis traders are all selling Treasuries, and for several days yields have risen while stocks fell. Dealers are out of balance sheet, bid-ask spreads are wide, and older off-the-run bonds have cheapened against on-the-run bonds of almost the same maturity. Yesterday the Fed cut rates to near zero and announced at least $500 billion of Treasury purchases. How do you build today's curve?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Feed in whichever bond prints at each maturity, on- or off-the-run, as usual.<div class="tl-drill-why">Bootstrapping is sequential. If a cheap, illiquid bond sets one of the short rates, its error carries into every longer rate solved after it, and your hedges move for reasons that have nothing to do with rates.</div></li>
+      <li data-verdict="good">Build from the most liquid inputs you trust, check the short end hard, and treat the off-the-run gap as a liquidity cost, not a rate.<div class="tl-drill-why">The algorithm still works; its inputs disagree. Choosing clean inputs keeps the curve meaningful, and recording the scatter of other bonds around it tells you how much illiquidity you are carrying.</div></li>
+      <li data-verdict="bad">Lever up: buy the cheap off-the-runs and short the on-the-runs. They must converge.<div class="tl-drill-why">They probably will, but convergence needs someone with balance sheet to force it, and that is exactly what has run out. Levered relative-value positions like this were being forced out at the worst prices.</div></li>
+      <li data-verdict="ok">Fit one smooth curve through every bond and price everything off it.<div class="tl-drill-why">It gives you a single curve, which is useful for reading the shape. But it hides that some of those bonds can only be sold well below the fitted price right now.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 23 March the Fed dropped its limit and said it would buy Treasuries in the amounts needed. On 1 April it temporarily excluded Treasuries and reserves from banks' supplementary leverage ratio, freeing dealer balance sheet. Market functioning recovered over the following weeks, and near-identical bonds lined up on one curve again. The cost: leveraged relative-value funds were forced out at the worst prices, and the Fed's balance sheet grew by more than a trillion dollars in about a month.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="19">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

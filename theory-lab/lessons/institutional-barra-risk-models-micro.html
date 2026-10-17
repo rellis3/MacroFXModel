@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Barra-Style Risk Models — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">18</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-barra-risk-models.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,82 @@
       <p class="sl-lede">CAPM, Fama-French, and APT can all be rebuilt end to end from a published paper. A commercial multi-factor risk model — Barra, MSCI, Axioma — cannot. It's proprietary production infrastructure, continuously recalibrated on huge datasets, sold as a subscription. This closing lesson of the category is an honest map of what these systems are and what institutions use them for, not a from-scratch derivation.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 244" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two positions run through the same toy two-factor risk model. Position A, momentum exposure 1.0 and value 0.5, has total variance 0.0650: factor variance 0.0550, 84.6%, and specific variance 0.0100, 15.4%. Position B, momentum 0.5 and value minus 0.3, has total variance 0.0288: factor variance 0.0088, 30.6%, and specific variance 0.0200, 69.4%.">
+      <rect class="tlp-box blue" x="130" y="12" width="12" height="12" rx="2"/>
+      <text class="tlp-text2" x="148" y="23" font-size="13">factor risk, x′Fx</text>
+      <rect class="tlp-box red" x="290" y="12" width="12" height="12" rx="2"/>
+      <text class="tlp-text2" x="308" y="23" font-size="13">specific risk</text>
+
+      <text class="tlp-text" x="16" y="76" font-size="14" font-weight="700">Position A</text>
+      <text class="tlp-text3" x="16" y="92" font-size="12">momentum 1.0</text>
+      <text class="tlp-text3" x="16" y="106" font-size="12">value 0.5</text>
+      <text class="tlp-text2" x="130" y="56" font-size="12">total variance 0.0650</text>
+      <text class="tlp-red" x="550" y="56" text-anchor="middle" font-size="12" font-weight="700">specific 15.4%</text>
+      <rect class="tlp-box blue" x="130" y="64" width="385" height="34" rx="4"/>
+      <rect class="tlp-box red" x="515" y="64" width="70" height="34" rx="4"/>
+      <text class="tlp-text" x="322" y="86" text-anchor="middle" font-size="14" font-weight="700">factor 0.0550 · 84.6%</text>
+      <text class="tlp-text" x="550" y="86" text-anchor="middle" font-size="12">0.0100</text>
+
+      <text class="tlp-text" x="16" y="156" font-size="14" font-weight="700">Position B</text>
+      <text class="tlp-text3" x="16" y="172" font-size="12">momentum 0.5</text>
+      <text class="tlp-text3" x="16" y="186" font-size="12">value −0.3</text>
+      <text class="tlp-blue" x="130" y="136" font-size="12" font-weight="700">factor 30.6%</text>
+      <text class="tlp-red" x="262" y="136" text-anchor="middle" font-size="12" font-weight="700">specific 69.4%</text>
+      <rect class="tlp-box blue" x="130" y="144" width="61.6" height="34" rx="4"/>
+      <rect class="tlp-box red" x="191.6" y="144" width="140" height="34" rx="4"/>
+      <text class="tlp-text" x="160.8" y="166" text-anchor="middle" font-size="12">0.0088</text>
+      <text class="tlp-text" x="261.6" y="166" text-anchor="middle" font-size="12">0.0200</text>
+      <text class="tlp-text2" x="346" y="166" font-size="12">total variance 0.0288</text>
+
+      <line class="tlp-line" x1="130" y1="200" x2="585" y2="200"/>
+      <text class="tlp-text3" x="130" y="216" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="270" y="216" text-anchor="middle" font-size="12">0.02</text>
+      <text class="tlp-text3" x="410" y="216" text-anchor="middle" font-size="12">0.04</text>
+      <text class="tlp-text3" x="550" y="216" text-anchor="middle" font-size="12">0.06</text>
+      <text class="tlp-text3" x="16" y="236" font-size="12">same factor covariance F for both; variance = x′Fx + specific</text>
+    </svg>
+    <figcaption>A risk model splits every position's variance into named factor risk and a stock-specific remainder. Position A is mostly a factor bet. Position B's smaller, partly offsetting exposures leave it mostly specific. The same split, summed over dozens of factors, is the daily risk report.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Every equity fund I've seen gets a Barra risk report each morning. What is it, really?</p>
+      <p data-who="Quant">A commercial factor risk model. Barr Rosenberg founded Barra in 1975 to sell them, and it became part of MSCI in 2004. Axioma and others sell the same kind of thing.</p>
+      <p data-who="Trader">Can I build one myself from a paper?</p>
+      <p data-who="Quant">Not the real thing. The exact factors and how they're tuned are trade secrets, re-estimated all the time. But the shape is public, and the shape is the useful part.</p>
+      <p data-who="Trader">Go on then.</p>
+      <p data-who="Quant">Every stock gets scores. Its size, its momentum, its value, which industry it's in. Those scores are known before the day starts.</p>
+      <p data-who="Trader">And then?</p>
+      <p data-who="Quant">At the end of each day you look across all the stocks and ask: given those scores, how much did being high-momentum pay today? How much did being a bank pay? That one regression across stocks gives you each factor's return for the day. It's the same move as the second stage of Fama and MacBeth.</p>
+      <p data-who="Trader">And whatever's left over?</p>
+      <p data-who="Quant">That's specific risk: the part of a stock's move that's nobody else's business. The model assumes it doesn't correlate across stocks. So a vendor only has to hand you three things: the scores, how the factors move together, and each stock's leftover variance.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Take a position with one unit of momentum exposure and half a unit of value. In the lesson's toy model its factor variance works out at point zero five five. Add specific variance of point zero one, and the total is point zero six five.</p>
+      <p data-who="Trader">So how much of that is factor risk?</p>
+      <p data-who="Quant">About eighty-five percent. If you thought you were a stock picker, the model says you're mostly running a momentum bet.</p>
+      <p data-who="Trader">So I should trade on these factor scores?</p>
+      <p data-who="Quant">No. Everyone with the subscription sees the same scores. It's a risk model, not an alpha model. You use it to see where your risk comes from and to keep the optimiser inside limits, like staying within two percent of the benchmark's sector weights.</p>
+      <p data-who="Trader">What makes the commercial version worth paying for?</p>
+      <p data-who="Quant">Mostly the clean-up. A raw covariance matrix with dozens of factors is noisy, and an optimiser that inverts it produces wild weights. The vendors shrink and stabilise it so it behaves. That's where much of the value sits.</p>
+      <p data-who="Trader">And for currencies?</p>
+      <p data-who="Quant">There's no widely used Barra for FX. You get the same job done with clustering, a small carry, momentum and value model, and a check on which correlations are just noise.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Split every position's risk into named factor bets plus a stock-specific remainder, and use that split to manage risk, never to find alpha.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Seeing a portfolio's risk before it bites</h2>
       <p class="sl-sub">Factor risk models · Barr Rosenberg, Barra, from 1975 → MSCI and every equity desk</p>
@@ -40,7 +115,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">The one model in this category that can't be rebuilt from a paper</h2>
       <div class="sl-icard-grid">
@@ -52,7 +127,7 @@
       <div class="sl-quote">Think of a commercial risk model like a weather-forecasting service, not a physics paper. The underlying "physics" — exposures times factor returns, plus a residual — is public. The specific 40-plus factors, exactly how each is built this quarter, and the covariance adjustments that make the system usable, are the proprietary product a fund pays a subscription for instead of building in-house.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">What genuinely is public: the general structure</h2>
       <p class="sl-sub">R_i = Σ_k X_ik f_k + u_i — every industry textbook states it this way.</p>
@@ -65,7 +140,7 @@
     </section>
 
     <!-- WB:institutional_barra_risk_models-deck:START -->
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">A factor risk model, built and used</h2>
       <!-- WB:institutional_barra_risk_models:START -->
@@ -76,7 +151,7 @@
     </section>
     <!-- WB:institutional_barra_risk_models-deck:END -->
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The same two-stage move as Fama-MacBeth, at far larger scale</h2>
       <div class="sl-compare">
@@ -92,7 +167,7 @@
       <div class="sl-quote">Same underlying mechanics, same two-stage idea — known exposures first, cross-sectional regression second. What changes is scale (dozens of factors instead of one or a handful) and purpose, covered next.</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">What makes it genuinely different — not just "more factors"</h2>
       <div class="sl-icard-grid">
@@ -107,7 +182,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Four factor models, side by side</h2>
       <p class="sl-sub">This category's own progression, closing the loop.</p>
@@ -135,7 +210,7 @@
       <p class="sl-p">The first three answer <em>why</em> expected returns differ across assets, each relaxing the last one's assumptions. A Barra-style model isn't a further step on that same research path — it's a different project, engineered for a production risk need rather than an asset-pricing hypothesis.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">What institutions actually use these for</h2>
       <div class="sl-icard-grid">
@@ -146,7 +221,7 @@
       <div class="sl-quote">Nobody licenses a Barra-style model to find a trading signal — the exposures it publishes are widely-known, already-priced-in descriptive statistics, not proprietary alpha. Every genuine use case here is downstream risk-management workflow.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">One portfolio's total risk, decomposed</h2>
       <p class="sl-sub">The kind of chart a Barra-style report hands a portfolio manager after every rebalance — illustrative, not live data.</p>
@@ -180,7 +255,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Drag the exposure, watch the split move</h2>
       <p class="sl-sub">Fixed toy factor covariance matrix: F₁₁=0.0400, F₁₂=F₂₁=0.0100, F₂₂=0.0200. Value exposure held at 0.50, specific variance at 0.0100.</p>
@@ -207,7 +282,7 @@
       <p class="sl-p">Push momentum exposure toward zero and the factor-risk share shrinks fast, since the quadratic form x᷀Fx falls with the square of the exposure — specific risk (fixed at 0.0100) starts dominating a small, low-conviction position, exactly as it should.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The full 2-factor decomposition, live</h2>
       <p class="sl-sub">Same toy matrix as the full lesson. Change any exposure or the specific variance.</p>
@@ -232,7 +307,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What this curriculum does instead — same logic, no equity taxonomy</h2>
       <p class="sl-sub">No commercial Barra-for-currencies exists in wide use. This curriculum already has the underlying idea, applied honestly to FX/gold.</p>
@@ -244,7 +319,7 @@
       <div class="sl-quote">None of these three claims to be a Barra-equivalent, and each says so explicitly in its own takeaways. What they show is that this curriculum already has the right idea, applied to the universe it actually covers — not a gap this lesson needs to paper over.</div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where this gets misused</h2>
       <div class="sl-compare">
@@ -267,7 +342,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -318,7 +393,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+
+    <section class="sl-slide sl-vark" data-slide="17">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative Monday risk report</div>
+    <h3>The stock picker who is mostly running a momentum bet</h3>
+    <p>You run an equity book sold to clients as bottom-up stock picking. This morning's factor risk report says 84.6% of your active variance comes from factor exposures, mostly a large momentum tilt you never set out to take, and only 15.4% from your individual stock picks. Your best ideas this year happen to be recent winners. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Nothing. Factor exposure is just a label the vendor puts on your stocks; your picks are what matter.<div class="tl-drill-why">The label is attached to real co-movement. If momentum reverses, most of your book falls together whatever each company's story is. Ignoring the report means your clients are paying for stock picking and getting a factor bet.</div></li>
+      <li data-verdict="good">Keep your picks but use the risk model as an optimiser constraint: cap the momentum tilt, offset it where you can, and re-run until most of the active risk is stock-specific.<div class="tl-drill-why">This is what the model is for. It shows where the risk comes from and lets you shape it. After the change, your results will mostly reflect your stock selection, which is the bet you meant to make.</div></li>
+      <li data-verdict="bad">Lean in. Momentum has been working, so add more high-momentum names.<div class="tl-drill-why">That uses a risk model as an alpha model. Everyone with the subscription sees the same momentum scores, so they are not an edge. You would be adding to an unintended bet because it has paid lately.</div></li>
+      <li data-verdict="ok">Cut every position by a third to bring total risk down.<div class="tl-drill-why">Total risk falls, but the mix does not change: still about 85% factor and 15% specific. You are smaller, not different. It is a defensible stopgap while you fix the tilt properly.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the method says.</strong> This Monday is illustrative; the 84.6% split is the lesson's own worked example scaled up to a book. The lesson's point is that a commercial risk model is a measuring and constraining tool. Its job is to tell you which bets you are really running so you can keep the ones you mean and shed the ones you don't.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="18">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

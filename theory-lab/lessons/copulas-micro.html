@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Copulas — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, a live Kendall's-tau scratchpad, and a 6-question self-test?<a href="copulas.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,70 @@
       <p class="sl-lede">Two currency pairs can carry the exact same correlation number in a calm year and in a crisis year. Correlation looked fine right up until everything crashed together — and a single correlation coefficient has no way to warn you it's coming. Copulas are the tool built specifically to separate each series' own distribution from how the two of them move together, and to expose the part correlation can't see: whether they tend to crash together far more often than that one number would ever suggest.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lower-tail dependence, the chance that one series is in its extreme crash tail given the other is, plotted against Kendall's tau for two copulas matched on the same tau. The Gaussian copula's line sits flat at zero for every tau. The Clayton copula's curve rises from zero towards one. At the worked example's tau of 0.40, the Gaussian gives 0 and the Clayton gives 0.595, about 60 percent.">
+      <line class="tlp-line" x1="80" y1="40" x2="80" y2="200"/>
+      <line class="tlp-line" x1="80" y1="200" x2="566" y2="200"/>
+      <text class="tlp-text3" x="72" y="204" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="72" y="124" text-anchor="end" font-size="12">0.5</text>
+      <text class="tlp-text3" x="72" y="44" text-anchor="end" font-size="12">1</text>
+      <text class="tlp-text3" x="80" y="26" font-size="12">joint-crash chance, deep in the tail ↑</text>
+      <text class="tlp-text3" x="80" y="216" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="186.7" y="216" text-anchor="middle" font-size="12">0.2</text>
+      <text class="tlp-text3" x="293.3" y="216" text-anchor="middle" font-size="12">0.4</text>
+      <text class="tlp-text3" x="400" y="216" text-anchor="middle" font-size="12">0.6</text>
+      <text class="tlp-text3" x="506.7" y="216" text-anchor="middle" font-size="12">0.8</text>
+      <text class="tlp-text3" x="320" y="234" text-anchor="middle" font-size="12">Kendall's τ, the same for both models →</text>
+      <line class="tlp-line dash" x1="293.3" y1="44" x2="293.3" y2="200"/>
+      <line class="tlp-line blue thick" x1="80" y1="200" x2="560" y2="200"/>
+      <polyline class="tlp-line red thick" points="85.3,200.0 90.7,200.0 96.0,200.0 101.3,200.0 106.7,199.8 112.0,199.3 117.3,198.4 122.7,197.0 128.0,195.2 133.3,192.9 138.7,190.3 144.0,187.4 149.3,184.3 154.7,181.0 160.0,177.6 165.3,174.1 170.7,170.5 176.0,167.0 181.3,163.5 186.7,160.0 192.0,156.6 197.3,153.2 202.7,149.9 208.0,146.6 213.3,143.4 218.7,140.3 224.0,137.3 229.3,134.4 234.7,131.5 240.0,128.7 245.3,126.0 250.7,123.4 256.0,120.8 261.3,118.4 266.7,115.9 272.0,113.6 277.3,111.3 282.7,109.1 288.0,107.0 293.3,104.9 298.7,102.8 304.0,100.9 309.3,98.9 314.7,97.1 320.0,95.2 325.3,93.5 330.7,91.8 336.0,90.1 341.3,88.5 346.7,86.9 352.0,85.3 357.3,83.8 362.7,82.3 368.0,80.9 373.3,79.5 378.7,78.1 384.0,76.8 389.3,75.5 394.7,74.2 400.0,73.0 405.3,71.8 410.7,70.6 416.0,69.5 421.3,68.3 426.7,67.2 432.0,66.2 437.3,65.1 442.7,64.1 448.0,63.1 453.3,62.1 458.7,61.1 464.0,60.2 469.3,59.2 474.7,58.3 480.0,57.5 485.3,56.6 490.7,55.7 496.0,54.9 501.3,54.1 506.7,53.3 512.0,52.5 517.3,51.7 522.7,51.0 528.0,50.2 533.3,49.5 538.7,48.8 544.0,48.1 549.3,47.4 554.7,46.7 560.0,46.0"/>
+      <circle class="tlp-red" cx="293.3" cy="104.9" r="6"/>
+      <circle class="tlp-blue" cx="293.3" cy="200" r="6"/>
+      <text class="tlp-red" x="304" y="124" font-size="13.5" font-weight="700">Clayton: ≈ 60% at τ = 0.40</text>
+      <text class="tlp-red" x="452" y="54" text-anchor="end" font-size="13" font-weight="700">Clayton</text>
+      <text class="tlp-blue" x="556" y="190" text-anchor="end" font-size="13.5" font-weight="700">Gaussian: 0% at every τ, 0.40 included</text>
+    </svg>
+    <figcaption>Tune both models to the same headline dependence, a Kendall's τ of 0.40. Ask how often the second series crashes when the first does, deep in the tail. The Gaussian copula says never; the Clayton copula says about 60% of the time. The headline number cannot tell them apart.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Two currency pairs, correlation about point four. Related, but not the same bet. A book holding both looks diversified. Agree?</p>
+      <p data-who="Quant">On an ordinary day, yes. The real question is what happens on the worst days, and that one number can't tell you.</p>
+      <p data-who="Trader">Why not? It measures how they move together.</p>
+      <p data-who="Quant">On average, and along a straight line. It blends calm days and crisis days into one figure. Two pairs can share that figure and behave completely differently when both are falling apart.</p>
+      <p data-who="Trader">So how do you see the difference?</p>
+      <p data-who="Quant">Split the problem in two. Abe Sklar showed in 1959 that any joint distribution breaks into each series' own distribution, plus a separate piece that only describes how they're linked. That linking piece is the copula.</p>
+      <p data-who="Trader">So I can choose the link separately.</p>
+      <p data-who="Quant">Exactly. Fat tails for each currency on its own, then a link that can tighten in a crash.</p>
+      <p data-who="Trader">What's the usual choice?</p>
+      <p data-who="Quant">The Gaussian copula. It's easy to use, and it has a blind spot: deep in the tail, the two become independent. However high the correlation, short of perfect, the most extreme joint crashes become unrelated events.</p>
+      <p data-who="Trader">And the alternative?</p>
+      <p data-who="Quant">Clayton is one. It's built to crash together without rallying together. Picture a bungee cord that only tightens when both are falling.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Tune both to the same rank correlation, a Kendall's tau of point four. Then ask: when one pair has one of its very worst days, how often does the other one too? The Gaussian says zero. The Clayton says about sixty percent. Same headline number.</p>
+      <p data-who="Trader">Has that gap ever cost real money?</p>
+      <p data-who="Quant">Badly. Before 2008, CDO tranches were priced with a Gaussian copula fitted on calm years. The top slice, the super-senior, only lost money if most of the pool defaulted at once. With zero tail dependence that looked nearly impossible, so the slice looked nearly riskless.</p>
+      <p data-who="Trader">And then house prices fell everywhere at once.</p>
+      <p data-who="Quant">Defaults rose together, losses climbed the structure, and banks holding super-senior slices wrote down tens of billions of dollars. The misfit was visible earlier, too: different slices of the same pool implied different correlations.</p>
+      <p data-who="Trader">So I just switch to Clayton?</p>
+      <p data-who="Quant">Not blindly. Any copula fitted only on calm data can make the same mistake. Test it against stress periods, and remember that joint crashes are rare, so any estimate of them is noisy.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Correlation describes ordinary days. Before you call two positions diversified, ask what they do together on the worst ones.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">One number, averaged over every kind of day</h2>
       <p class="sl-sub">Pearson correlation answers one specific question honestly. It was never built to answer this one.</p>
@@ -39,7 +102,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Same weather report, very different storm behavior</h2>
       <p class="sl-sub">Two towns' temperatures — a way to see the idea before the notation.</p>
@@ -56,7 +119,7 @@
       <p class="sl-p">Both scenarios can produce the exact same "how correlated are these two towns on an average day" number. They differ entirely in what happens specifically in the joint extremes. A <strong>copula</strong> is the object that captures that town-to-town relationship, isolated from each town's own weather — applied to markets instead of thermometers, it's what lets you ask "given how bad an FX crisis typically gets in currency A, how much worse does a simultaneous move in currency B get?" as a question separate from "how correlated are they on an ordinary Tuesday."</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Sklar's theorem: split the joint into two honest pieces</h2>
       <p class="sl-sub">Any joint distribution H(x,y) can be decomposed, without losing information, into each variable's own marginal plus a copula.</p>
@@ -73,7 +136,7 @@
       <p class="sl-p">This is why the split is useful, not just tidy: it means marginals and dependence can be modeled in two independent stages. Pick realistic, fat-tailed marginals for each series — the kind an Extreme Value Theory fit would give you — and separately pick whatever dependence structure the data actually supports, including strong asymmetric tail behavior a plain multivariate-normal assumption would miss entirely. Neither piece alone gets you a realistic joint model; combined through Sklar's theorem, they do.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Same correlation, two very different corners</h2>
       <p class="sl-sub">Both clouds below are tuned to the same overall dependence strength. Only one has extra points where it matters.</p>
@@ -109,7 +172,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Tail dependence, defined precisely</h2>
       <p class="sl-sub">The number a single correlation coefficient cannot see.</p>
@@ -125,7 +188,7 @@
       <p class="sl-p">Two dependence structures can have identical overall correlation and completely different λ_L. That's not a subtle edge case — it's the entire reason this lesson exists. One important nuance worth holding onto: λ_L = 0 is an asymptotic statement, a limit as the tail threshold shrinks toward zero. At a practical threshold like the 5% tail, a Gaussian copula with a meaningfully positive ρ still shows some elevated joint-tail probability — it's just smaller than a genuinely tail-dependent copula's, and it keeps shrinking the deeper you look, where the tail-dependent copula's does not.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Match them on the same rank-correlation, live</h2>
       <p class="sl-sub">Kendall's τ is a rank-based dependence measure, comparable in spirit to correlation. Fix τ, and watch how far apart the two copulas' tail dependence stays anyway.</p>
@@ -145,7 +208,7 @@
     </section>
 
     <!-- WB:copulas-deck:START -->
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Copulas: same correlation, different crashes</h2>
       <!-- WB:copulas:START -->
@@ -156,7 +219,7 @@
     </section>
     <!-- WB:copulas-deck:END -->
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The 2008 cautionary tale</h2>
       <p class="sl-sub">This isn't a hypothetical — it's a documented, systemic-scale example of exactly this blind spot.</p>
@@ -168,7 +231,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">A "diversified" book that isn't, exactly when it matters</h2>
       <p class="sl-p">Suppose two FX pairs show a comfortable rolling correlation of about 0.4 most of the time — the kind of number that reads, on a standard diversification check, as "meaningfully related but not redundant." Now suppose their true dependence structure has strong lower-tail dependence, in the asymmetric Clayton-style pattern from Section 4: during a risk-off shock, both pairs move sharply the same direction far more often, and far more tightly, than 0.4 correlation would ever suggest.</p>
@@ -181,7 +244,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where copula modeling goes wrong in practice</h2>
       <div class="sl-compare">
@@ -207,7 +270,7 @@
       <p class="sl-p">The Gaussian copula remains popular for the same reasons it was popular before 2008: tractable, well-understood, easy to simulate from. That's a legitimate reason to use it as a baseline — it is not evidence that it's the right description of a specific pair's tail behavior.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">The super-senior tranche: a pure bet on the joint tail</h2>
       <div class="sl-callout amber">
@@ -227,7 +290,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <!-- DESK:START -->
       <h2 class="sl-h2">What this desk can say, and where the textbook breaks</h2>
@@ -244,7 +307,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -297,7 +360,27 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="15">
+
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2007">
+    <div class="tl-drill-label">Scenario drill · early 2007</div>
+    <h3>Your "near riskless" slice depends on one corner of the model</h3>
+    <p>You run a bank's structured-credit book and hold a large super-senior CDO tranche. It loses money only if a large share of the mortgage-backed pool defaults at the same time. Your Gaussian copula, calibrated on calm years, marks it as near riskless. Two things bother you: tranches on the same pool imply different correlations for the junior and senior slices, and US house prices have stopped rising. What do you do with the position?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Keep it. The model says most of the pool defaulting together is close to impossible.<div class="tl-drill-why">That is the zero-tail-dependence assumption talking. The super-senior slice is a bet on the joint lower tail and almost nothing else, and the Gaussian copula prices that corner at zero by construction.</div></li>
+      <li data-verdict="good">Re-value it under a tail-dependent model and a nationwide house-price fall, and cut it to what you could survive in that stress.<div class="tl-drill-why">The position's value depends on the one corner the model cannot see, and the tranche quotes already show the model misfits. Sizing to a stress where defaults cluster is the honest test.</div></li>
+      <li data-verdict="ok">Raise the copula correlation a little and re-mark the tranche.<div class="tl-drill-why">A step in the right direction, but a Gaussian copula with any correlation below 1 still has zero tail dependence. One flat correlation could not even fit every tranche of a single pool at the same time.</div></li>
+      <li data-verdict="bad">Buy more. The spread is thin, but it is close to free money.<div class="tl-drill-why">A thin spread on a slice that loses only in a joint crash is exactly the trade where a thin-tailed model hides the risk. More size means more exposure to the corner you have not measured.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> US house prices fell nationwide, a common shock to every region at once. Mortgage defaults rose together, the lower slices inside CDOs were wiped out together, and losses reached the super-senior slices the models had treated as safe. Rating agencies downgraded top-rated CDO tranches in large numbers through 2007 and 2008. UBS, Merrill Lynch and Citigroup took write-downs running to tens of billions of dollars, much of it on super-senior CDO positions they had kept, and the chief executives of Merrill Lynch and Citigroup left in late 2007.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

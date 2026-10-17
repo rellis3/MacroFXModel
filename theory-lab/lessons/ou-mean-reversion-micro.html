@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Ornstein-Uhlenbeck &amp; Mean Reversion — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, a live φ→θ scratchpad, and a 6-question self-test?<a href="ou-mean-reversion.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,66 @@
       <p class="sl-lede">Every trader has a gut feeling about whether a price that's strayed from "normal" tends to come back. The Ornstein-Uhlenbeck process turns that gut feeling into an equation — one with a speed parameter you can fit from real data and convert into a half-life measured in days, not a vibe you'd hesitate to say out loud to a non-quant.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Expected distance from the long-run mean over 30 days, starting 40 pips away. With an AR(1) coefficient of 0.90 the gap halves every 6.6 days: 20 pips after 6.6 days and 10 pips after 13.2 days. With a coefficient of 0.98 the half-life is 34.3 days and the gap is still about 22 pips after 30 days. A random walk, theta equal to zero, has no expected pull back: the line stays flat at 40.">
+      <line class="tlp-line" x1="60" y1="200" x2="565" y2="200"/>
+      <line class="tlp-line" x1="60" y1="200" x2="60" y2="40"/>
+      <line class="tlp-line red dash" x1="60" y1="50" x2="560" y2="50"/>
+      <text class="tlp-red" x="560" y="40" text-anchor="end" font-size="13" font-weight="700">θ = 0, random walk: no pull back</text>
+      <polyline class="tlp-line amber thick" points="60.0,50.0 76.7,53.0 93.3,55.9 110.0,58.8 126.7,61.6 143.3,64.4 160.0,67.1 176.7,69.8 193.3,72.4 210.0,74.9 226.7,77.4 243.3,79.9 260.0,82.3 276.7,84.6 293.3,86.9 310.0,89.2 326.7,91.4 343.3,93.6 360.0,95.7 376.7,97.8 393.3,99.9 410.0,101.9 426.7,103.8 443.3,105.7 460.0,107.6 476.7,109.5 493.3,111.3 510.0,113.1 526.7,114.8 543.3,116.5 560.0,118.2"/>
+      <polyline class="tlp-line blue thick" points="60.0,50.0 76.7,65.0 93.3,78.5 110.0,90.6 126.7,101.6 143.3,111.4 160.0,120.3 176.7,128.3 193.3,135.4 210.0,141.9 226.7,147.7 243.3,152.9 260.0,157.6 276.7,161.9 293.3,165.7 310.0,169.1 326.7,172.2 343.3,175.0 360.0,177.5 376.7,179.7 393.3,181.8 410.0,183.6 426.7,185.2 443.3,186.7 460.0,188.0 476.7,189.2 493.3,190.3 510.0,191.3 526.7,192.1 543.3,192.9 560.0,193.6"/>
+      <line class="tlp-line dash" x1="169.7" y1="125" x2="169.7" y2="200"/>
+      <circle class="tlp-green" cx="169.7" cy="125" r="6"/>
+      <circle class="tlp-green" cx="279.3" cy="162.5" r="5"/>
+      <text class="tlp-green" x="182" y="120" font-size="13" font-weight="700">φ = 0.90: half-life 6.6 days, 40 → 20 pips</text>
+      <text class="tlp-green" x="290" y="156" font-size="13">another 6.6 days: 10 pips</text>
+      <text class="tlp-amber" x="556" y="140" text-anchor="end" font-size="13" font-weight="700">φ = 0.98: half-life 34.3 days</text>
+      <text class="tlp-text3" x="54" y="54" text-anchor="end" font-size="12">40</text>
+      <text class="tlp-text3" x="54" y="129" text-anchor="end" font-size="12">20</text>
+      <text class="tlp-text3" x="54" y="204" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="66" y="30" font-size="12">expected gap to the mean, pips</text>
+      <text class="tlp-text3" x="60" y="216" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="226.7" y="216" text-anchor="middle" font-size="12">10</text>
+      <text class="tlp-text3" x="393.3" y="216" text-anchor="middle" font-size="12">20</text>
+      <text class="tlp-text3" x="560" y="216" text-anchor="end" font-size="12">30 days</text>
+    </svg>
+    <figcaption>The pull back is a fixed fraction of the gap, so the expected gap shrinks by half every half-life, \(\ln 2 / \theta\). That is the expected path only: a single path, or a crowded trade, can widen first.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Everyone says this spread is mean-reverting. What does that actually mean, in numbers?</p>
+      <p data-who="Quant">Picture a ball tied to a post with a rubber band, in a tub of choppy water. The water knocks it about at random. The band pulls it back, harder the further it strays. That is the Ornstein-Uhlenbeck process.</p>
+      <p data-who="Trader">And a random walk?</p>
+      <p data-who="Quant">Cut the band. Nothing pulls the ball back, so it can drift off forever. That is the special case where the pull is zero.</p>
+      <p data-who="Trader">How do I measure the band?</p>
+      <p data-who="Quant">By its stiffness, the speed of reversion. The most useful way to say it out loud is a half-life: how long until the expected gap to the mean is cut in half. It is the log of two divided by the speed.</p>
+      <p data-who="Trader">I don't have a speed. I have daily closes.</p>
+      <p data-who="Quant">Then regress today's value on yesterday's. Say the coefficient comes back at point nine. Take minus the natural log of that and you get a speed of about point one oh five per day. The half-life is about six and a half days.</p>
+      <p data-who="Trader">So if the spread is forty pips rich today…</p>
+      <p data-who="Quant">You would expect about twenty pips after six or seven trading days, and about ten after another six or seven. If the coefficient had been point nine eight instead, the half-life would be about thirty-four days. Still mean-reverting, but far too slow for a short fade.</p>
+      <p data-who="Trader">And if it comes back at one or more?</p>
+      <p data-who="Quant">Then there is no band at all. Don't force a half-life out of it. The model simply does not apply.</p>
+      <p data-who="Trader">If I trust the half-life, I just hold the fade for about that long?</p>
+      <p data-who="Quant">Careful. The half-life describes the average path, not the path you will get. August 2007 is the warning. Many quant funds held the same short-term reversion trades. On the seventh, eighth and ninth of August, forced selling pushed prices further from fair value, day after day.</p>
+      <p data-who="Trader">And then?</p>
+      <p data-who="Quant">On Friday the tenth the reversion came, sharply. Funds forced out on the Wednesday and Thursday sold near the bottom and missed it. The band is held by traders with capital, and when they are the ones being forced out, the pull weakens exactly when the gap is widest.</p>
+      <p data-who="Trader">One-line version?</p>
+      <p data-who="Quant">Mean reversion has a speed you can measure, but only size the trade so you can survive the gap getting wider first.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">A rubber band attached to a moving average</h2>
       <div class="sl-card">
@@ -42,7 +101,7 @@
       <div class="sl-quote">A plain random walk — the model behind "prices have no memory" — is what's left if you cut the rubber band entirely: θ = 0, nothing pulls the ball back, and it really can wander off forever.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">The equation: drift plus diffusion</h2>
       <p class="sl-sub">dXₜ = θ(μ − Xₜ)dt + σdWₜ. Read left to right: the next tiny move is a predictable nudge back toward μ, plus an unpredictable random shock.</p>
@@ -62,7 +121,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Cut the band and you get a random walk</h2>
       <p class="sl-sub">A random walk isn't a different model — it's this exact equation with θ set to zero.</p>
@@ -82,7 +141,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Same start, same-looking noise, different fate</h2>
       <p class="sl-sub">Drag the slider. Only the blue path's pull-back strength changes — the noise sequence is fixed, so you're seeing θ alone at work.</p>
@@ -104,7 +163,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Turning θ into a number you can say out loud</h2>
       <p class="sl-sub">Ignore the noise for a moment — in expectation it averages to zero — and solve the drift-only decay for how long a deviation takes to halve.</p>
@@ -121,7 +180,7 @@
       <div class="sl-quote">A short half-life (say, 1 day) is a snappy series where a deviation today is mostly gone within a couple of days. A long half-life (say, 60 days) is technically still mean-reverting, but far too slow to trade on a multi-day horizon — by the time it pulls back, the world has moved on. As θ→0, t½→∞, consistent with the random-walk limit having no reversion at all.</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Fitting this from daily bars: the AR(1) twin</h2>
       <p class="sl-sub">You almost never fit the continuous-time SDE directly. You fit its discrete-time analogue, AR(1), then convert.</p>
@@ -139,7 +198,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">From a fitted φ to a half-life, live</h2>
       <p class="sl-sub">Starts on φ = 0.90, Δt = 1 day. Edit either field — θ and the half-life recompute instantly.</p>
@@ -164,7 +223,7 @@
       <p class="sl-p">Try pushing φ to 1.02. The model doesn't quietly report "very slow reversion" — it refuses to produce a number at all, because a fitted φ ≥ 1 isn't slow mean reversion, it's no mean reversion.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Worked example: two coefficients, two very different trades</h2>
       <p class="sl-sub">Same regression, same daily data, two hypothetical fits.</p>
@@ -182,7 +241,7 @@
     </section>
 
     <!-- WB:ou-deck:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Mean reversion: a price on a rubber band</h2>
       <!-- WB:ou:START -->
@@ -193,7 +252,7 @@
     </section>
     <!-- WB:ou-deck:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">What a half-life is actually used for</h2>
       <div class="sl-icard-grid">
@@ -209,7 +268,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">August 2007: the quant quake</h2>
       <div class="sl-callout amber">
@@ -229,7 +288,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <!-- DESK:START --><h2 class="sl-h2">What this desk found when it tested the claim</h2><!-- DESK:END -->
       <p class="sl-sub">The tempting claim: fit θ, put bands around μ, fade the stretch, hold about a half-life.</p>
@@ -248,7 +307,7 @@
       <div class="sl-quote"><strong>Where the textbook breaks:</strong> OU assumes the push away from μ is memoryless noise, σdW, and that θ is constant. In 2007 the push was a steady stream of forced selling, and the pull-back came from traders who were themselves being forced out, so θ fell toward zero just when the gap was widest.</div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -299,7 +358,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2007-08-09">
+    <div class="tl-drill-label">Scenario drill · 9 August 2007</div>
+    <h3>Your reversion book has gone the wrong way for three days</h3>
+    <p>You run a leveraged, market-neutral equity book built on short-horizon mean reversion: buy recent losers, sell recent winners, and wait for the pull back. Since Tuesday your positions have moved steadily against you, with no obvious news in the stocks themselves. The gaps to fair value are now the widest your model has ever seen, and you are close to your risk limit. What do you do with the book?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Add to it. The gaps are the widest ever, so the expected snap back is the biggest ever.<div class="tl-drill-why">The half-life describes the expected path, not this path. The push is a steady stream of selling, not random noise, and adding leverage near your limit means one more bad day forces you out completely.</div></li>
+      <li data-verdict="good">Cut leverage to a size you could hold even if the gaps widen for several more days, and keep the rest of the book.<div class="tl-drill-why">You stay in the trade but take the decision away from your risk limit. The aim is to survive the path, because a book that is forced out cannot collect the reversion when it comes.</div></li>
+      <li data-verdict="ok">Liquidate everything now, before it gets any worse.<div class="tl-drill-why">It caps the damage and is defensible risk control. But it sells into the same one-way flow that is causing the losses, locks them in near the extremes, and leaves nothing to benefit if the reversion arrives.</div></li>
+      <li data-verdict="bad">Change nothing. The fitted half-life says the gap will close within days.<div class="tl-drill-why">A constant \(\theta\) is a model assumption. The pull back is supplied by traders with capital, and when those traders are being forced out, the pull weakens exactly when the gap is widest. Doing nothing leaves the decision to your risk limit.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In Khandani and Lo's reconstruction, a simple strategy of buying the previous day's losers and selling its winners lost heavily on 7, 8 and 9 August 2007, then rebounded sharply on Friday 10 August. Their explanation, offered as a hypothesis, was that at least one large fund unwound a quant equity book quickly, and similar funds hit their limits and sold too. Funds forced to cut on the Wednesday and Thursday sold near the bottom and missed the rebound.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

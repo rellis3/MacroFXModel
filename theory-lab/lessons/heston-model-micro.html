@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">The Heston Model — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the semi-closed-form pricing details, and a 6-question self-test?<a href="heston-model.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,74 @@
       <p class="sl-lede">Black-Scholes prices every option off one fixed volatility, forever. Real options markets don't cooperate — the same underlying, same expiry, prices meaningfully differently across strikes, a shape called the volatility smile (or skew). Heston's 1993 fix is to stop treating volatility as a constant at all: make it a second, mean-reverting stochastic process in its own right, correlated with the asset it belongs to. That one structural change is what lets a model generate a smile organically — at the cost of a formula that needs a numerical Fourier step instead of simple algebra, and five parameters to calibrate instead of one.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left panel: volatility as its own process. It starts at 30 percent, variance 0.09, and is pulled back toward a long-run 20 percent, variance 0.04, at speed kappa equals 2, so half of the variance gap closes in about 126 days. Right panel: a stylized implied volatility smile across strikes. Black-Scholes is a flat line. With correlation zero the curve is a symmetric smile; with correlation minus 0.7 it tilts into a skew, with low-strike puts priced at much higher implied volatility.">
+      <text class="tlp-text" x="20" y="22" font-size="14" font-weight="700">1 · Vol has its own rubber band</text>
+      <text class="tlp-text" x="330" y="22" font-size="14" font-weight="700">2 · Negative ρ tilts the smile</text>
+      <line class="tlp-line" x1="50" y1="40" x2="50" y2="190"/>
+      <line class="tlp-line" x1="50" y1="190" x2="272" y2="190"/>
+      <line class="tlp-line green dash" x1="50" y1="148.8" x2="270" y2="148.8"/>
+      <polyline class="tlp-line blue thick" points="50.0,66.5 53.7,69.8 57.3,73.1 61.0,76.2 64.7,79.2 68.3,82.1 72.0,84.9 75.7,87.6 79.3,90.2 83.0,92.7 86.7,95.1 90.3,97.4 94.0,99.7 97.7,101.8 101.3,103.8 105.0,105.8 108.7,107.7 112.3,109.5 116.0,111.3 119.7,112.9 123.3,114.5 127.0,116.1 130.7,117.5 134.3,118.9 138.0,120.3 141.7,121.6 145.3,122.8 149.0,124.0 152.7,125.1 156.3,126.2 160.0,127.3 163.7,128.3 167.3,129.2 171.0,130.1 174.7,131.0 178.3,131.8 182.0,132.6 185.7,133.4 189.3,134.1 193.0,134.8 196.7,135.4 200.3,136.1 204.0,136.7 207.7,137.2 211.3,137.8 215.0,138.3 218.7,138.8 222.3,139.3 226.0,139.7 229.7,140.2 233.3,140.6 237.0,141.0 240.7,141.3 244.3,141.7 248.0,142.0 251.7,142.4 255.3,142.7 259.0,143.0 262.7,143.3 266.3,143.5 270.0,143.8"/>
+      <circle class="tlp-amber" cx="100.8" cy="103.6" r="5"/>
+      <text class="tlp-blue" x="58" y="58" font-size="13" font-weight="700">today: vol 30%</text>
+      <text class="tlp-amber" x="110" y="95" font-size="12" font-weight="700">126 days: half the gap gone</text>
+      <text class="tlp-green" x="268" y="166" text-anchor="end" font-size="12" font-weight="700">long run: vol 20%</text>
+      <text class="tlp-text3" x="44" y="70" text-anchor="end" font-size="12">30%</text>
+      <text class="tlp-text3" x="44" y="152" text-anchor="end" font-size="12">20%</text>
+      <text class="tlp-text3" x="50" y="206" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="123.3" y="206" text-anchor="middle" font-size="12">6 mo</text>
+      <text class="tlp-text3" x="196.7" y="206" text-anchor="middle" font-size="12">1 yr</text>
+      <text class="tlp-text3" x="160" y="226" text-anchor="middle" font-size="12">time from today (κ = 2)</text>
+      <line class="tlp-line" x1="350" y1="190" x2="572" y2="190"/>
+      <line class="tlp-line dash" x1="350" y1="171.3" x2="570" y2="171.3"/>
+      <polyline class="tlp-line purple" points="350.0,115.3 355.5,120.8 361.0,126.0 366.5,130.9 372.0,135.5 377.5,139.8 383.0,143.9 388.5,147.7 394.0,151.2 399.5,154.4 405.0,157.3 410.5,160.0 416.0,162.4 421.5,164.5 427.0,166.3 432.5,167.8 438.0,169.1 443.5,170.1 449.0,170.8 454.5,171.2 460.0,171.3 465.5,171.2 471.0,170.8 476.5,170.1 482.0,169.1 487.5,167.8 493.0,166.3 498.5,164.5 504.0,162.4 509.5,160.0 515.0,157.3 520.5,154.4 526.0,151.2 531.5,147.7 537.0,143.9 542.5,139.8 548.0,135.5 553.5,130.9 559.0,126.0 564.5,120.8 570.0,115.3"/>
+      <polyline class="tlp-line red thick" points="350.0,63.1 355.5,71.1 361.0,78.9 366.5,86.4 372.0,93.7 377.5,100.6 383.0,107.3 388.5,113.7 394.0,119.8 399.5,125.6 405.0,131.2 410.5,136.5 416.0,141.5 421.5,146.2 427.0,150.6 432.5,154.8 438.0,158.6 443.5,162.2 449.0,165.5 454.5,168.6 460.0,171.3 465.5,173.8 471.0,176.0 476.5,177.9 482.0,179.5 487.5,180.9 493.0,182.0 498.5,182.8 504.0,183.3 509.5,183.5 515.0,183.5 520.5,183.1 526.0,182.5 531.5,181.6 537.0,180.5 542.5,179.0 548.0,177.3 553.5,175.3 559.0,173.0 564.5,170.4 570.0,167.6"/>
+      <text class="tlp-red" x="380" y="72" font-size="13" font-weight="700">ρ = −0.7: puts dearer</text>
+      <text class="tlp-purple" x="546" y="94" text-anchor="end" font-size="12" font-weight="700">ρ = 0: symmetric smile</text>
+      <text class="tlp-text3" x="352" y="186" font-size="12">flat: Black-Scholes</text>
+      <text class="tlp-text3" x="350" y="206" font-size="12">low strike (puts)</text>
+      <text class="tlp-text3" x="570" y="206" text-anchor="end" font-size="12">high (calls)</text>
+      <text class="tlp-text3" x="460" y="226" text-anchor="middle" font-size="12">implied vol by strike (stylized)</text>
+    </svg>
+    <figcaption>Heston adds two things to Black-Scholes. Volatility gets its own mean-reverting path (left), and its shocks are tied to price shocks by a correlation. Make that correlation negative, so falls arrive with vol spikes, and the flat line tilts into the skew real markets show (right).</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Black-Scholes wants one volatility number for the whole life of the option. I have never seen volatility sit still for a week.</p>
+      <p data-who="Quant">Nobody has. Volatility clusters. Calm spells and wild spells come and go. Steven Heston's 1993 model takes that seriously. Volatility gets its own equation, running alongside the price.</p>
+      <p data-who="Trader">What does that equation say?</p>
+      <p data-who="Quant">Mostly, it is a rubber band. Variance gets pulled back toward a long-run level, harder the further away it is. On top of that it gets its own random shocks, so it never moves in a straight line.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Say volatility is thirty percent today and its long-run level is twenty. Set the pull speed to two a year. Then half the gap in variance closes in about a third of a year. That is roughly a hundred and twenty-six days.</p>
+      <p data-who="Trader">Does that sound sensible?</p>
+      <p data-who="Quant">It is a useful sanity check on any fitted model. If the half-life came out at two days, or ten years, you would distrust the fit.</p>
+      <p data-who="Trader">So where does the smile come from?</p>
+      <p data-who="Quant">From one extra number: the correlation between price shocks and volatility shocks. In equities it is usually negative. Prices fall, volatility jumps. People call it the leverage effect.</p>
+      <p data-who="Trader">And that makes puts dearer.</p>
+      <p data-who="Quant">Exactly. A big fall tends to arrive together with a volatility spike, so the left tail is fatter than the right. A put pays off in exactly that state. Back out a Black-Scholes volatility for each strike and the low strikes come out higher. That is the skew.</p>
+      <p data-who="Trader">When did the market start caring?</p>
+      <p data-who="Quant">October 1987. Before the crash, index option vols were fairly flat across strikes. Afterwards, out-of-the-money puts stayed richer, and the skew never went away. Heston gave desks a model that could produce it, with near closed-form prices.</p>
+      <p data-who="Trader">And for currencies?</p>
+      <p data-who="Quant">The skew points at whichever side of the pair the market fears, and the sign of the correlation flips if you flip the quote. Bates added jumps in 1996 to fit Deutsche mark options.</p>
+      <p data-who="Trader">So is the skew free money? Sell the expensive puts?</p>
+      <p data-who="Quant">No. It is a structural price for a real risk: falls and vol spikes arriving together. Selling it is taking that tail risk. And a model that fits today's smile tells you nothing on its own about a trading edge.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Let volatility move on its own, tie its shocks to price with a negative correlation, and the flat line tilts into the skew.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">After the 1987 crash, a skew that would not go away</h2>
       <p class="sl-sub">Heston · 1993 · Bates · 1996</p>
@@ -40,7 +107,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Black-Scholes assumes one volatility. Markets don't cooperate.</h2>
       <p class="sl-sub">Plain Black-Scholes prices every option off a single constant σ, held fixed for the option's entire life.</p>
@@ -62,7 +129,7 @@
       <div class="sl-quote">Heston's 1993 fix is, informally, GARCH's own core insight — "variance is itself a process with dynamics, not a fixed input" — carried from discrete-time econometrics into the continuous-time calculus option pricing runs on.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Where the smile actually comes from</h2>
       <p class="sl-sub">Same underlying model, three settings. Watch the curve change shape.</p>
@@ -111,7 +178,7 @@
       <p class="sl-p">Two dials, two different jobs: <strong>ξ</strong> (vol-of-vol) controls how much the curve bows into a smile at all; <strong>ρ</strong> (correlation) controls whether that smile tilts into an asymmetric skew. Set both to zero and the curve flattens back to plain Black-Scholes.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The fix: stop treating variance as a number. Give it its own life.</h2>
       <p class="sl-sub">Same price equation as Black-Scholes — one swap, inside the volatility term.</p>
@@ -128,7 +195,7 @@
       <p class="sl-p">Heston supplies exactly one new equation for v_t, plus one correlation parameter tying it to price. That's the entire model: two coupled stochastic differential equations instead of one.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Reading the variance equation, term by term</h2>
       <p class="sl-sub">dv_t = κ(θ − v_t) dt + ξ√v_t dW_t² — four pieces, each with a job.</p>
@@ -141,7 +208,7 @@
       <div class="sl-quote">This is the exact "rubber band" mean-reversion this Theory Lab's Ornstein-Uhlenbeck lesson already covers — <strong>κ(θ − v_t)</strong> here is structurally identical to that lesson's <strong>κ(μ − X_t)</strong>, just pointed at variance instead of a price spread. Heston's only real addition on top of plain OU is the √v_t scaling — this specific variant is called a <strong>CIR process</strong> (Cox-Ingersoll-Ross), the same square-root diffusion originally built for interest rates, another quantity that shouldn't go negative.</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The correlation ρ is the whole story behind the skew</h2>
       <p class="sl-sub">Same two SDEs, one setting flipped.</p>
@@ -168,7 +235,7 @@
       <p class="sl-p">Empirically ρ is usually <strong>negative</strong> in equity markets — the "leverage effect," originally explained for equities by falling stock prices mechanically raising a firm's leverage ratio, though similar spot/vol co-movement shows up in FX too, where no literal corporate leverage mechanism exists — there its sign depends on the pair and which way it is quoted (inverting the pair flips ρ).</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Drag ρ and watch the smile tilt, live</h2>
       <p class="sl-sub">Vol-of-vol is held fixed here — only the correlation changes.</p>
@@ -192,7 +259,7 @@
       <p class="sl-p">Slide ρ toward zero and the curve straightens into a symmetric smile. Push it positive (empirically rare, but mechanically valid) and the tilt flips — now it would be <em>calls</em> pricing richer than puts, because up-moves and vol spikes would be the pair that co-occurs.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">How fast does a variance shock actually fade?</h2>
       <p class="sl-sub">The same mean-reversion "rubber band" from the OU lesson has a half-life — the time for half a shock's gap to θ to close.</p>
@@ -220,7 +287,7 @@
     </section>
 
     <!-- WB:heston_model-deck:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Heston: when volatility moves with the price</h2>
       <!-- WB:heston_model:START -->
@@ -231,7 +298,7 @@
     </section>
     <!-- WB:heston_model-deck:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Realism isn't free</h2>
       <p class="sl-sub">What Heston costs, compared to what it buys.</p>
@@ -261,7 +328,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Heston isn't the last word, and it isn't free of traps</h2>
       <div class="sl-icard-grid">
@@ -276,7 +343,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -327,7 +394,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+
+    <section class="sl-slide sl-vark" data-slide="15">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="1987-10-19">
+    <div class="tl-drill-label">Scenario drill · after 19 October 1987</div>
+    <h3>Out-of-the-money puts look too expensive</h3>
+    <p>On 19 October 1987 the Dow Jones Industrial Average fell about 22.6% in one day. In the months after, you notice that index puts struck well below the market trade at a much higher implied volatility than at-the-money options on the same expiry. Your pricing model uses one flat \(\sigma\), and by it those puts are overpriced. What do you conclude?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">The puts are mispriced. Sell them and wait for the skew to flatten back.<div class="tl-drill-why">The flat-σ model cannot produce a skew at all, so its verdict of "overpriced" says more about the model than the market. Selling puts here is taking on exactly the crash risk the premium pays for.</div></li>
+      <li data-verdict="good">Treat the skew as a real feature: falls tend to arrive with volatility spikes, so downside puts are worth more. Price and hedge off the skewed vols, not one flat number.<div class="tl-drill-why">This is the Heston reading. Volatility moves, and its shocks are negatively correlated with price, which fattens the left tail. The skew is the market pricing a real asymmetry, not a free lunch to arbitrage away.</div></li>
+      <li data-verdict="ok">Keep the flat-σ model, but use the at-the-money vol and ignore the far strikes.<div class="tl-drill-why">It avoids the worst trade, but it misprices every strike away from the money and gives the wrong hedge for downside options, which is where the risk now sits.</div></li>
+      <li data-verdict="bad">Buy the at-the-money options instead, since they look cheap next to the puts.<div class="tl-drill-why">"Cheap compared to the puts" is still a flat-σ judgement. Nothing says at-the-money vol is too low; the gap between strikes is the structure, not the error.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The skew did not go away. Before October 1987, implied volatility on index options was fairly flat across strikes; afterwards, out-of-the-money puts stayed richer and the skew became a permanent feature of index options. Heston's 1993 model was one answer: stochastic volatility with a negative price-vol correlation produces that skew from its own dynamics.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

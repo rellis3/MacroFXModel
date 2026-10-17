@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Granger Causality &amp; Lead-Lag Analysis — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-granger-causality.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,71 @@
       <p class="sl-lede">The VECM lesson answered one narrow question for one narrow situation: for an already-cointegrated pair, which side does the correcting? This lesson asks a broader, more precisely defined question that applies to any two series at all — does knowing X's history genuinely sharpen a forecast of Y, beyond what Y's own history already gives you — and answers it with an exact F-test, not a glance at a chart.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: forecast error, as residual sum of squares, for two regressions of Y on the worked example's twelve observations. Using only Y's own past leaves 0.4260; adding X's past cuts it to 0.0806. Right: an F scale from 0 to 40. The 5% critical value of F with 1 and 9 degrees of freedom is 5.12 and the 1% value is 10.56; the worked example's F of about 38.6 sits far beyond both, so X Granger-causes Y in this toy sample.">
+      <text class="tlp-text2" x="160" y="30" text-anchor="middle" font-size="13" font-weight="700">forecast error left over</text>
+      <text class="tlp-text2" x="30" y="62" font-size="13">Y's own past only</text>
+      <rect class="tlp-box amber" x="30" y="70" width="260" height="26" rx="4"/>
+      <text class="tlp-text" x="282" y="88" text-anchor="end" font-size="13" font-weight="700">RSS 0.4260</text>
+      <text class="tlp-text2" x="30" y="128" font-size="13">Y's past + X's past</text>
+      <rect class="tlp-box green" x="30" y="136" width="49" height="26" rx="4"/>
+      <text class="tlp-green" x="88" y="154" font-size="13" font-weight="700">RSS 0.0806</text>
+      <text class="tlp-text3" x="30" y="190" font-size="12">same 12 observations, lag 1</text>
+      <text class="tlp-green" x="30" y="222" font-size="13" font-weight="700">X's lag removes about 81% of the error</text>
+      <text class="tlp-text2" x="455" y="30" text-anchor="middle" font-size="13" font-weight="700">is the drop bigger than noise?</text>
+      <rect class="tlp-box amber" x="330" y="136" width="32" height="14" opacity=".6"/>
+      <line class="tlp-line" x1="330" y1="150" x2="580" y2="150"/>
+      <line class="tlp-line amber dash" x1="362" y1="120" x2="362" y2="150"/>
+      <line class="tlp-line red dash" x1="396" y1="96" x2="396" y2="150"/>
+      <text class="tlp-amber" x="362" y="114" text-anchor="middle" font-size="12" font-weight="700">5%: 5.12</text>
+      <text class="tlp-red" x="396" y="90" text-anchor="middle" font-size="12" font-weight="700">1%: 10.56</text>
+      <circle class="tlp-green" cx="571" cy="150" r="7"/>
+      <text class="tlp-green" x="571" y="130" text-anchor="end" font-size="14" font-weight="700">F ≈ 38.6</text>
+      <text class="tlp-text3" x="330" y="168" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="455" y="168" text-anchor="middle" font-size="12">20</text>
+      <text class="tlp-text3" x="580" y="168" text-anchor="middle" font-size="12">40</text>
+      <text class="tlp-text3" x="455" y="190" text-anchor="middle" font-size="12">F with 1 and 9 degrees of freedom</text>
+      <text class="tlp-green" x="455" y="222" text-anchor="middle" font-size="13" font-weight="700">reject: X's past helps forecast Y</text>
+    </svg>
+    <figcaption>Granger's test in one picture: fit Y on its own past, then again with X's past added, and ask whether the drop in error is bigger than one useless extra regressor would buy by chance. In the toy example it is, by a wide margin. That is a claim about forecasting, not about cause.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">On my charts one currency always seems to move a day before the other. Is that a signal?</p>
+      <p data-who="Quant">Maybe. But your eye is a terrible judge of that. Granger's test replaces the impression with a number.</p>
+      <p data-who="Trader">How does it work?</p>
+      <p data-who="Quant">You build two forecasts of the follower. The first uses only the follower's own past. The second also gets to see the leader's past. Then you ask whether the second forecast is better by more than luck would give you.</p>
+      <p data-who="Trader">Why include the follower's own past at all?</p>
+      <p data-who="Quant">Because a price that trends or bounces can look like it is following anything. If its own history already explains the move, the other series has added nothing. That is the difference between this test and just eyeballing correlations at different lags.</p>
+      <p data-who="Trader">Walk me through the numbers.</p>
+      <p data-who="Quant">The lesson has twelve observations. Using the follower's own past, the squared forecast errors add up to about zero point four three. Add the leader's past and that falls to about zero point zero eight. Most of the error is gone.</p>
+      <p data-who="Trader">So it's real.</p>
+      <p data-who="Quant">You still have to weigh it. Any extra regressor helps a little by chance. The F-test divides the improvement by the noise per spare data point. Here that gives about thirty-nine. The one percent cut-off is about ten and a half. So yes, in this toy sample, the leader's past genuinely helps.</p>
+      <p data-who="Trader">Then it causes the other move.</p>
+      <p data-who="Quant">No, and that is the famous trap in the name. It means the past helps forecast, nothing more. A shared driver that reaches one price feed a few seconds earlier gives the same result. So does a market that closes hours before the other, so its price is simply older.</p>
+      <p data-who="Trader">What else can go wrong?</p>
+      <p data-who="Quant">Run it on price levels instead of returns, and two trending series look linked when they are not. Choose the number of lags after peeking at the result, and you are data mining. Pick the lags first, with an information criterion.</p>
+      <p data-who="Trader">And direction?</p>
+      <p data-who="Quant">Test both ways. Each direction is its own regression. Both can be significant at once. That is a feedback loop, not a broken test.</p>
+      <p data-who="Trader">Has this found anything real?</p>
+      <p data-who="Quant">The classic is Kawaller, Koch and Koch in 1987. They found S and P 500 futures leading the cash index by several minutes. It became a standard tool for price discovery.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">A lead is only real if the leader's past still helps after the follower's own past has had its say.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Does one market move first?</h2>
       <p class="sl-sub">Granger causality · Granger, 1969 → futures–cash lead-lag studies, 1980s</p>
@@ -40,7 +104,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">A narrower, more honest way to ask "who moves first"</h2>
       <p class="sl-sub">Eyeballing a chart is an impression. This is a specific, testable procedure.</p>
@@ -53,7 +117,7 @@
       <div class="sl-quote">Treat every result below as "X's history has genuine forecasting content for Y" — never as "X causes Y." That distinction isn't pedantic. It's the entire content of what this test can and can't tell you.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Two nested regressions, one question</h2>
       <p class="sl-sub">The unrestricted model reduces exactly to the restricted one when every X-lag coefficient is zero.</p>
@@ -78,7 +142,7 @@
       <p class="sl-p">Both models are fit by OLS on the same sample, with the same fixed lag order p, chosen ahead of time by AIC/BIC — never tuned until the causality test itself looks significant.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The F-statistic, in full</h2>
       <div class="sl-card">
@@ -96,7 +160,7 @@
     </section>
 
     <!-- WB:institutional_granger_causality-deck:START -->
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Granger causality: does the extra clue help?</h2>
       <!-- WB:institutional_granger_causality:START -->
@@ -107,7 +171,7 @@
     </section>
     <!-- WB:institutional_granger_causality-deck:END -->
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Two mandatory pre-checks — both silently break the test if skipped</h2>
       <div class="sl-card">
@@ -129,7 +193,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Test both directions — feedback is a real outcome, not a broken test</h2>
       <div class="sl-compare">
@@ -153,7 +217,7 @@
       <p class="sl-p">X-causes-Y and Y-causes-X are two separate hypotheses on two separate regressions. Running only one direction and assuming the reverse is automatically ruled out is a common, avoidable mistake.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The worked example, start to finish</h2>
       <p class="sl-sub">12 observations, both models already fit via OLS — only the F-test arithmetic is derived here.</p>
@@ -172,7 +236,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The simpler cousin: cross-correlation at various lags</h2>
       <p class="sl-sub">No regression at all — just corr(X_t, Y_{t+k}) across a range of lags k.</p>
@@ -208,7 +272,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Compute the F-statistic yourself</h2>
       <p class="sl-sub">F = (RSS_r − RSS_u)/q ÷ RSS_u/(n−k). Change any input, live.</p>
@@ -234,7 +298,7 @@
       </div>
     </section>
 
-    <!-- DESK:START --><section class="sl-slide" data-slide="12">
+    <!-- DESK:START --><section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">What's actually in this repo</h2>
       <div class="sl-icard-grid">
@@ -245,7 +309,7 @@
       </div>
     </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this quietly goes wrong</h2>
       <div class="sl-icard-grid">
@@ -256,7 +320,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -316,7 +380,27 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="15">
+
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative research morning</div>
+    <h3>A cross-correlation peak at lag two</h3>
+    <p>You trade two commodity currencies against the dollar. A colleague shows you daily returns where one pair's move correlates with the other pair's move two days later, a clear peak at lag +2. He wants to trade it from tomorrow: buy the follower when the leader rises. What do you do first?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Trade it. A clear peak away from lag zero is a lead.<div class="tl-drill-why">A raw cross-correlation does not control for the follower's own momentum. If the follower is simply autocorrelated and the two pairs are correlated in general, you get the same peak with no extra information in the leader at all.</div></li>
+      <li data-verdict="bad">Run the Granger test on the two price levels, trying lag orders until one is significant.<div class="tl-drill-why">Two mistakes at once. Trending levels produce spurious significance, and searching lag orders for the smallest p-value is data mining. Either one can manufacture a result from nothing.</div></li>
+      <li data-verdict="good">Pick the lag order with AIC or BIC on returns, run the Granger F-test in both directions, and check the timestamps and closing times behind each series.<div class="tl-drill-why">This is the test the lesson builds. It credits the leader only if its past helps after the follower's own past is in the model, it allows for feedback either way, and the timestamp check rules out a lead that is just one close being older than the other.</div></li>
+      <li data-verdict="ok">Run the Granger test one way, leader to follower, on returns at a lag picked in advance.<div class="tl-drill-why">The core test is right. But it skips the reverse direction and the timing check, so a feedback loop or a stale-close artefact could still pass as a clean one-way lead.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>The point.</strong> This is an illustrative situation, not a real trading day or a real result. A cross-correlation peak is a reason to run the Granger test, not a reason to trade. Even a clean significant result only says the leader's past helps forecast; a shared risk driver or mismatched timestamps can produce it with no real link between the two pairs.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

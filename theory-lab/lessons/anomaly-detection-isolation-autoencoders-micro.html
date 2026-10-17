@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Anomaly Detection — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation of the Isolation Forest score, a live path-length calculator, and a 5-question self-test?<a href="anomaly-detection-isolation-autoencoders.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,87 @@
       <p class="sl-lede">The earlier lesson on data cleaning caught bad ticks with a rolling median/MAD threshold — a fast, honest, deliberately univariate rule that watches one series at a time. This lesson generalizes that idea: Isolation Forest and autoencoders let a model learn "this doesn't look like the rest" across many variables at once, catching the anomalies that only show up in a <em>combination</em> of features, none of which looks unusual on its own.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: a crowd of fourteen ordinary points and one outlier far from them. Two random cuts, one vertical and one horizontal, are enough to wall the outlier off on its own. Right: the Isolation Forest score, 2 to the power of minus average cuts over c of n, plotted against the average number of cuts for 256 points, where c is about 10.24. The score falls as the cuts rise. The lesson's anomaly, isolated in 3.2 cuts on average, scores 0.805. An ordinary point at 9.8 cuts scores about 0.52, close to the 0.5 line that marks an ordinary point.">
+      <text class="tlp-text" x="10" y="18" font-size="13" font-weight="700">Random cuts isolate the odd one fast</text>
+      <rect class="tlp-box" x="10" y="30" width="225" height="180" rx="6"/>
+      <circle class="tlp-blue" cx="81.6" cy="118.2" r="3.5"/>
+      <circle class="tlp-blue" cx="93.0" cy="128.5" r="3.5"/>
+      <circle class="tlp-blue" cx="104.6" cy="111.5" r="3.5"/>
+      <circle class="tlp-blue" cx="87.6" cy="104.6" r="3.5"/>
+      <circle class="tlp-blue" cx="116.2" cy="125.1" r="3.5"/>
+      <circle class="tlp-blue" cx="97.0" cy="135.4" r="3.5"/>
+      <circle class="tlp-blue" cx="108.4" cy="121.8" r="3.5"/>
+      <circle class="tlp-blue" cx="77.6" cy="131.8" r="3.5"/>
+      <circle class="tlp-blue" cx="120.0" cy="114.9" r="3.5"/>
+      <circle class="tlp-blue" cx="100.8" cy="97.9" r="3.5"/>
+      <circle class="tlp-blue" cx="112.4" cy="104.6" r="3.5"/>
+      <circle class="tlp-blue" cx="85.4" cy="121.8" r="3.5"/>
+      <circle class="tlp-blue" cx="127.6" cy="128.5" r="3.5"/>
+      <circle class="tlp-blue" cx="93.0" cy="114.9" r="3.5"/>
+      <line class="tlp-line amber dash" x1="88.2" y1="34" x2="88.2" y2="206"/>
+      <line class="tlp-line purple dash" x1="88.2" y1="69.9" x2="231" y2="69.9"/>
+      <circle class="tlp-red" cx="193" cy="57" r="6"/>
+      <text class="tlp-red" x="186" y="50" text-anchor="end" font-size="12" font-weight="700">outlier</text>
+      <text class="tlp-amber" x="94" y="196" font-size="12">cut 1</text>
+      <text class="tlp-purple" x="228" y="86" text-anchor="end" font-size="12">cut 2: alone</text>
+      <text class="tlp-text2" x="122" y="230" text-anchor="middle" font-size="12">outlier: alone after 2 cuts</text>
+      <text class="tlp-text2" x="122" y="246" text-anchor="middle" font-size="12">a crowd point: many more</text>
+      <text class="tlp-text" x="290" y="18" font-size="13" font-weight="700">Fewer cuts on average → higher score</text>
+      <line class="tlp-line" x1="290" y1="200" x2="580" y2="200"/>
+      <line class="tlp-line" x1="290" y1="36" x2="290" y2="200"/>
+      <text class="tlp-text3" x="284" y="44" text-anchor="end" font-size="12">1</text>
+      <text class="tlp-text3" x="284" y="124" text-anchor="end" font-size="12">0.5</text>
+      <text class="tlp-text3" x="284" y="204" text-anchor="end" font-size="12">0</text>
+      <line class="tlp-line dash" x1="290" y1="120" x2="580" y2="120"/>
+      <polyline class="tlp-line purple thick" points="290.0,40.0 297.2,45.3 304.5,50.5 311.8,55.4 319.0,60.2 326.2,64.9 333.5,69.4 340.8,73.7 348.0,77.9 355.2,82.0 362.5,85.9 369.8,89.7 377.0,93.4 384.2,96.9 391.5,100.4 398.8,103.7 406.0,106.9 413.2,110.0 420.5,113.0 427.8,115.9 435.0,118.7 442.2,121.4 449.5,124.0 456.8,126.5 464.0,129.0 471.2,131.3 478.5,133.6 485.8,135.8 493.0,137.9 500.2,140.0 507.5,142.0 514.8,143.9 522.0,145.8 529.2,147.6 536.5,149.3 543.8,151.0 551.0,152.7 558.2,154.2 565.5,155.8 572.8,157.2 580.0,158.7"/>
+      <circle class="tlp-red" cx="336.4" cy="71.2" r="6"/>
+      <circle class="tlp-blue" cx="432.1" cy="117.6" r="6"/>
+      <text class="tlp-red" x="348" y="62" font-size="13" font-weight="700">3.2 cuts → 0.805: anomaly</text>
+      <text class="tlp-blue" x="442" y="104" font-size="13" font-weight="700">9.8 → about 0.52</text>
+      <text class="tlp-text3" x="578" y="136" text-anchor="end" font-size="12">0.5 = ordinary</text>
+      <text class="tlp-text3" x="580" y="218" text-anchor="end" font-size="12">average cuts to isolate, 256 points →</text>
+      <text class="tlp-text3" x="580" y="234" text-anchor="end" font-size="12">c(256) ≈ 10.24 cuts is "ordinary"</text>
+    </svg>
+    <figcaption>Isolation Forest never measures distance. It cuts the data at random and counts how many cuts it takes to get a point alone. Few and different points fall out fast and score near 1. An autoencoder gets to the same idea another way: the score is how badly it rebuilds the point.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My data filter already throws out any tick that sits too far from its recent median. What does anomaly detection add?</p>
+      <p data-who="Quant">Your filter looks at one number at a time. Some bad ticks are normal on every single number. Spread normal, volume normal, quote rate normal. It is the combination that has never happened before.</p>
+      <p data-who="Trader">And a one-at-a-time filter can't see a combination.</p>
+      <p data-who="Quant">Right. The lesson has two tools that can. The first is Isolation Forest, from 2008. Its idea is that anomalies are few and different.</p>
+      <p data-who="Trader">How does it use that?</p>
+      <p data-who="Quant">It asks random questions. Pick a feature at random, cut it at a random value, and repeat until the point you care about is alone. A point far from the crowd gets walled off in a couple of cuts. A point buried in the crowd takes many more.</p>
+      <p data-who="Trader">So the number of cuts is the signal.</p>
+      <p data-who="Quant">Averaged over many random trees, yes. Then it is turned into a score between zero and one. Take two hundred and fifty-six points. An ordinary point needs about ten cuts. One that needs only three point two on average scores about point eight. Near one means likely anomaly. Around a half means ordinary.</p>
+      <p data-who="Trader">And the second tool?</p>
+      <p data-who="Quant">An autoencoder. A neural network that squeezes each tick through a narrow bottleneck and then tries to rebuild it. Trained on mostly normal ticks, it gets good at rebuilding normal patterns and stays bad at strange ones.</p>
+      <p data-who="Trader">So the miss is the score.</p>
+      <p data-who="Quant">Exactly. How far the rebuild lands from the original. The quantity it trained on and the anomaly score are the same thing.</p>
+      <p data-who="Trader">Great. So a high score means a bad tick I should delete, or a move I should trade?</p>
+      <p data-who="Quant">Neither, and that is the most important part. The score says unusual. Not wrong. Not a trading opportunity. A real news move can score exactly like a bad print.</p>
+      <p data-who="Trader">What else bites?</p>
+      <p data-who="Quant">Regimes. Train it on a calm year and a volatile but perfectly real market looks like one long anomaly. It has simply never seen anything like it.</p>
+      <p data-who="Trader">So where does it sit on a desk?</p>
+      <p data-who="Quant">At the front of the pipeline, flagging ticks for a person to check before they reach a model or a risk number. It hands you a ranked list, not a verdict.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">These models catch strange combinations that one-number filters miss, and a human still decides what the strangeness means.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">A bad tick, a fat finger, or something worse?</h2>
       <p class="sl-sub">Outlier detection · tick-data cleaning (e.g. Brownlees &amp; Gallo, 2006) and surveillance; Isolation Forest (2008) and autoencoders in the 2010s</p>
@@ -40,7 +120,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Where a per-variable threshold stops working</h2>
       <p class="sl-sub">A rolling median/MAD check, from <a href="data-cleaning-outliers-missing-data-micro.html">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</a>, looks at one series at a time.</p>
@@ -74,7 +154,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Isolation Forest: anomalies are "few and different"</h2>
       <p class="sl-sub">Build a tree that splits the data on a random feature, at a random threshold, over and over.</p>
@@ -129,7 +209,7 @@
       <p class="sl-p">The anomaly (red, left) sits apart from the dense cluster, so a random split is disproportionately likely to fall between it and everyone else — two cuts and it's alone. An ordinary point buried in the cluster (green, right) needs the entire surrounding crowd carved away first, split by split. <strong>Fewer splits to isolate → more likely an anomaly.</strong></p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Turning "how many splits" into a score</h2>
       <p class="sl-sub">Average the path length across a whole forest of random trees, then normalize it into a 0–1 score.</p>
@@ -142,7 +222,7 @@
       <div class="sl-quote">Nothing exotic is happening in that formula — it's just a rescaling. A path length far <strong>shorter</strong> than the typical c(n) pushes the score toward 1 (likely anomaly); a path length close to c(n), the ordinary case, lands the score around 0.5. Scores meaningfully below 0.5 mean this point took <em>longer</em> than usual to isolate — squarely unremarkable.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Drag the point away from the crowd</h2>
       <p class="sl-sub">The further the red point sits from the normal cluster, the fewer random splits it takes to isolate — and the higher its illustrative score climbs.</p>
@@ -174,7 +254,7 @@
     </section>
 
     <!-- WB:anomaly_detection_isolation_autoencoders-deck:START -->
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Isolation Forest and autoencoders, drawn step by step</h2>
       <!-- WB:anomaly_detection_isolation_autoencoders:START -->
@@ -185,7 +265,7 @@
     </section>
     <!-- WB:anomaly_detection_isolation_autoencoders-deck:END -->
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Autoencoders: compress it, then try to rebuild it</h2>
       <p class="sl-sub">A neural network with two halves — an encoder that squeezes the input down, a decoder that tries to expand it back out.</p>
@@ -213,7 +293,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Compute the reconstruction error yourself</h2>
       <p class="sl-sub">Three features from one FX tick — spread, volume, and quote-update frequency — each with the autoencoder's original value and its reconstructed value.</p>
@@ -246,7 +326,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Two mechanisms, one question</h2>
       <p class="sl-sub">Both ask "how hard is this point to explain," just in structurally different ways.</p>
@@ -274,7 +354,7 @@
       <p class="sl-p">Isolation Forest is the default workhorse for tabular, many-column data — fast and low-maintenance. Autoencoders earn their extra complexity when the data has structure a tree ensemble handles less naturally, or when inspecting <em>which</em> dimension drove the error matters.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">A combination that never happened before</h2>
       <div class="sl-quote">One FX tick, three variables: spread sits at the 60th percentile of its own history, volume at the 55th, quote-update frequency at the 65th. Every single variable, on its own, is completely unremarkable — a rolling MAD filter run on each series separately would flag <strong>none</strong> of them. But wide spreads and heavy quote activity ordinarily co-occur with clearly high or clearly low volume, not a bland middle value — and that specific <em>combination</em> has essentially never occurred in this pair's history. An Isolation Forest would isolate it in a handful of splits; an autoencoder would reconstruct it poorly. Either way, what's flagged is the joint structure — not any one number.</div>
@@ -284,7 +364,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where each one actually gets used</h2>
       <div class="sl-compare">
@@ -311,7 +391,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -362,7 +442,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+
+    <section class="sl-slide sl-vark" data-slide="15">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2015-01-15">
+    <div class="tl-drill-label">Scenario drill · 15 January 2015</div>
+    <h3>Every EUR/CHF tick is flagged at once</h3>
+    <p>You run an Isolation Forest over every incoming FX tick, trained on months of recent data. For years EUR/CHF has traded just above the 1.20 floor the Swiss National Bank has defended. This morning, within minutes, almost every EUR/CHF tick scores near 1: prices far below 1.20, spreads blown out, quote rates unlike anything in the training data. Your pipeline is set to drop flagged ticks automatically. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Let the pipeline drop them. The detector says they are anomalies, so they are bad data.<div class="tl-drill-why">A score measures rarity, not correctness. A genuine, sharp news-driven move scores exactly like a data error. Dropping these ticks would erase a real move from your prices, your models and your risk numbers.</div></li>
+      <li data-verdict="good">Stop the automatic drop, have a person check the flagged ticks against the news and other venues, and keep them if the move is real.<div class="tl-drill-why">This is the human-judgment step the lesson insists on. The model surfaces a ranked list of unusual ticks; a person decides whether unusual means wrong. Here a quick check shows a policy announcement, not a broken feed.</div></li>
+      <li data-verdict="bad">Buy the move. A score this high means the market is mispriced.<div class="tl-drill-why">Nothing about an anomaly score implies the pattern is profitable or repeatable. It describes rarity relative to history. It is not a forecast of edge.</div></li>
+      <li data-verdict="ok">Retrain the detector on today's data so it stops flagging everything.<div class="tl-drill-why">Sensible later, once the new regime is understood. A model trained on the calm, floor-defended regime will keep flagging the new one. But retraining in the middle of the event does not answer today's question: are these ticks real?</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 15 January 2015 the Swiss National Bank announced it was abandoning the 1.20 minimum exchange rate for EUR/CHF. The franc jumped and EUR/CHF traded well below 1.00 within minutes. The ticks were unusual and entirely real. A detector trained on the floor years was right that nothing like it had been seen, and a pipeline that equated "anomalous" with "wrong" would have deleted some of the most important prints of that year.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Alpha vs. Beta Separation — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">18</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, worked example, and a 6-question self-test?<a href="alpha-beta-separation.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,68 @@
       <p class="sl-lede">Every return stream is secretly two things added together: a bet on the market you could have bought directly and cheaply (beta), and whatever is left over once that bet is honestly subtracted out (alpha). This deck builds the regression that separates the two, the technique — portable alpha — for hedging one away to isolate the other, and the ways that separation quietly goes wrong.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 248" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A strategy's 20 percent year, in a year the S&amp;P 500 returned 15 percent with a 4 percent risk-free rate, drawn as a stacked bar: 4 percent risk-free, 13.2 percent beta from carrying 1.2 times the market's excess return, about 2 percent alpha, and 0.8 percent noise. An arrow labelled short 1.2 times S&amp;P futures leads to a small bar on the right: about 2 percent a year of alpha left once beta is hedged to zero, before hedging costs.">
+      <text class="tlp-text" x="20" y="20" font-size="14" font-weight="700">A 20% year, taken apart</text>
+      <line class="tlp-line" x1="90" y1="200" x2="230" y2="200"/>
+      <rect class="tlp-box" x="110" y="168" width="90" height="32"/>
+      <rect class="tlp-box blue" x="110" y="62.4" width="90" height="105.6"/>
+      <rect class="tlp-box green" x="110" y="46.4" width="90" height="16"/>
+      <rect class="tlp-box amber" x="110" y="40" width="90" height="6.4"/>
+      <text class="tlp-text2" x="212" y="189" font-size="13">risk-free 4%</text>
+      <text class="tlp-blue" x="212" y="112" font-size="13" font-weight="700">beta 13.2%</text>
+      <text class="tlp-text2" x="212" y="129" font-size="12">= 1.2 × (15% − 4%)</text>
+      <text class="tlp-green" x="212" y="60" font-size="13" font-weight="700">alpha ≈ 2%: the skill</text>
+      <text class="tlp-amber" x="212" y="42" font-size="12">noise 0.8%</text>
+      <text class="tlp-text3" x="155" y="216" text-anchor="middle" font-size="12">strategy, 20%</text>
+      <line class="tlp-line thick" x1="380" y1="140" x2="452" y2="140"/>
+      <polygon class="tlp-arrow" points="462,140 451,134 451,146"/>
+      <text class="tlp-text" x="420" y="112" text-anchor="middle" font-size="13" font-weight="700">short 1.2×</text>
+      <text class="tlp-text" x="420" y="128" text-anchor="middle" font-size="13" font-weight="700">S&amp;P futures</text>
+      <text class="tlp-text3" x="420" y="160" text-anchor="middle" font-size="12">beta → 0</text>
+      <line class="tlp-line" x1="480" y1="200" x2="570" y2="200"/>
+      <rect class="tlp-box green" x="490" y="184" width="70" height="16"/>
+      <text class="tlp-green" x="525" y="172" text-anchor="middle" font-size="13" font-weight="700">≈ 2%/yr left</text>
+      <text class="tlp-text3" x="525" y="216" text-anchor="middle" font-size="12">hedged, before costs</text>
+      <text class="tlp-text3" x="300" y="242" text-anchor="middle" font-size="12">Most of the 20% was beta anyone could buy with an index future.</text>
+    </svg>
+    <figcaption>Regress the strategy on the market and its return splits into the safe rate, a market ride (beta) and what is left (alpha). Hedge the beta away and only the small alpha remains: the part worth paying for, and the only part portable alpha carries.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">A manager made twenty percent last year. The market made fifteen. Five points of skill, surely?</p>
+      <p data-who="Quant">Not yet. First ask how much of the twenty was just riding the market. A rising tide lifts all boats.</p>
+      <p data-who="Trader">How do you measure the tide's share?</p>
+      <p data-who="Quant">Regress the manager's monthly returns over cash on the market's monthly returns over cash. The slope is beta: how many units of market risk each unit of the strategy carries. The intercept is alpha: what is left once that ride is removed.</p>
+      <p data-who="Trader">Run it on my manager.</p>
+      <p data-who="Quant">Say the slope comes out at one point two and cash paid four percent. The market beat cash by eleven points, and one point two times eleven is thirteen point two. Add the four percent cash and about two percent of alpha and you get roughly nineteen. The last point or so is noise.</p>
+      <p data-who="Trader">So the real skill is two percent, not five.</p>
+      <p data-who="Quant">Two percent, not twenty. The rest you could have bought with an index future for almost nothing. That is what an allocator should be paying for.</p>
+      <p data-who="Trader">Can I keep just the two percent?</p>
+      <p data-who="Quant">Yes. Short index futures worth one point two times the position. The market terms cancel and, in expectation, the alpha is what remains, before the costs of the hedge. Then you can attach that alpha to any market exposure you like. People call it portable alpha.</p>
+      <p data-who="Trader">That sounds like free money.</p>
+      <p data-who="Quant">It is a repackaging, not a source of edge. And 2008 showed where it breaks. Pension plans held equity beta through futures and put the spare cash into hedge funds and enhanced-cash credit, as the alpha.</p>
+      <p data-who="Trader">And when the market fell?</p>
+      <p data-who="Quant">The S and P fell by more than a third, so the futures lost and margin calls had to be paid in cash, daily. But the alpha leg lost too. Hedge funds had one of their worst years, structured credit fell, and some funds only paid out quarterly or put up gates.</p>
+      <p data-who="Trader">So they lost on both legs and could not get at the cash.</p>
+      <p data-who="Quant">Exactly. Some had to sell other assets at bad prices to meet the calls. The so-called alpha carried hidden exposure to credit and liquidity that a one-factor regression never saw.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Strip out the beta to see the real skill, but before you rely on what is left, make sure it is not just another beta you have not measured.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">The rising-tide test</h2>
       <p class="sl-sub">"A rising tide lifts all boats." If the tide rises 10% and your boat rises 12%, was that your rowing — or a slightly leakier boat sitting a bit higher on the same tide?</p>
@@ -39,7 +100,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">One regression, two components</h2>
       <p class="sl-sub">Regress a strategy's excess returns (return minus the risk-free rate) on the market's excess returns. The slope is beta; the intercept is alpha.</p>
@@ -63,7 +124,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Same regression, two very different funds</h2>
       <p class="sl-sub">Both funds looked good this year. The regression tells you which one is actually earning something an index couldn't give you.</p>
@@ -117,7 +178,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Drag beta. Watch the line pivot around alpha.</h2>
       <p class="sl-sub">Alpha (the red dot, fixed at 2%) never moves. Beta only changes how steeply the line tilts around it.</p>
@@ -161,7 +222,7 @@
       <p class="sl-p">Notice what never changes as you drag the slider: the red dot. That's the entire point of the decomposition — alpha is defined as whatever is left when the market's contribution (β times the market's move) is zero. Beta can be re-levered, hedged, or doubled without touching it.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Split your own numbers</h2>
       <p class="sl-sub">Enter a fund's return, the market's return, the risk-free rate, and an estimated beta. This backs out the alpha (plus noise) implied by a single period, and the notional needed to hedge beta to zero.</p>
@@ -188,7 +249,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Portable alpha: sever the alpha from its beta</h2>
       <p class="sl-sub">Once β is known, it can be cancelled out with a short position — leaving (in expectation) just the alpha stream.</p>
@@ -213,7 +274,7 @@
       <div class="sl-quote">This is why it's called "portable": once alpha is hedged market-neutral, it's no longer glued to the specific market it was measured against. An allocator can keep this manager's stock-picking alpha while separately holding bond-market beta instead of equity beta — without accepting the manager's equity exposure as a package deal.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Reconciling the worked example</h2>
       <p class="sl-sub">A manager returned 20% in a year the S&amp;P returned 15%, r<sub>f</sub>=4%, and a regression gives β̂=1.2, α̂≈2%/yr.</p>
@@ -234,7 +295,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">What's actually live in this repo</h2>
       <p class="sl-sub">The full lesson tags this topic "CONCEPT — not yet computed for any strategy in this repo." That claim was checked against the current code.</p>
@@ -247,7 +308,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this goes wrong</h2>
       <div class="sl-icard-grid">
@@ -258,7 +319,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How allocators actually use this</h2>
       <div class="sl-quote">Institutional allocators run exactly this regression on every manager in a portfolio before deciding how much to pay for what. A manager whose "outperformance" is mostly beta in disguise is, in effect, an expensive way to buy an index. Portable-alpha overlays let an allocator hold, say, bond-market beta while still capturing an equity manager's genuine stock-picking alpha — instead of being forced to accept the manager's equity beta as a package deal.</div>
@@ -268,7 +329,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11 · It actually happened</div>
       <h2 class="sl-h2">Portable alpha, 2008: two legs that lost together</h2>
       <div class="sl-callout amber">
@@ -289,7 +350,7 @@
     </section>
 
     <!-- WB:alpha_beta_separation-deck:START -->
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Alpha vs beta: take the return apart</h2>
       <!-- WB:alpha_beta_separation:START -->
@@ -300,7 +361,7 @@
     </section>
     <!-- WB:alpha_beta_separation-deck:END -->
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <!-- DESK:START -->
       <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
@@ -317,7 +378,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -368,7 +429,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+
+    <section class="sl-slide sl-vark" data-slide="17">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · autumn 2008</div>
+    <h3>Margin calls on the beta leg, and the alpha leg is gated</h3>
+    <p>You run a pension plan's portable alpha programme. The equity beta is held through S&amp;P 500 futures, which need only a slice of the money as margin; the rest sits in funds of hedge funds and an enhanced-cash credit portfolio, as the alpha. Equities are falling fast. The futures demand cash margin every day, the hedge-fund sleeve is down too and pays out only quarterly, and some managers have put up gates. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Wait. Submit redemptions to the hedge funds and meet the calls when that cash arrives.<div class="tl-drill-why">Margin is due now; the redemptions arrive in months, if the gates lift at all. The two legs have different liquidity, and the beta leg will not wait for the alpha leg.</div></li>
+      <li data-verdict="bad">Add more futures. The alpha leg is uncorrelated with the market, so the programme is still sound, and stocks are cheap.<div class="tl-drill-why">The alpha leg is clearly not uncorrelated: it is losing in the same crisis. More futures means bigger margin calls with no liquid money to pay them.</div></li>
+      <li data-verdict="good">Treat the two legs as one exposure: cut the futures overlay to a size your truly liquid assets can fund, and meet calls from cash and liquid holdings now.<div class="tl-drill-why">The residual turned out to carry credit and liquidity risk that the one-factor regression never measured. Sizing the overlay to the cash you can actually raise stops the programme from becoming a forced seller.</div></li>
+      <li data-verdict="ok">Close the whole futures position at once to stop the margin calls.<div class="tl-drill-why">It ends the cash drain, but it locks in the beta loss and leaves the plan with the wrong equity exposure. A controlled cut to a fundable size does the same job with less damage.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In 2008 the S&amp;P 500 fell by more than a third. Portable alpha programmes lost on the futures beta leg and on the "alpha" leg at the same time: hedge fund indices had one of their worst years on record, and enhanced-cash portfolios holding structured credit lost money too. Some plans had to sell other assets at bad prices to meet collateral calls, and after 2008 many institutions scaled back or wound down these programmes.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="18">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

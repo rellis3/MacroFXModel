@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Partial Derivatives &amp; Multivariable Calculus — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, worked examples, and a 5-question self-test?<a href="foundation-multivariable-calculus.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,73 @@
       <p class="sl-lede">Delta, Gamma, Theta, Vega — four numbers on a risk screen that look like four unrelated facts about an option. They aren't. They're one function, an option's value, differentiated four different ways with respect to four different inputs, everything else held still each time. This is the lesson where "the derivative of a function of several variables" stops being a vague phrase and starts being something you can compute on your own numbers.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The lesson's forward value V of S and t equals S times e to the minus 0.03 t, worth 94.18 at a spot of 100 and 2 years. Left panel: time is frozen at 2 years and only the spot price moves from 80 to 120; the value rises along a straight line with slope 0.9418, the partial derivative with respect to S. Right panel: the spot is frozen at 100 and only time moves from 0 to 10 years; the value falls along a gentle curve, and its slope at 2 years, shown as a dashed tangent, is minus 2.825 a year, the partial derivative with respect to t. Both panels mark the same point, 94.18.">
+      <text class="tlp-text" x="300" y="20" text-anchor="middle" font-size="14" font-weight="700">One function, V(S, t) = S·e<tspan dy="-5" font-size="10">−0.03t</tspan><tspan dy="5">: two dials, freeze one, turn the other</tspan></text>
+      <text class="tlp-amber" x="160" y="48" text-anchor="middle" font-size="13" font-weight="700">turn S, freeze t = 2</text>
+      <text class="tlp-green" x="460" y="48" text-anchor="middle" font-size="13" font-weight="700">turn t, freeze S = 100</text>
+      <line class="tlp-line" x1="50" y1="220" x2="275" y2="220"/>
+      <line class="tlp-line" x1="50" y1="60" x2="50" y2="220"/>
+      <line class="tlp-line" x1="350" y1="220" x2="575" y2="220"/>
+      <line class="tlp-line" x1="350" y1="60" x2="350" y2="220"/>
+      <line class="tlp-line purple thick" x1="50" y1="202.9" x2="270" y2="82.4"/>
+      <polyline class="tlp-line purple thick" points="350.0,82.9 361.0,89.7 372.0,96.4 383.0,103.0 394.0,109.5 405.0,115.9 416.0,122.2 427.0,128.4 438.0,134.6 449.0,140.6 460.0,146.5 471.0,152.4 482.0,158.2 493.0,163.9 504.0,169.5 515.0,175.0 526.0,180.4 537.0,185.8 548.0,191.0 559.0,196.2 570.0,201.3"/>
+      <line class="tlp-line green dash" x1="350" y1="83.6" x2="449" y2="141.8"/>
+      <circle class="tlp-blue" cx="160" cy="142.6" r="6"/>
+      <circle class="tlp-blue" cx="394" cy="109.5" r="6"/>
+      <text class="tlp-blue" x="150" y="128" text-anchor="end" font-size="13" font-weight="700">V = 94.18</text>
+      <text class="tlp-blue" x="404" y="104" font-size="13" font-weight="700">V = 94.18</text>
+      <text class="tlp-amber" x="180" y="178" font-size="13" font-weight="700">slope ∂V/∂S</text>
+      <text class="tlp-amber" x="180" y="196" font-size="13" font-weight="700">= 0.9418</text>
+      <text class="tlp-green" x="420" y="72" font-size="13" font-weight="700">slope ∂V/∂t = −2.825 a year</text>
+      <text class="tlp-text3" x="50" y="236" text-anchor="middle" font-size="12">80</text>
+      <text class="tlp-text3" x="160" y="236" text-anchor="middle" font-size="12">100</text>
+      <text class="tlp-text3" x="270" y="236" text-anchor="middle" font-size="12">120</text>
+      <text class="tlp-text3" x="160" y="249" text-anchor="middle" font-size="12">spot S →</text>
+      <text class="tlp-text3" x="350" y="236" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="394" y="236" text-anchor="middle" font-size="12">2</text>
+      <text class="tlp-text3" x="570" y="236" text-anchor="middle" font-size="12">10</text>
+      <text class="tlp-text3" x="470" y="249" text-anchor="middle" font-size="12">years t →</text>
+    </svg>
+    <figcaption>A partial derivative is an ordinary slope, read while every other input is frozen. The same function gives one slope for the spot dial and a different one for the time dial; stacked together they are the gradient, and on an option they are the Greeks.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I learned slopes at school. One input, one output, how steep is the line. What changes when there's more than one input?</p>
+      <p data-who="Quant">Only one thing. You have to say which input you are moving, and you freeze all the others while you do it.</p>
+      <p data-who="Trader">Give me a picture.</p>
+      <p data-who="Quant">A room that is warmer near the radiator and warms up through the day. Ask how fast the temperature changes and the honest answer is: in which direction? Walk towards the radiator and it rises fast. Stand still and wait an hour and it rises slowly. Each of those is a partial derivative.</p>
+      <p data-who="Trader">So it is just the normal slope, one dial at a time.</p>
+      <p data-who="Quant">Exactly. Nothing new to learn about slopes. Treat every other letter as if it were a fixed number, like five.</p>
+      <p data-who="Trader">Show me with money.</p>
+      <p data-who="Quant">Take an asset worth a hundred that pays a three percent dividend yield, and the price today for delivering it in two years. It comes to about ninety-four dollars and eighteen cents, because you miss two years of dividends.</p>
+      <p data-who="Trader">And the two dials are the price and the time.</p>
+      <p data-who="Quant">Right. Freeze the time and nudge the price up a dollar: the value rises by about ninety-four cents. Freeze the price and add a year: the value falls by about two dollars eighty-three. Same function, two different answers, depending which dial you turn.</p>
+      <p data-who="Trader">And if I want both at once?</p>
+      <p data-who="Quant">Stack them into a list, one slope per dial. That list is called the gradient. It points in the direction where the value climbs fastest. Walk the opposite way and you go downhill fastest, which is how computers fit models.</p>
+      <p data-who="Trader">Where do traders actually use this?</p>
+      <p data-who="Quant">On every options screen. The famous option pricing model of nineteen seventy-three is built on partial derivatives, and its hedge is one. The same year the Chicago Board Options Exchange opened, and books came to be run by these slopes: delta for the price, theta for time, vega for volatility.</p>
+      <p data-who="Trader">So the Greeks are just slopes.</p>
+      <p data-who="Quant">Each one is the slope of the same option value, with one dial turned and the rest frozen. Gamma is the curve in the price direction, a slope of a slope.</p>
+      <p data-who="Trader">What's the trap?</p>
+      <p data-who="Quant">Real markets rarely turn one dial at a time. A big price move often comes with a volatility move. Reading delta alone quietly assumes everything else stood still.</p>
+      <p data-who="Trader">The one-line version?</p>
+      <p data-who="Quant">A partial derivative is an ordinary slope with everything else frozen, so always say which dial you turned and what you held still.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">One price, many risks: the Greeks</h2>
       <div class="sl-origin">
@@ -40,7 +106,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">A function that depends on more than one thing at once</h2>
       <p class="sl-sub">Every function so far in this curriculum took one input, f(x). Almost nothing in real finance is that simple.</p>
@@ -53,7 +119,7 @@
       <div class="sl-quote">Picture a room where the temperature isn't the same everywhere — warmer near the radiator, cooler by the window — and it also drifts over the course of the day. Ask "how fast is it changing?" and the honest answer is: it depends which direction you mean. That question, made precise, is the entire subject of this lesson.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">A partial derivative: differentiate one, freeze the rest</h2>
       <p class="sl-sub">∂f/∂x means exactly this: apply the ordinary derivative rules to x, and treat every other variable as if it were a plain number. Step through the simplest possible case.</p>
@@ -81,7 +147,7 @@
       <p class="sl-p">This example is deliberately the easiest possible case — because V is a plain sum, the "other" term simply disappears when you differentiate. The next slide keeps the two variables genuinely tangled together, so freezing one actually changes the arithmetic, not just removes a term.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">A richer example — a value that actually curves</h2>
       <p class="sl-sub">V(S, t) = S·e^(−δt): the prepaid forward value (paid today, for delivery t years out) of an asset worth S today, paying a continuous dividend yield δ. This time S and t interact.</p>
@@ -116,7 +182,7 @@
       <p class="sl-note" style="border-top:none;padding-top:0">Each partial derivative is nothing more exotic than an ordinary single-variable slope, read off one slice of the full V(S,t) surface — freeze one axis, walk along the other, measure the slope.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Watch a slice move as the frozen variable changes</h2>
       <p class="sl-sub">The line is V plotted against S, at whatever t the slider is set to. Its slope is exactly ∂V/∂S = e^(−δt), with δ fixed at 3%.</p>
@@ -145,7 +211,7 @@
       <p class="sl-p">Nothing about the "formula" for ∂V/∂S changes as you drag the slider — it's always e^(−δt). What changes is <em>where</em> that formula is being evaluated. A partial derivative is itself a function of the point you freeze the other variable at, which is exactly why Delta quoted today is a different number from Delta quoted a year from now, even on the same option.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Both partials, live — try your own numbers</h2>
       <p class="sl-sub">Starts on the worked example: S=$100, δ=3%, t=2 years.</p>
@@ -172,7 +238,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The gradient — every partial, stacked into one vector</h2>
       <p class="sl-sub">Stop asking about one direction at a time. Ask: out of every direction I could walk, which one makes the function rise fastest?</p>
@@ -184,7 +250,7 @@
       <div class="sl-quote">Back to the room with the radiator: the gradient is a compass that always points in the steepest-uphill direction of the temperature field, wherever you're standing. Walk the opposite way it points, and you're headed downhill as fast as possible instead — no single partial derivative alone can answer that, because each one only reports the rate of change along one axis, not along the diagonal in between.</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The Hessian — curvature, minus the guesswork</h2>
       <p class="sl-sub">Just as a single-variable function's second derivative measures curvature, a multivariable function has a whole grid of second partial derivatives.</p>
@@ -205,7 +271,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The Greeks were partial derivatives all along</h2>
       <p class="sl-sub">One option value function, V(S, t, σ, r). Every Greek is one partial derivative of it, with respect to one variable, everything else held fixed.</p>
@@ -231,7 +297,7 @@
     </section>
 
     <!-- WB:foundation_multivariable_calculus-deck:START -->
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Partial derivatives: two dials, freeze one, turn the other</h2>
       <!-- WB:foundation_multivariable_calculus:START -->
@@ -242,7 +308,7 @@
     </section>
     <!-- WB:foundation_multivariable_calculus-deck:END -->
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
@@ -254,7 +320,7 @@
       <p class="sl-p">The habit worth building: whenever a model has more than one input, the honest first question is "sensitivity with respect to <em>which</em> variable, holding <em>what else</em> fixed?" A bare word like "sensitivity" is ambiguous the moment more than one variable is in play.</p>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Reading one Greek alone vs. reading the whole structure</h2>
       <p class="sl-sub">Same risk screen, two very different habits of reading it.</p>
@@ -284,7 +350,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -335,7 +401,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative risk screen</div>
+    <h3>Spot and volatility move together. Where did the money come from?</h3>
+    <p>Your option position shows Delta 0.60, Gamma 0.04, Vega 0.12 per volatility point and Theta −0.03 per day. Overnight, spot rises by 2 and implied volatility rises by 5 points. Your manager asks how much the position made, and why. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Use Delta: 0.60 × 2 = +1.20.<div class="tl-drill-why">Delta is the slope with volatility and time frozen. Here volatility did not stand still, so Delta alone misses part of the move.</div></li>
+      <li data-verdict="good">Add up each input's own contribution: Delta 0.60 × 2 = +1.20, Gamma ½ × 0.04 × 2² = +0.08, Vega 0.12 × 5 = +0.60, Theta −0.03 for the day. About +1.85 in total.<div class="tl-drill-why">Each Greek is one partial derivative, so each input's move is paid for by its own slope, and the contributions add. You get the total and a clear answer to "why".</div></li>
+      <li data-verdict="ok">Reprice the option from scratch with the new spot, volatility and date.<div class="tl-drill-why">That gives an accurate total, and for big moves it is the better number. But it does not say how much came from spot and how much from volatility, which is what was asked. Use it to check the sum.</div></li>
+      <li data-verdict="bad">Average the four Greeks and multiply by the size of the move.<div class="tl-drill-why">The Greeks measure sensitivity to different inputs, in different units. Averaging them mixes up dials that have nothing to do with each other.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>How it works out.</strong> This is an illustrative screen using the Greek values quoted in this lesson, with units added for the example; it is not a real position. Delta alone says +1.20; the sum of the partials says about +1.85, and a third of that came from volatility. This is the multivariable chain rule at work: when several inputs move, add the contribution through every path.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

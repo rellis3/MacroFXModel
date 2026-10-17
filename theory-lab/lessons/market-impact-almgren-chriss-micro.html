@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Market Impact &amp; Execution — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">18</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full Euler-Lagrange derivation, every pitfall, and a 5-question self-test?<a href="market-impact-almgren-chriss.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,75 @@
       <p class="sl-lede">Trade a large order all at once and you pay for the impact of demanding immediacy right now. Spread it out over a long window instead, and you pay a different price — exposure to whatever the market does while you're still holding the unexecuted remainder. Almgren-Chriss turns that tension into a single risk-aversion dial and a closed-form schedule for exactly how fast to trade.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Share of a large order still to sell through one trading day. A risk-neutral trader sells in a straight line, with 50% left at half day. A risk-averse trader with kappa equal to 3 front-loads, with 21.3% left at half day. Selling too fast costs impact, selling too slowly costs timing risk. Archegos, March 2021: banks that sold early in size reported no material loss, while slower sellers Credit Suisse and Nomura lost about 5.5 and 2.9 billion dollars.">
+      <text class="tlp-blue" x="20" y="20" font-size="14" font-weight="700">How fast to sell: one dial</text>
+      <line class="tlp-line" x1="50" y1="200" x2="355" y2="200"/>
+      <line class="tlp-line" x1="50" y1="200" x2="50" y2="36"/>
+      <line class="tlp-line dash" x1="50" y1="40" x2="350" y2="200"/>
+      <polyline class="tlp-line green thick" points="50.0,40.0 65.0,62.4 80.0,81.7 95.0,98.3 110.0,112.7 125.0,125.1 140.0,135.8 155.0,145.0 170.0,153.0 185.0,160.0 200.0,166.0 215.0,171.3 230.0,175.9 245.0,180.0 260.0,183.6 275.0,186.9 290.0,189.8 305.0,192.6 320.0,195.1 335.0,197.6 350.0,200.0"/>
+      <line class="tlp-line dash" x1="200" y1="200" x2="200" y2="112"/>
+      <circle class="tlp-text2" cx="200" cy="120" r="5.5"/>
+      <circle class="tlp-green" cx="200" cy="166" r="6"/>
+      <text class="tlp-text2" x="208" y="116" font-size="13" font-weight="700">50%</text>
+      <text class="tlp-green" x="208" y="160" font-size="13" font-weight="700">21.3%</text>
+      <text class="tlp-text2" x="242" y="100" font-size="12.5">straight line (λ = 0)</text>
+      <text class="tlp-green" x="58" y="182" font-size="12.5" font-weight="700">front-loaded (κ = 3)</text>
+      <text class="tlp-text3" x="44" y="44" text-anchor="end" font-size="12">100%</text>
+      <text class="tlp-text3" x="44" y="204" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="50" y="216" text-anchor="middle" font-size="12">open</text>
+      <text class="tlp-text3" x="200" y="216" text-anchor="middle" font-size="12">half day</text>
+      <text class="tlp-text3" x="350" y="216" text-anchor="middle" font-size="12">close</text>
+      <text class="tlp-text3" x="20" y="234" font-size="12">share of the order still to sell</text>
+      <text class="tlp-purple" x="380" y="20" font-size="14" font-weight="700">Two costs, one dial</text>
+      <text class="tlp-red" x="380" y="46" font-size="13" font-weight="700">too fast: impact cost</text>
+      <text class="tlp-amber" x="380" y="65" font-size="13" font-weight="700">too slow: timing risk</text>
+      <text class="tlp-purple" x="380" y="90" font-size="13">λ = 27 gives κ = 3</text>
+      <line class="tlp-line" x1="380" y1="106" x2="590" y2="106"/>
+      <text class="tlp-red" x="380" y="130" font-size="14" font-weight="700">Archegos, March 2021</text>
+      <text class="tlp-green" x="380" y="151" font-size="12.5">fast sellers: no material loss</text>
+      <text class="tlp-red" x="380" y="170" font-size="12.5">Credit Suisse lost ≈ $5.5bn</text>
+      <text class="tlp-red" x="380" y="189" font-size="12.5">Nomura lost ≈ $2.9bn</text>
+      <text class="tlp-text2" x="380" y="212" font-size="12.5">with rival sellers, waiting</text>
+      <text class="tlp-text2" x="380" y="229" font-size="12.5">is the expensive choice</text>
+    </svg>
+    <figcaption>Almgren-Chriss trades impact cost against timing risk. With no risk aversion the best schedule is a straight line; turn the dial up and it front-loads, accepting more impact to hold less for less time. The model assumes you are the only seller. When several are forced to sell the same stocks, as at Archegos, the slow schedule is the worst one.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I have to sell a position much bigger than anything showing in the book. All at once, or slowly?</p>
+      <p data-who="Quant">Either way you pay. Sell it all now and you walk deep into the book. That is impact cost, big but predictable. Sell slowly and each slice barely moves the price, but you are holding the rest the whole time while the market wanders. That is timing risk.</p>
+      <p data-who="Trader">How big is the impact, roughly?</p>
+      <p data-who="Quant">Studies across markets find it grows with the square root of your size relative to daily volume. Four times the size moves the price about twice as far. So your total cost, size times impact, goes up about eight times.</p>
+      <p data-who="Trader">And Almgren and Chriss?</p>
+      <p data-who="Quant">In 2000 they put both costs into one sum. Impact grows with the square of how fast you trade. Risk grows with how much you still hold, weighted by how much you dislike uncertainty. Then they found the schedule that makes the total as small as possible.</p>
+      <p data-who="Trader">What does it look like?</p>
+      <p data-who="Quant">If you don't mind risk at all, it is a straight line: the same amount every hour. That's TWAP. Turn up your dislike of risk and the schedule front-loads. You sell a lot early and very little late.</p>
+      <p data-who="Trader">Give me the number.</p>
+      <p data-who="Quant">Take the lesson's example: two percent daily volatility and a moderately risk-averse trader. Halfway through the day, the straight-line seller still has half the order left. The front-loaded seller has only about twenty-one percent left. Both finish at the close.</p>
+      <p data-who="Trader">So front-loading is the safe choice?</p>
+      <p data-who="Quant">It costs more on average, by design. It is the right choice when you genuinely dislike the risk, say with a big data release coming. Neither setting is wrong; it is a policy you should choose on purpose.</p>
+      <p data-who="Trader">Has this gone wrong in real life?</p>
+      <p data-who="Quant">Archegos, March 2021. Several prime brokers held big blocks of the same few stocks when the fund couldn't meet its margin calls. Some sold early, in large blocks, and later reported no material loss. The slower ones sold into prices everyone else had already pushed down. Credit Suisse lost about five and a half billion dollars, Nomura about two point nine.</p>
+      <p data-who="Trader">So patience was the mistake.</p>
+      <p data-who="Quant">There, yes. The model assumes you're the only seller, so waiting only exposes you to random noise. With rivals, waiting exposes you to their selling, which is a predictable push against you.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Alone, choose your speed by how much risk you can stand; in a crowd heading for the same exit, the patient seller pays the most.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">Two ways to get soaked</h2>
       <p class="sl-sub">There is no third option that avoids both costs — only a spectrum between them.</p>
@@ -47,7 +115,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Two kinds of impact — one reverts, one doesn't</h2>
       <p class="sl-sub">Every trade moves the price. Whether that move sticks around depends on why it happened.</p>
@@ -86,7 +154,7 @@
       <p class="sl-p">Press your thumb into a memory-foam pillow. Some of the dent springs back the moment you let go — that's temporary impact. But if pressing hard enough actually changed something about the foam itself, part of the dent stays forever — that's permanent impact, because your trade told everyone something real, and nobody un-learns it.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Impact grows with the square root of size, not size itself</h2>
       <p class="sl-sub">A large body of empirical research finds impact scales roughly as I ≈ Y·σ·√(Q / ADV) — not linearly with order size.</p>
@@ -114,7 +182,7 @@
       <p class="sl-p">Because √x is <strong>concave</strong>, quadrupling order size only roughly doubles the impact, i.e. the cost per unit (√4Q = 2√Q; total cost, size × impact, rises about 8×) — very large orders are cheaper <em>per share</em> than a linear model would suggest. But the same curve cuts the other way for smaller orders: they already cost <strong>more</strong> per share than a linear model calibrated off a bigger reference size would predict.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Try the square-root law yourself</h2>
       <p class="sl-sub">Enter an order size, the instrument's average daily volume, and an impact coefficient — the estimate updates live.</p>
@@ -141,7 +209,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Almgren-Chriss: put a number on both sides of the trade-off</h2>
       <p class="sl-sub">Liquidate X units over a horizon [0,T]. Two costs compete, and one dial decides how heavily each counts.</p>
@@ -164,7 +232,7 @@
       <div class="sl-note">Permanent impact doesn't appear here at all — for a linear permanent-impact model, its total cost depends only on the fixed total size X, not on the shape of the schedule, so it's a sunk cost every trajectory pays identically. It still costs real money; it just doesn't affect which shape is optimal.</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">One shape parameter decides everything</h2>
       <p class="sl-sub">Solving the trade-off above (a calculus-of-variations problem) collapses to one clean closed form.</p>
@@ -180,7 +248,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Drag the dial — watch the schedule reshape</h2>
       <p class="sl-sub">The dashed line is the κ = 0 (TWAP) reference, fixed for comparison. The solid curve is x(t)/X = sinh(κ(1−t)) / sinh(κ).</p>
@@ -208,7 +276,7 @@
       <div class="sl-verdict">At the halfway point (t = 0.5T), about <b id="mac-half-val">21.3</b>% of the order remains for this κ — versus a fixed 50% for pure straight-line (TWAP) trading.</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Three ways to execute the same order</h2>
       <p class="sl-sub">Same total size, same horizon, three different schedules — with three different cost/risk profiles.</p>
@@ -250,7 +318,7 @@
       <div class="sl-note">Bars are illustrative, not fitted to real execution data — they show the direction and relative size of the trade-off, not calibrated magnitudes.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How desks actually use this</h2>
       <p class="sl-sub">Almost nobody solves the Euler-Lagrange equation by hand for every order — but the framework's outputs shape real execution-algorithm design.</p>
@@ -262,7 +330,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this gets misread</h2>
       <div class="sl-compare">
@@ -293,7 +361,7 @@
 <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11 · It actually happened</div>
       <h2 class="sl-h2">Archegos, March 2021: one exit, several sellers</h2>
       <div class="sl-callout amber">
@@ -314,7 +382,7 @@
     </section>
 
     <!-- WB:market_impact_almgren_chriss-deck:START -->
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">How fast to sell, alone and in a crowd</h2>
       <!-- WB:market_impact_almgren_chriss:START -->
@@ -325,7 +393,7 @@
     </section>
     <!-- WB:market_impact_almgren_chriss-deck:END -->
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what's untested here<!-- DESK:END --></h2>
       <div class="sl-callout purple">
@@ -340,7 +408,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -391,7 +459,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+
+    <section class="sl-slide sl-vark" data-slide="17">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2021-03-26">
+    <div class="tl-drill-label">Scenario drill · 26 March 2021</div>
+    <h3>You hold the same blocks as every other prime broker</h3>
+    <p>You run equity financing at a prime broker. Your client, Archegos, built huge positions in a handful of stocks through total return swaps, and you hold the shares as your hedge. ViacomCBS sold new shares, its stock fell sharply, and Archegos cannot meet its margin calls. Yesterday the banks discussed an orderly joint wind-down and did not agree. Several other banks hold large blocks of the same stocks. It is Friday morning. How do you sell?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Follow a patient, low-urgency schedule over the coming weeks to keep your impact cost down.<div class="tl-drill-why">That is the right answer for a lone seller facing random volatility. Here the risk of waiting is not random: every block another bank sells pushes down the price of what you still hold. The patient schedule sells into everyone else's impact.</div></li>
+      <li data-verdict="good">Sell early and in size, in large blocks, accepting a steep discount now.<div class="tl-drill-why">With rival forced sellers, the first to sell gets the best prices still on offer. You pay a known, large impact cost to avoid a larger, predictable loss from selling after the others.</div></li>
+      <li data-verdict="ok">Run a strongly front-loaded schedule through the day, finishing by the close.<div class="tl-drill-why">The right instinct: high urgency, done fast. But spread over a whole day, much of it can still land after rivals' blocks have hit the price. Better than a slow schedule, worse than moving first.</div></li>
+      <li data-verdict="bad">Hold off and keep pushing for an orderly joint wind-down with the other banks.<div class="tl-drill-why">Talks had already failed, and nothing stops a rival from selling while you negotiate. Waiting leaves your whole position exposed to their selling.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Friday 26 March some banks, Goldman Sachs and Morgan Stanley among them, sold billions of dollars of stock in large blocks at steep discounts, before the market had absorbed what was happening. Goldman, Deutsche Bank and Wells Fargo later reported no material loss. The slower banks sold into prices already pushed down by everyone else's blocks: Credit Suisse lost about $5.5 billion and Nomura about $2.9 billion.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="18">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

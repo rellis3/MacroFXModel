@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Market Microstructure Invariance — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-kyle-obizhaeva-invariance.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,66 @@
       <p class="sl-lede">A $2 billion mega-cap and a $200 million micro-cap trade at wildly different sizes and costs. Kyle &amp; Obizhaeva's claim: that's an illusion of the wrong ruler. Measure a trade in dollars of risk transferred instead of shares or dollars, and rescale by how active the market itself is, and the same statistical law shows up everywhere.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Stylized. Left: bet-size distributions for a small-cap B and a mega-cap A, measured in shares or dollars, sit far apart with no common scale. Right: the same two distributions measured in dollars of risk and divided by the cube root of each market's own trading activity W lie almost on top of each other. In the worked example, W is about 1.1 times ten to the five for B and 1.2 times ten to the eight for A, 1,042 times apart: A's typical bet is only about 10 times B's, and A sees about 103 times as many bets a day.">
+      <text class="tlp-text2" x="155" y="28" text-anchor="middle" font-size="13" font-weight="700">measured in shares or dollars</text>
+      <line class="tlp-line" x1="20" y1="150" x2="290" y2="150"/>
+      <polyline class="tlp-line green thick" points="26.0,149.0 29.0,147.9 32.0,146.0 35.0,142.8 38.0,137.8 41.0,130.5 44.0,120.8 47.0,108.8 50.0,95.4 53.0,82.1 56.0,70.6 59.0,62.8 62.0,60.0 65.0,62.8 68.0,70.6 71.0,82.1 74.0,95.4 77.0,108.8 80.0,120.8 83.0,130.5 86.0,137.8 89.0,142.8 92.0,146.0 95.0,147.9 98.0,149.0"/>
+      <polyline class="tlp-line purple thick" points="143.0,149.2 149.0,148.4 155.0,146.9 161.0,144.4 167.0,140.5 173.0,134.9 179.0,127.3 185.0,118.0 191.0,107.5 197.0,97.2 203.0,88.2 209.0,82.2 215.0,80.0 221.0,82.2 227.0,88.2 233.0,97.2 239.0,107.5 245.0,118.0 251.0,127.3 257.0,134.9 263.0,140.5 269.0,144.4 275.0,146.9 281.0,148.4 287.0,149.2"/>
+      <text class="tlp-green" x="62" y="170" text-anchor="middle" font-size="13" font-weight="700">B small-cap</text>
+      <text class="tlp-purple" x="215" y="170" text-anchor="middle" font-size="13" font-weight="700">A mega-cap</text>
+      <text class="tlp-text3" x="155" y="196" text-anchor="middle" font-size="12">no common scale</text>
+      <line class="tlp-line amber thick" x1="296" y1="105" x2="318" y2="105"/>
+      <polygon class="tlp-amber" points="326,105 316,99 316,111"/>
+      <text class="tlp-text2" x="455" y="28" text-anchor="middle" font-size="13" font-weight="700">in risk, divided by W<tspan baseline-shift="super" font-size="9">1/3</tspan></text>
+      <line class="tlp-line" x1="340" y1="150" x2="590" y2="150"/>
+      <polyline class="tlp-line green thick" points="360.0,149.1 367.5,148.1 375.0,146.4 382.5,143.5 390.0,138.9 397.5,132.3 405.0,123.4 412.5,112.5 420.0,100.3 427.5,88.1 435.0,77.6 442.5,70.5 450.0,68.0 457.5,70.5 465.0,77.6 472.5,88.1 480.0,100.3 487.5,112.5 495.0,123.4 502.5,132.3 510.0,138.9 517.5,143.5 525.0,146.4 532.5,148.1 540.0,149.1"/>
+      <polyline class="tlp-line purple thick dash" points="366.0,149.2 374.0,148.3 382.0,146.7 390.0,144.0 398.0,139.7 406.0,133.6 414.0,125.3 422.0,115.2 430.0,103.9 438.0,92.6 446.0,82.9 454.0,76.3 462.0,74.0 470.0,76.3 478.0,82.9 486.0,92.6 494.0,103.9 502.0,115.2 510.0,125.3 518.0,133.6 526.0,139.7 534.0,144.0 542.0,146.7 550.0,148.3 558.0,149.2"/>
+      <text class="tlp-green" x="455" y="170" text-anchor="middle" font-size="13" font-weight="700">one shared shape</text>
+      <text class="tlp-text3" x="455" y="196" text-anchor="middle" font-size="12">bet size L = Q × P × σ</text>
+      <text class="tlp-text2" x="300" y="228" text-anchor="middle" font-size="12">W = P × V × σ:  B ≈ 1.1×10⁵,  A ≈ 1.2×10⁸,  1,042× apart</text>
+    </svg>
+    <figcaption>Stylized shapes, real activity numbers. In shares or dollars a mega-cap and a small-cap look like different worlds. Measure each bet in dollars of risk and divide it by the cube root of its own market's trading activity, and the claim is that one shape fits both, so a cost model built on liquid names can travel to thin ones. The 1,042× activity gap splits into bets only about 10× bigger in A (1,042<sup>1/3</sup> ≈ 10.1) and about 103× more of them per day (1,042<sup>2/3</sup> ≈ 102.8).</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I can move a mega-cap in huge blocks for a few basis points. A small-cap costs me far more for a sliver of that. Are they just different worlds?</p>
+      <p data-who="Quant">That is how it looks. Kyle and Obizhaeva argued in 2016 that it is mostly the ruler. Shares and dollars are the wrong units.</p>
+      <p data-who="Trader">What is the right unit?</p>
+      <p data-who="Quant">Risk. Take the dollar size of the bet and multiply it by the asset's daily volatility. That is how much price risk you are asking someone else to carry. A million dollars of a sleepy utility and a million dollars of a wild small-cap are not the same bet.</p>
+      <p data-who="Trader">And the market side?</p>
+      <p data-who="Quant">The same recipe on the whole market: price, times daily volume, times daily volatility. Call it trading activity. It is how much risk the market moves on an ordinary day.</p>
+      <p data-who="Trader">Give me the numbers.</p>
+      <p data-who="Quant">The lesson's mega-cap trades at a hundred and fifty dollars, fifty million shares a day, twenty-five percent annual volatility. That is about a hundred and eighteen million dollars of risk a day. The small-cap: twenty dollars, two hundred thousand shares, forty-five percent volatility. About a hundred and thirteen thousand. The mega-cap is roughly a thousand and forty times as active.</p>
+      <p data-who="Trader">So its typical trade is a thousand times bigger?</p>
+      <p data-who="Quant">No, and that is the heart of it. Typical bet size grows much more slowly than activity. A busier market has bigger bets, but it also has many more of them, and most of the extra activity goes into the number of bets. Here the thousand-fold gap splits into bets only about ten times bigger, measured in risk, and about a hundred times more of them each day.</p>
+      <p data-who="Trader">So in the small-cap each bet is a bigger slice of the day?</p>
+      <p data-who="Quant">Much bigger. Volume grows faster than bet size, so a typical bet is a far larger share of a thin name's daily volume than of a busy name's.</p>
+      <p data-who="Trader">And the invariance part?</p>
+      <p data-who="Quant">Rescale every bet by its own market's activity, and the whole spread of bet sizes looks about the same everywhere. Different stocks, different venues, different decades. One shape.</p>
+      <p data-who="Trader">Why do I care?</p>
+      <p data-who="Quant">Because then a cost model built on liquid names can travel to a thin one, using only its price, volume and volatility. You do not need years of your own fills first.</p>
+      <p data-who="Trader">What do costs look like for these two?</p>
+      <p data-who="Quant">With the square-root law, trading one percent of a day's volume costs about sixteen basis points in the mega-cap and about twenty-eight in the small-cap. The thin, volatile name is nearly twice as expensive at the same share of volume.</p>
+      <p data-who="Trader">Is it a law of nature?</p>
+      <p data-who="Quant">It is an empirical regularity, with real scatter. They tested it on US equity portfolio transitions, and later work found the same scaling in E-mini futures. Most of the evidence is from equities, so be careful in FX, where there is not even one clean volume number.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Measure bets in risk, scale them by the market's activity, and very different markets start to look alike.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Pricing a big order in a name with little history</h2>
       <p class="sl-sub">Market microstructure invariance · Kyle &amp; Obizhaeva, 2016 → pre-trade cost and bet-size scaling across assets</p>
@@ -40,7 +99,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">The wrong ruler makes every market look unique</h2>
       <p class="sl-sub">A bowling ball in a bathtub, a pebble in a swimming pool — splash height alone tells you almost nothing.</p>
@@ -60,7 +119,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">A "bet" measured in risk transferred</h2>
       <p class="sl-sub">Not shares. Not even dollars. Dollars of risk.</p>
@@ -82,7 +141,7 @@
       <p class="sl-p">$10,000 in a sleepy savings account and $10,000 on a single spin of roulette are the same size in dollars — not remotely the same size in risk. Two bets with identical L put an identical amount of genuine price risk on the table, whatever their share counts or underlying instruments.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">W: how much risk a market moves per day</h2>
       <p class="sl-sub">The mirror image of L, applied to the market's total daily volume instead of one trade.</p>
@@ -103,7 +162,7 @@
     </section>
 
     <!-- WB:institutional_kyle_obizhaeva_invariance-deck:START -->
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Invariance: change the ruler, markets look alike</h2>
       <!-- WB:institutional_kyle_obizhaeva_invariance:START -->
@@ -114,7 +173,7 @@
     </section>
     <!-- WB:institutional_kyle_obizhaeva_invariance-deck:END -->
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Bets per day scale as W^(2/3); typical bet size only as W^(1/3)</h2>
       <p class="sl-sub">Both sub-linear and concave, the same qualitative shape as the square-root law of impact, applied to different quantities. Most extra activity is more bets, not bigger ones.</p>
@@ -159,7 +218,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Worked example: 1,042× apart in activity, 10× apart in typical bet size, 103× in bets per day</h2>
       <p class="sl-sub">Asset A — mega-cap: P=$150, V=50M shares, 25% annualized vol. Asset B — small-cap: P=$20, V=200K shares, 45% annualized vol.</p>
@@ -193,7 +252,7 @@
       <p class="sl-p">Even at the <strong>same</strong> percentage of ADV (1%), the square-root law alone says the small-cap costs roughly 1.8× more than the mega-cap (28.3 bps vs. 15.7 bps). Invariance adds that 1% of ADV is not the same-sized bet in the two names. A typical bet's share of volume scales as W^(−2/3), so B's typical bet is about 103× larger a share of B's volume than A's is of A's. The same 1%-of-ADV order is a far more ordinary bet in the thin name than in the busy one.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The full hypothesis: one shared distribution, not just one center</h2>
       <p class="sl-sub">z = L / W^(1/3) = (Q/V) · W^(2/3) — a specific bet's size, standardized by its own market's activity.</p>
@@ -221,7 +280,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Compute your own bet's standardized size</h2>
       <p class="sl-sub">Same formulas as the full lesson's calculator — change any input, live.</p>
@@ -247,7 +306,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How practitioners use this — and where it breaks</h2>
       <div class="sl-icard-grid">
@@ -261,7 +320,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -312,7 +371,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+
+    <section class="sl-slide sl-vark" data-slide="14">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative first trade</div>
+    <h3>Your first order in a thin small-cap</h3>
+    <p>Your desk trades the lesson's mega-cap A every day and has a cost model calibrated on years of its fills. Today it must buy 2,000 shares of small-cap B for the first time: $20, 200,000 shares a day, 45% annual volatility. There is no execution history in B at all. The order is 1% of B's daily volume. How do you set your expected cost?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Use A's cost per 1% of volume. It is the same share of the day's volume, so it should cost the same.<div class="tl-drill-why">Same share of volume is not the same risk. B's daily volatility is 2.835% against A's 1.575%, so even the square-root law alone puts B at about 28.3 bps against 15.7 bps for A: nearly twice the cost.</div></li>
+      <li data-verdict="good">Compute B's price, volume and volatility, rescale the model calibrated on liquid names to B's activity, and treat the result as a starting estimate to check against your first fills.<div class="tl-drill-why">This is what invariance is for: carrying a calibrated shape to a name with no history, using only the three inputs of W. It is a principled starting point, not a guarantee, so you watch the first fills and adjust.</div></li>
+      <li data-verdict="ok">Trade a few tiny test orders over the next weeks and build B's own cost curve before doing the real size.<div class="tl-drill-why">Safe, but slow, and tiny tests tell you little about the cost of a real-sized bet. Invariance gives you a reasonable estimate on day one without that delay.</div></li>
+      <li data-verdict="bad">Skip the estimate. B is a different market, so nothing from A applies.<div class="tl-drill-why">That is exactly the "every market is unique" view the lesson argues against. Measured in risk and scaled by activity, the evidence from US equities is that the two markets share far more than their raw numbers suggest.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>The point.</strong> This is an illustrative situation built on the lesson's two example stocks, not a real order. A thin, volatile name costs more at the same share of volume, and invariance is how a desk turns a liquid-name model into a day-one estimate for it. Keep the caveats: it is a regularity with scatter, and most of its evidence comes from equities.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

@@ -264,3 +264,5 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,
 .sl-slide .tl-conf{font-size:12px;color:var(--text2)}
 .sl-slide .tl-conf-select{background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:3px 5px}
 body.sl-body .tl-theme-toggle,.tl-theme-toggle{position:fixed;top:10px;right:12px;z-index:50;background:var(--panel2);border:1px solid var(--border2);color:var(--text2);border-radius:20px;font:600 11.5px 'DM Sans',sans-serif;padding:5px 11px;cursor:pointer}
+/* The VARK slides copied in from the full lesson (picture + listen after the title, the drill before the recap) */
+.sl-slide.sl-vark>.tl-picture:first-of-type,.sl-slide.sl-vark>.tl-drill{margin-top:4px}

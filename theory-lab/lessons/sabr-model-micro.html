@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">The SABR Model — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full Hagan-formula derivation context, the worked calibration example, and a 6-question self-test?<a href="sabr-model.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,77 @@
       <p class="sl-lede">Heston gave volatility an honest, mean-reverting random life — and paid for it with a Fourier inversion every time it needs recalibrating. SABR asks a narrower question: what's the simplest stochastic-volatility model whose implied-vol smile can be written down almost in closed form? Four parameters and one algebraic formula, fit fast enough to run continuously against a live, moving market — that single fact is the entire reason SABR, not the arguably richer Heston model, is what an FX or rates options desk actually recalibrates all day.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four SABR dials on the left: alpha 9.98 percent sets the level, beta 1 is fixed by convention, rho minus 0.25 sets the skew, nu 0.40 sets the curvature. An arrow labelled pure algebra leads to a smile for 3-month EUR/USD with the forward at 1.2000. The at-the-money vol is 10.00 percent, the 1.18 put strike 10.09 percent and the 1.22 call strike 9.92 percent; the curve slopes down from about 10.8 percent at 1.08 to about 9.8 percent at 1.32.">
+      <rect class="tlp-box blue" x="12" y="30" width="176" height="38" rx="6"/>
+      <rect class="tlp-box" x="12" y="76" width="176" height="38" rx="6"/>
+      <rect class="tlp-box purple" x="12" y="122" width="176" height="38" rx="6"/>
+      <rect class="tlp-box amber" x="12" y="168" width="176" height="38" rx="6"/>
+      <text class="tlp-text3" x="12" y="20" font-size="12">four dials (fitted to 3 quotes)</text>
+      <text class="tlp-blue" x="24" y="54" font-size="14" font-weight="700">α = 9.98% · level</text>
+      <text class="tlp-text2" x="24" y="100" font-size="14" font-weight="700">β = 1 · fixed</text>
+      <text class="tlp-purple" x="24" y="146" font-size="14" font-weight="700">ρ = −0.25 · skew</text>
+      <text class="tlp-amber" x="24" y="192" font-size="14" font-weight="700">ν = 0.40 · curvature</text>
+      <line class="tlp-line thick" x1="194" y1="118" x2="226" y2="118"/>
+      <polygon class="tlp-arrow" points="236,118 225,112 225,124"/>
+      <text class="tlp-text3" x="250" y="20" font-size="12">one algebraic formula gives the whole smile</text>
+      <line class="tlp-line" x1="250" y1="40" x2="250" y2="196"/>
+      <line class="tlp-line" x1="250" y1="196" x2="572" y2="196"/>
+      <polyline class="tlp-line purple thick" points="250.0,55.6 256.7,60.8 263.3,65.9 270.0,70.9 276.7,75.9 283.3,80.7 290.0,85.4 296.7,90.0 303.3,94.6 310.0,99.0 316.7,103.3 323.3,107.5 330.0,111.6 336.7,115.5 343.3,119.4 350.0,123.2 356.7,126.8 363.3,130.3 370.0,133.8 376.7,137.1 383.3,140.3 390.0,143.3 396.7,146.3 403.3,149.1 410.0,151.8 416.7,154.4 423.3,156.9 430.0,159.3 436.7,161.5 443.3,163.6 450.0,165.6 456.7,167.5 463.3,169.3 470.0,170.9 476.7,172.5 483.3,173.9 490.0,175.2 496.7,176.4 503.3,177.5 510.0,178.4 516.7,179.3 523.3,180.0 530.0,180.6 536.7,181.1 543.3,181.5 550.0,181.9 556.7,182.1 563.3,182.2 570.0,182.2"/>
+      <circle class="tlp-red" cx="383.3" cy="140.3" r="5"/>
+      <circle class="tlp-blue" cx="410" cy="151.8" r="5"/>
+      <circle class="tlp-green" cx="436.7" cy="161.5" r="5"/>
+      <text class="tlp-red" x="376" y="156" text-anchor="end" font-size="13" font-weight="700">put 1.18: 10.09%</text>
+      <text class="tlp-blue" x="410" y="178" text-anchor="middle" font-size="13" font-weight="700">ATM 10.00%</text>
+      <text class="tlp-green" x="446" y="150" font-size="13" font-weight="700">call 1.22: 9.92%</text>
+      <text class="tlp-text3" x="244" y="92" text-anchor="end" font-size="12">10.5</text>
+      <text class="tlp-text3" x="244" y="155" text-anchor="end" font-size="12">10.0</text>
+      <text class="tlp-text3" x="276.7" y="212" text-anchor="middle" font-size="12">1.10</text>
+      <text class="tlp-text3" x="343.3" y="212" text-anchor="middle" font-size="12">1.15</text>
+      <text class="tlp-text3" x="410" y="212" text-anchor="middle" font-size="12">1.20</text>
+      <text class="tlp-text3" x="476.7" y="212" text-anchor="middle" font-size="12">1.25</text>
+      <text class="tlp-text3" x="543.3" y="212" text-anchor="middle" font-size="12">1.30</text>
+      <text class="tlp-text3" x="410" y="230" text-anchor="middle" font-size="12">strike · 3-month EUR/USD, forward 1.2000 · implied vol %</text>
+    </svg>
+    <figcaption>SABR turns four numbers into a full smile with one algebraic formula, no Fourier inversion. Each dial has its own job: α the height, ρ the tilt, ν the bend, with β pinned by convention. That speed is why a desk can refit it every time the market moves.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">The broker screens only show me three numbers per expiry: the at-the-money vol, the risk reversal and the butterfly. A client wants a strike nobody is quoting. Where does my price come from?</p>
+      <p data-who="Quant">On most rates desks, and many FX desks, from SABR. It turns those three numbers into a vol for every strike.</p>
+      <p data-who="Trader">Why not Heston? I thought that was the serious model.</p>
+      <p data-who="Quant">Heston is richer, but every price needs a numerical Fourier step. Fitting it means doing that again and again inside an optimizer. Fine overnight. Too slow when spot ticks every second.</p>
+      <p data-who="Trader">And SABR is faster because the model is simpler?</p>
+      <p data-who="Quant">Because Hagan and his co-authors found an algebraic shortcut in 2002. Four parameters in, implied vol at any strike out. Logs, powers, a square root. No integration at all.</p>
+      <p data-who="Trader">What are the four?</p>
+      <p data-who="Quant">One sets the level, roughly the at-the-money vol. One is the backbone, which desks usually just fix by convention; FX runs it at or near one. One is the correlation, which tilts the smile. And the vol of vol bends it into a U.</p>
+      <p data-who="Trader">So with the backbone fixed, I have three unknowns and three quotes.</p>
+      <p data-who="Quant">Exactly. A small, fast fit. Here is the lesson's example. Three-month EUR/USD, forward at one point two. The correlation is minus a quarter, the vol of vol zero point four, and at-the-money trades at ten percent.</p>
+      <p data-who="Trader">And the formula gives?</p>
+      <p data-who="Quant">A level of just under ten, nine point nine eight. Then two hundred pips below the forward the put strike comes out at ten point oh nine. Two hundred pips above, the call strike at nine point nine two. Puts richer, as the negative correlation says. One line of algebra for each.</p>
+      <p data-who="Trader">Why was it invented?</p>
+      <p data-who="Quant">The authors were practitioners. Local volatility could fit any smile, but when the underlying moved, it predicted the smile would shift the wrong way, so the hedges misbehaved. SABR got the dynamics roughly right and kept a formula you can write on a whiteboard.</p>
+      <p data-who="Trader">Where does it break?</p>
+      <p data-who="Quant">It is an approximation. Far out in the wings, at long maturities or with a high vol of vol, it can even imply arbitrage. The same authors published an arbitrage-free version in 2014. And when euro rates went negative in the mid-2010s, desks moved to a shifted version, because the backbone does not work on a negative forward.</p>
+      <p data-who="Trader">And a good fit today means the model is right?</p>
+      <p data-who="Quant">No. A fresh fit always matches today's smile. Whether the model predicts how the smile moves tomorrow is a separate, harder question.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">SABR wins on speed, not realism: four dials, one formula, refit every time the market moves.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Practitioners whose hedges kept misbehaving</h2>
       <p class="sl-sub">Hagan, Kumar, Lesniewski &amp; Woodward · 2002 · Wilmott</p>
@@ -40,7 +110,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">The problem SABR was built to solve</h2>
       <p class="sl-sub">Heston prices an option honestly. It just isn't fast enough to recalibrate all session long.</p>
@@ -52,7 +122,7 @@
       <div class="sl-quote">A trader can type four numbers into a formula and read off an entire smile in the time it takes to hit enter. That speed, not superior realism, is SABR's whole reason for existing in daily practice.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Two coupled equations — the "S", "A", "B", "R"</h2>
       <p class="sl-sub">A forward price and its own volatility, wiggling together.</p>
@@ -72,7 +142,7 @@
       <p class="sl-p">"SABR" names three of these four objects directly: <strong>S</strong>tochastic <strong>A</strong>lpha (the random vol level αₜ), <strong>B</strong>eta (the backbone exponent), <strong>R</strong>ho (the correlation). Vol-of-vol ν is the fourth parameter — present in the dynamics, just not in the acronym's letters.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Four parameters, four separate jobs</h2>
       <p class="sl-sub">Not four interchangeable dials on the same knob — each governs a geometrically distinct feature of the smile.</p>
@@ -85,7 +155,7 @@
       <p class="sl-p">The next two slides isolate exactly two of these effects: drag through what β alone does to the <em>backbone</em>, then drag ρ and ν together and watch the <em>smile itself</em> tilt and curve live.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">β — percentage moves, or absolute moves?</h2>
       <p class="sl-sub">Hold α fixed at 10% and ask: as the forward itself moves to a different level, how does ATM vol move with it? That curve is the "backbone."</p>
@@ -133,7 +203,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">ρ and ν — drag them and watch the smile move</h2>
       <p class="sl-sub">β is fixed at 1 (the common FX convention) and α is re-solved after every move so the at-the-money point always reads 10% — isolating exactly what ρ and ν do to the wings.</p>
@@ -159,7 +229,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The Hagan formula: pure algebra, not a Fourier integral</h2>
       <p class="sl-sub">Dense-looking, but every piece is an exponent, a logarithm, or one square root.</p>
@@ -183,7 +253,7 @@
       <p class="sl-p">Set K = F and the general formula collapses to an at-the-money case: <strong>σ<sub>ATM</sub> ≈ (α ÷ F^(1−β)) × [1 + (…) T]</strong>. With β fixed by convention, that leaves exactly three unknowns — α, ρ, ν — matched against the three quotes an FX desk already watches: the ATM vol, the 25-delta risk reversal (skew), and the 25-delta butterfly (curvature). Three unknowns, three constraints, one fast, well-posed fit.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Try it — solve for the smile, live</h2>
       <p class="sl-sub">Starts on the full lesson's worked EUR/USD example. Change any input and every output recomputes from the exact Hagan formula above.</p>
@@ -215,7 +285,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">SABR vs. Heston — different questions, not a rematch</h2>
       <div class="sl-compare">
@@ -241,7 +311,7 @@
       <div class="sl-quote">Neither wins in the abstract. Heston gives one consistent set of dynamics across every expiry at the cost of a slow, numerical calibration. SABR, usually fitted expiry by expiry, trades away that consistency for a formula fast enough to refit continuously against a live, moving market.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How a desk actually uses this, every session</h2>
       <p class="sl-sub">Quoting a full USD/JPY smile from three streaming numbers.</p>
@@ -260,7 +330,7 @@
     </section>
 
     <!-- WB:sabr_model-deck:START -->
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">SABR: three quotes in, a whole smile out</h2>
       <!-- WB:sabr_model:START -->
@@ -271,7 +341,7 @@
     </section>
     <!-- WB:sabr_model-deck:END -->
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the formula — and the model — can mislead you</h2>
       <div class="sl-callout amber">
@@ -284,7 +354,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -326,7 +396,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2014-06-05">
+    <div class="tl-drill-label">Scenario drill · 5 June 2014</div>
+    <h3>The ECB takes its deposit rate below zero</h3>
+    <p>The European Central Bank has just cut its deposit facility rate to −0.10%, below zero. Short-dated euro forward rates are close to zero and could go below it. Your euro swaption smiles are fitted with SABR at a backbone of \(\beta = 0.5\). What do you do about the model?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Nothing. Rates have never stayed below zero for long, so the forwards will stay positive.<div class="tl-drill-why">If a forward goes negative, \(F^{\beta}\) for a non-integer \(\beta\) is not even defined. The model does not just misprice: it stops working on exactly the strikes the market now cares about.</div></li>
+      <li data-verdict="bad">Floor every forward at a tiny positive number so the formula keeps running.<div class="tl-drill-why">The code runs, but every option near or below zero is now priced as if negative rates could not happen. That is a silent mispricing of the tail the market is actively trading.</div></li>
+      <li data-verdict="good">Move to a model that allows negative forwards: a shifted SABR, or the normal \(\beta = 0\) convention, and refit.<div class="tl-drill-why">A shift adds a constant so the shifted forward stays positive, and \(\beta = 0\) treats volatility as an absolute size of move that works at any rate level. Either keeps SABR's fast, closed-form fit while respecting what rates can now do.</div></li>
+      <li data-verdict="ok">Keep SABR but free up \(\beta\) and refit it every day alongside \(\rho\).<div class="tl-drill-why">It feels flexible, but \(\beta\) and \(\rho\) are close to redundant on skew, so a free fit is poorly identified, and it still does nothing about a negative forward.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Euro rates did go negative in the mid-2010s, and desks moved to a shifted SABR. In parts of the rates market the normal \(\beta = 0\) convention became standard, because a fractional power of a negative forward has no meaning. The same year, Hagan and co-authors published "Arbitrage-Free SABR" to fix the formula's other weak spot, the far wings.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Cointegration — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">19</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the worked AUD/USD example, and a 6-question self-test?<a href="cointegration.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,61 @@
       <p class="sl-lede">Two series can be 95% correlated for years and still have no stable relationship at all. Cointegration is the specific, testable condition that tells you whether a spread has a home to come back to — or is just two wandering price series that happened to lean the same way for a while. This is the statistical backbone underneath every pairs trade.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A simulated cointegrated pair over 120 days. Top panel: two price levels, Y and X, both wander upward with no fixed level, X from about 0.60 to 0.68. Bottom panel: the spread Y minus 1.10 times X stays inside a band of plus or minus 0.016, two standard deviations of 0.008, and keeps returning to zero.">
+      <text class="tlp-text3" x="60" y="14" font-size="12">price levels: each one wanders</text>
+      <polyline class="tlp-line blue thick" points="60.0,79.3 66.7,80.0 73.4,79.7 80.2,82.1 86.9,78.6 93.6,78.0 100.3,77.9 107.1,73.7 113.8,78.9 120.5,83.0 127.2,78.2 133.9,76.8 140.7,78.7 147.4,74.1 154.1,71.0 160.8,68.1 167.6,63.0 174.3,59.9 181.0,62.9 187.7,55.6 194.5,52.3 201.2,48.6 207.9,48.8 214.6,41.3 221.3,43.8 228.1,39.5 234.8,39.9 241.5,44.6 248.2,43.1 255.0,42.0 261.7,42.5 268.4,34.3 275.1,34.9 281.8,31.2 288.6,39.2 295.3,37.7 302.0,36.3 308.7,37.9 315.5,39.8 322.2,35.0 328.9,37.5 335.6,36.3 342.4,38.8 349.1,44.0 355.8,41.4 362.5,41.8 369.2,46.4 376.0,38.3 382.7,41.7 389.4,38.3 396.1,36.3 402.9,44.0 409.6,40.9 416.3,38.8 423.0,39.9 429.7,40.8 436.5,42.5 443.2,40.4 449.9,43.2 456.6,40.8 460.0,43.6"/>
+      <polyline class="tlp-line purple thick" points="60.0,103.8 66.7,104.2 73.4,105.6 80.2,106.4 86.9,104.1 93.6,101.2 100.3,101.6 107.1,99.3 113.8,104.6 120.5,108.3 127.2,101.5 133.9,102.1 140.7,101.0 147.4,96.8 154.1,93.6 160.8,91.3 167.6,87.4 174.3,86.0 181.0,87.4 187.7,84.8 194.5,83.2 201.2,81.5 207.9,79.6 214.6,75.4 221.3,75.4 228.1,73.4 234.8,72.9 241.5,75.4 248.2,72.9 255.0,71.8 261.7,70.8 268.4,66.6 275.1,67.8 281.8,65.6 288.6,69.6 295.3,67.3 302.0,67.1 308.7,70.2 315.5,68.6 322.2,64.7 328.9,63.7 335.6,69.0 342.4,67.4 349.1,66.6 355.8,65.4 362.5,66.5 369.2,69.6 376.0,64.2 382.7,64.6 389.4,65.2 396.1,64.2 402.9,67.6 409.6,68.4 416.3,66.1 423.0,70.4 429.7,68.6 436.5,68.7 443.2,65.8 449.9,66.9 456.6,67.8 460.0,69.1"/>
+      <text class="tlp-blue" x="470" y="47" font-size="14" font-weight="700">Y wanders</text>
+      <text class="tlp-purple" x="470" y="74" font-size="14" font-weight="700">X wanders</text>
+      <text class="tlp-text2" x="470" y="100" font-size="12">no fixed level</text>
+      <text class="tlp-text3" x="60" y="128" font-size="12">the spread Y − 1.10 × X: on a leash</text>
+      <rect class="tlp-box green" x="60" y="138" width="400" height="80" rx="4" opacity=".35"/>
+      <line class="tlp-line dash" x1="60" y1="178" x2="460" y2="178"/>
+      <polyline class="tlp-line green thick" points="60.0,178.0 66.7,180.0 73.4,168.5 80.2,177.7 86.9,171.9 93.6,188.2 100.3,184.7 107.1,174.4 113.8,170.9 120.5,170.6 127.2,187.0 133.9,174.7 140.7,193.2 147.4,193.5 154.1,195.9 160.8,193.5 167.6,189.0 174.3,179.2 181.0,188.4 187.7,160.9 194.5,151.3 201.2,141.0 207.9,154.5 214.6,137.2 221.3,152.5 228.1,138.9 234.8,145.8 241.5,157.3 248.2,165.2 255.0,165.6 261.7,174.9 268.4,153.8 275.1,148.9 281.8,141.0 288.6,163.3 295.3,169.5 302.0,161.8 308.7,151.5 315.5,173.4 322.2,170.3 328.9,192.3 335.6,150.1 342.4,175.2 349.1,212.5 355.8,204.4 362.5,199.6 369.2,207.0 376.0,193.7 382.7,212.0 389.4,187.5 396.1,181.7 402.9,206.2 409.6,182.0 416.3,184.3 423.0,162.0 429.7,179.3 436.5,189.6 443.2,195.9 449.9,205.9 456.6,185.4 460.0,193.0"/>
+      <text class="tlp-green" x="470" y="160" font-size="14" font-weight="700">keeps coming back</text>
+      <text class="tlp-text2" x="470" y="182" font-size="12">mean 0</text>
+      <text class="tlp-text2" x="470" y="204" font-size="12">band ±2σ = ±0.016</text>
+      <text class="tlp-text3" x="54" y="182" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="260" y="240" text-anchor="middle" font-size="12">120 days (simulated, β = 1.10, σ = 0.008)</text>
+    </svg>
+    <figcaption>Neither price has a home, but the right combination of them does. That bounded, mean-reverting spread is cointegration. Return correlation cannot tell you it is there; only a test on the spread itself can.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">The Aussie and the Kiwi are highly correlated. So when the gap between them gets wide, I fade it. Fair?</p>
+      <p data-who="Quant">Not yet. Correlation is about daily changes moving together. It says nothing about whether the levels are tied. Two things can move together day to day for years while the gap between them drifts off forever.</p>
+      <p data-who="Trader">So what am I actually looking for?</p>
+      <p data-who="Quant">A drunk walking her dog on a leash. She wanders randomly. So does the dog. Neither is predictable on its own. But the distance between them can't grow without limit, because of the leash. That bounded gap is cointegration.</p>
+      <p data-who="Trader">And if there's no leash?</p>
+      <p data-who="Quant">Then it's two drunks who've never met. Here's the trap. Regress one random walk on another and you'll often get a huge R squared, even when they're unrelated. Granger and Newbold showed that in 1974. Any two series that trend can look connected.</p>
+      <p data-who="Trader">So how do I tell a leash from a coincidence?</p>
+      <p data-who="Quant">Engle and Granger's two steps. Step one: regress one price level on the other. That gives you a hedge ratio, but ignore the R squared. Step two: take the leftover spread and test whether it keeps coming back. If yesterday's wide spread predicts today's narrowing, there's a leash.</p>
+      <p data-who="Trader">With stricter hurdles, I'm guessing.</p>
+      <p data-who="Quant">Yes. The regression already picked the hedge ratio to make the spread look tidy, so the ordinary test is too easy to pass. You need the tougher critical values.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Say the Aussie is at point six six five, the Kiwi at point six, and the hedge ratio is one point one. One point one times point six is point six six. So the spread is half a cent. If the spread's usual wobble is eight tenths of a cent, that's a z-score of about point six. Nothing to do.</p>
+      <p data-who="Trader">And if it passes the test and the z-score gets big, I fade it?</p>
+      <p data-who="Quant">Remember LTCM in 1998. Its trades had real economic leashes, like new versus slightly older Treasury bonds. It was levered about twenty-five to one. Russia defaulted in August, everyone rushed into the most liquid bonds, and the spreads stretched far past anything in their history.</p>
+      <p data-who="Trader">And the leash didn't pull them back in time.</p>
+      <p data-who="Quant">The fund lost about four point six billion dollars in under four months. In September the New York Fed brought fourteen firms together to put in about three point six billion and unwind it. Many spreads did narrow later, after the fund no longer held them.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Correlation is not a leash: test the spread itself, and size it for how far it can stretch, not how far it usually does.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">Correlated in the changes, unanchored in the levels</h2>
       <p class="sl-sub">"EUR/USD tracks the yield spread." "AUD/USD tracks copper." Most of that reasoning is checked with a correlation coefficient — which answers the wrong question.</p>
@@ -39,7 +93,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Stationary: does this series have a home?</h2>
       <p class="sl-sub">A series is (weakly) <strong>stationary</strong> if its mean, variance, and autocovariance don't depend on the calendar date — only on how far apart two observations are.</p>
@@ -60,7 +114,7 @@
       <p class="sl-p">A random walk, X<sub>t</sub> = X<sub>t−1</sub> + ε<sub>t</sub>, is the simplest non-stationary model: each step adds an independent shock, so Var(X<sub>t</sub>) = t·σ² — it grows without bound. There's no fixed level to return to. Written as X<sub>t</sub> = φX<sub>t−1</sub> + ε<sub>t</sub>, a series is stationary — <strong>I(0)</strong> — when |φ| &lt; 1; it's a random walk with a <strong>unit root</strong> when φ = 1, and needs one round of differencing to become stationary — written <strong>I(1)</strong>. Most raw FX levels are treated as I(1); their returns are typically I(0).</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Why two random walks can fool a regression</h2>
       <p class="sl-sub">Granger &amp; Newbold (1974): regress one unrelated random walk on another, in levels, and you often get a high R² and a "significant"-looking t-stat — despite zero real connection.</p>
@@ -101,7 +155,7 @@
       <div class="sl-note">Both tabs show near-identical Series A and B — a high correlation, a plausible-looking Step-1 chart. Only the residual spread's own behavior tells the two worlds apart.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Engle-Granger, Step 1 — regress the levels</h2>
       <p class="sl-sub">Robert Engle and Clive Granger (1987) turned "is this real?" into a concrete two-step test. Step 1 fits a hedge ratio; it does not, by itself, prove anything.</p>
@@ -119,7 +173,7 @@
       <p class="sl-p">This is exactly the setup Granger &amp; Newbold warned about — its R² alone is just as vulnerable to being spurious. Engle and Granger's real insight is narrower: <em>if</em> X and Y genuinely are cointegrated, this OLS regression is <strong>super-consistent</strong> — β̂ converges to the true hedge ratio unusually fast, even though its standard errors aren't reliable. Translation: good enough for the hedge ratio, not yet evidence a relationship exists.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Engle-Granger, Step 2 — test the residual itself</h2>
       <p class="sl-sub">Take the fitted residual, ε̂<sub>t</sub> = Y<sub>t</sub> − α̂ − β̂X<sub>t</sub>, and ask: does today's change in the spread depend on yesterday's level?</p>
@@ -149,7 +203,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Try it — the spread and its z-score, live</h2>
       <p class="sl-sub">The Step 2 mechanics, parameterized: ε̂<sub>t</sub> = Y<sub>t</sub> − β̂X<sub>t</sub> (α already netted out — OLS residuals average to zero), turned into a z-score against the spread's own history.</p>
@@ -183,7 +237,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Worked example — AUD/USD vs. NZD/USD</h2>
       <p class="sl-sub">Two commodity-bloc currencies, routinely highly correlated (China demand, risk sentiment, commodity revenue, similar central-bank cycles). Regress AUD/USD on NZD/USD in levels over two years of daily closes.</p>
@@ -202,7 +256,7 @@
     </section>
 
     <!-- WB:coint-deck:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Cointegration: the drunk, her dog and the leash</h2>
       <!-- WB:coint:START -->
@@ -213,7 +267,7 @@
     </section>
     <!-- WB:coint-deck:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Beyond two series — Johansen's test</h2>
       <p class="sl-sub">Engle-Granger has two structural limits once you move past a single pair. Søren Johansen (1988, 1991) built the proper generalization.</p>
@@ -236,7 +290,7 @@
       <p class="sl-p">A basket of three or more series — commodity-bloc currencies, a term structure of yields — can hold more than one genuine equilibrium relationship simultaneously. You don't need the eigenvalue algebra to use the result: Johansen answers "how many real long-run relationships are hiding in this group, and what are they," across all series at once, instead of Engle-Granger's asymmetric, one-pair-at-a-time answer.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
@@ -248,7 +302,7 @@
       <p class="sl-p">Gatev, Goetzmann &amp; Rouwenhorst's widely cited 1998/2006 study documented pairs trading's historical performance in US equities; the cointegration-based version of pair selection (rather than their original simpler distance method) became standard on quant desks through the 2000s.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where cointegration testing quietly goes wrong</h2>
       <div class="sl-icard-grid">
@@ -261,7 +315,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Reality check — what this repo actually does</h2>
       <p class="sl-sub">The full lesson tags this topic "CONCEPT — an Engle-Granger screen exists in this repo; no result scored yet": no cointegration-pairs result has been scored on the desk ledger. That does not mean the machinery is missing.</p>
@@ -282,7 +336,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12 · It actually happened</div>
       <h2 class="sl-h2">LTCM, 1998: the leash held, the fund didn't</h2>
       <div class="sl-callout amber">
@@ -304,7 +358,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <!-- DESK:START -->
       <h2 class="sl-h2">What this desk found when it tested the claim</h2>
@@ -325,7 +379,7 @@
       <div class="sl-quote"><strong>Where the textbook breaks:</strong> the test assumes tomorrow's spread comes from the same distribution as the sample. LTCM's σ came from years with no liquidity panic, and the force that pulls a spread back, other arbitrageurs with spare capital, became a forced seller. Stationary over decades is not stationary over the time your lenders give you.</div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -376,7 +430,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="17">
+
+    <section class="sl-slide sl-vark" data-slide="18">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="1998-08-24">
+    <div class="tl-drill-label">Scenario drill · 24 August 1998</div>
+    <h3>Your spread has a real leash, and it is stretching anyway</h3>
+    <p>A week ago Russia devalued the rouble and defaulted on its domestic debt. You run convergence trades on spreads with real economic leashes, like the newest 30-year Treasury against a nearly identical older one. You are levered about 25 to 1. Investors are rushing into the most liquid bonds, so your spreads have stretched far beyond anything in the sample you sized them on, and your losses are mounting. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Add to the trades. The z-scores are the most extreme the pair has ever shown.<div class="tl-drill-why">The z-score is measured against a \(\sigma_\epsilon\) from years with no liquidity panic in them, so it understates how far the spread can go. Adding at 25 to 1 raises the chance that the spread outlasts your funding.</div></li>
+      <li data-verdict="bad">Re-run the Engle-Granger test. It still passes, so hold the full size.<div class="tl-drill-why">The test says the spread is bounded over the long run. It says nothing about how far it can stretch this month, or whether your lenders will wait. Passing the test is not a reason to keep this leverage.</div></li>
+      <li data-verdict="good">Cut the book to a size you could carry if the spread stretched as far again, and take the loss now.<div class="tl-drill-why">This sizes for the stretch you have just learned is possible, not for the old sample. It locks in a painful loss, but it keeps you alive to collect the convergence if and when it comes.</div></li>
+      <li data-verdict="ok">Halve the positions and wait for calmer markets.<div class="tl-drill-why">A real step in the right direction. But half of 25 to 1 is still heavily levered against a spread that has already broken its historical range, and the forced selling around you can push it further.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Long-Term Capital Management kept most of its positions. Other arbitrage desks holding similar trades cut them, which widened the spreads further. LTCM lost about $4.6 billion in less than four months. On 23 September 1998 the Federal Reserve Bank of New York brought its main creditors together, and 14 banks and brokers put in about $3.6 billion to take over the portfolio and unwind it. The fund was wound down by early 2000. Many of the spreads did narrow again later, but by then LTCM no longer held them.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="19">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

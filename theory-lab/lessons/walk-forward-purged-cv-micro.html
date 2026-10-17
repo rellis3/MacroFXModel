@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Walk-Forward &amp; Purged Cross-Validation — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the López de Prado formulas, and a 6-question self-test?<a href="walk-forward-purged-cv.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,71 @@
       <p class="sl-lede">Random k-fold cross-validation is a dependable workhorse for most machine learning — and it is flatly wrong for time series, including every price series<!-- DESK:START --> this repo trades<!-- DESK:END -->. This guide works through why shuffling breaks a sequence that was never independent to begin with, what walk-forward validation fixes about it, and why a clean chronological split still isn't the whole fix — the quieter leak that purging and embargoing exist to close.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 225" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A timeline around one test window of the worked example. Training runs up to day 494. Days 495 to 499 are purged because their 5-day labels reach into the test window. The test window is days 500 to 599. Days 600 to 618 are purged because their 20-day features reach back into the test window. Days 619 to 628 are an embargo buffer. Training resumes on day 629. In all, 34 rows around one test window are held out, 24 by exact rule and 10 as a safety margin.">
+      <rect class="tlp-box blue" x="40.0" y="62" width="87.5" height="30" rx="3"/>
+      <rect class="tlp-red" x="127.5" y="62" width="12.5" height="30" rx="3"/>
+      <rect class="tlp-box green" x="140.0" y="62" width="250.0" height="30" rx="3"/>
+      <rect class="tlp-red" x="390.0" y="62" width="47.5" height="30" rx="3"/>
+      <rect class="tlp-amber" x="437.5" y="62" width="25.0" height="30" rx="3"/>
+      <rect class="tlp-box blue" x="462.5" y="62" width="102.5" height="30" rx="3"/>
+      <text class="tlp-blue" x="82.5" y="82" text-anchor="middle" font-size="13" font-weight="700">train</text>
+      <text class="tlp-green" x="265.0" y="82" text-anchor="middle" font-size="13" font-weight="700">test: days 500–599</text>
+      <text class="tlp-blue" x="515.0" y="82" text-anchor="middle" font-size="13" font-weight="700">train</text>
+      <path class="tlp-line amber thick" d="M132.5,54 V46 H145.0 V54"/>
+      <text class="tlp-amber" x="40" y="36" font-size="12.5" font-weight="700">a 5-day label reaches in →</text>
+      <path class="tlp-line purple thick" d="M355.0,54 V46 H402.5 V54"/>
+      <text class="tlp-purple" x="405.0" y="36" text-anchor="middle" font-size="12.5" font-weight="700">← a 20-day feature reaches back</text>
+      <text class="tlp-text3" x="140.0" y="108" text-anchor="middle" font-size="12">500</text>
+      <text class="tlp-text3" x="390.0" y="108" text-anchor="middle" font-size="12">600</text>
+      <text class="tlp-text3" x="462.5" y="108" text-anchor="middle" font-size="12">629</text>
+      <text class="tlp-red" x="133.8" y="130" text-anchor="middle" font-size="13" font-weight="700">purge 495–499</text>
+      <text class="tlp-red" x="413.8" y="130" text-anchor="middle" font-size="13" font-weight="700">purge 600–618</text>
+      <text class="tlp-amber" x="455.0" y="148" text-anchor="middle" font-size="13" font-weight="700">embargo 619–628</text>
+      <text class="tlp-blue" x="520.0" y="130" text-anchor="middle" font-size="13" font-weight="700">resume 629</text>
+      <line class="tlp-line" x1="20" y1="166" x2="580" y2="166"/>
+      <text class="tlp-text2" x="20" y="190" font-size="13">The split date alone would train on 1–499 and again from 600.</text>
+      <text class="tlp-text2" x="20" y="210" font-size="13">Purge and embargo hold out 34 rows: 24 by exact rule, 10 as margin.</text>
+    </svg>
+    <figcaption>Train only on the past, test on the strict future, and then check the windows. Any training row whose label looks forward into the test, or whose feature looks back into it, is removed. An embargo adds a buffer for correlation no window captures.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I tested my strategy properly. I trained on the first five hundred days and tested on the next hundred. No shuffling. A clean split.</p>
+      <p data-who="Quant">Better than most. Plenty of people use ordinary cross-validation, which shuffles the days at random. Then a model can be trained on Wednesday and tested on Tuesday. That's looking into the future.</p>
+      <p data-who="Trader">I didn't do that. Everything I trained on came before day five hundred.</p>
+      <p data-who="Quant">By date, yes. But what did you train it to predict?</p>
+      <p data-who="Trader">Whether a trade won over the next five days.</p>
+      <p data-who="Quant">Then take day four hundred and ninety-seven. It's in your training set. Its label, win or loss, depends on prices up to day five hundred and two. Three of those days are in your test window.</p>
+      <p data-who="Trader">So the answer key I trained on already knew part of the test.</p>
+      <p data-who="Quant">Exactly. Days four ninety-five to four ninety-nine all have that problem: five rows. The fix is called purging. You drop them.</p>
+      <p data-who="Trader">Is that the only leak?</p>
+      <p data-who="Quant">There's a mirror image on the other side. Your volatility feature uses the last twenty days. When the next fold wants to train from day six hundred, that day's feature is built mostly from test days. It stays that way until day six eighteen. Nineteen more rows to drop.</p>
+      <p data-who="Trader">Then I can train again from six nineteen?</p>
+      <p data-who="Quant">Most people add a buffer, called an embargo, because markets stay correlated for longer than any one window. Say ten days. Training resumes on day six twenty-nine.</p>
+      <p data-who="Trader">So around one test window I hold back thirty-four rows.</p>
+      <p data-who="Quant">Twenty-four by an exact rule, and ten as a safety margin. Cheap insurance against a backtest that grades itself with the answers.</p>
+      <p data-who="Trader">Where do these ideas come from?</p>
+      <p data-who="Quant">Marcos López de Prado formalised purging and embargo for finance. Robert Pardo popularised walk-forward testing for traders: roll the split forward many times, and judge the rule across all the folds, not one lucky split.</p>
+      <p data-who="Trader">If it passes a purged test, is the edge proven?</p>
+      <p data-who="Quant">No. It only makes the out-of-sample number honest. And draw the line where the information was actually knowable. A rate published the next morning is knowable the next morning, not on the day it describes.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">The leak lives in the windows, not the dates, so check how far every feature and label reaches before you trust a split.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">Shuffling assumes rows don't know each other</h2>
       <p class="sl-sub">Standard k-fold cross-validation is a good, reliable procedure — for data where that assumption actually holds.</p>
@@ -43,7 +107,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Watch the leak happen</h2>
       <p class="sl-sub">The same ten days of data, split two different ways. Toggle between them.</p>
@@ -131,7 +195,7 @@
       <p class="sl-p">This is the entire fix, before any formula: stop assigning folds at random, and assign them by time instead. Everything else in this lesson is about a second, easier-to-miss version of the same leak that survives even after you make this fix.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Train on everything before the line, test on what comes right after</h2>
       <p class="sl-sub">Define a boundary T_k for fold k, and split strictly by time on either side of it.</p>
@@ -150,7 +214,7 @@
       <p class="sl-p">This is the exact discipline<!-- DESK:START --> this project's own house rule already states for a single feature<!-- DESK:END --> — "use data before i only" — applied to the entire train-and-evaluate cycle instead of just one calculation. The model never gets access to a boundary it hasn't crossed yet.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">A clean split date isn't sufficient</h2>
       <p class="sl-sub">Almost every feature or label used here isn't built from one row — it's built from a window of rows around it. That window can straddle the boundary even when every row's own index respects it.</p>
@@ -170,7 +234,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Purging removes it exactly; embargo adds a margin</h2>
       <p class="sl-sub">Two separate fixes for two separate failure modes.</p>
@@ -196,7 +260,7 @@
       <p class="sl-p">The actually-usable training set for fold k is Train_k with the purge rows removed, and the next fold's training only resumes strictly after the embargo period ends. Purging closes the leak you can compute exactly; embargo covers the part you can't.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Counting the exact days a purge/embargo scheme removes</h2>
       <p class="sl-sub">n = 1,000 daily bars, a 20-day rolling volatility feature (w = 20), a 5-day forward label horizon (H = 5), a boundary at day T = 500 with a 100-day test window (h = 100, so test = days 500-599).</p>
@@ -209,7 +273,7 @@
     </section>
 
     <!-- WB:walk_forward_purged_cv-deck:START -->
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Purging and embargo, day by day</h2>
       <!-- WB:walk_forward_purged_cv:START -->
@@ -220,7 +284,7 @@
     </section>
     <!-- WB:walk_forward_purged_cv-deck:END -->
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Try it yourself</h2>
       <p class="sl-sub">Starts on the worked example's exact numbers. Change any field — every range recalculates instantly.</p>
@@ -249,7 +313,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Two traditions, one discipline</h2>
       <p class="sl-sub">Two overlapping literatures converge on the same fix from different directions.</p>
@@ -266,7 +330,7 @@
       <div class="sl-quote">Both traditions land on the same checklist: never shuffle time-ordered data; know every feature and label window's length; compute — don't eyeball — which rows near a boundary must be purged; add an embargo rather than trust the purge formula's completeness; and judge a rule by its behavior across many rolled folds, not one good-looking split.</div>
     </section>
 
-<!-- DESK:START -->    <section class="sl-slide" data-slide="11">
+<!-- DESK:START -->    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Does this repo actually do this?</h2>
       <p class="sl-sub">Checked against the actual validation scripts, not just what a comment claims.</p>
@@ -281,7 +345,7 @@
       </div>
     </section><!-- DESK:END -->
 
-<!-- DESK:START -->    <section class="sl-slide" data-slide="12">
+<!-- DESK:START -->    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">Four of this desk's backtests, three leaks and a fill gap</h2>
       <div class="sl-callout amber">
@@ -301,7 +365,7 @@
       </div>
     </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and the verdict<!-- DESK:END --></h2>
       <!-- DESK:START -->
@@ -316,7 +380,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -367,7 +431,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative backtest review</div>
+    <h3>A clean split date and a strong out-of-sample Sharpe</h3>
+    <p>A colleague's strategy uses a 20-day volatility feature and a label of "did the trade win over the next 5 days". They split by date: train on days 1–499, test on days 500–599, and the next fold trains from day 600. No shuffling anywhere. The out-of-sample Sharpe is strong, and they want to trade it. What do you do first?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Sign it off. The split date is respected, so there is no lookahead.<div class="tl-drill-why">The date is respected; the windows are not. Days 495–499 carry labels built from test-period prices, and days 600–618 carry features built from them.</div></li>
+      <li data-verdict="good">Purge days 495–499 and 600–618, add an embargo, rerun across many rolled folds, and compare.<div class="tl-drill-why">That removes both leaks by exact rule, adds a margin for correlation no window captures, and judges the rule across many folds instead of one split.</div></li>
+      <li data-verdict="ok">Purge the five training days before day 500 and rerun.<div class="tl-drill-why">It fixes the label leak, but not the feature leak on the other side of the test window, and it adds no embargo. Purging is a two-directional problem.</div></li>
+      <li data-verdict="bad">Switch to random 5-fold cross-validation, which uses more of the data.<div class="tl-drill-why">Shuffling puts later days in training while earlier days are tested: literal lookahead on every fold. It makes the leak worse, not better.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What it means.</strong> This is an illustrative review built on the lesson's worked example, not a documented case. If the Sharpe holds up once the 34 rows are held out and the rule is judged across many folds, it is an honest out-of-sample number. If it shrinks, part of the original result was the leak. Either way, a purged test only makes the number honest; it does not prove an edge.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

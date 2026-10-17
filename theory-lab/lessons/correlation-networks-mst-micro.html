@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Correlation Networks &amp; Minimum Spanning Trees — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">18</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the worked 5-node Kruskal walkthrough, and a 5-question self-test?<a href="correlation-networks-mst.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,87 @@
       <p class="sl-lede">A correlation matrix for even a modest basket is a wall of numbers nobody actually reads — N(N−1)/2 pairwise values, none of them showing you the shape of the whole basket at once. This lesson turns that wall into a graph, then prunes the graph down to the handful of edges that matter: its Minimum Spanning Tree. It's the direct sequel to Graph Theory Fundamentals &amp; Centrality Measures, applying that lesson's vocabulary — nodes, edges, weights — specifically to a correlation matrix.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the Mantegna distance curve, distance against correlation. Correlation of minus 1 gives distance 2, zero gives 1.41, plus 1 gives 0. The calm EUR-GBP correlation of 0.80 sits at distance 0.63; a March 2020 style correlation of 0.9 sits at 0.45. Right: the minimum spanning tree of the lesson's five currencies. EUR is the hub, linked to GBP at 0.63, CHF at 0.77 and AUD at 1.00. JPY hangs off AUD at 1.10. Total length 3.50.">
+      <text class="tlp-text3" x="160" y="16" text-anchor="middle" font-size="12">1. turn correlation into distance</text>
+      <line class="tlp-line" x1="50" y1="205" x2="275" y2="205"/>
+      <line class="tlp-line" x1="50" y1="40" x2="50" y2="205"/>
+      <polyline class="tlp-line purple thick" points="50.0,45.0 55.5,47.0 61.0,49.1 66.5,51.1 72.0,53.2 77.5,55.3 83.0,57.5 88.5,59.7 94.0,61.9 99.5,64.1 105.0,66.4 110.5,68.8 116.0,71.1 121.5,73.5 127.0,76.0 132.5,78.5 138.0,81.1 143.5,83.7 149.0,86.3 154.5,89.1 160.0,91.9 165.5,94.7 171.0,97.7 176.5,100.7 182.0,103.8 187.5,107.0 193.0,110.3 198.5,113.8 204.0,117.4 209.5,121.1 215.0,125.0 220.5,129.1 226.0,133.4 231.5,138.1 237.0,143.0 242.5,148.4 248.0,154.4 250.8,157.7 253.5,161.2 256.2,165.0 259.0,169.2 261.8,174.0 264.5,179.7 267.2,187.1 270.0,205.0"/>
+      <circle class="tlp-purple" cx="50" cy="45" r="4.5"/>
+      <circle class="tlp-blue" cx="160" cy="91.9" r="5"/>
+      <circle class="tlp-green" cx="248" cy="154.4" r="5"/>
+      <circle class="tlp-red" cx="259" cy="169.2" r="5"/>
+      <text class="tlp-text2" x="60" y="36" font-size="12">opposite (−1): 2</text>
+      <text class="tlp-blue" x="168" y="86" font-size="12">unrelated (0): 1.41</text>
+      <text class="tlp-green" x="238" y="160" text-anchor="end" font-size="12" font-weight="700">calm EUR–GBP 0.80 → 0.63</text>
+      <text class="tlp-red" x="250" y="187" text-anchor="end" font-size="12" font-weight="700">March 2020, ρ 0.9 → 0.45</text>
+      <text class="tlp-text3" x="50" y="221" text-anchor="middle" font-size="12">−1</text>
+      <text class="tlp-text3" x="160" y="221" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="270" y="221" text-anchor="middle" font-size="12">+1</text>
+      <text class="tlp-text3" x="160" y="240" text-anchor="middle" font-size="12">correlation →</text>
+      <text class="tlp-text3" x="44" y="49" text-anchor="end" font-size="12">2</text>
+      <text class="tlp-text3" x="44" y="209" text-anchor="end" font-size="12">0</text>
+      <line class="tlp-line dash" x1="305" y1="10" x2="305" y2="240"/>
+      <text class="tlp-text3" x="455" y="16" text-anchor="middle" font-size="12">2. keep the shortest edges, no loops</text>
+      <line class="tlp-line green thick" x1="455" y1="70" x2="360" y2="70"/>
+      <line class="tlp-line green thick" x1="455" y1="70" x2="555" y2="70"/>
+      <line class="tlp-line green thick" x1="455" y1="70" x2="455" y2="148"/>
+      <line class="tlp-line green thick" x1="455" y1="148" x2="455" y2="216"/>
+      <circle class="tlp-box blue" cx="455" cy="70" r="22"/>
+      <circle class="tlp-box blue" cx="360" cy="70" r="22"/>
+      <circle class="tlp-box blue" cx="555" cy="70" r="22"/>
+      <circle class="tlp-box blue" cx="455" cy="148" r="22"/>
+      <circle class="tlp-box amber" cx="455" cy="216" r="22"/>
+      <text class="tlp-text" x="455" y="75" text-anchor="middle" font-size="13" font-weight="700">EUR</text>
+      <text class="tlp-text" x="360" y="75" text-anchor="middle" font-size="13" font-weight="700">GBP</text>
+      <text class="tlp-text" x="555" y="75" text-anchor="middle" font-size="13" font-weight="700">CHF</text>
+      <text class="tlp-text" x="455" y="153" text-anchor="middle" font-size="13" font-weight="700">AUD</text>
+      <text class="tlp-amber" x="455" y="221" text-anchor="middle" font-size="13" font-weight="700">JPY</text>
+      <text class="tlp-green" x="407" y="60" text-anchor="middle" font-size="12" font-weight="700">0.63</text>
+      <text class="tlp-green" x="505" y="60" text-anchor="middle" font-size="12" font-weight="700">0.77</text>
+      <text class="tlp-green" x="464" y="114" font-size="12" font-weight="700">1.00</text>
+      <text class="tlp-green" x="464" y="186" font-size="12" font-weight="700">1.10</text>
+      <text class="tlp-text2" x="440" y="114" text-anchor="end" font-size="12">EUR is the hub</text>
+      <text class="tlp-amber" x="484" y="220" font-size="12">outlier, via AUD</text>
+      <text class="tlp-text3" x="440" y="186" text-anchor="end" font-size="12">4 edges, total 3.50</text>
+    </svg>
+    <figcaption>Two moves. Flip correlation into a distance, so moving together means close. Then keep only the shortest edges that connect everyone without a loop. Calm data gives a hub (EUR) and an outlier (JPY). Push every correlation to 0.9, as forced selling did in March 2020, and every distance shrinks to 0.45.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I've got a correlation table for five currencies. Ten numbers. I can't see any shape in it.</p>
+      <p data-who="Quant">Nobody can. So turn it into a map. Each currency is a dot, and the distance between two dots says how differently they move.</p>
+      <p data-who="Trader">Why not just use the correlation as the distance?</p>
+      <p data-who="Quant">Because it points the wrong way. A correlation of one means identical, and identical should be zero distance. So Rosario Mantegna flipped it in 1999. Take one minus the correlation, double it, and take the square root.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Euro and sterling at a correlation of point eight. One minus point eight is point two. Double it, point four. The square root is about point six three. Unrelated pairs land at about one point four one. Perfect opposites land at two.</p>
+      <p data-who="Trader">Fine. Now I have ten distances. Still a tangle.</p>
+      <p data-who="Quant">So prune it. Keep the cheapest set of links that still reaches every currency, with no loops. That is the minimum spanning tree. For five dots it always has four links.</p>
+      <p data-who="Trader">How do you find it?</p>
+      <p data-who="Quant">Kruskal's way is simple. Sort the distances, shortest first. Take each one unless it would close a loop. Euro to sterling, keep. Euro to Swiss franc, keep. Sterling to franc, skip, they already meet through the euro.</p>
+      <p data-who="Trader">And the finished picture?</p>
+      <p data-who="Quant">The euro is the hub, touching three of the four links. The yen, weakly tied to everything, hangs off the Aussie dollar by one long link. The table had that information. The tree makes you see it.</p>
+      <p data-who="Trader">So the yen is my diversifier.</p>
+      <p data-who="Quant">In calm markets. Remember March twenty twenty. Funds needed dollars, so they sold even Treasuries and gold. Correlations converged. If every correlation in our basket went to point nine, every distance would shrink to about point four five, shorter than the tightest calm link.</p>
+      <p data-who="Trader">So the tree collapses.</p>
+      <p data-who="Quant">Into one clump. The diversifiers moved in exactly when you needed them to stay away. A tree built on January's data described a market that no longer existed by mid March.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">The tree shows you the structure of your book today. It is a picture, not a backtest, and the calm tree is not the crisis tree.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">A table nobody can eyeball</h2>
       <p class="sl-sub">A correlation heatmap already contains this information. The problem is how fast it grows.</p>
@@ -39,7 +119,7 @@
       <p class="sl-p">Between "the whole basket, compressed into a handful of factors" (the <a href="pca-factors.html">PCA lesson</a>) and "exactly one pair, tested for an equilibrium" (the cointegration lesson) sits a third view this lesson builds: the basket's full pairwise structure, kept intact, but turned into something a person can actually look at.</p>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Correlation points the wrong way to be a distance</h2>
       <p class="sl-sub">In any graph, a small edge weight should mean "close." Correlation runs backwards from that. Step through the three checkpoints.</p>
@@ -66,7 +146,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 2, continued</div>
       <h2 class="sl-h2">Watch two instruments move together</h2>
       <p class="sl-sub">Drag the slider. As correlation rises toward 1, the distance between the two nodes shrinks — literally, in this picture.</p>
@@ -89,7 +169,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 2, continued</div>
       <h2 class="sl-h2">Compute a distance yourself</h2>
       <p class="sl-sub">Enter any correlation coefficient. Out-of-range or blank input shows — rather than a broken number.</p>
@@ -113,7 +193,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Every pair, connected — which is still the problem</h2>
       <div class="sl-compare">
@@ -129,7 +209,7 @@
       <p class="sl-p">The fix isn't a better layout algorithm — it's throwing most of those edges away, deliberately, while keeping the graph connected. That's exactly what a spanning tree does.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 3, continued</div>
       <h2 class="sl-h2">The cheapest road network that still reaches every town</h2>
       <div class="sl-quote">Imagine a planner given the cost of building a road directly between any two towns, told: connect every town to the network, somehow, for the least total construction cost, with zero redundant loops. That specific object — the lowest-total-weight way to connect every node with no cycles — is a <strong>Minimum Spanning Tree</strong>.</div>
@@ -141,7 +221,7 @@
       <p class="sl-p">Replace "towns" with instruments and "road cost" with the Mantegna distance from Section 2, and the same construction answers a market-structure question: which pairs are the tightest, most direct links in the whole basket, and how do smaller clusters connect to the rest through the fewest, cheapest bridges?</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Building the tree, one edge at a time</h2>
       <p class="sl-sub">Kruskal's algorithm: sort every edge by distance, add the shortest one that doesn't close a cycle, repeat. Five FX pairs, ten distances, walked step by step.</p>
@@ -183,7 +263,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 4, continued</div>
       <h2 class="sl-h2">From a tangle to a backbone</h2>
       <p class="sl-sub">Same five nodes, same ten distances. Left: every edge exists. Right: only the four that survive pruning.</p>
@@ -247,7 +327,7 @@
     </section>
 
     <!-- WB:correlation_networks_mst-deck:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Building the minimum spanning tree, edge by edge</h2>
       <!-- WB:correlation_networks_mst:START -->
@@ -258,7 +338,7 @@
     </section>
     <!-- WB:correlation_networks_mst-deck:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Where this actually gets used</h2>
       <div class="sl-icard-grid">
@@ -273,7 +353,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 5, continued</div>
       <h2 class="sl-h2">A picture is not a backtest</h2>
       <div class="sl-compare">
@@ -297,7 +377,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 6 · It actually happened</div>
       <h2 class="sl-h2">March 2020: every distance shrank at once</h2>
       <div class="sl-callout amber">
@@ -317,7 +397,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 7</div>
       <!-- DESK:START -->
       <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
@@ -340,7 +420,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -393,7 +473,27 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="16">
+
+    <section class="sl-slide sl-vark" data-slide="17">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2020-03-16">
+    <div class="tl-drill-label">Scenario drill · 16 March 2020</div>
+    <h3>Your diversifier has stopped diversifying</h3>
+    <p>You run a currency book across EUR, GBP, CHF and AUD, and you added JPY because a tree built on calm data showed it hanging far from the hub. It is Monday. Last night the Federal Reserve cut rates to zero. Funds facing margin calls are selling whatever has a bid, Treasuries and gold included, and the dollar is surging. The VIX will close at a record 82.69 today. What do you do with your tree?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Trust it. JPY is the outlier in your tree, so your book is still diversified.<div class="tl-drill-why">The tree was built on a window that described a market that no longer exists. When correlations rush toward 1, every distance shrinks toward 0, and the outlier moves into the clump. The calm tree is not the crisis tree.</div></li>
+      <li data-verdict="good">Assume the distances have collapsed, treat the book as closer to one trade, and cut gross size until you can re-estimate on recent data.<div class="tl-drill-why">This is what the transform says. If correlations go to 0.9, every distance falls to about 0.45, shorter than your tightest calm edge of 0.63. Five positions then behave like one large one, so the size that was right for five separate bets is too big.</div></li>
+      <li data-verdict="ok">Rebuild the tree on the full past year so the estimate is more stable.<div class="tl-drill-why">A longer window is steadier, but it is steadier because it is mostly calm data. It will under-report how far correlations have converged this week. Better than nothing, but it answers the wrong question.</div></li>
+      <li data-verdict="bad">Add Treasuries and gold as hedges, since they sit far from currencies and stocks in a calm tree.<div class="tl-drill-why">These are exactly the assets being sold for cash this week. Long Treasury yields were rising while equities fell, and gold was falling with stocks. A hedge chosen from a calm-window distance can fail together with the risk it hedges.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The dash for cash ran on through mid March. The S&amp;P 500 bottomed on 23 March, about a third below its February peak, the same day the Fed made its asset purchases open-ended, after large Treasury buying and wider dollar swap lines. Only after that did the old relationships start to come back. A book sized on its calm-window tree was far less diversified than it looked.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="18">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

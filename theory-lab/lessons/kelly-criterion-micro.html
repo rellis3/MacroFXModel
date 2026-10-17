@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Kelly Criterion &amp; Position Sizing — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, a live calculator, and a 6-question self-test?<a href="kelly-criterion.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,63 @@
       <p class="sl-lede">Every strategy needs two things: a direction and a size. This lesson is entirely about the size — the formula for the fraction of your bankroll that grows it the fastest over the long run, and the uncomfortable fact that "the fastest-growing bet" is nowhere near "the biggest bet." Overbetting a real edge can still ruin you, and the math below makes that trade-off exact instead of just a warning.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A hill-shaped curve of long-run growth per bet against bet size, for a 55% even-money coin. Growth rises to a peak at 10% of bankroll (full Kelly), half-Kelly at 5% sits near the top, growth falls back to zero at 20% (double Kelly), and goes negative beyond it.">
+      <rect class="tlp-box green" x="60" y="20" width="357" height="90" rx="6" opacity=".35"/>
+      <rect class="tlp-box red" x="417" y="110" width="143" height="95" rx="6" opacity=".35"/>
+      <line class="tlp-line" x1="60" y1="110" x2="570" y2="110"/>
+      <line class="tlp-line" x1="60" y1="20" x2="60" y2="205"/>
+      <polyline class="tlp-line purple thick" points="60.0,110.0 68.9,105.1 77.9,100.5 86.8,96.1 95.7,92.0 104.6,88.1 113.6,84.5 122.5,81.1 131.4,78.0 140.4,75.1 149.3,72.5 158.2,70.1 167.1,68.0 176.1,66.1 185.0,64.4 193.9,63.1 202.9,61.9 211.8,61.1 220.7,60.4 229.6,60.0 238.6,59.9 247.5,60.0 256.4,60.4 265.4,61.1 274.3,61.9 283.2,63.1 292.1,64.5 301.1,66.1 310.0,68.0 318.9,70.2 327.9,72.6 336.8,75.3 345.7,78.3 354.6,81.5 363.6,85.0 372.5,88.7 381.4,92.7 390.4,97.0 399.3,101.5 408.2,106.3 417.1,111.4 426.1,116.7 435.0,122.3 443.9,128.2 452.9,134.4 461.8,140.8 470.7,147.6 479.6,154.6 488.6,161.9 497.5,169.4 506.4,177.3 515.4,185.4 524.3,193.9"/>
+      <line class="tlp-line dash" x1="238.6" y1="59.9" x2="238.6" y2="110"/>
+      <circle class="tlp-blue" cx="149.3" cy="72.5" r="6"/>
+      <circle class="tlp-green" cx="238.6" cy="59.9" r="7"/>
+      <circle class="tlp-amber" cx="417.1" cy="111.4" r="6"/>
+      <text class="tlp-blue" x="149.3" y="56" text-anchor="middle" font-size="14" font-weight="700">½ Kelly · 5%</text>
+      <text class="tlp-green" x="238.6" y="42" text-anchor="middle" font-size="15" font-weight="700">full Kelly · 10%</text>
+      <text class="tlp-amber" x="425" y="100" font-size="14" font-weight="700">2× Kelly · 20%: zero growth</text>
+      <text class="tlp-red" x="300" y="180" font-size="14" font-weight="700">overbet: you shrink →</text>
+      <text class="tlp-text3" x="52" y="114" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="560" y="128" text-anchor="end" font-size="12">bet size →</text>
+      <text class="tlp-text3" x="66" y="34" font-size="12">long-run growth ↑</text>
+      <text class="tlp-text2" x="70" y="96" font-size="13">edge, sized right: you grow</text>
+    </svg>
+    <figcaption>Same 55% coin, same flips: only the bet size changes. Growth climbs to a peak at full Kelly, is back to zero at double Kelly, and turns negative beyond it. Half-Kelly sits near the flat top: about three quarters of the growth for half the risk.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I've finally got a setup with a real edge. It wins fifty-five times in a hundred, at even money. So how big do I bet?</p>
+      <p data-who="Quant">Start with the wrong answer, because it is tempting. If every bet has a positive expected value, why not bet everything?</p>
+      <p data-who="Trader">Because one loss wipes me out.</p>
+      <p data-who="Quant">Exactly. And you will hit a loss eventually. Forty-five percent of flips are tails. Zero stays zero, however good the coin is. So the question is not how to make the most on one bet. It is how to grow the account fastest over thousands of bets.</p>
+      <p data-who="Trader">And that's where Kelly comes in.</p>
+      <p data-who="Quant">Right. John Kelly worked it out at Bell Labs in 1956. For an even-money bet, the answer is beautifully simple: bet your edge. You win fifty-five percent, lose forty-five. The gap is ten points. So you bet ten percent of whatever you have right now, and you resize after every flip.</p>
+      <p data-who="Trader">Ten percent. What if I bet twenty? I'd make money twice as fast.</p>
+      <p data-who="Quant">That's the surprise. At twenty percent, double Kelly, your long-run growth is zero. You would churn up and down and go nowhere. Go past that and you shrink, even though every single bet still has an edge.</p>
+      <p data-who="Trader">How can a winning bet make me poorer?</p>
+      <p data-who="Quant">Because wealth multiplies. Win ten percent and you're at one hundred and ten. Lose ten percent of that and you're at ninety-nine, not a hundred. Losses bite harder than gains help. That drag grows with the square of your bet size, while your edge only grows in a straight line. Past a point, the drag wins.</p>
+      <p data-who="Trader">So picture a hill.</p>
+      <p data-who="Quant">That's the picture. Growth against bet size is a hill. The top is full Kelly. Halfway up the near slope is half-Kelly, and here's the useful bit: the top of the hill is flat. Half-Kelly keeps about three quarters of the growth for half the risk.</p>
+      <p data-who="Trader">So why does anyone bet full Kelly?</p>
+      <p data-who="Quant">Most professionals don't. And there's a second reason. Your fifty-five percent is an estimate. If the coin is really fifty-two and a half, true Kelly is five percent, and your ten percent is secretly double Kelly. Zero growth. Kelly amplifies whatever edge you feed it, including an edge you only imagined.</p>
+      <p data-who="Trader">Has that actually blown anyone up?</p>
+      <p data-who="Quant">Long-Term Capital Management, 1998. Small edges, sized at around twenty-five to one, on volatility measured in calm years. When Russia defaulted, volatility roughly tripled. Because the right bet shrinks with the square of volatility, tripling it cuts the right size ninefold. Their leverage went from aggressive to fatal in weeks.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Bet your edge over your variance, then bet less than that. Half Kelly or below, on an edge you've tested out of sample, with a volatility estimate that includes bad times.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">Why "bet everything" is wrong, even with a real edge</h2>
       <p class="sl-sub">A coin that lands heads 55% of the time, even-money payoff. A genuine edge — you make money on average, every round.</p>
@@ -40,7 +96,7 @@
       <div class="sl-quote">"Maximize expected profit per bet" and "maximize how fast my bankroll compounds over many bets" sound like the same goal. They are not — and the gap between them is the entire subject of this lesson.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Wealth multiplies — so the right objective is log-growth, not wealth</h2>
       <p class="sl-sub">Play the coin n times in a row. Each round multiplies your bankroll, so total wealth is a <em>product</em>, not a sum.</p>
@@ -67,7 +123,7 @@
       <p class="sl-p">This is why the trap in Section 1 is so easy to fall into: expected value doesn't "see" that a single wipeout is catastrophic and irreversible. It just averages over all paths. Log-growth does see it, because ln(0) is negative infinity — total ruin is not just a bad outcome, it's an infinitely bad one to this objective, which is exactly why it never recommends f = 1.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The formula: bet a fraction equal to your edge</h2>
       <p class="sl-sub">Even-money coin, win probability p, lose probability q = 1 − p. Solve for the f that maximizes g(f) = p·ln(1+f) + q·ln(1−f).</p>
@@ -81,7 +137,7 @@
       <p class="sl-p">Read the numerator as the bet's <strong>true edge</strong> per unit staked. If bp − q is negative, there's no edge — f* comes out negative, meaning don't take the bet at all. Dividing by b rescales the edge by how big the payoff swings are: a bet with a bigger payoff-to-risk ratio needs a <em>smaller</em> fraction of bankroll to extract the same growth.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Markets aren't coin flips — the continuous form</h2>
       <p class="sl-sub">A return stream with drift μ and variance σ² per period. Applying the same log-growth logic gives edge over variance again, just in continuous form.</p>
@@ -97,7 +153,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Overbetting doesn't just add risk — it turns growth negative</h2>
       <p class="sl-sub">Drag the slider to change your bet size, as a multiple of the Kelly-optimal fraction f*. Watch what happens to the growth rate.</p>
@@ -125,7 +181,7 @@
       <p class="sl-p">Position size scales drift μ linearly (bet twice as big, drift roughly doubles) but scales variance σ² quadratically (bet twice as big, variance roughly quadruples). The growth-rate curve g(f) ≈ fμ − f²σ²/2 is an inverted parabola: it rises, peaks exactly at f* = μ/σ², then <em>falls back down</em>, crossing zero again at <strong>2f*</strong> and going negative beyond that — even though the underlying bet's edge never changed, only the size did.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Why practitioners bet less than full Kelly, on purpose</h2>
       <p class="sl-sub">g(f) is a smooth, single-peaked curve — which means it's flat near its own peak.</p>
@@ -152,7 +208,7 @@
       <div class="sl-quote">Growth given up near the peak is small and second-order. Risk given up is large and first-order, everywhere along the curve. That asymmetry is the entire argument for fractional Kelly.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Worked example — recompute it yourself</h2>
       <p class="sl-sub">The 55%-edge coin from Section 1, even money. Edit p or b and every number below recalculates live.</p>
@@ -180,7 +236,7 @@
 
 <!-- DESK:START -->
     <!-- WB:kelly-deck:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Kelly sizing: under, full and over-betting</h2>
       <!-- WB:kelly:START -->
@@ -191,7 +247,7 @@
     </section>
     <!-- WB:kelly-deck:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Kelly and this repo's own position sizing — a reality check</h2>
       <p class="sl-p">This repo's own working notes (CLAUDE.md) say plainly: "volatility-based position sizing, cutting losers and letting winners run are powerful drivers of results — worth building and validating alongside an entry signal." The Kelly formula, f* = μ/σ², is the textbook answer to the sizing half of that sentence.</p>
@@ -203,7 +259,7 @@
     </section>
 <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where Kelly sizing quietly goes wrong</h2>
       <div class="sl-icard-grid">
@@ -215,7 +271,7 @@
       <div class="sl-quote">None of these pitfalls are arguments against Kelly's math — they're arguments for feeding it honest numbers, sizing down from whatever it outputs, and treating it as a ceiling, not a target.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">LTCM, 1998: small edges, levered until they broke</h2>
       <div class="sl-callout amber">
@@ -235,7 +291,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Same edge, wrong variance<!-- DESK:START -->, and what this desk has tested<!-- DESK:END --></h2>
       <div class="sl-card">
@@ -254,7 +310,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -305,7 +361,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="1998-08-21">
+    <div class="tl-drill-label">Scenario drill · 21 August 1998</div>
+    <h3>Russia has defaulted, and your volatility has tripled</h3>
+    <p>You run a book of convergence trades: small, reliable spreads that should narrow over time. You sized it close to full Kelly, using volatility measured over the calm years before. Four days ago Russia defaulted on its domestic debt. Your spreads have widened against you, and the volatility you now measure is roughly three times your old estimate. What do you do with the size?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Hold the size. The spreads are mispriced and must converge eventually.<div class="tl-drill-why">Kelly scales with one over the variance. Tripling volatility cuts the right bet ninefold, so the book you sized at full Kelly is now about nine times Kelly, deep in the zone where growth is negative. "Eventually" only helps if you survive the path, and margin calls arrive first.</div></li>
+      <li data-verdict="bad">Add to the trades. Wider spreads mean a bigger edge, so Kelly says bet more.<div class="tl-drill-why">The edge may be bigger, but the variance grew by a factor of nine. Kelly is edge divided by variance, and the variance moved far more than the edge. Adding here is the classic way a positive-expectancy book compounds towards zero.</div></li>
+      <li data-verdict="good">Re-estimate volatility from recent data and cut the book towards the new Kelly size, taking the loss now.<div class="tl-drill-why">This is what the formula says. With the new variance, the right size is a small fraction of what you hold. Cutting locks in a painful loss, but it keeps you alive to keep compounding, which is the whole point of Kelly.</div></li>
+      <li data-verdict="ok">Halve the book and wait for calmer markets.<div class="tl-drill-why">A real step in the right direction, but half of nine times Kelly is still about four and a half times Kelly: growth is still negative. Halving feels decisive; the arithmetic says it is not enough.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Long-Term Capital Management held its positions and looked for fresh capital. Its losses ran to about $4.6 billion within weeks. On 23 September 1998, a group of banks convened by the Federal Reserve Bank of New York put in about $3.6 billion to take the fund over and unwind it. Many of the trades did converge later, too late for a book that could not survive the path.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Random Matrix Theory — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the Laloux et al. case study, and a 6-question self-test?<a href="random-matrix-theory.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,70 @@
       <p class="sl-lede">The PCA lesson showed that sorting a correlation matrix's eigenvalues surfaces genuine shared factors — a dollar factor, a risk-on/risk-off axis. What it left unanswered: with only a finite, noisy sample of returns, how many of those eigenvalues are real, and how many are exactly what pure chance produces when you don't have enough data? Random Matrix Theory answers that with a precise, computable line in the sand.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The Marchenko-Pastur noise band for 30 FX pairs and 250 days, q equals 0.12. Pure-noise eigenvalues form a hump between 0.43 and 1.81. The basket's second to fourth eigenvalues sit inside that band, so they cannot be told apart from noise. After a break in the axis, the first eigenvalue, 8.2, stands far to the right: a real common factor.">
+      <text class="tlp-text" x="20" y="18" font-size="13" font-weight="700">30 FX pairs, 250 days: q = 30 ÷ 250 = 0.12</text>
+      <path class="tlp-box blue" d="M98.1,190.0 L101.2,124.9 L104.4,103.2 L107.5,89.5 L110.7,80.1 L113.8,73.4 L116.9,68.6 L120.1,65.2 L123.2,62.9 L126.4,61.3 L129.5,60.4 L132.6,60.0 L135.8,60.0 L138.9,60.4 L142.1,61.0 L145.2,61.9 L148.3,63.0 L151.5,64.2 L154.6,65.6 L157.8,67.1 L160.9,68.6 L164.1,70.3 L167.2,72.1 L170.3,73.9 L173.5,75.8 L176.6,77.7 L179.8,79.6 L182.9,81.6 L186.0,83.7 L189.2,85.7 L192.3,87.8 L195.5,89.9 L198.6,92.1 L201.7,94.3 L204.9,96.5 L208.0,98.7 L211.2,100.9 L214.3,103.2 L217.4,105.5 L220.6,107.8 L223.7,110.1 L226.9,112.5 L230.0,114.9 L233.2,117.4 L236.3,119.9 L239.4,122.4 L242.6,125.0 L245.7,127.7 L248.9,130.4 L252.0,133.2 L255.1,136.1 L258.3,139.1 L261.4,142.2 L264.6,145.5 L267.7,149.0 L270.8,152.7 L274.0,156.8 L277.1,161.4 L280.3,166.7 L283.4,173.6 L286.5,190.0 Z"/>
+      <line class="tlp-line amber dash" x1="98.1" y1="48" x2="98.1" y2="196"/>
+      <line class="tlp-line amber dash" x1="286.5" y1="48" x2="286.5" y2="196"/>
+      <text class="tlp-amber" x="192.3" y="42" text-anchor="middle" font-size="13" font-weight="700">noise band: chance alone</text>
+      <text class="tlp-text2" x="296" y="150" font-size="12">λ₂–λ₄ sit inside:</text>
+      <text class="tlp-text2" x="296" y="166" font-size="12">not proven real</text>
+      <line class="tlp-line" x1="40" y1="190" x2="402" y2="190"/>
+      <line class="tlp-line" x1="404" y1="196" x2="412" y2="184"/>
+      <line class="tlp-line" x1="414" y1="196" x2="422" y2="184"/>
+      <line class="tlp-line" x1="424" y1="190" x2="572" y2="190"/>
+      <line class="tlp-line red thick" x1="496.3" y1="190" x2="496.3" y2="78"/>
+      <circle class="tlp-red" cx="496.3" cy="78" r="5"/>
+      <text class="tlp-red" x="496.3" y="46" text-anchor="middle" font-size="14" font-weight="700">λ₁ = 8.2</text>
+      <text class="tlp-red" x="496.3" y="64" text-anchor="middle" font-size="12" font-weight="700">a real factor</text>
+      <text class="tlp-text3" x="40" y="206" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-amber" x="98.1" y="206" text-anchor="middle" font-size="12" font-weight="700">0.43</text>
+      <text class="tlp-text3" x="176" y="206" text-anchor="middle" font-size="12">1</text>
+      <text class="tlp-amber" x="286.5" y="206" text-anchor="middle" font-size="12" font-weight="700">1.81</text>
+      <text class="tlp-text3" x="477.3" y="206" text-anchor="middle" font-size="12">8</text>
+      <text class="tlp-text3" x="572" y="206" text-anchor="middle" font-size="12">9</text>
+      <text class="tlp-text3" x="300" y="228" text-anchor="middle" font-size="12">eigenvalue of the 30 × 30 correlation matrix</text>
+    </svg>
+    <figcaption>Even 30 truly independent series over 250 days give eigenvalues spread between about 0.43 and 1.81, purely by chance. Only an eigenvalue well outside that band, like the basket's 8.2, earns the name factor. The band depends only on the ratio of instruments to days.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I ran a principal component analysis on thirty FX pairs. The first factor is the dollar. The second looks like a euro factor. Should I hedge it separately?</p>
+      <p data-who="Quant">First ask a harder question. Would a pile of pure noise have shown you that second factor anyway?</p>
+      <p data-who="Trader">Noise has no factors. That is the point of noise.</p>
+      <p data-who="Quant">Flip a fair coin twenty times. You almost never get exactly ten heads. Correlations work the same way. Take thirty series that are truly unrelated, measure them over a year, and the sample correlations still come out at plus or minus a few percent, by chance.</p>
+      <p data-who="Trader">And that shows up in the factors?</p>
+      <p data-who="Quant">It does. With infinite data every eigenvalue of a no-structure matrix would be exactly one. With a year of data they spread out, some well above one, some well below. That spread looks like structure, and it is not.</p>
+      <p data-who="Trader">So how much spread is normal?</p>
+      <p data-who="Quant">That is what Marchenko and Pastur worked out in 1967. The noise band depends on one ratio only: how many instruments you have, divided by how many days of data.</p>
+      <p data-who="Trader">Do my numbers.</p>
+      <p data-who="Quant">Thirty pairs over two hundred and fifty days. The ratio is zero point one two. The band then runs from about zero point four three up to about one point eight one. Anything inside that range is what chance alone produces.</p>
+      <p data-who="Trader">My first factor came out at eight point two.</p>
+      <p data-who="Quant">Miles above one point eight one. That one is real; it is your dollar factor. But your second, third and fourth all came back between about a half and one point seven. Inside the band.</p>
+      <p data-who="Trader">So my euro factor is fake?</p>
+      <p data-who="Quant">Not proven fake. Unproven. This much data cannot tell it apart from noise. Hedging it separately would be fitting the noise and calling it structure. More history shrinks the ratio and narrows the band, and that is the honest fix.</p>
+      <p data-who="Trader">Who first tried this on real markets?</p>
+      <p data-who="Quant">Two physics groups in 1999, Laloux, Bouchaud and colleagues in Paris and Plerou and colleagues in Boston. On large US stock matrices, almost every eigenvalue sat inside the band. Only the market mode and a few sector modes stood clear.</p>
+      <p data-who="Trader">And what do people do with that?</p>
+      <p data-who="Quant">They clean the matrix before an optimizer sees it. Keep the eigenvalues above the band, flatten the ones inside it to their average. Otherwise the optimizer piles weight into combinations that only look safe because of noise.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Check every factor against the noise band first; only the ones that clear it are worth trading.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Most of a correlation matrix is noise</h2>
       <p class="sl-sub">Random matrix theory · Laloux, Cizeau, Bouchaud &amp; Potters and Plerou et al., 1999</p>
@@ -40,7 +103,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Even zero correlation doesn't look like zero</h2>
       <p class="sl-sub">A correlation matrix built from finite history always spreads its eigenvalues away from 1 — even when the true, underlying correlations are exactly zero.</p>
@@ -53,7 +116,7 @@
       <div class="sl-quote">Flip a fair coin 20 times and you'll almost never land exactly 10 heads, 10 tails — 12-8, 8-12, sometimes 15-5. None of that means the coin is rigged; it's what "no real pattern, finite sample" looks like. Random Matrix Theory hands correlation-matrix eigenvalues the exact equivalent of that "how much wobble is normal" band.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The thought experiment: correlate pure noise with itself</h2>
       <p class="sl-sub">Take it literally, not abstractly.</p>
@@ -70,7 +133,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The Marchenko-Pastur law names the exact noise band</h2>
       <p class="sl-sub">Marchenko &amp; Pastur (1967) proved the spread from Section 3 isn't just "some spread" — it converges to a specific, computable distribution with a hard edge.</p>
@@ -83,7 +146,7 @@
       <p class="sl-p">A smaller q — more history per instrument — pushes √q toward 0, so both edges converge on 1: the band tightens because sample correlations converge more tightly to their true (zero) value. A larger q pushes the band wide open: λ_min falls toward 0, λ_max climbs well above 1, and a much bigger eigenvalue is needed before it's distinguishable from chance.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Drag q and watch the noise band move</h2>
       <p class="sl-sub">q = N/T. Every eigenvalue a pure-noise correlation matrix could produce falls inside the shaded band below.</p>
@@ -116,7 +179,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Structured market, or pure noise?</h2>
       <p class="sl-sub">Same style of histogram, two very different baskets. Compare where the bars fall relative to the band.</p>
@@ -161,7 +224,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Compute your own noise band</h2>
       <p class="sl-sub">Enter a basket size, a lookback window, and an average variance. σ² = 1 matches a correlation matrix; raise it for a covariance matrix's eigenvalue bounds.</p>
@@ -189,7 +252,7 @@
     </section>
 
     <!-- WB:random_matrix_theory-deck:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Random matrices: what pure noise looks like</h2>
       <!-- WB:random_matrix_theory:START -->
@@ -200,7 +263,7 @@
     </section>
     <!-- WB:random_matrix_theory-deck:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Thirty FX pairs, one year of daily returns</h2>
       <p class="sl-sub">q = 30/250 = 0.12 → noise band ≈ [0.43, 1.81]. Now check the real eigenvalues against it.</p>
@@ -225,7 +288,7 @@
       <p class="sl-p">That doesn't mean PC2 is definitely meaningless in reality — it means this sample, at this size, cannot tell the difference. Building on top of it as if it could is overfitting to noise while believing it's structure.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">A binary screen, or a full cleanup</h2>
       <p class="sl-sub">Practitioners use this idea two ways — one this lesson covers, one it only names.</p>
@@ -242,7 +305,7 @@
       <div class="sl-quote">The landmark real-world application: Laloux, Cizeau, Bouchaud &amp; Potters (1999) found that the great majority of eigenvalues in a real stock-market correlation matrix, built across several hundred U.S. stocks, fell inside the Marchenko-Pastur band computed from their actual N and T — while a small handful, led by one dominant market factor, sat far outside it. That paper is generally credited with launching "RMT filtering" as a standard risk-management technique.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this plugs into the rest of the curriculum</h2>
       <p class="sl-p">This lesson builds directly on <a href="pca-factors-micro.html" style="color:var(--blue)">PCA &amp; Factor Models</a>: same N instruments, same T observations, same correlation matrix, same ranked eigenvalues λ₁ ≥ λ₂ ≥ … ≥ λ_N. PCA tells you how to rank them and read off a candidate factor; the Marchenko-Pastur band is the missing step that tells you which of those candidates have actually earned the name "factor," versus which ones are exactly what an unlucky sample window would produce anyway.</p>
@@ -255,7 +318,7 @@
       <p class="sl-p">Practically: a basket's effective-bets score can look reassuringly close to N while partly resting on eigenvalues that are noise-band artifacts, not real diversification. Flagging which eigenvalues clear the band would add an honest caveat to that number without changing the formula itself<!-- DESK:START --> — a concrete, unbuilt guardrail, not a claim about what the repo currently does<!-- DESK:END -->.</p>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the rule gets misapplied</h2>
       <div class="sl-icard-grid">
@@ -267,7 +330,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -318,7 +381,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative Monday</div>
+    <h3>A colleague wants to hedge the "euro factor"</h3>
+    <p>Your risk report runs a principal component analysis on 30 FX pairs over the last 250 days. The first eigenvalue is 8.2, the dollar factor. The second is 1.6, and its loadings look like a euro block. A colleague proposes adding a separate hedge for this "euro factor" to the book. What do you say?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Agree. It is the second-biggest factor in the basket, so it must matter.<div class="tl-drill-why">"Second-biggest" is not the test. At \(q = 0.12\) the noise band runs up to about 1.81, so 1.6 is exactly what 30 unrelated series over 250 days could throw up by chance. Hedging it is trading noise.</div></li>
+      <li data-verdict="good">Check it against the noise band first. At 1.6 it sits inside 0.43 to 1.81, so treat it as unproven, and only revisit it with more independent history.<div class="tl-drill-why">This is the rule. Inside the band does not mean the factor is fake; it means this sample cannot tell it from noise. More data shrinks \(q\) and narrows the band, which is the honest way to find out.</div></li>
+      <li data-verdict="bad">Rebuild the matrix from overlapping weekly returns to get more observations, then test again.<div class="tl-drill-why">Overlapping windows add rows, not independent information. Plugging the inflated count into \(q\) makes the band look narrower than the data supports, so a noise factor can look significant.</div></li>
+      <li data-verdict="ok">Reject the hedge and drop the second factor from every report for good.<div class="tl-drill-why">Not hedging is right for now, but "inside the band" is a statement about this sample's power, not proof of no structure. A real but modest factor can hide there at small \(T\).</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happens.</strong> This is an illustrative situation built on the lesson's worked numbers, not a dated episode. With \(N = 30\) and \(T = 250\), only \(\lambda_1 = 8.2\) clears the band. The same check on large US stock matrices in 1999 found that almost every eigenvalue sat inside the band, with only the market mode and a few sector modes clearly outside it.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

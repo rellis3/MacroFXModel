@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Trade Classification — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-trade-classification.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,83 @@
       <p class="sl-lede">A raw trade print is a price, a size, and a timestamp — nothing on the tape says whether the buyer or the seller was the aggressor. Every order-flow signal that needs a signed direction, including this curriculum's own VPIN lesson, is quietly resting on an algorithm that infers that sign from price and quote data alone. This deck covers three of them.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: a quote with the ask at 101, the midpoint at 100 and the bid at 99. A trade at 101, above the mid, is signed a buy. A trade at 99, below the mid, is signed a sell. A trade exactly at 100 is a tie that Lee-Ready breaks with the tick rule. Right: Bulk Volume Classification splits four whole bars into buy and sell volume by the standardized price move: 97.7 percent buy at z of plus 2, 50 percent at z of 0, 30.9 percent at z of minus 0.5, and 84.1 percent at z of plus 1.">
+      <text class="tlp-text3" x="20" y="22" font-size="12">Lee-Ready: each trade vs the quote</text>
+      <line class="tlp-line" x1="110" y1="60" x2="285" y2="60"/>
+      <line class="tlp-line amber dash" x1="110" y1="120" x2="285" y2="120"/>
+      <line class="tlp-line" x1="110" y1="180" x2="285" y2="180"/>
+      <text class="tlp-text2" x="100" y="64" text-anchor="end" font-size="13">ask 101</text>
+      <text class="tlp-amber" x="100" y="124" text-anchor="end" font-size="13" font-weight="700">mid 100</text>
+      <text class="tlp-text2" x="100" y="184" text-anchor="end" font-size="13">bid 99</text>
+      <circle class="tlp-green" cx="150" cy="60" r="7"/>
+      <circle class="tlp-amber" cx="205" cy="120" r="7"/>
+      <circle class="tlp-red" cx="260" cy="180" r="7"/>
+      <text class="tlp-green" x="150" y="44" text-anchor="middle" font-size="14" font-weight="700">above mid: buy</text>
+      <text class="tlp-amber" x="205" y="104" text-anchor="middle" font-size="13" font-weight="700">tie: tick rule</text>
+      <text class="tlp-red" x="250" y="206" text-anchor="middle" font-size="14" font-weight="700">below mid: sell</text>
+      <text class="tlp-text2" x="150" y="230" text-anchor="middle" font-size="12">quote rule first, tick rule only for ties</text>
+      <line class="tlp-line dash" x1="305" y1="30" x2="305" y2="220"/>
+      <text class="tlp-text3" x="330" y="22" font-size="12">BVC: split a whole bar by Φ(ΔP / σ)</text>
+      <line class="tlp-line dash" x1="350" y1="125" x2="572" y2="125"/>
+      <text class="tlp-text3" x="344" y="129" text-anchor="end" font-size="12">50%</text>
+      <rect class="tlp-box red" x="352" y="50" width="40" height="3.4"/>
+      <rect class="tlp-green" x="352" y="53.4" width="40" height="146.6"/>
+      <rect class="tlp-box red" x="412" y="50" width="40" height="75"/>
+      <rect class="tlp-green" x="412" y="125" width="40" height="75"/>
+      <rect class="tlp-box red" x="472" y="50" width="40" height="103.7"/>
+      <rect class="tlp-green" x="472" y="153.7" width="40" height="46.3"/>
+      <rect class="tlp-box red" x="532" y="50" width="40" height="23.8"/>
+      <rect class="tlp-green" x="532" y="73.8" width="40" height="126.2"/>
+      <text class="tlp-text2" x="372" y="216" text-anchor="middle" font-size="12">z +2</text>
+      <text class="tlp-text2" x="432" y="216" text-anchor="middle" font-size="12">z 0</text>
+      <text class="tlp-text2" x="492" y="216" text-anchor="middle" font-size="12">z −0.5</text>
+      <text class="tlp-text2" x="552" y="216" text-anchor="middle" font-size="12">z +1</text>
+      <text class="tlp-green" x="372" y="232" text-anchor="middle" font-size="12" font-weight="700">97.7%</text>
+      <text class="tlp-green" x="432" y="232" text-anchor="middle" font-size="12" font-weight="700">50%</text>
+      <text class="tlp-green" x="492" y="232" text-anchor="middle" font-size="12" font-weight="700">30.9%</text>
+      <text class="tlp-green" x="552" y="232" text-anchor="middle" font-size="12" font-weight="700">84.1%</text>
+      <text class="tlp-text3" x="590" y="44" text-anchor="end" font-size="12">green = buy share</text>
+    </svg>
+    <figcaption>Left: Lee-Ready signs each trade against the standing quote, and needs the tick rule only when a trade prints exactly at the mid. Right: BVC never looks at single trades. It splits a whole bar's volume by how far price moved, in units of its usual move.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Every order-flow signal I read about talks about buy volume and sell volume. Where does that split come from?</p>
+      <p data-who="Quant">Mostly from a guess. A trade print is a price, a size and a time. It never says whether the buyer or the seller was the one in a hurry.</p>
+      <p data-who="Trader">So how do you guess?</p>
+      <p data-who="Quant">The crudest way is the tick rule. If the price is higher than the last trade, call it a buy. Lower, a sell. Unchanged, copy whatever the last call was.</p>
+      <p data-who="Trader">That sounds rough.</p>
+      <p data-who="Quant">It is. The quote rule is better. Look at the bid and the ask just before the trade and take the halfway point. A trade above halfway was probably a buyer lifting the offer. Below halfway, a seller hitting the bid.</p>
+      <p data-who="Trader">And a trade bang on halfway?</p>
+      <p data-who="Quant">Then the quote rule can't decide. That's where Lee and Ready come in. Their 1991 method uses the quote rule first, and only for those exact ties it falls back to the tick rule.</p>
+      <p data-who="Trader">Do the two rules ever disagree?</p>
+      <p data-who="Quant">In the lesson's toy tape they do. Trade four prints at ninety-nine, the same as the trade before, so the tick rule copies the last call: sell. But the quote has dropped to ninety-seven, ninety-nine, with a midpoint of ninety-eight. Ninety-nine is above that, so the quote rule says buy. Lee-Ready sides with the quote.</p>
+      <p data-who="Trader">Is that still the standard?</p>
+      <p data-who="Quant">On historical exchange data, yes. But it compares each trade with the quote from about five seconds earlier, which made sense on slow tapes. On markets where quotes change in milliseconds, published studies find it gets more trades wrong.</p>
+      <p data-who="Trader">And in FX, where there's no single quote tape?</p>
+      <p data-who="Quant">There you use bulk volume classification. It doesn't sign trades at all. It takes a whole bar, asks how far the price moved compared with its usual move, and turns that into a share of the bar's volume.</p>
+      <p data-who="Trader">Numbers?</p>
+      <p data-who="Quant">Say a bar moved up exactly one usual move. The normal curve gives about eighty-four percent. So on a bar of a thousand units, about eight hundred and forty are called buys and about a hundred and sixty sells. A flat bar is always fifty-fifty.</p>
+      <p data-who="Trader">What's the catch?</p>
+      <p data-who="Quant">It labels the bar, not the trades. Lots of small informed trades and one big order that moved the price the same way get the same split.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Signed flow is an inference, so know which rule made it, and treat it as a guess, not a fact.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Who was the aggressor on this print?</h2>
       <p class="sl-sub">Lee–Ready algorithm · Lee &amp; Ready, 1991 → the default trade-signing rule on TAQ data</p>
@@ -40,7 +116,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Why a trade needs a "sign" at all</h2>
       <p class="sl-sub">No trade record says "buyer-initiated." Every method here is an inference from what's actually available.</p>
@@ -53,7 +129,7 @@
       <div class="sl-quote">Get this inference step wrong, and every metric built on top of it — a toxicity score, an informed-trading probability, an imbalance signal — measures an artifact of the classifier, not the market.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The tick rule — price history, nothing else</h2>
       <p class="sl-sub">Compare a trade's price only to the trade immediately before it.</p>
@@ -78,7 +154,7 @@
       <p class="sl-p">On a quiet run of trades at the same unchanged price, every print after the first just repeats whatever sign the trade that set that price level got — the tick rule has no fresh information about any of the repeats individually.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The quote rule — compare to the standing midpoint</h2>
       <p class="sl-sub">Above the bid-ask midpoint is a buy. Below it is a sell. Exactly at it, the quote rule has nothing to decide.</p>
@@ -105,7 +181,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Same trade, three rules — do they agree?</h2>
       <p class="sl-sub">One trade from a toy tape: price unchanged from the last print, but the quote had drifted down underneath it.</p>
@@ -132,7 +208,7 @@
       <p class="sl-p">This is a real disagreement, not a corner case dreamed up for the deck: the tick rule and the quote rule use genuinely different information, and a quote that moves while the trade price doesn't is exactly where they can split.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Lee-Ready (1991) — the long-standing academic standard</h2>
       <div class="sl-icard-grid">
@@ -147,7 +223,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">A 9-trade tape, classified</h2>
       <p class="sl-sub">Green = buy, red = sell, amber = the one trade printing exactly at the midpoint.</p>
@@ -185,7 +261,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">BVC — classify a whole bar, not one trade</h2>
       <p class="sl-sub">Bulk Volume Classification steps back from individual trades entirely.</p>
@@ -202,7 +278,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Drag the price change — watch the split move</h2>
       <p class="sl-sub">Fixed volatility σ&sub;ΔP&sub; = 0.0004. Drag ΔP and the buy/sell bar redraws live.</p>
@@ -224,7 +300,7 @@
       <p class="sl-p">Notice the split moves fastest near the center and flattens out toward the edges — that's Φ(·) compressing as it approaches 0 or 1, exactly the same normal-CDF shape behind a z-table, a Black-Scholes N(d), or VPIN's own buy/sell split.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Compute a BVC split yourself</h2>
       <p class="sl-sub">Buy-fraction = Φ(ΔP / σ<sub>ΔP</sub>). Change either input, live.</p>
@@ -250,7 +326,7 @@
     </section>
 
     <!-- WB:institutional_trade_classification-deck:START -->
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Signing trades: tick rule, quote rule, Lee-Ready, then BVC</h2>
       <!-- WB:institutional_trade_classification:START -->
@@ -261,7 +337,7 @@
     </section>
     <!-- WB:institutional_trade_classification-deck:END -->
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Which method actually gets used, and where</h2>
       <div class="sl-compare">
@@ -290,7 +366,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -341,7 +417,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative data decision</div>
+    <h3>Signing EUR/USD spot flow with no consolidated quote tape</h3>
+    <p>You want buy and sell volume for a VPIN-style toxicity signal on EUR/USD spot. Your fills come from several liquidity providers. You have trade prices and volumes from all of them, and timestamped quotes from just one provider, whose timestamps are sometimes out of order. Which classifier do you build on?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Lee-Ready, with the five-second lag, against that one provider's quotes.<div class="tl-drill-why">Lee-Ready needs the prevailing best bid and ask for the whole market at every trade, correctly timed. One provider's book is not the market in a fragmented spot market, the timestamps are unreliable, and a five-second lag is far too coarse for a fast market.</div></li>
+      <li data-verdict="good">Bulk Volume Classification on volume bars, with σ estimated from recent history only.<div class="tl-drill-why">It needs only price and volume, which you have for every venue. This is why VPIN was built on it. Keep in mind that it signs bars, not individual trades.</div></li>
+      <li data-verdict="ok">The tick rule on the combined trade prints.<div class="tl-drill-why">It also needs only prices, so it runs on your data. But unchanged prices just copy the last sign, so on a busy tape many calls carry no fresh information. Inside Lee-Ready it is only the tiebreaker.</div></li>
+      <li data-verdict="bad">Skip the signing and feed raw, unsigned volume into the signal.<div class="tl-drill-why">Toxicity and imbalance are about the gap between buying and selling. Unsigned volume rises on both, so it cannot tell one-sided pressure from busy two-way trading.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson says.</strong> This is an illustrative decision, not a historical episode. The lesson's guidance is that the classifier follows the data you really have. Lee-Ready fits consolidated, well-timed exchange quote data like TAQ. Fragmented FX and OTC markets lack that tape, which is why a price-and-volume method like BVC is the natural fit there. Where a venue's feed carries an aggressor flag, as CME futures data does, no guess is needed at all.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

@@ -16,7 +16,7 @@
 (function () {
   'use strict';
   var page = document.getElementById('page') || document.body;
-  var slug = (location.pathname.split('/').pop() || '').replace(/\.html?$/i, '') || 'page';
+  var slug = (location.pathname.split('/').pop() || '').replace(/\.html?$/i, '').replace(/-micro$/, '') || 'page'; // a deck shares its lesson's answers and recording
   var KEY = 'theoryLabVark';
   function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
   function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }

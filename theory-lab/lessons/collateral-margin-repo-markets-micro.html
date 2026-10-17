@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Collateral, Margin &amp; Repo Markets — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">19</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, SPAN/SIMM detail, and a 5-question self-test?<a href="collateral-margin-repo-markets.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,83 @@
       <p class="sl-lede">Every leveraged position and every derivatives trade rests on machinery most people never see: collateral posted as a buffer against default, discounted for its own riskiness with a "haircut," and funded overnight through the repo market — a market so central that SOFR, the reference rate from the earlier <a href="swap-curves-ois-micro.html">Swap Curves &amp; OIS Discounting</a> lesson, is built directly out of it. This deck opens a brand-new category — Collateral, Funding &amp; Rehypothecation — and this is its first lesson.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: a repo is a loan with a cushion. A dealer hands a money market fund 100 million dollars of Treasuries and receives 98 million dollars of cash; the 2 percent haircut, 2 million dollars, is the lender's cushion, and the dealer buys the bonds back tomorrow at a slightly higher price. Right: the margin spiral. Volatility jumps, so margins and haircuts rise, which forces sales, which makes prices fall, which raises volatility again. In March 2020 the Fed broke the loop by buying roughly a trillion dollars of Treasuries within about a month.">
+      <defs><marker id="tlp-cm-arr" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path class="tlp-arrow" d="M0,0 L8,4 L0,8 Z"/></marker></defs>
+      <text class="tlp-text" x="20" y="22" font-size="14" font-weight="700">A repo: a loan with a cushion</text>
+      <rect class="tlp-box blue" x="20" y="38" width="104" height="46" rx="6"/>
+      <text class="tlp-text" x="72" y="58" text-anchor="middle" font-size="13" font-weight="700">dealer</text>
+      <text class="tlp-text3" x="72" y="75" text-anchor="middle" font-size="12">borrows cash</text>
+      <rect class="tlp-box green" x="186" y="38" width="104" height="46" rx="6"/>
+      <text class="tlp-text" x="238" y="58" text-anchor="middle" font-size="13" font-weight="700">money fund</text>
+      <text class="tlp-text3" x="238" y="75" text-anchor="middle" font-size="12">lends cash</text>
+      <line class="tlp-line purple thick" x1="126" y1="52" x2="180" y2="52" marker-end="url(#tlp-cm-arr)"/>
+      <line class="tlp-line green thick" x1="184" y1="72" x2="130" y2="72" marker-end="url(#tlp-cm-arr)"/>
+      <text class="tlp-purple" x="155" y="104" text-anchor="middle" font-size="12" font-weight="700">$100m Treasuries →</text>
+      <text class="tlp-green" x="155" y="120" text-anchor="middle" font-size="12" font-weight="700">← $98m cash</text>
+      <rect class="tlp-green" x="20" y="134" width="264.6" height="26" rx="3" opacity=".8"/>
+      <rect class="tlp-amber" x="284.6" y="134" width="5.4" height="26"/>
+      <text class="tlp-text" x="34" y="152" font-size="12" font-weight="700">$98m lent against $100m of bonds</text>
+      <line class="tlp-line amber" x1="287.3" y1="162" x2="287.3" y2="176"/>
+      <text class="tlp-amber" x="290" y="190" text-anchor="end" font-size="12" font-weight="700">2% haircut = $2m cushion</text>
+      <text class="tlp-text2" x="20" y="216" font-size="12">buy back tomorrow for a little more:</text>
+      <text class="tlp-text2" x="20" y="231" font-size="12">that extra is the repo interest</text>
+      <line class="tlp-line dash" x1="300" y1="10" x2="300" y2="230"/>
+      <text class="tlp-text" x="310" y="22" font-size="14" font-weight="700">When volatility jumps: the spiral</text>
+      <rect class="tlp-box amber" x="390" y="40" width="120" height="28" rx="5"/>
+      <text class="tlp-amber" x="450" y="59" text-anchor="middle" font-size="13" font-weight="700">volatility up</text>
+      <rect class="tlp-box red" x="470" y="96" width="120" height="28" rx="5"/>
+      <text class="tlp-red" x="530" y="115" text-anchor="middle" font-size="13" font-weight="700">margins up</text>
+      <rect class="tlp-box red" x="390" y="152" width="120" height="28" rx="5"/>
+      <text class="tlp-red" x="450" y="171" text-anchor="middle" font-size="13" font-weight="700">forced sales</text>
+      <rect class="tlp-box red" x="310" y="96" width="120" height="28" rx="5"/>
+      <text class="tlp-red" x="370" y="115" text-anchor="middle" font-size="13" font-weight="700">prices fall</text>
+      <line class="tlp-line" x1="500" y1="70" x2="520" y2="92" marker-end="url(#tlp-cm-arr)"/>
+      <line class="tlp-line" x1="520" y1="126" x2="500" y2="148" marker-end="url(#tlp-cm-arr)"/>
+      <line class="tlp-line" x1="400" y1="150" x2="380" y2="128" marker-end="url(#tlp-cm-arr)"/>
+      <line class="tlp-line" x1="380" y1="94" x2="400" y2="72" marker-end="url(#tlp-cm-arr)"/>
+      <text class="tlp-red" x="310" y="210" font-size="12" font-weight="700">March 2020: the Fed bought ≈ $1 trillion</text>
+      <text class="tlp-text2" x="310" y="226" font-size="12">of Treasuries within about a month</text>
+    </svg>
+    <figcaption>Left: in a repo the lender advances less cash than the bonds are worth, and that haircut is its protection. Right: haircuts and margins are sized for normal volatility. When volatility jumps they rise, borrowers must sell to find the cash, and the selling feeds the volatility.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Margin, haircuts, repo. Is this anything more than back-office plumbing?</p>
+      <p data-who="Quant">It's the plumbing under every leveraged position. And when it backs up, it sets prices.</p>
+      <p data-who="Trader">Start with margin. Isn't margin just margin?</p>
+      <p data-who="Quant">There are two kinds. Initial margin is a cushion you post up front, against what might go wrong before anyone can react. Variation margin is settling up for what already moved, usually every day.</p>
+      <p data-who="Trader">A deposit, then rent.</p>
+      <p data-who="Quant">Exactly. Then haircuts. If you post a hundred dollars of a shaky bond with a five percent haircut, it only counts as ninety-five. The lender knows it might have to sell in a hurry.</p>
+      <p data-who="Trader">And repo?</p>
+      <p data-who="Quant">A loan dressed up as two trades. A dealer sells Treasuries to a money market fund today and agrees to buy them back tomorrow for slightly more. The difference is the interest.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Fifty million dollars overnight at five point three percent. Interest counts days over three hundred and sixty, so one night costs about seven thousand three hundred and sixty dollars.</p>
+      <p data-who="Trader">And the dealer rolls that every night.</p>
+      <p data-who="Quant">For months, sometimes. Which is fine while the lender keeps lending on the same terms. The overnight Treasury repo market is even what the main dollar reference rate, SOFR, is measured from.</p>
+      <p data-who="Trader">So where does it go wrong?</p>
+      <p data-who="Quant">March twenty twenty. Hedge funds ran the Treasury basis trade: buy the bond, sell the future, finance the bond in repo on a thin haircut. Tiny gap, lots of leverage.</p>
+      <p data-who="Trader">Then the dash for cash.</p>
+      <p data-who="Quant">Volatility jumped. The exchange raised futures margin, variation margin came due every day, and repo lenders wanted bigger haircuts. The funds had to find cash on the same days, so they sold Treasuries. Yields rose while stocks were falling.</p>
+      <p data-who="Trader">And it fed on itself.</p>
+      <p data-who="Quant">The Bank for International Settlements called it a margin spiral. The Fed stopped it by buying roughly a trillion dollars of Treasuries within about a month.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">A haircut is not a fixed fact about the collateral. It rises with volatility, right when you can least afford it, so size leverage for the haircut you'd face in a panic.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1</div>
       <h2 class="sl-h2">Why any leveraged position needs a buffer</h2>
       <p class="sl-sub">Leverage means one side is exposed to the other for more than either has actually handed over. Something has to sit in reserve against the chance that exposure isn't honored.</p>
@@ -43,7 +119,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Two margins, two different questions</h2>
       <p class="sl-sub">Initial margin asks "what could go wrong?" Variation margin asks "what already did?" Step through a position's first three days.</p>
@@ -70,7 +146,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Initial margin: a forward-looking buffer</h2>
       <p class="sl-p">IM is not guessed independently by each firm — it's sized using standardized, industry-recognized methodologies. This deck names them without deriving their internal mechanics, exactly as the full lesson does.</p>
@@ -84,7 +160,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Variation margin: settling what already happened</h2>
       <p class="sl-p">VM transfers cash equal to a position's realized mark-to-market change since the last exchange — commonly daily, intraday for volatile positions. It is not a cushion against the future; it's a receipt for the past.</p>
@@ -101,7 +177,7 @@
       <div class="sl-quote">Think of a security deposit versus a monthly rent payment. The deposit (IM) sits aside for something that <em>might</em> break later. Rent (VM) settles for a month you've already lived through.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">A haircut: why $100 of collateral often isn't worth $100</h2>
       <p class="sl-sub">Collateral is rarely counted at full market value. Two risks justify the discount: the collateral's own price could fall, and selling it quickly — especially in a stressed default scenario — can itself move the price against the seller.</p>
@@ -118,7 +194,7 @@
       <div class="sl-note">These ranges are illustrative, order-of-magnitude figures — real haircut schedules vary by counterparty, tenor, credit rating, and regulatory regime.</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Drag the haircut, watch usable collateral shrink</h2>
       <p class="sl-sub">$100,000 of market value, discounted by whatever haircut a counterparty applies.</p>
@@ -144,7 +220,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">A repurchase agreement: a loan wearing two sales as a costume</h2>
       <p class="sl-sub">One party sells a security today, agreeing to buy the exact same security back later at a slightly higher price. Nothing about the security changes — only cash and the security swap hands, twice, in opposite directions each leg.</p>
@@ -183,7 +259,7 @@
       <p class="sl-p">Legally this is two sales. Economically it's a fully collateralized cash loan — the party selling the security is the <strong>cash borrower</strong>, the party buying it is the <strong>cash lender</strong> holding the security as collateral. From the lender's side, the identical trade is called a <strong>reverse repo</strong> — same trade, mirror-image name.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The price difference <em>is</em> the interest</h2>
       <p class="sl-sub">Sale price today, repurchase price later — plug in both and the term, and back out the implied annualized repo rate (actual/360, the U.S. convention).</p>
@@ -208,7 +284,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Overnight, rolled daily — and where SOFR comes from</h2>
       <div class="sl-icard-grid">
@@ -222,7 +298,7 @@
       <p class="sl-p">That earlier lesson discounts collateralized derivatives at OIS/SOFR specifically <em>because</em> those trades are backed by daily-exchanged collateral under a Credit Support Annex (CSA) — the same variation-margin idea from Section 2 of this deck. The two lessons describe one connected system, not two unrelated topics.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Who is in the repo market</h2>
       <p class="sl-sub">The anonymous "cash lender" and "cash borrower" have real names, and each has its own constraints.</p>
@@ -247,7 +323,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Getting this wrong, in practice</h2>
       <div class="sl-compare">
@@ -272,7 +348,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12 · It actually happened</div>
       <h2 class="sl-h2">March 2020: the basis trade meets a margin call</h2>
       <div class="sl-callout amber">
@@ -293,7 +369,7 @@
     </section>
 
     <!-- WB:repo-deck:START -->
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Repo as a pawn shop, and the margin spiral</h2>
       <!-- WB:repo:START -->
@@ -304,7 +380,7 @@
     </section>
     <!-- WB:repo-deck:END -->
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 13</div>
       <!-- DESK:START -->
       <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
@@ -321,7 +397,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -372,7 +448,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="17">
+
+    <section class="sl-slide sl-vark" data-slide="18">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill" data-date="2020-03-16">
+    <div class="tl-drill-label">Scenario drill · 16 March 2020</div>
+    <h3>Your "safest" trade needs cash today</h3>
+    <p>You run a Treasury cash-futures basis trade: long Treasury bonds financed overnight in repo on a thin haircut, short the matching futures, with initial margin posted at the exchange. The dash for cash is on, and investors everywhere are selling even Treasuries. Volatility has jumped. The exchange has raised initial margin on Treasury futures, variation margin is due every day as prices swing, and your repo lenders want bigger haircuts or will lend less. Yesterday, Sunday, the Fed said it would buy Treasuries in size. What do you do this morning?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Hold everything. The trade is hedged and the bond and future must converge.<div class="tl-drill-why">It is hedged against prices, not against funding. Margin and haircut calls must be met in cash today, whatever happens at expiry. A hedged trade you cannot fund is a trade someone else will close for you.</div></li>
+      <li data-verdict="bad">Add to it. Bonds have cheapened, so the gap should pay more when it converges.<div class="tl-drill-why">A bigger position needs more margin and more haircut cash at exactly the moment both are rising. This is how a margin spiral turns a small gap into a forced sale.</div></li>
+      <li data-verdict="good">Cut the position to a size you can fund under the new margins and haircuts, while the Fed's buying means there is a buyer for the bonds.<div class="tl-drill-why">This sizes leverage to the haircut you face now, not the one you had. Selling into a market with a large buyer costs less than being forced to sell later into one without.</div></li>
+      <li data-verdict="ok">Meet the calls by posting other assets you hold as collateral.<div class="tl-drill-why">It buys time, but those assets face bigger haircuts too in a volatility spike, and it ties up the last of your spare collateral. It delays the decision rather than making it.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Funds running the basis trade had to raise cash for higher futures margin, daily variation margin and tighter repo terms on the same days, and the way to raise it was to sell the bonds. Dealers, with balance sheets already full, could not absorb the flow, and Treasury yields rose sharply in mid-March while stocks were falling. From 15 March the Fed bought Treasuries in enormous size, roughly a trillion dollars' worth within about a month, and greatly expanded its repo operations. Economists at the Bank for International Settlements (Schrimpf, Shin and Sushko, 2020) called it a margin spiral.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="19">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">

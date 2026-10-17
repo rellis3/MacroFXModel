@@ -14,7 +14,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Deep Q-Networks — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the six-transition worked example, and a 5-question self-test?<a href="deep-q-networks.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,7 +27,80 @@
       <p class="sl-lede">The Q-learning &amp; temporal-difference lesson learned one number for every state-action pair in a table small enough to fit on a page. The policy gradients &amp; actor-critic lesson sidestepped that table entirely by optimizing a policy directly. This lesson closes the loop: what to do when you want to keep Q-learning's exact update rule, but the table it needs has become impossible to write down — replace it with a neural network, then add the two specific tricks that stop that replacement from destabilizing the very learning process it's supposed to rescue.</p>
     </section>
 
-    <section class="sl-slide" data-slide="2">
+
+    <section class="sl-slide sl-vark" data-slide="2">
+
+      <div class="sl-kicker">The whole idea</div>
+
+      <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: a replay buffer of six transitions in arrival order, numbered 1 to 6; a random mini-batch draws numbers 5, 1 and 4. Right: two networks. The frozen target network rates the next state of transition 4 at Hold 2.0 and Close 1.2, so the target is 0.1 plus 0.9 times 2.0, which is 1.9. The online network, the one being trained, guesses 1.6. The loss is 1.9 minus 1.6, squared, which is 0.09. The online weights are copied into the target network only every N steps.">
+      <text class="tlp-text3" x="160" y="22" text-anchor="middle" font-size="12">replay buffer, in arrival order</text>
+      <rect class="tlp-box amber" x="20" y="34" width="40" height="34" rx="4"/>
+      <text class="tlp-amber" x="40" y="56" text-anchor="middle" font-size="13" font-weight="700">#1</text>
+      <rect class="tlp-box" x="68" y="34" width="40" height="34" rx="4"/>
+      <text class="tlp-text2" x="88" y="56" text-anchor="middle" font-size="13" font-weight="700">#2</text>
+      <rect class="tlp-box" x="116" y="34" width="40" height="34" rx="4"/>
+      <text class="tlp-text2" x="136" y="56" text-anchor="middle" font-size="13" font-weight="700">#3</text>
+      <rect class="tlp-box amber" x="164" y="34" width="40" height="34" rx="4"/>
+      <text class="tlp-amber" x="184" y="56" text-anchor="middle" font-size="13" font-weight="700">#4</text>
+      <rect class="tlp-box amber" x="212" y="34" width="40" height="34" rx="4"/>
+      <text class="tlp-amber" x="232" y="56" text-anchor="middle" font-size="13" font-weight="700">#5</text>
+      <rect class="tlp-box" x="260" y="34" width="40" height="34" rx="4"/>
+      <text class="tlp-text2" x="280" y="56" text-anchor="middle" font-size="13" font-weight="700">#6</text>
+      <line class="tlp-line amber" x1="160" y1="72" x2="160" y2="92"/>
+      <polygon class="tlp-amber" points="160,100 155,90 165,90"/>
+      <text class="tlp-amber" x="160" y="118" text-anchor="middle" font-size="13" font-weight="700">random mini-batch: #5, #1, #4</text>
+      <text class="tlp-text2" x="160" y="140" text-anchor="middle" font-size="12">shuffling breaks the link between</text>
+      <text class="tlp-text2" x="160" y="156" text-anchor="middle" font-size="12">neighboring, near-identical samples</text>
+      <rect class="tlp-box purple" x="345" y="26" width="245" height="56" rx="6"/>
+      <text class="tlp-purple" x="467" y="48" text-anchor="middle" font-size="13" font-weight="700">target network (frozen copy)</text>
+      <text class="tlp-text2" x="467" y="68" text-anchor="middle" font-size="12">next state: Hold 2.0, Close 1.2</text>
+      <rect class="tlp-box green" x="345" y="130" width="245" height="56" rx="6"/>
+      <text class="tlp-green" x="467" y="152" text-anchor="middle" font-size="13" font-weight="700">online network (trained)</text>
+      <text class="tlp-text2" x="467" y="172" text-anchor="middle" font-size="12">its guess for #4: 1.6</text>
+      <line class="tlp-line purple dash" x1="560" y1="130" x2="560" y2="90"/>
+      <polygon class="tlp-purple" points="560,83 555,93 565,93"/>
+      <text class="tlp-purple" x="552" y="111" text-anchor="end" font-size="12">copied every N steps</text>
+      <line class="tlp-line amber" x1="265" y1="125" x2="338" y2="152"/>
+      <polygon class="tlp-amber" points="345,155 334,157 338,147"/>
+      <line class="tlp-line dash" x1="10" y1="200" x2="590" y2="200"/>
+      <text class="tlp-purple" x="105" y="222" text-anchor="middle" font-size="13" font-weight="700">target 0.1 + 0.9 × 2.0 = 1.9</text>
+      <text class="tlp-green" x="300" y="222" text-anchor="middle" font-size="13" font-weight="700">online guess 1.6</text>
+      <text class="tlp-amber" x="490" y="222" text-anchor="middle" font-size="13" font-weight="700">loss (1.9 − 1.6)² = 0.09</text>
+      <text class="tlp-text3" x="300" y="243" text-anchor="middle" font-size="12">the same Q-learning target, now a squared error for gradient descent</text>
+    </svg>
+    <figcaption>A network replaces the table, and two fixes keep training stable. Experience replay trains on a random draw from past transitions instead of the latest, look-alike ones. A frozen target network builds the target, so it does not move every time the online network takes a step.</figcaption>
+  </figure>
+
+      <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Q-learning kept one number for every situation and action. My real state is thirty features. What happens to the table?</p>
+      <p data-who="Quant">It explodes. Thirty features cut into just ten levels each would need more rows than you could ever visit. So you throw the table away and train a network to guess the value instead.</p>
+      <p data-who="Trader">Same update rule?</p>
+      <p data-who="Quant">Same target: the reward, plus the discounted best guess for the next state. The difference is that you square the gap and take a gradient step on the network's weights, instead of overwriting a cell.</p>
+      <p data-who="Trader">That sounds like it should just work.</p>
+      <p data-who="Quant">Done naively, it's badly unstable. DeepMind's team found two fixes and published them in Nature in 2015, playing Atari games from raw pixels.</p>
+      <p data-who="Trader">Fix one?</p>
+      <p data-who="Quant">Experience replay. Neighboring moments in the market look almost the same, so training on them in order makes the network overfit whatever just happened. Instead you store every transition in a buffer and train on a random draw from it.</p>
+      <p data-who="Trader">And fix two?</p>
+      <p data-who="Quant">The target network. If the same network builds its own target, every step moves the goalposts. So you keep a frozen copy to build the target and only refresh it every so often.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">One transition pays a tenth. The frozen copy rates the next state at two for holding. With a discount of zero point nine, the target is zero point one plus one point eight, so one point nine. The online network currently guesses one point six. The gap is zero point three, and squared that's zero point zero nine. That's the loss you shrink.</p>
+      <p data-who="Trader">Has anyone traded with this?</p>
+      <p data-who="Quant">Researchers have tried it on execution, and in 2020 Zhang, Zohren and Roberts tested it on about fifty futures contracts, with rewards net of costs. In their backtests it beat classic time series momentum.</p>
+      <p data-who="Trader">So should I trust a DQN backtest?</p>
+      <p data-who="Quant">With extra scepticism. It was proven where the score is clean and frequent. A market reward is noisy and shifts with the regime. And a network is far harder to inspect than a table, so a high score in a simulator mostly proves it optimized that simulator.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Same target as Q-learning, a network instead of a table, shuffled replay and a frozen target to keep it stable, and more doubt, not less, about what it learned.</p>
+    </div>
+  </section>
+
+    </section>
+
+    <section class="sl-slide" data-slide="3">
       <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">Too many market states for a table</h2>
       <p class="sl-sub">Deep Q-learning · into trading and execution research from the late 2010s</p>
@@ -40,7 +113,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
+    <section class="sl-slide" data-slide="4">
       <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">The Q-table's fatal flaw: it needs a room, not a page</h2>
       <p class="sl-sub">The Q-learning lesson's worked example — three states, a handful of actions — fit entirely on a page. That was never the hard case.</p>
@@ -53,7 +126,7 @@
       <div class="sl-quote">This lesson exists to fix exactly one limitation — nothing about Q-learning's update rule changes. What changes is what "the thing being updated" <strong>is</strong>: not a table cell, but the weights of a network.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
+    <section class="sl-slide" data-slide="5">
       <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Same update rule, a different container for the estimate</h2>
       <p class="sl-sub">Q(s,a) stops being a table cell and becomes Q(s,a;θ) — a neural network parameterized by weights θ.</p>
@@ -116,7 +189,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The DQN loss: the same TD target, now a gradient step</h2>
       <p class="sl-sub">"Update Q(s,a)" becomes "nudge θ so the network's output for (s,a) moves toward this target."</p>
@@ -135,7 +208,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Why a plain swap isn't enough</h2>
       <p class="sl-sub">Train the naive way — sample transitions in the order they happen, target with the same network being updated — and it's badly unstable.</p>
@@ -152,7 +225,7 @@
       <p class="sl-p">Each problem gets one specific, named fix — not a general "add more data" or "train longer." The next two sections are exactly those two fixes.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Fix 1 — experience replay</h2>
       <p class="sl-sub">Store every transition as it happens. Train on a random sample from the whole history, not the newest arrival.</p>
@@ -180,7 +253,7 @@
       <div class="sl-verdict" id="buf-verdict" style="margin-top:10px"></div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Fix 2 — the target network</h2>
       <p class="sl-sub">Freeze a second copy of the network, θ⁻, used only to compute the target. Sync it from θ every N steps — not every step.</p>
@@ -220,7 +293,7 @@
     </section>
 
     <!-- WB:deep_q_networks-deck:START -->
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">▶ Watch it</div>
       <h2 class="sl-h2">Replay buffer and target network, step by step</h2>
       <!-- WB:deep_q_networks:START -->
@@ -231,7 +304,7 @@
     </section>
     <!-- WB:deep_q_networks-deck:END -->
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">How often should θ⁻ get updated?</h2>
       <p class="sl-sub">A smaller N keeps the target fresher but closer to moving under its own updates. A larger N holds it stiller — up to a point, past which it's just stale.</p>
@@ -256,7 +329,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Try it — compute the DQN target and loss yourself</h2>
       <p class="sl-sub">target = r + γ · max Q(s′,a′;θ⁻). loss = (target − Q(s,a;θ))². Starts on the same numbers as the full lesson's worked example.</p>
@@ -281,7 +354,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Still value-based: the max that doesn't go away</h2>
       <p class="sl-sub">A network in place of a table changes how Q(s,a) is stored. It doesn't change what DQN computes at every target.</p>
@@ -306,7 +379,7 @@
       <div class="sl-quote">Value-based and policy-based aren't rival final answers — they're two tools suited to two different action-space shapes. Discrete-and-small favors DQN; continuous favors policy gradients. The choice between this lesson and the previous one is mostly that shape question.</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What a trained guesser doesn't tell you</h2>
       <div class="sl-callout amber">
@@ -320,7 +393,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -371,7 +444,27 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+
+    <section class="sl-slide sl-vark" data-slide="16">
+
+      <div class="sl-kicker">Your call</div>
+
+      <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative research meeting</div>
+    <h3>"Sync the target network every step, it trains faster"</h3>
+    <p>A colleague's DQN chooses between buy, hold and sell from a state of thirty market features. Training swings wildly: the loss falls, then jumps, then falls again. They propose two changes to speed things up: copy the online weights into the target network after every gradient step, and shrink the replay buffer to the last few hundred transitions so it only holds "fresh" data. What do you say?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Do both. Fresher targets and fresher data should help.<div class="tl-drill-why">Syncing every step removes the target network's whole purpose: the target would move every time the weights do. A tiny buffer is dominated by recent, near-identical transitions, so replay no longer decorrelates anything. Both changes bring back the instability the fixes exist to stop.</div></li>
+      <li data-verdict="good">Keep a periodic sync and a large buffer sampled at random. If anything, sync less often, and check the reward and simulator before chasing speed.<div class="tl-drill-why">The staleness of the target is the mechanism, not overhead. Random draws from a large buffer are what break the correlation. And a stable training curve still proves only that the network optimized this reward in this simulator.</div></li>
+      <li data-verdict="ok">Keep the buffer but switch to prioritized replay, sampling the most surprising transitions more often.<div class="tl-drill-why">A real refinement, but it changes the sampling distribution and needs importance weights to stay unbiased. It also leaves the every-step sync proposal unanswered, which is the bigger problem.</div></li>
+      <li data-verdict="bad">Drop the target network and use a larger learning rate to converge before the target drifts.<div class="tl-drill-why">A bigger step makes the chase faster and wilder. With the target built from the same weights, each larger step moves the goalposts further, which tends to make the oscillation worse, not better.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What this shows.</strong> This is an illustrative situation, not a real episode. The answer is the lesson's own pitfall list: skipping the target network "because it trains faster" and a buffer too small to decorrelate are the two standard ways to undo DQN's fixes.</p></div>
+  </div>
+
+    </section>
+
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
