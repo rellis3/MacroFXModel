@@ -148,3 +148,44 @@ def shifted_spreads(S, rng):
         sh = int(rng.integers(750, max(751, n - 750)))
         out[name] = pd.Series(np.cumsum(np.roll(d1, sh)), index=s.index).where(s.notna())
     return out
+
+
+D_K, D_H = (5, 20), (5, 10, 20)
+
+
+def family_D(ad, S, spreads=None):
+    """Divergence / catch-up. e(t) = r_k(t) - beta_roll(t-1) * dS_k(t); position = -clip(z_e, -2, 2)/2, scored separately in a high-R2 state (relationship strong) and a low-R2 state (relationship broken)."""
+    LP = np.log(ad)
+    idx = ad.index
+    r_next = (LP.shift(-1) - LP)
+    cost = np.array([COST_BP.get(c, 2.0) for c in ad.columns]) / 2e4
+    masks = {p: period_mask(idx, p) for p in PERIODS}
+    names = [n for n in S if n not in OUTRIGHTS] if spreads is None else spreads
+    rows = []
+    W = 250
+    for sname in names:
+        s = S[sname]
+        for k in D_K:
+            dS = s - s.shift(k)
+            rk = LP - LP.shift(k)
+            cov = rk.rolling(W, min_periods=200).cov(dS)
+            var = dS.rolling(W, min_periods=200).var()
+            beta = cov.div(var, axis=0).shift(1)
+            corr = rk.rolling(W, min_periods=200).corr(dS)
+            R2 = (corr ** 2).shift(1)
+            e = rk - beta.mul(dS, axis=0)
+            sig = e.rolling(W, min_periods=200).std().shift(1)
+            z = (e / sig).clip(-2, 2) / 2
+            hi = R2.ge(R2.rolling(500, min_periods=250).quantile(0.667))
+            for state, st_mask in (('high R2', hi & R2.notna()), ('low R2', (~hi) & R2.notna())):
+                base_pos = (-z * st_mask).fillna(0.0)
+                valid = R2.notna() & z.notna()
+                for h in D_H:
+                    eff = base_pos.rolling(h, min_periods=1).mean()
+                    turn = eff.diff().abs().fillna(0.0)
+                    pnl = (eff * r_next - turn * cost).where(valid & r_next.notna())
+                    out = {p: nw_stats(pnl, m, h + 4) for p, m in masks.items()}
+                    for ai, a in enumerate(ad.columns):
+                        rows.append((sname, a, k, h, state, out['DISC'][0][ai], out['DISC'][1][ai], out['DISC'][2][ai], out['VAL'][0][ai], out['VAL'][1][ai], out['VAL'][2][ai], out['OOS'][0][ai], out['OOS'][1][ai], out['OOS'][2][ai]))
+    cols = ['spread', 'asset', 'k', 'h', 'state', 'sh_DISC', 'p_DISC', 'n_DISC', 'sh_VAL', 'p_VAL', 'n_VAL', 'sh_OOS', 'p_OOS', 'n_OOS']
+    return pd.DataFrame(rows, columns=cols)
