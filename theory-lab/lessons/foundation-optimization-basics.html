@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Optimization Basics: Unconstrained &amp; Constrained — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -41,6 +42,63 @@
       <li><strong>How it reached trading:</strong> Harry Markowitz (1952) turned portfolio choice into this lesson's constrained problem, minimum variance for a target return, and constrained optimisers have sized portfolios and hedges ever since.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curve of portfolio risk against the share of money in Asset 1, for the lesson's two assets: 8% and 4% expected return, 20% and 10% volatility, correlation 0.3. With no return target, the lowest point is about 9.8% risk with roughly a tenth in Asset 1, where the slope is flat. A fence requiring a 6% return pins the mix at half and half, where risk is 12.4%, about 2.7 points higher.">
+      <line class="tlp-line" x1="70" y1="200" x2="570" y2="200"/>
+      <line class="tlp-line" x1="70" y1="40" x2="70" y2="200"/>
+      <line class="tlp-line amber dash" x1="315" y1="40" x2="315" y2="200"/>
+      <polyline class="tlp-line purple thick" points="70.0,187.1 79.8,188.0 89.6,188.8 99.4,189.3 109.2,189.7 119.0,189.8 128.8,189.8 138.6,189.5 148.4,189.1 158.2,188.4 168.0,187.6 177.8,186.6 187.6,185.4 197.4,184.0 207.2,182.4 217.0,180.7 226.8,178.8 236.6,176.7 246.4,174.5 256.2,172.1 266.0,169.7 275.8,167.0 285.6,164.3 295.4,161.5 305.2,158.5 315.0,155.4 324.8,152.3 334.6,149.0 344.4,145.7 354.2,142.3 364.0,138.8 373.8,135.2 383.6,131.6 393.4,127.9 403.2,124.1 413.0,120.3 422.8,116.4 432.6,112.5 442.4,108.5 452.2,104.5 462.0,100.4 471.8,96.3 481.6,92.2 491.4,88.0 501.2,83.8 511.0,79.6 520.8,75.3 530.6,71.0 540.4,66.7 550.2,62.3 560.0,57.9"/>
+      <line class="tlp-line green thick" x1="88" y1="189.8" x2="156" y2="189.8"/>
+      <circle class="tlp-green" cx="121.6" cy="189.8" r="6"/>
+      <circle class="tlp-amber" cx="315" cy="155.4" r="7"/>
+      <circle class="tlp-text3" cx="560" cy="57.9" r="4"/>
+      <text class="tlp-amber" x="315" y="30" text-anchor="middle" font-size="14" font-weight="700">fence: return must be 6%</text>
+      <text class="tlp-green" x="84" y="140" font-size="14" font-weight="700">no target: lowest risk 9.8%</text>
+      <text class="tlp-text2" x="84" y="157" font-size="13">the slope is flat here</text>
+      <text class="tlp-amber" x="327" y="174" font-size="14" font-weight="700">best on the fence: 12.4%</text>
+      <text class="tlp-text2" x="327" y="191" font-size="13">the fence costs about 2.7 points</text>
+      <text class="tlp-text2" x="548" y="44" text-anchor="end" font-size="13">all in Asset 1: 20%</text>
+      <text class="tlp-text3" x="62" y="191" text-anchor="end" font-size="12">10%</text>
+      <text class="tlp-text3" x="62" y="62" text-anchor="end" font-size="12">20%</text>
+      <text class="tlp-text3" x="78" y="52" font-size="12">risk (volatility) ↑</text>
+      <text class="tlp-text3" x="70" y="216" text-anchor="middle" font-size="12">0%</text>
+      <text class="tlp-text3" x="315" y="216" text-anchor="middle" font-size="12">50%</text>
+      <text class="tlp-text3" x="560" y="216" text-anchor="middle" font-size="12">100%</text>
+      <text class="tlp-text3" x="560" y="234" text-anchor="end" font-size="12">share of money in Asset 1 →</text>
+    </svg>
+    <figcaption>Both halves of the lesson on one curve. With no rule, the best mix sits where the slope goes flat. Add a fence (the portfolio must expect 6%) and the best you can do is the best point on the fence: half and half, at 12.4% risk. The gap between the two is the price of the fence.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">People keep asking me for the best portfolio. Best how, though?</p>
+      <p data-who="Quant">That is the right question. Best always means making one number as big or as small as possible. Lowest risk, say. Sometimes there are no rules. Usually there is a rule that must hold.</p>
+      <p data-who="Trader">Start with no rules.</p>
+      <p data-who="Quant">Picture walking up a hill with your eyes closed. While the ground still tilts up under your feet, you are not at the top. The top is the one spot where the ground feels flat in every direction. In maths, the slope is zero there.</p>
+      <p data-who="Trader">So flat means best?</p>
+      <p data-who="Quant">Flat means a candidate. Flat ground could be the top of a hill, the bottom of a valley, or a mountain pass that dips one way and rises the other, like a horse saddle. You check which way the ground curves to tell them apart.</p>
+      <p data-who="Trader">Fine. Now add a rule.</p>
+      <p data-who="Quant">Put a fence on the hill. You may only walk along the fence. The real summit may not even be on it. The best spot on the fence is where walking further along it, either way, stops helping.</p>
+      <p data-who="Trader">How do you find that spot?</p>
+      <p data-who="Quant">At that spot, the uphill direction of the hill points straight across the fence. If it leaned along the fence at all, you could take one more step and still climb. A Lagrange multiplier is the trick that turns that idea into equations you can solve.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">Two assets. One expects eight percent a year, with twenty percent volatility. The other expects four percent, with ten percent volatility. They only loosely move together. The rule: the portfolio must expect six percent.</p>
+      <p data-who="Trader">Six is halfway between four and eight.</p>
+      <p data-who="Quant">So you hold half and half. The portfolio's volatility comes out at about twelve and a half percent. That is below the fifteen percent you would get by averaging the two, because they do not move in lockstep. That is diversification, for free.</p>
+      <p data-who="Trader">Where did this idea come from?</p>
+      <p data-who="Quant">Harry Markowitz, in nineteen fifty-two. He framed choosing a portfolio as exactly this problem: the lowest risk for a target return, with weights that add up to one. It earned him a share of the Nobel memorial prize in economics in nineteen ninety.</p>
+      <p data-who="Trader">And the multiplier itself? Is it just bookkeeping?</p>
+      <p data-who="Quant">No, it is the price of the rule. It tells you how much extra risk you must accept for one more unit of target return. Push the target higher and each extra unit costs more than the last.</p>
+      <p data-who="Trader">Any catch?</p>
+      <p data-who="Quant">The maths is exact, but only for the numbers you feed it. Expected returns are estimates from history, and the answer is very sensitive to small errors in them.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Best means the slope is flat. A rule means the best point on the fence. And the multiplier tells you what the fence costs.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -139,6 +197,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the Lagrange condition f′(x*) = λg′(x*) comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \mathcal{L}(x, \lambda) = \color{#fbbf24}{f(x)} \]</div>
+      <p>Start with the objective: the thing you want as large or as small as possible. With no fence, you would stop where its slope is zero, \(f'(x^*) = 0\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \mathcal{L}(x, \lambda) = f(x) - \lambda\,\big(\color{#fbbf24}{g(x) - k}\big) \]</div>
+      <p>Add the fence. The rule \(g(x) = k\) is rewritten as \(g(x) - k\), which is exactly zero when the rule holds.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \mathcal{L}(x, \lambda) = f(x) - \color{#fbbf24}{\lambda}\,\big(g(x) - k\big) \]</div>
+      <p>Scale the fence by a new unknown, the multiplier \(\lambda\). Now treat \(\mathcal{L}\) as an ordinary function of two inputs and look for its flat point.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{\partial \mathcal{L}}{\partial \lambda} = \color{#fbbf24}{-\big(g(x) - k\big) = 0} \]</div>
+      <p>Flat in the \(\lambda\) direction hands the rule straight back: \(g(x) = k\). You can only stand on the fence.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{\partial \mathcal{L}}{\partial x} = f'(x) - \lambda g'(x) = 0 \;\Rightarrow\; \color{#10b981}{f'(x^*) = \lambda\, g'(x^*)} \]</div>
+      <p>Flat in the \(x\) direction says the two gradients are parallel at the best point on the fence. \(\lambda\) is the scale between them, and its size is the price of the fence.</p>
+    </div>
+  </div>
 
   <h3>Unconstrained optimization: the first-order condition</h3>
   <p>
@@ -431,6 +513,10 @@
       return target, a wider return gap, or a different correlation changes
       both the weights and the diversification benefit.
     </p>
+    <div class="tl-predict" data-answer="75" data-tol="5" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At a 6% target the fence pins you at half and half. Raise the target to 7%. What share of the money must now go into Asset 1? Lock in a guess, then type 7 into the target field below and read \(w_1\).</div>
+      <div class="tl-predict-reveal"><p><strong>75%</strong> (the readout shows \(w_1 = 0.750\)). \(w_1 = (7 - 4)/(8 - 4) = 3/4\). The two returns are 4 points apart, so each extra point of target moves a quarter of the money into the riskier asset. Watch \(\sigma_p\) too: it climbs from 12.45% to 15.93%. Now try a 10% target and see what the note says.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>&mu;<sub>1</sub> (%)</span></div>
@@ -501,6 +587,12 @@
       round: the frontier gets flatter as you move up it.
     </p>
   </div>
+
+  <!-- WB:foundation_optimization_basics:START -->
+  <div class="wb" id="wb-foundation_optimization_basics" data-title="The lowest-risk mix, then the best point on a fence">
+    <script type="application/json">{"w":600,"h":770,"intro":"Two assets, one portfolio, and the lesson's own numbers. First find the lowest-risk mix with no rules, then add a fence and find the best point on it. Press play, or step through.","steps":[{"cap":"Meet the two assets from the worked example. Asset 1 expects 8% a year, with 20% volatility. Asset 2 expects 4%, with 10% volatility. Their correlation is 0.3, so they only loosely move together.","do":[{"icon":"a1","name":"rocket","x":40,"y":2,"s":0.72,"tone":"amber","label":"Asset 1\n8% · 20% vol","lsize":17},{"icon":"a2","name":"shield","x":488,"y":2,"s":0.72,"tone":"blue","label":"Asset 2\n4% · 10% vol","lsize":17},{"note":"rho","x":300,"y":122,"text":"correlation 0.3","size":17,"anchor":"middle"}]},{"cap":"You split your money between them. Call the share in Asset 1 w₁. The rest, 1 − w₁, goes into Asset 2. Which split is best? Here, best means the lowest risk.","do":[{"icon":"pig","name":"piggy","x":262,"y":0,"s":0.72,"tone":"green","label":"your money","sym":"$","lsize":17},{"arrow":["pig","a1"],"label":"w₁","tone":"amber"},{"arrow":["pig","a2"],"label":"1 − w₁","tone":"blue"}]},{"cap":"Slide w₁ from 0% to 100% and plot the portfolio's volatility. All in Asset 2 is 10%; all in Asset 1 is 20%. In between, the curve sags, because the two assets don't move in lockstep.","do":[{"chart":"vol","x":10,"y":140,"w":580,"h":360,"title":"Risk (%) vs share in Asset 1","xd":[0,1],"yd":[8,21],"yt":[[10,"10%"],[15,"15%"],[20,"20%"]],"xt":[[0,"0%"],[0.25,"25%"],[0.5,"50%"],[0.75,"75%"],[1,"100%"]],"pl":56,"pr":20},{"series":"curve","chart":"vol","pts":[[0.0,10.0],[0.025,9.911],[0.05,9.846],[0.075,9.805],[0.1,9.788],[0.125,9.795],[0.15,9.826],[0.175,9.881],[0.2,9.96],[0.225,10.062],[0.25,10.186],[0.275,10.331],[0.3,10.498],[0.325,10.684],[0.35,10.888],[0.375,11.11],[0.4,11.349],[0.425,11.603],[0.45,11.872],[0.475,12.155],[0.5,12.45],[0.525,12.757],[0.55,13.075],[0.575,13.403],[0.6,13.74],[0.625,14.087],[0.65,14.441],[0.675,14.803],[0.7,15.172],[0.725,15.548],[0.75,15.93],[0.775,16.317],[0.8,16.709],[0.825,17.107],[0.85,17.509],[0.875,17.915],[0.9,18.325],[0.925,18.739],[0.95,19.156],[0.975,19.576],[1.0,20.0]],"tone":"purple","ms":1600},{"dot":"e0","chart":"vol","at":[0,10],"text":"","tone":null},{"dot":"e1","chart":"vol","at":[1,20],"text":"","tone":null}]},{"cap":"With no other rule, the best split is the bottom of the curve: about 10.5% in Asset 1, for 9.79% volatility. Right there the slope is flat. That is the first-order condition: the derivative is zero.","do":[{"series":"flat","chart":"vol","pts":[[0.0,9.79],[0.22,9.79]],"tone":"green","width":4,"ms":600},{"dot":"min","chart":"vol","at":[0.105,9.79],"text":"lowest: 9.79%, slope flat","tone":"green","dx":-6,"dy":22,"anchor":"start"}]},{"cap":"Flat could mean a top, a bottom or a saddle. Check the bend: the curve turns up on both sides, like a bowl. That is the second-order condition, f″ > 0, so this is a true minimum.","do":[{"note":"bowl","chart":"vol","at":[0.03,18.2],"text":"bends up both ways:\na true minimum","tone":"green","size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"Now add a fence: the portfolio must expect 6%. Expected return is 4% + 4% × w₁, so only w₁ = 50% hits 6%. You are only allowed to stand on that line.","do":[{"series":"f6","chart":"vol","pts":[[0.5,8],[0.5,21]],"tone":"amber","dash":true,"label":"fence: return must be 6%","lat":[0.5,21],"ldx":8,"ldy":-12,"lanchor":"start"}]},{"cap":"The best point on the fence is half and half, at 12.45% volatility. That is well below the 15% you would get by just averaging the two assets' volatilities: the gain from diversification.","do":[{"dot":"p6","chart":"vol","at":[0.5,12.45],"text":"12.45%","tone":"amber","dx":-12,"dy":-16,"anchor":"end"},{"dot":"naive","chart":"vol","at":[0.5,15],"text":"plain average: 15%","tone":null,"dx":-12,"dy":0,"anchor":"end"}]},{"cap":"But the fence has a price: 12.45% instead of 9.79%, about 2.7 points more risk. The Lagrange multiplier measures that price at the margin: the extra risk for one more unit of target return.","do":[{"gap":"price","chart":"vol","top":[[0.485,12.45],[0.515,12.45]],"bot":[[0.485,9.79],[0.515,9.79]],"tone":"red","op":0.55},{"note":"pl","chart":"vol","at":[0.54,11.3],"text":"price of\nthe fence","tone":"red","size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"Move the fence to 7%: w₁ becomes 75% and risk 15.93%. Going from a 5% to a 6% target cost 2.3 points of volatility; from 6% to 7% it costs 3.5. Each extra point of return costs more than the last.","do":[{"dim":"f6"},{"dim":"price"},{"dim":"pl"},{"series":"f7","chart":"vol","pts":[[0.75,8],[0.75,19.5]],"tone":"red","dash":true},{"dot":"p7","chart":"vol","at":[0.75,15.93],"text":"7% target: 15.93%","tone":"red","dx":10,"dy":22,"anchor":"start"}]},{"cap":"With many assets you cannot read the answer off one line. The general picture: rings of equal risk around the no-fence minimum, and the fence as a line. The best point on the fence is where it just touches a ring.","do":[{"line":"r1","points":[[220.0,640.0],[219.4,635.8],[217.6,631.8],[214.6,628.0],[210.6,624.6],[205.7,621.6],[200.0,619.2],[193.7,617.4],[186.9,616.4],[180.0,616.0],[173.1,616.4],[166.3,617.4],[160.0,619.2],[154.3,621.6],[149.4,624.6],[145.4,628.0],[142.4,631.8],[140.6,635.8],[140.0,640.0],[140.6,644.2],[142.4,648.2],[145.4,652.0],[149.4,655.4],[154.3,658.4],[160.0,660.8],[166.3,662.6],[173.1,663.6],[180.0,664.0],[186.9,663.6],[193.7,662.6],[200.0,660.8],[205.7,658.4],[210.6,655.4],[214.6,652.0],[217.6,648.2],[219.4,644.2],[220.0,640.0]],"tone":null,"width":2,"ms":500},{"line":"r2","points":[[260.0,640.0],[258.8,631.7],[255.2,623.6],[249.3,616.0],[241.3,609.1],[231.4,603.2],[220.0,598.4],[207.4,594.9],[193.9,592.7],[180.0,592.0],[166.1,592.7],[152.6,594.9],[140.0,598.4],[128.6,603.2],[118.7,609.1],[110.7,616.0],[104.8,623.6],[101.2,631.7],[100.0,640.0],[101.2,648.3],[104.8,656.4],[110.7,664.0],[118.7,670.9],[128.6,676.8],[140.0,681.6],[152.6,685.1],[166.1,687.3],[180.0,688.0],[193.9,687.3],[207.4,685.1],[220.0,681.6],[231.4,676.8],[241.3,670.9],[249.3,664.0],[255.2,656.4],[258.8,648.3],[260.0,640.0]],"tone":"green","width":3,"ms":600},{"line":"r3","points":[[300.0,640.0],[298.2,627.5],[292.8,615.4],[283.9,604.0],[271.9,593.7],[257.1,584.8],[240.0,577.6],[221.0,572.3],[200.8,569.1],[180.0,568.0],[159.2,569.1],[139.0,572.3],[120.0,577.6],[102.9,584.8],[88.1,593.7],[76.1,604.0],[67.2,615.4],[61.8,627.5],[60.0,640.0],[61.8,652.5],[67.2,664.6],[76.1,676.0],[88.1,686.3],[102.9,695.2],[120.0,702.4],[139.0,707.7],[159.2,710.9],[180.0,712.0],[200.8,710.9],[221.0,707.7],[240.0,702.4],[257.1,695.2],[271.9,686.3],[283.9,676.0],[292.8,664.6],[298.2,652.5],[300.0,640.0]],"tone":null,"width":2,"ms":600},{"line":"fence","points":[[97.4,535.8],[365.4,670.7]],"tone":"amber","width":3,"ms":700},{"note":"fl","x":91.4,"y":533.8,"text":"fence","size":17,"anchor":"end","tone":"amber"},{"note":"xs","x":213.4,"y":623.2,"text":"x*","size":18,"anchor":"middle","tone":"green"}]},{"cap":"At that point, the direction in which risk rises fastest (∇f) points straight across the fence, along the same line as the fence's own gradient (∇g). If it leaned along the fence, sliding a little would still lower risk.","do":[{"line":"gf","points":[[231.4,603.2],[252.1,562.1]],"tone":"red","width":3,"ms":500},{"line":"gg","points":[[231.4,603.2],[210.7,644.3]],"tone":"purple","width":3,"ms":500},{"note":"gfl","x":260.1,"y":558.1,"text":"∇f","size":18,"anchor":"start","tone":"red"},{"note":"ggl","x":202.7,"y":648.3,"text":"∇g","size":18,"anchor":"end","tone":"purple"},{"box":"lag","x":390,"y":520,"w":200,"h":110,"text":"f′(x*) = λ g′(x*)\ngradients line up","tone":"purple","size":19}]},{"cap":"That is all a Lagrange multiplier says, and Markowitz in 1952 made portfolio choice exactly this problem: lowest variance for a target return. A real optimiser solves it for dozens of assets, and is only as good as the estimated returns you feed it.","do":[{"box":"mk","x":390,"y":646,"w":200,"h":110,"text":"Markowitz 1952:\nlowest risk for\na target return","tone":"green","size":19}]}]}</script>
+  </div>
+  <!-- WB:foundation_optimization_basics:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -584,6 +676,19 @@
       from one source against another without checking the sign convention
       each used is a subtle, common error.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative Monday</div>
+    <h3>The optimiser says: buy more than you have</h3>
+    <p>You run the two-asset portfolio from this lesson. Asset 1 expects 8% with 20% volatility, Asset 2 expects 4% with 10%, and their correlation is 0.3. Your client now wants a 10% target return. You type 10 into the calculator above. It says: put 150% of the money in Asset 1 and sell short 50% of Asset 2. Volatility comes out at 28.9%. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Put it on. The maths is exact, so the answer is optimal.<div class="tl-drill-why">It is exact for the inputs, not for the world. A 10% target is above the best asset's own 8%, so the only way there is borrowing plus a short sale, with more risk than either asset alone. And the 8% is only an estimate: if it is a little too high, the whole plan rests on a number that is not there.</div></li>
+      <li data-verdict="good">Show the client that 10% needs leverage, a short and 28.9% risk, and offer a lower target or a no-short rule.<div class="tl-drill-why">This reads the optimiser honestly. A no-short rule is an inequality fence: it caps Asset 1 at 100%, so the most this pair can deliver is 8% at 20% risk. Making the fence visible lets the client choose the trade-off with open eyes.</div></li>
+      <li data-verdict="ok">Cap Asset 1 at 100% and quietly deliver 8%.<div class="tl-drill-why">Safer, and the cap is a sensible rule. But it misses the target without saying so. The client should know that 10% cannot be reached without leverage.</div></li>
+      <li data-verdict="bad">Lower the correlation estimate until the risk looks acceptable.<div class="tl-drill-why">That bends the input to get the answer you want. The optimiser will obey, and the real risk will not change at all.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What to take from it.</strong> This is an illustrative situation built on the lesson's own two assets, not a historical event. The numbers check out in the calculator above: a 10% target gives \(w_1 = 1.500\), a short-position warning and \(\sigma_p = 28.90\%\). A constrained optimiser always obeys its fences and its inputs. Your job is to check both.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -685,6 +790,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="calculus-for-finance.html">Calculus for Finance: Derivatives, Integrals &amp; Taylor Series</a> <span>· what a slope and a curve's bend mean</span></li>
+        <li><a href="foundation-multivariable-calculus.html">Partial Derivatives &amp; Multivariable Calculus</a> <span>· the gradient and Hessian used here</span></li>
+        <li><a href="linear-algebra-matrices.html">Linear Algebra &amp; Matrices</a> <span>· the covariance matrix behind portfolio risk</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a> <span>· this problem with many assets</span></li>
+        <li><a href="convex-optimization.html">Convex Optimization</a> <span>· when a flat point is surely the best one</span></li>
+        <li><a href="linear-quadratic-programming.html">Linear &amp; Quadratic Programming</a> <span>· how solvers handle inequality fences</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every "best portfolio within these limits" a risk system hands you is this lesson's Lagrangian, and its multipliers tell you which limit is costing you the most.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="foundation-multivariable-calculus.html">← Partial Derivatives &amp; Multivariable Calculus</a>
     <a href="primer-stats-normal.html">Next: Descriptive Statistics &amp; the Normal Distribution →</a>
@@ -781,9 +907,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

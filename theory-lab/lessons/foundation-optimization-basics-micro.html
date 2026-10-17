@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Optimization Basics — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -189,7 +190,19 @@
       </div>
     </section>
 
+    <!-- WB:foundation_optimization_basics-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">The lowest-risk mix, then the best point on a fence</h2>
+      <!-- WB:foundation_optimization_basics:START -->
+      <div class="wb" data-title="The lowest-risk mix, then the best point on a fence">
+        <script type="application/json">{"w":600,"h":770,"intro":"Two assets, one portfolio, and the lesson's own numbers. First find the lowest-risk mix with no rules, then add a fence and find the best point on it. Press play, or step through.","steps":[{"cap":"Meet the two assets from the worked example. Asset 1 expects 8% a year, with 20% volatility. Asset 2 expects 4%, with 10% volatility. Their correlation is 0.3, so they only loosely move together.","do":[{"icon":"a1","name":"rocket","x":40,"y":2,"s":0.72,"tone":"amber","label":"Asset 1\n8% · 20% vol","lsize":17},{"icon":"a2","name":"shield","x":488,"y":2,"s":0.72,"tone":"blue","label":"Asset 2\n4% · 10% vol","lsize":17},{"note":"rho","x":300,"y":122,"text":"correlation 0.3","size":17,"anchor":"middle"}]},{"cap":"You split your money between them. Call the share in Asset 1 w₁. The rest, 1 − w₁, goes into Asset 2. Which split is best? Here, best means the lowest risk.","do":[{"icon":"pig","name":"piggy","x":262,"y":0,"s":0.72,"tone":"green","label":"your money","sym":"$","lsize":17},{"arrow":["pig","a1"],"label":"w₁","tone":"amber"},{"arrow":["pig","a2"],"label":"1 − w₁","tone":"blue"}]},{"cap":"Slide w₁ from 0% to 100% and plot the portfolio's volatility. All in Asset 2 is 10%; all in Asset 1 is 20%. In between, the curve sags, because the two assets don't move in lockstep.","do":[{"chart":"vol","x":10,"y":140,"w":580,"h":360,"title":"Risk (%) vs share in Asset 1","xd":[0,1],"yd":[8,21],"yt":[[10,"10%"],[15,"15%"],[20,"20%"]],"xt":[[0,"0%"],[0.25,"25%"],[0.5,"50%"],[0.75,"75%"],[1,"100%"]],"pl":56,"pr":20},{"series":"curve","chart":"vol","pts":[[0.0,10.0],[0.025,9.911],[0.05,9.846],[0.075,9.805],[0.1,9.788],[0.125,9.795],[0.15,9.826],[0.175,9.881],[0.2,9.96],[0.225,10.062],[0.25,10.186],[0.275,10.331],[0.3,10.498],[0.325,10.684],[0.35,10.888],[0.375,11.11],[0.4,11.349],[0.425,11.603],[0.45,11.872],[0.475,12.155],[0.5,12.45],[0.525,12.757],[0.55,13.075],[0.575,13.403],[0.6,13.74],[0.625,14.087],[0.65,14.441],[0.675,14.803],[0.7,15.172],[0.725,15.548],[0.75,15.93],[0.775,16.317],[0.8,16.709],[0.825,17.107],[0.85,17.509],[0.875,17.915],[0.9,18.325],[0.925,18.739],[0.95,19.156],[0.975,19.576],[1.0,20.0]],"tone":"purple","ms":1600},{"dot":"e0","chart":"vol","at":[0,10],"text":"","tone":null},{"dot":"e1","chart":"vol","at":[1,20],"text":"","tone":null}]},{"cap":"With no other rule, the best split is the bottom of the curve: about 10.5% in Asset 1, for 9.79% volatility. Right there the slope is flat. That is the first-order condition: the derivative is zero.","do":[{"series":"flat","chart":"vol","pts":[[0.0,9.79],[0.22,9.79]],"tone":"green","width":4,"ms":600},{"dot":"min","chart":"vol","at":[0.105,9.79],"text":"lowest: 9.79%, slope flat","tone":"green","dx":-6,"dy":22,"anchor":"start"}]},{"cap":"Flat could mean a top, a bottom or a saddle. Check the bend: the curve turns up on both sides, like a bowl. That is the second-order condition, f″ > 0, so this is a true minimum.","do":[{"note":"bowl","chart":"vol","at":[0.03,18.2],"text":"bends up both ways:\na true minimum","tone":"green","size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"Now add a fence: the portfolio must expect 6%. Expected return is 4% + 4% × w₁, so only w₁ = 50% hits 6%. You are only allowed to stand on that line.","do":[{"series":"f6","chart":"vol","pts":[[0.5,8],[0.5,21]],"tone":"amber","dash":true,"label":"fence: return must be 6%","lat":[0.5,21],"ldx":8,"ldy":-12,"lanchor":"start"}]},{"cap":"The best point on the fence is half and half, at 12.45% volatility. That is well below the 15% you would get by just averaging the two assets' volatilities: the gain from diversification.","do":[{"dot":"p6","chart":"vol","at":[0.5,12.45],"text":"12.45%","tone":"amber","dx":-12,"dy":-16,"anchor":"end"},{"dot":"naive","chart":"vol","at":[0.5,15],"text":"plain average: 15%","tone":null,"dx":-12,"dy":0,"anchor":"end"}]},{"cap":"But the fence has a price: 12.45% instead of 9.79%, about 2.7 points more risk. The Lagrange multiplier measures that price at the margin: the extra risk for one more unit of target return.","do":[{"gap":"price","chart":"vol","top":[[0.485,12.45],[0.515,12.45]],"bot":[[0.485,9.79],[0.515,9.79]],"tone":"red","op":0.55},{"note":"pl","chart":"vol","at":[0.54,11.3],"text":"price of\nthe fence","tone":"red","size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"Move the fence to 7%: w₁ becomes 75% and risk 15.93%. Going from a 5% to a 6% target cost 2.3 points of volatility; from 6% to 7% it costs 3.5. Each extra point of return costs more than the last.","do":[{"dim":"f6"},{"dim":"price"},{"dim":"pl"},{"series":"f7","chart":"vol","pts":[[0.75,8],[0.75,19.5]],"tone":"red","dash":true},{"dot":"p7","chart":"vol","at":[0.75,15.93],"text":"7% target: 15.93%","tone":"red","dx":10,"dy":22,"anchor":"start"}]},{"cap":"With many assets you cannot read the answer off one line. The general picture: rings of equal risk around the no-fence minimum, and the fence as a line. The best point on the fence is where it just touches a ring.","do":[{"line":"r1","points":[[220.0,640.0],[219.4,635.8],[217.6,631.8],[214.6,628.0],[210.6,624.6],[205.7,621.6],[200.0,619.2],[193.7,617.4],[186.9,616.4],[180.0,616.0],[173.1,616.4],[166.3,617.4],[160.0,619.2],[154.3,621.6],[149.4,624.6],[145.4,628.0],[142.4,631.8],[140.6,635.8],[140.0,640.0],[140.6,644.2],[142.4,648.2],[145.4,652.0],[149.4,655.4],[154.3,658.4],[160.0,660.8],[166.3,662.6],[173.1,663.6],[180.0,664.0],[186.9,663.6],[193.7,662.6],[200.0,660.8],[205.7,658.4],[210.6,655.4],[214.6,652.0],[217.6,648.2],[219.4,644.2],[220.0,640.0]],"tone":null,"width":2,"ms":500},{"line":"r2","points":[[260.0,640.0],[258.8,631.7],[255.2,623.6],[249.3,616.0],[241.3,609.1],[231.4,603.2],[220.0,598.4],[207.4,594.9],[193.9,592.7],[180.0,592.0],[166.1,592.7],[152.6,594.9],[140.0,598.4],[128.6,603.2],[118.7,609.1],[110.7,616.0],[104.8,623.6],[101.2,631.7],[100.0,640.0],[101.2,648.3],[104.8,656.4],[110.7,664.0],[118.7,670.9],[128.6,676.8],[140.0,681.6],[152.6,685.1],[166.1,687.3],[180.0,688.0],[193.9,687.3],[207.4,685.1],[220.0,681.6],[231.4,676.8],[241.3,670.9],[249.3,664.0],[255.2,656.4],[258.8,648.3],[260.0,640.0]],"tone":"green","width":3,"ms":600},{"line":"r3","points":[[300.0,640.0],[298.2,627.5],[292.8,615.4],[283.9,604.0],[271.9,593.7],[257.1,584.8],[240.0,577.6],[221.0,572.3],[200.8,569.1],[180.0,568.0],[159.2,569.1],[139.0,572.3],[120.0,577.6],[102.9,584.8],[88.1,593.7],[76.1,604.0],[67.2,615.4],[61.8,627.5],[60.0,640.0],[61.8,652.5],[67.2,664.6],[76.1,676.0],[88.1,686.3],[102.9,695.2],[120.0,702.4],[139.0,707.7],[159.2,710.9],[180.0,712.0],[200.8,710.9],[221.0,707.7],[240.0,702.4],[257.1,695.2],[271.9,686.3],[283.9,676.0],[292.8,664.6],[298.2,652.5],[300.0,640.0]],"tone":null,"width":2,"ms":600},{"line":"fence","points":[[97.4,535.8],[365.4,670.7]],"tone":"amber","width":3,"ms":700},{"note":"fl","x":91.4,"y":533.8,"text":"fence","size":17,"anchor":"end","tone":"amber"},{"note":"xs","x":213.4,"y":623.2,"text":"x*","size":18,"anchor":"middle","tone":"green"}]},{"cap":"At that point, the direction in which risk rises fastest (∇f) points straight across the fence, along the same line as the fence's own gradient (∇g). If it leaned along the fence, sliding a little would still lower risk.","do":[{"line":"gf","points":[[231.4,603.2],[252.1,562.1]],"tone":"red","width":3,"ms":500},{"line":"gg","points":[[231.4,603.2],[210.7,644.3]],"tone":"purple","width":3,"ms":500},{"note":"gfl","x":260.1,"y":558.1,"text":"∇f","size":18,"anchor":"start","tone":"red"},{"note":"ggl","x":202.7,"y":648.3,"text":"∇g","size":18,"anchor":"end","tone":"purple"},{"box":"lag","x":390,"y":520,"w":200,"h":110,"text":"f′(x*) = λ g′(x*)\ngradients line up","tone":"purple","size":19}]},{"cap":"That is all a Lagrange multiplier says, and Markowitz in 1952 made portfolio choice exactly this problem: lowest variance for a target return. A real optimiser solves it for dozens of assets, and is only as good as the estimated returns you feed it.","do":[{"box":"mk","x":390,"y":646,"w":200,"h":110,"text":"Markowitz 1952:\nlowest risk for\na target return","tone":"green","size":19}]}]}</script>
+      </div>
+      <!-- WB:foundation_optimization_basics:END -->
+    </section>
+    <!-- WB:foundation_optimization_basics-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Re-solve it yourself, live</h2>
       <p class="sl-sub">Starts on the worked example's exact numbers. Change any input and the weights and resulting volatility recompute instantly.</p>
@@ -213,7 +226,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Nobody solves a 50-asset Lagrangian by hand</h2>
       <p class="sl-sub">A numerical optimizer does the algebra. What survives into daily use is the vocabulary and the intuition.</p>
@@ -226,7 +239,7 @@
       <div class="sl-quote">Whenever a portfolio, risk, or calibration problem is described as finding the "best" something "subject to" some condition, the Lagrangian/KKT machinery is running underneath — whether or not the report ever uses the word.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Eyeballing the turn vs. checking the rule</h2>
       <p class="sl-sub">"Where does this curve stop falling and start rising" can be answered two ways.</p>
@@ -256,7 +269,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -307,7 +320,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -454,5 +467,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>
