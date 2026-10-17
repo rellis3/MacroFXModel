@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CoVaR — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <style>
   .cv-dot{fill:var(--text2);opacity:.8}
@@ -123,7 +124,19 @@
       <p class="sl-p">New here: <a href="quantile-regression-micro.html" style="color:var(--blue)">Quantile Regression</a> derives why minimizing the asymmetric pinball loss recovers a conditional quantile at all — that machinery isn't re-derived in this deck, just reused.</p>
     </section>
 
+    <!-- WB:institutional_covar-deck:START -->
     <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">CoVaR: one tail line, read twice</h2>
+      <!-- WB:institutional_covar:START -->
+      <div class="wb" data-title="CoVaR: one tail line, read twice">
+        <script type="application/json">{"w":600,"h":700,"intro":"Two institutions, ten days of the lesson's toy returns, and one tail line read twice. Press play, or step through.","steps":[{"cap":"Two institutions, i and j. Plain VaR looks at j alone: how bad is j's return on roughly the worst day in twenty?","do":[{"icon":"i","name":"bank","x":40,"y":6,"s":0.8,"tone":"red","label":"institution i","lsize":17},{"icon":"j","name":"bank","x":480,"y":6,"s":0.8,"tone":"blue","label":"institution j","lsize":17}]},{"cap":"CoVaR asks a different question: how bad is j's worst day in twenty when i is already in distress? It is a VaR of j, conditioned on someone else.","do":[{"arrow":["i","j"],"label":"spillover?","tone":"amber","dash":true,"id":"sp"}]},{"cap":"The lesson's ten toy days: i's return across, j's return up. They move together, and a few days are bad for both.","do":[{"chart":"sc","x":10,"y":150,"w":580,"h":330,"title":"j's return vs i's return (%)","xd":[-5,3],"yd":[-5,2.5],"yt":[[-4,"−4"],[-2,"−2"],[0,"0"],[2,"2"]],"xt":[[-4,"−4"],[-3,"−3"],[-2,"−2"],[0,"0"],[2,"2"]],"pl":44,"pr":14},{"dot":"p0","chart":"sc","at":[-4.5,-4.3],"text":"","tone":null,"r":5},{"dot":"p1","chart":"sc","at":[-3.0,-2.7],"text":"","tone":null,"r":5},{"dot":"p2","chart":"sc","at":[-2.0,-1.5],"text":"","tone":null,"r":5},{"dot":"p3","chart":"sc","at":[-1.0,-0.7],"text":"","tone":null,"r":5},{"dot":"p4","chart":"sc","at":[-0.5,-0.3],"text":"","tone":null,"r":5},{"dot":"p5","chart":"sc","at":[0.2,0.4],"text":"","tone":null,"r":5},{"dot":"p6","chart":"sc","at":[0.6,0.7],"text":"","tone":null,"r":5},{"dot":"p7","chart":"sc","at":[1.0,1.0],"text":"","tone":null,"r":5},{"dot":"p8","chart":"sc","at":[1.8,1.5],"text":"","tone":null,"r":5},{"dot":"p9","chart":"sc","at":[2.4,2.1],"text":"","tone":null,"r":5}]},{"cap":"A 5% quantile regression fits a line along the bottom edge of the cloud, not through its middle: j's 5th-percentile return given i. Here it is −0.4 + 0.8 × i. Only one of the ten points sits below it.","do":[{"series":"ql","chart":"sc","pts":[[-5,-4.4],[3,2.0]],"tone":"purple","ms":1200},{"note":"qll","chart":"sc","at":[-1.2,-1.36],"text":"slope 0.8","tone":"purple","size":18,"anchor":"start","dx":14,"dy":16},{"pulse":"p0"}]},{"cap":"A normal day for i: its median return, 0%. Read the line there. j's conditional 5% VaR is −0.4%.","do":[{"series":"hm","chart":"sc","pts":[[-5,-0.4],[0.0,-0.4]],"tone":"blue","dash":true,"ms":500},{"dot":"dm","chart":"sc","at":[0.0,-0.4],"text":"i normal: −0.4%","tone":"blue","r":8,"dx":12,"dy":22,"anchor":"start"}]},{"cap":"A distress day for i: its own 5% VaR, −3%. Read the same line there. j's conditional 5% VaR drops to −2.8%.","do":[{"series":"hd","chart":"sc","pts":[[-5,-2.8],[-3.0,-2.8]],"tone":"red","dash":true,"ms":500},{"dot":"dd","chart":"sc","at":[-3.0,-2.8],"text":"i in distress: −2.8%","tone":"red","r":8,"dx":14,"dy":24,"anchor":"start"}]},{"cap":"ΔCoVaR is the drop between the two readings: −2.8 − (−0.4) = −2.4 points. It strips out j's own baseline and keeps only the extra tail risk that comes with i's distress.","do":[{"gap":"dg","chart":"sc","top":[[-4.95,-0.4],[-4.55,-0.4]],"bot":[[-4.95,-2.8],[-4.55,-2.8]],"tone":"amber","op":0.6},{"note":"dgl","chart":"sc","at":[-4.5,-1.6],"text":"ΔCoVaR −2.4","tone":"amber","size":18,"anchor":"start","dx":6,"dy":0},{"pulse":"sp"}]},{"cap":"The shortcut: the intercept cancels, so ΔCoVaR is the slope times the distance between i's two states. 0.8 × (−3 − 0) = −2.4.","do":[{"box":"f","x":10,"y":494,"w":580,"h":52,"text":"ΔCoVaR = β × (VaR of i − median of i) = 0.8 × (−3) = −2.4","tone":"purple","size":19}]},{"cap":"If the slope were zero, the line would be flat. Both readings would be the same, and ΔCoVaR would be zero however bad i's day. The slope does all the systemic work.","do":[{"series":"flat","chart":"sc","pts":[[-5,-0.4],[3,-0.4]],"tone":"green","dash":true,"ms":700},{"note":"fl","chart":"sc","at":[3,-1.9],"text":"slope 0 → ΔCoVaR 0","tone":"green","size":17,"anchor":"end","dx":-4,"dy":0}]},{"cap":"Not CVaR. CVaR averages the losses inside one series' own tail. CoVaR conditions one series on a different series' distress. One letter apart, two different questions.","do":[{"dim":"flat"},{"dim":"fl"},{"box":"cv","x":10,"y":562,"w":285,"h":62,"text":"CVaR: average of j's\nown worst days","tone":"blue","size":18},{"box":"co","x":305,"y":562,"w":285,"h":62,"text":"CoVaR: j's bad day\ngiven i's bad day","tone":"purple","size":18}]},{"cap":"Two catches. A tail line fitted on few points is noisy. And a big ΔCoVaR shows the two move together in the tail, not that i's trouble causes j's. A shared shock can hit both.","do":[{"note":"end","x":300,"y":660,"text":"co-movement in the tail, not proof of cause","size":20,"anchor":"middle","tone":"red"}]}]}</script>
+      </div>
+      <!-- WB:institutional_covar:END -->
+    </section>
+    <!-- WB:institutional_covar-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Drag i's distress level, watch CoVaR and ΔCoVaR move — live</h2>
       <p class="sl-sub">Ten toy (i, j) return points and their fitted 5%-quantile line: q(j|i) = −0.4 + 0.8i. The blue marker (i at its median, 0%) stays fixed; drag i's distress level and the red marker slides along the line.</p>
@@ -177,7 +190,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">CoVaR vs. CVaR — one letter apart, completely different questions</h2>
       <div class="sl-compare">
@@ -196,7 +209,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">From banks to FX: an application by analogy</h2>
       <div class="sl-icard-grid">
@@ -207,7 +220,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Specify α, β, and both states of i — compute live</h2>
       <p class="sl-sub">Starts on the worked-example numbers. Change any field.</p>
@@ -231,7 +244,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How practitioners actually use it</h2>
       <div class="sl-icard-grid">
@@ -243,7 +256,7 @@
       <div class="sl-quote">Two EM currencies with nearly identical plain VaR can have very different ΔCoVaR against USD funding stress — one whose tail losses co-move strongly with funding conditions, one driven mostly by idiosyncratic factors. Plain VaR alone can't tell them apart; ΔCoVaR can.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where CoVaR gets over-trusted</h2>
       <div class="sl-icard-grid">
@@ -254,7 +267,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -314,7 +327,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -455,5 +468,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

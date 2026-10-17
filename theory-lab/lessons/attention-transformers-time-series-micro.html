@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Attention &amp; Transformers for Time Series — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -130,7 +131,19 @@
       </div>
     </section>
 
+    <!-- WB:attention_transformers_time_series-deck:START -->
     <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Attention: every day looks at every other day</h2>
+      <!-- WB:attention_transformers_time_series:START -->
+      <div class="wb" data-title="Attention: every day looks at every other day">
+        <script type="application/json">{"w":600,"h":830,"intro":"The lesson's worked example: one query looking back over three past days. First the old way, a relay; then attention, which looks at every day at once. Press play, or step through.","steps":[{"cap":"The old way. A recurrent network reads a series one day at a time. Each day's memory is built from the day before, so day 4 must wait for day 3, which waits for day 2.","do":[{"box":"h1","x":20,"y":30,"w":100,"h":60,"text":"day 1","tone":"chalk","sub":"h₁","size":19},{"box":"h2","x":165,"y":30,"w":100,"h":60,"text":"day 2","tone":"chalk","sub":"h₂","size":19},{"box":"h3","x":310,"y":30,"w":100,"h":60,"text":"day 3","tone":"chalk","sub":"h₃","size":19},{"box":"h4","x":455,"y":30,"w":100,"h":60,"text":"day 4","tone":"chalk","sub":"h₄","size":19},{"arrow":["h1","h2"]},{"arrow":["h2","h3"]},{"arrow":["h3","h4"]}]},{"cap":"News from day 1 reaches day 4 only by being retold at every step, squeezed a little each time: a game of telephone. And training cannot run the days in parallel.","do":[{"chip":"news","x":70,"y":118,"text":"day-1 news","tone":"amber"},{"move":"news","x":505,"y":118,"ms":1800},{"note":"relay","x":300,"y":150,"text":"three retellings, one after another","size":18,"anchor":"middle","tone":"red"}]},{"cap":"Attention throws out the line. Today's query, q = [1, 0], looks directly at every past day at once. Each day offers a key (what it contains) and a value (what it would hand over).","do":[{"dim":"h1"},{"dim":"h2"},{"dim":"h3"},{"dim":"h4"},{"hide":"news"},{"hide":"relay"},{"box":"q","x":200,"y":176,"w":200,"h":62,"text":"query (today)","tone":"purple","sub":"q = [1, 0]","size":19},{"box":"k1","x":20,"y":300,"w":160,"h":80,"text":"t−2\nkey [1, 0]","tone":"blue","sub":"value [2, 0]","size":18},{"box":"k2","x":220,"y":300,"w":160,"h":80,"text":"t−1\nkey [0, 1]","tone":"blue","sub":"value [0, 2]","size":18},{"box":"k3","x":420,"y":300,"w":160,"h":80,"text":"t\nkey [1, 1]","tone":"blue","sub":"value [1, 1]","size":18},{"arrow":["q","k1"],"tone":"purple"},{"arrow":["q","k2"],"tone":"purple"},{"arrow":["q","k3"],"tone":"purple"}]},{"cap":"Compare the query with each key by a dot product. A bigger number means a better match. The raw scores are 1, 0 and 1: days t−2 and t match, day t−1 does not.","do":[{"note":"z1","x":100,"y":400,"text":"score 1","size":19,"anchor":"middle","tone":"purple"},{"note":"z2","x":300,"y":400,"text":"score 0","size":19,"anchor":"middle","tone":"purple"},{"note":"z3","x":500,"y":400,"text":"score 1","size":19,"anchor":"middle","tone":"purple"}]},{"cap":"Scale the scores down by the square root of the key size. Here d_k = 2, so divide by about 1.414: the scores become 0.707, 0 and 0.707. This keeps softmax from saturating when the vectors are long.","do":[{"hide":"z1"},{"hide":"z2"},{"hide":"z3"},{"note":"s1","x":100,"y":400,"text":"÷ √2 = 0.707","size":19,"anchor":"middle","tone":"purple"},{"note":"s2","x":300,"y":400,"text":"0","size":19,"anchor":"middle","tone":"purple"},{"note":"s3","x":500,"y":400,"text":"÷ √2 = 0.707","size":19,"anchor":"middle","tone":"purple"}]},{"cap":"Softmax turns the scaled scores into weights that are never negative and add up to 1: 0.401, 0.198 and 0.401. The two matching days get about twice the weight of the one that missed.","do":[{"chart":"wch","x":10,"y":424,"w":290,"h":200,"title":"softmax weights","xd":[0.4,3.6],"yd":[0,1],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[1,"t−2"],[2,"t−1"],[3,"t"]],"pl":46},{"bars":"wb1","chart":"wch","data":[[1,0.401,"0.401","blue"],[2,0.198,"0.198","blue"],[3,0.401,"0.401","blue"]],"bw":42,"ms":1100}]},{"cap":"The output is the values blended by those weights: 0.401 × [2, 0] + 0.198 × [0, 2] + 0.401 × [1, 1] = [1.203, 0.797]. One computation, no relay: day t−2 was one hop away, just like day t.","do":[{"box":"out","x":340,"y":450,"w":240,"h":100,"text":"output\n= blend of values","tone":"green","sub":"[1.203, 0.797]","size":19},{"arrow":["wch","out"],"tone":"green"}]},{"cap":"Softmax is exponential. Lift the first score from 1 to 3 and its weight jumps from 0.401 to 0.734. The others shrink to 0.088 and 0.178, and the output swings towards day t−2's value: [1.646, 0.354].","do":[{"hide":"s1"},{"note":"s1b","x":100,"y":400,"text":"3 ÷ √2 = 2.121","size":19,"anchor":"middle","tone":"amber"},{"hide":"wb1"},{"bars":"wb3","chart":"wch","data":[[1,0.734,"0.734","amber"],[2,0.088,"0.088","amber"],[3,0.178,"0.178","amber"]],"bw":42,"ms":1100},{"sub":"out","text":"[1.646, 0.354]"}]},{"cap":"The price of everyone looking at everyone: n positions make n × n scores. A 60-day window is 3,600 scores; 1,000 bars is a million. Informer and the Temporal Fusion Transformer were built to tame this cost.","do":[{"box":"cost","x":20,"y":650,"w":270,"h":104,"text":"n × n scores\n60 days → 3,600\n1,000 bars → 1,000,000","tone":"amber","size":18}]},{"cap":"For forecasting, mask the future. Each day may attend only to itself and earlier days. Without a causal mask the model can read tomorrow, and the backtest looks brilliant for no real reason.","do":[{"box":"mask","x":310,"y":650,"w":270,"h":104,"text":"causal mask\nday t sees only\ndays up to t","tone":"red","size":18}]},{"cap":"Transformers won on huge text and image datasets. A two-year daily FX series is tiny and noisy by comparison. Use attention where the data is big, often text, and make it beat a tuned LSTM or linear model out of sample first.","do":[{"note":"end","x":300,"y":782,"text":"Big data: attention earns its keep.\nShort series: beat the simple model first.","size":19,"anchor":"middle","tone":"green"},{"pulse":"mask"},{"pulse":"cost"}]}]}</script>
+      </div>
+      <!-- WB:attention_transformers_time_series:END -->
+    </section>
+    <!-- WB:attention_transformers_time_series-deck:END -->
+
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Not every past step earns the same weight</h2>
       <p class="sl-sub">Drag the slider to change which day is asking the question. Watch which other days it weighs most heavily.</p>
@@ -174,7 +187,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Softmax, live: turning raw scores into weights that sum to one</h2>
       <p class="sl-sub">Four raw relevance scores for four past time steps. Softmax always produces non-negative weights that add to exactly 1.</p>
@@ -204,7 +217,7 @@
       <p class="sl-p">This is the exact softmax step from Attention(Q,K,V) = softmax(QKᵀ/√dₖ)V, isolated from the dot-product and scaling steps that come before it. In the full lesson's worked example, the raw scores come from q·kᵢ scaled by √dₖ; here, you're editing already-scaled scores directly to see softmax's behavior on its own — notice how a score that's merely "close to the top" (t0 here) still keeps a substantial share, while a clearly negative score (t−1) gets pushed toward — but never all the way to — zero.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Self-attention has no sense of order — so one gets added</h2>
       <div class="sl-compare">
@@ -223,7 +236,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Multi-head attention: several relevance judgments at once</h2>
       <p class="sl-sub">One attention computation learns one notion of "relevant." Multi-head attention runs several, in parallel, each with its own learned projections.</p>
@@ -236,7 +249,7 @@
       <div class="sl-quote">One friend reading a room notices who's standing close together; another notices eye contact; another notices the topic of conversation. Multi-head attention is asking several such readings for the same room at once, then combining all of them.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The Transformer: this mechanism, stacked</h2>
       <p class="sl-sub">A Transformer is built entirely around self-attention — stacked into layers, with two additions attention doesn't provide on its own.</p>
@@ -255,7 +268,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The catch: O(n²), and a reputation that doesn't automatically transfer</h2>
       <p class="sl-sub">"Everyone compares against everyone" has a real, named cost — and a real, named temptation to misuse the model's reputation.</p>
@@ -271,7 +284,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">A named example, built for forecasting: the Temporal Fusion Transformer</h2>
       <p class="sl-sub">Lim, Arık, Loeff &amp; Pfister, International Journal of Forecasting, 2021 — attention adapted specifically for time-series forecasting, not repurposed from language modeling.</p>
@@ -283,7 +296,7 @@
       <div class="sl-quote">A plain LSTM's final hidden state compresses 60 days of history into one vector with no direct record of which days mattered. An attention-based forecast's weights can say, explicitly: "day 41 and day 58 dominated this prediction, day 12 barely registered." That is genuinely useful for understanding a trained model — it is not, on its own, proof that what the model weighted constitutes real predictive edge, which stays a separate empirical question, exactly as it does for every other model in this curriculum.</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -334,7 +347,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -495,5 +508,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

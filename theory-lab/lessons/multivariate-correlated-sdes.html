@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Multivariate &amp; Correlated SDEs — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,175 @@
       <li>How it reached trading: from the 1990s, Cholesky-correlated shocks became the standard way to simulate baskets, spreads and portfolio VaR from published covariance matrices (RiskMetrics, 1994), with nearest-correlation repair (Higham, 2002) when the matrix is broken.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 222" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two scatter plots of the same 60 random draws. Left, two independent standard normal shocks z1 and z2 form a round cloud with sample correlation minus 0.08. An arrow labelled Cholesky mix, weights 0.6 and 0.8 for a target correlation of 0.6, leads to the right plot, where y1 equals z1 and y2 equals 0.6 z1 plus 0.8 z2. The cloud tilts upward, with sample correlation 0.58 against the target 0.6.">
+      <line class="tlp-line" x1="45" y1="110" x2="195" y2="110"/>
+      <line class="tlp-line" x1="120" y1="36" x2="120" y2="186"/>
+      <line class="tlp-line" x1="405" y1="110" x2="555" y2="110"/>
+      <line class="tlp-line" x1="480" y1="36" x2="480" y2="186"/>
+      <circle class="tlp-blue" cx="128.6" cy="108.6" r="3"/>
+      <circle class="tlp-blue" cx="140.5" cy="103.2" r="3"/>
+      <circle class="tlp-blue" cx="128.3" cy="134.6" r="3"/>
+      <circle class="tlp-blue" cx="87.4" cy="137.7" r="3"/>
+      <circle class="tlp-blue" cx="142.6" cy="105.0" r="3"/>
+      <circle class="tlp-blue" cx="131.2" cy="121.7" r="3"/>
+      <circle class="tlp-blue" cx="106.6" cy="104.1" r="3"/>
+      <circle class="tlp-blue" cx="134.5" cy="91.0" r="3"/>
+      <circle class="tlp-blue" cx="129.1" cy="151.2" r="3"/>
+      <circle class="tlp-blue" cx="127.4" cy="103.6" r="3"/>
+      <circle class="tlp-blue" cx="120.7" cy="79.4" r="3"/>
+      <circle class="tlp-blue" cx="133.7" cy="117.4" r="3"/>
+      <circle class="tlp-blue" cx="101.6" cy="130.3" r="3"/>
+      <circle class="tlp-blue" cx="115.9" cy="91.2" r="3"/>
+      <circle class="tlp-blue" cx="107.9" cy="103.7" r="3"/>
+      <circle class="tlp-blue" cx="135.0" cy="87.6" r="3"/>
+      <circle class="tlp-blue" cx="121.0" cy="118.6" r="3"/>
+      <circle class="tlp-blue" cx="112.7" cy="147.0" r="3"/>
+      <circle class="tlp-blue" cx="100.5" cy="112.8" r="3"/>
+      <circle class="tlp-blue" cx="113.6" cy="121.1" r="3"/>
+      <circle class="tlp-blue" cx="120.2" cy="90.6" r="3"/>
+      <circle class="tlp-blue" cx="113.1" cy="105.2" r="3"/>
+      <circle class="tlp-blue" cx="152.4" cy="150.8" r="3"/>
+      <circle class="tlp-blue" cx="145.2" cy="139.9" r="3"/>
+      <circle class="tlp-blue" cx="52.2" cy="87.9" r="3"/>
+      <circle class="tlp-blue" cx="72.8" cy="93.0" r="3"/>
+      <circle class="tlp-blue" cx="115.6" cy="126.0" r="3"/>
+      <circle class="tlp-blue" cx="109.4" cy="110.0" r="3"/>
+      <circle class="tlp-blue" cx="125.3" cy="98.9" r="3"/>
+      <circle class="tlp-blue" cx="125.4" cy="98.3" r="3"/>
+      <circle class="tlp-blue" cx="172.9" cy="88.1" r="3"/>
+      <circle class="tlp-blue" cx="92.2" cy="103.6" r="3"/>
+      <circle class="tlp-blue" cx="110.6" cy="112.4" r="3"/>
+      <circle class="tlp-blue" cx="171.1" cy="116.5" r="3"/>
+      <circle class="tlp-blue" cx="136.2" cy="83.6" r="3"/>
+      <circle class="tlp-blue" cx="136.6" cy="166.3" r="3"/>
+      <circle class="tlp-blue" cx="107.1" cy="113.5" r="3"/>
+      <circle class="tlp-blue" cx="78.8" cy="109.2" r="3"/>
+      <circle class="tlp-blue" cx="124.2" cy="145.6" r="3"/>
+      <circle class="tlp-blue" cx="122.7" cy="101.7" r="3"/>
+      <circle class="tlp-blue" cx="89.3" cy="126.3" r="3"/>
+      <circle class="tlp-blue" cx="102.9" cy="88.4" r="3"/>
+      <circle class="tlp-blue" cx="118.2" cy="113.1" r="3"/>
+      <circle class="tlp-blue" cx="96.4" cy="93.3" r="3"/>
+      <circle class="tlp-blue" cx="117.5" cy="79.5" r="3"/>
+      <circle class="tlp-blue" cx="122.4" cy="100.4" r="3"/>
+      <circle class="tlp-blue" cx="120.9" cy="131.9" r="3"/>
+      <circle class="tlp-blue" cx="107.3" cy="147.9" r="3"/>
+      <circle class="tlp-blue" cx="134.8" cy="66.2" r="3"/>
+      <circle class="tlp-blue" cx="142.3" cy="112.8" r="3"/>
+      <circle class="tlp-blue" cx="128.0" cy="127.2" r="3"/>
+      <circle class="tlp-blue" cx="99.5" cy="106.4" r="3"/>
+      <circle class="tlp-blue" cx="138.3" cy="114.8" r="3"/>
+      <circle class="tlp-blue" cx="107.5" cy="88.7" r="3"/>
+      <circle class="tlp-blue" cx="142.0" cy="109.2" r="3"/>
+      <circle class="tlp-blue" cx="93.2" cy="109.7" r="3"/>
+      <circle class="tlp-blue" cx="142.9" cy="127.9" r="3"/>
+      <circle class="tlp-blue" cx="119.5" cy="98.3" r="3"/>
+      <circle class="tlp-blue" cx="88.8" cy="135.8" r="3"/>
+      <circle class="tlp-blue" cx="112.2" cy="93.4" r="3"/>
+      <circle class="tlp-purple" cx="488.6" cy="103.7" r="3"/>
+      <circle class="tlp-purple" cx="500.5" cy="92.2" r="3"/>
+      <circle class="tlp-purple" cx="488.3" cy="124.7" r="3"/>
+      <circle class="tlp-purple" cx="447.4" cy="151.7" r="3"/>
+      <circle class="tlp-purple" cx="502.6" cy="92.4" r="3"/>
+      <circle class="tlp-purple" cx="491.2" cy="112.6" r="3"/>
+      <circle class="tlp-purple" cx="466.6" cy="113.3" r="3"/>
+      <circle class="tlp-purple" cx="494.5" cy="86.1" r="3"/>
+      <circle class="tlp-purple" cx="489.1" cy="137.5" r="3"/>
+      <circle class="tlp-purple" cx="487.4" cy="100.5" r="3"/>
+      <circle class="tlp-purple" cx="480.7" cy="85.1" r="3"/>
+      <circle class="tlp-purple" cx="493.7" cy="107.7" r="3"/>
+      <circle class="tlp-purple" cx="461.6" cy="137.3" r="3"/>
+      <circle class="tlp-purple" cx="475.9" cy="97.4" r="3"/>
+      <circle class="tlp-purple" cx="467.9" cy="112.2" r="3"/>
+      <circle class="tlp-purple" cx="495.0" cy="83.1" r="3"/>
+      <circle class="tlp-purple" cx="481.0" cy="116.3" r="3"/>
+      <circle class="tlp-purple" cx="472.7" cy="144.0" r="3"/>
+      <circle class="tlp-purple" cx="460.5" cy="123.9" r="3"/>
+      <circle class="tlp-purple" cx="473.6" cy="122.8" r="3"/>
+      <circle class="tlp-purple" cx="480.2" cy="94.4" r="3"/>
+      <circle class="tlp-purple" cx="473.1" cy="110.3" r="3"/>
+      <circle class="tlp-purple" cx="512.4" cy="123.2" r="3"/>
+      <circle class="tlp-purple" cx="505.2" cy="118.8" r="3"/>
+      <circle class="tlp-purple" cx="412.2" cy="133.0" r="3"/>
+      <circle class="tlp-purple" cx="432.8" cy="124.7" r="3"/>
+      <circle class="tlp-purple" cx="475.6" cy="125.4" r="3"/>
+      <circle class="tlp-purple" cx="469.4" cy="116.4" r="3"/>
+      <circle class="tlp-purple" cx="485.3" cy="97.9" r="3"/>
+      <circle class="tlp-purple" cx="485.4" cy="97.4" r="3"/>
+      <circle class="tlp-purple" cx="532.9" cy="60.7" r="3"/>
+      <circle class="tlp-purple" cx="452.2" cy="121.6" r="3"/>
+      <circle class="tlp-purple" cx="470.6" cy="117.6" r="3"/>
+      <circle class="tlp-purple" cx="531.1" cy="84.5" r="3"/>
+      <circle class="tlp-purple" cx="496.2" cy="79.2" r="3"/>
+      <circle class="tlp-purple" cx="496.6" cy="145.1" r="3"/>
+      <circle class="tlp-purple" cx="467.1" cy="120.5" r="3"/>
+      <circle class="tlp-purple" cx="438.8" cy="134.1" r="3"/>
+      <circle class="tlp-purple" cx="484.2" cy="136.0" r="3"/>
+      <circle class="tlp-purple" cx="482.7" cy="101.7" r="3"/>
+      <circle class="tlp-purple" cx="449.3" cy="141.4" r="3"/>
+      <circle class="tlp-purple" cx="462.9" cy="103.0" r="3"/>
+      <circle class="tlp-purple" cx="478.2" cy="113.6" r="3"/>
+      <circle class="tlp-purple" cx="456.4" cy="110.8" r="3"/>
+      <circle class="tlp-purple" cx="477.5" cy="87.1" r="3"/>
+      <circle class="tlp-purple" cx="482.4" cy="100.9" r="3"/>
+      <circle class="tlp-purple" cx="480.9" cy="127.0" r="3"/>
+      <circle class="tlp-purple" cx="467.3" cy="147.9" r="3"/>
+      <circle class="tlp-purple" cx="494.8" cy="66.0" r="3"/>
+      <circle class="tlp-purple" cx="502.3" cy="98.9" r="3"/>
+      <circle class="tlp-purple" cx="488.0" cy="119.0" r="3"/>
+      <circle class="tlp-purple" cx="459.5" cy="119.4" r="3"/>
+      <circle class="tlp-purple" cx="498.3" cy="102.9" r="3"/>
+      <circle class="tlp-purple" cx="467.5" cy="100.5" r="3"/>
+      <circle class="tlp-purple" cx="502.0" cy="96.1" r="3"/>
+      <circle class="tlp-purple" cx="453.2" cy="125.8" r="3"/>
+      <circle class="tlp-purple" cx="502.9" cy="110.6" r="3"/>
+      <circle class="tlp-purple" cx="479.5" cy="100.9" r="3"/>
+      <circle class="tlp-purple" cx="448.8" cy="149.4" r="3"/>
+      <circle class="tlp-purple" cx="472.2" cy="101.4" r="3"/>
+      <text class="tlp-blue" x="120" y="22" text-anchor="middle" font-size="13" font-weight="700">two independent shocks</text>
+      <text class="tlp-purple" x="480" y="22" text-anchor="middle" font-size="13" font-weight="700">y₂ = 0.6 z₁ + 0.8 z₂</text>
+      <line class="tlp-line amber thick" x1="215" y1="110" x2="377" y2="110"/>
+      <polygon class="tlp-amber" points="385.0,110.0 375.0,115.0 375.0,105.0"/>
+      <text class="tlp-amber" x="300" y="100" text-anchor="middle" font-size="13" font-weight="700">Cholesky mix</text>
+      <text class="tlp-text2" x="300" y="130" text-anchor="middle" font-size="12">target ρ = 0.6:</text>
+      <text class="tlp-text2" x="300" y="146" text-anchor="middle" font-size="12">weights 0.6 and 0.8</text>
+      <text class="tlp-text3" x="198" y="106" text-anchor="end" font-size="12">z₁</text>
+      <text class="tlp-text3" x="126" y="44" font-size="12">z₂</text>
+      <text class="tlp-text3" x="558" y="106" text-anchor="end" font-size="12">y₁</text>
+      <text class="tlp-text3" x="486" y="44" font-size="12">y₂</text>
+      <text class="tlp-blue" x="120" y="208" text-anchor="middle" font-size="13">sample corr −0.08</text>
+      <text class="tlp-purple" x="480" y="208" text-anchor="middle" font-size="13">sample corr 0.58</text>
+    </svg>
+    <figcaption>The same 60 random draws, before and after mixing. Nothing about the raw shocks changes: re-using part of the first shock in the second is what tilts the cloud. With 60 draws the sample correlation lands near 0.6, not on it.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I run euro-dollar and sterling-dollar together. Both have the dollar in them. How does a simulation make them move together?</p>
+      <p data-who="Quant">Start with two completely independent random shocks, like two separate dice. On their own they say nothing about each other.</p>
+      <p data-who="Trader">So where does the link come from?</p>
+      <p data-who="Quant">From mixing. The first pair takes the first shock as it is. The second pair takes a slice of the first shock plus a slice of a fresh one. Because it re-uses part of the first, the two move together.</p>
+      <p data-who="Trader">How big are the slices?</p>
+      <p data-who="Quant">For a target correlation of point six: point six of the first shock and point eight of the new one. The point eight is the square root of one minus point six squared, which keeps the total variance at exactly one.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">If both raw shocks come up at one, the first pair's shock is one and the second pair's is point six plus point eight, so one point four. Run that over many draws and the correlation comes out at point six.</p>
+      <p data-who="Trader">And with more than two pairs?</p>
+      <p data-who="Quant">The same idea with a matrix. You factor the correlation matrix into a lower-triangular piece, the Cholesky factor, and push independent shocks through it. The two-pair formula is just the smallest case. Heston's price and variance use exactly that.</p>
+      <p data-who="Trader">Will my simulated correlation hit point six exactly?</p>
+      <p data-who="Quant">Not on a small run. In the lesson, fifty paths gave point six five five. Five thousand gave point six oh oh, and a hundred thousand gave point six oh two. That's ordinary sampling noise shrinking, not a bug.</p>
+      <p data-who="Trader">Where does this bite on a desk?</p>
+      <p data-who="Quant">Value at risk. Hold euro-dollar, sterling-dollar and euro-sterling, and you really have two sources of risk, not three. Simulate them independently and the number is wrong. Simulate them from one correlated set of shocks and it reflects how they actually move.</p>
+      <p data-who="Trader">Anything that can break it?</p>
+      <p data-who="Quant">A correlation matrix stitched together from different sources can be invalid, and then the factoring simply fails. Banks hit that so often that Higham wrote a 2002 paper on repairing it to the nearest valid matrix, and that repair is now a standard step.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Keep the raw shocks independent, and put all the correlation into one mixing step you can check.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -105,6 +275,31 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the recipe build</div>
+    <div class="tl-eqbuild-title">From a vector SDE to correlated shocks, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ dX_t = \color{#fbbf24}{\mu(X_t,t)\,dt} \]</div>
+      <p>Stack \(n\) processes into one vector \(X_t\), each with its own drift.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ dX_t = \mu(X_t,t)\,dt + \color{#fbbf24}{\Sigma(X_t,t)\,dW_t} \]</div>
+      <p>Add noise from a vector \(W_t\) of independent Brownian motions. All the correlation lives in the mixing matrix \(\Sigma\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Cov}(dX_t) = \color{#fbbf24}{\Sigma\Sigma^T}\,dt \]</div>
+      <p>Given the mixing, the covariance follows for free. In practice you run it backwards: start from the correlation you want.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \rho = \color{#fbbf24}{L L^T}, \qquad L = \begin{pmatrix} 1 & 0 \\ \rho & \sqrt{1-\rho^2} \end{pmatrix} \]</div>
+      <p>The Cholesky factor \(L\) is that backwards step. For two processes it has this closed form.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{dW^2_{\text{corr}} = 0.6\,dW^1_{\text{ind}} + 0.8\,dW^2_{\text{ind}}} \]</div>
+      <p>At \(\rho = 0.6\): re-use 0.6 of the first independent shock and add 0.8 of a fresh one. Variance \(0.36 + 0.64 = 1\), correlation 0.6.</p>
+    </div>
+  </div>
+
 
   <h3>1. The vector SDE</h3>
   <p>
@@ -299,6 +494,10 @@
       unit shocks \(z_1=z_2=1.00\); change any input and the Cholesky factor
       entries and the resulting correlated shocks recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="0.2" data-tol="0.02">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With \(\rho = 0.6\) and both raw shocks at 1.00, the second correlated shock is 1.400. Flip the target to \(\rho = -0.6\), keeping \(z_1 = z_2 = 1.00\). What is \(dW^2_{\text{corr}}\) now? Lock in a guess, then set the target field to \(-0.6\) below to check.</div>
+      <div class="tl-predict-reveal"><p><strong>0.200.</strong> \(L_{22} = \sqrt{1 - 0.36} = 0.8\) is unchanged, but the slice of the first shock flips sign: \(-0.6 \times 1 + 0.8 \times 1 = 0.2\). A big positive first shock now drags the second one down. Next try \(\rho = 0.99\): almost all of the second shock is a copy of the first.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Target &rho;</span></div>
@@ -377,6 +576,12 @@
     </p>
   </div>
 
+  <!-- WB:multivariate_correlated_sdes:START -->
+  <div class="wb" id="wb-multivariate_correlated_sdes" data-title="Mixing independent shocks into correlated ones, step by step">
+    <script type="application/json">{"w":600,"h":640,"intro":"How two independent random shocks become two correlated ones, using the lesson's own ρ = 0.6, then what can break it on a risk desk. Press play, or step through.","steps":[{"cap":"Start with two completely independent random shocks, like two separate dice: z₁ and z₂. On their own they say nothing about each other.","do":[{"icon":"d1","name":"dice","x":20,"y":14,"s":0.75,"tone":"blue","label":"z₁","lsize":18},{"icon":"d2","name":"dice","x":20,"y":140,"s":0.75,"tone":"blue","label":"z₂","lsize":18}]},{"cap":"We want a correlation of 0.6. The Cholesky factor of that target is a 2×2 mixing recipe: the second row is 0.6 and √(1 − 0.6²) = 0.8.","do":[{"box":"L","x":205,"y":70,"w":190,"h":110,"text":"Cholesky L\nrow 1:  1,  0\nrow 2:  0.6,  0.8","tone":"amber","size":19},{"arrow":["d1","L"],"tone":"blue","id":"a1"},{"arrow":["d2","L"],"tone":"blue","id":"a2"}]},{"cap":"The first output just passes the first shock through: y₁ = z₁.","do":[{"box":"y1","x":440,"y":20,"w":150,"h":70,"text":"y₁ = z₁","tone":"purple","size":19},{"arrow":["L","y1"],"tone":"purple","id":"a3"}]},{"cap":"The second re-uses 0.6 of the first shock and adds 0.8 of a fresh one: y₂ = 0.6 z₁ + 0.8 z₂. Because it shares part of z₁, it moves with y₁.","do":[{"box":"y2","x":440,"y":160,"w":150,"h":70,"text":"y₂ = 0.6z₁\n+ 0.8z₂","tone":"purple","size":18},{"arrow":["L","y2"],"tone":"purple","id":"a4"}]},{"cap":"Try it with both raw shocks at 1.00: y₁ = 1.000 and y₂ = 0.6 + 0.8 = 1.400, exactly what the lesson's scratchpad shows.","do":[{"sub":"y1","text":"= 1.000"},{"sub":"y2","text":"= 1.400"}]},{"cap":"Check the recipe: the variance of y₂ is 0.6² + 0.8² = 0.36 + 0.64 = 1, and its correlation with y₁ is 0.6. Right by construction, not by trial and error.","do":[{"note":"chk","x":300,"y":262,"text":"variance 0.36 + 0.64 = 1 · correlation 0.6","size":19,"anchor":"middle","tone":"green"}]},{"cap":"Here are 59 illustrative random draws. Left, the raw shocks: a round cloud, sample correlation 0.08. Right, the same draws after mixing: the cloud tilts, sample correlation 0.67, near the 0.6 target.","do":[{"chart":"ind","x":10,"y":290,"w":285,"h":320,"title":"raw: z₁ vs z₂ · corr 0.08","xd":[-2.8,2.8],"yd":[-2.8,2.8],"yt":[[0,"0"]],"xt":[[0,"0"]],"pl":30,"pr":10,"zero":true},{"chart":"mix","x":305,"y":290,"w":285,"h":320,"title":"mixed: y₁ vs y₂ · corr 0.67","xd":[-2.8,2.8],"yd":[-2.8,2.8],"yt":[[0,"0"]],"xt":[[0,"0"]],"pl":30,"pr":10,"zero":true},{"dot":"zi0","chart":"ind","at":[-1.224,0.378],"text":"","tone":"blue"},{"dot":"zi1","chart":"ind","at":[0.995,-0.513],"text":"","tone":"blue"},{"dot":"zi2","chart":"ind","at":[-1.329,-0.066],"text":"","tone":"blue"},{"dot":"zi3","chart":"ind","at":[0.478,1.098],"text":"","tone":"blue"},{"dot":"zi4","chart":"ind","at":[-1.216,-1.293],"text":"","tone":"blue"},{"dot":"zi5","chart":"ind","at":[0.706,0.474],"text":"","tone":"blue"},{"dot":"zi6","chart":"ind","at":[1.534,0.982],"text":"","tone":"blue"},{"dot":"zi7","chart":"ind","at":[-0.102,-0.274],"text":"","tone":"blue"},{"dot":"zi8","chart":"ind","at":[2.571,-0.289],"text":"","tone":"blue"},{"dot":"zi9","chart":"ind","at":[-0.785,-1.138],"text":"","tone":"blue"},{"dot":"zi10","chart":"ind","at":[0.095,0.145],"text":"","tone":"blue"},{"dot":"zi11","chart":"ind","at":[-0.345,-0.062],"text":"","tone":"blue"},{"dot":"zi12","chart":"ind","at":[0.273,0.692],"text":"","tone":"blue"},{"dot":"zi13","chart":"ind","at":[1.097,0.21],"text":"","tone":"blue"},{"dot":"zi14","chart":"ind","at":[-1.79,0.702],"text":"","tone":"blue"},{"dot":"zi15","chart":"ind","at":[-1.42,-0.171],"text":"","tone":"blue"},{"dot":"zi16","chart":"ind","at":[-1.474,0.002],"text":"","tone":"blue"},{"dot":"zi17","chart":"ind","at":[-0.779,0.214],"text":"","tone":"blue"},{"dot":"zi18","chart":"ind","at":[0.842,-1.323],"text":"","tone":"blue"},{"dot":"zi19","chart":"ind","at":[-0.288,0.662],"text":"","tone":"blue"},{"dot":"zi20","chart":"ind","at":[-0.093,0.37],"text":"","tone":"blue"},{"dot":"zi21","chart":"ind","at":[0.103,-1.006],"text":"","tone":"blue"},{"dot":"zi22","chart":"ind","at":[0.564,-0.812],"text":"","tone":"blue"},{"dot":"zi23","chart":"ind","at":[1.872,-0.505],"text":"","tone":"blue"},{"dot":"zi24","chart":"ind","at":[0.686,0.002],"text":"","tone":"blue"},{"dot":"zi25","chart":"ind","at":[0.952,-0.602],"text":"","tone":"blue"},{"dot":"zi26","chart":"ind","at":[0.999,-0.124],"text":"","tone":"blue"},{"dot":"zi27","chart":"ind","at":[1.263,0.624],"text":"","tone":"blue"},{"dot":"zi28","chart":"ind","at":[0.141,-0.78],"text":"","tone":"blue"},{"dot":"zi29","chart":"ind","at":[0.768,0.468],"text":"","tone":"blue"},{"dot":"zi30","chart":"ind","at":[1.642,-0.377],"text":"","tone":"blue"},{"dot":"zi31","chart":"ind","at":[0.555,0.508],"text":"","tone":"blue"},{"dot":"zi32","chart":"ind","at":[0.283,0.208],"text":"","tone":"blue"},{"dot":"zi33","chart":"ind","at":[0.182,-0.598],"text":"","tone":"blue"},{"dot":"zi34","chart":"ind","at":[-1.014,-0.396],"text":"","tone":"blue"},{"dot":"zi35","chart":"ind","at":[0.591,1.511],"text":"","tone":"blue"},{"dot":"zi36","chart":"ind","at":[0.977,1.053],"text":"","tone":"blue"},{"dot":"zi37","chart":"ind","at":[0.777,0.698],"text":"","tone":"blue"},{"dot":"zi38","chart":"ind","at":[0.183,0.772],"text":"","tone":"blue"},{"dot":"zi39","chart":"ind","at":[1.774,-0.328],"text":"","tone":"blue"},{"dot":"zi40","chart":"ind","at":[-0.694,1.96],"text":"","tone":"blue"},{"dot":"zi41","chart":"ind","at":[0.245,0.971],"text":"","tone":"blue"},{"dot":"zi42","chart":"ind","at":[0.874,-1.136],"text":"","tone":"blue"},{"dot":"zi43","chart":"ind","at":[2.433,1.776],"text":"","tone":"blue"},{"dot":"zi44","chart":"ind","at":[0.177,0.752],"text":"","tone":"blue"},{"dot":"zi45","chart":"ind","at":[0.127,-0.884],"text":"","tone":"blue"},{"dot":"zi46","chart":"ind","at":[-0.112,0.374],"text":"","tone":"blue"},{"dot":"zi47","chart":"ind","at":[1.116,0.709],"text":"","tone":"blue"},{"dot":"zi48","chart":"ind","at":[0.06,1.355],"text":"","tone":"blue"},{"dot":"zi49","chart":"ind","at":[-0.761,0.793],"text":"","tone":"blue"},{"dot":"zi50","chart":"ind","at":[1.112,-0.292],"text":"","tone":"blue"},{"dot":"zi51","chart":"ind","at":[-1.791,-0.906],"text":"","tone":"blue"},{"dot":"zi52","chart":"ind","at":[0.237,0.528],"text":"","tone":"blue"},{"dot":"zi53","chart":"ind","at":[1.548,-1.004],"text":"","tone":"blue"},{"dot":"zi54","chart":"ind","at":[0.002,0.649],"text":"","tone":"blue"},{"dot":"zi55","chart":"ind","at":[-0.158,-2.37],"text":"","tone":"blue"},{"dot":"zi56","chart":"ind","at":[0.806,2.312],"text":"","tone":"blue"},{"dot":"zi57","chart":"ind","at":[1.004,-0.917],"text":"","tone":"blue"},{"dot":"zi58","chart":"ind","at":[-0.412,0.222],"text":"","tone":"blue"},{"dot":"ym0","chart":"mix","at":[-1.224,-0.432],"text":"","tone":"purple"},{"dot":"ym1","chart":"mix","at":[0.995,0.186],"text":"","tone":"purple"},{"dot":"ym2","chart":"mix","at":[-1.329,-0.85],"text":"","tone":"purple"},{"dot":"ym3","chart":"mix","at":[0.478,1.165],"text":"","tone":"purple"},{"dot":"ym4","chart":"mix","at":[-1.216,-1.764],"text":"","tone":"purple"},{"dot":"ym5","chart":"mix","at":[0.706,0.803],"text":"","tone":"purple"},{"dot":"ym6","chart":"mix","at":[1.534,1.706],"text":"","tone":"purple"},{"dot":"ym7","chart":"mix","at":[-0.102,-0.28],"text":"","tone":"purple"},{"dot":"ym8","chart":"mix","at":[2.571,1.311],"text":"","tone":"purple"},{"dot":"ym9","chart":"mix","at":[-0.785,-1.382],"text":"","tone":"purple"},{"dot":"ym10","chart":"mix","at":[0.095,0.174],"text":"","tone":"purple"},{"dot":"ym11","chart":"mix","at":[-0.345,-0.257],"text":"","tone":"purple"},{"dot":"ym12","chart":"mix","at":[0.273,0.718],"text":"","tone":"purple"},{"dot":"ym13","chart":"mix","at":[1.097,0.826],"text":"","tone":"purple"},{"dot":"ym14","chart":"mix","at":[-1.79,-0.512],"text":"","tone":"purple"},{"dot":"ym15","chart":"mix","at":[-1.42,-0.989],"text":"","tone":"purple"},{"dot":"ym16","chart":"mix","at":[-1.474,-0.883],"text":"","tone":"purple"},{"dot":"ym17","chart":"mix","at":[-0.779,-0.296],"text":"","tone":"purple"},{"dot":"ym18","chart":"mix","at":[0.842,-0.553],"text":"","tone":"purple"},{"dot":"ym19","chart":"mix","at":[-0.288,0.357],"text":"","tone":"purple"},{"dot":"ym20","chart":"mix","at":[-0.093,0.241],"text":"","tone":"purple"},{"dot":"ym21","chart":"mix","at":[0.103,-0.743],"text":"","tone":"purple"},{"dot":"ym22","chart":"mix","at":[0.564,-0.311],"text":"","tone":"purple"},{"dot":"ym23","chart":"mix","at":[1.872,0.719],"text":"","tone":"purple"},{"dot":"ym24","chart":"mix","at":[0.686,0.414],"text":"","tone":"purple"},{"dot":"ym25","chart":"mix","at":[0.952,0.09],"text":"","tone":"purple"},{"dot":"ym26","chart":"mix","at":[0.999,0.5],"text":"","tone":"purple"},{"dot":"ym27","chart":"mix","at":[1.263,1.257],"text":"","tone":"purple"},{"dot":"ym28","chart":"mix","at":[0.141,-0.539],"text":"","tone":"purple"},{"dot":"ym29","chart":"mix","at":[0.768,0.835],"text":"","tone":"purple"},{"dot":"ym30","chart":"mix","at":[1.642,0.684],"text":"","tone":"purple"},{"dot":"ym31","chart":"mix","at":[0.555,0.739],"text":"","tone":"purple"},{"dot":"ym32","chart":"mix","at":[0.283,0.337],"text":"","tone":"purple"},{"dot":"ym33","chart":"mix","at":[0.182,-0.369],"text":"","tone":"purple"},{"dot":"ym34","chart":"mix","at":[-1.014,-0.926],"text":"","tone":"purple"},{"dot":"ym35","chart":"mix","at":[0.591,1.563],"text":"","tone":"purple"},{"dot":"ym36","chart":"mix","at":[0.977,1.429],"text":"","tone":"purple"},{"dot":"ym37","chart":"mix","at":[0.777,1.025],"text":"","tone":"purple"},{"dot":"ym38","chart":"mix","at":[0.183,0.727],"text":"","tone":"purple"},{"dot":"ym39","chart":"mix","at":[1.774,0.802],"text":"","tone":"purple"},{"dot":"ym40","chart":"mix","at":[-0.694,1.152],"text":"","tone":"purple"},{"dot":"ym41","chart":"mix","at":[0.245,0.924],"text":"","tone":"purple"},{"dot":"ym42","chart":"mix","at":[0.874,-0.384],"text":"","tone":"purple"},{"dot":"ym43","chart":"mix","at":[2.433,2.881],"text":"","tone":"purple"},{"dot":"ym44","chart":"mix","at":[0.177,0.708],"text":"","tone":"purple"},{"dot":"ym45","chart":"mix","at":[0.127,-0.631],"text":"","tone":"purple"},{"dot":"ym46","chart":"mix","at":[-0.112,0.232],"text":"","tone":"purple"},{"dot":"ym47","chart":"mix","at":[1.116,1.237],"text":"","tone":"purple"},{"dot":"ym48","chart":"mix","at":[0.06,1.12],"text":"","tone":"purple"},{"dot":"ym49","chart":"mix","at":[-0.761,0.178],"text":"","tone":"purple"},{"dot":"ym50","chart":"mix","at":[1.112,0.434],"text":"","tone":"purple"},{"dot":"ym51","chart":"mix","at":[-1.791,-1.799],"text":"","tone":"purple"},{"dot":"ym52","chart":"mix","at":[0.237,0.564],"text":"","tone":"purple"},{"dot":"ym53","chart":"mix","at":[1.548,0.126],"text":"","tone":"purple"},{"dot":"ym54","chart":"mix","at":[0.002,0.52],"text":"","tone":"purple"},{"dot":"ym55","chart":"mix","at":[-0.158,-1.99],"text":"","tone":"purple"},{"dot":"ym56","chart":"mix","at":[0.806,2.334],"text":"","tone":"purple"},{"dot":"ym57","chart":"mix","at":[1.004,-0.131],"text":"","tone":"purple"},{"dot":"ym58","chart":"mix","at":[-0.412,-0.07],"text":"","tone":"purple"}]},{"cap":"A small run will not hit 0.6 exactly. In the lesson's simulation, 50 paths gave 0.655, 5,000 gave 0.600 and 100,000 gave 0.602. That is ordinary sampling noise shrinking.","do":[{"hide":"ind"},{"hide":"mix"},{"hide":"ci"},{"hide":"cm"},{"hide":"zi0"},{"hide":"zi1"},{"hide":"zi2"},{"hide":"zi3"},{"hide":"zi4"},{"hide":"zi5"},{"hide":"zi6"},{"hide":"zi7"},{"hide":"zi8"},{"hide":"zi9"},{"hide":"zi10"},{"hide":"zi11"},{"hide":"zi12"},{"hide":"zi13"},{"hide":"zi14"},{"hide":"zi15"},{"hide":"zi16"},{"hide":"zi17"},{"hide":"zi18"},{"hide":"zi19"},{"hide":"zi20"},{"hide":"zi21"},{"hide":"zi22"},{"hide":"zi23"},{"hide":"zi24"},{"hide":"zi25"},{"hide":"zi26"},{"hide":"zi27"},{"hide":"zi28"},{"hide":"zi29"},{"hide":"zi30"},{"hide":"zi31"},{"hide":"zi32"},{"hide":"zi33"},{"hide":"zi34"},{"hide":"zi35"},{"hide":"zi36"},{"hide":"zi37"},{"hide":"zi38"},{"hide":"zi39"},{"hide":"zi40"},{"hide":"zi41"},{"hide":"zi42"},{"hide":"zi43"},{"hide":"zi44"},{"hide":"zi45"},{"hide":"zi46"},{"hide":"zi47"},{"hide":"zi48"},{"hide":"zi49"},{"hide":"zi50"},{"hide":"zi51"},{"hide":"zi52"},{"hide":"zi53"},{"hide":"zi54"},{"hide":"zi55"},{"hide":"zi56"},{"hide":"zi57"},{"hide":"zi58"},{"hide":"ym0"},{"hide":"ym1"},{"hide":"ym2"},{"hide":"ym3"},{"hide":"ym4"},{"hide":"ym5"},{"hide":"ym6"},{"hide":"ym7"},{"hide":"ym8"},{"hide":"ym9"},{"hide":"ym10"},{"hide":"ym11"},{"hide":"ym12"},{"hide":"ym13"},{"hide":"ym14"},{"hide":"ym15"},{"hide":"ym16"},{"hide":"ym17"},{"hide":"ym18"},{"hide":"ym19"},{"hide":"ym20"},{"hide":"ym21"},{"hide":"ym22"},{"hide":"ym23"},{"hide":"ym24"},{"hide":"ym25"},{"hide":"ym26"},{"hide":"ym27"},{"hide":"ym28"},{"hide":"ym29"},{"hide":"ym30"},{"hide":"ym31"},{"hide":"ym32"},{"hide":"ym33"},{"hide":"ym34"},{"hide":"ym35"},{"hide":"ym36"},{"hide":"ym37"},{"hide":"ym38"},{"hide":"ym39"},{"hide":"ym40"},{"hide":"ym41"},{"hide":"ym42"},{"hide":"ym43"},{"hide":"ym44"},{"hide":"ym45"},{"hide":"ym46"},{"hide":"ym47"},{"hide":"ym48"},{"hide":"ym49"},{"hide":"ym50"},{"hide":"ym51"},{"hide":"ym52"},{"hide":"ym53"},{"hide":"ym54"},{"hide":"ym55"},{"hide":"ym56"},{"hide":"ym57"},{"hide":"ym58"},{"chart":"cv","x":10,"y":290,"w":580,"h":320,"title":"Realized correlation vs number of paths","xd":[1.5,5.2],"yd":[0.55,0.68],"yt":[[0.56,"0.56"],[0.6,"0.60"],[0.64,"0.64"],[0.68,"0.68"]],"xt":[[1.6989700043360187,"50"],[2.3010299956639813,"200"],[3.0,"1,000"],[3.6989700043360187,"5,000"],[5.0,"100,000"]],"pl":56,"pr":20},{"series":"tg","chart":"cv","pts":[[1.6,0.6],[5.1,0.6]],"tone":"amber","dash":true,"ms":600,"label":"target 0.6","lat":[5.1,0.6],"ldx":0,"ldy":16,"lanchor":"end","lsize":16},{"series":"rc","chart":"cv","pts":[[1.699,0.655],[2.301,0.623],[3.0,0.604],[3.699,0.6],[4.301,0.606],[5.0,0.602]],"tone":"green","ms":1400},{"dot":"c50","chart":"cv","at":[1.6989700043360187,0.655],"text":"0.655","tone":"green","dx":12,"dy":0,"anchor":"start"}]},{"cap":"On a desk: hold EUR/USD, GBP/USD and EUR/GBP and you have three pairs but only two independent sources of risk. Simulate them from one correlated set of shocks, built from the 3×3 matrix, or the VaR ignores how they move together.","do":[{"hide":"d1"},{"hide":"d2"},{"hide":"L"},{"hide":"y1"},{"hide":"y2"},{"hide":"chk"},{"hide":"a1"},{"hide":"a2"},{"hide":"a3"},{"hide":"a4"},{"hide":"cv"},{"hide":"tg"},{"hide":"rc"},{"hide":"c50"},{"chip":"eu","x":100,"y":50,"text":"EUR/USD","tone":"blue"},{"chip":"gu","x":300,"y":50,"text":"GBP/USD","tone":"blue"},{"chip":"eg","x":500,"y":50,"text":"EUR/GBP","tone":"purple"},{"box":"m3","x":150,"y":100,"w":300,"h":80,"text":"3×3 correlation\n→ Cholesky → shocks","tone":"amber","size":18}]},{"cap":"Pieced together from sources with different closing times, a correlation matrix can be invalid, and the Cholesky step fails outright. Higham's 2002 nearest-correlation repair, which came straight from this problem, is now a standard step before simulating.","do":[{"cross":"m3"},{"box":"fix","x":150,"y":220,"w":300,"h":80,"text":"repair to nearest\nvalid matrix (Higham 2002)","tone":"green","size":18}]},{"cap":"The rule: keep the raw shocks independent, and put all the correlation into one mixing step you can check.","do":[{"note":"rule","x":300,"y":360,"text":"independent shocks, one checked mix","size":22,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:multivariate_correlated_sdes:END -->
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <div class="tl-icard-grid">
@@ -440,6 +645,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative risk run</div>
+    <h3>The Cholesky step fails on Monday morning</h3>
+    <p>Your VaR engine simulates EUR/USD, GBP/USD and EUR/GBP together from one correlated set of shocks. This morning the correlation matrix was assembled from two data vendors with different closing times, and the Cholesky step fails: the matrix is not positive semi-definite. The risk report is due in an hour. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Simulate the three pairs independently for today.<div class="tl-drill-why">That gets each pair's own risk right and every joint risk wrong. EUR/USD and EUR/GBP move together on euro news while GBP/USD pulls the other way, so the portfolio VaR would no longer describe the actual book.</div></li>
+      <li data-verdict="bad">Set the offending correlations to zero until the decomposition runs.<div class="tl-drill-why">Zeroing entries by hand is arbitrary: it can still leave the matrix invalid, and when it works it throws away exactly the co-movement the simulation exists to capture.</div></li>
+      <li data-verdict="good">Repair the matrix to the nearest valid correlation matrix, check its eigenvalues are all non-negative, run the simulation, and fix the closing-time mismatch at the source.<div class="tl-drill-why">Nearest-correlation repair (Higham, 2002) is the standard fix and changes the matrix as little as possible. Fixing the asynchronous data stops the same failure tomorrow.</div></li>
+      <li data-verdict="ok">Drop EUR/GBP from the matrix and build it from the EUR/USD and GBP/USD paths.<div class="tl-drill-why">Neat for this triangle, since EUR/GBP is close to EUR/USD divided by GBP/USD. But the broken input is still there, and the next book without such a tidy cross will fail the same way.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What this teaches.</strong> This drill is illustrative, not a dated episode. The problem is real and common: correlation matrices pieced together from different sources often fail to be positive semi-definite, and Higham's 2002 paper "Computing the nearest correlation matrix: a problem from finance" came straight from it. Repair before simulating is now a standard step.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -494,6 +712,27 @@
     <li><code>nelson-siegel-svensson.html</code> in this Theory Lab — the cross-sectional curve-factor model whose factors (level, slope, curvature) would need exactly this correlated-simulation machinery to project forward in time.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="sde-numerical-schemes.html">Numerical Schemes: Euler-Maruyama &amp; Milstein</a> <span>· stepping one process before stepping many</span></li>
+        <li><a href="linear-algebra-matrices.html">Linear Algebra &amp; Matrices</a> <span>· the matrix factoring behind Cholesky</span></li>
+        <li><a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> <span>· what the target correlation measures</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="copulas.html">Copulas — Modeling Dependence Beyond Correlation</a> <span>· when one correlation number is not enough</span></li>
+        <li><a href="stress-testing-scenario-analysis.html">Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</a> <span>· correlated scenarios put to work</span></li>
+        <li><a href="heston-model.html">The Heston Model</a> <span>· the two-process case, used for the smile</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a book of pairs that share a currency is one risk wearing several labels, and only a correlated simulation sees that.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="sde-numerical-schemes.html">← Numerical Schemes: Euler-Maruyama &amp; Milstein</a>
@@ -569,9 +808,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

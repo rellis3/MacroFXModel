@@ -55,7 +55,7 @@ MDP = dict(w=600, h=620, intro="The lesson's three-state trading MDP, solved by 
          cnt('L', 0, 1), cnt('S', 0, -0.1), dict(pulse='S')),
     step('Sweep 2: Long rises to 1.9. Now Flat\'s Open sees that value: half of (−0.1 + 0.9 × 1.9) plus half of (−0.1 + 0.9 × −0.1) is 0.305, which beats Stay. From here on the best action in each state never changes.',
          cnt('L', 1, 1.9), cnt('F', 0, 0.305, 3), dict(pulse='fl'), dict(pulse='fs')),
-    step('The values keep climbing every sweep, slower and slower, towards a fixed point: Long 10, Flat 7.32, Short 6.49.',
+    step('The values keep climbing every sweep, slower and slower, toward a fixed point: Long 10, Flat 7.32, Short 6.49.',
          chart('vi', CH, 'Value by sweep', [0, 60], [-0.5, 11],
                [[0, '0'], [5, '5'], [10, '10']], [[0, '0'], [20, '20'], [40, '40'], [60, '60']], pl=46, pr=104),
          series('cL', 'vi', CURVE['L'], 'green', ms=1600, label='Long 10', lat=[60, 9.99], ldx=6, ldy=0, lanchor='start', lsize=17),

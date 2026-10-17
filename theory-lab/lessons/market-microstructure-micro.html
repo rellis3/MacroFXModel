@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Market Microstructure — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -198,7 +199,19 @@
       </div>
     </section>
 
+    <!-- WB:market_microstructure-deck:START -->
     <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Why there is a spread, and why size moves the price</h2>
+      <!-- WB:market_microstructure:START -->
+      <div class="wb" data-title="Why there is a spread, and why size moves the price">
+        <script type="application/json">{"w":600,"h":720,"intro":"A market maker who cannot tell who is on the other side. First why that forces a spread, then why a bigger order moves the price further. The lesson's own numbers. Press play, or step through.","steps":[{"cap":"You are a market maker. Orders arrive one at a time and you cannot see who sends them. Most come from noise traders, who trade for reasons unrelated to value. Some come from informed traders, who know where the value really is.","do":[{"icon":"mm","name":"bank","x":250,"y":4,"s":0.8,"tone":"blue","label":"market maker","lsize":17},{"icon":"noise","name":"crowd","x":30,"y":4,"s":0.8,"tone":"green","label":"noise traders","lsize":17},{"icon":"inf","name":"person","x":480,"y":4,"s":0.8,"tone":"red","label":"informed","lsize":17}]},{"cap":"The true value is either 101 or 99, equally likely. Say 30% of orders are informed: α = 0.3. Informed traders only buy when the value is 101. So a buy is evidence, and it moves your belief that the value is high from 50% to 65%.","do":[{"chip":"buy","x":470,"y":112,"text":"a buy","tone":"amber"},{"move":"buy","x":330,"y":112,"ms":1000},{"note":"post","x":150,"y":122,"text":"50% → 65% that V = 101","size":18,"anchor":"middle","tone":"amber"}]},{"cap":"To break even you must sell at what a buy tells you the asset is worth: 0.65 × 101 + 0.35 × 99 = 100.30. By the mirror logic you buy at 99.70. The gap, 0.60, is the spread: protection against the informed flow.","do":[{"hide":"buy"},{"chart":"gm","x":10,"y":150,"w":285,"h":270,"title":"Glosten-Milgrom quotes","xd":[0.4,2.6],"yd":[98.8,101.2],"yt":[[99,"99"],[100,"100"],[101,"101"]],"xt":[[1,"α = 0.3"],[2,"α = 0.6"]],"pl":44},{"series":"vh","chart":"gm","pts":[[0.5,101],[2.5,101]],"tone":null,"dash":true,"ms":400,"label":"value high","lat":[1.45,101],"ldy":-12},{"series":"vl","chart":"gm","pts":[[0.5,99],[2.5,99]],"tone":null,"dash":true,"ms":400,"label":"value low","lat":[1.45,99],"ldy":-12},{"gap":"s3","chart":"gm","top":[[0.8,100.3],[1.2,100.3]],"bot":[[0.8,99.7],[1.2,99.7]],"tone":"amber","op":0.5},{"dot":"a3","chart":"gm","at":[1,100.3],"text":"ask 100.30","tone":"amber","dy":-14},{"dot":"b3","chart":"gm","at":[1,99.7],"text":"bid 99.70","tone":"amber","dy":16}]},{"cap":"Now suppose twice as much flow is informed, α = 0.6. A buy now moves your belief to 80%, so the ask is 100.60 and the bid 99.40. The spread doubles to 1.20, and the midpoint stays at 100. Spread = α × (101 − 99).","do":[{"hide":"post"},{"note":"post2","x":150,"y":122,"text":"α = 0.6: 50% → 80%","size":18,"anchor":"middle","tone":"red"},{"gap":"s6","chart":"gm","top":[[1.8,100.6],[2.2,100.6]],"bot":[[1.8,99.4],[2.2,99.4]],"tone":"red","op":0.5},{"dot":"a6","chart":"gm","at":[2,100.6],"text":"100.60","tone":"red","dy":-14},{"dot":"b6","chart":"gm","at":[2,99.4],"text":"99.40","tone":"red","dy":16},{"series":"mid","chart":"gm","pts":[[0.5,100],[2.5,100]],"tone":"blue","dash":true,"ms":400}]},{"cap":"Kyle asked the same question for order size. The price moves in proportion to the order: impact = λ × Q. λ is set by how much ordinary two-way trading there is to hide an order in.","do":[{"chart":"ky","x":305,"y":150,"w":285,"h":270,"title":"Kyle: price impact ($)","xd":[0,1000],"yd":[0,52],"yt":[[0,"0"],[25,"25"],[50,"50"]],"xt":[[0,"0"],[500,"500"],[1000,"1000"]],"pl":40},{"series":"deep","chart":"ky","pts":[[0,0],[1000,10]],"tone":"blue","ms":900,"label":"deep: λ = 0.01","lat":[1000,10],"ldx":-4,"ldy":-14,"lanchor":"end"}]},{"cap":"With value uncertainty 2 and noise volume 100, λ = 2 ÷ 200 = 0.01. Cut the noise volume to 20, a thin session, and λ = 2 ÷ 40 = 0.05: five times steeper.","do":[{"series":"thin","chart":"ky","pts":[[0,0],[1000,50]],"tone":"red","ms":900,"label":"thin: λ = 0.05","lat":[640,32],"ldx":-8,"ldy":0,"lanchor":"end"}]},{"cap":"Push the same 500-unit order through both. Deep market: 0.01 × 500 = $5. Thin market: 0.05 × 500 = $25. Nothing about the order changed, only the depth it landed in.","do":[{"series":"q","chart":"ky","pts":[[500,0],[500,50]],"tone":null,"dash":true,"ms":400},{"dot":"d5","chart":"ky","at":[500,5],"text":"$5","tone":"blue","dx":10,"dy":-10,"anchor":"start"},{"dot":"d25","chart":"ky","at":[500,25],"text":"$25","tone":"red","dx":10,"dy":8,"anchor":"start"}]},{"cap":"6 May 2010, 2:32 pm Eastern. A fund starts selling 75,000 E-mini contracts, about $4.1 billion, through an algorithm keyed to volume, not price. Intermediaries buy, then pass the contracts back and forth.","do":[{"icon":"fund","name":"scroll","x":30,"y":440,"s":0.7,"tone":"red","label":"75,000 E-minis\n≈ $4.1bn","lsize":16},{"box":"depth","x":160,"y":446,"w":240,"h":70,"text":"E-mini buy depth","tone":"red","sub":"normal","size":18}]},{"cap":"Market makers could not tell why prices were falling, so they acted as if α was high, widening or leaving. Buy-side depth fell to about $58 million, under 1% of the morning's: the noise volume that sets λ was almost gone.","do":[{"sub":"depth","text":"≈ $58m: under 1%"},{"pulse":"depth"},{"dim":"deep"},{"pulse":"thin"}]},{"cap":"In some stocks the only orders left were stub quotes: placeholder bids at a penny. Market sell orders hit them. Accenture traded at one cent, and more than 20,000 trades were later cancelled.","do":[{"icon":"warn","name":"warn","x":430,"y":440,"s":0.7,"tone":"red"},{"box":"stub","x":160,"y":534,"w":430,"h":64,"text":"stub bid: $0.01","tone":"red","size":20}]},{"cap":"The lesson for a trader: the spread is the price of not knowing who is on the other side, and impact grows with size and thinness. Slice big orders, and avoid market and stop orders when liquidity is thin.","do":[{"box":"rule","x":10,"y":616,"w":580,"h":96,"text":"slice big orders\nno market orders into a thin book","tone":"green","size":19}]}]}</script>
+      </div>
+      <!-- WB:market_microstructure:END -->
+    </section>
+    <!-- WB:market_microstructure-deck:END -->
+
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Try it — compute Kyle's Lambda</h2>
       <p class="sl-sub">Starts on the worked "liquid session" numbers. Change any field — both λ and Δp recalculate instantly.</p>
@@ -225,7 +238,7 @@
       <p class="sl-p">Try σᵤ = 20 with the other two fields left alone — the thin-session number from the worked example — and watch λ jump from 0.0100 to 0.0500, and Δp jump from $5.00 to $25.00, for the exact same 500-unit order.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How this plays out on a desk</h2>
       <p class="sl-sub">Nobody solves a Bayesian update or a fixed-point equilibrium before placing an order — but both models motivate real habits.</p>
@@ -243,7 +256,7 @@
 <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where these models get misread</h2>
       <div class="sl-compare">
@@ -269,7 +282,7 @@
       <p class="sl-p">One more distinction worth keeping straight: the spread is a roughly fixed, per-trade cost you pay once crossing bid to ask; price impact scales with the size of the order itself. A small retail order mostly pays the spread — a large institutional order can pay far more in impact than in spread, which is exactly why slicing algorithms exist to manage λQ, not the spread.</p>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12 · It actually happened</div>
       <h2 class="sl-h2">6 May 2010: the market makers left</h2>
       <div class="sl-callout amber">
@@ -289,7 +302,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and the desk's verdict<!-- DESK:END --></h2>
       <div class="sl-callout purple">
@@ -304,7 +317,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -357,7 +370,7 @@
 <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -484,5 +497,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

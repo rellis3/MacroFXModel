@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Attention &amp; Transformers for Time Series — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,72 @@
       <li><strong>How it reached trading:</strong> It reached markets through text first: FinBERT (2019–23) read filings and earnings calls better than finance word lists, and time-series variants followed.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The lesson's worked example of attention. A query q equal to 1, 0 with key size 2 is compared directly with three past steps. Step t minus 2 has key 1, 0 and value 2, 0 and scores 1. Step t minus 1 has key 0, 1 and value 0, 2 and scores 0. Step t has key 1, 1 and value 1, 1 and scores 1. After scaling and softmax the weights are 0.401, 0.198 and 0.401, and the output, a weighted blend of the values, is 1.203, 0.797.">
+      <text class="tlp-purple" x="10" y="18" font-size="14" font-weight="700">query q = [1, 0], key size 2: compared with every past step at once</text>
+      <text class="tlp-text3" x="95" y="44" text-anchor="middle" font-size="12">past step: key · value</text>
+      <text class="tlp-text3" x="238" y="44" text-anchor="middle" font-size="12">q · key</text>
+      <text class="tlp-text3" x="290" y="44" font-size="12">softmax weight (sums to 1)</text>
+      <text class="tlp-text3" x="530" y="44" text-anchor="middle" font-size="12">output</text>
+      <rect class="tlp-box" x="10" y="56" width="170" height="48" rx="6"/>
+      <text class="tlp-text" x="95" y="76" text-anchor="middle" font-size="13">t−2 · key [1, 0]</text>
+      <text class="tlp-text2" x="95" y="94" text-anchor="middle" font-size="12">value [2, 0]</text>
+      <rect class="tlp-box" x="10" y="116" width="170" height="48" rx="6"/>
+      <text class="tlp-text" x="95" y="136" text-anchor="middle" font-size="13">t−1 · key [0, 1]</text>
+      <text class="tlp-text2" x="95" y="154" text-anchor="middle" font-size="12">value [0, 2]</text>
+      <rect class="tlp-box" x="10" y="176" width="170" height="48" rx="6"/>
+      <text class="tlp-text" x="95" y="196" text-anchor="middle" font-size="13">t · key [1, 1]</text>
+      <text class="tlp-text2" x="95" y="214" text-anchor="middle" font-size="12">value [1, 1]</text>
+      <text class="tlp-purple" x="238" y="85" text-anchor="middle" font-size="15" font-weight="700">1</text>
+      <text class="tlp-purple" x="238" y="145" text-anchor="middle" font-size="15" font-weight="700">0</text>
+      <text class="tlp-purple" x="238" y="205" text-anchor="middle" font-size="15" font-weight="700">1</text>
+      <rect class="tlp-blue" x="290" y="69" width="104.3" height="22" rx="3" opacity=".75"/>
+      <rect class="tlp-blue" x="290" y="129" width="51.4" height="22" rx="3" opacity=".45"/>
+      <rect class="tlp-blue" x="290" y="189" width="104.3" height="22" rx="3" opacity=".75"/>
+      <text class="tlp-blue" x="402" y="85" font-size="14" font-weight="700">0.401</text>
+      <text class="tlp-blue" x="349" y="145" font-size="14" font-weight="700">0.198</text>
+      <text class="tlp-blue" x="402" y="205" font-size="14" font-weight="700">0.401</text>
+      <line class="tlp-line green" x1="446" y1="80" x2="470" y2="112"/>
+      <line class="tlp-line green" x1="396" y1="140" x2="470" y2="140"/>
+      <line class="tlp-line green" x1="446" y1="200" x2="470" y2="168"/>
+      <rect class="tlp-box green" x="470" y="102" width="122" height="76" rx="6"/>
+      <text class="tlp-green" x="531" y="130" text-anchor="middle" font-size="13" font-weight="700">blend of values</text>
+      <text class="tlp-text" x="531" y="154" text-anchor="middle" font-size="13">[1.203, 0.797]</text>
+      <text class="tlp-text2" x="10" y="250" font-size="13">No relay: step t−2 is one hop away, just like step t. The matches get twice the weight.</text>
+    </svg>
+    <figcaption>The worked example from Section 02. The query is scored against all three past steps in one go, the scores become weights that sum to one, and the output is a weighted blend of the values. A recurrent network would have had to pass step t−2 along through t−1 first.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Everyone is talking about transformers. What is attention, in plain words?</p>
+      <p data-who="Quant">Start with what came before. A recurrent network reads a price series one day at a time. Each day's memory is built from the day before. It is a game of telephone.</p>
+      <p data-who="Trader">So news from sixty days ago has been retold sixty times by the time it reaches today.</p>
+      <p data-who="Quant">Exactly, and it gets diluted on the way. Nothing can run in parallel either, because day five hundred has to wait for day four hundred and ninety-nine.</p>
+      <p data-who="Trader">And attention?</p>
+      <p data-who="Quant">Attention throws out the line. It was published in 2017, for machine translation. Every position looks directly at every other position, all at once. Think of a room where everyone can talk to everyone.</p>
+      <p data-who="Trader">How does it decide who to listen to?</p>
+      <p data-who="Quant">Each position carries three things. A query: what am I looking for. A key: what do I contain. A value: what I would actually hand over. You compare the query with every key, and a closer match gets a higher score.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">One query and three past days. The match scores come out as one, zero and one. You scale them down by the square root of the key size, which is two here. Then a step called softmax turns them into weights that add up to one.</p>
+      <p data-who="Trader">And they come out as?</p>
+      <p data-who="Quant">About forty percent, twenty percent and forty percent. The two days that matched get twice the weight of the one that didn't. The output is just a blend of the three values with those weights.</p>
+      <p data-who="Trader">Why scale at all?</p>
+      <p data-who="Quant">With long vectors the raw scores get big, and softmax piles nearly all the weight on one position. Learning stalls. Scaling keeps the weights soft enough to learn.</p>
+      <p data-who="Trader">What's the catch?</p>
+      <p data-who="Quant">Two catches. Everyone comparing with everyone costs the square of the sequence length. And transformers need a lot of data. They won in language and vision, on huge datasets. Two years of daily FX is tiny and noisy by comparison.</p>
+      <p data-who="Trader">So where do they actually help a trader?</p>
+      <p data-who="Quant">Text, mostly. FinBERT, from 2019 on, read filings and earnings calls better than finance word lists. On short price series, a tuned LSTM or a linear model is still the benchmark to beat.</p>
+      <p data-who="Trader">And if I do try one on prices?</p>
+      <p data-who="Quant">Mask the future. Each day may only look at earlier days. Without that mask the backtest looks brilliant, and it is pure look-ahead.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Attention lets every day look at every other day and weigh it by relevance. Use it where the data is big enough, and prove it beats the simple model first.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -134,6 +201,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where scaled dot-product attention comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{QK^T} \]</div>
+      <p>Dot every query with every key. The result is an \(n\times n\) grid of raw relevance scores. In the worked example below, the one query scores \([1,\ 0,\ 1]\) against the three past steps.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{QK^T}{\color{#fbbf24}{\sqrt{d_k}}} \]</div>
+      <p>Scale the scores down by the square root of the key size. With \(d_k = 2\) the row becomes \([0.707,\ 0,\ 0.707]\). This stops the scores from growing with \(d_k\) and saturating the next step.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\text{softmax}}\!\left(\frac{QK^T}{\sqrt{d_k}}\right) \]</div>
+      <p>Softmax turns each row into weights that are non-negative and sum to one: \([0.401,\ 0.198,\ 0.401]\). The two steps whose keys match the query get about twice the weight.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\text{Attention}(Q,K,V)} = \text{softmax}\!\left(\frac{QK^T}{\sqrt{d_k}}\right)\color{#fbbf24}{V} \]</div>
+      <p>Multiply by the values: each output is a weighted blend of every position's value. In the example, \(0.401[2,0] + 0.198[0,2] + 0.401[1,1] = [1.203,\ 0.797]\), all in one step with no relay.</p>
+    </div>
+  </div>
 
   <h3>Queries, keys, and values</h3>
   <p>
@@ -378,6 +465,10 @@
       \(d_k\) and the scaled scores, softmax weights, and blended output
       recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="0.734" data-tol="0.05" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At the worked example's scores (1, 0, 1) with \(d_k = 2\), position 1 gets a weight of 0.401. Raise \(q\cdot k_1\) from 1 to 3 and leave everything else alone. What weight does position 1 get now? Lock in a guess, then type 3 into the first field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 0.734.</strong> The scaled scores become \(3/1.414 = 2.121\), 0 and 0.707. Exponentiate: \(e^{2.121} \approx 8.34\), against 1 and 2.03, so position 1 takes \(8.34/11.37 \approx 0.734\). Softmax is exponential: a modest lead in score becomes a large lead in weight. Now put the score back to 1 and set \(d_k\) to 8: the weights flatten towards a third each (0.370, 0.260, 0.370).</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>q&middot;k&#8321;</span></div>
@@ -429,6 +520,12 @@
       exactly as it is for every other model in this curriculum.
     </p>
   </div>
+
+  <!-- WB:attention_transformers_time_series:START -->
+  <div class="wb" id="wb-attention_transformers_time_series" data-title="Attention: every day looks at every other day">
+    <script type="application/json">{"w":600,"h":830,"intro":"The lesson's worked example: one query looking back over three past days. First the old way, a relay; then attention, which looks at every day at once. Press play, or step through.","steps":[{"cap":"The old way. A recurrent network reads a series one day at a time. Each day's memory is built from the day before, so day 4 must wait for day 3, which waits for day 2.","do":[{"box":"h1","x":20,"y":30,"w":100,"h":60,"text":"day 1","tone":"chalk","sub":"h₁","size":19},{"box":"h2","x":165,"y":30,"w":100,"h":60,"text":"day 2","tone":"chalk","sub":"h₂","size":19},{"box":"h3","x":310,"y":30,"w":100,"h":60,"text":"day 3","tone":"chalk","sub":"h₃","size":19},{"box":"h4","x":455,"y":30,"w":100,"h":60,"text":"day 4","tone":"chalk","sub":"h₄","size":19},{"arrow":["h1","h2"]},{"arrow":["h2","h3"]},{"arrow":["h3","h4"]}]},{"cap":"News from day 1 reaches day 4 only by being retold at every step, squeezed a little each time: a game of telephone. And training cannot run the days in parallel.","do":[{"chip":"news","x":70,"y":118,"text":"day-1 news","tone":"amber"},{"move":"news","x":505,"y":118,"ms":1800},{"note":"relay","x":300,"y":150,"text":"three retellings, one after another","size":18,"anchor":"middle","tone":"red"}]},{"cap":"Attention throws out the line. Today's query, q = [1, 0], looks directly at every past day at once. Each day offers a key (what it contains) and a value (what it would hand over).","do":[{"dim":"h1"},{"dim":"h2"},{"dim":"h3"},{"dim":"h4"},{"hide":"news"},{"hide":"relay"},{"box":"q","x":200,"y":176,"w":200,"h":62,"text":"query (today)","tone":"purple","sub":"q = [1, 0]","size":19},{"box":"k1","x":20,"y":300,"w":160,"h":80,"text":"t−2\nkey [1, 0]","tone":"blue","sub":"value [2, 0]","size":18},{"box":"k2","x":220,"y":300,"w":160,"h":80,"text":"t−1\nkey [0, 1]","tone":"blue","sub":"value [0, 2]","size":18},{"box":"k3","x":420,"y":300,"w":160,"h":80,"text":"t\nkey [1, 1]","tone":"blue","sub":"value [1, 1]","size":18},{"arrow":["q","k1"],"tone":"purple"},{"arrow":["q","k2"],"tone":"purple"},{"arrow":["q","k3"],"tone":"purple"}]},{"cap":"Compare the query with each key by a dot product. A bigger number means a better match. The raw scores are 1, 0 and 1: days t−2 and t match, day t−1 does not.","do":[{"note":"z1","x":100,"y":400,"text":"score 1","size":19,"anchor":"middle","tone":"purple"},{"note":"z2","x":300,"y":400,"text":"score 0","size":19,"anchor":"middle","tone":"purple"},{"note":"z3","x":500,"y":400,"text":"score 1","size":19,"anchor":"middle","tone":"purple"}]},{"cap":"Scale the scores down by the square root of the key size. Here d_k = 2, so divide by about 1.414: the scores become 0.707, 0 and 0.707. This keeps softmax from saturating when the vectors are long.","do":[{"hide":"z1"},{"hide":"z2"},{"hide":"z3"},{"note":"s1","x":100,"y":400,"text":"÷ √2 = 0.707","size":19,"anchor":"middle","tone":"purple"},{"note":"s2","x":300,"y":400,"text":"0","size":19,"anchor":"middle","tone":"purple"},{"note":"s3","x":500,"y":400,"text":"÷ √2 = 0.707","size":19,"anchor":"middle","tone":"purple"}]},{"cap":"Softmax turns the scaled scores into weights that are never negative and add up to 1: 0.401, 0.198 and 0.401. The two matching days get about twice the weight of the one that missed.","do":[{"chart":"wch","x":10,"y":424,"w":290,"h":200,"title":"softmax weights","xd":[0.4,3.6],"yd":[0,1],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[1,"t−2"],[2,"t−1"],[3,"t"]],"pl":46},{"bars":"wb1","chart":"wch","data":[[1,0.401,"0.401","blue"],[2,0.198,"0.198","blue"],[3,0.401,"0.401","blue"]],"bw":42,"ms":1100}]},{"cap":"The output is the values blended by those weights: 0.401 × [2, 0] + 0.198 × [0, 2] + 0.401 × [1, 1] = [1.203, 0.797]. One computation, no relay: day t−2 was one hop away, just like day t.","do":[{"box":"out","x":340,"y":450,"w":240,"h":100,"text":"output\n= blend of values","tone":"green","sub":"[1.203, 0.797]","size":19},{"arrow":["wch","out"],"tone":"green"}]},{"cap":"Softmax is exponential. Lift the first score from 1 to 3 and its weight jumps from 0.401 to 0.734. The others shrink to 0.088 and 0.178, and the output swings towards day t−2's value: [1.646, 0.354].","do":[{"hide":"s1"},{"note":"s1b","x":100,"y":400,"text":"3 ÷ √2 = 2.121","size":19,"anchor":"middle","tone":"amber"},{"hide":"wb1"},{"bars":"wb3","chart":"wch","data":[[1,0.734,"0.734","amber"],[2,0.088,"0.088","amber"],[3,0.178,"0.178","amber"]],"bw":42,"ms":1100},{"sub":"out","text":"[1.646, 0.354]"}]},{"cap":"The price of everyone looking at everyone: n positions make n × n scores. A 60-day window is 3,600 scores; 1,000 bars is a million. Informer and the Temporal Fusion Transformer were built to tame this cost.","do":[{"box":"cost","x":20,"y":650,"w":270,"h":104,"text":"n × n scores\n60 days → 3,600\n1,000 bars → 1,000,000","tone":"amber","size":18}]},{"cap":"For forecasting, mask the future. Each day may attend only to itself and earlier days. Without a causal mask the model can read tomorrow, and the backtest looks brilliant for no real reason.","do":[{"box":"mask","x":310,"y":650,"w":270,"h":104,"text":"causal mask\nday t sees only\ndays up to t","tone":"red","size":18}]},{"cap":"Transformers won on huge text and image datasets. A two-year daily FX series is tiny and noisy by comparison. Use attention where the data is big, often text, and make it beat a tuned LSTM or linear model out of sample first.","do":[{"note":"end","x":300,"y":782,"text":"Big data: attention earns its keep.\nShort series: beat the simple model first.","size":19,"anchor":"middle","tone":"green"},{"pulse":"mask"},{"pulse":"cost"}]}]}</script>
+  </div>
+  <!-- WB:attention_transformers_time_series:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -534,6 +631,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative research review</div>
+    <h3>A transformer backtest that looks too good</h3>
+    <p>A colleague trained a transformer on two years of daily EURUSD data to forecast the next day's direction. The backtest hit rate is far above anything the team's tuned LSTM ever managed. Reading the code, you notice two things: the attention layer has no causal mask, and nobody ran the tuned LSTM or a linear model on the same walk-forward split. What do you do before any money goes near it?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Allocate to it. Transformers dominate language and vision, so a big jump over the LSTM is what you would expect.<div class="tl-drill-why">Reputation in another domain is not evidence on this series. Two years of daily data is short and noisy, exactly where a transformer's extra capacity tends to buy more convincing overfitting rather than real accuracy.</div></li>
+      <li data-verdict="good">Add a causal mask, rerun it walk-forward out of sample, and compare it with the tuned LSTM and a linear baseline on the same split.<div class="tl-drill-why">Without the mask, each day can attend to later days, so the backtest may be pure look-ahead. Once masked, the only evidence that counts is a fair, leakage-free comparison with simpler models on the same data.</div></li>
+      <li data-verdict="ok">Read the attention weights to check the model is relying on sensible past days.<div class="tl-drill-why">Useful for understanding the model, and weight on future days would expose the leak. But a sensible-looking weight pattern is not proof of edge, and it does not replace the masked, out-of-sample comparison.</div></li>
+      <li data-verdict="bad">Add more heads and layers to push the result further.<div class="tl-drill-why">More capacity on a short series makes overfitting easier, and it does nothing about the missing mask. You would be polishing a result that may not exist.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What this teaches.</strong> This is an illustrative case, not a historical event. The lesson's two rules decide it: a forecaster without a causal mask can attend to the future, so a spectacular backtest is the first sign of leakage, not of edge; and a transformer earns its place only by beating a well-tuned simpler model out of sample on the same series.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -626,6 +736,25 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="recurrent-networks-lstm-gru.html">Recurrent Networks for Sequential Data: LSTM &amp; GRU</a> <span>· the step-by-step relay that attention replaces</span></li>
+        <li><a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> <span>· the fair test any transformer has to pass</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="nlp-trading-signals-sentiment.html">NLP for Trading Signals: Sentiment, Embeddings &amp; FinBERT</a> <span>· where transformers earn their keep: text</span></li>
+        <li><a href="regularized-regression-lasso-ridge.html">Regularized Regression: LASSO &amp; Ridge</a> <span>· the simple baseline a transformer must beat</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> transformers are the default answer in AI today, and this tells you when they help on market data and when a simpler model wins.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="recurrent-networks-lstm-gru.html">← Recurrent Networks: LSTM &amp; GRU</a>
     <a href="regularized-regression-lasso-ridge.html">Regularized Regression: Lasso &amp; Ridge →</a>
@@ -709,9 +838,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Corporate Actions &amp; Series Continuity — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,64 @@
       <li><strong>Real-world episode:</strong> on 20 April 2020 the May WTI contract settled at −$37.63 while June stayed near $20. Depending on its roll rule, a "continuous" oil series shows that day as −$37.63, about $20, or (ratio-adjusted) sign-flipped.<!-- DESK:START --> Whether this desk's signals survive a change of roll method is untested.<!-- DESK:END --></li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 225" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The lesson's crude oil roll. Raw splice in red: a price of $72.00 a week before the roll rises to $78.40 on the expiring contract, then jumps to $78.90 on the new contract, a fake $0.50 jump. The Panama back-adjusted series in green shifts the history up by $0.50, so it runs from $72.50 to $78.90 with no jump. A side panel compares the two fixes: Panama adds $0.50 and keeps dollar moves exact; ratio adjustment multiplies by 78.90 over 78.40, turning $72.00 into $72.46 and keeping percentage moves exact. On 20 April 2020 May WTI settled at minus $37.63 with June near $20, so a ratio would divide by a negative price.">
+      <line class="tlp-line" x1="40" y1="192" x2="250" y2="192"/>
+      <polyline class="tlp-line red thick" points="70,172.2 230,58.3 230,49.4"/>
+      <line class="tlp-line green thick dash" x1="70" y1="163.3" x2="230" y2="49.4"/>
+      <circle class="tlp-red" cx="70" cy="172.2" r="4.5"/>
+      <circle class="tlp-green" cx="70" cy="163.3" r="4.5"/>
+      <circle class="tlp-red" cx="230" cy="58.3" r="4.5"/>
+      <circle class="tlp-green" cx="230" cy="49.4" r="5"/>
+      <text class="tlp-green" x="62" y="166" text-anchor="end" font-size="12" font-weight="700">$72.50</text>
+      <text class="tlp-red" x="62" y="181" text-anchor="end" font-size="12" font-weight="700">$72.00</text>
+      <text class="tlp-text" x="238" y="46" font-size="12">$78.90 new</text>
+      <text class="tlp-text" x="238" y="63" font-size="12">$78.40 expiring</text>
+      <text class="tlp-red" x="238" y="82" font-size="12" font-weight="700">↑ +$0.50 fake jump</text>
+      <text class="tlp-green" x="44" y="60" font-size="12" font-weight="700">Panama: history +$0.50</text>
+      <text class="tlp-red" x="140" y="160" font-size="12" font-weight="700">raw splice</text>
+      <text class="tlp-text3" x="70" y="208" text-anchor="middle" font-size="12">a week before</text>
+      <text class="tlp-text3" x="230" y="208" text-anchor="middle" font-size="12">roll day</text>
+      <line class="tlp-line dash" x1="368" y1="20" x2="368" y2="214"/>
+      <text class="tlp-green" x="382" y="38" font-size="13" font-weight="700">Panama: add $0.50</text>
+      <text class="tlp-text" x="382" y="55" font-size="12">$72.00 → $72.50</text>
+      <text class="tlp-text2" x="382" y="71" font-size="12">dollar moves exact</text>
+      <text class="tlp-amber" x="382" y="102" font-size="13" font-weight="700">Ratio: × 78.90 / 78.40</text>
+      <text class="tlp-text" x="382" y="119" font-size="12">$72.00 → $72.46</text>
+      <text class="tlp-text2" x="382" y="135" font-size="12">% moves exact</text>
+      <text class="tlp-red" x="382" y="168" font-size="13" font-weight="700">20 April 2020</text>
+      <text class="tlp-text2" x="382" y="185" font-size="12">May WTI −$37.63, June ≈ $20:</text>
+      <text class="tlp-text2" x="382" y="201" font-size="12">a ratio divides by a negative</text>
+    </svg>
+    <figcaption>Every raw print is accurate, yet the splice shows a $0.50 jump nobody traded. Each fix removes it but keeps a different thing true: Panama keeps dollar moves, ratio keeps percentage moves. Pick the one your calculation needs.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My backtest shows a stock losing half its value in one day. Nobody remembers a crash.</p>
+      <p data-who="Quant">Check for a split. Two for one: every hundred-dollar share becomes two fifty-dollar shares. The pizza is cut into more slices, not made smaller. A raw price chart shows a fifty percent drop that nobody actually lost.</p>
+      <p data-who="Trader">So every price is right, but the series is wrong.</p>
+      <p data-who="Quant">Exactly. Data cleaning would never catch it, because there is no bad tick. The jump between two accurate prices just isn't a tradeable move. The fix is to restate the old prices: before the split, divide them all by two.</p>
+      <p data-who="Trader">And futures?</p>
+      <p data-who="Quant">Same problem, different cause. A contract expires and you splice in the next one, which trades at a different price. Say the old crude contract closes at seventy-eight forty and the new one at seventy-eight ninety. Splice them raw and the series jumps fifty cents that no position ever made.</p>
+      <p data-who="Trader">How do you remove it?</p>
+      <p data-who="Quant">Two named ways. The Panama method adds fifty cents to every older price. Seventy-two dollars a week earlier becomes seventy-two fifty. Dollar moves stay exact. Ratio adjustment multiplies the old prices by the ratio of the two contracts instead, so percentage moves stay exact, but the old price levels drift.</p>
+      <p data-who="Trader">Which one is right?</p>
+      <p data-who="Quant">Whichever matches your calculation. Dollar profit and position sizing want Panama. Long-run percentage statistics want ratio. After many rolls, a Panama series can even drift below zero, and percentage returns off that level mean nothing.</p>
+      <p data-who="Trader">A negative price as a warning sign. Makes sense.</p>
+      <p data-who="Quant">Until the twentieth of April twenty twenty. Storage at the oil delivery point was filling, and the May contract settled at minus thirty-seven dollars sixty-three a barrel. June stayed around twenty.</p>
+      <p data-who="Trader">So what was the oil price that day?</p>
+      <p data-who="Quant">Depends on your roll rule. Roll at expiry and you show minus thirty-seven sixty-three. Roll a few days early, as many vendor series do, and you never see a negative print. Ratio adjust on that day and you divide by a negative number. Same market, three histories.</p>
+      <p data-who="Trader">And my trend backtest that breaks out every quarter?</p>
+      <p data-who="Quant">If the breakouts land on roll dates, you are measuring the splice, not the market.</p>
+      <p data-who="Trader">One line to remember?</p>
+      <p data-who="Quant">Every continuous series hides a choice about splits and rolls, so know which adjustment you are using and match it to the number you are computing.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -75,6 +134,27 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>Splits and dividends: back-adjustment by a cumulative factor</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">The back-adjusted price, one corporate action at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P_t^{adj} = \color{#fbbf24}{P_t} \]</div>
+      <p>Start with the raw price on an old date \(t\). Accurate on the day, but not comparable with prices after a split or dividend.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P_t^{adj} = P_t \times \color{#fbbf24}{f_1} \]</div>
+      <p>Apply the factor of the first corporate action after \(t\). A 2-for-1 split has \(f_1 = 0.5\), so an old $100 reads as $50 and the split day shows a return of roughly zero, not −50%.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P_t^{adj} = P_t \times f_1 \times \color{#fbbf24}{f_2 \times \cdots} \]</div>
+      <p>Every later action adds its own factor, a split ratio or a dividend-reinvestment factor, and they compound. A price far in the past carries all of them.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{P_t^{adj} = P_t \times \prod_{k:\, t_k > t} f_k} \]</div>
+      <p>Written compactly: multiply by the factor of every corporate action that happened after \(t\). Futures rolls use the same idea with a ratio (ratio-adjustment) or swap the multiply for an add (the Panama method).</p>
+    </div>
+  </div>
+
   <p>
   For an equity split, the fix is conceptually simple: every price <em>before</em> the split date gets
   multiplied by the split ratio, so the whole pre-split history is restated in "post-split share" terms.
@@ -215,6 +295,10 @@
     <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Splicing a crude oil roll with the Panama method</h3>
+    <div class="tl-predict" data-answer="72.50" data-tol="0.02" data-unit=" dollars">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The expiring crude contract closes at $78.40 and the new one at $78.90 on the roll day. A week earlier the old contract printed $72.00. In a Panama (back-adjusted) series, what does that $72.00 become? Lock in a guess, then check it against the working below.</div>
+      <div class="tl-predict-reveal"><p><strong>$72.50.</strong> The offset is \(78.90 - 78.40 = 0.50\), added to every earlier price, so dollar moves are unchanged. A ratio-adjusted series would instead multiply by \(78.90/78.40\), giving about $72.46, which keeps percentage moves exact instead.</p></div>
+    </div>
     <p>
     Suppose the expiring front-month crude contract closes its final trading day at $78.40, and the new
     front-month contract closes that same day at $78.90 — a $0.50 gap reflecting the futures curve, not
@@ -259,6 +343,12 @@
       <p>It's like being impressed that a runner sprints super fast every quarter mile — except it turns out the racecourse itself has a downhill ramp built in at each quarter-mile mark, and you're measuring the ramp, not the runner. The "signal" only looked real because the data had an artificial jump baked in on a predictable schedule; fix the data, and the fake speed boost disappears.</p>
     </div>
   </div>
+
+  <!-- WB:corporate_actions_series_continuity:START -->
+  <div class="wb" id="wb-corporate_actions_series_continuity" data-title="Splits, rolls and the two ways to splice">
+    <script type="application/json">{"w":600,"h":770,"intro":"Accurate prices, fake jumps: a stock split, a futures roll, and the two standard ways to splice a continuous series. Press play, or step through.","steps":[{"cap":"A 2-for-1 stock split. The raw chart shows $100 falling to $50 overnight: a 50% loss to any naive return calculation.","do":[{"chart":"sp","x":10,"y":10,"w":280,"h":230,"title":"Stock price, $","xd":[0,5],"yd":[40,110],"yt":[[50,"50"],[100,"100"]],"xt":[[0,"0"],[3,"split"],[5,"5"]],"pl":40,"pr":12},{"series":"rs","chart":"sp","pts":[[0,100],[1,101],[2,99],[3,100],[3.02,50],[4,51],[5,50]],"tone":"red","ms":1000,"label":"raw","lat":[1,101],"ldy":-14,"lsize":16}]},{"cap":"Nobody lost a cent. One $100 share became two $50 shares: the pizza was cut into more slices, not made smaller.","do":[{"chip":"one","x":90,"y":270,"text":"1 × $100","tone":"blue"},{"chip":"two","x":210,"y":270,"text":"2 × $50","tone":"green"}]},{"cap":"Back-adjust: multiply every price before the split by the factor 0.5. History now reads around $50 the whole way, and the split day shows a return of about zero.","do":[{"series":"as","chart":"sp","pts":[[0,50],[1,50.5],[2,49.5],[3,50],[4,51],[5,50]],"tone":"green","ms":1000,"label":"adjusted","lat":[1,50.5],"ldy":-14,"lsize":16},{"dim":"rs"}]},{"cap":"Futures have the same problem at a roll. The expiring crude contract closes at $78.40, the new one at $78.90. A raw splice shows a $0.50 jump nobody traded.","do":[{"chart":"fr","x":310,"y":10,"w":280,"h":230,"title":"Crude futures, $","xd":[0,6],"yd":[71,80.5],"yt":[[72,"72"],[76,"76"],[80,"80"]],"xt":[[0,"−1 wk"],[5,"roll"],[6,""]],"pl":40,"pr":12},{"series":"old","chart":"fr","pts":[[0,72.0],[5,78.4]],"tone":"red","ms":800},{"series":"nw","chart":"fr","pts":[[5,78.9],[6,79.1]],"tone":"red","ms":400},{"dot":"j","chart":"fr","at":[5,78.65],"text":"+$0.50 jump","tone":"red","dx":-8,"dy":-22,"anchor":"end"}]},{"cap":"The Panama method adds the $0.50 offset to every earlier price. $72.00 becomes $72.50, the roll shows no jump, and every dollar move is unchanged.","do":[{"series":"pan","chart":"fr","pts":[[0,72.5],[5,78.9]],"tone":"green","dash":true,"ms":900,"label":"Panama +$0.50","lat":[1.5,74.4],"ldx":-4,"ldy":-14,"lanchor":"start","lsize":16}]},{"cap":"Ratio adjustment multiplies earlier prices by 78.90 / 78.40 instead: $72.00 becomes about $72.46. Percentage moves stay exact, but old price levels drift.","do":[{"box":"rat","x":20,"y":270,"w":560,"h":56,"text":"ratio: × 78.90 / 78.40  →  $72.00 becomes $72.46","tone":"amber","size":19},{"hide":"one"},{"hide":"two"}]},{"cap":"Skip the adjustment and a trend backtest \"breaks out\" every quarter, right on the roll date. It is measuring the splice, not the market.","do":[{"box":"brk","x":20,"y":340,"w":560,"h":56,"text":"breakouts on roll dates = the splice, not the market","tone":"red","size":19}]},{"cap":"Over many rolls the Panama offsets pile up. If new contracts keep rolling in below old ones, history shifts down, far enough back even below zero, a level that never traded (illustrative).","do":[{"hide":"brk"},{"chart":"dr","x":10,"y":340,"w":580,"h":230,"title":"Years back: traded price vs Panama level (illustrative)","xd":[0,10],"yd":[-12,40],"yt":[[0,"$0"],[20,"$20"],[40,"$40"]],"xt":[[0,"now"],[5,"5 yr"],[10,"10 yr"]],"zero":true,"pl":50,"pr":34},{"series":"act","chart":"dr","pts":[[0,30],[2,34],[4,28],[6,36],[8,31],[10,33]],"tone":"blue","ms":900,"label":"traded","lat":[10,33],"ldx":-4,"ldy":-14,"lanchor":"end","lsize":16},{"series":"pdr","chart":"dr","pts":[[0,30],[2,26],[4,12],[6,12],[8,-1],[10,-7]],"tone":"green","dash":true,"ms":1100,"label":"Panama level","lat":[6,12],"ldx":0,"ldy":-16,"lanchor":"middle","lsize":16}]},{"cap":"Then 20 April 2020: the May WTI contract settled at −$37.63, after about $18 the Friday before, while June stayed near $20. A negative price was real, not an artefact.","do":[{"box":"wti","x":20,"y":590,"w":560,"h":56,"text":"May WTI −$37.63  ·  June ≈ $20","tone":"red","size":20}]},{"cap":"Same day, three histories. Roll at expiry: −$37.63. Roll a few days early: about $20, never negative. Ratio-adjust that day: divide by a negative and every earlier price flips sign.","do":[{"box":"h1","x":20,"y":664,"w":170,"h":70,"text":"roll at expiry\n−$37.63","tone":"red","size":17},{"box":"h2","x":215,"y":664,"w":170,"h":70,"text":"roll early\n≈ $20","tone":"blue","size":17},{"box":"h3","x":410,"y":664,"w":170,"h":70,"text":"ratio-adjust\nsign flips","tone":"amber","size":17}]},{"cap":"Neither fix is free. Dollar P&L and position sizing want Panama; long-run percentage statistics want ratio. Know which one your series uses, and match it to the number you compute.","do":[{"pulse":"pan"},{"pulse":"rat"}]}]}</script>
+  </div>
+  <!-- WB:corporate_actions_series_continuity:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>It actually happened: the day "the oil price" depended on the roll rule</h2>
@@ -358,6 +448,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill" data-date="2020-04-20">
+    <div class="tl-drill-label">Scenario drill · 20 April 2020</div>
+    <h3>The front-month oil contract has just settled below zero</h3>
+    <p>You maintain a continuous WTI crude series for a trend-following backtest. It is ratio-adjusted and rolls at expiry. Today the May contract settled at −$37.63, after about $18 on Friday, while June is around $20. Your series is due to roll. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Ratio-adjust across the roll as usual.<div class="tl-drill-why">The ratio is new price over old price, and the old price is negative. Every earlier price in the history gets multiplied by a negative number and flips sign.</div></li>
+      <li data-verdict="bad">Keep the front-month series and compute today's percentage return.<div class="tl-drill-why">From about $18 to −$37.63 is a return of roughly −300%, which a simple long position in an asset can never reach. A percentage return through zero is meaningless.</div></li>
+      <li data-verdict="good">Use a back-adjusted (Panama) series for this backtest, measure P&amp;L in dollars on the contract held, and record the roll rule alongside the results.<div class="tl-drill-why">For futures, dollar P&amp;L on the contract actually held is the honest unit, and it is exactly what the Panama series preserves. Writing down the roll rule lets anyone see which version of the day the backtest used.</div></li>
+      <li data-verdict="ok">Switch to a vendor series that rolls a few days early, so it never shows a negative price.<div class="tl-drill-why">Fine if your strategy really rolls early, and many funds did. But it hides an event that hit anyone who held the front month into expiry, so know which rule you are using and why.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Lockdowns had cut oil demand and storage at Cushing, Oklahoma, the delivery point, was filling. The May contract's −$37.63 was the first negative settlement in its history, while June stayed positive. A retail oil product sold by Bank of China left its customers with heavy losses; the largest US oil ETF had already moved into later months. Depending on its roll rule, a continuous series shows that day as −$37.63, about $20, or sign-flipped.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -441,6 +544,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="data-pipeline-raw-to-trading-ready.html">The Data Pipeline: Raw Feeds to Trading-Ready Data</a> <span>· normalization is stage 4 of 6</span></li>
+        <li><a href="data-cleaning-outliers-missing-data.html">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</a> <span>· why these jumps are not bad ticks</span></li>
+        <li><a href="primer-returns-compounding.html">Returns, Log-Returns &amp; Compounding</a> <span>· dollar moves versus percentage moves</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="point-in-time-data-survivorship-bias.html">Point-in-Time Data &amp; Survivorship Bias</a> <span>· serving only what was knowable</span></li>
+        <li><a href="data-architecture-storage-versioning.html">Data Architecture for Systematic Trading: Storage, Versioning &amp; Reproducibility</a> <span>· keeping both adjusted series, versioned</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a missed split or an unadjusted roll manufactures fake returns on a schedule, and a breakout or trend signal will happily trade them.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="data-cleaning-outliers-missing-data.html">← Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</a>
     <a href="point-in-time-data-survivorship-bias.html">Point-in-Time Data &amp; Survivorship Bias →</a>
@@ -470,9 +593,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Q-Learning &amp; Temporal-Difference — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -189,7 +190,19 @@
       </div>
     </section>
 
+    <!-- WB:q_learning_temporal_difference-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Learning a Q-table one sample at a time</h2>
+      <!-- WB:q_learning_temporal_difference:START -->
+      <div class="wb" data-title="Learning a Q-table one sample at a time">
+        <script type="application/json">{"w":600,"h":550,"intro":"The same three-state market as the previous lesson, but now nobody tells the agent the odds. It learns a table of action values from samples. Press play, or step through.","steps":[{"cap":"Same market as before: Flat, Long, Short, discount 0.9. But now the agent does not know the odds or the rewards. It keeps a Q-table: one guess per state and action, all starting at 0.","do":[{"box":"fs","x":10,"y":40,"w":168,"h":58,"text":"Flat · Stay","tone":"blue","sub":"0","size":19},{"box":"fo","x":190,"y":40,"w":168,"h":58,"text":"Flat · Open","tone":"blue","sub":"0","size":19},{"box":"lh","x":10,"y":112,"w":168,"h":58,"text":"Long · Hold","tone":"green","sub":"0","size":19},{"box":"lc","x":190,"y":112,"w":168,"h":58,"text":"Long · Close","tone":"green","sub":"0","size":19},{"box":"sh","x":10,"y":184,"w":168,"h":58,"text":"Short · Hold","tone":"red","sub":"0","size":19},{"box":"sc","x":190,"y":184,"w":168,"h":58,"text":"Short · Close","tone":"red","sub":"0","size":19},{"note":"qt","x":188,"y":22,"text":"the Q-table (step size 0.5)","size":18,"anchor":"middle","tone":"purple"}]},{"cap":"Sample 1: in Flat it tries Open, lands in Long, and pays 0.1. Target: −0.1 + 0.9 × (best guess in Long, still 0) = −0.1. Move half way from 0: Q(Flat, Open) = −0.05. One noisy sample makes Open look bad for now.","do":[{"note":"c1","x":395,"y":70,"text":"Flat → Open → Long\nreward −0.1\ntarget −0.1\nnew Q = −0.05","size":18,"anchor":"start","tone":"blue"},{"count":"fo","from":0,"to":-0.05,"dp":3,"ms":800},{"pulse":"fo"}]},{"cap":"Sample 2: in Long it Holds, stays Long, and earns +1. Target: 1 + 0.9 × 0 = 1. Error 1. Move half way: Q(Long, Hold) = 0.5.","do":[{"hide":"c1"},{"note":"c2","x":395,"y":70,"text":"Long → Hold → Long\nreward +1\ntarget 1\nnew Q = 0.5","size":18,"anchor":"start","tone":"green"},{"count":"lh","from":0,"to":0.5,"dp":3,"ms":800},{"pulse":"lh"}]},{"cap":"Sample 3: the same move again. Now the target uses the new guess: 1 + 0.9 × 0.5 = 1.45. The error, how surprised it is, is 1.45 − 0.5 = 0.95. Move half of that: Q(Long, Hold) = 0.975.","do":[{"hide":"c2"},{"note":"c3","x":395,"y":70,"text":"target 1 + 0.9 × 0.5\n= 1.45\nerror 0.95\nnew Q = 0.975","size":18,"anchor":"start","tone":"amber"},{"count":"lh","from":0.5,"to":0.975,"dp":3,"ms":800},{"pulse":"lh"}]},{"cap":"Keep repeating that sample and each update closes 5% of the remaining gap. The guess climbs toward 10, the exact value the previous lesson solved for with a known model. Here it was learned from samples alone.","do":[{"chart":"q","x":10,"y":268,"w":580,"h":262,"title":"Q(Long, Hold), update by update","xd":[0,60],"yd":[0,11],"yt":[[0,"0"],[5,"5"],[10,"10"]],"xt":[[0,"0"],[20,"20"],[40,"40"],[60,"60"]],"pl":46,"pr":20},{"series":"star","chart":"q","pts":[[0,10],[60,10]],"tone":"green","dash":true,"ms":500,"label":"Q* = 10","lat":[14,10],"ldy":-14,"lsize":17},{"series":"qk","chart":"q","pts":[[0,0.0],[1,0.5],[2,0.975],[3,1.426],[4,1.855],[5,2.262],[6,2.649],[7,3.017],[8,3.366],[9,3.698],[10,4.013],[11,4.312],[12,4.596],[13,4.867],[14,5.123],[15,5.367],[16,5.599],[17,5.819],[18,6.028],[19,6.226],[20,6.415],[21,6.594],[22,6.765],[23,6.926],[24,7.08],[25,7.226],[26,7.365],[27,7.497],[28,7.622],[29,7.741],[30,7.854],[31,7.961],[32,8.063],[33,8.16],[34,8.252],[35,8.339],[36,8.422],[37,8.501],[38,8.576],[39,8.647],[40,8.715],[41,8.779],[42,8.84],[43,8.898],[44,8.953],[45,9.006],[46,9.055],[47,9.103],[48,9.147],[49,9.19],[50,9.231],[51,9.269],[52,9.306],[53,9.34],[54,9.373],[55,9.405],[56,9.434],[57,9.463],[58,9.49],[59,9.515],[60,9.539]],"tone":"amber","ms":1800},{"dot":"d1","chart":"q","at":[1,0.5],"text":"","tone":"amber"},{"dot":"d2","chart":"q","at":[2,0.975],"text":"0.5, then 0.975","tone":"amber","dx":14,"dy":-14,"anchor":"start"}]},{"cap":"With a fixed step size it gets close but never lands exactly on 10, and every new noisy sample keeps nudging it. Formal convergence needs the step size to shrink over time.","do":[{"dot":"d60","chart":"q","at":[60,9.54],"text":"9.54 after 60","tone":"amber","dy":22,"anchor":"end"}]},{"cap":"To learn about every action, the agent must sometimes try one it does not currently rate best. A common rule, ε-greedy: take the best-rated action most of the time, a random one with small probability ε.","do":[{"hide":"q"},{"hide":"star"},{"hide":"qk"},{"hide":"d1"},{"hide":"d2"},{"hide":"d60"},{"hide":"c3"},{"icon":"dice","name":"dice","x":430,"y":60,"s":0.7,"tone":"amber","label":"explore\nsometimes","lsize":18}]},{"cap":"Q-learning's target always uses the best action in the next state, whatever the agent actually does next. So it learns the value of the greedy policy while it is still exploring. That is what off-policy means.","do":[{"note":"off","x":300,"y":300,"text":"Q-learning target: r + γ × best Q in next state","size":19,"anchor":"middle","tone":"green"},{"note":"on","x":300,"y":340,"text":"SARSA target: r + γ × Q of the action actually taken","size":19,"anchor":"middle","tone":"blue"}]},{"cap":"One catch. The target takes the maximum of noisy guesses, and the maximum of noisy guesses runs high. Five estimates of an action truly worth 0 (illustrative): the max picks the one that overshot, +0.8.","do":[{"hide":"off"},{"hide":"on"},{"chart":"ov","x":10,"y":268,"w":580,"h":262,"title":"Five noisy estimates of a true value of 0","xd":[0.3,5.7],"yd":[-0.9,1.1],"yt":[[-0.5,"−0.5"],[0,"0"],[0.5,"+0.5"],[1,"+1"]],"xt":[[1,""],[2,""],[3,""],[4,""],[5,""]],"zero":true,"pl":56,"pr":14},{"bars":"nb","chart":"ov","data":[[1,-0.6,"-0.6","blue"],[2,0.3,"+0.3","blue"],[3,-0.2,"-0.2","blue"],[4,0.8,"+0.8","red"],[5,-0.4,"-0.4","blue"]],"bw":50,"ms":1000}]},{"cap":"That is the overestimation bias, and Double Q-learning is the standard fix. Where has this worked in trading? Mostly execution: Nevmyvaka, Feng and Kearns (2006) learned where to place limit orders from historical order-book data and cut costs against simple submit-and-leave orders.","do":[{"note":"ex","x":300,"y":252,"text":"clearest trading use: order execution","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:q_learning_temporal_difference:END -->
+    </section>
+    <!-- WB:q_learning_temporal_difference-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Getting close, never quite arriving</h2>
       <p class="sl-sub">Keep sampling the same (Long, Hold, +1, Long) transition and Q(Long, Hold) climbs toward Q* = 10 — but with a fixed learning rate, never exactly onto it.</p>
@@ -217,7 +230,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Exploration vs. exploitation</h2>
       <p class="sl-sub">Every one of those "not yet sampled" cells is a decision an agent has to make, over and over: try something new, or stick with what already looks best?</p>
@@ -230,7 +243,7 @@
       <div class="sl-quote">A trading system that only ever takes the setup it currently rates highest can end up structurally blind to whether a different setup is actually better — it will never generate the data needed to find out. Exploration is the cost of keeping that door open.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">ε, made concrete</h2>
       <p class="sl-sub">Drag the slider. Each dot below is one simulated action; amber dots are the exploratory ones ε sends off-script.</p>
@@ -248,7 +261,7 @@
       <p class="sl-p">Push ε toward 0 and the agent almost never leaves its current best guess — fast to exploit what it already believes, but slow (or unable) to discover it might be wrong. Push ε toward 1 and it's exploring almost constantly — plenty of information, very little of it acted on. Most practical setups pick something small (often 0.05–0.2) and sometimes shrink it further as learning progresses.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Q-learning's off-policy sibling: SARSA</h2>
       <p class="sl-sub">Change exactly one term in the update, and the entire character of what's being learned changes with it.</p>
@@ -269,7 +282,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -320,7 +333,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -466,5 +479,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

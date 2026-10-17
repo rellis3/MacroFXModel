@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Corporate Actions &amp; Series Continuity — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -107,7 +108,19 @@
       <div class="sl-quote">Neither is "more correct." Back-adjustment protects dollar/point P&amp;L math; ratio-adjustment protects percentage-return math. Pick based on what the downstream calculation actually needs — not once, as a single infrastructure decision, but per use case.</div>
     </section>
 
+    <!-- WB:corporate_actions_series_continuity-deck:START -->
     <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Splits, rolls and the two ways to splice</h2>
+      <!-- WB:corporate_actions_series_continuity:START -->
+      <div class="wb" data-title="Splits, rolls and the two ways to splice">
+        <script type="application/json">{"w":600,"h":770,"intro":"Accurate prices, fake jumps: a stock split, a futures roll, and the two standard ways to splice a continuous series. Press play, or step through.","steps":[{"cap":"A 2-for-1 stock split. The raw chart shows $100 falling to $50 overnight: a 50% loss to any naive return calculation.","do":[{"chart":"sp","x":10,"y":10,"w":280,"h":230,"title":"Stock price, $","xd":[0,5],"yd":[40,110],"yt":[[50,"50"],[100,"100"]],"xt":[[0,"0"],[3,"split"],[5,"5"]],"pl":40,"pr":12},{"series":"rs","chart":"sp","pts":[[0,100],[1,101],[2,99],[3,100],[3.02,50],[4,51],[5,50]],"tone":"red","ms":1000,"label":"raw","lat":[1,101],"ldy":-14,"lsize":16}]},{"cap":"Nobody lost a cent. One $100 share became two $50 shares: the pizza was cut into more slices, not made smaller.","do":[{"chip":"one","x":90,"y":270,"text":"1 × $100","tone":"blue"},{"chip":"two","x":210,"y":270,"text":"2 × $50","tone":"green"}]},{"cap":"Back-adjust: multiply every price before the split by the factor 0.5. History now reads around $50 the whole way, and the split day shows a return of about zero.","do":[{"series":"as","chart":"sp","pts":[[0,50],[1,50.5],[2,49.5],[3,50],[4,51],[5,50]],"tone":"green","ms":1000,"label":"adjusted","lat":[1,50.5],"ldy":-14,"lsize":16},{"dim":"rs"}]},{"cap":"Futures have the same problem at a roll. The expiring crude contract closes at $78.40, the new one at $78.90. A raw splice shows a $0.50 jump nobody traded.","do":[{"chart":"fr","x":310,"y":10,"w":280,"h":230,"title":"Crude futures, $","xd":[0,6],"yd":[71,80.5],"yt":[[72,"72"],[76,"76"],[80,"80"]],"xt":[[0,"−1 wk"],[5,"roll"],[6,""]],"pl":40,"pr":12},{"series":"old","chart":"fr","pts":[[0,72.0],[5,78.4]],"tone":"red","ms":800},{"series":"nw","chart":"fr","pts":[[5,78.9],[6,79.1]],"tone":"red","ms":400},{"dot":"j","chart":"fr","at":[5,78.65],"text":"+$0.50 jump","tone":"red","dx":-8,"dy":-22,"anchor":"end"}]},{"cap":"The Panama method adds the $0.50 offset to every earlier price. $72.00 becomes $72.50, the roll shows no jump, and every dollar move is unchanged.","do":[{"series":"pan","chart":"fr","pts":[[0,72.5],[5,78.9]],"tone":"green","dash":true,"ms":900,"label":"Panama +$0.50","lat":[1.5,74.4],"ldx":-4,"ldy":-14,"lanchor":"start","lsize":16}]},{"cap":"Ratio adjustment multiplies earlier prices by 78.90 / 78.40 instead: $72.00 becomes about $72.46. Percentage moves stay exact, but old price levels drift.","do":[{"box":"rat","x":20,"y":270,"w":560,"h":56,"text":"ratio: × 78.90 / 78.40  →  $72.00 becomes $72.46","tone":"amber","size":19},{"hide":"one"},{"hide":"two"}]},{"cap":"Skip the adjustment and a trend backtest \"breaks out\" every quarter, right on the roll date. It is measuring the splice, not the market.","do":[{"box":"brk","x":20,"y":340,"w":560,"h":56,"text":"breakouts on roll dates = the splice, not the market","tone":"red","size":19}]},{"cap":"Over many rolls the Panama offsets pile up. If new contracts keep rolling in below old ones, history shifts down, far enough back even below zero, a level that never traded (illustrative).","do":[{"hide":"brk"},{"chart":"dr","x":10,"y":340,"w":580,"h":230,"title":"Years back: traded price vs Panama level (illustrative)","xd":[0,10],"yd":[-12,40],"yt":[[0,"$0"],[20,"$20"],[40,"$40"]],"xt":[[0,"now"],[5,"5 yr"],[10,"10 yr"]],"zero":true,"pl":50,"pr":34},{"series":"act","chart":"dr","pts":[[0,30],[2,34],[4,28],[6,36],[8,31],[10,33]],"tone":"blue","ms":900,"label":"traded","lat":[10,33],"ldx":-4,"ldy":-14,"lanchor":"end","lsize":16},{"series":"pdr","chart":"dr","pts":[[0,30],[2,26],[4,12],[6,12],[8,-1],[10,-7]],"tone":"green","dash":true,"ms":1100,"label":"Panama level","lat":[6,12],"ldx":0,"ldy":-16,"lanchor":"middle","lsize":16}]},{"cap":"Then 20 April 2020: the May WTI contract settled at −$37.63, after about $18 the Friday before, while June stayed near $20. A negative price was real, not an artefact.","do":[{"box":"wti","x":20,"y":590,"w":560,"h":56,"text":"May WTI −$37.63  ·  June ≈ $20","tone":"red","size":20}]},{"cap":"Same day, three histories. Roll at expiry: −$37.63. Roll a few days early: about $20, never negative. Ratio-adjust that day: divide by a negative and every earlier price flips sign.","do":[{"box":"h1","x":20,"y":664,"w":170,"h":70,"text":"roll at expiry\n−$37.63","tone":"red","size":17},{"box":"h2","x":215,"y":664,"w":170,"h":70,"text":"roll early\n≈ $20","tone":"blue","size":17},{"box":"h3","x":410,"y":664,"w":170,"h":70,"text":"ratio-adjust\nsign flips","tone":"amber","size":17}]},{"cap":"Neither fix is free. Dollar P&L and position sizing want Panama; long-run percentage statistics want ratio. Know which one your series uses, and match it to the number you compute.","do":[{"pulse":"pan"},{"pulse":"rat"}]}]}</script>
+      </div>
+      <!-- WB:corporate_actions_series_continuity:END -->
+    </section>
+    <!-- WB:corporate_actions_series_continuity-deck:END -->
+
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Compute a back-adjusted price yourself</h2>
       <p class="sl-sub">Panama-method back-adjustment, one roll at a time: offset = post-roll price − pre-roll price, then add that offset to any older raw price.</p>
@@ -128,7 +141,7 @@
       <p class="sl-p">Leave any field blank or type something non-numeric and the result shows <strong>—</strong> rather than a broken number — the same guard any real pipeline needs before this formula ever sees production data.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Drag far enough back, and the price goes negative</h2>
       <p class="sl-sub">One illustrative historical print — $20.00, quoted years ago — run through an increasing number of accumulated roll offsets. The raw print never changes. Watch the adjusted price.</p>
@@ -153,7 +166,7 @@
       <p class="sl-p">Each roll's offset is genuine on its own — here every roll is downward (new contract below the expiring one), so the offsets accumulate going backward in time. Eight rolls into this contract's history, the same $20.00 print that actually traded now reads as a negative price back-adjustment produced, not a price anyone ever quoted.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Fixing continuity can break the price level</h2>
       <div class="sl-callout amber">
@@ -167,7 +180,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Practitioners keep both series, on purpose</h2>
       <p class="sl-sub">Serious futures desks don't pick one adjustment method once — they maintain both, and choose per calculation.</p>
@@ -193,7 +206,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Checked against this repo's actual code</h2>
       <div class="sl-callout purple">
@@ -204,7 +217,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">20 April 2020: WTI settles at −$37.63</h2>
       <div class="sl-callout amber">
@@ -224,7 +237,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <!-- DESK:START -->
       <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
@@ -241,7 +254,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -292,7 +305,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -402,5 +415,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

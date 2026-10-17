@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Trade Classification — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -247,7 +248,19 @@
       </div>
     </section>
 
+    <!-- WB:institutional_trade_classification-deck:START -->
     <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Signing trades: tick rule, quote rule, Lee-Ready, then BVC</h2>
+      <!-- WB:institutional_trade_classification:START -->
+      <div class="wb" data-title="Signing trades: tick rule, quote rule, Lee-Ready, then BVC">
+        <script type="application/json">{"w":600,"h":800,"intro":"Nothing on the tape says who started a trade. Three rules guess it trade by trade, and a fourth splits a whole bar at once. Press play, or step through.","steps":[{"cap":"A toy tape: a seed print at 100, then nine trades. Each print is a price, a size and a time. Nothing says whether the buyer or the seller was in a hurry.","do":[{"note":"hdr","x":300,"y":24,"text":"price · size · time … but who was the aggressor?","size":19,"anchor":"middle","tone":"amber"},{"chart":"tape","x":10,"y":58,"w":580,"h":292,"title":"Trade price, with the quote in effect before each trade","xd":[-0.5,9.5],"yd":[95.5,103],"yt":[[97,"97"],[100,"100"],[102,"102"]],"xt":[[0,"seed"],[1,"t1"],[2,"t2"],[3,"t3"],[4,"t4"],[5,"t5"],[6,"t6"],[7,"t7"],[8,"t8"],[9,"t9"]],"pl":92,"pr":14},{"series":"path","chart":"tape","pts":[[0,100],[1,101],[2,101],[3,99],[4,99],[5,102],[6,100],[7,100],[8,97],[9,98]],"tone":"blue","ms":1300}]},{"cap":"Add the standing quote before each trade: the shaded box runs from the bid to the ask, and the dashed line is the midpoint between them.","do":[{"gap":"q1","chart":"tape","top":[[0.6799999999999999,101],[1.32,101]],"bot":[[0.6799999999999999,99],[1.32,99]],"tone":"purple","op":0.28},{"gap":"q2","chart":"tape","top":[[1.68,102],[2.32,102]],"bot":[[1.68,100],[2.32,100]],"tone":"purple","op":0.28},{"gap":"q3","chart":"tape","top":[[2.68,101],[3.32,101]],"bot":[[2.68,99],[3.32,99]],"tone":"purple","op":0.28},{"gap":"q4","chart":"tape","top":[[3.68,99],[4.32,99]],"bot":[[3.68,97],[4.32,97]],"tone":"purple","op":0.28},{"gap":"q5","chart":"tape","top":[[4.68,102],[5.32,102]],"bot":[[4.68,100],[5.32,100]],"tone":"purple","op":0.28},{"gap":"q6","chart":"tape","top":[[5.68,102],[6.32,102]],"bot":[[5.68,100],[6.32,100]],"tone":"purple","op":0.28},{"gap":"q7","chart":"tape","top":[[6.68,100],[7.32,100]],"bot":[[6.68,98],[7.32,98]],"tone":"purple","op":0.28},{"gap":"q8","chart":"tape","top":[[7.68,99],[8.32,99]],"bot":[[7.68,97],[8.32,97]],"tone":"purple","op":0.28},{"gap":"q9","chart":"tape","top":[[8.68,98],[9.32,98]],"bot":[[8.68,96],[9.32,96]],"tone":"purple","op":0.28},{"series":"m1","chart":"tape","pts":[[0.6799999999999999,100.0],[1.32,100.0]],"tone":"amber","dash":true,"ms":200,"width":2.4},{"series":"m2","chart":"tape","pts":[[1.68,101.0],[2.32,101.0]],"tone":"amber","dash":true,"ms":200,"width":2.4},{"series":"m3","chart":"tape","pts":[[2.68,100.0],[3.32,100.0]],"tone":"amber","dash":true,"ms":200,"width":2.4},{"series":"m4","chart":"tape","pts":[[3.68,98.0],[4.32,98.0]],"tone":"amber","dash":true,"ms":200,"width":2.4},{"series":"m5","chart":"tape","pts":[[4.68,101.0],[5.32,101.0]],"tone":"amber","dash":true,"ms":200,"width":2.4},{"series":"m6","chart":"tape","pts":[[5.68,101.0],[6.32,101.0]],"tone":"amber","dash":true,"ms":200,"width":2.4},{"series":"m7","chart":"tape","pts":[[6.68,99.0],[7.32,99.0]],"tone":"amber","dash":true,"ms":200,"width":2.4},{"series":"m8","chart":"tape","pts":[[7.68,98.0],[8.32,98.0]],"tone":"amber","dash":true,"ms":200,"width":2.4},{"series":"m9","chart":"tape","pts":[[8.68,97.0],[9.32,97.0]],"tone":"amber","dash":true,"ms":200,"width":2.4}]},{"cap":"The tick rule looks only at prices. Up from the last print is a buy, down is a sell, and an unchanged price copies the last sign. t2, t4 and t7 are unchanged prices.","do":[{"note":"tkL","x":14,"y":374,"text":"tick","size":17,"anchor":"start"},{"note":"tk1","x":173.1,"y":374,"text":"B","size":18,"anchor":"middle","tone":"green"},{"note":"tk2","x":220.5,"y":374,"text":"B","size":18,"anchor":"middle","tone":"green"},{"note":"tk3","x":267.9,"y":374,"text":"S","size":18,"anchor":"middle","tone":"red"},{"note":"tk4","x":315.3,"y":374,"text":"S","size":18,"anchor":"middle","tone":"red"},{"note":"tk5","x":362.7,"y":374,"text":"B","size":18,"anchor":"middle","tone":"green"},{"note":"tk6","x":410.1,"y":374,"text":"S","size":18,"anchor":"middle","tone":"red"},{"note":"tk7","x":457.5,"y":374,"text":"S","size":18,"anchor":"middle","tone":"red"},{"note":"tk8","x":504.9,"y":374,"text":"S","size":18,"anchor":"middle","tone":"red"},{"note":"tk9","x":552.3,"y":374,"text":"B","size":18,"anchor":"middle","tone":"green"}]},{"cap":"The quote rule compares each price with the midpoint: above is a buy, below is a sell. t2 printed at 101, exactly the mid of 100/102, so the quote rule cannot decide.","do":[{"note":"qtL","x":14,"y":406,"text":"quote","size":17,"anchor":"start"},{"note":"qt1","x":173.1,"y":406,"text":"B","size":18,"anchor":"middle","tone":"green"},{"note":"qt2","x":220.5,"y":406,"text":"tie","size":18,"anchor":"middle","tone":"amber"},{"note":"qt3","x":267.9,"y":406,"text":"S","size":18,"anchor":"middle","tone":"red"},{"note":"qt4","x":315.3,"y":406,"text":"B","size":18,"anchor":"middle","tone":"green"},{"note":"qt5","x":362.7,"y":406,"text":"B","size":18,"anchor":"middle","tone":"green"},{"note":"qt6","x":410.1,"y":406,"text":"S","size":18,"anchor":"middle","tone":"red"},{"note":"qt7","x":457.5,"y":406,"text":"B","size":18,"anchor":"middle","tone":"green"},{"note":"qt8","x":504.9,"y":406,"text":"S","size":18,"anchor":"middle","tone":"red"},{"note":"qt9","x":552.3,"y":406,"text":"B","size":18,"anchor":"middle","tone":"green"}]},{"cap":"Lee-Ready: use the quote rule, and fall back to the tick rule only for that exact tie. t2 inherits the buy from t1.","do":[{"note":"lrL","x":14,"y":438,"text":"Lee-Ready","size":17,"anchor":"start"},{"note":"lr1","x":173.1,"y":438,"text":"B","size":19,"anchor":"middle","tone":"green"},{"note":"lr2","x":220.5,"y":438,"text":"B","size":19,"anchor":"middle","tone":"green"},{"note":"lr3","x":267.9,"y":438,"text":"S","size":19,"anchor":"middle","tone":"red"},{"note":"lr4","x":315.3,"y":438,"text":"B","size":19,"anchor":"middle","tone":"green"},{"note":"lr5","x":362.7,"y":438,"text":"B","size":19,"anchor":"middle","tone":"green"},{"note":"lr6","x":410.1,"y":438,"text":"S","size":19,"anchor":"middle","tone":"red"},{"note":"lr7","x":457.5,"y":438,"text":"B","size":19,"anchor":"middle","tone":"green"},{"note":"lr8","x":504.9,"y":438,"text":"S","size":19,"anchor":"middle","tone":"red"},{"note":"lr9","x":552.3,"y":438,"text":"B","size":19,"anchor":"middle","tone":"green"}]},{"cap":"At t4 and t7 the two rules disagree. The price did not move, but the quote dropped, so the trade printed above the new midpoint. The tick rule says sell; Lee-Ready trusts the quote and says buy.","do":[{"pulse":"lr4"},{"pulse":"lr7"},{"note":"dis","x":300,"y":470,"text":"t4, t7: price unchanged, quote fell → quote rule wins: buy","size":17,"anchor":"middle","tone":"green"}]},{"cap":"Lee and Ready (1991) compared each trade with the quote from about five seconds before it, so a quote that reacted to the trade is not used. On millisecond markets that lag is too coarse, and published work finds accuracy falls.","do":[{"box":"lag","x":60,"y":488,"w":480,"h":50,"text":"quote from ~5 s before the print · less accurate on fast markets","tone":"amber","size":17}]},{"cap":"Bulk Volume Classification gives up on single trades. It splits a whole bar by how far price moved in units of its usual move: buy share = Φ(ΔP / σ). Four bars with σ = 0.0004.","do":[{"hide":"lag"},{"dim":"dis"},{"chart":"bvc","x":10,"y":552,"w":580,"h":236,"title":"BVC buy share of each bar","xd":[0.4,4.6],"yd":[0,1.3],"yt":[[0.5,"50%"],[1,"100%"]],"xt":[[1,"A z = +2"],[2,"B z = 0"],[3,"C z = −0.5"],[4,"D z = +1"]],"pl":56,"pr":14},{"bars":"bv","chart":"bvc","data":[[1,0.9772498680518208,"97.7%","green"],[2,0.5,"50.0%","blue"],[3,0.3085375387259869,"30.9%","red"],[4,0.8413447460685429,"84.1%","green"]],"bw":58,"ms":1200}]},{"cap":"Bar D moved +0.0004, one usual move: z = 1 and Φ(1) = 0.8413. On a 1,000-unit bar, 841 units are called buys and 159 sells. A flat bar is always 50/50.","do":[{"note":"dd","chart":"bvc","at":[2.6,1.2],"text":"D: 1,000 units → 841 buy · 159 sell","tone":"green","size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"The catch: BVC labels a bar, not a trade. Many small informed trades and one big order that moved price the same way get the identical split. It needs only price and volume, which is why VPIN is built on it and why it suits FX.","do":[{"note":"cav","x":300,"y":514,"text":"BVC labels a bar, never a single trade","size":18,"anchor":"middle","tone":"amber"}]}]}</script>
+      </div>
+      <!-- WB:institutional_trade_classification:END -->
+    </section>
+    <!-- WB:institutional_trade_classification-deck:END -->
+
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Which method actually gets used, and where</h2>
       <div class="sl-compare">
@@ -276,7 +289,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -327,7 +340,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -473,5 +486,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

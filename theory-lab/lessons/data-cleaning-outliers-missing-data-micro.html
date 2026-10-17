@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Data Cleaning: Outliers, Bad Ticks &amp; Missing Data — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -182,7 +183,19 @@
       <div class="sl-note">This deck's slider and calculator below use a simpler mean/standard-deviation z-score, on purpose — it's the fastest way to feel the "causal, not full-sample" discipline hands-on. Production spike detection prefers median/MAD for exactly the robustness reason on the left.</div>
     </section>
 
+    <!-- WB:data_cleaning_outliers_missing_data-deck:START -->
     <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Cleaning a tick stream without looking ahead</h2>
+      <!-- WB:data_cleaning_outliers_missing_data:START -->
+      <div class="wb" data-title="Cleaning a tick stream without looking ahead">
+        <script type="application/json">{"w":600,"h":760,"intro":"One tick stream, cleaned the honest way: flag with only-past robust statistics, then decide what a flag means. Press play, or step through.","steps":[{"cap":"Ticks arrive one at a time: 1.02, 1.01, 1.03, 1.02. A live cleaner only ever knows the ticks that have already arrived.","do":[{"chart":"tk","x":10,"y":10,"w":580,"h":260,"title":"Tick prices (lesson's worked example)","xd":[0.4,6.6],"yd":[0.9,1.2],"yt":[[0.95,"0.95"],[1.0,"1.00"],[1.05,"1.05"],[1.1,"1.10"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"6"]],"pl":56,"pr":16},{"dot":"k0","chart":"tk","at":[1,1.02],"text":"","tone":"blue"},{"dot":"k1","chart":"tk","at":[2,1.01],"text":"","tone":"blue"},{"dot":"k2","chart":"tk","at":[3,1.03],"text":"","tone":"blue"},{"dot":"k3","chart":"tk","at":[4,1.02],"text":"","tone":"blue"}]},{"cap":"From those four only: the median is 1.02, and the median distance from it, the MAD, is 0.005. Robust: one wild value would barely move either.","do":[{"box":"st","x":20,"y":286,"w":560,"h":56,"text":"median = 1.02   ·   MAD = 0.005   (ticks 1–4 only)","tone":"blue","size":19}]},{"cap":"Draw the band: median ± 10 MADs, 0.97 to 1.07. Anything outside it is flagged.","do":[{"gap":"band","chart":"tk","top":[[0.6,1.07],[5.5,1.07]],"bot":[[0.6,0.97],[5.5,0.97]],"tone":"blue","op":0.2}]},{"cap":"Tick 5 arrives at 4.50, a keying error, far off this chart. It is 4.50 − 1.02 = 3.48 away, which is 696 MADs. Flagged instantly, using nothing after tick 4.","do":[{"dot":"k5","chart":"tk","at":[5,1.19],"text":"4.50 ↑ off chart: 696 MADs","tone":"amber","dx":-8,"dy":10,"anchor":"end"},{"pulse":"k5"}]},{"cap":"The trap: build the band from the whole sample, including ticks that come later, and you are judging tick 5 with tomorrow's data. A live system could never reproduce that call. It is lookahead bias.","do":[{"dot":"k6","chart":"tk","at":[6,1.03],"text":"tick 6: not yet known","tone":"red","dx":-8,"dy":-16,"anchor":"end"},{"box":"trap","x":20,"y":352,"w":560,"h":56,"text":"whole-sample statistics = cleaning with the future","tone":"red","size":19}]},{"cap":"Now a different problem: a halt. Trading stops, then resumes at a different level. What goes in the gap? Illustrative prices.","do":[{"hide":"st"},{"hide":"trap"},{"chart":"gp","x":10,"y":290,"w":580,"h":270,"title":"A halt: no prices in the gap (illustrative)","xd":[0,11],"yd":[0.96,1.12],"yt":[[1.0,"1.00"],[1.05,"1.05"],[1.1,"1.10"]],"xt":[[0,"0"],[4,"halt"],[8,"resume"],[11,"11"]],"pl":56,"pr":16},{"series":"b","chart":"gp","pts":[[0,1.0],[1,1.01],[2,0.99],[3,1.0],[4,1.01]],"tone":null,"ms":700},{"series":"a","chart":"gp","pts":[[8,1.08],[9,1.09],[10,1.07],[11,1.08]],"tone":null,"ms":700}]},{"cap":"Forward-fill: repeat the last price, 1.01, across the gap. It manufactures a flat, calm period that never happened, then a jump.","do":[{"series":"ff","chart":"gp","pts":[[4,1.01],[8,1.01],[8,1.08]],"tone":"blue","dash":true,"ms":800,"label":"forward-fill","lat":[6,1.01],"ldy":16,"lsize":16}]},{"cap":"Interpolate: draw a straight line from 1.01 to 1.08. It invents prices that never traded, and it needs the first price after the gap, which a live system did not yet have.","do":[{"series":"ip","chart":"gp","pts":[[4,1.01],[8,1.08]],"tone":"amber","dash":true,"ms":800,"label":"interpolate","lat":[6,1.045],"ldx":-6,"ldy":-14,"lanchor":"end","lsize":16}]},{"cap":"Flag and exclude: mark the gap as missing and leave it out. Honest, invents nothing, but shrinks the sample.","do":[{"box":"ex","x":20,"y":576,"w":560,"h":50,"text":"flag and exclude: honest, smaller sample","tone":"purple","size":19}]},{"cap":"Last, a flag is not a verdict. J-Com, 8 December 2005: a trader meant to sell 1 share at ¥610,000 and sold 610,000 shares at ¥1. The prints were extreme and accurate. The trades stood, and the loss was roughly ¥40 billion.","do":[{"chip":"jc","x":150,"y":652,"text":"610,000 shares at ¥1","tone":"red"},{"chip":"jm","x":430,"y":652,"text":"meant: 1 share at ¥610,000","tone":"green"}]},{"cap":"So: detect with robust statistics from the past only, decide separately whether a flagged print was an error or a real trade, and log every change you make.","do":[{"box":"end","x":20,"y":700,"w":560,"h":52,"text":"flag: yes  ·  delete: only what the venue voided","tone":"amber","size":19}]}]}</script>
+      </div>
+      <!-- WB:data_cleaning_outliers_missing_data:END -->
+    </section>
+    <!-- WB:data_cleaning_outliers_missing_data-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Tighten or loosen the threshold, watch the flags change</h2>
       <p class="sl-sub">Fourteen ticks. Each point's flag uses only the mean and standard deviation of the ticks <em>before</em> it — never later ticks, never the whole series.</p>
@@ -202,7 +215,7 @@
       <p class="sl-p">Loosen the threshold (raise k) and only the most extreme ticks stay flagged. Tighten it (lower k) and borderline, ordinary-looking wiggles start getting swept in too — the same tradeoff a real cleaning pipeline has to tune per instrument.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Run the check yourself</h2>
       <p class="sl-sub">z = (value − causal mean) ÷ causal standard deviation. Flag if |z| exceeds the threshold.</p>
@@ -223,7 +236,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The mandatory pitfall: cleaning with tomorrow's data</h2>
       <div class="sl-quote">A good copy editor reads sentence by sentence, flagging a word that looks wrong given only what's been read <em>so far</em>. A bad editor reads the whole book first, then "fixes" a word in Chapter 2 using word choices the author only settles on in Chapter 20 — technically thorough, but dishonest about what a reader at that point could actually have known. "Remove anything more than 5 standard deviations from the full-sample mean" is the second editor: the mean and standard deviation it uses were computed with knowledge of every future extreme value in the series.</div>
@@ -234,7 +247,7 @@
       <p class="sl-p">This is exactly why the slider and calculator above are wired to causal, only-past statistics rather than the whole illustrative dataset — it's the same discipline this pitfall demands, made concrete instead of abstract.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Filling a gap: three honest options, three real failure cases</h2>
       <p class="sl-sub">Once something is flagged bad or absent, deciding what fills it is a separate decision from detection — and none of the three is a safe universal default.</p>
@@ -249,7 +262,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">8 December 2005: 610,000 shares at ¥1</h2>
       <div class="sl-callout amber">
@@ -269,7 +282,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <!-- DESK:START -->
       <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
@@ -286,7 +299,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -337,7 +350,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -482,5 +495,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

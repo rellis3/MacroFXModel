@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rehypothecation &amp; Collateral Chains — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,54 @@
       <li><strong>Real-world episode:</strong> when MF Global failed on October 31, 2011, after a euro-bond bet drained its cash, customer accounts that were meant to be segregated came up roughly $1.6 billion short, and London customers were caught in a separate UK administration. "My collateral" is a legal claim, and in a run the firm needs cash first.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 226" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A collateral chain. Hedge fund A posts 10 million dollars of securities to prime broker B, B re-pledges the same securities to funder C, and C re-pledges them again to D. One 10 million dollar pool of securities exists, but three claims on it, A on B, B on C and C on D, add up to 30 million dollars, a re-use multiplier of about 3. If C cannot return the collateral, the shock runs both ways along the chain, up to B and down to D.">
+      <defs><marker id="tlp-rh-arr" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path class="tlp-arrow" d="M0,0 L8,4 L0,8 Z"/></marker></defs>
+      <text class="tlp-text" x="20" y="22" font-size="14" font-weight="700">One asset, re-pledged down a chain</text>
+      <line class="tlp-line thick" x1="102" y1="78" x2="186" y2="78" marker-end="url(#tlp-rh-arr)"/><text class="tlp-text2" x="145" y="62" text-anchor="middle" font-size="12">posts $10m</text>
+      <line class="tlp-line thick" x1="252" y1="78" x2="336" y2="78" marker-end="url(#tlp-rh-arr)"/><text class="tlp-text2" x="295" y="62" text-anchor="middle" font-size="12">re-pledges it</text>
+      <line class="tlp-line thick" x1="402" y1="78" x2="486" y2="78" marker-end="url(#tlp-rh-arr)"/><text class="tlp-text2" x="445" y="62" text-anchor="middle" font-size="12">re-pledges it</text>
+      <circle class="tlp-box blue" cx="70" cy="78" r="28"/><text class="tlp-text" x="70" y="84" text-anchor="middle" font-size="16" font-weight="700">A</text><text class="tlp-text3" x="70" y="124" text-anchor="middle" font-size="12">hedge fund</text>
+      <circle class="tlp-box green" cx="220" cy="78" r="28"/><text class="tlp-text" x="220" y="84" text-anchor="middle" font-size="16" font-weight="700">B</text><text class="tlp-text3" x="220" y="124" text-anchor="middle" font-size="12">prime broker</text>
+      <circle class="tlp-box amber" cx="370" cy="78" r="28"/><text class="tlp-text" x="370" y="84" text-anchor="middle" font-size="16" font-weight="700">C</text><text class="tlp-text3" x="370" y="124" text-anchor="middle" font-size="12">funder</text>
+      <circle class="tlp-box red" cx="520" cy="78" r="28"/><text class="tlp-text" x="520" y="84" text-anchor="middle" font-size="16" font-weight="700">D</text><text class="tlp-text3" x="520" y="124" text-anchor="middle" font-size="12">next funder</text>
+      <rect class="tlp-green" x="20" y="146" width="60" height="18" rx="2" opacity=".85"/>
+      <text class="tlp-green" x="216" y="160" font-size="12" font-weight="700">securities that exist: $10m</text>
+      <rect class="tlp-amber" x="20" y="172" width="60" height="18" rx="2" opacity=".85"/>
+      <rect class="tlp-amber" x="82" y="172" width="60" height="18" rx="2" opacity=".85"/>
+      <rect class="tlp-amber" x="144" y="172" width="60" height="18" rx="2" opacity=".85"/>
+      <text class="tlp-amber" x="216" y="186" font-size="12" font-weight="700">claims on them: $30m, about 3×</text>
+      <text class="tlp-red" x="20" y="216" font-size="12" font-weight="700">If C cannot hand the collateral back, the shock runs both ways: up to B and down to D.</text>
+    </svg>
+    <figcaption>Each re-pledge adds a promise, not a bond. Three stacked promises rest on one $10 million pool, so a failure anywhere in the chain reaches every party that was counting on it.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">When I post collateral to my broker, it just sits in my account. Right?</p>
+      <p data-who="Quant">Maybe. If it's segregated, the broker only holds it for you. If your agreement allows rehypothecation, the broker can use it: pledge it to its own lenders, or lend it out.</p>
+      <p data-who="Trader">Why would a broker want to?</p>
+      <p data-who="Quant">It's cheap funding. Your bonds raise cash for the broker in the repo market. Perfectly legal, within limits.</p>
+      <p data-who="Trader">And the risk?</p>
+      <p data-who="Quant">It can happen more than once. Say a hedge fund posts ten million dollars of bonds to its prime broker. The broker re-pledges them to a funder. That funder re-pledges them again to someone else.</p>
+      <p data-who="Trader">Still one set of bonds.</p>
+      <p data-who="Quant">One set of bonds, three promises stacked on top. Thirty million dollars of claims resting on ten. People call that collateral velocity, or the re-use multiplier, and here it's about three.</p>
+      <p data-who="Trader">And if a link in the middle breaks?</p>
+      <p data-who="Quant">It hits both ways. The funder can't give the bonds back up the chain, and the party it pledged them to was relying on that pledge. One failure, two directions.</p>
+      <p data-who="Trader">Has that actually bitten anyone?</p>
+      <p data-who="Quant">Lehman, in two thousand and eight. Its London arm ran under UK rules that let it re-use client assets far more freely. When it went into administration, clients who thought their collateral was simply being held found themselves waiting in line as creditors.</p>
+      <p data-who="Trader">Would US rules have helped?</p>
+      <p data-who="Quant">The US caps it. A broker can re-use customer securities only up to about one hundred and forty percent of what the customer owes it. The UK regime that applied to Lehman's London arm had no equivalent cap then.</p>
+      <p data-who="Trader">Any more recent case?</p>
+      <p data-who="Quant">MF Global, October twenty eleven. A big euro-bond bet drained its cash, and when it failed, customer accounts that were meant to be segregated came up about one point six billion dollars short. US customers were repaid in the end, but only after years.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">My collateral is a legal claim, not a thing in a drawer. Know what your broker may do with it, cap it, and don't keep everything with one firm.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -201,6 +250,26 @@
 
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Collateral chains and the re-use multiplier</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the rule build</div>
+    <div class="tl-eqbuild-title">How one pool of collateral turns into many claims, one piece at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{links} = \color{#fbbf24}{n - 1} \]</div>
+      <p>Count the parties in the chain, \(n\). Every hand-off between neighbours is one pledge. In the worked example below, A, B, C and D make \(n = 4\), so 3 links.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{stacked exposure} = \color{#fbbf24}{V} \times (n - 1) \]</div>
+      <p>Each link is a claim on the same pool of value \(V\), not on a new asset. So the claims add up while the securities do not.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{stacked exposure} = \$10{,}000{,}000 \times 3 = \color{#fbbf24}{\$30{,}000{,}000} \]</div>
+      <p>Put in the worked example: one $10,000,000 pool backs $30,000,000 of claims.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{re-use multiplier} = \frac{\text{stacked exposure}}{V} = \color{#10b981}{3\times} \]</div>
+      <p>Divide by the pool that seeded the chain. This is the collateral velocity in its simplest form: how many times the same asset is being counted on.</p>
+    </div>
+  </div>
   <p>
   Where rehypothecation is permitted, it doesn't have to stop after one step. A single piece of collateral
   posted by its original owner can, where legally permitted at each link, be re-pledged again and again down a
@@ -242,6 +311,10 @@
       stacked re-pledge links and the total stacked exposure across the
       chain recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="50" data-tol="0" data-unit=" million dollars">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The same $10,000,000 of securities is re-pledged twice more, so the chain now has six parties. What is the total stacked exposure, in millions of dollars? Lock in a guess, then type 6 into the parties field below.</div>
+      <div class="tl-predict-reveal"><p><strong>$50,000,000.</strong> Six parties make five links, and each link is a $10,000,000 claim on the same pool: \(10 \times 5 = 50\) million, a multiplier of about 5. Nothing new was bought; only promises were added. Now try 2 parties: plain, one-step collateral, a multiplier of 1.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Collateral value ($)</span></div>
@@ -322,6 +395,12 @@
     the abstract. Reading that lesson after this one turns its distress-propagation math from an abstract
     network exercise into a concrete description of exactly this kind of collateral-chain failure.
   </div>
+
+  <!-- WB:rehypothecation_collateral_chains:START -->
+  <div class="wb" id="wb-rehypothecation_collateral_chains" data-title="One asset, many claims, drawn step by step">
+    <script type="application/json">{"w":600,"h":740,"intro":"One pool of securities, passed down a chain of promises. Then what the rules allow, and two failures that tested them. Press play, or step through.","steps":[{"cap":"A hedge fund, A, owns $10 million of securities. It needs margin for a leveraged position, so it will post them to its prime broker.","do":[{"icon":"a","name":"piggy","x":20,"y":14,"s":0.75,"tone":"blue","label":"A: hedge fund","sym":"$","lsize":16},{"chip":"sec","x":58,"y":140,"text":"$10m bonds","tone":"purple"}]},{"cap":"A posts the $10 million to its prime broker, B. A now has a claim on B: give the securities back when I close my position.","do":[{"icon":"b","name":"bank","x":175,"y":14,"s":0.75,"tone":"green","label":"B: prime broker","lsize":16},{"move":"sec","x":213,"y":140,"ms":1100},{"arrow":["a","b"],"label":"claim","tone":"blue"}]},{"cap":"B is allowed to rehypothecate. It re-pledges the same securities to a funder, C, to raise its own cash in repo. Now B has a claim on C.","do":[{"icon":"c","name":"bank","x":330,"y":14,"s":0.75,"tone":"amber","label":"C: funder","lsize":16},{"move":"sec","x":368,"y":140,"ms":1100},{"arrow":["b","c"],"label":"claim","tone":"green"}]},{"cap":"C, if its own agreement allows, re-pledges them again to D. Still one set of securities. Three promises are now stacked on top of it.","do":[{"icon":"d","name":"bank","x":485,"y":14,"s":0.75,"tone":"red","label":"D: next funder","lsize":16},{"move":"sec","x":523,"y":140,"ms":1100},{"arrow":["c","d"],"label":"claim","tone":"amber"}]},{"cap":"Count them. The securities that exist: $10 million. The claims resting on them: A on B, B on C, C on D, $30 million in all. A re-use multiplier of about 3.","do":[{"box":"real","x":20,"y":178,"w":270,"h":70,"text":"securities that exist","tone":"green","sub":"$10m","size":19},{"box":"claims","x":310,"y":178,"w":270,"h":70,"text":"claims resting on them","tone":"amber","sub":"$0m","size":19},{"count":"claims","from":0,"to":30,"dp":0,"pre":"$","suf":"m","ms":1400}]},{"cap":"Now C fails. It cannot hand the securities back up to B, and the pledge D was relying on is in doubt. One break, felt in both directions at once.","do":[{"cross":"c"},{"pulse":"b"},{"pulse":"d"},{"note":"both","x":300,"y":276,"text":"← B is owed by C  ·  D relied on C's pledge →","size":18,"anchor":"middle","tone":"red"}]},{"cap":"How much may a broker re-use? In the US, SEC Rule 15c3-3 caps it at about 140% of what the customer owes the broker. If A owed B $5 million (illustrative), B could re-use about $7 million, not all $10 million. The UK rules that applied to Lehman's London arm in 2008 had no equivalent cap.","do":[{"chart":"cap","x":10,"y":300,"w":580,"h":210,"title":"US cap on re-use, $m (illustrative debit)","xd":[0.4,3.6],"yd":[0,11.5],"yt":[[0,"0"],[5,"5"],[10,"10"]],"xt":[[1,"posted"],[2,"owed by A"],[3,"US cap 140%"]],"pl":40},{"bars":"capb","chart":"cap","data":[[1,10,"$10m","purple"],[2,5,"$5m","blue"],[3,7,"$7m","green"]],"bw":64,"ms":1100}]},{"cap":"2008: Lehman Brothers International (Europe) went into UK administration. Client assets it had re-used under the looser UK rules were tied up, and clients who thought their collateral was simply held found themselves waiting as creditors.","do":[{"note":"lbie","x":300,"y":534,"text":"Lehman, 2008: \"held\" collateral turned out to be \"used\"","size":18,"anchor":"middle","tone":"amber"}]},{"cap":"2011: MF Global, a large US futures broker with a euro-bond book of about $6.3 billion, ran short of cash and failed on 31 October. Customer accounts that should have been segregated came up about $1.6 billion short.","do":[{"chart":"mf","x":10,"y":556,"w":580,"h":150,"title":"MF Global, $ billion","xd":[0.4,2.6],"yd":[0,7.5],"yt":[[0,"0"],[3,"3"],[6,"6"]],"xt":[[1,"euro-bond book"],[2,"customer shortfall"]],"pl":40},{"bars":"mfb","chart":"mf","data":[[1,6.3,"≈ $6.3bn","amber"],[2,1.6,"≈ $1.6bn","red"]],"bw":90,"ms":1100}]},{"cap":"The lesson of both: \"my collateral\" is a legal claim, not a thing in a drawer. Know what your broker may do with it, cap the re-use, and spread collateral across firms.","do":[{"note":"end","x":300,"y":724,"text":"a claim on paper, not a thing in a drawer","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:rehypothecation_collateral_chains:END -->
 
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>It actually happened: MF Global, October 2011</h2>
@@ -475,6 +554,19 @@
     it should not be read as implying otherwise.
   </div>
 
+  <div class="tl-drill" data-date="2011-10">
+    <div class="tl-drill-label">Scenario drill · October 2011</div>
+    <h3>Your futures broker is in the headlines</h3>
+    <p>You keep a futures account, with spare cash well beyond what your open positions need, at MF Global, one of the largest US futures brokers. The euro-area debt crisis is deepening, and the firm holds a large position, reported at about $6.3 billion, in short-dated bonds of Italy, Spain and other euro-area governments. In late October it reports a quarterly loss and is downgraded by the rating agencies. Other customers are starting to move their accounts. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Stay put. US rules require customer funds to be segregated, so your money is safe whatever happens to the firm.<div class="tl-drill-why">Segregation is a legal right drawn in contracts and ledgers, not a property of the cash. A firm in a run needs cash today, and client money is the nearest liquid pool. The rule tells you what should happen, not what will.</div></li>
+      <li data-verdict="good">Move the account, or at least the spare cash, to another broker now, and keep only what open positions need.<div class="tl-drill-why">It cuts your exposure to one firm's failure to the minimum you need to trade. Spreading collateral across brokers is exactly the practice the industry adopted after Lehman.</div></li>
+      <li data-verdict="ok">Stay, but ask the firm to confirm in writing that your assets are fully segregated.<div class="tl-drill-why">A sensible check, and it costs nothing. But a confirmation is another claim on paper; it does not move your cash out of reach if the firm's books turn out to be wrong.</div></li>
+      <li data-verdict="bad">Shift the account to the firm's London affiliate, away from the US headlines.<div class="tl-drill-why">That swaps US protections for UK client-money rules and a separate UK administration if the group fails. Moving within the same group is not moving away from it.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Counterparties demanded more margin on the bond financing while customers pulled their accounts, and cash left from both ends. MF Global filed for bankruptcy on 31 October 2011. The trustee found a shortfall of roughly $1.6 billion in the customer accounts that were meant to be segregated; the regulator's later case was that customer money had been used to meet the firm's own liquidity needs in its final days. Customers who traded through the London affiliate were caught in a separate UK administration. US customers were eventually repaid essentially in full, but only after years of proceedings.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -557,6 +649,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="collateral-margin-repo-markets.html">Collateral, Margin &amp; Repo Markets</a> <span>· how collateral is posted, haircut and lent</span></li>
+        <li><a href="graph-theory-centrality.html">Graph Theory Fundamentals &amp; Centrality Measures</a> <span>· the language for chains and networks</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="systemic-risk-networks.html">Systemic Risk &amp; Financial Contagion Networks</a> <span>· DebtRank traces a broken link through the chain</span></li>
+        <li><a href="stress-testing-scenario-analysis.html">Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</a> <span>· asking what happens if your broker fails</span></li>
+        <!-- DESK:START --><li><a href="institutional-covar.html">CoVaR: Conditional Value-at-Risk for Systemic Risk</a> <span>· measuring one firm's pull on the whole system</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the collateral behind your margin may be backing other people's loans too, and you only find out when a firm in the chain fails.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="collateral-margin-repo-markets.html">← Collateral, Margin &amp; Repo Markets</a>
     <a href="../hub.html">Theory Lab hub →</a>
@@ -631,9 +743,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

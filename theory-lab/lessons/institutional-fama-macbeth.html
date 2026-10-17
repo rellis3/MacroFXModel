@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fama-MacBeth Two-Stage Regression — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,76 @@
       <li><strong>How it reached trading:</strong> Fama &amp; MacBeth's 1973 month-by-month regressions became the standard way to test whether a factor or signal is priced, and quant equity desks use the same routine to vet new signals.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: Stage 1 measures three carry portfolios' betas once, A 0.7, B 1.0 and C 1.3, and passes them on to be reused every month. Right: Stage 2 gives one price of risk per month, shown as four bars: 4.17, minus 2.50, 0.50 and 3.83. Their average, 1.50, is a dashed green line. A shaded band of plus or minus one standard error, 1.57, around the average reaches below zero, so the t-statistic is about 0.96 and the premium is not significant.">
+      <text class="tlp-text2" x="20" y="24" font-size="13" font-weight="700">Stage 1 · measured once</text>
+      <rect class="tlp-box blue" x="20" y="40" width="130" height="34" rx="6"/>
+      <rect class="tlp-box blue" x="20" y="86" width="130" height="34" rx="6"/>
+      <rect class="tlp-box blue" x="20" y="132" width="130" height="34" rx="6"/>
+      <text class="tlp-text" x="85" y="62" text-anchor="middle" font-size="14">A · beta 0.7</text>
+      <text class="tlp-text" x="85" y="108" text-anchor="middle" font-size="14">B · beta 1.0</text>
+      <text class="tlp-text" x="85" y="154" text-anchor="middle" font-size="14">C · beta 1.3</text>
+      <line class="tlp-line" x1="156" y1="103" x2="198" y2="103"/>
+      <polygon class="tlp-arrow" points="206,103 197,98 197,108"/>
+      <text class="tlp-text3" x="181" y="93" text-anchor="middle" font-size="12">reused</text>
+      <text class="tlp-amber" x="20" y="202" font-size="14" font-weight="700">t = 1.50 ÷ 1.57</text>
+      <text class="tlp-text2" x="20" y="222" font-size="13">≈ 0.96: not significant</text>
+
+      <text class="tlp-text2" x="226" y="24" font-size="13" font-weight="700">Stage 2 · one price of risk per month</text>
+      <rect class="tlp-box amber" x="226" y="73.6" width="290" height="62.8" opacity=".55"/>
+      <rect class="tlp-purple" x="237" y="51.7" width="36" height="83.3" opacity=".85"/>
+      <rect class="tlp-red" x="302" y="135" width="36" height="50" opacity=".85"/>
+      <rect class="tlp-purple" x="367" y="125" width="36" height="10" opacity=".85"/>
+      <rect class="tlp-purple" x="432" y="58.3" width="36" height="76.7" opacity=".85"/>
+      <line class="tlp-line" x1="226" y1="135" x2="516" y2="135"/>
+      <line class="tlp-line green thick dash" x1="226" y1="105" x2="516" y2="105"/>
+      <text class="tlp-text3" x="221" y="139" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-purple" x="255" y="45" text-anchor="middle" font-size="13" font-weight="700">4.17</text>
+      <text class="tlp-red" x="320" y="201" text-anchor="middle" font-size="13" font-weight="700">−2.50</text>
+      <text class="tlp-purple" x="385" y="119" text-anchor="middle" font-size="12" font-weight="700">0.50</text>
+      <text class="tlp-purple" x="450" y="52" text-anchor="middle" font-size="13" font-weight="700">3.83</text>
+      <text class="tlp-text3" x="255" y="226" text-anchor="middle" font-size="12">month 1</text>
+      <text class="tlp-text3" x="320" y="226" text-anchor="middle" font-size="12">month 2</text>
+      <text class="tlp-text3" x="385" y="226" text-anchor="middle" font-size="12">month 3</text>
+      <text class="tlp-text3" x="450" y="226" text-anchor="middle" font-size="12">month 4</text>
+      <text class="tlp-green" x="524" y="99" font-size="13" font-weight="700">average</text>
+      <text class="tlp-green" x="524" y="121" font-size="14" font-weight="700">1.50</text>
+      <text class="tlp-amber" x="524" y="156" font-size="12" font-weight="700">±1 SE</text>
+      <text class="tlp-amber" x="524" y="171" font-size="12">reaches 0</text>
+    </svg>
+    <figcaption>Stage 1 fixes each portfolio's beta once. Stage 2 turns every month into one number, the price paid per unit of exposure that month. The premium is their average, 1.50, and its error bar comes from how much the four monthly numbers disagree: the amber band of one standard error reaches below zero.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I've got betas for every currency portfolio from the factor regression. Isn't that enough?</p>
+      <p data-who="Quant">A beta tells you how exposed a portfolio is. It doesn't tell you whether the market pays you for that exposure. That's a separate question, and Fama and MacBeth answered it in 1973.</p>
+      <p data-who="Trader">So how do you measure what the market pays?</p>
+      <p data-who="Quant">In two stages. First you measure each portfolio's exposure once, using its whole history. Then you freeze those numbers.</p>
+      <p data-who="Trader">And the second stage?</p>
+      <p data-who="Quant">Take one month. Across all the portfolios, did more exposure line up with a better return that month? The slope of that one regression is the month's price of risk. Then you repeat it for every month.</p>
+      <p data-who="Trader">So I end up with one price per month.</p>
+      <p data-who="Quant">Exactly. The premium is just their average. And the honest error bar comes from how much those monthly prices bounce around.</p>
+      <p data-who="Trader">Why not throw every portfolio and every month into one big regression? More data points.</p>
+      <p data-who="Quant">That's the trap. In a bad month nearly everything falls together, because one shared shock hits every asset at once. A hundred portfolios in one month are not a hundred independent facts. They're closer to one story, told a hundred times.</p>
+      <p data-who="Trader">And the big regression counts it a hundred times.</p>
+      <p data-who="Quant">Right, so its error bar comes out far too small. You think you've found a premium when you've found noise. Fama-MacBeth squeezes each month down to one number first, so the echo can't fool you.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">Three carry portfolios with betas of point seven, one, and one point three. Four months. The monthly prices come out at about four point two, minus two and a half, a half, and three point eight. The average is one and a half percent per unit of exposure.</p>
+      <p data-who="Trader">That sounds like a decent premium.</p>
+      <p data-who="Quant">It looks it. But those four numbers swing wildly, so the standard error is about one point six. One and a half divided by that gives a t-statistic just under one. You can't tell it from zero.</p>
+      <p data-who="Trader">Anything else that flatters the result?</p>
+      <p data-who="Quant">Yes. The first-stage betas are estimates, not facts. Using noisy betas drags the slope toward zero and leaves the plain error bars too tight. Jay Shanken's 1992 correction widens them. And if the monthly prices drift in runs, you widen them again.</p>
+      <p data-who="Trader">So if it survives all that, I've got an edge?</p>
+      <p data-who="Quant">Not yet. You've got an honest estimate on one stretch of history. Whether the factor was mined from that same data, and whether it survives costs and new data, are separate questions.</p>
+      <p data-who="Trader">Give me the one line.</p>
+      <p data-who="Quant">Measure exposure once, price it every month, and judge the average by how much the monthly prices disagree, never by one pooled regression.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -130,6 +201,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The two-stage procedure, precisely</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From fixed betas to the t-statistic on the premium, one step at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\hat\beta_i = \frac{\mathrm{Cov}_t(R_i, F)}{\mathrm{Var}_t(F)}} \]</div>
+      <p>Stage 1. For one asset, run over time: how much does it move per unit move in the factor? Do it once per asset, then freeze the answer.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \hat\lambda_t = \frac{\mathrm{Cov}_i(\color{#fbbf24}{\hat\beta}, R_t)}{\mathrm{Var}_i(\color{#fbbf24}{\hat\beta})} \]</div>
+      <p>Stage 2. The frozen betas become the regressor. Within one period, across assets: how much extra return did each unit of exposure earn? One \(\hat\lambda_t\) per period.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \bar\lambda = \color{#fbbf24}{\frac{1}{T}\sum_{t=1}^{T}} \hat\lambda_t \]</div>
+      <p>Average the period prices. In the worked example, four months give \(\bar\lambda = 1.50\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ SE(\bar\lambda) = \frac{\color{#fbbf24}{s_\lambda}}{\color{#fbbf24}{\sqrt{T}}} \]</div>
+      <p>The error bar comes from how much the period prices disagree with each other over time, not from a pooled regression. Here \(3.1388/\sqrt{4} \approx 1.5694\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{t = \frac{\bar\lambda}{s_\lambda/\sqrt{T}}} = \frac{1.50}{1.5694} \approx 0.96 \]</div>
+      <p>The test statistic. Below about 2, the average premium cannot be told apart from zero, however large it looks.</p>
+    </div>
+  </div>
   <p>
     Both stages are ordinary least squares — the exact machinery derived in
     <a href="primer-correlation-regression.html">Correlation &amp; Linear
@@ -267,6 +362,12 @@
     <tr><td>\(s_\lambda\)</td><td>Sample standard deviation of the \(\hat\lambda_t\) time series.</td></tr>
     <tr><td>\(SE(\bar\lambda)\)</td><td>\(s_\lambda/\sqrt{T}\) — the honest standard error, built from time-series variation in the period estimates, not from a pooled panel's residuals.</td></tr>
   </table></div>
+
+  <!-- WB:institutional_fama_macbeth:START -->
+  <div class="wb" id="wb-institutional_fama_macbeth" data-title="Fama-MacBeth: measure once, price every month">
+    <script type="application/json">{"w":600,"h":700,"intro":"The lesson's three carry portfolios and four months, run through both stages. Watch exposure get measured once, then priced afresh each month. Press play, or step through.","steps":[{"cap":"Three carry-sorted currency portfolios, A, B and C. The question is not how exposed each one is to the carry factor. It is whether the market pays anything for that exposure.","do":[{"box":"A","x":20,"y":14,"w":160,"h":76,"text":"Portfolio A","tone":"blue","sub":"beta ?","size":20},{"box":"B","x":220,"y":14,"w":160,"h":76,"text":"Portfolio B","tone":"blue","sub":"beta ?","size":20},{"box":"C","x":420,"y":14,"w":160,"h":76,"text":"Portfolio C","tone":"blue","sub":"beta ?","size":20}]},{"cap":"Stage 1, once per portfolio: regress its returns on the carry factor over the whole history. The slopes are the betas: 0.7, 1.0 and 1.3.","do":[{"count":"A","from":0,"to":0.7,"dp":1,"pre":"beta "},{"count":"B","from":0,"to":1.0,"dp":1,"pre":"beta "},{"count":"C","from":0,"to":1.3,"dp":1,"pre":"beta "}]},{"cap":"Then freeze them. These three numbers are reused, unchanged, in every month that follows.","do":[{"note":"frz","x":300,"y":124,"text":"Stage 1 done: betas frozen for every month","size":19,"anchor":"middle","tone":"blue"},{"pulse":"A"},{"pulse":"B"},{"pulse":"C"}]},{"cap":"Stage 2, month 1. Plot each portfolio's return against its beta: 1.0%, 2.0% and 3.5%. The slope of the best-fit line is this month's price of risk: 4.17% per unit of beta.","do":[{"chart":"cs","x":10,"y":150,"w":340,"h":270,"title":"One month: return (%) vs beta","xd":[0.6,1.4],"yd":[-2.5,4],"yt":[[-2,"−2"],[0,"0"],[2,"2"],[4,"4"]],"xt":[[0.7,"0.7"],[1.0,"1.0"],[1.3,"1.3"]],"zero":true,"pl":40,"pr":14},{"chart":"lam","x":370,"y":150,"w":220,"h":270,"title":"Price of risk, per month","xd":[0.4,4.6],"yd":[-4.2,5],"yt":[[-2,"−2"],[0,"0"],[2,"2"],[4,"4"]],"xt":[[1,"m1"],[2,"m2"],[3,"m3"],[4,"m4"]],"zero":true,"pl":34,"pr":8},{"dot":"m00","chart":"cs","at":[0.7,1.0],"text":"","tone":"purple"},{"dot":"m01","chart":"cs","at":[1.0,2.0],"text":"","tone":"purple"},{"dot":"m02","chart":"cs","at":[1.3,3.5],"text":"","tone":"purple"},{"series":"f0","chart":"cs","pts":[[0.6,0.5],[1.4,3.833]],"tone":"purple","ms":900},{"bars":"b0","chart":"lam","data":[[1,4.1667,"4.17","purple"]],"bw":30,"ms":700}]},{"cap":"Month 2 was a bad month for carry, and the more exposed portfolios lost more: −0.5%, −1.0%, −2.0%. Same frozen betas, new returns. The slope is −2.50.","do":[{"dim":"f0"},{"dim":"m00"},{"dim":"m01"},{"dim":"m02"},{"dot":"m10","chart":"cs","at":[0.7,-0.5],"text":"","tone":"red"},{"dot":"m11","chart":"cs","at":[1.0,-1.0],"text":"","tone":"red"},{"dot":"m12","chart":"cs","at":[1.3,-2.0],"text":"","tone":"red"},{"series":"f1","chart":"cs","pts":[[0.6,-0.167],[1.4,-2.167]],"tone":"red","ms":900},{"bars":"b1","chart":"lam","data":[[2,-2.5,"-2.50","red"]],"bw":30,"ms":700}]},{"cap":"Months 3 and 4: slopes of 0.50 and 3.83. Four months, four separate regressions, four prices of risk. Each month has been squeezed down to one number.","do":[{"dim":"f1"},{"dim":"m10"},{"dim":"m11"},{"dim":"m12"},{"dot":"m20","chart":"cs","at":[0.7,0.8],"text":"","tone":"blue"},{"dot":"m21","chart":"cs","at":[1.0,1.0],"text":"","tone":"blue"},{"dot":"m22","chart":"cs","at":[1.3,1.1],"text":"","tone":"blue"},{"series":"f2","chart":"cs","pts":[[0.6,0.767],[1.4,1.167]],"tone":"blue","ms":900},{"bars":"b2","chart":"lam","data":[[3,0.5,"0.50","blue"]],"bw":30,"ms":700},{"dot":"m30","chart":"cs","at":[0.7,-1.0],"text":"","tone":"green"},{"dot":"m31","chart":"cs","at":[1.0,0.0],"text":"","tone":"green"},{"dot":"m32","chart":"cs","at":[1.3,1.3],"text":"","tone":"green"},{"series":"f3","chart":"cs","pts":[[0.6,-1.433],[1.4,1.633]],"tone":"green","ms":900},{"bars":"b3","chart":"lam","data":[[4,3.8333,"3.83","green"]],"bw":30,"ms":700}]},{"cap":"The premium is just the average of the four monthly prices: (4.17 − 2.50 + 0.50 + 3.83) ÷ 4 = 1.50% per unit of beta.","do":[{"series":"avg","chart":"lam","pts":[[0.5,1.5],[4.5,1.5]],"tone":"green","dash":true,"ms":700},{"note":"avgl","x":480,"y":444,"text":"dashed: average 1.50","size":17,"anchor":"middle","tone":"green"}]},{"cap":"Its error bar comes from how much those four numbers disagree. Their standard deviation is 3.14, so the standard error is 3.14 ÷ √4 = 1.57. The band of one standard error reaches below zero.","do":[{"gap":"band","chart":"lam","top":[[0.5,3.069],[4.5,3.069]],"bot":[[0.5,-0.069],[4.5,-0.069]],"tone":"amber","op":0.25},{"box":"se","x":10,"y":464,"w":280,"h":104,"text":"t = 1.50 ÷ 1.57 ≈ 0.96\nnot significant","tone":"amber","size":20}]},{"cap":"The trap it avoids: pool all 12 portfolio-months into one regression and its formula assumes 12 independent points. But in month 2 one shared shock hit all three at once. The pool counts each month's story three times, and its error bar comes out too small.","do":[{"box":"pool","x":310,"y":464,"w":280,"h":104,"text":"pooled: 12 \"independent\" rows\nreally 4 monthly stories","tone":"red","size":18},{"cross":"pool"}]},{"cap":"A second catch: the betas from Stage 1 are estimates, not facts. Noisy betas pull each slope toward zero. Shanken's 1992 correction widens the error bars to allow for it.","do":[{"box":"sh","x":10,"y":586,"w":580,"h":46,"text":"Shanken (1992): estimated betas → widen the error bars","tone":"purple","size":18}]},{"cap":"So: measure exposure once, price it every period, average the prices, and judge the average by how much the prices disagree. Here 1.50% looks big, but four months cannot tell it from zero.","do":[{"note":"end","x":300,"y":668,"text":"big-looking premium ≠ reliable premium","size":20,"anchor":"middle","tone":"green"},{"pulse":"se"}]}]}</script>
+  </div>
+  <!-- WB:institutional_fama_macbeth:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Why pooling is wrong, and this is right</h2>
@@ -550,6 +651,10 @@
       value and the average, sample standard deviation, standard error, and
       t-statistic all recompute instantly from the formulas derived above.
     </p>
+    <div class="tl-predict" data-answer="3.31" data-tol="0.3" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With the worked example's four months, t is about 0.96. Suppose month 2 had gone the other way, so its price of risk was +2.5 instead of −2.5, with the other three unchanged. What would the t-statistic be? Lock in a guess, then type 2.5 into the λ̂₂ field below and read t.</div>
+      <div class="tl-predict-reveal"><p><strong>About 3.31.</strong> The average rises from 1.50 to \((4.1667+2.5+0.5+3.8333)/4 = 2.75\). More important, the four numbers now agree much better, so \(s_\lambda\) falls from 3.14 to 1.66 and the standard error from 1.57 to 0.83. \(t = 2.75/0.83 \approx 3.31\). One month flipped both the average and the spread. Now set all four to the same value and see why zero spread gives an infinite t.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>λ̂₁ (Month 1)</span></div>
@@ -720,6 +825,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative research meeting</div>
+    <h3>A carry signal with a t-statistic of 4</h3>
+    <p>A colleague tests a carry signal on 25 currency pairs over 120 months. She stacks all 3,000 pair-months into one regression of next month's return on the signal and reports a t-statistic of 4.0. You rerun it Fama-MacBeth style: one cross-sectional regression per month, then the average slope and its time-series standard error. That gives t = 1.4. The team wants to know whether to put capital behind the signal. What do you recommend?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Go with the pooled result. Three thousand rows is a big sample, and t = 4 is far past 2.<div class="tl-drill-why">Those rows are not independent. In any month a dollar shock moves most of the 25 pairs together, so the pooled regression counts each month's story about 25 times and its standard error comes out far too small. The 120 monthly slopes are the honest sample.</div></li>
+      <li data-verdict="good">Report t = 1.4 as the headline, add the Shanken and autocorrelation corrections (which can only widen it), and treat the signal as unproven until a longer or fresh sample says otherwise.<div class="tl-drill-why">This is the procedure doing its job. The monthly slopes disagree too much for their average to be told apart from zero, and both corrections push the same way. Saying "not shown yet" costs nothing; sizing up a noise premium costs money.</div></li>
+      <li data-verdict="ok">Add 25 more pairs to the universe and rerun, to get the t-statistic up.<div class="tl-drill-why">More pairs make each month's slope a little less noisy, so it can help at the margin. But the shared monthly shock does not average away across pairs that all react to it. The error bar is still driven by how many separate months you have, and widening the search after seeing the result edges toward data mining.</div></li>
+      <li data-verdict="bad">Drop the few months where carry crashed, since they look like outliers, and rerun.<div class="tl-drill-why">Those months are exactly the risk the premium is meant to pay for. Deleting them shrinks the spread of the monthly slopes and inflates t by construction. That is choosing the answer, not measuring it.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the method says.</strong> This meeting is illustrative, with made-up numbers, but the gap it shows is the one the lesson is about: a pooled regression treats correlated pair-months as independent votes and overstates significance, while Fama-MacBeth counts each month once. A t of 1.4 on 120 monthly slopes is not evidence of a priced signal, and the Shanken and serial-correlation corrections only make the case weaker.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -833,6 +951,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> <span>· both stages are this one slope formula</span></li>
+        <!-- DESK:START --><li><a href="institutional-fama-french-carhart.html">Fama-French &amp; Carhart: Beyond the Single Factor</a> <span>· where the Stage-1 betas come from</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-apt.html">Arbitrage Pricing Theory</a> <span>· the theory that says priced factors should exist</span></li><!-- DESK:END -->
+        <!-- DESK:START --><li><a href="institutional-barra-risk-models.html">Barra-Style Risk Models</a> <span>· the same per-period regression, run as a risk model</span></li><!-- DESK:END -->
+        <li><a href="multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere Effect</a> <span>· why a significant premium can still be a fluke</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> before you put money behind a factor or signal, this is the test that tells you whether it has actually been paid, with an error bar you can trust.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-fama-french-carhart.html">← Fama-French &amp; Carhart</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -863,7 +1001,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var DEFAULTS = { l1: 4.1667, l2: -2.5, l3: 0.5, l4: 3.8333 };
@@ -926,5 +1065,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

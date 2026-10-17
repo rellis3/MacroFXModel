@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FFT Option Pricing (Carr-Madan) — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,55 @@
       <li>How it reached trading: Carr &amp; Madan (1999) damped the call price so one FFT prices a whole strike strip, which made Heston-type models fast enough to calibrate to a volatility surface.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left, a call price plotted against log-strike: the raw price stays near the spot as the strike falls, so it never fades, while the damped price, multiplied by e to the alpha k, fades to zero at both ends and so has a clean Fourier transform. Right, the count for one calibration of 200 strikes and 500 parameter sets: 100,000 integrations the direct way against 500 FFT calls with Carr-Madan, 200 times fewer.">
+      <text class="tlp-blue" x="30" y="20" font-size="14" font-weight="700">The trick: damp the price first</text>
+      <line class="tlp-line" x1="40" y1="190" x2="295" y2="190"/>
+      <polyline class="tlp-line blue thick" points="40.0,52.6 47.8,53.0 55.6,53.5 63.4,54.0 71.2,54.7 79.1,55.4 86.9,56.3 94.7,57.3 102.5,58.5 110.3,59.9 118.1,61.5 125.9,63.4 133.8,65.5 141.6,68.0 149.4,70.9 157.2,74.3 165.0,78.3 172.8,82.8 180.6,88.2 188.4,94.3 196.2,101.5 204.1,109.8 211.9,119.5 219.7,130.8 227.5,143.7 235.3,157.8 243.1,171.4 250.9,181.8 258.8,187.4 266.6,189.5 274.4,189.9 282.2,190.0 290.0,190.0"/>
+      <polyline class="tlp-line green thick" points="40.0,188.6 47.8,188.3 55.6,187.9 63.4,187.4 71.2,186.7 79.1,185.9 86.9,184.9 94.7,183.6 102.5,182.1 110.3,180.2 118.1,177.9 125.9,175.1 133.8,171.6 141.6,167.5 149.4,162.5 157.2,156.5 165.0,149.5 172.8,141.3 180.6,132.0 188.4,121.8 196.2,111.0 204.1,100.4 211.9,91.3 219.7,86.1 227.5,88.3 235.3,101.4 243.1,126.0 250.9,154.6 258.8,176.1 266.6,186.4 274.4,189.4 282.2,189.9 290.0,190.0"/>
+      <text class="tlp-blue" x="44" y="42" font-size="13" font-weight="700">raw call price: never fades</text>
+      <text class="tlp-green" x="50" y="112" font-size="13" font-weight="700">damped price:</text>
+      <text class="tlp-green" x="50" y="127" font-size="13" font-weight="700">fades at both ends</text>
+      <text class="tlp-text3" x="40" y="207" font-size="12">low strike</text>
+      <text class="tlp-text3" x="295" y="207" text-anchor="end" font-size="12">log-strike k →</text>
+      <text class="tlp-purple" x="345" y="20" font-size="14" font-weight="700">The payoff: a whole strip at once</text>
+      <text class="tlp-text2" x="345" y="46" font-size="12.5">200 strikes × 500 parameter sets</text>
+      <rect class="tlp-box red" x="345" y="60" width="245" height="26" rx="3"/>
+      <text class="tlp-red" x="345" y="104" font-size="13" font-weight="700">direct: 100,000 integrations</text>
+      <rect class="tlp-green" x="345" y="122" width="2.5" height="26"/>
+      <text class="tlp-green" x="356" y="140" font-size="13" font-weight="700">FFT: 500 calls</text>
+      <text class="tlp-green" x="345" y="186" font-size="15" font-weight="700">200× fewer pricing calls</text>
+      <text class="tlp-text3" x="345" y="207" font-size="12">bars drawn to the same scale</text>
+    </svg>
+    <figcaption>A call's price heads towards the spot as the strike falls, so it has no clean Fourier transform. Multiplying by a damping factor fixes that, and the damped price's transform is a closed form in the model's characteristic function. One FFT then returns prices at a whole grid of strikes. Left curves are an illustrative Black-Scholes call (20% vol, one year, damping 1.5, damped curve drawn four times taller).</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Heston gives me option prices already. Why do I need a Fourier trick on top?</p>
+      <p data-who="Quant">For one option, you don't. Heston's price comes from integrating its characteristic function, a closed-form fingerprint of the model. One strike, one integration, done.</p>
+      <p data-who="Trader">So where's the problem?</p>
+      <p data-who="Quant">Calibration. To fit Heston to the morning's smile, an optimizer tries hundreds of parameter sets, and at each one it reprices every strike. Two hundred strikes times five hundred parameter sets is a hundred thousand integrations, for one expiry, on one day.</p>
+      <p data-who="Trader">That won't finish before the open.</p>
+      <p data-who="Quant">It might not. In 1999 Peter Carr and Dilip Madan noticed that those two hundred prices are not two hundred separate problems. They are samples of one curve, the call price across strikes. Transform that curve once and you get every strike together.</p>
+      <p data-who="Trader">Why didn't anyone just do that before?</p>
+      <p data-who="Quant">Because the raw curve has no clean transform. As the strike falls towards zero, a call price heads up towards the spot instead of fading away. A Fourier transform wants a function that dies off at the edges.</p>
+      <p data-who="Trader">So how did they fix it?</p>
+      <p data-who="Quant">They multiplied the price by a damping factor that shrinks it at low strikes. The damped curve fades at both ends, and its transform comes out as a neat formula built from the characteristic function. At the end you multiply the damping back out. It never changes what the call is worth.</p>
+      <p data-who="Trader">And then the FFT?</p>
+      <p data-who="Quant">Turning that transform back into prices, on an evenly spaced grid, is exactly the sum a fast Fourier transform computes. One call hands back prices at thousands of strikes at once. So the hundred thousand integrations become five hundred FFT calls, two hundred times fewer, and each call is cheap.</p>
+      <p data-who="Trader">Any catch?</p>
+      <p data-who="Quant">Two. The damping factor and the grid spacings need tuning: a finer strike grid forces you to cover a wider range of frequencies. And it only works if the model has a closed-form characteristic function. Heston, Bates and variance gamma do. Many local volatility models don't, and they fall back to Monte Carlo or a PDE solve.</p>
+      <p data-who="Trader">And a fast fit means a good model?</p>
+      <p data-who="Quant">No. Fast calibration is still curve fitting. It makes the loop quick, not the parameters right.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Damp the price so it has a transform, then one FFT prices the whole strike strip, which is what makes calibrating these models practical.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -143,6 +193,31 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From a damped call price to a whole strike grid, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ c_T(k) \;=\; \color{#fbbf24}{e^{\alpha k}}\,C_T(k) \]</div>
+      <p>Start by damping. The raw call price \(C_T(k)\) stays large as the strike falls; multiplying by \(e^{\alpha k}\) with \(\alpha &gt; 0\) pulls it to zero there, so the damped price has a Fourier transform.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \psi_T(v) \;=\; \color{#fbbf24}{e^{-rT}\,\varphi_T\!\big(v-(\alpha+1)i\big)} \;\cdots \]</div>
+      <p>The transform of the damped price. The model enters in exactly one place: its characteristic function, evaluated at a shifted complex point, then discounted.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \psi_T(v) \;=\; \frac{e^{-rT}\,\varphi_T\!\big(v-(\alpha+1)i\big)}{\color{#fbbf24}{\alpha^2 + \alpha - v^2 + i(2\alpha+1)v}} \]</div>
+      <p>Divide by the damping denominator. It depends only on \(\alpha\) and \(v\), the same for every model. This is Carr and Madan's published closed form.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ C_T(k) \;=\; \frac{\color{#fbbf24}{e^{-\alpha k}}}{\pi} \int_0^{\infty} e^{-ivk}\,\psi_T(v)\,dv \]</div>
+      <p>Invert the transform to get the price back, and undo the damping with \(e^{-\alpha k}\). For one strike this is still just a one-dimensional integral.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ C_T(k_u) \;\approx\; \frac{e^{-\alpha k_u}}{\pi} \color{#10b981}{\sum_{j=1}^{N} e^{-i v_j k_u}\,\psi_T(v_j)\,\eta}, \quad u = 1, \dots, N \]</div>
+      <p>Lay \(v\) on an even grid with spacing \(\eta\) and the integral becomes a discrete Fourier transform, evaluated at every log-strike \(k_u\) at once. One FFT computes all \(N\) of them in \(O(N\log N)\), with the grids tied by \(N\eta\lambda = 2\pi\).</p>
+    </div>
+  </div>
   <p>
     Three pieces, in the order Carr &amp; Madan (1999) build them: (1) why the
     raw call price resists a clean Fourier transform and the damping fix;
@@ -452,6 +527,10 @@
       recalculate instantly — the FFT call count depends only on the
       number of parameter sets, never on the number of strikes.
     </p>
+    <div class="tl-predict" data-answer="500" data-tol="0" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The desk now wants 1,000 strikes instead of 200, still with 500 calibration parameter sets. How many FFT calls does the Carr-Madan route need? Lock in a guess, then type 1000 into the strikes field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>Still 500.</strong> One FFT call per parameter set prices every strike on its grid, so the number of strikes never enters the count. The direct route grows to \(1{,}000 \times 500 = 500{,}000\) integrations, so the reduction jumps from 200× to 1,000×. Try 10 strikes next: the FFT's advantage shrinks to 10×, which is why it matters most for whole-curve, repeated repricing.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Strikes priced</span></div>
@@ -504,6 +583,12 @@
       the required scale and speed practically possible at all.
     </p>
   </div>
+
+  <!-- WB:fft_option_pricing_carr_madan:START -->
+  <div class="wb" id="wb-fft_option_pricing_carr_madan" data-title="Damp it, transform it, read off every strike">
+    <script type="application/json">{"w":600,"h":720,"intro":"Pricing a whole strike curve at once: why the raw call price needs damping, and how one FFT replaces one integration per strike. Press play, or step through.","steps":[{"cap":"A model like Heston hands you a characteristic function: a closed-form fingerprint of where the price may end up. From it you can price one call at one strike with one numerical integration.","do":[{"icon":"fp","name":"key","x":14,"y":8,"s":0.8,"tone":"blue","label":"φ_T(u)","lsize":18},{"box":"one","x":160,"y":22,"w":190,"h":70,"text":"one strike =\none integration","tone":"blue","size":19},{"arrow":["fp","one"]}]},{"cap":"Calibration needs much more. Price 200 strikes, at each of 500 candidate parameter sets the optimizer tries: 200 × 500 = 100,000 separate integrations, for one expiry on one day.","do":[{"box":"cnt","x":395,"y":22,"w":195,"h":70,"text":"200 strikes × 500 sets","tone":"red","sub":"0","size":17},{"count":"cnt","from":0,"to":100000,"dp":0,"ms":1400}]},{"cap":"Carr and Madan wanted all strikes from one Fourier transform. The snag: as the strike falls towards zero, a call price heads up towards the spot price instead of fading. That curve has no clean transform.","do":[{"chart":"pr","x":10,"y":140,"w":580,"h":250,"title":"Call price vs log-strike k (illustrative)","xd":[-4,0.8],"yd":[0,1.3],"yt":[[0.5,"0.5"],[1,"1"]],"xt":[[-4,"−4"],[-2,"−2"],[0,"k = 0"]],"pl":46},{"series":"raw","chart":"pr","pts":[[-4.0,0.9817],[-3.85,0.9787],[-3.7,0.9753],[-3.55,0.9713],[-3.4,0.9666],[-3.25,0.9612],[-3.1,0.955],[-2.95,0.9477],[-2.8,0.9392],[-2.65,0.9293],[-2.5,0.9179],[-2.35,0.9046],[-2.2,0.8892],[-2.05,0.8713],[-1.9,0.8504],[-1.75,0.8262],[-1.6,0.7981],[-1.45,0.7654],[-1.3,0.7275],[-1.15,0.6834],[-1.0,0.6321],[-0.85,0.5726],[-0.7,0.5034],[-0.55,0.4232],[-0.4,0.3311],[-0.25,0.2301],[-0.1,0.1327],[0.05,0.0586],[0.2,0.0184],[0.35,0.0038],[0.5,0.0005],[0.65,0.0],[0.8,0.0]],"tone":"blue","ms":1200,"label":"raw price: never fades","lat":[-3.9,0.98],"ldx":0,"ldy":-16,"lanchor":"start"}]},{"cap":"The fix: multiply by a damping factor e^(αk), here with α = 1.5. The damped price fades to zero at both ends (drawn four times taller so you can see it). The damping changes nothing about what the call is worth; it is undone at the end.","do":[{"series":"damp","chart":"pr","pts":[[-4.0,0.0097],[-3.85,0.0122],[-3.7,0.0152],[-3.55,0.0189],[-3.4,0.0236],[-3.25,0.0294],[-3.1,0.0365],[-2.95,0.0454],[-2.8,0.0563],[-2.65,0.0698],[-2.5,0.0863],[-2.35,0.1066],[-2.2,0.1312],[-2.05,0.161],[-1.9,0.1968],[-1.75,0.2394],[-1.6,0.2896],[-1.45,0.3478],[-1.3,0.414],[-1.15,0.487],[-1.0,0.5642],[-0.85,0.64],[-0.7,0.7047],[-0.55,0.7418],[-0.4,0.7268],[-0.25,0.6326],[-0.1,0.4569],[0.05,0.2526],[0.2,0.0991],[0.35,0.026],[0.5,0.0043],[0.65,0.0004],[0.8,0.0]],"tone":"green","ms":1200,"label":"damped (×4): fades both ends","lat":[-2.4,0.42],"ldx":0,"ldy":-14,"lanchor":"middle"}]},{"cap":"The damped price has a clean, published transform, ψ_T(v). Only one piece of it depends on the model: the characteristic function, evaluated at a shifted point.","do":[{"box":"psi","x":10,"y":420,"w":170,"h":76,"text":"ψ_T(v)\nbuilt from φ_T","tone":"amber","size":19},{"pulse":"fp"}]},{"cap":"Turning ψ_T back into prices is an integral over v. Lay it on an evenly spaced grid and that integral becomes exactly a discrete Fourier transform, the shape the FFT computes in N log N steps.","do":[{"box":"fft","x":215,"y":420,"w":150,"h":76,"text":"one FFT","tone":"purple","sub":"N log N","size":20},{"arrow":["psi","fft"]}]},{"cap":"One FFT call returns the price at every grid strike at once. Undo the damping with e^(−αk) and you have the whole curve, not one point.","do":[{"box":"grid","x":400,"y":420,"w":190,"h":76,"text":"every strike\nat once","tone":"green","size":19},{"arrow":["fft","grid"]},{"dot":"g0","chart":"pr","at":[-3.6,0.9727],"text":"","tone":"green","r":5},{"dot":"g1","chart":"pr","at":[-3.3,0.9631],"text":"","tone":"green","r":5},{"dot":"g2","chart":"pr","at":[-3.0,0.9502],"text":"","tone":"green","r":5},{"dot":"g3","chart":"pr","at":[-2.7,0.9328],"text":"","tone":"green","r":5},{"dot":"g4","chart":"pr","at":[-2.4,0.9093],"text":"","tone":"green","r":5},{"dot":"g5","chart":"pr","at":[-2.1,0.8775],"text":"","tone":"green","r":5},{"dot":"g6","chart":"pr","at":[-1.8,0.8347],"text":"","tone":"green","r":5},{"dot":"g7","chart":"pr","at":[-1.5,0.7769],"text":"","tone":"green","r":5},{"dot":"g8","chart":"pr","at":[-1.2,0.6988],"text":"","tone":"green","r":5},{"dot":"g9","chart":"pr","at":[-0.9,0.5934],"text":"","tone":"green","r":5},{"dot":"g10","chart":"pr","at":[-0.6,0.4512],"text":"","tone":"green","r":5},{"dot":"g11","chart":"pr","at":[-0.3,0.2642],"text":"","tone":"green","r":5},{"dot":"g12","chart":"pr","at":[-0.0,0.0797],"text":"","tone":"green","r":5},{"dot":"g13","chart":"pr","at":[0.3,0.0068],"text":"","tone":"green","r":5}]},{"cap":"Back to the count. The direct way: 100,000 integrations. Carr-Madan: one FFT per parameter set, 500 calls. That is 200 times fewer pricing calls, exactly the strike count, before counting how cheap each FFT is.","do":[{"chart":"cmp","x":10,"y":540,"w":380,"h":170,"title":"Pricing calls in one calibration","xd":[0.4,2.6],"yd":[0,110000],"yt":[[50000,"50k"],[100000,"100k"]],"xt":[[1,"direct"],[2,"FFT"]],"pl":52},{"bars":"cb","chart":"cmp","data":[[1,100000,"100,000","red"],[2,500,"500","green"]],"bw":60,"ms":1200}]},{"cap":"It is not free. The grid spacing in v (η) and in log-strike (λ) are tied by N·η·λ = 2π. A finer strike grid forces a wider frequency range, so α, η and λ all need tuning. N = 4096 is a routine size even for 200 strikes.","do":[{"note":"tr","x":300,"y":122,"text":"N · η · λ = 2π: finer strikes cost frequency range","size":18,"anchor":"middle","tone":"amber"}]},{"cap":"And it only works when the model has a closed-form characteristic function: Heston, Bates, variance gamma. A model without one has nothing to feed in, and falls back to Monte Carlo or a PDE solve.","do":[{"box":"lim","x":400,"y":540,"w":190,"h":170,"text":"needs φ_T\nin closed form\n\nno φ_T:\nMonte Carlo / PDE","tone":"red","size":17}]}]}</script>
+  </div>
+  <!-- WB:fft_option_pricing_carr_madan:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -575,6 +660,19 @@
       an infrastructure improvement, not evidence the fitted model is
       correct or tradable.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative overnight run</div>
+    <h3>The Heston calibration will not finish before the open</h3>
+    <p>You recalibrate Heston's five parameters every night to the morning's implied-volatility surface: a few hundred quoted options across several expiries. The optimizer tries thousands of parameter sets, and at each one your pricer integrates the characteristic function strike by strike. Last night's run was still going when the desk needed the fit. What do you change?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="good">Switch the inner pricer to Carr-Madan: one FFT per expiry and parameter set, then check its prices against the direct integration at a handful of strikes after tuning the damping factor and grid spacing.<div class="tl-drill-why">This removes the bottleneck, one integration per strike, without changing the model. The check matters because a badly chosen damping factor or grid gives fast, wrong prices.</div></li>
+      <li data-verdict="bad">Fit only 20 strikes per expiry so the direct integration finishes in time.<div class="tl-drill-why">It finishes, but the model is now fitted to a sketch of the smile. The wings you dropped are often exactly where the trades are, and the cost problem returns the moment you add strikes back.</div></li>
+      <li data-verdict="ok">Loosen the optimizer's stopping rule so it tries fewer parameter sets.<div class="tl-drill-why">It cuts the run time, but it attacks the wrong factor. You may stop before the fit converges, and each repricing is still one integration per strike.</div></li>
+      <li data-verdict="bad">Also move the local-volatility book onto the FFT pricer while you are at it.<div class="tl-drill-why">Carr-Madan needs a closed-form characteristic function to feed in. Many local-volatility models have none, so there is nothing to transform; they stay on Monte Carlo or a PDE solver.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happens.</strong> This is an illustrative situation built on the lesson's own overnight-calibration scenario, not a specific historical event. The documented point is general: since Carr and Madan (1999), FFT-style pricing, and later methods such as COS (2008), is how characteristic-function models are calibrated fast enough to refit routinely.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -672,6 +770,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="numerical-integration.html">Numerical Integration</a> <span>· one strike, one integral: the baseline this beats</span></li>
+        <li><a href="heston-model.html">The Heston Model</a> <span>· where the characteristic function comes from</span></li>
+        <li><a href="fourier-analysis-frequency-domain.html">Fourier Analysis &amp; the Frequency Domain</a> <span>· what a transform and an FFT are</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a> <span>· the surface this calibrates to</span></li>
+        <li><a href="merton-jump-diffusion.html">The Merton Jump-Diffusion Model</a> <span>· another model with a usable characteristic function</span></li>
+        <!-- DESK:START --><li><a href="institutional-bates-model.html">Bates Model: Stochastic Volatility + Jumps</a> <span>· Heston plus jumps, priced the same way</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every smile-fitted model price you see from a stochastic-volatility model depends on a calibration that only runs fast enough because of this trick.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="numerical-integration.html">← Numerical Integration</a>
     <a href="../hub.html">Theory Lab hub →</a>
@@ -745,9 +864,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Barra-Style Risk Models — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,74 @@
       <li><strong>How it reached trading:</strong> Barr Rosenberg founded Barra in 1975 to sell factor risk models built from stock characteristics, and its descendants (MSCI Barra, Axioma) are how equity desks see and budget risk today.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 244" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two positions run through the same toy two-factor risk model. Position A, momentum exposure 1.0 and value 0.5, has total variance 0.0650: factor variance 0.0550, 84.6%, and specific variance 0.0100, 15.4%. Position B, momentum 0.5 and value minus 0.3, has total variance 0.0288: factor variance 0.0088, 30.6%, and specific variance 0.0200, 69.4%.">
+      <rect class="tlp-box blue" x="130" y="12" width="12" height="12" rx="2"/>
+      <text class="tlp-text2" x="148" y="23" font-size="13">factor risk, x′Fx</text>
+      <rect class="tlp-box red" x="290" y="12" width="12" height="12" rx="2"/>
+      <text class="tlp-text2" x="308" y="23" font-size="13">specific risk</text>
+
+      <text class="tlp-text" x="16" y="76" font-size="14" font-weight="700">Position A</text>
+      <text class="tlp-text3" x="16" y="92" font-size="12">momentum 1.0</text>
+      <text class="tlp-text3" x="16" y="106" font-size="12">value 0.5</text>
+      <text class="tlp-text2" x="130" y="56" font-size="12">total variance 0.0650</text>
+      <text class="tlp-red" x="550" y="56" text-anchor="middle" font-size="12" font-weight="700">specific 15.4%</text>
+      <rect class="tlp-box blue" x="130" y="64" width="385" height="34" rx="4"/>
+      <rect class="tlp-box red" x="515" y="64" width="70" height="34" rx="4"/>
+      <text class="tlp-text" x="322" y="86" text-anchor="middle" font-size="14" font-weight="700">factor 0.0550 · 84.6%</text>
+      <text class="tlp-text" x="550" y="86" text-anchor="middle" font-size="12">0.0100</text>
+
+      <text class="tlp-text" x="16" y="156" font-size="14" font-weight="700">Position B</text>
+      <text class="tlp-text3" x="16" y="172" font-size="12">momentum 0.5</text>
+      <text class="tlp-text3" x="16" y="186" font-size="12">value −0.3</text>
+      <text class="tlp-blue" x="130" y="136" font-size="12" font-weight="700">factor 30.6%</text>
+      <text class="tlp-red" x="262" y="136" text-anchor="middle" font-size="12" font-weight="700">specific 69.4%</text>
+      <rect class="tlp-box blue" x="130" y="144" width="61.6" height="34" rx="4"/>
+      <rect class="tlp-box red" x="191.6" y="144" width="140" height="34" rx="4"/>
+      <text class="tlp-text" x="160.8" y="166" text-anchor="middle" font-size="12">0.0088</text>
+      <text class="tlp-text" x="261.6" y="166" text-anchor="middle" font-size="12">0.0200</text>
+      <text class="tlp-text2" x="346" y="166" font-size="12">total variance 0.0288</text>
+
+      <line class="tlp-line" x1="130" y1="200" x2="585" y2="200"/>
+      <text class="tlp-text3" x="130" y="216" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="270" y="216" text-anchor="middle" font-size="12">0.02</text>
+      <text class="tlp-text3" x="410" y="216" text-anchor="middle" font-size="12">0.04</text>
+      <text class="tlp-text3" x="550" y="216" text-anchor="middle" font-size="12">0.06</text>
+      <text class="tlp-text3" x="16" y="236" font-size="12">same factor covariance F for both; variance = x′Fx + specific</text>
+    </svg>
+    <figcaption>A risk model splits every position's variance into named factor risk and a stock-specific remainder. Position A is mostly a factor bet. Position B's smaller, partly offsetting exposures leave it mostly specific. The same split, summed over dozens of factors, is the daily risk report.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Every equity fund I've seen gets a Barra risk report each morning. What is it, really?</p>
+      <p data-who="Quant">A commercial factor risk model. Barr Rosenberg founded Barra in 1975 to sell them, and it became part of MSCI in 2004. Axioma and others sell the same kind of thing.</p>
+      <p data-who="Trader">Can I build one myself from a paper?</p>
+      <p data-who="Quant">Not the real thing. The exact factors and how they're tuned are trade secrets, re-estimated all the time. But the shape is public, and the shape is the useful part.</p>
+      <p data-who="Trader">Go on then.</p>
+      <p data-who="Quant">Every stock gets scores. Its size, its momentum, its value, which industry it's in. Those scores are known before the day starts.</p>
+      <p data-who="Trader">And then?</p>
+      <p data-who="Quant">At the end of each day you look across all the stocks and ask: given those scores, how much did being high-momentum pay today? How much did being a bank pay? That one regression across stocks gives you each factor's return for the day. It's the same move as the second stage of Fama and MacBeth.</p>
+      <p data-who="Trader">And whatever's left over?</p>
+      <p data-who="Quant">That's specific risk: the part of a stock's move that's nobody else's business. The model assumes it doesn't correlate across stocks. So a vendor only has to hand you three things: the scores, how the factors move together, and each stock's leftover variance.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Take a position with one unit of momentum exposure and half a unit of value. In the lesson's toy model its factor variance works out at point zero five five. Add specific variance of point zero one, and the total is point zero six five.</p>
+      <p data-who="Trader">So how much of that is factor risk?</p>
+      <p data-who="Quant">About eighty-five percent. If you thought you were a stock picker, the model says you're mostly running a momentum bet.</p>
+      <p data-who="Trader">So I should trade on these factor scores?</p>
+      <p data-who="Quant">No. Everyone with the subscription sees the same scores. It's a risk model, not an alpha model. You use it to see where your risk comes from and to keep the optimiser inside limits, like staying within two percent of the benchmark's sector weights.</p>
+      <p data-who="Trader">What makes the commercial version worth paying for?</p>
+      <p data-who="Quant">Mostly the clean-up. A raw covariance matrix with dozens of factors is noisy, and an optimiser that inverts it produces wild weights. The vendors shrink and stabilise it so it behaves. That's where much of the value sits.</p>
+      <p data-who="Trader">And for currencies?</p>
+      <p data-who="Quant">There's no widely used Barra for FX. You get the same job done with clustering, a small carry, momentum and value model, and a check on which correlations are just noise.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Split every position's risk into named factor bets plus a stock-specific remainder, and use that split to manage risk, never to find alpha.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters, and what this lesson honestly is</h2>
@@ -118,6 +187,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The general structure — what actually is public</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From one stock's return to a position's risk split, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ R_i = \color{#fbbf24}{\sum_{k=1}^{K} X_{ik}\, f_k} \]</div>
+      <p>A stock's return is its known exposures (size score, momentum score, sector dummy) times each factor's return that period. The factor returns come from one cross-sectional regression per period.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ R_i = \sum_{k=1}^{K} X_{ik}\, f_k + \color{#fbbf24}{u_i} \]</div>
+      <p>Add what the factors miss: the stock-specific return, assumed uncorrelated across stocks.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \Sigma = \color{#fbbf24}{X F X^\top} + \color{#fbbf24}{D} \]</div>
+      <p>Turn returns into risk. Factor risk flows through the \(K\times K\) factor covariance \(F\); specific risk is just a diagonal \(D\). This is what a vendor actually delivers.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \sigma^2 = \color{#fbbf24}{x^\top F x} + D_i = 0.0550 + 0.0100 \]</div>
+      <p>For one position with exposures \(x = (1.00,\ 0.50)\) in the worked example's toy model: factor variance plus specific variance.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{x^\top F x}{x^\top F x + D_i} = \frac{0.0550}{0.0650} = \color{#10b981}{84.6\%} \]</div>
+      <p>The risk split. Most of this position's variance comes from its factor bets, not from the stocks themselves.</p>
+    </div>
+  </div>
   <p>
     Strip away every vendor's specific factor set and one equation remains,
     and it is genuinely public, standard knowledge across the industry —
@@ -227,6 +320,12 @@
       40-plus-factor one.
     </div>
   </div>
+
+  <!-- WB:institutional_barra_risk_models:START -->
+  <div class="wb" id="wb-institutional_barra_risk_models" data-title="A factor risk model, built and used">
+    <script type="application/json">{"w":600,"h":640,"intro":"How a commercial risk model is put together, then the lesson's two-factor toy model run on two positions. Press play, or step through.","steps":[{"cap":"Start of the day: every stock already has known scores. Its size, its momentum, its value, and a 0 or 1 for each industry it belongs to. These are the exposures, X.","do":[{"box":"X","x":15,"y":20,"w":160,"h":84,"text":"exposures X","tone":"blue","sub":"known in advance","size":18}]},{"cap":"End of the day: one regression across all the stocks asks how much each score paid today. Those slopes are the factor returns, f. It is the Fama-MacBeth second stage, run with dozens of factors.","do":[{"box":"f","x":220,"y":20,"w":160,"h":84,"text":"factor returns f","tone":"purple","sub":"daily regression","size":18},{"arrow":["X","f"]}]},{"cap":"Whatever the factors do not explain is each stock's specific return, u. The model assumes it does not correlate across stocks.","do":[{"box":"u","x":425,"y":20,"w":160,"h":84,"text":"specific u","tone":"red","sub":"left over","size":18},{"arrow":["f","u"]}]},{"cap":"Collect the factor returns day after day and you get how the factors move together: the factor covariance F. In the lesson's toy model, momentum variance 0.04, value 0.02, and covariance 0.01.","do":[{"box":"F","x":20,"y":150,"w":270,"h":84,"text":"factor covariance F\n0.04 · 0.01 · 0.02","tone":"purple","size":19},{"arrow":["f","F"]}]},{"cap":"Each stock's leftover variance goes on a diagonal, D. Because specific returns are uncorrelated, nothing sits off the diagonal.","do":[{"box":"D","x":310,"y":150,"w":270,"h":84,"text":"specific variances D\ndiagonal only","tone":"red","size":19},{"arrow":["u","D"]}]},{"cap":"That is what the vendor sells: X, F and D, refreshed on a schedule, with F cleaned up so an optimiser can invert it. Risk = X F Xᵀ + D.","do":[{"note":"sig","x":300,"y":270,"text":"risk = X F Xᵀ + D","size":22,"anchor":"middle","tone":"green"}]},{"cap":"Now a position: 1.00 unit of momentum exposure and 0.50 of value. Its momentum term is 1.00² × 0.04 = 0.0400.","do":[{"chart":"ca","x":10,"y":290,"w":285,"h":220,"title":"A: mom 1.00, value 0.50","xd":[0.4,4.6],"yd":[-0.014,0.046],"yt":[[0,"0"],[0.02,".02"],[0.04,".04"]],"xt":[[1,"mom"],[2,"cross"],[3,"value"],[4,"spec"]],"zero":true,"pl":40,"pr":6},{"bars":"ba1","chart":"ca","data":[[1,0.04,"0.0400","blue"]],"bw":34,"ms":900}]},{"cap":"The cross term is 2 × 1.00 × 0.50 × 0.01 = 0.0100, and the value term is 0.50² × 0.02 = 0.0050. Factor variance: 0.0550.","do":[{"bars":"ba2","chart":"ca","data":[[2,0.01,"0.0100","purple"],[3,0.005,"0.0050","blue"]],"bw":34,"ms":900}]},{"cap":"Add specific variance of 0.0100. Total 0.0650, of which 84.6% is factor risk. This position is mostly a factor bet.","do":[{"bars":"ba3","chart":"ca","data":[[4,0.01,"0.0100","red"]],"bw":34,"ms":900},{"box":"ra","x":10,"y":524,"w":285,"h":64,"text":"total 0.0650\n84.6% factor","tone":"blue","size":19}]},{"cap":"A second position: 0.50 momentum, −0.30 value, specific variance 0.0200. The exposures partly offset, so the cross term is negative. Factor variance is only 0.0088 of a 0.0288 total: 30.6% factor.","do":[{"chart":"cb","x":305,"y":290,"w":285,"h":220,"title":"B: mom 0.50, value −0.30","xd":[0.4,4.6],"yd":[-0.014,0.046],"yt":[[0,"0"],[0.02,".02"],[0.04,".04"]],"xt":[[1,"mom"],[2,"cross"],[3,"value"],[4,"spec"]],"zero":true,"pl":40,"pr":6},{"bars":"bb","chart":"cb","data":[[1,0.01,"0.0100","blue"],[2,-0.003,"−0.0030","purple"],[3,0.0018,"0.0018","blue"],[4,0.02,"0.0200","red"]],"bw":34,"ms":900},{"box":"rb","x":305,"y":524,"w":285,"h":64,"text":"total 0.0288\n30.6% factor","tone":"red","size":19}]},{"cap":"That split is the daily risk report. Use it to see which bets you are really running and to set limits in the optimiser. Never as alpha: everyone with the subscription sees the same scores.","do":[{"note":"end","x":300,"y":618,"text":"a risk model, not an alpha model","size":20,"anchor":"middle","tone":"amber"},{"pulse":"ra"},{"pulse":"rb"}]}]}</script>
+  </div>
+  <!-- WB:institutional_barra_risk_models:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>What makes commercial models genuinely different — beyond "more factors"</h2>
@@ -412,6 +511,10 @@
       decomposition recomputes instantly from \(x^\top F x\) plus specific
       variance.
     </p>
+    <div class="tl-predict" data-answer="33.3" data-tol="1.5" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The worked example's position carries 84.6% factor risk. Suppose you remove its momentum exposure completely (set it to 0), keeping value at 0.50 and specific variance at 0.0100. What share of the risk is factor risk now? Lock in a guess, then set the momentum field below to 0 to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>33.3%.</strong> With momentum at zero only the value term is left: \(0.50^2 \times 0.0200 = 0.0050\). Total variance is \(0.0050 + 0.0100 = 0.0150\), so factor risk is \(0.0050/0.0150 = 33.3\%\). Dropping one exposure removed both its own term and the cross term, and total variance fell from 0.0650 to 0.0150. Now try value at −0.50 with momentum back at 1.00 and watch the cross term turn negative and pull factor variance down.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Momentum exposure \(x_1\)</span></div>
@@ -661,6 +764,19 @@
     <tr><td>Performance attribution</td><td>The same decomposition run on realized returns, after the fact.</td></tr>
   </table></div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative Monday risk report</div>
+    <h3>The stock picker who is mostly running a momentum bet</h3>
+    <p>You run an equity book sold to clients as bottom-up stock picking. This morning's factor risk report says 84.6% of your active variance comes from factor exposures, mostly a large momentum tilt you never set out to take, and only 15.4% from your individual stock picks. Your best ideas this year happen to be recent winners. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Nothing. Factor exposure is just a label the vendor puts on your stocks; your picks are what matter.<div class="tl-drill-why">The label is attached to real co-movement. If momentum reverses, most of your book falls together whatever each company's story is. Ignoring the report means your clients are paying for stock picking and getting a factor bet.</div></li>
+      <li data-verdict="good">Keep your picks but use the risk model as an optimiser constraint: cap the momentum tilt, offset it where you can, and re-run until most of the active risk is stock-specific.<div class="tl-drill-why">This is what the model is for. It shows where the risk comes from and lets you shape it. After the change, your results will mostly reflect your stock selection, which is the bet you meant to make.</div></li>
+      <li data-verdict="bad">Lean in. Momentum has been working, so add more high-momentum names.<div class="tl-drill-why">That uses a risk model as an alpha model. Everyone with the subscription sees the same momentum scores, so they are not an edge. You would be adding to an unintended bet because it has paid lately.</div></li>
+      <li data-verdict="ok">Cut every position by a third to bring total risk down.<div class="tl-drill-why">Total risk falls, but the mix does not change: still about 85% factor and 15% specific. You are smaller, not different. It is a defensible stopgap while you fix the tilt properly.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the method says.</strong> This Monday is illustrative; the 84.6% split is the lesson's own worked example scaled up to a book. The lesson's point is that a commercial risk model is a measuring and constraining tool. Its job is to tell you which bets you are really running so you can keep the ones you mean and shed the ones you don't.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -721,6 +837,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-fama-macbeth.html">Fama-MacBeth Two-Stage Regression</a> <span>· the per-period regression that gives factor returns</span></li><!-- DESK:END -->
+        <!-- DESK:START --><li><a href="institutional-apt.html">Arbitrage Pricing Theory</a> <span>· why several factors, not one market beta</span></li><!-- DESK:END -->
+        <li><a href="random-matrix-theory.html">Random Matrix Theory &amp; the Marchenko-Pastur Law</a> <span>· why a raw covariance matrix needs cleaning</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-factor-marginal-component-var.html">Factor VaR, Marginal VaR &amp; Component VaR</a> <span>· attributing risk to each position and factor</span></li><!-- DESK:END -->
+        <li><a href="factor-based-portfolio-construction.html">Factor-Based Portfolio Construction</a> <span>· the same structure for FX carry, momentum and value</span></li>
+        <li><a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a> <span>· risk buckets found from correlations instead</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> it shows which bets a book is really running, so the risk you carry is the risk you meant to take.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-apt.html">← Arbitrage Pricing Theory</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -751,7 +888,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var F11 = 0.0400, F12 = 0.0100, F22 = 0.0200;
@@ -819,5 +957,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

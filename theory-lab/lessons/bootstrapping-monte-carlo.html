@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bootstrapping &amp; Monte Carlo — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -41,6 +42,85 @@
       <li>How it reached trading: Boyle (1977) brought Monte Carlo into option pricing, and Brock, Lakonishok &amp; LeBaron (1992) and White's Reality Check (2000) made the bootstrap the standard way to test trading rules and put error bars on backtests.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 245" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: one sample of five trade returns, 2, minus 1, 3, minus 2 and 1 percent, with a mean of 0.6 percent. Right: the means of every possible bootstrap resample of those five trades, drawn with replacement, 3,125 equally likely resamples. They spread from minus 2 to plus 3 percent around the original 0.6, and the middle 95 percent run from about minus 1.0 to 2.2. Every resample is built from the same five trades; no sixth trade ever appears.">
+      <rect class="tlp-box purple" x="10" y="54" width="160" height="108" rx="8"/>
+      <text class="tlp-purple" x="90" y="80" text-anchor="middle" font-size="13.5" font-weight="700">one sample: 5 trades</text>
+      <text class="tlp-text" x="90" y="110" text-anchor="middle" font-size="15" font-weight="700">2, −1, 3, −2, 1</text>
+      <text class="tlp-green" x="90" y="140" text-anchor="middle" font-size="13.5" font-weight="700">mean 0.6%</text>
+      <line class="tlp-line" x1="170" y1="108" x2="190" y2="108"/>
+      <polygon class="tlp-arrow" points="196,108 188,103.5 188,112.5"/>
+      <text class="tlp-text2" x="90" y="186" text-anchor="middle" font-size="12.5">resample with replacement</text>
+      <text class="tlp-red" x="90" y="206" text-anchor="middle" font-size="12.5" font-weight="700">no sixth trade ever appears</text>
+      <text class="tlp-text" x="210" y="24" font-size="14" font-weight="700">Mean of every possible resample (3,125)</text>
+      <rect class="tlp-text3" x="204.0" y="189.6" width="12" height="0.4" rx="1.5"/>
+      <rect class="tlp-text3" x="218.8" y="188.0" width="12" height="2.0" rx="1.5"/>
+      <rect class="tlp-text3" x="233.6" y="186.0" width="12" height="4.0" rx="1.5"/>
+      <rect class="tlp-text3" x="248.4" y="184.0" width="12" height="6.0" rx="1.5"/>
+      <rect class="tlp-text3" x="263.2" y="178.0" width="12" height="12.0" rx="1.5"/>
+      <rect class="tlp-blue" x="278.0" y="167.6" width="12" height="22.4" rx="1.5"/>
+      <rect class="tlp-blue" x="292.8" y="158.0" width="12" height="32.0" rx="1.5"/>
+      <rect class="tlp-blue" x="307.6" y="148.0" width="12" height="42.0" rx="1.5"/>
+      <rect class="tlp-blue" x="322.4" y="132.0" width="12" height="58.0" rx="1.5"/>
+      <rect class="tlp-blue" x="337.2" y="112.0" width="12" height="78.0" rx="1.5"/>
+      <rect class="tlp-blue" x="352.0" y="98.0" width="12" height="92.0" rx="1.5"/>
+      <rect class="tlp-blue" x="366.8" y="90.0" width="12" height="100.0" rx="1.5"/>
+      <rect class="tlp-blue" x="381.6" y="80.0" width="12" height="110.0" rx="1.5"/>
+      <rect class="tlp-green" x="396.4" y="72.0" width="12" height="118.0" rx="1.5"/>
+      <rect class="tlp-blue" x="411.2" y="74.0" width="12" height="116.0" rx="1.5"/>
+      <rect class="tlp-blue" x="426.0" y="85.6" width="12" height="104.4" rx="1.5"/>
+      <rect class="tlp-blue" x="440.8" y="98.0" width="12" height="92.0" rx="1.5"/>
+      <rect class="tlp-blue" x="455.6" y="110.0" width="12" height="80.0" rx="1.5"/>
+      <rect class="tlp-blue" x="470.4" y="126.0" width="12" height="64.0" rx="1.5"/>
+      <rect class="tlp-blue" x="485.2" y="144.0" width="12" height="46.0" rx="1.5"/>
+      <rect class="tlp-blue" x="500.0" y="159.6" width="12" height="30.4" rx="1.5"/>
+      <rect class="tlp-blue" x="514.8" y="170.0" width="12" height="20.0" rx="1.5"/>
+      <rect class="tlp-text3" x="529.6" y="178.0" width="12" height="12.0" rx="1.5"/>
+      <rect class="tlp-text3" x="544.4" y="184.0" width="12" height="6.0" rx="1.5"/>
+      <rect class="tlp-text3" x="559.2" y="188.0" width="12" height="2.0" rx="1.5"/>
+      <rect class="tlp-text3" x="574.0" y="189.6" width="12" height="0.4" rx="1.5"/>
+      <line class="tlp-line" x1="200" y1="190" x2="588" y2="190"/>
+      <text class="tlp-green" x="402.4" y="64.0" text-anchor="middle" font-size="13" font-weight="700">your 0.6</text>
+      <text class="tlp-text3" x="210.0" y="206" text-anchor="middle" font-size="12">−2</text>
+      <text class="tlp-text3" x="284.0" y="206" text-anchor="middle" font-size="12">−1</text>
+      <text class="tlp-text3" x="358.0" y="206" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="432.0" y="206" text-anchor="middle" font-size="12">1</text>
+      <text class="tlp-text3" x="506.0" y="206" text-anchor="middle" font-size="12">2</text>
+      <text class="tlp-text3" x="580.0" y="206" text-anchor="middle" font-size="12">3%</text>
+      <path class="tlp-line amber thick" d="M284.0,214 V220 H520.8 V214"/>
+      <text class="tlp-amber" x="402.4" y="238" text-anchor="middle" font-size="13" font-weight="700">middle 95%: about −1.0 to 2.2</text>
+    </svg>
+    <figcaption>Reach into the same five trades again and again, putting each one back. The average swings from −2% to +3% around the 0.6% you saw, which is your error bar. But every resample is made of the same five trades, so it cannot tell you how the signal does on trades it has never seen.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My backtest has a Sharpe ratio I like. How do I know it isn't a fluke?</p>
+      <p data-who="Quant">One honest way is the bootstrap. You only have one history, so you treat it as the whole world and draw from it again and again.</p>
+      <p data-who="Trader">Draw how?</p>
+      <p data-who="Quant">With replacement. Say you have five trades: plus two, minus one, plus three, minus two and plus one percent. The average is point six. Now pick five trades at random from those five, putting each one back after you pick it. Some repeat, some get left out.</p>
+      <p data-who="Trader">And the average changes.</p>
+      <p data-who="Quant">A lot. One resample picks the minus two three times, and its average is minus one point two. Another comes out at plus one point six. Do that ten thousand times and you get a whole spread of averages, built from nothing but your five trades.</p>
+      <p data-who="Trader">So that spread is my error bar.</p>
+      <p data-who="Quant">Yes. Its standard deviation is the bootstrap standard error, and the middle ninety-five percent is a confidence interval. It works for a Sharpe ratio or a drawdown, where no tidy formula exists. That's why Bradley Efron's 1979 idea spread so fast.</p>
+      <p data-who="Trader">Does it work on daily returns too?</p>
+      <p data-who="Quant">With a twist. Market days aren't independent: volatile days cluster. Resample single days and you shuffle that clustering away, so the interval comes out too narrow. Instead you resample blocks of consecutive days, say ten at a time. That's the block bootstrap.</p>
+      <p data-who="Trader">And Monte Carlo?</p>
+      <p data-who="Quant">A different move. You fit a model, like a random walk with drift or a volatility model, and let it generate brand-new paths. Phelim Boyle brought that into option pricing in 1977, and desks still price path-dependent options that way.</p>
+      <p data-who="Trader">So if my bootstrap interval is tight, the strategy is robust?</p>
+      <p data-who="Quant">That's the trap. A tight interval says your sample is internally consistent: no single outlier trade is carrying the result. It says nothing about whether the signal works on data it has never seen.</p>
+      <p data-who="Trader">Why not? Ten thousand resamples sounds like a lot of evidence.</p>
+      <p data-who="Quant">Every one of them is built from the same trades. No resample ever contains a trade from a market you haven't traded. Monte Carlo is no better: the model's settings came from the same history, so every path inherits the same blind spots.</p>
+      <p data-who="Trader">So what is it good for?</p>
+      <p data-who="Quant">Setting expectations: how widely your results could swing and how deep a drawdown could get, given what you've seen. Label it that way, and test the signal on genuinely unseen data.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Resampling tells you how much your one sample wobbles, never whether the signal works outside it.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -132,6 +212,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From one sample to a bootstrap error bar, one step at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \hat{F}_n = \color{#fbbf24}{\text{probability } \tfrac{1}{n} \text{ on each observed } x_i} \]</div>
+      <p>Stop trying to know the true distribution. Treat your own sample as the population. For the five trades, each of 2, −1, 3, −2 and 1 gets probability 1/5.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ x_1^{*},\, \dots,\, x_n^{*} \;\color{#fbbf24}{\overset{\text{iid}}{\sim}\; \hat{F}_n} \]</div>
+      <p>Draw \(n\) values from it, with replacement. Some trades repeat and some are left out: \(\{-2, -2, 1, -1, -2\}\) is one legal resample.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ T^*_b = \color{#fbbf24}{T\big(x_1^{*(b)}, \dots, x_n^{*(b)}\big)}, \qquad b = 1, \dots, B \]</div>
+      <p>Recompute the statistic on each resample. That resample's mean is \(-1.2\), against the original \(0.6\). Repeat \(B\) times, often 10,000.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{SE_{boot} = \sqrt{\frac{1}{B-1}\sum_{b=1}^{B}\big(T^*_b - \bar{T}^{*}\big)^2}, \qquad \text{CI}_{95} = \big[\, T^{*}_{(0.025)},\; T^{*}_{(0.975)} \,\big]} \]</div>
+      <p>The spread of the replicates is the error bar: their standard deviation, or the middle 95% of them. No formula for the statistic's distribution was needed.</p>
+    </div>
+  </div>
   <p>
     <strong>The setup.</strong> You observe one sample of \(n\) values,
     \(x_1, x_2, \dots, x_n\) — daily returns, closed-trade P&amp;Ls, whatever
@@ -478,6 +578,10 @@
       all three resample means recalculate instantly, from the same fixed
       draw pattern.
     </p>
+    <div class="tl-predict" data-answer="1.2" data-tol="0.05" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Resample 2 drew trades 4, 4, 5, 2 and 4, so its mean is \(-1.2\%\). Change trade 4 from \(-2\) to \(+2\) and leave the others alone. What is resample 2's mean now? Lock in a guess, then type 2 into the \(x_4\) field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>1.2%.</strong> Resample 2 is now \(\{2, 2, 1, -1, 2\}\), and \((2+2+1-1+2)/5 = 1.2\). One trade drawn three times moved the resample by 2.4 points, while the original mean only moved from 0.6% to 1.4%. That is exactly how a single outlier trade makes a bootstrap interval wide. Now try making trade 4 a huge loss, say \(-10\), and watch resample 2 collapse.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>\(x_1\)</span></div>
@@ -509,6 +613,12 @@
     </div>
     <button type="button" id="boot-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
+
+  <!-- WB:bootstrapping_monte_carlo:START -->
+  <div class="wb" id="wb-bootstrapping_monte_carlo" data-title="The bootstrap and Monte Carlo, drawn step by step">
+    <script type="application/json">{"w":600,"h":800,"intro":"Five real trades, reached into again and again: the lesson's worked example, then what Monte Carlo does differently. Press play, or step through.","steps":[{"cap":"One sample: a strategy has closed five trades, returning +2, −1, +3, −2 and +1 percent. The mean is 0.6%. How much could that number have wobbled?","do":[{"box":"bag","x":10,"y":14,"w":400,"h":100,"text":"the one sample","tone":"purple","top":true,"size":19},{"chip":"x0","x":62,"y":76,"text":"+2","tone":"purple"},{"chip":"x1","x":134,"y":76,"text":"−1","tone":"purple"},{"chip":"x2","x":206,"y":76,"text":"+3","tone":"purple"},{"chip":"x3","x":278,"y":76,"text":"−2","tone":"purple"},{"chip":"x4","x":350,"y":76,"text":"+1","tone":"purple"},{"box":"mean","x":430,"y":30,"w":160,"h":70,"text":"mean","tone":"green","sub":"0.6%","size":19}]},{"cap":"Draw five trades from the bag at random, putting each one back. This resample picked trade 4 three times, trade 5 and trade 2: −2, −2, +1, −1, −2. Its mean is -1.2%.","do":[{"chip":"r0","x":62,"y":150,"text":"−2","tone":"red"},{"chip":"r1","x":134,"y":150,"text":"−2","tone":"red"},{"chip":"r2","x":206,"y":150,"text":"+1","tone":"red"},{"chip":"r3","x":278,"y":150,"text":"−1","tone":"red"},{"chip":"r4","x":350,"y":150,"text":"−2","tone":"red"},{"count":"mean","from":0.6,"to":-1.2,"dp":1,"suf":"%","ms":900}]},{"cap":"Two more resamples from the same five trades come out at 1.4% and 1.6%. Nothing new entered the bag; only which trades repeated changed.","do":[{"hide":"r0"},{"hide":"r1"},{"hide":"r2"},{"hide":"r3"},{"hide":"r4"},{"chart":"h","x":10,"y":200,"w":580,"h":230,"title":"Mean of a resample: all 3,125 equally likely","xd":[-2.3,3.3],"yd":[0,11],"yt":[[0,"0"],[5,"5%"],[10,"10%"]],"xt":[[-2,"−2"],[-1,"−1"],[0,"0"],[1,"1"],[2,"2"],[3,"3%"]],"pl":50,"pr":14},{"dot":"m2","chart":"h","at":[-1.2,0],"text":"-1.2","tone":"red","dy":-16},{"dot":"m1","chart":"h","at":[1.4,0],"text":"1.4","tone":"red","dx":-6,"dy":-16,"anchor":"end"},{"dot":"m3","chart":"h","at":[1.6,0],"text":"1.6","tone":"red","dx":6,"dy":-16,"anchor":"start"},{"count":"mean","from":-1.2,"to":0.6,"dp":1,"suf":"%","ms":600}]},{"cap":"Do it thousands of times. With five trades there are only 3,125 possible resamples, so here is every one of them: a whole spread of means around your 0.6%.","do":[{"hide":"m1"},{"hide":"m2"},{"hide":"m3"},{"bars":"hb","chart":"h","data":[[-2.0,0.03,"","chalk"],[-1.8,0.16,"","chalk"],[-1.6,0.32,"","chalk"],[-1.4,0.48,"","chalk"],[-1.2,0.96,"","chalk"],[-1.0,1.79,"","blue"],[-0.8,2.56,"","blue"],[-0.6,3.36,"","blue"],[-0.4,4.64,"","blue"],[-0.2,6.24,"","blue"],[0.0,7.36,"","blue"],[0.2,8.0,"","blue"],[0.4,8.8,"","blue"],[0.6,9.44,"","green"],[0.8,9.28,"","blue"],[1.0,8.35,"","blue"],[1.2,7.36,"","blue"],[1.4,6.4,"","blue"],[1.6,5.12,"","blue"],[1.8,3.68,"","blue"],[2.0,2.43,"","blue"],[2.2,1.6,"","blue"],[2.4,0.96,"","chalk"],[2.6,0.48,"","chalk"],[2.8,0.16,"","chalk"],[3.0,0.03,"","chalk"]],"bw":15,"ms":1400}]},{"cap":"That spread is the error bar. Its standard deviation, the bootstrap standard error, is 0.83 points. The middle 95% of resamples run from about −1.0% to 2.2%. No formula for the mean's distribution was needed.","do":[{"note":"ci","chart":"h","at":[0.6,10.4],"text":"middle 95%: −1.0 to 2.2","tone":"amber","size":18,"anchor":"middle","dx":0,"dy":0},{"sub":"mean","text":"0.6% ± 0.83"}]},{"cap":"But look in the bag. Every one of those 3,125 resamples is made of the same five trades. No resample ever holds a sixth trade, from a market or a regime the strategy has not traded.","do":[{"note":"nos","x":210,"y":150,"text":"no sixth trade, ever","size":19,"anchor":"middle","tone":"red"},{"pulse":"bag"}]},{"cap":"Market days add a wrinkle: they cluster. Here a stormy run of days sits together. Resample single days and the storms get scattered among calm days, so the error bar comes out too narrow.","do":[{"note":"st0","x":20,"y":470,"text":"real days:","size":17,"anchor":"start"},{"chip":"d0","x":200,"y":470,"text":"C","tone":"blue"},{"chip":"d1","x":272,"y":470,"text":"C","tone":"blue"},{"chip":"d2","x":344,"y":470,"text":"S","tone":"red"},{"chip":"d3","x":416,"y":470,"text":"S","tone":"red"},{"chip":"d4","x":488,"y":470,"text":"S","tone":"red"},{"chip":"d5","x":560,"y":470,"text":"C","tone":"blue"},{"note":"st1","x":20,"y":512,"text":"single days:","size":17,"anchor":"start"},{"chip":"e0","x":200,"y":512,"text":"S","tone":"red"},{"chip":"e1","x":272,"y":512,"text":"C","tone":"blue"},{"chip":"e2","x":344,"y":512,"text":"C","tone":"blue"},{"chip":"e3","x":416,"y":512,"text":"S","tone":"red"},{"chip":"e4","x":488,"y":512,"text":"C","tone":"blue"},{"chip":"e5","x":560,"y":512,"text":"C","tone":"blue"}]},{"cap":"The block bootstrap resamples runs of consecutive days instead, say three at a time. A stormy block stays stormy, so the clustering survives and the error bar stays honest.","do":[{"note":"st2","x":20,"y":554,"text":"blocks of 3:","size":17,"anchor":"start"},{"chip":"g0","x":200,"y":554,"text":"S","tone":"red"},{"chip":"g1","x":272,"y":554,"text":"S","tone":"red"},{"chip":"g2","x":344,"y":554,"text":"S","tone":"red"},{"chip":"g3","x":416,"y":554,"text":"C","tone":"blue"},{"chip":"g4","x":488,"y":554,"text":"C","tone":"blue"},{"chip":"g5","x":560,"y":554,"text":"S","tone":"red"}]},{"cap":"Monte Carlo is a different move: fit a model to the data, here a normal with the trades' own mean 0.6% and spread 1.86%, then let it generate brand-new paths. Twelve 40-trade paths (illustrative).","do":[{"hide":"d0"},{"hide":"d1"},{"hide":"d2"},{"hide":"d3"},{"hide":"d4"},{"hide":"d5"},{"hide":"e0"},{"hide":"e1"},{"hide":"e2"},{"hide":"e3"},{"hide":"e4"},{"hide":"e5"},{"hide":"g0"},{"hide":"g1"},{"hide":"g2"},{"hide":"g3"},{"hide":"g4"},{"hide":"g5"},{"hide":"nos"},{"hide":"st0"},{"hide":"st1"},{"hide":"st2"},{"chart":"mc","x":10,"y":450,"w":580,"h":330,"title":"Cumulative return, % (model fitted to the same 5 trades)","xd":[0,40],"yd":[-25,65],"yt":[[-20,"−20"],[0,"0"],[20,"20"],[40,"40"],[60,"60"]],"xt":[[0,"0"],[20,"20"],[40,"40 trades"]],"zero":true,"pl":48,"pr":16},{"series":"f0","chart":"mc","pts":[[0,0],[4,1.87],[8,5.0],[12,10.86],[16,13.62],[20,7.13],[24,9.79],[28,15.45],[32,18.58],[36,21.78],[40,22.87]],"tone":"amber","ms":900},{"series":"f1","chart":"mc","pts":[[0,0],[4,-0.62],[8,-0.04],[12,1.46],[16,5.67],[20,9.23],[24,8.45],[28,6.69],[32,10.58],[36,4.08],[40,8.56]],"tone":"amber","ms":900},{"series":"f2","chart":"mc","pts":[[0,0],[4,7.77],[8,11.61],[12,11.93],[16,14.08],[20,17.78],[24,24.34],[28,26.72],[32,31.14],[36,29.9],[40,32.99]],"tone":"amber","ms":900},{"series":"f3","chart":"mc","pts":[[0,0],[4,5.8],[8,10.45],[12,14.1],[16,23.3],[20,25.91],[24,27.05],[28,29.0],[32,31.37],[36,37.72],[40,33.62]],"tone":"amber","ms":900},{"series":"f4","chart":"mc","pts":[[0,0],[4,3.75],[8,6.69],[12,6.66],[16,6.9],[20,11.92],[24,18.74],[28,25.5],[32,30.66],[36,29.02],[40,26.15]],"tone":"amber","ms":900},{"series":"f5","chart":"mc","pts":[[0,0],[4,7.13],[8,11.78],[12,16.93],[16,16.98],[20,21.77],[24,31.39],[28,34.75],[32,34.32],[36,34.26],[40,40.79]],"tone":"amber","ms":900},{"series":"f6","chart":"mc","pts":[[0,0],[4,9.97],[8,7.27],[12,5.7],[16,7.03],[20,15.67],[24,16.33],[28,17.9],[32,19.93],[36,18.91],[40,15.15]],"tone":"amber","ms":900},{"series":"f7","chart":"mc","pts":[[0,0],[4,-2.88],[8,-4.44],[12,-8.11],[16,-1.04],[20,2.03],[24,7.1],[28,15.21],[32,20.44],[36,23.71],[40,27.76]],"tone":"amber","ms":900},{"series":"f8","chart":"mc","pts":[[0,0],[4,1.69],[8,8.01],[12,8.83],[16,15.99],[20,16.0],[24,20.38],[28,21.11],[32,24.66],[36,36.93],[40,32.8]],"tone":"amber","ms":900},{"series":"f9","chart":"mc","pts":[[0,0],[4,1.68],[8,7.2],[12,9.02],[16,10.35],[20,10.49],[24,16.08],[28,14.11],[32,9.27],[36,9.42],[40,12.62]],"tone":"amber","ms":900},{"series":"f10","chart":"mc","pts":[[0,0],[4,7.53],[8,14.69],[12,19.6],[16,29.12],[20,38.4],[24,43.62],[28,46.96],[32,53.45],[36,57.15],[40,53.72]],"tone":"amber","ms":900},{"series":"f11","chart":"mc","pts":[[0,0],[4,-2.35],[8,-2.06],[12,5.08],[16,6.95],[20,3.63],[24,-3.1],[28,2.3],[32,6.28],[36,4.57],[40,2.6]],"tone":"amber","ms":900}]},{"cap":"Every path inherits the model's settings, and those came from the same five trades. If tomorrow's market has a different mean or bigger swings, all twelve paths, or ten thousand, share the same blind spot.","do":[{"pulse":"mc"},{"note":"fit","x":300,"y":142,"text":"the model's settings came from the same five trades","size":18,"anchor":"middle","tone":"red"}]},{"cap":"So both tools answer: given what I already have, what range of outcomes is consistent with it? A fair question for setting expectations. Whether the signal works on unseen data needs data it has never touched.","do":[{"note":"end","x":300,"y":178,"text":"an error bar, not an out-of-sample test","size":20,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:bootstrapping_monte_carlo:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -648,6 +758,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative risk-committee pitch</div>
+    <h3>A tight bootstrap interval, presented as robustness</h3>
+    <p>A researcher bootstraps a strategy's trade returns 10,000 times and computes the Sharpe ratio on each resample. The 95% interval is tight: the resampled Sharpe barely moves. They want to tell the risk committee the strategy is "robust". You review the slide. What do you ask for?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Nothing. 10,000 resamples with a tight interval is strong robustness evidence.<div class="tl-drill-why">Every resample was built from the same trades, made by the same signal over the same period. A tight interval shows the sample is internally consistent, not that the signal works on data it has never seen.</div></li>
+      <li data-verdict="good">Relabel the interval as sample consistency and expectation-setting, and require a walk-forward test on unseen data before anyone calls it robust.<div class="tl-drill-why">That keeps the bootstrap for what it does well, an honest error bar, and sends the generalization question to the only test that can answer it.</div></li>
+      <li data-verdict="ok">Ask for a block bootstrap, since daily returns cluster.<div class="tl-drill-why">A real improvement: a plain bootstrap on clustered returns gives an interval that is too narrow. But a block bootstrap still never leaves the same sample, so it still cannot speak to unseen data.</div></li>
+      <li data-verdict="bad">Ask for 100,000 resamples, or Monte Carlo paths from a model fitted to the same returns.<div class="tl-drill-why">More resamples only cut simulation noise. Monte Carlo paths inherit their settings from the same history. Neither adds a single new observation.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What it means.</strong> This is an illustrative review, the lesson's own scenario, not a documented case. The tight interval was genuine evidence that no single outlier trade carries the result. Whether the strategy works out of sample is a separate question, and only data the strategy has never touched can answer it.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -768,6 +891,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-probability.html">Probability &amp; Random Variables</a> <span>· distributions and sampling, the raw material</span></li>
+        <li><a href="sharpe-family-deflated.html">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a> <span>· the statistics you will put error bars on</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> <span>· the test resampling cannot replace</span></li>
+        <li><a href="drawdowns-risk-of-ruin.html">Drawdowns, Risk of Ruin, and Why Good Systems Get Abandoned</a> <span>· using simulated paths to set drawdown expectations</span></li>
+        <li><a href="sde-numerical-schemes.html">Numerical Schemes: Euler-Maruyama &amp; Milstein</a> <span>· how Monte Carlo paths are actually generated</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every backtest number needs an error bar, and you need to know which questions that error bar can and cannot answer.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="walk-forward-purged-cv.html">← Walk-Forward Validation &amp; Purged Cross-Validation</a>
     <a href="../hub.html">Theory Lab hub →</a>
@@ -852,9 +995,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

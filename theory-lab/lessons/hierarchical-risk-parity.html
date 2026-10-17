@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hierarchical Risk Parity — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,74 @@
       <li><strong>Real-world episode:</strong> in autumn 2008 the carry unwind pushed high-yielding currencies to move almost as one, so the covariance matrix became close to singular exactly when allocation mattered most: Markowitz's curse, the problem HRP was built around.<!-- DESK:START --> HRP versus simpler allocators is untested on this desk's FX universe.<!-- DESK:END --></li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A dendrogram of five FX pairs from the lesson. EURUSD and GBPUSD merge first at distance 0.32, USDJPY and USDCHF at 0.42, AUDUSD joins the first pair at 0.47, and the two blocs meet at the root at 0.72. Weight flows down from 100% at the root: 42.9% to the risk-on bloc and 57.1% to the safe-haven bloc, then 33.1% to EURUSD and GBPUSD together and 9.8% to AUDUSD. Final weights: EURUSD 18.5%, GBPUSD 14.6%, AUDUSD 9.8%, USDJPY 24.2%, USDCHF 32.9%.">
+      <text class="tlp-text2" x="20" y="20" font-size="13" font-weight="700">Cluster first, then split the weight down the tree</text>
+      <line class="tlp-line blue thick" x1="70" y1="186" x2="70" y2="131"/>
+      <line class="tlp-line blue thick" x1="170" y1="186" x2="170" y2="131"/>
+      <line class="tlp-line blue thick" x1="70" y1="131" x2="170" y2="131"/>
+      <line class="tlp-line blue thick" x1="120" y1="131" x2="120" y2="100"/>
+      <line class="tlp-line blue thick" x1="270" y1="186" x2="270" y2="100"/>
+      <line class="tlp-line blue thick" x1="120" y1="100" x2="270" y2="100"/>
+      <line class="tlp-line amber thick" x1="400" y1="186" x2="400" y2="111"/>
+      <line class="tlp-line amber thick" x1="510" y1="186" x2="510" y2="111"/>
+      <line class="tlp-line amber thick" x1="400" y1="111" x2="510" y2="111"/>
+      <line class="tlp-line purple thick" x1="195" y1="100" x2="195" y2="50"/>
+      <line class="tlp-line purple thick" x1="455" y1="111" x2="455" y2="50"/>
+      <line class="tlp-line purple thick" x1="195" y1="50" x2="455" y2="50"/>
+      <circle class="tlp-purple" cx="325" cy="50" r="5"/>
+      <text class="tlp-purple" x="325" y="40" text-anchor="middle" font-size="13" font-weight="700">100% · root d = 0.72</text>
+      <text class="tlp-blue" x="189" y="80" text-anchor="end" font-size="13" font-weight="700">42.9%</text>
+      <text class="tlp-amber" x="461" y="84" font-size="13" font-weight="700">57.1%</text>
+      <text class="tlp-blue" x="114" y="122" text-anchor="end" font-size="13" font-weight="700">33.1%</text>
+      <text class="tlp-text3" x="176" y="124" font-size="12">d 0.32</text>
+      <text class="tlp-text3" x="276" y="115" font-size="12">d 0.47</text>
+      <text class="tlp-text3" x="455" y="126" text-anchor="middle" font-size="12">d 0.42</text>
+      <text class="tlp-text" x="70" y="204" text-anchor="middle" font-size="13" font-weight="700">EURUSD</text>
+      <text class="tlp-text" x="170" y="204" text-anchor="middle" font-size="13" font-weight="700">GBPUSD</text>
+      <text class="tlp-text" x="270" y="204" text-anchor="middle" font-size="13" font-weight="700">AUDUSD</text>
+      <text class="tlp-text" x="400" y="204" text-anchor="middle" font-size="13" font-weight="700">USDJPY</text>
+      <text class="tlp-text" x="510" y="204" text-anchor="middle" font-size="13" font-weight="700">USDCHF</text>
+      <text class="tlp-text3" x="70" y="220" text-anchor="middle" font-size="12">σ 8%</text>
+      <text class="tlp-text3" x="170" y="220" text-anchor="middle" font-size="12">σ 9%</text>
+      <text class="tlp-text3" x="270" y="220" text-anchor="middle" font-size="12">σ 11%</text>
+      <text class="tlp-text3" x="400" y="220" text-anchor="middle" font-size="12">σ 7%</text>
+      <text class="tlp-text3" x="510" y="220" text-anchor="middle" font-size="12">σ 6%</text>
+      <text class="tlp-blue" x="70" y="240" text-anchor="middle" font-size="14" font-weight="700">18.5%</text>
+      <text class="tlp-blue" x="170" y="240" text-anchor="middle" font-size="14" font-weight="700">14.6%</text>
+      <text class="tlp-blue" x="270" y="240" text-anchor="middle" font-size="14" font-weight="700">9.8%</text>
+      <text class="tlp-amber" x="400" y="240" text-anchor="middle" font-size="14" font-weight="700">24.2%</text>
+      <text class="tlp-amber" x="510" y="240" text-anchor="middle" font-size="14" font-weight="700">32.9%</text>
+    </svg>
+    <figcaption>The lesson's five-pair basket. Correlation decides the shape of the tree; at every fork the calmer side gets the bigger share. Each asset's weight is the product of the splits on its path, and the covariance matrix is never inverted.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I gave an optimizer a basket of currency pairs that mostly move together. The weights came out wild, and they flipped when I added one more week of data.</p>
+      <p data-who="Quant">That's a second fragility, separate from bad return forecasts. The optimizer has to invert the covariance matrix. When several assets are near-copies of each other, that inversion turns tiny measurement errors into huge weight swings.</p>
+      <p data-who="Trader">So don't invert it?</p>
+      <p data-who="Quant">That's Hierarchical Risk Parity, from Marcos López de Prado in 2016. Think of a company budget. You don't allocate to every employee at once. You split between departments, then teams, then people.</p>
+      <p data-who="Trader">How do you find the departments in a basket?</p>
+      <p data-who="Quant">Turn correlation into distance: highly correlated pairs sit close together, unrelated ones far apart. Then cluster. In the lesson's five-pair basket, euro and sterling merge first, then yen and franc, then the Aussie joins the euro and sterling group. Two blocs: risk-on and safe-haven.</p>
+      <p data-who="Trader">And then the weights?</p>
+      <p data-who="Quant">Start at the top with all the money, and split it between the two blocs. The calmer bloc gets more. The safe-haven pair is calmer here, so it gets about fifty-seven percent and the risk-on bloc about forty-three.</p>
+      <p data-who="Trader">Then split again inside each bloc.</p>
+      <p data-who="Quant">Same rule at every fork. You end up with the franc on about thirty-three percent, the yen twenty-four, the euro eighteen and a half, sterling fifteen, and the Aussie under ten. Every step is a two-way choice. No big inversion anywhere.</p>
+      <p data-who="Trader">And it works better out of sample?</p>
+      <p data-who="Quant">That's López de Prado's own reported result. Treat it as his claim, not as settled.</p>
+      <p data-who="Trader">When does this matter for real?</p>
+      <p data-who="Quant">Autumn 2008. After Lehman failed on the fifteenth of September, carry trades unwound together. The high-yielding currencies fell as one block, and the Aussie dropped by more than a third between its July high and late October. Five different carry trades became one carry trade.</p>
+      <p data-who="Trader">So the matrix got close to singular, right when it mattered.</p>
+      <p data-who="Quant">Exactly. That's the instability this method avoids. But it doesn't avoid the estimation. A tree built on calm summer data would still have underrated how risky the high-yield bloc was about to be.</p>
+      <p data-who="Trader">So what's the one-line version?</p>
+      <p data-who="Quant">Group what moves together, then split the money down the tree, calmer side first, and never trust one fragile matrix inversion with the whole book.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -103,6 +172,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step — three stages</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From correlations to a final weight, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ d_{ij} = \color{#fbbf24}{\sqrt{\tfrac{1}{2}(1-\rho_{ij})}} \]</div>
+      <p>Turn each correlation into a distance. EURUSD and GBPUSD at \(\rho = 0.80\) sit at \(d = 0.32\), so they merge first in the tree.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ V = \color{#fbbf24}{\Big(\textstyle\sum_{i \in \text{cluster}} 1/\sigma_i^2\Big)^{-1}} \]</div>
+      <p>Give each cluster one variance, by inverse-variance weighting its members, as the calculator below does. The risk-on bloc gets \(V_L = 0.00276\), the safe-haven bloc \(V_R = 0.00208\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \alpha_1 = \color{#fbbf24}{1 - \frac{V_1}{V_1+V_2}} \]</div>
+      <p>Split the parent's weight between its two children. The lower-variance side gets the larger share: at the root, \(\alpha_L = 1 - 0.00276/0.00484 = 0.429\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \alpha_1 = 1 - \frac{V_1}{V_1+V_2}, \qquad \color{#fbbf24}{\alpha_2 = 1 - \alpha_1} \]</div>
+      <p>The other child takes the rest, so the split always sums to one: the safe-haven bloc gets 0.571.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{w_{\text{EURUSD}} = 0.429 \times 0.772 \times 0.559 = 0.185} \]</div>
+      <p>Repeat at every fork. Each asset's final weight is the product of the splits along its path from the root: 18.5% for EURUSD, with no matrix inverted on the way.</p>
+    </div>
+  </div>
   <p>
     López de Prado's algorithm runs in three distinct stages, each one
     feeding the next. None of the three, individually, requires inverting
@@ -377,6 +470,10 @@
       instantly, using each cluster's inverse-variance-weighted variance as
       \(V\), exactly as in Stage 3.
     </p>
+    <div class="tl-predict" data-answer="2.6" data-tol="0.6" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> AUDUSD runs at 11% volatility and ends with 9.8% of the basket. Double its volatility to 22%, everything else unchanged. What final weight does HRP give AUDUSD now? Lock in a guess, then type 22 into "AUDUSD vol" below to check.</div>
+      <div class="tl-predict-reveal"><p><strong>About 2.6%.</strong> Doubling the volatility quadruples the variance, to 0.0484. Inside the risk-on bloc the split moves from 0.772 / 0.228 to about 0.931 / 0.069, and the bloc itself now looks riskier, so it gets only 38.4% at the root instead of 42.9%. \(0.384 \times 0.069 \approx 0.026\). Weights fall with variance, not volatility, and the change ripples up the tree. Now try 6% for AUDUSD instead and watch it become the bloc's biggest weight.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>EURUSD vol (%)</span></div>
@@ -436,6 +533,12 @@
       split, never a single fragile inversion of the full 12×12 matrix.
     </p>
   </div>
+
+  <!-- WB:hierarchical_risk_parity:START -->
+  <div class="wb" id="wb-hierarchical_risk_parity" data-title="Build the tree, then pour the weight down it: HRP step by step">
+    <script type="application/json">{"w":600,"h":720,"intro":"Five currency pairs, a tree built from their correlations, and weight poured down it one fork at a time. Press play, or step through.","steps":[{"cap":"Five FX pairs, with the lesson's illustrative volatilities. An optimizer would invert their whole covariance matrix at once. HRP never does.","do":[{"box":"lE","x":6,"y":392,"w":108,"h":76,"text":"EURUSD\nσ 8%","tone":"blue","sub":"","size":17},{"box":"lG","x":121,"y":392,"w":108,"h":76,"text":"GBPUSD\nσ 9%","tone":"blue","sub":"","size":17},{"box":"lA","x":236,"y":392,"w":108,"h":76,"text":"AUDUSD\nσ 11%","tone":"blue","sub":"","size":17},{"box":"lJ","x":366,"y":392,"w":108,"h":76,"text":"USDJPY\nσ 7%","tone":"amber","sub":"","size":17},{"box":"lC","x":481,"y":392,"w":108,"h":76,"text":"USDCHF\nσ 6%","tone":"amber","sub":"","size":17}]},{"cap":"Stage 1: turn correlation into distance, d = √(½(1 − ρ)). EURUSD and GBPUSD move together at ρ = 0.80, so d = 0.32: they merge first.","do":[{"line":"eg","points":[[60,392],[60,252],[175,252],[175,392]],"tone":"blue","width":3,"ms":600},{"note":"deg","x":117.5,"y":278,"text":"d 0.32","size":17,"anchor":"middle","tone":"blue"}]},{"cap":"USDJPY and USDCHF, the safe havens, merge next at ρ = 0.65, d = 0.42.","do":[{"line":"jc","points":[[420,392],[420,212],[535,212],[535,392]],"tone":"amber","width":3,"ms":600},{"note":"djc","x":477.5,"y":238,"text":"d 0.42","size":17,"anchor":"middle","tone":"amber"}]},{"cap":"AUDUSD joins the euro and sterling pair at d = 0.47. That completes a risk-on bloc.","do":[{"line":"ega","points":[[117.5,252],[117.5,192],[290,192],[290,392]],"tone":"blue","width":3,"ms":600},{"note":"dl","x":203.75,"y":218,"text":"d 0.47","size":17,"anchor":"middle","tone":"blue"}]},{"cap":"The two blocs only meet at the root, d = 0.72: their cross-bloc correlations are the lowest in the basket. Reading the leaves left to right is Stage 2, the quasi-diagonal order.","do":[{"line":"root","points":[[203.75,192],[203.75,92],[477.5,92],[477.5,212]],"tone":"purple","width":3,"ms":600},{"box":"top","x":270.625,"y":14,"w":140,"h":56,"text":"100%","tone":"purple","size":22}]},{"cap":"Stage 3: split the 100% between the blocs. Risk-on has cluster variance 0.00276, safe-haven 0.00208. The calmer side gets more: 1 − 0.00276 ÷ 0.00484 = 42.9% left, 57.1% right.","do":[{"chip":"wL","x":153.75,"y":142.0,"text":"42.9%","tone":"blue"},{"chip":"wR","x":527.5,"y":152.0,"text":"57.1%","tone":"amber"}]},{"cap":"Inside the risk-on bloc, euro plus sterling versus AUDUSD: 0.772 to 0.228. Of the 42.9%, that is 33.1% and 9.8%.","do":[{"chip":"wEG","x":71.5,"y":222.0,"text":"33.1%","tone":"blue"},{"sub":"lA","text":"9.8%"},{"pulse":"lA"}]},{"cap":"Split again at every fork, calmer side first. EURUSD 18.5%, GBPUSD 14.6%, USDJPY 24.2%, USDCHF 32.9%. Each weight is the product of the splits on its path. Nothing was inverted.","do":[{"sub":"lE","text":"18.5%"},{"sub":"lG","text":"14.6%"},{"sub":"lJ","text":"24.2%"},{"sub":"lC","text":"32.9%"}]},{"cap":"Autumn 2008. After Lehman failed on 15 September, carry trades unwound together. The high-yielders fell as one block, and within it correlations rose toward one.","do":[{"icon":"lehman","name":"domino","x":20,"y":500,"s":0.6,"tone":"red","label":"Lehman fails\n15 Sept 2008","lsize":16},{"pulse":"ega"},{"pulse":"eg"}]},{"cap":"AUD/USD fell by more than a third between its July high and late October, while the yen rose sharply. Five \"different\" carry trades had become one bet, and a covariance matrix with near-duplicate rows is close to singular.","do":[{"icon":"aud","name":"down","x":230,"y":500,"s":0.6,"tone":"red","label":"AUD/USD down\nover a third","lsize":16},{"arrow":["lehman","aud"],"tone":"red"}]},{"cap":"That is the curse HRP avoids: no inversion. But it still reads its tree and variances from past data. A tree built in the calm summer would have weighted the falling bloc on calm variances.","do":[{"box":"catch","x":410,"y":500,"w":180,"h":110,"text":"no inversion,\nbut the same\npast data","tone":"amber","size":18},{"arrow":["aud","catch"],"tone":"amber"}]}]}</script>
+  </div>
+  <!-- WB:hierarchical_risk_parity:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: autumn 2008, when the blocs became one bet each</h2>
@@ -601,6 +704,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2008-09">
+    <div class="tl-drill-label">Scenario drill · late September 2008</div>
+    <h3>Five carry trades have started moving as one</h3>
+    <p>You run a basket of five high-yielding currencies funded in the yen and the Swiss franc, weighted by a mean-variance optimizer on a covariance matrix estimated over the calm years before. Lehman Brothers failed on 15 September. Funding has dried up, carry positions are being unwound, and the high-yielders are now falling together while the yen rises. Each time you re-run the optimizer on fresh data, its weights jump around. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Re-run the optimizer on the latest data and trade whatever weights it gives.<div class="tl-drill-why">Near-duplicate rows make the covariance matrix close to singular, so inverting it turns small estimation noise into huge weight swings. The new weights are least reliable exactly now.</div></li>
+      <li data-verdict="bad">Keep the weights. Five countries and five central banks is real diversification.<div class="tl-drill-why">On calm data they looked different. In the unwind, within-bloc correlations are rising toward one: for risk purposes, five carry trades have become one carry trade.</div></li>
+      <li data-verdict="good">Treat the high-yielders as one bloc, measure that bloc's risk on recent data, and size the whole bloc down to it before worrying about weights inside it.<div class="tl-drill-why">This is the tree's top split done honestly: allocate to the bloc as a single bet, using a variance that reflects today's market, and stop asking a near-singular matrix to tell the five apart.</div></li>
+      <li data-verdict="ok">Switch to HRP, using the tree and variances estimated in August.<div class="tl-drill-why">It removes the fragile inversion, a real improvement. But the tree's variances come from calm data, so the high-yield bloc, the one falling, still looks cheaper in risk terms than it is.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Investors facing losses and margin calls unwound carry positions together. The high-yielders fell as one block: AUD/USD dropped by more than a third between its July high and late October, and the yen rose sharply against almost everything. Within each bloc, correlations rose toward one, so the covariance rows of the high-yielders became close to duplicates. "Diversified" carry baskets lost as one bet, just as an inverse-covariance allocator became least reliable.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -661,6 +777,27 @@
     <li>Thomas Raffinot, "Hierarchical Clustering-Based Asset Allocation," <em>Journal of Portfolio Management</em>, 44(2), 2017 — an independent follow-up exploring alternative linkage methods and clustering choices referenced in the Common Pitfalls section above.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="risk-parity-erc.html">Risk Parity &amp; Equal Risk Contribution</a> <span>· the equal-risk idea HRP applies one split at a time</span></li>
+        <li><a href="clustering-market-structure.html">Clustering for Market Structure: k-Means &amp; Hierarchical Clustering</a> <span>· how the tree is built</span></li>
+        <li><a href="correlation-networks-mst.html">Correlation Networks &amp; Minimum Spanning Trees</a> <span>· the same correlation-to-distance step</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="factor-based-portfolio-construction.html">Factor-Based Portfolio Construction</a> <span>· allocating to the drivers behind the blocs</span></li>
+        <li><a href="random-matrix-theory.html">Random Matrix Theory &amp; the Marchenko-Pastur Law</a> <span>· telling real correlation structure from noise</span></li>
+        <!-- DESK:START --><li><a href="institutional-ledoit-wolf-shrinkage.html">Ledoit-Wolf Covariance Shrinkage</a> <span>· another fix for a fragile covariance matrix</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a basket of pairs that share one driver is one bet, and this shows how to size it as one without trusting a fragile optimizer.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="risk-parity-erc.html">← Risk Parity &amp; Equal Risk Contribution</a>
@@ -771,9 +908,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Trend/Cycle Filters: HP, Butterworth &amp; Baxter-King — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,52 @@
       <li><strong>Real-world episode:</strong> in the 1970s, real-time US output-gap estimates showed far more slack than later revised estimates did, and policy stayed loose while inflation rose (Orphanides, 2001). Orphanides &amp; van Norden (2002) found the revisions came mainly from the end of the sample, the HP filter included, not from revised data.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A synthetic quarterly series, in blue, whose trend growth slows after quarter 20. An amber dashed HP trend computed in real time with data only up to quarter 27 ends high, so the gap between data and trend at quarter 27 is minus 2.9, which looks like a lot of slack. A green HP trend computed after 12 more quarters passes lower at quarter 27, so the revised gap is only minus 1.1. The newest point of a two-sided trend is the least reliable.">
+      <line class="tlp-line" x1="40" y1="200" x2="570" y2="200"/>
+      <line class="tlp-line dash" x1="404.5" y1="30" x2="404.5" y2="200"/>
+      <polyline class="tlp-line blue" points="40.0,189.0 53.5,181.0 67.0,173.3 80.5,166.4 94.0,160.4 107.5,155.4 121.0,151.3 134.5,148.0 148.0,145.0 161.5,142.0 175.0,138.7 188.5,134.6 202.0,129.6 215.5,123.6 229.0,116.7 242.5,109.0 256.0,101.0 269.5,93.0 283.0,85.3 296.5,78.4 310.0,72.4 323.5,71.5 337.0,71.6 350.5,72.3 364.0,73.5 377.5,74.7 391.0,75.4 404.5,75.5 418.0,74.6 431.5,72.7 445.0,69.9 458.5,66.4 472.0,62.5 485.5,58.6 499.0,55.1 512.5,52.3 526.0,50.4 539.5,49.5 553.0,49.6 566.5,50.3"/>
+      <polyline class="tlp-line green thick" points="40.0,182.9 53.5,177.7 67.0,172.6 80.5,167.5 94.0,162.4 107.5,157.3 121.0,152.2 134.5,147.2 148.0,142.2 161.5,137.2 175.0,132.3 188.5,127.4 202.0,122.6 215.5,117.9 229.0,113.2 242.5,108.7 256.0,104.3 269.5,100.1 283.0,96.1 296.5,92.3 310.0,88.8 323.5,85.5 337.0,82.4 350.5,79.5 364.0,76.8 377.5,74.3 391.0,71.9 404.5,69.6 418.0,67.5 431.5,65.4 445.0,63.3 458.5,61.3 472.0,59.3 485.5,57.3 499.0,55.4 512.5,53.4 526.0,51.5 539.5,49.6 553.0,47.7 566.5,45.8"/>
+      <polyline class="tlp-line amber thick dash" points="40.0,183.6 53.5,178.5 67.0,173.5 80.5,168.4 94.0,163.3 107.5,158.3 121.0,153.3 134.5,148.3 148.0,143.3 161.5,138.3 175.0,133.4 188.5,128.4 202.0,123.5 215.5,118.6 229.0,113.8 242.5,109.0 256.0,104.3 269.5,99.7 283.0,95.2 296.5,90.9 310.0,86.6 323.5,82.5 337.0,78.5 350.5,74.6 364.0,70.8 377.5,67.0 391.0,63.3 404.5,59.5"/>
+      <circle class="tlp-amber" cx="404.5" cy="59.5" r="5"/>
+      <circle class="tlp-green" cx="404.5" cy="69.6" r="5"/>
+      <circle class="tlp-blue" cx="404.5" cy="75.5" r="5"/>
+      <text class="tlp-blue" x="48" y="40" font-size="13" font-weight="700">data (synthetic, quarterly)</text>
+      <text class="tlp-amber" x="48" y="58" font-size="13" font-weight="700">HP trend in real time, data to quarter 27</text>
+      <text class="tlp-green" x="48" y="76" font-size="13" font-weight="700">same filter, 12 quarters later</text>
+      <text class="tlp-amber" x="398" y="40" text-anchor="end" font-size="13" font-weight="700">real-time gap −2.9</text>
+      <text class="tlp-green" x="414" y="100" font-size="13" font-weight="700">revised gap −1.1</text>
+      <text class="tlp-text3" x="404.5" y="216" text-anchor="middle" font-size="12">quarter 27: the newest point</text>
+      <text class="tlp-text3" x="566" y="216" text-anchor="end" font-size="12">quarter →</text>
+      <text class="tlp-red" x="300" y="236" text-anchor="middle" font-size="13" font-weight="700">the newest trend point is the least reliable, and policy uses it</text>
+    </svg>
+    <figcaption>An illustrative series built so that trend growth slows, as it did in the 1970s. With no data after the newest quarter, the two-sided HP trend leans on the fast-growth past and ends too high, so the gap shows more slack than there is. Twelve quarters later the same filter on the same early data gives a much smaller gap.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Central banks keep talking about the output gap. Where does that number actually come from?</p>
+      <p data-who="Quant">From a filter. Think of the sea at a pier. There's the tide, a slow rise and fall, and the waves on top. The gap is the waves. But you only ever see the total, so someone has to decide where the tide line is.</p>
+      <p data-who="Trader">And the usual way to decide?</p>
+      <p data-who="Quant">The Hodrick-Prescott filter. It draws a trend that stays close to the data but is punished for bending. One dial sets how hard bending is punished. Turn it to zero and the trend is just the data. Turn it to infinity and you get a straight line.</p>
+      <p data-who="Trader">What do people set the dial to?</p>
+      <p data-who="Quant">Sixteen hundred, for quarterly data. That's the convention. The classic mistake is reusing sixteen hundred on monthly data. The right value scales with the fourth power of the frequency ratio. Three months to a quarter, three to the fourth is eighty-one, so monthly needs about a hundred and thirty thousand.</p>
+      <p data-who="Trader">That's a huge difference.</p>
+      <p data-who="Quant">It is. But the bigger problem is the end of the sample. The filter looks both backwards and forwards in time. At the newest quarter there is no forwards. So the newest trend reading, the one policy actually uses, is the least reliable and gets revised as new data arrive.</p>
+      <p data-who="Trader">Has that ever mattered?</p>
+      <p data-who="Quant">The 1970s. Trend growth slowed: productivity faded from the late sixties and the 1973 oil shock hit supply. Trend lines fitted to the strong fifties and sixties sat too high. So the measured gap showed lots of spare capacity, and policy stayed loose. Inflation rose through the decade, into double digits by its end.</p>
+      <p data-who="Trader">How do we know the slack wasn't there?</p>
+      <p data-who="Quant">Athanasios Orphanides rebuilt the numbers policymakers had at the time, in 2001. The real-time gaps were far more negative than today's estimates for the same quarters. Then, with Simon van Norden, he showed the revisions came mainly from the end of the sample, not from revised data.</p>
+      <p data-who="Trader">So should I stop using the filter?</p>
+      <p data-who="Quant">James Hamilton's 2018 paper is literally titled "Why You Should Never Use the Hodrick-Prescott Filter". Besides the end problem, it can invent cycles in a pure random walk. The alternatives are band-pass filters, which keep only cycles of six to thirty-two quarters, but they lose data at both ends instead.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">A trend is a modelling choice, not a measurement, and its newest point is the one most likely to be wrong.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -75,6 +122,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the Hodrick-Prescott trend comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\sum_{t=1}^{T} (y_t - \tau_t)^2} \]</div>
+      <p>Start with fit. On its own this is smallest when the trend copies the data exactly, \(\tau_t = y_t\), so the "trend" would include every wiggle.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \sum_{t=1}^{T} (y_t - \tau_t)^2 + \color{#fbbf24}{\sum_{t=2}^{T-1} \big[(\tau_{t+1}-\tau_t) - (\tau_t-\tau_{t-1})\big]^2} \]</div>
+      <p>Add a charge for bending. The bracket is the trend's second difference: zero on a straight line, large wherever the slope changes.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \sum_{t=1}^{T} (y_t - \tau_t)^2 + \color{#fbbf24}{\lambda} \sum_{t=2}^{T-1} \big[(\tau_{t+1}-\tau_t) - (\tau_t-\tau_{t-1})\big]^2 \]</div>
+      <p>Weight the charge with \(\lambda\). \(\lambda \to 0\) gives back the raw data; \(\lambda \to \infty\) forces a straight line. The quarterly convention is \(\lambda = 1600\); monthly data needs \(1600 \times 3^4 = 129{,}600\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{c_t = y_t - \hat\tau_t, \quad \hat\tau = \arg\min_{\tau} \Big\{ \sum (y_t - \tau_t)^2 + \lambda \sum \big[\Delta^2 \tau_t\big]^2 \Big\}} \]</div>
+      <p>The trend is whatever minimises the total, and the cycle, the "gap", is what is left. Every \(\hat\tau_t\) uses data on both sides of \(t\), which is why the newest one, with no data after it, is the least reliable.</p>
+    </div>
+  </div>
   <p>
     Four pieces: (1) the general trend+cycle decomposition problem; (2) the Hodrick-Prescott filter and its
     \(\lambda\) parameter, including the frequency-rescaling rule; (3) Hamilton's documented critique; (4) Butterworth
@@ -303,6 +370,10 @@
       recalculates instantly &mdash; try setting the target to 1 period/year to reproduce the annual
       case above.
     </p>
+    <div class="tl-predict" data-answer="100" data-tol="5" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Quarterly data uses \(\lambda = 1600\), and monthly needs 129,600. What \(\lambda\) would half-yearly data need, two observations a year? Lock in a guess, then type 2 into the "Target periods/year" field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>100.</strong> The ratio is \(2/4 = 0.5\), and \(0.5^4 = 0.0625\), so \(\lambda = 1600 \times 0.0625 = 100\). Halving the observation frequency divides \(\lambda\) by 16, because it scales with the fourth power of the ratio. Now type 52 for weekly data and see how fast it grows the other way.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Baseline &lambda;</span></div>
@@ -371,6 +442,12 @@
       at each end of the sample.
     </div>
   </div>
+
+  <!-- WB:trend_cycle_filters:START -->
+  <div class="wb" id="wb-trend_cycle_filters" data-title="Trend and cycle: why the newest point misleads">
+    <script type="application/json">{"w":600,"h":790,"intro":"Splitting one series into a slow trend and a cycle, and why the newest point of the trend is the one to doubt. Press play, or step through.","steps":[{"cap":"One quarterly series (made up for this board). Like the sea at a pier, it mixes a slow tide, the trend, with waves on top, the cycle. Only the total is ever observed.","do":[{"chart":"lv","x":10,"y":10,"w":580,"h":270,"title":"The series (illustrative, quarterly)","xd":[0,40],"yd":[97,128],"yt":[[100,"100"],[110,"110"],[120,"120"]],"xt":[[0,"0"],[20,"20"],[27,"27"],[40,"40"]],"pl":50},{"series":"ys","chart":"lv","pts":[[0,100.0],[1,101.46],[2,102.85],[3,104.11],[4,105.2],[5,106.11],[6,106.85],[7,107.46],[8,108.0],[9,108.54],[10,109.15],[11,109.89],[12,110.8],[13,111.89],[14,113.15],[15,114.54],[16,116.0],[17,117.46],[18,118.85],[19,120.11],[20,121.2],[21,121.36],[22,121.35],[23,121.21],[24,121.0],[25,120.79],[26,120.65],[27,120.64],[28,120.8],[29,121.14],[30,121.65],[31,122.29],[32,123.0],[33,123.71],[34,124.35],[35,124.86],[36,125.2],[37,125.36],[38,125.35],[39,125.21]],"tone":"blue","ms":1500}]},{"cap":"Hodrick-Prescott draws a trend that stays close to the data but is charged for bending. One dial, λ, sets the charge. Turn it near zero and the \"trend\" just copies the data.","do":[{"series":"loose","chart":"lv","pts":[[0,100.05],[1,101.47],[2,102.83],[3,104.08],[4,105.17],[5,106.08],[6,106.83],[7,107.45],[8,108.0],[9,108.55],[10,109.17],[11,109.92],[12,110.83],[13,111.91],[14,113.17],[15,114.56],[16,116.02],[17,117.49],[18,118.88],[19,120.09],[20,120.95],[21,121.34],[22,121.38],[23,121.24],[24,121.02],[25,120.81],[26,120.67],[27,120.66],[28,120.83],[29,121.17],[30,121.67],[31,122.3],[32,123.0],[33,123.7],[34,124.33],[35,124.83],[36,125.16],[37,125.32],[38,125.34],[39,125.28]],"tone":"red","ms":1200,"label":"λ = 1","lat":[8,108.0001458923475],"ldy":-16}]},{"cap":"Turn λ up enormously and bending is banned: the trend becomes a straight line. Neither extreme separates tide from waves.","do":[{"series":"stiff","chart":"lv","pts":[[0,103.61],[1,104.25],[2,104.89],[3,105.53],[4,106.17],[5,106.81],[6,107.45],[7,108.09],[8,108.73],[9,109.37],[10,110.01],[11,110.65],[12,111.29],[13,111.93],[14,112.57],[15,113.21],[16,113.85],[17,114.49],[18,115.13],[19,115.77],[20,116.41],[21,117.05],[22,117.69],[23,118.33],[24,118.97],[25,119.61],[26,120.25],[27,120.89],[28,121.53],[29,122.17],[30,122.8],[31,123.44],[32,124.08],[33,124.72],[34,125.36],[35,126.0],[36,126.64],[37,127.28],[38,127.92],[39,128.56]],"tone":"purple","ms":1000,"label":"λ huge","lat":[31,123.44404477741506],"ldy":-20}]},{"cap":"The quarterly convention is λ = 1600. Now the trend follows the slow tide, and the cycle, data minus trend, is what is left over.","do":[{"hide":"loose"},{"hide":"stiff"},{"series":"full","chart":"lv","pts":[[0,101.11],[1,102.05],[2,102.98],[3,103.91],[4,104.84],[5,105.76],[6,106.68],[7,107.6],[8,108.51],[9,109.41],[10,110.3],[11,111.19],[12,112.07],[13,112.93],[14,113.77],[15,114.6],[16,115.39],[17,116.16],[18,116.89],[19,117.57],[20,118.22],[21,118.83],[22,119.39],[23,119.91],[24,120.4],[25,120.86],[26,121.29],[27,121.7],[28,122.1],[29,122.48],[30,122.85],[31,123.22],[32,123.58],[33,123.94],[34,124.3],[35,124.65],[36,125.0],[37,125.35],[38,125.69],[39,126.04]],"tone":"green","ms":1300},{"chart":"cy","x":10,"y":296,"w":580,"h":190,"title":"Gap = data − trend","xd":[0,40],"yd":[-4,3.2],"yt":[[-3,"−3"],[0,"0"],[2,"2"]],"xt":[[0,"0"],[20,"20"],[27,"27"],[40,"40"]],"zero":true,"pl":50},{"series":"gap","chart":"cy","pts":[[0,-1.11],[1,-0.59],[2,-0.13],[3,0.2],[4,0.36],[5,0.34],[6,0.16],[7,-0.14],[8,-0.51],[9,-0.87],[10,-1.15],[11,-1.3],[12,-1.27],[13,-1.04],[14,-0.62],[15,-0.06],[16,0.61],[17,1.3],[18,1.96],[19,2.53],[20,2.98],[21,2.53],[22,1.96],[23,1.3],[24,0.6],[25,-0.07],[26,-0.64],[27,-1.06],[28,-1.3],[29,-1.34],[30,-1.2],[31,-0.93],[32,-0.58],[33,-0.23],[34,0.05],[35,0.21],[36,0.2],[37,0.01],[38,-0.35],[39,-0.83]],"tone":"green","ms":1300}]},{"cap":"Wrong frequency, wrong λ. 1600 is for quarterly data. Monthly data needs 1600 × 3⁴ = 129,600; annual needs 1600 ÷ 4⁴ ≈ 6.25.","do":[{"box":"lam","x":10,"y":504,"w":280,"h":120,"text":"monthly: 129,600\nquarterly: 1,600\nannual: 6.25","tone":"purple","size":19}]},{"cap":"Now go back in time. You only have data up to quarter 27. Run the same filter: the trend has no data after its last point, and it ends at 123.5.","do":[{"dim":"full"},{"dim":"gap"},{"series":"rt","chart":"lv","pts":[[0,100.98],[1,101.9],[2,102.83],[3,103.75],[4,104.67],[5,105.58],[6,106.5],[7,107.41],[8,108.31],[9,109.21],[10,110.11],[11,111.01],[12,111.91],[13,112.79],[14,113.67],[15,114.54],[16,115.39],[17,116.23],[18,117.05],[19,117.84],[20,118.61],[21,119.36],[22,120.09],[23,120.8],[24,121.49],[25,122.18],[26,122.86],[27,123.54]],"tone":"amber","ms":1300},{"dot":"rtd","chart":"lv","at":[27,123.54],"text":"123.5","tone":"amber","dx":-10,"dy":-14,"anchor":"end"}]},{"cap":"Data at quarter 27 is 120.6, so the real-time gap is -2.9: it looks like a lot of slack.","do":[{"series":"rtg","chart":"cy","pts":[[0,-0.98],[1,-0.45],[2,0.02],[3,0.36],[4,0.53],[5,0.53],[6,0.35],[7,0.05],[8,-0.31],[9,-0.67],[10,-0.96],[11,-1.12],[12,-1.11],[13,-0.9],[14,-0.52],[15,0.0],[16,0.61],[17,1.23],[18,1.8],[19,2.27],[20,2.59],[21,2.0],[22,1.26],[23,0.41],[24,-0.49],[25,-1.39],[26,-2.21],[27,-2.9]],"tone":"amber","ms":1200},{"dot":"g1","chart":"cy","at":[27,-2.9],"text":"real time -2.9","tone":"amber","dx":-10,"dy":8,"anchor":"end"}]},{"cap":"Twelve quarters later, rerun the same filter. The quarter-27 trend drops to 121.7 and the gap shrinks to -1.1. The early data did not change; only the end of the sample did.","do":[{"pulse":"full"},{"dot":"g2","chart":"cy","at":[27,-1.1],"text":"revised -1.1","tone":"green","dx":10,"dy":-14,"anchor":"start"}]},{"cap":"That is what happened in the 1970s. Trend growth slowed, trends fitted to the fast 1950s and 1960s sat too high, and the gap showed slack that was not there. Policy stayed loose; inflation rose into double digits.","do":[{"box":"s70","x":310,"y":504,"w":280,"h":120,"text":"1970s: slack that\nwasn't there","tone":"red","size":19}]},{"cap":"Orphanides and van Norden later showed the revisions were about as big as the gap itself, and came mainly from the end of the sample, not from revised data.","do":[{"box":"ovn","x":310,"y":640,"w":280,"h":140,"text":"revisions ≈ size of\nthe gap, mostly from\nthe end of the sample","tone":"amber","size":18}]},{"cap":"The alternative: a band-pass filter that keeps only cycles of 6 to 32 quarters. It states the cycle openly, but a Baxter-King filter has no value at all for its last K quarters.","do":[{"box":"bp","x":10,"y":640,"w":280,"h":140,"text":"band-pass: keep\n6 to 32 quarters,\nlose K at each end","tone":"blue","size":18}]},{"cap":"The takeaway: a trend is a modelling choice, not a measurement, and its newest point, the one decisions use, is the one most likely to be revised.","do":[{"pulse":"g1"},{"pulse":"rtd"}]}]}</script>
+  </div>
+  <!-- WB:trend_cycle_filters:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: the 1970s output gap that wasn't there</h2>
@@ -491,6 +568,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill" data-date="1975">
+    <div class="tl-drill-label">Scenario drill · the mid-1970s</div>
+    <h3>The gap says there is plenty of slack</h3>
+    <p>You advise a US policymaker in the mid-1970s. Your potential-output trend is fitted to past output, mostly the strong growth of the 1950s and 1960s, and carried forward to the newest quarter. It shows a large negative output gap: lots of spare capacity. But productivity growth has been fading since the late 1960s, the 1973 oil shock has hit supply, and inflation is rising. What do you tell the policymaker?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">The gap is large and negative, so there is room to keep policy loose.<div class="tl-drill-why">This trusts the single least reliable number in the series: the trend at the newest quarter, estimated with no later data and anchored to growth rates that may no longer hold. If trend growth has slowed, the trend sits too high and the slack is partly an artefact.</div></li>
+      <li data-verdict="good">The newest gap reading is the least reliable point, and trend growth may have slowed. Treat the slack as uncertain and give real weight to rising inflation.<div class="tl-drill-why">This is the lesson's point in practice. The end of a trend estimate revises the most, and a slowdown in trend growth shows up first as a gap that is too negative. Rising inflation is direct evidence that the slack may not be there.</div></li>
+      <li data-verdict="ok">Switch to a band-pass filter that keeps only 6 to 32 quarter cycles.<div class="tl-drill-why">A fair instinct, since it states the cycle band openly, but a finite band-pass filter such as Baxter-King loses its last K observations, so it gives no reading at all for the newest quarters. It does not answer the question you were asked.</div></li>
+      <li data-verdict="bad">Raise the smoothing so the trend is less influenced by the latest wobbles.<div class="tl-drill-why">More smoothing pushes the trend closer to a straight line drawn through the fast-growth past, so it sits even higher at the newest quarter and the gap looks even more negative. It makes this particular error worse.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Policy that believed in large slack stayed looser than an accurate gap would have called for, and inflation rose through the decade, into double digits by its end. Athanasios Orphanides (American Economic Review, 2001) rebuilt the real-time data and found the gaps policymakers had were far more negative than today's estimates for the same quarters: much of the slack had never existed. With Simon van Norden (2002) he showed that across many detrending methods, the HP filter included, revisions were about as large as the gap itself, driven mainly by the end of the sample, not by revised GDP.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -599,6 +689,26 @@
       context on band-pass alternatives to HP.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="fourier-analysis-frequency-domain.html">Fourier Analysis &amp; the Frequency Domain</a> <span>· a band-pass filter is defined by the frequencies it keeps</span></li>
+        <li><a href="regularized-regression-lasso-ridge.html">Regularized Regression: LASSO &amp; Ridge</a> <span>· HP is a fit-plus-penalty problem of the same kind</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="taylor-rule.html">The Taylor Rule</a> <span>· where the output gap feeds straight into a policy rate</span></li>
+        <li><a href="kalman-filter.html">The Kalman Filter &amp; Adaptive Relationships</a> <span>· a one-sided, real-time way to track a moving level</span></li>
+        <li><a href="wavelets-time-frequency.html">Wavelets &amp; Time-Frequency Analysis</a> <span>· cycles whose length changes over time</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> rate expectations are built on gap estimates, and the newest gap reading is exactly the one most likely to be revised away.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="wavelets-time-frequency.html">← Wavelets &amp; Time-Frequency Analysis</a>
@@ -770,9 +880,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

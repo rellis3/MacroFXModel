@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Calculus for Finance — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,57 @@
       <li><strong>How it reached trading:</strong> Robert Merton brought Itô's stochastic calculus into finance (1969–71), and the Taylor expansion whose second-order term survives randomness became Black–Scholes–Merton (1973) and every delta–gamma P&amp;L explain.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 215" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The curve ln of 1 plus x, guessed from what is known at x equals 0. The flat guess is zero, the first-order tangent line is x, which pulls away from the curve as x grows, and the second-order guess x minus x squared over 2 hugs the curve closely near zero. The error is 0.00004 at a step of 0.05 and about 0.007 at a step of 0.30. The same x minus x squared over 2 shape, averaged, gives volatility drag.">
+      <line class="tlp-line" x1="40" y1="134.6" x2="445" y2="134.6"/>
+      <line class="tlp-line" x1="183.2" y1="46" x2="183.2" y2="205"/>
+      <line class="tlp-line amber thick" x1="60" y1="186.9" x2="429.6" y2="30"/>
+      <polyline class="tlp-line blue thick" points="60.0,201.4 75.4,190.9 90.8,181.3 106.2,172.2 121.6,163.8 137.0,155.9 152.4,148.4 167.8,141.3 183.2,134.6 198.6,128.2 214.0,122.1 229.4,116.3 244.8,110.8 260.2,105.4 275.6,100.3 291.0,95.3 306.4,90.6 321.8,86.0 337.2,81.6 352.6,77.3 368.0,73.1 383.4,69.1 398.8,65.2 414.2,61.4 429.6,57.7"/>
+      <polyline class="tlp-line green thick dash" points="60.0,197.4 75.4,188.4 90.8,179.7 106.2,171.4 121.6,163.4 137.0,155.7 152.4,148.3 167.8,141.3 183.2,134.6 198.6,128.2 214.0,122.2 229.4,116.5 244.8,111.1 260.2,106.0 275.6,101.2 291.0,96.8 306.4,92.7 321.8,89.0 337.2,85.5 352.6,82.4 368.0,79.7 383.4,77.2 398.8,75.1 414.2,73.3 429.6,71.8"/>
+      <line class="tlp-line dash" x1="275.6" y1="96" x2="275.6" y2="134.6"/>
+      <circle class="tlp-text3" cx="198.6" cy="134.6" r="3.5"/>
+      <circle class="tlp-text3" cx="275.6" cy="134.6" r="3.5"/>
+      <text class="tlp-text" x="50" y="34" font-size="14" font-weight="700">ln(1 + x), guessed from x = 0</text>
+      <text class="tlp-amber" x="330" y="48" text-anchor="end" font-size="13" font-weight="700">1st order: x</text>
+      <text class="tlp-blue" x="436" y="56" font-size="13" font-weight="700">true ln(1 + x)</text>
+      <text class="tlp-green" x="436" y="78" font-size="13" font-weight="700">2nd: x − x²/2</text>
+      <text class="tlp-text3" x="52" y="127" font-size="12">flat guess: 0</text>
+      <text class="tlp-text3" x="203" y="150" text-anchor="middle" font-size="12">0.05</text>
+      <text class="tlp-text3" x="275.6" y="150" text-anchor="middle" font-size="12">0.30</text>
+      <text class="tlp-text2" x="440" y="170" text-anchor="end" font-size="13">error at h = 0.05: 0.00004</text>
+      <text class="tlp-text2" x="440" y="188" text-anchor="end" font-size="13">error at h = 0.30: 0.007</text>
+      <text class="tlp-purple" x="590" y="112" text-anchor="end" font-size="13" font-weight="700">averaged:</text>
+      <text class="tlp-purple" x="590" y="130" text-anchor="end" font-size="13" font-weight="700">g ≈ μ − σ²/2</text>
+    </svg>
+    <figcaption>A Taylor series guesses a curve from one point: a flat guess, then the tangent line (the derivative), then a bend for curvature (the second derivative). For ln(1 + x) the second-order guess is x − x²/2, almost perfect for small steps and drifting for big ones. Averaged over many periods, the same shape is volatility drag.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I last did calculus at school. Do I really need it to trade?</p>
+      <p data-who="Quant">You use it every day already. Think of a car. The speedometer tells you how fast you are going right now. That is a derivative: a rate of change at one instant.</p>
+      <p data-who="Trader">And the odometer?</p>
+      <p data-who="Quant">The odometer adds up every instant of speed into a total distance. That is an integral. The two are mirror images: one undoes the other.</p>
+      <p data-who="Trader">How do you get "right now" out of a formula, though?</p>
+      <p data-who="Quant">Measure the average speed over a gap, then shrink the gap towards zero. For x squared, the average slope from x to a little further on works out to two x plus the gap. Shrink the gap away and the slope is exactly two x.</p>
+      <p data-who="Trader">And Taylor series?</p>
+      <p data-who="Quant">A way to guess a value nearby from what you know at one point. First guess: nothing changes. Second: keep going at today's slope, the tangent line. Third: add a correction for how the curve bends.</p>
+      <p data-who="Trader">Show me it working.</p>
+      <p data-who="Quant">Take the log of one plus a return. The bent guess is the return minus half its square. For a five percent move the error is about four hundred-thousandths. For a thirty percent move it is about seven thousandths, nearly two hundred times bigger. Great for small steps, worse for big ones.</p>
+      <p data-who="Trader">Where does that show up on a desk?</p>
+      <p data-who="Quant">Average that same shape over many periods and you get volatility drag: compound growth is roughly the average return minus half the variance. At twenty percent volatility, that is about two percent a year.</p>
+      <p data-who="Trader">And options?</p>
+      <p data-who="Quant">Delta is the derivative of the option price with respect to the underlying. A delta of zero point six means a one dollar move in the stock moves the option about sixty cents. Gamma is the bend, the second-order correction. That's why desks watch both.</p>
+      <p data-who="Trader">Who brought this into finance?</p>
+      <p data-who="Quant">Robert Merton, around nineteen sixty-nine to seventy-one, using Itô's calculus for random paths. In nineteen seventy-three it gave Black, Scholes and Merton the option price. The second-order term that survives randomness is exactly where volatility enters.</p>
+      <p data-who="Trader">So the one-liner?</p>
+      <p data-who="Quant">A derivative is speed right now, an integral is distance so far, and a two-term Taylor guess explains delta, gamma and volatility drag, as long as the move is small.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -168,6 +220,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From a flat guess to volatility drag, one Taylor term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ f(x+h) \approx \color{#fbbf24}{f(x)} \]</div>
+      <p>The zeroth-order guess: assume nothing changes over the small step \(h\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ f(x+h) \approx f(x) + \color{#fbbf24}{f'(x)\,h} \]</div>
+      <p>Add the slope: the tangent line's rise over the step. This is the derivative at work, and it is what delta does for an option.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ f(x+h) \approx f(x) + f'(x)\,h + \color{#fbbf24}{\frac{f''(x)}{2}\,h^2} \]</div>
+      <p>Add the bend: the second derivative corrects for the curve pulling away from the straight line. For an option, that is gamma.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \ln(1+h) \approx 0 + (1)\,h + \frac{-1}{2}\,h^2 = h \color{#fbbf24}{- \frac{h^2}{2}} \]</div>
+      <p>Plug in \(f(x) = \ln(1+x)\) at \(x = 0\): \(f(0) = 0\), \(f'(0) = 1\), \(f''(0) = -1\). At \(h = 0.05\): \(0.04875\) against the true \(0.04879\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{g \approx \mu - \frac{\sigma^2}{2}} \]</div>
+      <p>Average that over many periods: the mean log return is the compound growth rate, and the average squared return is about \(\sigma^2\). At \(\sigma = 20\%\), the drag is \(0.04/2 = 2\%\) a year.</p>
+    </div>
+  </div>
   <div class="tl-symbols"><table>
     <tr><td>\(f(x)\)</td><td>A function of \(x\) — a price, an option value, a wealth level, anything that depends smoothly on some input \(x\).</td></tr>
     <tr><td>\(h\)</td><td>A (usually small) change in \(x\) — sometimes written \(\Delta x\). Used to build the average rate of change before shrinking it toward an instantaneous one.</td></tr>
@@ -519,6 +595,15 @@
       true value \(\ln(1+h)\), the second-order approximation
       \(h-h^2/2\), and the gap between them all recalculate instantly.
     </p>
+    <div class="tl-predict">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At \(h = +0.30\), a 30% gain, the error is 0.00736. What happens for a 30% fall, \(h = -0.30\)? Pick one, then type −0.3 into the field below.</div>
+      <ul class="tl-predict-options">
+        <li>The error is smaller: losses are easier to approximate.</li>
+        <li>The error is the same size, just with the sign flipped.</li>
+        <li data-correct>The error is bigger, and the shortcut makes the loss look smaller than it is.</li>
+      </ul>
+      <div class="tl-predict-reveal"><p><strong>Bigger, and it flatters you.</strong> The true value is \(\ln(0.70) \approx -0.35667\), the shortcut gives \(-0.30 - 0.045 = -0.34500\), so the error is \(-0.01168\), about 1.6 times the +30% error. The curve bends harder on the downside, so the two-term guess understates big losses. Now try \(-0.50\).</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Step \(h\)</span></div>
@@ -585,6 +670,12 @@
       becomes a two-line calculation you could redo from scratch.
     </p>
   </div>
+
+  <!-- WB:calculus_for_finance:START -->
+  <div class="wb" id="wb-calculus_for_finance" data-title="Slope, area and a Taylor guess, drawn step by step">
+    <script type="application/json">{"w":600,"h":760,"intro":"The lesson's three ideas on two curves: a slope found by shrinking a gap, an area found by undoing a slope, and a Taylor guess that turns into volatility drag and delta. Press play, or step through.","steps":[{"cap":"Take the curve f(x) = x², and stand at x = 1. How steep is it right there? Start with an average: the straight line from x = 1 to x = 2 rises from 1 to 4, a slope of 3.","do":[{"chart":"sq","x":10,"y":10,"w":580,"h":300,"title":"f(x) = x²","xd":[0,3],"yd":[0,9],"yt":[[0,"0"],[4,"4"],[8,"8"]],"xt":[[0,"0"],[1,"1"],[2,"2"],[3,"3"]],"pl":36,"pr":14},{"series":"fx","chart":"sq","pts":[[0.0,0.0],[0.1,0.01],[0.2,0.04],[0.3,0.09],[0.4,0.16],[0.5,0.25],[0.6,0.36],[0.7,0.49],[0.8,0.64],[0.9,0.81],[1.0,1.0],[1.1,1.21],[1.2,1.44],[1.3,1.69],[1.4,1.96],[1.5,2.25],[1.6,2.56],[1.7,2.89],[1.8,3.24],[1.9,3.61],[2.0,4.0],[2.1,4.41],[2.2,4.84],[2.3,5.29],[2.4,5.76],[2.5,6.25],[2.6,6.76],[2.7,7.29],[2.8,7.84],[2.9,8.41],[3.0,9.0]],"tone":"blue","ms":1000,"label":"x²","lat":[2.9,8.41],"ldx":-10,"ldy":0,"lanchor":"end"},{"dot":"p1","chart":"sq","at":[1,1],"text":"x = 1","tone":"blue","dx":12,"dy":22,"anchor":"start"},{"series":"s1","chart":"sq","pts":[[0.6666666666666666,0],[2.3,4.9]],"tone":null,"dash":true},{"note":"n1","chart":"sq","at":[0.1,7.4],"text":"gap 1: slope 3","tone":null,"size":17,"anchor":"start","dx":0,"dy":0},{"dot":"q1","chart":"sq","at":[2,4],"text":"","tone":null}]},{"cap":"Shrink the gap to 0.5: the line to x = 1.5 has slope 2.5. For x², the average slope over a gap h is always 2x + h, so at x = 1 it is 2 + h.","do":[{"series":"s2","chart":"sq","pts":[[0.6,0],[2.3,4.25]],"tone":"purple","dash":true},{"note":"n2","chart":"sq","at":[0.1,6.3],"text":"gap 0.5: slope 2.5","tone":"purple","size":17,"anchor":"start","dx":0,"dy":0},{"dot":"q2","chart":"sq","at":[1.5,2.25],"text":"","tone":"purple"}]},{"cap":"Let the gap shrink to nothing and the slope settles on exactly 2: the tangent line. That is the derivative, the speedometer reading at one instant: d/dx(x²) = 2x.","do":[{"series":"tan","chart":"sq","pts":[[0.5,0],[2.3,3.6]],"tone":"amber","ms":900},{"note":"n3","chart":"sq","at":[0.1,5.2],"text":"gap → 0: slope 2","tone":"amber","size":17,"anchor":"start","dx":0,"dy":0},{"pulse":"p1"}]},{"cap":"The integral goes the other way: add up area. The area under the speed curve 2x from 0 to 1 is a triangle of area 1, which is x² at 1 minus x² at 0. Integrating undoes differentiating.","do":[{"dim":"s1"},{"dim":"s2"},{"dim":"q1"},{"dim":"q2"},{"series":"d2x","chart":"sq","pts":[[0,0],[1.2,2.4]],"tone":"green","ms":600},{"gap":"area","chart":"sq","top":[[0,0],[1,2]],"bot":[[0,0],[1,0]],"tone":"green","op":0.35},{"note":"al","chart":"sq","at":[0.08,2.4],"text":"area = 1","tone":"green","size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"Now a Taylor guess. You only know ln(1 + x) at x = 0. First guess: nothing changes, so the value stays 0. Flat.","do":[{"chart":"ln","x":10,"y":326,"w":580,"h":300,"title":"Guessing ln(1 + x) from x = 0","xd":[-0.4,0.8],"yd":[-0.55,0.85],"yt":[[0,"0"],[0.5,"0.5"]],"xt":[[-0.3,"−0.3"],[0,"0"],[0.3,"0.3"],[0.6,"0.6"]],"pl":36,"pr":14,"zero":true},{"series":"true","chart":"ln","pts":[[-0.4,-0.5108],[-0.35,-0.4308],[-0.3,-0.3567],[-0.25,-0.2877],[-0.2,-0.2231],[-0.15,-0.1625],[-0.1,-0.1054],[-0.05,-0.0513],[0.0,0.0],[0.05,0.0488],[0.1,0.0953],[0.15,0.1398],[0.2,0.1823],[0.25,0.2231],[0.3,0.2624],[0.35,0.3001],[0.4,0.3365],[0.45,0.3716],[0.5,0.4055],[0.55,0.4383],[0.6,0.47],[0.65,0.5008],[0.7,0.5306],[0.75,0.5596],[0.8,0.5878]],"tone":"blue","ms":1000},{"note":"lt","chart":"ln","at":[0.4,-0.15],"text":"true ln(1 + x)","tone":"blue","size":17,"anchor":"start","dx":0,"dy":0},{"series":"z0","chart":"ln","pts":[[-0.4,0],[0.8,0]],"tone":null,"width":4,"ms":500}]},{"cap":"Second guess: keep going at today's slope. The slope of ln(1 + x) at 0 is 1, so the tangent guess is just x. Fine near 0, but it pulls away as the step grows.","do":[{"series":"t1","chart":"ln","pts":[[-0.4,-0.4],[0.8,0.8]],"tone":"amber","ms":800},{"note":"l1","chart":"ln","at":[0.4,-0.27],"text":"1st order: x","tone":"amber","size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"Third guess: add the bend. The second derivative at 0 is −1, so the correction is −x²/2, and the guess becomes x − x²/2. It hugs the true curve.","do":[{"series":"t2","chart":"ln","pts":[[-0.4,-0.48],[-0.35,-0.4113],[-0.3,-0.345],[-0.25,-0.2812],[-0.2,-0.22],[-0.15,-0.1613],[-0.1,-0.105],[-0.05,-0.0512],[0.0,0.0],[0.05,0.0487],[0.1,0.095],[0.15,0.1388],[0.2,0.18],[0.25,0.2188],[0.3,0.255],[0.35,0.2888],[0.4,0.32],[0.45,0.3488],[0.5,0.375],[0.55,0.3988],[0.6,0.42],[0.65,0.4387],[0.7,0.455],[0.75,0.4688],[0.8,0.48]],"tone":"green","dash":true,"ms":900},{"note":"l2","chart":"ln","at":[0.4,-0.39],"text":"2nd order: x − x²/2","tone":"green","size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"How good? At a 5% step the error is 0.00004. At a 30% step it is 0.007, nearly 200 times bigger. A Taylor guess is local: great for small moves, worse for big ones.","do":[{"dot":"h05","chart":"ln","at":[0.05,0.0488],"text":"h = 0.05","tone":"purple","dx":8,"dy":22,"anchor":"start"},{"dot":"h30","chart":"ln","at":[0.3,0.2624],"text":"h = 0.30: off by 0.007","tone":"red","dx":10,"dy":24,"anchor":"start"}]},{"cap":"Average ln(1 + R) ≈ R − R²/2 over many periods and you get volatility drag: compound growth g ≈ μ − σ²/2. At 20% volatility that is 0.04 ÷ 2 = 2% a year.","do":[{"box":"drag","x":10,"y":642,"w":186,"h":106,"text":"g ≈ μ − σ²/2\n20% vol → 2%","tone":"amber","size":19}]},{"cap":"An option is a curve too. Delta is its first-order term: with delta 0.60, a $1 move in a $100 stock moves a $4.30 call by about $0.60. Gamma is the bend, the second-order correction for bigger moves.","do":[{"box":"dg","x":207,"y":642,"w":186,"h":106,"text":"ΔC ≈ δΔS\n+ ½γ(ΔS)²","tone":"purple","size":20}]},{"cap":"Merton brought Itô's calculus into finance in 1969–71, and in 1973 it gave Black, Scholes and Merton the option price. The second-order term that survives randomness is where volatility enters.","do":[{"box":"mer","x":404,"y":642,"w":186,"h":106,"text":"Merton 1969–71\nBSM 1973","tone":"green","size":19}]}]}</script>
+  </div>
+  <!-- WB:calculus_for_finance:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -712,6 +803,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative overnight gap</div>
+    <h3>Delta says you lose $6. Do you?</h3>
+    <p>You have sold the lesson's call option: price $4.30, underlying at $100, delta 0.60. For this drill, suppose its gamma is 0.03. Overnight the underlying gaps up $10, to $110. Your quick risk screen uses delta only and says the option gained about \(0.60 \times 10 = \$6.00\), so you lost about $6.00 per option. What do you expect the real loss to be?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">About $6.00. Delta is the derivative, so it gives the answer.<div class="tl-drill-why">Delta is only the first-order term: the tangent line. A $10 gap is not a small step, and the option's price curve bends away from that line.</div></li>
+      <li data-verdict="good">More than $6.00. Add gamma's term, \(\tfrac12\gamma(\Delta S)^2\): half of 0.03 times 100 is $1.50, so about $7.50. Then confirm by repricing.<div class="tl-drill-why">This is the second-order Taylor expansion: \(\Delta C \approx \delta\,\Delta S\) \(+\, \tfrac12\gamma\,(\Delta S)^2\). For a short option, the curvature always works against you, whichever way the big move goes.</div></li>
+      <li data-verdict="bad">Less than $6.00. Big moves are rare, so the estimate is probably too high.<div class="tl-drill-why">Rarity has nothing to do with it once the move has happened. A call's value curves upward, so for a rise it gains more than the tangent line says, not less.</div></li>
+      <li data-verdict="ok">No idea until the option is fully repriced.<div class="tl-drill-why">Full repricing is the most exact answer and worth doing. But the Taylor terms tell you the direction and rough size immediately, which is the point of having them.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What to take from it.</strong> This is an illustrative situation, not a historical event: the price, spot and delta come from the lesson's example, and the gamma of 0.03 is assumed for the drill. With those numbers the delta-gamma estimate is \(6.00 + 1.50 = \$7.50\), a quarter more than delta alone. The bigger the move, the more the second-order term matters.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -829,6 +933,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="foundation-algebra-functions.html">Algebra &amp; Functions Refresher</a> <span>· what a function and its graph are</span></li>
+        <li><a href="foundation-trig-logs-exponentials.html">Trigonometry, Logarithms &amp; Exponentials</a> <span>· the ln(1 + x) used throughout</span></li>
+        <li><a href="primer-returns-compounding.html">Returns, Log-Returns &amp; Compounding</a> <span>· where R − R²/2 first appears</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="foundation-optimization-basics.html">Optimization Basics: Unconstrained &amp; Constrained</a> <span>· set the derivative to zero</span></li>
+        <li><a href="ito-lemma.html">Itô's Lemma</a> <span>· when the second-order term survives randomness</span></li>
+        <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> <span>· delta and gamma in closed form</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> delta, gamma, duration, convexity and volatility drag are all the same two Taylor terms, so this one idea reads most of a risk report.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="linear-algebra-matrices.html">← Linear Algebra &amp; Matrices</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -896,9 +1021,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

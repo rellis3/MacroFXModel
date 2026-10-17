@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Recurrent Networks for Sequential Data: LSTM &amp; GRU — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,63 @@
       <li><strong>How it reached trading:</strong> Fischer &amp; Krauss (2018) used LSTMs to rank S&amp;P 500 stocks for next-day returns, and Sirignano &amp; Cont (2019) used them on order-book data across hundreds of stocks.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 225" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left, illustrative: how much of the training signal survives as it is passed back through 15 time steps. In a plain recurrent network that multiplies by 0.75 at every step, it falls to about 0.01. Along an LSTM cell state whose forget gate stays near 0.95, about 0.46 is left. Right: the plain network multiplies the same weight in at every step, while the LSTM cell state keeps the old memory scaled by a forget gate and adds new content through an input gate.">
+      <text class="tlp-text" x="20" y="22" font-size="14" font-weight="700">How much training signal survives</text>
+      <line class="tlp-line" x1="50" y1="44" x2="50" y2="190"/>
+      <line class="tlp-line" x1="50" y1="190" x2="356" y2="190"/>
+      <line class="tlp-line dash" x1="50" y1="50" x2="356" y2="50"/>
+      <text class="tlp-text3" x="44" y="54" text-anchor="end" font-size="12">1</text>
+      <text class="tlp-text3" x="44" y="194" text-anchor="end" font-size="12">0</text>
+      <polyline class="tlp-line red thick" points="50,50.0 70,85.0 90,111.2 110,130.9 130,145.7 150,156.8 170,165.1 190,171.3 210,176.0 230,179.5 250,182.1 270,184.1 290,185.6 310,186.7 330,187.5 350,188.1"/>
+      <polyline class="tlp-line green thick" points="50,50.0 70,57.0 90,63.7 110,70.0 130,76.0 150,81.7 170,87.1 190,92.2 210,97.1 230,101.8 250,106.2 270,110.4 290,114.3 310,118.1 330,121.7 350,125.1"/>
+      <circle class="tlp-red" cx="350" cy="188.1" r="4"/>
+      <circle class="tlp-green" cx="350" cy="125.1" r="4"/>
+      <text class="tlp-green" x="356" y="76" text-anchor="end" font-size="13" font-weight="700">LSTM, 0.95 a step: 0.46 left</text>
+      <text class="tlp-red" x="356" y="140" text-anchor="end" font-size="13" font-weight="700">RNN, 0.75 a step: 0.01 left</text>
+      <text class="tlp-text3" x="203" y="210" text-anchor="middle" font-size="12">15 steps back through time →</text>
+      <line class="tlp-line dash" x1="372" y1="10" x2="372" y2="215"/>
+      <text class="tlp-text" x="390" y="22" font-size="14" font-weight="700">Multiply, or add</text>
+      <rect class="tlp-box red" x="390" y="40" width="200" height="70" rx="6"/>
+      <text class="tlp-red" x="490" y="62" text-anchor="middle" font-size="13" font-weight="700">plain RNN</text>
+      <text class="tlp-text2" x="490" y="80" text-anchor="middle" font-size="12">the same weight is multiplied</text>
+      <text class="tlp-text2" x="490" y="96" text-anchor="middle" font-size="12">in again at every step</text>
+      <rect class="tlp-box green" x="390" y="124" width="200" height="70" rx="6"/>
+      <text class="tlp-green" x="490" y="146" text-anchor="middle" font-size="13" font-weight="700">LSTM cell state</text>
+      <text class="tlp-text2" x="490" y="164" text-anchor="middle" font-size="12">keep: old × forget gate</text>
+      <text class="tlp-text2" x="490" y="180" text-anchor="middle" font-size="12">add: new × input gate</text>
+    </svg>
+    <figcaption>Training sends an error signal back through every time step. Multiply it by the same factor below 1 each step and it all but vanishes; carry memory on an additive path whose forget gate stays near 1 and much of it survives. The per-step factors here are illustrative, the same ones the lesson's gradient chart uses.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Why do I need a special kind of network for price series?</p>
+      <p data-who="Quant">Because order matters. A tree model treats twenty days of returns as twenty separate columns. Shuffle them and it wouldn't notice.</p>
+      <p data-who="Trader">And a recurrent network notices?</p>
+      <p data-who="Quant">It reads the days one at a time and keeps a running note, the hidden state. Each new day updates the note, and the note carries forward.</p>
+      <p data-who="Trader">Sounds perfect. What's the catch?</p>
+      <p data-who="Quant">Training. To learn from a mistake on day fifty, the error signal has to travel back through every step to day two. And at each step it gets multiplied by the same weight.</p>
+      <p data-who="Trader">So it shrinks.</p>
+      <p data-who="Quant">Like a whisper passed down a line. Say each step keeps three quarters of the signal. After fifteen steps, about one percent is left. The early days can barely teach the network anything.</p>
+      <p data-who="Trader">How does an LSTM fix that?</p>
+      <p data-who="Quant">It adds a second memory, the cell state, like a conveyor belt running the length of the sequence. Gates decide what to take off the belt and what to put on. But the belt carries things forward by adding, not by multiplying the same weight over and over.</p>
+      <p data-who="Trader">And that keeps the signal alive?</p>
+      <p data-who="Quant">If the forget gate learns to stay near ninety-five percent, about forty-six percent of the signal survives fifteen steps, instead of one. A big difference, from one design change.</p>
+      <p data-who="Trader">Can the gates also throw things away?</p>
+      <p data-who="Quant">Yes. In the lesson's worked example, a sharp negative input slams every gate nearly shut and the cell's memory drops from about point eight three to almost zero in one step.</p>
+      <p data-who="Trader">And the GRU?</p>
+      <p data-who="Quant">The same additive idea with two gates and no separate belt. Fewer parameters, often as good, not always.</p>
+      <p data-who="Trader">Do these actually make money?</p>
+      <p data-who="Quant">Fischer and Krauss used them in twenty eighteen to rank S and P five hundred stocks for the next day. They beat a random forest and logistic regression, but the returns faded sharply after about twenty ten. A flexible model on a short, noisy history needs a strict out-of-sample test.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Recurrent networks read the past in order; gates and an additive memory let them remember further back. Then beat a simple baseline out of sample before you believe it.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -131,6 +189,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">The LSTM's memory update, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ C_t = \color{#fbbf24}{C_{t-1}} \]</div>
+      <p>Start with a memory that is simply carried forward: the cell state from the last step, passed on unchanged.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ C_t = \color{#fbbf24}{f_t \odot} C_{t-1} \]</div>
+      <p>Let the forget gate, a number between 0 and 1 for each unit, decide how much of the old memory to keep.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ C_t = f_t \odot C_{t-1} + \color{#fbbf24}{i_t \odot \tilde C_t} \]</div>
+      <p>Add new content: a candidate \(\tilde C_t\) from today's input, scaled by the input gate. In the worked example's second step, \(0.731(0.671) + 0.731(0.462) = 0.828\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ h_t = \color{#fbbf24}{o_t \odot \tanh(C_t)} \]</div>
+      <p>Read out a filtered view of the memory as the hidden state, gated by the output gate. This is what the next step and the forecast see.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{\partial C_t}{\partial C_{t-1}} = \color{#10b981}{f_t} \]</div>
+      <p>The payoff: because the old memory enters by addition, the gradient through one step is just the forget gate, not the same weight matrix multiplied in again. Keep \(f_t\) near 1 and the training signal travels far.</p>
+    </div>
+  </div>
 
   <h3>The vanilla RNN recurrence</h3>
   <p>
@@ -412,6 +494,10 @@
       the worked example). Edit any field and the gate value, candidate,
       new cell state, and hidden state recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="0.008" data-tol="0.05" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The cell is carrying \(C_{t-1} = 0.828\) after two calm steps. Now a sharp negative input arrives, \(x_t = -1\), with the same weights. What is the new cell state \(C_t\)? Lock in a guess, then enter 0.828 and −1 in the first two fields below.</div>
+      <div class="tl-predict-reveal"><p><strong>About 0.008.</strong> Every gate becomes \(\sigma(-2) = 0.119\) and the candidate is \(\tanh(-1) = -0.762\), so \(C_t = 0.119(0.828) + 0.119(-0.762) \approx 0.008\). One unusual input closed the forget gate and flushed almost all the memory. Now try \(x_t = 2\) with the same starting memory: the gates open wide and the memory grows instead.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>C<sub>t&minus;1</sub></span></div>
@@ -480,6 +566,12 @@
     remains a genuinely reasonable, still-current choice.
   </div>
 
+  <!-- WB:recurrent_networks_lstm_gru:START -->
+  <div class="wb" id="wb-recurrent_networks_lstm_gru" data-title="Why a recurrent network forgets, and how the LSTM remembers">
+    <script type="application/json">{"w":600,"h":690,"intro":"A network that reads returns one day at a time, and why its memory fades unless it adds instead of multiplying. Press play, or step through.","steps":[{"cap":"A recurrent network reads a series in order: day 1, then day 2, then day 3, carrying a running note forward. That note is the hidden state.","do":[{"chip":"x0","x":60,"y":30,"text":"day 1","tone":"blue"},{"chip":"x1","x":150,"y":30,"text":"day 2","tone":"blue"},{"chip":"x2","x":240,"y":30,"text":"day 3","tone":"blue"},{"chip":"x3","x":330,"y":30,"text":"day 4","tone":"blue"},{"chip":"x4","x":420,"y":30,"text":"day 5","tone":"blue"},{"box":"h","x":470,"y":8,"w":120,"h":50,"text":"note h","tone":"purple","size":19},{"arrow":["x4","h"],"tone":"purple"}]},{"cap":"At every step the same rule runs: mix the old note with the new day, squash the result, and pass it on. The same weight is used at every single step.","do":[{"note":"rule","x":300,"y":90,"text":"new note = squash(weight × old note + new input)","size":19,"anchor":"middle","tone":"purple"}]},{"cap":"Training sends an error signal back through every step. Each step multiplies it by the same factor; say 0.75 (illustrative). After one step back, 0.75 is left; after two, 0.56.","do":[{"chart":"g","x":10,"y":116,"w":580,"h":270,"title":"Training signal left, by steps back (illustrative)","xd":[0,15],"yd":[0,1.08],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[0,"0"],[5,"5"],[10,"10"],[15,"15"]],"pl":40,"pr":30},{"series":"rnn","chart":"g","pts":[[0,1.0],[1,0.75],[2,0.5625],[3,0.4219],[4,0.3164],[5,0.2373],[6,0.178],[7,0.1335],[8,0.1001],[9,0.0751],[10,0.0563],[11,0.0422],[12,0.0317],[13,0.0238],[14,0.0178],[15,0.0134]],"tone":"red","ms":1600}]},{"cap":"After 15 steps back, 0.75 to the 15th power is about 0.013: barely one percent. Whatever happened on the early days can hardly teach the network anything. That is the vanishing gradient.","do":[{"dot":"r15","chart":"g","at":[15,0.0134],"text":"≈ 0.01","tone":"red","dx":-10,"dy":-16,"anchor":"end"}]},{"cap":"If the factor were above 1, the signal would blow up instead: the exploding gradient. Clipping the gradient patches that direction; nothing so simple fixes the vanishing one.","do":[{"note":"exp","x":300,"y":410,"text":"above 1: explodes (clip it) · below 1: vanishes (no easy patch)","size":17,"anchor":"middle","tone":"amber"}]},{"cap":"The LSTM adds a second memory, the cell state, like a conveyor belt. Gates take things off and put things on, but the belt carries memory forward by adding. Through one step the signal is scaled only by the forget gate.","do":[{"box":"belt","x":20,"y":440,"w":560,"h":56,"text":"cell state: keep old × forget gate, add new × input gate","tone":"green","size":18}]},{"cap":"If the forget gate learns to stay near 0.95, about 0.46 of the signal survives 15 steps, instead of 0.01. Same length of sequence, far longer memory.","do":[{"series":"lstm","chart":"g","pts":[[0,1.0],[1,0.95],[2,0.9025],[3,0.8574],[4,0.8145],[5,0.7738],[6,0.7351],[7,0.6983],[8,0.6634],[9,0.6302],[10,0.5987],[11,0.5688],[12,0.5404],[13,0.5133],[14,0.4877],[15,0.4633]],"tone":"green","ms":1600},{"dot":"l15","chart":"g","at":[15,0.4633],"text":"≈ 0.46","tone":"green","dx":-10,"dy":-16,"anchor":"end"}]},{"cap":"The gates can also throw memory away. In the worked example the cell holds 0.671, then 0.828. Then a sharp input of −1 shuts every gate to 0.119, and the memory drops to 0.008 in one step.","do":[{"hide":"belt"},{"hide":"exp"},{"chart":"c","x":10,"y":410,"w":580,"h":200,"title":"Worked example: cell state after each input","xd":[0.4,3.6],"yd":[0,1.05],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[1,"x = 1"],[2,"x = 0.5"],[3,"x = −1"]],"pl":40},{"bars":"cb","chart":"c","data":[[1,0.671,"0.671","green"],[2,0.828,"0.828","green"],[3,0.008,"0.008","red"]],"bw":70,"ms":1200}]},{"cap":"The GRU keeps the same additive idea with two gates and no separate belt: fewer parameters, often as good, not always. Which wins is an empirical question.","do":[{"note":"gru","x":300,"y":634,"text":"GRU: same additive trick, two gates, one state","size":18,"anchor":"middle","tone":"blue"}]},{"cap":"A flexible memory also fits noise. Fischer and Krauss (2018) found an LSTM ranking S&P 500 stocks beat a random forest and logistic regression, but its returns faded sharply after about 2010. Beat a simple baseline out of sample before you believe one.","do":[{"note":"end","x":300,"y":670,"text":"remember further back, then prove it out of sample","size":19,"anchor":"middle","tone":"amber"}]}]}</script>
+  </div>
+  <!-- WB:recurrent_networks_lstm_gru:END -->
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -536,6 +628,19 @@
       been available yet at prediction time, especially around data
       revisions or reporting lags in macro series.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative Friday</div>
+    <h3>The LSTM beats everything in the backtest</h3>
+    <p>You built a small LSTM that reads the last 20 daily EUR/USD returns, one bar at a time, and forecasts tomorrow's direction. On your test period it beats the feedforward network you tried first. A colleague wants to scale it up: more layers, more units, a longer window. What do you do next?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Scale it up. The architecture clearly works, and bigger models learn more.<div class="tl-drill-why">Financial series are short and noisy, and an LSTM already has many more parameters than a feedforward model on the same window. Making it bigger mostly buys more capacity to fit noise.</div></li>
+      <li data-verdict="good">Re-check how the 20-bar windows were built for leakage, then run a walk-forward test against simple baselines, such as an ARIMA model or boosted trees on the same lags, net of costs.<div class="tl-drill-why">Order mattering in principle is not the same as this model winning in practice. Point-in-time windows and an honest walk-forward comparison against cheaper models are what turn "it beat one network" into evidence.</div></li>
+      <li data-verdict="bad">Switch to a transformer, the newer architecture.<div class="tl-drill-why">Attention earns its keep on long sequences with plenty of data. On a 20-bar window of noisy returns it adds appetite for data, not evidence of an edge, and the testing problem is unchanged.</div></li>
+      <li data-verdict="ok">Swap in a GRU to cut the parameter count.<div class="tl-drill-why">Fewer parameters is a reasonable hedge against overfitting on a small dataset. But it is another model choice, not a test, and still needs the same honest comparison.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>The point.</strong> This day is illustrative, not a historical event. It applies the lesson's own pitfalls: a flexible sequence model on a short, noisy history overfits easily, and window construction can leak. In the published record, Fischer and Krauss (2018) found an LSTM ranking S&amp;P 500 stocks beat a random forest and logistic regression, yet its returns faded sharply after about 2010.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -640,6 +745,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a> <span>· what makes a series fit to feed a model</span></li>
+        <li><a href="arima-var.html">ARIMA &amp; Vector Autoregression (VAR)</a> <span>· the fixed-lag baseline an LSTM has to beat</span></li>
+        <li><a href="newton-raphson-gradient-descent.html">Newton-Raphson &amp; Gradient Descent</a> <span>· the gradients that vanish here</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="attention-transformers-time-series.html">Attention &amp; Transformers for Time Series</a> <span>· looking straight back instead of relaying step by step</span></li>
+        <li><a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> <span>· the test a sequence model must pass</span></li>
+        <li><a href="kalman-filter.html">The Kalman Filter &amp; Adaptive Relationships</a> <span>· another hidden state updated one step at a time</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> if the shape of the recent path matters to your trade, a recurrent model is the natural tool, and knowing where its memory fails tells you when to distrust it.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
     <a href="attention-transformers-time-series.html">Attention &amp; Transformers for Time Series →</a>
@@ -717,9 +843,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

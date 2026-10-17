@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fama-MacBeth Regression — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -180,7 +181,19 @@
       </div>
     </section>
 
+    <!-- WB:institutional_fama_macbeth-deck:START -->
     <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Fama-MacBeth: measure once, price every month</h2>
+      <!-- WB:institutional_fama_macbeth:START -->
+      <div class="wb" data-title="Fama-MacBeth: measure once, price every month">
+        <script type="application/json">{"w":600,"h":700,"intro":"The lesson's three carry portfolios and four months, run through both stages. Watch exposure get measured once, then priced afresh each month. Press play, or step through.","steps":[{"cap":"Three carry-sorted currency portfolios, A, B and C. The question is not how exposed each one is to the carry factor. It is whether the market pays anything for that exposure.","do":[{"box":"A","x":20,"y":14,"w":160,"h":76,"text":"Portfolio A","tone":"blue","sub":"beta ?","size":20},{"box":"B","x":220,"y":14,"w":160,"h":76,"text":"Portfolio B","tone":"blue","sub":"beta ?","size":20},{"box":"C","x":420,"y":14,"w":160,"h":76,"text":"Portfolio C","tone":"blue","sub":"beta ?","size":20}]},{"cap":"Stage 1, once per portfolio: regress its returns on the carry factor over the whole history. The slopes are the betas: 0.7, 1.0 and 1.3.","do":[{"count":"A","from":0,"to":0.7,"dp":1,"pre":"beta "},{"count":"B","from":0,"to":1.0,"dp":1,"pre":"beta "},{"count":"C","from":0,"to":1.3,"dp":1,"pre":"beta "}]},{"cap":"Then freeze them. These three numbers are reused, unchanged, in every month that follows.","do":[{"note":"frz","x":300,"y":124,"text":"Stage 1 done: betas frozen for every month","size":19,"anchor":"middle","tone":"blue"},{"pulse":"A"},{"pulse":"B"},{"pulse":"C"}]},{"cap":"Stage 2, month 1. Plot each portfolio's return against its beta: 1.0%, 2.0% and 3.5%. The slope of the best-fit line is this month's price of risk: 4.17% per unit of beta.","do":[{"chart":"cs","x":10,"y":150,"w":340,"h":270,"title":"One month: return (%) vs beta","xd":[0.6,1.4],"yd":[-2.5,4],"yt":[[-2,"−2"],[0,"0"],[2,"2"],[4,"4"]],"xt":[[0.7,"0.7"],[1.0,"1.0"],[1.3,"1.3"]],"zero":true,"pl":40,"pr":14},{"chart":"lam","x":370,"y":150,"w":220,"h":270,"title":"Price of risk, per month","xd":[0.4,4.6],"yd":[-4.2,5],"yt":[[-2,"−2"],[0,"0"],[2,"2"],[4,"4"]],"xt":[[1,"m1"],[2,"m2"],[3,"m3"],[4,"m4"]],"zero":true,"pl":34,"pr":8},{"dot":"m00","chart":"cs","at":[0.7,1.0],"text":"","tone":"purple"},{"dot":"m01","chart":"cs","at":[1.0,2.0],"text":"","tone":"purple"},{"dot":"m02","chart":"cs","at":[1.3,3.5],"text":"","tone":"purple"},{"series":"f0","chart":"cs","pts":[[0.6,0.5],[1.4,3.833]],"tone":"purple","ms":900},{"bars":"b0","chart":"lam","data":[[1,4.1667,"4.17","purple"]],"bw":30,"ms":700}]},{"cap":"Month 2 was a bad month for carry, and the more exposed portfolios lost more: −0.5%, −1.0%, −2.0%. Same frozen betas, new returns. The slope is −2.50.","do":[{"dim":"f0"},{"dim":"m00"},{"dim":"m01"},{"dim":"m02"},{"dot":"m10","chart":"cs","at":[0.7,-0.5],"text":"","tone":"red"},{"dot":"m11","chart":"cs","at":[1.0,-1.0],"text":"","tone":"red"},{"dot":"m12","chart":"cs","at":[1.3,-2.0],"text":"","tone":"red"},{"series":"f1","chart":"cs","pts":[[0.6,-0.167],[1.4,-2.167]],"tone":"red","ms":900},{"bars":"b1","chart":"lam","data":[[2,-2.5,"-2.50","red"]],"bw":30,"ms":700}]},{"cap":"Months 3 and 4: slopes of 0.50 and 3.83. Four months, four separate regressions, four prices of risk. Each month has been squeezed down to one number.","do":[{"dim":"f1"},{"dim":"m10"},{"dim":"m11"},{"dim":"m12"},{"dot":"m20","chart":"cs","at":[0.7,0.8],"text":"","tone":"blue"},{"dot":"m21","chart":"cs","at":[1.0,1.0],"text":"","tone":"blue"},{"dot":"m22","chart":"cs","at":[1.3,1.1],"text":"","tone":"blue"},{"series":"f2","chart":"cs","pts":[[0.6,0.767],[1.4,1.167]],"tone":"blue","ms":900},{"bars":"b2","chart":"lam","data":[[3,0.5,"0.50","blue"]],"bw":30,"ms":700},{"dot":"m30","chart":"cs","at":[0.7,-1.0],"text":"","tone":"green"},{"dot":"m31","chart":"cs","at":[1.0,0.0],"text":"","tone":"green"},{"dot":"m32","chart":"cs","at":[1.3,1.3],"text":"","tone":"green"},{"series":"f3","chart":"cs","pts":[[0.6,-1.433],[1.4,1.633]],"tone":"green","ms":900},{"bars":"b3","chart":"lam","data":[[4,3.8333,"3.83","green"]],"bw":30,"ms":700}]},{"cap":"The premium is just the average of the four monthly prices: (4.17 − 2.50 + 0.50 + 3.83) ÷ 4 = 1.50% per unit of beta.","do":[{"series":"avg","chart":"lam","pts":[[0.5,1.5],[4.5,1.5]],"tone":"green","dash":true,"ms":700},{"note":"avgl","x":480,"y":444,"text":"dashed: average 1.50","size":17,"anchor":"middle","tone":"green"}]},{"cap":"Its error bar comes from how much those four numbers disagree. Their standard deviation is 3.14, so the standard error is 3.14 ÷ √4 = 1.57. The band of one standard error reaches below zero.","do":[{"gap":"band","chart":"lam","top":[[0.5,3.069],[4.5,3.069]],"bot":[[0.5,-0.069],[4.5,-0.069]],"tone":"amber","op":0.25},{"box":"se","x":10,"y":464,"w":280,"h":104,"text":"t = 1.50 ÷ 1.57 ≈ 0.96\nnot significant","tone":"amber","size":20}]},{"cap":"The trap it avoids: pool all 12 portfolio-months into one regression and its formula assumes 12 independent points. But in month 2 one shared shock hit all three at once. The pool counts each month's story three times, and its error bar comes out too small.","do":[{"box":"pool","x":310,"y":464,"w":280,"h":104,"text":"pooled: 12 \"independent\" rows\nreally 4 monthly stories","tone":"red","size":18},{"cross":"pool"}]},{"cap":"A second catch: the betas from Stage 1 are estimates, not facts. Noisy betas pull each slope toward zero. Shanken's 1992 correction widens the error bars to allow for it.","do":[{"box":"sh","x":10,"y":586,"w":580,"h":46,"text":"Shanken (1992): estimated betas → widen the error bars","tone":"purple","size":18}]},{"cap":"So: measure exposure once, price it every period, average the prices, and judge the average by how much the prices disagree. Here 1.50% looks big, but four months cannot tell it from zero.","do":[{"note":"end","x":300,"y":668,"text":"big-looking premium ≠ reliable premium","size":20,"anchor":"middle","tone":"green"},{"pulse":"se"}]}]}</script>
+      </div>
+      <!-- WB:institutional_fama_macbeth:END -->
+    </section>
+    <!-- WB:institutional_fama_macbeth-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The one idea this whole deck exists to teach</h2>
       <p class="sl-sub">Same 12 numbers (3 assets × 4 months). Two completely different ways to get a standard error from them.</p>
@@ -205,7 +218,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">More periods, tighter standard error</h2>
       <p class="sl-sub">SE(λ̄) = s_λ/√T. Drag the slider and watch the standard error shrink as more periods are added — holding the spread of the λ̂_t's fixed at this deck's own worked value.</p>
@@ -229,7 +242,7 @@
       <p class="sl-p">This is the entire practical argument for wanting more history in a Fama-MacBeth study: nothing about the estimation procedure itself changes as T grows, but the honest standard error keeps shrinking — exactly the ordinary standard-error-of-a-mean behavior, applied to a time series of period-level risk-premium estimates instead of to raw returns.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">A second catch: the betas themselves are estimates</h2>
       <div class="sl-icard-grid">
@@ -244,7 +257,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Compute the average and standard error yourself</h2>
       <p class="sl-sub">Same four monthly λ̂_t's from Section 4. Change any value and everything recomputes live.</p>
@@ -272,7 +285,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">A big-looking premium isn't automatically a real one</h2>
       <div class="sl-callout amber">
@@ -283,7 +296,7 @@
       <div class="sl-quote">A correctly-computed standard error is a statement about the estimator, not a certificate of tradable edge.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where practitioners actually use this</h2>
       <div class="sl-icard-grid">
@@ -293,7 +306,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -344,7 +357,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -494,5 +507,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

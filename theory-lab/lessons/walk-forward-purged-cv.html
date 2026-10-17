@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Walk-Forward &amp; Purged Cross-Validation — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -41,6 +42,63 @@
       <!-- DESK:START --><li><strong>Real-world episode:</strong> four of this desk's own backtests went wrong, three of them by leaking. One scored 95% of its "wins" before entry, one's whole edge was stops that were not live for the first hour, one hid a look-ahead under a survivorship fix (honest edge 0.23× cost), and one showed 85.7% wins against 39.6% live.</li><!-- DESK:END -->
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 225" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A timeline around one test window of the worked example. Training runs up to day 494. Days 495 to 499 are purged because their 5-day labels reach into the test window. The test window is days 500 to 599. Days 600 to 618 are purged because their 20-day features reach back into the test window. Days 619 to 628 are an embargo buffer. Training resumes on day 629. In all, 34 rows around one test window are held out, 24 by exact rule and 10 as a safety margin.">
+      <rect class="tlp-box blue" x="40.0" y="62" width="87.5" height="30" rx="3"/>
+      <rect class="tlp-red" x="127.5" y="62" width="12.5" height="30" rx="3"/>
+      <rect class="tlp-box green" x="140.0" y="62" width="250.0" height="30" rx="3"/>
+      <rect class="tlp-red" x="390.0" y="62" width="47.5" height="30" rx="3"/>
+      <rect class="tlp-amber" x="437.5" y="62" width="25.0" height="30" rx="3"/>
+      <rect class="tlp-box blue" x="462.5" y="62" width="102.5" height="30" rx="3"/>
+      <text class="tlp-blue" x="82.5" y="82" text-anchor="middle" font-size="13" font-weight="700">train</text>
+      <text class="tlp-green" x="265.0" y="82" text-anchor="middle" font-size="13" font-weight="700">test: days 500–599</text>
+      <text class="tlp-blue" x="515.0" y="82" text-anchor="middle" font-size="13" font-weight="700">train</text>
+      <path class="tlp-line amber thick" d="M132.5,54 V46 H145.0 V54"/>
+      <text class="tlp-amber" x="40" y="36" font-size="12.5" font-weight="700">a 5-day label reaches in →</text>
+      <path class="tlp-line purple thick" d="M355.0,54 V46 H402.5 V54"/>
+      <text class="tlp-purple" x="405.0" y="36" text-anchor="middle" font-size="12.5" font-weight="700">← a 20-day feature reaches back</text>
+      <text class="tlp-text3" x="140.0" y="108" text-anchor="middle" font-size="12">500</text>
+      <text class="tlp-text3" x="390.0" y="108" text-anchor="middle" font-size="12">600</text>
+      <text class="tlp-text3" x="462.5" y="108" text-anchor="middle" font-size="12">629</text>
+      <text class="tlp-red" x="133.8" y="130" text-anchor="middle" font-size="13" font-weight="700">purge 495–499</text>
+      <text class="tlp-red" x="413.8" y="130" text-anchor="middle" font-size="13" font-weight="700">purge 600–618</text>
+      <text class="tlp-amber" x="455.0" y="148" text-anchor="middle" font-size="13" font-weight="700">embargo 619–628</text>
+      <text class="tlp-blue" x="520.0" y="130" text-anchor="middle" font-size="13" font-weight="700">resume 629</text>
+      <line class="tlp-line" x1="20" y1="166" x2="580" y2="166"/>
+      <text class="tlp-text2" x="20" y="190" font-size="13">The split date alone would train on 1–499 and again from 600.</text>
+      <text class="tlp-text2" x="20" y="210" font-size="13">Purge and embargo hold out 34 rows: 24 by exact rule, 10 as margin.</text>
+    </svg>
+    <figcaption>Train only on the past, test on the strict future, and then check the windows. Any training row whose label looks forward into the test, or whose feature looks back into it, is removed. An embargo adds a buffer for correlation no window captures.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I tested my strategy properly. I trained on the first five hundred days and tested on the next hundred. No shuffling. A clean split.</p>
+      <p data-who="Quant">Better than most. Plenty of people use ordinary cross-validation, which shuffles the days at random. Then a model can be trained on Wednesday and tested on Tuesday. That's looking into the future.</p>
+      <p data-who="Trader">I didn't do that. Everything I trained on came before day five hundred.</p>
+      <p data-who="Quant">By date, yes. But what did you train it to predict?</p>
+      <p data-who="Trader">Whether a trade won over the next five days.</p>
+      <p data-who="Quant">Then take day four hundred and ninety-seven. It's in your training set. Its label, win or loss, depends on prices up to day five hundred and two. Three of those days are in your test window.</p>
+      <p data-who="Trader">So the answer key I trained on already knew part of the test.</p>
+      <p data-who="Quant">Exactly. Days four ninety-five to four ninety-nine all have that problem: five rows. The fix is called purging. You drop them.</p>
+      <p data-who="Trader">Is that the only leak?</p>
+      <p data-who="Quant">There's a mirror image on the other side. Your volatility feature uses the last twenty days. When the next fold wants to train from day six hundred, that day's feature is built mostly from test days. It stays that way until day six eighteen. Nineteen more rows to drop.</p>
+      <p data-who="Trader">Then I can train again from six nineteen?</p>
+      <p data-who="Quant">Most people add a buffer, called an embargo, because markets stay correlated for longer than any one window. Say ten days. Training resumes on day six twenty-nine.</p>
+      <p data-who="Trader">So around one test window I hold back thirty-four rows.</p>
+      <p data-who="Quant">Twenty-four by an exact rule, and ten as a safety margin. Cheap insurance against a backtest that grades itself with the answers.</p>
+      <p data-who="Trader">Where do these ideas come from?</p>
+      <p data-who="Quant">Marcos López de Prado formalised purging and embargo for finance. Robert Pardo popularised walk-forward testing for traders: roll the split forward many times, and judge the rule across all the folds, not one lucky split.</p>
+      <p data-who="Trader">If it passes a purged test, is the edge proven?</p>
+      <p data-who="Quant">No. It only makes the out-of-sample number honest. And draw the line where the information was actually knowable. A rate published the next morning is knowable the next morning, not on the day it describes.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">The leak lives in the windows, not the dates, so check how far every feature and label reaches before you trust a split.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -170,6 +228,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the rule build</div>
+    <div class="tl-eqbuild-title">From a chronological split to the day training can safely resume</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Train}_k = \color{#fbbf24}{\{\, i : i < T_k \,\}}, \qquad \text{Test}_k = \{\, i : T_k \le i < T_k + h \,\} \]</div>
+      <p>Walk-forward: train only on rows before the boundary, test only on the strict future. No shuffling.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{reach}(i) = \big[\, \color{#fbbf24}{i-w+1},\; \color{#fbbf24}{i+H} \,\big] \]</div>
+      <p>Each row reaches back \(w-1\) days for its feature and forward \(H\) days for its label. The leak lives in that reach, not in the row's date.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Purge}_k = \big\{\, i \in \text{Train}_k : [\,i-w+1,\; i+H\,] \color{#fbbf24}{\,\cap\, [\,T_k,\; T_k+h\,) \ne \varnothing} \,\big\} \]</div>
+      <p>Drop every training row whose reach touches the test window. With \(H = 5\) and \(w = 20\): days 495–499 and 600–618.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Embargo}_k = \big[\, T_k+h+w-1,\; T_k+h+w-1 \color{#fbbf24}{+\, e} \,\big) \]</div>
+      <p>Hold back \(e\) more days for serial correlation that no fixed window captures: days 619–628 with \(e = 10\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\text{resume} = T+h+w-1+e = 500+100+19+10 = 629} \]</div>
+      <p>Training on the next fold restarts at day 629, not at day 600 as the split date alone suggests.</p>
+    </div>
+  </div>
 
   <h3>Why random k-fold CV is wrong for time series</h3>
   <p>
@@ -421,6 +503,10 @@
       purged range, plus the day training actually resumes, recalculates
       instantly.
     </p>
+    <div class="tl-predict" data-answer="669" data-tol="0" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Keep everything else at the worked example, but swap the 20-day feature for a 60-day one (\(w = 60\)). On what day does training resume? Lock in a guess, then type 60 into the feature-window field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>Day 669.</strong> The forward purge now runs from day 600 to day 658 (\(w - 1 = 59\) rows), because a 60-day window ending anywhere before day 659 still reaches back into the test. The 10-day embargo follows, so \(500 + 100 + 59 + 10 = 669\). The backward purge is still 495–499: it depends on the label horizon \(H\), not on \(w\). Now change \(H\) and watch only the backward purge move.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Feature window \(w\)</span></div>
@@ -562,6 +648,12 @@
   </div>
   <!-- DESK:END -->
 
+  <!-- WB:walk_forward_purged_cv:START -->
+  <div class="wb" id="wb-walk_forward_purged_cv" data-title="Purging and embargo, day by day">
+    <script type="application/json">{"w":600,"h":700,"intro":"One test window from the lesson's worked example, and the rows that quietly leak across its edges. Press play, or step through.","steps":[{"cap":"Ordinary k-fold cross-validation shuffles the days. Then day i can land in the test set while day i + 1 is in training: the model is graded on Tuesday after studying Wednesday. That is lookahead.","do":[{"box":"ti","x":40,"y":20,"w":200,"h":76,"text":"day i","tone":"green","sub":"test","size":21},{"box":"tn","x":360,"y":20,"w":200,"h":76,"text":"day i + 1","tone":"blue","sub":"train","size":21},{"arrow":["tn","ti"],"label":"fit on the future","tone":"red"}]},{"cap":"Walk-forward fixes the order: train only on days before the boundary, test on the strict future. Here, train up to day 499 and test days 500 to 599.","do":[{"hide":"ti"},{"hide":"tn"},{"hide":"tn>ti"},{"chart":"ov","x":10,"y":120,"w":580,"h":116,"title":"Train on the past, test the strict future","xd":[400,700],"yd":[0,1.2],"yt":[],"xt":[[400,"400"],[500,"500"],[600,"600"],[700,"700"]],"pl":16,"pr":16},{"gap":"o1","chart":"ov","top":[[400,1],[500,1]],"bot":[[400,0],[500,0]],"tone":"blue","op":0.55},{"gap":"o2","chart":"ov","top":[[500,1],[600,1]],"bot":[[500,0],[600,0]],"tone":"green","op":0.55},{"gap":"o3","chart":"ov","top":[[600,1],[700,1]],"bot":[[600,0],[700,0]],"tone":null,"op":0.12},{"note":"ol1","chart":"ov","at":[450,0.5],"text":"train","tone":"blue","size":19,"anchor":"middle","dx":0,"dy":0},{"note":"ol2","chart":"ov","at":[550,0.5],"text":"test 500–599","tone":"green","size":19,"anchor":"middle","dx":0,"dy":0},{"note":"ol3","chart":"ov","at":[650,0.5],"text":"later folds","tone":null,"size":18,"anchor":"middle","dx":0,"dy":0}]},{"cap":"The split date is respected. Now zoom in on the left edge of the test window, days 488 to 506.","do":[{"chart":"za","x":10,"y":262,"w":280,"h":150,"title":"Left edge, days 488–506","xd":[488,506],"yd":[0,1.7],"yt":[],"xt":[[490,"490"],[495,"495"],[500,"500"],[505,"505"]],"pl":14,"pr":14},{"gap":"a1","chart":"za","top":[[488,1],[500,1]],"bot":[[488,0],[500,0]],"tone":"blue","op":0.55},{"gap":"a2","chart":"za","top":[[500,1],[506,1]],"bot":[[500,0],[506,0]],"tone":"green","op":0.55}]},{"cap":"Day 497 is in training by date. But its label, \"did a trade win over the next 5 days\", uses prices on days 497 to 502. Three of those days are inside the test window.","do":[{"series":"lab","chart":"za","pts":[[497,1.3],[502,1.3]],"tone":"amber","ms":700,"label":"day 497's label","lat":[499.5,1.3],"ldy":-14,"lsize":17}]},{"cap":"The same holds for every training day from 495 to 499: each label reaches day 500 or later. Purge them: 5 rows, removed by an exact rule.","do":[{"hide":"a1"},{"gap":"a1b","chart":"za","top":[[488,1],[495,1]],"bot":[[488,0],[495,0]],"tone":"blue","op":0.55},{"gap":"pa","chart":"za","top":[[495,1],[500,1]],"bot":[[495,0],[500,0]],"tone":"red","op":0.85},{"note":"pan","x":150,"y":438,"text":"purge 495–499: 5 rows","size":19,"anchor":"middle","tone":"red"}]},{"cap":"Now the right edge, days 580 to 634. The next fold wants to train from day 600. But day 605's 20-day volatility feature uses days 586 to 605, and most of those are test days.","do":[{"chart":"zb","x":310,"y":262,"w":280,"h":150,"title":"Right edge, days 580–634","xd":[580,634],"yd":[0,1.7],"yt":[],"xt":[[580,"580"],[600,"600"],[619,"619"],[629,"629"]],"pl":14,"pr":14},{"gap":"b1","chart":"zb","top":[[580,1],[600,1]],"bot":[[580,0],[600,0]],"tone":"green","op":0.55},{"gap":"b2","chart":"zb","top":[[600,1],[634,1]],"bot":[[600,0],[634,0]],"tone":null,"op":0.12},{"series":"feat","chart":"zb","pts":[[586,1.3],[605,1.3]],"tone":"purple","ms":700,"label":"day 605's feature","lat":[595.5,1.3],"ldy":-14,"lsize":17}]},{"cap":"A 20-day feature keeps reaching back into the test until day 619. So purge days 600 to 618: 19 more rows.","do":[{"gap":"pb","chart":"zb","top":[[600,1],[619,1]],"bot":[[600,0],[619,0]],"tone":"red","op":0.85},{"note":"pbn","x":450,"y":438,"text":"purge 600–618: 19 rows","size":19,"anchor":"middle","tone":"red"}]},{"cap":"Markets stay correlated for longer than any one window, so add an embargo: 10 more days, 619 to 628. Training resumes on day 629.","do":[{"gap":"eb","chart":"zb","top":[[619,1],[629,1]],"bot":[[619,0],[629,0]],"tone":"amber","op":0.85},{"gap":"rs","chart":"zb","top":[[629,1],[634,1]],"bot":[[629,0],[634,0]],"tone":"blue","op":0.85},{"note":"ebn","x":450,"y":466,"text":"embargo 619–628, resume 629","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"Count what one test window costs: 5 rows purged for label leaks, 19 for feature leaks, 10 held as margin. 34 rows, none of them visible if you only look at the split date.","do":[{"chart":"cnt","x":10,"y":490,"w":580,"h":200,"title":"Rows held out around one test window","xd":[0.4,3.6],"yd":[0,23],"yt":[[0,"0"],[10,"10"],[20,"20"]],"xt":[[1,"label leak"],[2,"feature leak"],[3,"embargo"]],"pl":40},{"bars":"cb","chart":"cnt","data":[[1,5,"5","red"],[2,19,"19","red"],[3,10,"10","amber"]],"bw":70,"ms":1000}]},{"cap":"Then roll the boundary forward and do it again, fold after fold. Judge the rule across all the folds, not by one good-looking split.","do":[{"pulse":"ov"},{"hide":"ol3"},{"note":"roll","chart":"ov","at":[650,0.85],"text":"roll forward →","tone":"green","size":18,"anchor":"middle","dx":0,"dy":0}]},{"cap":"One last check: draw the line where information was knowable, not where the row is indexed. A rate published the next morning belongs to the next morning. A purged test makes the number honest; it does not prove an edge.","do":[{"note":"end","x":300,"y":102,"text":"the leak lives in the windows, not the dates","size":20,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:walk_forward_purged_cv:END -->
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -674,6 +766,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative backtest review</div>
+    <h3>A clean split date and a strong out-of-sample Sharpe</h3>
+    <p>A colleague's strategy uses a 20-day volatility feature and a label of "did the trade win over the next 5 days". They split by date: train on days 1–499, test on days 500–599, and the next fold trains from day 600. No shuffling anywhere. The out-of-sample Sharpe is strong, and they want to trade it. What do you do first?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Sign it off. The split date is respected, so there is no lookahead.<div class="tl-drill-why">The date is respected; the windows are not. Days 495–499 carry labels built from test-period prices, and days 600–618 carry features built from them.</div></li>
+      <li data-verdict="good">Purge days 495–499 and 600–618, add an embargo, rerun across many rolled folds, and compare.<div class="tl-drill-why">That removes both leaks by exact rule, adds a margin for correlation no window captures, and judges the rule across many folds instead of one split.</div></li>
+      <li data-verdict="ok">Purge the five training days before day 500 and rerun.<div class="tl-drill-why">It fixes the label leak, but not the feature leak on the other side of the test window, and it adds no embargo. Purging is a two-directional problem.</div></li>
+      <li data-verdict="bad">Switch to random 5-fold cross-validation, which uses more of the data.<div class="tl-drill-why">Shuffling puts later days in training while earlier days are tested: literal lookahead on every fold. It makes the leak worse, not better.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What it means.</strong> This is an illustrative review built on the lesson's worked example, not a documented case. If the Sharpe holds up once the 34 rows are held out and the rule is judged across many folds, it is an honest out-of-sample number. If it shrinks, part of the original result was the leak. Either way, a purged test only makes the number honest; it does not prove an edge.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -777,6 +882,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere Effect</a> <span>· why one good split proves little</span></li>
+        <li><a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> <span>· how rolling features leak in the first place</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="sharpe-family-deflated.html">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a> <span>· judging the out-of-sample number you now trust</span></li>
+        <li><a href="point-in-time-data-survivorship-bias.html">Point-in-Time Data &amp; Survivorship Bias</a> <span>· drawing the line where data was knowable</span></li>
+        <li><a href="research-pipeline-hypothesis-to-backtest.html">The Research Pipeline: Hypothesis to Honest Backtest</a> <span>· where validation sits in the whole process</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a backtest that quietly sees the future looks like an edge, and you only find out with real money.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="sharpe-family-deflated.html">← The Sharpe Family &amp; the Deflated Sharpe Ratio</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -869,10 +994,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

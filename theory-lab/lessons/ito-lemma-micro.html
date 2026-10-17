@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Itô's Lemma — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -221,7 +222,19 @@
       </div>
     </section>
 
+    <!-- WB:ito_lemma-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Itô's Lemma: the term ordinary calculus drops</h2>
+      <!-- WB:ito_lemma:START -->
+      <div class="wb" data-title="Itô's Lemma: the term ordinary calculus drops">
+        <script type="application/json">{"w":600,"h":780,"intro":"Why a random path needs a different chain rule, and where Black-Scholes's σ²/2 comes from. One simulated path plus the lesson's own numbers. Press play, or step through.","steps":[{"cap":"Two paths over one unit of time: a smooth curve (blue) and one simulated Brownian path (red), the kind of path a price follows in the Black-Scholes model.","do":[{"chart":"p1","x":10,"y":10,"w":580,"h":196,"title":"A smooth curve and one random path","xd":[0,1],"yd":[-0.75,0.75],"yt":[[0,"0"]],"xt":[[0,"0"],[0.5,"½"],[1,"1"]],"zero":true,"pl":30,"pr":14},{"series":"sp","chart":"p1","pts":[[0.0,0.0],[0.0156,0.028],[0.0312,0.056],[0.0469,0.084],[0.0625,0.112],[0.0781,0.139],[0.0938,0.167],[0.1094,0.193],[0.125,0.22],[0.1406,0.246],[0.1562,0.271],[0.1719,0.296],[0.1875,0.32],[0.2031,0.343],[0.2188,0.366],[0.2344,0.388],[0.25,0.409],[0.2656,0.429],[0.2812,0.448],[0.2969,0.466],[0.3125,0.484],[0.3281,0.5],[0.3438,0.515],[0.3594,0.529],[0.375,0.541],[0.3906,0.553],[0.4062,0.563],[0.4219,0.572],[0.4375,0.58],[0.4531,0.587],[0.4688,0.592],[0.4844,0.596],[0.5,0.598],[0.5156,0.6],[0.5312,0.6],[0.5469,0.599],[0.5625,0.596],[0.5781,0.592],[0.5938,0.587],[0.6094,0.58],[0.625,0.572],[0.6406,0.563],[0.6562,0.553],[0.6719,0.542],[0.6875,0.529],[0.7031,0.515],[0.7188,0.5],[0.7344,0.484],[0.75,0.467],[0.7656,0.449],[0.7812,0.43],[0.7969,0.409],[0.8125,0.388],[0.8281,0.367],[0.8438,0.344],[0.8594,0.32],[0.875,0.296],[0.8906,0.272],[0.9062,0.246],[0.9219,0.22],[0.9375,0.194],[0.9531,0.167],[0.9688,0.14],[0.9844,0.112],[1.0,0.085]],"tone":"blue","ms":1100},{"series":"bp","chart":"p1","pts":[[0.0,0.0],[0.0078,0.103],[0.0156,0.186],[0.0234,0.23],[0.0312,0.303],[0.0391,0.304],[0.0469,0.222],[0.0547,0.137],[0.0625,0.214],[0.0703,0.106],[0.0781,-0.037],[0.0859,-0.151],[0.0938,-0.038],[0.1016,0.077],[0.1094,0.029],[0.1172,-0.053],[0.125,-0.102],[0.1328,0.006],[0.1406,-0.002],[0.1484,-0.056],[0.1562,-0.146],[0.1641,-0.074],[0.1719,-0.095],[0.1797,-0.158],[0.1875,-0.036],[0.1953,-0.022],[0.2031,-0.09],[0.2109,-0.12],[0.2188,0.002],[0.2266,0.032],[0.2344,0.094],[0.2422,0.229],[0.25,0.037],[0.2578,0.104],[0.2656,-0.06],[0.2734,0.068],[0.2812,0.164],[0.2891,0.206],[0.2969,0.125],[0.3047,0.171],[0.3125,0.124],[0.3203,0.123],[0.3281,0.08],[0.3359,0.044],[0.3438,0.086],[0.3516,0.125],[0.3594,0.308],[0.3672,0.184],[0.375,0.181],[0.3828,0.06],[0.3906,0.137],[0.3984,0.147],[0.4062,0.133],[0.4141,0.268],[0.4219,0.271],[0.4297,0.242],[0.4375,0.339],[0.4453,0.304],[0.4531,0.467],[0.4609,0.519],[0.4688,0.512],[0.4766,0.328],[0.4844,0.194],[0.4922,0.095],[0.5,0.112],[0.5078,0.013],[0.5156,-0.03],[0.5234,-0.015],[0.5312,-0.039],[0.5391,-0.112],[0.5469,-0.247],[0.5547,-0.203],[0.5625,-0.236],[0.5703,-0.217],[0.5781,-0.19],[0.5859,-0.202],[0.5938,-0.231],[0.6016,-0.262],[0.6094,-0.366],[0.6172,-0.463],[0.625,-0.52],[0.6328,-0.597],[0.6406,-0.556],[0.6484,-0.612],[0.6562,-0.499],[0.6641,-0.47],[0.6719,-0.428],[0.6797,-0.404],[0.6875,-0.459],[0.6953,-0.447],[0.7031,-0.384],[0.7109,-0.483],[0.7188,-0.434],[0.7266,-0.502],[0.7344,-0.407],[0.7422,-0.466],[0.75,-0.465],[0.7578,-0.423],[0.7656,-0.354],[0.7734,-0.325],[0.7812,-0.3],[0.7891,-0.207],[0.7969,-0.181],[0.8047,-0.101],[0.8125,-0.108],[0.8203,-0.164],[0.8281,-0.136],[0.8359,-0.035],[0.8438,-0.162],[0.8516,-0.098],[0.8594,-0.232],[0.8672,-0.295],[0.875,-0.457],[0.8828,-0.355],[0.8906,-0.206],[0.8984,-0.295],[0.9062,-0.327],[0.9141,-0.267],[0.9219,-0.189],[0.9297,-0.076],[0.9375,0.01],[0.9453,0.184],[0.9531,0.043],[0.9609,-0.068],[0.9688,-0.013],[0.9766,0.078],[0.9844,0.14],[0.9922,0.203],[1.0,0.284]],"tone":"red","ms":1500}]},{"cap":"Zoom in 16 times on the first sliver of time. The smooth curve becomes a straight line, which is what ordinary calculus relies on. The random path is just as jagged as before.","do":[{"chart":"p2","x":10,"y":216,"w":280,"h":196,"title":"Zoom 16×: first 1/16","xd":[0,0.0625],"yd":[-0.02,0.3375],"yt":[],"xt":[],"pl":14,"pr":14},{"series":"zs","chart":"p2","pts":[[0.0,0.0],[0.00391,0.007],[0.00781,0.0141],[0.01172,0.0211],[0.01562,0.0281],[0.01953,0.0351],[0.02344,0.0422],[0.02734,0.0492],[0.03125,0.0562],[0.03516,0.0632],[0.03906,0.0702],[0.04297,0.0771],[0.04688,0.0841],[0.05078,0.0911],[0.05469,0.098],[0.05859,0.1049],[0.0625,0.1118]],"tone":"blue","ms":700},{"series":"zb","chart":"p2","pts":[[0.0,0.0],[0.00391,0.0805],[0.00781,0.1025],[0.01172,0.177],[0.01562,0.1861],[0.01953,0.2373],[0.02344,0.2298],[0.02734,0.3175],[0.03125,0.3031],[0.03516,0.3124],[0.03906,0.3041],[0.04297,0.2973],[0.04688,0.2223],[0.05078,0.174],[0.05469,0.1369],[0.05859,0.2271],[0.0625,0.214]],"tone":"red","ms":900}]},{"cap":"Add up the squared changes over the whole interval, with finer and finer steps. For the smooth curve the sum halves every time the step halves, heading to zero. For the random path it stays near 1, the elapsed time: 0.881 to 1.006 here.","do":[{"chart":"p3","x":310,"y":216,"w":280,"h":196,"title":"Sum of squared changes","xd":[2.6,8.4],"yd":[0,1.2],"yt":[[0,"0"],[1,"1"]],"xt":[[3,"8"],[5,"32"],[7,"128 steps"]],"pl":30,"pr":16},{"series":"qb","chart":"p3","pts":[[3,1.006],[4,0.99],[5,0.97],[6,0.889],[7,0.916],[8,0.881]],"tone":"red","ms":900,"label":"random ≈ 1","lat":[3,1.006],"ldx":4,"ldy":-14,"lanchor":"start","lsize":17},{"series":"qs","chart":"p3","pts":[[3,0.1906],[4,0.0962],[5,0.0482],[6,0.0241],[7,0.0121],[8,0.006]],"tone":"blue","ms":900,"label":"smooth → 0","lat":[8,0.006],"ldx":-2,"ldy":-14,"lanchor":"end","lsize":17}]},{"cap":"That is the one strange fact, written (dW)² = dt. A random step is about the square root of dt, so its square is about dt itself: with dt = 0.01, about 0.01, not the 0.0001 a smooth step gives.","do":[{"box":"qv","x":20,"y":428,"w":560,"h":64,"text":"(dW)² = dt     not 0","tone":"amber","size":24}]},{"cap":"Ordinary calculus expands df = f′ dX + ½ f″ (dX)² and drops the last term. For dX = μ dt + σ dW, that term is ½ f″ σ² dt: the same order as the drift. It has to stay.","do":[{"box":"tay","x":20,"y":502,"w":560,"h":64,"text":"df = f′ dX + ½ f″ (dX)²,   (dX)² = σ² dt","tone":"purple","size":20}]},{"cap":"Collect the terms and that is Itô's Lemma: the ordinary chain rule plus exactly one extra drift term, ½ f″ σ².","do":[{"hide":"qv"},{"hide":"tay"},{"box":"ito","x":20,"y":428,"w":560,"h":70,"text":"df = (f′ μ + ½ f″ σ²) dt + f′ σ dW","tone":"green","sub":"Itô's Lemma","size":21}]},{"cap":"Apply it to the log of a price under geometric Brownian motion. f = ln S, so f″ = −1/S² and the extra term is negative. Every S cancels: the log price drifts at μ − σ²/2, not μ.","do":[{"box":"ln","x":20,"y":508,"w":560,"h":60,"text":"d(ln S) = (μ − σ²/2) dt + σ dW","tone":"red","size":21}]},{"cap":"The lesson's worked example: r = 2%, σ = 20%. The correction σ²/2 = 0.02 exactly cancels the rate, so the log drift is 0, d₂ = 0.00 and d₁ = 0.00 + 0.20 = 0.20. That is where Black-Scholes's σ²/2 comes from.","do":[{"chart":"p4","x":10,"y":576,"w":580,"h":190,"title":"Drift of ln S with a 2% drift, vs volatility σ (%)","xd":[0,0.4],"yd":[-6.5,4],"yt":[[2,"+2"],[0,"0"],[-4,"−4"]],"xt":[[0,"0"],[0.1,"10"],[0.2,"20"],[0.3,"30"],[0.4,"40"]],"zero":true,"pl":40,"pr":16},{"series":"rl","chart":"p4","pts":[[0,2],[0.4,2]],"tone":"blue","dash":true,"ms":500,"label":"price drift 2%","lat":[0,2],"ldx":6,"ldy":-14,"lanchor":"start","lsize":17},{"series":"dl","chart":"p4","pts":[[0.0,2.0],[0.02,1.98],[0.04,1.92],[0.06,1.82],[0.08,1.68],[0.1,1.5],[0.12,1.28],[0.14,1.02],[0.16,0.72],[0.18,0.38],[0.2,-0.0],[0.22,-0.42],[0.24,-0.88],[0.26,-1.38],[0.28,-1.92],[0.3,-2.5],[0.32,-3.12],[0.34,-3.78],[0.36,-4.48],[0.38,-5.22],[0.4,-6.0]],"tone":"red","ms":1200},{"dot":"d20","chart":"p4","at":[0.2,0],"text":"σ = 20%: 0","tone":"green","dx":-10,"dy":16,"anchor":"end"}]},{"cap":"More volatility, more drag: at σ = 30% the log drift is 2% − 4.5% = −2.5%, though the rate has not moved. It is the same σ²/2 as volatility drag: up 10% then down 10% leaves 0.99, not 1.","do":[{"dot":"d30","chart":"p4","at":[0.3,-2.5],"text":"−2.5%","tone":"red","dx":8,"dy":-14,"anchor":"start"},{"pulse":"ln"}]},{"cap":"On a desk this term is money. For a delta-hedged option, theta pays for gamma: θ ≈ −½ σ² S² Γ. Earning theta while paying for gamma, or the reverse, is Itô's correction read as daily P&L.","do":[{"sub":"ito","text":"every Greek comes from these terms"},{"pulse":"ito"}]}]}</script>
+      </div>
+      <!-- WB:ito_lemma:END -->
+    </section>
+    <!-- WB:ito_lemma-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">From the log-SDE to Black-Scholes's d₁ and d₂</h2>
       <p class="sl-sub">Swap the real-world drift μ for the risk-free rate r (the replication argument Black-Scholes builds — formally a change of measure, next lesson's job). What's left is exactly the numerator of d₂.</p>
@@ -258,7 +271,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this gets misread</h2>
       <div class="sl-icard-grid">
@@ -269,7 +282,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">One correction term, three appearances</h2>
       <div class="sl-icard-grid">
@@ -280,7 +293,7 @@
       <div class="sl-quote">The identical σ²/2 term already appears twice elsewhere in this curriculum, informally: as "volatility drag" in the Kelly Criterion lesson, and in the Returns &amp; Compounding primer's log-return approximation. Both use a discrete-time version of the same second-order Taylor expansion this lesson makes rigorous in continuous time. <strong>Three parts of this curriculum independently hit the same term because all three are really asking one question: what happens to a growth rate when you take the log of something random?</strong></div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -322,7 +335,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -459,5 +472,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

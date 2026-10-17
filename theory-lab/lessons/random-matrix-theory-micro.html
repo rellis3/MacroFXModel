@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Random Matrix Theory &amp; the Marchenko-Pastur Law — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -186,7 +187,19 @@
       </div>
     </section>
 
+    <!-- WB:random_matrix_theory-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Random matrices: what pure noise looks like</h2>
+      <!-- WB:random_matrix_theory:START -->
+      <div class="wb" data-title="Random matrices: what pure noise looks like">
+        <script type="application/json">{"w":600,"h":740,"intro":"What does a correlation matrix look like when there is nothing in it at all? Build one from pure noise, then hold a real basket up against it. Press play, or step through.","steps":[{"cap":"Start with 30 series that have nothing to do with each other: pure random draws, 250 days each, the shape of a year of returns on 30 FX pairs. Their true correlation is exactly zero.","do":[{"icon":"d1","name":"dice","x":20,"y":14,"s":0.62,"tone":"blue"},{"icon":"d2","name":"dice","x":90,"y":30,"s":0.62,"tone":"blue"},{"icon":"d3","name":"dice","x":160,"y":14,"s":0.62,"tone":"blue"},{"note":"n30","x":140,"y":104,"text":"× 30 series, 250 days","size":18,"anchor":"middle","tone":"blue"},{"box":"truth","x":330,"y":20,"w":260,"h":76,"text":"true correlation\nbetween any two: 0","tone":"green","size":19}]},{"cap":"Measure all 435 pairwise correlations from the 250 days. They are not zero. Most land within ±0.1, but chance alone pushes some out to −0.21 and +0.20.","do":[{"chart":"cor","x":10,"y":128,"w":580,"h":220,"title":"Sample correlations, 435 pairs of pure noise","xd":[-0.25,0.25],"yd":[0,150],"yt":[[50,"50"],[100,"100"]],"xt":[[-0.2,"−0.2"],[-0.1,"−0.1"],[0,"0"],[0.1,"+0.1"],[0.2,"+0.2"]],"pl":48,"pr":14},{"bars":"cb","chart":"cor","data":[[-0.225,1,"","blue"],[-0.175,1,"","blue"],[-0.125,14,"","blue"],[-0.075,76,"76","blue"],[-0.025,104,"104","blue"],[0.025,132,"132","blue"],[0.075,73,"73","blue"],[0.125,25,"25","blue"],[0.175,7,"","blue"],[0.225,2,"","blue"]],"bw":40,"ms":1100}]},{"cap":"Put those coincidences into a 30 × 30 matrix and take its eigenvalues. With infinite data they would all be exactly 1. Here they spread from 0.45 to 1.76.","do":[{"chart":"eig","x":10,"y":360,"w":580,"h":250,"title":"Eigenvalues of the pure-noise matrix (count per 0.1)","xd":[0.3,2.0],"yd":[0,5.5],"yt":[[2,"2"],[4,"4"]],"xt":[[0.5,"0.5"],[1.0,"1.0"],[1.5,"1.5"],[2.0,"2.0"]],"pl":48,"pr":14},{"bars":"eb","chart":"eig","data":[[0.45,2,"","blue"],[0.55,3,"","blue"],[0.65,2,"","blue"],[0.75,4,"","blue"],[0.85,3,"","blue"],[0.95,0,"","blue"],[1.05,4,"","blue"],[1.15,3,"","blue"],[1.25,2,"","blue"],[1.35,3,"","blue"],[1.45,1,"","blue"],[1.55,1,"","blue"],[1.65,1,"","blue"],[1.75,1,"","blue"]],"bw":26,"ms":1100},{"dot":"one","chart":"eig","at":[1.0,5.2],"text":"all 1.0 with infinite data","tone":null,"dy":-2}]},{"cap":"Marchenko and Pastur (1967) say where that spread must fall. It depends only on q = N ÷ T = 30 ÷ 250 = 0.12. The band runs from (1 − √q)² = 0.43 to (1 + √q)² = 1.81.","do":[{"hide":"one"},{"gap":"band","chart":"eig","top":[[0.4271796769724491,5.5],[1.8128203230275506,5.5]],"bot":[[0.4271796769724491,0],[1.8128203230275506,0]],"tone":"amber","op":0.16},{"dot":"lo","chart":"eig","at":[0.4271796769724491,0],"text":"0.43","tone":"amber","dy":-14},{"dot":"hi","chart":"eig","at":[1.8128203230275506,0],"text":"1.81","tone":"amber","dy":-14}]},{"cap":"Inside the band the law even gives the shape: a hump, highest in the middle, tapering to zero at both edges. Every one of our 30 noise eigenvalues sits inside it.","do":[{"series":"mp","chart":"eig","pts":[[0.427,0.0],[0.462,1.864],[0.496,2.42],[0.531,2.734],[0.566,2.924],[0.6,3.037],[0.635,3.1],[0.67,3.128],[0.704,3.131],[0.739,3.116],[0.774,3.086],[0.808,3.046],[0.843,2.997],[0.878,2.943],[0.912,2.883],[0.947,2.819],[0.981,2.752],[1.016,2.682],[1.051,2.61],[1.085,2.537],[1.12,2.461],[1.155,2.384],[1.189,2.306],[1.224,2.227],[1.259,2.146],[1.293,2.064],[1.328,1.98],[1.362,1.895],[1.397,1.808],[1.432,1.719],[1.466,1.628],[1.501,1.534],[1.536,1.436],[1.57,1.334],[1.605,1.227],[1.64,1.112],[1.674,0.988],[1.709,0.85],[1.744,0.689],[1.778,0.484],[1.813,0.0]],"tone":"amber","ms":1300}]},{"cap":"More history narrows the band. Four years, T = 1000, gives q = 0.03 and a band of 0.68 to 1.38. It is the ratio that matters, not N or T alone.","do":[{"gap":"band4","chart":"eig","top":[[0.6835898384862247,5.5],[1.3764101615137754,5.5]],"bot":[[0.6835898384862247,0],[1.3764101615137754,0]],"tone":"green","op":0.18},{"note":"b4","chart":"eig","at":[1.03,4.9],"text":"T = 1000: 0.68 to 1.38","tone":"green","size":17,"anchor":"middle","dx":0,"dy":0}]},{"cap":"Now the real 30-pair basket over the same 250 days. Its first eigenvalue is 8.2: far off this chart, about 4.5 times the 1.81 ceiling. That is a real factor, the dollar.","do":[{"hide":"band4"},{"hide":"b4"},{"box":"l1","x":10,"y":622,"w":280,"h":106,"text":"real basket: λ₁ = 8.2\n4.5 × the ceiling:\na real factor","tone":"red","size":18}]},{"cap":"Its next eigenvalues, λ₂ to λ₄, all come back between about 0.5 and 1.7: inside the band. This sample cannot tell them apart from the noise matrix above.","do":[{"note":"in","chart":"eig","at":[1.1,5.0],"text":"λ₂–λ₄ land in here","tone":"purple","size":18,"anchor":"middle","dx":0,"dy":0},{"pulse":"eb"}]},{"cap":"Cleaning: keep the eigenvalue above the band, replace the ones inside it with their average. If all 29 others are in the band, each becomes (30 − 8.2) ÷ 29 = 0.75, since the eigenvalues must sum to 30.","do":[{"box":"clean","x":310,"y":622,"w":280,"h":106,"text":"clean: keep 8.2,\nset the 29 others\nto 0.75 each","tone":"green","size":18}]},{"cap":"Two cautions. An eigenvalue just above 1.81 is a weak signal: the edge is fuzzy at finite size. And overlapping windows inflate T, which makes the band look narrower than the data supports.","do":[{"pulse":"hi"},{"pulse":"lo"}]}]}</script>
+      </div>
+      <!-- WB:random_matrix_theory:END -->
+    </section>
+    <!-- WB:random_matrix_theory-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Thirty FX pairs, one year of daily returns</h2>
       <p class="sl-sub">q = 30/250 = 0.12 → noise band ≈ [0.43, 1.81]. Now check the real eigenvalues against it.</p>
@@ -211,7 +224,7 @@
       <p class="sl-p">That doesn't mean PC2 is definitely meaningless in reality — it means this sample, at this size, cannot tell the difference. Building on top of it as if it could is overfitting to noise while believing it's structure.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">A binary screen, or a full cleanup</h2>
       <p class="sl-sub">Practitioners use this idea two ways — one this lesson covers, one it only names.</p>
@@ -228,7 +241,7 @@
       <div class="sl-quote">The landmark real-world application: Laloux, Cizeau, Bouchaud &amp; Potters (1999) found that the great majority of eigenvalues in a real stock-market correlation matrix, built across several hundred U.S. stocks, fell inside the Marchenko-Pastur band computed from their actual N and T — while a small handful, led by one dominant market factor, sat far outside it. That paper is generally credited with launching "RMT filtering" as a standard risk-management technique.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this plugs into the rest of the curriculum</h2>
       <p class="sl-p">This lesson builds directly on <a href="pca-factors-micro.html" style="color:var(--blue)">PCA &amp; Factor Models</a>: same N instruments, same T observations, same correlation matrix, same ranked eigenvalues λ₁ ≥ λ₂ ≥ … ≥ λ_N. PCA tells you how to rank them and read off a candidate factor; the Marchenko-Pastur band is the missing step that tells you which of those candidates have actually earned the name "factor," versus which ones are exactly what an unlucky sample window would produce anyway.</p>
@@ -241,7 +254,7 @@
       <p class="sl-p">Practically: a basket's effective-bets score can look reassuringly close to N while partly resting on eigenvalues that are noise-band artifacts, not real diversification. Flagging which eigenvalues clear the band would add an honest caveat to that number without changing the formula itself<!-- DESK:START --> — a concrete, unbuilt guardrail, not a claim about what the repo currently does<!-- DESK:END -->.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the rule gets misapplied</h2>
       <div class="sl-icard-grid">
@@ -253,7 +266,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -304,7 +317,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -435,5 +448,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

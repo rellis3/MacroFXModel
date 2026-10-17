@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Regression Diagnostics — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -43,6 +44,59 @@
     <li>How it reached trading: White (1980), Hansen &amp; Hodrick (1980, on forward FX rates) and Newey &amp; West (1987) gave standard errors that survive clustered volatility and overlapping returns — now the default in return-predictability regressions.</li>
   </ul>
 </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three checks on a regression's leftovers: Durbin-Watson asks whether the misses are sticky, Breusch-Pagan whether their spread fans out, Jarque-Bera whether their shape is lopsided or fat-tailed. Below, a residual series in time order runs in long waves above and below zero, the sticky pattern behind a Durbin-Watson of 0.6 and a lag-one autocorrelation near 0.7. At that autocorrelation, 500 daily rows carry only about 88 independent observations' worth of evidence.">
+      <rect class="tlp-box blue" x="10" y="8" width="185" height="34" rx="6"/>
+      <rect class="tlp-box amber" x="207" y="8" width="185" height="34" rx="6"/>
+      <rect class="tlp-box purple" x="404" y="8" width="186" height="34" rx="6"/>
+      <text class="tlp-blue" x="102.5" y="30" text-anchor="middle" font-size="13" font-weight="700">Durbin-Watson: sticky?</text>
+      <text class="tlp-amber" x="299.5" y="30" text-anchor="middle" font-size="13" font-weight="700">Breusch-Pagan: fanning?</text>
+      <text class="tlp-purple" x="497" y="30" text-anchor="middle" font-size="13" font-weight="700">Jarque-Bera: lopsided?</text>
+      <text class="tlp-text3" x="20" y="66" font-size="12">residuals in time order (simulated, 100 days)</text>
+      <line class="tlp-line" x1="20" y1="135" x2="362" y2="135"/>
+      <polyline class="tlp-line red" points="24.0,135.8 27.4,113.4 30.7,127.0 34.1,132.8 37.4,104.1 40.8,110.0 44.2,124.3 47.5,117.8 50.9,124.8 54.2,156.1 57.6,146.1 61.0,156.9 64.3,149.8 67.7,118.5 71.0,95.6 74.4,107.6 77.8,121.7 81.1,133.5 84.5,127.2 87.8,145.5 91.2,144.0 94.6,165.8 97.9,189.9 101.3,171.6 104.6,163.6 108.0,157.9 111.4,158.5 114.7,154.2 118.1,122.9 121.4,108.3 124.8,114.1 128.2,123.3 131.5,108.7 134.9,131.6 138.2,153.0 141.6,155.9 145.0,173.6 148.3,186.7 151.7,153.9 155.0,144.9 158.4,153.9 161.8,157.8 165.1,147.2 168.5,117.2 171.8,146.9 175.2,141.8 178.6,125.5 181.9,116.0 185.3,105.9 188.6,120.4 192.0,115.8 195.4,111.2 198.7,111.7 202.1,137.6 205.4,123.6 208.8,159.0 212.2,169.2 215.5,170.9 218.9,154.4 222.2,186.5 225.6,146.1 229.0,132.1 232.3,132.6 235.7,158.5 239.0,140.4 242.4,133.3 245.8,107.1 249.1,94.4 252.5,92.2 255.8,101.5 259.2,101.3 262.6,136.2 265.9,136.4 269.3,124.5 272.6,163.4 276.0,129.7 279.4,135.7 282.7,138.6 286.1,136.5 289.4,155.4 292.8,158.6 296.2,129.6 299.5,144.3 302.9,154.9 306.2,127.9 309.6,136.7 313.0,150.6 316.3,145.5 319.7,182.6 323.0,180.4 326.4,143.3 329.8,145.0 333.1,142.8 336.5,138.6 339.8,132.3 343.2,147.4 346.6,134.7 349.9,129.1 353.3,132.3 356.6,136.9"/>
+      <text class="tlp-red" x="20" y="222" font-size="13" font-weight="700">long waves: DW = 0.6, so ρ ≈ 0.7</text>
+      <line class="tlp-line dash" x1="382" y1="56" x2="382" y2="226"/>
+      <text class="tlp-text3" x="495" y="66" text-anchor="middle" font-size="12">evidence in 500 days</text>
+      <rect class="tlp-box blue" x="420" y="80" width="60" height="120" rx="3"/>
+      <rect class="tlp-box red" x="510" y="179" width="60" height="21" rx="3"/>
+      <line class="tlp-line" x1="400" y1="200" x2="590" y2="200"/>
+      <text class="tlp-blue" x="450" y="100" text-anchor="middle" font-size="14" font-weight="700">500</text>
+      <text class="tlp-red" x="540" y="171" text-anchor="middle" font-size="14" font-weight="700">≈ 88</text>
+      <text class="tlp-text3" x="450" y="216" text-anchor="middle" font-size="12">rows</text>
+      <text class="tlp-text3" x="540" y="216" text-anchor="middle" font-size="12">independent</text>
+    </svg>
+    <figcaption>All three tests ask whether the leftovers are really noise. When they are sticky, 500 rows carry the evidence of about 88, so a p-value of 0.01 built on 500 is manufactured confidence. The slope can be fine; the certainty is not.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I regressed next-day returns on a yield-spread signal. Two years of daily data, and the p-value is one percent. That is a discovery, right?</p>
+      <p data-who="Quant">Maybe. A regression gives you two different things. One is the slope: how much the return moves when the signal moves. The other is how sure you should be about that slope. They break in different ways.</p>
+      <p data-who="Trader">The slope is the slope.</p>
+      <p data-who="Quant">Right, and it is fairly robust. It comes from minimising squared misses, and it does not care how the misses behave. The confidence number is different. It assumes the leftovers are pure noise.</p>
+      <p data-who="Trader">What does pure noise mean here?</p>
+      <p data-who="Quant">Three things, and there is one test for each. Are the misses sticky, so today's miss predicts tomorrow's? That is Durbin-Watson. Does their size fan out in some part of the data? That is Breusch-Pagan. Is their shape lopsided or fat-tailed? That is Jarque-Bera.</p>
+      <p data-who="Trader">So run all three on my regression.</p>
+      <p data-who="Quant">Say Durbin-Watson comes back at nought point six. Two means no stickiness. Nought point six means today's miss carries about seventy percent into tomorrow.</p>
+      <p data-who="Trader">Why does that hurt the p-value?</p>
+      <p data-who="Quant">Because the formula thinks every day is a fresh, independent piece of evidence. Sticky days mostly repeat each other. With five hundred days and that much stickiness, you have the evidence of about eighty-eight independent days.</p>
+      <p data-who="Trader">Eighty-eight out of five hundred.</p>
+      <p data-who="Quant">And the formula still divides by five hundred. So the standard error is too small, the t-statistic too big, and the p-value too good. Correct it with Newey-West standard errors and that one percent is plausibly back to noise.</p>
+      <p data-who="Trader">So I throw the signal away?</p>
+      <p data-who="Quant">No. The slope can still be a fair read of direction. What was fake was the confidence. You fix the inference, with robust standard errors, not the coefficient.</p>
+      <p data-who="Trader">And when does the shape test matter?</p>
+      <p data-who="Quant">Mostly in small samples. With lots of independent data, averaging smooths odd shapes away. But a trading sample often has far fewer independent rows than it looks, which is exactly when you are tempted to trust it.</p>
+      <p data-who="Trader">And if all three pass?</p>
+      <p data-who="Quant">Then your in-sample p-value is honestly computed. That is all. It still says nothing about whether the relationship holds on data the model has never seen.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Check the leftovers before you believe the p-value, and remember that a sticky series has far fewer independent days than rows.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -176,6 +230,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From Durbin-Watson to the evidence you really have</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ DW = \frac{\color{#fbbf24}{\sum_{t=2}^{n}(e_t - e_{t-1})^2}}{\color{#fbbf24}{\sum_{t=1}^{n} e_t^2}} \]</div>
+      <p>Compare how much the residuals change from one day to the next with how big they are overall. Sticky residuals change little, so the top is small.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ (e_t - e_{t-1})^2 = e_t^2 \color{#fbbf24}{- 2\,e_t e_{t-1}} + e_{t-1}^2 \]</div>
+      <p>Expand the top. The cross term carries the autocorrelation: if consecutive residuals share a sign it is positive, and it shrinks the numerator.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ DW \approx 2(1 - \color{#fbbf24}{\hat\rho}) \]</div>
+      <p>Summed over the sample, each squared residual appears twice and the cross terms become the lag-1 autocorrelation \(\hat\rho\). Independent residuals give 2; the scenario's \(DW = 0.6\) gives \(\hat\rho \approx 0.7\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{n_{eff} \approx n \cdot \frac{1 - \hat\rho}{1 + \hat\rho}} \]</div>
+      <p>What the stickiness costs you. With \(n = 500\) and \(\hat\rho = 0.7\), \(n_{eff} \approx 500 \times 0.3/1.7 \approx 88\). The classical standard error still uses 500, which is why the p-value looks too good.</p>
+    </div>
+  </div>
   <p>
     Each test below follows the same shape: state what "well-behaved" would
     look like, build a statistic that measures the departure from that, and
@@ -507,6 +581,10 @@
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>A p-value of 0.01 that isn't what it looks like</h3>
+    <div class="tl-predict" data-answer="88" data-tol="10" data-unit=" days">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The regression below uses about 500 trading days, and its residuals give \(DW = 0.6\). Roughly how many independent days' worth of evidence does that sample really carry? Lock in a guess, then read on: the scenario works it out in its third paragraph.</div>
+      <div class="tl-predict-reveal"><p><strong>About 88.</strong> \(DW \approx 2(1-\hat\rho)\) gives \(\hat\rho \approx 0.7\), and \(n_{eff} \approx 500 \times (1-0.7)/(1+0.7) = 500 \times 0.3/1.7 \approx 88\). The classical standard error is computed as if all 500 days were independent, so it is far too small. Try \(DW = 1.0\): \(\hat\rho = 0.5\) and \(n_{eff} \approx 167\), still only a third of the rows.</p></div>
+    </div>
     <p>
       A researcher regresses next-day FX returns for a currency pair on a
       yield-spread signal — the idea being that a widening rate differential
@@ -558,6 +636,12 @@
       errors, and get mistaken for a discovery.
     </p><!-- DESK:END -->
   </div>
+
+  <!-- WB:regression_diagnostics:START -->
+  <div class="wb" id="wb-regression_diagnostics" data-title="A p-value of 0.01, checked three ways">
+    <script type="application/json">{"w":600,"h":720,"intro":"A regression that looks significant, and the three checks that decide whether to believe it. Simulated data with no real link built in, so we know the right answer. Press play, or step through.","steps":[{"cap":"A researcher regresses a currency's daily returns on a slow-moving yield-spread signal: 500 trading days. Here both series are simulated, and there is no real link between them. Note how slowly the signal (blue) drifts.","do":[{"chart":"A","x":10,"y":10,"w":580,"h":190,"title":"500 days, as z-scores (simulated)","xd":[1,500],"yd":[-3.2,3.2],"yt":[[-2,"−2"],[0,"0"],[2,"2"]],"xt":[[1,"day 1"],[500,"day 500"]],"zero":true,"pl":36,"pr":36},{"series":"ys","chart":"A","pts":[[1,-0.05],[3,0.38],[5,1.38],[7,0.52],[9,0.51],[11,-0.37],[13,-0.58],[15,1.72],[17,0.66],[19,0.43],[21,-0.26],[23,-2.2],[25,-1.12],[27,-0.86],[29,0.55],[31,0.86],[33,1.08],[35,-0.77],[37,-1.68],[39,-0.76],[41,-0.8],[43,-0.48],[45,-0.48],[47,0.41],[49,1.24],[51,0.81],[53,0.94],[55,0.44],[57,-1.45],[59,-0.81],[61,-0.49],[63,0.09],[65,-0.27],[67,1.1],[69,1.76],[71,1.39],[73,-0.09],[75,-1.26],[77,-0.07],[79,-0.11],[81,-1.01],[83,-0.35],[85,0.32],[87,-0.66],[89,-2.07],[91,-0.42],[93,-0.37],[95,0.08],[97,-0.0],[99,0.13],[101,-0.28],[103,0.38],[105,0.04],[107,0.71],[109,0.25],[111,0.85],[113,0.39],[115,1.48],[117,1.57],[119,2.04],[121,-0.03],[123,-1.17],[125,-1.16],[127,0.06],[129,-0.14],[131,-0.02],[133,-1.08],[135,-1.01],[137,0.38],[139,0.23],[141,-0.06],[143,0.07],[145,0.56],[147,-0.45],[149,-0.88],[151,-0.1],[153,-2.85],[155,-1.66],[157,0.88],[159,0.62],[161,0.51],[163,0.92],[165,0.64],[167,0.73],[169,1.48],[171,0.61],[173,0.58],[175,0.16],[177,-0.17],[179,-0.62],[181,-0.5],[183,-0.27],[185,-1.39],[187,-1.78],[189,0.0],[191,0.18],[193,-0.45],[195,1.05],[197,0.32],[199,0.61],[201,0.16],[203,0.66],[205,-0.3],[207,-1.15],[209,-1.48],[211,0.04],[213,0.04],[215,-0.12],[217,-0.23],[219,-0.19],[221,0.53],[223,1.03],[225,-0.14],[227,0.41],[229,0.85],[231,-0.13],[233,-0.02],[235,-0.61],[237,-1.13],[239,-1.26],[241,-0.84],[243,-0.56],[245,0.86],[247,0.49],[249,1.21],[251,-0.62],[253,-0.7],[255,0.17],[257,0.63],[259,-2.01],[261,-1.36],[263,0.69],[265,-0.02],[267,-0.24],[269,-1.47],[271,-0.92],[273,0.59],[275,0.33],[277,1.92],[279,2.48],[281,1.33],[283,1.27],[285,-0.41],[287,-0.58],[289,-0.31],[291,-0.56],[293,-1.36],[295,0.07],[297,-0.92],[299,-0.69],[301,-0.78],[303,-0.25],[305,-0.26],[307,-1.24],[309,0.73],[311,1.59],[313,1.62],[315,0.74],[317,0.25],[319,0.08],[321,-0.55],[323,-0.94],[325,-0.29],[327,-0.51],[329,-0.32],[331,-2.0],[333,-0.62],[335,-0.8],[337,-2.18],[339,-0.99],[341,0.08],[343,-0.22],[345,0.34],[347,1.54],[349,1.86],[351,1.38],[353,0.53],[355,0.8],[357,1.25],[359,-1.08],[361,-0.32],[363,0.43],[365,1.33],[367,0.28],[369,-0.61],[371,-0.34],[373,-0.49],[375,0.13],[377,0.34],[379,-0.19],[381,-0.3],[383,-0.53],[385,0.6],[387,2.28],[389,1.3],[391,0.94],[393,-1.6],[395,-0.26],[397,-0.05],[399,-0.71],[401,-1.86],[403,-2.2],[405,0.29],[407,-0.94],[409,-2.03],[411,-2.0],[413,-1.25],[415,-0.84],[417,0.21],[419,-0.26],[421,-0.33],[423,0.11],[425,-0.18],[427,-0.43],[429,0.94],[431,0.73],[433,0.45],[435,0.17],[437,0.39],[439,0.71],[441,0.11],[443,0.14],[445,0.57],[447,-0.07],[449,0.23],[451,-0.17],[453,-1.23],[455,-2.81],[457,-0.37],[459,0.06],[461,0.27],[463,1.42],[465,1.37],[467,2.16],[469,1.98],[471,1.63],[473,1.41],[475,0.62],[477,0.68],[479,1.43],[481,0.28],[483,0.67],[485,1.58],[487,1.34],[489,-0.22],[491,0.24],[493,1.12],[495,0.94],[497,0.52],[499,1.9]],"tone":"purple","ms":1600,"width":1.4},{"series":"xs","chart":"A","pts":[[1,0.13],[3,-0.4],[5,-0.77],[7,-0.66],[9,-0.69],[11,-0.8],[13,-0.3],[15,-0.65],[17,-0.9],[19,-0.96],[21,-1.01],[23,-0.77],[25,-0.63],[27,-1.0],[29,-0.45],[31,0.08],[33,0.13],[35,0.15],[37,0.67],[39,-0.23],[41,0.1],[43,-0.21],[45,-0.16],[47,-0.11],[49,-0.31],[51,-0.05],[53,0.21],[55,0.3],[57,0.18],[59,0.04],[61,0.27],[63,0.1],[65,0.37],[67,0.55],[69,0.26],[71,0.11],[73,0.29],[75,0.67],[77,0.4],[79,0.39],[81,0.21],[83,-0.33],[85,-0.22],[87,0.06],[89,0.78],[91,0.66],[93,0.41],[95,0.31],[97,0.14],[99,-0.17],[101,-0.45],[103,-0.43],[105,-0.23],[107,-0.22],[109,-0.32],[111,-0.21],[113,-0.49],[115,-1.0],[117,-1.32],[119,-0.86],[121,-0.69],[123,-0.84],[125,-0.83],[127,-0.43],[129,-0.64],[131,-0.75],[133,-1.04],[135,-0.7],[137,-0.6],[139,-0.61],[141,-1.13],[143,-1.33],[145,-1.35],[147,-1.49],[149,-1.15],[151,-0.94],[153,-1.32],[155,-1.0],[157,-0.95],[159,-0.89],[161,-0.97],[163,-1.08],[165,-0.74],[167,-1.04],[169,-1.48],[171,-1.56],[173,-1.52],[175,-1.58],[177,-1.82],[179,-1.84],[181,-1.38],[183,-1.31],[185,-0.92],[187,-0.56],[189,-0.69],[191,-0.55],[193,-0.59],[195,-0.55],[197,-0.31],[199,-0.14],[201,0.16],[203,-0.07],[205,-0.03],[207,-0.06],[209,0.24],[211,0.54],[213,0.16],[215,0.11],[217,0.19],[219,0.74],[221,0.6],[223,0.73],[225,0.57],[227,0.75],[229,0.87],[231,0.74],[233,-0.02],[235,0.09],[237,0.47],[239,0.83],[241,1.25],[243,1.49],[245,1.37],[247,1.55],[249,1.56],[251,1.49],[253,1.15],[255,1.34],[257,1.2],[259,0.96],[261,1.18],[263,1.29],[265,1.45],[267,1.16],[269,1.71],[271,1.65],[273,1.74],[275,1.47],[277,1.44],[279,1.46],[281,1.81],[283,2.4],[285,2.5],[287,2.37],[289,2.36],[291,2.72],[293,2.41],[295,2.58],[297,2.76],[299,2.66],[301,2.43],[303,2.58],[305,2.3],[307,2.19],[309,2.03],[311,1.81],[313,0.82],[315,0.86],[317,0.65],[319,0.94],[321,0.65],[323,0.49],[325,0.67],[327,0.67],[329,0.72],[331,1.02],[333,0.28],[335,-0.0],[337,-0.51],[339,0.05],[341,-0.24],[343,-0.14],[345,-0.04],[347,0.06],[349,-0.11],[351,-0.37],[353,-0.48],[355,0.02],[357,0.2],[359,0.25],[361,0.47],[363,0.72],[365,0.71],[367,0.71],[369,0.63],[371,0.64],[373,1.24],[375,1.13],[377,0.91],[379,1.02],[381,0.66],[383,0.73],[385,0.17],[387,-0.42],[389,-0.7],[391,-0.25],[393,-0.6],[395,-0.81],[397,-0.92],[399,-0.77],[401,-0.46],[403,-0.58],[405,-0.7],[407,-0.91],[409,-1.31],[411,-0.89],[413,-0.7],[415,-0.73],[417,-0.65],[419,-0.34],[421,-0.52],[423,-0.55],[425,-0.6],[427,-0.41],[429,-1.1],[431,-0.75],[433,-0.62],[435,-1.13],[437,-1.15],[439,-1.42],[441,-0.81],[443,-0.66],[445,-0.6],[447,-0.24],[449,-0.5],[451,-0.19],[453,-0.26],[455,-0.17],[457,-0.39],[459,-0.55],[461,-0.83],[463,-0.8],[465,-1.03],[467,-0.37],[469,-0.32],[471,-0.6],[473,-0.74],[475,-0.96],[477,-0.87],[479,-1.34],[481,-1.69],[483,-1.39],[485,-1.72],[487,-1.6],[489,-0.95],[491,-0.86],[493,-0.51],[495,-0.26],[497,-0.24],[499,-0.36]],"tone":"blue","ms":1600,"label":"signal","lat":[60,2.2],"ldx":0,"ldy":0,"lanchor":"middle"}]},{"cap":"OLS fits a slope, and the software prints a p-value of 0.010 next to it. By the usual 5% bar that is a striking result, the kind that gets an idea greenlit.","do":[{"box":"pv","x":10,"y":212,"w":285,"h":64,"text":"classical p-value","tone":"green","sub":"0.010: \"significant\"","size":19}]},{"cap":"Before trusting it, look at the leftovers: the residuals, in time order. If the model caught everything, they should bounce around zero with no pattern. Instead they run in long waves, above zero for a stretch, then below.","do":[{"chart":"B","x":10,"y":290,"w":380,"h":200,"title":"Residuals, first 150 days","xd":[1,150],"yd":[-3.5,3.5],"yt":[[-2,"−2"],[0,"0"],[2,"2"]],"xt":[[1,"1"],[75,"75"],[150,"150"]],"zero":true,"pl":36},{"series":"res","chart":"B","pts":[[1,-0.05],[2,1.27],[3,0.47],[4,0.13],[5,1.82],[6,1.47],[7,0.63],[8,1.01],[9,0.6],[10,-1.24],[11,-0.65],[12,-1.29],[13,-0.87],[14,0.97],[15,2.32],[16,1.61],[17,0.78],[18,0.09],[19,0.46],[20,-0.62],[21,-0.53],[22,-1.81],[23,-3.23],[24,-2.15],[25,-1.68],[26,-1.35],[27,-1.38],[28,-1.13],[29,0.71],[30,1.57],[31,1.23],[32,0.69],[33,1.55],[34,0.2],[35,-1.06],[36,-1.23],[37,-2.27],[38,-3.04],[39,-1.11],[40,-0.58],[41,-1.11],[42,-1.34],[43,-0.72],[44,1.05],[45,-0.7],[46,-0.4],[47,0.56],[48,1.12],[49,1.71],[50,0.86],[51,1.13],[52,1.4],[53,1.37],[54,-0.15],[55,0.67],[56,-1.41],[57,-2.01],[58,-2.11],[59,-1.14],[60,-3.03],[61,-0.65],[62,0.17],[63,0.14],[64,-1.38],[65,-0.32],[66,0.1],[67,1.64],[68,2.39],[69,2.52],[70,1.97],[71,1.98],[72,-0.07],[73,-0.08],[74,0.62],[75,-1.67],[76,0.31],[77,-0.04],[78,-0.21],[79,-0.09],[80,-1.2],[81,-1.39],[82,0.32],[83,-0.55],[84,-1.17],[85,0.42],[86,-0.1],[87,-0.92],[88,-0.62],[89,-2.8],[90,-2.67],[91,-0.49],[92,-0.59],[93,-0.46],[94,-0.21],[95,0.16],[96,-0.73],[97,0.02],[98,0.35],[99,0.16],[100,-0.11],[101,-0.47],[102,1.41],[103,0.47],[104,0.25],[105,0.02],[106,-0.32],[107,0.97],[108,-0.19],[109,0.31],[110,0.84],[111,1.16],[112,-0.66],[113,0.47],[114,0.09],[115,1.93],[116,2.21],[117,2.0],[118,0.15],[119,2.75],[120,1.95],[121,-0.16],[122,0.04],[123,-1.79],[124,-1.74],[125,-1.78],[126,0.0],[127,0.02],[128,-0.76],[129,-0.3],[130,-1.89],[131,-0.15],[132,0.11],[133,-1.69],[134,-2.38],[135,-1.54],[136,1.13],[137,0.44],[138,0.49],[139,0.23],[140,0.53],[141,-0.26],[142,-0.11],[143,-0.11],[144,-1.46],[145,0.57],[146,0.6],[147,-0.88],[148,-0.74],[149,-1.43],[150,-1.34]],"tone":"red","ms":1800,"width":2}]},{"cap":"Durbin-Watson compares the day-to-day changes in the residuals with their overall size. About 2 means no stickiness. Here DW = 0.58, and DW ≈ 2(1 − ρ̂) gives ρ̂ ≈ 0.71: today's miss carries about 70% into tomorrow.","do":[{"box":"dw","x":400,"y":300,"w":190,"h":84,"text":"Durbin-Watson","tone":"red","sub":"0.58 → ρ̂ ≈ 0.71","size":19}]},{"cap":"So 500 rows are not 500 independent pieces of evidence. The effective sample size is n(1 − ρ̂)/(1 + ρ̂) = 500 × 0.29/1.71 ≈ 85. The classical formula still divides by 500.","do":[{"chart":"C","x":10,"y":505,"w":285,"h":185,"title":"How much evidence?","xd":[0.4,2.6],"yd":[0,600],"yt":[[0,"0"],[500,"500"]],"xt":[[1,"rows"],[2,"independent"]],"pl":40},{"bars":"nb","chart":"C","data":[[1,500,"500","blue"],[2,85,"≈ 85","red"]],"bw":56,"ms":1100}]},{"cap":"Fix the inference, not the slope. Newey-West standard errors allow for the stickiness: the standard error nearly doubles, from 0.071 to 0.135, and the p-value goes from 0.010 to 0.17. Not distinguishable from noise.","do":[{"box":"nw","x":305,"y":212,"w":285,"h":64,"text":"Newey-West p-value","tone":"red","sub":"0.17: noise","size":19},{"chart":"D","x":305,"y":505,"w":285,"h":185,"title":"p-value (5% bar dashed)","xd":[0.4,2.6],"yd":[0,0.22],"yt":[[0,"0"],[0.05,"0.05"],[0.2,"0.2"]],"xt":[[1,"classical"],[2,"Newey-West"]],"pl":48},{"bars":"pb","chart":"D","data":[[1,0.01,"0.010","green"],[2,0.17,"0.17","red"]],"bw":56,"ms":1100},{"series":"p05","chart":"D","pts":[[0.4,0.05],[2.6,0.05]],"tone":null,"dash":true,"ms":500}]},{"cap":"The other two checks pass here. Breusch-Pagan (squared residuals regressed on the signal) gives p = 0.26: no fanning spread. Jarque-Bera (skew and fat tails) gives p = 0.44: the shape looks normal. One failure is enough to sink the classical p-value.","do":[{"box":"bp","x":400,"y":392,"w":190,"h":46,"text":"Breusch-Pagan: pass","tone":"green","size":18},{"box":"jb","x":400,"y":444,"w":190,"h":46,"text":"Jarque-Bera: pass","tone":"green","size":18}]},{"cap":"Was this sample unlucky? Run the same no-link process 1,000 times. The classical test calls it significant at 5% in 41% of samples. Newey-West cuts that to 11%: far better, still above 5%, because about 85 effective rows is not much.","do":[{"hide":"C"},{"hide":"nb"},{"chart":"E","x":10,"y":505,"w":285,"h":185,"title":"False alarms, 1,000 samples","xd":[0.4,2.6],"yd":[0,50],"yt":[[5,"5%"],[40,"40%"]],"xt":[[1,"classical"],[2,"Newey-West"]],"pl":46},{"bars":"fb","chart":"E","data":[[1,41,"41%","red"],[2,11,"11%","amber"]],"bw":56,"ms":1100},{"series":"f5","chart":"E","pts":[[0.4,5],[2.6,5]],"tone":null,"dash":true,"ms":500}]},{"cap":"The slope itself never changed: −0.18 both times. What the sticky residuals faked was the confidence. And passing all three checks would only make the in-sample p-value honest. It would still not be out-of-sample evidence.","do":[{"note":"end","x":300,"y":708,"text":"diagnostics fix the confidence, not the edge","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:regression_diagnostics:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -661,6 +745,19 @@
       out-of-sample validation answer different questions<!-- DESK:START --> and this repo
       requires both, not one in place of the other<!-- DESK:END -->.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative research review</div>
+    <h3>A colleague brings you a p-value of 0.01</h3>
+    <p>A colleague regressed next-day FX returns on a yield-spread signal over about 500 trading days. The slope has a p-value of 0.01 and they want to start building a strategy on it. You run the residual checks: Durbin-Watson is 0.6, Breusch-Pagan is unremarkable, and Jarque-Bera shows mild skew. What do you tell them?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Go ahead. Two of the three checks pass, and p = 0.01 clears the bar comfortably.<div class="tl-drill-why">One failure is enough. A Durbin-Watson of 0.6 means \(\hat\rho \approx 0.7\) and only about 88 independent days, so the p-value was computed as if there were 500. The comfortable margin is the part that is fake.</div></li>
+      <li data-verdict="bad">Drop it. The diagnostics failed, so the relationship is spurious.<div class="tl-drill-why">A diagnostic failure says the standard error is wrong, not that the slope is meaningless. Throwing the coefficient away is the opposite mistake to trusting the p-value.</div></li>
+      <li data-verdict="good">Recompute the inference with Newey-West standard errors, report that p-value instead, and if anything survives, test it out of sample before building anything.<div class="tl-drill-why">This fixes the specific failure without discarding the estimate, and it keeps the two questions apart: is the in-sample claim honestly computed, and does the relationship hold on data the model has not seen.</div></li>
+      <li data-verdict="ok">Note the low Durbin-Watson, quote the p-value with a caveat, and move on.<div class="tl-drill-why">Honest, but a caveat does not tell anyone how much the evidence shrinks. The corrected number is a few lines of work and decides whether there is anything here at all.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the numbers say.</strong> This is an illustrative case built on the lesson's own scenario, not a historical episode. With \(\hat\rho \approx 0.7\), 500 days carry the evidence of about 88, and once the standard error is corrected the p-value is nowhere near 0.01. In a simulation of exactly this setup with no real link between signal and returns, the classical test called the slope significant at 5% in about two samples out of five; Newey-West cut that to about one in nine.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -795,6 +892,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> <span>· where the slope and its standard error come from</span></li>
+        <li><a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a> <span>· autocorrelation in a series, before it hides in residuals</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a> <span>· modelling a variance that will not sit still</span></li>
+        <li><a href="model-selection-aic-bic.html">Model Selection: AIC &amp; BIC</a> <span>· choosing between models once inference is honest</span></li>
+        <li><a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> <span>· the out-of-sample test diagnostics cannot replace</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> most "significant" signals built on daily data have sticky residuals, and this is the check that tells you how much evidence you really have.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
     <a href="model-selection-aic-bic.html">Model Selection: AIC &amp; BIC →</a>
@@ -824,9 +941,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

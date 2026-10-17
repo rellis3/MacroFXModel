@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CoVaR: Conditional Value-at-Risk for Systemic Risk — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -50,6 +51,79 @@
       <li><strong>How it reached trading:</strong> Adrian &amp; Brunnermeier's CoVaR (NY Fed staff report 2008, AER 2016) became a standard post-crisis systemic-risk measure, and on a desk it answers what your VaR becomes when another market is in distress.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter of the lesson's ten toy days, i's return across and j's return up, with the fitted 5% quantile line, minus 0.4 plus 0.8 times i, running under the cloud. Read at i's median of 0%, the line gives j's conditional 5% VaR of minus 0.4%. Read at i's own distress level of minus 3%, it gives minus 2.8%. The vertical gap between the two readings, minus 2.4 percentage points, is Delta CoVaR.">
+      <line class="tlp-line" x1="70" y1="30" x2="70" y2="240"/>
+      <line class="tlp-line" x1="70" y1="240" x2="560" y2="240"/>
+      <text class="tlp-text3" x="62" y="216" text-anchor="end" font-size="12">−4</text>
+      <text class="tlp-text3" x="62" y="160" text-anchor="end" font-size="12">−2</text>
+      <text class="tlp-text3" x="62" y="104" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="62" y="48" text-anchor="end" font-size="12">2</text>
+      <text class="tlp-text3" x="130" y="256" text-anchor="middle" font-size="12">−4</text>
+      <text class="tlp-text3" x="250" y="256" text-anchor="middle" font-size="12">−2</text>
+      <text class="tlp-text3" x="370" y="256" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="490" y="256" text-anchor="middle" font-size="12">2</text>
+      <text class="tlp-text3" x="78" y="22" font-size="12">j's return (%)</text>
+      <text class="tlp-text3" x="590" y="230" text-anchor="end" font-size="12">i's return (%) →</text>
+      <line class="tlp-line red dash" x1="70" y1="178.4" x2="190" y2="178.4"/>
+      <line class="tlp-line red dash" x1="190" y1="178.4" x2="190" y2="240"/>
+      <line class="tlp-line blue dash" x1="70" y1="111.2" x2="370" y2="111.2"/>
+      <line class="tlp-line blue dash" x1="370" y1="111.2" x2="370" y2="240"/>
+      <circle class="tlp-red" cx="100" cy="220.4" r="4.5"/>
+      <circle class="tlp-text2" cx="190" cy="175.6" r="4.5"/>
+      <circle class="tlp-text2" cx="250" cy="142" r="4.5"/>
+      <circle class="tlp-text2" cx="310" cy="119.6" r="4.5"/>
+      <circle class="tlp-text2" cx="340" cy="108.4" r="4.5"/>
+      <circle class="tlp-text2" cx="382" cy="88.8" r="4.5"/>
+      <circle class="tlp-text2" cx="406" cy="80.4" r="4.5"/>
+      <circle class="tlp-text2" cx="430" cy="72" r="4.5"/>
+      <circle class="tlp-text2" cx="478" cy="58" r="4.5"/>
+      <circle class="tlp-text2" cx="514" cy="41.2" r="4.5"/>
+      <line class="tlp-line purple thick" x1="70" y1="223.2" x2="550" y2="44"/>
+      <circle class="tlp-red" cx="190" cy="178.4" r="7"/>
+      <circle class="tlp-blue" cx="370" cy="111.2" r="7"/>
+      <line class="tlp-line amber thick" x1="84" y1="111.2" x2="84" y2="178.4"/>
+      <line class="tlp-line amber thick" x1="78" y1="111.2" x2="90" y2="111.2"/>
+      <line class="tlp-line amber thick" x1="78" y1="178.4" x2="90" y2="178.4"/>
+      <text class="tlp-amber" x="94" y="150" font-size="14" font-weight="700">ΔCoVaR = −2.4</text>
+      <text class="tlp-purple" x="80" y="62" font-size="13" font-weight="700">j's 5% quantile line, slope β = 0.8</text>
+      <text class="tlp-blue" x="384" y="132" font-size="13" font-weight="700">i on a normal day (0%)</text>
+      <text class="tlp-blue" x="384" y="148" font-size="13">j's 5% VaR: −0.4%</text>
+      <text class="tlp-red" x="206" y="204" font-size="13" font-weight="700">i in distress (−3%): j's 5% VaR −2.8%</text>
+    </svg>
+    <figcaption>Ten toy days and the fitted 5% quantile line. Read the line twice: on a normal day for i, and on i's own distress day. The drop between the two readings, −2.4 points, is ΔCoVaR: the extra tail risk j picks up because i is in trouble.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My risk report gives me a VaR for every position. Isn't that enough?</p>
+      <p data-who="Quant">It answers one question well. How bad can this position get on its own, on roughly the worst day in twenty.</p>
+      <p data-who="Trader">And the question it misses?</p>
+      <p data-who="Quant">How bad it gets when something else is already in trouble. A big bank wobbles, or dollar funding seizes up, and everything else gets worse at the same moment. A number computed on each position alone can't see that.</p>
+      <p data-who="Trader">So that's CoVaR.</p>
+      <p data-who="Quant">Yes. Tobias Adrian and Markus Brunnermeier, first as a New York Fed staff report in 2008, then in the American Economic Review in 2016. CoVaR is the VaR of one thing, call it j, given that another thing, call it i, is sitting at its own VaR.</p>
+      <p data-who="Trader">Distress days are rare. How do you even estimate that?</p>
+      <p data-who="Quant">With a quantile regression. Instead of fitting a line through the middle of the cloud, you fit one along its bottom edge: j's worst day in twenty, given i's return. Then you read that one line at two places.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">In the lesson's toy example the line is minus zero point four, plus zero point eight times i's return. On a normal day for i, a return of zero, j's bad-day return is minus zero point four percent.</p>
+      <p data-who="Trader">And when i is in distress?</p>
+      <p data-who="Quant">i's own bad-day level is minus three percent. Plug it in: minus zero point four, then minus another two point four. j's bad-day return falls to minus two point eight percent.</p>
+      <p data-who="Trader">So i's trouble costs j two point four extra points.</p>
+      <p data-who="Quant">That gap is the number people rank by. It strips out j's own baseline risk and keeps only the extra that comes with i's distress. And it is just the slope times the distance: zero point eight times minus three.</p>
+      <p data-who="Trader">So if the slope were zero?</p>
+      <p data-who="Quant">Then i could have the worst day in history and j's tail wouldn't move. The slope does all the work.</p>
+      <p data-who="Trader">Isn't this just CVaR with a typo?</p>
+      <p data-who="Quant">That's the classic mix-up. CVaR averages the losses inside one series' own tail. CoVaR conditions one series on a different series' distress. One letter apart, two different questions.</p>
+      <p data-who="Trader">Can I point it at currencies?</p>
+      <p data-who="Quant">The paper was about banks. Using it on dollar funding stress and an emerging-market basket is an application by analogy: useful, but say so. And remember two catches. Tail regressions run on few points, so they're noisy. And a big number shows the two move together in the tail, not that one causes the other.</p>
+      <p data-who="Trader">One line to take away?</p>
+      <p data-who="Quant">Plain VaR asks how bad things get on their own. CoVaR asks how much worse they get when someone else is already in trouble.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -122,6 +196,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where ΔCoVaR = β<sub>q</sub>[VaR<sub>q</sub>(X<sub>i</sub>) − Median(X<sub>i</sub>)] comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P\big(X_j \le \color{#fbbf24}{\text{VaR}_q(X_j)}\big) = q \]</div>
+      <p>Start with plain VaR: the return j falls below with probability \(q\), say 5%. It looks at j alone.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P\Big(X_j \le \text{CoVaR}_{j|i} \;\Big|\; \color{#fbbf24}{X_i = \text{VaR}_q(X_i)}\Big) = q \]</div>
+      <p>Now condition on someone else. The same 5% quantile of j, but only on days when i sits at its own VaR. That is CoVaR.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{CoVaR}_{j|i} = \color{#fbbf24}{\alpha_q + \beta_q\,x} \]</div>
+      <p>A quantile regression of j on i gives one line for j's 5% quantile. Read it at whatever state \(x\) of i you condition on.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \Delta\text{CoVaR}_{j|i} = \text{CoVaR}_{j|i \text{ in distress}} \color{#fbbf24}{{}- \text{CoVaR}_{j|i \text{ at median}}} \]</div>
+      <p>Subtract the reading on a normal day for i. That removes j's own baseline risk and keeps only the spillover.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\Delta\text{CoVaR}_{j|i} = \beta_q\,\big[\text{VaR}_q(X_i) - \text{Median}(X_i)\big]} \]</div>
+      <p>The intercept cancels, leaving slope times distance. In the worked example: \(0.8 \times (-3 - 0) = -2.4\%\).</p>
+    </div>
+  </div>
 
   <h3>1. Plain VaR, as a reminder</h3>
   <p>
@@ -367,6 +465,10 @@
       (median or distress) and everything below recomputes instantly,
       including a guard for blank or non-numeric entries.
     </p>
+    <div class="tl-predict" data-answer="-1.2" data-tol="0.1" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With the worked example's slope of 0.8, ΔCoVaR is −2.4%. Suppose j's tail co-moved only half as strongly with i, a slope \(\beta_q\) of 0.4, with everything else unchanged. What would ΔCoVaR be? Lock in a guess, then type 0.4 into the slope field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>−1.2%.</strong> \(\Delta\text{CoVaR} = 0.4 \times (-3 - 0) = -1.2\%\). Halve the slope and you halve the spillover; the intercept never enters. Now set the slope to 0 and watch ΔCoVaR vanish, however deep you push i's distress level.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Intercept \(\alpha_q\) (%)</span></div>
@@ -450,6 +552,12 @@
       of i's distress to j's tail risk.
     </div>
   </div>
+
+  <!-- WB:institutional_covar:START -->
+  <div class="wb" id="wb-institutional_covar" data-title="CoVaR: one tail line, read twice">
+    <script type="application/json">{"w":600,"h":700,"intro":"Two institutions, ten days of the lesson's toy returns, and one tail line read twice. Press play, or step through.","steps":[{"cap":"Two institutions, i and j. Plain VaR looks at j alone: how bad is j's return on roughly the worst day in twenty?","do":[{"icon":"i","name":"bank","x":40,"y":6,"s":0.8,"tone":"red","label":"institution i","lsize":17},{"icon":"j","name":"bank","x":480,"y":6,"s":0.8,"tone":"blue","label":"institution j","lsize":17}]},{"cap":"CoVaR asks a different question: how bad is j's worst day in twenty when i is already in distress? It is a VaR of j, conditioned on someone else.","do":[{"arrow":["i","j"],"label":"spillover?","tone":"amber","dash":true,"id":"sp"}]},{"cap":"The lesson's ten toy days: i's return across, j's return up. They move together, and a few days are bad for both.","do":[{"chart":"sc","x":10,"y":150,"w":580,"h":330,"title":"j's return vs i's return (%)","xd":[-5,3],"yd":[-5,2.5],"yt":[[-4,"−4"],[-2,"−2"],[0,"0"],[2,"2"]],"xt":[[-4,"−4"],[-3,"−3"],[-2,"−2"],[0,"0"],[2,"2"]],"pl":44,"pr":14},{"dot":"p0","chart":"sc","at":[-4.5,-4.3],"text":"","tone":null,"r":5},{"dot":"p1","chart":"sc","at":[-3.0,-2.7],"text":"","tone":null,"r":5},{"dot":"p2","chart":"sc","at":[-2.0,-1.5],"text":"","tone":null,"r":5},{"dot":"p3","chart":"sc","at":[-1.0,-0.7],"text":"","tone":null,"r":5},{"dot":"p4","chart":"sc","at":[-0.5,-0.3],"text":"","tone":null,"r":5},{"dot":"p5","chart":"sc","at":[0.2,0.4],"text":"","tone":null,"r":5},{"dot":"p6","chart":"sc","at":[0.6,0.7],"text":"","tone":null,"r":5},{"dot":"p7","chart":"sc","at":[1.0,1.0],"text":"","tone":null,"r":5},{"dot":"p8","chart":"sc","at":[1.8,1.5],"text":"","tone":null,"r":5},{"dot":"p9","chart":"sc","at":[2.4,2.1],"text":"","tone":null,"r":5}]},{"cap":"A 5% quantile regression fits a line along the bottom edge of the cloud, not through its middle: j's 5th-percentile return given i. Here it is −0.4 + 0.8 × i. Only one of the ten points sits below it.","do":[{"series":"ql","chart":"sc","pts":[[-5,-4.4],[3,2.0]],"tone":"purple","ms":1200},{"note":"qll","chart":"sc","at":[-1.2,-1.36],"text":"slope 0.8","tone":"purple","size":18,"anchor":"start","dx":14,"dy":16},{"pulse":"p0"}]},{"cap":"A normal day for i: its median return, 0%. Read the line there. j's conditional 5% VaR is −0.4%.","do":[{"series":"hm","chart":"sc","pts":[[-5,-0.4],[0.0,-0.4]],"tone":"blue","dash":true,"ms":500},{"dot":"dm","chart":"sc","at":[0.0,-0.4],"text":"i normal: −0.4%","tone":"blue","r":8,"dx":12,"dy":22,"anchor":"start"}]},{"cap":"A distress day for i: its own 5% VaR, −3%. Read the same line there. j's conditional 5% VaR drops to −2.8%.","do":[{"series":"hd","chart":"sc","pts":[[-5,-2.8],[-3.0,-2.8]],"tone":"red","dash":true,"ms":500},{"dot":"dd","chart":"sc","at":[-3.0,-2.8],"text":"i in distress: −2.8%","tone":"red","r":8,"dx":14,"dy":24,"anchor":"start"}]},{"cap":"ΔCoVaR is the drop between the two readings: −2.8 − (−0.4) = −2.4 points. It strips out j's own baseline and keeps only the extra tail risk that comes with i's distress.","do":[{"gap":"dg","chart":"sc","top":[[-4.95,-0.4],[-4.55,-0.4]],"bot":[[-4.95,-2.8],[-4.55,-2.8]],"tone":"amber","op":0.6},{"note":"dgl","chart":"sc","at":[-4.5,-1.6],"text":"ΔCoVaR −2.4","tone":"amber","size":18,"anchor":"start","dx":6,"dy":0},{"pulse":"sp"}]},{"cap":"The shortcut: the intercept cancels, so ΔCoVaR is the slope times the distance between i's two states. 0.8 × (−3 − 0) = −2.4.","do":[{"box":"f","x":10,"y":494,"w":580,"h":52,"text":"ΔCoVaR = β × (VaR of i − median of i) = 0.8 × (−3) = −2.4","tone":"purple","size":19}]},{"cap":"If the slope were zero, the line would be flat. Both readings would be the same, and ΔCoVaR would be zero however bad i's day. The slope does all the systemic work.","do":[{"series":"flat","chart":"sc","pts":[[-5,-0.4],[3,-0.4]],"tone":"green","dash":true,"ms":700},{"note":"fl","chart":"sc","at":[3,-1.9],"text":"slope 0 → ΔCoVaR 0","tone":"green","size":17,"anchor":"end","dx":-4,"dy":0}]},{"cap":"Not CVaR. CVaR averages the losses inside one series' own tail. CoVaR conditions one series on a different series' distress. One letter apart, two different questions.","do":[{"dim":"flat"},{"dim":"fl"},{"box":"cv","x":10,"y":562,"w":285,"h":62,"text":"CVaR: average of j's\nown worst days","tone":"blue","size":18},{"box":"co","x":305,"y":562,"w":285,"h":62,"text":"CoVaR: j's bad day\ngiven i's bad day","tone":"purple","size":18}]},{"cap":"Two catches. A tail line fitted on few points is noisy. And a big ΔCoVaR shows the two move together in the tail, not that i's trouble causes j's. A shared shock can hit both.","do":[{"note":"end","x":300,"y":660,"text":"co-movement in the tail, not proof of cause","size":20,"anchor":"middle","tone":"red"}]}]}</script>
+  </div>
+  <!-- WB:institutional_covar:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>CoVaR vs. CVaR — a naming collision worth getting exactly right</h2>
@@ -646,6 +754,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative risk meeting</div>
+    <h3>Two EM currencies, the same VaR, and dollar funding starting to tighten</h3>
+    <p>You hold two emerging-market currencies, X and Y, of equal size. Measured on their own, their 5% VaRs are almost identical. A tail regression on a dollar funding-stress indicator gives X a slope of 0.8, the worked example's line, so its ΔCoVaR against funding stress is −2.4%. Y's slope is close to zero, and so is its ΔCoVaR. Funding conditions are starting to tighten and you have to cut risk in one place. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Nothing. The two VaRs haven't moved, so the risk hasn't changed.<div class="tl-drill-why">Standalone VaR is computed on each currency alone, so it cannot see the spillover. The risk that grows when funding tightens is exactly the part your VaR report leaves out.</div></li>
+      <li data-verdict="ok">Cut both by the same amount.<div class="tl-drill-why">It lowers risk, but it spends half the cut on Y, whose tail barely responds to funding stress. You give up Y's return for little protection.</div></li>
+      <li data-verdict="good">Cut X first. Its tail is the one that worsens when funding is in distress.<div class="tl-drill-why">X's ΔCoVaR says its bad-day return drops about 2.4 extra points when funding stress hits its own VaR. Y's barely moves. Cutting X removes the co-moving exposure that standalone VaR cannot show.</div></li>
+      <li data-verdict="bad">Cut Y. Its losses come from its own country, which feels harder to predict.<div class="tl-drill-why">That keeps the position whose tail is tied to the shock you are worried about. Y's idiosyncratic risk is already in its VaR; X's extra spillover is not.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the numbers say.</strong> This is an illustrative case built on the lesson's toy line, not a real episode. If funding stress reaches its own 5% level, X's conditional 5% return falls from −0.4% to −2.8%, while Y's stays near its baseline. Two caveats from the lesson still apply: a tail slope fitted on few points is noisy, and a large ΔCoVaR shows co-movement, not proof that funding stress causes X's losses.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -750,6 +871,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> <span>· VaR itself, and the CVaR it is not</span></li>
+        <li><a href="quantile-regression.html">Quantile Regression</a> <span>· the tail line CoVaR is read from</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="systemic-risk-networks.html">Systemic Risk &amp; Financial Contagion Networks</a> <span>· from one pair to a whole network</span></li>
+        <li><a href="stress-testing-scenario-analysis.html">Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</a> <span>· turning a distress state into a scenario</span></li>
+        <!-- DESK:START --><li><a href="institutional-hill-estimator.html">The Hill Estimator</a> <span>· how fat the tail you are conditioning on really is</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> positions that look equally risky alone can behave very differently when a funding market or counterparty is in trouble, and CoVaR is how you see which one.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-avellaneda-stoikov.html">← Avellaneda-Stoikov Inventory-Aware Market Making</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -780,7 +921,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var ids = ['alpha', 'beta', 'median', 'distress'];
@@ -827,5 +969,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

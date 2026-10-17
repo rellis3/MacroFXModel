@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vector Error Correction Models — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -42,6 +43,77 @@
       <li><strong>How it reached trading:</strong> Engle &amp; Granger (1987) and Johansen (1991) gave cointegrated markets their error-correction model, and Hasbrouck (1995) built price discovery on it.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the spread between AUD/USD and 1.10 times NZD/USD over a five-period toy history, in pips: 0, 49, 83.5, 57, then 50. Right: the error-correction forecast for the next period from that 50-pip spread. With alpha Y of minus 0.35, AUD/USD is forecast to fall 17.5 pips; with alpha X of plus 0.15, NZD/USD is forecast to rise 7.5 pips. AUD/USD does about 2.3 times as much of the correcting.">
+      <text class="tlp-text3" x="40" y="24" font-size="12">spread Z = Y − 1.10·X, in pips</text>
+      <line class="tlp-line" x1="40" y1="40" x2="40" y2="190"/>
+      <line class="tlp-line" x1="40" y1="190" x2="290" y2="190"/>
+      <line class="tlp-line dash" x1="40" y1="120" x2="290" y2="120" opacity=".5"/>
+      <text class="tlp-text3" x="34" y="194" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="34" y="124" text-anchor="end" font-size="12">50</text>
+      <text class="tlp-text3" x="34" y="54" text-anchor="end" font-size="12">100</text>
+      <polyline class="tlp-line green thick" points="60,190 110,121.4 160,73.1 210,110.2 260,120"/>
+      <circle class="tlp-green" cx="60" cy="190" r="4"/>
+      <circle class="tlp-green" cx="110" cy="121.4" r="4"/>
+      <circle class="tlp-green" cx="160" cy="73.1" r="5"/>
+      <circle class="tlp-green" cx="210" cy="110.2" r="4"/>
+      <circle class="tlp-amber" cx="260" cy="120" r="6"/>
+      <text class="tlp-green" x="160" y="60" text-anchor="middle" font-size="13" font-weight="700">83.5</text>
+      <text class="tlp-amber" x="296" y="104" text-anchor="middle" font-size="13" font-weight="700">Z = 50</text>
+      <text class="tlp-text3" x="60" y="207" text-anchor="middle" font-size="12">1</text>
+      <text class="tlp-text3" x="110" y="207" text-anchor="middle" font-size="12">2</text>
+      <text class="tlp-text3" x="160" y="207" text-anchor="middle" font-size="12">3</text>
+      <text class="tlp-text3" x="210" y="207" text-anchor="middle" font-size="12">4</text>
+      <text class="tlp-text3" x="260" y="207" text-anchor="middle" font-size="12">5</text>
+      <line class="tlp-line amber dash" x1="268" y1="121" x2="345" y2="125"/>
+      <text class="tlp-text2" x="465" y="24" text-anchor="middle" font-size="13" font-weight="700">next period: who moves?</text>
+      <line class="tlp-line dash" x1="350" y1="125" x2="585" y2="125"/>
+      <text class="tlp-blue" x="405" y="50" text-anchor="middle" font-size="13" font-weight="700">AUD/USD (Y)</text>
+      <text class="tlp-text2" x="405" y="68" text-anchor="middle" font-size="12">α_Y = −0.35</text>
+      <line class="tlp-line blue thick" x1="405" y1="125" x2="405" y2="188"/>
+      <polygon class="tlp-blue" points="398,186 412,186 405,198"/>
+      <text class="tlp-blue" x="405" y="216" text-anchor="middle" font-size="14" font-weight="700">−17.5 pips</text>
+      <text class="tlp-purple" x="525" y="50" text-anchor="middle" font-size="13" font-weight="700">NZD/USD (X)</text>
+      <text class="tlp-text2" x="525" y="68" text-anchor="middle" font-size="12">α_X = +0.15</text>
+      <line class="tlp-line purple thick" x1="525" y1="125" x2="525" y2="104"/>
+      <polygon class="tlp-purple" points="518,106 532,106 525,94"/>
+      <text class="tlp-purple" x="525" y="148" text-anchor="middle" font-size="14" font-weight="700">+7.5 pips</text>
+      <text class="tlp-text3" x="165" y="238" text-anchor="middle" font-size="12">the leash stretches, then pulls back</text>
+      <text class="tlp-green" x="465" y="242" text-anchor="middle" font-size="13" font-weight="700">AUD does ≈ 2.3× the correcting</text>
+    </svg>
+    <figcaption>Cointegration only says the spread comes home. The error-correction model says who walks: from a 50-pip gap, AUD/USD is forecast to fall 17.5 pips and NZD/USD to rise 7.5. Both close the gap, but AUD is the follower and NZD sits closer to the anchor. (Toy numbers from the worked example.)</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Cointegration told me AUD/USD and NZD/USD are tied together. The spread always comes home. So what is left to learn?</p>
+      <p data-who="Quant">Who walks home. When the spread is stretched, does AUD fall back, does NZD catch up, or both? Cointegration says nothing about that.</p>
+      <p data-who="Trader">Does it matter? Either way the gap closes.</p>
+      <p data-who="Quant">It matters for which leg you trade first. And it is the first hint of which price leads. Picture a drunk and her dog on a leash. The leash proves they stay close. It does not tell you who gets yanked when it goes taut.</p>
+      <p data-who="Trader">So what is the model?</p>
+      <p data-who="Quant">Two regressions. Each price's next move depends on last period's spread, plus some ordinary momentum terms. The number in front of the spread is that price's adjustment speed. One speed for each price.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">Take the lesson's toy history. The spread is AUD/USD minus one point one times NZD/USD. It starts at zero, widens to about eighty-three pips, and is back to fifty pips in the last period.</p>
+      <p data-who="Trader">And the speeds?</p>
+      <p data-who="Quant">Suppose the fit gives minus zero point three five for AUD and plus zero point one five for NZD. Multiply each by the fifty-pip gap. AUD is forecast to fall seventeen and a half pips. NZD is forecast to rise seven and a half.</p>
+      <p data-who="Trader">Both moving to close the gap.</p>
+      <p data-who="Quant">Yes, and that is your check on the signs. If AUD were forecast to rise and NZD to fall, the gap would grow. That is not error correction at all.</p>
+      <p data-who="Trader">And the comparison?</p>
+      <p data-who="Quant">Thirty-five over fifteen is about two point three. AUD does roughly two and a third times as much of the correcting. AUD is the follower. NZD sits closer to the anchor.</p>
+      <p data-who="Trader">Could one side do nothing at all?</p>
+      <p data-who="Quant">Yes. If NZD's speed is exactly zero, it ignores the gap and AUD does all the work. That is called weak exogeneity. But both cannot be zero. Then nothing would pull the spread home, and the pair would not be cointegrated.</p>
+      <p data-who="Trader">Who proved that?</p>
+      <p data-who="Quant">Engle and Granger, in 1987. Their representation theorem says cointegration and error correction are the same fact seen two ways. They shared the 2003 Nobel prize.</p>
+      <p data-who="Trader">What would make me distrust the numbers?</p>
+      <p data-who="Quant">Two things. Fit it on a pair that never passed a cointegration test, and the speeds mean nothing. And a bigger speed in a small, noisy sample is a hypothesis to test, not proof of who leads.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Cointegration tells you there is a leash. The error correction model tells you who gets pulled, and how hard.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -139,6 +211,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the VECM forecast comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{Z_{t-1} = Y_{t-1} - \beta X_{t-1} - c} \]</div>
+      <p>Start with last period's spread. It is the same residual the cointegration test already proved is stationary. Here it becomes a predictor.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \Delta Y_t = \color{#fbbf24}{\alpha_Y Z_{t-1}} \]</div>
+      <p>Y's next change responds to that gap. \(\alpha_Y\) is the share of the gap Y closes per period. With \(Z_{t-1} > 0\), a correcting Y needs \(\alpha_Y \le 0\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \Delta Y_t = \alpha_Y Z_{t-1} + \color{#fbbf24}{\sum_{i=1}^{p}\phi_{Y,i}\,\Delta Y_{t-i} + \sum_{i=1}^{p}\psi_{Y,i}\,\Delta X_{t-i} + \epsilon_{Y,t}} \]</div>
+      <p>Add short-run momentum in both series and a shock. These are ordinary VAR lag terms, nothing specific to error correction.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \Delta X_t = \color{#fbbf24}{\alpha_X} Z_{t-1} + \sum_{i=1}^{p}\phi_{X,i}\,\Delta Y_{t-i} + \sum_{i=1}^{p}\psi_{X,i}\,\Delta X_{t-i} + \epsilon_{X,t} \]</div>
+      <p>The second equation has the same shape and the same \(Z_{t-1}\), but its own speed \(\alpha_X\). A correcting X needs \(\alpha_X \ge 0\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\Delta Y_t = (-0.35)(0.0050) = -0.00175, \qquad \Delta X_t = (0.15)(0.0050) = +0.00075} \]</div>
+      <p>Lags off, worked-example numbers in. Y falls 17.5 pips and X rises 7.5: both close the gap, and Y does \(0.35/0.15 \approx 2.3\) times as much of it.</p>
+    </div>
+  </div>
   <p>
     This section states the two-equation VECM precisely, walks through what
     the error-correction term actually is, spends most of its time on the
@@ -362,6 +458,10 @@
       exactly as the lesson's own depth-budget choice: the short-run lag
       terms are held at zero throughout.
     </p>
+    <div class="tl-predict" data-answer="7" data-tol="0.5" data-unit="×">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With the worked example, Y adjusts about 2.33× as fast as X. Keep \(\alpha_Y = -0.35\) and \(Z_{t-1} = 0.0050\), but cut \(\alpha_X\) from 0.15 to 0.05. How many times as fast as X is Y now adjusting? Lock in a guess, then type 0.05 into the \(\alpha_X\) field below and read the note.</div>
+      <div class="tl-predict-reveal"><p><strong>7×.</strong> The ratio is \(|\alpha_Y| / |\alpha_X| = 0.35 / 0.05 = 7\). \(\Delta Y_t\) is unchanged at \(-0.00175\), while \(\Delta X_t\) shrinks to \(+0.00025\). X is drifting towards the pure-anchor case. Now set \(\alpha_X\) to 0 for weak exogeneity, then try \(\alpha_Y = 0.40\), \(\alpha_X = -0.10\) to see the wrong-sign warning.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>\(\alpha_Y\) — Y's adjustment speed</span></div>
@@ -448,6 +548,12 @@
       fundamental estimate.
     </p>
   </div>
+
+  <!-- WB:institutional_vecm:START -->
+  <div class="wb" id="wb-institutional_vecm" data-title="Error correction: who closes the gap">
+    <script type="application/json">{"w":600,"h":780,"intro":"Two currencies on a leash, and the question cointegration never answers: when the leash goes taut, who gets pulled? The lesson's own toy numbers. Press play, or step through.","steps":[{"cap":"Two prices on a leash: AUD/USD and NZD/USD. Cointegration says AUD/USD minus 1.10 times NZD/USD is stationary. However far they wander, that spread keeps coming home.","do":[{"box":"Y","x":20,"y":20,"w":210,"h":84,"text":"AUD/USD  (Y)","tone":"blue","sub":"0.6600","size":20},{"box":"X","x":370,"y":20,"w":210,"h":84,"text":"NZD/USD  (X)","tone":"purple","sub":"0.6000","size":20},{"arrow":["Y","X"],"label":"leash: Y − 1.10·X","tone":"green","dash":true,"id":"leash"}]},{"cap":"Five periods of the lesson's toy history. AUD/USD (blue) is drawn against 1.10 times NZD/USD (purple), so the vertical gap between the lines is the spread.","do":[{"chart":"lv","x":10,"y":150,"w":580,"h":250,"title":"Levels: Y and 1.10·X","xd":[0.7,6.3],"yd":[0.6585,0.6715],"yt":[[0.66,"0.6600"],[0.665,"0.6650"],[0.67,"0.6700"]],"xt":[[1,"t=1"],[2,"t=2"],[3,"t=3"],[4,"t=4"],[5,"t=5"]],"pl":74,"pr":16},{"series":"sy","chart":"lv","pts":[[1,0.66],[2,0.666],[3,0.67],[4,0.669],[5,0.665]],"tone":"blue","ms":1300,"label":"Y","lat":[3,0.67],"ldy":-14},{"series":"sx","chart":"lv","pts":[[1,0.66],[2,0.6611],[3,0.66165],[4,0.6633],[5,0.66]],"tone":"purple","ms":1300,"label":"1.10·X","lat":[2,0.6611],"ldy":18},{"count":"Y","from":0.66,"to":0.665,"dp":4}]},{"cap":"The gap opens: AUD/USD runs up faster than its partner. The spread goes from zero to 49 pips, peaks at 83.5 pips in period 3, then starts back: 57, then 50.","do":[{"gap":"gz","chart":"lv","top":[[1,0.66],[2,0.666],[3,0.67],[4,0.669],[5,0.665]],"bot":[[1,0.66],[2,0.6611],[3,0.66165],[4,0.6633],[5,0.66]],"tone":"green","op":0.25},{"chart":"zc","x":10,"y":420,"w":300,"h":230,"title":"Spread Z, pips","xd":[0.4,6.6],"yd":[0,100],"yt":[[50,"50"],[100,"100"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"next"]],"pl":44,"pr":8,"pt":48},{"bars":"zb","chart":"zc","data":[[1,0.0,"0","green"],[2,49.0,"49","green"],[3,83.5,"83.5","green"],[4,57.0,"57","green"],[5,50.0,"50","green"]],"bw":30,"ms":1100}]},{"cap":"The question cointegration cannot answer: the spread is 50 pips wide. Will AUD fall back, will NZD rise to meet it, or both? The leash proves they stay close, not who moves.","do":[{"pulse":"leash"},{"note":"q","x":455,"y":470,"text":"who closes\nthe 50 pips?","size":24,"anchor":"middle","tone":"amber"}]},{"cap":"A VECM fits each price's next change on last period's spread. AUD's adjustment speed comes out at −0.35: it closes 35% of the gap per period by falling.","do":[{"hide":"q"},{"box":"ay","x":330,"y":420,"w":260,"h":66,"text":"ΔY = −0.35 × 50 pips","tone":"blue","size":19},{"series":"fy","chart":"lv","pts":[[5,0.665],[6,0.66325]],"tone":"blue","dash":true,"ms":700},{"dot":"dy","chart":"lv","at":[6,0.66325],"text":"−17.5 pips","tone":"blue","dx":0,"dy":-16}]},{"cap":"NZD's speed is +0.15: it closes some of the gap by rising. 0.15 × 50 pips = +7.5 pips. Both legs move the way that shrinks the spread.","do":[{"box":"ax","x":330,"y":500,"w":260,"h":66,"text":"ΔX = +0.15 × 50 pips","tone":"purple","size":19},{"series":"fx","chart":"lv","pts":[[5,0.66],[6,0.660825]],"tone":"purple","dash":true,"ms":700},{"dot":"dx","chart":"lv","at":[6,0.660825],"text":"+7.5 pips","tone":"purple","dx":0,"dy":18}]},{"cap":"Put the forecast together: the spread is expected to shrink from 50 pips to about 24 next period (our arithmetic from the same numbers, with the lag terms held at zero).","do":[{"bars":"zb6","chart":"zc","data":[[6,24.25,"≈24","amber"]],"bw":30,"ms":700},{"note":"z6","x":455,"y":600,"text":"50 → ≈ 24 pips","size":22,"anchor":"middle","tone":"green"}]},{"cap":"Compare the speeds: 0.35 ÷ 0.15 ≈ 2.3. AUD does about 2.3 times as much of the correcting. AUD is the follower; NZD sits closer to the anchor.","do":[{"hide":"z6"},{"note":"ratio","x":455,"y":600,"text":"AUD ≈ 2.3× the correcting","size":21,"anchor":"middle","tone":"green"},{"pulse":"ay"}]},{"cap":"An extreme case: if NZD's speed were exactly zero, NZD would ignore the gap completely and AUD would do all the work. That is weak exogeneity, a pure anchor.","do":[{"note":"weak","x":300,"y":690,"text":"α_X = 0: X never responds (weak exogeneity)","size":19,"anchor":"middle","tone":"purple"}]},{"cap":"Both speeds zero is impossible for a cointegrated pair: nothing would pull the spread home. The Granger Representation Theorem (Engle and Granger, 1987) says cointegration and error correction are the same fact.","do":[{"box":"zero","x":10,"y":712,"w":280,"h":56,"text":"α_Y = α_X = 0 ?","tone":"red","size":19},{"cross":"zero"}]},{"cap":"And the signs must point home. AUD speed above zero with NZD below zero would push the 50 pips wider every period: that is not error correction at all.","do":[{"box":"sign","x":310,"y":712,"w":280,"h":56,"text":"α_Y > 0, α_X < 0 ?","tone":"red","size":19},{"cross":"sign"}]},{"cap":"So: cointegration tells you there is a leash. The two adjustment speeds tell you who gets pulled, and how hard. That is the first real handle on which price leads.","do":[{"hide":"weak"},{"note":"end","x":300,"y":690,"text":"leash = cointegration · who moves = α_Y vs α_X","size":19,"anchor":"middle","tone":"green"},{"pulse":"leash"}]}]}</script>
+  </div>
+  <!-- WB:institutional_vecm:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -562,6 +668,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative pair trade</div>
+    <h3>You can only fill one leg first</h3>
+    <p>You trade AUD/USD against NZD/USD with a hedge ratio of 1.10. The spread has stretched to 50 pips: AUD is rich against NZD, so the trade is sell AUD/USD and buy 1.10 times as much NZD/USD. Your fitted error-correction model gives \(\alpha_Y = -0.35\) for AUD and \(\alpha_X = +0.15\) for NZD, both checked as significant on a pair that passed a cointegration test. Liquidity is thin and you can only work one leg now; the other has to wait a period. Which leg do you fill first?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="good">Sell AUD/USD first, then buy the NZD/USD leg.<div class="tl-drill-why">AUD is the follower. The model forecasts it to fall about 17.5 pips next period, so waiting on that leg gives away the most. NZD is forecast to rise only about 7.5 pips, so delaying it costs less than half as much.</div></li>
+      <li data-verdict="bad">Buy NZD/USD first, because the anchor is the safe leg to get done.<div class="tl-drill-why">The anchor is exactly the leg you can afford to leave. It is expected to move least. Doing it first leaves the fast-moving AUD leg open while it does most of the correcting without you.</div></li>
+      <li data-verdict="bad">Buy AUD/USD, since its large adjustment speed shows it has momentum.<div class="tl-drill-why">This reads the sign backwards. A negative \(\alpha_Y\) with a positive spread means AUD is forecast to fall, back towards NZD. Buying it bets on the gap widening, which is the opposite of error correction.</div></li>
+      <li data-verdict="ok">Wait until both legs can be filled together.<div class="tl-drill-why">Clean execution, no legging risk. But the forecast says most of the gap closes through AUD next period, so waiting may leave little of the spread to capture.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>The point.</strong> This is an illustrative situation built on the lesson's toy numbers, not a real fit or a real trading day. A plain z-score rule says only that the spread is wide. The error-correction model adds which leg is expected to do the moving, and that is what tells you which leg to protect first. On real data, check that the gap between the two speeds survives its standard errors before acting on it.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -671,6 +790,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="cointegration.html">Cointegration &amp; Statistical Arbitrage</a> <span>· the spread this model reuses as its predictor</span></li>
+        <li><a href="arima-var.html">ARIMA &amp; Vector Autoregression (VAR)</a> <span>· the short-run lag terms in each equation</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-granger-causality.html">Granger Causality &amp; Lead-Lag Analysis</a> <span>· testing whether one price's past predicts the other</span></li><!-- DESK:END -->
+        <!-- DESK:START --><li><a href="institutional-hasbrouck-information-share.html">Hasbrouck Information Share &amp; Price Discovery</a> <span>· the formal version of "who leads" across venues</span></li><!-- DESK:END -->
+        <li><a href="ou-mean-reversion.html">The Ornstein-Uhlenbeck Process &amp; Mean Reversion</a> <span>· turning an adjustment speed into a half-life</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a wide spread tells you to trade; the adjustment speeds tell you which leg will move, and which price the other one follows.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
     <a href="institutional-granger-causality.html">Granger Causality &amp; Lead-Lag Analysis →</a>
@@ -700,7 +839,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var DEFAULTS = { aY: -0.35, aX: 0.15, Z: 0.0050 };
@@ -771,5 +911,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

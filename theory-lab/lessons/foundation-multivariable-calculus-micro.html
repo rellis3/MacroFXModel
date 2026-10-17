@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Partial Derivatives &amp; Multivariable Calculus — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -228,7 +229,19 @@
       <p class="sl-p">A trader reading "Delta 0.60, Gamma 0.04, Theta −0.03, Vega 0.12" off a screen is reading four entries from one gradient-and-Hessian structure, evaluated at today's spot, time, and volatility — not four independent facts that happen to share a Greek-letter naming convention. Summing each Greek's own contribution for a joint move in spot, time, <em>and</em> volatility at once is exactly what the multivariable chain rule does: add up the effect flowing through every channel, rather than picking just one.</p>
     </section>
 
+    <!-- WB:foundation_multivariable_calculus-deck:START -->
     <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Partial derivatives: two dials, freeze one, turn the other</h2>
+      <!-- WB:foundation_multivariable_calculus:START -->
+      <div class="wb" data-title="Partial derivatives: two dials, freeze one, turn the other">
+        <script type="application/json">{"w":600,"h":700,"intro":"One value, two dials. Freeze one, turn the other, and read off the slope. Numbers from the lesson's worked example. Press play, or step through.","steps":[{"cap":"A dividend-paying asset's forward value depends on two things at once: the spot price S and the horizon t. V(S, t) = S·e^(−0.03t). At S = 100 and t = 2 years, V = 94.18.","do":[{"box":"fn","x":10,"y":10,"w":580,"h":76,"text":"V(S, t) = S · e^(−0.03 t)\nat S = 100, t = 2:  V = 94.18","tone":"blue","size":20}]},{"cap":"First dial: freeze the time at 2 years and turn only the spot. The value moves along a straight line.","do":[{"chart":"ca","x":10,"y":100,"w":285,"h":260,"title":"Turn S, freeze t = 2","xd":[78,122],"yd":[70,118],"yt":[[80,"80"],[100,"100"]],"xt":[[80,"80"],[100,"100"],[120,"120"]],"pl":44,"pr":12},{"series":"ls","chart":"ca","pts":[[80,75.341],[120,113.012]],"tone":"purple","ms":1000},{"dot":"pa","chart":"ca","at":[100,94.18],"text":"94.18","tone":"blue","dx":-10,"dy":-12,"anchor":"end"}]},{"cap":"Its slope is the partial derivative with respect to S: e^(−0.06) = 0.9418. A $1 rise in spot, with time frozen, adds about $0.94.","do":[{"note":"sa","chart":"ca","at":[80.5,111],"text":"∂V/∂S = 0.9418","tone":"amber","size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"Second dial: freeze the spot at 100 and turn only the time. Now the value falls as the horizon lengthens, because more dividends are given up.","do":[{"chart":"cb","x":305,"y":100,"w":285,"h":260,"title":"Turn t, freeze S = 100","xd":[-0.3,10.3],"yd":[70,104],"yt":[[80,"80"],[100,"100"]],"xt":[[0,"0"],[2,"2"],[5,"5"],[10,"10 yrs"]],"pl":44,"pr":16},{"series":"ct","chart":"cb","pts":[[0.0,100.0],[0.5,98.511],[1.0,97.045],[1.5,95.6],[2.0,94.176],[2.5,92.774],[3.0,91.393],[3.5,90.032],[4.0,88.692],[4.5,87.372],[5.0,86.071],[5.5,84.789],[6.0,83.527],[6.5,82.283],[7.0,81.058],[7.5,79.852],[8.0,78.663],[8.5,77.492],[9.0,76.338],[9.5,75.201],[10.0,74.082]],"tone":"purple","ms":1200},{"dot":"pb","chart":"cb","at":[2,94.18],"text":"94.18","tone":"blue","dx":10,"dy":-10,"anchor":"start"}]},{"cap":"Its slope at 2 years is the partial derivative with respect to t: −0.03 × 100 × 0.9418 = −2.825. Each extra year, with spot frozen, takes about $2.83 off.","do":[{"series":"tg","chart":"cb","pts":[[0,99.83],[4.5,87.118]],"tone":"green","dash":true,"ms":700},{"note":"sb","chart":"cb","at":[5,98],"text":"∂V/∂t = −2.825","tone":"green","size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"Same function, two different slopes, one per dial. Stack them into one list and you have the gradient: ∇V = (0.9418, −2.825).","do":[{"hide":"fn"},{"box":"gr","x":10,"y":10,"w":580,"h":76,"text":"gradient  ∇V = (0.9418, −2.825)\none slope per input, the others frozen","tone":"green","size":20}]},{"cap":"On any surface the gradient points the way it climbs fastest. Take an illustrative bowl, f = x² + y², at the point (2, 1): its gradient (4, 2) points straight up the side.","do":[{"chart":"bw","x":10,"y":374,"w":300,"h":316,"title":"Bowl f = x² + y² (illustrative)","xd":[-2.6,3.6],"yd":[-2.6,2.6],"yt":[[-2,"−2"],[0,"0"],[2,"2"]],"xt":[[-2,"−2"],[0,"0"],[2,"2"]],"zero":true,"pl":34,"pr":10},{"series":"r0","chart":"bw","pts":[[0.75,0.0],[0.739,0.13],[0.705,0.257],[0.65,0.375],[0.575,0.482],[0.482,0.575],[0.375,0.65],[0.257,0.705],[0.13,0.739],[0.0,0.75],[-0.13,0.739],[-0.257,0.705],[-0.375,0.65],[-0.482,0.575],[-0.575,0.482],[-0.65,0.375],[-0.705,0.257],[-0.739,0.13],[-0.75,0.0],[-0.739,-0.13],[-0.705,-0.257],[-0.65,-0.375],[-0.575,-0.482],[-0.482,-0.575],[-0.375,-0.65],[-0.257,-0.705],[-0.13,-0.739],[-0.0,-0.75],[0.13,-0.739],[0.257,-0.705],[0.375,-0.65],[0.482,-0.575],[0.575,-0.482],[0.65,-0.375],[0.705,-0.257],[0.739,-0.13],[0.75,-0.0]],"tone":null,"dash":true,"ms":400},{"series":"r1","chart":"bw","pts":[[1.5,0.0],[1.477,0.26],[1.41,0.513],[1.299,0.75],[1.149,0.964],[0.964,1.149],[0.75,1.299],[0.513,1.41],[0.26,1.477],[0.0,1.5],[-0.26,1.477],[-0.513,1.41],[-0.75,1.299],[-0.964,1.149],[-1.149,0.964],[-1.299,0.75],[-1.41,0.513],[-1.477,0.26],[-1.5,0.0],[-1.477,-0.26],[-1.41,-0.513],[-1.299,-0.75],[-1.149,-0.964],[-0.964,-1.149],[-0.75,-1.299],[-0.513,-1.41],[-0.26,-1.477],[-0.0,-1.5],[0.26,-1.477],[0.513,-1.41],[0.75,-1.299],[0.964,-1.149],[1.149,-0.964],[1.299,-0.75],[1.41,-0.513],[1.477,-0.26],[1.5,-0.0]],"tone":null,"dash":true,"ms":400},{"series":"r2","chart":"bw","pts":[[2.25,0.0],[2.216,0.391],[2.114,0.77],[1.949,1.125],[1.724,1.446],[1.446,1.724],[1.125,1.949],[0.77,2.114],[0.391,2.216],[0.0,2.25],[-0.391,2.216],[-0.77,2.114],[-1.125,1.949],[-1.446,1.724],[-1.724,1.446],[-1.949,1.125],[-2.114,0.77],[-2.216,0.391],[-2.25,0.0],[-2.216,-0.391],[-2.114,-0.77],[-1.949,-1.125],[-1.724,-1.446],[-1.446,-1.724],[-1.125,-1.949],[-0.77,-2.114],[-0.391,-2.216],[-0.0,-2.25],[0.391,-2.216],[0.77,-2.114],[1.125,-1.949],[1.446,-1.724],[1.724,-1.446],[1.949,-1.125],[2.114,-0.77],[2.216,-0.391],[2.25,-0.0]],"tone":null,"dash":true,"ms":400},{"dot":"p0","chart":"bw","at":[2.0,1.0],"text":"(2, 1)","tone":"purple","dx":12,"dy":12,"anchor":"start"},{"series":"up","chart":"bw","pts":[[2.0,1.0],[2.45,1.225]],"tone":"red","ms":500},{"note":"upn","chart":"bw","at":[2.45,1.225],"text":"uphill","tone":"red","size":16,"anchor":"start","dx":4,"dy":-10}]},{"cap":"Walk the opposite way, −∇f, and you go downhill fastest. Repeat small steps and you reach the bottom. That is gradient descent, the way computers fit models.","do":[{"series":"dn","chart":"bw","pts":[[2.0,1.0],[1.0,0.5],[0.5,0.25],[0.25,0.125],[0.125,0.0625]],"tone":"green","ms":1200},{"dot":"d1","chart":"bw","at":[1.0,0.5],"text":"","tone":"green"},{"dot":"d2","chart":"bw","at":[0.5,0.25],"text":"","tone":"green"},{"dot":"d3","chart":"bw","at":[0.25,0.125],"text":"","tone":"green"},{"dot":"d4","chart":"bw","at":[0.125,0.0625],"text":"","tone":"green"},{"note":"dnn","chart":"bw","at":[0,0],"text":"bottom","tone":"green","size":16,"anchor":"middle","dx":0,"dy":24}]},{"cap":"An option's value has more dials: spot, time, volatility, rates. Each Greek is one partial derivative of that one value. Delta turns spot, Theta turns time, Vega turns volatility.","do":[{"box":"dl","x":330,"y":374,"w":260,"h":70,"text":"Delta = ∂V/∂S","tone":"blue","size":19},{"box":"th","x":330,"y":456,"w":260,"h":70,"text":"Theta = ∂V/∂t","tone":"green","size":19},{"box":"vg","x":330,"y":538,"w":260,"h":70,"text":"Vega = ∂V/∂σ","tone":"amber","size":19}]},{"cap":"Gamma is a slope of a slope: the second partial derivative in the spot direction, ∂²V/∂S². And when several dials move at once, you add the contribution through each one.","do":[{"box":"gm","x":330,"y":620,"w":260,"h":70,"text":"Gamma = ∂²V/∂S²","tone":"purple","size":19}]}]}</script>
+      </div>
+      <!-- WB:foundation_multivariable_calculus:END -->
+    </section>
+    <!-- WB:foundation_multivariable_calculus-deck:END -->
+
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
@@ -240,7 +253,7 @@
       <p class="sl-p">The habit worth building: whenever a model has more than one input, the honest first question is "sensitivity with respect to <em>which</em> variable, holding <em>what else</em> fixed?" A bare word like "sensitivity" is ambiguous the moment more than one variable is in play.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Reading one Greek alone vs. reading the whole structure</h2>
       <p class="sl-sub">Same risk screen, two very different habits of reading it.</p>
@@ -270,7 +283,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -321,7 +334,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -430,5 +443,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

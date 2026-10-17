@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Barra-Style Risk Models — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -62,7 +63,19 @@
       </div>
     </section>
 
+    <!-- WB:institutional_barra_risk_models-deck:START -->
     <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">A factor risk model, built and used</h2>
+      <!-- WB:institutional_barra_risk_models:START -->
+      <div class="wb" data-title="A factor risk model, built and used">
+        <script type="application/json">{"w":600,"h":640,"intro":"How a commercial risk model is put together, then the lesson's two-factor toy model run on two positions. Press play, or step through.","steps":[{"cap":"Start of the day: every stock already has known scores. Its size, its momentum, its value, and a 0 or 1 for each industry it belongs to. These are the exposures, X.","do":[{"box":"X","x":15,"y":20,"w":160,"h":84,"text":"exposures X","tone":"blue","sub":"known in advance","size":18}]},{"cap":"End of the day: one regression across all the stocks asks how much each score paid today. Those slopes are the factor returns, f. It is the Fama-MacBeth second stage, run with dozens of factors.","do":[{"box":"f","x":220,"y":20,"w":160,"h":84,"text":"factor returns f","tone":"purple","sub":"daily regression","size":18},{"arrow":["X","f"]}]},{"cap":"Whatever the factors do not explain is each stock's specific return, u. The model assumes it does not correlate across stocks.","do":[{"box":"u","x":425,"y":20,"w":160,"h":84,"text":"specific u","tone":"red","sub":"left over","size":18},{"arrow":["f","u"]}]},{"cap":"Collect the factor returns day after day and you get how the factors move together: the factor covariance F. In the lesson's toy model, momentum variance 0.04, value 0.02, and covariance 0.01.","do":[{"box":"F","x":20,"y":150,"w":270,"h":84,"text":"factor covariance F\n0.04 · 0.01 · 0.02","tone":"purple","size":19},{"arrow":["f","F"]}]},{"cap":"Each stock's leftover variance goes on a diagonal, D. Because specific returns are uncorrelated, nothing sits off the diagonal.","do":[{"box":"D","x":310,"y":150,"w":270,"h":84,"text":"specific variances D\ndiagonal only","tone":"red","size":19},{"arrow":["u","D"]}]},{"cap":"That is what the vendor sells: X, F and D, refreshed on a schedule, with F cleaned up so an optimiser can invert it. Risk = X F Xᵀ + D.","do":[{"note":"sig","x":300,"y":270,"text":"risk = X F Xᵀ + D","size":22,"anchor":"middle","tone":"green"}]},{"cap":"Now a position: 1.00 unit of momentum exposure and 0.50 of value. Its momentum term is 1.00² × 0.04 = 0.0400.","do":[{"chart":"ca","x":10,"y":290,"w":285,"h":220,"title":"A: mom 1.00, value 0.50","xd":[0.4,4.6],"yd":[-0.014,0.046],"yt":[[0,"0"],[0.02,".02"],[0.04,".04"]],"xt":[[1,"mom"],[2,"cross"],[3,"value"],[4,"spec"]],"zero":true,"pl":40,"pr":6},{"bars":"ba1","chart":"ca","data":[[1,0.04,"0.0400","blue"]],"bw":34,"ms":900}]},{"cap":"The cross term is 2 × 1.00 × 0.50 × 0.01 = 0.0100, and the value term is 0.50² × 0.02 = 0.0050. Factor variance: 0.0550.","do":[{"bars":"ba2","chart":"ca","data":[[2,0.01,"0.0100","purple"],[3,0.005,"0.0050","blue"]],"bw":34,"ms":900}]},{"cap":"Add specific variance of 0.0100. Total 0.0650, of which 84.6% is factor risk. This position is mostly a factor bet.","do":[{"bars":"ba3","chart":"ca","data":[[4,0.01,"0.0100","red"]],"bw":34,"ms":900},{"box":"ra","x":10,"y":524,"w":285,"h":64,"text":"total 0.0650\n84.6% factor","tone":"blue","size":19}]},{"cap":"A second position: 0.50 momentum, −0.30 value, specific variance 0.0200. The exposures partly offset, so the cross term is negative. Factor variance is only 0.0088 of a 0.0288 total: 30.6% factor.","do":[{"chart":"cb","x":305,"y":290,"w":285,"h":220,"title":"B: mom 0.50, value −0.30","xd":[0.4,4.6],"yd":[-0.014,0.046],"yt":[[0,"0"],[0.02,".02"],[0.04,".04"]],"xt":[[1,"mom"],[2,"cross"],[3,"value"],[4,"spec"]],"zero":true,"pl":40,"pr":6},{"bars":"bb","chart":"cb","data":[[1,0.01,"0.0100","blue"],[2,-0.003,"−0.0030","purple"],[3,0.0018,"0.0018","blue"],[4,0.02,"0.0200","red"]],"bw":34,"ms":900},{"box":"rb","x":305,"y":524,"w":285,"h":64,"text":"total 0.0288\n30.6% factor","tone":"red","size":19}]},{"cap":"That split is the daily risk report. Use it to see which bets you are really running and to set limits in the optimiser. Never as alpha: everyone with the subscription sees the same scores.","do":[{"note":"end","x":300,"y":618,"text":"a risk model, not an alpha model","size":20,"anchor":"middle","tone":"amber"},{"pulse":"ra"},{"pulse":"rb"}]}]}</script>
+      </div>
+      <!-- WB:institutional_barra_risk_models:END -->
+    </section>
+    <!-- WB:institutional_barra_risk_models-deck:END -->
+
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The same two-stage move as Fama-MacBeth, at far larger scale</h2>
       <div class="sl-compare">
@@ -78,7 +91,7 @@
       <div class="sl-quote">Same underlying mechanics, same two-stage idea — known exposures first, cross-sectional regression second. What changes is scale (dozens of factors instead of one or a handful) and purpose, covered next.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">What makes it genuinely different — not just "more factors"</h2>
       <div class="sl-icard-grid">
@@ -93,7 +106,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Four factor models, side by side</h2>
       <p class="sl-sub">This category's own progression, closing the loop.</p>
@@ -121,7 +134,7 @@
       <p class="sl-p">The first three answer <em>why</em> expected returns differ across assets, each relaxing the last one's assumptions. A Barra-style model isn't a further step on that same research path — it's a different project, engineered for a production risk need rather than an asset-pricing hypothesis.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">What institutions actually use these for</h2>
       <div class="sl-icard-grid">
@@ -132,7 +145,7 @@
       <div class="sl-quote">Nobody licenses a Barra-style model to find a trading signal — the exposures it publishes are widely-known, already-priced-in descriptive statistics, not proprietary alpha. Every genuine use case here is downstream risk-management workflow.</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">One portfolio's total risk, decomposed</h2>
       <p class="sl-sub">The kind of chart a Barra-style report hands a portfolio manager after every rebalance — illustrative, not live data.</p>
@@ -166,7 +179,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Drag the exposure, watch the split move</h2>
       <p class="sl-sub">Fixed toy factor covariance matrix: F₁₁=0.0400, F₁₂=F₂₁=0.0100, F₂₂=0.0200. Value exposure held at 0.50, specific variance at 0.0100.</p>
@@ -193,7 +206,7 @@
       <p class="sl-p">Push momentum exposure toward zero and the factor-risk share shrinks fast, since the quadratic form x᷀Fx falls with the square of the exposure — specific risk (fixed at 0.0100) starts dominating a small, low-conviction position, exactly as it should.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The full 2-factor decomposition, live</h2>
       <p class="sl-sub">Same toy matrix as the full lesson. Change any exposure or the specific variance.</p>
@@ -218,7 +231,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What this curriculum does instead — same logic, no equity taxonomy</h2>
       <p class="sl-sub">No commercial Barra-for-currencies exists in wide use. This curriculum already has the underlying idea, applied honestly to FX/gold.</p>
@@ -230,7 +243,7 @@
       <div class="sl-quote">None of these three claims to be a Barra-equivalent, and each says so explicitly in its own takeaways. What they show is that this curriculum already has the right idea, applied to the universe it actually covers — not a gap this lesson needs to paper over.</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where this gets misused</h2>
       <div class="sl-compare">
@@ -253,7 +266,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -304,7 +317,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -441,5 +454,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

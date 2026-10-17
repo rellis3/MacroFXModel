@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Swap Curves &amp; OIS Discounting — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -208,7 +209,19 @@
       </div>
     </section>
 
+    <!-- WB:swap_curves_ois-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">A swap, its fair rate, and the curve that changed</h2>
+      <!-- WB:swap_curves_ois:START -->
+      <div class="wb" data-title="A swap, its fair rate, and the curve that changed">
+        <script type="application/json">{"w":600,"h":790,"intro":"Two sides swap fixed for floating on money that never moves. Value each leg, find the fair rate, then ask the question 2008 forced: discount at which rate? Press play, or step through.","steps":[{"cap":"You and a dealer agree a 2-year swap on $10 million. The $10 million itself never changes hands. Only the difference between two rates does, once a year.","do":[{"icon":"you","name":"person","x":40,"y":64,"s":0.75,"tone":"amber","label":"you","lsize":17},{"icon":"dlr","name":"bank","x":470,"y":64,"s":0.8,"tone":"blue","label":"dealer","sym":"$","lsize":17},{"box":"notional","x":205,"y":80,"w":190,"h":58,"text":"$10m notional","sub":"never exchanged","size":18}]},{"cap":"Your side: pay a fixed 3.2% each year, $320,000. The dealer's side: pay you the floating rate, whatever it resets to.","do":[{"arrow":["you","dlr"],"label":"fixed 3.2% = $320,000 a year","tone":"amber","bend":-45,"size":16},{"arrow":["dlr","you"],"label":"floating rate","tone":"blue","bend":-45,"size":16}]},{"cap":"To value each leg, discount it. Take a flat 3% OIS curve: a dollar in one year is worth 0.9709 today, a dollar in two years 0.9426.","do":[{"note":"df","x":300,"y":252,"text":"DF(1) = 1 ÷ 1.03 = 0.9709    DF(2) = 1 ÷ 1.03² = 0.9426","size":18,"anchor":"middle","tone":"purple"}]},{"cap":"The floating leg is a floating-rate note minus the principal it never repays: $10m × (1 − 0.9426) = $574,041.","do":[{"chart":"pv","x":10,"y":262,"w":360,"h":280,"title":"Present value of each leg ($k)","xd":[0.4,2.6],"yd":[0,130],"yt":[[0,"500"],[50,"550"],[100,"600"]],"xt":[[1,"floating"],[2,"fixed 3.2%"]],"pl":50},{"bars":"bfl","chart":"pv","data":[[1,74.0,"$574,041","blue"]],"bw":70,"ms":900}]},{"cap":"The fixed leg is $320,000 a year, discounted: 3.2% × $10m × 1.9135 = $612,310. Bigger than the floating leg.","do":[{"bars":"bfx","chart":"pv","data":[[2,112.3,"$612,310","amber"]],"bw":70,"ms":900}]},{"cap":"The par rate is the fixed rate that makes the legs equal: 3.00% here. You are paying 20bp above it, so the swap is worth −$38,269 to you. (Bars start at $500k.)","do":[{"box":"val","x":390,"y":300,"w":200,"h":100,"text":"par 3.00%\nyou pay 3.2%\n→ −$38,269","tone":"red","size":19}]},{"cap":"But which curve should the discount factors come from? For decades it was LIBOR: a survey of what panel banks said they could borrow at, unsecured. It carries bank credit risk.","do":[{"dim":"pv"},{"dim":"bfl"},{"dim":"bfx"},{"dim":"val"},{"hide":"df"},{"box":"libor","x":10,"y":562,"w":280,"h":70,"text":"LIBOR: unsecured,\nbank risk, a survey","tone":"red","size":18},{"box":"ois","x":310,"y":562,"w":280,"h":70,"text":"OIS: overnight rate,\nwhat collateral earns","tone":"green","size":18}]},{"cap":"In calm times the gap was tiny, about 8 to 10 basis points. After Lehman failed it reached roughly 364bp in October 2008. A collateralised swap carries almost none of that bank risk.","do":[{"chart":"sp","x":10,"y":646,"w":280,"h":140,"title":"LIBOR-OIS spread (bp)","xd":[0.4,2.6],"yd":[0,470],"yt":[[0,"0"],[364,"364"]],"xt":[[1,"early 2007"],[2,"Oct 2008"]],"pl":44,"pt":40},{"bars":"spb","chart":"sp","data":[[1,9,"~9","blue"],[2,364,"~364","red"]],"bw":56,"ms":1100}]},{"cap":"So desks split the job. OIS discounts every cash flow to today. A separate forecast curve says what the floating leg will pay. Two curves where there used to be one.","do":[{"pulse":"ois"},{"note":"split","x":450,"y":680,"text":"OIS discounts","size":19,"anchor":"middle","tone":"green"},{"note":"split2","x":450,"y":712,"text":"forecast curve projects","size":19,"anchor":"middle","tone":"blue"}]},{"cap":"And the survey had been gamed. Some banks submitted low rates to look healthy, and traders asked for fixes that suited them. Barclays paid about $450m in June 2012, UBS about $1.5bn that December.","do":[{"cross":"libor"}]},{"cap":"LIBOR was replaced by SOFR, built from real overnight repo trades. The main US dollar LIBOR panel ended on 30 June 2023. Discount at what your collateral actually earns.","do":[{"note":"sofr","x":450,"y":760,"text":"SOFR: real trades, not a survey","size":18,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:swap_curves_ois:END -->
+    </section>
+    <!-- WB:swap_curves_ois-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Two discounting worlds, side by side</h2>
       <p class="sl-sub">The same swap, priced under the conventions that governed it before 2008 versus the conventions that govern it today.</p>
@@ -230,7 +243,7 @@
       <p class="sl-p">That split is what the industry calls the <strong>multi-curve framework</strong>. It only exists because the single-curve shortcut broke: once collateralized trades were discounted at OIS specifically, discounting and forecasting stopped being the same job answered by the same number.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The LIBOR-to-SOFR transition</h2>
       <p class="sl-sub">Two separate problems converged on LIBOR — a discounting flaw, and a benchmark that could be gamed.</p>
@@ -243,7 +256,7 @@
       <div class="sl-quote">For a rates desk, this meant years of running two curve worlds in parallel — legacy LIBOR trades on the old curve until they matured or converted, new trades on SOFR — on top of the OIS-vs-forecast-curve split already covered.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">LIBOR: the rate that was an estimate</h2>
       <div class="sl-callout amber">
@@ -263,7 +276,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11<!-- DESK:START --> · Tested here<!-- DESK:END --></div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and the verdict<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: the funding spread is a real-time stress gauge. Its SOFR-era form: SOFR above the Fed's floor, or the SRF being drawn.</p>
@@ -276,7 +289,7 @@
       <div class="sl-quote">The single-curve shortcut assumes the floating index is a near risk-free <strong>market price</strong>. LIBOR was a credit-risky survey. SOFR fixes both, but has its own failure mode, plumbing: 5.25% on 17 September 2019.<!-- DESK:START --> And the desk's sample has no 2008-style banking crisis in it.<!-- DESK:END --></div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -327,7 +340,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -473,5 +486,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

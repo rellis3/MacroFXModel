@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Market Impact Models &amp; Almgren-Chriss — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -311,7 +312,19 @@
       </div>
     </section>
 
+    <!-- WB:market_impact_almgren_chriss-deck:START -->
     <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">How fast to sell, alone and in a crowd</h2>
+      <!-- WB:market_impact_almgren_chriss:START -->
+      <div class="wb" data-title="How fast to sell, alone and in a crowd">
+        <script type="application/json">{"w":600,"h":740,"intro":"A big order, one trading day, and a dial for how much you hate waiting. Then what happens when several sellers share the same exit. The lesson's own numbers. Press play, or step through.","steps":[{"cap":"You have to sell a position far bigger than the visible book, within one trading day. There are two ways to get hurt.","do":[{"icon":"pos","name":"cash","x":250,"y":10,"s":0.9,"tone":"blue","label":"a big order to sell","sym":"$","lsize":17}]},{"cap":"Sell it all at once and you walk deep into the book, paying a big, predictable price for immediacy: impact cost.","do":[{"icon":"fast","name":"rocket","x":30,"y":10,"s":0.8,"tone":"red","label":"all at once:\nimpact cost","lsize":17},{"arrow":["pos","fast"],"tone":"red"}]},{"cap":"Sell a sliver at a time all day and each sale barely moves the price, but you hold the rest the whole time, exposed to whatever the market does: timing risk.","do":[{"icon":"slow","name":"clock","x":480,"y":10,"s":0.8,"tone":"amber","label":"slowly:\ntiming risk","lsize":17},{"arrow":["pos","slow"],"tone":"amber"}]},{"cap":"How big is impact? Studies find it grows with the square root of order size against daily volume. At a quarter of a day's volume that is about 100 bps, against about 71 on a straight line through the same end point. Small orders cost more per unit than a straight line suggests.","do":[{"chart":"sq","x":10,"y":150,"w":285,"h":240,"title":"Impact (bps) vs size / ADV","xd":[0,0.5],"yd":[0,160],"yt":[[0,"0"],[100,"100"]],"xt":[[0,"0"],[0.25,"0.25"],[0.5,"0.5"]],"pl":44},{"series":"sqr","chart":"sq","pts":[[0.0,0.0],[0.025,31.6],[0.05,44.7],[0.075,54.8],[0.1,63.2],[0.125,70.7],[0.15,77.5],[0.175,83.7],[0.2,89.4],[0.225,94.9],[0.25,100.0],[0.275,104.9],[0.3,109.5],[0.325,114.0],[0.35,118.3],[0.375,122.5],[0.4,126.5],[0.425,130.4],[0.45,134.2],[0.475,137.8],[0.5,141.4]],"tone":"blue","ms":1100},{"series":"lin","chart":"sq","pts":[[0,0],[0.5,141.4]],"tone":null,"dash":true,"ms":500},{"dot":"s100","chart":"sq","at":[0.25,100],"text":"100","tone":"blue","dy":-16},{"dot":"s71","chart":"sq","at":[0.25,70.7],"text":"71","tone":"chalk","dx":10,"dy":10,"anchor":"start"}]},{"cap":"Almgren and Chriss put both costs in one sum: an impact cost that grows with the square of your trading speed, plus a risk penalty that grows with the inventory you still hold, weighted by your risk aversion λ. Then they find the schedule that makes the total smallest.","do":[{"note":"obj","x":447,"y":500,"text":"minimise ½η·(speed)²\n+ ½λσ²·(left to sell)²","size":16,"anchor":"middle","tone":"purple"}]},{"cap":"With no risk aversion, λ = 0, the answer is a straight line: sell at a constant rate all day. That is TWAP. Half the day gone, half the order left.","do":[{"chart":"tr","x":305,"y":150,"w":285,"h":240,"title":"Share of order left","xd":[0,1],"yd":[0,1.05],"yt":[[0,"0"],[0.5,"50%"],[1,"100%"]],"xt":[[0,"0"],[0.5,"half day"],[1,"close"]],"pl":50},{"series":"tw","chart":"tr","pts":[[0,1],[1,0]],"tone":null,"dash":true,"ms":800,"label":"λ = 0","lat":[0.72,0.28],"ldx":8,"ldy":-4,"lanchor":"start"},{"dot":"h0","chart":"tr","at":[0.5,0.5],"text":"50%","tone":"chalk","dx":10,"dy":-10,"anchor":"start"}]},{"cap":"With 2% daily volatility (σ² = 0.0004), impact coefficient η = 0.0012 and risk aversion λ = 27, the shape number is κ = √(27 × 0.0004 ÷ 0.0012) = √9 = 3.","do":[{"box":"kap","x":305,"y":400,"w":285,"h":64,"text":"κ = √(λσ²/η)","tone":"purple","sub":"= √9 = 3","size":19}]},{"cap":"At κ = 3 the schedule front-loads: 46.8% left after a quarter of the day, 21.3% at halfway, 8.2% at three quarters. More impact cost, paid to stop worrying sooner.","do":[{"series":"k3","chart":"tr","pts":[[0.0,1.0],[0.05,0.86],[0.1,0.7393],[0.15,0.6353],[0.2,0.5456],[0.25,0.4683],[0.3,0.4015],[0.35,0.3437],[0.4,0.2937],[0.45,0.2503],[0.5,0.2125],[0.55,0.1796],[0.6,0.1507],[0.65,0.1252],[0.7,0.1025],[0.75,0.0821],[0.8,0.0636],[0.85,0.0465],[0.9,0.0304],[0.95,0.015],[1.0,0.0]],"tone":"green","ms":1300,"label":"κ = 3","lat":[0.03,0.18],"ldx":0,"ldy":0,"lanchor":"start"},{"dot":"h3","chart":"tr","at":[0.5,0.2125],"text":"21.3%","tone":"green","dy":-14}]},{"cap":"That works when you are the only seller. March 2021: Archegos could not meet its margin calls, and several prime brokers held big blocks of the same few stocks. Talks on an orderly joint wind-down failed.","do":[{"icon":"b1","name":"bank","x":14,"y":410,"s":0.55,"tone":"red"},{"icon":"b2","name":"bank","x":84,"y":410,"s":0.55,"tone":"red"},{"icon":"b3","name":"bank","x":154,"y":410,"s":0.55,"tone":"red"},{"icon":"b4","name":"bank","x":224,"y":410,"s":0.55,"tone":"red"},{"note":"same","x":150,"y":492,"text":"same stocks, one exit","size":18,"anchor":"middle","tone":"red"}]},{"cap":"Some banks sold billions in large blocks on Friday 26 March, early and at steep discounts. Goldman Sachs, Deutsche Bank and Wells Fargo later reported no material loss.","do":[{"box":"fast2","x":10,"y":510,"w":280,"h":80,"text":"sold early, in size","tone":"green","sub":"no material loss","size":18}]},{"cap":"The slower banks sold into prices already pushed down by everyone else. Credit Suisse lost about $5.5 billion and Nomura about $2.9 billion. With rival sellers, timing risk is not noise: it is other people's impact on what you still hold.","do":[{"chart":"loss","x":305,"y":560,"w":285,"h":170,"title":"Slow sellers' losses ($bn)","xd":[0.4,2.6],"yd":[0,6.5],"yt":[[0,"0"],[5,"5"]],"xt":[[1,"Credit Suisse"],[2,"Nomura"]],"pl":40},{"bars":"lb","chart":"loss","data":[[1,5.5,"≈ 5.5","red"],[2,2.9,"≈ 2.9","red"]],"bw":60,"ms":1100},{"box":"rule","x":10,"y":610,"w":280,"h":120,"text":"alone: pick your κ\nin a crowd: race\nfor the exit","tone":"amber","size":19}]}]}</script>
+      </div>
+      <!-- WB:market_impact_almgren_chriss:END -->
+    </section>
+    <!-- WB:market_impact_almgren_chriss-deck:END -->
+
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what's untested here<!-- DESK:END --></h2>
       <div class="sl-callout purple">
@@ -326,7 +339,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -377,7 +390,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -494,5 +507,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

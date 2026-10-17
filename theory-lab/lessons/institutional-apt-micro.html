@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Arbitrage Pricing Theory — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -114,7 +115,19 @@
       </div>
     </section>
 
+    <!-- WB:institutional_apt-deck:START -->
     <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">APT: a free lunch, and why it closes</h2>
+      <!-- WB:institutional_apt:START -->
+      <div class="wb" data-title="APT: a free lunch, and why it closes">
+        <script type="application/json">{"w":600,"h":580,"intro":"Two portfolios with the same risk and different prices, and what arbitrage does about it. Then the lesson's two-factor toy model. Press play, or step through.","steps":[{"cap":"Two big, well-diversified portfolios, P and Q. Each has exactly the same exposure to the shared risk factor: a beta of 1.0.","do":[{"box":"P","x":20,"y":20,"w":200,"h":84,"text":"P · beta 1.0","tone":"green","sub":"expected ?","size":20},{"box":"Q","x":380,"y":20,"w":200,"h":84,"text":"Q · beta 1.0","tone":"amber","sub":"expected ?","size":20}]},{"cap":"Same risk, different price tags. P is priced to return 8% a year, Q only 6%.","do":[{"sub":"P","text":"expected 8%"},{"sub":"Q","text":"expected 6%"},{"note":"gap","x":300,"y":140,"text":"same beta, 2-point gap","size":19,"anchor":"middle","tone":"red"}]},{"cap":"So buy $1 of P and short $1 of Q. The two legs are the same size, so the position costs nothing to put on.","do":[{"chip":"long","x":70,"y":176,"text":"long $1 of P","tone":"green"},{"chip":"short","x":430,"y":176,"text":"short $1 of Q","tone":"amber"},{"note":"cost","x":300,"y":230,"text":"net cost: $0","size":19,"anchor":"middle","tone":"blue"}]},{"cap":"The factor exposures cancel: +1.0 from P, −1.0 from Q, net zero. And because both portfolios are spread over many names, their stock-specific noise has already averaged away.","do":[{"note":"exp","x":300,"y":262,"text":"net exposure: 1.0 − 1.0 = 0","size":19,"anchor":"middle","tone":"blue"},{"note":"noise","x":300,"y":292,"text":"stock-specific noise: diversified away","size":17,"anchor":"middle","tone":"blue"}]},{"cap":"What is left: 8% − 6% = 2% a year, for no money and no risk. A free lunch.","do":[{"icon":"coin","name":"coin","x":262,"y":302,"s":0.6,"tone":"green","label":"+2%","sym":"$","lsize":19}]},{"cap":"A free lunch does not survive. Arbitrageurs pile in, buying P and selling Q. Buying pushes P's price up and its expected return down; selling does the reverse to Q, until the gap closes.","do":[{"icon":"crowd","name":"crowd","x":255,"y":6,"s":0.9,"tone":"red","label":"arbitrageurs","lsize":17},{"sub":"P","text":"expected ↓"},{"sub":"Q","text":"expected ↑"},{"hide":"gap"},{"note":"closed","x":300,"y":140,"text":"gap closes: same beta, same return","size":19,"anchor":"middle","tone":"green"},{"dim":"coin"}]},{"cap":"So the rule is: the same exposure must earn the same expected return. Expected return = the risk-free rate, plus each exposure times that risk's price. APT never says which risks.","do":[{"hide":"long"},{"hide":"short"},{"hide":"cost"},{"hide":"exp"},{"hide":"noise"},{"hide":"coin"},{"box":"eq","x":20,"y":270,"w":560,"h":64,"text":"expected return ≈ R_f + Σ beta × price of that risk","tone":"purple","size":20}]},{"cap":"The lesson's toy version has two factors: growth surprises and inflation surprises. The risk-free rate is 3%. Growth risk pays +3% per unit. Inflation risk pays −1.5%, because assets that rise on inflation surprises are a hedge.","do":[{"note":"prices","x":300,"y":362,"text":"R_f 3%  ·  growth +3%  ·  inflation −1.5%","size":19,"anchor":"middle","tone":"blue"}]},{"cap":"Asset X (growth beta 1.5, inflation beta 0.5): 3 + 4.5 − 0.75 = 6.75%. Asset Y (0.8, −0.3): 3 + 2.4 + 0.45 = 5.85%. Asset Z (2.0, 1.0): 3 + 6 − 1.5 = 7.5%.","do":[{"box":"aX","x":20,"y":384,"w":170,"h":92,"text":"Asset X\n3 + 4.5 − 0.75","tone":"green","sub":"3%","size":18},{"box":"aY","x":215,"y":384,"w":170,"h":92,"text":"Asset Y\n3 + 2.4 + 0.45","tone":"blue","sub":"3%","size":18},{"box":"aZ","x":410,"y":384,"w":170,"h":92,"text":"Asset Z\n3 + 6 − 1.5","tone":"purple","sub":"3%","size":18},{"count":"aX","from":3.0,"to":6.75,"dp":2,"suf":"%"},{"count":"aY","from":3.0,"to":5.85,"dp":2,"suf":"%"},{"count":"aZ","from":3.0,"to":7.5,"dp":2,"suf":"%"}]},{"cap":"Why surprises and not levels: an inflation print exactly on consensus is already in the price. Its surprise is zero, so it moves nothing, however high the number is. Only the miss carries risk, and a premium.","do":[{"note":"surp","x":300,"y":512,"text":"on consensus → surprise 0 → no new risk","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"The catch: the theory never names the factors, so there is no single \"APT model\". Different factor choices give different premia. And the equation is approximate, tighter as the number of assets grows.","do":[{"note":"catch","x":300,"y":552,"text":"a framework: you choose the factors","size":19,"anchor":"middle","tone":"red"},{"pulse":"eq"}]}]}</script>
+      </div>
+      <!-- WB:institutional_apt:END -->
+    </section>
+    <!-- WB:institutional_apt-deck:END -->
+
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">What the argument forces the pricing equation to look like</h2>
       <div class="sl-card">
@@ -133,7 +146,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Chen, Roll &amp; Ross: a macro face on the factors</h2>
       <p class="sl-sub">The 1986 paper that made APT genuinely useful: five observable macro surprise variables as the priced factors.</p>
@@ -146,7 +159,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Why "surprise," never the level</h2>
       <p class="sl-sub">The single most important idea in this whole factor list.</p>
@@ -157,7 +170,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Worked example: pricing three toy assets</h2>
       <p class="sl-sub">Rf = 3%, an IP-surprise factor priced at λ = 3%, an inflation-surprise factor priced at λ = −1.5%. Pick an asset.</p>
@@ -184,7 +197,7 @@
       <p class="sl-p">None of these three numbers is a fudge — each is the linear combination of loadings times prices of risk the pricing equation says it must be.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Try it yourself — the 2-factor pricing equation, live</h2>
       <div class="sl-card">
@@ -211,7 +224,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Watch one price of risk move the expected return</h2>
       <p class="sl-sub">Drag the slider. Everything else stays fixed at Asset X's numbers (Rf = 3%, β₁ = 1.5, β₂ = 0.5, λ₂ = −1.5%) — only λ₁, the IP-surprise premium, moves.</p>
@@ -233,7 +246,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the theory honestly cracks</h2>
       <div class="sl-callout amber">
@@ -246,7 +259,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -297,7 +310,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -408,5 +421,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

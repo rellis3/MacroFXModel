@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hamiltonian Monte Carlo &amp; NUTS — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,52 @@
       <li>How it reached trading: NUTS (Hoffman &amp; Gelman, 2011–14) became the engine of Stan and PyMC, which is how quant researchers came to fit hierarchical and stochastic-volatility models that older samplers handled badly.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A long, narrow, tilted target shown by two oval contour lines. From the same starting point near the lower-left end, a random-walk Metropolis chain takes 25 small jittery steps and ends almost where it began. One Hamiltonian trajectory of 36 leapfrog steps sweeps along the whole ridge to the far upper-right end, where it starts to turn back, the U-turn at which NUTS stops.">
+      <ellipse cx="300" cy="128" rx="256" ry="48" transform="rotate(-18 300 128)" class="tlp-line"/>
+      <ellipse cx="300" cy="128" rx="128" ry="24" transform="rotate(-18 300 128)" class="tlp-line"/>
+      <polyline class="tlp-line red" points="150.3,185.1 159.8,208.2 133.4,198.9 170.5,190.2 170.5,190.2 175.7,168.0 175.7,168.0 143.2,173.5 176.8,176.5 176.8,181.5 176.8,181.5 153.6,142.9 153.6,142.9 157.9,134.9 183.8,179.9 168.8,172.0 159.2,188.0 116.9,178.7 116.9,178.7 116.9,178.7 154.2,156.6 154.2,156.6 138.0,154.2 138.0,154.2 138.1,133.6 139.4,167.8"/>
+      <polyline class="tlp-line blue thick" points="150.3,185.1 158.1,188.9 166.0,190.4 173.8,188.8 181.4,184.2 188.9,176.8 196.5,167.3 204.3,156.8 212.8,146.5 222.3,137.4 232.8,130.5 244.7,126.3 257.7,124.8 271.8,125.7 286.5,128.3 301.5,131.3 316.3,133.9 330.5,134.8 343.8,133.4 356.0,129.2 366.9,122.3 376.7,113.1 385.7,102.7 394.1,92.0 402.1,82.3 410.2,74.6 418.5,69.7 426.9,67.8 435.6,69.0 444.1,72.5 452.2,77.6 459.5,83.1 465.6,87.8 470.2,90.9 472.9,91.7 473.8,89.9 472.9,85.7"/>
+      <circle class="tlp-text2" cx="150.3" cy="185.1" r="5"/>
+      <circle class="tlp-green" cx="472.9" cy="85.7" r="6"/>
+      <line class="tlp-line green dash" x1="478" y1="92" x2="548" y2="186"/>
+      <text class="tlp-blue" x="30" y="30" font-size="14" font-weight="700">one HMC proposal: 36 leapfrog steps</text>
+      <text class="tlp-text2" x="30" y="48" font-size="13">rides the slope the whole length of the ridge</text>
+      <text class="tlp-red" x="30" y="236" font-size="14" font-weight="700">random walk: 25 blind steps</text>
+      <text class="tlp-text2" x="30" y="253" font-size="13">ends almost where it began</text>
+      <text class="tlp-green" x="590" y="204" text-anchor="end" font-size="14" font-weight="700">U-turn: NUTS stops here</text>
+    </svg>
+    <figcaption>Same start, same narrow target. A blind random walk jitters around its corner. HMC gives the point a push and lets the slope steer it, so one proposal travels the whole ridge and is still accepted. NUTS ends the ride when the path starts to come back.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">The random-walk sampler worked fine on the two-hill example. Why do I need something new?</p>
+      <p data-who="Quant">Because that was one dimension. Real models have dozens of parameters, often tied together. The plausible region is a long, thin ridge, and a blind random step almost always falls off it.</p>
+      <p data-who="Trader">So you shrink the step.</p>
+      <p data-who="Quant">And then you crawl. Tiny steps, each one much like the last. You need a huge number of them to learn anything.</p>
+      <p data-who="Trader">What does Hamiltonian Monte Carlo do differently?</p>
+      <p data-who="Quant">It turns the problem into physics. Flip the landscape upside down so the likely regions are valleys. Put a marble at your current point, give it a random flick, and let it roll.</p>
+      <p data-who="Trader">And the slope steers it.</p>
+      <p data-who="Quant">Exactly. The gradient tells it which way is downhill at every point, so it follows the ridge instead of falling off. One roll can carry it a long way, and wherever it stops becomes the proposal.</p>
+      <p data-who="Trader">How does the computer roll a marble?</p>
+      <p data-who="Quant">In small steps called leapfrog steps: nudge the speed using the slope, move, nudge again. The lesson works three of them by hand. Start at one, with a push of a half. The marble climbs to about one point one one at its highest, turns round, and three steps in it is rolling back down through about one point zero two.</p>
+      <p data-who="Trader">Is the answer exact?</p>
+      <p data-who="Quant">The simulation leaks a little energy, so there's one check at the end. Compare total energy before and after. In that example it barely moves, from point six two five to about point six two five four, so you accept with better than ninety-nine percent chance.</p>
+      <p data-who="Trader">How long should the marble roll?</p>
+      <p data-who="Quant">That used to be the hard dial. Too short and you barely move. Too long and it rolls back over ground it already covered. The No-U-Turn Sampler keeps doubling the path and stops the moment it starts heading back toward where it began.</p>
+      <p data-who="Trader">Is anyone actually using this?</p>
+      <p data-who="Quant">It's the default engine in Stan and PyMC. Hoffman and Gelman built it between twenty eleven and twenty fourteen, and that's how quant researchers came to fit big hierarchical and stochastic volatility models.</p>
+      <p data-who="Trader">What can go wrong?</p>
+      <p data-who="Quant">A step size that's too big makes the simulation blow up. The sampler reports that as divergences, and you should listen. And it needs a smooth landscape: no gradient, no marble.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Don't stumble around blind: use the slope to roll far in one go, check the energy once, and let the path tell you when to stop.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -116,6 +163,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the Hamiltonian, and HMC's accept rule, come from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ H(\theta,p) = \color{#fbbf24}{U(\theta)} = -\log \pi(\theta) \]</div>
+      <p>Turn the posterior into a landscape. High probability becomes low potential energy: the bottom of a valley.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ H(\theta,p) = U(\theta) + \color{#fbbf24}{\frac12\, p^\top M^{-1} p} \]</div>
+      <p>Add a momentum \(p\), drawn fresh each iteration, with its kinetic energy. Now the point can trade height for speed and roll.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ H(\theta_t,p_t) \;\xrightarrow{\ \color{#fbbf24}{L \text{ leapfrog steps}}\ }\; H(\theta^*,p^*) \]</div>
+      <p>Roll the point along with \(L\) leapfrog steps, each steered by \(\nabla U\). The energy should stay about the same, but not exactly.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \alpha = \color{#10b981}{\min\!\Big(1,\ \exp\big(H(\theta_t,p_t) - H(\theta^*,p^*)\big)\Big)} \]</div>
+      <p>One Metropolis check on the energy leak makes the sample exact. In the worked example, \(H\) goes from 0.625 to 0.6254, so \(\alpha = e^{-0.00037} \approx 0.9996\).</p>
+    </div>
+  </div>
 
   <h3>Augmenting θ with momentum</h3>
   <p>
@@ -334,8 +401,8 @@
           <p>
             Position: \(\theta_1 = \theta_0 + \varepsilon\, p_{0.15} = 1.0 +
             0.3(0.35) = 1.105\). Full momentum kick using the new position's
-            gradient: \(p_1 = p_{0.15} - \tfrac{\varepsilon}{2}\nabla U(\theta_1)
-            = 0.35 - 0.15(1.105) = 0.1843\) (this full kick folds the
+            gradient: \(p_1 = p_{0.15} - \varepsilon\,\nabla U(\theta_1)
+            = 0.35 - 0.3(1.105) = 0.0185\) (this full kick folds the
             trailing half-step of one iteration into the leading half-step of
             the next).
           </p>
@@ -346,8 +413,11 @@
         <div class="tl-step-body">
           <h4>Leapfrog step 2 of 3</h4>
           <p>
-            \(\theta_2 = 1.105 + 0.3(0.1843) = 1.1603\). \(p_2 = 0.1843 -
-            0.15(1.1603) = 0.0102\).
+            \(\theta_2 = 1.105 + 0.3(0.0185) = 1.1106\) (1.11055 unrounded),
+            the highest point of the roll. Full kick: \(p_2 = 0.0185 -
+            0.3(1.11055) = -0.3147\) (\(-0.314665\) unrounded) — the momentum has flipped sign, which is
+            exactly what "rolling up one side of a valley and starting to fall
+            back" looks like.
           </p>
         </div>
       </div>
@@ -356,11 +426,11 @@
         <div class="tl-step-body">
           <h4>Leapfrog step 3 of 3, then final half-step</h4>
           <p>
-            \(\theta_3 = 1.1603 + 0.3(0.0102) = 1.1634\). Final half-kick:
-            \(p_3 = 0.0102 - 0.15(1.1634) = -0.1643\). Proposal:
-            \((\theta^*,p^*) = (1.1634,\ -0.1643)\) — notice the momentum has
-            flipped sign, which is exactly what "rolling up one side of a
-            valley and starting to fall back" looks like.
+            \(\theta_3 = 1.11055 + 0.3(-0.314665) = 1.0162\). Final half-kick:
+            \(p_3 = -0.3147 - 0.15(1.0162) = -0.4671\). Proposal:
+            \((\theta^*,p^*) = (1.0162,\ -0.4671)\) — the point topped out near
+            1.11 and is now rolling back down through 1.02, picking up speed
+            toward the valley floor.
           </p>
         </div>
       </div>
@@ -370,15 +440,18 @@
           <h4>Metropolis accept/reject on H</h4>
           <p>
             \(H(\theta_0,p_0) = \tfrac12(1.0)^2+\tfrac12(0.5)^2 = 0.5+0.125 =
-            0.625\). \(H(\theta^*,p^*) = \tfrac12(1.1634)^2+\tfrac12(-0.1643)^2
-            = 0.6767+0.0135=0.6902\). \(\alpha=\min(1,\exp(0.625-0.6902)) =
-            \min(1,\exp(-0.0652))=\min(1,0.9369)=0.9369\) — a high acceptance
-            probability despite \(\theta\) moving from \(1.0\) to \(1.16\), a
-            move roughly \(0.55\varepsilon\)-widths per step, covering more
-            ground per proposal than a comparably-accepted single random-walk
-            jitter typically would. The tiny gap between \(H\) at the start
-            and end (0.625 vs. 0.6902) is exactly the leapfrog discretization
-            error the Metropolis step exists to correct for.
+            0.625\). \(H(\theta^*,p^*) = \tfrac12(1.0162)^2+\tfrac12(-0.4671)^2
+            = 0.5163+0.1091=0.6254\) (0.62537 unrounded).
+            \(\alpha=\min(1,\exp(0.625-0.62537)) =
+            \min(1,\exp(-0.00037))=\min(1,0.9996)=0.9996\) — the high acceptance
+            probability HMC is built to deliver. The net move is small here
+            (\(1.0\) to \(1.02\)) only because three steps is a short roll: the
+            point climbed to about \(1.11\), turned round and is already
+            heading back, which is the trajectory-length problem NUTS solves
+            below. The tiny gap between \(H\) at the start and end (0.625
+            vs. 0.6254) is exactly the leapfrog discretization error: leapfrog
+            conserves \(H\) only approximately, and the Metropolis step exists
+            to correct for it.
           </p>
         </div>
       </div>
@@ -396,6 +469,15 @@
       proposal, both Hamiltonians, and the Metropolis acceptance probability
       all recalculate instantly.
     </p>
+    <div class="tl-predict">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The worked example rolls for \(L = 3\) steps: the point tops out near 1.11, the momentum turns negative, and the proposal lands at \(\theta^* = 1.02\), rolling back down. Keep everything else the same but roll for \(L = 7\) steps. Where does the proposal land? Pick one, then type 7 into the steps field below to check it.</div>
+      <ul class="tl-predict-options">
+        <li>Further up the same slope, well past 1.11, still moving outward.</li>
+        <li data-correct>Back down through the bottom of the valley, near 0, now moving the other way.</li>
+        <li>Exactly back at the start, 1.0, with the same momentum.</li>
+      </ul>
+      <div class="tl-predict-reveal"><p><strong>Back through the valley.</strong> The calculator shows \(\theta^* \approx -0.08\) with \(p^* \approx -1.11\). The point topped out near 1.11, rolled back past its own start at 1.0, and has just crossed the valley floor at 0 at close to full speed. That is a U-turn: the path started heading back toward where it began after only two steps, and the extra steps just carry it through and away on the other side. Choosing \(L\) by hand is hard for exactly this reason, and NUTS removes the choice by stopping when the path turns back.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Start \(\theta_0\)</span></div>
@@ -415,14 +497,20 @@
       </div>
     </div>
     <div class="tl-readout tl-scratch-readout">
-      &theta;* = <b id="hmc-scratch-theta">1.1633</b>&emsp;p* = <b id="hmc-scratch-p">-0.1643</b>&emsp;H&#8320; = <b id="hmc-scratch-h0">0.6250</b>&emsp;H* = <b id="hmc-scratch-hstar">0.6902</b>
+      &theta;* = <b id="hmc-scratch-theta">1.0162</b>&emsp;p* = <b id="hmc-scratch-p">-0.4671</b>&emsp;H&#8320; = <b id="hmc-scratch-h0">0.6250</b>&emsp;H* = <b id="hmc-scratch-hstar">0.6254</b>
     </div>
     <div class="tl-readout">
-      &alpha; = min(1, e<sup>H&#8320;&minus;H*</sup>) &asymp; <b id="hmc-scratch-alpha">0.9369</b>
+      &alpha; = min(1, e<sup>H&#8320;&minus;H*</sup>) &asymp; <b id="hmc-scratch-alpha">0.9996</b>
       <span id="hmc-scratch-note" class="tl-scratch-note"></span>
     </div>
     <button type="button" id="hmc-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
+
+  <!-- WB:hamiltonian_monte_carlo_nuts:START -->
+  <div class="wb" id="wb-hamiltonian_monte_carlo_nuts" data-title="HMC: roll the marble, check the energy, stop at the U-turn">
+    <script type="application/json">{"w":600,"h":800,"intro":"A marble rolling on an upside-down posterior: the lesson's three hand-worked leapfrog steps, then why it beats a random walk. Press play, or step through.","steps":[{"cap":"Flip the posterior upside down. For a standard Normal target, the potential energy is U = ½θ²: a valley whose floor, at 0, is the most likely value. The chain sits at θ = 1.0, at height 0.5.","do":[{"chart":"val","x":10,"y":10,"w":362,"h":300,"title":"Potential energy U(θ) = ½θ²","xd":[-2,2],"yd":[0,2.2],"yt":[[0,"0"],[0.5,"0.5"],[1,"1.0"],[2,"2.0"]],"xt":[[-2,"−2"],[-1,"−1"],[0,"0"],[1,"1"],[2,"2"]],"pl":50,"pr":16},{"series":"U","chart":"val","pts":[[-2.0,2.0],[-1.95,1.9012],[-1.9,1.805],[-1.85,1.7113],[-1.8,1.62],[-1.75,1.5312],[-1.7,1.445],[-1.65,1.3612],[-1.6,1.28],[-1.55,1.2013],[-1.5,1.125],[-1.45,1.0513],[-1.4,0.98],[-1.35,0.9113],[-1.3,0.845],[-1.25,0.7812],[-1.2,0.72],[-1.15,0.6612],[-1.1,0.605],[-1.05,0.5512],[-1.0,0.5],[-0.95,0.4512],[-0.9,0.405],[-0.85,0.3612],[-0.8,0.32],[-0.75,0.2812],[-0.7,0.245],[-0.65,0.2112],[-0.6,0.18],[-0.55,0.1512],[-0.5,0.125],[-0.45,0.1012],[-0.4,0.08],[-0.35,0.0612],[-0.3,0.045],[-0.25,0.0312],[-0.2,0.02],[-0.15,0.0112],[-0.1,0.005],[-0.05,0.0012],[0.0,0.0],[0.05,0.0013],[0.1,0.005],[0.15,0.0112],[0.2,0.02],[0.25,0.0312],[0.3,0.045],[0.35,0.0613],[0.4,0.08],[0.45,0.1013],[0.5,0.125],[0.55,0.1513],[0.6,0.18],[0.65,0.2113],[0.7,0.245],[0.75,0.2812],[0.8,0.32],[0.85,0.3613],[0.9,0.405],[0.95,0.4513],[1.0,0.5],[1.05,0.5513],[1.1,0.605],[1.15,0.6613],[1.2,0.72],[1.25,0.7812],[1.3,0.845],[1.35,0.9113],[1.4,0.98],[1.45,1.0513],[1.5,1.125],[1.55,1.2013],[1.6,1.28],[1.65,1.3613],[1.7,1.445],[1.75,1.5312],[1.8,1.62],[1.85,1.7113],[1.9,1.805],[1.95,1.9013],[2.0,2.0]],"tone":"purple","ms":1100},{"dot":"b0","chart":"val","at":[1.0,0.5],"text":"θ = 1.0","tone":"blue","dx":-12,"dy":8,"anchor":"end"}]},{"cap":"Give it a random flick: momentum p = 0.5, pointing uphill to the right. Total energy H is height plus ½p²: 0.5 + 0.125 = 0.625.","do":[{"box":"h0","x":384,"y":20,"w":206,"h":96,"text":"flick: p = 0.5","tone":"amber","sub":"H = 0.625","size":19}]},{"cap":"Leapfrog step 1. The slope at 1.0 pulls the momentum back by half a step, 0.15, to 0.35. Move: θ = 1.0 + 0.3 × 0.35 = 1.105. A full kick from the new slope leaves almost nothing: 0.35 − 0.3 × 1.105 = 0.0185.","do":[{"dot":"b1","chart":"val","at":[1.105,0.6105],"text":"","tone":"blue"},{"dim":"b0"},{"sub":"h0","text":"θ 1.105 · p 0.02"}]},{"cap":"Step 2. The marble creeps to θ = 1.111, the top of its roll. The next full kick flips the momentum to −0.315: it starts rolling back.","do":[{"dot":"b2","chart":"val","at":[1.1106,0.6167],"text":"","tone":"blue"},{"dim":"b1"},{"sub":"h0","text":"θ 1.111 · p −0.31"}]},{"cap":"Step 3. Rolling back down: θ = 1.016, and a final half kick leaves p = −0.467. That is the proposal: θ* = 1.016, p* = −0.467.","do":[{"dot":"b3","chart":"val","at":[1.0162,0.5163],"text":"θ* = 1.016","tone":"green","dx":-14,"dy":-18,"anchor":"end"},{"dim":"b2"},{"sub":"h0","text":"θ* 1.016 · p* −0.47"}]},{"cap":"The simulation is approximate, so H drifted, but only a hair: from 0.625 to 0.6254. One Metropolis check fixes that exactly: accept with chance e^(0.625 − 0.6254) ≈ 0.9996.","do":[{"chart":"en","x":384,"y":192,"w":206,"h":118,"title":"Energy H","xd":[0.4,2.6],"yd":[0,0.85],"yt":[],"xt":[[1,"start"],[2,"end"]],"pl":16,"pr":10},{"bars":"hb","chart":"en","data":[[1,0.625,"0.625","blue"],[2,0.6254,"0.6254","amber"]],"bw":48,"ms":900},{"box":"acc","x":384,"y":126,"w":206,"h":56,"text":"accept: α = 0.9996","tone":"green","size":19}]},{"cap":"Why bother? On a long, narrow, tilted target, a random walk proposes blind steps. After 25 of them, this one is almost exactly where it started.","do":[{"chart":"rid","x":10,"y":326,"w":580,"h":300,"title":"A narrow ridge (illustrative)","xd":[40,560],"yd":[10,250],"yt":[],"xt":[],"pl":10,"pr":10,"pt":34,"pb":10},{"series":"e2","chart":"rid","pts":[[543.5,211.1],[542.8,203.0],[536.1,193.1],[523.7,181.8],[505.7,169.2],[482.6,155.7],[455.1,141.6],[423.7,127.2],[389.3,113.0],[352.7,99.3],[314.8,86.3],[276.6,74.5],[238.9,64.1],[202.7,55.4],[168.9,48.6],[138.3,43.8],[111.7,41.2],[89.8,40.8],[73.0,42.7],[61.8,46.7],[56.5,52.9],[57.2,61.0],[63.9,70.9],[76.3,82.2],[94.3,94.8],[117.4,108.3],[144.9,122.4],[176.3,136.8],[210.7,151.0],[247.3,164.7],[285.2,177.7],[323.4,189.5],[361.1,199.9],[397.3,208.6],[431.1,215.4],[461.7,220.2],[488.3,222.8],[510.2,223.2],[527.0,221.3],[538.2,217.3],[543.5,211.1]],"tone":null,"ms":700,"width":2},{"series":"e1","chart":"rid","pts":[[421.7,171.6],[421.4,167.5],[418.1,162.6],[411.8,156.9],[402.8,150.6],[391.3,143.8],[377.6,136.8],[361.9,129.6],[344.7,122.5],[326.4,115.6],[307.4,109.2],[288.3,103.3],[269.4,98.1],[251.3,93.7],[234.4,90.3],[219.2,87.9],[205.9,86.6],[194.9,86.4],[186.5,87.3],[180.9,89.4],[178.3,92.4],[178.6,96.5],[181.9,101.4],[188.2,107.1],[197.2,113.4],[208.7,120.2],[222.4,127.2],[238.1,134.4],[255.3,141.5],[273.6,148.4],[292.6,154.8],[311.7,160.7],[330.6,165.9],[348.7,170.3],[365.6,173.7],[380.8,176.1],[394.1,177.4],[405.1,177.6],[413.5,176.7],[419.1,174.6],[421.7,171.6]],"tone":null,"ms":500,"width":2},{"series":"rw","chart":"rid","pts":[[150.3,74.9],[159.8,51.8],[133.4,61.1],[170.5,69.8],[170.5,69.8],[175.7,92.0],[175.7,92.0],[143.2,86.5],[176.8,83.5],[176.8,78.5],[176.8,78.5],[153.6,117.1],[153.6,117.1],[157.9,125.1],[183.8,80.1],[168.8,88.0],[159.2,72.0],[116.9,81.3],[116.9,81.3],[116.9,81.3],[154.2,103.4],[154.2,103.4],[138.0,105.8],[138.0,105.8],[138.1,126.4],[139.4,92.2]],"tone":"red","ms":1500,"width":2.4,"label":"random walk: 25 steps","lat":[555,40],"ldx":0,"ldy":0,"lanchor":"end"}]},{"cap":"HMC gives the point a push and lets the gradient steer it. One trajectory of 36 leapfrog steps sweeps the whole ridge, and the energy check still accepts it.","do":[{"series":"hm","chart":"rid","pts":[[150.3,74.9],[158.1,71.1],[166.0,69.6],[173.8,71.2],[181.4,75.8],[188.9,83.2],[196.5,92.7],[204.3,103.2],[212.8,113.5],[222.3,122.6],[232.8,129.5],[244.7,133.7],[257.7,135.2],[271.8,134.3],[286.5,131.7],[301.5,128.7],[316.3,126.1],[330.5,125.2],[343.8,126.6],[356.0,130.8],[366.9,137.7],[376.7,146.9],[385.7,157.3],[394.1,168.0],[402.1,177.7],[410.2,185.4],[418.5,190.3],[426.9,192.2],[435.6,191.0],[444.1,187.5],[452.2,182.4],[459.5,176.9],[465.6,172.2],[470.2,169.1],[472.9,168.3],[473.8,170.1],[472.9,174.3]],"tone":"blue","ms":1800,"width":3.4,"label":"one HMC proposal: 36 steps","lat":[50,238],"ldx":0,"ldy":0,"lanchor":"start"}]},{"cap":"How long to roll? Too short wastes the push; too long rolls back over old ground. NUTS keeps doubling the path and stops the moment it starts heading back toward its start: the U-turn.","do":[{"dot":"ut","chart":"rid","at":[472.9,174.3],"text":"U-turn: stop","tone":"green","dx":-14,"dy":-26,"anchor":"end"}]},{"cap":"The dial left to tune is the step size. Too large and the simulated energy blows up mid-roll: the sampler reports a divergent transition, often in a hierarchical funnel's narrow neck.","do":[{"box":"div","x":10,"y":640,"w":285,"h":150,"text":"step too big →\nenergy blows up\n→ \"divergence\":\ndon't trust the fit","tone":"red","size":18}]},{"cap":"And the marble needs a slope. HMC and NUTS require a smooth, differentiable log-posterior. That is why they became the default engine in Stan and PyMC for continuous models.","do":[{"box":"grad","x":305,"y":640,"w":285,"h":150,"text":"needs a gradient:\nsmooth posterior only\ndefault in Stan, PyMC","tone":"blue","size":18}]}]}</script>
+  </div>
+  <!-- WB:hamiltonian_monte_carlo_nuts:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>NUTS: removing HMC's hardest dial</h2>
@@ -622,6 +710,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative model fit</div>
+    <h3>NUTS finishes, with a warning about divergences</h3>
+    <p>You fit a hierarchical model that pools a dozen currency pairs' carry returns, with a between-pair spread parameter on top. NUTS runs to the end. The summary shows several divergent transitions, mostly where the between-pair spread is small, the narrow neck of the funnel. The posterior means look sensible. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Ignore the warning. The run finished and the numbers look reasonable.<div class="tl-drill-why">A divergence means the simulated trajectory became numerically unreliable. Clustered in the funnel's neck, it means the sampler cannot reach that region properly, so the posterior there is biased. "It ran" is not "it worked".</div></li>
+      <li data-verdict="good">Treat the fit as untrusted: lower the step size by targeting a higher acceptance rate, or reparameterize the model so the neck is easier to cross, then check divergences, R̂ and effective sample size again.<div class="tl-drill-why">Divergences are a direct diagnostic that plain Metropolis and Gibbs do not have. They point at the region of sharp curvature, so the fix aims at that region, and the usual checks confirm whether it worked.</div></li>
+      <li data-verdict="bad">Switch to a Gibbs sampler, since it never reports divergences.<div class="tl-drill-why">Gibbs struggles with exactly this funnel, moving one coordinate at a time through a narrow, curved neck. It does not report the problem; that is not the same as not having it.</div></li>
+      <li data-verdict="ok">Run the same sampler four times longer.<div class="tl-drill-why">More draws help effective sample size, but the trajectories through the neck will keep diverging. Longer runs do not fix a geometry problem.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What to take from it.</strong> This is an illustrative situation, not a historical event. It follows the lesson: divergences come from regions of sharp curvature such as a hierarchical funnel's neck, a too-large step size makes them worse, and divergences, R̂ and effective sample size reduce risk without proving the model is right.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -728,6 +829,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="mcmc-metropolis-gibbs.html">MCMC: Metropolis-Hastings &amp; Gibbs Sampling</a> <span>· the accept/reject step HMC reuses</span></li>
+        <li><a href="hierarchical-bayesian-models.html">Hierarchical Bayesian Models &amp; Partial Pooling</a> <span>· the funnel-shaped model it is built for</span></li>
+        <li><a href="foundation-multivariable-calculus.html">Partial Derivatives &amp; Multivariable Calculus</a> <span>· what a gradient is</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="regime-switching-state-space.html">Regime-Switching State Space Models</a> <span>· a model these samplers make practical</span></li>
+        <li><a href="particle-filter.html">The Particle Filter (Sequential Monte Carlo)</a> <span>· sampling hidden states one bar at a time</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the models that describe markets best, with hidden volatility, regimes and many pooled instruments, are the ones older samplers fit badly, and NUTS is what makes them usable.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="hierarchical-bayesian-models.html">← Hierarchical Bayesian Models &amp; Partial Pooling</a>
     <a href="../hub.html">Theory Lab hub →</a>
@@ -769,10 +890,11 @@
 
     var theta = theta0;
     var p = p0 - (eps/2) * gradU(theta0);
-    for (var i = 0; i < L; i++) {
+    for (var i = 1; i <= L; i++) {
       theta = theta + eps * p;
-      p = p - (eps/2) * gradU(theta);
+      if (i < L) p = p - eps * gradU(theta);   // full kick between moves
     }
+    p = p - (eps/2) * gradU(theta);              // final half kick
 
     var H0 = H(theta0, p0);
     var Hstar = H(theta, p);
@@ -817,9 +939,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

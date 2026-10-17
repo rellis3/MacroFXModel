@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Policy Gradients &amp; Actor-Critic — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -157,7 +158,19 @@
       <p class="sl-p">The <strong>actor</strong> is the policy π<sub>θ</sub> itself, updated by the policy gradient. The <strong>critic</strong> is a separately learned value function, typically trained with the exact TD(0) update from the previous lesson: V(s) ← V(s) + α[r + γV(s′) − V(s)]. The bracketed term there — the TD error — is, to a first approximation, the same quantity as the advantage used to weight the actor's update. Two lessons, converging on one number.</p>
     </section>
 
+    <!-- WB:policy_gradients_actor_critic-deck:START -->
     <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Actor, critic and one policy-gradient update</h2>
+      <!-- WB:policy_gradients_actor_critic:START -->
+      <div class="wb" data-title="Actor, critic and one policy-gradient update">
+        <script type="application/json">{"w":600,"h":530,"intro":"The lesson's one-state, two-action example: an actor, a critic and one update, then what repeating it does. Press play, or step through.","steps":[{"cap":"The actor is the policy: the rule that picks the action. Here it has two choices, a small position or a large one, and starts at 50/50.","do":[{"icon":"actor","name":"person","x":40,"y":10,"s":0.75,"tone":"purple","label":"actor (policy)","lsize":18},{"box":"ps","x":10,"y":150,"w":120,"h":62,"text":"small","tone":"blue","sub":"50.0%","size":19},{"box":"pl","x":140,"y":150,"w":120,"h":62,"text":"large","tone":"green","sub":"50.0%","size":19}]},{"cap":"It samples the large position and the market answers with a return of 2.","do":[{"icon":"mkt","name":"globe","x":262,"y":10,"s":0.75,"tone":"blue","label":"market","lsize":18},{"arrow":["actor","mkt"],"label":"large","tone":"green","id":"am"},{"chip":"ret","x":300,"y":128,"text":"return 2","tone":"blue"}]},{"cap":"Is 2 good? The critic is a second model that has learned what this state usually delivers. It says 1.","do":[{"icon":"critic","name":"scales","x":480,"y":10,"s":0.75,"tone":"amber","label":"critic","lsize":18},{"box":"vb","x":340,"y":150,"w":250,"h":62,"text":"critic","tone":"amber","sub":"expects 1","size":19}]},{"cap":"The advantage is the return minus what was expected: 2 − 1 = +1. The large position beat expectations by one unit.","do":[{"sub":"vb","text":"advantage 2 − 1 = +1"},{"pulse":"vb"},{"arrow":["vb","pl"],"label":"+1","tone":"amber","id":"ca"}]},{"cap":"Update with step size 0.1: the large logit rises to +0.05 and the small one falls to −0.05. The large position goes from 50% to 52.5%. The action that beat expectations became a little more likely.","do":[{"count":"pl","from":50,"to":52.5,"dp":1,"suf":"%","ms":900},{"count":"ps","from":50,"to":47.5,"dp":1,"suf":"%","ms":900}]},{"cap":"Repeat with the same advantage every time (an illustration that holds it fixed) and the probability keeps climbing: about 73% after ten updates.","do":[{"chart":"rep","x":10,"y":262,"w":580,"h":250,"title":"P(large) under repeated updates, advantage held at +1","xd":[0,10],"yd":[0.4,0.8],"yt":[[0.5,"50%"],[0.6,"60%"],[0.7,"70%"]],"xt":[[0,"0"],[5,"5"],[10,"10 updates"]],"pl":56,"pr":40},{"series":"rp","chart":"rep","pts":[[0,0.5],[1,0.525],[2,0.55],[3,0.574],[4,0.599],[5,0.622],[6,0.646],[7,0.668],[8,0.69],[9,0.711],[10,0.731]],"tone":"green","ms":1500},{"dot":"r1","chart":"rep","at":[1,0.525],"text":"52.5%","tone":"green","dx":12,"dy":-14,"anchor":"start"},{"dot":"r10","chart":"rep","at":[10,0.731],"text":"73.1%","tone":"green","dx":-10,"dy":-16,"anchor":"end"}]},{"cap":"Now suppose a large trade returns only 0.5 against the critic's 1. The advantage is −0.5, and the large position slips below 50%, to about 48.75%. A profitable trade can still be pushed down if it did worse than usual.","do":[{"hide":"rep"},{"hide":"rp"},{"hide":"r1"},{"hide":"r10"},{"sub":"vb","text":"advantage 0.5 − 1 = −0.5"},{"hide":"ret"},{"chip":"ret2","x":300,"y":128,"text":"return 0.5","tone":"red"},{"hide":"ca"},{"arrow":["vb","pl"],"label":"−0.5","tone":"red","id":"ca2"},{"count":"pl","from":50,"to":48.75026035157896,"dp":2,"suf":"%","ms":900},{"count":"ps","from":50,"to":51.24973964842104,"dp":2,"suf":"%","ms":900}]},{"cap":"Real sizes sit on a dial, not a menu. Then the policy is a bell curve over size, and the same rule shifts its center toward sizes that beat the baseline. No search over every possible size is needed. (Illustrative curves.)","do":[{"hide":"ret2"},{"dim":"ca2"},{"chart":"sz","x":10,"y":262,"w":580,"h":250,"title":"Policy over position size (illustrative)","xd":[0,3],"yd":[0,1.15],"yt":[],"xt":[[0,"0"],[1,"1×"],[2,"2×"],[3,"3× size"]],"pl":24,"pr":24},{"series":"g0","chart":"sz","pts":[[0.0,0.017],[0.05,0.025],[0.1,0.037],[0.15,0.052],[0.2,0.073],[0.25,0.101],[0.3,0.135],[0.35,0.178],[0.4,0.23],[0.45,0.291],[0.5,0.36],[0.55,0.438],[0.6,0.52],[0.65,0.607],[0.7,0.693],[0.75,0.775],[0.8,0.849],[0.85,0.912],[0.9,0.96],[0.95,0.99],[1.0,1.0],[1.05,0.99],[1.1,0.96],[1.15,0.912],[1.2,0.849],[1.25,0.775],[1.3,0.693],[1.35,0.607],[1.4,0.52],[1.45,0.438],[1.5,0.36],[1.55,0.291],[1.6,0.23],[1.65,0.178],[1.7,0.135],[1.75,0.101],[1.8,0.073],[1.85,0.052],[1.9,0.037],[1.95,0.025],[2.0,0.017],[2.05,0.011],[2.1,0.007],[2.15,0.005],[2.2,0.003],[2.25,0.002],[2.3,0.001],[2.35,0.001],[2.4,0.0],[2.45,0.0],[2.5,0.0],[2.55,0.0],[2.6,0.0],[2.65,0.0],[2.7,0.0],[2.75,0.0],[2.8,0.0],[2.85,0.0],[2.9,0.0],[2.95,0.0],[3.0,0.0]],"tone":"purple","ms":1100,"dash":true,"label":"before","lat":[1.0,1.0],"ldy":-14,"lsize":17},{"series":"g1","chart":"sz","pts":[[0.0,0.001],[0.05,0.002],[0.1,0.003],[0.15,0.005],[0.2,0.007],[0.25,0.011],[0.3,0.017],[0.35,0.025],[0.4,0.037],[0.45,0.052],[0.5,0.073],[0.55,0.101],[0.6,0.135],[0.65,0.178],[0.7,0.23],[0.75,0.291],[0.8,0.36],[0.85,0.438],[0.9,0.52],[0.95,0.607],[1.0,0.693],[1.05,0.775],[1.1,0.849],[1.15,0.912],[1.2,0.96],[1.25,0.99],[1.3,1.0],[1.35,0.99],[1.4,0.96],[1.45,0.912],[1.5,0.849],[1.55,0.775],[1.6,0.693],[1.65,0.607],[1.7,0.52],[1.75,0.438],[1.8,0.36],[1.85,0.291],[1.9,0.23],[1.95,0.178],[2.0,0.135],[2.05,0.101],[2.1,0.073],[2.15,0.052],[2.2,0.037],[2.25,0.025],[2.3,0.017],[2.35,0.011],[2.4,0.007],[2.45,0.005],[2.5,0.003],[2.55,0.002],[2.6,0.001],[2.65,0.001],[2.7,0.0],[2.75,0.0],[2.8,0.0],[2.85,0.0],[2.9,0.0],[2.95,0.0],[3.0,0.0]],"tone":"green","ms":1100,"label":"after","lat":[1.3,1.0],"ldx":36,"ldy":-14,"lsize":17}]},{"cap":"The catch: the actor chases whatever the reward says. Reward raw profit with no penalty for risk, in a simulator with free fills, and it learns to sit at maximum size. The optimizer did exactly what it was asked. It is not an edge.","do":[{"series":"g2","chart":"sz","pts":[[0.0,0.0],[0.05,0.0],[0.1,0.0],[0.15,0.0],[0.2,0.0],[0.25,0.0],[0.3,0.0],[0.35,0.0],[0.4,0.0],[0.45,0.0],[0.5,0.0],[0.55,0.0],[0.6,0.0],[0.65,0.0],[0.7,0.0],[0.75,0.0],[0.8,0.0],[0.85,0.0],[0.9,0.0],[0.95,0.0],[1.0,0.0],[1.05,0.0],[1.1,0.0],[1.15,0.0],[1.2,0.0],[1.25,0.001],[1.3,0.001],[1.35,0.002],[1.4,0.003],[1.45,0.005],[1.5,0.007],[1.55,0.011],[1.6,0.017],[1.65,0.025],[1.7,0.037],[1.75,0.052],[1.8,0.073],[1.85,0.101],[1.9,0.135],[1.95,0.178],[2.0,0.23],[2.05,0.291],[2.1,0.36],[2.15,0.438],[2.2,0.52],[2.25,0.607],[2.3,0.693],[2.35,0.775],[2.4,0.849],[2.45,0.912],[2.5,0.96],[2.55,0.99],[2.6,1.0],[2.65,0.99],[2.7,0.96],[2.75,0.912],[2.8,0.849],[2.85,0.775],[2.9,0.693],[2.95,0.607],[3.0,0.52]],"tone":"red","ms":1100,"label":"raw-profit reward","lat":[2.6,1.0],"ldx":-10,"ldy":-14,"lanchor":"end","lsize":17}]},{"cap":"So put the risk and the costs into the reward before you trust the answer. That is how the published uses worked: Moody and Saffell trained on a Sharpe-style reward net of costs, and deep hedging (2019) minimized a risk measure with transaction costs included.","do":[{"dim":"g2"},{"pulse":"g1"}]}]}</script>
+      </div>
+      <!-- WB:policy_gradients_actor_critic:END -->
+    </section>
+    <!-- WB:policy_gradients_actor_critic-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Why a baseline makes the signal usable</h2>
       <p class="sl-sub">Raw REINFORCE works, but the weight it uses — an entire trajectory's return — is noisy.</p>
@@ -182,7 +195,7 @@
       <div class="sl-quote">Grading a test score against zero tells you little; grading it against how the class usually does on that exact test tells you something. The advantage does this for actions — it compares an action's outcome to what this state usually delivers, so only genuinely above- or below-average choices push the policy around.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">A continuous policy, in motion</h2>
       <p class="sl-sub">Drag the state input. The policy's output — a position-size fraction — slides along a fixed curve, no lookup table involved.</p>
@@ -211,7 +224,7 @@
       <p class="sl-p">The curve is π<sub>θ</sub>'s mean output as a function of state — here, a momentum-style state feature mapped through a fixed Gaussian policy to a fraction of maximum position size. Nothing here is a lookup: given any state at all, even one never seen in training, the policy evaluates the same closed-form expression and returns an action.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">One policy-gradient-style update, live</h2>
       <p class="sl-sub">A simplified illustration of the core move: reward beat the baseline, so nudge the parameter toward what just happened.</p>
@@ -239,7 +252,7 @@
       <p class="sl-p">This is a deliberately simplified stand-in for the real update — the actual policy gradient scales the step by the score function ∇<sub>θ</sub>log π<sub>θ</sub>(a|s), not by a flat 1-to-1 nudge — but the shape of the logic is identical: advantage decides direction and rough magnitude, the learning rate decides how much any single sample is allowed to move things.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
@@ -250,7 +263,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">A powerful optimizer says nothing about what it's optimizing</h2>
       <div class="sl-quote">Think of RL as an incredibly obedient genie: whatever wish you phrase as a reward, it grants exactly and only that wish, as literally as possible, with zero judgment about whether the wish was a good idea. Ask it to maximize profit with no mention of risk, and it will happily find the riskiest possible way to make money look great in a test environment — not because it misunderstood, but because it did precisely what it was asked, and nothing more.</div>
@@ -267,7 +280,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -318,7 +331,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -426,5 +439,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

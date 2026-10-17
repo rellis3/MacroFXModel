@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Data Cleaning: Outliers, Bad Ticks &amp; Missing Data — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -38,6 +39,69 @@
       <li><strong>Real-world episode:</strong> on 8 December 2005 a Mizuho trader sold 610,000 J-Com shares at ¥1 instead of 1 share at ¥610,000. The prints were accurate and the trades stood, at a cost of roughly ¥40 billion: an extreme print is not automatically a bad print.<!-- DESK:START --> Whether this desk's own cleaning choices change its results is untested.<!-- DESK:END --></li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 255" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The lesson's six ticks: 1.02, 1.01, 1.03, 1.02, then a spike to 4.50, then 1.03. A blue band of the rolling median plus or minus 10 MADs, 0.97 to 1.07, is built from the first four ticks only. The fifth tick, 4.50, sits 696 MADs from the median and is flagged. A side note says detection is only half the job: in the J-Com case of 2005 the extreme prints were accurate and the trades stood, so a flag is not a licence to delete.">
+      <rect class="tlp-box blue" x="60" y="107" width="300" height="90" rx="4" opacity=".55"/>
+      <line class="tlp-line" x1="60" y1="230" x2="420" y2="230"/>
+      <line class="tlp-line" x1="60" y1="20" x2="60" y2="230"/>
+      <line class="tlp-line" x1="54" y1="76" x2="66" y2="70"/>
+      <line class="tlp-line" x1="54" y1="84" x2="66" y2="78"/>
+      <line class="tlp-line blue dash" x1="60" y1="152" x2="360" y2="152"/>
+      <polyline class="tlp-line red thick" points="90,152 150,161 210,143 270,152 330,34 390,143"/>
+      <circle class="tlp-blue" cx="90" cy="152" r="5"/>
+      <circle class="tlp-blue" cx="150" cy="161" r="5"/>
+      <circle class="tlp-blue" cx="210" cy="143" r="5"/>
+      <circle class="tlp-blue" cx="270" cy="152" r="5"/>
+      <circle class="tlp-amber" cx="330" cy="34" r="7"/>
+      <circle class="tlp-text3" cx="390" cy="143" r="5"/>
+      <text class="tlp-amber" x="320" y="30" text-anchor="end" font-size="13" font-weight="700">4.50: 696 MADs out → flag</text>
+      <text class="tlp-blue" x="66" y="100" font-size="12">median ± 10 MAD, from ticks 1–4 only</text>
+      <text class="tlp-text3" x="54" y="156" text-anchor="end" font-size="12">1.02</text>
+      <text class="tlp-text3" x="54" y="38" text-anchor="end" font-size="12">4.50</text>
+      <text class="tlp-text3" x="90" y="246" text-anchor="middle" font-size="12">1</text>
+      <text class="tlp-text3" x="150" y="246" text-anchor="middle" font-size="12">2</text>
+      <text class="tlp-text3" x="210" y="246" text-anchor="middle" font-size="12">3</text>
+      <text class="tlp-text3" x="270" y="246" text-anchor="middle" font-size="12">4</text>
+      <text class="tlp-amber" x="330" y="246" text-anchor="middle" font-size="12" font-weight="700">5</text>
+      <text class="tlp-text3" x="390" y="246" text-anchor="middle" font-size="12">6</text>
+      <text class="tlp-text3" x="360" y="222" text-anchor="end" font-size="12">MAD = 0.005</text>
+      <line class="tlp-line dash" x1="436" y1="20" x2="436" y2="236"/>
+      <text class="tlp-green" x="450" y="44" font-size="13" font-weight="700">1 · Detect</text>
+      <text class="tlp-text2" x="450" y="62" font-size="12">robust statistics,</text>
+      <text class="tlp-text2" x="450" y="78" font-size="12">past ticks only</text>
+      <text class="tlp-red" x="450" y="122" font-size="13" font-weight="700">2 · Then decide</text>
+      <text class="tlp-text2" x="450" y="140" font-size="12">bad print, or real</text>
+      <text class="tlp-text2" x="450" y="156" font-size="12">trade? J-Com, 2005:</text>
+      <text class="tlp-text2" x="450" y="172" font-size="12">the tape was right</text>
+      <text class="tlp-text2" x="450" y="188" font-size="12">and the trades stood</text>
+    </svg>
+    <figcaption>Tick 5 is checked against a band built only from ticks 1 to 4, so a live system could make the same call. The robust band barely moves for one wild value. Flagging is detection; whether to delete depends on whether the trade really happened.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My data has a few crazy prints in it. Can't I just delete anything more than five standard deviations out?</p>
+      <p data-who="Quant">That rule has two problems. The obvious one: the crazy prints inflate the standard deviation you are measuring them with. The hidden one is worse.</p>
+      <p data-who="Trader">Go on.</p>
+      <p data-who="Quant">If you compute that standard deviation over the whole sample, you are judging today's tick using data from next year. A live system, standing on that day, could never make the same call. It is lookahead bias, the same bug as a leaky feature.</p>
+      <p data-who="Trader">So what should I use?</p>
+      <p data-who="Quant">A rolling median and a rolling median absolute deviation, built only from ticks you have already seen. The median barely moves when one value goes wild, so the yardstick isn't fooled by the thing it is measuring.</p>
+      <p data-who="Trader">Show me.</p>
+      <p data-who="Quant">Four ticks: one point zero two, one point zero one, one point zero three, one point zero two. The median is one point zero two, and the typical deviation from it is half a hundredth. Then tick five arrives at four fifty, a keying error. That is three point four eight away, or about six hundred and ninety-six of those deviations. Even a loose threshold of ten flags it instantly.</p>
+      <p data-who="Trader">And once it's flagged, I delete it.</p>
+      <p data-who="Quant">Not so fast. Flagging and fixing are separate decisions. In December 2005, a trader at Mizuho meant to sell one J-Com share at six hundred and ten thousand yen. He sold six hundred and ten thousand shares at one yen.</p>
+      <p data-who="Trader">That must have looked like garbage on the tape.</p>
+      <p data-who="Quant">Every print was accurate. The trades stood, and the loss was roughly forty billion yen. A filter should flag that session. A cleaning rule that deleted it would erase trades that really happened.</p>
+      <p data-who="Trader">What about gaps, when the feed goes quiet?</p>
+      <p data-who="Quant">Three options, each wrong somewhere. Carrying the last price forward invents a calm period. Drawing a line across the gap invents prices that never traded, and peeks at the price after the gap. Marking it missing is honest, but shrinks your sample.</p>
+      <p data-who="Trader">One line to remember?</p>
+      <p data-who="Quant">Detect with robust statistics from the past only, then decide separately whether the print was an error or a real trade, and log every change you make.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -135,6 +199,27 @@
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Standard detection approaches</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the rule build</div>
+    <div class="tl-eqbuild-title">A robust, only-past outlier flag, one piece at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ m_i = \color{#fbbf24}{\text{median}(x_1, \dots, x_{i-1})} \]</div>
+      <p>Start with a centre built only from ticks that have already arrived. The median, not the mean, so one wild value barely moves it.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{MAD}_i = \color{#fbbf24}{\text{median}\big(\,|x_j - m_i|\,\big), \quad j &lt; i} \]</div>
+      <p>Add a spread built the same way: the median of how far each past tick sits from that centre. It is the robust stand-in for a standard deviation.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ z_i = \color{#fbbf24}{\frac{|x_i - m_i|}{\text{MAD}_i}} \]</div>
+      <p>Measure the new tick in MADs: how many typical deviations it sits from the centre.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\text{flag } x_i \text{ if } z_i &gt; k} \]</div>
+      <p>Flag anything beyond a threshold \(k\), such as 10. Every piece uses only data before \(i\), so a live system could make exactly the same call. Flagging is detection; what to do next is a separate decision.</p>
+    </div>
+  </div>
+
   <p>
   Two conceptual tools do most of the work of catching the failure modes above, before any decision is
   made about how to handle what's been flagged.
@@ -301,6 +386,10 @@
     <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Catching a fat-finger tick with rolling MAD, on six numbers</h3>
+    <div class="tl-predict" data-answer="696" data-tol="30" data-unit=" MADs">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Four ticks, 1.02, 1.01, 1.03 and 1.02, give a rolling median of 1.02 and a MAD of 0.005. Then a print arrives at 4.50. How many MADs from the median is it? Lock in a guess, then check it against the working below.</div>
+      <div class="tl-predict-reveal"><p><strong>About 696.</strong> \(|4.50 - 1.02| = 3.48\), and \(3.48 / 0.005 = 696\). A threshold of 10 MADs flags it at once, using only ticks 1 to 4. The next question, whether to delete it, is a different one: see the J-Com story in section 05.</p></div>
+    </div>
     <p>
     Take a short tick sequence for a spread: \(x = [1.02, 1.01, 1.03, 1.02, 4.50, 1.03]\) — position 5 is
     a spurious print (say, a keying error: 4.50 typed where 1.045 was meant). Checking
@@ -342,6 +431,12 @@
     live cleaning pipeline actually has to operate, one new tick at a time.
     </p>
   </div>
+
+  <!-- WB:data_cleaning_outliers_missing_data:START -->
+  <div class="wb" id="wb-data_cleaning_outliers_missing_data" data-title="Cleaning a tick stream without looking ahead">
+    <script type="application/json">{"w":600,"h":760,"intro":"One tick stream, cleaned the honest way: flag with only-past robust statistics, then decide what a flag means. Press play, or step through.","steps":[{"cap":"Ticks arrive one at a time: 1.02, 1.01, 1.03, 1.02. A live cleaner only ever knows the ticks that have already arrived.","do":[{"chart":"tk","x":10,"y":10,"w":580,"h":260,"title":"Tick prices (lesson's worked example)","xd":[0.4,6.6],"yd":[0.9,1.2],"yt":[[0.95,"0.95"],[1.0,"1.00"],[1.05,"1.05"],[1.1,"1.10"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"6"]],"pl":56,"pr":16},{"dot":"k0","chart":"tk","at":[1,1.02],"text":"","tone":"blue"},{"dot":"k1","chart":"tk","at":[2,1.01],"text":"","tone":"blue"},{"dot":"k2","chart":"tk","at":[3,1.03],"text":"","tone":"blue"},{"dot":"k3","chart":"tk","at":[4,1.02],"text":"","tone":"blue"}]},{"cap":"From those four only: the median is 1.02, and the median distance from it, the MAD, is 0.005. Robust: one wild value would barely move either.","do":[{"box":"st","x":20,"y":286,"w":560,"h":56,"text":"median = 1.02   ·   MAD = 0.005   (ticks 1–4 only)","tone":"blue","size":19}]},{"cap":"Draw the band: median ± 10 MADs, 0.97 to 1.07. Anything outside it is flagged.","do":[{"gap":"band","chart":"tk","top":[[0.6,1.07],[5.5,1.07]],"bot":[[0.6,0.97],[5.5,0.97]],"tone":"blue","op":0.2}]},{"cap":"Tick 5 arrives at 4.50, a keying error, far off this chart. It is 4.50 − 1.02 = 3.48 away, which is 696 MADs. Flagged instantly, using nothing after tick 4.","do":[{"dot":"k5","chart":"tk","at":[5,1.19],"text":"4.50 ↑ off chart: 696 MADs","tone":"amber","dx":-8,"dy":10,"anchor":"end"},{"pulse":"k5"}]},{"cap":"The trap: build the band from the whole sample, including ticks that come later, and you are judging tick 5 with tomorrow's data. A live system could never reproduce that call. It is lookahead bias.","do":[{"dot":"k6","chart":"tk","at":[6,1.03],"text":"tick 6: not yet known","tone":"red","dx":-8,"dy":-16,"anchor":"end"},{"box":"trap","x":20,"y":352,"w":560,"h":56,"text":"whole-sample statistics = cleaning with the future","tone":"red","size":19}]},{"cap":"Now a different problem: a halt. Trading stops, then resumes at a different level. What goes in the gap? Illustrative prices.","do":[{"hide":"st"},{"hide":"trap"},{"chart":"gp","x":10,"y":290,"w":580,"h":270,"title":"A halt: no prices in the gap (illustrative)","xd":[0,11],"yd":[0.96,1.12],"yt":[[1.0,"1.00"],[1.05,"1.05"],[1.1,"1.10"]],"xt":[[0,"0"],[4,"halt"],[8,"resume"],[11,"11"]],"pl":56,"pr":16},{"series":"b","chart":"gp","pts":[[0,1.0],[1,1.01],[2,0.99],[3,1.0],[4,1.01]],"tone":null,"ms":700},{"series":"a","chart":"gp","pts":[[8,1.08],[9,1.09],[10,1.07],[11,1.08]],"tone":null,"ms":700}]},{"cap":"Forward-fill: repeat the last price, 1.01, across the gap. It manufactures a flat, calm period that never happened, then a jump.","do":[{"series":"ff","chart":"gp","pts":[[4,1.01],[8,1.01],[8,1.08]],"tone":"blue","dash":true,"ms":800,"label":"forward-fill","lat":[6,1.01],"ldy":16,"lsize":16}]},{"cap":"Interpolate: draw a straight line from 1.01 to 1.08. It invents prices that never traded, and it needs the first price after the gap, which a live system did not yet have.","do":[{"series":"ip","chart":"gp","pts":[[4,1.01],[8,1.08]],"tone":"amber","dash":true,"ms":800,"label":"interpolate","lat":[6,1.045],"ldx":-6,"ldy":-14,"lanchor":"end","lsize":16}]},{"cap":"Flag and exclude: mark the gap as missing and leave it out. Honest, invents nothing, but shrinks the sample.","do":[{"box":"ex","x":20,"y":576,"w":560,"h":50,"text":"flag and exclude: honest, smaller sample","tone":"purple","size":19}]},{"cap":"Last, a flag is not a verdict. J-Com, 8 December 2005: a trader meant to sell 1 share at ¥610,000 and sold 610,000 shares at ¥1. The prints were extreme and accurate. The trades stood, and the loss was roughly ¥40 billion.","do":[{"chip":"jc","x":150,"y":652,"text":"610,000 shares at ¥1","tone":"red"},{"chip":"jm","x":430,"y":652,"text":"meant: 1 share at ¥610,000","tone":"green"}]},{"cap":"So: detect with robust statistics from the past only, decide separately whether a flagged print was an error or a real trade, and log every change you make.","do":[{"box":"end","x":20,"y":700,"w":560,"h":52,"text":"flag: yes  ·  delete: only what the venue voided","tone":"amber","size":19}]}]}</script>
+  </div>
+  <!-- WB:data_cleaning_outliers_missing_data:END -->
 
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>It actually happened: the fat finger the tape was right about</h2>
@@ -471,6 +566,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill" data-date="2005-12-08">
+    <div class="tl-drill-label">Scenario drill · 8 December 2005</div>
+    <h3>Your filter lights up on a brand-new Tokyo listing</h3>
+    <p>You run the cleaning pipeline for Japanese equities. J-Com listed on the Tokyo Stock Exchange's Mothers market this morning. A sell order for 610,000 shares at ¥1 has hit the market, with only about 14,500 shares in issue, and the price has collapsed to the daily limit. Your rolling MAD filter flags the whole session. What do you do with those prints?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Delete them as fat-finger ticks and forward-fill the last sensible price.<div class="tl-drill-why">The error was in the order, not in the data. The prints record trades that happened. Deleting them, and forward-filling a calm price over a real crash, erases a real event and manufactures fake calm.</div></li>
+      <li data-verdict="good">Keep the flag, keep the prints, and check them against the exchange's record of which trades stood or were cancelled.<div class="tl-drill-why">Detection said "unusual"; only the venue's record says "did this happen". Keep what the venue kept, drop only what it voided, and log the decision.</div></li>
+      <li data-verdict="ok">Exclude the whole session from the research sample.<div class="tl-drill-why">Honest, because it invents nothing. But it removes a real extreme event from the history your models learn from, and a strategy's behaviour on days like this is exactly what you need to see.</div></li>
+      <li data-verdict="bad">Interpolate between yesterday's close and tomorrow's open across the session.<div class="tl-drill-why">It invents a smooth path through a session that was anything but, and it uses tomorrow's open, a value no live system would have had yet.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> A Mizuho Securities trader had meant to sell 1 share at ¥610,000. A flaw in the exchange's system stopped the cancellation going through, and the order kept filling. The trades stood; shares that did not exist were settled in cash. Mizuho's loss was roughly ¥40 billion, the exchange's president resigned within weeks, and in 2009 a Tokyo court ordered the exchange to pay Mizuho about ¥10.7 billion for the failed cancellation.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -553,6 +661,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="data-pipeline-raw-to-trading-ready.html">The Data Pipeline: Raw Feeds to Trading-Ready Data</a> <span>· cleaning is stage 3 of 6</span></li>
+        <li><a href="primer-stats-normal.html">Descriptive Statistics &amp; the Normal Distribution</a> <span>· mean, median and spread</span></li>
+        <li><a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> <span>· the same only-past rule, one stage later</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="corporate-actions-series-continuity.html">Corporate Actions &amp; Series Continuity</a> <span>· jumps that are real but not returns</span></li>
+        <li><a href="point-in-time-data-survivorship-bias.html">Point-in-Time Data &amp; Survivorship Bias</a> <span>· what was knowable, and when</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a single uncaught bad tick, or a single deleted real one, can change a volatility estimate, a stop level or a backtest verdict.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="data-pipeline-raw-to-trading-ready.html">← The Data Pipeline: Raw Feeds to Trading-Ready Data</a>
     <a href="corporate-actions-series-continuity.html">Corporate Actions &amp; Series Continuity →</a>
@@ -582,9 +710,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

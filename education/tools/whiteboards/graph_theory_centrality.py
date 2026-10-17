@@ -28,7 +28,7 @@ assert abs(PW[-1][3] - 0.855) < 0.002 and abs(PW[-1][1] - 0.745) < 0.002
 
 
 def _clip(a, b, pad=3):
-    """Point where the segment from a's centre towards b leaves a's box."""
+    """Point where the segment from a's centre toward b leaves a's box."""
     (ax, ay), (bx, by) = POS[a], POS[b]
     dx, dy = bx - ax, by - ay
     t = min((HW + pad) / abs(dx) if dx else 9e9, (HH + pad) / abs(dy) if dy else 9e9)
@@ -65,10 +65,10 @@ GRAPH = dict(w=600, h=650, intro="The lesson's seven-node network, and three dif
          *subs(['8', '0', '0', '9', '8', '0', '0']),
          dict(pulse='JPY'),
          note('verdict', 300, 238, 'Betweenness: JPY wins alone, on 9 routes', 'amber', 19)),
-    step('Measure three, eigenvector: you matter if your neighbours matter. Give every node a score of 1. Each round, a node\'s new score is the sum of its neighbours\' scores, rescaled so the top node is 1.',
+    step('Measure three, eigenvector: you matter if your neighbors matter. Give every node a score of 1. Each round, a node\'s new score is the sum of its neighbors\' scores, rescaled so the top node is 1.',
          *[dict(hide=f'p{i}') for i in range(4)], dict(hide='verdict'),
          *subs(['1', '1', '1', '1', '1', '1', '1'])),
-    step('After one round the scores are just degree over three: EUR and AUD 1, everyone else 0.67. But JPY\'s two neighbours are the two biggest nodes, so in the next round it gets more back than GBP does.',
+    step('After one round the scores are just degree over three: EUR and AUD 1, everyone else 0.67. But JPY\'s two neighbors are the two biggest nodes, so in the next round it gets more back than GBP does.',
          *subs(['1', '0.67', '0.67', '0.67', '1', '0.67', '0.67']),
          chart('pw', CHART, 'Eigenvector score, round by round', [0, 20], [0.6, 1.05],
                [[0.7, '0.7'], [0.8, '0.8'], [0.9, '0.9'], [1.0, '1.0']],

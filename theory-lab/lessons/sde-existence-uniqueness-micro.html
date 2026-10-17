@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Existence &amp; Uniqueness of SDE Solutions — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -148,7 +149,19 @@
       </div>
     </section>
 
+    <!-- WB:sde_existence_uniqueness-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">When an SDE has one solution, none or many, step by step</h2>
+      <!-- WB:sde_existence_uniqueness:START -->
+      <div class="wb" data-title="When an SDE has one solution, none or many, step by step">
+        <script type="application/json">{"w":600,"h":620,"intro":"Two conditions decide whether an SDE has exactly one solution. Here is each one passing, then each one failing, with the lesson's own examples. Press play, or step through.","steps":[{"cap":"Every model in this sequence is an SDE: drift plus noise. Writing one down does not prove that any process satisfies it, or that only one does.","do":[{"box":"sde","x":100,"y":14,"w":400,"h":70,"text":"dX = μ(X,t) dt + σ(X,t) dW","tone":"blue","size":21}]},{"cap":"Condition one, Lipschitz: the coefficients cannot change faster than a fixed multiple K of the change in level. No infinitely steep hills. It rules out two solutions from one start.","do":[{"box":"lip","x":20,"y":110,"w":270,"h":100,"text":"Lipschitz\nslope ≤ K","tone":"green","size":20}]},{"cap":"Condition two, linear growth: far out, the coefficients grow no faster than a straight line. No unlimited horsepower. It rules out a race to infinity before your horizon.","do":[{"box":"grow","x":310,"y":110,"w":270,"h":100,"text":"linear growth\n≤ K(1 + |x|)","tone":"amber","size":20}]},{"cap":"GBM passes both. With 8% drift and 20% volatility its coefficients are 0.08x and 0.20x: straight lines, slope K = 0.28 everywhere. At x = 100 they add to 28, under the bound 0.28 × 101 = 28.28.","do":[{"chart":"g","x":10,"y":250,"w":580,"h":350,"title":"GBM coefficients: straight lines, slope K = 0.28","xd":[0,100],"yd":[0,30],"yt":[[0,"0"],[10,"10"],[20,"20"],[30,"30"]],"xt":[[0,"x = 0"],[50,"50"],[100,"100"]],"pl":50,"pr":30},{"series":"sum","chart":"g","pts":[[0,0],[100,28]],"tone":"green","ms":1200,"label":"|μx| + |σx| = 28","lat":[100,28],"ldx":-6,"ldy":-16,"lanchor":"end","lsize":16},{"series":"bound","chart":"g","pts":[[0,0.28],[100,28.28]],"tone":"amber","dash":true,"ms":900},{"pulse":"lip"},{"pulse":"grow"}]},{"cap":"Now the square root behind the CIR rate model, σ√x. Near zero it rises straight up. Its slope between 0 and ε is σ ÷ √ε: 10σ at ε = 0.01, 100σ at 0.0001, 1000σ at 0.000001. No fixed K can bound that.","do":[{"hide":"g"},{"hide":"sum"},{"hide":"bound"},{"chart":"sq","x":10,"y":250,"w":580,"h":350,"title":"Slope of √x between 0 and ε (× σ)","xd":[0.4,3.6],"yd":[0,1100],"yt":[[0,"0"],[500,"500"],[1000,"1000"]],"xt":[[1,"ε = 0.01"],[2,"0.0001"],[3,"0.000001"]],"pl":58,"pr":16},{"bars":"sqb","chart":"sq","data":[[1,10,"10σ","amber"],[2,100,"100σ","amber"],[3,1000,"1000σ","amber"]],"bw":70,"ms":1200},{"cross":"lip"}]},{"cap":"Why it matters: a vertical slope is what lets two solutions share a start. In the ODE dx/dt = √|x| from x = 0, both x = 0 forever and x = t²/4 satisfy the equation. Nothing picks one.","do":[{"hide":"sq"},{"hide":"sqb"},{"chart":"nu","x":10,"y":250,"w":580,"h":350,"title":"dx/dt = √|x|, x(0) = 0: two solutions","xd":[0,4],"yd":[0,4.4],"yt":[[0,"0"],[2,"2"],[4,"4"]],"xt":[[0,"0"],[2,"t = 2"],[4,"4"]],"pl":46,"pr":16},{"series":"z","chart":"nu","pts":[[0,0],[4,0]],"tone":"blue","ms":900,"label":"x = 0","lat":[3.6,0],"ldy":-16,"lsize":16},{"series":"p","chart":"nu","pts":[[0.0,0.0],[0.25,0.0156],[0.5,0.0625],[0.75,0.1406],[1.0,0.25],[1.25,0.3906],[1.5,0.5625],[1.75,0.7656],[2.0,1.0],[2.25,1.2656],[2.5,1.5625],[2.75,1.8906],[3.0,2.25],[3.25,2.6406],[3.5,3.0625],[3.75,3.5156],[4.0,4.0]],"tone":"amber","ms":1200,"label":"x = t²/4","lat":[4,4],"ldx":-8,"ldy":0,"lanchor":"end","lsize":16}]},{"cap":"CIR is still a standard model. Yamada and Watanabe (1971) proved a weaker theorem that covers exactly this square-root shape. Failing Lipschitz means use the more careful theorem, not drop the model.","do":[{"note":"yw","x":300,"y":232,"text":"square root: Yamada–Watanabe (1971) covers it","size":19,"anchor":"middle","tone":"green"}]},{"cap":"Break growth instead and it is worse. dX/dt = X², starting at 1, has the exact solution X = 1/(1 − t): 2 at t = 0.5, 10 at t = 0.9, 20 at t = 0.95.","do":[{"hide":"nu"},{"hide":"z"},{"hide":"p"},{"hide":"yw"},{"chart":"bl","x":10,"y":250,"w":580,"h":350,"title":"dX/dt = X², X(0) = 1: X = 1/(1 − t)","xd":[0,1.05],"yd":[0,22],"yt":[[0,"0"],[10,"10"],[20,"20"]],"xt":[[0,"0"],[0.5,"0.5"],[1,"t = 1"]],"pl":46,"pr":16},{"series":"bx","chart":"bl","pts":[[0,1.0],[0.2,1.25],[0.4,1.667],[0.5,2.0],[0.6,2.5],[0.7,3.333],[0.75,4.0],[0.8,5.0],[0.85,6.667],[0.88,8.333],[0.9,10.0],[0.92,12.5],[0.94,16.667],[0.95,20.0]],"tone":"red","ms":1600},{"dot":"b9","chart":"bl","at":[0.9,10],"text":"10","tone":"red","dx":-10,"dy":0,"anchor":"end"},{"dot":"b95","chart":"bl","at":[0.95,20],"text":"20","tone":"red","dx":-10,"dy":0,"anchor":"end"},{"cross":"grow"}]},{"cap":"At t = 1 it reaches infinity, and after that there is no solution at all, for any method. Not hard to simulate: the road itself ends.","do":[{"series":"wall","chart":"bl","pts":[[1,0],[1,22]],"tone":"red","dash":true,"ms":700,"label":"no solution past t = 1","lat":[1,22],"ldx":-8,"ldy":8,"lanchor":"end","lsize":16}]},{"cap":"On a desk this is a pre-flight check. Heston's variance is a square-root process too, and Heston parameters fitted to real smiles often break the Feller condition, which decides whether the variance can reach zero. That is why schemes such as Andersen's (2008) exist.","do":[{"hide":"sde"},{"hide":"lip"},{"hide":"grow"},{"box":"desk","x":60,"y":30,"w":480,"h":120,"text":"new model?\n1. one solution?  2. stays positive?\n3. finite moments?","tone":"purple","size":19}]},{"cap":"The rule: before trusting a simulation, check that the equation has exactly one solution to simulate. A clean run proves nothing about that.","do":[{"note":"rule","x":300,"y":205,"text":"one solution first, then simulate","size":22,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:sde_existence_uniqueness:END -->
+    </section>
+    <!-- WB:sde_existence_uniqueness-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Cross the linear-growth threshold, live</h2>
       <p class="sl-sub">Drag p. dX/dt = X^p, X(0)=1 is the deterministic illustration — the same shape of failure the SDE growth condition targets.</p>
@@ -172,7 +185,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Check a mean-reverting SDE's coefficients, live</h2>
       <p class="sl-sub">dX_t = θ(μ−X_t)dt + σdW_t — the same drift shape as ou-mean-reversion.html. Starts on θ=0.15, μ=0, σ=0.02, tested at x=5.</p>
@@ -195,7 +208,7 @@
       <p class="sl-p">Because θ(μ−x) is exactly linear in x, its Lipschitz constant is exact everywhere: K = θ, no region-dependence, no caveats. This is the same reason GBM's μx and σx are so clean — linear coefficients are the one case where the honest Lipschitz constant is trivial to state.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Why the earlier lessons got this for free</h2>
       <div class="sl-compare">
@@ -224,7 +237,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this shows up as actual due diligence</h2>
       <div class="sl-icard-grid">
@@ -235,7 +248,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -286,7 +299,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -403,5 +416,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

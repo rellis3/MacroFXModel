@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Linear Algebra &amp; Matrices — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -207,7 +208,19 @@
       <p class="sl-p">Larger λ means that direction is stretched more — and, in a covariance matrix, accounts for more of the total variance. Section 6's demo had trace = 2+1 = 3 and det = 2(1) − k(0) = 2, giving λ² − 3λ + 2 = 0, which factors to (λ−2)(λ−1) = 0 — exactly the 2 and 1 the slider never moved.</p>
     </section>
 
+    <!-- WB:linear_algebra_matrices-deck:START -->
     <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">A matrix moves arrows; eigenvectors only stretch</h2>
+      <!-- WB:linear_algebra_matrices:START -->
+      <div class="wb" data-title="A matrix moves arrows; eigenvectors only stretch">
+        <script type="application/json">{"w":600,"h":720,"intro":"One 2×2 matrix from the lesson, treated as a machine that moves arrows. Watch which directions it turns and which it only stretches, then read it as the risk of a two-pair book. Press play, or step through.","steps":[{"cap":"Meet a vector: (1, 0), an arrow one step to the right. A vector is just a list of numbers, like two FX pairs' returns on one day.","do":[{"line":"ax","points":[[20,200],[330,200]],"width":2,"ms":400},{"line":"ay","points":[[170,40],[170,362]],"width":2,"ms":400},{"dim":"ax"},{"dim":"ay"},{"line":"e1","points":[[170,200],[200,200]],"tone":"blue","width":4,"ms":500},{"note":"e1l","x":206,"y":222,"text":"(1, 0)","size":17,"anchor":"start","tone":"blue"}]},{"cap":"Meet the machine: A has rows (3, 1) and (1, 3). Each output entry is a row of A times the arrow. So (1, 0) goes in and (3, 1) comes out: longer, and turned upward.","do":[{"box":"A","x":350,"y":20,"w":240,"h":86,"text":"A has rows\n(3, 1) and (1, 3)","tone":"purple","size":20},{"line":"o1","points":[[170,200],[260,170]],"tone":null,"width":3,"ms":700},{"note":"o1l","x":266,"y":158,"text":"(3, 1)","size":17,"anchor":"start"}]},{"cap":"Try (0, 1), straight up. It comes out as (1, 3): turned to the right. Most arrows get turned to a new direction.","do":[{"line":"e2","points":[[170,200],[170,170]],"tone":"blue","width":4,"ms":500},{"line":"o2","points":[[170,200],[200,110]],"tone":null,"width":3,"ms":700},{"note":"o2l","x":208,"y":112,"text":"(1, 3)","size":17,"anchor":"start"}]},{"cap":"Now feed it every unit arrow at once, the dashed circle. The machine turns the whole circle into an ellipse.","do":[{"dim":"o1"},{"dim":"o2"},{"hide":"o1l"},{"hide":"o2l"},{"dim":"e1"},{"dim":"e2"},{"hide":"e1l"},{"line":"circ","points":[[200.0,200.0],[199.5,194.8],[198.2,189.7],[196.0,185.0],[193.0,180.7],[189.3,177.0],[185.0,174.0],[180.3,171.8],[175.2,170.5],[170.0,170.0],[164.8,170.5],[159.7,171.8],[155.0,174.0],[150.7,177.0],[147.0,180.7],[144.0,185.0],[141.8,189.7],[140.5,194.8],[140.0,200.0],[140.5,205.2],[141.8,210.3],[144.0,215.0],[147.0,219.3],[150.7,223.0],[155.0,226.0],[159.7,228.2],[164.8,229.5],[170.0,230.0],[175.2,229.5],[180.3,228.2],[185.0,226.0],[189.3,223.0],[193.0,219.3],[196.0,215.0],[198.2,210.3],[199.5,205.2],[200.0,200.0]],"tone":null,"width":2,"ms":700},{"line":"ell","points":[[260.0,170.0],[263.8,154.8],[264.8,141.0],[262.9,129.0],[258.2,119.2],[250.8,111.8],[241.0,107.1],[229.0,105.2],[215.2,106.2],[200.0,110.0],[183.9,116.6],[167.4,125.7],[151.0,137.1],[135.1,150.3],[120.3,165.1],[107.1,181.0],[95.7,197.4],[86.6,213.9],[80.0,230.0],[76.2,245.2],[75.2,259.0],[77.1,271.0],[81.8,280.8],[89.2,288.2],[99.0,292.9],[111.0,294.8],[124.8,293.8],[140.0,290.0],[156.1,283.4],[172.6,274.3],[189.0,262.9],[204.9,249.7],[219.7,234.9],[232.9,219.0],[244.3,202.6],[253.4,186.1],[260.0,170.0]],"tone":"purple","width":3,"ms":1100}]},{"cap":"But one direction is not turned. The arrow along (1, 1) comes out as (4, 4): four times as long, on the same line. That is an eigenvector, and 4 is its eigenvalue.","do":[{"line":"v1","points":[[170,200],[254.9,115.1]],"tone":"amber","width":5,"ms":900},{"note":"v1l","x":262.9,"y":109.1,"text":"(1, 1): ×4","size":18,"anchor":"start","tone":"amber"}]},{"cap":"The other: (1, −1) comes out as (2, −2), twice as long, same line. Eigenvalue 2. And the two directions sit at right angles, because A is symmetric, as every covariance matrix is.","do":[{"line":"v2","points":[[170,200],[212.4,242.4]],"tone":"blue","width":5,"ms":800},{"note":"v2l","x":222.4,"y":256.4,"text":"(1, −1): ×2","size":18,"anchor":"start","tone":"blue"}]},{"cap":"How to find them without guessing: Av = λv means (A − λI)v = 0, so det(A − λI) = 0. For this A that is λ² − 6λ + 8 = 0, which factors to (λ − 4)(λ − 2).","do":[{"box":"ch","x":350,"y":122,"w":240,"h":110,"text":"det(A − λI) = 0\nλ² − 6λ + 8 = 0\nλ = 4 or 2","tone":"green","size":19}]},{"cap":"Now read A as risk: the covariance matrix of EUR/USD and GBP/USD. Each has variance 3; they share 1, a correlation of about a third.","do":[{"chip":"eur","x":476,"y":262,"text":"EUR/USD · var 3","tone":"blue"},{"chip":"gbp","x":476,"y":308,"text":"GBP/USD · var 3","tone":"blue"},{"note":"cv","x":476,"y":354,"text":"shared: cov 1","size":18,"anchor":"middle","tone":"purple"}]},{"cap":"Total variance is the trace, 3 + 3 = 6. The eigenvalues split it: 4 in the \"both move together\" direction, 66.7%, and 2 in the \"they diverge\" direction, 33.3%.","do":[{"chart":"split","x":10,"y":390,"w":280,"h":220,"title":"Where the book's variance sits","xd":[0.4,2.6],"yd":[0,5],"yt":[[0,"0"],[2,"2"],[4,"4"]],"xt":[[1,"together"],[2,"diverge"]],"pl":34,"pr":10},{"bars":"sb","chart":"split","data":[[1,4,"4 · 66.7%","amber"],[2,2,"2 · 33.3%","blue"]],"bw":60,"ms":1000}]},{"cap":"So two positions are only 6² ÷ (4² + 2²) = 36 ÷ 20 = 1.8 effective bets. Two tickets, but less than two independent bets.","do":[{"chart":"eff","x":310,"y":390,"w":280,"h":220,"title":"Effective bets vs shared entry","xd":[0,3],"yd":[0.8,2.2],"yt":[[1,"1"],[2,"2"]],"xt":[[0,"0"],[1,"1"],[2,"2"],[3,"3"]],"pl":40,"pr":14},{"dot":"b1","chart":"eff","at":[1,1.8],"text":"1.8","tone":"amber","dx":10,"dy":-14,"anchor":"start"}]},{"cap":"Raise the shared entry and the eigenvalues spread apart: at 2 they are 5 and 1, about 1.4 bets; at 3 they are 6 and 0, a single bet. More co-movement, fewer real bets.","do":[{"series":"effc","chart":"eff","pts":[[0.0,2.0],[0.25,1.986],[0.5,1.946],[0.75,1.882],[1.0,1.8],[1.25,1.704],[1.5,1.6],[1.75,1.492],[2.0,1.385],[2.25,1.28],[2.5,1.18],[2.75,1.087],[3.0,1.0]],"tone":"purple","ms":1200},{"dot":"b2","chart":"eff","at":[2,1.385],"text":"1.4","tone":"red","dx":10,"dy":-14,"anchor":"start"},{"dot":"b3","chart":"eff","at":[3,1.0],"text":"1","tone":"red","dx":-10,"dy":-14,"anchor":"end"}]},{"cap":"That is portfolio risk as matrix algebra. Markowitz (1952) put the covariance matrix at its heart. Litterman and Scheinkman (1991) found that three eigenvectors, level, slope and curvature, drive almost all yield-curve moves.","do":[{"box":"mk","x":10,"y":628,"w":580,"h":80,"text":"covariance matrix → eigenvectors = the real bets\nMarkowitz 1952 · Litterman & Scheinkman 1991","tone":"green","size":19}]}]}</script>
+      </div>
+      <!-- WB:linear_algebra_matrices:END -->
+    </section>
+    <!-- WB:linear_algebra_matrices-deck:END -->
+
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Solve any 2×2 matrix's eigenvalues, live</h2>
       <p class="sl-sub">Starts on the worked symmetric example from the full lesson. Edit any entry.</p>
@@ -228,7 +241,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Why PCA leans on exactly this</h2>
       <div class="sl-icard-grid">
@@ -246,7 +259,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">The same machinery, two more names</h2>
       <div class="sl-icard-grid">
@@ -256,7 +269,7 @@
       <div class="sl-quote">Nobody on a desk solves a characteristic equation by hand day to day — software does the arithmetic. The intuition that survives is: an eigenvector of a covariance matrix is a portfolio, and its eigenvalue is how much of the book's total variance that portfolio accounts for. Rank them by eigenvalue, and you've answered "in the fewest independent moves, what is this basket's risk actually made of?"</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -307,7 +320,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -476,5 +489,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

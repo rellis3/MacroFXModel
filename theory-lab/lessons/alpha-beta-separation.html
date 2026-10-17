@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alpha vs. Beta Separation — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,60 @@
       <li><strong>Real-world episode:</strong> in 2008, portable alpha programmes lost on the futures beta leg and on the hedge-fund and credit "alpha" leg at the same time, while daily margin calls had to be paid from money that could not be redeemed quickly. The residual had hidden betas to credit and liquidity.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 248" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A strategy's 20 percent year, in a year the S&amp;P 500 returned 15 percent with a 4 percent risk-free rate, drawn as a stacked bar: 4 percent risk-free, 13.2 percent beta from carrying 1.2 times the market's excess return, about 2 percent alpha, and 0.8 percent noise. An arrow labelled short 1.2 times S&amp;P futures leads to a small bar on the right: about 2 percent a year of alpha left once beta is hedged to zero, before hedging costs.">
+      <text class="tlp-text" x="20" y="20" font-size="14" font-weight="700">A 20% year, taken apart</text>
+      <line class="tlp-line" x1="90" y1="200" x2="230" y2="200"/>
+      <rect class="tlp-box" x="110" y="168" width="90" height="32"/>
+      <rect class="tlp-box blue" x="110" y="62.4" width="90" height="105.6"/>
+      <rect class="tlp-box green" x="110" y="46.4" width="90" height="16"/>
+      <rect class="tlp-box amber" x="110" y="40" width="90" height="6.4"/>
+      <text class="tlp-text2" x="212" y="189" font-size="13">risk-free 4%</text>
+      <text class="tlp-blue" x="212" y="112" font-size="13" font-weight="700">beta 13.2%</text>
+      <text class="tlp-text2" x="212" y="129" font-size="12">= 1.2 × (15% − 4%)</text>
+      <text class="tlp-green" x="212" y="60" font-size="13" font-weight="700">alpha ≈ 2%: the skill</text>
+      <text class="tlp-amber" x="212" y="42" font-size="12">noise 0.8%</text>
+      <text class="tlp-text3" x="155" y="216" text-anchor="middle" font-size="12">strategy, 20%</text>
+      <line class="tlp-line thick" x1="380" y1="140" x2="452" y2="140"/>
+      <polygon class="tlp-arrow" points="462,140 451,134 451,146"/>
+      <text class="tlp-text" x="420" y="112" text-anchor="middle" font-size="13" font-weight="700">short 1.2×</text>
+      <text class="tlp-text" x="420" y="128" text-anchor="middle" font-size="13" font-weight="700">S&amp;P futures</text>
+      <text class="tlp-text3" x="420" y="160" text-anchor="middle" font-size="12">beta → 0</text>
+      <line class="tlp-line" x1="480" y1="200" x2="570" y2="200"/>
+      <rect class="tlp-box green" x="490" y="184" width="70" height="16"/>
+      <text class="tlp-green" x="525" y="172" text-anchor="middle" font-size="13" font-weight="700">≈ 2%/yr left</text>
+      <text class="tlp-text3" x="525" y="216" text-anchor="middle" font-size="12">hedged, before costs</text>
+      <text class="tlp-text3" x="300" y="242" text-anchor="middle" font-size="12">Most of the 20% was beta anyone could buy with an index future.</text>
+    </svg>
+    <figcaption>Regress the strategy on the market and its return splits into the safe rate, a market ride (beta) and what is left (alpha). Hedge the beta away and only the small alpha remains: the part worth paying for, and the only part portable alpha carries.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">A manager made twenty percent last year. The market made fifteen. Five points of skill, surely?</p>
+      <p data-who="Quant">Not yet. First ask how much of the twenty was just riding the market. A rising tide lifts all boats.</p>
+      <p data-who="Trader">How do you measure the tide's share?</p>
+      <p data-who="Quant">Regress the manager's monthly returns over cash on the market's monthly returns over cash. The slope is beta: how many units of market risk each unit of the strategy carries. The intercept is alpha: what is left once that ride is removed.</p>
+      <p data-who="Trader">Run it on my manager.</p>
+      <p data-who="Quant">Say the slope comes out at one point two and cash paid four percent. The market beat cash by eleven points, and one point two times eleven is thirteen point two. Add the four percent cash and about two percent of alpha and you get roughly nineteen. The last point or so is noise.</p>
+      <p data-who="Trader">So the real skill is two percent, not five.</p>
+      <p data-who="Quant">Two percent, not twenty. The rest you could have bought with an index future for almost nothing. That is what an allocator should be paying for.</p>
+      <p data-who="Trader">Can I keep just the two percent?</p>
+      <p data-who="Quant">Yes. Short index futures worth one point two times the position. The market terms cancel and, in expectation, the alpha is what remains, before the costs of the hedge. Then you can attach that alpha to any market exposure you like. People call it portable alpha.</p>
+      <p data-who="Trader">That sounds like free money.</p>
+      <p data-who="Quant">It is a repackaging, not a source of edge. And 2008 showed where it breaks. Pension plans held equity beta through futures and put the spare cash into hedge funds and enhanced-cash credit, as the alpha.</p>
+      <p data-who="Trader">And when the market fell?</p>
+      <p data-who="Quant">The S and P fell by more than a third, so the futures lost and margin calls had to be paid in cash, daily. But the alpha leg lost too. Hedge funds had one of their worst years, structured credit fell, and some funds only paid out quarterly or put up gates.</p>
+      <p data-who="Trader">So they lost on both legs and could not get at the cash.</p>
+      <p data-who="Quant">Exactly. Some had to sell other assets at bad prices to meet the calls. The so-called alpha carried hidden exposure to credit and liquidity that a one-factor regression never saw.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Strip out the beta to see the real skill, but before you rely on what is left, make sure it is not just another beta you have not measured.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -86,6 +141,27 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From a raw return to the alpha you can carry away, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ r_{i,t} - r_f = \color{#fbbf24}{\beta_i (r_{m,t} - r_f)} \]</div>
+      <p>Start with the ride: the part of the strategy's excess return that just tracks the market. With \(\beta = 1.2\) and the market 11 points over cash, that is \(1.2 \times 11\% = 13.2\%\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ r_{i,t} - r_f = \color{#fbbf24}{\alpha_i} + \beta_i (r_{m,t} - r_f) \]</div>
+      <p>Add the intercept: the average return left after the ride is removed. In the worked example, about 2% a year.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ r_{i,t} - r_f = \alpha_i + \beta_i (r_{m,t} - r_f) + \color{#fbbf24}{\varepsilon_t} \]</div>
+      <p>Add the residual: whatever the market alone does not explain in a given period. It is supposed to be unrelated to the market.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ (r_{i,t} - r_f) - \beta_i (r_{m,t} - r_f) = \color{#10b981}{\alpha_i + \varepsilon_t} \]</div>
+      <p>Hedge: short \(\beta_i\) units of the market. The beta terms cancel and, in expectation, only alpha remains, before the costs of the hedge. That stream is the portable alpha.</p>
+    </div>
+  </div>
   <p>
     Start from the single-index / market model — the same linear-regression
     machinery from the Correlation &amp; Linear Regression primer, just
@@ -245,6 +321,11 @@
       residual, and the short notional needed to fully hedge \(\beta\) to
       zero all recalculate instantly.
     </p>
+
+    <div class="tl-predict" data-answer="25.2" data-tol="1.5" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Same strategy, same 20% return, same \(\hat\beta = 1.2\) and 4% risk-free rate. But suppose the market had returned 25% that year, not 15%. How big is the beta slice, \(\beta \times (R_m - r_f)\)? Lock in a guess, then type 25 into the market-return field below.</div>
+      <div class="tl-predict-reveal"><p><strong>25.2%.</strong> \(1.2 \times (25\% - 4\%) = 25.2\%\). Add 4% cash and 2% alpha and the expected return is 31.2%, so the same 20% now leaves a residual of −11.2%. Identical headline number, opposite verdict: against a strong market, a 1.2-beta strategy should have done far better. Now set the market back to 15% and the beta to 0 to see what a market-neutral version would need to earn.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Strategy return \(R_p\) (%)</span></div>
@@ -380,6 +461,12 @@
   </div>
   <!-- DESK:END -->
 
+  <!-- WB:alpha_beta_separation:START -->
+  <div class="wb" id="wb-alpha_beta_separation" data-title="Alpha vs beta: take the return apart">
+    <script type="application/json">{"w":600,"h":760,"intro":"A manager made 20% in a year the market made 15%. How much was skill? Take the return apart, hedge out the market, then watch what 2008 did to the idea. Press play, or step through.","steps":[{"cap":"A strategy returned 20% in a year the S&P 500 returned 15%, with cash paying 4%. Five points ahead of the market. Is that five points of skill?","do":[{"box":"strat","x":10,"y":12,"w":180,"h":80,"text":"strategy\n20%","tone":"purple","size":20},{"box":"mkt","x":210,"y":12,"w":180,"h":80,"text":"S&P 500\n15%","tone":"blue","size":20},{"box":"cash","x":410,"y":12,"w":180,"h":80,"text":"cash\n4%","size":20}]},{"cap":"Regress the strategy's monthly returns over cash on the market's. Each dot is a month (illustrative). The slope is beta, 1.2: the strategy moves 1.2 times as much as the market.","do":[{"chart":"sc","x":10,"y":120,"w":290,"h":270,"title":"Monthly returns (illustrative)","xd":[-9,10],"yd":[-12,14],"yt":[[0,"0"]],"xt":[[-5,"−5%"],[0,"0"],[5,"+5% market"]],"pl":30,"pr":10,"zero":true},{"series":"fit","chart":"sc","pts":[[-9,-10.633333333333333],[10,12.166666666666666]],"tone":"red","ms":900,"label":"slope β = 1.2","lat":[5,6.166666666666667],"ldx":-6,"ldy":-16,"lanchor":"end"},{"dot":"p0","chart":"sc","at":[-0.42,0.27],"text":"","tone":"blue"},{"dot":"p1","chart":"sc","at":[-0.3,-0.58],"text":"","tone":"blue"},{"dot":"p2","chart":"sc","at":[-3.12,-3.83],"text":"","tone":"blue"},{"dot":"p3","chart":"sc","at":[5.05,6.73],"text":"","tone":"blue"},{"dot":"p4","chart":"sc","at":[4.75,6.16],"text":"","tone":"blue"},{"dot":"p5","chart":"sc","at":[2.18,3.0],"text":"","tone":"blue"},{"dot":"p6","chart":"sc","at":[-6.06,-6.08],"text":"","tone":"blue"},{"dot":"p7","chart":"sc","at":[2.63,3.92],"text":"","tone":"blue"},{"dot":"p8","chart":"sc","at":[-6.17,-9.32],"text":"","tone":"blue"},{"dot":"p9","chart":"sc","at":[-2.96,-3.95],"text":"","tone":"blue"},{"dot":"p10","chart":"sc","at":[1.82,2.3],"text":"","tone":"blue"},{"dot":"p11","chart":"sc","at":[2.68,2.62],"text":"","tone":"blue"},{"dot":"p12","chart":"sc","at":[1.83,2.84],"text":"","tone":"blue"},{"dot":"p13","chart":"sc","at":[-2.04,-0.23],"text":"","tone":"blue"},{"dot":"p14","chart":"sc","at":[2.83,4.99],"text":"","tone":"blue"},{"dot":"p15","chart":"sc","at":[-1.88,-2.98],"text":"","tone":"blue"},{"dot":"p16","chart":"sc","at":[-0.78,-0.89],"text":"","tone":"blue"},{"dot":"p17","chart":"sc","at":[3.13,4.22],"text":"","tone":"blue"},{"dot":"p18","chart":"sc","at":[-1.19,-2.41],"text":"","tone":"blue"},{"dot":"p19","chart":"sc","at":[-1.48,-0.15],"text":"","tone":"blue"},{"dot":"p20","chart":"sc","at":[-2.63,-2.7],"text":"","tone":"blue"},{"dot":"p21","chart":"sc","at":[2.31,1.15],"text":"","tone":"blue"},{"dot":"p22","chart":"sc","at":[0.79,2.69],"text":"","tone":"blue"},{"dot":"p23","chart":"sc","at":[-7.46,-9.17],"text":"","tone":"blue"},{"dot":"p24","chart":"sc","at":[0.18,-0.6],"text":"","tone":"blue"},{"dot":"p25","chart":"sc","at":[2.59,3.2],"text":"","tone":"blue"},{"dot":"p26","chart":"sc","at":[-5.26,-5.15],"text":"","tone":"blue"},{"dot":"p27","chart":"sc","at":[3.28,5.23],"text":"","tone":"blue"},{"dot":"p28","chart":"sc","at":[6.36,8.24],"text":"","tone":"blue"},{"dot":"p29","chart":"sc","at":[1.08,-0.1],"text":"","tone":"blue"},{"dot":"p30","chart":"sc","at":[3.06,3.11],"text":"","tone":"blue"},{"dot":"p31","chart":"sc","at":[-1.21,-2.8],"text":"","tone":"blue"},{"dot":"p32","chart":"sc","at":[-3.27,-4.4],"text":"","tone":"blue"},{"dot":"p33","chart":"sc","at":[5.76,4.63],"text":"","tone":"blue"},{"dot":"p34","chart":"sc","at":[-5.23,-5.82],"text":"","tone":"blue"},{"dot":"p35","chart":"sc","at":[6.37,8.51],"text":"","tone":"blue"}]},{"cap":"Now take the 20% apart. Cash: 4%. The market ride: 1.2 × (15% − 4%) = 13.2%. Alpha, the intercept: about 2%. Noise for this one year: 0.8%.","do":[{"chart":"bar","x":310,"y":120,"w":280,"h":270,"title":"The 20%, taken apart","xd":[0.4,4.6],"yd":[0,15],"yt":[[5,"5%"],[10,"10%"]],"xt":[[1,"cash"],[2,"beta"],[3,"alpha"],[4,"noise"]],"pl":40,"pr":10},{"bars":"parts","chart":"bar","data":[[1,4.0,"4%","purple"],[2,13.2,"13.2%","blue"],[3,2.0,"2%","green"],[4,0.8,"0.8%","amber"]],"bw":40,"ms":1200}]},{"cap":"The beta slice is the cheap part: anyone can buy 1.2 times the market with an index future, no skill needed. The manager's real contribution is the 2%, not the 20%.","do":[{"pulse":"parts"},{"dim":"mkt"}]},{"cap":"Hedge it out: short S&P futures worth 1.2 times the position. The two beta terms cancel. What is left, in expectation, is about 2% a year of alpha, before the costs of the hedge.","do":[{"chip":"fut","x":120,"y":430,"text":"short 1.2× futures","tone":"red"},{"move":"fut","x":450,"y":430,"ms":1100},{"note":"left","x":300,"y":470,"text":"beta → 0,  ≈ 2%/yr alpha left (before costs)","size":19,"anchor":"middle","tone":"green"}]},{"cap":"That hedged stream is portable: attach it to any market exposure you actually want, or none. Pension plans did exactly this, holding equity beta in futures and putting the spare cash into an \"alpha\" source.","do":[{"icon":"plan","name":"piggy","x":40,"y":500,"s":0.62,"tone":"blue","label":"pension plan","sym":"$","lsize":17},{"icon":"fut2","name":"up","x":200,"y":500,"s":0.6,"tone":"blue","label":"S&P futures\n(beta, margin)","lsize":17},{"icon":"hf","name":"bank","x":400,"y":500,"s":0.6,"tone":"green","label":"hedge funds,\ncredit (alpha)","sym":"$","lsize":17},{"arrow":["plan","fut2"],"id":"a1"},{"arrow":["plan","hf"],"bend":-40,"id":"a2"}]},{"cap":"2008: the S&P 500 fell by more than a third. The futures lost what the index lost, and futures settle in cash as they go, so the plan owed margin every day.","do":[{"hide":"left"},{"icon":"dn","name":"down","x":200,"y":500,"s":0.6,"tone":"red","label":"futures lose,\nmargin due daily","lsize":17},{"hide":"fut2"},{"pulse":"dn"}]},{"cap":"The alpha leg was supposed to be unrelated to the market. It was not: hedge fund indices had one of their worst years on record and structured credit fell. And the money paid out monthly or quarterly, some behind gates.","do":[{"cross":"hf"},{"note":"gate","x":470,"y":628,"text":"losing too, and gated","size":18,"anchor":"middle","tone":"red"}]},{"cap":"Both legs lost at once, and the cash to meet the calls was locked away. Some plans had to sell other assets at bad prices to raise collateral.","do":[{"icon":"fire","name":"fire","x":50,"y":650,"s":0.5,"tone":"red","label":"forced selling","lsize":17}]},{"cap":"The lesson: the residual of a one-factor regression hid other betas, to credit and to liquidity. Before trusting an alpha, test it against more factors and match the liquidity of the two legs.","do":[{"box":"lesson","x":220,"y":664,"w":260,"h":88,"text":"hidden betas:\ncredit + liquidity","tone":"amber","size":19}]}]}</script>
+  </div>
+  <!-- WB:alpha_beta_separation:END -->
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -424,6 +511,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · autumn 2008</div>
+    <h3>Margin calls on the beta leg, and the alpha leg is gated</h3>
+    <p>You run a pension plan's portable alpha programme. The equity beta is held through S&amp;P 500 futures, which need only a slice of the money as margin; the rest sits in funds of hedge funds and an enhanced-cash credit portfolio, as the alpha. Equities are falling fast. The futures demand cash margin every day, the hedge-fund sleeve is down too and pays out only quarterly, and some managers have put up gates. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Wait. Submit redemptions to the hedge funds and meet the calls when that cash arrives.<div class="tl-drill-why">Margin is due now; the redemptions arrive in months, if the gates lift at all. The two legs have different liquidity, and the beta leg will not wait for the alpha leg.</div></li>
+      <li data-verdict="bad">Add more futures. The alpha leg is uncorrelated with the market, so the programme is still sound, and stocks are cheap.<div class="tl-drill-why">The alpha leg is clearly not uncorrelated: it is losing in the same crisis. More futures means bigger margin calls with no liquid money to pay them.</div></li>
+      <li data-verdict="good">Treat the two legs as one exposure: cut the futures overlay to a size your truly liquid assets can fund, and meet calls from cash and liquid holdings now.<div class="tl-drill-why">The residual turned out to carry credit and liquidity risk that the one-factor regression never measured. Sizing the overlay to the cash you can actually raise stops the programme from becoming a forced seller.</div></li>
+      <li data-verdict="ok">Close the whole futures position at once to stop the margin calls.<div class="tl-drill-why">It ends the cash drain, but it locks in the beta loss and leaves the plan with the wrong equity exposure. A controlled cut to a fundable size does the same job with less damage.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> In 2008 the S&amp;P 500 fell by more than a third. Portable alpha programmes lost on the futures beta leg and on the "alpha" leg at the same time: hedge fund indices had one of their worst years on record, and enhanced-cash portfolios holding structured credit lost money too. Some plans had to sell other assets at bad prices to meet collateral calls, and after 2008 many institutions scaled back or wound down these programmes.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -454,6 +554,27 @@
     <li>Portable alpha as an institutional overlay technique is widely documented in practitioner asset-allocation literature; treat any specific implementation's track record with the same OOS skepticism this whole site applies to everything else.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> <span>· the regression that splits the return</span></li>
+        <li><a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a> <span>· why co-movement with the market matters</span></li>
+        <!-- DESK:START --><li><a href="institutional-capm.html">The Capital Asset Pricing Model (CAPM)</a> <span>· where beta and Jensen's alpha come from</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="active-portfolio-management.html">Active Portfolio Management</a> <span>· sizing and combining alpha once you have it</span></li>
+        <li><a href="regression-diagnostics.html">Regression Diagnostics: Durbin-Watson, Breusch-Pagan &amp; Jarque-Bera</a> <span>· is the intercept statistically real?</span></li>
+        <!-- DESK:START --><li><a href="institutional-fama-french-carhart.html">Fama-French &amp; Carhart: Beyond the Single Factor</a> <span>· the hidden betas a one-factor model misses</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> before you pay for, size or hedge any strategy, this tells you how much of its return is skill and how much is a market ride you could buy for almost nothing.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="markowitz-black-litterman.html">← Markowitz &amp; Black-Litterman</a>
@@ -568,10 +689,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

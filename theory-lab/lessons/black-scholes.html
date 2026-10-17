@@ -44,6 +44,59 @@
   </ul>
 </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A one-year call with strike 100, priced with 20% volatility and a 2% rate. The grey payoff at expiry is a hockey stick: zero below 100, rising one for one above it. The blue value-today curve sits above it everywhere, furthest above right at the strike, where the call is worth $8.92, all of it time value. A dashed tangent at the strike has slope 0.58, the delta: the hedge ratio.">
+      <line class="tlp-line" x1="60" y1="205" x2="490" y2="205"/>
+      <polyline class="tlp-line thick" points="60,205 270,205 480,37"/>
+      <polyline class="tlp-line blue thick" points="60.0,204.9 81.0,204.6 102.0,204.1 123.0,203.1 144.0,201.5 165.0,199.0 186.0,195.4 207.0,190.5 228.0,184.3 249.0,176.6 270.0,167.6 291.0,157.2 312.0,145.6 333.0,133.0 354.0,119.5 375.0,105.3 396.0,90.4 417.0,75.1 438.0,59.4 459.0,43.4 480.0,27.2"/>
+      <line class="tlp-line green dash" x1="200" y1="200" x2="340" y2="135"/>
+      <line class="tlp-line amber thick" x1="270" y1="168" x2="270" y2="205"/>
+      <circle class="tlp-blue" cx="270" cy="167.6" r="5"/>
+      <line class="tlp-line amber" x1="196" y1="124" x2="266" y2="180"/>
+      <text class="tlp-amber" x="30" y="104" font-size="14" font-weight="700">at the strike: $8.92,</text>
+      <text class="tlp-amber" x="30" y="121" font-size="13">all of it time value</text>
+      <text class="tlp-green" x="350" y="178" font-size="14" font-weight="700">slope here = delta 0.58</text>
+      <text class="tlp-green" x="350" y="195" font-size="13">the hedge ratio</text>
+      <text class="tlp-blue" x="382" y="142" font-size="14" font-weight="700">value today</text>
+      <text class="tlp-text2" x="382" y="158" font-size="12">σ 20%, 1 year, r 2%</text>
+      <text class="tlp-text2" x="490" y="40" font-size="13">payoff</text>
+      <text class="tlp-text2" x="490" y="56" font-size="13">at expiry</text>
+      <text class="tlp-text3" x="270" y="224" text-anchor="middle" font-size="12">K = 100</text>
+      <text class="tlp-text3" x="60" y="224" text-anchor="middle" font-size="12">60</text>
+      <text class="tlp-text3" x="480" y="224" text-anchor="middle" font-size="12">140</text>
+      <text class="tlp-text3" x="375" y="238" text-anchor="middle" font-size="12">underlying price →</text>
+    </svg>
+    <figcaption>The grey hockey stick is what the call pays on expiry day. Before then it is worth more, the blue curve, because there is still time to move. The gap is time value, biggest at the strike. The slope of the blue curve is delta: how much stock you hold to copy the option.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">If I sell someone a call, I'm on the hook if the stock rockets. How do I know what to charge without knowing where it's going?</p>
+      <p data-who="Quant">That's the beautiful part of Black, Scholes and Merton in 1973. You don't need a forecast. You can build a copy of the option out of the stock and cash.</p>
+      <p data-who="Trader">A copy? How?</p>
+      <p data-who="Quant">Hold some stock and some cash, and keep adjusting. When the option is deep in the money, it behaves like the stock, so you hold nearly a full share. When it's far out of the money, it's nearly worthless, so you hold almost none. Rebalance all the way, and at expiry your copy pays exactly what the option pays, whatever happens.</p>
+      <p data-who="Trader">And two things that always pay the same must cost the same.</p>
+      <p data-who="Quant">Or someone buys the cheap one, sells the dear one, and pockets free money. So the cost of building the copy is the option's price.</p>
+      <p data-who="Trader">Where does my view on direction come in?</p>
+      <p data-who="Quant">It doesn't. The stock's expected return cancels out completely during the hedging. Only volatility matters: how much it moves, not which way.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Stock at a hundred, strike at a hundred, one year, a two percent rate, twenty percent volatility. The formula gives about eight dollars ninety-two. None of that is intrinsic value, because the option is exactly at the money. It's all time value: the chance the stock ends up higher.</p>
+      <p data-who="Trader">And the Greeks?</p>
+      <p data-who="Quant">They're just how that price changes. Delta is how much stock you hold in the copy, about point five eight here. Gamma is how fast delta changes, so how often you must rehedge. Theta is the daily melt. Vega is sensitivity to volatility.</p>
+      <p data-who="Trader">So point five eight means a fifty-eight percent chance of finishing in the money?</p>
+      <p data-who="Quant">No, a common mix-up. The model's own chance here is exactly fifty percent. Delta is a hedge ratio, and it's always a bit bigger than that probability.</p>
+      <p data-who="Trader">Has the copying trick ever failed?</p>
+      <p data-who="Quant">The nineteenth of October 1987. Portfolio insurers were manufacturing puts by selling index futures as prices fell. On that Monday their deltas told them to sell more and more. Their selling was the price move. Prices gapped, and the Dow fell twenty-two point six percent in one day.</p>
+      <p data-who="Trader">So the model assumed they could trade smoothly.</p>
+      <p data-who="Quant">Exactly. Smooth prices, small hedgers, constant volatility. Since then, index puts have always been priced with extra volatility for a crash.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">An option is priced by what it costs to copy, which depends on volatility, not direction, and the copy only works while the market lets you trade smoothly.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <!-- DESK:START -->
@@ -119,6 +172,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the call price comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ C = \color{#fbbf24}{S_0 N(d_1)} \]</div>
+      <p>Start with what you receive: the stock, weighted by \(N(d_1)\). That weight is also delta, the number of shares in the replicating copy.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ C = S_0 N(d_1) - \color{#fbbf24}{Ke^{-rT}N(d_2)} \]</div>
+      <p>Subtract what you pay: the strike, discounted to today, weighted by \(N(d_2)\), the risk-neutral chance the call finishes in the money.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ d_1 = \frac{\ln(S_0/K) + \left(r + \frac{\sigma^2}{2}\right)T}{\color{#fbbf24}{\sigma\sqrt{T}}}, \qquad d_2 = d_1 - \sigma\sqrt{T} \]</div>
+      <p>Both weights come from how far in or out of the money you are, measured in units of volatility over the option's life. No expected return \(\mu\) appears anywhere: it cancelled out in the hedge.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ C = 100(0.5793) - 100\,e^{-0.02}(0.5000) \approx \color{#10b981}{8.92} \]</div>
+      <p>The worked example: \(S_0 = K = 100\), \(r = 2\%\), \(\sigma = 20\%\), \(T = 1\). Then \(d_1 = 0.20\), \(d_2 = 0\), and the call is worth about $8.92, all of it time value.</p>
+    </div>
+  </div>
   <p>
     The model has three layers: (1) an assumption about how the underlying's
     price moves, (2) the replication/no-arbitrage argument that turns that
@@ -573,6 +646,10 @@
       the final price — recalculates instantly, so you can feel which inputs
       the price is most sensitive to without re-deriving anything by hand.
     </p>
+    <div class="tl-predict" data-answer="16.70" data-tol="0.5" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At 20% volatility the one-year at-the-money call is worth $8.92. Double the volatility to 40% and keep everything else the same. What is the call worth now, in dollars? Lock in a guess, then type 40 into the Vol field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About $16.70.</strong> Now \(d_1 = (0.02 + 0.08)/0.40 = 0.25\) and \(d_2 = -0.15\), so \(C = 100 \times 0.5987 - 98.02 \times 0.4404 \approx 16.70\). Doubling volatility nearly doubled the price: at the money, value is close to proportional to \(\sigma\sqrt{T}\). Now set the volatility back to 20% and the time to 0.25 years: a quarter of the time costs about half the price, not a quarter.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Spot \(S_0\)</span></div>
@@ -874,6 +951,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="1987-10-16">
+    <div class="tl-drill-label">Scenario drill · 16 October 1987</div>
+    <h3>Your insurance is a formula, and the market just fell 4.6%</h3>
+    <p>It is Friday evening. The market has slid all week, and today the Dow fell about 4.6%. You run portfolio insurance for pension funds: no bought puts, just the replication argument. You hold stocks and cash and sell S&amp;P 500 index futures as the market falls, matching a put's delta. Your deltas already say you are behind, and on Monday they will tell you to sell more. Many other insurers run the same rules. What do you plan for Monday?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Follow the model as usual. It says you can adjust a little at a time, near the last price.<div class="tl-drill-why">That is the model's assumption, not a fact about Monday. Continuous prices and a hedger too small to move them are exactly what fails when everyone running the same rule has to sell at once.</div></li>
+      <li data-verdict="good">Plan for a gap: assume fills far below the model's prices, cut the size you are protecting where you can, and warn clients the floor may not hold.<div class="tl-drill-why">This takes the lesson's limits seriously. Replication only works while you can trade smoothly at prices you do not move. Planning for a gap is the honest response when your own hedging is part of the flow.</div></li>
+      <li data-verdict="bad">Do nothing until Monday's prices are in. The delta will tell you what to do.<div class="tl-drill-why">The delta will tell you to sell, into the same falling market as every other insurer. Waiting hands your decision to the feedback loop the formula has no term for.</div></li>
+      <li data-verdict="ok">Replace part of the synthetic protection with real index puts bought from someone else.<div class="tl-drill-why">Real puts do not need you to trade during the crash, so the protection holds. But after a week of falls they cost more, and buying them is not the same as admitting the synthetic floor may fail for the rest of the book.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Monday 19 October 1987 the Dow fell 22.6%, still its largest one-day percentage fall of the modern era, and the S&amp;P 500 fell about 20%. The Brady Commission found that portfolio insurers' futures selling, with other mechanical selling, was a significant source of the pressure. Futures traded far below the stocks they tracked, fills came in far below the model's prices, and clients got less protection than promised. Out-of-the-money index puts have carried higher implied volatility ever since.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -1028,6 +1118,27 @@
     <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — the standard textbook treatment of the derivation, the Greeks, and their extensions; the reference most quant/trading desks point newcomers to first.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="options-four-positions.html">The Four Option Positions</a> <span>· what a call and a put pay before any pricing</span></li>
+        <li><a href="primer-stats-normal.html">Descriptive Statistics &amp; the Normal Distribution</a> <span>· the bell curve behind N(d₁) and N(d₂)</span></li>
+        <li><a href="ito-lemma.html">Itô's Lemma</a> <span>· the calculus that turns the hedge into the formula</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="merton-jump-diffusion.html">The Merton Jump-Diffusion Model</a> <span>· adding the gaps this model rules out</span></li>
+        <li><a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a> <span>· why one volatility per strike is not enough</span></li>
+        <li><a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a> <span>· what dealers' deltas do to the market</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every option price, Greek and dealer-flow story you meet starts from this replication argument, and so do its failure modes.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="pca-factors.html">← Principal Component Analysis &amp; Factor Regimes</a>
@@ -1195,7 +1306,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
