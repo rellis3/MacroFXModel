@@ -561,3 +561,6 @@ analysis/output/nt8/
 analysis/output/nt8_live/
 nt8_bridge/server/bin/
 nt8_bridge/server/obj/
+
+# point-in-time feature store data (plans/FEATURE_MANIFEST.json is the committed contract)
+features/*.parquet
