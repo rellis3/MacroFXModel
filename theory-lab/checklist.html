@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pre-Trade Checklist — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb cs-noprint"><a href="hub.html">Theory Lab</a> · <a href="practice.html">Practice</a> · Pre-trade checklist</div>
+  <div class="tl-hub-hero">
+    <div class="tl-kicker">Two minutes before every position</div>
+    <h1>Pre-Trade Checklist</h1>
+    <p>Pilots use checklists because skill does not stop experienced people skipping steps under pressure. These are the questions the lab's lessons say to answer before a trade goes on. Each has a one-line reason and a link to the lesson behind it. You will not tick every box on every trade. The ones you cannot tick are the point: they are where the risk you have not thought about lives.</p>
+  </div>
+  <div class="tl-btnrow cs-noprint ck-bar">
+    <span class="ck-score" id="ck-score"></span>
+    <button type="button" class="tl-btn" id="ck-copy">Copy as text</button>
+    <button type="button" class="tl-btn" id="ck-print">🖨 Print blank</button>
+    <a class="tl-btn active" id="ck-journal" href="journal.html">Log it in the journal →</a>
+    <button type="button" class="tl-btn" id="ck-clear">Clear for the next trade</button>
+  </div>
+  <label class="ck-trade">The trade <input type="text" id="ck-name" class="tl-scratch-input" placeholder="e.g. Short EUR/USD into ECB, 1.0850, stop 1.0920"></label>
+  <div id="ck-list"></div>
+  <label class="ck-trade">Anything you could not tick, and why you are trading anyway
+    <textarea id="ck-note" class="tl-scratch-input" rows="3"></textarea></label>
+  <p class="tl-hint cs-noprint">Your ticks and notes are saved in this browser until you clear them.</p>
+  <div class="tl-footer-nav cs-noprint"><a href="practice.html">← Practice</a><a href="journal.html">Trade journal →</a></div>
+</div>
+<!-- DESK:START --><script>
+window.TL_CHECK_DESK = [
+  ['The idea', 'Is there a written trade plan with entry, stop, target and the reason, made before the signal fired?', 'action-trade-plan', 'Plans written after the fact are stories.'],
+  ['Size and risk', 'Does the edge survive the desk\'s measured costs for this instrument and session?', 'action-edge-after-costs', 'Most small edges are smaller than the spread plus slippage.'],
+  ['Size and risk', 'Is the size set from today\'s volatility, using the desk\'s vol-to-size rule?', 'action-vol-to-size', 'The same stop in pips is a different risk on a quiet day and a wild one.']
+];
+</script><!-- DESK:END -->
+<script src="assets/checklist.js"></script>
+<script src="assets/vark.js?v=2" defer></script>
+</body>
+</html>

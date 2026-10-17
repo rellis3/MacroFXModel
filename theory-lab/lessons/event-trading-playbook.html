@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Event-Trading Playbook — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>try{if(localStorage.getItem('theoryLabTheme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / How Markets Talk to Each Other / Event-Trading Playbook</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">How Markets Talk to Each Other · Lesson 6 of 6</div>
+  <h1 class="tl-title">The Event-Trading Playbook: Payrolls, CPI and Central Banks</h1>
+  <p class="tl-dek">Before a scheduled release the options market has already priced how far price should move. After it, price moves on the surprise, not the number. Everything in between is liquidity, sizing and discipline.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — a framework for scheduled releases, not a tested strategy</span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a>, <a href="central-bank-policy.html">Central Bank Policy</a></span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="event-trading-playbook-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>The move is priced before the number.</strong> An at-the-money straddle costs about \(0.8\,\sigma\sqrt{T}\,S\), so its breakeven is the market's expected absolute move. Over an event, short-dated implied vol jumps, then collapses once the number is out.</li>
+      <li><strong>Back out the event from the term structure.</strong> Variance adds across days, so with one expiry before the event and one after it, \(\sigma_e^2 = \sigma_2^2T_2 - \sigma_1^2T_1 - \sigma_b^2(T_2-T_1-1)\). With 7% for 4 days and 9% for 5 days, the event day is worth 14.5% annualised: about ±98 pips on EUR/USD at 1.0800, against ±48 on an ordinary day.</li>
+      <li><strong>Price reacts to the surprise, actual minus consensus, not the level.</strong> A 7.7% inflation print can send stocks to their best day in two years if 7.9% was expected. Standardise the surprise by its usual size before you compare releases.</li>
+      <li><strong>Around the release, liquidity thins and spreads widen.</strong> The first move is fast and noisy; the second move comes from the details: revisions, the other half of the report, the press conference.</li>
+      <li><strong>Size for the gap, not the stop.</strong> A stop is an order, not a guarantee. Size so a move of two or three event standard deviations is survivable, set blackout rules, and run a checklist before every release.</li>
+      <li><strong>Real-world episode:</strong> US CPI on 10 November 2022 came in at 7.7% against roughly 7.9% expected. The S&amp;P 500 rose 5.5%, the 2-year Treasury yield fell from 4.62% to 4.32%, and the dollar fell hard. Inflation was still nearly four times the Fed's target: only the surprise was good news.</li>
+    </ul>
+  </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 244" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bars show how much variance each day of a five-day EUR/USD option carries. Monday to Thursday are ordinary days of equal height. Friday, payrolls day, is about 4.3 times as tall. On the right, the arithmetic: the Thursday expiry at 7% and the Friday expiry at 9% imply an event day of 14.5% annualised, about plus or minus 98 pips for one standard deviation, a straddle breakeven of about 78 pips, against plus or minus 48 pips on an ordinary day.">
+      <text class="tlp-text3" x="26" y="24" font-size="13">variance carried by each day of a 5-day option</text>
+      <line class="tlp-line" x1="26" y1="196" x2="330" y2="196"/>
+      <rect class="tlp-box blue" x="34" y="168" width="44" height="28" rx="3"/>
+      <rect class="tlp-box blue" x="92" y="168" width="44" height="28" rx="3"/>
+      <rect class="tlp-box blue" x="150" y="168" width="44" height="28" rx="3"/>
+      <rect class="tlp-box blue" x="208" y="168" width="44" height="28" rx="3"/>
+      <rect class="tlp-box amber" x="266" y="76.6" width="44" height="119.4" rx="3"/>
+      <line class="tlp-line blue dash" x1="26" y1="168" x2="330" y2="168"/>
+      <text class="tlp-text3" x="56" y="214" text-anchor="middle" font-size="12">Mon</text>
+      <text class="tlp-text3" x="114" y="214" text-anchor="middle" font-size="12">Tue</text>
+      <text class="tlp-text3" x="172" y="214" text-anchor="middle" font-size="12">Wed</text>
+      <text class="tlp-text3" x="230" y="214" text-anchor="middle" font-size="12">Thu</text>
+      <text class="tlp-amber" x="288" y="214" text-anchor="middle" font-size="12" font-weight="700">Fri</text>
+      <text class="tlp-blue" x="34" y="160" font-size="12">ordinary day = 1</text>
+      <text class="tlp-amber" x="288" y="50" text-anchor="middle" font-size="14" font-weight="700">payrolls</text>
+      <text class="tlp-amber" x="288" y="68" text-anchor="middle" font-size="12">≈ 4.3 ordinary days</text>
+      <text class="tlp-text2" x="378" y="48" font-size="13">Thu expiry, 4 days: 7%</text>
+      <text class="tlp-text2" x="378" y="68" font-size="13">Fri expiry, 5 days: 9%</text>
+      <text class="tlp-purple" x="378" y="98" font-size="13">event: √(5·9² − 4·7²)</text>
+      <text class="tlp-purple" x="378" y="118" font-size="14" font-weight="700">= 14.5% annualised</text>
+      <text class="tlp-amber" x="378" y="148" font-size="15" font-weight="700">± 98 pips (1 sd)</text>
+      <text class="tlp-amber" x="378" y="168" font-size="13">straddle breakeven ≈ 78 pips</text>
+      <text class="tlp-blue" x="378" y="194" font-size="13">ordinary day: ± 48 pips</text>
+      <text class="tlp-text2" x="26" y="236" font-size="13">The size of the move is priced before the number. Its direction comes from the surprise.</text>
+    </svg>
+    <figcaption>One week of illustrative EUR/USD option quotes at 1.0800. Variance adds across days, so the gap between the Thursday and Friday expiries is the payrolls day on its own: worth about four ordinary days, or roughly twice an ordinary day's move.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Payrolls are on Friday. I think the number will be strong. Should I just get long the dollar now?</p>
+      <p data-who="Quant">First ask what the market already expects. Not the number. The size of the move. The options market tells you that before the release.</p>
+      <p data-who="Trader">How?</p>
+      <p data-who="Quant">Take two option expiries on euro dollar. One expires Thursday, before the release. One expires Friday, after it. Say Thursday's is priced at seven percent volatility and Friday's at nine.</p>
+      <p data-who="Trader">Nine doesn't sound much bigger than seven.</p>
+      <p data-who="Quant">That's the trick. Volatility doesn't add up across days, but variance does. Square each one and multiply by the days. Five times nine squared, minus four times seven squared. What's left is the Friday on its own, and it comes out at about fourteen and a half percent.</p>
+      <p data-who="Trader">And in pips?</p>
+      <p data-who="Quant">Divide by about sixteen to turn a yearly number into a daily one. With euro dollar at one oh eight, that's about ninety-eight pips for one standard deviation. An ordinary day is about forty-eight. So the market expects payrolls day to move about twice as much.</p>
+      <p data-who="Trader">So a straddle over the release is a bet that the move beats that.</p>
+      <p data-who="Quant">Right. Its breakeven is about eight tenths of that standard deviation, roughly seventy-eight pips. And once the number is out, that extra volatility vanishes. If the move is small, the straddle buyer loses even though something happened.</p>
+      <p data-who="Trader">Now direction. A strong number means a stronger dollar, surely.</p>
+      <p data-who="Quant">Only if it's stronger than expected. Price reacts to the surprise: the actual minus the consensus. A strong number that everyone expected is already in the price.</p>
+      <p data-who="Trader">Has that ever been really obvious?</p>
+      <p data-who="Quant">The tenth of November, twenty twenty-two. US inflation came in at seven point seven percent. That's still nearly four times the Fed's target. But the forecast was about seven point nine. The S and P five hundred rose five and a half percent, its best day in two and a half years, and the dollar fell hard.</p>
+      <p data-who="Trader">Good news that was really just less bad news.</p>
+      <p data-who="Quant">Exactly. And the first few seconds are the worst time to trade. Spreads widen, quotes vanish, and the first move often reverses when people read the revisions or hear the press conference. That's the second move.</p>
+      <p data-who="Trader">So what about my stop?</p>
+      <p data-who="Quant">A stop is an order, not a guarantee. Price can jump straight through it. Size the position so a move of two or three event standard deviations still costs you an amount you can live with.</p>
+      <p data-who="Trader">One-line version?</p>
+      <p data-who="Quant">Know the priced move before the number, trade the surprise not the level, and size for the gap, not the stop.</p>
+    </div>
+  </section>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Most market days are a slow drift of information. A handful are not. At 8:30 a.m. New York time on the
+    first Friday of most months, the US Bureau of Labor Statistics publishes the Employment Situation report:
+    nonfarm payrolls, the unemployment rate, average hourly earnings. A week or so later it publishes the
+    consumer price index, also at 8:30. Eight times a year the Federal Open Market Committee releases its
+    decision at 2:00 p.m., and its Chair takes questions at 2:30. The ECB, the Bank of England, the Bank of
+    Japan and the rest run their own calendars. Each of these is a moment when a large piece of information
+    lands at a time everyone knows in advance.
+  </p>
+  <p>
+    That makes scheduled events unusual in a useful way. You can't know the number, but you can know almost
+    everything else: when it arrives, what the consensus forecast is, how big a move the options market is
+    charging for, how thin liquidity will get, and what the central bank says it cares about. A trader who
+    has done that homework stops treating the release as a coin toss and starts treating it as a priced bet
+    with a known shape. This lesson is that homework, written out: the arithmetic for the priced move, the
+    rule that turns a number into a reaction, and the practical discipline around both.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The market bets on the size before it learns the direction</h3>
+    <p>
+      Think of a scheduled release as a sealed envelope that everyone knows will be opened at 8:30. Nobody
+      knows what's inside. But everyone has a guess (the consensus), and everyone knows roughly how
+      surprising these envelopes usually turn out to be. So two different things get priced before the
+      envelope opens.
+    </p>
+    <p>
+      The <strong>direction</strong> is mostly already in the price, because the consensus is already in the
+      price. If everyone expects a strong number, the currency has already moved as if the number will be
+      strong. Only the part nobody expected, the surprise, is left to move it. The <strong>size</strong> is
+      priced too, in options. Someone selling an option that expires just after the release wants to be paid
+      for the jump it might bring, so options spanning the event cost more than options that expire before it.
+      That extra cost is a direct, tradeable quote for how big the move "should" be.
+    </p>
+    <p style="margin-bottom:0">
+      Put those two ideas together and you have the whole playbook. Before the release: what size is priced,
+      and is my position sized for it? At the release: was it a surprise, and which way? After the release:
+      did the details or the press conference change the story? Everything else in this lesson fills in those
+      three questions with numbers.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If everyone already knows it will rain tomorrow, umbrella shops don't get a rush when it rains. The rush comes if it snows instead. Markets are the same: the forecast is already in the price, so only the surprise makes it jump. And the price of an umbrella in advance tells you how worried people are about the weather.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the event-day volatility comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \sigma_e^2 = \color{#fbbf24}{\sigma_2^2\,T_2} \]</div>
+      <p>Start with everything the longer expiry prices: its implied variance times its days. This expiry spans the event, so the event is somewhere inside this total.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \sigma_e^2 = \sigma_2^2\,T_2 \color{#fbbf24}{\;-\;\sigma_1^2\,T_1} \]</div>
+      <p>Take away the days both expiries share. The shorter expiry ends before the event, so its variance is all ordinary days. What remains is the forward variance between the two expiries.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \sigma_e^2 = \sigma_2^2\,T_2 - \sigma_1^2\,T_1 \color{#fbbf24}{\;-\;\sigma_b^2\,(T_2-T_1-1)} \]</div>
+      <p>If the gap holds ordinary days as well as the event, strip them out at the base volatility. When the expiries sit one day apart, as in the example below, this term is zero.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\sigma_e = \sqrt{\sigma_2^2\,T_2 - \sigma_1^2\,T_1 - \sigma_b^2\,(T_2-T_1-1)}} \]</div>
+      <p>Take the square root to get the event day's annualised implied volatility. With 9% over 5 days and 7% over 4 days: \(\sqrt{0.0405 - 0.0196} = \sqrt{0.0209} = 14.5\%\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{move} = \frac{\sigma_e}{\color{#fbbf24}{\sqrt{252}}}\times S \;\Rightarrow\; \color{#10b981}{\pm 98 \text{ pips at } 1.0800} \]</div>
+      <p>Divide by the square root of 252 trading days to turn a yearly volatility into one day's standard deviation, then multiply by the price.</p>
+    </div>
+  </div>
+
+  <p>
+    <strong>Step one: what a straddle says.</strong> An at-the-money straddle is a call and a put at the same
+    strike, at the current price. It pays off if price moves far enough in either direction, so its cost is
+    the market's price for the <em>size</em> of a move with no view on its direction. For an at-the-money
+    option with a short expiry, Brenner and Subrahmanyam (1988) showed the Black-Scholes price collapses to a
+    simple rule: a call is worth about \(0.4\,\sigma\sqrt{T}\,S\). A straddle is two of them:
+  </p>
+  <div class="tl-math">\[ \text{Straddle} \;\approx\; 0.8\,\sigma\sqrt{T}\,S \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>σ</code><span>implied volatility, annualised</span></div>
+    <div class="tl-eq-chip c2"><code>T</code><span>time to expiry, in years</span></div>
+    <div class="tl-eq-chip c3"><code>S</code><span>spot price</span></div>
+    <div class="tl-eq-chip c4"><code>0.8</code><span>≈ √(2/π) = 0.798: the average size of a normal move, in standard deviations</span></div>
+  </div>
+  <p>
+    The 0.8 is not arbitrary. If a move is normally distributed with standard deviation \(\sigma\sqrt{T}\,S\),
+    its average <em>absolute</em> size is \(\sqrt{2/\pi}\approx 0.798\) of that. So the straddle's cost is the
+    expected absolute move, and the straddle breaks even when price ends up exactly that far from the strike.
+    Traders say "the straddle is pricing a 78-pip move" and mean exactly this. It is a mean, not a cap: about
+    four moves in ten end up bigger than it.
+  </p>
+
+  <p>
+    <strong>Step two: why one expiry is not enough.</strong> A one-week option that spans payrolls prices the
+    whole week, the quiet days as well as the event. Its volatility is an average, and the event gets diluted
+    in it. To isolate the event you use the fact that <em>variance</em>, not volatility, adds up across time.
+    If each day's move is independent, the variance to an expiry is the sum of each day's variance. Count time
+    in trading days and quote volatility annualised, and each day contributes \(\sigma_{\text{day}}^2 \times 1\)
+    to a total that the market quotes as \(\sigma^2 T\):
+  </p>
+  <div class="tl-math">\[ \sigma_2^2\,T_2 \;=\; \sigma_1^2\,T_1 \;+\; \sigma_b^2\,(T_2 - T_1 - 1) \;+\; \sigma_e^2 \cdot 1 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>σ₂²T₂</code><span>total variance to the expiry that spans the event</span></div>
+    <div class="tl-eq-chip c2"><code>σ₁²T₁</code><span>total variance to the expiry that ends before the event</span></div>
+    <div class="tl-eq-chip c3"><code>σ_b²(T₂−T₁−1)</code><span>ordinary days between the expiries, other than the event day</span></div>
+    <div class="tl-eq-chip c4"><code>σ_e²·1</code><span>the event day's own variance: one day at the event volatility</span></div>
+  </div>
+  <p>
+    Rearranging gives the event volatility, the central formula of this lesson:
+  </p>
+  <div class="tl-math">\[ \sigma_e \;=\; \sqrt{\sigma_2^2\,T_2 \;-\; \sigma_1^2\,T_1 \;-\; \sigma_b^2\,(T_2-T_1-1)} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>σ_e</code><span>annualised implied volatility of the event day alone</span></div>
+    <div class="tl-eq-chip c2"><code>σ₁, T₁</code><span>shorter expiry: vol and trading days; ends before the event</span></div>
+    <div class="tl-eq-chip c3"><code>σ₂, T₂</code><span>longer expiry: vol and trading days; spans the event</span></div>
+    <div class="tl-eq-chip c4"><code>σ_b</code><span>base vol for ordinary days; usually taken equal to σ₁</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">σ₂²T₂</div>
+      <div class="tl-fp-name">The whole bill</div>
+      <div class="tl-fp-desc">All the variance the event-spanning expiry charges for, quiet days and event together</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">− σ₁²T₁ − σ_b²(…)</div>
+      <div class="tl-fp-name">The ordinary days</div>
+      <div class="tl-fp-desc">What the same window would cost with no event in it, taken from the shorter expiry</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">σ_e</div>
+      <div class="tl-fp-name">The event</div>
+      <div class="tl-fp-desc">The square root of what is left: the volatility the market is charging for that one day</div>
+    </div>
+  </div>
+
+  <p>
+    The same idea is often quoted the other way round, as <strong>event weight</strong>: how many ordinary days
+    the event is worth. That is just \(\sigma_e^2/\sigma_b^2\). FX option desks build their volatility term
+    structure this way, giving each calendar day a weight (weekends and holidays low, data days high) so that
+    implied vol for any expiry is the square root of the weighted sum. Whether the clock counts 252 trading
+    days or 365 calendar days is a convention; what matters is using the same one for both expiries.
+  </p>
+  <p>
+    <strong>Step three: from volatility to pips.</strong> Annualised volatility becomes a one-day standard
+    deviation by dividing by the square root of the number of days in the year's clock, about 15.87 for 252
+    trading days (the "divide by 16" rule from the VIX lesson). Multiply by spot and divide by the pip size:
+  </p>
+  <div class="tl-math">\[ m_e \;=\; \frac{\sigma_e}{\sqrt{252}} \times \frac{S}{\text{pip}}, \qquad \text{breakeven} \;\approx\; 0.8\,m_e \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>mₑ</code><span>one standard deviation of the event-day move, in pips or points</span></div>
+    <div class="tl-eq-chip c2"><code>√252</code><span>≈ 15.87, turns a yearly vol into a daily one</span></div>
+    <div class="tl-eq-chip c3"><code>pip</code><span>0.0001 for EUR/USD, 0.01 for USD/JPY, 1 for an index point</span></div>
+    <div class="tl-eq-chip c4"><code>0.8 mₑ</code><span>expected absolute move: the event straddle's breakeven</span></div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A five-day ticket costs more than a four-day ticket. If each normal day costs the same, the extra cost of the fifth day tells you what that one day is worth. If the fifth day is payrolls day, it costs about four normal days. That's how you find the price of the event on its own.</p>
+  </div>
+
+  <div class="tl-solid red">
+    <strong>The trap: event vol is a small difference of two big numbers.</strong> The event variance is what is
+    left after subtracting one large total from another. A one-point error in either quote moves the answer a
+    lot. In the example, marking the 5-day at 8% instead of 9% drops the event vol from 14.5% to 11.1%. Use
+    mid-market quotes from the same moment, the same day-count clock for both expiries, and treat the result as
+    a range, not a point.
+  </div>
+
+  <p>
+    <strong>Step four: surprise, not level.</strong> The options market prices the size. The direction comes
+    from comparing the release with what was expected. Define the surprise as
+  </p>
+  <div class="tl-math">\[ s \;=\; A - E, \qquad z \;=\; \frac{A - E}{\operatorname{sd}(A - E)} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>A</code><span>the actual released number</span></div>
+    <div class="tl-eq-chip c2"><code>E</code><span>the consensus forecast: the median of economists' survey forecasts</span></div>
+    <div class="tl-eq-chip c3"><code>s</code><span>the raw surprise, in the release's own units</span></div>
+    <div class="tl-eq-chip c4"><code>z</code><span>the standardised surprise: raw surprise ÷ the usual size of past surprises</span></div>
+  </div>
+  <p>
+    Standardising is what lets you compare releases. A 0.1-point miss on core CPI and a 50,000-job miss on
+    payrolls are in different units; dividing each by the standard deviation of its own past surprises puts
+    them on one scale. This is the measure Andersen, Bollerslev, Diebold and Vega used in their 2003 study of
+    five-minute exchange rates around US announcements. They found that the surprise explains the jump in the
+    conditional mean, that the adjustment is very fast, and that the response is asymmetric: bad news moved
+    rates more than good news of the same size. The working model is a simple regression on the surprise:
+  </p>
+  <div class="tl-math">\[ \Delta p \;=\; \beta\,z \;+\; \varepsilon \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Δp</code><span>the price change in a short window after the release</span></div>
+    <div class="tl-eq-chip c2"><code>β</code><span>the reaction per one standard deviation of surprise; its sign and size change with the regime</span></div>
+    <div class="tl-eq-chip c4"><code>ε</code><span>everything else: other parts of the report, revisions, positioning, noise</span></div>
+  </div>
+  <p>
+    The level of the number does not appear. If the consensus is 7.9%, the price already reflects 7.9%. A
+    print of 7.7% is new information only to the extent of the 0.2-point difference. Kuttner (2001) showed the
+    same thing for Fed decisions: bond yields barely responded to the anticipated part of a rate change, and
+    strongly to the unanticipated part measured from fed funds futures.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(\sigma_1, T_1\)</td><td>Implied volatility (annualised) and trading days to the expiry that ends before the event.</td></tr>
+      <tr><td>\(\sigma_2, T_2\)</td><td>Implied volatility and trading days to the expiry that spans the event.</td></tr>
+      <tr><td>\(\sigma_b\)</td><td>Base volatility of an ordinary day; usually set equal to \(\sigma_1\).</td></tr>
+      <tr><td>\(\sigma_e\)</td><td>The event day's own annualised implied volatility, backed out from the two expiries.</td></tr>
+      <tr><td>\(\sigma_e^2/\sigma_b^2\)</td><td>Event weight: how many ordinary days of variance the event is worth.</td></tr>
+      <tr><td>\(S\), pip</td><td>Spot price and the size of one pip or point (0.0001 on EUR/USD).</td></tr>
+      <tr><td>\(m_e\)</td><td>One standard deviation of the event-day move, in pips: \(\sigma_e S/(\sqrt{252}\,\text{pip})\).</td></tr>
+      <tr><td>\(A, E\)</td><td>The actual released figure and the consensus forecast.</td></tr>
+      <tr><td>\(s, z\)</td><td>Raw surprise \(A-E\), and standardised surprise \(z = s/\operatorname{sd}(s)\).</td></tr>
+      <tr><td>\(\beta, \varepsilon\)</td><td>Reaction per unit of standardised surprise, and the part of the move the headline surprise doesn't explain.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Surprise, not level: the same 40 releases plotted two ways (illustrative)</div>
+    <div class="tl-btnrow" id="etp-sc-view" style="margin-bottom:10px">
+      <button type="button" class="tl-btn active" data-view="surprise">Against the surprise</button>
+      <button type="button" class="tl-btn" data-view="level">Against the level</button>
+    </div>
+    <svg id="etp-sc-svg" viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter chart of 40 illustrative data releases. The vertical axis is the EUR/USD move in pips in the half hour after the release. Plotted against the standardised surprise, the points fall along a downward-sloping line: hotter US numbers mean a lower EUR/USD. Plotted against the level of the released number, the same points show no pattern. A slider adds noise from the rest of the report.">
+      <line x1="70" y1="30" x2="70" y2="260" style="stroke:var(--border)"/>
+      <line x1="70" y1="260" x2="610" y2="260" style="stroke:var(--border)"/>
+      <line x1="70" y1="145" x2="610" y2="145" style="stroke:var(--border);stroke-dasharray:3,3"/>
+      <g id="etp-sc-ticks"></g>
+      <g id="etp-sc-pts"></g>
+      <line id="etp-sc-fit" x1="70" y1="145" x2="610" y2="145" style="stroke:var(--amber);stroke-width:2.5"/>
+      <text id="etp-sc-xlabel" x="340" y="292" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">standardised surprise z = (actual − consensus) ÷ usual surprise</text>
+      <text x="22" y="145" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 22 145)">EUR/USD, pips in 30 min</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Everything else in the report (noise, pips)</span><span class="tl-live" id="etp-sc-noise-val">20 pips</span></div>
+        <input type="range" id="etp-sc-noise" min="0" max="60" step="5" value="20">
+      </div>
+    </div>
+    <div class="tl-readout">Fitted slope: <b id="etp-sc-slope">…</b> · share of the move explained (R²): <b id="etp-sc-r2">…</b></div>
+    <div class="tl-hint">Illustrative data, generated as move = −30 pips × z + noise, with the level drawn independently of the surprise. Switch views, then raise the noise: the surprise keeps explaining most of the move until the rest of the report gets loud; the level never explains it.</div>
+    <div class="tl-chart-caption">
+      The level of the release is already in the price, because the consensus was. Only the part nobody
+      forecast moves it. In real data the slope is not fixed: it is larger when the release matters more to
+      the central bank, which is why the same-sized CPI surprise matters far more in a year when the central bank is fighting inflation than in a year when it isn't.
+    </div>
+  </div>
+  <script>
+  (function(){
+    var svg = document.getElementById('etp-sc-svg');
+    if (!svg) return;
+    var NS = 'http://www.w3.org/2000/svg';
+    var gPts = document.getElementById('etp-sc-pts');
+    var gTicks = document.getElementById('etp-sc-ticks');
+    var fit = document.getElementById('etp-sc-fit');
+    var xlabel = document.getElementById('etp-sc-xlabel');
+    var noise = document.getElementById('etp-sc-noise');
+    var noiseVal = document.getElementById('etp-sc-noise-val');
+    var slopeOut = document.getElementById('etp-sc-slope');
+    var r2Out = document.getElementById('etp-sc-r2');
+    var btns = document.querySelectorAll('#etp-sc-view .tl-btn');
+    var view = 'surprise';
+    // Seeded generator so the illustrative points are the same on every load.
+    var seed = 20221110;
+    function rnd(){ seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }
+    function gauss(){ var u = rnd() || 1e-9, v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+    var N = 40, BETA = -30, data = [];
+    for (var i = 0; i < N; i++){
+      var z = Math.max(-2.8, Math.min(2.8, gauss()));
+      data.push({ z: z, level: 1.5 + 7.5 * rnd(), e: gauss() });
+    }
+    var X0 = 70, X1 = 610, Y0 = 30, Y1 = 260, YMAX = 150;
+    function yPix(v){ v = Math.max(-YMAX, Math.min(YMAX, v)); return 145 - v / YMAX * (Y1 - 145); }
+    function el(name, attrs, parent){ var e = document.createElementNS(NS, name); for (var k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+    function ols(xs, ys){
+      var n = xs.length, mx = 0, my = 0, sxx = 0, sxy = 0, syy = 0;
+      for (var i = 0; i < n; i++){ mx += xs[i]; my += ys[i]; }
+      mx /= n; my /= n;
+      for (i = 0; i < n; i++){ var dx = xs[i] - mx, dy = ys[i] - my; sxx += dx * dx; sxy += dx * dy; syy += dy * dy; }
+      var b = sxy / sxx, a = my - b * mx;
+      return { a: a, b: b, r2: syy > 0 ? (sxy * sxy) / (sxx * syy) : 0 };
+    }
+    function draw(){
+      var sd = parseFloat(noise.value);
+      noiseVal.textContent = sd + ' pips';
+      var xd = view === 'surprise' ? [-3, 3] : [1, 9.5];
+      function xPix(v){ return X0 + (v - xd[0]) / (xd[1] - xd[0]) * (X1 - X0); }
+      var xs = [], ys = [];
+      data.forEach(function(d){ xs.push(view === 'surprise' ? d.z : d.level); ys.push(BETA * d.z + sd * d.e); });
+      while (gPts.firstChild) gPts.removeChild(gPts.firstChild);
+      while (gTicks.firstChild) gTicks.removeChild(gTicks.firstChild);
+      for (var i = 0; i < N; i++){
+        el('circle', { cx: xPix(xs[i]).toFixed(1), cy: yPix(ys[i]).toFixed(1), r: 4.2, style: 'fill:var(--blue);fill-opacity:.75' }, gPts);
+      }
+      var ticksX = view === 'surprise' ? [-3, -2, -1, 0, 1, 2, 3] : [2, 4, 6, 8];
+      ticksX.forEach(function(t){
+        var tx = el('text', { x: xPix(t).toFixed(1), y: 276, 'text-anchor': 'middle', fill: 'var(--text3)', 'font-size': 10, 'font-family': "'DM Mono',monospace" }, gTicks);
+        tx.textContent = view === 'surprise' ? (t > 0 ? '+' + t : String(t)) : t + '%';
+      });
+      [-100, -50, 0, 50, 100].forEach(function(t){
+        var ty = el('text', { x: 64, y: (yPix(t) + 3).toFixed(1), 'text-anchor': 'end', fill: 'var(--text3)', 'font-size': 10, 'font-family': "'DM Mono',monospace" }, gTicks);
+        ty.textContent = t > 0 ? '+' + t : String(t);
+      });
+      var f = ols(xs, ys);
+      fit.setAttribute('x1', X0); fit.setAttribute('y1', yPix(f.a + f.b * xd[0]).toFixed(1));
+      fit.setAttribute('x2', X1); fit.setAttribute('y2', yPix(f.a + f.b * xd[1]).toFixed(1));
+      xlabel.textContent = view === 'surprise' ? 'standardised surprise z = (actual − consensus) ÷ usual surprise' : 'level of the released number (e.g. CPI, % a year)';
+      slopeOut.textContent = (f.b >= 0 ? '+' : '') + f.b.toFixed(1) + (view === 'surprise' ? ' pips per 1 sd of surprise' : ' pips per 1 point of level');
+      r2Out.textContent = (f.r2 * 100).toFixed(0) + '%';
+    }
+    Array.prototype.forEach.call(btns, function(b){
+      b.addEventListener('click', function(){
+        view = b.getAttribute('data-view');
+        Array.prototype.forEach.call(btns, function(o){ o.classList.toggle('active', o === b); });
+        draw();
+      });
+    });
+    noise.addEventListener('input', draw);
+    draw();
+  })();
+  </script>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example (illustrative quotes)</div>
+    <h3>Payrolls Friday on EUR/USD: from two vol quotes to a move in pips</h3>
+    <p>
+      It is Monday morning. EUR/USD is at 1.0800 and payrolls are due on Friday at 8:30 New York time. FX
+      options expire at the 10:00 New York cut, so an option expiring Thursday ends before the release and one
+      expiring Friday spans it. Suppose the market quotes:
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Write down both totals</h4>
+          <p>Thursday expiry: \(\sigma_1 = 7\%\) over \(T_1 = 4\) trading days, so \(\sigma_1^2T_1 = 0.0049 \times 4 = 0.0196\). Friday expiry: \(\sigma_2 = 9\%\) over \(T_2 = 5\) days, so \(\sigma_2^2T_2 = 0.0081 \times 5 = 0.0405\).</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Subtract to isolate the event</h4>
+          <p>The expiries are one day apart, so there are no ordinary days in the gap: \(\sigma_e^2 = 0.0405 - 0.0196 = 0.0209\), and \(\sigma_e = \sqrt{0.0209} = 14.5\%\) annualised. That one day carries 52% of the week's priced variance.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Turn it into pips</h4>
+          <p>\(14.46\% / 15.87 = 0.911\%\) for one day. At 1.0800 that is \(0.00984\), or <strong>±98 pips</strong> for one standard deviation. The event straddle's breakeven is about \(0.798 \times 98 \approx\) <strong>78 pips</strong>.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Compare with an ordinary day</h4>
+          <p>An ordinary day at 7% is \(7\% / 15.87 = 0.441\%\), about ±48 pips. The event day's standard deviation is 2.07 times larger, and its variance \(0.0209/0.0049 = 4.3\) times larger: payrolls are priced like 4.3 ordinary days squeezed into one.</p>
+        </div>
+      </div>
+    </div>
+    <p style="margin-bottom:0">
+      Now you have a yardstick. If you think the number will surprise strongly, the question is not "will
+      EUR/USD move?" but "will it move more than the 78 pips the straddle already charges for?" And if you hold
+      spot through the release, 98 pips is one standard deviation of what might hit you in a few seconds.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Back out the event-day vol from two expiries, live</h3>
+    <p>
+      Starts on the worked example: EUR/USD at 1.0800, a 4-day expiry at 7% and a 5-day expiry at 9%. Ordinary
+      days in the gap between the expiries are priced at the shorter expiry's vol. Change any field; the bars
+      show how much variance each day of the longer expiry carries.
+    </p>
+    <div class="tl-predict" data-answer="11.1" data-tol="0.6" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With the 5-day at 9%, the event vol is 14.5%. If the 5-day were quoted one point lower, at 8%, with everything else the same, what would the event-day vol be? Lock in a guess, then type 8 into the "Longer expiry vol" field to check.</div>
+      <div class="tl-predict-reveal"><p><strong>About 11.1%.</strong> \(\sqrt{0.08^2 \times 5 - 0.07^2 \times 4} = \sqrt{0.0320 - 0.0196} = \sqrt{0.0124} = 11.1\%\). One vol point on the weekly quote moved the event vol by more than three points, and the event move from 98 to 76 pips. That is the "small difference of two big numbers" trap. Now try 7% for the 5-day: the event is then worth exactly one ordinary day. Below about 6.3% the quotes imply no event at all.</p></div>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Spot price</span></div>
+        <input type="number" id="etp-calc-spot" class="tl-scratch-input" value="1.08" step="0.001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Pip / point size</span></div>
+        <input type="number" id="etp-calc-pip" class="tl-scratch-input" value="0.0001" step="0.0001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Shorter expiry vol σ₁ (%)</span></div>
+        <input type="number" id="etp-calc-s1" class="tl-scratch-input" value="7" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Shorter expiry, trading days T₁</span></div>
+        <input type="number" id="etp-calc-t1" class="tl-scratch-input" value="4" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Longer expiry vol σ₂ (%)</span></div>
+        <input type="number" id="etp-calc-s2" class="tl-scratch-input" value="9" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Longer expiry, trading days T₂</span></div>
+        <input type="number" id="etp-calc-t2" class="tl-scratch-input" value="5" step="1" min="2">
+      </div>
+    </div>
+    <svg id="etp-calc-svg" viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of the variance each trading day of the longer expiry carries, relative to an ordinary day. Ordinary days are blue bars of height one; the event day is an amber bar whose height is its event weight.">
+      <line x1="50" y1="180" x2="620" y2="180" style="stroke:var(--border)"/>
+      <line id="etp-calc-base" x1="50" y1="150" x2="620" y2="150" style="stroke:var(--blue);stroke-dasharray:4,3"/>
+      <text id="etp-calc-base-label" x="54" y="144" fill="var(--blue)" font-size="11" font-family="'DM Mono',monospace">ordinary day = 1</text>
+      <g id="etp-calc-bars"></g>
+      <text x="335" y="212" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">trading days to the longer expiry (amber = the event day)</text>
+    </svg>
+    <div class="tl-readout tl-scratch-readout">
+      Forward vol between expiries: <b id="etp-calc-fwd">—</b>&emsp;Event-day vol σ<sub>e</sub>: <b id="etp-calc-se">—</b>&emsp;Event weight: <b id="etp-calc-w">—</b>
+    </div>
+    <div class="tl-readout">
+      Event day, 1 sd: <b id="etp-calc-move">—</b> · straddle breakeven ≈ <b id="etp-calc-be">—</b> · ordinary day, 1 sd: <b id="etp-calc-ord">—</b>
+      <span id="etp-calc-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="etp-calc-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+  <script>
+  (function(){
+    var spotIn = document.getElementById('etp-calc-spot');
+    if (!spotIn) return;
+    var pipIn = document.getElementById('etp-calc-pip');
+    var s1In = document.getElementById('etp-calc-s1');
+    var t1In = document.getElementById('etp-calc-t1');
+    var s2In = document.getElementById('etp-calc-s2');
+    var t2In = document.getElementById('etp-calc-t2');
+    var fwdOut = document.getElementById('etp-calc-fwd');
+    var seOut = document.getElementById('etp-calc-se');
+    var wOut = document.getElementById('etp-calc-w');
+    var moveOut = document.getElementById('etp-calc-move');
+    var beOut = document.getElementById('etp-calc-be');
+    var ordOut = document.getElementById('etp-calc-ord');
+    var note = document.getElementById('etp-calc-note');
+    var bars = document.getElementById('etp-calc-bars');
+    var base = document.getElementById('etp-calc-base');
+    var baseLabel = document.getElementById('etp-calc-base-label');
+    var resetBtn = document.getElementById('etp-calc-reset');
+    var NS = 'http://www.w3.org/2000/svg';
+    var DAYS = 252, ABS = Math.sqrt(2 / Math.PI);
+    var DEFAULTS = { spot: 1.08, pip: 0.0001, s1: 7, t1: 4, s2: 9, t2: 5 };
+    function blank(msg){
+      [fwdOut, seOut, wOut, moveOut, beOut, ordOut].forEach(function(o){ o.textContent = '—'; });
+      note.textContent = msg;
+      while (bars.firstChild) bars.removeChild(bars.firstChild);
+    }
+    function fmtPips(p){ return p >= 100 ? p.toFixed(0) : p.toFixed(1); }
+    function recompute(){
+      var S = parseFloat(spotIn.value), pip = parseFloat(pipIn.value);
+      var s1 = parseFloat(s1In.value) / 100, t1 = parseInt(t1In.value, 10);
+      var s2 = parseFloat(s2In.value) / 100, t2 = parseInt(t2In.value, 10);
+      if (![S, pip, s1, s2].every(isFinite) || !isFinite(t1) || !isFinite(t2) || S <= 0 || pip <= 0 || s1 <= 0 || s2 <= 0 || t1 < 1) {
+        blank('(need positive spot, pip size and vols, and T₁ ≥ 1)'); return;
+      }
+      if (t2 <= t1) { blank('(the longer expiry must have more days than the shorter one, T₂ > T₁)'); return; }
+      if (t2 > 40) { blank('(keep T₂ at 40 days or fewer for this chart)'); return; }
+      var gapOrdinary = t2 - t1 - 1;
+      var fwdVar = (s2 * s2 * t2 - s1 * s1 * t1) / (t2 - t1);
+      var evVar = s2 * s2 * t2 - s1 * s1 * t1 - s1 * s1 * gapOrdinary;
+      var ordDay = s1 / Math.sqrt(DAYS) * S / pip;
+      ordOut.textContent = fmtPips(ordDay) + ' pips';
+      fwdOut.textContent = fwdVar > 0 ? (Math.sqrt(fwdVar) * 100).toFixed(2) + '%' : '—';
+      if (evVar <= 0) {
+        seOut.textContent = '—'; wOut.textContent = '—'; moveOut.textContent = '—'; beOut.textContent = '—';
+        note.textContent = '(the longer expiry prices no more variance than ordinary days: these quotes imply no event premium, or they are stale)';
+        drawBars(t2, t1, 0);
+        return;
+      }
+      var se = Math.sqrt(evVar);
+      var w = evVar / (s1 * s1);
+      var move = se / Math.sqrt(DAYS) * S / pip;
+      seOut.textContent = (se * 100).toFixed(2) + '%';
+      wOut.textContent = w.toFixed(2) + ' ordinary days';
+      moveOut.textContent = '±' + fmtPips(move) + ' pips';
+      beOut.textContent = fmtPips(ABS * move) + ' pips';
+      note.textContent = w < 1 ? '(event priced below an ordinary day: check the quotes)' : '';
+      drawBars(t2, t1, w);
+    }
+    function drawBars(t2, t1, w){
+      while (bars.firstChild) bars.removeChild(bars.firstChild);
+      var maxH = Math.max(1, w), unit = 140 / maxH;
+      var yBase = 180, yOrd = yBase - unit;
+      base.setAttribute('y1', yOrd); base.setAttribute('y2', yOrd);
+      baseLabel.setAttribute('y', Math.max(14, yOrd - 6));
+      var slot = 570 / t2, bw = Math.min(44, slot * 0.7);
+      for (var d = 1; d <= t2; d++){
+        var isEv = d === t1 + 1;
+        var h = isEv ? w * unit : unit;
+        var x = 50 + (d - 0.5) * slot - bw / 2;
+        var r = document.createElementNS(NS, 'rect');
+        r.setAttribute('x', x.toFixed(1)); r.setAttribute('y', (yBase - h).toFixed(1));
+        r.setAttribute('width', bw.toFixed(1)); r.setAttribute('height', Math.max(0, h).toFixed(1)); r.setAttribute('rx', 3);
+        r.setAttribute('style', isEv ? 'fill:var(--amber);fill-opacity:.8' : 'fill:var(--blue);fill-opacity:.45');
+        bars.appendChild(r);
+        if (t2 <= 15 || isEv) {
+          var tx = document.createElementNS(NS, 'text');
+          tx.setAttribute('x', (x + bw / 2).toFixed(1)); tx.setAttribute('y', 195);
+          tx.setAttribute('text-anchor', 'middle'); tx.setAttribute('font-size', 10);
+          tx.setAttribute('font-family', "'DM Mono',monospace");
+          tx.setAttribute('fill', isEv ? 'var(--amber)' : 'var(--text3)');
+          tx.textContent = isEv ? 'event' : String(d);
+          bars.appendChild(tx);
+        }
+        if (isEv && w > 0) {
+          var lab = document.createElementNS(NS, 'text');
+          lab.setAttribute('x', (x + bw / 2).toFixed(1)); lab.setAttribute('y', (yBase - h - 6).toFixed(1));
+          lab.setAttribute('text-anchor', 'middle'); lab.setAttribute('font-size', 11);
+          lab.setAttribute('font-family', "'DM Mono',monospace"); lab.setAttribute('fill', 'var(--amber)');
+          lab.textContent = '×' + w.toFixed(1);
+          bars.appendChild(lab);
+        }
+      }
+    }
+    [spotIn, pipIn, s1In, t1In, s2In, t2In].forEach(function(e){ e.addEventListener('input', recompute); });
+    resetBtn.addEventListener('click', function(){
+      spotIn.value = DEFAULTS.spot; pipIn.value = DEFAULTS.pip; s1In.value = DEFAULTS.s1;
+      t1In.value = DEFAULTS.t1; s2In.value = DEFAULTS.s2; t2In.value = DEFAULTS.t2;
+      recompute();
+    });
+    recompute();
+  })();
+  </script>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>You think payrolls will beat. Three ways to act on it, and what each one costs</h3>
+    <p>
+      Same illustrative week: EUR/USD at 1.0800, the event priced at ±98 pips for one standard deviation, an
+      ordinary day at ±48. You expect a strong US jobs number, which would push EUR/USD down. Your risk budget
+      for the trade is $500 on a $100,000 account. A pip on 100,000 EUR/USD is worth $10.
+    </p>
+    <div class="tl-compare">
+      <div class="tl-compare-card amber">
+        <h4>1 · Short spot into the number</h4>
+        <p>Size for the gap, not the stop. Plan for a three-standard-deviation adverse move, about 295 pips: \(\$500 / (295 \times \$10) \approx 0.17\) lots, about €17,000. A trader who sizes off a normal 30-pip stop would hold \(\$500/(30 \times \$10) \approx 1.7\) lots, ten times as much, and a 150-pip jump through the stop would cost about $2,500.</p>
+      </div>
+      <div class="tl-compare-card purple">
+        <h4>2 · Buy the event straddle</h4>
+        <p>No direction needed, but you pay about 78 pips of premium on the event day, and the extra vol drains out the moment the number is known. You profit only if the move beats what was priced. A strong view on direction is not a view on size.</p>
+      </div>
+      <div class="tl-compare-card green">
+        <h4>3 · Wait for the surprise, trade the second move</h4>
+        <p>Stay flat into 8:30. Read the surprise, the revisions and the earnings figure. Enter only once spreads are back to normal, sized for an ordinary day's volatility plus a margin. You give up the first jump; you also avoid paying the widest spread of the day.</p>
+      </div>
+    </div>
+    <p style="margin-bottom:0">
+      None of these is right every time. What's wrong every time is the fourth option: holding an ordinary-day
+      position with an ordinary-day stop through a release priced at twice the ordinary move.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Around the release: liquidity, the first move and the second</h2>
+  <p>
+    The arithmetic tells you how big the move should be. What actually happens in the minutes around a release
+    follows a pattern documented in the Treasury market by Fleming and Remolona (1999) and seen across FX and
+    futures since. It is worth knowing step by step, because each phase calls for different behaviour.
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Before: liquidity is withdrawn</h4>
+        <p>In the minutes before a major release, market makers widen their quotes or pull them, because nobody wants to be the resting order that gets hit by someone who reads the number a fraction of a second faster. Spreads widen and the order book thins. A market order placed now pays more and can move the price itself.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>The first move: price jumps on the headline surprise</h4>
+        <p>Fleming and Remolona found that the price adjusts sharply within a minute or two of the release, on reduced trading volume: quotes simply reset to the new level. In FX, Andersen, Bollerslev, Diebold and Vega found the conditional mean jumps almost immediately. This is the move a headline-reading algorithm makes. It is fast, and it is often a poor fill for anyone else.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>The second move: the details arrive</h4>
+        <p>Then trading volume surges, and volatility stays elevated for a while as traders digest everything that isn't the headline. This is where the first move gets confirmed, extended or reversed. Fleming and Remolona describe a second stage of prolonged, more moderate volatility, as participants with different interpretations trade with each other.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>After: implied vol is crushed</h4>
+        <p>Once the number is known, the event day's variance has been spent. The next expiry no longer contains it, so short-dated implied vol drops back towards the ordinary level. A straddle bought for the event loses that premium whether or not the move was big. This is theta and vega arriving together.</p>
+      </div>
+    </div>
+  </div>
+
+  <p>
+    <strong>What drives the second move.</strong> Three things, in rough order of how often they matter:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🔁</div>
+      <h4>Revisions in the same report</h4>
+      <p>The Employment Situation report revises the previous two months of payrolls every month. A headline 50,000 above consensus with 80,000 of downward revisions to earlier months is, net, weaker news about the level of employment than expected. The headline algorithm trades the first number; the second move trades the sum.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧩</div>
+      <h4>The other half of the report</h4>
+      <p>Payrolls come from the establishment survey; the unemployment rate from a separate household survey; average hourly earnings matter for inflation. CPI has a headline and a core figure. When the pieces disagree, the market settles on whichever one the central bank is watching most closely at that moment.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🏛️</div>
+      <h4>The reaction function</h4>
+      <p>A number only matters through what it does to the expected path of policy rates. In 2022, with the Fed fighting inflation, CPI was the release that moved everything. When a central bank says it is watching the labour market, payrolls take that role. Read the bank's own statements to know which release is in charge.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🎙️</div>
+      <h4>The press conference</h4>
+      <p>A rate decision is released as a short statement; the press conference follows. The FOMC statement comes at 2:00 p.m. and the Chair's press conference at 2:30, after every meeting since January 2019. The first move trades the statement; the second trades the answers.</p>
+    </div>
+  </div>
+
+  <p>
+    <strong>Central-bank decisions are surprises against a priced path.</strong> For a rate decision the
+    "consensus" is what futures and overnight index swaps already price. A hike that was fully priced moves
+    little. A hold when a cut was priced is a hawkish surprise even though nothing changed. Gürkaynak, Sack and
+    Swanson (2005) found that Fed announcements move markets along two separate dimensions: a surprise in the
+    current rate decision, and a surprise in the signal about the future path, carried by the statement's
+    wording. The second moved longer-dated yields more than the first. The press conference is where the path
+    gets explained, which is why the second move on a central-bank day can be larger than the first.
+  </p>
+  <p>
+    A widely cited example: on 3 December 2015 the ECB cut its deposit rate by 10 basis points, to −0.30%, and
+    extended its bond purchases to March 2017 without raising their monthly size of €60 billion. Markets had
+    priced more easing. The euro rose about 3% against the dollar that day, its biggest one-day rally since
+    2009 on Bloomberg's figures: an easing decision that sent the currency up, because it was less easing than
+    expected.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>When the teacher hands back test results, the first thing everyone looks at is the big number at the top. That's the first move. Then they read the comments, and sometimes the comments change the story: "great score, but you copied question three." That's the second move.</p>
+  </div>
+
+  <!-- WB:event_trading_playbook:START -->
+  <div class="wb" id="wb-event_trading_playbook" data-title="Trading a release: the priced move, the surprise and the gap">
+    <script type="application/json">{"w":600,"h":920,"intro":"One week of EUR/USD option quotes, one payrolls Friday, and one real CPI release. How the size of the move is priced before the number, and what actually moves price after it. Press play, or step through.","steps":[{"cap":"Payrolls are out on Friday at 8:30 a.m. New York. Two EUR/USD option expiries sit either side of it: Thursday's, 4 trading days at 7% volatility, ends before the release. Friday's, 5 days at 9%, spans it.","do":[{"icon":"clk","name":"clock","x":62,"y":6,"s":0.62,"tone":"amber","label":"payrolls Fri 8:30","lsize":17},{"box":"thu","x":210,"y":14,"w":170,"h":80,"text":"Thu expiry\n4 days · 7%","tone":"blue","size":18},{"box":"fri","x":420,"y":14,"w":170,"h":80,"text":"Fri expiry\n5 days · 9%","tone":"amber","size":18}]},{"cap":"Volatility doesn't add up across days, but variance does. Each ordinary day carries 0.07 squared, 0.0049. The Thursday expiry is four of them: 0.0196.","do":[{"chart":"var","x":10,"y":130,"w":360,"h":250,"title":"Variance carried by each day","xd":[0.4,5.6],"yd":[0,0.024],"yt":[[0,"0"],[0.01,"0.01"],[0.02,"0.02"]],"xt":[[1,"Mon"],[2,"Tue"],[3,"Wed"],[4,"Thu"],[5,"Fri"]],"pl":52},{"bars":"ob","chart":"var","data":[[1,0.004900000000000001,"1×","blue"],[2,0.004900000000000001,"1×","blue"],[3,0.004900000000000001,"1×","blue"],[4,0.004900000000000001,"1×","blue"]],"bw":40,"ms":1100}]},{"cap":"The Friday expiry's total is 0.09 squared times 5: 0.0405. Take away Thursday's 0.0196 and what is left, 0.0209, is payrolls day on its own. It is worth about 4.3 ordinary days.","do":[{"bars":"evb","chart":"var","data":[[5,0.0209,"4.3×","amber"]],"bw":40,"ms":1100},{"pulse":"fri"}]},{"cap":"Take the square root: the event day is priced at 14.5% annualised. Divide by the square root of 252, about 15.9, and multiply by 1.0800: ±98 pips for one standard deviation. An ordinary day is ±48.","do":[{"box":"se","x":390,"y":130,"w":200,"h":100,"text":"event vol\n√0.0209 = 14.5%","tone":"purple","size":18},{"box":"pips","x":390,"y":262,"w":200,"h":118,"text":"payrolls day, 1 sd","tone":"amber","sub":"±0 pips","size":18},{"arrow":["se","pips"],"tone":"purple"},{"count":"pips","from":0,"to":98,"dp":0,"pre":"±","suf":" pips","ms":1200}]},{"cap":"A straddle over the release costs about 0.8 of that standard deviation: roughly 78 pips. That is the move the market already charges for. A straddle pays only if the move beats it.","do":[{"note":"be","x":490,"y":412,"text":"breakeven ≈ 78 pips","size":17,"anchor":"middle","tone":"amber"}]},{"cap":"Once the number is out, the event's variance is spent. The next expiry no longer contains it, so short-dated implied vol falls back towards the ordinary level. That is the vol crush.","do":[{"dim":"evb"},{"note":"crush","x":190,"y":412,"text":"after 8:30: amber bar spent","size":17,"anchor":"middle","tone":"red"}]},{"cap":"A real release: US CPI on 10 November 2022. The consensus was about 7.9% a year; the print was 7.7%. Still nearly four times the Fed's target, but 0.2 points below what was priced.","do":[{"box":"E","x":10,"y":440,"w":160,"h":90,"text":"consensus\n≈ 7.9% y/y","tone":"blue","size":18},{"box":"A","x":220,"y":440,"w":160,"h":90,"text":"actual\n7.7% y/y","tone":"amber","size":18},{"box":"s","x":430,"y":440,"w":160,"h":90,"text":"surprise\nA − E ≈ −0.2","tone":"green","size":18},{"arrow":["E","A"]},{"arrow":["A","s"],"tone":"green"}]},{"cap":"Prices reacted to the surprise, not the level. At the close the S&P 500 was up 5.5%, its best day since April 2020, the Nasdaq Composite 7.4% and the Dow 3.7%. The 2-year Treasury yield fell from 4.62% to 4.32%.","do":[{"chart":"rx","x":10,"y":560,"w":280,"h":220,"title":"Close, 10 Nov 2022 (%)","xd":[0.4,3.6],"yd":[0,8.6],"yt":[[0,"0"],[4,"4"],[8,"8"]],"xt":[[1,"S&P"],[2,"Nasdaq"],[3,"Dow"]],"pl":36},{"bars":"rb","chart":"rx","data":[[1,5.5,"+5.5","green"],[2,7.4,"+7.4","green"],[3,3.7,"+3.7","green"]],"bw":40,"ms":1100},{"box":"y2","x":310,"y":560,"w":280,"h":90,"text":"2-year Treasury yield","tone":"blue","sub":"4.62%","size":18},{"count":"y2","from":4.62,"to":4.32,"dp":2,"suf":"%","ms":1300}]},{"cap":"Then the second move. The first is a fast jump on the headline in thin liquidity. The second comes from the details: here core CPI, 6.3% against about 6.5% expected, agreed with the headline, and the rally extended the next day. Revisions or a press conference can just as easily reverse it.","do":[{"box":"m1","x":310,"y":676,"w":110,"h":104,"text":"first\nmove","tone":"amber","size":18},{"box":"m2","x":480,"y":676,"w":110,"h":104,"text":"second\nmove","tone":"green","size":18},{"arrow":["m1","m2"],"tone":"green"}]},{"cap":"Sizing. With $500 at risk and $10 a pip, a 30-pip stop says 1.7 lots. But that stop sits inside the priced move, and a stop fills at the next available price. Sizing for three event standard deviations, about 295 pips, says 0.17 lots.","do":[{"box":"stop","x":10,"y":808,"w":280,"h":100,"text":"30-pip stop\n→ 1.7 lots","tone":"red","size":18},{"box":"gap","x":310,"y":808,"w":280,"h":100,"text":"3 sd ≈ 295 pips\n→ 0.17 lots","tone":"green","size":18},{"cross":"stop"}]},{"cap":"The playbook in three lines. Know the move that is priced before the number. Trade the surprise, not the level. Size for the gap, not the stop.","do":[{"pulse":"pips"},{"pulse":"s"},{"pulse":"gap"}]}]}</script>
+  </div>
+  <!-- WB:event_trading_playbook:END -->
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>It actually happened: US CPI, 10 November 2022</h2>
+  <p>
+    The cleanest modern demonstration that markets trade the surprise and not the level came from an inflation
+    report that, on its level, was terrible.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>7.7% inflation, and the best day for US stocks in two and a half years</h3>
+    <p>
+      By November 2022 US consumer price inflation had peaked at 9.1% in the year to June and was still 8.2% in
+      the year to September. The Fed had just raised its target range by 75 basis points for the fourth meeting
+      in a row, to 3.75–4.00%, on 2 November. Every CPI release that year had become the most important event on
+      the calendar, because each one decided how much further the Fed would go.
+    </p>
+    <p>
+      At 8:30 a.m. on Thursday 10 November the Bureau of Labor Statistics published October's figures. Headline
+      CPI rose 0.4% in the month and 7.7% over the year. Economists had expected about 0.6% for the month and
+      around 7.9% for the year. Core CPI, excluding food and energy, rose 0.3% in the month and 6.3% over the
+      year, against about 6.5% expected. On the level, inflation was still nearly four times the Fed's 2% target.
+      As a surprise, it was about two tenths of a point below forecast on both measures, and in a market that had
+      been positioned for the opposite, that was enough.
+    </p>
+    <p>
+      The S&amp;P 500 closed up 5.5% at 3,956.37, its biggest one-day gain since April 2020. The Nasdaq Composite
+      rose 7.4% and the Dow 1,201 points. The 2-year Treasury yield fell from 4.62% to 4.32% and the 10-year from
+      4.15% to 3.82%, on AP's figures. The dollar fell broadly; Reuters reported the yen's biggest one-day gain
+      against it since 2008. None of this was about inflation being low. It was about inflation being lower than
+      the price had assumed, which shifted the expected path of Fed hikes.
+    </p>
+    <p style="margin-bottom:0">
+      The next day the move extended rather than reversing: the S&amp;P 500 rose almost 1% more and the Nasdaq
+      1.9%. In December the Fed slowed to a 50 basis-point hike. The second move, in this case, confirmed the
+      first, because the details of the report (core and headline both soft) agreed with the headline.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link"><b>Priced in</b>Consensus ≈ 7.9% y/y, +0.6% m/m; markets positioned for persistent inflation</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link shock"><b>The release</b>10 Nov 2022, 8:30 ET: 7.7% y/y, +0.4% m/m; core 6.3%</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson: s = A − E</b>About −0.2 points on headline and core: a soft surprise, at a still-high level</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Reaction function</b>Fewer hikes priced: 2-year yield 4.62% → 4.32%</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>S&amp;P 500 +5.5%, Nasdaq +7.4%, dollar sharply lower; the Fed slows to 50bp in December</div>
+  </div>
+  <p>
+    The starred link is the only one that carries information. The level of inflation was known to be high; the
+    consensus was already in every price. The two-tenths gap between actual and expected is what moved trillions
+    of dollars of assets.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where the textbook version breaks</div>
+    <h3>Normal moves, a reliable consensus, and a stop that fills where you put it</h3>
+    <p>
+      The event-vol arithmetic treats the event move as one normal draw with a known standard deviation. Real
+      event moves are fatter-tailed: most releases are quiet, and a few move several standard deviations. The
+      consensus is a median of surveys taken days before, and the "whisper" the market actually positions for
+      can differ from it. Revisions and the other half of the report can swamp the headline surprise, so the
+      clean regression in the chart above has a much noisier error term in real data.
+    </p>
+    <p style="margin-bottom:0">
+      Above all, gaps. On 15 January 2015 the Swiss National Bank, without warning, removed the 1.20 floor it had
+      held under EUR/CHF since 2011. The euro fell far below 1.00 francs within minutes. Stop-loss orders resting
+      just under 1.20 were filled hundreds of pips away, because there was nobody to trade with in between. The
+      retail broker FXCM was left with client accounts owing it about $225 million and needed a $300 million
+      rescue loan from Leucadia. That was not a scheduled release, which is the point: the stop that "protects"
+      you is an order to trade at the next available price, and around a shock the next available price can be
+      a long way off.
+    </p>
+  </div>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>Whether event-day implied vol over- or under-prices the realised event move has not been tested
+    on this desk.</strong> A fair test would back out event vol from the two expiries' quotes before each release,
+    record the realised move from the release to the next option cut, and compare the straddle's cost with its
+    payoff across many releases, after spreads.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Everyone thought the inflation number would be 7.9. It came out 7.7. That's still way too high, like a fever of 39 instead of 39.2. But everyone had already planned for 39.2, so the slightly-less-bad news felt like great news, and prices jumped.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Desks that trade macro releases tend to converge on the same habits, whatever their style. The options
+    market's priced move is the yardstick for everything: how big a position can be, where a stop is
+    meaningless, whether a straddle is cheap or dear. The consensus is the reference point for direction. And
+    a fixed routine keeps a trader from improvising at the worst possible moment.
+  </p>
+  <p>
+    <strong>Sizing and stops around events.</strong> The rule is to size for the gap, not for the stop. Take the
+    event's standard deviation from the term structure, decide how many of them you want to survive (two or
+    three is common, with the knowledge that real tails are fatter than normal ones), and size so that move
+    costs no more than your risk budget. Place stops outside the priced event range, or accept that a stop inside
+    it is a coin toss that will often be filled at a worse price. Some traders replace stops with options for the
+    event window, buying protection whose loss is capped at the premium. That works, but the protection is priced
+    at event vol, so it is expensive exactly when you want it.
+  </p>
+  <p>
+    <strong>Blackout rules.</strong> The word is used two ways. Central banks have their own: Federal Reserve
+    officials observe a blackout from midnight Eastern time on the second Saturday before each FOMC meeting until
+    midnight on the day after the meeting, and do not discuss policy in public in that window, so there is no last-minute
+    guidance to trade on. The ECB keeps a similar quiet period in the week before its meetings. Traders use
+    personal blackout rules too: for example, no new positions from 15 minutes before a tier-one release until
+    spreads are back to normal after it, and no holding an ordinary-sized position through one. Some brokers and
+    proprietary-trading firms write similar restrictions into their terms. The exact window matters less than
+    deciding it in advance.
+  </p>
+  <!-- DESK:START -->
+  <p>
+    On the desk, the Event Response page measures each high-impact release's half-hour move as a multiple of an
+    ordinary half-hour at the same clock, with sample sizes. It is the realised counterpart of the event weight
+    computed here from implied vols.
+  </p>
+  <!-- DESK:END -->
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">📋</div>
+    <div class="tl-box-label">The pre-event checklist</div>
+    <h3>Seven questions to answer before every tier-one release</h3>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body"><h4>What exactly is released, and when?</h4><p>The time to the minute, in your own time zone, and every figure in the report: headline, core or the other survey, and revisions.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body"><h4>What is the consensus, and how big is a normal surprise?</h4><p>Write down the median forecast and the usual size of past surprises, so you can call a print "one standard deviation hot" in the moment.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body"><h4>What move are options pricing?</h4><p>Back out the event vol from the expiries either side, and convert it to pips or points. That is your yardstick for size and stops.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body"><h4>Which figure is the central bank watching?</h4><p>Read the latest statement and speeches. That decides which part of the report drives the second move.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body"><h4>What am I holding, and what does a 3 sd move cost?</h4><p>Every open position that responds to this release, at the event standard deviation, not the ordinary one. Cut anything you can't afford to see gapped.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">6</div><div class="tl-step-body"><h4>What is my plan for each outcome?</h4><p>Hot, in line, soft: what you do in each case, written before 8:30, including "nothing".</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">7</div><div class="tl-step-body"><h4>When does my blackout end?</h4><p>The time or condition (spreads back to normal, the press conference over) after which you may act. Until then, hands off.</p></div></div>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where event trading quietly goes wrong</h3>
+    <p>
+      <strong>Trading the level.</strong> "Inflation is 7.7%, that's terrible, sell stocks" lost a great deal of
+      money on 10 November 2022. The level was in the price; the surprise wasn't. Always ask "compared with what
+      was expected?"
+    </p>
+    <p>
+      <strong>Using one expiry's vol as the event vol.</strong> A one-week vol of 9% does not mean the event is
+      priced at 9%. It averages the event with the quiet days. Back the event out with the variance arithmetic, or
+      you will underestimate the event move by half.
+    </p>
+    <p>
+      <strong>Buying the straddle because "something will happen".</strong> Something always happens. The question
+      is whether it beats the move already priced, after the vol crush. Straddles over events are often priced
+      richly enough that the average buyer loses.
+    </p>
+    <p>
+      <strong>Trusting the stop.</strong> In a thin market a stop fills at the next available price. Size so a gap
+      through the stop is survivable; don't size off the stop distance.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>Reacting to the first print alone.</strong> Revisions, the other survey, core versus headline, and
+      the press conference can each reverse the first move. The first minute rewards speed you probably don't
+      have; the second move rewards reading the whole report.
+    </p>
+  </div>
+
+  <div class="tl-drill" data-date="2022-11-10">
+    <div class="tl-drill-label">Scenario drill · 10 November 2022</div>
+    <h3>Long dollars into a CPI release, with an ordinary-day stop</h3>
+    <p>It is 8:20 a.m. in New York. You are long US dollars against the euro and the yen, betting that October's CPI will be hot and push the Fed to keep hiking by 75 basis points. Your position is sized for an ordinary day, with stops about one ordinary day's move away. The consensus is about 0.6% for the month and 7.9% for the year. CPI has been the most market-moving release of the year. What do you do in the next ten minutes?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Hold. The stops limit the damage if you're wrong.<div class="tl-drill-why">Your stops sit inside the move the options market is pricing for this release. A stop is an order to trade at the next available price, and in the first seconds after a big surprise there may be little liquidity between your level and where price lands. You have sized for a stop that may not fill where you set it.</div></li>
+      <li data-verdict="bad">Add to the position. Inflation has been running hot all year, so the number will be high.<div class="tl-drill-why">That is a view on the level, and the level is already in the consensus and the price. Only a hotter-than-7.9% print helps you. Adding doubles your exposure to a coin flip on the surprise, at the widest spreads of the day.</div></li>
+      <li data-verdict="good">Cut the position to a size where a move of two or three event standard deviations is affordable, or go flat, and decide again after the number is out.<div class="tl-drill-why">This sizes for the gap, not the stop. You keep the option to trade the second move once you know the surprise and spreads have normalised. If CPI is hot, you can re-enter with information; if it is soft, a small position limits the damage.</div></li>
+      <li data-verdict="ok">Keep the position but buy options that pay if the dollar falls.<div class="tl-drill-why">Defensible: the protection caps the loss at its premium. But you are buying it at event vol, the most expensive moment, and you are still carrying a full-size bet on the surprise. Cutting size does the same job more cheaply.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> CPI rose 0.4% in October and 7.7% over the year; core rose 0.3% and 6.3%. All were below consensus. The 2-year Treasury yield fell from 4.62% to 4.32%, the dollar fell broadly, with the yen's biggest one-day gain against it since 2008, and the S&amp;P 500 rose 5.5%. A long-dollar position sized for an ordinary day took a move far larger than an ordinary day in the first minutes. The next month, the Fed slowed to a 50 basis-point hike.</p></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The size of the move is priced before the release.</strong> An at-the-money straddle costs about \(0.8\,\sigma\sqrt{T}\,S\): the market's expected absolute move. Read it before you trade.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Variance adds, so the event can be backed out.</strong> \(\sigma_e^2 = \sigma_2^2T_2 - \sigma_1^2T_1 - \sigma_b^2(T_2-T_1-1)\). With 7% over 4 days and 9% over 5, payrolls are priced at 14.5%: ±98 pips at 1.0800, about 4.3 ordinary days of variance.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Price reacts to the surprise, actual minus consensus, not to the level.</strong> Standardise it by the usual surprise size to compare releases, and read central-bank decisions against the rate path futures already price.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>There are two moves.</strong> The first is a fast jump on the headline in thin liquidity. The second comes from revisions, the rest of the report and the press conference, and it can confirm or reverse the first.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Event vol is a small difference of two big numbers.</strong> One vol point on the weekly quote moved the example's event vol from 14.5% to 11.1%. Use fresh mid quotes on the same day-count clock and treat the answer as a range.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Implied vol collapses after the release.</strong> A straddle bought for the event loses its event premium the moment the number is known. It pays only if the move beats what was priced.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A stop is not a guarantee.</strong> Around a shock it fills at the next available price, which can be hundreds of pips away, as EUR/CHF showed in January 2015. Size for the gap, set a blackout, and run the checklist.<!-- DESK:START --> Event-vol pricing against realised event moves is untested on this desk.<!-- DESK:END --></span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why did US stocks have their best day in two and a half years on a day inflation was reported at 7.7%?</summary>
+    <div class="tl-answer">
+      Because prices react to the surprise, not the level. The consensus was about 7.9% for the year and 0.6% for
+      the month, and markets were already priced for that. The release came in about 0.2 points lower on both
+      headline and core. That changed the expected path of Fed hikes: the 2-year yield fell 30 basis points, which
+      lifted stocks and sank the dollar. Inflation at 7.7% was still terrible news in absolute terms; it was good
+      news only relative to what was expected.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. A 3-day expiry is quoted at 6% and a 4-day expiry, which also spans a CPI release, at 8%. What is the event-day vol, and the one-day move on an asset at 100?</summary>
+    <div class="tl-answer">
+      The expiries are one day apart, so \(\sigma_e^2 = 0.08^2 \times 4 - 0.06^2 \times 3 = 0.0256 - 0.0108 =
+      0.0148\), and \(\sigma_e = \sqrt{0.0148} = 12.2\%\) annualised. Dividing by \(\sqrt{252} = 15.87\) gives
+      0.77% for the day, so about ±0.77 for one standard deviation on an asset at 100. The straddle breakeven is
+      about \(0.8 \times 0.77 \approx 0.61\). The event is worth \(0.0148/0.0036 = 4.1\) ordinary days of
+      variance.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Payrolls come in 50,000 above consensus, but the previous two months are revised down by a combined 80,000. EUR/USD first drops, then rallies. Why?</summary>
+    <div class="tl-answer">
+      The first move trades the headline: a beat means a stronger dollar, so EUR/USD drops. The second move trades
+      the whole report. Adding the revisions, total employment is 30,000 lower than the market thought before the
+      release, so the net news about the labour market is weak. As traders read the details, the dollar gives back
+      its gain and more. Revisions are part of the same release, and they are surprise too.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. You buy the event straddle the day before payrolls. EUR/USD moves 60 pips on the release. Why might you still lose money?</summary>
+    <div class="tl-answer">
+      Because the straddle was priced for the event. In the worked example its breakeven is about 78 pips: you
+      paid for a move of that size. A 60-pip move is real, but it is smaller than what was priced. And once the
+      number is out, the event variance is spent, so the implied vol of whatever time is left drops back to the
+      ordinary level (the vol crush), taking the rest of the event premium with it. A straddle is a bet that the
+      move beats the price, not that a move happens.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why is "set a tight stop" bad risk control for a position held through a tier-one release?</summary>
+    <div class="tl-answer">
+      A stop is an order to trade at the next available price once your level is touched. Around a release,
+      liquidity is withdrawn and price can jump past your level with nothing traded in between, so the fill can be
+      far worse than the stop. Sizing off the stop distance therefore understates the real risk. The fix is to
+      size for the event's priced move, two or three event standard deviations, so a gap is survivable. The SNB's
+      removal of the EUR/CHF floor in January 2015 is the extreme case: stops just under 1.20 filled far below.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. The ECB cut its deposit rate on 3 December 2015 and the euro rose about 3%. How can an easing decision strengthen the currency?</summary>
+    <div class="tl-answer">
+      Because the market reacts to the decision relative to what was priced. Markets had expected more easing than
+      the ECB delivered: a 10 basis-point deposit cut to −0.30% and a longer, but not larger, bond-buying programme.
+      Relative to expectations, that was a hawkish surprise, so the expected path of euro rates rose and the euro
+      rallied, its biggest one-day gain against the dollar since 2009 on Bloomberg's figures. Central-bank
+      decisions are surprises against the path that futures and swaps already price.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Torben G. Andersen, Tim Bollerslev, Francis X. Diebold and Clara Vega, <em>"Micro Effects of Macro Announcements: Real-Time Price Discovery in Foreign Exchange"</em>, American Economic Review 93(1), 2003 — the standardised-surprise approach on five-minute exchange rates: fast jumps in the conditional mean, and bad news mattering more than good.</li>
+    <li>Michael J. Fleming and Eli M. Remolona, <em>"Price Formation and Liquidity in the U.S. Treasury Market: The Response to Public Information"</em>, Journal of Finance 54(5), 1999 — the two-stage adjustment: a sharp price reset on thin volume, then a surge in trading and prolonged volatility.</li>
+    <li>Kenneth N. Kuttner, <em>"Monetary Policy Surprises and Interest Rates: Evidence from the Fed Funds Futures Market"</em>, Journal of Monetary Economics 47(3), 2001 — yields respond to the unanticipated part of a Fed decision, measured from futures, and barely to the anticipated part.</li>
+    <li>Refet S. Gürkaynak, Brian Sack and Eric T. Swanson, <em>"Do Actions Speak Louder Than Words? The Response of Asset Prices to Monetary Policy Actions and Statements"</em>, International Journal of Central Banking 1(1), 2005 — Fed announcements carry two surprises, the rate decision and the signal about the future path.</li>
+    <li>Menachem Brenner and Marti G. Subrahmanyam, <em>"A Simple Formula to Compute the Implied Standard Deviation"</em>, Financial Analysts Journal 44(5), 1988 — the at-the-money approximation, call ≈ 0.4σ√T·S, behind the straddle rule of thumb.</li>
+    <li>Sheldon Natenberg, <em>Option Volatility and Pricing</em>, 2nd edition, McGraw-Hill, 2015 — the practitioner's treatment of implied volatility, term structure and trading volatility around expected events.</li>
+    <li>US Bureau of Labor Statistics, <em>Consumer Price Index — October 2022</em> (news release, 10 November 2022), and the Federal Reserve's <em>FOMC Policy on External Communications of Committee Participants</em> — the primary sources for the episode's figures and for the Fed blackout window.</li>
+  </ul>
+  </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a> <span>· the term structure the event is backed out of</span></li>
+        <li><a href="theta-decay.html">Theta Decay</a> <span>· why the event premium vanishes once the number is out</span></li>
+        <li><a href="central-bank-policy.html">Central Bank Policy</a> <span>· reaction functions, and surprises against the priced path</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="vix-uncertainty-not-fear.html">The VIX Is an Uncertainty Index, Not a Fear Gauge</a> <span>· turning implied vol into expected moves, for the whole market</span></li>
+        <li><a href="fx-options-quoting-rr-bf.html">FX Options Quoting: Delta, Risk Reversals &amp; Butterflies</a> <span>· reading the vol quotes the event is backed out of, and which side the market pays up for</span></li>
+        <li><a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a> <span>· why spreads widen and depth vanishes at the release</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the biggest moves of most months land at times you know in advance, and the options market tells you their size before they arrive.</p>
+  </nav>
+
+  <div class="tl-footer-nav">
+    <a href="four-markets-four-questions.html">← Four Markets, Four Questions</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=2" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
+</body>
+</html>
