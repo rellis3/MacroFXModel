@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Same Greeks, Different Risk — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -112,7 +113,19 @@
       </div>
     </section>
 
+    <!-- WB:payoff_shape_vs_greek_signs-deck:START -->
     <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Same Greeks, different roads: a short put and a short call</h2>
+      <!-- WB:payoff_shape_vs_greek_signs:START -->
+      <div class="wb" data-title="Same Greeks, different roads: a short put and a short call">
+        <script type="application/json">{"w":600,"h":860,"intro":"Two option sellers, one strike, the same dashboard of Greeks. Then the price goes on a long trip. Press play, or step through.","steps":[{"cap":"Two sellers, one strike. Strike 100, 30 days left, 20% volatility, 2% rates. One sells a put and collects 2.20. The other sells a call and collects 2.37.","do":[{"icon":"ps","name":"person","x":40,"y":10,"s":0.7,"tone":"amber","label":"sells the put","lsize":17},{"icon":"cs","name":"person","x":490,"y":10,"s":0.7,"tone":"red","label":"sells the call","lsize":17},{"icon":"c1","name":"coin","x":196,"y":26,"s":0.36,"tone":"amber","sym":"$"},{"icon":"c2","name":"coin","x":368,"y":26,"s":0.36,"tone":"red","sym":"$"},{"move":"c1","x":136,"y":26,"ms":1100},{"move":"c2","x":428,"y":26,"ms":1100},{"note":"prem","x":300,"y":70,"text":"premium: 2.20 · 2.37","size":18,"anchor":"middle","tone":"amber"}]},{"cap":"Their dashboards today. Gamma −0.0695 for both. Vega −0.114 per vol point for both. Theta positive for both. Not just the same signs: the same numbers. Only delta differs, by exactly one.","do":[{"box":"dp","x":10,"y":140,"w":285,"h":104,"text":"short put\nΓ −0.0695 · ν −0.114\nΔ +0.477","tone":"amber","size":18},{"box":"dc","x":305,"y":140,"w":285,"h":104,"text":"short call\nΓ −0.0695 · ν −0.114\nΔ −0.523","tone":"red","size":18}]},{"cap":"Why identical: put-call parity. A short call is a short put plus a short forward. The forward is a straight line, so it has no gamma and no vega. The curvature Greeks cannot see it.","do":[{"box":"par","x":70,"y":262,"w":460,"h":60,"text":"short call = short put + short forward","tone":"purple","size":20}]},{"cap":"Now the payoffs at expiry, across every price from 0 to 250. The short put first: below the strike it loses one for one, but a price cannot go below zero. Its floor is 2.20 − 100 = −97.80.","do":[{"chart":"pl","x":10,"y":340,"w":580,"h":270,"title":"P&L at expiry, per unit","xd":[0,250],"yd":[-185,20],"yt":[[0,"0"],[-80,"−80"],[-160,"−160"]],"xt":[[0,"0"],[100,"K 100"],[200,"200"],[250,"250"]],"zero":true,"pl":50,"pr":18},{"series":"put","chart":"pl","pts":[[0,-97.8],[100,2.2],[250,2.2]],"tone":"amber","ms":1500},{"dot":"pf","chart":"pl","at":[0,-97.8],"text":"floor −97.80","tone":"amber","dx":8,"dy":20,"anchor":"start"}]},{"cap":"The short call. Above the strike it also loses one for one, and nothing stops the price rising. At 200 it has lost 97.63. At 250 it has lost 147.63, and the line keeps going.","do":[{"series":"call","chart":"pl","pts":[[0,2.37],[100,2.37],[250,-147.63]],"tone":"red","ms":1500},{"dot":"cf","chart":"pl","at":[250,-147.63],"text":"−147.63, no floor","tone":"red","dx":-6,"dy":22,"anchor":"end"},{"pulse":"cs"}]},{"cap":"Same dashboard, very different roads. The whole gap lives in that straight-line forward, the one piece the Greeks cannot register.","do":[{"pulse":"dp"},{"pulse":"dc"},{"pulse":"par"}]},{"cap":"The Greeks are a Taylor expansion around today's price. For a +50 move on the short call they predict −0.523 × 50 − ½ × 0.0695 × 50² ≈ −113 (dashed). Repricing honestly gives −47.8. The local estimate more than doubles the loss.","do":[{"series":"tay","chart":"pl","pts":[[100,-0.0],[105,-3.5],[110,-8.7],[115,-15.7],[120,-24.4],[125,-34.8],[130,-47.0],[135,-60.9],[140,-76.5],[145,-93.9],[150,-113.0]],"tone":"purple","dash":true,"ms":1200},{"dot":"t50","chart":"pl","at":[150,-113.0],"text":"Greeks say −113","tone":"purple","dx":-8,"dy":4,"anchor":"end"},{"dot":"r50","chart":"pl","at":[150,-47.8],"text":"true −47.8","tone":"red","dx":8,"dy":-12,"anchor":"start"}]},{"cap":"Why it misses: gamma does not stay put. As the call goes into the money its gamma collapses: 0.0695 at 100, 0.0144 at 110, 0.0003 at 120, about zero by 130.","do":[{"chart":"gm","x":10,"y":626,"w":280,"h":168,"title":"Short call gamma (size)","xd":[0.4,4.6],"yd":[0,0.08],"yt":[[0,"0"],[0.07,"0.07"]],"xt":[[1,"100"],[2,"110"],[3,"120"],[4,"130"]],"pl":46},{"bars":"gb","chart":"gm","data":[[1,0.0695,"0.069","red"],[2,0.0144,"0.014","amber"],[3,0.0003,"≈0","blue"],[4,1e-06,"≈0","blue"]],"bw":36,"ms":1200}]},{"cap":"So deep in the money, the short call's Greeks go quiet exactly where its loss is largest and still growing one for one. Low gamma means linear, not small.","do":[{"box":"quiet","x":305,"y":626,"w":285,"h":76,"text":"Greeks ≈ 0\nloss still growing","tone":"red","size":19},{"pulse":"call"}]},{"cap":"October 2008: Porsche disclosed it controlled about 74% of Volkswagen's ordinary shares, and Lower Saxony held about 20%. Short sellers had to buy back from a few percent of free shares. The price rose roughly fivefold in two trading days.","do":[{"box":"vw","x":305,"y":714,"w":285,"h":80,"text":"VW, Oct 2008: Porsche 74%\n+ Saxony 20% → about 5×","tone":"red","size":17}]},{"cap":"The fix is to cap the uncapped side and size by the stressed loss, not by the Greek columns. Buy a further-out call, or hold the underlying, and the short call's road ends at a wall instead of a cliff.","do":[{"box":"fix","x":10,"y":806,"w":580,"h":46,"text":"cap the uncapped side · size by stress loss, not by Greeks","tone":"green","size":18}]}]}</script>
+      </div>
+      <!-- WB:payoff_shape_vs_greek_signs:END -->
+    </section>
+    <!-- WB:payoff_shape_vs_greek_signs-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The squeeze chain</h2>
       <div class="sl-chain">
@@ -127,7 +140,7 @@
       <p class="sl-p">Deep in the money, a short call behaves like short stock: every point of rally is a point of loss.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7 · It actually happened</div>
       <h2 class="sl-h2">October 2008: Volkswagen</h2>
       <p class="sl-p">On Sunday 26 October 2008 Porsche disclosed control of about 74% of VW's ordinary shares — roughly 43% outright, most of the rest via cash-settled options. Lower Saxony held about 20%. Only a few percent were left to trade, against heavy short interest.</p>
@@ -138,7 +151,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The dealer-level version<!-- DESK:START -->: what the desk found<!-- DESK:END --></h2>
       <p class="sl-sub">A dealer book that has sold options is "short gamma" — this lesson, aggregated. The folk claim: short gamma amplifies moves, long gamma damps them, and so gamma tells you what's next.</p>
@@ -156,7 +169,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Pitfalls</h2>
       <div class="sl-icard-grid">
@@ -167,7 +180,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -211,7 +224,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -294,5 +307,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

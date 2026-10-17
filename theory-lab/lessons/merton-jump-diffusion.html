@@ -44,6 +44,65 @@
   </ul>
 </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="EUR/CHF from late 2011 to January 2015, drawn as an approximate shape. For three years the rate sits just above the Swiss National Bank's 1.20 floor and barely wiggles: a tiny diffusion volatility. On 15 January 2015 the line drops straight down to below 0.90 within minutes, with no prices in between, then recovers to about parity by the end of the day. Stop-loss orders just under 1.20 were filled far below.">
+      <text class="tlp-text2" x="300" y="20" text-anchor="middle" font-size="14" font-weight="700">price move = smooth wiggle (σ) + rare jump (λ, μ<tspan font-size="10" dy="3">J</tspan><tspan dy="-3">, σ</tspan><tspan font-size="10" dy="3">J</tspan><tspan dy="-3">)</tspan></text>
+      <line class="tlp-line" x1="60" y1="40" x2="60" y2="210"/>
+      <line class="tlp-line" x1="60" y1="210" x2="590" y2="210"/>
+      <line class="tlp-line dash" x1="60" y1="69.6" x2="590" y2="69.6"/>
+      <text class="tlp-text3" x="54" y="73.6" text-anchor="end" font-size="12">1.20</text>
+      <text class="tlp-text3" x="54" y="147.5" text-anchor="end" font-size="12">1.00</text>
+      <text class="tlp-text3" x="54" y="184.4" text-anchor="end" font-size="12">0.90</text>
+      <text class="tlp-text3" x="105.9" y="226" text-anchor="middle" font-size="12">2012</text>
+      <text class="tlp-text3" x="225.7" y="226" text-anchor="middle" font-size="12">2013</text>
+      <text class="tlp-text3" x="345.4" y="226" text-anchor="middle" font-size="12">2014</text>
+      <text class="tlp-text3" x="465.2" y="226" text-anchor="middle" font-size="12">2015</text>
+      <polyline class="tlp-line blue thick" points="70.0,66.8 76.0,66.8 82.0,68.4 88.0,69.6 94.0,67.5 99.9,68.8 105.9,66.6 111.9,66.9 117.9,65.6 123.9,66.7 129.9,66.9 135.9,67.6 141.9,67.1 147.8,66.2 153.8,66.4 159.8,66.6 165.8,67.6 171.8,66.9 177.8,69.2 183.8,68.7 189.8,68.4 195.7,69.0 201.7,68.0 207.7,69.1 213.7,68.6 219.7,68.1 225.7,69.0 231.7,65.4 237.7,65.8 243.7,64.7 249.6,68.0 255.6,68.9 261.6,69.2 267.6,69.5 273.6,68.1 279.6,68.2 285.6,69.4 291.6,67.5 297.5,69.5 303.5,66.8 309.5,69.4 315.5,68.9 321.5,68.2 327.5,67.1 333.5,68.0 339.5,65.7 345.4,67.4 351.4,69.0 357.4,69.5 363.4,67.8 369.4,67.4 375.4,68.4 381.4,67.0 387.4,66.2 393.4,66.1 399.3,65.4 405.3,63.9 411.3,65.3 417.3,66.8 423.3,68.4 429.3,67.5 435.3,69.5 441.3,68.6 447.2,67.3 453.2,68.8 459.2,68.9 465.2,66.3 470.0,69.2"/>
+      <polyline class="tlp-line red thick" points="470.0,69.2 470.0,191.5 490.0,143.5 505.0,145.0"/>
+      <circle class="tlp-red" cx="470" cy="191.5" r="5"/>
+      <circle class="tlp-red" cx="490" cy="143.5" r="4"/>
+      <text class="tlp-text3" x="72" y="88" font-size="12">SNB floor 1.20 (approx. shape)</text>
+      <text class="tlp-blue" x="250" y="106" text-anchor="middle" font-size="14" font-weight="700">Sep 2011 to Jan 2015: tiny σ</text>
+      <text class="tlp-amber" x="250" y="132" text-anchor="middle" font-size="13">stops sat just under 1.20 …</text>
+      <text class="tlp-amber" x="250" y="150" text-anchor="middle" font-size="13">… and were filled far below</text>
+      <text class="tlp-red" x="480" y="52" text-anchor="middle" font-size="14" font-weight="700">15 Jan 2015: the jump</text>
+      <text class="tlp-red" x="460" y="196" text-anchor="end" font-size="13" font-weight="700">below 0.90 in minutes</text>
+      <text class="tlp-red" x="478" y="104" font-size="12">no trades</text>
+      <text class="tlp-red" x="478" y="118" font-size="12">in between</text>
+      <text class="tlp-red" x="512" y="141" font-size="13">≈ parity</text>
+      <text class="tlp-red" x="512" y="156" font-size="12">by the close</text>
+    </svg>
+    <figcaption>Three years of a floored rate looked like almost no risk: σ was tiny because the central bank was holding it down. All the risk sat in the jump term, and when it fired the price skipped every level in between. Merton's model keeps the blue wiggle and adds the red tear.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Every options model I learned assumes prices move smoothly. Is that a problem in currencies?</p>
+      <p data-who="Quant">On most days, no. But think about payrolls Friday. At half past eight New York time the number lands, and a pair can move fifty, a hundred, even two hundred pips in a few seconds.</p>
+      <p data-who="Trader">With almost nothing trading in between.</p>
+      <p data-who="Quant">Right. That is not fast wiggling. It is a tear in the path. Black-Scholes has no way to draw a tear. Every path it allows is unbroken, however far you zoom in.</p>
+      <p data-who="Trader">So what did Merton do?</p>
+      <p data-who="Quant">In 1976 he kept the smooth wiggle and added a second, separate source of randomness on top. Most of the time it adds nothing. Every so often it fires, and the price jolts by a random amount.</p>
+      <p data-who="Trader">Like a calm river with a dam upstream that sometimes opens without warning.</p>
+      <p data-who="Quant">That is the picture. Three new dials control the jolt. One sets how often it fires. The other two set how big a jump is on average, which way it leans, and how much the size varies from one jump to the next.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Say jumps arrive twice a year. Over half a year you expect one. The chance of at least one is about sixty-three percent. Turn the how-often dial down to zero and you are back to plain Black-Scholes.</p>
+      <p data-who="Trader">What does that do to the spread of daily returns?</p>
+      <p data-who="Quant">Most days have no jump, so they bunch tighter around zero than a single bell curve says. The rare jump days land far out in the tails. A tall middle and fat tails. That is excess kurtosis, not just a wider bell.</p>
+      <p data-who="Trader">And for options?</p>
+      <p data-who="Quant">A deep out-of-the-money option is a bet on a surprise. Price it with one flat volatility and it comes out too cheap. The market charges more anyway, so when you back out the volatility each strike implies, the line bends up at the edges. That is the smile.</p>
+      <p data-who="Trader">Has a jump ever really caught people out?</p>
+      <p data-who="Quant">The Swiss franc, on the fifteenth of January 2015. For three years the Swiss National Bank held the euro above one twenty francs, and the rate barely moved. Then the bank dropped the floor without warning. Within minutes the rate was below ninety centimes, and it ended the day near parity.</p>
+      <p data-who="Trader">And all the stop-losses sitting just under one twenty?</p>
+      <p data-who="Quant">Filled far below, because there was no price in between to fill them at. Many retail clients lost more than their deposits. One large broker needed an emergency loan, and another went under.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Calm is not the same as safe. On a pegged or floored rate, quiet volatility is exactly where the jump risk hides.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -118,6 +177,15 @@
 
   <div class="tl-chart interactive">
     <div class="tl-chart-label">Same start, one calendar shock</div>
+    <div class="tl-predict">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Before you click "Trigger a jump" below, picture the red path at the dashed release line. Between the last price before the jump and the first price after it, what does the red line do?</div>
+      <ul class="tl-predict-options">
+        <li>It slopes steeply over a few points, passing quickly through every price in between.</li>
+        <li data-correct>It goes straight up or down at one instant: a vertical step with no prices in between.</li>
+        <li>It stays on top of the blue path. The jump only shows up as higher volatility later.</li>
+      </ul>
+      <div class="tl-predict-reveal"><p><strong>A vertical step.</strong> The chart draws two prices at the same moment, the one just before the jump and the one just after, and nothing between them. That is \(dJ_t\): zero almost always, then a jolt that skips every level a smooth path would have to cross. A stop resting inside the gap has no price to fill at. Click a few more times: where the jump lands, which way it goes and how big it is change on every click, which is the randomness \(\lambda\) and \(Y_i\) describe.</p></div>
+    </div>
     <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two simulated price paths starting at the same point: a pure-diffusion GBM path that wiggles smoothly with no breaks, and a jump-diffusion path that tracks it closely until a marked NFP release, then steps sharply down and resumes smooth wiggling at the new, lower level.">
       <line id="jump-marker-line" x1="340" y1="24" x2="340" y2="250" style="stroke:var(--amber);stroke-dasharray:3,3"/>
       <text id="jump-marker-label" x="346" y="34" font-size="11" font-family="'DM Mono',monospace" fill="var(--amber)">NFP release</text>
@@ -180,6 +248,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Merton's jump-diffusion, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{dS_t}{S_t} = \color{#fbbf24}{\mu\,dt} \]</div>
+      <p>Start with the drift: the steady average direction of the return over one tiny instant \(dt\). On its own this is a straight, riskless line.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{dS_t}{S_t} = \mu\,dt + \color{#fbbf24}{\sigma\,dW_t} \]</div>
+      <p>Add continuous Brownian noise. This is geometric Brownian motion, the Black-Scholes world: the path wiggles but can never break, so a big move in a short window is all but impossible.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{dS_t}{S_{t^-}} = \mu\,dt + \sigma\,dW_t + \color{#fbbf24}{dJ_t} \]</div>
+      <p>Merton's one new term. \(dJ_t\) is zero on almost every instant and a sudden jolt on the rare instant a jump lands. The return is measured off \(S_{t^-}\), the price just before the jump.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ dJ_t = \begin{cases} \color{#fbbf24}{Y_i} & \text{with probability } \color{#fbbf24}{\lambda\,dt} \\ 0 & \text{otherwise} \end{cases} \qquad \ln(1+Y_i) \sim \mathcal{N}(\color{#fbbf24}{\mu_J}, \color{#fbbf24}{\sigma_J^2}) \]</div>
+      <p>What the jump term is made of. A Poisson clock with intensity \(\lambda\) decides <em>when</em> a jump fires; a lognormal size with mean \(\mu_J\) and spread \(\sigma_J\) decides <em>how big</em> it is.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\frac{dS_t}{S_{t^-}} = \mu\,dt + \sigma\,dW_t + dJ_t, \quad \ln(1+Y_i) \sim \mathcal{N}(\mu_J, \sigma_J^2)} \]</div>
+      <p>Three independent sources of randomness stacked together: whether a jump happens (\(\lambda\)), how big it is (\(\mu_J, \sigma_J\)), and the ordinary noise running all the time (\(\sigma\)). Set \(\lambda = 0\) and you are back to plain Black-Scholes.</p>
+    </div>
+  </div>
   <p>
     Recall the Black-Scholes world describes the underlying's price as geometric
     Brownian motion — in words, "a constant drift plus continuous random noise,
@@ -636,6 +728,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2015-01-14">
+    <div class="tl-drill-label">Scenario drill · 14 January 2015</div>
+    <h3>A floor that has held for three years</h3>
+    <p>You are long EUR/CHF on leverage, with a stop-loss a few pips under the Swiss National Bank's 1.20 floor. The floor has held since September 2011, and SNB officials have publicly reaffirmed it. Realised volatility is the lowest you have ever seen on the pair, so your risk model says the position is small. How do you size it going into tomorrow?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Keep the size. The stop caps the loss at a few pips.<div class="tl-drill-why">A stop is an order, not a guaranteed price. It assumes the path is continuous and will trade through your level. In a jump there is no price in between, so the stop fills wherever liquidity comes back.</div></li>
+      <li data-verdict="bad">Add size. Volatility is so low that a volatility-targeted book says you can run more.<div class="tl-drill-why">The calm is the floor holding σ down. Nearly all the risk sits in the jump terms, λ and μ_J, which a volatility estimate from the floor years cannot see. Scaling up on low σ scales you into the jump.</div></li>
+      <li data-verdict="good">Size the position for a gap far through the floor, as if the stop will not fill, and only hold what you could lose that way.<div class="tl-drill-why">On a floored rate the loss to plan for is the jump, and everyone can name its direction. Sizing for the gap, not the stop distance, is the only version of this trade that survives the day the floor goes.</div></li>
+      <li data-verdict="ok">Halve the size and keep the stop.<div class="tl-drill-why">Halving does halve the damage, so it is defensible. But the size is still set by the stop distance, which assumes a continuous path. Half of a loss many times your plan is still many times your plan.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On the morning of 15 January 2015 the SNB discontinued the floor without warning and cut its deposit rate to −0.75%. Within minutes EUR/CHF fell from 1.20 to below 0.90, with very little trading on the way down, before ending the day near parity. Stops just under 1.20 were filled far below. Many retail clients lost more than their account balance; FXCM needed an emergency $300 million loan, and Alpari UK went into insolvency.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -766,6 +871,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> <span>· the smooth-path model this lesson adds jumps to</span></li>
+        <li><a href="primer-stats-normal.html">Descriptive Statistics &amp; the Normal Distribution</a> <span>· the thin-tailed bell that jumps fatten</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="kelly-criterion.html">The Kelly Criterion &amp; Position Sizing</a> <span>· sizing when a jump can skip your stop</span></li>
+        <li><a href="heston-model.html">The Heston Model</a> <span>· the other classical explanation of the smile</span></li>
+        <!-- DESK:START --><li><a href="institutional-bates-model.html">Bates Model: Stochastic Volatility + Jumps</a> <span>· jumps and moving volatility in one model</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every stop-loss quietly assumes a smooth path, and this model tells you when that assumption fails and what it costs.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="black-scholes.html">← Black-Scholes-Merton Option Pricing</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -861,7 +986,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Same Greeks, Different Risk — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -48,6 +49,54 @@
       <!-- DESK:START --><li><strong>Desk verdict on the dealer-level version ("short gamma amplifies"):</strong> range-only, Nasdaq-only, and the reliable state is long gamma being <em>quiet</em>. Direction from gamma is falsified, and it does not carry to FX.</li><!-- DESK:END -->
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 244" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Profit and loss at expiry against the price at expiry, from 0 to 250, for a short put and a short call at strike 100 with 30 days to go. Near the strike the two positions have the same gamma and the same vega. The short put's loss stops at minus 97.80 when the price reaches zero. The short call's loss passes that level near 200 and reaches minus 147.63 at 250, with no floor.">
+      <rect class="tlp-box blue" x="238" y="36" width="52" height="36" rx="5" opacity=".6"/>
+      <text class="tlp-blue" x="264" y="26" text-anchor="middle" font-size="13" font-weight="700">the Greeks look here: same Γ, same ν</text>
+      <line class="tlp-line" x1="60" y1="54" x2="570" y2="54"/>
+      <line class="tlp-line" x1="60" y1="30" x2="60" y2="214"/>
+      <line class="tlp-line amber dash" x1="60" y1="151.8" x2="570" y2="151.8"/>
+      <polyline class="tlp-line amber thick" points="60,151.8 264,51.8 570,51.8"/>
+      <polyline class="tlp-line red thick" points="60,51.6 264,51.6 570,201.6"/>
+      <circle class="tlp-amber" cx="60" cy="151.8" r="5"/>
+      <circle class="tlp-red" cx="468.3" cy="151.8" r="5"/>
+      <circle class="tlp-red" cx="570" cy="201.6" r="5"/>
+      <text class="tlp-text3" x="52" y="58" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="264" y="90" text-anchor="middle" font-size="12">K = 100</text>
+      <text class="tlp-text3" x="566" y="74" text-anchor="end" font-size="12">price at expiry →</text>
+      <text class="tlp-amber" x="70" y="176" font-size="13" font-weight="700">short put: floor −97.80</text>
+      <text class="tlp-red" x="458" y="172" text-anchor="end" font-size="13">call passes it near 200</text>
+      <text class="tlp-red" x="566" y="232" text-anchor="end" font-size="13" font-weight="700">short call: −147.63 at 250, no floor</text>
+    </svg>
+    <figcaption>Strike 100, 30 days, premiums 2.20 and 2.37. At the strike the two shorts carry the same gamma and vega, so their Greek columns look alike. Out on the ends, one line stops at a floor of −97.80 and the other keeps falling.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I've got two premium trades on the same index. One sells puts, one sells calls. The risk report shows the same Greeks. So it's the same risk, isn't it?</p>
+      <p data-who="Quant">Same signs, yes. Both are short gamma, long time decay, short volatility. At the same strike the gamma and vega aren't just the same sign. They're the same number.</p>
+      <p data-who="Trader">Then where's the catch?</p>
+      <p data-who="Quant">The worst case. Take a strike of one hundred, thirty days out. You sell the put for two twenty. The most it can ever lose is about ninety-eight, because a price can't go below zero.</p>
+      <p data-who="Trader">And the call?</p>
+      <p data-who="Quant">There's no ceiling on price, so there's no floor on the loss. At two hundred you've lost about ninety-eight. At three hundred, about one hundred and ninety-eight. It just keeps going.</p>
+      <p data-who="Trader">How can the Greeks match if the risks are that different?</p>
+      <p data-who="Quant">Put-call parity. A short call is a short put plus a short forward. The forward is a straight line. Gamma and vega measure bends, and a straight line has none. So the Greeks can't see the very piece that carries the unlimited tail.</p>
+      <p data-who="Trader">Fine, but surely the Greeks at least estimate a big move well.</p>
+      <p data-who="Quant">Not a big one. They're a local estimate around today's price. For a fifty point rally, the Greeks say the short call loses about one hundred and thirteen. Reprice it properly and it's about forty-eight.</p>
+      <p data-who="Trader">So they overstate it. That sounds safe.</p>
+      <p data-who="Quant">Sometimes they overstate, sometimes they understate. And here's the nasty part. Deep in the money, the short call's gamma and vega go to almost zero. The dashboard goes quiet exactly when the loss is biggest and still growing one for one.</p>
+      <p data-who="Trader">Has that actually hurt anyone?</p>
+      <p data-who="Quant">Volkswagen, October two thousand and eight. Porsche disclosed it controlled about seventy-four percent of the shares, and the state of Lower Saxony held about twenty. Only a few percent were free to trade, and lots of funds were short. Over two trading days the price rose roughly fivefold, and for a moment VW was the most valuable listed company in the world.</p>
+      <p data-who="Trader">And nobody had a cap on that loss.</p>
+      <p data-who="Quant">Right. Short shares or short calls, there was no level where it stopped. GameStop in twenty twenty-one replayed it, and Melvin Capital needed about two point seven five billion dollars of new capital.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Greeks are the slope where you stand, not a map of the road. Size every short by its stressed loss, and cap the side that has no ceiling.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -93,6 +142,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Why the two shorts share their curvature Greeks, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ C - P = \color{#fbbf24}{S - Ke^{-r\tau}} \]</div>
+      <p>Start with put-call parity. A call minus a put at the same strike is a forward: a straight line in \(S\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \underbrace{-C}_{\text{short call}} = \underbrace{-P}_{\text{short put}} \color{#fbbf24}{\;-\;\big(S - Ke^{-r\tau}\big)} \]</div>
+      <p>Negate and rearrange. A short call is a short put plus a short forward. The forward has no floor: it loses one for one as \(S\) rises without limit.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{\partial^2 (-C)}{\partial S^2} = \frac{\partial^2 (-P)}{\partial S^2} - \color{#fbbf24}{\frac{\partial^2}{\partial S^2}\big(S - Ke^{-r\tau}\big)} \]</div>
+      <p>Differentiate twice to get gamma. The forward is a straight line, so its second derivative is zero. Do the same with \(\sigma\) and the forward's vega is zero too.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\Gamma_{\text{sc}} = \Gamma_{\text{sp}},\quad \nu_{\text{sc}} = \nu_{\text{sp}}},\quad \Delta_{\text{sc}} = \Delta_{\text{sp}} - 1 \]</div>
+      <p>Same gamma, same vega: −0.0695 and −0.114 at 30 days. Delta shifts by exactly one. The whole difference in the tails lives in the straight line the curvature Greeks cannot see: a floor of −97.80 for the put, none for the call.</p>
+    </div>
+  </div>
 
   <h3>1. The payoffs at expiry</h3>
   <p>With strike \(K\), premiums \(p_P\) (put) and \(p_C\) (call), and \(S_T \ge 0\) the price at expiry:</p>
@@ -167,6 +236,10 @@
 
   <div class="tl-chart interactive">
     <div class="tl-chart-label">Short put vs short call, strike 100 — identical local Greeks, diverging losses</div>
+    <div class="tl-predict" data-answer="100" data-tol="5" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The short put can never lose more than 97.80. Starting from 100, how big a rally, in percent, does it take for the short call's loss at expiry to reach that same 97.80? Lock in a guess, then drag the price slider and watch the "P&amp;L at expiry" row.</div>
+      <div class="tl-predict-reveal"><p><strong>About 100%.</strong> The call loses one for one above the strike, less the 2.37 premium: \(2.37 - (S_T - 100) = -97.80\) gives \(S_T \approx 200\). At 200 the row reads −97.63; one point higher it is already past −97.80. A doubling costs the call seller the put seller's worst case, and the line keeps going: −147.63 at 250. Watch the gamma and vega columns as you pass 140: they read almost zero.</p></div>
+    </div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Expiry profit and loss of a short put and a short call at strike 100 against underlying price from 0 to 250. The short put's loss flattens at minus 97.8 at zero; the short call's loss keeps falling to minus 147.6 at 250. Dashed curves show today's value with 30 days left. A slider moves a marker along both.">
       <defs><clipPath id="sg-clip"><rect x="60" y="20" width="550" height="240"/></clipPath></defs>
       <line x1="60" y1="46.7" x2="610" y2="46.7" style="stroke:var(--text3);stroke-width:1"/>
@@ -258,6 +331,12 @@
       </div>
     </div>
   </div>
+
+  <!-- WB:payoff_shape_vs_greek_signs:START -->
+  <div class="wb" id="wb-payoff_shape_vs_greek_signs" data-title="Same Greeks, different roads: a short put and a short call">
+    <script type="application/json">{"w":600,"h":860,"intro":"Two option sellers, one strike, the same dashboard of Greeks. Then the price goes on a long trip. Press play, or step through.","steps":[{"cap":"Two sellers, one strike. Strike 100, 30 days left, 20% volatility, 2% rates. One sells a put and collects 2.20. The other sells a call and collects 2.37.","do":[{"icon":"ps","name":"person","x":40,"y":10,"s":0.7,"tone":"amber","label":"sells the put","lsize":17},{"icon":"cs","name":"person","x":490,"y":10,"s":0.7,"tone":"red","label":"sells the call","lsize":17},{"icon":"c1","name":"coin","x":196,"y":26,"s":0.36,"tone":"amber","sym":"$"},{"icon":"c2","name":"coin","x":368,"y":26,"s":0.36,"tone":"red","sym":"$"},{"move":"c1","x":136,"y":26,"ms":1100},{"move":"c2","x":428,"y":26,"ms":1100},{"note":"prem","x":300,"y":70,"text":"premium: 2.20 · 2.37","size":18,"anchor":"middle","tone":"amber"}]},{"cap":"Their dashboards today. Gamma −0.0695 for both. Vega −0.114 per vol point for both. Theta positive for both. Not just the same signs: the same numbers. Only delta differs, by exactly one.","do":[{"box":"dp","x":10,"y":140,"w":285,"h":104,"text":"short put\nΓ −0.0695 · ν −0.114\nΔ +0.477","tone":"amber","size":18},{"box":"dc","x":305,"y":140,"w":285,"h":104,"text":"short call\nΓ −0.0695 · ν −0.114\nΔ −0.523","tone":"red","size":18}]},{"cap":"Why identical: put-call parity. A short call is a short put plus a short forward. The forward is a straight line, so it has no gamma and no vega. The curvature Greeks cannot see it.","do":[{"box":"par","x":70,"y":262,"w":460,"h":60,"text":"short call = short put + short forward","tone":"purple","size":20}]},{"cap":"Now the payoffs at expiry, across every price from 0 to 250. The short put first: below the strike it loses one for one, but a price cannot go below zero. Its floor is 2.20 − 100 = −97.80.","do":[{"chart":"pl","x":10,"y":340,"w":580,"h":270,"title":"P&L at expiry, per unit","xd":[0,250],"yd":[-185,20],"yt":[[0,"0"],[-80,"−80"],[-160,"−160"]],"xt":[[0,"0"],[100,"K 100"],[200,"200"],[250,"250"]],"zero":true,"pl":50,"pr":18},{"series":"put","chart":"pl","pts":[[0,-97.8],[100,2.2],[250,2.2]],"tone":"amber","ms":1500},{"dot":"pf","chart":"pl","at":[0,-97.8],"text":"floor −97.80","tone":"amber","dx":8,"dy":20,"anchor":"start"}]},{"cap":"The short call. Above the strike it also loses one for one, and nothing stops the price rising. At 200 it has lost 97.63. At 250 it has lost 147.63, and the line keeps going.","do":[{"series":"call","chart":"pl","pts":[[0,2.37],[100,2.37],[250,-147.63]],"tone":"red","ms":1500},{"dot":"cf","chart":"pl","at":[250,-147.63],"text":"−147.63, no floor","tone":"red","dx":-6,"dy":22,"anchor":"end"},{"pulse":"cs"}]},{"cap":"Same dashboard, very different roads. The whole gap lives in that straight-line forward, the one piece the Greeks cannot register.","do":[{"pulse":"dp"},{"pulse":"dc"},{"pulse":"par"}]},{"cap":"The Greeks are a Taylor expansion around today's price. For a +50 move on the short call they predict −0.523 × 50 − ½ × 0.0695 × 50² ≈ −113 (dashed). Repricing honestly gives −47.8. The local estimate more than doubles the loss.","do":[{"series":"tay","chart":"pl","pts":[[100,-0.0],[105,-3.5],[110,-8.7],[115,-15.7],[120,-24.4],[125,-34.8],[130,-47.0],[135,-60.9],[140,-76.5],[145,-93.9],[150,-113.0]],"tone":"purple","dash":true,"ms":1200},{"dot":"t50","chart":"pl","at":[150,-113.0],"text":"Greeks say −113","tone":"purple","dx":-8,"dy":4,"anchor":"end"},{"dot":"r50","chart":"pl","at":[150,-47.8],"text":"true −47.8","tone":"red","dx":8,"dy":-12,"anchor":"start"}]},{"cap":"Why it misses: gamma does not stay put. As the call goes into the money its gamma collapses: 0.0695 at 100, 0.0144 at 110, 0.0003 at 120, about zero by 130.","do":[{"chart":"gm","x":10,"y":626,"w":280,"h":168,"title":"Short call gamma (size)","xd":[0.4,4.6],"yd":[0,0.08],"yt":[[0,"0"],[0.07,"0.07"]],"xt":[[1,"100"],[2,"110"],[3,"120"],[4,"130"]],"pl":46},{"bars":"gb","chart":"gm","data":[[1,0.0695,"0.069","red"],[2,0.0144,"0.014","amber"],[3,0.0003,"≈0","blue"],[4,1e-06,"≈0","blue"]],"bw":36,"ms":1200}]},{"cap":"So deep in the money, the short call's Greeks go quiet exactly where its loss is largest and still growing one for one. Low gamma means linear, not small.","do":[{"box":"quiet","x":305,"y":626,"w":285,"h":76,"text":"Greeks ≈ 0\nloss still growing","tone":"red","size":19},{"pulse":"call"}]},{"cap":"October 2008: Porsche disclosed it controlled about 74% of Volkswagen's ordinary shares, and Lower Saxony held about 20%. Short sellers had to buy back from a few percent of free shares. The price rose roughly fivefold in two trading days.","do":[{"box":"vw","x":305,"y":714,"w":285,"h":80,"text":"VW, Oct 2008: Porsche 74%\n+ Saxony 20% → about 5×","tone":"red","size":17}]},{"cap":"The fix is to cap the uncapped side and size by the stressed loss, not by the Greek columns. Buy a further-out call, or hold the underlying, and the short call's road ends at a wall instead of a cliff.","do":[{"box":"fix","x":10,"y":806,"w":580,"h":46,"text":"cap the uncapped side · size by stress loss, not by Greeks","tone":"green","size":18}]}]}</script>
+  </div>
+  <!-- WB:payoff_shape_vs_greek_signs:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>When the call side had no ceiling</h2>
@@ -414,6 +493,19 @@
     <!-- DESK:START --><p style="margin-bottom:0"><strong>"Short gamma means a breakout is coming."</strong> The desk's test found short-gamma days are essentially ordinary in range, long-gamma days are the quiet ones, and gamma carries no direction. On FX it carries nothing.</p><!-- DESK:END -->
   </div>
 
+  <div class="tl-drill" data-date="2008-10-27">
+    <div class="tl-drill-label">Scenario drill · 27 October 2008</div>
+    <h3>Short Volkswagen calls on the Monday after Porsche's disclosure</h3>
+    <p>You run a book that has sold call options on Volkswagen ordinary shares, collecting premium. Yesterday, Sunday 26 October, Porsche disclosed that it controls about 74% of the ordinary shares, about 43% outright and most of the rest through cash-settled options. The state of Lower Saxony holds about another 20%. That leaves only a few percent freely tradable, and many funds are short the stock. Your risk report shows short gamma, long theta and short vega, the same columns as your short puts elsewhere. What do you do with the short calls?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Hold them. The Greek columns look the same as the short puts, which have never caused trouble.<div class="tl-drill-why">Same signs, different roads. A short put's loss stops at the strike minus the premium. A short call has no cap, and with almost no free shares and many forced buyers, the road ahead is the cliff, not the wall.</div></li>
+      <li data-verdict="bad">Sell more calls and collect extra premium while the move is hot.<div class="tl-drill-why">Any extra premium is the market pricing a big move. Selling more adds unbounded loss at the moment the squeeze has a mechanism behind it. The premium is your best case, never your risk.</div></li>
+      <li data-verdict="ok">Keep the calls but delta-hedge, buying shares as the price rises.<div class="tl-drill-why">Hedging keeps you flat for small moves. But it means buying into a squeeze where the supply of shares is tiny, and any gap between hedges is an uncapped loss. You stay exposed to exactly the tail the Greeks do not show.</div></li>
+      <li data-verdict="good">Close the short calls or cap them now by buying further-out calls, and size whatever is left by a stressed loss you choose, accepting the cost today.<div class="tl-drill-why">This is the lesson's rule: size shorts by stressed loss, not by Greek columns, and cap the side that has no ceiling. Paying up now is the price of turning a cliff into a wall.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> The short sellers needed to buy shares back, and there were far too few to go round. Over the next two trading days VW's share price rose roughly fivefold, trading above €1,000 intraday on 28 October and making Volkswagen, for a brief moment, the most valuable listed company in the world by market capitalisation. The squeeze eased only after Porsche said it would release some of its position to provide liquidity. Anyone short the upside had no level at which the loss was capped.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -465,6 +557,26 @@
     <li><a href="second-order-greeks.html">Second-Order Greeks</a> and <a href="theta-decay.html">Theta Decay</a> — the next terms of the expansion, and the theta–gamma trade-off a short option collects.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="options-four-positions.html">The Four Option Positions</a> <span>· where short put and short call share a diagonal</span></li>
+        <li><a href="calculus-for-finance.html">Calculus for Finance: Derivatives, Integrals &amp; Taylor Series</a> <span>· the Taylor expansion the Greeks come from</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="covered-call-equals-short-put.html">The Covered Call Is a Short Put</a> <span>· how holding the stock caps the call's cliff</span></li>
+        <li><a href="second-order-greeks.html">Second-Order Greeks: Vanna, Charm, Vomma &amp; More</a> <span>· the next terms of the expansion</span></li>
+        <li><a href="stress-testing-scenario-analysis.html">Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</a> <span>· sizing by the full reprice, not the slope</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a risk report can show two shorts as twins while one of them can lose without limit, and only a stress column, not a Greek column, tells them apart.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="options-four-positions.html">← The Four Option Positions</a>
@@ -563,10 +675,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>
