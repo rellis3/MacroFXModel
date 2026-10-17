@@ -140,21 +140,24 @@ export const DESK_EVIDENCE = [
     instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF'],
   },
   {
-    id: 'yield-spread-sleeve', domain: 'macro', verdict: 'validated', date: '2026-07-17', doc: 'MD files/YIELD_SPREAD_STRATEGY.md',
+    id: 'yield-spread-sleeve', domain: 'macro', verdict: 'context', date: '2026-07-17', doc: 'MD files/YIELD_SPREAD_STRATEGY.md',
+    deflated: { from: 'validated', date: '2026-10-17', why: 'deflated Sharpe 0.2034 < 0.95 (N=14); harness re-run on point-in-time asofs does not clear its own bar (OOS profitable, PF > 1, years positive): OOS Sharpe 0.089, PF 1.077, p 0.9091; the banked result reproduces only under the engine\'s +2-day assumption on GS2 — a monthly average FRED first publishes a median 32 days after its date (forge/HARNESS_REGISTRY_ADDENDUM_A.md)' },
     claim: 'The US-vs-foreign 2-year yield spread, z-scored, mean-reverts, and FX follows it',
     result: 'The one strategy that cleared every audit: OOS 2015-2025 with honest publication lags, ~109 trades, 63% win, PF 2.2, daily-MTM Sharpe ~1.1, every OOS year 2022-2026 positive, robust across the parameter grid. Entries are rare (~15-25 per pair per year). Paper-traded live since 2026-07.',
     use: 'A slow, weeks-long macro sleeve, not an intraday lean. When the page says a pair\'s 2Y spread z is extreme, that is the one macro read here with a validated directional record -- and its edge is mean-reversion of the SPREAD, not the level of rates.',
     instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF'],
   },
   {
-    id: 'multi-spread-sleeve', domain: 'macro', verdict: 'validated', date: '2026-09-20', doc: 'MD files/MULTI_SPREAD_SLEEVE.md',
+    id: 'multi-spread-sleeve', domain: 'macro', verdict: 'context', date: '2026-09-20', doc: 'MD files/MULTI_SPREAD_SLEEVE.md',
+    deflated: { from: 'validated', date: '2026-10-17', why: 'deflated Sharpe 0.8459 < 0.95 (N=13)' },
     claim: 'The identical yield-spread-sleeve mechanism, run on the US-vs-foreign 10Y nominal differential instead of the validated 2Y, finds an independent edge that genuinely diversifies the 2Y sleeve rather than relabeling it',
     result: 'Bar A (10Y on its own): 12-cell sweep (entry |z| 2.0-2.75 x window 90/126/252) all 12 profitable, PF 1.06-3.44, broad multi-year coverage -- a plateau, not a spike, weakest at window=252/z=2.0 (PF 1.06, 2/5 years). Bar B (diversification): 15.7% trade overlap with the validated 2Y sleeve (well under 50%), 0.300 daily-return correlation, equal-risk combined Sharpe 1.15 beats either leg alone (y2 1.02, y10 0.81). Both pre-registered bars pass.',
     use: 'A second, independently-diversifying spread-sleeve leg alongside yield-spread-sleeve, same discipline (rare entries, publication lags on, cost-inclusive). Like that sleeve, this is in-sample/OOS backtest evidence only -- not forward-proven. The 252-day window is the weak corner (thin margin over cost); prefer 90-126-day windows until a cost-stress re-check.',
     instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF'],
   },
   {
-    id: 'spread-sleeve-factor-audit', domain: 'macro', verdict: 'validated', date: '2026-09-22', doc: 'MD files/MVE_BOOK_FACTOR_AUDIT.md',
+    id: 'spread-sleeve-factor-audit', domain: 'macro', verdict: 'context', date: '2026-09-22', doc: 'MD files/MVE_BOOK_FACTOR_AUDIT.md',
+    deflated: { from: 'validated', date: '2026-10-17', why: 'rests on the return streams of yield-spread-sleeve and multi-spread-sleeve, which lost validated status' },
     claim: 'The 2Y/10Y spread sleeves\' edge is genuine rate-spread relative value, not a disguised bet on the shared currency factors (USD / risk) that all six USD pairs share',
     result: 'Pre-registered MVE Phase 7 book-layer audit (currency-space PCA, K=2 by noise band, factor-neutral book, costs on every leg incl. hedges). Sanity gate passed (raw book reproduces the sleeve engines: y2 1.06 vs 1.13, y10 0.62 vs 0.58). All three books read RELATIVE-VALUE: neutralising RAISED OOS Sharpe -- 2Y 1.02->1.33, 10Y 0.58->1.01, combined 0.98->1.36 -- and IS Sharpe too (2Y 0.26->0.46), while cutting OOS vol ~60-65% (2Y 14.1%->5.1%). ~55% of the raw book\'s risk was factor risk that did not pay. Caveats: IS is weak for every version (2018/2020 losses raw and neutral), the OOS strength sits in the 2022-24 rate-divergence cycle, and the OOS window overlaps the grid the 2.0/126 config came from -- this answers dollar-bet-vs-RV, it does not re-validate the sleeves.',
     use: 'CORRECTION 2026-09-22 (MVE_BOOK_FACTOR_AUDIT.md §9): the audit\'s PC-only hedge can leave net USD in the book, so this reading may be partly a dollar bet -- read it together with MVE_BOOK_SYSTEM_BACKTEST.md, which runs a hedge that also zeroes net USD at a fixed 10% vol target. Until that runs, treat the relative-value claim as unconfirmed.',
@@ -871,7 +874,8 @@ export const DESK_EVIDENCE = [
     use: 'Meta-labelling closed (stopping rule). Effective sample, not method, is the limit. Keep the yield-spread book flat / vol-targeted; its traded |z| >= 2 rule already captures what a meta-model would learn.',
   },
   {
-    id: 'ys-long-confirm', domain: 'macro', verdict: 'validated', date: '2026-10-07', doc: 'forge/YS_LONG_CONFIRM_PREREG.md',
+    id: 'ys-long-confirm', domain: 'macro', verdict: 'context', date: '2026-10-07', doc: 'forge/YS_LONG_CONFIRM_PREREG.md',
+    deflated: { from: 'validated', date: '2026-10-17', why: 'deflated Sharpe 0.1833 < 0.95 (N=3); harness re-run on point-in-time asofs does not clear its own bar (mean > 0 with interval above 0): OOS Sharpe -0.053, PF 0.935, p 0.8731; the banked result reproduces only under the engine\'s +2-day assumption on GS2 — a monthly average FRED first publishes a median 32 days after its date (forge/HARNESS_REGISTRY_ADDENDUM_A.md)' },
     instruments: ['USDJPY', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'EURUSD'],
     claim: 'The yield-spread book (validated on 2015+) holds on 40 untouched years 1976-2014 rebuilt from free FRED data, configuration unchanged: an independent second test (Lesson 02)',
     result: 'PASS. 868 trades: +0.243% net per trade [+0.005, +0.464], win 55.1%, PF 1.28; positive in 4/4 decades (+0.34, +0.35, +0.22, +0.10%) and 6/6 pairs. Daily flat-book Sharpe 0.39, well below the 2015+ figures (0.8-1.1): real but modest. FRED rebuild of 2015-2026 +0.30% (PF 1.42), consistent.',
@@ -1094,6 +1098,17 @@ const POWER = {
 
 const TAG = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };
 
+// Registry-wide deflation (forge/HARNESS_REGISTRY_PREREG.md Part B, 2026-10-17): every entry
+// cleared its own bar; none had been corrected for the other 154. The block below is the
+// record of that correction — which validated entries survive BH-FDR 10% across the whole
+// registry, which could not be tested (no p or interval was ever reported), and the
+// threshold used. Entries that LOST status carry `deflated: { from, date, why }` on the
+// entry itself and now read as BASE RATE. The block is rewritten by the script; the
+// losers' `use:` text is untouched, as registered.
+// <registry-deflation> written by analysis/harness/deflate_registry.mjs — do not edit by hand
+const REGISTRY_DEFLATION = {date:'2026-10-17',bhThreshold:0.0609,family:68,entries:{'vix-inversion':{label:'kept',p:0.00289,basis:'ci95, doc S1: SPX500 next-5 +0.76 [+0.29, +1.29]'},'surprise-size':{label:'kept',p:6.87e-7,basis:'ci95, doc S7: rate decisions EUR/USD +0.38 [+0.24, +0.54]'},'nq-down-week':{label:'kept',p:4.76e-7,basis:'ci95, doc: growth down & rates quiet +0.185 [+0.118, +0.262]'},'event-impact-map':{label:'not-deflatable',p:null,basis:'descriptive map (spike ratios); no test'},'post-fomc-usd-drift':{label:'kept',p:0.004,basis:'placebo: event mean at the 99.8th percentile of 10,000 → two-sided 0.004'},'yield-spread-sleeve':{label:'deflated',p:null,basis:'no p reported; Sharpe-type'},'multi-spread-sleeve':{label:'deflated',p:null,basis:'no p reported; Sharpe-type'},'spread-sleeve-factor-audit':{label:'deflated',p:null,basis:'book-layer audit of the two sleeves; its sanity gate reproduces the sleeve engines (same inputs)'},'tape-speed-persistence':{label:'not-deflatable',p:null,basis:'68/68 cells monotonic — a count, not converted'},'execution-gate':{label:'not-deflatable',p:null,basis:'0/30 cells profitable — descriptive'},'reversal-hour':{label:'not-deflatable',p:null,basis:'+10pp above base, no interval reported'},'mv-vixterm-range':{label:'kept',p:0.00091,basis:'ci95, larger p of SPX500 / NQ (n=14 firings)'},'mv-dispersion-range':{label:'kept',p:1.62e-11,basis:'ci95, larger p of SPX500 / NQ (n=9 firings)'},'first-hour-fraction':{label:'not-deflatable',p:null,basis:'descriptive shares, no test'},'fast-start-rest-of-day':{label:'kept',p:0.00109,basis:'ci95, doc T3: EUR/USD +0.15 [+0.07, +0.25], the smallest effect with a stated interval'},'iv-over-rv-wider':{label:'kept',p:0.015,basis:'ci95, larger p of NAS100 next-5 / SPX500 next-20'},'breadth-all-down':{label:'kept',p:0.0000143,basis:'ci95, larger p of SPX500 / NAS100 next-5'},'dispersion-reset':{label:'kept',p:0.0281,basis:'ci95, the gate needed 4/4 cells: largest p (SPX500 5-session +0.186 [+0.017, +0.349])'},'band-reach-from-here':{label:'not-deflatable',p:null,basis:'odds ratios, no interval reported'},'gex-range':{label:'kept',p:0.0008,basis:'stated p 0.0008'},'vol-curve-front':{label:'kept',p:9.6e-7,basis:'logistic z, weakest of the four (−4.9)'},'horizon-reversion':{label:'not-deflatable',p:null,basis:'33/33 instruments better — a count, not converted'},'combined-range':{label:'not-deflatable',p:null,basis:'6/6 and 7/7 instruments better — counts'},'cross-iv':{label:'not-deflatable',p:null,basis:'15/15 crosses better — a count'},'us-extras-confirm':{label:'not-deflatable',p:null,basis:'3/4 better — a count'},'intraday-range':{label:'not-deflatable',p:null,basis:'21/21, 19/21 checkpoints — counts'},'line-touch-reach':{label:'not-deflatable',p:null,basis:'calibration (20/22 cells within 5pp) — not a test'},'extreme-in-probability':{label:'kept',p:0,basis:'ci95, Brier skill +20.9% [+20.5, +21.3]'},'iv-ladder-gold':{label:'not-deflatable',p:null,basis:'5/6 folds — a count'},'iv-ladder':{label:'not-deflatable',p:null,basis:'5/7 instruments — a count'},'ladder-calibration':{label:'not-deflatable',p:null,basis:'calibration miss, one test year — not a test'},'vol-target':{label:'kept',p:0.000493,basis:'ci95, TREND Sharpe +0.32 [+0.14, +0.50]'},'iv-forecast':{label:'kept',p:0.05,basis:'bound: \'4/7 DM p<0.05\' (3/7 did not)'},'forecast-persistence-fix':{label:'kept',p:0,basis:'ci95, pinball 0.976 [0.970, 0.981] vs 1'},'forecast-pick':{label:'kept',p:1.03e-12,basis:'ci95, pinball 0.980 [0.974, 0.985] vs 1'},'ys-long-confirm':{label:'deflated',p:0.038,basis:'ci95, +0.243% [+0.005, +0.464] per trade'}}};
+// </registry-deflation>
+
 /**
  * How this entry may be spoken about.
  *
@@ -1109,12 +1124,21 @@ export function citable(e) {
   const pw = POWER[e?.id] ?? null;
   // A `doc` that is a memory note rather than a file is not a study on disk.
   const docIsStudy = typeof e?.doc === 'string' && !/^\s*memory[:\s]/i.test(e.doc);
-  if (pw) return { tag: `${base}, n=${pw.n}`, strong: true, power: pw, docIsStudy };
+  // Deflation suffixes: a loser says where it fell from and why; a survivor says it
+  // survived the registry-wide correction; an untestable one says so.
+  const defl = e?.deflated ? ` — deflated from VALIDATED ${e.deflated.date}: ${e.deflated.why}` : '';
+  const reg = REGISTRY_DEFLATION.entries[e?.id];
+  const regTag = reg?.label === 'kept' ? ` (survives registry FDR 10%, ${REGISTRY_DEFLATION.date})` : reg?.label === 'not-deflatable' ? ' (not deflatable: no p or interval reported)' : '';
+  const deflation = e?.deflated ? { ...e.deflated } : reg ? { label: reg.label, p: reg.p, basis: reg.basis } : null;
+  if (pw) return { tag: `${base}, n=${pw.n}${regTag}${defl}`, strong: true, power: pw, docIsStudy, deflation };
   return {
-    tag: `${base} — single test, power not recorded${docIsStudy ? '' : ', no study doc'}`,
-    strong: false, power: null, docIsStudy,
+    tag: `${base} — single test, power not recorded${docIsStudy ? '' : ', no study doc'}${regTag}${defl}`,
+    strong: false, power: null, docIsStudy, deflation,
   };
 }
+
+/** The registry-wide deflation record, for pages that show it. */
+export function registryDeflation() { return REGISTRY_DEFLATION; }
 
 /** Ids with no recorded power — the backlog this map is meant to shrink. */
 export function unrecordedPower(list = DESK_EVIDENCE) {

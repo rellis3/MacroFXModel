@@ -1,5 +1,5 @@
 // Shape tests for js/deskEvidence.js.   node js/deskEvidence.test.mjs
-import { DESK_EVIDENCE, evidenceFor, evidenceForPrompt, evidenceBrief, citable, unrecordedPower } from './deskEvidence.js';
+import { DESK_EVIDENCE, evidenceFor, evidenceForPrompt, evidenceBrief, citable, unrecordedPower, registryDeflation } from './deskEvidence.js';
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
 ok('ids unique', new Set(DESK_EVIDENCE.map(e => e.id)).size === DESK_EVIDENCE.length);

@@ -1,5 +1,11 @@
 # Multi-Spread Sleeve — pre-registered (2026-09-20)
 
+> **Deflated 2026-10-17.** The 10Y sleeve has no lookahead and reproduces on point-in-time asofs (harness OOS Sharpe 0.76 vs
+> 0.81 here, 12/12 cells PF > 1), but at OOS p 0.098, deflated Sharpe 0.85 (N = 13 cells) and PBO 0.81 it does not hold
+> `validated` under the registry-wide bars (`forge/HARNESS_REGISTRY_ADDENDUM_B.md`). Bar B (diversification against the 2Y
+> sleeve) rests on a stream that was lookahead — see `forge/HARNESS_REGISTRY_ADDENDUM_A.md` §3.
+
+
 *Registered before running. Verdicts get appended below the line once §5 runs on
 real FRED/OANDA data (Railway — this sandbox has `OANDA_KEY` but no `FRED_KEY`, so
 nothing below the line was fabricated or estimated).*
