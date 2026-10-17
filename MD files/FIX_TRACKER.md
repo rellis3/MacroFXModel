@@ -80,6 +80,7 @@ Legend: `[x]` done · `[ ]` open · `(owner)` needs an owner decision first ·
 - [x] Gold/Confluence: robust-scale MF/VWAP oscillators — window-max→100 replaced by median|v|→30 (MAD about zero; survives the constant one-sided fuel-veto window where de-meaned std/MAD die, and one news bar no longer compresses the rest below threshold); scale factor chosen so all existing smoke fixtures classify identically; both module copies kept byte-identical
 - [x] Gold V1: optimiser dry-run by default (`--apply` required to write KV); config push gated on ≥30 closed trades + chronological 60/40 IS/OOS split (combo chosen on IS, must be ≥0 mean R OOS); looser-than-default combos additionally need ≥30 OOS trades; grid tie-breaks now prefer the TIGHTER combo (`test_optimiser.py`)
 - [ ] (owner) Range-line bot: flip defaults to the OOS-best book (`confluence_min: 2`, held-position model), or run gate-off as an explicit A/B — which?
+  - 2026-10-17 code check: both defaults are now 2 (`range_line_bot/range_line_bot.py:79` DEFAULT_CFG, `js/bot-config.js:6248` RL_DEFAULTS). The bot merges KV `range_line_bot_config` over the default, so the live value is whatever that saved config holds. Open bot-config → Range-Line and confirm it reads 2, then tick this.
 
 ## Batch 7 — alerting honesty (Telegram V2)
 
