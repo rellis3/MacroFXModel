@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Avellaneda-Stoikov Inventory-Aware Market Making — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -50,6 +51,56 @@
       <li><strong>How it reached trading:</strong> Avellaneda &amp; Stoikov (2008) turned the dealer's old habit of shading quotes against inventory into a closed-form rule a machine can run, and it became the starting template for electronic market making.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The worked example on a price line. A symmetric quoter centred on the mid of 100.00 shows bid 99.25 and ask 100.75. A market maker long 5 units centres the same-width window on the reservation price of 99.00 instead, showing bid 98.25 and ask 99.75. The shift of 1.00 is 5 times 0.1 times 4 times 0.5. The spread width, 1.4908, is the same in both rows.">
+      <text class="tlp-text2" x="300" y="24" text-anchor="middle" font-size="13" font-weight="700">same width (1.4908), moved from the mid onto r</text>
+      <text class="tlp-text2" x="60" y="82" font-size="13">symmetric quotes</text>
+      <rect class="tlp-box blue" x="271.7" y="62" width="232.9" height="30" rx="5"/>
+      <text class="tlp-blue" x="277.7" y="82" font-size="13" font-weight="700">99.25</text>
+      <text class="tlp-blue" x="498.6" y="82" text-anchor="end" font-size="13" font-weight="700">100.75</text>
+      <rect class="tlp-box green" x="115.4" y="128" width="232.9" height="30" rx="5"/>
+      <text class="tlp-green" x="121.4" y="148" font-size="13" font-weight="700">98.25</text>
+      <text class="tlp-green" x="342.3" y="148" text-anchor="end" font-size="13" font-weight="700">99.75</text>
+      <text class="tlp-text2" x="440" y="148" font-size="13">long 5 units</text>
+      <line class="tlp-line dash" x1="388.1" y1="50" x2="388.1" y2="172"/>
+      <line class="tlp-line purple dash" x1="231.9" y1="50" x2="231.9" y2="172"/>
+      <text class="tlp-text3" x="388.1" y="188" text-anchor="middle" font-size="12">mid 100.00</text>
+      <text class="tlp-purple" x="231.9" y="188" text-anchor="middle" font-size="12" font-weight="700">r = 99.00</text>
+      <line class="tlp-line purple thick" x1="382.1" y1="204" x2="241.9" y2="204"/>
+      <polygon class="tlp-purple" points="231.9,204 243.9,198 243.9,210"/>
+      <text class="tlp-purple" x="310.0" y="228" text-anchor="middle" font-size="12" font-weight="700">shift = 5 × 0.1 × 4 × 0.5 = 1.00</text>
+    </svg>
+    <figcaption>Holding inventory moves where you quote, not how wide. Long 5 units, the market maker centres the same window a full point lower: the ask moves closer to the mid so the position sells down, and the bid moves away so it stops growing.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I make markets. I quote a bid and an offer the same distance either side of the mid. What's wrong with that?</p>
+      <p data-who="Quant">Nothing, until the flow is one-sided. If sellers keep hitting your bid, you keep getting longer, and nothing in a symmetric quote slows that down. The position can run away from you.</p>
+      <p data-who="Trader">So what did Avellaneda and Stoikov add?</p>
+      <p data-who="Quant">In 2008 they worked out where a risk-averse market maker should centre their quotes. Not on the mid. On a reservation price: the mid, shifted against whatever you are holding.</p>
+      <p data-who="Trader">Shifted by how much?</p>
+      <p data-who="Quant">By your inventory, times your risk aversion, times the variance, times the time left in the session. Hold more, fear risk more, face a jumpier market, or have longer to go, and the shift gets bigger.</p>
+      <p data-who="Trader">Numbers.</p>
+      <p data-who="Quant">The lesson's market maker is long five units. Risk aversion zero point one, volatility two, so variance four, and half the session left. Five times zero point one times four times a half is one. The mid is a hundred, so the reservation price is ninety-nine.</p>
+      <p data-who="Trader">And the quotes?</p>
+      <p data-who="Quant">The total spread is about one point four nine. Half of it either side of ninety-nine gives a bid near ninety-eight point two five and an offer near ninety-nine point seven five. A symmetric quoter would sit a full point higher on both sides.</p>
+      <p data-who="Trader">So I'm cheaper on both sides.</p>
+      <p data-who="Quant">Exactly. Your offer is now closer to the mid, so buyers take your inventory off you. Your bid is further away, so sellers are less likely to make you longer. It always pushes you back towards flat.</p>
+      <p data-who="Trader">Does the spread get wider when I'm long?</p>
+      <p data-who="Quant">No, and that surprises people. The width has no inventory in it at all. One part pays for holding risk over the time left. The other part, about one point two nine here, comes from how fast fills dry up as you quote further out. Inventory only moves the window.</p>
+      <p data-who="Trader">What happens near the close?</p>
+      <p data-who="Quant">The time left shrinks to nothing, so the shift shrinks to nothing too, and you quote around the mid again. The model is built for a market maker who wants to end the session flat. A desk that never closes its book is not that.</p>
+      <p data-who="Trader">What doesn't it cover?</p>
+      <p data-who="Quant">Adverse selection. If the sellers hitting your bid know something, being long is worse than just risky. That is the Glosten and Milgrom problem, and real desks add a charge for it on top.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Quote around the price you would be happy to trade at given what you hold, not around the mid, and let the skew walk you back to flat.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -133,6 +184,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the inventory-aware quotes come from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ r = \color{#fbbf24}{s} \]</div>
+      <p>Start where a symmetric quoter does: centre on the mid-price.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ r(s,q,t) = s \color{#fbbf24}{\,-\, q\,\gamma\,\sigma^2\,(T-t)} \]</div>
+      <p>Shift the centre against your inventory. Long (\(q &gt; 0\)) pulls it down, short pushes it up, and the shift grows with risk aversion, variance and time left.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \delta_b + \delta_a = \color{#fbbf24}{\gamma\sigma^2(T-t)} \]</div>
+      <p>The first part of the spread: compensation for holding any position over the time remaining. The same expression as the shift per unit of inventory.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \delta_b + \delta_a = \gamma\sigma^2(T-t) + \color{#fbbf24}{\frac{2}{\gamma}\ln\!\left(1+\frac{\gamma}{k}\right)} \]</div>
+      <p>The second part: the market-making margin, set by how fast fills dry up with distance (\(k\)). Neither part contains \(q\), so inventory never changes the width.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{r = 100 - 5(0.1)(4)(0.5) = 99.00, \quad \text{bid} = 99.00 - 0.7454 \approx 98.2546, \quad \text{ask} \approx 99.7454} \]</div>
+      <p>The worked example: total spread \(0.20 + 1.2908 = 1.4908\), half of it either side of \(r\). Both quotes sit a full point below where a symmetric quoter would put them.</p>
+    </div>
+  </div>
 
   <h3>1. Setting the stage: mid-price dynamics and CARA risk aversion</h3>
   <p>
@@ -481,6 +556,10 @@
       \(\gamma\), and \(k\) must all be strictly positive; \((T-t)\) must be
       \(\ge0\)).
     </p>
+    <div class="tl-predict" data-answer="101" data-tol="0.1" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Long 5 units, the reservation price is 99.00. Suppose instead the flow had gone the other way and you were short 5 units, with everything else the same. Where would the reservation price be? Lock in a guess, then type −5 into the inventory field below.</div>
+      <div class="tl-predict-reveal"><p><strong>101.00.</strong> The shift is \(q\gamma\sigma^2(T-t) = (-5)(0.1)(4)(0.5) = -1.00\), so \(r = 100 - (-1.00) = 101.00\). The quotes become bid \(\approx 100.2546\) and ask \(\approx 101.7454\): both a point above the mid-centred quotes, so the bid attracts sellers and you buy back towards flat. The width is still 1.4908. Now set the time remaining to 0 and watch the skew disappear.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Mid-price \(s\)</span></div>
@@ -572,6 +651,12 @@
     </div>
   </div>
 
+  <!-- WB:institutional_avellaneda_stoikov:START -->
+  <div class="wb" id="wb-institutional_avellaneda_stoikov" data-title="Inventory skew: quoting around the reservation price">
+    <script type="application/json">{"w":600,"h":790,"intro":"A market maker, a one-sided afternoon, and the price they quote around. The lesson's own worked example. Press play, or step through.","steps":[{"cap":"A market maker quotes both sides of a mid of 100.00. Flat, the quotes sit symmetrically: bid 99.25, offer 100.75, a spread of 1.4908.","do":[{"chart":"nl","x":10,"y":10,"w":580,"h":196,"title":"Quotes on the price line","xd":[97.7,101.3],"yd":[0,1],"yt":[],"xt":[[98,"98"],[99,"99"],[100,"100"],[101,"101"]],"pl":16,"pr":16},{"series":"mid","chart":"nl","pts":[[100.0,0],[100.0,0.92]],"tone":null,"dash":true,"ms":400,"label":"mid 100","lat":[100.0,0.92],"ldy":-10},{"gap":"w0","chart":"nl","top":[[99.2546147886243,0.72],[100.7453852113757,0.72]],"bot":[[99.2546147886243,0.5],[100.7453852113757,0.5]],"tone":"blue","op":0.3},{"note":"b0","chart":"nl","at":[99.2546147886243,0.61],"text":"99.25","tone":"blue","size":17,"anchor":"start","dx":6,"dy":0},{"note":"a0","chart":"nl","at":[100.7453852113757,0.61],"text":"100.75","tone":"blue","size":17,"anchor":"end","dx":-6,"dy":0}]},{"cap":"Then the flow turns one-sided. Seller after seller hits the bid. Each fill makes the market maker longer: inventory climbs to +5.","do":[{"icon":"sel","name":"crowd","x":20,"y":220,"s":0.6,"tone":"red","label":"sellers","lsize":17},{"box":"inv","x":200,"y":226,"w":200,"h":66,"text":"inventory","tone":"amber","sub":"0","size":19},{"arrow":["sel","inv"],"label":"hit bid","tone":"red","id":"hit"},{"count":"inv","from":0,"to":5,"dp":0,"pre":"+","ms":1400}]},{"cap":"Symmetric quotes do nothing about it. The bid is just as attractive as before, so more selling simply adds to the position. There is no brake.","do":[{"note":"nb","x":500,"y":260,"text":"no brake","size":22,"anchor":"middle","tone":"red"},{"pulse":"w0"}]},{"cap":"The fix is a reservation price: the mid shifted against your inventory. Shift = q × γ × σ² × (T − t) = 5 × 0.1 × 4 × 0.5 = 1.00. So r = 100 − 1 = 99.00.","do":[{"hide":"nb"},{"series":"rl","chart":"nl","pts":[[99.0,0],[99.0,0.92]],"tone":"purple","dash":true,"ms":500,"label":"r = 99.00","lat":[99.0,0.92],"ldy":-10},{"box":"sh","x":420,"y":226,"w":170,"h":66,"text":"shift","tone":"purple","sub":"1.00","size":19}]},{"cap":"Quote the same-width window around r instead of the mid: bid about 98.25, offer about 99.75. Both quotes move a full point lower.","do":[{"dim":"w0"},{"dim":"b0"},{"dim":"a0"},{"gap":"w1","chart":"nl","top":[[98.2546147886243,0.36],[99.7453852113757,0.36]],"bot":[[98.2546147886243,0.14],[99.7453852113757,0.14]],"tone":"green","op":0.35},{"note":"b1","chart":"nl","at":[98.2546147886243,0.25],"text":"98.25","tone":"green","size":17,"anchor":"start","dx":6,"dy":0},{"note":"a1","chart":"nl","at":[99.7453852113757,0.25],"text":"99.75","tone":"green","size":17,"anchor":"end","dx":-6,"dy":0}]},{"cap":"The offer is now closer to the mid, so buyers are more likely to take inventory off you. The bid is further away, so sellers are less likely to make you longer. The skew pushes you back to flat.","do":[{"note":"ef","x":300,"y":326,"text":"offer closer → sell down · bid further → stop adding","size":18,"anchor":"middle","tone":"green"}]},{"cap":"The width splits into two parts. Inventory risk, γσ²(T − t) = 0.20, pays for holding any position over the time left. The market-making margin, (2/γ)ln(1 + γ/k) ≈ 1.29, comes from how fast fills dry up with distance.","do":[{"chart":"sp","x":10,"y":352,"w":280,"h":220,"title":"Spread, two parts","xd":[0.4,3.6],"yd":[0,1.7],"yt":[[0.5,"0.5"],[1,"1.0"],[1.5,"1.5"]],"xt":[[1,"risk"],[2,"margin"],[3,"total"]],"pl":40,"pr":8},{"bars":"sb","chart":"sp","data":[[1,0.2,"0.20","blue"],[2,1.2908,"1.29","purple"],[3,1.4908,"1.49","green"]],"bw":46,"ms":1000}]},{"cap":"Neither part contains inventory. Sweep q from −10 to +10: the reservation price, bid and offer slide together as parallel lines. Inventory moves the window, never widens it.","do":[{"chart":"sw","x":310,"y":352,"w":280,"h":220,"title":"Quotes vs inventory q","xd":[-10,10],"yd":[97,103],"yt":[[98,"98"],[100,"100"],[102,"102"]],"xt":[[-10,"−10"],[0,"0"],[10,"+10"]],"pl":44,"pr":10},{"series":"sa","chart":"sw","pts":[[-10,102.7454],[10,98.7454]],"tone":"green","ms":700},{"series":"sr","chart":"sw","pts":[[-10,102.0],[10,98.0]],"tone":"purple","ms":700},{"series":"sbd","chart":"sw","pts":[[-10,101.2546],[10,97.2546]],"tone":"red","ms":700},{"dot":"wk","chart":"sw","at":[5,99.0],"text":"r at q = +5","tone":"purple","dx":-10,"dy":42,"anchor":"end"}]},{"cap":"Near the close, time left shrinks to zero, so the shift shrinks to zero and r returns to the mid. The spread does not vanish: it falls to the margin part, 1.29.","do":[{"box":"tt","x":10,"y":590,"w":280,"h":64,"text":"T − t → 0: r → mid,\nspread → 1.29","tone":"blue","size":17}]},{"cap":"More risk aversion, more volatility or more time left all mean a bigger shift for the same inventory. The model prices the cost of holding one more unit the same way everywhere.","do":[{"box":"gv","x":310,"y":590,"w":280,"h":64,"text":"bigger γ, σ or T − t\n→ bigger skew","tone":"purple","size":17}]},{"cap":"What it leaves out: adverse selection. If those sellers knew something, being long is worse than just risky. That is the Glosten-Milgrom problem, and desks add a charge for it on top.","do":[{"box":"ad","x":10,"y":670,"w":580,"h":50,"text":"missing: informed flow (adverse selection)","tone":"red","size":18}]},{"cap":"So: quote around the price you would be happy to trade at given what you hold, not around the mid, and let the skew walk you back to flat.","do":[{"note":"end","x":300,"y":760,"text":"centre on r, not the mid · width fixed · skew to flat","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:institutional_avellaneda_stoikov:END -->
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How this connects to the rest of this Theory Lab</h2>
   <p>
@@ -661,10 +746,10 @@
     <h3>A desk that just got run over on one side</h3>
     <p>
       Imagine a market maker who has been symmetric-quoting a currency pair
-      and, over the last hour, has been repeatedly lifted on their offer as
-      a wave of genuine buying interest passed through — they are now
+      and, over the last hour, has been repeatedly hit on their bid as
+      a wave of genuine selling interest passed through — they are now
       meaningfully long, with no natural mechanism in a naive symmetric
-      strategy to stop the position from growing further if the buying
+      strategy to stop the position from growing further if the selling
       continues. Switching that same desk onto an Avellaneda-Stoikov-style
       reservation price would immediately compute a negative shift from the
       mid proportional to that new, larger \(q\): both quotes would drop,
@@ -725,6 +810,19 @@
       flat — not automatically the right target for a desk that runs
       continuously across sessions with no single terminal time.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative afternoon on the desk</div>
+    <h3>Hit on the bid all afternoon, now long</h3>
+    <p>You have been quoting a currency pair symmetrically around the mid. For the last hour a steady wave of sellers has been hitting your bid, and you are now long 5 units, the lesson's worked example: mid 100.00, risk aversion 0.1, volatility 2, half the session left. Your quotes are still 99.25 bid and 100.75 offer. What do you change?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Nothing. The spread is fair, and the flow will even out.<div class="tl-drill-why">Symmetric quotes have no brake. If the selling continues, every fill adds to the position, and nothing in the quote discourages it.</div></li>
+      <li data-verdict="good">Re-centre both quotes on the reservation price, 99.00: bid about 98.25, offer about 99.75.<div class="tl-drill-why">This is the model's answer. The offer moves closer to the mid, so buyers take inventory off you; the bid moves away, so you stop adding. The width stays 1.4908, and the skew fades as you get back to flat.</div></li>
+      <li data-verdict="bad">Widen both quotes symmetrically around the mid until the flow stops.<div class="tl-drill-why">Wider quotes around the mid make it harder to sell as well as to buy, so the position just sits there. In this model inventory moves the centre of the window, never its width.</div></li>
+      <li data-verdict="ok">Pull the bid entirely and keep the offer where it is.<div class="tl-drill-why">It stops the position growing, like a hard position cap, but it is blunt: you stop earning on one side, and you do nothing to make the offer more attractive. The reservation price does the same job continuously.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>The point.</strong> This is an illustrative situation built on the lesson's worked example, not a real trading day. Skewing both quotes against your inventory is the model's whole mechanism. One caveat it does not cover: if that one-sided flow was informed, being long is worse than just risky, and the spread also needs an adverse-selection charge on top.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -829,6 +927,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a> <span>· where the quotes rest and how fills arrive</span></li>
+        <li><a href="market-microstructure.html">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a> <span>· why a spread exists at all</span></li>
+        <li><a href="merton-portfolio-problem.html">Merton's Continuous-Time Portfolio Problem</a> <span>· the HJB machinery behind the closed form</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-glosten-milgrom.html">Glosten-Milgrom: Sequential Bayesian Market Making</a> <span>· the adverse-selection risk this model leaves out</span></li><!-- DESK:END -->
+        <!-- DESK:START --><li><a href="institutional-order-flow-imbalance.html">Order Flow Imbalance &amp; the Microprice</a> <span>· a better centre than the plain mid</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> anyone who quotes both sides needs a rule for what to do when the fills stop being balanced, and this is the standard one.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-market-depth-slope.html">← Market Depth, Order-Book Slope &amp; Depth Imbalance</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -859,7 +977,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var ids = ['s','q','gamma','sigma','tt','k'];
@@ -947,5 +1066,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

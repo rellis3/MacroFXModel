@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kyle-Obizhaeva: Market Microstructure Invariance — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -33,14 +34,66 @@
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
       <li>Trading costs, typical order sizes, and price impact all look wildly different across a mega-cap and a micro-cap — but Kyle &amp; Obizhaeva (2016) argue that's an artifact of measuring in the wrong units. Measure a trade's size in <strong>risk transferred</strong> — dollar size times volatility — instead of shares or dollars, and the same statistical distribution of "bet sizes" shows up across essentially every stock, venue, and era.</li>
-      <li>The activity measure is \(W = P \cdot V \cdot \sigma\) (price × daily share volume × daily volatility) — a single number summarizing how much dollar risk a market transfers per day. The central invariance hypothesis: the distribution of bet sizes, standardized by \(W^{2/3}\), is approximately the same everywhere.</li>
-      <li>That exponent produces a real, checkable prediction: doubling an asset's trading activity does <strong>not</strong> double its typical bet size — it scales the typical bet size by only \(2^{2/3}\approx1.587\times\). In this lesson's worked example, two assets differ in activity by roughly 1,042×, yet their invariance-implied typical bet sizes differ by only about 103×.</li>
+      <li>The activity measure is \(W = P \cdot V \cdot \sigma\) (price × daily share volume × daily volatility) — a single number summarizing how much dollar risk a market transfers per day. The central invariance hypothesis: the distribution of bet sizes in risk units, standardized by \(W^{1/3}\), is approximately the same everywhere.</li>
+      <li>That produces real, checkable predictions: the number of bets per day scales as \(W^{2/3}\) and the typical bet size in risk units only as \(W^{1/3}\). Doubling an asset's trading activity multiplies its bets per day by \(2^{2/3}\approx1.587\times\) but its typical bet size by only \(2^{1/3}\approx1.260\times\). In this lesson's worked example, two assets differ in activity by roughly 1,042×; invariance splits that into about 103× more bets per day and bets only about 10.1× bigger. A typical bet as a share of daily volume scales as \(W^{-2/3}\), so in thin, low-activity names each bet is a <em>larger</em> share of volume.</li>
       <li>This extends, rather than replaces, Kyle's (1985) single-asset Lambda — already covered in the <a href="market-microstructure.html">Market Microstructure</a> lesson. Kyle prices one asset's impact given that asset's own exogenous \(\sigma_v,\sigma_u\); invariance is the cross-sectional theory of how those parameters, and the bet sizes they imply, should systematically differ from one asset to the next.</li>
       <li>Practical payoff: because the standardized distribution is shared across assets, a desk that has calibrated it on data-rich, liquid names can predict expected costs and sensible order-slicing sizes for a new or illiquid instrument — an FX cross, a thin small-cap — from nothing but that instrument's own price, volume, and volatility, with no separate history-hungry calibration required.</li>
       <li>Invariance is an empirical regularity with real scatter around it, not an exact physical law, and it is explicitly silent on short-run <em>transient</em> price-impact dynamics — the subject of the next lesson in this category, <a href="institutional-obizhaeva-wang-impact.html">Obizhaeva-Wang Transient Price Impact</a>.</li>
       <li><strong>How it reached trading:</strong> Kyle &amp; Obizhaeva (2016), tested on US equity portfolio-transition orders, gave desks a way to scale bet sizes and pre-trade cost estimates from liquid names to thin ones using price, volume and volatility.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Stylized. Left: bet-size distributions for a small-cap B and a mega-cap A, measured in shares or dollars, sit far apart with no common scale. Right: the same two distributions measured in dollars of risk and divided by the cube root of each market's own trading activity W lie almost on top of each other. In the worked example, W is about 1.1 times ten to the five for B and 1.2 times ten to the eight for A, 1,042 times apart: A's typical bet is only about 10 times B's, and A sees about 103 times as many bets a day.">
+      <text class="tlp-text2" x="155" y="28" text-anchor="middle" font-size="13" font-weight="700">measured in shares or dollars</text>
+      <line class="tlp-line" x1="20" y1="150" x2="290" y2="150"/>
+      <polyline class="tlp-line green thick" points="26.0,149.0 29.0,147.9 32.0,146.0 35.0,142.8 38.0,137.8 41.0,130.5 44.0,120.8 47.0,108.8 50.0,95.4 53.0,82.1 56.0,70.6 59.0,62.8 62.0,60.0 65.0,62.8 68.0,70.6 71.0,82.1 74.0,95.4 77.0,108.8 80.0,120.8 83.0,130.5 86.0,137.8 89.0,142.8 92.0,146.0 95.0,147.9 98.0,149.0"/>
+      <polyline class="tlp-line purple thick" points="143.0,149.2 149.0,148.4 155.0,146.9 161.0,144.4 167.0,140.5 173.0,134.9 179.0,127.3 185.0,118.0 191.0,107.5 197.0,97.2 203.0,88.2 209.0,82.2 215.0,80.0 221.0,82.2 227.0,88.2 233.0,97.2 239.0,107.5 245.0,118.0 251.0,127.3 257.0,134.9 263.0,140.5 269.0,144.4 275.0,146.9 281.0,148.4 287.0,149.2"/>
+      <text class="tlp-green" x="62" y="170" text-anchor="middle" font-size="13" font-weight="700">B small-cap</text>
+      <text class="tlp-purple" x="215" y="170" text-anchor="middle" font-size="13" font-weight="700">A mega-cap</text>
+      <text class="tlp-text3" x="155" y="196" text-anchor="middle" font-size="12">no common scale</text>
+      <line class="tlp-line amber thick" x1="296" y1="105" x2="318" y2="105"/>
+      <polygon class="tlp-amber" points="326,105 316,99 316,111"/>
+      <text class="tlp-text2" x="455" y="28" text-anchor="middle" font-size="13" font-weight="700">in risk, divided by W<tspan baseline-shift="super" font-size="9">1/3</tspan></text>
+      <line class="tlp-line" x1="340" y1="150" x2="590" y2="150"/>
+      <polyline class="tlp-line green thick" points="360.0,149.1 367.5,148.1 375.0,146.4 382.5,143.5 390.0,138.9 397.5,132.3 405.0,123.4 412.5,112.5 420.0,100.3 427.5,88.1 435.0,77.6 442.5,70.5 450.0,68.0 457.5,70.5 465.0,77.6 472.5,88.1 480.0,100.3 487.5,112.5 495.0,123.4 502.5,132.3 510.0,138.9 517.5,143.5 525.0,146.4 532.5,148.1 540.0,149.1"/>
+      <polyline class="tlp-line purple thick dash" points="366.0,149.2 374.0,148.3 382.0,146.7 390.0,144.0 398.0,139.7 406.0,133.6 414.0,125.3 422.0,115.2 430.0,103.9 438.0,92.6 446.0,82.9 454.0,76.3 462.0,74.0 470.0,76.3 478.0,82.9 486.0,92.6 494.0,103.9 502.0,115.2 510.0,125.3 518.0,133.6 526.0,139.7 534.0,144.0 542.0,146.7 550.0,148.3 558.0,149.2"/>
+      <text class="tlp-green" x="455" y="170" text-anchor="middle" font-size="13" font-weight="700">one shared shape</text>
+      <text class="tlp-text3" x="455" y="196" text-anchor="middle" font-size="12">bet size L = Q × P × σ</text>
+      <text class="tlp-text2" x="300" y="228" text-anchor="middle" font-size="12">W = P × V × σ:  B ≈ 1.1×10⁵,  A ≈ 1.2×10⁸,  1,042× apart</text>
+    </svg>
+    <figcaption>Stylized shapes, real activity numbers. In shares or dollars a mega-cap and a small-cap look like different worlds. Measure each bet in dollars of risk and divide it by the cube root of its own market's trading activity, and the claim is that one shape fits both, so a cost model built on liquid names can travel to thin ones. The 1,042× activity gap splits into bets only about 10× bigger in A (1,042<sup>1/3</sup> ≈ 10.1) and about 103× more of them per day (1,042<sup>2/3</sup> ≈ 102.8).</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I can move a mega-cap in huge blocks for a few basis points. A small-cap costs me far more for a sliver of that. Are they just different worlds?</p>
+      <p data-who="Quant">That is how it looks. Kyle and Obizhaeva argued in 2016 that it is mostly the ruler. Shares and dollars are the wrong units.</p>
+      <p data-who="Trader">What is the right unit?</p>
+      <p data-who="Quant">Risk. Take the dollar size of the bet and multiply it by the asset's daily volatility. That is how much price risk you are asking someone else to carry. A million dollars of a sleepy utility and a million dollars of a wild small-cap are not the same bet.</p>
+      <p data-who="Trader">And the market side?</p>
+      <p data-who="Quant">The same recipe on the whole market: price, times daily volume, times daily volatility. Call it trading activity. It is how much risk the market moves on an ordinary day.</p>
+      <p data-who="Trader">Give me the numbers.</p>
+      <p data-who="Quant">The lesson's mega-cap trades at a hundred and fifty dollars, fifty million shares a day, twenty-five percent annual volatility. That is about a hundred and eighteen million dollars of risk a day. The small-cap: twenty dollars, two hundred thousand shares, forty-five percent volatility. About a hundred and thirteen thousand. The mega-cap is roughly a thousand and forty times as active.</p>
+      <p data-who="Trader">So its typical trade is a thousand times bigger?</p>
+      <p data-who="Quant">No, and that is the heart of it. Typical bet size grows much more slowly than activity. A busier market has bigger bets, but it also has many more of them, and most of the extra activity goes into the number of bets. Here the thousand-fold gap splits into bets only about ten times bigger, measured in risk, and about a hundred times more of them each day.</p>
+      <p data-who="Trader">So in the small-cap each bet is a bigger slice of the day?</p>
+      <p data-who="Quant">Much bigger. Volume grows faster than bet size, so a typical bet is a far larger share of a thin name's daily volume than of a busy name's.</p>
+      <p data-who="Trader">And the invariance part?</p>
+      <p data-who="Quant">Rescale every bet by its own market's activity, and the whole spread of bet sizes looks about the same everywhere. Different stocks, different venues, different decades. One shape.</p>
+      <p data-who="Trader">Why do I care?</p>
+      <p data-who="Quant">Because then a cost model built on liquid names can travel to a thin one, using only its price, volume and volatility. You do not need years of your own fills first.</p>
+      <p data-who="Trader">What do costs look like for these two?</p>
+      <p data-who="Quant">With the square-root law, trading one percent of a day's volume costs about sixteen basis points in the mega-cap and about twenty-eight in the small-cap. The thin, volatile name is nearly twice as expensive at the same share of volume.</p>
+      <p data-who="Trader">Is it a law of nature?</p>
+      <p data-who="Quant">It is an empirical regularity, with real scatter. They tested it on US equity portfolio transitions, and later work found the same scaling in E-mini futures. Most of the evidence is from equities, so be careful in FX, where there is not even one clean volume number.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Measure bets in risk, scale them by the market's activity, and very different markets start to look alike.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -154,6 +207,34 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From share count to risk units, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ L = \color{#fbbf24}{Q} \]</div>
+      <p>Start with the raw share count. 10,000 shares means nothing comparable across a $5 stock and a $500 stock.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ L = Q \cdot \color{#fbbf24}{P} \]</div>
+      <p>Multiply by price to get dollars. Better, but a dollar of a calm utility and a dollar of a wild small-cap still carry different risk.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ L = Q \cdot P \cdot \color{#fbbf24}{\sigma} \]</div>
+      <p>Multiply by daily volatility. Now \(L\) is the bet in dollars of risk transferred: the unit invariance is built on.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ W = P \cdot \color{#fbbf24}{V} \cdot \sigma \]</div>
+      <p>Apply the same recipe to the market's whole daily volume. \(W\) is how much risk the market transfers per day, and the only asset-specific input the hypothesis needs.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\frac{W_A}{W_B} = \frac{150 \times 50{,}000{,}000 \times 0.01575}{20 \times 200{,}000 \times 0.02835} \approx \frac{1.181\times10^{8}}{1.134\times10^{5}} \approx 1{,}042} \]</div>
+      <p>The worked example's mega-cap transfers about 1,042 times as much risk per day as its small-cap. Typical bet size grows far more slowly than that, as the last step shows.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\frac{L^{*}_A}{L^{*}_B} = 1{,}042^{1/3} \approx 10.1 \qquad \frac{\gamma_A}{\gamma_B} = 1{,}042^{2/3} \approx 102.8} \]</div>
+      <p>Invariance splits the activity gap in two: the typical bet in risk units grows as \(W^{1/3}\), only about 10× bigger in A, and the number of bets per day \(\gamma\) grows as \(W^{2/3}\), about 103× more of them. \(10.1 \times 102.8 \approx 1{,}042\).</p>
+    </div>
+  </div>
   <p>
     Three ingredients build the whole hypothesis: a way to measure the size
     of a single trade ("bet") in risk-transfer units, a way to measure how
@@ -231,59 +312,74 @@
     <p>W is a single number for "how much of a fire hose is this market" — how much dollar risk flows through it in an ordinary day just from everyone's regular buying and selling. A firehose market can swallow a huge bet without much fuss; a garden-hose market chokes on the same bet, and W is exactly the number that tells you, in advance, which kind of hose you're dealing with.</p>
   </div>
 
-  <h3>3. The scaling law: typical bet size grows as \(W^{2/3}\), not \(W\)</h3>
+  <h3>3. The scaling laws: bets per day grow as \(W^{2/3}\), typical bet size only as \(W^{1/3}\)</h3>
   <p>
-    The headline empirical result is that the <strong>typical</strong> bet
-    size in a market — the scale that anchors the whole distribution of bet
-    sizes traded there — does not grow in direct proportion to \(W\). It
-    grows more slowly, as a specific fractional power:
+    The headline empirical result is that a busier market's extra activity
+    does not show up one-for-one in bigger bets. Kyle and Obizhaeva split
+    \(W\) into two parts, how many bets arrive per day and how big a
+    <strong>typical</strong> bet is in risk units, and predict a specific
+    fractional power for each:
   </p>
-  <div class="tl-math">\[ L^{*} \;\propto\; W^{2/3} \]</div>
+  <div class="tl-math">\[ \gamma \;\propto\; W^{2/3} \qquad\qquad L^{*} \;\propto\; W^{1/3} \]</div>
   <div class="tl-eq-break">
-    <div class="tl-eq-chip c1"><code>L*</code><span>the invariance-implied typical (scale of the) bet size for this market</span></div>
-    <div class="tl-eq-chip c4"><code>W^(2/3)</code><span>trading activity raised to the two-thirds power — the headline invariance exponent</span></div>
+    <div class="tl-eq-chip c2"><code>γ</code><span>bet arrival rate — the number of distinct bets placed per day in this market</span></div>
+    <div class="tl-eq-chip c1"><code>L*</code><span>the invariance-implied typical (scale of the) bet size, in dollars of risk</span></div>
+    <div class="tl-eq-chip c3"><code>W^(2/3)</code><span>bets per day take two-thirds of the activity exponent</span></div>
+    <div class="tl-eq-chip c4"><code>W^(1/3)</code><span>typical bet size takes the remaining one-third, so γ × L* grows as W</span></div>
   </div>
   <p>
-    The practical bite of this is entirely in the exponent being <em>less
-    than one</em>: it is a concave, sub-linear relationship, exactly the same
-    qualitative shape as the square-root law of price impact already covered
-    in the <a href="market-impact-almgren-chriss.html">Market Impact Models
+    Dividing a typical bet by the whole day's volume gives its share of
+    volume, and that share <em>falls</em> as activity rises:
+  </p>
+  <div class="tl-math">\[ \frac{Q^{*}}{V} \;=\; \frac{Q^{*} P \sigma}{P V \sigma} \;=\; \frac{L^{*}}{W} \;\propto\; W^{-2/3} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Q*/V</code><span>a typical bet, in shares, as a fraction of the day's share volume</span></div>
+    <div class="tl-eq-chip c4"><code>W^(−2/3)</code><span>shrinks as activity grows: in thin, low-activity names each bet is a larger share of volume</span></div>
+  </div>
+  <p>
+    The practical bite is in both exponents being <em>less than one</em>:
+    concave, sub-linear relationships, the same qualitative shape as the
+    square-root law of price impact already covered in the
+    <a href="market-impact-almgren-chriss.html">Market Impact Models
     &amp; Almgren-Chriss</a> lesson (impact growing as \(\sqrt{Q/\text{ADV}}\)
-    rather than linearly in \(Q\)) — but applied here to a different
-    quantity: not how a single asset's own cost scales with the size of one
-    trade, but how the <em>typical</em> bet size traders actually choose
-    scales across different assets with different activity levels.
-    Concretely, doubling \(W\) does not double the typical bet size — it
-    scales it by only \(2^{2/3}\approx 1.587\times\); a hundred-fold jump in
-    \(W\) scales typical bet size by only \(100^{2/3}\approx 21.5\times\).
-    Trading activity can differ by orders of magnitude between two
-    instruments while their typical bet sizes differ by something much
-    smaller — the worked example below makes this concrete with numbers.
+    rather than linearly in \(Q\)) — but applied here to different
+    quantities: not how a single asset's own cost scales with the size of one
+    trade, but how the <em>typical</em> bet size, and the number of bets,
+    scale across different assets with different activity levels.
+    Concretely, doubling \(W\) multiplies typical bet size by only
+    \(2^{1/3}\approx 1.260\times\) and bets per day by
+    \(2^{2/3}\approx 1.587\times\); a hundred-fold jump in \(W\) gives bets
+    only \(100^{1/3}\approx 4.64\times\) bigger and
+    \(100^{2/3}\approx 21.5\times\) more of them. Most of a busier market's
+    extra activity is more bets, not bigger ones. The flip side matters for
+    sizing: because volume grows faster than bet size, a typical bet is a
+    small slice of a busy name's day and a much larger slice of a thin
+    name's. The worked example below makes this concrete with numbers.
   </p>
 
   <div class="tl-solid amber">
-    <strong>Where the 2/3 actually comes from — stated honestly.</strong> Kyle
-    and Obizhaeva derive this exponent from a formal argument they call
-    <strong>leverage neutrality</strong>: rescale an asset's price, share
-    count, and volatility the way a stock split, a currency redenomination,
-    or a switch from shares to round lots would — and require that the whole
-    theory (what counts as "one bet," and how many bets have occurred) give
-    back an identical prediction regardless of that relabeling. Applying that
-    neutrality requirement to how a bet's trading cost depends on its size
-    relative to volume pins the exponent down; the number of distinct bets
-    placed per day is then forced to scale as the complementary \(W^{1/3}\),
-    so that bet size times bet count remains consistent with total volume,
-    which by definition scales as \(W\) itself. This is a genuine formal
-    result in Kyle &amp; Obizhaeva (2016) — not an arithmetic identity this
-    lesson can safely re-derive from scratch — so it is stated here as the
-    paper's result, with the intuition above, rather than worked out as
-    invented algebra. See the Further Reading section for the paper the full
-    argument comes from.
+    <strong>Where the 1/3 and 2/3 come from — stated honestly.</strong> Kyle
+    and Obizhaeva start from the idea that markets transfer risk in
+    <strong>business time</strong>: a busy market's clock ticks faster, one
+    tick per bet. The invariance hypothesis is that the risk a bet transfers
+    per unit of business time, \(L/\sqrt{\gamma}\) (the bet's dollar size
+    times the volatility over one bet's interval, \(\sigma/\sqrt{\gamma}\),
+    rather than over a whole day), has the same distribution in every
+    market. Add one accounting fact: daily volume is bets per day times the
+    typical bet, so \(W\) is proportional to \(\gamma\,L^{*}\). If
+    \(L^{*}\propto\sqrt{\gamma}\), then \(W\propto\gamma^{3/2}\), which gives
+    \(\gamma\propto W^{2/3}\) and \(L^{*}\propto W^{1/3}\). The exponents
+    follow from the hypothesis; the hypothesis itself is an empirical claim,
+    which the paper tests on portfolio-transition orders rather than proves.
+    Kyle and Obizhaeva's later work argues the same exponents also follow
+    from dimensional analysis combined with a leverage-neutrality condition
+    (relabeling units, as a stock split does, should not change the
+    predictions). See the Further Reading section for the 2016 paper.
   </div>
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
-    <p>If a market gets ten times busier overall, common sense might say "typical trades should get about ten times bigger too." Invariance says something more surprising: typical trades only get about 4.6 times bigger (10 to the two-thirds power), while the number of separate trades happening per day picks up the rest of the slack, growing by about 2.15 times (10 to the one-third power). Busier markets split the extra activity between "somewhat bigger typical trades" and "quite a few more of them" — not purely one or the other.</p>
+    <p>If a market gets ten times busier overall, common sense might say "typical trades should get about ten times bigger too." Invariance says something more surprising: typical trades only get about 2.15 times bigger (10 to the one-third power), while the number of separate trades happening per day picks up most of the slack, growing by about 4.64 times (10 to the two-thirds power). 2.15 times 4.64 is 10. Busier markets mostly get more trades, not much bigger ones, which also means each trade is a small slice of a busy market's day and a big slice of a quiet market's day.</p>
   </div>
 
   <h3>4. The invariance hypothesis proper: one shared distribution, everywhere</h3>
@@ -294,9 +390,10 @@
     how fat the tails are). The full invariance hypothesis is the stronger,
     more striking claim: define the <strong>standardized bet size</strong>
   </p>
-  <div class="tl-math">\[ z = \frac{L}{W^{2/3}} \]</div>
+  <div class="tl-math">\[ z = \frac{L}{W^{1/3}} = \frac{Q}{V}\,W^{2/3} \]</div>
   <div class="tl-eq-break">
-    <div class="tl-eq-chip c1"><code>z</code><span>standardized bet size — a specific bet's L, rescaled by its own market's W^(2/3)</span></div>
+    <div class="tl-eq-chip c1"><code>z</code><span>standardized bet size — a specific bet's L, divided by its own market's W^(1/3)</span></div>
+    <div class="tl-eq-chip c2"><code>(Q/V)·W^(2/3)</code><span>the same number written as the bet's share of daily volume, scaled up by W^(2/3)</span></div>
   </div>
   <p>
     Kyle and Obizhaeva's central empirical hypothesis is that the
@@ -324,12 +421,17 @@
     properly risk-normalized terms — no matter which asset it was placed in.
     That, and not the square-root law itself (already established elsewhere
     in this Theory Lab), is the specifically new claim this lesson is about.
+    The two fit together: in the square-root version of Kyle and Obizhaeva's
+    cost formula, the market-impact cost in basis points is proportional to
+    \(\sigma W^{-1/3}\sqrt{z}\), and with \(z=(Q/V)\,W^{2/3}\) the \(W\) terms
+    cancel, leaving \(\sigma\sqrt{Q/V}\), the benchmark the calculator below
+    uses.
   </p>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
-    <h3>Two assets, ~1,000× apart in activity, ~100× apart in typical bet size</h3>
+    <h3>Two assets, ~1,000× apart in activity: ~10× apart in typical bet size, ~100× in bets per day</h3>
     <p>
       <strong>Asset A — a liquid mega-cap.</strong> Price \(P=\$150\),
       average daily volume \(V=50{,}000{,}000\) shares, annualized volatility
@@ -346,25 +448,31 @@
       <div class="tl-eq-chip c1"><code>W_A / W_B ≈ 1,042×</code><span>Asset A's trading activity is over a thousand times Asset B's</span></div>
     </div>
     <p>
-      Raise both to the \(2/3\) power to get each market's invariance-implied
-      typical bet-size index (an illustrative scale, not a calibrated dollar
-      figure — see the note below):
+      Raise both to the \(1/3\) power to get each market's invariance-implied
+      typical bet-size index, and to the \(2/3\) power for its bets-per-day
+      index (illustrative scales, not calibrated figures — see the note
+      below):
     </p>
-    <div class="tl-math">\[ L^{*}_A = W_A^{2/3} \approx 2.407\times 10^{5} \qquad\qquad L^{*}_B = W_B^{2/3} \approx 2.343\times 10^{3} \]</div>
+    <div class="tl-math">\[ L^{*}_A = W_A^{1/3} \approx 490.6 \qquad\qquad L^{*}_B = W_B^{1/3} \approx 48.40 \]</div>
     <div class="tl-eq-break">
-      <div class="tl-eq-chip c3"><code>L*_A / L*_B ≈ 102.8×</code><span>the typical-bet-size gap the invariance scaling law predicts</span></div>
+      <div class="tl-eq-chip c3"><code>L*_A / L*_B ≈ 10.1×</code><span>the typical-bet-size gap the invariance scaling law predicts</span></div>
+    </div>
+    <div class="tl-math">\[ \gamma_A \propto W_A^{2/3} \approx 2.407\times 10^{5} \qquad\qquad \gamma_B \propto W_B^{2/3} \approx 2.343\times 10^{3} \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c2"><code>γ_A / γ_B ≈ 102.8×</code><span>the gap in the number of bets per day</span></div>
     </div>
     <p>
       Trading activity differs by roughly <strong>1,042×</strong> between the
       two assets, yet the invariance-implied typical bet size differs by only
-      about <strong>103×</strong> — visibly compressed relative to the raw
-      activity gap, exactly as the sub-linear \(W^{2/3}\) exponent predicts
-      (\(1{,}042^{2/3}\approx 102.8\), confirming the two numbers are the same
-      calculation viewed two ways). This lesson does not have Kyle &amp;
-      Obizhaeva's own calibrated overall constant, so \(L^{*}_A\) and
-      \(L^{*}_B\) above are an internally consistent scaling <em>index</em>,
-      not literal dollar predictions — the ratio between them is the honest,
-      real content of the example, not the absolute numbers themselves.
+      about <strong>10.1×</strong> (\(1{,}042^{1/3}\approx 10.1\)). The rest of
+      the gap is in the number of bets: A sees about <strong>103×</strong> as
+      many bets per day as B (\(1{,}042^{2/3}\approx 102.8\)), and
+      \(10.1\times102.8\approx1{,}042\). This lesson does not have Kyle &amp;
+      Obizhaeva's own calibrated overall constants, so \(L^{*}\) and
+      \(\gamma\) above are internally consistent scaling <em>indices</em>,
+      not literal dollar or bet-count predictions — the ratios between them
+      are the honest, real content of the example, not the absolute numbers
+      themselves.
     </p>
     <p>
       Now compare expected trading <strong>cost</strong> using the
@@ -375,16 +483,19 @@
     <p>
       Even at the <em>same</em> percentage of ADV, the thinner, more volatile
       small-cap costs roughly 1.8× more per the square-root law alone — before
-      invariance even enters. The added insight invariance contributes is
-      that a rational bet-sizer would not, in fact, choose to trade the same
-      percentage of ADV in both names: the invariance-implied "typical" bet
-      for Asset B is a much smaller share of its own volume than the
-      invariance-implied "typical" bet for Asset A is of <em>its</em> volume
-      — precisely because the whole point of the standardized measure
-      \(z=L/W^{2/3}\) is that a "typical," unremarkable-sized bet occupies the
-      same statistical position in both markets' own distributions, even
-      though it corresponds to very different raw share counts, dollar
-      sizes, and percentages of ADV in each.
+      invariance even enters. What invariance adds is that 1% of ADV is not
+      the same-sized bet in the two names. A typical bet's share of volume
+      scales as \(W^{-2/3}\), so the invariance-implied "typical" bet for
+      Asset B is about <strong>103× larger</strong> a share of B's daily
+      volume than A's typical bet is of <em>its</em> volume. Put the other
+      way, with \(z=L/W^{1/3}=(Q/V)\,W^{2/3}\), an order of 1% of ADV is a
+      standardized bet about 103× larger in A than in B: a far more ordinary
+      bet in the thin name than in the busy one, where it sits much further
+      out in the tail. The whole point of
+      \(z\) is that a "typical," unremarkable-sized bet occupies the same
+      statistical position in both markets' own distributions, even though
+      it corresponds to very different raw share counts, dollar sizes, and
+      percentages of ADV in each.
     </p>
   </div>
 
@@ -396,12 +507,18 @@
       Enter a price, average daily volume, annualized volatility, and a
       desired trade size. The calculator derives daily volatility, this
       market's trading activity \(W\), your trade's bet size \(L\) in risk
-      units, the invariance-implied typical bet size \(W^{2/3}\), your trade's
-      standardized size \(z=L/W^{2/3}\), and a square-root-law cost benchmark
+      units, the invariance-implied typical bet-size index \(W^{1/3}\) and
+      bets-per-day index \(W^{2/3}\), your trade's standardized size
+      \(z=L/W^{1/3}\) (an index: compare it across orders and markets, not
+      against an absolute scale), and a square-root-law cost benchmark
       (\(Y=1\), the simplest illustrative constant — see the
       Almgren-Chriss lesson for how a desk would calibrate \(Y\) properly).
       Starts on a mid-cap illustration.
     </p>
+    <div class="tl-predict" data-answer="37.8" data-tol="2" data-unit=" bps">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The default trade, 50,000 shares out of a 5,000,000-share day (1% of volume), shows a square-root-law benchmark of about 18.90 bps. Quadruple the trade to 200,000 shares and leave everything else alone. What will the benchmark cost be? Lock in a guess, then type 200000 into the trade size field below.</div>
+      <div class="tl-predict-reveal"><p><strong>About 37.80 bps.</strong> The cost grows with the square root of size relative to volume: \(\sqrt{4} = 2\), so four times the shares costs twice as much per unit, \(10{,}000 \times 0.018898 \times \sqrt{0.04} \approx 37.80\) bps. Now put 50,000 back and raise volatility from 30% to 60%: both the cost and the risk-sized bet \(L\) double.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Price \(P\) ($)</span></div>
@@ -424,7 +541,7 @@
       Daily &sigma; = <b id="inv-sigmad">1.8898%</b>&emsp;Trading activity W = <b id="inv-w">4,724,556</b>&emsp;Bet size L = $<b id="inv-l">47,246</b>
     </div>
     <div class="tl-readout tl-scratch-readout">
-      Typical bet size (W<sup>2/3</sup>) = <b id="inv-lstar">28,156</b>&emsp;Standardized size z = L / W<sup>2/3</sup> = <b id="inv-z">1.68</b>
+      Typical bet size index (W<sup>1/3</sup>) = <b id="inv-lstar">167.8</b>&emsp;Bets per day index (W<sup>2/3</sup>) = <b id="inv-gamma">28,156</b>&emsp;Standardized size z = L / W<sup>1/3</sup> = <b id="inv-z">281.56</b>
     </div>
     <div class="tl-readout">
       Square-root-law benchmark cost &asymp; <b id="inv-cost">18.90</b> bps
@@ -435,7 +552,7 @@
 
   <div class="tl-chart">
     <div class="tl-chart-label">Raw bet sizes look nothing alike across three markets — standardized bet sizes overlap</div>
-    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two stacked panels. Top panel: three stylized bell-shaped distributions of raw dollar bet size, positioned far apart on the horizontal axis — a narrow one for a micro-cap centered near the origin, a medium one for a mid-cap further right, and a wide one for a mega-cap far to the right, showing no overlap at all. Bottom panel: the same three distributions after dividing each one's bet size by its own market's W to the two-thirds power, now centered close together and substantially overlapping on a shared standardized axis.">
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two stacked panels. Top panel: three stylized bell-shaped distributions of raw dollar bet size, positioned far apart on the horizontal axis — a narrow one for a micro-cap centered near the origin, a medium one for a mid-cap further right, and a wide one for a mega-cap far to the right, showing no overlap at all. Bottom panel: the same three distributions after dividing each one's bet size by its own market's W to the one-third power, now centered close together and substantially overlapping on a shared standardized axis.">
       <text x="10" y="16" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">Raw bet size (dollars) — three markets, no shared scale</text>
       <line x1="30" y1="100" x2="610" y2="100" style="stroke:var(--border2)"/>
       <path d="M60,100 Q90,40 120,100" style="fill:var(--green);opacity:.35;stroke:var(--green);stroke-width:2"/>
@@ -447,54 +564,64 @@
 
       <line x1="30" y1="150" x2="610" y2="150" style="stroke:var(--border);stroke-dasharray:2,3"/>
 
-      <text x="10" y="180" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">Standardized bet size z = L / W^(2/3) — same three markets, one shared scale</text>
+      <text x="10" y="180" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">Standardized bet size z = L / W^(1/3) — same three markets, one shared scale</text>
       <line x1="30" y1="270" x2="610" y2="270" style="stroke:var(--border2)"/>
       <path d="M270,270 Q320,215 370,270" style="fill:var(--green);opacity:.35;stroke:var(--green);stroke-width:2"/>
       <path d="M255,270 Q315,208 375,270" style="fill:var(--blue);opacity:.35;stroke:var(--blue);stroke-width:2"/>
       <path d="M260,270 Q318,222 380,270" style="fill:var(--purple);opacity:.35;stroke:var(--purple);stroke-width:2"/>
-      <text x="318" y="290" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">all three overlap closely, centered near z ≈ 1</text>
+      <text x="318" y="290" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">all three overlap closely on one shared scale</text>
     </svg>
     <div class="tl-chart-caption">
       Stylized, illustrative — not fitted to real trade data. Top: three
       markets' raw dollar bet-size distributions sit in completely different
       places, exactly the apparent chaos motivating this lesson. Bottom: the
       same three distributions, each divided by that market's own
-      \(W^{2/3}\), land close together — the visual content of the
+      \(W^{1/3}\), land close together — the visual content of the
       invariance hypothesis. Real data shows genuine scatter around this
       overlap, not a perfect match (see the Pitfalls box below).
     </div>
   </div>
 
   <div class="tl-chart">
-    <div class="tl-chart-label">Typical bet size vs. trading activity — a shallower line than 1-to-1 scaling</div>
-    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Log-log chart with trading activity W on the x-axis spanning five orders of magnitude and bet size on the y-axis. A dashed gray line shows what one-to-one linear scaling of bet size with activity would look like, rising steeply. A solid blue line with slope two-thirds, anchored at the same starting point, rises much less steeply, illustrating that typical bet size grows far more slowly than trading activity itself as activity increases across orders of magnitude.">
+    <div class="tl-chart-label">Typical bet size and bets per day vs. trading activity — both shallower than 1-to-1</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Log-log chart with trading activity W on the x-axis spanning five orders of magnitude. A dashed gray line shows one-to-one scaling with activity, rising steeply. A solid purple line with slope two-thirds shows the number of bets per day. A solid blue line with slope one-third shows typical bet size in risk units, rising least steeply. All three start from the same point. The two slopes add up to the one-to-one line, so most of a busier market's extra activity shows up as more bets rather than bigger ones.">
       <line x1="60" y1="20" x2="60" y2="260" style="stroke:var(--text3);stroke-width:1"/>
       <line x1="60" y1="260" x2="610" y2="260" style="stroke:var(--text3);stroke-width:1"/>
-      <text x="16" y="140" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 16 140)">Bet size (log scale)</text>
+      <text x="16" y="140" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 16 140)">Relative scale (log)</text>
       <text x="610" y="280" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Trading activity W (log scale) &rarr;</text>
       <text x="60" y="273" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">10&#8308;</text>
       <text x="600" y="273" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">10&#8313;</text>
       <line x1="60" y1="225.5" x2="600" y2="42.2" style="stroke:var(--text3);stroke-width:2;stroke-dasharray:5,4"/>
-      <line x1="60" y1="225.5" x2="600" y2="103.3" style="stroke:var(--blue);stroke-width:2.5"/>
+      <line x1="60" y1="225.5" x2="600" y2="103.3" style="stroke:var(--purple);stroke-width:2.5"/>
+      <line x1="60" y1="225.5" x2="600" y2="164.4" style="stroke:var(--blue);stroke-width:2.5"/>
       <circle cx="60" cy="225.5" r="4" style="fill:var(--text)"/>
       <circle cx="600" cy="42.2" r="4" style="fill:var(--text3)"/>
-      <circle cx="600" cy="103.3" r="4" style="fill:var(--blue)"/>
+      <circle cx="600" cy="103.3" r="4" style="fill:var(--purple)"/>
+      <circle cx="600" cy="164.4" r="4" style="fill:var(--blue)"/>
       <text x="470" y="65" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">naive 1-to-1 scaling</text>
-      <text x="470" y="125" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--blue)">invariance: slope 2/3</text>
-      <line x1="605" y1="42.2" x2="605" y2="103.3" style="stroke:var(--amber);stroke-width:2"/>
-      <text x="612" y="75" font-size="10" font-family="'DM Mono',monospace" fill="var(--amber)">gap</text>
+      <text x="470" y="125" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--purple)">bets per day: slope 2/3</text>
+      <text x="470" y="198" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--blue)">typical bet size: slope 1/3</text>
+      <line x1="605" y1="42.2" x2="605" y2="164.4" style="stroke:var(--amber);stroke-width:2"/>
+      <text x="612" y="106" font-size="10" font-family="'DM Mono',monospace" fill="var(--amber)">gap</text>
     </svg>
     <div class="tl-chart-caption">
-      Both lines start from the same point (low activity, small bets) by
-      construction — the comparison is in the slope. A market five orders of
-      magnitude more active than another would, under naive 1-to-1 scaling,
-      be predicted to trade five orders of magnitude larger bets; invariance
-      predicts a gain of only about \(10^{5\times 2/3}\approx 2{,}150\times\)
-      instead — still large, but a very different number. Axes are
+      All three lines start from the same point (low activity) by
+      construction — the comparison is in the slopes. A market five orders
+      of magnitude (100,000×) more active than another would, under naive
+      1-to-1 scaling, be predicted to trade bets 100,000× larger; invariance
+      predicts typical bets only about \(10^{5/3}\approx 46\times\) larger,
+      with the rest showing up as about \(10^{10/3}\approx 2{,}150\times\)
+      more bets per day (\(46.4\times2{,}154\approx100{,}000\)). Axes are
       illustrative and unitless, not calibrated to real dollar or share
       figures.
     </div>
   </div>
+
+  <!-- WB:institutional_kyle_obizhaeva_invariance:START -->
+  <div class="wb" id="wb-institutional_kyle_obizhaeva_invariance" data-title="Invariance: change the ruler, markets look alike">
+    <script type="application/json">{"w":600,"h":800,"intro":"A mega-cap and a small-cap that look like different worlds, until you change the ruler. The lesson's own two stocks. Press play, or step through.","steps":[{"cap":"Two stocks from the lesson. A is a mega-cap: $150, 50 million shares a day, 25% annual volatility. B is a small-cap: $20, 200,000 shares a day, 45% volatility.","do":[{"icon":"fa","name":"factory","x":30,"y":6,"s":0.7,"tone":"purple","label":"A mega-cap","lsize":18},{"icon":"ho","name":"house","x":450,"y":6,"s":0.7,"tone":"green","label":"B small-cap","lsize":18}]},{"cap":"Measure the same order in shares: 10,000 of each. Same number, but in A it is 0.02% of a day's volume, and in B it is 5%. Shares are the wrong ruler.","do":[{"chip":"qa","x":140,"y":40,"text":"10,000 sh","tone":"purple"},{"chip":"qb","x":330,"y":40,"text":"10,000 sh","tone":"green"},{"note":"r1","x":300,"y":120,"text":"shares: 0.02% of A's day vs 5% of B's","size":18,"anchor":"middle","tone":"chalk"}]},{"cap":"In dollars: $1.5 million of A against $200,000 of B. Better, but a dollar of a calm stock and a dollar of a wild one do not carry the same risk.","do":[{"hide":"r1"},{"note":"r2","x":300,"y":120,"text":"dollars: $1,500,000 vs $200,000","size":18,"anchor":"middle","tone":"chalk"}]},{"cap":"In risk: multiply by daily volatility, 1.575% for A and 2.835% for B. The bet becomes about $23,600 of risk in A and $5,670 in B. This is the bet size L.","do":[{"hide":"r2"},{"note":"r3","x":300,"y":120,"text":"risk L = Q × P × σ:  $23,625 vs $5,670","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"Now the market side, same recipe on the whole day's volume: W = P × V × σ. A transfers about 118 million dollars of risk a day; B about 113 thousand.","do":[{"chart":"w","x":10,"y":160,"w":280,"h":240,"title":"Activity W (log scale)","xd":[0.4,2.6],"yd":[0,9.2],"yt":[[2,"10²"],[5,"10⁵"],[8,"10⁸"]],"xt":[[1,"A"],[2,"B"]],"pl":50,"pr":10},{"bars":"wb","chart":"w","data":[[1,8.072,"1.2×10⁸","purple"],[2,5.055,"1.1×10⁵","green"]],"bw":50,"ms":1000}]},{"cap":"That is a gap of about 1,042 times in trading activity. If typical bets grew in step with activity, A's typical bet would be over a thousand times B's.","do":[{"box":"gap","x":310,"y":170,"w":280,"h":64,"text":"A is ≈ 1,042× as active","tone":"amber","size":19}]},{"cap":"They do not. Invariance splits the gap: bets per day grow as activity to the two-thirds, so A sees about 103 times as many bets as B, and typical bet size only as activity to the one-third, so A's typical bet is only about 10 times B's.","do":[{"icon":"cr","name":"crowd","x":330,"y":250,"s":0.6,"tone":"purple","label":"A: more bets","lsize":16},{"icon":"pe","name":"person","x":480,"y":250,"s":0.6,"tone":"green","label":"B: fewer bets","lsize":16},{"note":"sl","x":450,"y":370,"text":"≈10× bigger × ≈103× more bets","size":18,"anchor":"middle","tone":"chalk"}]},{"cap":"So in the thin name each bet is a much bigger slice of the day. A typical bet's share of daily volume falls as activity to the minus two-thirds: about 103 times larger a share in B than in A.","do":[{"note":"sh","x":450,"y":402,"text":"thin B: ≈103× bigger % of volume","size":16,"anchor":"middle","tone":"amber"}]},{"cap":"The invariance claim: divide every bet's risk size by the cube root of its own market's activity, and the whole distribution of bet sizes, not just its middle, is about the same everywhere: stocks, venues, eras.","do":[{"chart":"d","x":10,"y":420,"w":580,"h":170,"title":"Bet size ÷ W^(1/3) (stylized)","xd":[0,10],"yd":[0,1.15],"yt":[],"xt":[],"pl":16,"pr":16},{"series":"da","chart":"d","pts":[[0.0,0.011],[0.425,0.022],[0.85,0.042],[1.275,0.076],[1.7,0.129],[2.125,0.205],[2.55,0.308],[2.975,0.435],[3.4,0.576],[3.825,0.717],[4.25,0.838],[4.675,0.921],[5.1,0.95],[5.525,0.921],[5.95,0.838],[6.375,0.717],[6.8,0.576],[7.225,0.435],[7.65,0.308],[8.075,0.205],[8.5,0.129],[8.925,0.076],[9.35,0.042],[9.775,0.022],[10.2,0.011]],"tone":"purple","ms":1100,"label":"A","lat":[3.2,0.5],"ldx":-8,"lanchor":"end"},{"series":"db","chart":"d","pts":[[0.4,0.011],[0.775,0.023],[1.15,0.044],[1.525,0.08],[1.9,0.135],[2.275,0.216],[2.65,0.325],[3.025,0.458],[3.4,0.607],[3.775,0.755],[4.15,0.882],[4.525,0.969],[4.9,1.0],[5.275,0.969],[5.65,0.882],[6.025,0.755],[6.4,0.607],[6.775,0.458],[7.15,0.325],[7.525,0.216],[7.9,0.135],[8.275,0.08],[8.65,0.044],[9.025,0.023],[9.4,0.011]],"tone":"green","dash":true,"ms":900,"label":"B","lat":[6.6,0.55],"ldx":8,"lanchor":"start"},{"note":"one","x":505,"y":470,"text":"one shared shape","size":19,"anchor":"middle","tone":"green"}]},{"cap":"Costs still differ in the raw numbers. With the square-root law, trading 1% of a day's volume costs about 15.7 bps in A and 28.3 bps in B: the thinner, more volatile name is nearly twice as dear.","do":[{"box":"ca","x":10,"y":606,"w":280,"h":60,"text":"A at 1% ADV ≈ 15.7 bps","tone":"purple","size":18},{"box":"cb","x":310,"y":606,"w":280,"h":60,"text":"B at 1% ADV ≈ 28.3 bps","tone":"green","size":18}]},{"cap":"The payoff: a cost model calibrated once on liquid names can travel to a new, thin instrument using only its price, volume and volatility. No history of your own fills needed on day one.","do":[{"note":"use","x":300,"y":694,"text":"P, V, σ → W → a day-one estimate","size":19,"anchor":"middle","tone":"blue"}]},{"cap":"The caveats: it is an empirical regularity with real scatter, the evidence is mostly from US equities, and in FX there is no single clean volume figure. Use it as a starting point.","do":[{"box":"cav","x":10,"y":718,"w":580,"h":50,"text":"regularity, not law · mostly equity evidence","tone":"red","size":18}]},{"cap":"And it is silent on how impact decays once a bet stops trading; that is the next lesson. In one line: measure bets in risk, scale by the market's activity, and different markets start to look alike.","do":[{"note":"end","x":300,"y":786,"text":"risk units + activity scaling = comparable markets","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:institutional_kyle_obizhaeva_invariance:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -523,7 +650,7 @@
     <div class="tl-icard">
       <div class="tl-icon-badge green">✂️</div>
       <h4>Sizing order slices sensibly</h4>
-      <p>Rather than slicing a large order to a fixed percentage of ADV regardless of the name, invariance suggests the "unremarkable," typical-sized clip should itself scale as \(W^{2/3}\) — smaller relative to volume in already-thin markets, not the same ratio everywhere.</p>
+      <p>Rather than judging an order by a fixed percentage of ADV regardless of the name, invariance says a typical bet's share of volume itself scales as \(W^{-2/3}\): a larger share in thin markets, a smaller one in busy markets. The same %ADV is a routine bet in a thin name and an outsized one in a liquid name, so compare orders by \(z=(Q/V)\,W^{2/3}\), not by one ratio everywhere.</p>
     </div>
     <div class="tl-icard">
       <div class="tl-icon-badge purple">🌍</div>
@@ -617,13 +744,26 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative first trade</div>
+    <h3>Your first order in a thin small-cap</h3>
+    <p>Your desk trades the lesson's mega-cap A every day and has a cost model calibrated on years of its fills. Today it must buy 2,000 shares of small-cap B for the first time: $20, 200,000 shares a day, 45% annual volatility. There is no execution history in B at all. The order is 1% of B's daily volume. How do you set your expected cost?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Use A's cost per 1% of volume. It is the same share of the day's volume, so it should cost the same.<div class="tl-drill-why">Same share of volume is not the same risk. B's daily volatility is 2.835% against A's 1.575%, so even the square-root law alone puts B at about 28.3 bps against 15.7 bps for A: nearly twice the cost.</div></li>
+      <li data-verdict="good">Compute B's price, volume and volatility, rescale the model calibrated on liquid names to B's activity, and treat the result as a starting estimate to check against your first fills.<div class="tl-drill-why">This is what invariance is for: carrying a calibrated shape to a name with no history, using only the three inputs of W. It is a principled starting point, not a guarantee, so you watch the first fills and adjust.</div></li>
+      <li data-verdict="ok">Trade a few tiny test orders over the next weeks and build B's own cost curve before doing the real size.<div class="tl-drill-why">Safe, but slow, and tiny tests tell you little about the cost of a real-sized bet. Invariance gives you a reasonable estimate on day one without that delay.</div></li>
+      <li data-verdict="bad">Skip the estimate. B is a different market, so nothing from A applies.<div class="tl-drill-why">That is exactly the "every market is unique" view the lesson argues against. Measured in risk and scaled by activity, the evidence from US equities is that the two markets share far more than their raw numbers suggest.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>The point.</strong> This is an illustrative situation built on the lesson's two example stocks, not a real order. A thin, volatile name costs more at the same share of volume, and invariance is how a desk turns a liquid-name model into a day-one estimate for it. Keep the caveats: it is a regularity with scatter, and most of its evidence comes from equities.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Measuring in the wrong unit makes markets look falsely unique.</strong> Raw share counts and dollar sizes obscure a shared pattern that shows up once bet size is measured as risk transferred: \(L=Q\cdot P\cdot\sigma\).</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(W=P\cdot V\cdot\sigma\) is the one number summarizing a market's trading activity</strong> — the dollar rate at which it transfers risk per day, and the sole asset-specific input the invariance hypothesis needs.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Typical bet size scales as \(W^{2/3}\), not \(W\) itself.</strong> A sub-linear, concave relationship: a 1,000× gap in trading activity implies only roughly a 100× gap in typical bet size, not a 1,000× gap.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The full hypothesis is stronger than the scaling law alone:</strong> the entire distribution of standardized bet size \(z=L/W^{2/3}\) — not just its center — is claimed to be approximately shared across assets, venues, and eras.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Bets per day scale as \(W^{2/3}\); typical bet size in risk units only as \(W^{1/3}\).</strong> A 1,000× gap in trading activity implies about 100× more bets but only about a 10× gap in typical bet size, and a typical bet's share of daily volume falls as \(W^{-2/3}\): a larger share in thin names, a smaller one in busy names.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The full hypothesis is stronger than the scaling law alone:</strong> the entire distribution of standardized bet size \(z=L/W^{1/3}\) — not just its center — is claimed to be approximately shared across assets, venues, and eras.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This extends Kyle's (1985) single-asset Lambda into a cross-sectional theory.</strong> Kyle takes \(\sigma_v,\sigma_u\) as exogenous per asset; invariance is a specific, falsifiable prediction for how those quantities compare across a whole universe of assets.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>It is an empirical regularity with real scatter, not an exact law, and it is silent on short-run transient impact dynamics</strong> — the next lesson in this category, Obizhaeva-Wang Transient Price Impact, is exactly the piece invariance leaves out.</span></div>
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Its desk use is carrying a cost estimate to a thin market.</strong> Scaling by price × volume × volatility lets a pre-trade model calibrated on liquid names size an order, and price it, in an instrument with little execution history of its own.</span></div>
@@ -660,16 +800,18 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q3. Why does a 1,000× difference in trading activity \(W\) between two assets imply only roughly a 100× difference in typical bet size, not a 1,000× difference?</summary>
+    <summary>Q3. Why does a 1,000× difference in trading activity \(W\) between two assets imply only roughly a 10× difference in typical bet size, and where does the rest of the gap go?</summary>
     <div class="tl-answer">
-      Because typical bet size scales as \(W^{2/3}\), a sub-linear (concave)
-      power law, not as \(W\) itself. \(1{,}000^{2/3}=100\) exactly (since
-      \(1{,}000=10^3\) and \((10^3)^{2/3}=10^2=100\)) — the worked example's
-      own numbers, \(1{,}042\times\) in activity versus roughly \(103\times\)
-      in typical bet size, are the same calculation applied to slightly less
-      round inputs. The 2/3 exponent is what compresses a very large gap in
-      raw activity into a much smaller (though still large) gap in typical
-      bet size.
+      Because typical bet size in risk units scales as \(W^{1/3}\) and the
+      number of bets per day as \(W^{2/3}\). Since \(1{,}000=10^3\),
+      \(1{,}000^{1/3}=10\) and \(1{,}000^{2/3}=100\) exactly, and
+      \(10\times100=1{,}000\): the activity gap splits into bets about 10×
+      bigger and about 100× more of them. The worked example's own numbers,
+      \(1{,}042\times\) in activity versus about \(10.1\times\) in typical bet
+      size and \(102.8\times\) in bets per day, are the same calculation on
+      slightly less round inputs. It also follows that a typical bet is about
+      a hundredth as large a share of daily volume in the busier market,
+      since that share scales as \(W^{-2/3}\).
     </div>
   </details>
   <details class="tl-quiz">
@@ -721,12 +863,32 @@
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
-    <li>Albert S. Kyle &amp; Anna A. Obizhaeva, <em>"Market Microstructure Invariance: Empirical Hypotheses and Theory,"</em> Econometrica, 84(4), 2016 — the primary paper this lesson is built on: the bet-size construct, the trading-activity measure \(W\), the \(W^{2/3}\) scaling law and its leverage-neutrality derivation, and the invariance hypothesis for the full standardized distribution.</li>
+    <li>Albert S. Kyle &amp; Anna A. Obizhaeva, <em>"Market Microstructure Invariance: Empirical Hypotheses,"</em> Econometrica, 84(4), 2016, pp. 1345–1404 — the primary paper this lesson is built on: the bet-size construct, the trading-activity measure \(W\), the \(W^{2/3}\) scaling of bets per day and \(W^{1/3}\) scaling of bet size in risk units, and the invariance hypothesis for the full standardized distribution, tested on portfolio-transition orders.</li>
     <li>Albert S. Kyle, Anna A. Obizhaeva &amp; Tugkan Tuzun, <em>"Trading Game Invariance in the TAQ Dataset,"</em> Journal of Trading, 11(4), 2016 — the companion empirical test of the invariance hypothesis directly against U.S. equity trade-and-quote (TAQ) data.</li>
     <li>Albert S. "Pete" Kyle, "Continuous Auctions and Insider Trading," <em>Econometrica</em>, 1985 — the original single-asset linear price-impact model this lesson extends into a cross-sectional theory; covered directly in the prerequisite <a href="market-microstructure.html">Market Microstructure</a> lesson.</li>
     <li>Robert Almgren &amp; Neil Chriss, "Optimal Execution of Portfolio Transactions," <em>Journal of Risk</em>, 2000/2001 — the source of the square-root law of impact this lesson leans on as a cost benchmark; covered in the prerequisite <a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a> lesson.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="market-microstructure.html">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a> <span>· Kyle's single-asset lambda, which this extends across assets</span></li>
+        <li><a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a> <span>· the square-root law used for the cost benchmark</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-obizhaeva-wang-impact.html">Obizhaeva-Wang Transient Price Impact</a> <span>· how impact decays once a bet stops trading</span></li><!-- DESK:END -->
+        <li><a href="execution-algorithms.html">Execution Algorithms: TWAP, VWAP, POV, IS</a> <span>· slicing the bet once you know its size</span></li>
+        <!-- DESK:START --><li><a href="institutional-market-depth-slope.html">Market Depth, Order-Book Slope &amp; Depth Imbalance</a> <span>· what the book can absorb right now</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> it gives you a principled cost estimate for an order in a name you have never traded, from three numbers you always have.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
@@ -758,7 +920,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var priceInput = document.getElementById('inv-price');
@@ -770,6 +933,7 @@
   var wOut = document.getElementById('inv-w');
   var lOut = document.getElementById('inv-l');
   var lstarOut = document.getElementById('inv-lstar');
+  var gammaOut = document.getElementById('inv-gamma');
   var zOut = document.getElementById('inv-z');
   var costOut = document.getElementById('inv-cost');
   var note = document.getElementById('inv-note');
@@ -787,9 +951,13 @@
     return sign + parts.join(',');
   }
 
+  function fmtIdx(n, dp){
+    return Math.abs(n) < 1000 ? n.toFixed(dp) : addCommas(n);
+  }
+
   function blank(){
     sigmadOut.textContent = '—'; wOut.textContent = '—'; lOut.textContent = '—';
-    lstarOut.textContent = '—'; zOut.textContent = '—'; costOut.textContent = '—';
+    lstarOut.textContent = '—'; gammaOut.textContent = '—'; zOut.textContent = '—'; costOut.textContent = '—';
   }
 
   function recompute(){
@@ -807,15 +975,17 @@
     var sigmaDaily = (sigmaPct / 100) / Math.sqrt(TRADING_DAYS);
     var W = price * adv * sigmaDaily;
     var L = qty * price * sigmaDaily;
-    var Lstar = Math.pow(W, 2 / 3);
-    var z = Lstar > 0 ? L / Lstar : NaN;
+    var Lstar = Math.pow(W, 1 / 3);      // typical bet size in risk units scales as W^(1/3)
+    var gammaIdx = Math.pow(W, 2 / 3);   // bets per day scale as W^(2/3)
+    var z = Lstar > 0 ? L / Lstar : NaN; // = (Q/V) * W^(2/3)
     var cost = 10000 * sigmaDaily * Math.sqrt(qty / adv);
 
     sigmadOut.textContent = (sigmaDaily * 100).toFixed(4) + '%';
     wOut.textContent = addCommas(W);
     lOut.textContent = addCommas(L);
-    lstarOut.textContent = addCommas(Lstar);
-    zOut.textContent = isFinite(z) ? z.toFixed(2) : '—';
+    lstarOut.textContent = fmtIdx(Lstar, 1);
+    gammaOut.textContent = addCommas(gammaIdx);
+    zOut.textContent = isFinite(z) ? fmtIdx(z, 2) : '—';
     costOut.textContent = isFinite(cost) ? cost.toFixed(2) : '—';
 
     if (qty > adv) {
@@ -838,5 +1008,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

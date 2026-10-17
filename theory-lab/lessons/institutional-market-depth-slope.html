@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Market Depth, Order-Book Slope &amp; Depth Imbalance — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -50,6 +51,67 @@
       <li><strong>How it reached trading:</strong> Electronic order books made depth visible, researchers such as Næs &amp; Skjeltorp (2006) measured its slope, and desks and regulators now read it as a live liquidity gauge before sizing orders.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The worked example's three-level book around a 1.10040 / 1.10050 quote, shown as cumulative depth within one, two and three levels. Bids, on the left, total 300, 550 and 950. Asks, on the right, total 200, 350 and 530. The bid side's slope is 287.5 per tick against 157.5 on the ask side. Depth imbalance is 0.20 at the touch and 0.284 across three levels: bid-heavy, more so deeper in the book.">
+      <text class="tlp-green" x="185" y="36" text-anchor="middle" font-size="13" font-weight="700">bids: cumulative D_b(n)</text>
+      <text class="tlp-red" x="365" y="36" text-anchor="middle" font-size="13" font-weight="700">asks: D_a(n)</text>
+      <text class="tlp-text3" x="14" y="70" font-size="12">n = 1</text>
+      <rect class="tlp-box green" x="227.4" y="52" width="72.6" height="26" rx="4"/>
+      <text class="tlp-green" x="233.4" y="70" font-size="13" font-weight="700">300</text>
+      <rect class="tlp-box red" x="300" y="52" width="48.4" height="26" rx="4"/>
+      <text class="tlp-red" x="342.4" y="70" text-anchor="end" font-size="13" font-weight="700">200</text>
+      <text class="tlp-text3" x="14" y="110" font-size="12">n = 2</text>
+      <rect class="tlp-box green" x="166.8" y="92" width="133.2" height="26" rx="4"/>
+      <text class="tlp-green" x="172.8" y="110" font-size="13" font-weight="700">550</text>
+      <rect class="tlp-box red" x="300" y="92" width="84.7" height="26" rx="4"/>
+      <text class="tlp-red" x="378.7" y="110" text-anchor="end" font-size="13" font-weight="700">350</text>
+      <text class="tlp-text3" x="14" y="150" font-size="12">n = 3</text>
+      <rect class="tlp-box green" x="70.0" y="132" width="230.0" height="26" rx="4"/>
+      <text class="tlp-green" x="76.0" y="150" font-size="13" font-weight="700">950</text>
+      <rect class="tlp-box red" x="300" y="132" width="128.3" height="26" rx="4"/>
+      <text class="tlp-red" x="422.3" y="150" text-anchor="end" font-size="13" font-weight="700">530</text>
+      <line class="tlp-line dash" x1="300" y1="44" x2="300" y2="166"/>
+      <text class="tlp-text3" x="300" y="184" text-anchor="middle" font-size="12">quote 1.10040 / 1.10050</text>
+      <text class="tlp-text2" x="445" y="66" font-size="12">slope per tick</text>
+      <text class="tlp-green" x="445" y="86" font-size="13" font-weight="700">bid 287.5</text>
+      <text class="tlp-red" x="520" y="86" font-size="13" font-weight="700">ask 157.5</text>
+      <text class="tlp-text2" x="445" y="120" font-size="12">depth imbalance</text>
+      <text class="tlp-blue" x="445" y="140" font-size="13" font-weight="700">touch 0.20</text>
+      <text class="tlp-purple" x="445" y="160" font-size="13" font-weight="700">3 levels 0.284</text>
+      <text class="tlp-text2" x="300" y="210" text-anchor="middle" font-size="12">the quote shows only the first row; size beyond it is the real liquidity</text>
+      <text class="tlp-green" x="300" y="230" text-anchor="middle" font-size="13" font-weight="700">bid depth builds about 1.8× faster per tick than ask depth</text>
+    </svg>
+    <figcaption>Depth is what is resting, slope is how fast it builds as you step away from the touch, and imbalance is which side is heavier. Here the bid side is deeper and builds faster, and the book looks more bid-heavy three levels deep than it does at the touch alone.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My screen shows one bid and one offer, one pip apart. Is that the liquidity?</p>
+      <p data-who="Quant">It is the front door. Depth is everything resting behind it: how much size sits at the best price, and at each price further out.</p>
+      <p data-who="Trader">Give me the lesson's book.</p>
+      <p data-who="Quant">Bids of three hundred, two hundred and fifty and four hundred on the first three levels. Offers of two hundred, a hundred and fifty and a hundred and eighty. Add them up as you go and the bids total nine hundred and fifty within three levels. The offers only five hundred and thirty.</p>
+      <p data-who="Trader">And slope?</p>
+      <p data-who="Quant">How fast that running total grows per tick away from the touch. On the bid side it averages two hundred and eighty-seven and a half per tick. On the offer side, a hundred and fifty-seven and a half. The bid side builds depth nearly twice as fast.</p>
+      <p data-who="Trader">So a steep book is good?</p>
+      <p data-who="Quant">Careful, that word cuts both ways. In this convention a bigger slope means a deeper book. But a trader walking the book plots price against size filled, and then a thin book looks steep, because the price jumps fast. Always ask which way someone is measuring.</p>
+      <p data-who="Trader">And the imbalance?</p>
+      <p data-who="Quant">Bid size minus offer size, over the total. At the touch it is three hundred against two hundred: plus zero point two, mildly bid-heavy. Use all three levels and it is about plus zero point two eight. More bid-heavy the deeper you look.</p>
+      <p data-who="Trader">Which one do I use?</p>
+      <p data-who="Quant">Depends on your order. If you trade more than what sits at the touch, the deeper number is the one that bites. The touch number feeds the microprice, which here sits a tenth of a pip above the mid.</p>
+      <p data-who="Trader">Isn't this the same as order flow imbalance?</p>
+      <p data-who="Quant">No. Depth imbalance is a photograph of what is resting now. Order flow imbalance is a flip-book of how the book has been changing. A side can be heavy right now and still be draining fast.</p>
+      <p data-who="Trader">When has depth mattered for real?</p>
+      <p data-who="Quant">The Treasury flash rally of the fifteenth of October 2014. The ten-year yield fell about sixteen basis points and came back within about twelve minutes. The official report on it documented how thin order book depth had become around the event.</p>
+      <p data-who="Trader">And day to day?</p>
+      <p data-who="Quant">Read depth a few levels deep before you size a child order. A thin, shallow side means smaller slices and more patience.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">The quote tells you the price. Depth, slope and imbalance tell you what it will cost to move size through it.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -151,6 +213,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From resting size to slope and imbalance, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ D_b(n) = \color{#fbbf24}{\sum_{i=1}^{n} Q_b^{(i)}} \]</div>
+      <p>Cumulative depth: add up the size resting on the first \(n\) levels. In the worked example, \(D_b = 300, 550, 950\) and \(D_a = 200, 350, 530\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{slope} = \frac{1}{n-1}\sum_{i=2}^{n} \color{#fbbf24}{\frac{D(i) - D(1)}{i-1}} \]</div>
+      <p>Slope: how much extra depth each tick away from the touch adds, averaged across levels. Larger means a deeper book in this convention.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ DI^{(1)} = \color{#fbbf24}{\frac{Q_b^{(1)} - Q_a^{(1)}}{Q_b^{(1)} + Q_a^{(1)}}} = QI \]</div>
+      <p>Depth imbalance at the touch is exactly the queue imbalance, and it feeds the same microprice.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ DI(n) = \frac{\color{#fbbf24}{D_b(n)} - \color{#fbbf24}{D_a(n)}}{D_b(n) + D_a(n)} \]</div>
+      <p>Swap the touch sizes for cumulative depth to see which side is heavier across the levels your order will actually reach.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\text{slope}_{\text{bid}} = 287.5,\ \ \text{slope}_{\text{ask}} = 157.5, \quad DI^{(1)} = 0.20,\ \ DI(3) = \tfrac{420}{1480} \approx 0.284} \]</div>
+      <p>The worked example: the bid side builds depth about 1.8 times faster, and the book is more bid-heavy three levels deep than at the touch.</p>
+    </div>
+  </div>
 
   <h3>1. Depth: level-1 and cumulative</h3>
   <p>
@@ -403,6 +489,10 @@
       and every output recomputes instantly — including a guard for
       negative sizes and for a side with zero total depth.
     </p>
+    <div class="tl-predict" data-answer="0" data-tol="0.03" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With the worked example's book, \(DI^{(1)} = 0.20\) and \(DI(3) \approx 0.284\). Suppose a large seller now rests 600 at the third ask level instead of 180. What will \(DI(3)\) be? Lock in a guess, then type 600 into the ask level 3 field below.</div>
+      <div class="tl-predict-reveal"><p><strong>0.000: perfectly balanced.</strong> Ask depth within three levels becomes \(200 + 150 + 600 = 950\), the same as the bids, so \(DI(3) = (950 - 950)/1900 = 0\). Yet \(DI^{(1)}\) is still 0.20, because nothing changed at the touch. The touch says bid-heavy; the deeper book says balanced. The ask slope also jumps from 157.5 to 262.5. Now try putting all the extra size at ask level 1 instead and compare.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Bid size, level 1 \(Q_b^{(1)}\)</span></div>
@@ -515,6 +605,12 @@
     </p>
   </div>
 
+  <!-- WB:institutional_market_depth_slope:START -->
+  <div class="wb" id="wb-institutional_market_depth_slope" data-title="Depth, slope and imbalance: what sits behind the quote">
+    <script type="application/json">{"w":600,"h":800,"intro":"What sits behind a one-pip quote: the lesson's own three-level book, measured three ways. Press play, or step through.","steps":[{"cap":"A screen quote: 1.10040 bid, 1.10050 offer, one pip apart. That is all most screens show. It says nothing about how much you can trade there.","do":[{"box":"bid","x":70,"y":10,"w":200,"h":64,"text":"bid 1.10040","tone":"green","size":20},{"box":"ask","x":330,"y":10,"w":200,"h":64,"text":"offer 1.10050","tone":"red","size":20}]},{"cap":"Behind the quote sits a ladder of resting orders. Bids: 300 at the touch, then 250 and 400 one and two ticks below. Offers: 200, then 150 and 180 above.","do":[{"chart":"bk","x":10,"y":92,"w":580,"h":236,"title":"Resting size by price","xd":[-3.7,3.7],"yd":[0,470],"yt":[[200,"200"],[400,"400"]],"xt":[[-3,".10020"],[-2,".10030"],[-1,".10040"],[1,".10050"],[2,".10060"],[3,".10070"]],"pl":44,"pr":10},{"bars":"bb","chart":"bk","data":[[-1,300,"300","green"],[-2,250,"250","green"],[-3,400,"400","green"]],"bw":50,"ms":900},{"bars":"ba","chart":"bk","data":[[1,200,"200","red"],[2,150,"150","red"],[3,180,"180","red"]],"bw":50,"ms":900}]},{"cap":"Level-1 depth is just the size at the touch: 300 on the bid, 200 on the offer. Sell more than 300 and you must reach further down the bid ladder.","do":[{"pulse":"bid"},{"pulse":"ask"}]},{"cap":"Cumulative depth adds up the levels as you step away: bids 300, 550, 950; offers 200, 350, 530. This is how much you can fill before the price is n ticks worse.","do":[{"chart":"cm","x":10,"y":344,"w":290,"h":224,"title":"Cumulative depth D(n)","xd":[0.6,3.4],"yd":[0,1050],"yt":[[500,"500"],[1000,"1000"]],"xt":[[1,"n=1"],[2,"n=2"],[3,"n=3"]],"pl":50,"pr":14},{"series":"cb","chart":"cm","pts":[[1,300],[2,550],[3,950]],"tone":"green","ms":1000,"label":"bids 950","lat":[3,950],"ldx":-6,"ldy":-14,"lanchor":"end"},{"series":"ca","chart":"cm","pts":[[1,200],[2,350],[3,530]],"tone":"red","ms":1000,"label":"offers 530","lat":[3,530],"ldx":-4,"ldy":30,"lanchor":"end"}]},{"cap":"Slope: the extra depth gained per tick from the touch, averaged. Bids: (250 + 325) ÷ 2 = 287.5. Offers: (150 + 165) ÷ 2 = 157.5. The bid side builds about 1.8 times faster.","do":[{"box":"sl","x":320,"y":344,"w":270,"h":70,"text":"slope: bid 287.5\noffer 157.5","tone":"purple","size":18}]},{"cap":"A cheaper cross-check, the ratio of depth three levels out to depth at the touch: 950 ÷ 300 ≈ 3.17 for bids, 530 ÷ 200 = 2.65 for offers. Same story.","do":[{"box":"r","x":320,"y":426,"w":270,"h":60,"text":"R(3): 3.17 vs 2.65","tone":"blue","size":18}]},{"cap":"The word trap: here a bigger slope means a deeper book. But a trader walking the book plots price against size filled, and then a thin book looks steep. Always ask which axis \"slope\" runs on.","do":[{"box":"st","x":320,"y":498,"w":270,"h":70,"text":"\"steep\" = deep here,\nthin when walking it","tone":"amber","size":17}]},{"cap":"Depth imbalance at the touch: (300 − 200) ÷ (300 + 200) = 0.20, mildly bid-heavy. It is exactly the queue imbalance from the order-flow lesson.","do":[{"box":"d1","x":10,"y":590,"w":280,"h":64,"text":"DI at the touch\n= 0.20","tone":"blue","size":18}]},{"cap":"Across three levels: (950 − 530) ÷ (950 + 530) = 420 ÷ 1480 ≈ 0.284. More bid-heavy deeper in the book. Which depth you measure over is a real choice.","do":[{"box":"d3","x":310,"y":590,"w":280,"h":64,"text":"DI over 3 levels\n≈ 0.284","tone":"purple","size":18}]},{"cap":"The touch imbalance feeds the microprice: mid 1.100450 plus half-spread 0.00005 × 0.20 = 1.100460, a tenth of a pip above the mid.","do":[{"note":"mp","x":300,"y":684,"text":"microprice = 1.100450 + 0.00005 × 0.20 = 1.100460","size":18,"anchor":"middle","tone":"chalk"}]},{"cap":"Depth imbalance is a photograph of what rests now. Order flow imbalance is a flip-book of how the book has been changing. A heavy side can still be draining fast.","do":[{"note":"ph","x":300,"y":722,"text":"photo (depth)  ≠  flip-book (order flow)","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"Real stakes: on 15 October 2014 the 10-year Treasury yield fell about 16 bp and came back in roughly 12 minutes, and the official report documented thin book depth around it. Size child orders to the depth, not the quote.","do":[{"note":"end","x":300,"y":770,"text":"size to the depth, not to the quote","size":21,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:institutional_market_depth_slope:END -->
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <div class="tl-icard-grid">
@@ -583,6 +679,19 @@
       Silently assuming one convention when a source meant the other is an
       easy, entirely avoidable mistake.
     </p>
+  </div>
+
+  <div class="tl-drill" data-date="2014-10-15">
+    <div class="tl-drill-label">Scenario drill · 15 October 2014</div>
+    <h3>A large Treasury futures order on a morning when the book is thin</h3>
+    <p>It is the morning of 15 October 2014. Treasuries have been rallying, and when you look past the best bid and offer in the 10-year futures book, the size resting within a few ticks is far below what you normally see: cumulative depth barely grows beyond the touch. You have a large sell order to complete before noon. How do you work it?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Send the whole order as one market order now and be done with it.<div class="tl-drill-why">With little resting beyond the touch, a large market order walks through level after level, and each one is further away. A shallow slope is exactly the warning that size will move the price fast.</div></li>
+      <li data-verdict="good">Read cumulative depth a few levels deep, cut child orders well below what is resting there, and work them patiently.<div class="tl-drill-why">This sizes each slice to the liquidity that is actually there rather than to the quote. On a thin day, smaller slices and more time keep each one from walking the book.</div></li>
+      <li data-verdict="bad">The quoted spread is still one tick, so size the slices as you would on a normal day.<div class="tl-drill-why">The quote shows only the front door. Depth and slope are what tell you the cost of size, and both are saying this is not a normal day.</div></li>
+      <li data-verdict="ok">Hold the whole order until depth recovers, then trade normally.<div class="tl-drill-why">It avoids walking a thin book, but you carry the full position and its price risk while you wait, and you still have a deadline. Patient slicing gets some of it done safely.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> Between about 9:33 and 9:45 a.m. New York time, the 10-year Treasury yield fell roughly 16 basis points and then came back, with no clear news to explain it. The US agencies' joint staff report on the event documented how thin order book depth was around the move. A large order sent into that book would have paid heavily for walking it.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -692,6 +801,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a> <span>· the ladders of resting size this lesson measures</span></li>
+        <!-- DESK:START --><li><a href="institutional-order-flow-imbalance.html">Order Flow Imbalance &amp; the Microprice</a> <span>· queue imbalance and the microprice, reused here</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-obizhaeva-wang-impact.html">Obizhaeva-Wang Transient Price Impact</a> <span>· how fast that depth refills after you trade</span></li><!-- DESK:END -->
+        <li><a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a> <span>· turning thin depth into an expected cost</span></li>
+        <li><a href="execution-algorithms.html">Execution Algorithms: TWAP, VWAP, POV, IS</a> <span>· sizing child orders to what is resting</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the quote tells you the price of a small trade; depth and slope tell you the price of yours.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-obizhaeva-wang-impact.html">← Obizhaeva-Wang Transient Price Impact</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -722,7 +851,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var ids = ['qb1','qb2','qb3','qa1','qa2','qa3'];
@@ -820,5 +950,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

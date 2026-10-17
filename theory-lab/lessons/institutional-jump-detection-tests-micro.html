@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lee-Mykland &amp; Boudt-Croux-Laurent — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -135,7 +136,19 @@
       <div class="sl-note">The plain test gets BOTH bars backwards. The BCL-corrected test gets both right — same 10 returns, same formulas, only the periodicity division changes.</div>
     </section>
 
+    <!-- WB:institutional_jump_detection_tests-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Finding the jump: plain test versus time-of-day fix</h2>
+      <!-- WB:institutional_jump_detection_tests:START -->
+      <div class="wb" data-title="Finding the jump: plain test versus time-of-day fix">
+        <script type="application/json">{"w":600,"h":700,"intro":"The lesson's toy session: ten bars, a busy open, a quiet middle, and one real jump. Watch a plain test get it backwards, then the time-of-day fix. Press play, or step through.","steps":[{"cap":"A toy trading session of ten bars. Ordinary moves follow a U-shape: about 18 bp at the open and close, only 4 bp at midday.","do":[{"chart":"s","x":10,"y":14,"w":580,"h":250,"title":"Returns by bar (bp)","xd":[0.3,10.7],"yd":[-20,70],"yt":[[0,"0"],[20,"20"],[40,"40"]],"xt":[[1,"open"],[5.5,"midday"],[10,"close"]],"zero":true,"pl":36,"pr":8},{"series":"u","chart":"s","pts":[[1,18],[2,14],[3,9],[4,6],[5,4],[6,4],[7,6],[8,9],[9,14],[10,18]],"tone":"purple","dash":true,"ms":1200,"label":"typical size","lat":[3,9],"ldx":4,"ldy":-16,"lanchor":"start","lsize":16}]},{"cap":"The actual returns. Most match their own typical size. Two do not: the open moves +55 bp, and midday bar 6 moves +25 bp. Only bar 6 is a real jump.","do":[{"bars":"rb","chart":"s","data":[[1,55,"+55","amber"],[2,-14,"","blue"],[3,9,"","blue"],[4,-6,"","blue"],[5,4,"","blue"],[6,25,"+25","red"],[7,-6,"","blue"],[8,9,"","blue"],[9,-14,"","blue"],[10,18,"","blue"]],"bw":26,"ms":1200}]},{"cap":"Lee-Mykland judges each return against a yardstick built from its neighbours, never from the return itself, so a jump cannot hide by inflating its own measure.","do":[{"box":"ruler","x":10,"y":284,"w":580,"h":52,"text":"L = return ÷ local yardstick (built without that return)","tone":"blue","size":18}]},{"cap":"Testing every bar means the day's biggest ordinary move is naturally large. Extreme-value theory sets the bar: for 10 bars at a 1% false-alarm rate, L must beat 4.80.","do":[{"note":"crit","x":300,"y":364,"text":"critical value 4.80 (Gumbel, n = 10)","size":19,"anchor":"middle","tone":"red"}]},{"cap":"Plain test, bar 1: its yardstick blends the whole day, about 10.5 bp. 55 ÷ 10.5 = 5.23, over 4.80. Flagged as a jump, but it is just a busy open.","do":[{"chart":"Lc","x":10,"y":380,"w":580,"h":210,"title":"L statistic","xd":[0.3,5.7],"yd":[0,6.5],"yt":[[0,"0"],[2,"2"],[4,"4"],[6,"6"]],"xt":[[1.5,"bar 1 (open)"],[4.5,"bar 6 (midday)"]],"pl":30,"pr":8},{"series":"th","chart":"Lc","pts":[[0.4,4.8],[5.6,4.8]],"tone":"red","dash":true,"ms":500},{"bars":"p1","chart":"Lc","data":[[1,5.23,"plain 5.23","amber"]],"bw":56,"ms":700}]},{"cap":"Plain test, bar 6: its yardstick is about 14.2 bp, far bigger than midday's usual 4. 25 ÷ 14.2 = 1.76. The real jump is missed.","do":[{"bars":"p6","chart":"Lc","data":[[4,1.76,"plain 1.76","amber"]],"bw":56,"ms":700}]},{"cap":"The Boudt-Croux-Laurent fix: first divide each return by its time of day's typical size relative to the session average (10.2 bp). The open bar becomes 31.2; the midday jump becomes 63.8. Every ordinary bar becomes exactly 10.2.","do":[{"hide":"ruler"},{"box":"fix","x":10,"y":284,"w":580,"h":52,"text":"bar 1: 55 ÷ 1.76 = 31.2  ·  bar 6: 25 ÷ 0.39 = 63.8","tone":"green","size":18}]},{"cap":"Re-run the same test on the corrected returns. Bar 1: L = 2.01, cleared. Bar 6: L = 5.50, flagged. Both verdicts are now right.","do":[{"bars":"b1","chart":"Lc","data":[[2,2.01,"fixed 2.01","green"]],"bw":56,"ms":700},{"bars":"b6","chart":"Lc","data":[[5,5.5,"fixed 5.50","green"]],"bw":56,"ms":700}]},{"cap":"The plain test got both bars backwards: a false alarm at the open and a miss at midday. Deseasonalise first, then test.","do":[{"note":"lesson","x":300,"y":618,"text":"judge each return against its own time of day","size":19,"anchor":"middle","tone":"green"}]},{"cap":"Two limits remain. A flag says the move was implausibly large, not why it happened. And the window and threshold belong to one bar size: change it and recalibrate.","do":[{"note":"lim","x":300,"y":662,"text":"a flag is not a cause · recalibrate per bar size","size":18,"anchor":"middle","tone":"amber"}]}]}</script>
+      </div>
+      <!-- WB:institutional_jump_detection_tests:END -->
+    </section>
+    <!-- WB:institutional_jump_detection_tests-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">BCL's fix: deseasonalize, then test</h2>
       <div class="sl-icard-grid">
@@ -146,7 +159,7 @@
       <div class="sl-quote">Grading classroom noise across recess AND nap time with one "typical loudness" number makes recess never look loud and nap time look suspiciously noisy at a single whisper. Grade each period against its OWN typical loudness first — exactly what dividing by a time-of-day factor does here.</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Build the Lᵢ statistic yourself</h2>
       <p class="sl-sub">Plain L uses a fixed session-average local vol (10.2bp). BCL's L works out to dividing by the bucket's own typical size directly — 18bp at the open/close, 4bp at midday. Threshold shown: 5.40 (a full 5-min session, α=1%).</p>
@@ -171,7 +184,7 @@
       </div>
     </section>
 
-    <!-- DESK:START --><section class="sl-slide" data-slide="10">
+    <!-- DESK:START --><section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Verified against this repo's actual code</h2>
       <div class="sl-callout green" style="background:var(--green-bg);border-color:var(--green-bd)">
@@ -181,7 +194,7 @@
       <p class="sl-p">It's registered as a Tier-1 brick, consumed by two downstream modules (<code>jump_regime_book.py</code>, <code>jump_exhaustion.py</code>). The honest finding from that work: detected jumps describe volatility REGIME, not direction — near-independent day to day (unlike volatility, which clusters hard), no persistent directional skew, no shift in next-day continuation odds. What they DO carry: a genuine signal that jump-driven volatility decays faster afterward. Measurement only — no trade, no cost, no signal claimed anywhere in that work.</p>
     </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Two limits worth keeping in view</h2>
       <div class="sl-compare">
@@ -206,7 +219,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">The category's arc, complete</h2>
       <div class="sl-icard-grid">
@@ -216,7 +229,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -267,7 +280,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -404,5 +417,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

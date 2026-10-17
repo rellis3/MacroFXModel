@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Probability of Informed Trading — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -220,7 +221,19 @@
       </div>
     </section>
 
+    <!-- WB:institutional_pin-deck:START -->
     <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">PIN: the informed fingerprint in daily buys and sells</h2>
+      <!-- WB:institutional_pin:START -->
+      <div class="wb" data-title="PIN: the informed fingerprint in daily buys and sells">
+        <script type="application/json">{"w":600,"h":800,"intro":"Nobody can see who is informed. But informed traders leave a fingerprint in the daily counts of buys and sells. Press play, or step through.","steps":[{"cap":"Every day, uninformed traders turn up on both sides: about 100 buys and 100 sells a day (ε = 100 per side), for reasons unrelated to the stock's value.","do":[{"icon":"noise","name":"crowd","x":80,"y":8,"s":0.7,"tone":"blue","label":"uninformed: ε = 100 a side","lsize":16},{"chart":"types","x":10,"y":132,"w":580,"h":236,"title":"Expected trades on each kind of day","xd":[0.3,6.7],"yd":[0,300],"yt":[[100,"100"],[250,"250"]],"xt":[[1.5,"no event"],[3.5,"bad news"],[5.5,"good news"]],"pl":50,"pr":14},{"bars":"t0","chart":"types","data":[[1.15,100,"B 100","green"],[1.85,100,"S 100","red"]],"bw":34,"size":15,"ms":900}]},{"cap":"On some days private news arrives. With probability α = 0.25, about one day in four, there is an information event.","do":[{"icon":"coin","name":"coin","x":300,"y":8,"s":0.66,"tone":"amber","label":"event? α = 0.25","lsize":16}]},{"cap":"Bad news (55% of events, δ = 0.55): informed traders arrive at μ = 150 a day and all sell. Sells jump to about 250 while buys stay near 100.","do":[{"icon":"inf","name":"person","x":480,"y":8,"s":0.66,"tone":"purple","label":"informed: μ = 150","lsize":16},{"bars":"t1","chart":"types","data":[[3.15,100,"B 100","green"],[3.85,250,"S 250","red"]],"bw":34,"size":15,"ms":900}]},{"cap":"Good news is the mirror image: the informed all buy, so buys jump to about 250.","do":[{"bars":"t2","chart":"types","data":[[5.15,250,"B 250","green"],[5.85,100,"S 100","red"]],"bw":34,"size":15,"ms":900}]},{"cap":"A researcher never sees the day type, only the counts. Here are 20 days simulated from this model: buys minus sells each day. Most days are roughly balanced; 5 are sharply lopsided.","do":[{"chart":"days","x":10,"y":382,"w":580,"h":214,"title":"20 simulated days: buys − sells","xd":[0.3,20.7],"yd":[-200,200],"yt":[[150,"+150"],[0,"0"],[-150,"−150"]],"xt":[[1,"1"],[10,"10"],[20,"20"]],"zero":true,"pl":56,"pr":14},{"bars":"dd","chart":"days","data":[[1,-3,"","red"],[2,138,"","green"],[3,8,"","green"],[4,-18,"","red"],[5,-3,"","red"],[6,-10,"","red"],[7,-165,"","red"],[8,-9,"","red"],[9,1,"","green"],[10,8,"","green"],[11,6,"","green"],[12,-3,"","red"],[13,172,"","green"],[14,-14,"","red"],[15,-1,"","red"],[16,-180,"","red"],[17,4,"","green"],[18,-179,"","red"],[19,8,"","green"],[20,3,"","green"]],"bw":18,"ms":1300}]},{"cap":"Maximum likelihood reads that pattern: how often days are lopsided gives α, how lopsided gives μ, and the balanced baseline gives ε. Here we take the fitted values as given: 0.25, 150 and 100.","do":[{"note":"mle","x":300,"y":620,"text":"how often lopsided → α · how lopsided → μ · baseline → ε","size":18,"anchor":"middle","tone":"purple"}]},{"cap":"Expected informed trades a day: α × μ = 0.25 × 150 = 37.5. Expected uninformed: 2ε = 200. PIN is the informed share: 37.5 / 237.5 ≈ 0.158.","do":[{"box":"pin","x":60,"y":644,"w":480,"h":58,"text":"PIN = 37.5 / (37.5 + 200) ≈ 0.158","tone":"green","size":21}]},{"cap":"Notice δ never entered. Good news or bad news, the same share of the flow is informed. PIN measures how much, not which way.","do":[{"note":"delta","x":300,"y":724,"text":"δ (bad vs good) drops out: PIN is direction-free","size":18,"anchor":"middle","tone":"amber"}]},{"cap":"Two cautions. Duarte and Young (2009) argue part of PIN is ordinary illiquidity-driven imbalance, not private information. And the fit is slow, which is why VPIN was built as a real-time approximation.","do":[{"note":"dy","x":300,"y":760,"text":"contested: imbalance ≠ always information","size":18,"anchor":"middle","tone":"red"}]}]}</script>
+      </div>
+      <!-- WB:institutional_pin:END -->
+    </section>
+    <!-- WB:institutional_pin-deck:END -->
+
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">PIN vs. VPIN</h2>
       <p class="sl-sub">The same underlying question, two very different tools for answering it.</p>
@@ -254,7 +267,7 @@
       <div class="sl-quote">Easley, López de Prado &amp; O'Hara are explicit about the lineage: VPIN exists because PIN's own MLE approach is too slow and data-hungry to compute in anything close to real time. It's PIN's fast, approximate cousin — not a newer replacement for it.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Not a settled measure — a real academic dispute</h2>
       <div class="sl-callout purple">
@@ -268,7 +281,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -319,7 +332,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -442,5 +455,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

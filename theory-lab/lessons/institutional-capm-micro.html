@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CAPM — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -158,7 +159,19 @@
       </div>
     </section>
 
+    <!-- WB:institutional_capm-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">CAPM: from one shared portfolio to the Security Market Line</h2>
+      <!-- WB:institutional_capm:START -->
+      <div class="wb" data-title="CAPM: from one shared portfolio to the Security Market Line">
+        <script type="application/json">{"w":600,"h":760,"intro":"The lesson's toy universe: one market index, three assets, five years of invented returns and a 2% risk-free rate. Press play, or step through.","steps":[{"cap":"Start from Markowitz. If every investor shares the same beliefs, everyone computes the same best risky portfolio. The cautious mix it with the risk-free asset; the bold borrow to hold more of it.","do":[{"icon":"crowd","name":"crowd","x":255,"y":10,"s":0.9,"tone":"blue","label":"every investor,\nsame beliefs","lsize":17},{"icon":"rf","name":"bank","x":30,"y":10,"s":0.85,"tone":"amber","label":"risk-free 2%","sym":"$","lsize":17},{"icon":"mkt","name":"globe","x":470,"y":10,"s":0.85,"tone":"purple","label":"one risky portfolio","lsize":17},{"arrow":["crowd","rf"],"tone":"amber"},{"arrow":["crowd","mkt"],"tone":"purple"}]},{"cap":"If everyone holds the same risky portfolio, every share outstanding must still be held by someone. The only portfolio that works is all risky assets at their market weights: the market portfolio.","do":[{"note":"mk","x":468,"y":152,"text":"= the market portfolio","size":17,"anchor":"middle","tone":"purple"}]},{"cap":"So the only risk that is paid for is exposure to the market. Measure it with a regression: each asset's return against the market's, over the five years. Here is Asset A.","do":[{"chart":"sc","x":10,"y":172,"w":290,"h":262,"title":"Asset vs market return (%)","xd":[-5,17],"yd":[-6,27],"yt":[[0,"0"],[10,"10"],[20,"20"]],"xt":[[-3,"−3"],[7,"7"],[15,"15"]],"zero":true,"pl":36},{"dot":"a0","chart":"sc","at":[8,5],"text":"","tone":"green","r":4.5},{"dot":"a1","chart":"sc","at":[-3,-0.5],"text":"","tone":"green","r":4.5},{"dot":"a2","chart":"sc","at":[15,8.5],"text":"","tone":"green","r":4.5},{"dot":"a3","chart":"sc","at":[6,4],"text":"","tone":"green","r":4.5},{"dot":"a4","chart":"sc","at":[9,5.5],"text":"","tone":"green","r":4.5},{"series":"fa","chart":"sc","pts":[[-4,-1.0],[16,9.0]],"tone":"green","ms":700,"label":"A","lat":[16,9.0],"ldx":-4,"ldy":16,"lanchor":"end"}]},{"cap":"The slope is beta, the same OLS formula as the regression primer: covariance over variance. The market's variance is 34; A's covariance with it is 17.0. Beta = 17.0 ÷ 34 = 0.50.","do":[{"box":"beta","x":10,"y":452,"w":290,"h":90,"text":"β = Cov ÷ Var\nA: 17.0 ÷ 34 = 0.50","tone":"green","size":19}]},{"cap":"Same for the others. B moves 1.5 times as much as the market: beta 1.50. C: beta 0.80.","do":[{"dot":"b0","chart":"sc","at":[8,15],"text":"","tone":"blue","r":4.5},{"dot":"b1","chart":"sc","at":[-3,-1.5],"text":"","tone":"blue","r":4.5},{"dot":"b2","chart":"sc","at":[15,25.5],"text":"","tone":"blue","r":4.5},{"dot":"b3","chart":"sc","at":[6,12],"text":"","tone":"blue","r":4.5},{"dot":"b4","chart":"sc","at":[9,16.5],"text":"","tone":"blue","r":4.5},{"series":"fb","chart":"sc","pts":[[-4,-3.0],[16,27.0]],"tone":"blue","ms":700,"label":"B","lat":[10,18],"ldx":-8,"ldy":-8,"lanchor":"end"},{"dot":"c0","chart":"sc","at":[8,4.4],"text":"","tone":"red","r":4.5},{"dot":"c1","chart":"sc","at":[-3,-4.4],"text":"","tone":"red","r":4.5},{"dot":"c2","chart":"sc","at":[15,10],"text":"","tone":"red","r":4.5},{"dot":"c3","chart":"sc","at":[6,2.8],"text":"","tone":"red","r":4.5},{"dot":"c4","chart":"sc","at":[9,5.2],"text":"","tone":"red","r":4.5},{"series":"fc","chart":"sc","pts":[[-4,-5.2],[16,10.8]],"tone":"red","ms":700,"label":"C","lat":[16,10.8],"ldx":-4,"ldy":-16,"lanchor":"end"}]},{"cap":"CAPM turns beta into a required return: E[R] = 2% + β × (7% − 2%). A line starting at the risk-free rate with slope equal to the 5-point market premium: the Security Market Line.","do":[{"chart":"sml","x":310,"y":172,"w":280,"h":262,"title":"Security Market Line","xd":[0,2],"yd":[0,15],"yt":[[2,"2%"],[7,"7%"],[12,"12%"]],"xt":[[0,"β 0"],[1,"1"],[2,"2"]],"pl":40},{"series":"line","chart":"sml","pts":[[0,2],[2,12]],"tone":"amber","ms":900,"label":"SML","lat":[2,12],"ldx":-4,"ldy":-14,"lanchor":"end"},{"dot":"rfd","chart":"sml","at":[0,2],"text":"R_f","tone":null,"dx":8,"dy":12,"anchor":"start"}]},{"cap":"The predictions: A 4.5%, B 9.5%, C 6.0%. Every correctly priced asset should sit on this line, whatever its other risks.","do":[{"dot":"pA","chart":"sml","at":[0.5,4.5],"text":"","tone":"green","r":4},{"dot":"pB","chart":"sml","at":[1.5,9.5],"text":"","tone":"blue","r":4},{"dot":"pC","chart":"sml","at":[0.8,6.0],"text":"","tone":"red","r":4}]},{"cap":"Now the realized averages. A earned 4.5%: exactly on the line, alpha 0. B earned 13.5%: alpha +4.0. C earned 3.6%: alpha −2.4. The gap between realized and predicted is alpha.","do":[{"dot":"rA","chart":"sml","at":[0.5,4.5],"text":"A: α 0","tone":"green","dx":-8,"dy":-14,"anchor":"end"},{"series":"gB","chart":"sml","pts":[[1.5,9.5],[1.5,13.5]],"tone":"blue","dash":true,"ms":500},{"dot":"rB","chart":"sml","at":[1.5,13.5],"text":"B: α +4.0","tone":"blue","dx":-8,"dy":-2,"anchor":"end"},{"series":"gC","chart":"sml","pts":[[0.8,6.0],[0.8,3.6]],"tone":"red","dash":true,"ms":500},{"dot":"rC","chart":"sml","at":[0.8,3.6],"text":"C: α −2.4","tone":"red","dx":8,"dy":14,"anchor":"start"}]},{"cap":"A positive alpha is not proof of skill. It could be real mispricing, pay for a risk CAPM leaves out, or noise in five years of data. One regression cannot tell these apart.","do":[{"box":"amb","x":310,"y":452,"w":280,"h":90,"text":"α +4.0 = skill?\nmissing factor? luck?","tone":"amber","size":19}]},{"cap":"The real-world test: Fama and French (1992) found beta explains average stock returns far less well than CAPM says. Small companies and value stocks earned more than their betas predicted.","do":[{"box":"ff","x":10,"y":562,"w":580,"h":76,"text":"Fama & French 1992: beta alone leaves a lot unexplained\n(small and value stocks beat their beta)","tone":"red","size":18}]},{"cap":"Beta still earns its keep. It sets the index hedge on an equity book and splits a manager's return into market and alpha, even though as a full pricing model CAPM is only the baseline.","do":[{"box":"use","x":10,"y":656,"w":580,"h":76,"text":"beta: the first hedge ratio and the first risk number\nCAPM: the baseline every factor model extends","tone":"green","size":18}]}]}</script>
+      </div>
+      <!-- WB:institutional_capm:END -->
+    </section>
+    <!-- WB:institutional_capm-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Drag beta, watch the prediction move along the line</h2>
       <p class="sl-sub">The blue dot is always exactly where CAPM predicts, for whatever beta you set. The red dot is Asset C's real, fixed observation — it doesn't move.</p>
@@ -186,7 +199,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Four assumptions, all known to be false</h2>
       <p class="sl-sub">Every one is a deliberate simplification, not a claim about how markets actually behave.</p>
@@ -202,7 +215,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Three assets, arithmetic by hand</h2>
       <p class="sl-sub">Five years of toy returns, a 2% risk-free rate, one market index.</p>
@@ -235,7 +248,7 @@
       <p class="sl-p">Beta is computed the same way for all three: Cov(asset, market) ÷ Var(market), with the market's own variance at 34 (from a mean return of 7% across the five years). Only Asset A's returns were built as a pure linear function of the market — which is exactly why only its alpha comes out at zero.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Compute beta and CAPM's prediction yourself</h2>
       <p class="sl-sub">Change any input, live. A near-zero market variance shows "—" instead of breaking the formula.</p>
@@ -270,7 +283,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">The empirical failure this category exists to fix</h2>
       <div class="sl-quote">CAPM's own theory says alpha should be zero for every asset — beta is supposed to be a complete summary of the risk that matters. Fama &amp; French (1992) sorted real stocks by beta and found a much weaker relationship with average returns than CAPM predicts — while firm size and book-to-market ratio ("value") both showed a much stronger one. Small-cap and value stocks earned systematically more than their beta alone justified, in sample after sample, for decades.</div>
@@ -281,7 +294,7 @@
       <p class="sl-p">This sets up the entire rest of this category directly: <strong>Fama-French &amp; Carhart</strong>, next in this series, adds factors built specifically around the size and value anomalies this section describes — the direct empirical response to the exact gap CAPM's single factor leaves open.</p>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -332,7 +345,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -457,5 +470,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

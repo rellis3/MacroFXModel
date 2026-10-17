@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dupire's Local Volatility — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -140,7 +141,19 @@
       </div>
     </section>
 
+    <!-- WB:institutional_dupire_local_vol-deck:START -->
     <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Dupire: reading local vol off the price surface</h2>
+      <!-- WB:institutional_dupire_local_vol:START -->
+      <div class="wb" data-title="Dupire: reading local vol off the price surface">
+        <script type="application/json">{"w":600,"h":680,"intro":"Three ways to handle a smile, then Dupire's formula run on the lesson's own five call prices. Press play, or step through.","steps":[{"cap":"Black-Scholes glues the volatility dial in place: one number, forever. Real option markets never quote one flat volatility, so something has to give.","do":[{"box":"bs","x":10,"y":10,"w":180,"h":92,"text":"Black-Scholes\nσ fixed","tone":"blue","size":19}]},{"cap":"Heston and SABR let the dial wander on its own: volatility gets its own random shock, a second source of randomness alongside the price.","do":[{"box":"sv","x":210,"y":10,"w":180,"h":92,"text":"Heston / SABR\nσ random: 2 shocks","tone":"purple","size":19}]},{"cap":"Dupire's local vol does something else. The dial is not random at all: it is read off a map, σ_local(S, t). Know the spot and the time, and the volatility is a number you look up. One source of randomness.","do":[{"box":"lv","x":410,"y":10,"w":180,"h":92,"text":"Local vol\nσ(S, t): a lookup","tone":"green","size":19}]},{"cap":"Dupire (1994): hand me every call price C(K, T), and there is exactly one such map that reprices them all. It comes straight from the slopes of the price surface. Here are five prices around strike 100, one year, from a world with a flat 20% vol.","do":[{"box":"c","x":120,"y":246,"w":100,"h":60,"text":"K, T","tone":"amber","sub":"10.4506","size":18},{"box":"l","x":10,"y":246,"w":100,"h":60,"text":"K − 5","tone":"blue","sub":"13.3465","size":18},{"box":"r","x":230,"y":246,"w":100,"h":60,"text":"K + 5","tone":"blue","sub":"8.0214","size":18},{"box":"u","x":120,"y":170,"w":100,"h":60,"text":"T + 0.1","tone":"green","sub":"11.0820","size":18},{"box":"d","x":120,"y":322,"w":100,"h":60,"text":"T − 0.1","tone":"green","sub":"9.7982","size":18},{"note":"ax","x":170,"y":148,"text":"strike across · maturity up","size":17,"anchor":"middle"}]},{"cap":"Across strikes: the slope is (8.0214 − 13.3465) ÷ 10 = −0.5325, and the curvature is 0.01867. That curvature is the risk-neutral density at 100, the denominator of the formula.","do":[{"box":"dk","x":350,"y":170,"w":240,"h":52,"text":"∂C/∂K ≈ −0.5325","tone":"blue","size":19},{"box":"dkk","x":350,"y":234,"w":240,"h":52,"text":"∂²C/∂K² ≈ 0.01867","tone":"blue","size":19},{"pulse":"l"},{"pulse":"r"}]},{"cap":"Across time: the calendar slope is (11.0820 − 9.7982) ÷ 0.2 = 6.4190. A call for a little longer costs a little more.","do":[{"box":"dt","x":350,"y":298,"w":240,"h":52,"text":"∂C/∂T ≈ 6.4190","tone":"green","size":19},{"pulse":"u"},{"pulse":"d"}]},{"cap":"Assemble: numerator 6.4190 − 0.05 × 100 × 0.5325 = 3.7564; denominator ½ × 100² × 0.01867 = 93.33. Local variance 0.04025, so local vol ≈ 20.06%. The true flat vol was 20%: the formula hands it back.","do":[{"box":"res","x":350,"y":362,"w":240,"h":66,"text":"σ_local ≈ 20.06%","tone":"green","sub":"true: 20%","size":21}]},{"cap":"Real quotes are noisy. Nudge just the middle price by 5 cents, from 10.4506 to 10.50. The curvature drops to 0.01472 and local vol jumps to 22.59%. A second derivative amplifies noise.","do":[{"sub":"c","text":"10.50 (+5¢)"},{"pulse":"c"},{"box":"nz","x":10,"y":448,"w":580,"h":58,"text":"5¢ on one quote: σ_local 20.06% → 22.59%","tone":"red","size":20}]},{"cap":"So production desks never differentiate raw quotes. They fit a smooth, arbitrage-free surface first, a spline or a SABR smile, and differentiate that.","do":[{"sub":"c","text":"10.4506"},{"box":"sm","x":10,"y":522,"w":285,"h":70,"text":"smooth the surface\nfirst, then differentiate","tone":"amber","size":18}]},{"cap":"Local vol reprices every vanilla today by construction, like tracing paper. But its forward smile is typically too flat. That is why desks use it to price exotics consistently, and blend it with stochastic vol in SLV hybrids.","do":[{"box":"fw","x":305,"y":522,"w":285,"h":70,"text":"exact today,\ntoo flat tomorrow","tone":"red","size":18},{"note":"end","x":300,"y":636,"text":"a calibration device, not a model of how smiles move","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:institutional_dupire_local_vol:END -->
+    </section>
+    <!-- WB:institutional_dupire_local_vol-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Compute σ_local from your own five prices</h2>
       <p class="sl-sub">Starts on the worked example's numbers. Change any field, live.</p>
@@ -175,7 +188,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">A tracing, not a painting</h2>
       <div class="sl-icard-grid">
@@ -185,7 +198,7 @@
       <div class="sl-quote">Asking "does local vol fit today's smile?" is a category error — of course it does, that's the mechanism. The genuinely testable question is whether its implied dynamics for tomorrow's smile look like reality.</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Right today, unrealistic tomorrow</h2>
       <p class="sl-sub">The standard critique — and the industry's practical answer.</p>
@@ -196,7 +209,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Smooth the surface first</h2>
       <p class="sl-sub">Why the worked example's clean numbers aren't how real market data looks.</p>
@@ -221,7 +234,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Pitfalls<!-- DESK:START --> and what's in this repo<!-- DESK:END --></h2>
       <div class="sl-icard-grid">
@@ -234,7 +247,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -294,7 +307,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -402,5 +415,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bates Model — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <style>
   .bm-dot{fill:var(--text2)}
@@ -187,7 +188,19 @@
       </div>
     </section>
 
+    <!-- WB:institutional_bates_model-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Bates: stochastic vol plus jumps, maturity by maturity</h2>
+      <!-- WB:institutional_bates_model:START -->
+      <div class="wb" data-title="Bates: stochastic vol plus jumps, maturity by maturity">
+        <script type="application/json">{"w":600,"h":720,"intro":"Two models the lab already covers, stapled together, then the lesson's fixed jump settings run across four maturities. Press play, or step through.","steps":[{"cap":"Heston: the price diffuses smoothly, and its variance is a random process of its own. It mean-reverts and clusters, like weather with its own weather.","do":[{"icon":"wx","name":"thermo","x":66,"y":6,"s":0.8,"tone":"blue","label":"Heston:\nvariance has weather","lsize":17}]},{"cap":"Merton: every so often the price jumps, with no warning. Jumps arrive like a Poisson clock, with random sizes. No memory, though: vol does not stay high afterwards.","do":[{"icon":"jp","name":"bolt","x":460,"y":6,"s":0.8,"tone":"amber","label":"Merton:\nsudden jumps","lsize":17}]},{"cap":"Bates (1996) adds Merton's jump term to Heston's price equation and changes nothing else. Eight parameters: Heston's five plus the jump trio.","do":[{"icon":"bt","name":"scales","x":250,"y":6,"s":0.8,"tone":"purple","label":"Bates","lsize":18},{"arrow":["wx","bt"],"tone":"blue"},{"arrow":["jp","bt"],"tone":"amber"},{"note":"eq","x":300,"y":176,"text":"dS/S = μ dt + √v dW  +  dJ","size":21,"anchor":"middle","tone":"purple"}]},{"cap":"The one new assumption: the jump clock ignores the diffusion. Independent pieces have pricing recipes that multiply, so Bates keeps a closed form and prices with the same FFT as Heston.","do":[{"note":"cf","x":300,"y":214,"text":"φ_Bates = φ_Heston × φ_jump","size":20,"anchor":"middle","tone":"green"}]},{"cap":"Fix the lesson's settings: 9% diffusive vol, 3 jumps a year, average jump −1%, jump spread 4%. Now look at four maturities. Jumps supply 38.6% of the variance at every one of them.","do":[{"chart":"sh","x":10,"y":244,"w":186,"h":250,"title":"Jump share","xd":[0.4,4.6],"yd":[0,50],"yt":[[0,"0"],[20,"20"],[40,"40"]],"xt":[[1,"1w"],[2,"1m"],[3,"3m"],[4,"1y"]],"pl":36,"pr":8},{"bars":"shb","chart":"sh","data":[[1,38.6,"38.6","blue"],[2,38.6,"","blue"],[3,38.6,"","blue"],[4,38.6,"38.6","blue"]],"bw":24,"ms":1000}]},{"cap":"Skewness tells a different story: −0.70 at one week, −0.10 at one year. It fades like one over the square root of maturity.","do":[{"chart":"sk","x":207,"y":244,"w":186,"h":250,"title":"Skewness","xd":[0.4,4.6],"yd":[-0.8,0],"yt":[[-0.6,"−.6"],[-0.3,"−.3"],[0,"0"]],"xt":[[1,"1w"],[2,"1m"],[3,"3m"],[4,"1y"]],"pl":40,"pr":8},{"bars":"skb","chart":"sk","data":[[1,-0.699,"−.70","amber"],[2,-0.336,"","amber"],[3,-0.194,"","amber"],[4,-0.097,"−.10","amber"]],"bw":24,"ms":1000}]},{"cap":"Excess kurtosis collapses fastest: 7.74 at one week, 0.15 at one year. That is 52 times smaller, one for each week in the year: it fades like one over maturity.","do":[{"chart":"ku","x":404,"y":244,"w":186,"h":250,"title":"Excess kurtosis","xd":[0.4,4.6],"yd":[0,9],"yt":[[0,"0"],[4,"4"],[8,"8"]],"xt":[[1,"1w"],[2,"1m"],[3,"3m"],[4,"1y"]],"pl":34,"pr":8},{"bars":"kub","chart":"ku","data":[[1,7.744,"7.74","red"],[2,1.787,"","red"],[3,0.596,"","red"],[4,0.149,"0.15","red"]],"bw":24,"ms":1000}]},{"cap":"Smiles are shaped by skew and fat tails, not raw variance. So the same jumps steepen a one-week smile a lot and barely touch a one-year one. Stochastic vol needs time, so it shapes the long end.","do":[{"box":"own","x":10,"y":514,"w":580,"h":56,"text":"jumps own the short end · stochastic vol owns the long end","tone":"green","size":19},{"pulse":"kub"}]},{"cap":"The cost: eight parameters. A bit less starting variance and a bit more jump frequency can fit today's surface almost equally well. A good fit does not prove the split is right.","do":[{"box":"id","x":10,"y":584,"w":285,"h":72,"text":"8 parameters:\nmany fits look alike","tone":"amber","size":18}]},{"cap":"And the split matters for hedging. Smooth volatility risk can be delta-hedged as it moves. A jump happens in an instant, and no rebalancing gets you through it.","do":[{"box":"hg","x":305,"y":584,"w":285,"h":72,"text":"jump risk: no continuous\nhedge gets through it","tone":"red","size":18},{"pulse":"jp"}]},{"cap":"So: Heston for persistence, jumps for the sudden short-dated wing, and humility about which is which.","do":[{"note":"end","x":300,"y":690,"text":"easy to fit, hard to identify","size":20,"anchor":"middle","tone":"purple"}]}]}</script>
+      </div>
+      <!-- WB:institutional_bates_model:END -->
+    </section>
+    <!-- WB:institutional_bates_model-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The calibration trade-off, stated honestly</h2>
       <div class="sl-compare">
@@ -206,7 +219,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
@@ -217,7 +230,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where Bates-style thinking goes wrong</h2>
       <div class="sl-icard-grid">
@@ -228,7 +241,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -288,7 +301,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -481,5 +494,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

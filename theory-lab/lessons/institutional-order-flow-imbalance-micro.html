@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Order Flow Imbalance &amp; the Microprice — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -230,7 +231,19 @@
       </div>
     </section>
 
+    <!-- WB:institutional_order_flow_imbalance-deck:START -->
     <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Order flow imbalance: the book tilts, then the price moves</h2>
+      <!-- WB:institutional_order_flow_imbalance:START -->
+      <div class="wb" data-title="Order flow imbalance: the book tilts, then the price moves">
+        <script type="application/json">{"w":600,"h":760,"intro":"Watch the top of the book, not the trades. Size builds on the bid, the ask thins, and the price follows. Press play, or step through.","steps":[{"cap":"A small EUR/USD-style book. Best bid 1.10040 with 400 resting, best ask 1.10050 with 400. Balanced: the midpoint is 1.100450.","do":[{"box":"bid","x":20,"y":14,"w":270,"h":70,"text":"Best bid","tone":"green","sub":"1.10040","size":18},{"box":"ask","x":310,"y":14,"w":270,"h":70,"text":"Best ask","tone":"red","sub":"1.10050","size":18},{"chart":"sz","x":10,"y":98,"w":280,"h":222,"title":"Resting size at the touch","xd":[0.4,2.6],"yd":[0,1050],"yt":[[400,"400"],[900,"900"]],"xt":[[1,"bid"],[2,"ask"]],"pl":48,"pr":14},{"box":"qi","x":310,"y":98,"w":270,"h":66,"text":"Queue imbalance QI","tone":"blue","sub":"0.000","size":17},{"box":"mp","x":310,"y":176,"w":270,"h":66,"text":"Microprice","tone":"amber","sub":"1.100450","size":17},{"box":"of","x":310,"y":254,"w":270,"h":66,"text":"OFI this update","tone":"purple","sub":"none yet","size":17},{"chart":"path","x":10,"y":334,"w":580,"h":236,"title":"Midpoint (dashed) and microprice (amber)","xd":[0.6,4.4],"yd":[11003.8,11006.2],"yt":[[11004,"1.10040"],[11005,"1.10050"],[11006,"1.10060"]],"xt":[[1,"n = 1"],[2,"n = 2"],[3,"n = 3"],[4,"n = 4"]],"pl":78,"pr":18},{"bars":"sz0","chart":"sz","data":[[1,400,"400","green"],[2,400,"400","red"]],"bw":70,"ms":700},{"dot":"mid0","chart":"path","at":[1,11004.5],"text":"","tone":null,"r":4.5},{"dot":"mp0","chart":"path","at":[1,11004.5],"text":"","tone":"amber","r":5.5}]},{"cap":"The microprice weights each price by the opposite side's size. Equivalently it is the midpoint plus half the spread times the queue imbalance. Balanced book: QI = 0, so microprice = midpoint.","do":[{"note":"fml","x":300,"y":592,"text":"micro = (bid × ask size + ask × bid size) ÷ total size\n= midpoint + half-spread × QI","size":17,"anchor":"middle","tone":"amber"}]},{"cap":"Update 2: the bid grows from 400 to 600 at the same price; the ask is unchanged. OFI = 200 − 0 = +200. QI rises to 0.2 and the microprice edges up to 1.100460. The midpoint has not moved.","do":[{"hide":"sz0"},{"bars":"sz1","chart":"sz","data":[[1,600,"600","green"],[2,400,"400","red"]],"bw":70,"ms":700},{"sub":"qi","text":"+0.200"},{"sub":"mp","text":"1.100460"},{"dot":"mid1","chart":"path","at":[2,11004.5],"text":"","tone":null,"r":4.5},{"dot":"mp1","chart":"path","at":[2,11004.6],"text":"","tone":"amber","r":5.5},{"series":"ms1","chart":"path","pts":[[1,11004.5],[2,11004.5]],"tone":null,"dash":true,"ms":500},{"series":"ps1","chart":"path","pts":[[1,11004.5],[2,11004.6]],"tone":"amber","ms":700},{"sub":"of","text":"+200"}]},{"cap":"Update 3: the bid grows to 900 and the ask thins from 400 to 300. A thinning ask counts as buying pressure: OFI = 300 − (−100) = +400. QI = 0.5, and the microprice is a quarter pip above the still-unmoved midpoint.","do":[{"hide":"sz1"},{"bars":"sz2","chart":"sz","data":[[1,900,"900","green"],[2,300,"300","red"]],"bw":70,"ms":700},{"sub":"qi","text":"+0.500"},{"sub":"mp","text":"1.100475"},{"dot":"mid2","chart":"path","at":[3,11004.5],"text":"","tone":null,"r":4.5},{"dot":"mp2","chart":"path","at":[3,11004.750000000002],"text":"","tone":"amber","r":5.5},{"series":"ms2","chart":"path","pts":[[2,11004.5],[3,11004.5]],"tone":null,"dash":true,"ms":500},{"series":"ps2","chart":"path","pts":[[2,11004.6],[3,11004.750000000002]],"tone":"amber","ms":700},{"sub":"of","text":"+400"}]},{"cap":"Update 4: the price ticks up. New best bid 1.10050 with 500, new best ask 1.10060 with 350. OFI = 500 − (−300) = +800. The book moved the way it had been leaning.","do":[{"sub":"bid","text":"1.10050"},{"sub":"ask","text":"1.10060"},{"hide":"sz2"},{"bars":"sz3","chart":"sz","data":[[1,500,"500","green"],[2,350,"350","red"]],"bw":70,"ms":700},{"sub":"qi","text":"+0.176"},{"sub":"mp","text":"1.100559"},{"dot":"mid3","chart":"path","at":[4,11005.500000000002],"text":"","tone":null,"r":4.5},{"dot":"mp3","chart":"path","at":[4,11005.588235294117],"text":"","tone":"amber","r":5.5},{"series":"ms3","chart":"path","pts":[[3,11004.5],[4,11005.500000000002]],"tone":null,"dash":true,"ms":500},{"series":"ps3","chart":"path","pts":[[3,11004.750000000002],[4,11005.588235294117]],"tone":"amber","ms":700},{"sub":"of","text":"+800"}]},{"cap":"Over the window, OFI = 200 + 400 + 800 = +1,400, built only from book updates. Not a single trade print was needed to see the pressure building.","do":[{"note":"sum","x":300,"y":642,"text":"OFI over the window = +200 + 400 + 800 = +1,400","size":19,"anchor":"middle","tone":"purple"}]},{"cap":"On a desk: a market maker re-centres its quotes on the microprice, so it leans its bid and ask up before the midpoint moves, avoiding being picked off on the thin ask.","do":[{"note":"use","x":300,"y":674,"text":"quote around the microprice, not the stale mid","size":18,"anchor":"middle","tone":"green"}]},{"cap":"Two cautions. Displayed size can be cancelled an instant later, so a spoofed wall can fake the reading. And both signals speak only to the next few ticks, and only about the top level of the book.","do":[{"note":"cav","x":300,"y":706,"text":"displayed ≠ committed size · next few ticks only","size":18,"anchor":"middle","tone":"red"}]}]}</script>
+      </div>
+      <!-- WB:institutional_order_flow_imbalance:END -->
+    </section>
+    <!-- WB:institutional_order_flow_imbalance-deck:END -->
+
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Skewing quotes before a trade ever tells anyone anything</h2>
       <div class="sl-callout purple">
@@ -240,7 +253,7 @@
       <p class="sl-p">This is the single most common practical pairing of the two signals: OFI as the early-warning pressure gauge, the microprice as the actual reference price a desk re-centers its quoting around, tick by tick.</p>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where both signals quietly mislead</h2>
       <div class="sl-compare">
@@ -265,7 +278,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Closing the arc: five lessons, one desk's actual workflow</h2>
       <div class="sl-icard-grid">
@@ -281,7 +294,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -332,7 +345,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -460,5 +473,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HAR-RV &amp; Realized Volatility — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -101,7 +102,19 @@
       <div class="sl-quote">Every term on the right-hand side is a number you already have the moment day t closes — no latent recursive state the way GARCH's σ²ₜ₋₁ is. Fitting β₀, β_d, β_w, β_m is literally an ordinary least-squares regression on three engineered features. Nothing about the estimation is volatility-specific; all the cleverness is in which three features to regress on.</div>
     </section>
 
+    <!-- WB:institutional_har_rv-deck:START -->
     <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">HAR-RV: three clocks, one forecast</h2>
+      <!-- WB:institutional_har_rv:START -->
+      <div class="wb" data-title="HAR-RV: three clocks, one forecast">
+        <script type="application/json">{"w":600,"h":700,"intro":"The lesson's 22 days of realized variance, a shock in the middle, and three people reading it on three clocks. Press play, or step through.","steps":[{"cap":"One squared daily return is a noisy reading of a whole day. Realized variance adds up the squared returns of every five-minute bar instead: many small readings, one well-measured number per day.","do":[{"box":"rv","x":120,"y":14,"w":360,"h":70,"text":"RV = sum of squared 5-minute returns","tone":"blue","size":19}]},{"cap":"Here are 22 days of it, from the lesson. Calm at first, around 0.4.","do":[{"hide":"rv"},{"chart":"c","x":10,"y":130,"w":580,"h":290,"title":"Realized variance, %² per day","xd":[0.3,23.7],"yd":[0,1.6],"yt":[[0,"0"],[0.5,"0.5"],[1.0,"1.0"],[1.5,"1.5"]],"xt":[[1,"1"],[11,"11"],[22,"22"],[23,"23"]],"pl":44,"pr":8},{"bars":"b1","chart":"c","data":[[1,0.36,"","blue"],[2,0.4225,"","blue"],[3,0.3969,"","blue"],[4,0.3844,"","blue"],[5,0.4356,"","blue"],[6,0.3969,"","blue"],[7,0.4624,"","blue"],[8,0.5041,"","blue"],[9,0.4761,"","blue"]],"bw":16,"ms":900}]},{"cap":"Then a shock: days 10 to 14, peaking at 1.44 on day 11. After it, variance slowly drifts back down. By day 22, today, it reads 0.3969, close to where it started.","do":[{"bars":"b2","chart":"c","data":[[10,0.9025,"","red"],[11,1.44,"","red"],[12,1.21,"","red"],[13,1.0,"","red"],[14,0.81,"","red"],[15,0.64,"","blue"],[16,0.5625,"","blue"],[17,0.5184,"","blue"],[18,0.4761,"","blue"],[19,0.4624,"","blue"],[20,0.4356,"","blue"],[21,0.4225,"","blue"],[22,0.3969,"","blue"]],"bw":16,"ms":1300},{"dot":"pk","chart":"c","at":[11,1.44],"text":"1.44","tone":"red","dy":-14}]},{"cap":"Three people read this chart on three clocks. The day trader only cares about today: 0.3969.","do":[{"icon":"p1","name":"person","x":40,"y":10,"s":0.62,"tone":"blue","label":"today","lsize":17},{"dot":"dd","chart":"c","at":[22,0.3969],"text":"","tone":"blue"}]},{"cap":"The weekly rebalancer cares about the past 5 days: their average is 0.4387. A little higher, because the tail of the shock is still in that window.","do":[{"icon":"p2","name":"person","x":255,"y":10,"s":0.62,"tone":"amber","label":"past week","lsize":17},{"series":"ww","chart":"c","pts":[[17.6,0.4387],[22.4,0.4387]],"tone":"amber","ms":600},{"note":"wl","chart":"c","at":[23.4,0.95],"text":"week avg 0.4387","tone":"amber","size":17,"anchor":"end","dx":0,"dy":0}]},{"cap":"The monthly allocator looks at all 22 days: an average of 0.5962. The highest of the three, because the month still contains the whole shock.","do":[{"icon":"p3","name":"person","x":470,"y":10,"s":0.62,"tone":"purple","label":"past month","lsize":17},{"series":"mm","chart":"c","pts":[[0.6,0.5961727272727273],[22.4,0.5961727272727273]],"tone":"purple","dash":true,"ms":1000},{"note":"ml","chart":"c","at":[1,0.5961727272727273],"text":"0.5962","tone":"purple","size":16,"anchor":"start","dx":0,"dy":-10}]},{"cap":"HAR-RV blends the three with weights from a plain regression. With the lesson's illustrative weights: 0.03 + 0.35 × 0.3969 + 0.41 × 0.4387 + 0.20 × 0.5962 = 0.4680.","do":[{"box":"eq","x":10,"y":440,"w":580,"h":60,"text":"0.03 + 0.35 × today + 0.41 × week + 0.20 × month","tone":"green","size":18},{"pulse":"p1"},{"pulse":"p2"},{"pulse":"p3"}]},{"cap":"That is the forecast for day 23: 0.4680, above today's 0.3969. The model has not forgotten the shock, even though today looks calm.","do":[{"dot":"fc","chart":"c","at":[23,0.468],"text":"","tone":"green"},{"note":"fcl","chart":"c","at":[23.4,0.78],"text":"forecast 0.4680","tone":"green","size":18,"anchor":"end","dx":0,"dy":0}]},{"cap":"In annual terms: copying today gives 10.00%; HAR-RV gives 10.86%.","do":[{"chart":"cmp","x":10,"y":520,"w":300,"h":160,"title":"Forecast, % a year","xd":[0.4,2.6],"yd":[0,12],"yt":[[0,"0"],[10,"10"]],"xt":[[1,"copy today"],[2,"HAR-RV"]],"pl":30,"pr":6},{"bars":"cb","chart":"cmp","data":[[1,10.0,"10.00","blue"],[2,10.86,"10.86","green"]],"bw":60,"ms":900}]},{"cap":"Why three averages work: traders on different clocks each add their own memory, so real volatility forgets shocks slowly. Three plain averages mimic that long memory almost as well as heavier models.","do":[{"box":"why","x":330,"y":520,"w":260,"h":76,"text":"three clocks →\nlong memory","tone":"purple","size":19}]},{"cap":"The catches: it needs real intraday data to be the model the research tested, and because it averages, it lags when a fresh spike begins.","do":[{"box":"catch","x":330,"y":606,"w":260,"h":76,"text":"needs intraday RV;\nslow at a new spike","tone":"red","size":18}]}]}</script>
+      </div>
+      <!-- WB:institutional_har_rv:END -->
+    </section>
+    <!-- WB:institutional_har_rv-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">A 22-day worked example, drawn</h2>
       <p class="sl-sub">Days 10–14 carry a volatility cluster. By day 22 the daily figure has decayed back near baseline — but the weekly and especially monthly averages haven't fully forgotten it.</p>
@@ -131,7 +144,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Drag the memory — watch the forecast respond</h2>
       <p class="sl-sub">The weekly and monthly averages don't move on their own — they're built from history. Drag each to see how directly they drive the forecast.</p>
@@ -165,7 +178,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Compute the forecast yourself</h2>
       <p class="sl-sub">RVₜ₊₁ = 0.03 + 0.35·RVₜ + 0.41·RVₜ⁽ʷ⁾ + 0.20·RVₜ⁽ᵐ⁾. Change any input, live.</p>
@@ -190,7 +203,7 @@
       </div>
     </section>
 
-    <!-- DESK:START --><section class="sl-slide" data-slide="10">
+    <!-- DESK:START --><section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Is this actually built here?</h2>
       <div class="sl-callout amber">
@@ -200,7 +213,7 @@
       <p class="sl-p">What it is <em>not</em>, per this project's own <code>PLATFORM_MODEL</code> mapping: the estimator actually setting live trading bands today is Yang-Zhang for FX, GARCH(1,1) for indices, and rolling HV for commodities. HAR-RV sits beside all three as an actively-benchmarked challenger — purely additive, never touching the primary numbers — not as a replacement for any of them. The horse race is a genuinely live computation over current data, not a fixed verdict baked into the code.</p>
     </section><!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where HAR-RV quietly stops being HAR-RV</h2>
       <div class="sl-compare">
@@ -230,7 +243,7 @@
       <div class="sl-quote">"HAR-RV beats GARCH" is an empirical finding conditional on well-measured, high-frequency data — not a universal law.<!-- DESK:START --> This project's own horse race exists precisely to re-check that ranking per instrument, not to assume it from the math.<!-- DESK:END --></div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -282,7 +295,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -409,5 +422,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

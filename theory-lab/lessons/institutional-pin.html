@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Probability of Informed Trading (PIN) — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,65 @@
       <li><strong>How it reached trading:</strong> Easley, Kiefer, O'Hara &amp; Paperman (1996) turned adverse selection into a number estimated from buy/sell counts; it became an information-risk measure in research and the parent of the real-time VPIN toxicity monitor.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: expected daily buys and sells on three kinds of day. No event, 75 percent of days: 100 buys and 100 sells. Bad news, 13.75 percent of days: 100 buys and 250 sells. Good news, 11.25 percent of days: 250 buys and 100 sells. Right: expected trades per day split into 37.5 informed and 200 uninformed, so PIN is 37.5 over 237.5, about 0.158. The direction of the news never enters.">
+      <text class="tlp-text3" x="20" y="22" font-size="12">expected trades on each kind of day</text>
+      <rect class="tlp-green" x="40" y="138" width="28" height="52" rx="2"/>
+      <rect class="tlp-red" x="72" y="138" width="28" height="52" rx="2"/>
+      <rect class="tlp-green" x="140" y="138" width="28" height="52" rx="2"/>
+      <rect class="tlp-red" x="172" y="60" width="28" height="130" rx="2"/>
+      <rect class="tlp-green" x="240" y="60" width="28" height="130" rx="2"/>
+      <rect class="tlp-red" x="272" y="138" width="28" height="52" rx="2"/>
+      <line class="tlp-line" x1="30" y1="190" x2="310" y2="190"/>
+      <text class="tlp-text2" x="70" y="130" text-anchor="middle" font-size="12">100 · 100</text>
+      <text class="tlp-red" x="186" y="52" text-anchor="middle" font-size="12" font-weight="700">250</text>
+      <text class="tlp-green" x="254" y="52" text-anchor="middle" font-size="12" font-weight="700">250</text>
+      <text class="tlp-text" x="70" y="208" text-anchor="middle" font-size="13" font-weight="700">no event</text>
+      <text class="tlp-red" x="170" y="208" text-anchor="middle" font-size="13" font-weight="700">bad news</text>
+      <text class="tlp-green" x="270" y="208" text-anchor="middle" font-size="13" font-weight="700">good news</text>
+      <text class="tlp-text3" x="70" y="226" text-anchor="middle" font-size="12">75% of days</text>
+      <text class="tlp-text3" x="170" y="226" text-anchor="middle" font-size="12">13.75%</text>
+      <text class="tlp-text3" x="270" y="226" text-anchor="middle" font-size="12">11.25%</text>
+      <text class="tlp-green" x="70" y="86" text-anchor="middle" font-size="12">green: buys</text>
+      <text class="tlp-red" x="70" y="102" text-anchor="middle" font-size="12">red: sells</text>
+      <line class="tlp-line dash" x1="330" y1="30" x2="330" y2="230"/>
+      <text class="tlp-text3" x="350" y="22" font-size="12">expected trades per day</text>
+      <rect class="tlp-purple" x="350" y="74" width="34.7" height="40" rx="2"/>
+      <rect class="tlp-box blue" x="384.7" y="74" width="205.3" height="40" rx="2"/>
+      <text class="tlp-purple" x="350" y="62" font-size="13" font-weight="700">αμ = 0.25 × 150 = 37.5 informed</text>
+      <text class="tlp-blue" x="590" y="134" text-anchor="end" font-size="13" font-weight="700">2ε = 200 uninformed</text>
+      <text class="tlp-green" x="470" y="178" text-anchor="middle" font-size="16" font-weight="700">PIN = 37.5 / 237.5 ≈ 0.158</text>
+      <text class="tlp-amber" x="470" y="206" text-anchor="middle" font-size="13" font-weight="700">δ, the news direction, never enters</text>
+    </svg>
+    <figcaption>Uninformed traders fill both sides every day. On the one day in four with news, informed traders pile onto one side. PIN is their expected share of all trading: 37.5 informed trades in 237.5, about 0.158, whichever way the news points.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Glosten-Milgrom says informed traders widen the spread. But I can't see who's informed. Can anyone actually measure it?</p>
+      <p data-who="Quant">That's what PIN does, the probability of informed trading. Easley, Kiefer, O'Hara and Paperman built it in 1996 from nothing more than how many buys and sells a stock gets each day.</p>
+      <p data-who="Trader">Just daily counts?</p>
+      <p data-who="Quant">Just counts. The model tells a story about each day. Uninformed traders turn up every day on both sides, say a hundred buys and a hundred sells. On some days private news arrives, say one day in four. On those days informed traders join in, a hundred and fifty of them, and they all trade the same way.</p>
+      <p data-who="Trader">So a bad-news day looks like a hundred buys and two hundred and fifty sells.</p>
+      <p data-who="Quant">Exactly, and a good-news day is the mirror image. Most days look balanced. A few look sharply lopsided. That fingerprint is what the fit uses.</p>
+      <p data-who="Trader">How does it get the numbers out?</p>
+      <p data-who="Quant">Maximum likelihood over many days of counts. How often days are lopsided tells you how often news arrives. How lopsided tells you how many informed traders come. The balanced days give the background rate.</p>
+      <p data-who="Trader">And then PIN is?</p>
+      <p data-who="Quant">The informed share of expected trading. News one day in four, times a hundred and fifty informed trades, is thirty-seven and a half a day on average. Uninformed trading is two hundred a day. Thirty-seven and a half out of two hundred and thirty-seven and a half is about nought point one six.</p>
+      <p data-who="Trader">Does it matter whether the news tends to be good or bad?</p>
+      <p data-who="Quant">Not for PIN. The direction drops out completely. PIN asks how much of the flow is informed, not which way it pushes.</p>
+      <p data-who="Trader">Can I run it live, intraday?</p>
+      <p data-who="Quant">No. It needs a long history of days and a slow numerical fit. That's exactly why the same group built VPIN in 2012, a rougher version that updates as volume trades.</p>
+      <p data-who="Trader">Is PIN settled science?</p>
+      <p data-who="Quant">It's widely cited and contested. Duarte and Young argued in 2009 that part of what it picks up is ordinary imbalance from illiquidity, not private information. And it can only be as good as the buy and sell classification feeding it.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Informed traders show up as lopsided days, and PIN is their share of all the trading, whichever way the news points.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -154,6 +214,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From one day's likelihood to PIN, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ L(\theta \mid B_t, S_t) = \color{#fbbf24}{(1-\alpha)\,f(B_t;\varepsilon)\,f(S_t;\varepsilon)} \]</div>
+      <p>No-event days: only uninformed traders, \(\varepsilon\) a side. They happen with probability \(1-\alpha\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ L = (1-\alpha)\,f(B_t;\varepsilon)\,f(S_t;\varepsilon) + \color{#fbbf24}{\alpha\delta\,f(B_t;\varepsilon)\,f(S_t;\mu+\varepsilon)} \]</div>
+      <p>Bad-news days: informed sellers add \(\mu\) to the sell rate.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \begin{aligned} L = \;&(1-\alpha)\,f(B_t;\varepsilon)\,f(S_t;\varepsilon) + \alpha\delta\,f(B_t;\varepsilon)\,f(S_t;\mu+\varepsilon) \\ +\;&\color{#fbbf24}{\alpha(1-\delta)\,f(B_t;\mu+\varepsilon)\,f(S_t;\varepsilon)} \end{aligned} \]</div>
+      <p>Good-news days: informed buyers add \(\mu\) to the buy rate. Maximise the sum of the logs over all days to get \(\hat\alpha, \hat\delta, \hat\mu, \hat\varepsilon\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\alpha\mu} = 0.25 \times 150 = 37.5, \qquad \color{#fbbf24}{2\varepsilon} = 200 \]</div>
+      <p>Expected informed trades a day, averaged over event and quiet days, against expected uninformed trades, \(\varepsilon\) on each side.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\text{PIN} = \frac{\alpha\mu}{\alpha\mu + 2\varepsilon} = \frac{37.5}{237.5} \approx 0.158} \]</div>
+      <p>The informed share of all expected trading. \(\delta\) has dropped out: the direction of the news does not change how much of the flow is informed.</p>
+    </div>
+  </div>
   <p>
     PIN is built on a specific generative story about how a single trading
     day's buy and sell counts come about — the model due to Easley, Kiefer,
@@ -482,6 +566,10 @@
       input field here at all — it genuinely does not enter the PIN formula,
       for exactly the reason explained above.
     </p>
+    <div class="tl-predict" data-answer="0.273" data-tol="0.01" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At \(\alpha = 0.25\) PIN is about 0.158. Double the event probability to 0.50, keeping \(\mu = 150\) and \(\varepsilon = 100\). What will PIN be? Lock in a guess, then type 0.5 into the first field to check.</div>
+      <div class="tl-predict-reveal"><p><strong>About 0.273.</strong> Informed trades double to \(0.5 \times 150 = 75\) a day, but they sit in the denominator too: \(75 / (75 + 200) \approx 0.273\). Doubling \(\alpha\) raises PIN by about 70%, not 100%, because PIN is a share. Now try doubling \(\varepsilon\) instead and see how a busier noise crowd dilutes it.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Event probability α</span></div>
@@ -505,6 +593,12 @@
     </div>
     <button type="button" id="pin-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
+
+  <!-- WB:institutional_pin:START -->
+  <div class="wb" id="wb-institutional_pin" data-title="PIN: the informed fingerprint in daily buys and sells">
+    <script type="application/json">{"w":600,"h":800,"intro":"Nobody can see who is informed. But informed traders leave a fingerprint in the daily counts of buys and sells. Press play, or step through.","steps":[{"cap":"Every day, uninformed traders turn up on both sides: about 100 buys and 100 sells a day (ε = 100 per side), for reasons unrelated to the stock's value.","do":[{"icon":"noise","name":"crowd","x":80,"y":8,"s":0.7,"tone":"blue","label":"uninformed: ε = 100 a side","lsize":16},{"chart":"types","x":10,"y":132,"w":580,"h":236,"title":"Expected trades on each kind of day","xd":[0.3,6.7],"yd":[0,300],"yt":[[100,"100"],[250,"250"]],"xt":[[1.5,"no event"],[3.5,"bad news"],[5.5,"good news"]],"pl":50,"pr":14},{"bars":"t0","chart":"types","data":[[1.15,100,"B 100","green"],[1.85,100,"S 100","red"]],"bw":34,"size":15,"ms":900}]},{"cap":"On some days private news arrives. With probability α = 0.25, about one day in four, there is an information event.","do":[{"icon":"coin","name":"coin","x":300,"y":8,"s":0.66,"tone":"amber","label":"event? α = 0.25","lsize":16}]},{"cap":"Bad news (55% of events, δ = 0.55): informed traders arrive at μ = 150 a day and all sell. Sells jump to about 250 while buys stay near 100.","do":[{"icon":"inf","name":"person","x":480,"y":8,"s":0.66,"tone":"purple","label":"informed: μ = 150","lsize":16},{"bars":"t1","chart":"types","data":[[3.15,100,"B 100","green"],[3.85,250,"S 250","red"]],"bw":34,"size":15,"ms":900}]},{"cap":"Good news is the mirror image: the informed all buy, so buys jump to about 250.","do":[{"bars":"t2","chart":"types","data":[[5.15,250,"B 250","green"],[5.85,100,"S 100","red"]],"bw":34,"size":15,"ms":900}]},{"cap":"A researcher never sees the day type, only the counts. Here are 20 days simulated from this model: buys minus sells each day. Most days are roughly balanced; 5 are sharply lopsided.","do":[{"chart":"days","x":10,"y":382,"w":580,"h":214,"title":"20 simulated days: buys − sells","xd":[0.3,20.7],"yd":[-200,200],"yt":[[150,"+150"],[0,"0"],[-150,"−150"]],"xt":[[1,"1"],[10,"10"],[20,"20"]],"zero":true,"pl":56,"pr":14},{"bars":"dd","chart":"days","data":[[1,-3,"","red"],[2,138,"","green"],[3,8,"","green"],[4,-18,"","red"],[5,-3,"","red"],[6,-10,"","red"],[7,-165,"","red"],[8,-9,"","red"],[9,1,"","green"],[10,8,"","green"],[11,6,"","green"],[12,-3,"","red"],[13,172,"","green"],[14,-14,"","red"],[15,-1,"","red"],[16,-180,"","red"],[17,4,"","green"],[18,-179,"","red"],[19,8,"","green"],[20,3,"","green"]],"bw":18,"ms":1300}]},{"cap":"Maximum likelihood reads that pattern: how often days are lopsided gives α, how lopsided gives μ, and the balanced baseline gives ε. Here we take the fitted values as given: 0.25, 150 and 100.","do":[{"note":"mle","x":300,"y":620,"text":"how often lopsided → α · how lopsided → μ · baseline → ε","size":18,"anchor":"middle","tone":"purple"}]},{"cap":"Expected informed trades a day: α × μ = 0.25 × 150 = 37.5. Expected uninformed: 2ε = 200. PIN is the informed share: 37.5 / 237.5 ≈ 0.158.","do":[{"box":"pin","x":60,"y":644,"w":480,"h":58,"text":"PIN = 37.5 / (37.5 + 200) ≈ 0.158","tone":"green","size":21}]},{"cap":"Notice δ never entered. Good news or bad news, the same share of the flow is informed. PIN measures how much, not which way.","do":[{"note":"delta","x":300,"y":724,"text":"δ (bad vs good) drops out: PIN is direction-free","size":18,"anchor":"middle","tone":"amber"}]},{"cap":"Two cautions. Duarte and Young (2009) argue part of PIN is ordinary illiquidity-driven imbalance, not private information. And the fit is slow, which is why VPIN was built as a real-time approximation.","do":[{"note":"dy","x":300,"y":760,"text":"contested: imbalance ≠ always information","size":18,"anchor":"middle","tone":"red"}]}]}</script>
+  </div>
+  <!-- WB:institutional_pin:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>PIN versus VPIN — the same idea, two very different tools</h2>
@@ -620,6 +714,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative research screen</div>
+    <h3>The stock at the top of the PIN screen</h3>
+    <p>A research screen ranks stocks by PIN fitted on a quarter of daily buy and sell counts. Top of the list is a thinly traded small cap at about 0.31, roughly double a typical name in your universe. Its fitted \(\delta\) is high, so most of its information events look like bad news. A colleague wants to treat it as a stock full of informed sellers and short it. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Short it. High PIN and high δ together mean informed money is selling.<div class="tl-drill-why">PIN is direction-free and says nothing about which way the next move goes. A fitted δ from one quarter is a weak basis for a trade, and the whole reading may not be information at all.</div></li>
+      <li data-verdict="good">Treat it as a flag to investigate: check the trade classification behind the counts, refit from several starting points to rule out a local optimum, and test whether ordinary illiquidity-driven imbalance explains the number.<div class="tl-drill-why">Each of these is a documented weak point: classification errors flow straight into PIN, the likelihood has local optima and boundary solutions, and Duarte and Young argue part of PIN is symmetric imbalance in illiquid names rather than private information.</div></li>
+      <li data-verdict="ok">Switch to VPIN instead, since it is newer and updates in real time.<div class="tl-drill-why">VPIN answers a related question faster, but it is a rougher approximation of the same idea, not a strictly better replacement, and it does not resolve whether the imbalance is information.</div></li>
+      <li data-verdict="bad">Ignore the screen. PIN is contested, so it is useless.<div class="tl-drill-why">Contested is not the same as empty. PIN is a well-defined, widely used measure of information risk; the right response to the dispute is to check what drives a given reading, not to throw the measure away.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson says.</strong> This is an illustrative situation, not a historical episode. The lesson's points decide it: PIN measures how much of the flow is informed, never which way; it is only as good as the classification and the numerical fit behind it; and Duarte and Young (2009) argue a real share of it reflects illiquidity-driven imbalance. A high reading in a thin stock is a question to investigate, not a trade.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -720,6 +827,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-glosten-milgrom.html">Glosten-Milgrom: Sequential Bayesian Market Making</a> <span>· the informed-versus-noise theory PIN measures</span></li><!-- DESK:END -->
+        <!-- DESK:START --><li><a href="institutional-trade-classification.html">Trade Classification: Lee-Ready &amp; Bulk Volume Classification</a> <span>· where the daily buy and sell counts come from</span></li><!-- DESK:END -->
+        <li><a href="primer-probability.html">Probability &amp; Random Variables</a> <span>· the probabilities and mixtures behind the likelihood</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp; VPIN</a> <span>· the real-time approximation PIN inspired</span></li>
+        <!-- DESK:START --><li><a href="institutional-order-flow-imbalance.html">Order Flow Imbalance &amp; the Microprice</a> <span>· informed pressure at the tick level</span></li><!-- DESK:END -->
+        <li><a href="market-microstructure.html">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a> <span>· what informed flow does to price</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> PIN is how researchers rank names by information risk, and knowing what moves it tells you when a high reading means insiders and when it just means a thin market.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-glosten-milgrom.html">← Glosten-Milgrom</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -750,7 +878,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   var DEFAULTS = { alpha: 0.25, mu: 150, eps: 100 };
@@ -813,5 +942,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

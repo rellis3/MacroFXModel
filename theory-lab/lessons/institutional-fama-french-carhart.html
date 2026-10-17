@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fama-French &amp; Carhart — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,63 @@
       <li><strong>How it reached trading:</strong> Fama-French (1992–93) and Carhart (1997) turned size, value and momentum into tradable factors, and regressing returns on them is now the standard test of whether a manager or strategy has alpha.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 252" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two horizontal bars for the lesson's worked example, Stock Q, whose actual excess return was 4.10 percent. Top bar, CAPM alone: a beta of 1.30 times a 2.0 percent market return explains 2.60 percent and leaves 1.50 points unexplained. Bottom bar, the four-factor model: alpha 0.30, market 2.20, size 1.20, value 0.60 and momentum minus 0.05 add up to 4.25 percent. CAPM misses by 1.50 points, the four-factor model by 0.15.">
+      <text class="tlp-green" x="479" y="30" text-anchor="middle" font-size="12" font-weight="700">actual 4.10%</text>
+      <line class="tlp-line green dash" x1="479" y1="38" x2="479" y2="146"/>
+      <text class="tlp-text" x="10" y="66" font-size="13" font-weight="700">CAPM alone</text>
+      <rect class="tlp-blue" x="110" y="46" width="234" height="30" rx="3" opacity=".8"/>
+      <rect class="tlp-box red" x="344" y="46" width="135" height="30" rx="3"/>
+      <text class="tlp-blue" x="506" y="66" font-size="13" font-weight="700">= 2.60%</text>
+      <text class="tlp-blue" x="227" y="94" text-anchor="middle" font-size="12">β 1.30 × market 2.0%</text>
+      <text class="tlp-red" x="411" y="94" text-anchor="middle" font-size="12">1.50 unexplained</text>
+      <text class="tlp-text" x="10" y="132" font-size="13" font-weight="700">Four-factor</text>
+      <rect class="tlp-purple" x="110" y="112" width="27" height="30" rx="3" opacity=".8"/>
+      <rect class="tlp-blue" x="137" y="112" width="198" height="30" opacity=".8"/>
+      <rect class="tlp-green" x="335" y="112" width="108" height="30" opacity=".8"/>
+      <rect class="tlp-amber" x="443" y="112" width="54" height="30" opacity=".8"/>
+      <rect class="tlp-red" x="492.5" y="112" width="4.5" height="30"/>
+      <text class="tlp-purple" x="506" y="132" font-size="13" font-weight="700">= 4.25%</text>
+      <text class="tlp-purple" x="110" y="160" font-size="12">α 0.30</text>
+      <text class="tlp-blue" x="236" y="160" text-anchor="middle" font-size="12">MKT 2.20</text>
+      <text class="tlp-green" x="389" y="160" text-anchor="middle" font-size="12">SMB 1.20</text>
+      <text class="tlp-amber" x="470" y="160" text-anchor="middle" font-size="12">HML 0.60</text>
+      <text class="tlp-red" x="506" y="160" font-size="12">UMD −0.05</text>
+      <text class="tlp-text" x="300" y="196" text-anchor="middle" font-size="13" font-weight="700">Miss vs actual: CAPM 1.50 points · four-factor 0.15 points</text>
+      <text class="tlp-text2" x="300" y="220" text-anchor="middle" font-size="13">The extra factors don't change what happened. They explain more of it, and leave less to call alpha.</text>
+      <text class="tlp-text3" x="300" y="242" text-anchor="middle" font-size="12">Illustrative one-period numbers from the worked example in Section 07.</text>
+    </svg>
+    <figcaption>Same stock, same period, two models. CAPM has only beta, so the stock's small-cap and value tilt shows up as an unexplained gap that looks like alpha. Give size, value and momentum their own terms and most of that gap is explained.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">A manager beats the market by three points a year and calls it stock-picking. How do I check?</p>
+      <p data-who="Quant">With the models in this lesson. CAPM gives you one yardstick, the market. But for decades small companies and cheap, value companies earned more than their beta said they should.</p>
+      <p data-who="Trader">So beta was wrong?</p>
+      <p data-who="Quant">Incomplete. Fama and French, in 1993, didn't fix beta. They measured the size effect and the value effect directly, as portfolios, and added them to the regression.</p>
+      <p data-who="Trader">Measured how?</p>
+      <p data-who="Quant">Sort every stock by size into small and big, and separately by book value against market value into low, neutral and high. That makes six portfolios. Small minus big is the size factor. High minus low is the value factor. Each is a real long-short portfolio with its own return every month.</p>
+      <p data-who="Trader">And Carhart?</p>
+      <p data-who="Quant">In 1997 he added momentum: last year's winners minus last year's losers, skipping the most recent month, because one-month moves tend to reverse. It often moves against value, so it's a genuinely separate factor.</p>
+      <p data-who="Trader">Show me it working.</p>
+      <p data-who="Quant">The lesson's Stock Q, a small value stock, earned four point one percent over cash in one period. CAPM, with a beta of one point three and a two percent market, explains only two point six. A point and a half is missing.</p>
+      <p data-who="Trader">And with four factors?</p>
+      <p data-who="Quant">Market two point two, size one point two, value zero point six, momentum a sliver negative, plus a small alpha. Four point two five. Within fifteen hundredths of what happened.</p>
+      <p data-who="Trader">So the manager's three points might just be size and value.</p>
+      <p data-who="Quant">Very often, yes. And size and value tilts are cheap to buy directly. That doesn't make the return fake. It changes what fee it's worth.</p>
+      <p data-who="Trader">Does any of this apply to FX?</p>
+      <p data-who="Quant">Directly. Long high-yielding currencies, short low-yielding ones, is the carry factor, the currency cousin of value. Currency momentum is built exactly like Carhart's.</p>
+      <p data-who="Trader">So these premia are free money?</p>
+      <p data-who="Quant">No. They're pay for risk. Value lagged through much of the 2010s, and in 2024 Aussie-yen fell about seventeen percent in under four weeks as carry unwound.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Before you call a return alpha, take out market, size, value and momentum, and see what's actually left.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -128,6 +186,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The three-factor model, precisely</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From CAPM to the four-factor model, one factor at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ R_i - R_f = \alpha + \color{#fbbf24}{\beta_{MKT}(R_m - R_f)} + \varepsilon \]</div>
+      <p>Start from CAPM's regression: market exposure only. For the worked example's Stock Q, a beta of 1.30 times a 2.0% market excess return explains 2.60% of an actual 4.10%.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ R_i - R_f = \alpha + \beta_{MKT}(R_m - R_f) + \color{#fbbf24}{\beta_{SMB}\,SMB} + \varepsilon \]</div>
+      <p>Add size: the return of small stocks minus big ones. Stock Q loads 0.80 on it, and with SMB at 1.5% that is 1.20 points of its return.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ R_i - R_f = \alpha + \beta_{MKT}(R_m - R_f) + \beta_{SMB}\,SMB + \color{#fbbf24}{\beta_{HML}\,HML} + \varepsilon \]</div>
+      <p>Add value: high book-to-market minus low. That is the Fama-French three-factor model. Stock Q loads 0.60, worth 0.60 points, and its market loading falls to 1.10 now that size and value have somewhere to go.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{R_i - R_f = \alpha + \beta_{MKT}(R_m - R_f) + \beta_{SMB}\,SMB + \beta_{HML}\,HML} + \color{#fbbf24}{\beta_{UMD}\,UMD} \color{#10b981}{\;+\; \varepsilon} \]</div>
+      <p>Carhart's momentum term completes the four-factor model. Stock Q: \(0.30 + 2.20 + 1.20 + 0.60 - 0.05 = 4.25\%\), within 0.15 points of the actual 4.10%, against CAPM's miss of 1.50.</p>
+    </div>
+  </div>
   <p>
     The Fama-French three-factor regression extends CAPM's single-factor
     regression by adding exactly two more terms on the right-hand side:
@@ -319,6 +397,12 @@
       more cheaply than paying an active manager's fee for it.
     </p>
   </div>
+
+  <!-- WB:institutional_fama_french_carhart:START -->
+  <div class="wb" id="wb-institutional_fama_french_carhart" data-title="From CAPM's gap to four factors, drawn step by step">
+    <script type="application/json">{"w":600,"h":790,"intro":"One small-cap value stock, Stock Q, over one illustrative period, and the factors that explain its return. Press play, or step through.","steps":[{"cap":"Stock Q, a small-cap value stock, returned 4.10% over the risk-free rate this period (illustrative). CAPM, with a beta of 1.30 and a 2.0% market excess return, explains only 2.60%.","do":[{"chart":"ch","x":10,"y":232,"w":580,"h":262,"title":"Excess return, one period (%)","xd":[0.4,9.3],"yd":[-0.6,5],"yt":[[0,"0"],[2,"2"],[4,"4"]],"xt":[[1,"actual"],[2,"CAPM"],[3.3,"α"],[4.3,"MKT"],[5.3,"SMB"],[6.3,"HML"],[7.3,"UMD"],[8.6,"4-factor"]],"zero":true,"pl":34},{"bars":"b0","chart":"ch","data":[[1,4.1,"4.10","green"],[2,2.6,"2.60","blue"]],"bw":40,"ms":1000},{"series":"gap","chart":"ch","pts":[[2.32,2.6],[2.32,4.1]],"tone":"red","dash":true,"ms":500},{"note":"gapl","chart":"ch","at":[2.32,3.35],"text":"1.50 missing","tone":"red","size":16,"anchor":"start","dx":8,"dy":0}]},{"cap":"Fama and French did not fix beta. They measured the missing patterns directly. Sort every stock twice, independently: by size into Small and Big (a median split), and by book-to-market into Low, Neutral and High (30/40/30).","do":[{"note":"hl","x":105,"y":24,"text":"Low B/M","size":17,"anchor":"middle","tone":"blue"},{"note":"hn","x":240,"y":24,"text":"Neutral","size":17,"anchor":"middle"},{"note":"hh","x":375,"y":24,"text":"High B/M","size":17,"anchor":"middle","tone":"amber"},{"box":"SL","x":50,"y":40,"w":110,"h":66,"text":"Small\nLow","tone":"blue","size":17},{"box":"SN","x":185,"y":40,"w":110,"h":66,"text":"Small\nNeutral","size":17},{"box":"SH","x":320,"y":40,"w":110,"h":66,"text":"Small\nHigh","tone":"amber","size":17},{"box":"BL","x":50,"y":120,"w":110,"h":66,"text":"Big\nLow","tone":"blue","size":17},{"box":"BN","x":185,"y":120,"w":110,"h":66,"text":"Big\nNeutral","size":17},{"box":"BH","x":320,"y":120,"w":110,"h":66,"text":"Big\nHigh","tone":"amber","size":17}]},{"cap":"SMB, Small Minus Big: the average of the three small portfolios minus the average of the three big ones. Averaging across book-to-market leaves a clean size spread.","do":[{"box":"smb","x":480,"y":60,"w":110,"h":106,"text":"SMB\n3 small\n− 3 big","tone":"green","size":17},{"arrow":["SH","smb"],"tone":"green"}]},{"cap":"HML, High Minus Low: the two high book-to-market portfolios minus the two low ones. The Neutral column is left out. Each factor is a real, zero-cost long-short portfolio with its own return every month.","do":[{"note":"hml","x":240,"y":205,"text":"HML = (2 High) − (2 Low), Neutral left out","size":17,"anchor":"middle","tone":"amber"},{"pulse":"SH"},{"pulse":"BH"},{"pulse":"SL"},{"pulse":"BL"}]},{"cap":"Carhart (1997) added momentum, UMD: past winners minus past losers, ranked on months t−12 to t−2. The latest month is skipped on purpose, because one-month returns tend to reverse.","do":[{"line":"mline","points":[[40,540],[500,540]],"tone":"green","width":6,"ms":900},{"line":"skip","points":[[510,540],[560,540]],"tone":"amber","width":6,"ms":400},{"note":"m1","x":40,"y":518,"text":"t−12","size":16,"anchor":"start"},{"note":"m2","x":500,"y":518,"text":"t−2","size":16,"anchor":"end"},{"note":"m3","x":535,"y":518,"text":"skip t−1","size":16,"anchor":"middle","tone":"amber"},{"note":"ml","x":270,"y":566,"text":"rank on these 11 months: long winners, short losers","size":16,"anchor":"middle","tone":"green"}]},{"cap":"Now regress Stock Q on all four. The market loading drops to 1.10, because size and value finally have somewhere to go. Pieces: alpha 0.30, market 2.20, size 1.20, value 0.60, momentum −0.05.","do":[{"bars":"b1","chart":"ch","data":[[3.3,0.3,"0.30","purple"],[4.3,2.2,"2.20","blue"],[5.3,1.2,"1.20","green"],[6.3,0.6,"0.60","amber"],[7.3,-0.05,"−0.05","red"]],"bw":34,"ms":1200}]},{"cap":"Add them up: 4.25%, against an actual 4.10%. The error falls from 1.50 points under CAPM to 0.15. The return did not change; the model now explains most of it, and much less is left to call alpha.","do":[{"bars":"b2","chart":"ch","data":[[8.6,4.25,"4.25","purple"]],"bw":40,"ms":900},{"series":"act","chart":"ch","pts":[[0.6,4.1],[9.2,4.1]],"tone":"green","dash":true,"ms":600}]},{"cap":"The same move works in currencies. The broad dollar factor plays the market's role. The carry factor, long high-yielders and short low-yielders, mirrors HML. FX momentum is built exactly like UMD (Menkhoff and co-authors, 2012).","do":[{"box":"fx1","x":10,"y":600,"w":180,"h":84,"text":"MKT →\ndollar factor","tone":"blue","size":18},{"box":"fx2","x":210,"y":600,"w":180,"h":84,"text":"HML →\nFX carry","tone":"amber","size":18},{"box":"fx3","x":410,"y":600,"w":180,"h":84,"text":"UMD →\nFX momentum","tone":"green","size":18}]},{"cap":"A factor premium is pay for a risk, not a free lunch. Value lagged through much of the 2010s. Carry is short a crash: AUD/JPY fell about 17% from 11 July to 5 August 2024.","do":[{"box":"risk","x":10,"y":702,"w":580,"h":74,"text":"factor premium = pay for risk\ncarry: AUD/JPY about −17%, 11 Jul → 5 Aug 2024","tone":"red","size":18}]}]}</script>
+  </div>
+  <!-- WB:institutional_fama_french_carhart:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Carhart's fourth factor — momentum earns its own line</h2>
@@ -599,6 +683,10 @@
       instantly from \(\hat{R} = \alpha + \beta_{MKT}\,MKT + \beta_{SMB}\,SMB
       + \beta_{HML}\,HML + \beta_{UMD}\,UMD\).
     </p>
+    <div class="tl-predict" data-answer="3.65" data-tol="0.05" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The worked example predicts 4.25%. Suppose Stock Q had no value tilt at all: set \(\beta_{HML}\) to 0 and leave everything else alone. What is the predicted excess return now? Lock in a guess, then type 0 into the \(\beta_{HML}\) field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>3.65%.</strong> The value term was \(0.60 \times 1.0\% = 0.60\) points, so removing it gives \(4.25 - 0.60 = 3.65\%\). Every term is just loading times factor return, so each factor's contribution can be switched on and off on its own. Now try putting \(\beta_{HML}\) back to 0.60 and HML itself at −2.0, a bad month for value: the prediction drops to 2.45%.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>α (%)</span></div>
@@ -743,6 +831,19 @@
     <tr><td>\(\varepsilon\)</td><td>Residual — whatever the model's factors, plus alpha, still don't account for.</td></tr>
   </table></div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative FX fund pitch</div>
+    <h3>"Currency alpha" that might just be carry</h3>
+    <p>An FX manager shows several years of steady returns that a regression on the broad dollar alone cannot explain, and calls the residual alpha. The book is usually long high-yielding currencies and short low-yielding funding currencies, with some trend-following on top. The fee is set like a stock-picker's. What do you do before allocating?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Allocate. The returns are steady, and the dollar factor does not explain them.<div class="tl-drill-why">That is the CAPM mistake in currency form. With only one factor in the regression, any systematic carry or momentum tilt has nowhere to go except alpha.</div></li>
+      <li data-verdict="good">Regress the returns on the dollar, carry and FX momentum factors, and see how much alpha survives.<div class="tl-drill-why">This is the lesson's method transplanted, and the published currency factors exist for exactly this. If carry and momentum soak up most of the return, you are being asked to pay an active fee for factor premia you could buy far more cheaply.</div></li>
+      <li data-verdict="ok">Allocate, but only to the part of the book that is not carry.<div class="tl-drill-why">The right instinct, but you cannot know which part that is without the factor regression. The trend-following piece may itself be ordinary FX momentum.</div></li>
+      <li data-verdict="bad">Treat the carry return as free money and ask the manager to lever it up.<div class="tl-drill-why">A factor premium is pay for a risk. Carry is short a crash: when yen-funded positions unwound in 2024, AUD/JPY fell about 17% from 11 July to 5 August. Leverage turns that kind of month into years of lost carry.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What this teaches.</strong> This is an illustrative pitch, not a real fund. Its anchors are documented: a published FX carry factor (Lustig and Verdelhan, 2007) and FX momentum factor (Menkhoff, Sarno, Schmeling and Schrimpf, 2012) exist, and carry's crash risk showed up in the 2024 AUD/JPY unwind. The lesson's rule is the same in any market: take out the known factors first, then judge what is left.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 09</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -859,6 +960,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-capm.html">The Capital Asset Pricing Model (CAPM)</a> <span>· the single factor whose misses this lesson explains</span></li><!-- DESK:END -->
+        <li><a href="interest-rate-parity.html">Interest Rate Parity — Covered vs. Uncovered</a> <span>· the carry trade, which turns out to be a factor</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="institutional-fama-macbeth.html">Fama-MacBeth Two-Stage Regression</a> <span>· estimating what each factor is actually paid</span></li><!-- DESK:END -->
+        <li><a href="alpha-beta-separation.html">Alpha vs. Beta Separation</a> <span>· splitting a return into factor exposure and skill</span></li>
+        <li><a href="factor-based-portfolio-construction.html">Factor-Based Portfolio Construction</a> <span>· building portfolios on purpose from these factors</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> most returns that look like skill are partly known factor premia, and this is the standard way to tell how much.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-capm.html">← CAPM</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -946,6 +1067,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

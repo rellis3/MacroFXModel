@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Avellaneda-Stoikov Market Making — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -83,7 +84,19 @@
       </div>
     </section>
 
+    <!-- WB:institutional_avellaneda_stoikov-deck:START -->
     <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Inventory skew: quoting around the reservation price</h2>
+      <!-- WB:institutional_avellaneda_stoikov:START -->
+      <div class="wb" data-title="Inventory skew: quoting around the reservation price">
+        <script type="application/json">{"w":600,"h":790,"intro":"A market maker, a one-sided afternoon, and the price they quote around. The lesson's own worked example. Press play, or step through.","steps":[{"cap":"A market maker quotes both sides of a mid of 100.00. Flat, the quotes sit symmetrically: bid 99.25, offer 100.75, a spread of 1.4908.","do":[{"chart":"nl","x":10,"y":10,"w":580,"h":196,"title":"Quotes on the price line","xd":[97.7,101.3],"yd":[0,1],"yt":[],"xt":[[98,"98"],[99,"99"],[100,"100"],[101,"101"]],"pl":16,"pr":16},{"series":"mid","chart":"nl","pts":[[100.0,0],[100.0,0.92]],"tone":null,"dash":true,"ms":400,"label":"mid 100","lat":[100.0,0.92],"ldy":-10},{"gap":"w0","chart":"nl","top":[[99.2546147886243,0.72],[100.7453852113757,0.72]],"bot":[[99.2546147886243,0.5],[100.7453852113757,0.5]],"tone":"blue","op":0.3},{"note":"b0","chart":"nl","at":[99.2546147886243,0.61],"text":"99.25","tone":"blue","size":17,"anchor":"start","dx":6,"dy":0},{"note":"a0","chart":"nl","at":[100.7453852113757,0.61],"text":"100.75","tone":"blue","size":17,"anchor":"end","dx":-6,"dy":0}]},{"cap":"Then the flow turns one-sided. Seller after seller hits the bid. Each fill makes the market maker longer: inventory climbs to +5.","do":[{"icon":"sel","name":"crowd","x":20,"y":220,"s":0.6,"tone":"red","label":"sellers","lsize":17},{"box":"inv","x":200,"y":226,"w":200,"h":66,"text":"inventory","tone":"amber","sub":"0","size":19},{"arrow":["sel","inv"],"label":"hit bid","tone":"red","id":"hit"},{"count":"inv","from":0,"to":5,"dp":0,"pre":"+","ms":1400}]},{"cap":"Symmetric quotes do nothing about it. The bid is just as attractive as before, so more selling simply adds to the position. There is no brake.","do":[{"note":"nb","x":500,"y":260,"text":"no brake","size":22,"anchor":"middle","tone":"red"},{"pulse":"w0"}]},{"cap":"The fix is a reservation price: the mid shifted against your inventory. Shift = q × γ × σ² × (T − t) = 5 × 0.1 × 4 × 0.5 = 1.00. So r = 100 − 1 = 99.00.","do":[{"hide":"nb"},{"series":"rl","chart":"nl","pts":[[99.0,0],[99.0,0.92]],"tone":"purple","dash":true,"ms":500,"label":"r = 99.00","lat":[99.0,0.92],"ldy":-10},{"box":"sh","x":420,"y":226,"w":170,"h":66,"text":"shift","tone":"purple","sub":"1.00","size":19}]},{"cap":"Quote the same-width window around r instead of the mid: bid about 98.25, offer about 99.75. Both quotes move a full point lower.","do":[{"dim":"w0"},{"dim":"b0"},{"dim":"a0"},{"gap":"w1","chart":"nl","top":[[98.2546147886243,0.36],[99.7453852113757,0.36]],"bot":[[98.2546147886243,0.14],[99.7453852113757,0.14]],"tone":"green","op":0.35},{"note":"b1","chart":"nl","at":[98.2546147886243,0.25],"text":"98.25","tone":"green","size":17,"anchor":"start","dx":6,"dy":0},{"note":"a1","chart":"nl","at":[99.7453852113757,0.25],"text":"99.75","tone":"green","size":17,"anchor":"end","dx":-6,"dy":0}]},{"cap":"The offer is now closer to the mid, so buyers are more likely to take inventory off you. The bid is further away, so sellers are less likely to make you longer. The skew pushes you back to flat.","do":[{"note":"ef","x":300,"y":326,"text":"offer closer → sell down · bid further → stop adding","size":18,"anchor":"middle","tone":"green"}]},{"cap":"The width splits into two parts. Inventory risk, γσ²(T − t) = 0.20, pays for holding any position over the time left. The market-making margin, (2/γ)ln(1 + γ/k) ≈ 1.29, comes from how fast fills dry up with distance.","do":[{"chart":"sp","x":10,"y":352,"w":280,"h":220,"title":"Spread, two parts","xd":[0.4,3.6],"yd":[0,1.7],"yt":[[0.5,"0.5"],[1,"1.0"],[1.5,"1.5"]],"xt":[[1,"risk"],[2,"margin"],[3,"total"]],"pl":40,"pr":8},{"bars":"sb","chart":"sp","data":[[1,0.2,"0.20","blue"],[2,1.2908,"1.29","purple"],[3,1.4908,"1.49","green"]],"bw":46,"ms":1000}]},{"cap":"Neither part contains inventory. Sweep q from −10 to +10: the reservation price, bid and offer slide together as parallel lines. Inventory moves the window, never widens it.","do":[{"chart":"sw","x":310,"y":352,"w":280,"h":220,"title":"Quotes vs inventory q","xd":[-10,10],"yd":[97,103],"yt":[[98,"98"],[100,"100"],[102,"102"]],"xt":[[-10,"−10"],[0,"0"],[10,"+10"]],"pl":44,"pr":10},{"series":"sa","chart":"sw","pts":[[-10,102.7454],[10,98.7454]],"tone":"green","ms":700},{"series":"sr","chart":"sw","pts":[[-10,102.0],[10,98.0]],"tone":"purple","ms":700},{"series":"sbd","chart":"sw","pts":[[-10,101.2546],[10,97.2546]],"tone":"red","ms":700},{"dot":"wk","chart":"sw","at":[5,99.0],"text":"r at q = +5","tone":"purple","dx":-10,"dy":42,"anchor":"end"}]},{"cap":"Near the close, time left shrinks to zero, so the shift shrinks to zero and r returns to the mid. The spread does not vanish: it falls to the margin part, 1.29.","do":[{"box":"tt","x":10,"y":590,"w":280,"h":64,"text":"T − t → 0: r → mid,\nspread → 1.29","tone":"blue","size":17}]},{"cap":"More risk aversion, more volatility or more time left all mean a bigger shift for the same inventory. The model prices the cost of holding one more unit the same way everywhere.","do":[{"box":"gv","x":310,"y":590,"w":280,"h":64,"text":"bigger γ, σ or T − t\n→ bigger skew","tone":"purple","size":17}]},{"cap":"What it leaves out: adverse selection. If those sellers knew something, being long is worse than just risky. That is the Glosten-Milgrom problem, and desks add a charge for it on top.","do":[{"box":"ad","x":10,"y":670,"w":580,"h":50,"text":"missing: informed flow (adverse selection)","tone":"red","size":18}]},{"cap":"So: quote around the price you would be happy to trade at given what you hold, not around the mid, and let the skew walk you back to flat.","do":[{"note":"end","x":300,"y":760,"text":"centre on r, not the mid · width fixed · skew to flat","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:institutional_avellaneda_stoikov:END -->
+    </section>
+    <!-- WB:institutional_avellaneda_stoikov-deck:END -->
+
+    <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Drag inventory, watch both quotes skew — live</h2>
       <p class="sl-sub">Fixed γ=0.1, σ=2, T−t=0.5, k=1.5, mid s=100. Only inventory q moves.</p>
@@ -114,7 +127,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
+    <section class="sl-slide" data-slide="7">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">The total spread — two different questions, added together</h2>
       <div class="sl-compare">
@@ -141,7 +154,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Inventory skew, end to end</h2>
       <div class="sl-card">
@@ -160,7 +173,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The horizon T: quotes "want" to end flat</h2>
       <p class="sl-sub">As (T−t)→0, r converges back to the mid — but the spread does NOT converge to zero.</p>
@@ -172,7 +185,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Compute r, the spread, and both quotes — any inputs</h2>
       <p class="sl-sub">Change any input, live. Starts on the worked-example numbers.</p>
@@ -202,7 +215,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">One risk, priced honestly — not the only risk</h2>
       <div class="sl-icard-grid">
@@ -214,7 +227,7 @@
       <div class="sl-quote">This model is excellent at "how much do I already have, and how should that change my price?" It has nothing to say about "is the person trading with me right now secretly better informed than I am?" — that's a different lesson's entire job.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this quietly stops matching reality</h2>
       <div class="sl-icard-grid">
@@ -225,7 +238,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -285,7 +298,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -418,5 +431,6 @@
   })();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

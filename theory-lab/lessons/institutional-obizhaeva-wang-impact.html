@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Obizhaeva-Wang Transient Price Impact — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -50,6 +51,62 @@
       <li><strong>How it reached trading:</strong> Obizhaeva &amp; Wang (2005 working paper, 2013) gave execution desks impact that decays at a finite rate, and with the propagator models that followed it shapes how algorithms space out child orders.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the price-impact state for the worked example's even split, five trades of 20 units at times 0, 0.25, 0.5, 0.75 and 1 with resilience 2 and impact coefficient 0.01. Each trade jumps the impact up by 0.2, it decays between trades with a half-life of about 0.35, and because it never fully heals, the leftover builds to about 0.47. Right: total cost of three schedules: one block 50.00, even split 26.45, front-and-back loaded 25.92.">
+      <text class="tlp-text3" x="60" y="24" font-size="12">impact D(t): 5 trades of 20 units</text>
+      <text class="tlp-purple" x="70" y="52" font-size="12" font-weight="700">each trade jumps it +0.2</text>
+      <text class="tlp-text2" x="70" y="70" font-size="12">then it heals: half-life ≈ 0.35</text>
+      <line class="tlp-line" x1="60" y1="40" x2="60" y2="190"/>
+      <line class="tlp-line" x1="60" y1="190" x2="362" y2="190"/>
+      <polyline class="tlp-line purple thick" points="60.0,190.0 60.0,142.0 67.5,144.9 75.0,147.6 82.5,150.2 90.0,152.6 97.5,154.9 105.0,157.0 112.5,159.0 120.0,160.9 120.0,112.9 127.5,117.6 135.0,121.9 142.5,126.1 150.0,129.9 157.5,133.6 165.0,137.0 172.5,140.2 180.0,143.2 180.0,95.2 187.5,101.0 195.0,106.4 202.5,111.4 210.0,116.2 217.5,120.7 225.0,124.9 232.5,128.8 240.0,132.5 240.0,84.5 247.5,90.9 255.0,96.9 262.5,102.6 270.0,107.9 277.5,112.8 285.0,117.5 292.5,121.9 300.0,126.0 300.0,78.0 307.5,84.8 315.0,91.2 322.5,97.2 330.0,102.8 337.5,108.1 345.0,113.0 352.5,117.7 360.0,122.1"/>
+      <text class="tlp-text3" x="60" y="206" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="180" y="206" text-anchor="middle" font-size="12">0.5</text>
+      <text class="tlp-text3" x="300" y="206" text-anchor="middle" font-size="12">1</text>
+      <text class="tlp-text3" x="362" y="206" text-anchor="end" font-size="12">time →</text>
+      <text class="tlp-text2" x="210" y="230" text-anchor="middle" font-size="12">the next trade pays whatever has not healed yet</text>
+      <text class="tlp-text2" x="490" y="24" text-anchor="middle" font-size="13" font-weight="700">total cost, 100 units</text>
+      <text class="tlp-text2" x="400" y="56" font-size="12">one block</text>
+      <rect class="tlp-box red" x="400" y="62" width="180" height="22" rx="4"/>
+      <text class="tlp-red" x="574" y="78" text-anchor="end" font-size="13" font-weight="700">50.00</text>
+      <text class="tlp-text2" x="400" y="108" font-size="12">even split</text>
+      <rect class="tlp-box blue" x="400" y="114" width="95.2" height="22" rx="4"/>
+      <text class="tlp-blue" x="503" y="130" font-size="13" font-weight="700">26.45</text>
+      <text class="tlp-text2" x="400" y="160" font-size="12">front + back loaded</text>
+      <rect class="tlp-box green" x="400" y="166" width="93.3" height="22" rx="4"/>
+      <text class="tlp-green" x="501" y="182" font-size="13" font-weight="700">25.92</text>
+      <text class="tlp-green" x="490" y="214" text-anchor="middle" font-size="12" font-weight="700">ends are cheaper, but only ≈ 2%</text>
+    </svg>
+    <figcaption>Impact jumps at each trade and heals between them, but not all the way. A trade in the middle pushes into your own leftover footprint, so the start and the end are the cheap places to trade bigger. In the toy example that saves about 2% over an even split, while one big block costs nearly twice as much.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">When I sell in slices, the second slice always seems to fill worse than the first. Why?</p>
+      <p data-who="Quant">Because the book has not healed yet. Your first slice ate the resting bids near the mid. Those bids come back, but not instantly. Your second slice is pushing into your own footprint.</p>
+      <p data-who="Trader">That's the Obizhaeva and Wang idea?</p>
+      <p data-who="Quant">Yes. A working paper in 2005, published in 2013. They treat the book as a reservoir that refills at a steady rate. They call that rate resilience.</p>
+      <p data-who="Trader">How is that different from the usual impact models?</p>
+      <p data-who="Quant">Kyle's impact is permanent: the market learns something and never goes back. Almgren and Chriss's temporary impact vanishes the moment you slow down. This one sits in between. It has a real half-life.</p>
+      <p data-who="Trader">So two rules?</p>
+      <p data-who="Quant">Two rules. Each trade pushes the price away by an amount proportional to its size. Between trades, that push shrinks steadily back towards zero. Each new trade pays whatever push is left over, plus half of its own.</p>
+      <p data-who="Trader">Put numbers on it.</p>
+      <p data-who="Quant">The lesson sells a hundred units in five trades. Sell it all at once and the cost is fifty. Split it evenly, twenty each, and the cost falls to about twenty-six and a half. The book gets time to heal between slices.</p>
+      <p data-who="Trader">Can I do better than even?</p>
+      <p data-who="Quant">A little. Trade forty at the start, forty at the end, and a sliver in between, and it costs about twenty-five point nine. Roughly two percent cheaper.</p>
+      <p data-who="Trader">Why are the ends special?</p>
+      <p data-who="Quant">At the start the book is fully rested, so there is nothing of yours to fight. At the end, whatever you leave behind never comes back to hurt you, because there is no later trade. In the middle you pay both ways.</p>
+      <p data-who="Trader">So push the ends as hard as I can?</p>
+      <p data-who="Quant">No. Two blocks of fifty and nothing in between costs about twenty-eight point four, worse than the even split. Big blocks pay more for their own push. The real answer is a balance the paper solves exactly.</p>
+      <p data-who="Trader">What's the catch in practice?</p>
+      <p data-who="Quant">The resilience rate is hard to measure, and it probably moves. Books are likely thinner around the open, the close and data releases, and slower to heal in stressed markets. Get it wrong and the shape of your schedule is wrong.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Impact heals at a finite speed, so space your slices to let it heal, and trade bigger where your footprint cannot hurt you: the start and the end.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -130,6 +187,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where a schedule's cost comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ dD_t = \color{#fbbf24}{-\rho\,D_t\,dt} \]</div>
+      <p>Between trades the impact state heals back towards zero at rate \(\rho\), with half-life \(\ln(2)/\rho\). At \(\rho = 2\) that is about 0.35.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ D_{t^+} = D_{t^-} + \color{#fbbf24}{\kappa\,dx} \]</div>
+      <p>A trade lands on top of whatever has not healed yet and pushes the state up by \(\kappa\) per unit traded.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{cost}_i = q_i \color{#fbbf24}{D_{t_i^-}} + \tfrac12\kappa q_i^2 \]</div>
+      <p>Each trade pays two things: the leftover push from your own earlier trades, and half of its own instantaneous push.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{Total} = \color{#fbbf24}{\sum_i} \left( q_i D_{t_i^-} + \tfrac12\kappa q_i^2 \right) \]</div>
+      <p>Add up across the schedule. Bigger trades raise the self-impact part; trades placed while the book is still displaced raise the leftover part.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\text{one block } 50.00 \quad\; \text{even } 10.00 + 16.45 = 26.45 \quad\; \text{ends } 16.67 + 9.25 = 25.92} \]</div>
+      <p>The worked example, \(Q = 100\), \(\rho = 2\), \(\kappa = 0.01\), five trades: loading the ends pays more self-impact but much less leftover, and wins by about 2%.</p>
+    </div>
+  </div>
   <p>
     The confidently-known part of this model is the mechanism itself — a single state variable that decays
     continuously and jumps at each trade. What follows describes that mechanism precisely. It deliberately
@@ -255,6 +336,12 @@
     <div class="tl-chart-caption">Five unit-sized trades land at evenly spaced instants; the curve is the exact decay-plus-jump process from Step 1 and Step 2 above, not a hand-drawn approximation. Illustrative units, chosen to make the shape clear.</div>
   </div>
 
+  <!-- WB:institutional_obizhaeva_wang_impact:START -->
+  <div class="wb" id="wb-institutional_obizhaeva_wang_impact" data-title="Transient impact: slicing into a book that heals">
+    <script type="application/json">{"w":600,"h":800,"intro":"Selling 100 units in five slices, into a book that heals at a finite speed. The lesson's own toy numbers. Press play, or step through.","steps":[{"cap":"You must sell 100 units in five trades at evenly spaced times. The resting bids near the mid are a reservoir: each sale drains some, and liquidity providers refill it, but not instantly.","do":[{"icon":"you","name":"person","x":24,"y":4,"s":0.62,"tone":"blue","label":"you: sell 100","lsize":17},{"icon":"bk","name":"crowd","x":480,"y":4,"s":0.62,"tone":"green","label":"book refills","lsize":17},{"arrow":["you","bk"],"label":"5 slices","tone":"blue","dash":true,"id":"sl"}]},{"cap":"Track one number: D, how far your own trading has pushed the price. First slice, 20 units: D jumps by κ × 20 = 0.01 × 20 = 0.2.","do":[{"chart":"dt","x":10,"y":112,"w":580,"h":270,"title":"Impact D(t): even split, 5 × 20","xd":[0,1.25],"yd":[0,0.62],"yt":[[0.2,"0.2"],[0.4,"0.4"],[0.6,"0.6"]],"xt":[[0,"0"],[0.25,".25"],[0.5,".5"],[0.75,".75"],[1,"1"]],"pl":46,"pr":14},{"series":"e1","chart":"dt","pts":[[0,0],[0,0.2]],"tone":"purple","ms":500},{"note":"j1","chart":"dt","at":[0,0.2],"text":"+0.2","tone":"purple","size":17,"anchor":"start","dx":8,"dy":-6}]},{"cap":"Between trades the book heals: D decays at resilience ρ = 2, a half-life of about 0.35. By the next slice, 0.12 of the push is still there.","do":[{"series":"e2","chart":"dt","pts":[[0,0.2],[0.0312,0.1879],[0.0625,0.1765],[0.0938,0.1658],[0.125,0.1558],[0.1562,0.1463],[0.1875,0.1375],[0.2188,0.1291],[0.25,0.1213]],"tone":"purple","ms":900},{"dot":"lo","chart":"dt","at":[0.25,0.1213],"text":"0.12 left","tone":"amber","dy":16}]},{"cap":"The second slice lands on top of that leftover. It pays the 0.12 still in the book, plus half its own push. D jumps to 0.32.","do":[{"series":"e3","chart":"dt","pts":[[0.25,0.1213],[0.25,0.3213]],"tone":"purple","ms":400}]},{"cap":"Keep going: the book never fully heals before the next slice, so the leftover ratchets up to about 0.47. Total even-split cost: 26.45, of which 10.00 is self-impact and 16.45 is fighting your own leftover.","do":[{"series":"e4","chart":"dt","pts":[[0.25,0.3213],[0.2812,0.3018],[0.3125,0.2836],[0.3438,0.2664],[0.375,0.2502],[0.4062,0.2351],[0.4375,0.2208],[0.4688,0.2075],[0.5,0.1949],[0.5,0.3949],[0.5312,0.371],[0.5625,0.3485],[0.5938,0.3274],[0.625,0.3075],[0.6562,0.2889],[0.6875,0.2714],[0.7188,0.255],[0.75,0.2395],[0.75,0.4395],[0.7812,0.4129],[0.8125,0.3879],[0.8438,0.3644],[0.875,0.3423],[0.9062,0.3216],[0.9375,0.3021],[0.9688,0.2838],[1.0,0.2666],[1.0,0.4666],[1.0625,0.4118],[1.125,0.3634],[1.1875,0.3207],[1.25,0.283]],"tone":"purple","ms":1600},{"chart":"c","x":10,"y":400,"w":300,"h":240,"title":"Total cost","xd":[0.4,4.6],"yd":[0,58],"yt":[[25,"25"],[50,"50"]],"xt":[[1,"block"],[2,"even"],[3,"ends"],[4,"2×50"]],"pl":36,"pr":8},{"bars":"be","chart":"c","data":[[2,26.45,"26.45","purple"]],"bw":40,"ms":800}]},{"cap":"Compare one block of 100 at the start: no leftover at all, but the full self-impact of the whole size, ½ × 0.01 × 100² = 50.00. Nearly twice the even split.","do":[{"bars":"bb","chart":"c","data":[[1,50,"50.00","red"]],"bw":40,"ms":800}]},{"cap":"Why the ends are special: at the start the book is fully rested, so there is nothing to fight. At the end, whatever you leave behind never meets another of your trades.","do":[{"box":"ends","x":330,"y":400,"w":260,"h":76,"text":"start: rested book\nend: no later trade","tone":"green","size":18},{"pulse":"e1"}]},{"cap":"So trade bigger at the ends: 40 first, 6.67 three times, 40 last. The leftover the middle slices fight stays lower. Total 25.92: 16.67 self-impact plus only 9.25 leftover.","do":[{"dim":"e1"},{"dim":"e2"},{"dim":"e3"},{"dim":"e4"},{"dim":"lo"},{"dim":"j1"},{"series":"fb","chart":"dt","pts":[[0,0],[0,0.4],[0.0312,0.3758],[0.0625,0.353],[0.0938,0.3316],[0.125,0.3115],[0.1562,0.2926],[0.1875,0.2749],[0.2188,0.2583],[0.25,0.2426],[0.25,0.3093],[0.2812,0.2905],[0.3125,0.2729],[0.3438,0.2564],[0.375,0.2409],[0.4062,0.2263],[0.4375,0.2126],[0.4688,0.1997],[0.5,0.1876],[0.5,0.2543],[0.5312,0.2388],[0.5625,0.2244],[0.5938,0.2108],[0.625,0.198],[0.6562,0.186],[0.6875,0.1747],[0.7188,0.1642],[0.75,0.1542],[0.75,0.2209],[0.7812,0.2075],[0.8125,0.1949],[0.8438,0.1831],[0.875,0.172],[0.9062,0.1616],[0.9375,0.1518],[0.9688,0.1426],[1.0,0.134],[1.0,0.534],[1.0625,0.4712],[1.125,0.4159],[1.1875,0.367],[1.25,0.3239]],"tone":"green","ms":1800,"label":"ends-loaded","lat":[0.5,0.2543],"ldy":-16},{"bars":"bf","chart":"c","data":[[3,25.92,"25.92","green"]],"bw":40,"ms":800}]},{"cap":"Only about 2% cheaper, because bigger blocks pay more for their own push. Push the idea too far, two blocks of 50 and nothing between, and it costs 28.38: worse than even.","do":[{"bars":"b2","chart":"c","data":[[4,28.38,"28.38","amber"]],"bw":40,"ms":800},{"box":"bal","x":330,"y":492,"w":260,"h":76,"text":"ends bigger, not\nas big as possible","tone":"amber","size":18}]},{"cap":"It all hinges on healing. If the book never healed, ρ = 0, every schedule would cost the same 50.00 as one block. Slicing only helps because the book refills.","do":[{"box":"r0","x":330,"y":584,"w":260,"h":56,"text":"ρ = 0 → every schedule 50.00","tone":"red","size":17}]},{"cap":"Three kinds of memory: Kyle's impact is permanent, Almgren-Chriss's temporary impact vanishes the instant you slow down, and Obizhaeva-Wang's has a real half-life.","do":[{"box":"m1","x":10,"y":660,"w":180,"h":64,"text":"Kyle: never decays","tone":"amber","size":17},{"box":"m2","x":210,"y":660,"w":180,"h":64,"text":"AC: no memory","tone":"blue","size":17},{"box":"m3","x":410,"y":660,"w":180,"h":64,"text":"OW: half-life","tone":"purple","size":17}]},{"cap":"The catch: the resilience rate is hard to estimate and probably moves through the day. Space your slices to let the book heal, and trade bigger where your footprint cannot hurt you.","do":[{"note":"end","x":300,"y":768,"text":"let it heal · bigger at the ends · not all at once","size":19,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:institutional_obizhaeva_wang_impact:END -->
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Why the optimal schedule isn't smooth</h2>
   <p>
@@ -350,6 +437,10 @@
       trades are left in the middle (with \(N\le2\) there is no middle, so both schedules coincide). Change
       any input and both totals recompute from the same cost formula used above.
     </p>
+    <div class="tl-predict" data-answer="50" data-tol="2" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At \(\rho = 2\) the even split costs 26.45. Now suppose the book never heals at all: set \(\rho\) to 0 and leave everything else alone. What will the even split cost? Lock in a guess, then type 0 into the resilience field below and read both totals.</div>
+      <div class="tl-predict-reveal"><p><strong>50.00, and so does the front-and-back split.</strong> With no healing, every unit pays for every unit traded before it, and the total is \(\tfrac12\kappa Q^2 = 0.5 \times 0.01 \times 100^2 = 50\) whatever the schedule: the same as one block. Slicing only helps because the book heals. Now try \(\rho = 20\), a book that heals almost instantly, and watch the front-and-back split become the more expensive one.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Total quantity Q</span></div>
@@ -482,6 +573,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative execution hour</div>
+    <h3>Laying out a large sell order over the next hour</h3>
+    <p>You must sell a large EUR/USD order within the hour, in five child orders at evenly spaced times. Your estimate is that the book heals at a finite, moderate rate: as in the lesson's toy example, about 40% of one child order's push has healed by the time the next one goes. Using the lesson's toy costs as a guide (one block 50.00, even split 26.45), how do you lay out the five child orders?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Sell it all in the first child order and be done.<div class="tl-drill-why">One block pays the full self-impact of the whole size at once, with no time for the book to heal: 50.00 in the toy example, almost twice the even split.</div></li>
+      <li data-verdict="good">Make the first and last child orders larger and trade lighter in between.<div class="tl-drill-why">At the start the book is fully rested, and whatever the last order leaves behind never hurts a later trade. The middle orders push into your own leftover impact, so they should be smaller. In the toy example, 40 / 6.67 / 6.67 / 6.67 / 40 costs 25.92, the cheapest of the schedules shown.</div></li>
+      <li data-verdict="bad">Two half-size blocks, at the start and the end, with nothing in between.<div class="tl-drill-why">Pushing the idea to its extreme backfires. Each block pays so much self-impact that it swamps the healing saved: 28.38 in the toy example, worse than an even split.</div></li>
+      <li data-verdict="ok">Five equal child orders.<div class="tl-drill-why">Close to the best: 26.45 against 25.92 in the toy example, about 2% more. A sensible default when you do not trust your estimate of how fast the book heals.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>The point.</strong> This is an illustrative situation using the lesson's toy numbers, not a real order or a real calibration. With finite resilience the cheap places to trade bigger are the two ends. The saving over an even split is modest, and it depends on a healing rate that is hard to estimate and moves through the day, so the even split remains a respectable fallback.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -573,6 +677,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a> <span>· the memoryless impact this model gives a half-life</span></li>
+        <li><a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a> <span>· the resting liquidity a trade eats and the book refills</span></li>
+        <!-- DESK:START --><li><a href="institutional-kyle-obizhaeva-invariance.html">Kyle-Obizhaeva: Market Microstructure Invariance</a> <span>· how big the bet is before you schedule it</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="execution-algorithms.html">Execution Algorithms: TWAP, VWAP, POV, IS</a> <span>· turning a schedule into child orders</span></li>
+        <!-- DESK:START --><li><a href="institutional-market-depth-slope.html">Market Depth, Order-Book Slope &amp; Depth Imbalance</a> <span>· measuring how much the book can absorb</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every sliced order pays for its own earlier slices, and spacing them to let the book heal is cheap money saved.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="institutional-kyle-obizhaeva-invariance.html">← Kyle-Obizhaeva Market Microstructure Invariance</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -603,7 +727,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script>
 (function(){
   // Interactive decay chart — drag resilience rho, redraw the sawtooth.
@@ -762,5 +887,6 @@
   recompute();
 })();
 </script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>
