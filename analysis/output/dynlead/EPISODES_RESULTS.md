@@ -1,0 +1,131 @@
+# COG-DYNAMIC-LEAD Addendum C: spread-move episodes with an asset-follow confirmation
+
+Registered in forge/COG_DYNAMIC_LEAD_ADDENDUM_C.md after the rolling-gate families returned negative. Episode = a spread move of at least z0 standard deviations; expected direction from the rolling contemporaneous slope; confirmation = the asset follows by at least c of its typical move within m days; enter at the confirmation close, hold h days; net of class costs. 608 specs pooled over 28 spreads x 34 assets; clusters = calendar weeks.
+
+## Headline: the registered selection procedure, real versus the shifted-spread placebo (200 draws)
+| sample                  |   step1 |   step2 |   oos_pass |
+|:------------------------|--------:|--------:|-----------:|
+| real                    |     0.0 |     0.0 |        0.0 |
+| placebo mean            |     0.0 |     0.0 |        0.0 |
+| placebo 95th percentile |     0.0 |     0.0 |        0.0 |
+| placebo max             |     1.0 |     0.0 |        0.0 |
+
+Step 1 = Discovery survivors after BH 10% (mean > 0); Step 2 = also pass Validation; oos_pass = frozen specs positive and p < 0.05 out of sample.
+
+## Is there an excess over what the confirmation rule alone gives (the momentum baseline)? Number of specs whose real mean exceeds the placebo mean by more than 2 placebo standard deviations
+| period   |   specs |   excess_above_2sd |   expected_by_chance |   median_excess_bp |
+|:---------|--------:|-------------------:|---------------------:|-------------------:|
+| DISC     |     608 |                223 |               13.900 |             17.318 |
+| VAL      |     608 |                 14 |               13.900 |              0.170 |
+| OOS      |     608 |                 17 |               13.900 |             -6.060 |
+
+## Main (confirmation) specs: how often is the mean positive, real versus placebo, by period
+| period   |   specs |   share_real_mean_positive |   share_placebo_mean_positive |   median_real_bp |   median_placebo_bp |
+|:---------|--------:|---------------------------:|------------------------------:|-----------------:|--------------------:|
+| DISC     |     576 |                      0.852 |                         0.076 |           15.372 |              -3.494 |
+| VAL      |     576 |                      0.233 |                         0.005 |           -6.478 |              -6.855 |
+| OOS      |     576 |                      0.142 |                         0.002 |          -13.816 |              -6.503 |
+
+## Primary episode definition (z0 1.5, k 5, m 2, c 0.5, h 5) in bp per trade, with the placebo mean and the distance in placebo SDs
+| trade   |   mean_DISC |   pl_DISC |   z_DISC |   mean_VAL |   pl_VAL |   z_VAL |   mean_OOS |   pl_OOS |   z_OOS |   n_OOS |   neg_OOS |
+|:--------|------------:|----------:|---------:|-----------:|---------:|--------:|-----------:|---------:|--------:|--------:|----------:|
+| any     |       11.20 |     -3.49 |     3.42 |      -3.33 |    -6.11 |    0.71 |     -21.11 |    -6.55 |   -4.11 |    4189 |      0.53 |
+| coupled |       13.27 |     -4.24 |     0.55 |      -7.69 |    -9.83 |    0.08 |     -31.96 |    -9.94 |   -0.92 |     631 |      0.60 |
+
+## The same episodes by calendar year (does the relationship come and go?)
+| state   |   year |   episodes |   mean_net_bp |   share_negative |
+|:--------|-------:|-----------:|--------------:|-----------------:|
+| any     |   2016 |        736 |         45.26 |             0.34 |
+| any     |   2017 |       1526 |         -1.49 |             0.51 |
+| any     |   2018 |       2166 |         -8.14 |             0.53 |
+| any     |   2019 |       2180 |         -9.16 |             0.52 |
+| any     |   2020 |       1708 |         73.03 |             0.44 |
+| any     |   2021 |       2046 |         -1.36 |             0.48 |
+| any     |   2022 |       5019 |         -4.08 |             0.51 |
+| any     |   2023 |       1238 |         -3.53 |             0.54 |
+| any     |   2024 |       1549 |        -15.44 |             0.51 |
+| any     |   2025 |       1389 |        -34.26 |             0.58 |
+| any     |   2026 |       1251 |        -13.53 |             0.50 |
+| coupled |   2016 |         89 |        111.82 |             0.24 |
+| coupled |   2017 |        226 |          9.05 |             0.49 |
+| coupled |   2018 |        232 |        -31.76 |             0.63 |
+| coupled |   2019 |        397 |        -27.14 |             0.56 |
+| coupled |   2020 |        399 |         82.06 |             0.41 |
+| coupled |   2021 |        242 |        -22.03 |             0.58 |
+| coupled |   2022 |        748 |         -9.47 |             0.53 |
+| coupled |   2023 |        213 |         14.87 |             0.48 |
+| coupled |   2024 |        276 |        -25.67 |             0.60 |
+| coupled |   2025 |        189 |        -21.18 |             0.59 |
+| coupled |   2026 |        166 |        -54.70 |             0.60 |
+
+## A-priori pairs at the pre-fixed spec (coupled state, month-clustered, Holm over 15)
+| spread        | asset   |   episodes |   mean_net_bp |       t |   p_one_sided |   share_negative |   mean_DISC_bp |   n_DISC |   mean_VAL_bp |   n_VAL |   mean_OOS_bp |   n_OOS |   holm_p |
+|:--------------|:--------|-----------:|--------------:|--------:|--------------:|-----------------:|---------------:|---------:|--------------:|--------:|--------------:|--------:|---------:|
+| US-DE 2Y      | EURUSD  |          6 |       nan     | nan     |       nan     |          nan     |        nan     |  nan     |       nan     | nan     |       nan     | nan     |    1.000 |
+| US-DE 5Y      | EURUSD  |          7 |       nan     | nan     |       nan     |          nan     |        nan     |  nan     |       nan     | nan     |       nan     | nan     |    1.000 |
+| US-DE 10Y     | EURUSD  |          6 |       nan     | nan     |       nan     |          nan     |        nan     |  nan     |       nan     | nan     |       nan     | nan     |    1.000 |
+| US-DE 2Y      | GBPUSD  |          2 |       nan     | nan     |       nan     |          nan     |        nan     |  nan     |       nan     | nan     |       nan     | nan     |    1.000 |
+| US-DE 2Y      | USDCHF  |         10 |       nan     | nan     |       nan     |            0.500 |         96.140 |    3.000 |       -63.769 |   4.000 |       -21.622 |   2.000 |    1.000 |
+| US-JP 2Y      | USDJPY  |         24 |       -32.227 |  -0.796 |         0.787 |            0.625 |        -35.754 |   11.000 |       -12.618 |   7.000 |      -138.080 |   4.000 |    1.000 |
+| US-JP 5Y      | USDJPY  |         24 |        36.707 |   1.266 |         0.103 |            0.417 |         46.930 |    7.000 |        33.157 |  11.000 |       -57.441 |   3.000 |    1.000 |
+| US-JP 10Y     | USDJPY  |         22 |        55.564 |   1.732 |         0.042 |            0.455 |         89.927 |    7.000 |        58.715 |   9.000 |       -68.316 |   4.000 |    0.624 |
+| US2           | USDJPY  |         25 |       -23.064 |  -0.798 |         0.788 |            0.680 |          5.285 |   12.000 |       -18.514 |   8.000 |      -206.178 |   3.000 |    1.000 |
+| US2           | GOLD    |         15 |       nan     | nan     |       nan     |            0.533 |        130.631 |    6.000 |       -62.266 |   5.000 |       -78.280 |   3.000 |    1.000 |
+| US10          | GOLD    |         18 |       nan     | nan     |       nan     |            0.389 |         91.007 |    9.000 |       -92.030 |   6.000 |       -59.132 |   1.000 |    1.000 |
+| US slope 10-2 | SPX500  |          2 |       nan     | nan     |       nan     |          nan     |        nan     |  nan     |       nan     | nan     |       nan     | nan     |    1.000 |
+| US2           | SPX500  |          6 |       nan     | nan     |       nan     |          nan     |        nan     |  nan     |       nan     | nan     |       nan     | nan     |    1.000 |
+| US-DE 2Y      | EURJPY  |          1 |       nan     | nan     |       nan     |          nan     |        nan     |  nan     |       nan     | nan     |       nan     | nan     |    1.000 |
+| DE-JP 10Y     | EURJPY  |          7 |       nan     | nan     |       nan     |          nan     |        nan     |  nan     |       nan     | nan     |       nan     | nan     |    1.000 |
+
+## Response delay: average signed asset response by day after the spread move (z0 1.5, k 5), against the shifted-spread placebo
+| group     |   day_after_move |   events |   mean_signed_response_bp |   placebo_mean_bp |   excess_bp |
+|:----------|-----------------:|---------:|--------------------------:|------------------:|------------:|
+| all       |                1 |    69726 |                     -1.37 |             -0.15 |       -1.23 |
+| all       |                2 |    69726 |                     -0.85 |             -0.37 |       -0.48 |
+| all       |                3 |    69726 |                      1.16 |             -0.37 |        1.53 |
+| all       |                5 |    69726 |                      1.82 |             -0.60 |        2.42 |
+| all       |               10 |    69726 |                      5.30 |             -0.08 |        5.39 |
+| all       |               15 |    69726 |                      3.73 |             -0.21 |        3.95 |
+| all       |               20 |    69726 |                      1.69 |             -0.48 |        2.17 |
+| coupled   |                1 |    11315 |                     -4.89 |             -0.19 |       -4.70 |
+| coupled   |                2 |    11315 |                     -5.66 |              1.38 |       -7.04 |
+| coupled   |                3 |    11315 |                      4.44 |              2.43 |        2.02 |
+| coupled   |                5 |    11315 |                      0.06 |              3.92 |       -3.86 |
+| coupled   |               10 |    11315 |                      4.54 |              1.72 |        2.82 |
+| coupled   |               15 |    11315 |                     17.28 |              1.45 |       15.83 |
+| coupled   |               20 |    11315 |                      8.54 |             -0.45 |        8.99 |
+| confirmed |                1 |    20012 |                     54.31 |             48.27 |        6.04 |
+| confirmed |                2 |    20012 |                    106.49 |             95.73 |       10.76 |
+| confirmed |                3 |    20012 |                    110.22 |             94.71 |       15.51 |
+| confirmed |                5 |    20012 |                    112.38 |             93.51 |       18.86 |
+| confirmed |               10 |    20012 |                    112.57 |             92.83 |       19.73 |
+| confirmed |               15 |    20012 |                    112.48 |             92.48 |       20.00 |
+| confirmed |               20 |    20012 |                    112.03 |             93.12 |       18.91 |
+
+### Half-time of the confirmed-episode excess response by year (only where the day-20 excess is positive)
+|    year |   events |   excess_day5_bp |   excess_day20_bp |   half_time_day |
+|--------:|---------:|-----------------:|------------------:|----------------:|
+| 2016.00 |   723.00 |            68.38 |            116.64 |            5.00 |
+| 2017.00 |  1514.00 |            -4.57 |             -3.00 |          nan    |
+| 2018.00 |  2105.00 |             4.80 |            -23.15 |          nan    |
+| 2019.00 |  2160.00 |            -5.08 |            -33.78 |          nan    |
+| 2020.00 |  1602.00 |           158.11 |            313.61 |            5.00 |
+| 2021.00 |  1974.00 |            -8.55 |              6.90 |           10.00 |
+| 2022.00 |  4747.00 |            26.65 |             14.61 |            1.00 |
+| 2023.00 |  1220.00 |            11.55 |            -22.91 |          nan    |
+| 2024.00 |  1495.00 |           -13.16 |            -40.42 |          nan    |
+| 2025.00 |  1303.00 |             1.06 |            -30.01 |          nan    |
+| 2026.00 |  1169.00 |           -19.58 |            -32.11 |          nan    |
+
+## Best Discovery specs and what happened next (descriptive)
+| trade   |    z0 |   k |   m |     c |   h |   mean_DISC |   p_DISC |   pl_DISC |   mean_VAL |   p_VAL |   mean_OOS |   p_OOS |
+|:--------|------:|----:|----:|------:|----:|------------:|---------:|----------:|-----------:|--------:|-----------:|--------:|
+| any     | 2.000 |   1 |   1 | 1.000 |   5 |      33.235 |    0.001 |    -2.290 |    -14.999 |   0.920 |    -15.591 |   0.749 |
+| any     | 2.000 |   1 |   1 | 0.500 |   5 |      22.087 |    0.001 |    -1.850 |     -8.877 |   0.875 |     -5.059 |   0.625 |
+| any     | 2.000 |   1 |   1 | 0.250 |   5 |      16.932 |    0.004 |    -1.735 |     -8.649 |   0.899 |     -5.133 |   0.659 |
+| coupled | 2.000 |   1 |   1 | 0.500 |   2 |      18.297 |    0.005 |    -3.266 |    -17.296 |   0.958 |      9.072 |   0.231 |
+| any     | 2.000 |   1 |   1 | 0.500 |   2 |      10.983 |    0.017 |    -1.586 |    -17.381 |   0.999 |     -2.984 |   0.608 |
+| coupled | 2.000 |   1 |   1 | 0.250 |   2 |      14.013 |    0.018 |    -2.815 |    -15.149 |   0.948 |      4.087 |   0.345 |
+
+## Reading
+Real counts below or equal to the placebo mean and 95th percentile mean there is no evidence beyond what the confirmation rule produces with a random spread (momentum, drift and chance). Year-by-year sign changes are the "periods when it works, weakens or reverses"; whether such periods can be recognised in time is what the coupling state and the confirmation are for, and the out-of-sample rows say whether they were.
