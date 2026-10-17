@@ -176,6 +176,7 @@ import { INTL_YIELDS as _INTL_YIELDS } from './js/intlYields.js';   // gilts, JG
 import { crackHistory as _crackHistory, crackContext as _crackContext } from './js/crackSpread.js';
 import { BAND_REACH_PARAMS as _BAND_REACH_PARAMS } from './js/bandReachParams.js';   // T7b: the band clock and the Asia conditioner, for the digest's board   // the 3-2-1 refining margin (MD files/CRACK_SPREAD.md)
 import { isBoeSeries as _isBoeSeries, fetchBoeSeries as _fetchBoeSeries } from './js/boeSeries.js';
+import { toSurpriseRows as _nqRows, dedupeAgainst as _nqDedupe } from './js/nasdaqReleases.js';
 import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending, revisionOf as _fredRevisionOf, policyActualFrom as _policyActual, onsSeries as _onsSeries, statcanSeries as _statcanSeries, jsonStatSeries as _jsonStatSeries } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
@@ -16631,6 +16632,13 @@ async function _refreshSurpriseStore() {
     for (const d of (snap?.days ?? []).slice(-21)) for (const e of d.released ?? []) { const k = `${String(e.country).toUpperCase()}|${String(e.event).trim().toLowerCase()}|${e.ms}`; if (!seen.has(k) && _fredSpecFor(e.country, e.event)) { seen.add(k); events.push({ country: e.country, event: e.event, impact: 'high', time: new Date(e.ms).toISOString().slice(0, 19).replace('T', ' '), ms: e.ms, estimate: e.estimate ?? null, prev: e.prev ?? null, actual: e.actual ?? null }); } }
   } catch { /* the feed alone, then */ }
   await _fillActualsFromFred(events, stored);
+  // Non-US releases with actual AND consensus from Nasdaq's calendar (js/nasdaqReleases.js): the FF feed carries no
+  // actuals and the statistics-office fills cover a handful of releases, so 6 of 8 currencies had no live prints.
+  try {
+    if (Date.now() - _calFeed.at > 30 * 60_000) await _refreshCalFeed();
+    const nq = _nqDedupe(_nqRows(_calNasRaw), [...stored, ...events]);
+    events.push(...nq);
+  } catch (e) { console.warn('[surprise] nasdaq rows:', e.message); }
   const merged = _mergeReleases(stored, events);
   // The store carries ~26k backfilled releases, so it is a multi-megabyte value.
   // Rewriting it hourly when nothing printed is pure churn — most hours the calendar
@@ -16679,6 +16687,39 @@ function _expandBackfill(pack) {
     return o;
   });
 }
+// One-off history for the Nasdaq-sourced non-US series: each needs its OWN dispersion (minSeriesObs past
+// surprises) before it can score, so walk the daily lists back `days` and merge. Idempotent (rows are keyed by
+// series + instant); ~1 request per day at 250ms, run in the background.
+let _nqBackfill = { running: false, last: null };
+async function _backfillNasdaqSurprises(days = 460) {
+  if (_nqBackfill.running) return;
+  _nqBackfill = { running: true, last: { startedAt: new Date().toISOString(), days, fetched: 0, failed: 0 } };
+  const H = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
+  const rows = [];
+  try {
+    for (let k = days; k >= 0; k--) {
+      const d = new Date(Date.now() - k * 864e5).toISOString().slice(0, 10);
+      try {
+        const r = await fetch(`https://api.nasdaq.com/api/calendar/economicevents?date=${d}`, { headers: H, signal: AbortSignal.timeout(20_000) });
+        if (r.ok) { rows.push(..._nqRows(_calParseNasdaq(await r.json(), d))); _nqBackfill.last.fetched++; } else _nqBackfill.last.failed++;
+      } catch { _nqBackfill.last.failed++; }
+      await new Promise(res => setTimeout(res, 250));
+    }
+    const stored = await _readSurpriseStore();
+    const merged = _mergeReleases(stored, _nqDedupe(rows, stored));
+    await kv.put(_SURPRISE_KV, JSON.stringify({ data: { rows: merged.rows, updatedAt: Date.now() }, timestamp: Date.now() }));
+    Object.assign(_nqBackfill.last, { done: new Date().toISOString(), candidates: rows.length, added: merged.added, stored: merged.rows.length });
+    console.log(`[surprise] nasdaq backfill: +${merged.added} of ${rows.length} rows over ${days}d`);
+  } catch (e) { _nqBackfill.last.error = e.message; console.warn('[surprise] nasdaq backfill failed:', e.message); }
+  finally { _nqBackfill.running = false; }
+}
+app.post('/api/econ-surprise/backfill-nasdaq', (req, res) => {
+  const days = Math.min(900, Math.max(7, parseInt(req.query.days ?? '460', 10) || 460));
+  if (!_nqBackfill.running) _backfillNasdaqSurprises(days).catch(() => {});
+  res.json({ ok: true, started: true, status: _nqBackfill });
+});
+app.get('/api/econ-surprise/backfill-nasdaq', (_req, res) => res.json({ ok: true, ..._nqBackfill }));
+
 async function _backfillSurpriseStore({ force = false } = {}) {
   if (!fs.existsSync(_SURPRISE_BACKFILL)) return { skipped: 'no backfill file' };
   const stored = await _readSurpriseStore();
@@ -29911,6 +29952,7 @@ const _CAL_IMPACT_RANK = { high: 3, medium: 2, low: 1 };
 // free, neither needs a key. Cached 30 minutes; a failure leaves the previous
 // payload in place and is reported rather than served as silence.
 let _calFeed = { at: 0, data: null, error: null };
+let _calNasRaw = [];
 async function _refreshCalFeed() {
   const today = new Date().toISOString().slice(0, 10);
   const H = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
@@ -29931,6 +29973,7 @@ async function _refreshCalFeed() {
     } catch (e) { console.warn('[calendar] nasdaq:', d, e.message); }
   }
   if (nas) nas.sort((a, b) => a.ms - b.ms);
+  _calNasRaw = nas ?? _calNasRaw;   // the parsed rows, kept for the surprise store (non-US actual + consensus)
   const health = _calHealth(ff, nas);
   // never overwrite a good payload with a failed fetch
   if (health.state === 'bad' && _calFeed.data) { _calFeed.error = health.detail; return _calFeed; }
