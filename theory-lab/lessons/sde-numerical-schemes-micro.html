@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Numerical Schemes for SDEs — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -207,7 +208,19 @@
       <p class="sl-p">Fewer, larger steps (small N, big Δt) mean the diffusion term √Δt·Z gets applied in a few large, coarse jolts — the polyline visibly cuts corners the fine path takes smoothly. Push N up toward 32 and Δt shrinks toward the reference resolution: the red line hugs the blue one closely, and the endpoint error shrinks — exactly the "smaller step, smaller error" behaviour Euler-Maruyama shares with ordinary Euler's method, just noisier.</p>
     </section>
 
+    <!-- WB:sde_numerical_schemes-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Euler-Maruyama step by step, and why Milstein converges faster</h2>
+      <!-- WB:sde_numerical_schemes:START -->
+      <div class="wb" data-title="Euler-Maruyama step by step, and why Milstein converges faster">
+        <script type="application/json">{"w":600,"h":620,"intro":"The lesson's four Euler-Maruyama steps drawn by hand, checked against the exact answer, then what happens to the error as the steps shrink. Press play, or step through.","steps":[{"cap":"GBM with 10% drift and 30% volatility, starting at 100. No need for a formula: we will step through one year in four quarter-year steps.","do":[{"chart":"p","x":10,"y":10,"w":580,"h":300,"title":"One simulated year, four Euler-Maruyama steps","xd":[0,1],"yd":[90,145],"yt":[[100,"100"],[120,"120"],[140,"140"]],"xt":[[0,"0"],[0.25,"0.25"],[0.5,"0.5"],[0.75,"0.75"],[1,"t = 1"]],"pl":50,"pr":24},{"dot":"x0","chart":"p","at":[0,100],"text":"100","tone":"blue","dx":12,"dy":-14,"anchor":"start"}]},{"cap":"Step 1. The drift adds 0.10 × 100 × 0.25 = 2.50, a small blue slope. Then the random shock: 0.30 × 100 × 0.8453 = 25.36, the tall amber jump. New value 127.86.","do":[{"series":"dr0","chart":"p","pts":[[0.0,100.0],[0.25,102.5]],"tone":"blue","dash":true,"ms":500},{"series":"sh0","chart":"p","pts":[[0.25,102.5],[0.25,127.8579]],"tone":"amber","ms":600},{"dot":"x1","chart":"p","at":[0.25,127.8579],"text":"127.86","tone":"green","dy":-16}]},{"cap":"Step 2. The draw is −0.2330. Drift +3.20, shock −8.94: down to 122.12. The shock decides the direction; the drift barely shows.","do":[{"series":"dr1","chart":"p","pts":[[0.25,127.8579],[0.5,131.0543475]],"tone":"blue","dash":true,"ms":500},{"series":"sh1","chart":"p","pts":[[0.5,131.0543475],[0.5,122.1183]],"tone":"amber","ms":600},{"dot":"x2","chart":"p","at":[0.5,122.1183],"text":"122.12","tone":"green","dy":18}]},{"cap":"Steps 3 and 4: draws of 0.0164 and 0.2038 take the path to 125.77, then 136.60 at the end of the year.","do":[{"series":"dr2","chart":"p","pts":[[0.5,122.1183],[0.75,125.17125750000001]],"tone":"blue","dash":true,"ms":500},{"series":"sh2","chart":"p","pts":[[0.75,125.17125750000001],[0.75,125.7724]],"tone":"amber","ms":600},{"dot":"x3","chart":"p","at":[0.75,125.7724],"text":"125.77","tone":"green","dy":-16},{"series":"dr3","chart":"p","pts":[[0.75,125.7724],[1.0,128.91671]],"tone":"blue","dash":true,"ms":500},{"series":"sh3","chart":"p","pts":[[1.0,128.91671],[1.0,136.6049]],"tone":"amber","ms":600},{"dot":"x4","chart":"p","at":[1.0,136.6049],"text":"136.60","tone":"green","dy":-16}]},{"cap":"The exact GBM answer on the same random path is 135.63. Euler-Maruyama's four coarse steps are off by 0.98, about 0.72% of the level.","do":[{"dot":"ex","chart":"p","at":[1,135.6271],"text":"exact 135.63","tone":"purple","dx":-14,"dy":0,"anchor":"end"},{"note":"err","x":300,"y":330,"text":"error 136.60 − 135.63 = 0.98","size":20,"anchor":"middle","tone":"red"}]},{"cap":"\"How accurate\" is two questions. Strong: does each simulated path track the true path? Weak: does the average, like a vanilla price, come out right? Euler-Maruyama is strong order 0.5 but weak order 1.0.","do":[{"box":"strong","x":20,"y":380,"w":270,"h":96,"text":"strong: the path\norder 0.5","tone":"blue","size":19},{"box":"weak","x":310,"y":380,"w":270,"h":96,"text":"weak: the average\norder 1.0","tone":"purple","size":19}]},{"cap":"Here is strong error measured on 20,000 simulated paths, against the number of steps per year, on log scales. Euler-Maruyama falls from 1.82 at 4 steps to 0.33 at 128: about 1.4 times smaller per halving, slope 0.49.","do":[{"hide":"p"},{"hide":"x0"},{"hide":"ex"},{"hide":"err"},{"hide":"dr0"},{"hide":"sh0"},{"hide":"dr1"},{"hide":"sh1"},{"hide":"dr2"},{"hide":"sh2"},{"hide":"dr3"},{"hide":"sh3"},{"hide":"x1"},{"hide":"x2"},{"hide":"x3"},{"hide":"x4"},{"chart":"c","x":10,"y":10,"w":580,"h":300,"title":"Path error vs steps (log scales)","xd":[1.7,7.3],"yd":[-2,0.4],"yt":[[0,"1"],[-1,"0.1"],[-2,"0.01"]],"xt":[[2.0,"4"],[3.0,"8"],[4.0,"16"],[5.0,"32"],[6.0,"64"],[7.0,"128"]],"pl":50,"pr":24},{"series":"em","chart":"c","pts":[[2.0,0.259],[3.0,0.117],[4.0,-0.026],[5.0,-0.173],[6.0,-0.325],[7.0,-0.478]],"tone":"blue","ms":1300,"label":"Euler: 1.82 → 0.33","lat":[4.5,-0.07],"ldx":0,"ldy":-26,"lanchor":"middle","lsize":16}]},{"cap":"Milstein adds one term, ½σσ′(ΔW² − Δt), the next piece of the Itô-Taylor expansion. Its error falls from 0.42 to 0.014: it halves with every halving of the step. Strong order 1.0, slope 0.98.","do":[{"series":"mil","chart":"c","pts":[[2.0,-0.377],[3.0,-0.662],[4.0,-0.955],[5.0,-1.25],[6.0,-1.55],[7.0,-1.848]],"tone":"green","ms":1300,"label":"Milstein: 0.42 → 0.014","lat":[3.6,-1.1],"ldx":0,"ldy":34,"lanchor":"middle","lsize":16},{"pulse":"strong"}]},{"cap":"Why it matters on a desk: a vanilla call only needs the endpoint, so a coarse daily grid is fine. A barrier needs the path: a coarse path can step over the barrier without touching it and misprice the knock-in.","do":[{"hide":"weak"},{"hide":"strong"},{"box":"van","x":20,"y":380,"w":270,"h":96,"text":"vanilla: endpoint\ncoarse grid is fine","tone":"green","size":18},{"box":"bar","x":310,"y":380,"w":270,"h":96,"text":"barrier: the path\nneeds finer steps","tone":"red","size":18}]},{"cap":"The rule: match the step size to the payoff, and check it with a convergence study like this one before trusting a new engine. More paths cut noise; only smaller steps cut this bias.","do":[{"note":"rule","x":300,"y":530,"text":"match the step to the payoff","size":22,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:sde_numerical_schemes:END -->
+    </section>
+    <!-- WB:sde_numerical_schemes-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Milstein: one extra term, aimed at the error Euler-Maruyama drops</h2>
       <p class="sl-sub">A full Itô-Taylor expansion has a next-order correction term Euler-Maruyama simply discards. Milstein keeps it.</p>
@@ -226,7 +239,7 @@
       <div class="sl-quote">For GBM, σ(X) = σX is linear in X, so σ′(X) = σ — a plain constant, trivial to compute. That's exactly why GBM examples make Milstein look easy: the real cost only shows up once σ is a genuinely awkward function of the state, like an arbitrary local-volatility surface.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Which one should you reach for?</h2>
       <p class="sl-sub">Neither scheme is strictly "better" — they trade accuracy against implementation cost differently.</p>
@@ -257,7 +270,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">A grounding check on this lesson's own claims</h2>
       <p class="sl-sub">This curriculum's house rule: don't repeat a claim about this repo's own code without checking it against the actual source.</p>
@@ -268,7 +281,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -319,7 +332,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -527,5 +540,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

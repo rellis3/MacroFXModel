@@ -6,8 +6,8 @@ from math import sqrt
 # returns the 2-sigma cloud is the ellipse x² − 2rxy + y² = 4(1 − r²); PC1 lies on the
 # diagonal with eigenvalue 1 + r = 1.75, PC2 across it with 1 − r = 0.25, so PC1's share
 # is (1 + r)/2 = 87.5% (the lesson's exact two-variable formula). Arrow half-lengths are
-# 2·sqrt(eigenvalue) along each axis. The three-pair eigenvalues 1.85 / 0.95 / 0.20 and
-# their shares (61.7 / 31.7 / 6.7%) are the lesson's worked example and calculator.
+# 2·sqrt(eigenvalue) along each axis. The three-pair eigenvalues 1.82 / 0.93 / 0.25 and
+# their shares (60.7 / 31.0 / 8.3%) are the lesson's worked example and calculator.
 R = 0.75
 XS = [round(-2 + i * 0.1, 2) for i in range(41)]
 def _y(x, s): return round(R * x + s * sqrt(max(0.0, (1 - R * R) * (4 - x * x))), 3)
@@ -15,8 +15,8 @@ TOP = [[x, _y(x, 1)] for x in XS]
 BOT = [[x, _y(x, -1)] for x in XS]
 H1 = round(2 * sqrt(1 + R) / sqrt(2), 3)    # 1.871 along the diagonal
 H2 = round(2 * sqrt(1 - R) / sqrt(2), 3)    # 0.707 across it
-L = [1.85, 0.95, 0.20]
-EVR = [round(100 * v / sum(L), 1) for v in L]   # 61.7, 31.7, 6.7
+L = [1.82, 0.93, 0.25]
+EVR = [round(100 * v / sum(L), 1) for v in L]   # 60.7, 31.0, 8.3
 CURVE = [[r / 20, round(100 * (1 + r / 20) / 2, 2)] for r in range(0, 21)]
 
 CL = (10, 236, 300, 300)
@@ -44,7 +44,7 @@ PCA = dict(w=600, h=800, intro='Three FX pairs, one shared driver. Watch PCA fin
     step('PC2 is the best direction left, at right angles to PC1: the pairs moving apart. The cloud is thin that way, so PC2 carries little. PC1 holds (1 + 0.75) ÷ 2 = 87.5% of the variance, PC2 the other 12.5%.',
          series('pc2', 'cl', [[-H2, H2], [H2, -H2]], 'amber', ms=700, width=4, label='PC2', lat=[H2, -H2], ldx=10, ldy=12, lanchor='start'),
          cnote('sh', 'cl', [-1.3, 1.6], 'PC1 87.5%\nPC2 12.5%', None, 17)),
-    step(f'Now all three pairs. PCA turns their 3 × 3 correlation grid into three eigenvalues, about 1.85, 0.95 and 0.20. They add up to 3, the total variance. PC1\'s share is 1.85 ÷ 3 ≈ {EVR[0]:.0f}%.',
+    step(f'Now all three pairs. PCA turns their 3 × 3 correlation grid into three eigenvalues, about 1.82, 0.93 and 0.25. They add up to 3, the total variance. PC1\'s share is 1.82 ÷ 3 ≈ {EVR[0]:.0f}%.',
          chart('br', BR, 'Share of variance', [0.3, 3.7], [0, 80], [[0, '0'], [30, '30%'], [60, '60%']],
                [[1, 'PC1'], [2, 'PC2'], [3, 'PC3']], pl=46, pr=10, size=18),
          dict(bars='evr', chart='br', data=[[1, EVR[0], f'{EVR[0]:.0f}%', 'red'], [2, EVR[1], f'{EVR[1]:.0f}%', 'amber'], [3, EVR[2], f'{EVR[2]:.0f}%', 'purple']], bw=46, ms=1200)),

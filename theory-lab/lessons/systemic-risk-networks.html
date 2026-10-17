@@ -363,7 +363,7 @@
       <strong>Round 2.</strong> Now each bank also absorbs its exposure to
       whichever <em>other</em> banks just got newly distressed in round 1:
       \(h_A(2) = 0.10 + W_{AB}\times(h_B(1){-}0) = 0.10 + 0.3\times0.40 =
-      0.22\); \(h_B(2) = 0.40 + W_{BA}\times0.10 = 0.40+0.2\times0.10=0.42\);
+      0.22\); \(h_B(2) = 0.40 + W_{BA}\times0.10 + W_{BD}\times0.30 = 0.40+0.02+0.03=0.45\);
       \(h_D(2) = 0.30 + W_{DA}\times0.10 = 0.30+0.1\times0.10=0.31\).
     </p>
     <p>
@@ -430,7 +430,7 @@
       Round 1: h<sub>A</sub>=<b id="srn-scratch-a1">0.10</b>&emsp;h<sub>B</sub>=<b id="srn-scratch-b1">0.40</b>&emsp;h<sub>D</sub>=<b id="srn-scratch-d1">0.30</b>
     </div>
     <div class="tl-readout">
-      Round 2: h<sub>A</sub>=<b id="srn-scratch-a2">0.22</b>&emsp;h<sub>B</sub>=<b id="srn-scratch-b2">0.42</b>&emsp;h<sub>D</sub>=<b id="srn-scratch-d2">0.31</b>
+      Round 2: h<sub>A</sub>=<b id="srn-scratch-a2">0.22</b>&emsp;h<sub>B</sub>=<b id="srn-scratch-b2">0.45</b>&emsp;h<sub>D</sub>=<b id="srn-scratch-d2">0.31</b>
       <span id="srn-scratch-note" class="tl-scratch-note"></span>
     </div>
     <button type="button" id="srn-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
@@ -825,7 +825,7 @@
 
   // Cross-exposures fixed at the worked example's matrix (not user inputs)
   // so this stays a two-round illustration rather than a full 4x4 solver.
-  var W_AB = 0.3, W_BA = 0.2, W_DA = 0.1;
+  var W_AB = 0.3, W_BA = 0.2, W_BD = 0.1, W_DA = 0.1;
 
   var DEFAULTS = { hc0: 1.0, wac: 0.1, wbc: 0.4, wdc: 0.3 };
 
@@ -847,7 +847,7 @@
     var hD1 = wdc * hC0;
 
     var hA2 = hA1 + W_AB * hB1;
-    var hB2 = hB1 + W_BA * hA1;
+    var hB2 = hB1 + W_BA * hA1 + W_BD * hD1;
     var hD2 = hD1 + W_DA * hA1;
 
     a1Out.textContent = hA1.toFixed(2);

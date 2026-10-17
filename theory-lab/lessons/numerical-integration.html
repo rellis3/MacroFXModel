@@ -563,10 +563,12 @@
       the payoff against the joint risk-neutral density of all 7 assets'
       terminal prices). A junior quant, having just learned Simpson's rule,
       suggests laying down a grid of even 15 points per dimension for high
-      accuracy: \(15^7\), on the order of 170 billion evaluations — not a
-      slow computation, an outright impossible one on any available hardware
-      within a workable timeframe, however this hypothetical case is scaled
-      up in accuracy or precision.
+      accuracy: \(15^7\), about 171 million evaluations for a single price.
+      That is already 171 times the Monte Carlo budget below, a risk run
+      repeats it for every bump of every input, and each extra underlying
+      multiplies it by 15 again: ten underlyings would need \(15^{10}\),
+      about 577 billion. The grid's cost explodes with dimension, which is
+      why it stops being a workable tool long before a basket gets large.
     </p>
     <p>
       Monte Carlo sidesteps the exponential blow-up entirely: draw, say, 1

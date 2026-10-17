@@ -217,7 +217,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">10³</div><div><h4>3 dimensions — 1,000 grid points</h4><p>Getting heavier, but still computable on ordinary hardware.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">10¹⁰</div><div><h4>10 dimensions — 10,000,000,000 grid points</h4><p>A basket of just 10 underlyings. Ten billion evaluations — already infeasible.</p></div></div>
       </div>
-      <p class="sl-p">A structuring desk pricing a 7-underlying basket option with even a modest 15-point-per-dimension grid needs 15⁷ ≈ 170 billion evaluations — not slow, <strong>outright impossible</strong> on any available hardware in a workable timeframe. Every monitoring date on a path-dependent payoff effectively adds another dimension to this same problem.</p>
+      <p class="sl-p">A structuring desk pricing a 7-underlying basket option with even a modest 15-point-per-dimension grid needs 15⁷ ≈ 171 million evaluations for one price, and <strong>every extra underlying multiplies that by 15 again</strong>: ten underlyings would need about 577 billion. Every monitoring date on a path-dependent payoff effectively adds another dimension to this same problem.</p>
       <div class="sl-quote">A grid method that works comfortably in 1 or 2 dimensions can look like it should "just scale up" to 3 or 4 — the exponential cost only becomes obvious once someone actually tries to run it, by which point real development time may already be sunk into an approach that has to be thrown out.</div>
     </section>
 
@@ -275,7 +275,7 @@
       </div>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Real-world scenario</div>
-        <p>A 7-underlying basket call is a genuinely 7-dimensional pricing integral. A grid at 15 points per dimension needs 15⁷ ≈ 170 billion evaluations — impossible. Drawing 1 million joint samples of the 7 underlyings and averaging the payoff costs exactly 1 million evaluations, dimension irrelevant — the standard reason a desk reaches for simulation, not a grid. Halving that Monte Carlo error needs 4 million draws instead of 1 million: a real, but polynomial, cost — nothing like the grid's exponential wall.</p>
+        <p>A 7-underlying basket call is a genuinely 7-dimensional pricing integral. A grid at 15 points per dimension needs 15⁷ ≈ 171 million evaluations for one price, and ten underlyings would need about 577 billion. Drawing 1 million joint samples of the 7 underlyings and averaging the payoff costs exactly 1 million evaluations, dimension irrelevant — the standard reason a desk reaches for simulation, not a grid. Halving that Monte Carlo error needs 4 million draws instead of 1 million: a real, but polynomial, cost — nothing like the grid's exponential wall.</p>
       </div>
     </section>
 

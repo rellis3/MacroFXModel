@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Newton-Raphson &amp; Gradient Descent — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -144,7 +145,19 @@
       </div>
     </section>
 
+    <!-- WB:newton_raphson_gradient_descent-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Tangent lines to a yield, and steps down a bowl</h2>
+      <!-- WB:newton_raphson_gradient_descent:START -->
+      <div class="wb" data-title="Tangent lines to a yield, and steps down a bowl">
+        <script type="application/json">{"w":600,"h":820,"intro":"Newton-Raphson finds a bond's yield by sliding down tangent lines. Watch it nail the answer in two steps, then watch a bad start send it flying, then the slower, steadier walk of gradient descent. Press play, or step through.","steps":[{"cap":"A 3-year bond paying 5 a year on 100 trades at 97.50. Which yield makes the price formula give 97.50? There is no algebra for it, so plot the pricing error: model price minus 97.50. The answer is where it crosses zero.","do":[{"chart":"z","x":10,"y":10,"w":580,"h":250,"title":"Pricing error P(y) − 97.50, near the answer","xd":[0.048,0.062],"yd":[-1.2,3.4],"yt":[[0,"0"],[1,"1"],[2,"2"],[3,"3"]],"xt":[[0.05,"5.0%"],[0.055,"5.5%"],[0.06,"6.0%"]],"zero":true,"pl":40,"pr":20},{"series":"fz","chart":"z","pts":[[0.048,3.047],[0.0485,2.91],[0.049,2.773],[0.0495,2.636],[0.05,2.5],[0.0505,2.364],[0.051,2.228],[0.0515,2.093],[0.052,1.957],[0.0525,1.822],[0.053,1.688],[0.0535,1.553],[0.054,1.419],[0.0545,1.285],[0.055,1.151],[0.0555,1.018],[0.056,0.884],[0.0565,0.751],[0.057,0.618],[0.0575,0.486],[0.058,0.354],[0.0585,0.222],[0.059,0.09],[0.0595,-0.042],[0.06,-0.173],[0.0605,-0.304],[0.061,-0.435],[0.0615,-0.565],[0.062,-0.696]],"tone":"blue","ms":1100}]},{"cap":"Start at the coupon rate, 5%. There the bond prices at exactly 100, so the error is 2.50. The slope of the price is about −272 per unit of yield.","do":[{"dot":"p0","chart":"z","at":[0.05,2.5],"text":"y₀ = 5%: error 2.50","tone":"amber","dx":10,"dy":-14,"anchor":"start"}]},{"cap":"Follow the tangent line, not the curve, down to zero: 5% − 2.50 ÷ (−272) = 5.918%. One step, and the error falls from 2.50 to about 0.04.","do":[{"series":"t0","chart":"z","pts":[[0.05,2.5],[0.05918021411578113,0]],"tone":"amber","dash":true,"ms":900},{"dot":"p1","chart":"z","at":[0.05918021411578113,0.04239113994336208],"text":"y₁ = 5.918%","tone":"green","dx":10,"dy":-24,"anchor":"start"}]},{"cap":"Repeat from 5.918%. The next step lands at 5.934%, with the price within a fraction of a cent of 97.50. Done: the yield to maturity is about 5.934%.","do":[{"dot":"p2","chart":"z","at":[0.05934130194968176,0],"text":"YTM ≈ 5.934%","tone":"green","dx":-12,"dy":28,"anchor":"end"}]},{"cap":"That is quadratic convergence: near the answer, the error is roughly squared each step, so correct digits roughly double. Bars on a log scale: 2.50, then 0.04, then under a cent.","do":[{"chart":"err","x":310,"y":272,"w":280,"h":250,"title":"Pricing error, log scale","xd":[0.4,3.6],"yd":[0,6],"yt":[[5,"1"],[3,"0.01"],[1,"0.0001"]],"xt":[[1,"start"],[2,"step 1"],[3,"step 2"]],"pl":58},{"bars":"eb","chart":"err","data":[[1,5.398,"2.50","red"],[2,3.627,"0.04","amber"],[3,0.4,"< 1¢","green"]],"bw":46,"ms":1100}]},{"cap":"But the speed is only local. Start instead from a wild guess of 50%. The price there is 36.67, the error −60.83, and the slope only −67.4: a shallow tangent.","do":[{"chart":"w","x":10,"y":272,"w":290,"h":250,"title":"From a 50% guess","xd":[-0.45,0.62],"yd":[-70,62],"yt":[[-60,"−60"],[0,"0"],[60,"60"]],"xt":[[-0.4,"−40%"],[0,"0%"],[0.5,"50%"]],"zero":true,"pl":40,"pr":14},{"series":"fw","chart":"w","pts":[[-0.1,58.26],[-0.08,48.68],[-0.06,39.89],[-0.04,31.81],[-0.02,24.37],[0.0,17.5],[0.02,11.15],[0.04,5.28],[0.06,-0.17],[0.08,-5.23],[0.1,-9.93],[0.12,-14.31],[0.14,-18.39],[0.16,-22.2],[0.18,-25.77],[0.2,-29.1],[0.22,-32.22],[0.24,-35.14],[0.26,-37.89],[0.28,-40.47],[0.3,-42.9],[0.32,-45.19],[0.34,-47.35],[0.36,-49.38],[0.38,-51.3],[0.4,-53.11],[0.42,-54.83],[0.44,-56.45],[0.46,-57.99],[0.48,-59.45],[0.5,-60.83],[0.52,-62.15],[0.54,-63.4],[0.56,-64.58],[0.58,-65.71],[0.6,-66.79]],"tone":"blue","ms":1000},{"dot":"w0","chart":"w","at":[0.5,-60.833333333333336],"text":"50%","tone":"amber","dx":-8,"dy":18,"anchor":"end"}]},{"cap":"The tangent shoots past the answer to a yield of about −40%. The next step jumps to about −24%. Fast, confident, and nowhere near 5.934%. Real solvers bound the step and fall back to bisection.","do":[{"series":"tw","chart":"w","pts":[[0.5,-60.833333333333336],[-0.4024725274725276,0]],"tone":"red","dash":true,"ms":1000},{"dot":"w1","chart":"w","at":[-0.4024725274725276,0],"text":"−40%","tone":"red","dx":4,"dy":-18,"anchor":"start"}]},{"cap":"Gradient descent asks a different question: where is a function smallest? On the bowl (x − 3)², start at 0 and step downhill by a learning rate times the slope.","do":[{"chart":"b","x":10,"y":540,"w":580,"h":270,"title":"Gradient descent on (x − 3)², from x = 0","xd":[-1.5,7.5],"yd":[0,21],"yt":[[0,"0"],[9,"9"],[18,"18"]],"xt":[[0,"0"],[3,"3 (min)"],[6,"6"]],"pl":40,"pr":16},{"series":"bowl","chart":"b","pts":[[-1.5,20.25],[-1.2,17.64],[-0.9,15.21],[-0.6,12.96],[-0.3,10.89],[0.0,9.0],[0.3,7.29],[0.6,5.76],[0.9,4.41],[1.2,3.24],[1.5,2.25],[1.8,1.44],[2.1,0.81],[2.4,0.36],[2.7,0.09],[3.0,0.0],[3.3,0.09],[3.6,0.36],[3.9,0.81],[4.2,1.44],[4.5,2.25],[4.8,3.24],[5.1,4.41],[5.4,5.76],[5.7,7.29],[6.0,9.0],[6.3,10.89],[6.6,12.96],[6.9,15.21],[7.2,17.64],[7.5,20.25]],"tone":null,"ms":900}]},{"cap":"With a learning rate of 0.3, each step cuts the error to 0.4 of what it was: 0 → 1.8 → 2.52 → 2.81 → 2.92. Steady, but linear: the error shrinks by a fixed ratio, it is not squared.","do":[{"series":"g3","chart":"b","pts":[[0.0,9.0],[1.8,1.44],[2.52,0.23],[2.808,0.037],[2.923,0.006]],"tone":"green","ms":1300,"label":"α = 0.3","lat":[1.2,0.8],"ldx":0,"ldy":0,"lanchor":"end","lsize":16},{"dot":"g3d","chart":"b","at":[0,9],"text":"x₀","tone":"green","dx":-10,"dy":0,"anchor":"end"}]},{"cap":"A learning rate of 0.5 lands exactly on 3 in one step. That is Newton's method for this bowl: the curvature picks the step size for you.","do":[{"series":"g5","chart":"b","pts":[[0.0,9.0],[3.0,0.0]],"tone":"purple","dash":true,"ms":900,"label":"α = 0.5: one step","lat":[1.5,4.5],"ldx":12,"ldy":-10,"lanchor":"start","lsize":16}]},{"cap":"Too big a rate, 1.1, overshoots further every time: 0 → 6.6 → −1.3. The error grows by 1.2 times each step and never settles. The learning rate has to be tuned to the problem.","do":[{"series":"g11","chart":"b","pts":[[0.0,9.0],[6.6,12.96],[-1.32,18.662]],"tone":"red","ms":1300,"label":"α = 1.1: diverges","lat":[3.6,19],"ldx":0,"ldy":0,"lanchor":"start","lsize":16}]}]}</script>
+      </div>
+      <!-- WB:newton_raphson_gradient_descent:END -->
+    </section>
+    <!-- WB:newton_raphson_gradient_descent-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Where Newton-Raphson fails</h2>
       <div class="sl-icard-grid">
@@ -155,7 +168,7 @@
       <div class="sl-quote">Production pricing engines almost never run pure, unguarded Newton-Raphson. The standard fix: start from a problem-informed guess (the coupon rate for a bond near par; an approximation formula for implied vol), cap how large a single step is allowed to be, and fall back to a slower but guaranteed-to-converge method like bisection whenever a step leaves a known bracket around the true root.</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Try it — Newton-Raphson finding a square root</h2>
       <p class="sl-sub">Finding √a is exactly root-finding on f(x) = x² − a. Change the target a or the starting guess x₀ and watch how fast (or badly) it converges.</p>
@@ -176,7 +189,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">A different question: not "where's zero," but "where's smallest"</h2>
       <p class="sl-sub">Gradient descent solves a related but distinct problem — minimizing a function instead of finding where it crosses zero.</p>
@@ -188,7 +201,7 @@
       <div class="sl-quote">Picture standing on a hilly landscape, blindfolded, trying to reach the lowest point. You can feel which direction is steepest-downhill right under your feet — that's the gradient — so you take a step that way. Newton-Raphson could <em>see</em> the whole tangent line; gradient descent can only feel the slope, one step at a time.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Too small is slow, too large breaks it</h2>
       <p class="sl-sub">Drag the learning rate. This is real arithmetic on f(x) = (x − 3)², starting from x₀ = 0, six steps of xₙ₊₁ = xₙ − α·2(xₙ − 3).</p>
@@ -211,7 +224,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What if you also knew the curvature?</h2>
       <div class="sl-compare">
@@ -239,7 +252,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">How this actually gets used — and misused</h2>
       <div class="sl-icard-grid">
@@ -255,7 +268,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -306,7 +319,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -480,5 +493,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

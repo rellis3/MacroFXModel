@@ -481,7 +481,7 @@
       EUR, GBP, CHF, and AUD, and is considering adding JPY as a fifth,
       "diversifying" instrument. The MST gives a fast, honest read: JPY's
       only path into this basket's backbone is a single, comparatively long
-      edge through AUD (distance 1.10 — the second-longest edge kept in the
+      edge through AUD (distance 1.10 — the longest edge kept in the
       whole tree) — meaning JPY is indeed the basket's most genuinely
       distinct instrument, its closest relationship to anything else in the
       book is still fairly weak. That's a legitimate diversification
@@ -666,7 +666,7 @@
     <h3>Your diversifier has stopped diversifying</h3>
     <p>You run a currency book across EUR, GBP, CHF and AUD, and you added JPY because a tree built on calm data showed it hanging far from the hub. It is Monday. Last night the Federal Reserve cut rates to zero. Funds facing margin calls are selling whatever has a bid, Treasuries and gold included, and the dollar is surging. The VIX will close at a record 82.69 today. What do you do with your tree?</p>
     <ol class="tl-drill-options">
-      <li data-verdict="bad">Trust it. JPY is the outlier in your tree, so your book is still diversified.<div class="tl-drill-why">The tree was built on a window that described a market that no longer exists. When correlations rush towards 1, every distance shrinks towards 0, and the outlier moves into the clump. The calm tree is not the crisis tree.</div></li>
+      <li data-verdict="bad">Trust it. JPY is the outlier in your tree, so your book is still diversified.<div class="tl-drill-why">The tree was built on a window that described a market that no longer exists. When correlations rush toward 1, every distance shrinks toward 0, and the outlier moves into the clump. The calm tree is not the crisis tree.</div></li>
       <li data-verdict="good">Assume the distances have collapsed, treat the book as closer to one trade, and cut gross size until you can re-estimate on recent data.<div class="tl-drill-why">This is what the transform says. If correlations go to 0.9, every distance falls to about 0.45, shorter than your tightest calm edge of 0.63. Five positions then behave like one large one, so the size that was right for five separate bets is too big.</div></li>
       <li data-verdict="ok">Rebuild the tree on the full past year so the estimate is more stable.<div class="tl-drill-why">A longer window is steadier, but it is steadier because it is mostly calm data. It will under-report how far correlations have converged this week. Better than nothing, but it answers the wrong question.</div></li>
       <li data-verdict="bad">Add Treasuries and gold as hedges, since they sit far from currencies and stocks in a calm tree.<div class="tl-drill-why">These are exactly the assets being sold for cash this week. Long Treasury yields were rising while equities fell, and gold was falling with stocks. A hedge chosen from a calm-window distance can fail together with the risk it hedges.</div></li>
@@ -739,7 +739,7 @@
       visually obvious. The MST makes it structural and immediate: JPY isn't
       connected to the hub (EUR) directly at all — it only joins the tree
       through its single least-weak relationship, to AUD, and that edge
-      (1.10) is the second-longest kept in the whole tree. The tree turns
+      (1.10) is the longest kept in the whole tree. The tree turns
       "JPY has uniformly weak correlations" into a visible shape — an
       outlier hanging off the main cluster by one thin thread — rather than
       a pattern a reader has to notice by scanning a row of numbers.

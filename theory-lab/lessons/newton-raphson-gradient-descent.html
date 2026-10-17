@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Newton-Raphson &amp; Gradient Descent — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,63 @@
       <li>How it reached trading: by the early 1980s Newton-Raphson was the standard way to back implied volatility out of option prices (Manaster &amp; Koehler, 1982) and yields out of bond prices; gradient methods do the same job for model calibration and training.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two panels. Left, Newton-Raphson solving for the yield of a 3-year, 5-coupon bond priced at 97.50: starting at 5.000% the pricing error is 2.50, after one step at 5.918% it is 0.0424, after two steps at 5.934% it is under a cent; the bars, on a log scale, collapse. Right, gradient descent on the bowl x minus 3 squared from x equals 0 with learning rate 0.3: the iterates go 0, 1.8, 2.52, 2.81, 2.92, each step cutting the error to 0.4 of the last.">
+      <line class="tlp-line dash" x1="300" y1="14" x2="300" y2="246" opacity=".5"/>
+      <text class="tlp-purple" x="20" y="24" font-size="14" font-weight="700">Newton-Raphson: a bond's yield</text>
+      <text class="tlp-text" x="20" y="54" font-size="13">start y₀ = 5.000% · off by 2.50</text>
+      <rect class="tlp-box red" x="20" y="62" width="220" height="14" rx="3"/>
+      <text class="tlp-text" x="20" y="104" font-size="13">y₁ = 5.918% · off by 0.0424</text>
+      <rect class="tlp-box amber" x="20" y="112" width="131" height="14" rx="3"/>
+      <text class="tlp-text" x="20" y="154" font-size="13">y₂ = 5.934% · off by under a cent</text>
+      <rect class="tlp-box green" x="20" y="162" width="6" height="14" rx="2"/>
+      <text class="tlp-text3" x="20" y="196" font-size="11">bars: pricing error, log scale</text>
+      <text class="tlp-green" x="20" y="218" font-size="13" font-weight="700">correct digits roughly double each step</text>
+      <text class="tlp-text2" x="20" y="238" font-size="12">but only once you start close enough</text>
+      <text class="tlp-amber" x="318" y="24" font-size="14" font-weight="700">Gradient descent: down a bowl</text>
+      <line class="tlp-line" x1="310" y1="210" x2="590" y2="210"/>
+      <polyline class="tlp-line thick" points="318.0,63.4 330.0,88.0 342.0,110.2 354.0,130.1 366.0,147.7 378.0,162.9 390.0,175.8 402.0,186.3 414.0,194.5 426.0,200.3 438.0,203.8 450.0,205.0 462.0,203.8 474.0,200.3 486.0,194.5 498.0,186.3 510.0,175.8 522.0,162.9 534.0,147.7 546.0,130.1 558.0,110.2 570.0,88.0 582.0,63.4"/>
+      <polyline class="tlp-line amber dash" points="330,88 402,186.3 430.8,202 442.3,204.5 446.9,204.9"/>
+      <circle class="tlp-amber" cx="330" cy="88" r="5"/>
+      <circle class="tlp-amber" cx="402" cy="186.3" r="5"/>
+      <circle class="tlp-amber" cx="430.8" cy="202" r="4"/>
+      <circle class="tlp-amber" cx="442.3" cy="204.5" r="4"/>
+      <circle class="tlp-green" cx="450" cy="205" r="4"/>
+      <text class="tlp-amber" x="338" y="62" font-size="13" font-weight="700">x₀ = 0, f = 9</text>
+      <text class="tlp-amber" x="412" y="168" font-size="13" font-weight="700">x₁ = 1.8</text>
+      <text class="tlp-text3" x="450" y="225" text-anchor="middle" font-size="11">minimum at 3</text>
+      <text class="tlp-text2" x="450" y="241" text-anchor="middle" font-size="12">α = 0.3: 0 → 1.8 → 2.52 → 2.81 → 2.92</text>
+      <text class="tlp-amber" x="585" y="48" text-anchor="end" font-size="12">error × 0.4 each step</text>
+    </svg>
+    <figcaption>Two iterative tools. Newton-Raphson follows the tangent line to zero and nails the bond's yield in two steps, because near the answer each step roughly squares the error. Gradient descent steps a fixed fraction downhill: steady, cheap, but it only shrinks the error by a fixed ratio.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My screen shows a yield for every bond and an implied vol for every option. Where do those numbers come from?</p>
+      <p data-who="Quant">From a solver. You can turn a yield into a price with a formula, but you cannot rearrange that formula to turn a price back into a yield. So you search.</p>
+      <p data-who="Trader">Search how?</p>
+      <p data-who="Quant">Newton-Raphson. Plot how far the model price is from the market price. Where you stand, draw the straight tangent line and slide down it to zero. That is your next guess. Repeat.</p>
+      <p data-who="Trader">Show me.</p>
+      <p data-who="Quant">A three-year bond paying five a year on a hundred, trading at ninety-seven fifty. Start at five percent, the coupon. The price there is exactly a hundred, two fifty too high. One tangent step takes you to five point nine one eight percent, and the error drops to about four cents.</p>
+      <p data-who="Trader">And the next step?</p>
+      <p data-who="Quant">Five point nine three four percent, within a fraction of a cent. Two steps. Near the answer the error gets roughly squared each time, so the correct digits roughly double.</p>
+      <p data-who="Trader">So why doesn't it always work?</p>
+      <p data-who="Quant">Because that speed is only local. It divides by the slope. Where the slope is nearly flat, the step explodes. Start the same bond at fifty percent and the first step lands at minus forty percent.</p>
+      <p data-who="Trader">Does that happen with options too?</p>
+      <p data-who="Quant">All the time. For implied vol the slope is vega. On very deep out-of-the-money strikes vega is tiny, so a solver can return something absurd like four hundred percent. Good solvers start from a sensible guess, cap the step and fall back to bisection.</p>
+      <p data-who="Trader">And gradient descent?</p>
+      <p data-who="Quant">A different question: not where is zero, but where is lowest. Feel the slope under your feet and step downhill by a fixed fraction, the learning rate.</p>
+      <p data-who="Trader">How big a step?</p>
+      <p data-who="Quant">That is the whole game. On a simple bowl with its bottom at three, start at zero with a rate of point three and you go one point eight, then two point five two, closing in steadily. Too big a rate and you overshoot further each time and never settle.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Newton-Raphson is fast near the answer and dangerous far from it, gradient descent is steady but needs a tuned step, and every yield and implied vol you see is the output of one of them.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -133,6 +191,34 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the Newton-Raphson step comes from, then its downhill cousin</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ y = f(x_n) + \color{#fbbf24}{f'(x_n)(x - x_n)} \]</div>
+      <p>Start with the tangent line at your current guess: the curve's value there, plus its slope times how far you move.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{0} = f(x_n) + f'(x_n)(x_{n+1} - x_n) \]</div>
+      <p>Ask where that straight line hits zero. Call that point the next guess.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{x_{n+1} = x_n - \frac{f(x_n)}{f'(x_n)}} \]</div>
+      <p>Solve for it. The correction is the error divided by the slope, which is why a near-flat slope makes the step explode.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ y_1 = 0.05 - \frac{2.50}{-272.32} = \color{#10b981}{5.918\%} \]</div>
+      <p>The bond example: price error 2.50 at a 5% guess, slope about −272. One step lands at 5.918%; the next at 5.934%.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ x_{n+1} = x_n - \color{#fbbf24}{\alpha}\,\nabla f(x_n) \]</div>
+      <p>For a minimum instead of a root, step against the gradient by a learning rate \(\alpha\) you choose in advance.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ x_{n+1} = x_n - \color{#fbbf24}{H^{-1}}\,\nabla f(x_n) \]</div>
+      <p>Newton's method for optimisation swaps the hand-picked \(\alpha\) for the inverse curvature. On the bowl \((x-3)^2\) that is exactly \(\alpha = 0.5\): one step to the bottom.</p>
+    </div>
+  </div>
 
   <h3>Newton-Raphson — finding where a function crosses zero</h3>
   <p>
@@ -451,16 +537,16 @@
         <div class="tl-step-num">1</div>
         <div class="tl-step-body">
           <h4>Iteration 0 → 1</h4>
-          <p>At \(y_0 = 5.000\%\): a bond priced exactly at its coupon rate trades at par, so \(P(y_0) = 100.00\) exactly, and \(f(y_0) = 100.00 - 97.50 = 2.50\). The derivative (found by differentiating each cash-flow term) is \(P'(y_0) \approx -272.24\):</p>
-          <div class="tl-math">\[ y_1 = 0.05 - \frac{2.50}{-272.24} = 0.05 + 0.00918 = 0.05918 \ (5.918\%) \]</div>
+          <p>At \(y_0 = 5.000\%\): a bond priced exactly at its coupon rate trades at par, so \(P(y_0) = 100.00\) exactly, and \(f(y_0) = 100.00 - 97.50 = 2.50\). The derivative (found by differentiating each cash-flow term) is \(P'(y_0) \approx -272.32\):</p>
+          <div class="tl-math">\[ y_1 = 0.05 - \frac{2.50}{-272.32} = 0.05 + 0.00918 = 0.05918 \ (5.918\%) \]</div>
         </div>
       </div>
       <div class="tl-step">
         <div class="tl-step-num">2</div>
         <div class="tl-step-body">
           <h4>Iteration 1 → 2</h4>
-          <p>At \(y_1 = 5.918\%\): \(P(y_1) \approx 97.5414\), so \(f(y_1) \approx 0.0414\) — the error has already shrunk from 2.50 to 0.0414, roughly 60-fold, in a single step. With \(P'(y_1) \approx -263.15\):</p>
-          <div class="tl-math">\[ y_2 = 0.05918 - \frac{0.0414}{-263.15} = 0.05918 + 0.000157 = 0.05934 \ (5.934\%) \]</div>
+          <p>At \(y_1 = 5.918\%\): \(P(y_1) \approx 97.5424\), so \(f(y_1) \approx 0.0424\) — the error has already shrunk from 2.50 to 0.0424, roughly 60-fold, in a single step. With \(P'(y_1) \approx -263.15\):</p>
+          <div class="tl-math">\[ y_2 = 0.05918 - \frac{0.0424}{-263.15} = 0.05918 + 0.000161 = 0.05934 \ (5.934\%) \]</div>
         </div>
       </div>
       <div class="tl-step">
@@ -516,6 +602,15 @@
       guess (say \(y_n=50\%\)) to see how much bigger the first correction
       gets.
     </p>
+    <div class="tl-predict">
+      <div class="tl-predict-q"><strong>Predict first.</strong> From a 5% guess, one Newton step takes this bond to 5.918%, close to the answer of 5.934%. Now start from a wild guess of 50%. Where does the first step land? Pick one, then type 50 into the current-guess field below to check it.</div>
+      <ul class="tl-predict-options">
+        <li>Close to the answer, around 6%</li>
+        <li>Part of the way back, somewhere between 6% and 50%</li>
+        <li data-correct>Past the answer, at a negative yield of about −40%</li>
+      </ul>
+      <div class="tl-predict-reveal"><p><strong>About −40.25%.</strong> At 50% the bond is worth only 36.67, so the error is −60.83, but the slope there is shallow, about −67.4. The correction is \(60.83/67.4\approx0.90\), a 90-point jump that flies straight past 5.934% into a nonsense yield. Speed near the root is no guarantee far from it. Now type −40.25 and take the next step: it lands near −23.8%, still nowhere near.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Current guess \(y_n\) (%)</span></div>
@@ -581,6 +676,12 @@
       than trusting the raw output.
     </p>
   </div>
+
+  <!-- WB:newton_raphson_gradient_descent:START -->
+  <div class="wb" id="wb-newton_raphson_gradient_descent" data-title="Tangent lines to a yield, and steps down a bowl">
+    <script type="application/json">{"w":600,"h":820,"intro":"Newton-Raphson finds a bond's yield by sliding down tangent lines. Watch it nail the answer in two steps, then watch a bad start send it flying, then the slower, steadier walk of gradient descent. Press play, or step through.","steps":[{"cap":"A 3-year bond paying 5 a year on 100 trades at 97.50. Which yield makes the price formula give 97.50? There is no algebra for it, so plot the pricing error: model price minus 97.50. The answer is where it crosses zero.","do":[{"chart":"z","x":10,"y":10,"w":580,"h":250,"title":"Pricing error P(y) − 97.50, near the answer","xd":[0.048,0.062],"yd":[-1.2,3.4],"yt":[[0,"0"],[1,"1"],[2,"2"],[3,"3"]],"xt":[[0.05,"5.0%"],[0.055,"5.5%"],[0.06,"6.0%"]],"zero":true,"pl":40,"pr":20},{"series":"fz","chart":"z","pts":[[0.048,3.047],[0.0485,2.91],[0.049,2.773],[0.0495,2.636],[0.05,2.5],[0.0505,2.364],[0.051,2.228],[0.0515,2.093],[0.052,1.957],[0.0525,1.822],[0.053,1.688],[0.0535,1.553],[0.054,1.419],[0.0545,1.285],[0.055,1.151],[0.0555,1.018],[0.056,0.884],[0.0565,0.751],[0.057,0.618],[0.0575,0.486],[0.058,0.354],[0.0585,0.222],[0.059,0.09],[0.0595,-0.042],[0.06,-0.173],[0.0605,-0.304],[0.061,-0.435],[0.0615,-0.565],[0.062,-0.696]],"tone":"blue","ms":1100}]},{"cap":"Start at the coupon rate, 5%. There the bond prices at exactly 100, so the error is 2.50. The slope of the price is about −272 per unit of yield.","do":[{"dot":"p0","chart":"z","at":[0.05,2.5],"text":"y₀ = 5%: error 2.50","tone":"amber","dx":10,"dy":-14,"anchor":"start"}]},{"cap":"Follow the tangent line, not the curve, down to zero: 5% − 2.50 ÷ (−272) = 5.918%. One step, and the error falls from 2.50 to about 0.04.","do":[{"series":"t0","chart":"z","pts":[[0.05,2.5],[0.05918021411578113,0]],"tone":"amber","dash":true,"ms":900},{"dot":"p1","chart":"z","at":[0.05918021411578113,0.04239113994336208],"text":"y₁ = 5.918%","tone":"green","dx":10,"dy":-24,"anchor":"start"}]},{"cap":"Repeat from 5.918%. The next step lands at 5.934%, with the price within a fraction of a cent of 97.50. Done: the yield to maturity is about 5.934%.","do":[{"dot":"p2","chart":"z","at":[0.05934130194968176,0],"text":"YTM ≈ 5.934%","tone":"green","dx":-12,"dy":28,"anchor":"end"}]},{"cap":"That is quadratic convergence: near the answer, the error is roughly squared each step, so correct digits roughly double. Bars on a log scale: 2.50, then 0.04, then under a cent.","do":[{"chart":"err","x":310,"y":272,"w":280,"h":250,"title":"Pricing error, log scale","xd":[0.4,3.6],"yd":[0,6],"yt":[[5,"1"],[3,"0.01"],[1,"0.0001"]],"xt":[[1,"start"],[2,"step 1"],[3,"step 2"]],"pl":58},{"bars":"eb","chart":"err","data":[[1,5.398,"2.50","red"],[2,3.627,"0.04","amber"],[3,0.4,"< 1¢","green"]],"bw":46,"ms":1100}]},{"cap":"But the speed is only local. Start instead from a wild guess of 50%. The price there is 36.67, the error −60.83, and the slope only −67.4: a shallow tangent.","do":[{"chart":"w","x":10,"y":272,"w":290,"h":250,"title":"From a 50% guess","xd":[-0.45,0.62],"yd":[-70,62],"yt":[[-60,"−60"],[0,"0"],[60,"60"]],"xt":[[-0.4,"−40%"],[0,"0%"],[0.5,"50%"]],"zero":true,"pl":40,"pr":14},{"series":"fw","chart":"w","pts":[[-0.1,58.26],[-0.08,48.68],[-0.06,39.89],[-0.04,31.81],[-0.02,24.37],[0.0,17.5],[0.02,11.15],[0.04,5.28],[0.06,-0.17],[0.08,-5.23],[0.1,-9.93],[0.12,-14.31],[0.14,-18.39],[0.16,-22.2],[0.18,-25.77],[0.2,-29.1],[0.22,-32.22],[0.24,-35.14],[0.26,-37.89],[0.28,-40.47],[0.3,-42.9],[0.32,-45.19],[0.34,-47.35],[0.36,-49.38],[0.38,-51.3],[0.4,-53.11],[0.42,-54.83],[0.44,-56.45],[0.46,-57.99],[0.48,-59.45],[0.5,-60.83],[0.52,-62.15],[0.54,-63.4],[0.56,-64.58],[0.58,-65.71],[0.6,-66.79]],"tone":"blue","ms":1000},{"dot":"w0","chart":"w","at":[0.5,-60.833333333333336],"text":"50%","tone":"amber","dx":-8,"dy":18,"anchor":"end"}]},{"cap":"The tangent shoots past the answer to a yield of about −40%. The next step jumps to about −24%. Fast, confident, and nowhere near 5.934%. Real solvers bound the step and fall back to bisection.","do":[{"series":"tw","chart":"w","pts":[[0.5,-60.833333333333336],[-0.4024725274725276,0]],"tone":"red","dash":true,"ms":1000},{"dot":"w1","chart":"w","at":[-0.4024725274725276,0],"text":"−40%","tone":"red","dx":4,"dy":-18,"anchor":"start"}]},{"cap":"Gradient descent asks a different question: where is a function smallest? On the bowl (x − 3)², start at 0 and step downhill by a learning rate times the slope.","do":[{"chart":"b","x":10,"y":540,"w":580,"h":270,"title":"Gradient descent on (x − 3)², from x = 0","xd":[-1.5,7.5],"yd":[0,21],"yt":[[0,"0"],[9,"9"],[18,"18"]],"xt":[[0,"0"],[3,"3 (min)"],[6,"6"]],"pl":40,"pr":16},{"series":"bowl","chart":"b","pts":[[-1.5,20.25],[-1.2,17.64],[-0.9,15.21],[-0.6,12.96],[-0.3,10.89],[0.0,9.0],[0.3,7.29],[0.6,5.76],[0.9,4.41],[1.2,3.24],[1.5,2.25],[1.8,1.44],[2.1,0.81],[2.4,0.36],[2.7,0.09],[3.0,0.0],[3.3,0.09],[3.6,0.36],[3.9,0.81],[4.2,1.44],[4.5,2.25],[4.8,3.24],[5.1,4.41],[5.4,5.76],[5.7,7.29],[6.0,9.0],[6.3,10.89],[6.6,12.96],[6.9,15.21],[7.2,17.64],[7.5,20.25]],"tone":null,"ms":900}]},{"cap":"With a learning rate of 0.3, each step cuts the error to 0.4 of what it was: 0 → 1.8 → 2.52 → 2.81 → 2.92. Steady, but linear: the error shrinks by a fixed ratio, it is not squared.","do":[{"series":"g3","chart":"b","pts":[[0.0,9.0],[1.8,1.44],[2.52,0.23],[2.808,0.037],[2.923,0.006]],"tone":"green","ms":1300,"label":"α = 0.3","lat":[1.2,0.8],"ldx":0,"ldy":0,"lanchor":"end","lsize":16},{"dot":"g3d","chart":"b","at":[0,9],"text":"x₀","tone":"green","dx":-10,"dy":0,"anchor":"end"}]},{"cap":"A learning rate of 0.5 lands exactly on 3 in one step. That is Newton's method for this bowl: the curvature picks the step size for you.","do":[{"series":"g5","chart":"b","pts":[[0.0,9.0],[3.0,0.0]],"tone":"purple","dash":true,"ms":900,"label":"α = 0.5: one step","lat":[1.5,4.5],"ldx":12,"ldy":-10,"lanchor":"start","lsize":16}]},{"cap":"Too big a rate, 1.1, overshoots further every time: 0 → 6.6 → −1.3. The error grows by 1.2 times each step and never settles. The learning rate has to be tuned to the problem.","do":[{"series":"g11","chart":"b","pts":[[0.0,9.0],[6.6,12.96],[-1.32,18.662]],"tone":"red","ms":1300,"label":"α = 1.1: diverges","lat":[3.6,19],"ldx":0,"ldy":0,"lanchor":"start","lsize":16}]}]}</script>
+  </div>
+  <!-- WB:newton_raphson_gradient_descent:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -650,6 +751,19 @@
       runs on gradient-descent variants rather than pure Newton's method,
       despite the latter's faster per-iteration convergence.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative calibration morning</div>
+    <h3>Three strikes come back at 400% volatility</h3>
+    <p>Your volatility-surface job runs Newton-Raphson against Black-Scholes for every strike on a listed options chain. Near the money every strike converges in two or three steps. But three very deep out-of-the-money strikes come back with implied vols around 400%, and one hit the iteration cap without converging. The surface is due out to the desk in ten minutes. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Publish as is. The solver ran, so those are the market's numbers.<div class="tl-drill-why">Far out of the money, vega is tiny, so each step divides the pricing error by almost nothing and jumps wildly. A 400% vol there is a solver artifact, and it will bend the smile for every model that reads the surface near those strikes.</div></li>
+      <li data-verdict="bad">Raise the iteration cap until every strike converges.<div class="tl-drill-why">More steps do not fix a step that is the wrong size. With a near-flat slope the method can bounce or converge, fast and confidently, to an answer you did not want.</div></li>
+      <li data-verdict="good">Re-solve those strikes with a capped step inside a sane bracket, falling back to bisection or Brent's method, and flag any vol outside a plausible band for review.<div class="tl-drill-why">This is the standard guard. Newton's speed where it is safe, a slower method with a guarantee where it is not, and a human look at anything implausible before it reaches the surface.</div></li>
+      <li data-verdict="ok">Drop the three strikes and fit the surface without them.<div class="tl-drill-why">Better than publishing garbage, and the wings are thin anyway. But it hides the problem: you lose information at exactly the strikes where tail risk lives, and nobody learns the solver needs guarding.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>The point of the drill.</strong> This is an illustrative situation, not a dated event; it is the failure the lesson's trading scenario describes. Practitioners guard Newton-Raphson exactly this way: a sensible starting guess, a cap on the step, a fallback bracketing method, and a plausibility band. Manaster and Koehler (1982) gave a starting value for Black-Scholes that guarantees convergence, which is part of why implied-vol solvers became routine.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -751,6 +865,27 @@
     <li>Sebastian Ruder, "An Overview of Gradient Descent Optimization Algorithms," arXiv:1609.04747, 2016 — a widely cited, accessible survey of the momentum and adaptive-learning-rate refinements (AdaGrad, RMSProp, Adam) built on top of plain gradient descent.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="calculus-for-finance.html">Calculus for Finance: Derivatives, Integrals &amp; Taylor Series</a> <span>· slopes, tangents and why the error squares</span></li>
+        <li><a href="foundation-optimization-basics.html">Optimization Basics: Unconstrained &amp; Constrained</a> <span>· minima you can find by hand</span></li>
+        <li><a href="bond-pricing-ytm.html">Bond Pricing &amp; Yield to Maturity</a> <span>· the formula this lesson inverts</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="convex-optimization.html">Convex Optimization</a> <span>· when a zero gradient really is the best answer</span></li>
+        <li><a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a> <span>· the surface implied-vol solvers build</span></li>
+        <li><a href="nelson-siegel-svensson.html">Curve Fitting: Nelson-Siegel &amp; Svensson</a> <span>· a curve fit solved by these methods</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every yield and implied vol on your screen is a solver's output, and knowing when the solver lies is how you avoid trading its mistakes.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
@@ -923,9 +1058,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>
