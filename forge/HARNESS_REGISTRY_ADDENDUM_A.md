@@ -90,7 +90,7 @@ harness, the re-run clears the entry's own original bar" — it does not). The p
   factor-blend entries that used the sleeve's return stream. Each is checked in Part B for which
   US series and lag it used before any status moves.
 - The YieldSpread bot has not been trading for some time (owner, 2026-10-17); the only active bots
-  are the OI-gamma and vol bots. There is **no forward record** of the sleeve, honest or otherwise.
+  are the OI-gamma and OI-vol bots. There is **no forward record** of the sleeve, honest or otherwise.
   Nothing in the engine is edited here (side-by-side rule).
 - `MD files/YIELD_SPREAD_STRATEGY.md` §"Publication-lag lookahead" reports that moving from no lag to
   +2/+45 cut Sharpe 2.16 → 1.58 "but the edge held". The remaining lookahead was ~30 days on the US

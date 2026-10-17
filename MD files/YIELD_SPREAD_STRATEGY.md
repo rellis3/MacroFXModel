@@ -3,8 +3,8 @@
 > **Superseded 2026-10-17.** The harness re-run on point-in-time asofs (`forge/HARNESS_REGISTRY_ADDENDUM_A.md` §3) found
 > that this result rests on GS2 — a monthly *average* FRED first publishes ~32 days after its date — being dated knowable at
 > +2 days. Under that assumption the harness reproduces the figures below (Sharpe 1.29, PF 2.98); on honest asofs the sleeve
-> is Sharpe 0.09, PF 1.08. The ledger entry is now `context`, deflated. The live paper bot reads *published* GS2 and has
-> always traded the honest version. Everything below is kept as the record of what was believed and why.
+> is Sharpe 0.09, PF 1.08. The ledger entry is now `context`, deflated. The YieldSpread bot is not running (owner,
+> 2026-10-17), so there is no forward record either way. Everything below is kept as the record of what was believed and why.
 
 
 > **Status: the survivor.** After a long falsification cycle that nulled the level-based

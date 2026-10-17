@@ -44,7 +44,7 @@ validated count on today.html and evidence.html drops from 36 to 32.
 ## What this says about the live book
 
 The YieldSpread bot is not trading and has not been for some time (owner, 2026-10-17); only the
-OI-gamma and vol bots are active. So there is no forward record to set against the honest Sharpe
+OI-gamma and OI-vol bots are active. So there is no forward record to set against the honest Sharpe
 ~0.1, and nothing live depends on this entry. The 10Y sleeve is honest and positive but not
 significant on this sample. No live code is changed here.
 
