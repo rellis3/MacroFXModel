@@ -16695,7 +16695,16 @@ async function _backfillNasdaqSurprises(days = 460) {
   if (_nqBackfill.running) return;
   _nqBackfill = { running: true, last: { startedAt: new Date().toISOString(), days, fetched: 0, failed: 0 } };
   const H = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
-  const rows = [];
+  let rows = [], added = 0, candidates = 0;
+  // Saved in 50-day chunks: a deploy restarts the server, and an all-at-the-end write lost every run to one.
+  const flush = async () => {
+    if (!rows.length) return;
+    const stored = await _readSurpriseStore();
+    const merged = _mergeReleases(stored, _nqDedupe(rows, stored));
+    await kv.put(_SURPRISE_KV, JSON.stringify({ data: { rows: merged.rows, updatedAt: Date.now() }, timestamp: Date.now() }));
+    added += merged.added; candidates += rows.length; rows = [];
+    Object.assign(_nqBackfill.last, { savedThrough: new Date().toISOString(), added, candidates, stored: merged.rows.length });
+  };
   try {
     for (let k = days; k >= 0; k--) {
       const d = new Date(Date.now() - k * 864e5).toISOString().slice(0, 10);
@@ -16703,13 +16712,13 @@ async function _backfillNasdaqSurprises(days = 460) {
         const r = await fetch(`https://api.nasdaq.com/api/calendar/economicevents?date=${d}`, { headers: H, signal: AbortSignal.timeout(20_000) });
         if (r.ok) { rows.push(..._nqRows(_calParseNasdaq(await r.json(), d))); _nqBackfill.last.fetched++; } else _nqBackfill.last.failed++;
       } catch { _nqBackfill.last.failed++; }
+      _nqBackfill.last.at = d;
+      if (k % 50 === 0) await flush();
       await new Promise(res => setTimeout(res, 250));
     }
-    const stored = await _readSurpriseStore();
-    const merged = _mergeReleases(stored, _nqDedupe(rows, stored));
-    await kv.put(_SURPRISE_KV, JSON.stringify({ data: { rows: merged.rows, updatedAt: Date.now() }, timestamp: Date.now() }));
-    Object.assign(_nqBackfill.last, { done: new Date().toISOString(), candidates: rows.length, added: merged.added, stored: merged.rows.length });
-    console.log(`[surprise] nasdaq backfill: +${merged.added} of ${rows.length} rows over ${days}d`);
+    await flush();
+    _nqBackfill.last.done = new Date().toISOString();
+    console.log(`[surprise] nasdaq backfill: +${added} of ${candidates} rows over ${days}d`);
   } catch (e) { _nqBackfill.last.error = e.message; console.warn('[surprise] nasdaq backfill failed:', e.message); }
   finally { _nqBackfill.running = false; }
 }
