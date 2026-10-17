@@ -16,7 +16,8 @@
  * ordinarily — and whether BROADENING predicts the same thing, which is the mirror
  * that killed breadth-narrowing and curve-inversion.
  *
- *   node analysis/breadth_tilt_semis_study.mjs
+ *   node analysis/breadth_tilt_semis_study.mjs          # drill bundle, 2020-10 ->
+ *   node analysis/breadth_tilt_semis_study.mjs --long   # Yahoo, full SMH/RSP/SPY history
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -52,13 +53,39 @@ function bootDiff(a, b) {
 // SMH is the closest listed proxy to "memory, lithography and foundry" — it holds
 // TSMC, ASML, Micron, Applied Materials and Lam. It is a PROXY for the sleeve, not a
 // replication of Crown's weights, which are behind a paid letter.
-const j = await (await fetch(`${BASE}/api/drill-series`)).json();
+//
+// `--long`: the drill bundle carries six years, which left 13-14 de-clustered episodes
+// against the floor of 20 on 2026-10-05 (UNTESTABLE). SMH trades from 2000 and RSP from
+// 2003 on Yahoo's keyless chart endpoint, the same path breadth_narrowing_study.mjs
+// took for its own long run. Same design, same constants, same gate — only the sample
+// is longer, which is the one re-run the pre-registration's own `use` line allows.
+const YF = { smh: 'SMH', rsp: 'RSP', spy: 'SPY' };
+async function longBundle() {
+  const got = {};
+  for (const [key, sym] of Object.entries(YF)) {
+    const u = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=25y&interval=1d`;
+    const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (!r.ok) throw new Error(`${sym} HTTP ${r.status}`);
+    const jj = await r.json(), res = jj?.chart?.result?.[0];
+    const ts = res?.timestamp ?? [], cl = res?.indicators?.adjclose?.[0]?.adjclose ?? res?.indicators?.quote?.[0]?.close ?? [];
+    const m = new Map();
+    for (let i = 0; i < ts.length; i++) if (Number.isFinite(cl[i])) m.set(new Date(ts[i] * 1000).toISOString().slice(0, 10), cl[i]);
+    got[key] = m;
+    process.stderr.write(`  ${sym}: ${m.size} sessions ${[...m.keys()][0]} -> ${[...m.keys()].at(-1)}\n`);
+  }
+  // INTERSECTION, not union — a union spine leaves the newest date null for whichever
+  // series settled last (the drill-bundle trap this repo has already been bitten by).
+  const dates = [...got.rsp.keys()].filter(d => Object.values(got).every(m => m.has(d))).sort();
+  return { ok: true, dates, series: Object.fromEntries(Object.keys(YF).map(k => [k, dates.map(d => got[k].get(d))])), long: true };
+}
+const LONG = process.argv.includes('--long');
+const j = LONG ? await longBundle() : await (await fetch(`${BASE}/api/drill-series`)).json();
 if (!j?.ok) throw new Error('drill-series unavailable');
 const dates = j.dates, S = j.series;
 for (const k of ['smh', 'rsp', 'spy']) if (!Array.isArray(S?.[k])) throw new Error(`missing series ${k}`);
 const rows = dates.map((d, i) => ({ d, smh: S.smh[i], rsp: S.rsp[i], spy: S.spy[i] }))
   .filter(r => [r.smh, r.rsp, r.spy].every(v => Number.isFinite(v) && v > 0));
-console.log(`rows ${rows.length}  ${rows[0].d} -> ${rows.at(-1).d}`);
+console.log(`rows ${rows.length}  ${rows[0].d} -> ${rows.at(-1).d}${LONG ? '  (--long: Yahoo 25y, adjusted closes)' : '  (drill bundle)'}`);
 
 // ═══ 2. SETUP AND CONTROL ════════════════════════════════════════════════════
 // "Broke its multi-year trend line" is not reproducible as stated. The nearest honest
@@ -98,7 +125,7 @@ const outcome = (i, n) => {
 };
 
 // ── the run ──────────────────────────────────────────────────────────────────
-const result = { id: 'breadth-tilt-semis', ranAt: new Date().toISOString(),
+const result = { id: 'breadth-tilt-semis', ranAt: new Date().toISOString(), source: LONG ? 'yahoo-25y' : 'drill-series',
                  minEvents: MIN_EVENTS, span: [rows[0].d, rows.at(-1).d], n: rows.length,
                  setups: { narrow: narrow.length, broad: broad.length }, cells: {} };
 

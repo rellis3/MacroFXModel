@@ -89,3 +89,48 @@ far more than a confirmation.
 - **Whether semis are the right proxy.** Memory, lithography and foundry are a subset of
   SMH; the ETF also holds designers and equipment names that are not bottlenecks.
 - **Costs, capacity or taxes.** This is a gross relative-return measurement.
+
+---
+
+## RESULTS
+
+### Run 1 — 2026-10-05, drill bundle (2020-10 →): UNTESTABLE
+
+1,507 usable sessions. The rolling 504-session threshold consumes the first two years and
+de-clustering at 20 sessions leaves **13–14** independent episodes per arm against the
+pre-registered floor of 20. Every cell UNTESTABLE at both horizons, narrowing and mirror
+alike. No excess was reported, because quoting one on 13 episodes is the error the floor
+exists to prevent. Banked as `underpowered`, with the `use` line saying the fix was more
+history on the identical design, never a looser gate.
+
+### Run 2 — 2026-10-16, `--long` (Yahoo adjusted closes, 2003-05-01 → 2026-10-16): NULL
+
+Same harness, same constants (LOOKBACK 20, WINDOW 504, DECLUSTER 20, MIN_EVENTS 20,
+2,000-rep block bootstrap, block 10), only the sample changed. 5,904 shared sessions.
+**85 NARROW / 63 BROAD** de-clustered setups — four times the floor.
+
+| arm | horizon | SMH−SPY after setup | unconditional | excess [95% CI] | n | |
+|---|---|---|---|---|---|---|
+| NARROW | 20 | +1.15% | +0.45% | **+0.70 [−0.50, +1.82]** | 85 vs 2,970 | null |
+| BROAD (mirror) | 20 | +0.56% | +0.45% | +0.11 [−0.71, +1.03] | 63 vs 2,970 | null |
+| NARROW | 60 | +1.60% | +1.81% | **−0.21 [−2.88, +2.35]** | 84 vs 1,230 | null |
+| BROAD (mirror) | 60 | +3.54% | +1.81% | +1.73 [−0.95, +4.36] | 62 vs 1,230 | null |
+
+**Gate:** narrow clears zero — **no**; mirror contaminated — not reached.
+**Verdict (computed by the harness): NULL**, on hypothesis (b), exactly where the written
+prior said it would fail.
+
+Post-hoc, descriptive, not pre-registered: splitting the sample at 2015-01, the NARROW
+excess is 0.00 / −1.03 (20 / 60 sessions) in the first half and +0.61 / −0.61 in the second.
+Nothing in either half approaches the interval width. Narrowing setups are spread across
+every year 2005–2026 (2–7 per year), so the null is not one regime's.
+
+**What this says.** Semis outperformed the index for twenty-three years *unconditionally*;
+a narrowing of breadth did not add to that, and at two months the broadening arm did
+better. The 3.6% is what an in-sample tilt toward the sample's leader always shows.
+
+**What it does not say.** Nothing about Crown's actual eight-name sleeve or weights, nothing
+about anything other than SMH as the proxy, nothing net of costs.
+
+Output: `analysis/output/breadth_tilt_semis.json` (`source: yahoo-25y`). The six-year
+UNTESTABLE run it replaced is recorded above.
