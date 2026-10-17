@@ -72,7 +72,9 @@ const dates = loaded.EURUSD.bars.map(b => b.date);   // master trading-day spine
 const walclAsOf = asOf(shift1(walcl), dates), tgaAsOf = asOf(shift1(tga), dates), rrpAsOf = asOf(shift1(rrp), dates);
 const t10y2yAsOf = asOf(shift1(t10y2y), dates), hyOasAsOf = asOf(shift1(hyOas), dates);
 
-const netLiq = dates.map((_, i) => (walclAsOf[i] == null || tgaAsOf[i] == null || rrpAsOf[i] == null) ? null : walclAsOf[i] - tgaAsOf[i] - rrpAsOf[i]);
+// UNITS FIX 2026-10-17: WALCL/WTREGEN arrive in $M, RRPONTSYD in $bn. The verdict banked on 2026-10-03
+// was computed with RRP subtracted unconverted (RRP dropped out); it needs a re-run on this line.
+const netLiq = dates.map((_, i) => (walclAsOf[i] == null || tgaAsOf[i] == null || rrpAsOf[i] == null) ? null : walclAsOf[i] / 1000 - tgaAsOf[i] / 1000 - rrpAsOf[i]);
 
 // causal rolling z of the latest week-over-week CHANGE vs its own trailing baseline (no look-ahead: at index i,
 // the baseline only uses changes strictly before i).

@@ -8216,3 +8216,23 @@ Known drift: `RANGE_COEF` copies the joint coefficients from
 `js/deskEvidence.js` prose. Both should be generated from the Evidence Book once it
 carries numeric fields (design doc §7 step 1). That same change retires deskWatch's
 hard-coded effect copies.
+
+### 1bj. Net Fed liquidity — one definition (2026-10-17)
+
+Built after a page audit found net liquidity computed at least 13 times in mixed units. FRED ships WALCL **and
+WTREGEN** in $ millions and only RRPONTSYD in $ billions (verified from fredgraph magnitudes). The 2026-07-02 fix
+assumed WTREGEN was in billions, converted WALCL only, and so produced roughly −TGA; older copies dropped RRP. On FRED
+history the July formula's 21-day change correlates −0.19 with the correct series. Pure, no-network, covered by
+`js/netLiquidity.test.mjs` (real Oct-2026 prints, a 2022 RRP-peak case, both historical bugs reproduced and rejected,
+unit sentinel in each direction).
+
+| Brick | File | Owns | Consumers |
+| --- | --- | --- | --- |
+| **Net liquidity** | `js/netLiquidity.js` | `netLiquidityBn(walclM, tgaM, rrpB)`, `netLiquiditySeriesBn`, `netLiqUnitWarnings`, `NET_LIQ_FRED_UNITS` | `server.js` `computeNetLiqZ` (liquidity gate live + backtest), `js/macroEquityEngine.js`, `analysis/liquidityNetRegressionCore.mjs` |
+
+**Known copies that cannot import it** (same arithmetic inline, comment points here): `js/globalLiquidityEngine.js`
+(classic script), `diversification.html` (classic script block), `MacroEquityBot/fred_signal.py`,
+`macro-regime-conditional/macro_equity_backtest.py`, the three `analysis/macro_confluence_*_study.mjs`.
+**Still wrong, held for the owner:** `js/macro.js` `computeT1_Equity` (index.html equity T1 tile) computes in mixed units, so its score sits at ±3; it feeds the Bayesian score that index.html writes to `ai_decision_meta_*`, which the server merges into live level state, so changing it is a live-input change. Fix is one line: `netLiquidityBn(walcl, tga, rrp)`.
+**Correct and left alone:** `cog-replication/engine/cogShadow.js` (caller converts RRP ×1000 to millions) and
+`cog-replication/test_g1_direction.py`. Results banked on the wrong series are listed in `plans/DATA_SPEC.md` §5 #8.

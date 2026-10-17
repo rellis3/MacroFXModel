@@ -1048,7 +1048,8 @@ function runP1(data) {
   const walcl   = ffill(fred.walcl);
   const wtregen = ffill(fred.wtregen);
   const rrpon   = ffill(fred.rrpon);
-  const netliqRaw = walcl.map((w,i) => isFinite(w)&&isFinite(wtregen[i])&&isFinite(rrpon[i]) ? w-wtregen[i]-rrpon[i] : NaN);
+  // $bn: WALCL/WTREGEN arrive in $M, RRPONTSYD in $bn (same arithmetic as js/netLiquidity.js; 2026-10-17)
+  const netliqRaw = walcl.map((w,i) => isFinite(w)&&isFinite(wtregen[i])&&isFinite(rrpon[i]) ? w/1000-wtregen[i]/1000-rrpon[i] : NaN);
   const netliqPct = pctChange(netliqRaw);
 
   const curve     = ffill(fred.curve);

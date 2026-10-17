@@ -190,9 +190,11 @@ def compute_macro_score(
 
     pmi_series = _forward_fill(fred_raw.get('eupmi', {}), all_dates) if eu_mode else ism
 
-    # Net liquidity = WALCL - WTREGEN - RRPON (pct change)
+    # Net liquidity in $bn = WALCL/1000 - WTREGEN/1000 - RRPON (pct change).
+    # FRED units: WALCL and WTREGEN $millions, RRPONTSYD $billions (verified 2026-10-17;
+    # same arithmetic as js/netLiquidity.js). Before that date RRP was dropped.
     netliq_raw = [
-        w - t - r if (math.isfinite(w) and math.isfinite(t) and math.isfinite(r)) else float('nan')
+        w / 1000.0 - t / 1000.0 - r if (math.isfinite(w) and math.isfinite(t) and math.isfinite(r)) else float('nan')
         for w, t, r in zip(walcl, wtregen, rrpon)
     ]
     netliq_pct = _pct_change(netliq_raw)

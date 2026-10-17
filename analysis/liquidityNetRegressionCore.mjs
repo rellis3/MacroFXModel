@@ -16,6 +16,7 @@
 import { weeklyReturns, alignFxToGrid } from '../GlobalLiquidity/backtestCore.mjs';
 import { neweyWestOLS } from '../js/metricsCore.js';
 import { rollingZScore } from '../js/statsCore.js';
+import { netLiquidityBn } from '../js/netLiquidity.js';
 import { forwardFillToDates } from '../js/fredFetch.js';
 
 const WEEK_MS = 7 * 864e5;
@@ -88,9 +89,9 @@ export function computeNetLiquidityImpulse(dates, fredMaps, pubLagWeeks) {
   const walcl = ffillArr(forwardFillToDates(dates, fredMaps.walcl));
   const tga = ffillArr(forwardFillToDates(dates, fredMaps.tga));
   const rrp = ffillArr(forwardFillToDates(dates, fredMaps.rrp));
-  // WALCL is $millions on FRED; TGA/RRP are $billions — convert WALCL→$B first
-  // (same unit trap globalLiquidityEngine.js documents for its own USD block).
-  const netLiquidity = dates.map((_, i) => (isNum(walcl[i]) ? walcl[i] / 1000 : NaN) - (isNum(tga[i]) ? tga[i] : 0) - (isNum(rrp[i]) ? rrp[i] : 0));
+  // UNITS (verified 2026-10-17): WALCL and TGA are $millions, RRP is $billions.
+  // Missing TGA/RRP count as 0, as before; the conversion now matches js/netLiquidity.js.
+  const netLiquidity = dates.map((_, i) => netLiquidityBn(walcl[i], isNum(tga[i]) ? tga[i] : 0, isNum(rrp[i]) ? rrp[i] : 0));
   return { netLiquidity, impulse: levelToImpulse(netLiquidity, pubLagWeeks) };
 }
 
