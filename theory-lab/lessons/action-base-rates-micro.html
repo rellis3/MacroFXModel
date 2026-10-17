@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Base Rates First — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <style>
   .br-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
@@ -103,7 +104,19 @@
       <p class="sl-p">The pattern nearly tripled the odds, and the day is still about six times more likely <em>not</em> to be a turn.</p>
     </section>
 
+    <!-- WB:action_base_rates-deck:START -->
     <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Base rates first: the false alarms the story leaves out</h2>
+      <!-- WB:action_base_rates:START -->
+      <div class="wb" data-title="Base rates first: the false alarms the story leaves out">
+        <script type="application/json">{"w":600,"h":640,"intro":"A reversal pattern, a thousand days, and the false alarms the story leaves out. Every number is the lesson's own example. Press play, or step through.","steps":[{"cap":"A reversal pattern prints on your chart. It shows up before 60% of big turns, so the story says \"60% this is a turn\". Before trusting that, count.","do":[{"icon":"ch","name":"down","x":30,"y":6,"s":0.75,"tone":"blue","label":"the pattern fires","lsize":17},{"note":"story","x":400,"y":50,"text":"the story says: 60%","size":22,"anchor":"middle","tone":"red"}]},{"cap":"Outside view first. Line up 1,000 past days. 5% of them were turns: 50 days. The other 950 were ordinary. That 5% is the base rate.","do":[{"box":"all","x":10,"y":186,"w":140,"h":76,"text":"1,000 days","tone":"blue","size":20},{"box":"turn","x":210,"y":120,"w":160,"h":76,"text":"turns","tone":"purple","sub":"0","size":19},{"box":"ord","x":210,"y":250,"w":160,"h":76,"text":"ordinary days","sub":"0","size":19},{"arrow":["all","turn"],"label":"5%"},{"arrow":["all","ord"],"label":"95%"},{"count":"turn","from":0,"to":50,"dp":0,"ms":900},{"count":"ord","from":0,"to":950,"dp":0,"ms":900}]},{"cap":"The pattern shows up before 60% of the turns: 30 of the 50.","do":[{"box":"hit","x":430,"y":120,"w":160,"h":76,"text":"pattern","tone":"purple","sub":"0","size":19},{"arrow":["turn","hit"],"label":"60%","tone":"purple"},{"count":"hit","from":0,"to":30,"dp":0,"ms":900}]},{"cap":"Here is the number the story leaves out. The pattern also shows up on 20% of ordinary days: 190 of the 950. These are false alarms.","do":[{"box":"fa","x":430,"y":250,"w":160,"h":76,"text":"pattern","tone":"amber","sub":"0","size":19},{"arrow":["ord","fa"],"label":"20%","tone":"amber"},{"count":"fa","from":0,"to":190,"dp":0,"ms":900}]},{"cap":"So 220 days showed the pattern, and only 30 of them were turns. That is 13.6%, not 60%.","do":[{"chart":"fl","x":10,"y":360,"w":280,"h":270,"title":"220 days with the pattern","xd":[0.4,2.6],"yd":[0,220],"yt":[[0,"0"],[100,"100"],[200,"200"]],"xt":[[1,"turns"],[2,"false alarms"]],"pl":50},{"bars":"flb","chart":"fl","data":[[1,30,"30","purple"],[2,190,"190","amber"]],"bw":64,"ms":1100},{"hide":"story"},{"note":"ans","x":400,"y":50,"text":"base rate says: 13.6%","size":22,"anchor":"middle","tone":"green"}]},{"cap":"The same answer in one multiplication. Prior odds 1:19, times a likelihood ratio of 60% ÷ 20% = 3, gives 3:19. And 3 ÷ 22 = 13.6%.","do":[{"box":"odds","x":310,"y":360,"w":280,"h":84,"text":"odds 1:19 × LR 3\n= 3:19 → 13.6%","tone":"purple","size":20}]},{"cap":"If the hit rate equals the false-alarm rate, the LR is 1 and the evidence tells you nothing. \"Followed by a rally 54% of the time\" is nothing if rallies follow 54% of all days.","do":[{"box":"lr1","x":310,"y":456,"w":280,"h":84,"text":"hit 54%, base 54%\nLR = 1: don't move","tone":"red","size":20}]},{"cap":"It works anywhere. The cab problem: 15% of cabs are Blue, and a witness who is right 80% of the time says \"Blue\". Odds 15:85 × 4 = 60:85, so 41%. Still more likely Green.","do":[{"hide":"ch"},{"hide":"ans"},{"box":"cab","x":10,"y":10,"w":580,"h":84,"text":"15% Blue · witness right 80%\n→ only 41% Blue","tone":"blue","size":20}]},{"cap":"Small reference classes need shrinking. 7 hits in 8 cases looks like 87.5%. Blend it with a broad rate of 45% worth 10 cases: (7 + 4.5) ÷ 18 = 63.9%.","do":[{"box":"shr","x":310,"y":552,"w":280,"h":84,"text":"7 of 8, broad 45%, m = 10\n→ 63.9%, not 87.5%","tone":"amber","size":19}]},{"cap":"The habit: name the reference class, write its base rate down first, then let the evidence move you by a measured likelihood ratio. No data means LR = 1.","do":[{"hide":"cab"},{"box":"rule","x":10,"y":10,"w":580,"h":84,"text":"base rate first, in writing\nthen × measured LR","tone":"green","size":21}]}]}</script>
+      </div>
+      <!-- WB:action_base_rates:END -->
+    </section>
+    <!-- WB:action_base_rates-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Choosing the class</h2>
       <div class="sl-icard-grid">
@@ -114,7 +127,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7 · Worked example</div>
       <h2 class="sl-h2">"Hawkish surprise. Dollar higher in 5 sessions?"</h2>
       <p class="sl-sub">The story says about 80%. The desk's measured frequencies say:</p>
@@ -127,7 +140,7 @@
       <div class="sl-callout green"><div class="sl-callout-label">The output</div><p>About 60–65%: a calendar base rate, not a call on this meeting. The surprise the story relied on added nothing.</p></div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8 · It actually happened</div>
       <h2 class="sl-h2">The textbook that took eight years</h2>
       <p class="sl-p">Kahneman's own story (<em>Thinking, Fast and Slow</em>). His curriculum team estimated about two years to finish. Asked how similar teams had done, their curriculum expert said roughly 40% never finished, and none that did took less than about seven years.</p>
@@ -135,7 +148,7 @@
       <div class="sl-callout amber"><div class="sl-callout-label">The point</div><p>The base rate was asked for and given, and nobody used it. The specifics of their own case felt more real.</p></div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where base rates sit</h2>
       <div class="sl-chain">
@@ -151,7 +164,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · The desk's verdict</div>
       <h2 class="sl-h2">What was tested here</h2>
       <div class="sl-stamp null" data-evidence="rates-pivot-lead" data-evidence-date="2026-09-25"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>Rates pivot → Nasdaq:</strong> 2,010 events, well powered, null. A confirmed rates low was followed by an up-move <strong>54.1%</strong> of the time, and the base rate is <strong>54.1%</strong>. Lift 1.0.</span></div>
@@ -159,7 +172,7 @@
       <div class="sl-stamp null" data-evidence="dr-copper" data-evidence-date="2026-09-25"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>"Dr Copper":</strong> 12 of 14 negative US quarters since 1990 had no 15% copper fall before them. A hit-rate claim with no false-alarm rate.</span></div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11 · Your template</div>
       <h2 class="sl-h2">The base-rate card</h2>
       <div class="sl-calc-steps">
@@ -172,7 +185,7 @@
       <p class="sl-p">Write it <strong>before</strong> you look at the chart.</p>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -210,7 +223,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -292,5 +305,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

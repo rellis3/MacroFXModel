@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Base Rates First — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -47,6 +48,64 @@
       <li><strong>Desk verdicts:</strong> the desk's own "base rate" results are exactly this method. A rates-pivot signal hit 54.1% against a 54.1% base rate. A post-FOMC dollar drift held 65% against 49% and survived a placebo. "Dr Copper" failed because it had a hit rate with no false-alarm rate.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A tree of 1,000 days. 50 are turns, the 5% base rate, and 950 are ordinary days. The reversal pattern shows up on 30 of the 50 turns, which is 60%, and on 190 of the 950 ordinary days, which is 20%. A bar underneath shows all 220 days with the pattern: only 30 of them are real turns, so the probability is 13.6%, not the 60% the story suggests.">
+      <line class="tlp-line" x1="130" y1="80" x2="180" y2="35"/>
+      <line class="tlp-line" x1="130" y1="80" x2="180" y2="125"/>
+      <line class="tlp-line purple" x1="330" y1="35" x2="390" y2="35"/>
+      <line class="tlp-line amber" x1="330" y1="125" x2="390" y2="125"/>
+      <rect class="tlp-box blue" x="10" y="55" width="120" height="50" rx="8"/>
+      <text class="tlp-text" x="70" y="85" text-anchor="middle" font-size="14" font-weight="700">1,000 days</text>
+      <rect class="tlp-box purple" x="180" y="10" width="150" height="50" rx="8"/>
+      <text class="tlp-purple" x="255" y="31" text-anchor="middle" font-size="14" font-weight="700">50 turns</text>
+      <text class="tlp-text2" x="255" y="50" text-anchor="middle" font-size="12">the 5% base rate</text>
+      <rect class="tlp-box" x="180" y="100" width="150" height="50" rx="8"/>
+      <text class="tlp-text" x="255" y="121" text-anchor="middle" font-size="14" font-weight="700">950 ordinary days</text>
+      <text class="tlp-text2" x="255" y="140" text-anchor="middle" font-size="12">the other 95%</text>
+      <rect class="tlp-box purple" x="390" y="10" width="200" height="50" rx="8"/>
+      <text class="tlp-purple" x="490" y="31" text-anchor="middle" font-size="14" font-weight="700">30 show the pattern</text>
+      <text class="tlp-text2" x="490" y="50" text-anchor="middle" font-size="12">60% of turns</text>
+      <rect class="tlp-box amber" x="390" y="100" width="200" height="50" rx="8"/>
+      <text class="tlp-amber" x="490" y="121" text-anchor="middle" font-size="14" font-weight="700">190 show it too</text>
+      <text class="tlp-text2" x="490" y="140" text-anchor="middle" font-size="12">20% of ordinary days</text>
+      <text class="tlp-text2" x="10" y="178" font-size="13">All 220 days with the pattern:</text>
+      <rect class="tlp-purple" x="10" y="186" width="79.1" height="28" rx="4"/>
+      <rect class="tlp-amber" x="89.1" y="186" width="500.9" height="28" rx="4" opacity=".75"/>
+      <text class="tlp-purple" x="10" y="234" font-size="14" font-weight="700">30 real turns = 13.6%</text>
+      <text class="tlp-amber" x="590" y="234" text-anchor="end" font-size="14" font-weight="700">190 false alarms</text>
+      <text class="tlp-text3" x="300" y="254" text-anchor="middle" font-size="12">the story says 60%; the base rate says 13.6%</text>
+    </svg>
+    <figcaption>Count the false alarms as well as the hits. The pattern nearly triples the odds of a turn, yet on a day it fires, a turn is still about six times less likely than an ordinary day.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">There's a reversal pattern on the chart this morning. It shows up before most big turns. I'd call it sixty percent.</p>
+      <p data-who="Quant">Before you look at the chart, answer a boring question. Out of all days, how many are turns?</p>
+      <p data-who="Trader">Not many. Say five in a hundred.</p>
+      <p data-who="Quant">That is your base rate. It is where you start, before any of today's details. Now, how often does the pattern show up on ordinary days that are not turns?</p>
+      <p data-who="Trader">I've never counted that. Maybe one day in five?</p>
+      <p data-who="Quant">Then picture a thousand days. Fifty are turns, and the pattern shows on thirty of them. Nine hundred and fifty are ordinary, and the pattern shows on one hundred and ninety of those.</p>
+      <p data-who="Trader">So two hundred and twenty days show the pattern.</p>
+      <p data-who="Quant">And only thirty of them are turns. That is about fourteen percent, not sixty. The pattern helped. It nearly tripled the odds. But a turn is still about six times less likely than an ordinary day.</p>
+      <p data-who="Trader">So where did my sixty come from?</p>
+      <p data-who="Quant">From the story. It is the hit rate: how often you see the pattern before a turn. On its own, the hit rate leaves out every false alarm. You need both numbers. Divide the hit rate by the false-alarm rate and you get how strongly the evidence should move you.</p>
+      <p data-who="Trader">And if the two are the same?</p>
+      <p data-who="Quant">Then the evidence tells you nothing. A signal followed by a rally fifty-four percent of the time is worthless if rallies follow fifty-four percent of all days anyway. Always ask for the second number.</p>
+      <p data-who="Trader">Is this just a trading problem?</p>
+      <p data-who="Quant">No. Daniel Kahneman tells a story about his own team in the nineteen seventies, writing a school textbook. They each guessed about two years to finish. Then he asked their curriculum expert how long similar teams had taken.</p>
+      <p data-who="Trader">And?</p>
+      <p data-who="Quant">About four in ten never finished. None of the rest finished in less than about seven years. The team carried on anyway. The book took about eight years, and by then it was never used. The base rate was asked for, given, and ignored.</p>
+      <p data-who="Trader">So how do I stop doing that?</p>
+      <p data-who="Quant">Make it mechanical. Name the group of past cases most like today, write its rate down first, and only then let today's evidence move you, by an amount you can measure.</p>
+      <p data-who="Trader">The one-line version?</p>
+      <p data-who="Quant">Write the base rate down before you read the chart, and never trust a hit rate without its false alarms.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -120,6 +179,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Bayes in odds form, on the reversal-pattern example, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\frac{P(H)}{P(\neg H)} = \frac{0.05}{0.95} = \frac{1}{19}} \]</div>
+      <p>Start from the base rate, written as odds. 5% of days are turns, so the prior odds are 1 to 19.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{P(H)}{P(\neg H)} \times \color{#fbbf24}{\frac{P(E\mid H)}{P(E\mid \neg H)}} \]</div>
+      <p>Multiply by the likelihood ratio: the hit rate divided by the false-alarm rate. It measures how much more often you see the pattern before a turn than on an ordinary day.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \frac{1}{19} \times \color{#fbbf24}{\frac{0.60}{0.20} = \frac{1}{19} \times 3 = \frac{3}{19}} \]</div>
+      <p>Put in the numbers. The pattern appears before 60% of turns and on 20% of ordinary days, so the LR is 3. The odds triple, from 1:19 to 3:19.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{P(H\mid E) = \frac{3}{3 + 19} = \frac{3}{22} = 13.6\%} \]</div>
+      <p>Convert the odds back to a probability. A strong pattern, and the day is still far more likely not to be a turn. With LR = 1 the odds would not move at all.</p>
+    </div>
+  </div>
 
   <h3>1. A base rate is a frequency in a reference class</h3>
   <p>
@@ -241,6 +320,10 @@
 
   <div class="tl-chart interactive">
     <div class="tl-chart-label">Your tool, part 1: the base-rate updater (1,000 days)</div>
+    <div class="tl-predict" data-answer="16.2" data-tol="4" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> A test is "95% accurate": it fires on 95% of real cases and on only 10% of the rest. The event is rare, 2% of cases. When the test fires, how likely is the event? Lock in a guess, then press the "Rare event, 95% accurate" button below and read the line under the grid.</div>
+      <div class="tl-predict-reveal"><p><strong>About 16.2%.</strong> Of 1,000 cases, 20 are real and 19 of those fire. Of the other 980, 98 fire too. So 19 of 117 alarms are real: \(0.019 / (0.019 + 0.098) = 16.2\%\). In odds: 1:49 × an LR of 9.5 is about 1:5.2. Now slide the base rate up to 50% and watch the same test become about 90% reliable.</p></div>
+    </div>
     <div class="br-wrap">
     <svg id="bu-svg" class="br-svg" viewBox="0 0 640 424" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A grid of 1,000 squares, one per day or case. Purple squares are cases where the outcome happened and the evidence fired; light purple ones are outcomes the evidence missed; amber squares are false alarms; grey squares are quiet days. The posterior is the purple share of all squares that fired.">
       <g id="bu-g"></g>
@@ -309,6 +392,12 @@
     <div class="tl-readout" id="sh-readout"></div>
     <div class="tl-chart-caption">The raw interval is the 95% Wilson interval for \(k/n\). The shrunk estimate is the mean of a Beta prior worth \(m\) cases at \(p_0\), updated with \(k\) of \(n\), with a 95% band from its standard deviation. Set n to 8 and the shrunk estimate stays near the base rate. Set n to 400 and it follows the count. The defaults are the worked example below.</div>
   </div>
+
+  <!-- WB:action_base_rates:START -->
+  <div class="wb" id="wb-action_base_rates" data-title="Base rates first: the false alarms the story leaves out">
+    <script type="application/json">{"w":600,"h":640,"intro":"A reversal pattern, a thousand days, and the false alarms the story leaves out. Every number is the lesson's own example. Press play, or step through.","steps":[{"cap":"A reversal pattern prints on your chart. It shows up before 60% of big turns, so the story says \"60% this is a turn\". Before trusting that, count.","do":[{"icon":"ch","name":"down","x":30,"y":6,"s":0.75,"tone":"blue","label":"the pattern fires","lsize":17},{"note":"story","x":400,"y":50,"text":"the story says: 60%","size":22,"anchor":"middle","tone":"red"}]},{"cap":"Outside view first. Line up 1,000 past days. 5% of them were turns: 50 days. The other 950 were ordinary. That 5% is the base rate.","do":[{"box":"all","x":10,"y":186,"w":140,"h":76,"text":"1,000 days","tone":"blue","size":20},{"box":"turn","x":210,"y":120,"w":160,"h":76,"text":"turns","tone":"purple","sub":"0","size":19},{"box":"ord","x":210,"y":250,"w":160,"h":76,"text":"ordinary days","sub":"0","size":19},{"arrow":["all","turn"],"label":"5%"},{"arrow":["all","ord"],"label":"95%"},{"count":"turn","from":0,"to":50,"dp":0,"ms":900},{"count":"ord","from":0,"to":950,"dp":0,"ms":900}]},{"cap":"The pattern shows up before 60% of the turns: 30 of the 50.","do":[{"box":"hit","x":430,"y":120,"w":160,"h":76,"text":"pattern","tone":"purple","sub":"0","size":19},{"arrow":["turn","hit"],"label":"60%","tone":"purple"},{"count":"hit","from":0,"to":30,"dp":0,"ms":900}]},{"cap":"Here is the number the story leaves out. The pattern also shows up on 20% of ordinary days: 190 of the 950. These are false alarms.","do":[{"box":"fa","x":430,"y":250,"w":160,"h":76,"text":"pattern","tone":"amber","sub":"0","size":19},{"arrow":["ord","fa"],"label":"20%","tone":"amber"},{"count":"fa","from":0,"to":190,"dp":0,"ms":900}]},{"cap":"So 220 days showed the pattern, and only 30 of them were turns. That is 13.6%, not 60%.","do":[{"chart":"fl","x":10,"y":360,"w":280,"h":270,"title":"220 days with the pattern","xd":[0.4,2.6],"yd":[0,220],"yt":[[0,"0"],[100,"100"],[200,"200"]],"xt":[[1,"turns"],[2,"false alarms"]],"pl":50},{"bars":"flb","chart":"fl","data":[[1,30,"30","purple"],[2,190,"190","amber"]],"bw":64,"ms":1100},{"hide":"story"},{"note":"ans","x":400,"y":50,"text":"base rate says: 13.6%","size":22,"anchor":"middle","tone":"green"}]},{"cap":"The same answer in one multiplication. Prior odds 1:19, times a likelihood ratio of 60% ÷ 20% = 3, gives 3:19. And 3 ÷ 22 = 13.6%.","do":[{"box":"odds","x":310,"y":360,"w":280,"h":84,"text":"odds 1:19 × LR 3\n= 3:19 → 13.6%","tone":"purple","size":20}]},{"cap":"If the hit rate equals the false-alarm rate, the LR is 1 and the evidence tells you nothing. \"Followed by a rally 54% of the time\" is nothing if rallies follow 54% of all days.","do":[{"box":"lr1","x":310,"y":456,"w":280,"h":84,"text":"hit 54%, base 54%\nLR = 1: don't move","tone":"red","size":20}]},{"cap":"It works anywhere. The cab problem: 15% of cabs are Blue, and a witness who is right 80% of the time says \"Blue\". Odds 15:85 × 4 = 60:85, so 41%. Still more likely Green.","do":[{"hide":"ch"},{"hide":"ans"},{"box":"cab","x":10,"y":10,"w":580,"h":84,"text":"15% Blue · witness right 80%\n→ only 41% Blue","tone":"blue","size":20}]},{"cap":"Small reference classes need shrinking. 7 hits in 8 cases looks like 87.5%. Blend it with a broad rate of 45% worth 10 cases: (7 + 4.5) ÷ 18 = 63.9%.","do":[{"box":"shr","x":310,"y":552,"w":280,"h":84,"text":"7 of 8, broad 45%, m = 10\n→ 63.9%, not 87.5%","tone":"amber","size":19}]},{"cap":"The habit: name the reference class, write its base rate down first, then let the evidence move you by a measured likelihood ratio. No data means LR = 1.","do":[{"hide":"cab"},{"box":"rule","x":10,"y":10,"w":580,"h":84,"text":"base rate first, in writing\nthen × measured LR","tone":"green","size":21}]}]}</script>
+  </div>
+  <!-- WB:action_base_rates:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Choosing the reference class</h2>
@@ -526,6 +615,19 @@ goes to: EV card / journal      score it on: ____</div>
     <p style="margin-bottom:0"><strong>A base rate from a different regime.</strong> A rate that differs between halves of the sample describes a period, not a constant. Check stability before you lean on it.</p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative morning</div>
+    <h3>The reversal pattern fires, and a colleague says "this is the turn"</h3>
+    <p>The reversal pattern from this lesson has just printed on your chart. Your history says 5% of days are turns, the pattern shows up before 60% of turns, and it also shows up on 20% of ordinary days. A colleague says it "looks exactly like" the last big turn and wants to bet heavily on it. The trade risks 1 to make 3. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Treat it as a 60% call. The pattern appears before 60% of turns.<div class="tl-drill-why">That is the hit rate, not the probability. It leaves out the 190 false alarms in every 1,000 days. Sizing a 13.6% chance as if it were 60% is a large over-bet.</div></li>
+      <li data-verdict="good">Start from 5%, multiply the odds by an LR of 3 to get about 13.6%, and check the payoff against that.<div class="tl-drill-why">Posterior odds are 3:19. At 3 to 1 the expected value is 0.136 × 3 − 0.864 × 1, about −0.45 per unit risked. The trade is a pass at this payoff. It would need to pay more than about 6.3 to 1 to break even.</div></li>
+      <li data-verdict="ok">Ignore the pattern and use the 5% base rate.<div class="tl-drill-why">Safer than 60%, and here it gives the same answer: pass. But the pattern is real evidence with an LR of 3. Throwing it away would cost you on a trade with a bigger payoff.</div></li>
+      <li data-verdict="bad">Wait for two more momentum indicators to agree, then multiply all three LRs.<div class="tl-drill-why">Indicators built from the same price move are one piece of evidence, not three. Multiplying their LRs double-counts it and pushes the probability up for no real reason.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the numbers say.</strong> This is an illustrative morning built on the lesson's reversal-pattern example, not a real date. Of 1,000 days, 220 show the pattern and only 30 of those are turns. At a 3-to-1 payoff the trade loses money on average, however much the chart resembles a famous turn. Writing the 5% down first is what stops the resemblance from setting the size.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -578,6 +680,27 @@ goes to: EV card / journal      score it on: ____</div>
     <li><a href="bayesian-inference.html">Bayesian inference</a>, <a href="bayesian-conjugate-priors.html">Conjugate Priors</a> and <a href="hierarchical-bayesian-models.html">Hierarchical Bayesian Models</a>: the formal machinery behind this lesson.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-probability.html">Probability &amp; Random Variables</a> <span>· conditional probability, the language of this lesson</span></li>
+        <li><a href="bayesian-inference.html">Bayesian Inference &amp; Updating</a> <span>· the formal machinery behind the odds form</span></li>
+        <!-- DESK:START --><li><a href="action-expected-value.html">Thinking in Expected Value</a> <span>· where the probability you build here gets used</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <!-- DESK:START --><li><a href="action-calibration-scoring.html">Scoring Your Own Calls</a> <span>· checking later that your probabilities were honest</span></li><!-- DESK:END -->
+        <!-- DESK:START --><li><a href="action-combining-signals.html">Combining Signals That Disagree</a> <span>· what to do when the evidence is correlated</span></li><!-- DESK:END -->
+        <li><a href="bayesian-conjugate-priors.html">Conjugate Priors &amp; Bayesian Updating in Practice</a> <span>· the maths behind shrinking a small class</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> a hit rate without its base rate can look like an edge and be exactly nothing, and every size you set rests on that probability.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="action-calibration-scoring.html">← Scoring Your Own Calls</a>
@@ -702,10 +825,12 @@ goes to: EV card / journal      score it on: ____</div>
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>
