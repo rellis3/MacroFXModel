@@ -103,7 +103,7 @@
       });
     } else {
       input = el('input', 'tl-scratch-input'); input.type = 'number'; input.step = 'any'; input.inputMode = 'decimal';
-      input.placeholder = 'your guess' + (box.getAttribute('data-unit') ? ' (' + box.getAttribute('data-unit') + ')' : '');
+      var u0 = (box.getAttribute('data-unit') || '').trim(); input.placeholder = 'your guess' + (u0 ? ' (' + u0 + ')' : '');
       input.setAttribute('aria-label', 'Your guess');
       form.appendChild(input);
     }
