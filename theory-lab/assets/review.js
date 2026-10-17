@@ -4,7 +4,7 @@
  * deck.js). A finished lesson (90%+) comes due 7 days after you finished it. Each review
  * asks one of its own self-test questions; "I knew it" pushes the next review further out
  * (7 → 21 → 60 → 150 days), "Shaky" brings it back in 7. Up to three lessons a visit,
- * oldest first. The questions are fetched from the lesson pages themselves, so they never
+ * oldest first. Questions you graded as missed in the lesson's self-test come first. The questions are fetched from the lesson pages themselves, so they never
  * drift from what the lesson asks. Review state: localStorage theoryLabReview, this
  * browser only. Needs <div id="tl-review" hidden></div> on the page.
  */
@@ -41,7 +41,9 @@
       if (!t) return null;
       var d = new DOMParser().parseFromString(t, 'text/html'), qs = d.querySelectorAll('details.tl-quiz');
       if (!qs.length) return null;
-      var r = rev[x.slug] || {}, q = qs[(r.n || 0) % qs.length], h1 = d.querySelector('h1.tl-title'), s = q.querySelector('summary'), a = q.querySelector('.tl-answer');
+      // A question you graded yourself as missed (theoryLabQuiz, written by vark.js) comes back first.
+      var r = rev[x.slug] || {}, mine = get('theoryLabQuiz', {})[x.slug] || {}, miss = Object.keys(mine).filter(function (i) { return mine[i] && mine[i].g < 1 && qs[+i]; });
+      var q = qs[miss.length ? +miss[(r.n || 0) % miss.length] : (r.n || 0) % qs.length], h1 = d.querySelector('h1.tl-title'), s = q.querySelector('summary'), a = q.querySelector('.tl-answer');
       if (!s || !a) return null;
       return { slug: x.slug, title: h1 ? h1.textContent.trim() : x.slug, q: s.textContent.replace(/^\s*Q\d+\.\s*/, '').trim(), a: a.innerHTML };
     }).catch(function () { return null; });

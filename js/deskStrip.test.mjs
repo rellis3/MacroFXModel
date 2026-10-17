@@ -12,7 +12,7 @@ import { stripDesk, deskMarkerProblems } from './deskStrip.js';
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'theory-lab');
 // Served only to admins (server.js returns 404 to everyone else), so not checked here;
 // lessons/action-*.html likewise.
-const ADMIN_ONLY = new Set(['market-reading.html', 'capstone-vol.html', 'capstone-macro.html']);
+const ADMIN_ONLY = new Set(['market-reading.html', 'capstone-vol.html', 'capstone-macro.html', 'replay.html']);
 const pages = [
   ...fs.readdirSync(root).filter(f => f.endsWith('.html') && !ADMIN_ONLY.has(f)),
   ...fs.readdirSync(path.join(root, 'lessons')).filter(f => f.endsWith('.html') && !f.startsWith('action-')).map(f => 'lessons/' + f),

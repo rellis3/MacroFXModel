@@ -132,7 +132,8 @@
     // the VARK blocks: the dialogue has its own player, and the hidden answers
     // and outcomes would spoil a prediction or drill if read out first
     '.tl-listen', '.tl-quizaloud', '.tl-predict-reveal', '.tl-drill-why', '.tl-drill-outcome',
-    '.tl-eqbuild-bar', '.tl-fits'
+    '.tl-eqbuild-bar', '.tl-fits', '.tl-ownwords', '.tl-quiz-score', '.tl-quiz-try', '.tl-cards-row',
+    '.tl-theme-toggle', '.tl-fade .tl-btnrow', '.tl-conf'
   ].join(',');
 
   function buildQueue() {

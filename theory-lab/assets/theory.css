@@ -617,3 +617,97 @@ body.tl-tts-open #page{padding-bottom:calc(var(--tl-tts-bar-h, 90px) + 20px)}
 .tl-review-item{margin:10px 0}
 .tl-review-from{font-size:12px;color:var(--text3);margin-bottom:4px}
 .tl-review-rate{margin-top:10px}
+
+/* ── Light theme (opt-in: the ☀ button, stored in localStorage.theoryLabTheme) ── */
+:root[data-theme="light"]{
+  --bg:#f6f7fb;--s1:#ffffff;--s2:#eef1f7;--s3:#e2e7f0;
+  --border:#d8deea;--border2:#c4ccdd;
+  --text:#141a2c;--text2:#3d4660;--text3:#68728e;
+  --blue:#2c5bd6;--blue2:#2149b8;--blue-bg:#e7edfc;--blue-bd:#b6c7f3;
+  --green:#047857;--green-bg:#e4f5ee;--green-bd:#a3d9c1;
+  --red:#b91c1c;--red-bg:#fcebeb;--red-bd:#f1b8b8;
+  --amber:#a15c07;--amber-bg:#fdf3e1;--amber-bd:#eecf95;
+  --purple:#5b3fd0;--purple-bg:#f0ecfd;--purple-bd:#cdc1f5;
+}
+:root[data-theme="light"] .tl-btn.active{color:#fff}
+.tl-theme-toggle{position:fixed;top:10px;right:12px;z-index:50;background:var(--s2);border:1px solid var(--border2);color:var(--text2);border-radius:20px;font:600 11.5px 'DM Sans',sans-serif;padding:5px 11px;cursor:pointer}
+.tl-theme-toggle:hover{color:var(--text);border-color:var(--blue)}
+
+/* confidence picker on guesses and drills */
+.tl-conf{font-size:12px;color:var(--text2);display:inline-flex;align-items:center;gap:6px}
+.tl-conf-select{background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font:12px 'DM Mono',monospace;padding:4px 6px}
+
+/* self-test: answer first, grade yourself */
+.tl-quiz-score{font-size:13px;color:var(--text2);background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;margin:6px 0 10px}
+.tl-quiz-score.mastered{border-color:var(--green-bd);background:var(--green-bg);color:var(--text)}
+.tl-quiz-try{margin:12px 0 -4px}
+.tl-quiz-try textarea{min-height:44px;resize:vertical;font-family:'DM Sans',sans-serif;font-size:13.5px}
+.tl-quiz-grade{margin-top:10px}
+.tl-cards-row{margin:4px 0 8px}
+
+/* in your own words */
+.tl-ownwords{background:var(--s1);border:1px dashed var(--border2);border-radius:var(--rl);padding:12px 16px;margin:14px 0 18px}
+.tl-ownwords-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text2);margin-bottom:4px}
+.tl-ownwords-q{font-size:13.5px;margin-bottom:8px}
+.tl-ownwords textarea{resize:vertical;font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5}
+
+/* faded worked example */
+.tl-fade{background:var(--s1);border:1px solid var(--purple-bd);border-radius:var(--rl);padding:14px 18px;margin:18px 0}
+.tl-fade-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--purple);margin-bottom:6px}
+.tl-fade-round{border-top:1px dashed var(--border);padding-top:10px;margin-top:10px}
+.tl-fade-round:first-of-type{border-top:0;margin-top:0;padding-top:0}
+.tl-fade-round h4{font-size:13px;color:var(--text);margin:0 0 6px}
+.tl-blank{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.tl-blank-input{width:96px;display:inline-block;padding:3px 6px}
+.tl-blank.right .tl-blank-input{border-color:var(--green)}
+.tl-blank.wrong .tl-blank-input{border-color:var(--red)}
+.tl-blank.shown .tl-blank-input{border-style:dashed}
+.tl-fade.js .tl-blank:empty::after{content:"?"}
+
+/* drill sources line */
+.tl-drill-sources{font-size:11.5px;color:var(--text3);margin-top:8px}
+.tl-drill-sources a{color:var(--text2)}
+
+/* desk tool link and test prompts (inside DESK markers) */
+.tl-desktool{font-size:13px;background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:var(--r);padding:8px 12px;margin:12px 0}
+.tl-howtotest{font-size:12.5px;color:var(--text2);border-top:1px dashed var(--amber-bd);margin-top:8px;padding-top:6px}
+.tl-howtotest strong{color:var(--amber)}
+
+/* ── Print: the lesson as a clean handout ─────────────────────────────────────── */
+/* Practice page (practice.html, assets/practice.js) */
+.pr-from{font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin:4px 0 -10px}
+.pr-next{margin-top:6px}
+.pr-cal{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start;background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px}
+.pr-calsvg{flex:1 1 300px;max-width:380px;height:auto}
+.pr-cal-txt{flex:1 1 240px;font-size:13.5px}
+.pr-cal-txt p{margin:10px 0 0}
+.pr-grid{stroke:var(--border);stroke-width:1}
+.pr-ax{fill:var(--text3);font-size:10px;font-family:'DM Mono',monospace}
+.pr-diag{stroke:var(--text3);stroke-dasharray:4 4;stroke-width:1.2}
+.pr-line{fill:none;stroke:var(--blue);stroke-width:1.5}
+.pr-dot{fill:var(--blue);fill-opacity:.75;stroke:var(--bg);stroke-width:1.5}
+.pr-big{font-size:30px;font-weight:700;font-family:'DM Mono',monospace;line-height:1.1}
+.pr-big span{font-size:15px;color:var(--text3);font-weight:500}
+.pr-mas-head{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;margin-bottom:10px}
+.pr-mas{width:100%;border-collapse:collapse;font-size:13.5px}
+.pr-mas th{text-align:left;font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:6px;border-bottom:1px solid var(--border)}
+.pr-mas td{padding:7px 6px;border-bottom:1px solid var(--border)}
+.pr-mas tr.ok td:first-child a::after{content:" ✓";color:var(--green)}
+.pr-num{font-family:'DM Mono',monospace;white-space:nowrap}
+.pr-bar{display:inline-block;width:110px;height:7px;background:var(--s2);border-radius:4px;overflow:hidden;vertical-align:middle}
+.pr-bar i{display:block;height:100%;background:var(--amber)}
+.pr-mas tr.ok .pr-bar i{background:var(--green)}
+.pr-missed{margin:6px 0 8px 20px;font-size:13.5px}
+
+@media print{
+  :root,:root[data-theme="light"]{--bg:#fff;--s1:#fff;--s2:#f3f4f7;--s3:#e8eaf0;--border:#cfd4de;--border2:#b9c0ce;--text:#000;--text2:#222;--text3:#555;
+    --blue:#1f4fc4;--blue-bg:#fff;--green:#046c4e;--green-bg:#fff;--red:#a11d1d;--red-bg:#fff;--amber:#8a4b06;--amber-bg:#fff;--purple:#4c35b5;--purple-bg:#fff}
+  body{background:#fff;color:#000;font-size:11pt}
+  #page{max-width:none;padding:0}
+  .tl-theme-toggle,.tl-eli5-toggle,.tl-tts-toggle,.tl-tts-bar,#tl-progress-bar,.tl-footer-nav,.tl-listen,.tl-quizaloud,.tl-btnrow,.tl-eqbuild-bar,.tl-quiz-try,.tl-quiz-grade,.tl-ownwords,.tl-callout,.wb,.tl-fits,.tl-pathbar,.tl-crumb,.tl-glosslink,.tl-cards-row,.tl-conf,.tl-predict-form{display:none!important}
+  .tl-box,.tl-chart,.tl-math,.tl-takeaway,.tl-quiz,.tl-picture,.tl-drill,.tl-eqbuild,.tl-fade{break-inside:avoid;box-shadow:none}
+  .tl-predict-reveal,.tl-drill-why,.tl-drill-outcome,.tl-eqbuild-step{display:block!important}
+  details.tl-quiz>summary::before{content:""}
+  a{color:#000;text-decoration:none}
+  h2{break-after:avoid}
+}
