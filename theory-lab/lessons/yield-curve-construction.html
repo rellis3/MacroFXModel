@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bootstrapping the Yield Curve — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,67 @@
       <li><strong>Real-world episode:</strong> March 2020. In the dash for cash, off-the-run Treasuries cheapened against near-identical on-the-run bonds as dealer balance sheets filled, so the bootstrap's inputs no longer agreed on one curve until the Fed bought without limit.<!-- DESK:START --> The inversion-as-recession-signal claim from Section 04 tested <strong>NULL</strong> on this desk (<code>curve-inversion</code>).<!-- DESK:END --></li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Rates at maturities of 1, 2 and 3 years. The par yields fed in are 3.00%, 3.50% and 4.00%. The bootstrapped zero rates, solved from the short end outward, are 3.00%, 3.51% and 4.03%, just above the par yields. The 1-year forward rates they imply are 3.00%, 4.02% and 5.07%, well above the zero curve because the curve slopes upward.">
+      <line class="tlp-line" x1="70" y1="205" x2="570" y2="205"/>
+      <line class="tlp-line" x1="70" y1="30" x2="70" y2="205"/>
+      <polyline class="tlp-line amber thick dash" points="130,177.5 300,121.4 470,63.6"/>
+      <polyline class="tlp-line blue thick" points="130,177.5 300,149.5 470,120.8"/>
+      <circle class="tlp-line" cx="300" cy="150" r="10" fill="none"/>
+      <circle class="tlp-line" cx="470" cy="122.5" r="10" fill="none"/>
+      <circle class="tlp-line" cx="130" cy="177.5" r="10" fill="none"/>
+      <circle class="tlp-blue" cx="130" cy="177.5" r="5"/>
+      <circle class="tlp-blue" cx="300" cy="149.5" r="5"/>
+      <circle class="tlp-blue" cx="470" cy="120.8" r="5"/>
+      <circle class="tlp-amber" cx="300" cy="121.4" r="6"/>
+      <circle class="tlp-amber" cx="470" cy="63.6" r="6"/>
+      <text class="tlp-blue" x="130" y="200" text-anchor="middle" font-size="13" font-weight="700">3.00%</text>
+      <text class="tlp-blue" x="314" y="168" font-size="13" font-weight="700">zero 3.51% · par 3.50%</text>
+      <text class="tlp-blue" x="484" y="142" font-size="13" font-weight="700">zero 4.03%</text>
+      <text class="tlp-text2" x="484" y="158" font-size="12">par 4.00%</text>
+      <text class="tlp-amber" x="290" y="108" text-anchor="end" font-size="13" font-weight="700">forward 4.02%</text>
+      <text class="tlp-amber" x="484" y="68" font-size="13" font-weight="700">forward 5.07%</text>
+      <text class="tlp-purple" x="80" y="40" font-size="13" font-weight="700">solve 1y first, then 2y, then 3y</text>
+      <text class="tlp-text3" x="80" y="58" font-size="12">each new rate uses the ones already solved</text>
+      <text class="tlp-text3" x="62" y="181" text-anchor="end" font-size="12">3%</text>
+      <text class="tlp-text3" x="62" y="126" text-anchor="end" font-size="12">4%</text>
+      <text class="tlp-text3" x="62" y="71" text-anchor="end" font-size="12">5%</text>
+      <text class="tlp-text3" x="130" y="221" text-anchor="middle" font-size="12">1 year</text>
+      <text class="tlp-text3" x="300" y="221" text-anchor="middle" font-size="12">2 years</text>
+      <text class="tlp-text3" x="470" y="221" text-anchor="middle" font-size="12">3 years</text>
+      <text class="tlp-text3" x="570" y="237" text-anchor="end" font-size="12">maturity →</text>
+    </svg>
+    <figcaption>Three par bonds go in (rings). The bootstrap turns them into one rate per maturity, the zero curve (blue), which sits just above the par yields. The forward rates (amber) fall out of the zero curve by no-arbitrage, and sit well above it because the curve slopes up.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">If I know a bond's yield, why can't I use it to discount any cash flow at that maturity?</p>
+      <p data-who="Quant">Because a yield is a blend. A five-year bond's yield mixes the rates for its year-one coupon, its year-two coupon and so on, into one number. A single payment due in five years needs the rate for year five alone. That is the zero rate.</p>
+      <p data-who="Trader">And the market doesn't quote zero rates directly.</p>
+      <p data-who="Quant">Mostly it quotes bundles. Bootstrapping unpicks them, starting from the short end. Take three bonds, all priced at a hundred: a one-year paying three percent, a two-year paying three and a half, a three-year paying four.</p>
+      <p data-who="Trader">The one-year is easy.</p>
+      <p data-who="Quant">One payment, a hundred and three in a year, for a hundred today. The one-year zero rate is three percent. No blend to unpick.</p>
+      <p data-who="Trader">Then the two-year.</p>
+      <p data-who="Quant">It pays three fifty in year one. You already know the one-year rate, so that coupon is worth about three forty today. Take it off the price and ninety-six sixty is left for the final payment. Solve, and the two-year zero rate is about three point five one percent.</p>
+      <p data-who="Trader">Just above the bond's own yield.</p>
+      <p data-who="Quant">Yes. Close, but not the same number. Do it once more for the three-year and you get about four point oh three. Short to long, one unknown at a time.</p>
+      <p data-who="Trader">Where do forward rates come in?</p>
+      <p data-who="Quant">Two ways to invest for two years: straight through at the two-year rate, or one year at three percent and then a one-year rate locked in today. With no free money, both must pay the same. That locks the one-year rate starting next year at about four point oh two percent.</p>
+      <p data-who="Trader">So the market expects rates to rise to four?</p>
+      <p data-who="Quant">Careful. That is an arbitrage identity, not a forecast. It tells you what is priced, not what will happen.</p>
+      <p data-who="Trader">What breaks it?</p>
+      <p data-who="Quant">Inputs that disagree. In March twenty twenty, everyone wanted cash and sold Treasuries at once. Dealers ran out of balance sheet, and older bonds cheapened against new ones with almost the same cash flows. There was no longer one curve to find.</p>
+      <p data-who="Trader">How did it end?</p>
+      <p data-who="Quant">The Fed cut to near zero, then bought Treasuries without limit from the twenty-third of March, and eased the banks' leverage rule on the first of April. Within weeks the bonds lined up on one curve again.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Discount each payment at its own maturity's rate, solve those rates from the short end outward, and check your inputs, because one bad short price spoils every rate after it.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -97,6 +159,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the zero and forward rates come from, one maturity at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ 100 = \frac{103}{\color{#fbbf24}{(1+z_1)}} \;\Rightarrow\; z_1 = 3.00\% \]</div>
+      <p>The 1-year bond has one payment, so one unknown. Its zero rate is just its yield.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ 100 = \frac{3.50}{1+z_1} + \color{#fbbf24}{\frac{103.50}{(1+z_2)^2}} \;\Rightarrow\; z_2 \approx 3.51\% \]</div>
+      <p>The 2-year bond's first coupon uses the rate you already solved. Only the year-2 payment is new.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ 100 = \frac{4}{1+z_1} + \frac{4}{(1+z_2)^2} + \color{#fbbf24}{\frac{104}{(1+z_3)^3}} \;\Rightarrow\; z_3 \approx 4.03\% \]</div>
+      <p>Same move again. Every earlier coupon is discounted at a known rate, so one unknown is left each time.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ (1+z_2)^2 = (1+z_1)\color{#fbbf24}{(1+f_{1,2})} \;\Rightarrow\; \color{#10b981}{f_{1,2} = \frac{(1+z_2)^2}{1+z_1} - 1 \approx 4.02\%} \]</div>
+      <p>Two riskless routes to year 2 must pay the same. That pins the forward rate from the zero curve alone.</p>
+    </div>
+  </div>
 
   <h3>Three different "rates" that get confused with each other</h3>
   <div class="tl-compare">
@@ -332,6 +414,10 @@
       worked example derived it: each zero rate uses only the ones already
       solved.
     </p>
+    <div class="tl-predict" data-answer="6.68" data-tol="0.3" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> With the worked numbers, the 2-to-3-year forward \(f_{2,3}\) is 5.07%. Raise only the 3-year coupon by half a point, from 4.00% to 4.50%. What does \(f_{2,3}\) become? Lock in a guess, then type 4.50 into the 3-year field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 6.68%, up 1.6 points.</strong> \(z_1\) and \(z_2\) do not move, because they come from the shorter bonds. \(z_3\) rises to about 4.55%, and the whole change has to be explained by the one year between year 2 and year 3, so the forward moves about three times as far as the coupon. Now nudge the 1-year coupon instead and watch every rate after it shift.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>1yr coupon (%)</span></div>
@@ -435,6 +521,12 @@
       rather than to FX or equities.
     </p>
   </div>
+
+  <!-- WB:yield_curve_construction:START -->
+  <div class="wb" id="wb-yield_curve_construction" data-title="Bootstrapping a curve, one maturity at a time">
+    <script type="application/json">{"w":600,"h":796,"intro":"Three bond prices in, one rate per maturity out, solved from the short end outward. Then the forward rates hiding inside, and the month the inputs stopped agreeing. Press play, or step through.","steps":[{"cap":"Three bonds, each priced at par: 100 for 100 of face, annual coupons. A 1-year at 3.00%, a 2-year at 3.50%, a 3-year at 4.00%. Each is a bundle of payments on different dates.","do":[{"note":"h1","x":270,"y":22,"text":"year 1","size":18,"anchor":"middle"},{"note":"h2","x":395,"y":22,"text":"year 2","size":18,"anchor":"middle"},{"note":"h3","x":520,"y":22,"text":"year 3","size":18,"anchor":"middle"},{"box":"b1","x":10,"y":40,"w":170,"h":52,"text":"1y bond · 3.00%","tone":"blue","size":18},{"box":"b2","x":10,"y":110,"w":170,"h":52,"text":"2y bond · 3.50%","tone":"blue","size":18},{"box":"b3","x":10,"y":180,"w":170,"h":52,"text":"3y bond · 4.00%","tone":"blue","size":18},{"chip":"c11","x":270,"y":66,"text":"103","tone":"blue"},{"chip":"c21","x":270,"y":136,"text":"3.50","tone":"blue"},{"chip":"c22","x":395,"y":136,"text":"103.50","tone":"blue"},{"chip":"c31","x":270,"y":206,"text":"4","tone":"blue"},{"chip":"c32","x":395,"y":206,"text":"4","tone":"blue"},{"chip":"c33","x":520,"y":206,"text":"104","tone":"blue"}]},{"cap":"Start at the short end. The 1-year bond has one payment, 103 in a year, and costs 100. One equation, one unknown: the 1-year zero rate is 3.00%.","do":[{"pulse":"c11"},{"note":"calc","x":300,"y":280,"text":"100 = 103 ÷ (1 + z₁)   →   z₁ = 3.00%","size":20,"anchor":"middle","tone":"green"},{"note":"z1","x":455,"y":72,"text":"z₁ = 3.00%","size":19,"anchor":"middle","tone":"green"}]},{"cap":"The 2-year bond pays 3.50 in year 1. You already know the 1-year rate, so discount it: 3.50 ÷ 1.03 = 3.40. Subtract that from the price: 96.60 must be what the year-2 payment is worth today.","do":[{"hide":"calc"},{"pulse":"c21"},{"note":"calc2","x":300,"y":280,"text":"100 − 3.50 ÷ 1.03 = 96.60","size":20,"anchor":"middle","tone":"amber"}]},{"cap":"So 103.50 in two years is worth 96.60 today. Solve for the one unknown left: the 2-year zero rate is about 3.51%, a touch above the bond's own 3.50% yield.","do":[{"hide":"calc2"},{"pulse":"c22"},{"note":"calc3","x":300,"y":280,"text":"96.60 = 103.50 ÷ (1 + z₂)²   →   z₂ ≈ 3.51%","size":20,"anchor":"middle","tone":"green"},{"note":"z2","x":530,"y":142,"text":"z₂ = 3.51%","size":19,"anchor":"middle","tone":"green"}]},{"cap":"Same move again. Discount the 3-year bond's first two coupons at the rates already solved: 7.62 in all. That leaves 92.38 for the 104 in year 3, so the 3-year zero rate is about 4.03%.","do":[{"hide":"calc3"},{"pulse":"c31"},{"pulse":"c32"},{"note":"calc4","x":300,"y":280,"text":"100 − 7.62 = 92.38 = 104 ÷ (1 + z₃)³   →   z₃ ≈ 4.03%","size":18,"anchor":"middle","tone":"green"},{"note":"z3","x":520,"y":242,"text":"z₃ = 4.03%","size":19,"anchor":"middle","tone":"green"}]},{"cap":"Plot what you solved. The zero curve sits just above the par yields you started from: 3.00, 3.51, 4.03 against 3.00, 3.50, 4.00. Close, but not the same numbers.","do":[{"chart":"yc","x":10,"y":300,"w":580,"h":250,"title":"Rates by maturity (%)","xd":[0.5,3.5],"yd":[2.5,5.6],"yt":[[3,"3"],[4,"4"],[5,"5"]],"xt":[[1,"1y"],[2,"2y"],[3,"3y"]]},{"series":"par","chart":"yc","pts":[[1,3.0],[2,3.5],[3,4.0]],"tone":null,"dash":true,"ms":500,"label":"par (dashed)","lat":[2.5,3.75],"ldx":0,"ldy":24,"lanchor":"middle","lsize":16},{"series":"zero","chart":"yc","pts":[[1,3.0],[2,3.51],[3,4.03]],"tone":"blue","ms":1000,"label":"zero","lat":[3,4.03],"ldx":10,"ldy":-8,"lanchor":"start","lsize":16},{"dot":"dz1","chart":"yc","at":[1,3.0],"text":"3.00","tone":"blue","dy":18},{"dot":"dz2","chart":"yc","at":[2,3.51],"text":"3.51","tone":"blue","dy":18},{"dot":"dz3","chart":"yc","at":[3,4.03],"text":"4.03","tone":"blue","dy":20}]},{"cap":"Now the forwards. Investing for two years at 3.51% must pay the same as one year at 3.00% then a 1-year rate locked in today. That pins the 1-year rate starting in a year at 4.02%.","do":[{"note":"fid","x":300,"y":580,"text":"(1 + z₂)² = (1 + z₁)(1 + f₁,₂)   →   f₁,₂ ≈ 4.02%","size":19,"anchor":"middle","tone":"amber"},{"series":"fwd","chart":"yc","pts":[[1,3.0],[2,4.02],[3,5.07]],"tone":"amber","ms":1100,"label":"forward","lat":[3,5.07],"ldx":10,"ldy":0,"lanchor":"start","lsize":16},{"dot":"df2","chart":"yc","at":[2,4.02],"text":"4.02","tone":"amber","dy":-16},{"dot":"df3","chart":"yc","at":[3,5.07],"text":"5.07","tone":"amber","dx":-12,"dy":-4,"anchor":"end"}]},{"cap":"The curve slopes up, so every forward sits above the spot rate for that horizon: 4.02% and 5.07%. That is an arbitrage identity, not a forecast of where rates will go.","do":[{"pulse":"fwd"},{"note":"notf","x":300,"y":612,"text":"forwards above spot = an upward slope, not a prophecy","size":18,"anchor":"middle","tone":"amber"}]},{"cap":"All of this assumes every bond sits on one curve. In March 2020, in the dash for cash, foreign holders, funds meeting redemptions and levered basis traders all sold Treasuries at once, and dealers ran out of balance sheet.","do":[{"hide":"fid"},{"hide":"notf"},{"icon":"dealer","name":"bank","x":250,"y":628,"s":0.62,"tone":"red","label":"dealers: full","sym":"$","lsize":16},{"icon":"on","name":"scroll","x":40,"y":630,"s":0.6,"tone":"blue","label":"on-the-run","lsize":16},{"icon":"off","name":"scroll","x":480,"y":630,"s":0.6,"tone":"red","label":"off-the-run","lsize":16}]},{"cap":"Older off-the-run bonds cheapened against on-the-run bonds of almost the same maturity. Near-identical cash flows, two different prices: the zero rates you solve now depend on which bonds you feed in.","do":[{"arrow":["on","off"],"label":"same cash flows, different curve","tone":"red","bend":-40,"dash":true,"size":16},{"pulse":"off"}]},{"cap":"The Fed cut to near zero on 15 March and bought Treasuries, without limit from 23 March, then freed dealer balance sheet on 1 April. Functioning came back over the following weeks, and the bonds lined up on one curve again.","do":[{"note":"fed","x":300,"y":750,"text":"Fed buys without limit (23 Mar)","size":18,"anchor":"middle","tone":"green"},{"note":"fed2","x":300,"y":776,"text":"leverage rule eased (1 Apr) → one curve again","size":18,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:yield_curve_construction:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: March 2020, when near-identical bonds stopped agreeing</h2>
@@ -609,6 +701,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2020-03-16">
+    <div class="tl-drill-label">Scenario drill · 16 March 2020</div>
+    <h3>Near-identical Treasuries no longer agree</h3>
+    <p>You build the zero curve that a rates book is marked and hedged off. It is the dash for cash: foreign official holders, funds meeting redemptions and levered basis traders are all selling Treasuries, and for several days yields have risen while stocks fell. Dealers are out of balance sheet, bid-ask spreads are wide, and older off-the-run bonds have cheapened against on-the-run bonds of almost the same maturity. Yesterday the Fed cut rates to near zero and announced at least $500 billion of Treasury purchases. How do you build today's curve?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Feed in whichever bond prints at each maturity, on- or off-the-run, as usual.<div class="tl-drill-why">Bootstrapping is sequential. If a cheap, illiquid bond sets one of the short rates, its error carries into every longer rate solved after it, and your hedges move for reasons that have nothing to do with rates.</div></li>
+      <li data-verdict="good">Build from the most liquid inputs you trust, check the short end hard, and treat the off-the-run gap as a liquidity cost, not a rate.<div class="tl-drill-why">The algorithm still works; its inputs disagree. Choosing clean inputs keeps the curve meaningful, and recording the scatter of other bonds around it tells you how much illiquidity you are carrying.</div></li>
+      <li data-verdict="bad">Lever up: buy the cheap off-the-runs and short the on-the-runs. They must converge.<div class="tl-drill-why">They probably will, but convergence needs someone with balance sheet to force it, and that is exactly what has run out. Levered relative-value positions like this were being forced out at the worst prices.</div></li>
+      <li data-verdict="ok">Fit one smooth curve through every bond and price everything off it.<div class="tl-drill-why">It gives you a single curve, which is useful for reading the shape. But it hides that some of those bonds can only be sold well below the fitted price right now.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On 23 March the Fed dropped its limit and said it would buy Treasuries in the amounts needed. On 1 April it temporarily excluded Treasuries and reserves from banks' supplementary leverage ratio, freeing dealer balance sheet. Market functioning recovered over the following weeks, and near-identical bonds lined up on one curve again. The cost: leveraged relative-value funds were forced out at the worst prices, and the Fed's balance sheet grew by more than a trillion dollars in about a month.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -713,6 +818,27 @@
     <li>Campbell R. Harvey, <em>"The Real Term Structure and Consumption Growth,"</em> Journal of Financial Economics, 1988 — early, widely cited empirical work on the term structure's predictive content for the macro economy, relevant to the "curve shape as a macro signal" discussion above.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="bond-pricing-ytm.html">Bond Pricing &amp; Yield to Maturity</a> <span>· the single-yield price this lesson unpicks</span></li>
+        <li><a href="duration-convexity.html">Duration &amp; Convexity</a> <span>· why one yield per bond hides curve risk</span></li>
+        <li><a href="interest-rate-parity.html">Interest Rate Parity — Covered vs. Uncovered</a> <span>· the same no-arbitrage logic, across currencies</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="nelson-siegel-svensson.html">Curve Fitting: Nelson-Siegel &amp; Svensson</a> <span>· a smooth curve between the solved points</span></li>
+        <li><a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a> <span>· how desks bootstrap from swaps in practice</span></li>
+        <li><a href="yield-curve-growth-expectations.html">What the Yield Curve Says About Growth</a> <span>· reading the shape you just built</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every forward, swap and FX forward you trade is priced off a curve built this way, so a bad input here is a bad price everywhere.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
@@ -843,10 +969,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

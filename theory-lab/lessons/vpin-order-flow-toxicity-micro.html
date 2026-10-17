@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Order Flow Toxicity &amp; VPIN — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -248,7 +249,19 @@
       </div>
     </section>
 
+    <!-- WB:vpin_order_flow_toxicity-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">VPIN: from five buckets to the Flash Crash tape</h2>
+      <!-- WB:vpin_order_flow_toxicity:START -->
+      <div class="wb" data-title="VPIN: from five buckets to the Flash Crash tape">
+        <script type="application/json">{"w":600,"h":880,"intro":"A market maker who can't see who is informed, and a meter that tries to read it from the tape. First the lesson's five buckets, then the real tape of 6 May 2010. Press play, or step through.","steps":[{"cap":"A market maker quotes both sides of the E-mini future. Some orders come from traders who know something; most come from people trading for other reasons. The market maker can't see the informed share. VPIN tries to estimate it live, from the tape.","do":[{"icon":"crowd","name":"crowd","x":20,"y":8,"s":0.7,"tone":"blue","label":"traders","lsize":18},{"icon":"mm","name":"person","x":482,"y":8,"s":0.7,"tone":"green","label":"market maker","lsize":18},{"arrow":["crowd","mm"],"label":"orders"},{"note":"who","x":300,"y":128,"text":"informed, or just noise?","size":21,"anchor":"middle","tone":"amber"}]},{"cap":"Step one is a new clock. Don't close a bar every five minutes. Close a bucket every time a fixed volume has traded, here 1,000 contracts, however long that takes. Quiet hours make long buckets; busy minutes make short ones.","do":[{"hide":"who"},{"icon":"clk","name":"clock","x":26,"y":118,"s":0.6},{"cross":"clk"},{"box":"bk","x":120,"y":122,"w":460,"h":64,"text":"one bucket = every 1,000 contracts","tone":"blue","size":20}]},{"cap":"Step two: who was buying? VPIN never asks. It measures the bucket's price change in typical moves and runs it through the normal curve. Bucket 1 rose one typical move; the curve gives 0.84, so 841 contracts are called buys and 159 sells.","do":[{"chart":"split","x":10,"y":206,"w":580,"h":250,"title":"Buys per 1,000-contract bucket · dashed = 50/50","xd":[0.4,5.6],"yd":[0,1100],"yt":[[0,"0"],[500,"500"],[1000,"1,000"]],"xt":[[1,"#1"],[2,"#2"],[3,"#3"],[4,"#4"],[5,"#5"]],"pl":64},{"series":"even","chart":"split","pts":[[0.4,500],[5.6,500]],"tone":null,"dash":true,"ms":400},{"bars":"b1","chart":"split","data":[[1,841.3,"841","green"]],"bw":46,"ms":900}]},{"cap":"The rest of the lesson's five buckets. Bucket 3 closed flat, so the curve gives exactly one half: 500 buys, 500 sells. Bucket 4 rose two typical moves: 977 buys. Bucket 5 fell one and a half: only 67 buys and 933 sells.","do":[{"bars":"b2","chart":"split","data":[[2,308.5,"309","green"],[3,500.0,"500","green"],[4,977.2,"977","green"],[5,66.8,"67","green"]],"bw":46,"ms":1200}]},{"cap":"Step three: how one-sided was each bucket? Take buys minus sells and drop the sign. For bucket 1 that is about 683 contracts; then 383, 0, 954 and 866. A selling bucket counts the same as a buying one.","do":[{"chart":"oi","x":10,"y":470,"w":580,"h":236,"title":"Imbalance |buys − sells| per bucket","xd":[0.4,5.6],"yd":[0,1100],"yt":[[0,"0"],[500,"500"],[1000,"1,000"]],"xt":[[1,"#1"],[2,"#2"],[3,"#3"],[4,"#4"],[5,"#5"]],"pl":64},{"bars":"oib","chart":"oi","data":[[1,682.6,"683","amber"],[2,383.0,"383","amber"],[3,0.0,"0","amber"],[4,954.4,"954","amber"],[5,866.4,"866","amber"]],"bw":46,"ms":1200}]},{"cap":"Step four: add the five imbalances, 2,886.4 contracts, and divide by the 5,000 contracts in the window. VPIN is about 0.58: on average, 58% of recent volume looked one-sided. Zero would be perfectly balanced; one, all one way.","do":[{"box":"vp","x":10,"y":722,"w":280,"h":90,"text":"VPIN = 2,886.4 ÷ 5,000","tone":"purple","sub":"0.000","size":19},{"count":"vp","from":0,"to":0.577,"dp":3,"ms":1300},{"box":"scale","x":310,"y":722,"w":280,"h":90,"text":"0 = balanced\n1 = all one way","tone":"blue","size":19}]},{"cap":"Now the real tape: 6 May 2010. A fund complex hedging its stock holdings sells 75,000 E-mini contracts, about $4.1 billion, through an algorithm told to sell a fixed share of the last minute's volume, with no limit on price or time.","do":[{"hide":"split"},{"hide":"even"},{"hide":"b1"},{"hide":"b2"},{"hide":"oi"},{"hide":"oib"},{"hide":"vp"},{"hide":"scale"},{"hide":"crowd"},{"hide":"crowd>mm"},{"hide":"clk"},{"hide":"bk"},{"icon":"fund","name":"bank","x":46,"y":8,"s":0.7,"tone":"red","label":"fund, hedging","sym":"$","lsize":18},{"chip":"sell","x":130,"y":44,"text":"sell 75,000","tone":"red"},{"move":"sell","x":420,"y":44,"ms":1400},{"box":"algo","x":60,"y":140,"w":480,"h":64,"text":"sell a fixed share of volume,\nno price limit, no time limit","tone":"red","size":19}]},{"cap":"High-frequency traders and other intermediaries buy the first contracts, then have to dump them, much of it to each other. In one 14-second stretch they trade more than 27,000 contracts while their net holding changes by only about 200. The regulators called it hot-potato trading.","do":[{"hide":"sell"},{"icon":"h1","name":"person","x":110,"y":232,"s":0.62,"tone":"amber","label":"fast trader A","lsize":17},{"icon":"h2","name":"person","x":428,"y":232,"s":0.62,"tone":"amber","label":"fast trader B","lsize":17},{"chip":"pot","x":210,"y":262,"text":"contracts","tone":"amber"},{"move":"pot","x":390,"y":262,"ms":600},{"move":"pot","x":210,"y":262,"ms":600},{"move":"pot","x":390,"y":262,"ms":600},{"move":"pot","x":300,"y":262,"ms":500},{"box":"hp","x":60,"y":350,"w":480,"h":76,"text":"27,000+ contracts in 14 seconds\nnet change: about 200","tone":"amber","size":20}]},{"cap":"Feed that tape into VPIN. Recycled volume fills 1,000-contract buckets faster, though no news has arrived. Prices are falling inside every bucket, so the normal curve calls most of each one a sell. Imbalances near the maximum push VPIN toward 1.","do":[{"box":"s0","x":22,"y":470,"w":60,"h":54,"text":"sell","tone":"red","size":18},{"box":"s1","x":93,"y":470,"w":60,"h":54,"text":"sell","tone":"red","size":18},{"box":"s2","x":164,"y":470,"w":60,"h":54,"text":"sell","tone":"red","size":18},{"box":"s3","x":235,"y":470,"w":60,"h":54,"text":"sell","tone":"red","size":18},{"box":"s4","x":306,"y":470,"w":60,"h":54,"text":"sell","tone":"red","size":18},{"box":"s5","x":377,"y":470,"w":60,"h":54,"text":"sell","tone":"red","size":18},{"box":"s6","x":448,"y":470,"w":60,"h":54,"text":"sell","tone":"red","size":18},{"box":"s7","x":519,"y":470,"w":60,"h":54,"text":"sell","tone":"red","size":18},{"note":"fast","x":300,"y":560,"text":"buckets close faster · each one called a sell","size":19,"anchor":"middle","tone":"red"},{"box":"vp2","x":10,"y":722,"w":280,"h":90,"text":"VPIN","tone":"red","sub":"pushed toward 1","size":20}]},{"cap":"One-sided flow hurts liquidity providers whoever is behind it, so they pull back. Buy-side depth in the E-mini falls to less than 1% of its morning level. Index futures drop roughly 5 to 9% in minutes, then largely recover the same session.","do":[{"dim":"mm"},{"box":"depth","x":310,"y":722,"w":280,"h":90,"text":"buy-side depth\n< 1% of the morning","tone":"red","size":19}]},{"cap":"So VPIN was high. But the seller was hedging, and the hot potato was volume with no news: toxic to market makers without being informed. And Andersen and Bondarenko found the reading shifts with the bucket size, the window and the classifier, and runs high at other times with no crash after.","do":[{"note":"end","x":300,"y":846,"text":"toxic ≠ informed · a description, not a forecast","size":20,"anchor":"middle","tone":"amber"},{"pulse":"vp2"}]}]}</script>
+      </div>
+      <!-- WB:vpin_order_flow_toxicity:END -->
+    </section>
+    <!-- WB:vpin_order_flow_toxicity-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The Flash Crash claim — and the fight over it</h2>
       <p class="sl-sub">VPIN's public reputation rests almost entirely on one event, argued from both directions ever since.</p>
@@ -288,7 +301,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this shows up on a desk<!-- DESK:START --> — and where this repo stands<!-- DESK:END --></h2>
       <div class="sl-icard-grid">
@@ -302,7 +315,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">What the flow really was on 6 May 2010</h2>
       <p class="sl-sub">Both sides of the VPIN argument take the tape as given. The SEC/CFTC staff report reconstructed it.</p>
@@ -323,7 +336,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what's untested here<!-- DESK:END --></h2>
       <div class="sl-callout purple">
@@ -338,7 +351,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -389,7 +402,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -533,5 +546,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

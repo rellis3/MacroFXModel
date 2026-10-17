@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ARIMA &amp; VAR — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -258,7 +259,19 @@
       <p class="sl-p">a₁₁ and a₂₂ are each series' own AR(1) coefficient. a₁₂ is the cross-effect of Y's past on X; a₂₁ is the cross-effect of X's past on Y. All four are estimated <strong>jointly</strong> from the same system — which is exactly what lets a VAR reveal bidirectional feedback that a single "Y on lagged X" regression, by construction, can never see. It was only ever set up to look for one arrow.</p>
     </section>
 
+    <!-- WB:arima_var-deck:START -->
     <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">A VAR follows a shock through two series</h2>
+      <!-- WB:arima_var:START -->
+      <div class="wb" data-title="A VAR follows a shock through two series">
+        <script type="application/json">{"w":600,"h":740,"intro":"Two series that may feed into each other: a yield spread and a currency. Watch a VAR follow a shock through both, with illustrative coefficients. Press play, or step through.","steps":[{"cap":"Two series: X, the daily change in the DE–US 2-year yield spread, and Y, the daily EUR/USD return. Both already differenced, so both are stationary. Does one lead the other?","do":[{"box":"X","x":20,"y":40,"w":200,"h":84,"text":"spread (X)","tone":"blue","sub":"Δ DE–US 2y","size":21},{"box":"Y","x":380,"y":40,"w":200,"h":84,"text":"EUR/USD (Y)","tone":"red","sub":"daily return","size":21}]},{"cap":"First, each series leans on its own past, like AR(1). In this illustration a11 = 0.5 and a22 = 0.3: half of yesterday's spread move carries into today, and less of the currency's.","do":[{"note":"o1","x":120,"y":144,"text":"own past: a11 = 0.5","size":18,"anchor":"middle","tone":"blue"},{"note":"o2","x":480,"y":144,"text":"own past: a22 = 0.3","size":18,"anchor":"middle","tone":"red"}]},{"cap":"Now the band between them. a21 links yesterday's spread to today's EUR/USD: here 0.4. A regression of FX on lagged spread could find this arrow, because it is the only one it looks for.","do":[{"arrow":["X","Y"],"label":"a21 = 0.4","tone":"blue","bend":-26}]},{"cap":"The VAR also estimates the reverse arrow, a12: yesterday's EUR/USD to today's spread. Here it is 0, a slack band. Both are fitted jointly, in one system, from the same data.","do":[{"arrow":["Y","X"],"label":"a12 = 0","tone":"red","bend":-26,"dash":true},{"note":"eq","x":300,"y":178,"text":"Yₜ = a21·Xₜ₋₁ + a22·Yₜ₋₁ + ε","size":19,"anchor":"middle"}]},{"cap":"Shock the spread by 1 on day 0 and run the system forward. The spread fades by half each day. EUR/USD feels nothing on day 0, then 0.4 on day 1 and 0.32 on day 2, then fades: the spread leads.","do":[{"chart":"ir","x":10,"y":200,"w":580,"h":240,"title":"Response to a shock of 1 on day 0 (illustrative)","xd":[0,8],"yd":[-0.1,1.1],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[0,"0"],[2,"2"],[4,"4"],[6,"6"],[8,"8 days"]],"zero":true,"pl":44,"pr":20},{"series":"px","chart":"ir","pts":[[0,1.0],[1,0.5],[2,0.25],[3,0.125],[4,0.0625],[5,0.0312],[6,0.0156],[7,0.0078],[8,0.0039]],"tone":"blue","ms":1200,"label":"spread","lat":[1,0.5],"ldx":10,"ldy":-12,"lanchor":"start","lsize":17},{"series":"py","chart":"ir","pts":[[0,0.0],[1,0.4],[2,0.32],[3,0.196],[4,0.1088],[5,0.0576],[6,0.0298],[7,0.0152],[8,0.0077]],"tone":"red","ms":1200,"label":"EUR/USD","lat":[2,0.32],"ldx":8,"ldy":-14,"lanchor":"start","lsize":17},{"dot":"y1","chart":"ir","at":[1,0.4],"text":"0.4","tone":"red","dx":14,"dy":20,"anchor":"start"}]},{"cap":"Now shock EUR/USD instead. Its own move fades fast (a22 = 0.3), and the spread never moves, because a12 = 0. The influence runs one way. Only a model with both arrows can show you that.","do":[{"hide":"px"},{"hide":"py"},{"hide":"y1"},{"series":"qy","chart":"ir","pts":[[0,1.0],[1,0.3],[2,0.09],[3,0.027],[4,0.0081],[5,0.0024],[6,0.0007],[7,0.0002],[8,0.0001]],"tone":"amber","ms":1000,"label":"EUR/USD shock","lat":[0,1],"ldx":14,"ldy":0,"lanchor":"start","lsize":17},{"series":"qx","chart":"ir","pts":[[0,0.0],[1,0.0],[2,0.0],[3,0.0],[4,0.0],[5,0.0],[6,0.0],[7,0.0],[8,0.0]],"tone":"purple","dash":true,"ms":700,"label":"spread: no response","lat":[5,0],"ldx":0,"ldy":-16,"lsize":17}]},{"cap":"A Granger test asks the same thing with an F-test: do lagged spread changes improve the EUR/USD forecast beyond EUR/USD's own lags? If yes, the spread \"Granger-causes\" EUR/USD.","do":[{"hide":"eq"},{"note":"gr","x":300,"y":178,"text":"own lags  vs  own lags + spread lags","size":19,"anchor":"middle","tone":"purple"},{"pulse":"X>Y"}]},{"cap":"That word claims less than it sounds. A hidden common driver, say a shared macro shock that hits the spread a little earlier, produces the same result with no direct link at all.","do":[{"hide":"ir"},{"hide":"qx"},{"hide":"qy"},{"hide":"gr"},{"hide":"o1"},{"hide":"o2"},{"icon":"drv","name":"globe","x":252,"y":250,"s":0.95,"tone":"amber","label":"hidden common driver","lsize":18},{"arrow":["drv","X"],"label":"first","tone":"amber","bend":20,"dash":true},{"arrow":["drv","Y"],"label":"a bit later","tone":"amber","bend":-20,"dash":true}]},{"cap":"The catch: every series talks to every other at every lag, so parameters grow as k² × p. With 4 lags: 1 series needs 4 coefficients, 2 need 16, 3 need 36.","do":[{"chart":"pc","x":10,"y":460,"w":580,"h":210,"title":"Coefficients in a VAR with 4 lags","xd":[0.4,5.6],"yd":[0,115],"yt":[[0,"0"],[50,"50"],[100,"100"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5 series"]],"pl":48,"pr":24},{"bars":"pb","chart":"pc","data":[[1,4,"4"],[2,16,"16"],[3,36,"36"]],"bw":50,"ms":1000}]},{"cap":"Five series need 100 coefficients. On a few thousand daily observations that is a lot of parameters chasing not much data: a fast road to overfitting.","do":[{"bars":"pb2","chart":"pc","data":[[4,64,"64","amber"],[5,100,"100","red"]],"bw":50,"ms":900}]},{"cap":"And the bar to clear: Meese and Rogoff (1983) found exchange-rate models, VARs included, did not beat a random walk out of sample. A lead-lag result earns trust only once it beats that, on data it has not seen.","do":[{"note":"mr","x":300,"y":712,"text":"beat the random walk, out of sample","size":21,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:arima_var:END -->
+    </section>
+    <!-- WB:arima_var-deck:END -->
+
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Granger causality — narrower than the name suggests</h2>
       <p class="sl-sub">The classic diagnostic built on a fitted VAR: does X's history significantly improve forecasting Y, beyond Y's own past?</p>
@@ -274,7 +287,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this family of models goes wrong in practice</h2>
       <div class="sl-icard-grid">
@@ -286,7 +299,7 @@
       <p class="sl-p">ARIMA is the standard classical baseline for single-series forecasting — the model to beat before crediting a fancier approach with adding anything. VAR's home turf is macroeconomics, where it displaced older simultaneous-equation models built on hard-to-defend structural assumptions; Christopher Sims's 1980 case for letting an unrestricted VAR reveal dynamic relationships from the data directly is part of the work behind his 2011 Nobel Memorial Prize.</p>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -337,7 +350,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -452,5 +465,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

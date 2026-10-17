@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Systemic Risk &amp; Financial Contagion Networks — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -198,7 +199,19 @@
       <p class="sl-p">Because only one node is shocked here, each downstream bank's settled distress is just the shock size times the product of the impact factors on the path back to A — a small shock can die out completely before it ever reaches E or F, while a large one (drag the slider to the far right) leaves every institution in the chain measurably weaker. Reach isn't just about how big the shock is — it's about how big the shock is <em>relative to how thickly connected the path is</em>.</p>
     </section>
 
+    <!-- WB:systemic_risk_networks-deck:START -->
     <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">One default, four banks: the cascade round by round</h2>
+      <!-- WB:systemic_risk_networks:START -->
+      <div class="wb" data-title="One default, four banks: the cascade round by round">
+        <script type="application/json">{"w":600,"h":650,"intro":"Four banks, one default, and the lesson's cascade rule run round by round. Press play, or step through.","steps":[{"cap":"Four banks, A to D. Each one has lent to, or bought protection from, some of the others. (Illustrative numbers, not real institutions.)","do":[{"icon":"C","name":"bank","x":30,"y":150,"s":0.7,"tone":"blue","label":"Bank C","lsize":18},{"icon":"A","name":"bank","x":265,"y":14,"s":0.7,"tone":"blue","label":"Bank A","lsize":18},{"icon":"B","name":"bank","x":265,"y":262,"s":0.7,"tone":"blue","label":"Bank B","lsize":18},{"icon":"D","name":"bank","x":500,"y":170,"s":0.7,"tone":"blue","label":"Bank D","lsize":18}]},{"cap":"An impact factor says how much of a bank's own capital it would lose if a counterparty failed completely. B's impact factor on C is 0.4: if C fails, B loses 40% of its capital on that exposure alone.","do":[{"arrow":["C","B"],"label":"0.4","tone":"red","id":"cb"}]},{"cap":"A is less exposed to C, at 0.1. D sits in between, at 0.3. The arrows show which way distress would flow.","do":[{"arrow":["C","A"],"label":"0.1","tone":"red","id":"ca"},{"arrow":["C","D"],"label":"0.3","tone":"red","id":"cd"}]},{"cap":"Give every bank a distress dial: 0 is healthy, 1 is defaulted. All four start at 0. Then Bank C fails outright: its dial goes to 1.","do":[{"box":"hA","x":345,"y":22,"w":112,"h":56,"text":"distress","tone":"amber","sub":"0.00","size":18},{"box":"hB","x":345,"y":276,"w":112,"h":56,"text":"distress","tone":"amber","sub":"0.00","size":18},{"box":"hD","x":472,"y":284,"w":118,"h":56,"text":"distress","tone":"amber","sub":"0.00","size":18},{"box":"hC","x":10,"y":262,"w":120,"h":56,"text":"distress","tone":"red","sub":"0.00","size":18},{"count":"hC","from":0,"to":1,"dp":2,"ms":700},{"cross":"C"}]},{"cap":"Round 1. Each bank takes its impact factor times C's full distress. A goes to 0.10, B to 0.40, D to 0.30.","do":[{"count":"hA","from":0,"to":0.1,"dp":2,"ms":900},{"count":"hB","from":0,"to":0.4,"dp":2,"ms":900},{"count":"hD","from":0,"to":0.3,"dp":2,"ms":900},{"pulse":"cb"}]},{"cap":"Round 2. Now the weakened banks pass a smaller hit to each other. A is exposed to B at 0.3, and B just took on 0.40 of distress. So A picks up 0.3 times 0.40, which is 0.12 more: A reaches 0.22.","do":[{"dim":"ca"},{"dim":"cb"},{"dim":"cd"},{"arrow":["hB","hA"],"label":"0.3","tone":"amber","bend":-20,"id":"ba"},{"count":"hA","from":0.1,"to":0.22,"dp":2,"ms":900}]},{"cap":"Only the newest distress moves on each round, so the same loss is not counted twice. The hits shrink each round, and after about seven or eight rounds nothing new is moving.","do":[{"chart":"ln","x":10,"y":396,"w":372,"h":236,"title":"Distress by round","xd":[0,8],"yd":[0,0.6],"yt":[[0,"0"],[0.2,"0.2"],[0.4,"0.4"]],"xt":[[0,"0"],[2,"2"],[4,"4"],[6,"6"],[8,"8"]],"pl":48,"pr":56},{"series":"pB","chart":"ln","pts":[[0,0],[1,0.4],[2,0.45],[3,0.475],[4,0.479],[5,0.481],[6,0.481],[7,0.481],[8,0.481]],"tone":"red","ms":1300,"label":"B 0.48","lat":[8,0.481],"ldx":4,"ldy":-14,"lanchor":"end","lsize":17},{"series":"pD","chart":"ln","pts":[[0,0],[1,0.3],[2,0.31],[3,0.322],[4,0.324],[5,0.324],[6,0.324],[7,0.324],[8,0.324]],"tone":"amber","ms":1300,"label":"D 0.32","lat":[8,0.324],"ldx":4,"ldy":-14,"lanchor":"end","lsize":17},{"series":"pA","chart":"ln","pts":[[0,0],[1,0.1],[2,0.22],[3,0.235],[4,0.242],[5,0.244],[6,0.244],[7,0.244],[8,0.244]],"tone":"blue","ms":1300,"label":"A 0.24","lat":[8,0.244],"ldx":4,"ldy":16,"lanchor":"end","lsize":17}]},{"cap":"Settled: A 0.24, B 0.48, D 0.32. B ends most distressed, because it had the biggest direct exposure to C.","do":[{"count":"hA","from":0.22,"to":0.24,"dp":2,"ms":900},{"count":"hB","from":0.4,"to":0.48,"dp":2,"ms":900},{"count":"hD","from":0.3,"to":0.32,"dp":2,"ms":900}]},{"cap":"Add it up. The distress induced in the other three banks is 0.24 + 0.48 + 0.32 = 1.04. That is more than the shock that started it, 1.00. The network did not just share the loss out. It added to it.","do":[{"chart":"br","x":394,"y":396,"w":196,"h":236,"title":"Shock vs. induced","xd":[0.3,2.7],"yd":[0,1.25],"yt":[[0,"0"],[0.5,"0.5"],[1.0,"1.0"]],"xt":[[1,"shock"],[2,"induced"]],"pl":40,"pr":8},{"bars":"bb","chart":"br","data":[[1,1.0,"1.00","red"],[2,1.04,"1.04","amber"]],"bw":46,"ms":1000}]},{"cap":"That one number, total distress induced, is the DebtRank of Bank C. Run it for every bank and you can rank them by the damage their failure would do, not by their size.","do":[{"pulse":"hC"}]},{"cap":"September 2008: AIG had sold credit protection to many big banks at once, so it was a node with large impact factors into all of them. On 16 September the New York Fed agreed to lend it up to $85 billion. It was judged too interconnected to fail.","do":[{"hide":"ba"},{"hide":"ca"},{"hide":"cb"},{"hide":"cd"},{"arrow":["C","A"],"tone":"red","id":"x1"},{"arrow":["C","B"],"tone":"red","id":"x2"},{"arrow":["C","D"],"tone":"red","id":"x3"},{"note":"aig","x":70,"y":342,"text":"C = AIG","size":20,"anchor":"middle","tone":"red"}]}]}</script>
+      </div>
+      <!-- WB:systemic_risk_networks:END -->
+    </section>
+    <!-- WB:systemic_risk_networks-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Try your own one-step cascade</h2>
       <p class="sl-sub">A shocked bank's initial loss, and its exposure weight to three neighbors — how much distress does each neighbor absorb in round one?</p>
@@ -223,7 +236,7 @@
       <p class="sl-p">This is exactly round one of the propagation rule from Section 4, isolated as its own calculator: each neighbor's newly-absorbed distress is simply its impact factor times the shock it's exposed to. Later rounds repeat this same multiplication using each bank's <em>newest change</em>, not its raw level — which is the entire mechanical content of DebtRank, run enough times to settle.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">DebtRank vs. eigenvector centrality</h2>
       <p class="sl-sub">Cousins in mechanism, strangers in meaning.</p>
@@ -240,7 +253,7 @@
       <p class="sl-p">Put plainly: eigenvector centrality answers "who is well-connected?" DebtRank answers "if <em>this</em> node had been the one to fail, how much total damage would the system absorb once every knock-on round played out?" Both questions live on the same graph — only one of them requires a shock to ask.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">From an academic paper to genuine regulatory practice</h2>
       <div class="sl-icard-grid">
@@ -255,7 +268,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this breaks down in practice</h2>
       <div class="sl-icard-grid">
@@ -269,7 +282,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">AIG, September 2008: too interconnected to fail</h2>
       <div class="sl-callout amber">
@@ -289,7 +302,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk can say<!-- DESK:END --></h2>
       <!-- DESK:START -->
@@ -304,7 +317,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -355,7 +368,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -464,5 +477,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

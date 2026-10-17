@@ -18,13 +18,13 @@ PC = (10, 440, 580, 270)
 
 AIC = dict(w=600, h=725, intro='Two models for the same 100 days, and two judges that charge rent for every parameter. The lesson\'s worked example, step by step. Press play, or step through.', steps=[
     step('Two candidate models for the same 100 days of a spread. Model A has 2 free parameters. Model B has 5: the same model plus three extra lags.',
-         box('A', 20, 20, 260, 104, 'Model A\n2 parameters', 'blue', sub='?', size=21),
-         box('B', 320, 20, 260, 104, 'Model B\n5 parameters', 'purple', sub='?', size=21)),
+         box('A', 20, 20, 220, 104, 'Model A\n2 parameters', 'blue', sub='?', size=21),
+         box('B', 360, 20, 220, 104, 'Model B\n5 parameters', 'purple', sub='?', size=21)),
     step('Fit both. The misfit score, called the deviance, is 100 for Model A and 94 for Model B. Lower is better, so B fits better in sample.',
          dict(count='A', **{'from': 0, 'to': 100, 'dp': 0, 'pre': 'misfit ', 'ms': 900}),
          dict(count='B', **{'from': 0, 'to': 94, 'dp': 0, 'pre': 'misfit ', 'ms': 900})),
     step('It had to. B contains A: set its three extra lags to zero and it is A. So B can always match A, then nudge the extra lags to chase noise. Raw fit always votes for the bigger model.',
-         arrow('B', 'A', 'extra lags = 0', 'amber', bend=-22)),
+         arrow('B', 'A', 'lags = 0', 'amber', bend=18)),
     step('So ask a sharper question: did the three extra parameters buy more fit than they cost? They bought 6 points of deviance, 100 down to 94.',
          chart('cost', COST, "Model B's 3 extra parameters (points)", [0.4, 3.6], [0, 16],
                [[0, '0'], [5, '5'], [10, '10'], [15, '15']], [[1, 'fit bought'], [2, 'AIC price'], [3, 'BIC price']], pl=46),

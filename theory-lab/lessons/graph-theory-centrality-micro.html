@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Graph Theory Fundamentals &amp; Centrality Measures — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -353,7 +354,19 @@
       <p class="sl-p">Degree, betweenness, and eigenvector centrality agree that EUR and AUD matter — but only betweenness notices JPY at all, and only eigenvector centrality ranks JPY above the four peripheral nodes. Three questions, three legitimate, three different rankings.</p>
     </section>
 
+    <!-- WB:graph_theory_centrality-deck:START -->
     <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Three centralities, one network, three winners</h2>
+      <!-- WB:graph_theory_centrality:START -->
+      <div class="wb" data-title="Three centralities, one network, three winners">
+        <script type="application/json">{"w":600,"h":650,"intro":"The lesson's seven-node network, and three different ways to ask which node matters most. Press play, or step through.","steps":[{"cap":"Start with three currencies that all move together: EUR, GBP and CHF. Each dot is a node, each line an edge. Every pair is linked, so they form a triangle. (A teaching network: plausible in shape, not measured.)","do":[{"box":"EUR","x":88,"y":14,"w":84,"h":62,"text":"EUR","tone":"blue","sub":"","size":20},{"box":"GBP","x":13,"y":129,"w":84,"h":62,"text":"GBP","tone":"blue","sub":"","size":20},{"box":"CHF","x":163,"y":129,"w":84,"h":62,"text":"CHF","tone":"blue","sub":"","size":20},{"line":"eEURGBP","points":[[107.8,79.0],[77.2,126.0]],"width":3,"ms":500},{"line":"eEURCHF","points":[[152.2,79.0],[182.8,126.0]],"width":3,"ms":500},{"line":"eGBPCHF","points":[[100.0,160.0],[160.0,160.0]],"width":3,"ms":500}]},{"cap":"A second cluster, the commodity bloc: AUD, NZD and CAD. Another fully linked triangle.","do":[{"box":"AUD","x":428,"y":14,"w":84,"h":62,"text":"AUD","tone":"green","sub":"","size":20},{"box":"NZD","x":353,"y":129,"w":84,"h":62,"text":"NZD","tone":"green","sub":"","size":20},{"box":"CAD","x":503,"y":129,"w":84,"h":62,"text":"CAD","tone":"green","sub":"","size":20},{"line":"eAUDNZD","points":[[447.8,79.0],[417.2,126.0]],"width":3,"ms":500},{"line":"eAUDCAD","points":[[492.2,79.0],[522.8,126.0]],"width":3,"ms":500},{"line":"eNZDCAD","points":[[440.0,160.0],[500.0,160.0]],"width":3,"ms":500}]},{"cap":"Now JPY. It links to exactly two nodes: EUR on one side and AUD on the other. That is the only bridge between the clusters. Seven nodes, eight edges.","do":[{"box":"JPY","x":258,"y":69,"w":84,"h":62,"text":"JPY","tone":"amber","sub":"","size":20},{"line":"eEURJPY","points":[[175.0,59.6],[255.0,85.4]],"width":4,"ms":500,"tone":"amber"},{"line":"eJPYAUD","points":[[345.0,85.4],[425.0,59.6]],"width":4,"ms":500,"tone":"amber"}]},{"cap":"Measure one, degree: just count the links. EUR and AUD have three each. Everyone else, JPY included, has two. By this count JPY looks ordinary.","do":[{"sub":"EUR","text":"3"},{"sub":"GBP","text":"2"},{"sub":"CHF","text":"2"},{"sub":"JPY","text":"2"},{"sub":"AUD","text":"3"},{"sub":"NZD","text":"2"},{"sub":"CAD","text":"2"},{"note":"verdict","x":300,"y":238,"text":"Degree: EUR and AUD win, 3 links each","size":19,"anchor":"middle","tone":"blue"}]},{"cap":"Measure two, betweenness: send a message from GBP to NZD by the shortest route. It must go GBP, EUR, JPY, AUD, NZD. There is no other way across.","do":[{"hide":"verdict"},{"line":"p0","points":[[77.2,126.0],[107.8,79.0]],"width":6,"ms":500,"tone":"red"},{"line":"p1","points":[[175.0,59.6],[255.0,85.4]],"width":6,"ms":500,"tone":"red"},{"line":"p2","points":[[345.0,85.4],[425.0,59.6]],"width":6,"ms":500,"tone":"red"},{"line":"p3","points":[[447.8,79.0],[417.2,126.0]],"width":6,"ms":500,"tone":"red"}]},{"cap":"The same is true for all nine pairs that cross between the clusters: every one of them runs through JPY. EUR and AUD each sit on eight shortest routes. GBP, CHF, NZD and CAD sit on none.","do":[{"sub":"EUR","text":"8"},{"sub":"GBP","text":"0"},{"sub":"CHF","text":"0"},{"sub":"JPY","text":"9"},{"sub":"AUD","text":"8"},{"sub":"NZD","text":"0"},{"sub":"CAD","text":"0"},{"pulse":"JPY"},{"note":"verdict","x":300,"y":238,"text":"Betweenness: JPY wins alone, on 9 routes","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"Measure three, eigenvector: you matter if your neighbours matter. Give every node a score of 1. Each round, a node's new score is the sum of its neighbours' scores, rescaled so the top node is 1.","do":[{"hide":"p0"},{"hide":"p1"},{"hide":"p2"},{"hide":"p3"},{"hide":"verdict"},{"sub":"EUR","text":"1"},{"sub":"GBP","text":"1"},{"sub":"CHF","text":"1"},{"sub":"JPY","text":"1"},{"sub":"AUD","text":"1"},{"sub":"NZD","text":"1"},{"sub":"CAD","text":"1"}]},{"cap":"After one round the scores are just degree over three: EUR and AUD 1, everyone else 0.67. But JPY's two neighbours are the two biggest nodes, so in the next round it gets more back than GBP does.","do":[{"sub":"EUR","text":"1"},{"sub":"GBP","text":"0.67"},{"sub":"CHF","text":"0.67"},{"sub":"JPY","text":"0.67"},{"sub":"AUD","text":"1"},{"sub":"NZD","text":"0.67"},{"sub":"CAD","text":"0.67"},{"chart":"pw","x":10,"y":270,"w":580,"h":262,"title":"Eigenvector score, round by round","xd":[0,20],"yd":[0.6,1.05],"yt":[[0.7,"0.7"],[0.8,"0.8"],[0.9,"0.9"],[1.0,"1.0"]],"xt":[[0,"0"],[5,"5"],[10,"10"],[15,"15"],[20,"20 rounds"]],"pl":48,"pr":96},{"series":"gbp","chart":"pw","pts":[[0,1.0],[1,0.667],[2,0.833],[3,0.688],[4,0.794],[5,0.709],[6,0.774],[7,0.723],[8,0.762],[9,0.732],[10,0.755],[11,0.737],[12,0.751],[13,0.74],[14,0.748],[15,0.742],[16,0.747],[17,0.743],[18,0.746],[19,0.744],[20,0.745]],"tone":"blue","ms":1800,"label":"GBP 0.74","lat":[20,0.745],"ldx":6,"ldy":8,"lanchor":"start","lsize":17},{"series":"jpy","chart":"pw","pts":[[0,1.0],[1,0.667],[2,1.0],[3,0.75],[4,0.941],[5,0.791],[6,0.905],[7,0.815],[8,0.884],[9,0.831],[10,0.872],[11,0.84],[12,0.865],[13,0.845],[14,0.86],[15,0.849],[16,0.858],[17,0.851],[18,0.856],[19,0.852],[20,0.855]],"tone":"amber","ms":1800,"label":"JPY 0.85","lat":[20,0.855],"ldx":6,"ldy":-8,"lanchor":"start","lsize":17}]},{"cap":"The scores swing, then settle. This repeated multiply-and-rescale is power iteration, and where it settles is the leading eigenvector of the adjacency matrix, with eigenvalue about 2.343.","do":[{"sub":"EUR","text":"1.00"},{"sub":"GBP","text":"0.74"},{"sub":"CHF","text":"0.74"},{"sub":"JPY","text":"0.85"},{"sub":"AUD","text":"1.00"},{"sub":"NZD","text":"0.74"},{"sub":"CAD","text":"0.74"},{"dot":"jend","chart":"pw","at":[20,0.855],"text":"","tone":"amber"},{"dot":"gend","chart":"pw","at":[20,0.745],"text":"","tone":"blue"}]},{"cap":"Final scores: EUR and AUD 1.00, JPY 0.85, the four triangle-only nodes 0.74. Degree tied JPY with them. Eigenvector lifts JPY above them, because of who it is linked to, not how many.","do":[{"note":"verdict","x":300,"y":238,"text":"Eigenvector: EUR and AUD 1.00, then JPY 0.85","size":19,"anchor":"middle","tone":"purple"}]},{"cap":"Same seven nodes, same eight edges, three answers. Most links: EUR and AUD. The bridge everything crosses: JPY. Closest to the important nodes: EUR and AUD, with JPY third. Name the measure that fits your question.","do":[{"box":"w1","x":10,"y":552,"w":180,"h":88,"text":"most links\nEUR · AUD","tone":"blue","size":19},{"box":"w2","x":210,"y":552,"w":180,"h":88,"text":"the bridge\nJPY","tone":"amber","size":19},{"box":"w3","x":410,"y":552,"w":180,"h":88,"text":"best-connected\nEUR · AUD","tone":"purple","size":19}]}]}</script>
+      </div>
+      <!-- WB:graph_theory_centrality:END -->
+    </section>
+    <!-- WB:graph_theory_centrality-deck:END -->
+
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Disagreement is the point, not a bug</h2>
       <div class="sl-compare">
@@ -373,7 +386,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where practitioners actually use this</h2>
       <div class="sl-icard-grid">
@@ -388,7 +401,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -439,7 +452,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -585,5 +598,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

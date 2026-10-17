@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ARIMA &amp; Vector Autoregression (VAR) — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -41,6 +42,69 @@
       <li>How it reached trading: Box–Jenkins (1970) and Sims' VARs (1980) became the forecasting workhorses of central banks and macro desks, while Meese &amp; Rogoff (1983) showed how hard it is to beat a random walk in FX.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="AR(1), one series with one lag, generalizes two ways. Left: ARIMA(p, d, q) gives one series more memory: p past levels read off the PACF, d differences until the series is stationary, and q past shocks read off the ACF, for example ARIMA(1,1,0) on daily changes. Right: VAR models several series together: the yield spread and EUR/USD each depend on their own past and on the other's past, through cross coefficients a21 (spread leads FX) and a12 (FX leads spread). Parameters grow as k squared times p, so 5 series with 4 lags need about 100 coefficients.">
+      <rect class="tlp-box blue" x="190" y="8" width="220" height="44" rx="8"/>
+      <text class="tlp-blue" x="300" y="35" text-anchor="middle" font-size="14" font-weight="700">AR(1): one series, one lag</text>
+      <line class="tlp-line" x1="230" y1="52" x2="150" y2="76"/>
+      <polygon class="tlp-arrow" points="150.0,76.0 156.4,69.4 159.0,78.0"/>
+      <line class="tlp-line" x1="370" y1="52" x2="450" y2="76"/>
+      <polygon class="tlp-arrow" points="450.0,76.0 441.0,78.0 443.6,69.4"/>
+      <rect class="tlp-box purple" x="10" y="80" width="280" height="160" rx="8"/>
+      <text class="tlp-purple" x="24" y="104" font-size="14" font-weight="700">ARIMA(p, d, q): more memory</text>
+      <text class="tlp-blue" x="30" y="136" font-size="15" font-weight="700">p</text>
+      <text class="tlp-text2" x="54" y="136" font-size="13">past levels · read off the PACF</text>
+      <text class="tlp-green" x="30" y="166" font-size="15" font-weight="700">d</text>
+      <text class="tlp-text2" x="54" y="166" font-size="13">differences until stationary</text>
+      <text class="tlp-purple" x="30" y="196" font-size="15" font-weight="700">q</text>
+      <text class="tlp-text2" x="54" y="196" font-size="13">past shocks · read off the ACF</text>
+      <text class="tlp-text3" x="24" y="226" font-size="12">e.g. ARIMA(1,1,0) on daily changes</text>
+      <rect class="tlp-box green" x="310" y="80" width="280" height="160" rx="8"/>
+      <text class="tlp-green" x="324" y="104" font-size="14" font-weight="700">VAR: more series, modeled together</text>
+      <rect class="tlp-box blue" x="330" y="125" width="90" height="40" rx="6"/>
+      <text class="tlp-blue" x="375" y="150" text-anchor="middle" font-size="13" font-weight="700">spread</text>
+      <rect class="tlp-box red" x="480" y="125" width="90" height="40" rx="6"/>
+      <text class="tlp-red" x="525" y="150" text-anchor="middle" font-size="13" font-weight="700">EUR/USD</text>
+      <path class="tlp-line blue thick" d="M420,137 Q450,117 476,135"/>
+      <polygon class="tlp-blue" points="478.0,137.0 468.9,136.0 474.1,128.7"/>
+      <text class="tlp-blue" x="450" y="117" text-anchor="middle" font-size="12" font-weight="700">a21</text>
+      <path class="tlp-line red thick dash" d="M480,155 Q450,175 424,157"/>
+      <polygon class="tlp-red" points="422.0,155.0 431.1,156.0 425.9,163.3"/>
+      <text class="tlp-red" x="450" y="184" text-anchor="middle" font-size="12" font-weight="700">a12</text>
+      <text class="tlp-text3" x="324" y="208" font-size="12">plus each one's own past (a11, a22)</text>
+      <text class="tlp-amber" x="324" y="228" font-size="12">k² × p grows fast: 5 × 5 × 4 = 100</text>
+    </svg>
+    <figcaption>One series pulled toward one mean is the starting point. ARIMA gives that one series more memory, after differencing it into something stationary. VAR models several series at once, so it can see both arrows between the spread and the currency, not just the one you thought to look for.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My simple model says a series gets pulled back toward its mean. Why would I need anything fancier?</p>
+      <p data-who="Quant">Because that model has two blind spots. It only remembers yesterday. And it only knows about one series.</p>
+      <p data-who="Trader">Start with the memory.</p>
+      <p data-who="Quant">ARIMA gives it more. First, more lags of the level: today can depend on yesterday, the day before, and so on. That's the autoregressive part. Second, a memory of past surprises rather than past levels. A shock can keep echoing for a bar or two after the price has settled. That's the moving-average part.</p>
+      <p data-who="Trader">And the I in the middle?</p>
+      <p data-who="Quant">It stands for integrated. Most raw prices trend, so there's no fixed mean to pull back to. You difference first: you model daily changes, not levels. For most daily financial series, once is enough.</p>
+      <p data-who="Trader">How do I pick how many lags?</p>
+      <p data-who="Quant">You read them off the data. Plot the partial autocorrelations of the changes. If they spike at lags one and two and then drop to nothing, while the plain autocorrelations fade away slowly, that's two autoregressive lags. You write down ARIMA two, one, zero.</p>
+      <p data-who="Trader">And then I'm done?</p>
+      <p data-who="Quant">Not yet. Check the leftovers. If a Ljung-Box test still finds a pattern in the residuals, say at lag three, you go round again. Identify, estimate, check, revise. That loop is the Box-Jenkins method.</p>
+      <p data-who="Trader">Now the second blind spot. I want to know whether the German and US yield spread leads euro-dollar.</p>
+      <p data-who="Quant">That's two series, so you need a vector autoregression. Each series is regressed on its own past and on the other one's past. In the simplest case that's four coefficients, fitted together.</p>
+      <p data-who="Trader">Why not just regress euro-dollar on yesterday's spread?</p>
+      <p data-who="Quant">Because that only looks for one arrow. The VAR checks both directions at once: spread to currency, and currency to spread.</p>
+      <p data-who="Trader">And if the spread's past does help forecast the currency?</p>
+      <p data-who="Quant">Then the spread "Granger-causes" the currency. Careful with that word. It means the spread's history helps the forecast. It doesn't mean the spread makes the currency move. A hidden common driver can produce the same result.</p>
+      <p data-who="Trader">Anything that should keep me humble?</p>
+      <p data-who="Quant">Two things. The number of coefficients grows with the square of the number of series. Five series with four lags is about a hundred coefficients. And in 1983 Meese and Rogoff showed that exchange-rate models, VARs included, didn't beat a random walk out of sample.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Difference first, read the lags off the data, model the series together, and make your forecast beat a random walk before you believe it.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -190,6 +254,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From AR(1) to ARIMA(p, d, q), one piece at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ X_t = c + \color{#fbbf24}{\phi_1 X_{t-1}} + \epsilon_t \]</div>
+      <p>Start from AR(1): today is a constant, plus a fraction of yesterday's level, plus a fresh shock. One series, one lag.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ X_t = c + \color{#fbbf24}{\sum_{i=1}^{p} \phi_i X_{t-i}} + \epsilon_t \]</div>
+      <p>Give it a longer memory of levels: \(p\) lags, each with its own weight. That is AR(\(p\)); the PACF cutoff tells you \(p\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ X_t = c + \sum_{i=1}^{p} \phi_i X_{t-i} + \epsilon_t + \color{#fbbf24}{\sum_{j=1}^{q} \theta_j \epsilon_{t-j}} \]</div>
+      <p>Add a memory of past shocks, not past levels: the MA(\(q\)) piece. Together they make ARMA(\(p\),\(q\)); the ACF cutoff tells you \(q\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\Delta^d X_t = c + \sum_{i=1}^{p} \phi_i\,\Delta^d X_{t-i} + \epsilon_t + \sum_{j=1}^{q} \theta_j \epsilon_{t-j}} \]</div>
+      <p>Apply it to the series differenced \(d\) times, so the ARMA machinery runs on something stationary. That is ARIMA(\(p\),\(d\),\(q\)); most daily financial series need \(d = 1\).</p>
+    </div>
+  </div>
 
   <h3>From AR(1) to a general AR(<i>p</i>)</h3>
   <p>
@@ -435,6 +519,16 @@
     <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Walking the Box-Jenkins identification loop</h3>
+    <div class="tl-predict">
+      <div class="tl-predict-q"><strong>Predict first.</strong> A series needed one difference to become stationary. On the differenced series, the PACF spikes at lags 1 and 2 and then cuts off; the ACF decays smoothly over many lags. Which model do you write down first? Commit, then read the second paragraph below to check.</div>
+      <ul class="tl-predict-options">
+        <li>ARIMA(0,1,2): two spikes means two MA terms</li>
+        <li data-correct>ARIMA(2,1,0): two AR lags, one difference, no MA term</li>
+        <li>ARIMA(2,0,0): it is stationary now, so no differencing</li>
+        <li>ARIMA(1,1,1): a mixed model is always safest</li>
+      </ul>
+      <div class="tl-predict-reveal"><p><strong>ARIMA(2,1,0).</strong> A PACF that cuts off after lag 2 while the ACF keeps decaying is the AR(2) signature; MA terms show the opposite (the ACF cuts off). The \(d = 1\) stays, because the model is fitted to the differenced series. The example below then runs a Ljung-Box test on the residuals, finds leftover structure at lag 3, and goes round the loop again.</p></div>
+    </div>
     <p>
       Suppose you take a candidate FX-related series and, following the
       recipe above, first check it for stationarity and find it needs one
@@ -538,6 +632,12 @@
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>"Granger-causes" doesn't mean "X makes Y happen" — despite the name, it only means "knowing X's recent history genuinely helps you guess Y's next move, better than just watching Y alone." Roosters crowing right before sunrise "Granger-causes" the sunrise by this narrow definition, even though everyone knows the rooster isn't actually causing the sun to rise — something else (the Earth's rotation) is driving both on its own schedule.</p>
   </div>
+
+  <!-- WB:arima_var:START -->
+  <div class="wb" id="wb-arima_var" data-title="A VAR follows a shock through two series">
+    <script type="application/json">{"w":600,"h":740,"intro":"Two series that may feed into each other: a yield spread and a currency. Watch a VAR follow a shock through both, with illustrative coefficients. Press play, or step through.","steps":[{"cap":"Two series: X, the daily change in the DE–US 2-year yield spread, and Y, the daily EUR/USD return. Both already differenced, so both are stationary. Does one lead the other?","do":[{"box":"X","x":20,"y":40,"w":200,"h":84,"text":"spread (X)","tone":"blue","sub":"Δ DE–US 2y","size":21},{"box":"Y","x":380,"y":40,"w":200,"h":84,"text":"EUR/USD (Y)","tone":"red","sub":"daily return","size":21}]},{"cap":"First, each series leans on its own past, like AR(1). In this illustration a11 = 0.5 and a22 = 0.3: half of yesterday's spread move carries into today, and less of the currency's.","do":[{"note":"o1","x":120,"y":144,"text":"own past: a11 = 0.5","size":18,"anchor":"middle","tone":"blue"},{"note":"o2","x":480,"y":144,"text":"own past: a22 = 0.3","size":18,"anchor":"middle","tone":"red"}]},{"cap":"Now the band between them. a21 links yesterday's spread to today's EUR/USD: here 0.4. A regression of FX on lagged spread could find this arrow, because it is the only one it looks for.","do":[{"arrow":["X","Y"],"label":"a21 = 0.4","tone":"blue","bend":-26}]},{"cap":"The VAR also estimates the reverse arrow, a12: yesterday's EUR/USD to today's spread. Here it is 0, a slack band. Both are fitted jointly, in one system, from the same data.","do":[{"arrow":["Y","X"],"label":"a12 = 0","tone":"red","bend":-26,"dash":true},{"note":"eq","x":300,"y":178,"text":"Yₜ = a21·Xₜ₋₁ + a22·Yₜ₋₁ + ε","size":19,"anchor":"middle"}]},{"cap":"Shock the spread by 1 on day 0 and run the system forward. The spread fades by half each day. EUR/USD feels nothing on day 0, then 0.4 on day 1 and 0.32 on day 2, then fades: the spread leads.","do":[{"chart":"ir","x":10,"y":200,"w":580,"h":240,"title":"Response to a shock of 1 on day 0 (illustrative)","xd":[0,8],"yd":[-0.1,1.1],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[0,"0"],[2,"2"],[4,"4"],[6,"6"],[8,"8 days"]],"zero":true,"pl":44,"pr":20},{"series":"px","chart":"ir","pts":[[0,1.0],[1,0.5],[2,0.25],[3,0.125],[4,0.0625],[5,0.0312],[6,0.0156],[7,0.0078],[8,0.0039]],"tone":"blue","ms":1200,"label":"spread","lat":[1,0.5],"ldx":10,"ldy":-12,"lanchor":"start","lsize":17},{"series":"py","chart":"ir","pts":[[0,0.0],[1,0.4],[2,0.32],[3,0.196],[4,0.1088],[5,0.0576],[6,0.0298],[7,0.0152],[8,0.0077]],"tone":"red","ms":1200,"label":"EUR/USD","lat":[2,0.32],"ldx":8,"ldy":-14,"lanchor":"start","lsize":17},{"dot":"y1","chart":"ir","at":[1,0.4],"text":"0.4","tone":"red","dx":14,"dy":20,"anchor":"start"}]},{"cap":"Now shock EUR/USD instead. Its own move fades fast (a22 = 0.3), and the spread never moves, because a12 = 0. The influence runs one way. Only a model with both arrows can show you that.","do":[{"hide":"px"},{"hide":"py"},{"hide":"y1"},{"series":"qy","chart":"ir","pts":[[0,1.0],[1,0.3],[2,0.09],[3,0.027],[4,0.0081],[5,0.0024],[6,0.0007],[7,0.0002],[8,0.0001]],"tone":"amber","ms":1000,"label":"EUR/USD shock","lat":[0,1],"ldx":14,"ldy":0,"lanchor":"start","lsize":17},{"series":"qx","chart":"ir","pts":[[0,0.0],[1,0.0],[2,0.0],[3,0.0],[4,0.0],[5,0.0],[6,0.0],[7,0.0],[8,0.0]],"tone":"purple","dash":true,"ms":700,"label":"spread: no response","lat":[5,0],"ldx":0,"ldy":-16,"lsize":17}]},{"cap":"A Granger test asks the same thing with an F-test: do lagged spread changes improve the EUR/USD forecast beyond EUR/USD's own lags? If yes, the spread \"Granger-causes\" EUR/USD.","do":[{"hide":"eq"},{"note":"gr","x":300,"y":178,"text":"own lags  vs  own lags + spread lags","size":19,"anchor":"middle","tone":"purple"},{"pulse":"X>Y"}]},{"cap":"That word claims less than it sounds. A hidden common driver, say a shared macro shock that hits the spread a little earlier, produces the same result with no direct link at all.","do":[{"hide":"ir"},{"hide":"qx"},{"hide":"qy"},{"hide":"gr"},{"hide":"o1"},{"hide":"o2"},{"icon":"drv","name":"globe","x":252,"y":250,"s":0.95,"tone":"amber","label":"hidden common driver","lsize":18},{"arrow":["drv","X"],"label":"first","tone":"amber","bend":20,"dash":true},{"arrow":["drv","Y"],"label":"a bit later","tone":"amber","bend":-20,"dash":true}]},{"cap":"The catch: every series talks to every other at every lag, so parameters grow as k² × p. With 4 lags: 1 series needs 4 coefficients, 2 need 16, 3 need 36.","do":[{"chart":"pc","x":10,"y":460,"w":580,"h":210,"title":"Coefficients in a VAR with 4 lags","xd":[0.4,5.6],"yd":[0,115],"yt":[[0,"0"],[50,"50"],[100,"100"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5 series"]],"pl":48,"pr":24},{"bars":"pb","chart":"pc","data":[[1,4,"4"],[2,16,"16"],[3,36,"36"]],"bw":50,"ms":1000}]},{"cap":"Five series need 100 coefficients. On a few thousand daily observations that is a lot of parameters chasing not much data: a fast road to overfitting.","do":[{"bars":"pb2","chart":"pc","data":[[4,64,"64","amber"],[5,100,"100","red"]],"bw":50,"ms":900}]},{"cap":"And the bar to clear: Meese and Rogoff (1983) found exchange-rate models, VARs included, did not beat a random walk out of sample. A lead-lag result earns trust only once it beats that, on data it has not seen.","do":[{"note":"mr","x":300,"y":712,"text":"beat the random walk, out of sample","size":21,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:arima_var:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -674,6 +774,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative lead-lag result</div>
+    <h3>The spread Granger-causes EUR/USD. Now what?</h3>
+    <p>You fit a VAR(2) to daily changes in the 2-year DE–US yield spread and daily EUR/USD log returns, both stationary. You test both directions. Two days of lagged spread changes significantly improve the EUR/USD forecast; lagged EUR/USD returns do not help forecast the spread. What do you do with this?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Conclude that the spread drives EUR/USD, and trade it at full size on the full-sample result.<div class="tl-drill-why">Granger causality is a forecasting claim, not a mechanism: a common driver could produce the same result. And a full-sample fit can hide a regime where the link reverses. Nothing here has been tested out of sample.</div></li>
+      <li data-verdict="good">Treat the spread as a candidate leading indicator with a two-day window, then test that timing out of sample, across regimes, against a random-walk benchmark.<div class="tl-drill-why">That uses what the VAR found, a direction and a horizon, without over-reading it. The out-of-sample test is where the claim earns trust, and in FX the random walk is the bar to beat.</div></li>
+      <li data-verdict="bad">Refit the VAR on raw yield and price levels to get a stronger fit.<div class="tl-drill-why">Fitting trending levels invites spurious regression: impressive fit statistics and significant-looking coefficients that are a statistical mirage.</div></li>
+      <li data-verdict="ok">Use the spread only as a same-day confirmation check.<div class="tl-drill-why">Cautious, and it will not blow up. But it throws away the one useful thing the test found: that the spread's effect shows up over the following two days.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What it means.</strong> This is an illustrative result, the same hypothetical one the lesson uses, not a documented fit. The documented fact that frames it: Meese and Rogoff (1983) found that exchange-rate models, VARs included, did not beat a random walk out of sample. A one-directional Granger result is a reason to test a timing rule, not proof that one works.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -789,6 +902,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a> <span>· the plots you read p and q from</span></li>
+        <li><a href="ou-mean-reversion.html">The Ornstein-Uhlenbeck Process &amp; Mean Reversion</a> <span>· the AR(1) this lesson generalizes</span></li>
+        <li><a href="model-selection-aic-bic.html">Model Selection: AIC &amp; BIC</a> <span>· choosing the lag order honestly</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="cointegration.html">Cointegration &amp; Statistical Arbitrage</a> <span>· when differencing throws away a long-run link</span></li>
+        <li><a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a> <span>· the same lag idea applied to volatility</span></li>
+        <!-- DESK:START --><li><a href="institutional-granger-causality.html">Granger Causality &amp; Lead-Lag Analysis</a> <span>· the lead-lag test in depth</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> rates, spreads and currencies feed into each other, and these are the standard tools for turning their pasts into a forecast you can test.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="model-selection-aic-bic.html">← Model Selection: AIC, BIC &amp; Cross-Validation</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -819,9 +953,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

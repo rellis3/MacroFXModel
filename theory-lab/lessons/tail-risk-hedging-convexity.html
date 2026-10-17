@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tail Risk Hedging &amp; Portfolio Convexity — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,68 @@
       <li><strong>Real-world episode:</strong> March 2020. After years in which standing put protection mostly expired worthless, the S&amp;P 500 fell about 34% in five weeks and the VIX closed at a record 82.69. Long far out-of-the-money puts paid on both price and volatility, while gold and even Treasuries sold off for a time in the dash for cash.<!-- DESK:START --> On this desk's data, gold is not a fear hedge (<code>fear-gold</code>, NULL).<!-- DESK:END --></li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Grouped bar chart of the lesson's illustrative example for three portfolios: unhedged, short convexity and tail-hedged. In a calm year with the index up 12%, they return +12%, +15% and +10.5%. In a crash year with the index down 35%, they return −35%, −60% and +5%. Over five years of four calm years and one crash, they end +2.3%, −30% and +56.5%.">
+      <line class="tlp-line dash" x1="202" y1="8" x2="202" y2="236"/>
+      <line class="tlp-line dash" x1="397" y1="8" x2="397" y2="236"/>
+      <text class="tlp-text2" x="105" y="20" text-anchor="middle" font-size="13" font-weight="700">Calm year · index +12%</text>
+      <text class="tlp-text2" x="300" y="20" text-anchor="middle" font-size="13" font-weight="700">Crash year · index −35%</text>
+      <text class="tlp-text2" x="495" y="20" text-anchor="middle" font-size="13" font-weight="700">5 years · 4 calm + 1 crash</text>
+      <rect class="tlp-blue" x="48" y="112" width="34" height="18" opacity=".85"/>
+      <rect class="tlp-red" x="88" y="107.5" width="34" height="22.5" opacity=".85"/>
+      <rect class="tlp-green" x="128" y="114.25" width="34" height="15.75" opacity=".85"/>
+      <text class="tlp-blue" x="65" y="105" text-anchor="middle" font-size="12" font-weight="700">+12%</text>
+      <text class="tlp-red" x="105" y="100" text-anchor="middle" font-size="12" font-weight="700">+15%</text>
+      <text class="tlp-green" x="145" y="108" text-anchor="middle" font-size="12" font-weight="700">+10.5%</text>
+      <rect class="tlp-blue" x="243" y="130" width="34" height="52.5" opacity=".85"/>
+      <rect class="tlp-red" x="283" y="130" width="34" height="90" opacity=".85"/>
+      <rect class="tlp-green" x="323" y="122.5" width="34" height="7.5" opacity=".85"/>
+      <text class="tlp-blue" x="260" y="197" text-anchor="middle" font-size="12" font-weight="700">−35%</text>
+      <text class="tlp-red" x="300" y="235" text-anchor="middle" font-size="12" font-weight="700">−60%</text>
+      <text class="tlp-green" x="340" y="116" text-anchor="middle" font-size="12" font-weight="700">+5%</text>
+      <rect class="tlp-blue" x="438" y="126.55" width="34" height="3.45" opacity=".85"/>
+      <rect class="tlp-red" x="478" y="130" width="34" height="45" opacity=".85"/>
+      <rect class="tlp-green" x="518" y="45.25" width="34" height="84.75" opacity=".85"/>
+      <text class="tlp-blue" x="455" y="120" text-anchor="middle" font-size="12" font-weight="700">+2.3%</text>
+      <text class="tlp-red" x="495" y="190" text-anchor="middle" font-size="12" font-weight="700">−30%</text>
+      <text class="tlp-green" x="535" y="39" text-anchor="middle" font-size="12" font-weight="700">+56.5%</text>
+      <line class="tlp-line" x1="20" y1="130" x2="580" y2="130"/>
+      <rect class="tlp-blue" x="120" y="246" width="12" height="12"/>
+      <text class="tlp-text2" x="137" y="257" font-size="13">unhedged</text>
+      <rect class="tlp-red" x="225" y="246" width="12" height="12"/>
+      <text class="tlp-text2" x="242" y="257" font-size="13">short convexity</text>
+      <rect class="tlp-green" x="370" y="246" width="12" height="12"/>
+      <text class="tlp-text2" x="387" y="257" font-size="13">tail-hedged</text>
+    </svg>
+    <figcaption>The lesson's illustrative numbers. The tail hedge loses a little in every calm year and wins big in the one crash year; the short-convexity book does the opposite. Over the whole run, the shape of the payoff in the crash decides who comes out ahead.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I sell out-of-the-money puts every month. Steady income, a great Sharpe ratio, almost no bad months. Why would I ever want to be on the other side?</p>
+      <p data-who="Quant">Because of the shape of your payoff. Near the middle you collect a little. Far out in a crash, your losses speed up. That bend is called convexity, and you are short it.</p>
+      <p data-who="Trader">The old line about picking up pennies in front of a steamroller.</p>
+      <p data-who="Quant">Exactly. Steady pennies, as long as the steamroller stays slow. The trouble is that a track record from calm years has simply not drawn the bad day yet. It looks safe because the sample is missing the event that defines its risk.</p>
+      <p data-who="Trader">And the other side of the trade?</p>
+      <p data-who="Quant">The tail hedger buys far out-of-the-money puts. They pay a small premium every year, like hiring a guard to pull them clear of the steamroller. Most years the guard does nothing and the fee is pure cost.</p>
+      <p data-who="Trader">Give me numbers.</p>
+      <p data-who="Quant">Take the lesson's illustration. In a calm year the index makes twelve percent. Your put-selling book makes fifteen. The hedged book makes ten and a half, because it paid one and a half for insurance.</p>
+      <p data-who="Trader">So I win the calm year.</p>
+      <p data-who="Quant">You win every calm year. Then a crash year comes and the index falls thirty-five percent. Your book loses sixty. The hedged book makes five percent, because its puts pay forty.</p>
+      <p data-who="Trader">And over the whole run?</p>
+      <p data-who="Quant">Four calm years and one crash. The unhedged index ends up about two percent. Your book ends down thirty. The hedged book ends up fifty-six and a half. But that is a made-up pattern. If the crash is smaller, or never comes, the ranking can flip.</p>
+      <p data-who="Trader">Has this ever played out for real?</p>
+      <p data-who="Quant">March 2020. After years when standing put protection mostly expired worthless, the S and P 500 fell about thirty-four percent in five weeks. The VIX closed at a record of about eighty-three. Far out-of-the-money puts paid twice: they went deep into the money, and the volatility they were priced on exploded.</p>
+      <p data-who="Trader">Couldn't you just hold gold instead? It's cheaper.</p>
+      <p data-who="Quant">In the dash for cash, gold fell sharply alongside stocks for about a week. Even Treasuries sold off until the Fed stepped in. Those hedges rely on a correlation holding. An option pays because of its contract.</p>
+      <p data-who="Trader">So what's the one-line version?</p>
+      <p data-who="Quant">Convexity costs a little every calm year and pays a lot in the one year that matters, so budget for the bleed and don't cut it just because nothing has happened yet.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -81,6 +144,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">How a portfolio's value responds to a move, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ V(S) \approx \color{#fbbf24}{V_0} \]</div>
+      <p>Start where you are: the portfolio is worth \(V_0\) at today's level \(S_0\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ V(S) \approx V_0 + \color{#fbbf24}{\Delta \cdot (S - S_0)} \]</div>
+      <p>Add the straight-line part. Each unit the market moves changes your value by \(\Delta\). This is the linear, unhedged exposure: no bend at all.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ V(S) \approx V_0 + \Delta \cdot (S - S_0) + \color{#fbbf24}{\tfrac{1}{2}\,\Gamma\,(S - S_0)^2} \]</div>
+      <p>Add the bend, with \(\Gamma = \partial^2 V / \partial S^2\). The move is squared, so this term grows four times as fast when the move doubles, and has the same sign whichever way the market goes. With \(\Gamma &gt; 0\) big moves help you; with \(\Gamma &lt; 0\) they hurt you faster and faster.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{V(S) \approx V_0 + \Delta \cdot (S - S_0) + \tfrac{1}{2}\,\Gamma\,(S - S_0)^2 + \Theta\,\Delta t} \]</div>
+      <p>Add the price of the bend: time decay \(\Theta\) over the time step \(\Delta t\). Long convexity pays it every calm day, short convexity collects it. In the worked example below that is the −1.5% a year the tail hedge costs, and the +3% the put seller earns.</p>
+    </div>
+  </div>
   <p>
   Convexity is formally a statement about the second derivative of a payoff function with respect to the
   underlying risk factor. We'll build it from the definition up, then connect it directly to the
@@ -268,6 +351,10 @@
       the illustrative overlay costs/payoffs above. Edit any field and every strategy's calm-year and
       crash-year return, plus the 5-year (4 calm + 1 crash) cumulative compounding, recalculates instantly.
     </p>
+    <div class="tl-predict" data-answer="26.7" data-tol="3" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The worked example's tail hedge pays +40% in the crash year and ends the five years at +56.5%. Suppose the puts only pay +20% instead. What is the tail-hedged cumulative return now? Lock in a guess, then type 20 into "Tail hedge crash payoff" below to check.</div>
+      <div class="tl-predict-reveal"><p><strong>About +26.7%.</strong> Four calm years still compound to \(1.105^4 \approx 1.491\), and the crash year is now \(1 - 0.35 + 0.20 = 0.85\), so \(1.491 \times 0.85 \approx 1.267\). Halving the payoff cut the five-year result by more than half, but it still beats the unhedged +2.3%. Now type 0: the hedge paid premium for four years and nothing in the crash, and the result falls to about −3.1%, below doing nothing.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Index, calm year (%)</span></div>
@@ -340,6 +427,12 @@
     be there when it's actually needed.
     </p>
   </div>
+
+  <!-- WB:tail_risk_hedging_convexity:START -->
+  <div class="wb" id="wb-tail_risk_hedging_convexity" data-title="Pennies, a steamroller and a guard, drawn step by step">
+    <script type="application/json">{"w":600,"h":720,"intro":"One portfolio, three ways to run it, and the lesson's illustrative five years: four calm, one crash. Press play, or step through.","steps":[{"cap":"A $10 million portfolio tracks a broad index. Call its starting value 100. We run it three ways, side by side, through the same five years.","do":[{"icon":"pf","name":"piggy","x":250,"y":10,"s":0.75,"tone":"blue","label":"portfolio = 100","sym":"$","lsize":17}]},{"cap":"The put seller is short convexity. Selling out-of-the-money puts adds +3% in each calm year: the pennies in front of the steamroller.","do":[{"icon":"sell","name":"cash","x":40,"y":14,"s":0.7,"tone":"red","label":"sells puts\n+3% a calm year","sym":"$","lsize":17},{"arrow":["sell","pf"],"tone":"red"}]},{"cap":"The tail hedger is long convexity. Buying far out-of-the-money puts costs 1.5% in each calm year, when they expire worthless: the guard's fee.","do":[{"icon":"hedge","name":"shield","x":470,"y":14,"s":0.7,"tone":"green","label":"buys puts\n−1.5% a calm year","lsize":17},{"arrow":["pf","hedge"],"tone":"green"}]},{"cap":"Four calm years, index +12% each. The seller compounds to 174.9, unhedged to 157.4, the hedger to only 149.1. Every single year the hedge looks like waste.","do":[{"chart":"w","x":10,"y":150,"w":580,"h":330,"title":"Portfolio value, illustrative","xd":[0,5],"yd":[0,220],"yt":[[50,"50"],[100,"100"],[150,"150"],[200,"200"]],"xt":[[0,"start"],[2,"yr 2"],[4,"yr 4"],[5,"crash"]],"pl":50,"pr":92},{"series":"base","chart":"w","pts":[[0,100],[5,100]],"tone":null,"dash":true,"ms":400},{"series":"sc1","chart":"w","pts":[[0,100.0],[1,115.0],[2,132.2],[3,152.1],[4,174.9]],"tone":"red","ms":1200},{"series":"u1","chart":"w","pts":[[0,100.0],[1,112.0],[2,125.4],[3,140.5],[4,157.4]],"tone":"blue","ms":1200},{"series":"th1","chart":"w","pts":[[0,100.0],[1,110.5],[2,122.1],[3,134.9],[4,149.1]],"tone":"green","ms":1200}]},{"cap":"Year five: the crash. The index falls 35%. The seller's short puts are deep in the money and add an extra −25%: −60% for the year. 174.9 becomes 70.","do":[{"note":"crash","chart":"w","at":[4.5,205],"text":"crash: index −35%","tone":"red","size":17,"anchor":"middle","dx":0,"dy":0},{"series":"sc2","chart":"w","pts":[[4,174.9],[5,70.0]],"tone":"red","ms":1200,"label":"seller 70","lat":[5,70.0],"ldx":6,"ldy":0,"lanchor":"start","lsize":16}]},{"cap":"Unhedged simply takes the index's −35%: 157.4 becomes 102.3. Five years of work, +2.3% to show for it.","do":[{"series":"u2","chart":"w","pts":[[4,157.4],[5,102.3]],"tone":"blue","ms":1200,"label":"unhedged 102","lat":[5,102.3],"ldx":6,"ldy":0,"lanchor":"start","lsize":16}]},{"cap":"The hedger's puts pay +40%, so the year ends +5%: 149.1 becomes 156.5. Last in every calm year, first by a long way at the end: +56.5%.","do":[{"series":"th2","chart":"w","pts":[[4,149.1],[5,156.5]],"tone":"green","ms":1200,"label":"hedged 157","lat":[5,156.5],"ldx":6,"ldy":0,"lanchor":"start","lsize":16},{"pulse":"th2"}]},{"cap":"Why it bends: a payoff with curvature changes with the move squared. Double the fall and the bend is four times bigger. The seller's curve bends down in a crash, the hedger's bends up.","do":[{"box":"bend","x":20,"y":500,"w":270,"h":96,"text":"value change ≈ Δ·move\n+ ½ Γ·move²","tone":"purple","size":19}]},{"cap":"But this pattern is made up. If the crash never came, five calm years would leave the seller at 201.1, unhedged at 176.2 and the hedger at 164.7. The bleed is the premium for the protection, not a mistake.","do":[{"box":"nocrash","x":310,"y":500,"w":270,"h":96,"text":"no crash?\nseller 201 · hedger 165","tone":"amber","size":19}]},{"cap":"March 2020, for real: the S&P 500 fell about 34% in five weeks and the VIX closed at a record 82.69. Far out-of-the-money puts paid twice, on the price and on volatility.","do":[{"icon":"vix","name":"bolt","x":40,"y":612,"s":0.6,"tone":"red","label":"VIX 82.69","lsize":17},{"icon":"put","name":"shield","x":250,"y":612,"s":0.6,"tone":"green","label":"puts paid","lsize":17}]},{"cap":"Gold, the \"cheap\" hedge, fell sharply alongside stocks for about a week in the dash for cash. It relied on a correlation holding. An option pays because of its contract.","do":[{"icon":"gold","name":"gold","x":460,"y":612,"s":0.6,"tone":"amber","label":"gold fell too","lsize":17},{"cross":"gold"}]}]}</script>
+  </div>
+  <!-- WB:tail_risk_hedging_convexity:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: March 2020, when convexity paid and "safe" assets didn't</h2>
@@ -490,6 +583,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill" data-date="2020-01">
+    <div class="tl-drill-label">Scenario drill · January 2020</div>
+    <h3>The hedge has been the worst line for years. Cut it?</h3>
+    <p>You sit on the risk committee of a fund whose book leans short volatility, through carry and option selling. For years a small, fixed budget has bought far out-of-the-money index puts. Most years they expired worthless, and the hedge has been the single worst line in the attribution report. Stocks are near record highs and calm. A colleague proposes cutting the hedge budget. What do you decide?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Cut the budget. Years of calm show the puts are wasted money.<div class="tl-drill-why">A run of calm years does not make the next crash any less likely. Cutting the hedge because of its recent cost is the single most common way a tail-hedge program fails to be there when it is needed.</div></li>
+      <li data-verdict="bad">Swap the puts for gold. It costs nothing to carry and rises in a panic.<div class="tl-drill-why">Gold is a linear hedge that relies on a correlation holding under stress. It has no option-like convexity, and nothing in its contract makes it pay when stocks fall.</div></li>
+      <li data-verdict="good">Keep the puts at their fixed, budgeted size, and judge them on what they do for the whole portfolio, not on their own track record.<div class="tl-drill-why">The bleed is the premium, by design. The relevant test is the combined book across calm and crash years, and the timing of a crash is never knowable in advance.</div></li>
+      <li data-verdict="ok">Keep a hedge, but switch to put spreads to cut the cost.<div class="tl-drill-why">Defensible: a put spread is cheaper. But it caps the payoff once the market falls past the lower strike, so you are selling back some of the convexity you were paying for.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> From a record high on 19 February 2020, the S&amp;P 500 fell about 34% in five weeks, to 23 March. On 16 March the VIX closed at a record 82.69. Far out-of-the-money puts went deep into the money while the implied volatility they were priced on exploded, and their value rose many times over. In the mid-March dash for cash, gold fell sharply alongside stocks for about a week, and even US Treasuries sold off until the Federal Reserve stepped in with very large purchases. Anyone who tried to buy protection after the fall had started paid far more, because implied volatility had already jumped.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -577,6 +683,27 @@
     <li>See also <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a> and <a href="theta-decay.html">Theta Decay</a> for the option-Greeks mechanics underlying the convexity and premium-bleed concepts used here.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="options-four-positions.html">The Four Option Positions</a> <span>· what a long put pays, and what a short put risks</span></li>
+        <li><a href="theta-decay.html">Theta Decay</a> <span>· the daily cost of owning curvature</span></li>
+        <li><a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> <span>· measuring the tail before you hedge it</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="stress-testing-scenario-analysis.html">Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</a> <span>· asking what crash your book cannot survive</span></li>
+        <li><a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a> <span>· the same curvature, seen from the dealer's side</span></li>
+        <li><a href="vix-uncertainty-not-fear.html">The VIX Is an Uncertainty Index, Not a Fear Gauge</a> <span>· the volatility channel that paid in 2020</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> any strategy that earns steadily in calm markets may be quietly short convexity, and this tells you what that shape costs and how to buy some back.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="coherent-risk-measures.html">← Coherent Risk Measures</a>
@@ -683,10 +810,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

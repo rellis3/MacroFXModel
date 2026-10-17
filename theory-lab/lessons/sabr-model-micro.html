@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The SABR Model — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -257,7 +258,19 @@
       <p class="sl-p">FX and rates options markets don't trade a continuous strike ladder — only a handful of standard, liquid points (the at-the-money straddle, the 25-delta risk reversal, the 25-delta butterfly). Everything else a client asks for has to be interpolated or extrapolated in a way that doesn't introduce arbitrage. SABR, fit to those liquid points, is the rates market's default tool, and a common FX one, for producing that full curve — precisely because refitting it is cheap enough to run continuously rather than once a day.</p>
     </section>
 
+    <!-- WB:sabr_model-deck:START -->
     <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">SABR: three quotes in, a whole smile out</h2>
+      <!-- WB:sabr_model:START -->
+      <div class="wb" data-title="SABR: three quotes in, a whole smile out">
+        <script type="application/json">{"w":600,"h":770,"intro":"How an FX options desk turns three live quotes into a vol for every strike, using the lesson's 3-month EUR/USD example. Press play, or step through.","steps":[{"cap":"Per expiry, the broker screens quote just three numbers: the at-the-money vol, the 25-delta risk reversal and the 25-delta butterfly. A client wants a strike nobody is quoting.","do":[{"box":"atm","x":10,"y":12,"w":180,"h":70,"text":"ATM vol","tone":"blue","sub":"the level","size":20},{"box":"rr","x":210,"y":12,"w":180,"h":70,"text":"25Δ risk reversal","tone":"purple","sub":"the skew","size":18},{"box":"bf","x":410,"y":12,"w":180,"h":70,"text":"25Δ butterfly","tone":"amber","sub":"the curvature","size":18}]},{"cap":"SABR has four dials. Fix the backbone β by convention (FX desks run it at or near 1), and three are left: α, ρ and ν. Three unknowns, three quotes.","do":[{"box":"a","x":10,"y":130,"w":180,"h":62,"text":"α: level","tone":"blue","size":20},{"box":"r","x":210,"y":130,"w":180,"h":62,"text":"ρ: skew","tone":"purple","size":20},{"box":"n","x":410,"y":130,"w":180,"h":62,"text":"ν: curvature","tone":"amber","size":20},{"arrow":["atm","a"]},{"arrow":["rr","r"]},{"arrow":["bf","n"]},{"note":"beta","x":300,"y":220,"text":"β = 1, fixed by convention","size":18,"anchor":"middle"}]},{"cap":"The trick is Hagan's 2002 formula: four numbers in, implied vol at any strike out. Logs, powers and a square root. No Fourier inversion, so each fit takes a blink.","do":[{"hide":"beta"},{"note":"alg","x":300,"y":220,"text":"Hagan formula: pure algebra, no integration","size":18,"anchor":"middle","tone":"green"}]},{"cap":"The worked example: forward 1.2000, three months, ρ = −0.25, ν = 0.40. An at-the-money quote of 10.00% needs α = 9.98%. Here is the whole smile that gives.","do":[{"hide":"alg"},{"chart":"sk","x":10,"y":250,"w":580,"h":260,"title":"Implied vol by strike, 3-month EUR/USD","xd":[1.08,1.32],"yd":[9.1,11.3],"yt":[[9.5,"9.5%"],[10.0,"10.0%"],[10.5,"10.5%"],[11.0,"11.0%"]],"xt":[[1.1,"1.10"],[1.15,"1.15"],[1.2,"1.20"],[1.25,"1.25"],[1.3,"1.30"]],"pl":62,"pr":14},{"series":"base","chart":"sk","pts":[[1.08,10.756],[1.09,10.675],[1.1,10.597],[1.11,10.522],[1.12,10.45],[1.13,10.382],[1.14,10.316],[1.15,10.255],[1.16,10.197],[1.17,10.142],[1.18,10.091],[1.19,10.044],[1.2,10.0],[1.21,9.96],[1.22,9.924],[1.23,9.891],[1.24,9.863],[1.25,9.838],[1.26,9.816],[1.27,9.799],[1.28,9.784],[1.29,9.774],[1.3,9.766],[1.31,9.763],[1.32,9.762]],"tone":"purple","ms":1400},{"dot":"atmd","chart":"sk","at":[1.2,10.0],"text":"ATM 10.00%","tone":"blue","dy":24}]},{"cap":"Read off any strike. 200 pips below the forward, the 1.18 put: 10.09%. 200 pips above, the 1.22 call: 9.92%. Puts richer, as a negative ρ says.","do":[{"dot":"p","chart":"sk","at":[1.18,10.091],"text":"1.18: 10.09%","tone":"red","dx":-10,"dy":22,"anchor":"end"},{"dot":"c","chart":"sk","at":[1.22,9.924],"text":"1.22: 9.92%","tone":"green","dx":10,"dy":-16,"anchor":"start"}]},{"cap":"Turn the skew dial: ρ from −0.25 to −0.50, nothing else changed. The put goes to 10.16%, the call to 9.82%, and the at-the-money barely moves. The tilt doubles.","do":[{"dim":"base"},{"series":"steep","chart":"sk","pts":[[1.08,11.176],[1.09,11.064],[1.1,10.954],[1.11,10.846],[1.12,10.74],[1.13,10.637],[1.14,10.536],[1.15,10.437],[1.16,10.341],[1.17,10.248],[1.18,10.157],[1.19,10.069],[1.2,9.984],[1.21,9.903],[1.22,9.824],[1.23,9.748],[1.24,9.676],[1.25,9.607],[1.26,9.542],[1.27,9.48],[1.28,9.421],[1.29,9.366],[1.3,9.315],[1.31,9.268],[1.32,9.224]],"tone":"red","dash":true,"ms":1200,"label":"ρ = −0.50","lat":[1.3,9.315],"ldx":0,"ldy":-18,"lanchor":"middle"}]},{"cap":"Now the curvature dial, with the skew switched off (ρ = 0) and α re-solved so every curve keeps a 10% at-the-money. ν = 0.1 is nearly flat.","do":[{"chart":"cv","x":10,"y":524,"w":330,"h":236,"title":"ν bends the smile (ρ = 0)","xd":[1.08,1.32],"yd":[9.9,11.1],"yt":[[10,"10%"],[11,"11%"]],"xt":[[1.08,"1.08"],[1.2,"ATM"],[1.32,"1.32"]],"pl":48,"pr":14},{"series":"n1","chart":"cv","pts":[[1.08,10.018],[1.09,10.015],[1.1,10.013],[1.11,10.01],[1.12,10.008],[1.13,10.006],[1.14,10.004],[1.15,10.003],[1.16,10.002],[1.17,10.001],[1.18,10.0],[1.19,10.0],[1.2,10.0],[1.21,10.0],[1.22,10.0],[1.23,10.001],[1.24,10.002],[1.25,10.003],[1.26,10.004],[1.27,10.005],[1.28,10.007],[1.29,10.009],[1.3,10.011],[1.31,10.013],[1.32,10.015]],"tone":null,"ms":800,"label":"ν 0.1","lat":[1.32,10.015],"ldx":-4,"ldy":-12,"lanchor":"end"}]},{"cap":"ν = 0.4 lifts both wings a little; ν = 0.8 lifts them a lot, to about 11.0% at 1.08. More doubt about volatility makes big moves either way more likely.","do":[{"series":"n4","chart":"cv","pts":[[1.08,10.284],[1.09,10.238],[1.1,10.197],[1.11,10.159],[1.12,10.125],[1.13,10.095],[1.14,10.07],[1.15,10.048],[1.16,10.031],[1.17,10.017],[1.18,10.008],[1.19,10.002],[1.2,10.0],[1.21,10.002],[1.22,10.007],[1.23,10.016],[1.24,10.029],[1.25,10.044],[1.26,10.063],[1.27,10.085],[1.28,10.11],[1.29,10.137],[1.3,10.167],[1.31,10.2],[1.32,10.234]],"tone":"blue","ms":800,"label":"ν 0.4","lat":[1.32,10.234],"ldx":-4,"ldy":-14,"lanchor":"end"},{"series":"n8","chart":"cv","pts":[[1.08,11.03],[1.09,10.878],[1.1,10.735],[1.11,10.603],[1.12,10.481],[1.13,10.372],[1.14,10.275],[1.15,10.192],[1.16,10.123],[1.17,10.069],[1.18,10.031],[1.19,10.008],[1.2,10.0],[1.21,10.008],[1.22,10.03],[1.23,10.066],[1.24,10.115],[1.25,10.177],[1.26,10.25],[1.27,10.333],[1.28,10.425],[1.29,10.525],[1.3,10.632],[1.31,10.746],[1.32,10.865]],"tone":"amber","ms":900,"label":"ν 0.8","lat":[1.32,10.865],"ldx":-10,"ldy":-2,"lanchor":"end"}]},{"cap":"Spot ticks, the three quotes update, and the desk solves the same three equations again. And again. Fast refitting, not superior realism, is why SABR won.","do":[{"pulse":"atm"},{"pulse":"rr"},{"pulse":"bf"},{"icon":"clk","name":"clock","x":380,"y":528,"s":0.6,"tone":"green","label":"refit every tick","lsize":17}]},{"cap":"The catch: it is an approximation. Far wings, long maturities or a high ν can even imply arbitrage. The authors' \"Arbitrage-Free SABR\" (2014) patches that.","do":[{"box":"apx","x":360,"y":640,"w":230,"h":120,"text":"approximation:\nwatch the far wings\nand high ν","tone":"red","size":18}]}]}</script>
+      </div>
+      <!-- WB:sabr_model:END -->
+    </section>
+    <!-- WB:sabr_model-deck:END -->
+
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the formula — and the model — can mislead you</h2>
       <div class="sl-callout amber">
@@ -270,7 +283,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -312,7 +325,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -534,5 +547,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

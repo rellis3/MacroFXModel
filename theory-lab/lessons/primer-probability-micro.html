@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Probability &amp; Random Variables — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -220,7 +221,19 @@
       <p class="sl-p">This is the surprising part: the individual die roll is flat, bounded, discrete — shaped nothing like a bell curve. The <em>average</em> of many independent copies of it converges toward one anyway. That's the Central Limit Theorem: N independent copies of almost any random variable, averaged, approach a normal distribution centered at E[X] with variance Var(X)/N as N grows.</p>
     </section>
 
+    <!-- WB:primer_probability-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">One die: its average, its spread, and the bell it becomes</h2>
+      <!-- WB:primer_probability:START -->
+      <div class="wb" data-title="One die: its average, its spread, and the bell it becomes">
+        <script type="application/json">{"w":600,"h":890,"intro":"One fair die, the lesson's worked example: its expectation, its spread, what happens when you average many rolls, and the one assumption all of it leans on. Press play, or step through.","steps":[{"cap":"Meet a random variable: one roll of a fair die. You don't know the number yet, but you know the rules: faces 1 to 6, each with probability 1 in 6.","do":[{"icon":"die","name":"dice","x":22,"y":40,"s":0.8,"tone":"amber","label":"one roll","lsize":18},{"chart":"face","x":150,"y":10,"w":440,"h":236,"title":"One roll: chance of each face","xd":[0.4,6.6],"yd":[0,0.26],"yt":[[0,"0"],[0.16666666666666666,"1/6"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"6"]],"pl":44,"pr":12},{"bars":"fb","chart":"face","data":[[1,0.16666666666666666,"","blue"],[2,0.16666666666666666,"","blue"],[3,0.16666666666666666,"","blue"],[4,0.16666666666666666,"","blue"],[5,0.16666666666666666,"","blue"],[6,0.16666666666666666,"","blue"]],"bw":40,"ms":900}]},{"cap":"Its expectation: weight each face by 1/6 and add them up. 21 ÷ 6 = 3.5. You can never roll a 3.5. Expectation is the long-run average, not the most likely roll.","do":[{"series":"ex","chart":"face","pts":[[3.5,0],[3.5,0.24]],"tone":"green","dash":true,"label":"E[X] = 3.5","lat":[3.5,0.24],"ldx":0,"ldy":-10}]},{"cap":"Its spread: E[X²] − (E[X])² = 91/6 − 12.25 ≈ 2.92. The square root, σ ≈ 1.71, is how far a roll typically lands from 3.5.","do":[{"series":"sd","chart":"face","pts":[[1.792174872340067,0.205],[5.207825127659933,0.205]],"tone":"purple","width":4,"ms":700},{"note":"sdl","chart":"face","at":[5.35,0.205],"text":"±1.71","tone":"purple","size":17,"anchor":"start","dx":0,"dy":0}]},{"cap":"Now roll it again and again, and track the running average. This is one simulated run of 200 rolls, for illustration.","do":[{"chart":"run","x":10,"y":262,"w":580,"h":232,"title":"Running average of the rolls (one simulated run)","xd":[0,200],"yd":[0.6,5.6],"yt":[[1,"1"],[3.5,"3.5"],[5,"5"]],"xt":[[5,"5"],[50,"50"],[100,"100"],[200,"200"]],"pl":42,"pr":24},{"series":"e35","chart":"run","pts":[[0,3.5],[200,3.5]],"tone":"green","dash":true,"ms":400},{"series":"ra","chart":"run","pts":[[1,1.0],[2,3.0],[3,4.0],[4,4.5],[5,4.6],[6,4.167],[7,4.0],[8,4.25],[9,4.111],[10,4.0],[11,4.182],[12,3.917],[13,4.077],[14,4.071],[15,4.0],[16,4.0],[17,4.118],[18,4.111],[19,4.105],[20,3.95],[24,3.75],[28,3.857],[32,3.812],[36,3.861],[40,3.7],[44,3.591],[48,3.562],[52,3.577],[56,3.643],[60,3.733],[64,3.703],[68,3.721],[72,3.722],[76,3.684],[80,3.6],[84,3.548],[88,3.568],[92,3.565],[96,3.594],[100,3.6],[104,3.596],[108,3.583],[112,3.58],[116,3.603],[120,3.592],[124,3.597],[128,3.617],[132,3.606],[136,3.603],[140,3.593],[144,3.549],[148,3.52],[152,3.533],[156,3.487],[160,3.45],[164,3.439],[168,3.452],[172,3.448],[176,3.472],[180,3.483],[184,3.484],[188,3.5],[192,3.5],[196,3.49],[200,3.46]],"tone":"blue","ms":1800}]},{"cap":"After 5 rolls this run averages 4.6, far from 3.5. The Law of Large Numbers makes no promise about small samples. A 5-trade or 20-trade backtest can sit well away from the truth.","do":[{"dot":"a5","chart":"run","at":[5,4.6],"text":"5 rolls: 4.6","tone":"red","dx":10,"dy":-4,"anchor":"start"}]},{"cap":"By 200 rolls the average is 3.46, close to 3.5. Keep rolling and it gets as close as you like. That is the Law of Large Numbers, and why a casino is calm about any single hand.","do":[{"dot":"a200","chart":"run","at":[200,3.46],"text":"200 rolls: 3.46","tone":"green","dx":-6,"dy":-26,"anchor":"end"}]},{"cap":"A different question: if you average 5 rolls, or 30, and do it many times, what shape do those averages take? Start with a single roll: flat.","do":[{"chart":"clt","x":10,"y":512,"w":580,"h":250,"title":"Shape of the average of n rolls (normal approx.)","xd":[1,6],"yd":[0,1.4],"yt":[],"xt":[[1,"1"],[2,"2"],[3.5,"3.5"],[5,"5"],[6,"6"]],"pl":16,"pr":16},{"series":"n1","chart":"clt","pts":[[1,0.16666666666666666],[6,0.16666666666666666]],"tone":"blue","ms":600,"label":"1 roll: flat","lat":[6,0.16666666666666666],"ldx":-4,"ldy":-14,"lanchor":"end"}]},{"cap":"Average 5 rolls and the averages bunch around 3.5 in a rough bell, with σ ≈ 1.71 ÷ √5 ≈ 0.76.","do":[{"series":"n5","chart":"clt","pts":[[1.0,0.0025],[1.05,0.003],[1.1,0.0037],[1.15,0.0046],[1.2,0.0056],[1.25,0.0068],[1.3,0.0082],[1.35,0.0099],[1.4,0.0119],[1.45,0.0142],[1.5,0.0169],[1.55,0.0201],[1.6,0.0237],[1.65,0.0278],[1.7,0.0325],[1.75,0.0378],[1.8,0.0439],[1.85,0.0506],[1.9,0.0582],[1.95,0.0666],[2.0,0.0759],[2.05,0.0862],[2.1,0.0974],[2.15,0.1095],[2.2,0.1227],[2.25,0.1369],[2.3,0.152],[2.35,0.1681],[2.4,0.1852],[2.45,0.203],[2.5,0.2217],[2.55,0.241],[2.6,0.2609],[2.65,0.2812],[2.7,0.3018],[2.75,0.3225],[2.8,0.3432],[2.85,0.3636],[2.9,0.3837],[2.95,0.403],[3.0,0.4216],[3.05,0.4391],[3.1,0.4554],[3.15,0.4703],[3.2,0.4836],[3.25,0.4951],[3.3,0.5047],[3.35,0.5124],[3.4,0.5179],[3.45,0.5212],[3.5,0.5223],[3.55,0.5212],[3.6,0.5179],[3.65,0.5124],[3.7,0.5047],[3.75,0.4951],[3.8,0.4836],[3.85,0.4703],[3.9,0.4554],[3.95,0.4391],[4.0,0.4216],[4.05,0.403],[4.1,0.3837],[4.15,0.3636],[4.2,0.3432],[4.25,0.3225],[4.3,0.3018],[4.35,0.2812],[4.4,0.2609],[4.45,0.241],[4.5,0.2217],[4.55,0.203],[4.6,0.1852],[4.65,0.1681],[4.7,0.152],[4.75,0.1369],[4.8,0.1227],[4.85,0.1095],[4.9,0.0974],[4.95,0.0862],[5.0,0.0759],[5.05,0.0666],[5.1,0.0582],[5.15,0.0506],[5.2,0.0439],[5.25,0.0378],[5.3,0.0325],[5.35,0.0278],[5.4,0.0237],[5.45,0.0201],[5.5,0.0169],[5.55,0.0142],[5.6,0.0119],[5.65,0.0099],[5.7,0.0082],[5.75,0.0068],[5.8,0.0056],[5.85,0.0046],[5.9,0.0037],[5.95,0.003],[6.0,0.0025]],"tone":"amber","ms":1100,"label":"5 rolls","lat":[4.3,0.29],"ldx":8,"ldy":-6,"lanchor":"start"}]},{"cap":"Average 30 and the bell is tall and narrow: σ ≈ 1.71 ÷ √30 ≈ 0.31, around the same 3.5. A flat die becomes a bell just by averaging. That is the Central Limit Theorem.","do":[{"series":"n30","chart":"clt","pts":[[1.0,0.0],[1.05,0.0],[1.1,0.0],[1.15,0.0],[1.2,0.0],[1.25,0.0],[1.3,0.0],[1.35,0.0],[1.4,0.0],[1.45,0.0],[1.5,0.0],[1.55,0.0],[1.6,0.0],[1.65,0.0],[1.7,0.0],[1.75,0.0],[1.8,0.0],[1.85,0.0],[1.9,0.0],[1.95,0.0],[2.0,0.0],[2.05,0.0],[2.1,0.0001],[2.15,0.0001],[2.2,0.0002],[2.25,0.0004],[2.3,0.0008],[2.35,0.0014],[2.4,0.0025],[2.45,0.0044],[2.5,0.0075],[2.55,0.0123],[2.6,0.0199],[2.65,0.0311],[2.7,0.0476],[2.75,0.0709],[2.8,0.1029],[2.85,0.1457],[2.9,0.2009],[2.95,0.27],[3.0,0.3537],[3.05,0.4516],[3.1,0.5619],[3.15,0.6814],[3.2,0.8054],[3.25,0.9278],[3.3,1.0416],[3.35,1.1397],[3.4,1.2153],[3.45,1.2631],[3.5,1.2795],[3.55,1.2631],[3.6,1.2153],[3.65,1.1397],[3.7,1.0416],[3.75,0.9278],[3.8,0.8054],[3.85,0.6814],[3.9,0.5619],[3.95,0.4516],[4.0,0.3537],[4.05,0.27],[4.1,0.2009],[4.15,0.1457],[4.2,0.1029],[4.25,0.0709],[4.3,0.0476],[4.35,0.0311],[4.4,0.0199],[4.45,0.0123],[4.5,0.0075],[4.55,0.0044],[4.6,0.0025],[4.65,0.0014],[4.7,0.0008],[4.75,0.0004],[4.8,0.0002],[4.85,0.0001],[4.9,0.0001],[4.95,0.0],[5.0,0.0],[5.05,0.0],[5.1,0.0],[5.15,0.0],[5.2,0.0],[5.25,0.0],[5.3,0.0],[5.35,0.0],[5.4,0.0],[5.45,0.0],[5.5,0.0],[5.55,0.0],[5.6,0.0],[5.65,0.0],[5.7,0.0],[5.75,0.0],[5.8,0.0],[5.85,0.0],[5.9,0.0],[5.95,0.0],[6.0,0.0]],"tone":"green","ms":1200,"label":"30 rolls: σ ≈ 0.31","lat":[3.85,0.68],"ldx":10,"ldy":0,"lanchor":"start"}]},{"cap":"But both promises assume independent draws. Two coin flips are independent: the first says nothing about the second. Market days are not: a wild day makes another wild day more likely. That is volatility clustering.","do":[{"icon":"c1","name":"coin","x":16,"y":778,"s":0.42,"tone":"green"},{"icon":"c2","name":"coin","x":70,"y":778,"s":0.42,"tone":"green"},{"note":"cl","x":66,"y":846,"text":"coin flips:\nindependent","size":17,"anchor":"middle","tone":"green"},{"icon":"f1","name":"fire","x":196,"y":776,"s":0.44,"tone":"red"},{"icon":"f2","name":"fire","x":250,"y":776,"s":0.44,"tone":"red"},{"note":"fl","x":244,"y":846,"text":"market days:\nwild days cluster","size":17,"anchor":"middle","tone":"red"}]},{"cap":"So \"returns are roughly normal\" is a starting point to correct, not a fact. It breaks worst in a crisis, exactly when big days come in bunches.","do":[{"box":"cav","x":372,"y":774,"w":218,"h":52,"text":"normal = a start","tone":"amber","size":19}]},{"cap":"And expectation is how prices are made. Bachelier priced options as expected payoffs in 1900; Harrison, Kreps and Pliska showed (1979–81) that every arbitrage-free price is a discounted expectation.","do":[{"box":"px","x":372,"y":834,"w":218,"h":52,"text":"price = E[payoff]","tone":"green","size":19}]}]}</script>
+      </div>
+      <!-- WB:primer_probability:END -->
+    </section>
+    <!-- WB:primer_probability-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Why so much in finance ends up looking roughly normal</h2>
       <div class="sl-quote">Not because every underlying process is secretly normal — because so many observed financial quantities are themselves sums of many smaller, mostly-independent pieces. A day's return is built from many intraday ticks and trades; a portfolio's return is built from many positions. The CLT is the reason the sum tends to look bell-shaped even when no single ingredient does.</div>
@@ -234,7 +247,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Daily P&amp;L as a sum of many independent trades</h2>
       <p class="sl-sub">Treat a day's total P&amp;L as N roughly independent trades added together. Variance scales with N; standard deviation scales with √N.</p>
@@ -260,7 +273,7 @@
       <p class="sl-p">This is a direct application of the variance-of-a-sum rule from Section 6: with per-trade σ = $50 and 25 independent trades, Var(day) = 25 × 50² = 62,500, so σ(day) = √62,500 = 50 × √25 = 50 × 5 = <strong>$250</strong>. The independence assumption is doing real work here — it's exactly what licenses adding the variances in the first place.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this shows up outside a textbook</h2>
       <div class="sl-icard-grid">
@@ -272,7 +285,7 @@
       <p class="sl-p">Four different fields, each leaning on a different piece of the same machinery — none of it trading-specific. It's the same mathematics used for polling margins of error and factory control charts as it is for a portfolio's expected return and variance.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Assuming independence vs. actually checking it</h2>
       <p class="sl-sub">The same CLT-flavored reasoning, applied two different ways.</p>
@@ -299,7 +312,7 @@
       <div class="sl-quote">The Law of Large Numbers promises convergence eventually, not at any specific small n you happen to have. A 20-trade backtest's average can sit meaningfully far from the true expected return — the difference between the two columns above isn't sophistication, it's whether the independence assumption actually gets tested before it gets relied on.</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -350,7 +363,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -462,5 +475,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

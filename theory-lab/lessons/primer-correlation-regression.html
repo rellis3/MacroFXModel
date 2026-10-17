@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Correlation &amp; Linear Regression — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -41,6 +42,75 @@
       <li><strong>How it reached trading:</strong> Sharpe's single-index model and CAPM (1963–64) made beta a regression slope, and Ederington (1979) used the same slope as the hedge ratio for the new financial futures.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 225" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the worked example's five points with their fitted line, y-hat equals 0.05 plus 1.99 x. The slope is covariance over the variance of x, 3.98 divided by 2, and r is about 0.999 with R squared about 0.997. Right: eleven points on y equals x squared from minus 5 to 5. Y is completely determined by x, yet the best straight line is flat and the correlation is zero.">
+      <line class="tlp-line" x1="40" y1="190" x2="290" y2="190"/>
+      <line class="tlp-line" x1="40" y1="40" x2="40" y2="190"/>
+      <line class="tlp-line" x1="330" y1="190" x2="580" y2="190"/>
+      <polyline class="tlp-line green thick" points="70.9,175.8 275.7,43.2"/>
+      <circle class="tlp-blue" cx="91.8" cy="161.4" r="5"/>
+      <circle class="tlp-blue" cx="133.6" cy="137" r="5"/>
+      <circle class="tlp-blue" cx="175.4" cy="105.7" r="5"/>
+      <circle class="tlp-blue" cx="217.2" cy="83.9" r="5"/>
+      <circle class="tlp-blue" cx="259" cy="52.6" r="5"/>
+      <polyline class="tlp-line dash" points="335.4,38.6 344.6,61.0 353.8,81.6 363.0,100.4 372.2,117.4 381.4,132.7 390.6,146.1 399.8,157.7 409.0,167.6 418.2,175.7 427.4,181.9 436.6,186.4 445.8,189.1 455.0,190.0 464.2,189.1 473.4,186.4 482.6,181.9 491.8,175.7 501.0,167.6 510.2,157.7 519.4,146.1 528.6,132.7 537.8,117.4 547.0,100.4 556.2,81.6 565.4,61.0 574.6,38.6"/>
+      <circle class="tlp-blue" cx="340" cy="50.0" r="4"/>
+      <circle class="tlp-blue" cx="363" cy="100.4" r="4"/>
+      <circle class="tlp-blue" cx="386" cy="139.6" r="4"/>
+      <circle class="tlp-blue" cx="409" cy="167.6" r="4"/>
+      <circle class="tlp-blue" cx="432" cy="184.4" r="4"/>
+      <circle class="tlp-blue" cx="455" cy="190.0" r="4"/>
+      <circle class="tlp-blue" cx="478" cy="184.4" r="4"/>
+      <circle class="tlp-blue" cx="501" cy="167.6" r="4"/>
+      <circle class="tlp-blue" cx="524" cy="139.6" r="4"/>
+      <circle class="tlp-blue" cx="547" cy="100.4" r="4"/>
+      <circle class="tlp-blue" cx="570" cy="50.0" r="4"/>
+      <line class="tlp-line amber thick dash" x1="335" y1="134" x2="575" y2="134"/>
+      <text class="tlp-text" x="165" y="22" text-anchor="middle" font-size="14" font-weight="700">a straight-line fit</text>
+      <text class="tlp-green" x="50" y="62" font-size="14" font-weight="700">ŷ = 0.05 + 1.99x</text>
+      <text class="tlp-text2" x="288" y="150" text-anchor="end" font-size="13">slope = 3.98 ÷ 2 = 1.99</text>
+      <text class="tlp-text2" x="288" y="168" text-anchor="end" font-size="13">r ≈ 0.999 · R² ≈ 0.997</text>
+      <text class="tlp-red" x="455" y="22" text-anchor="middle" font-size="14" font-weight="700">y = x²: perfectly linked</text>
+      <text class="tlp-text2" x="455" y="40" text-anchor="middle" font-size="13">yet r = 0</text>
+      <text class="tlp-amber" x="455" y="155" text-anchor="middle" font-size="13" font-weight="700">best line: flat</text>
+      <text class="tlp-text3" x="91.8" y="206" text-anchor="middle" font-size="12">1</text>
+      <text class="tlp-text3" x="175.4" y="206" text-anchor="middle" font-size="12">3</text>
+      <text class="tlp-text3" x="259" y="206" text-anchor="middle" font-size="12">5</text>
+      <text class="tlp-text3" x="340" y="206" text-anchor="middle" font-size="12">−5</text>
+      <text class="tlp-text3" x="455" y="206" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="570" y="206" text-anchor="middle" font-size="12">5</text>
+      <text class="tlp-text3" x="165" y="222" text-anchor="middle" font-size="12">x</text>
+      <text class="tlp-text3" x="455" y="222" text-anchor="middle" font-size="12">x</text>
+    </svg>
+    <figcaption>Left, the worked example: the best-fit slope is covariance divided by the variance of x, 3.98 ÷ 2 = 1.99, and r ≈ 0.999. Right, y = x²: y is completely fixed by x, yet the best straight line is flat and r = 0. Correlation and regression only see straight lines, and neither one says what causes what.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">A stock rose twelve percent this year while the market rose ten. Did it do anything special?</p>
+      <p data-who="Quant">Maybe not. First you need to know how much it simply moves with the market. That is what correlation and regression measure.</p>
+      <p data-who="Trader">Start with "moves with".</p>
+      <p data-who="Quant">Take each day. Ask how far the stock was from its own average, and how far the market was from its own. Multiply the two. If they are on the same side of average, both up or both down, the product is positive. Average those products and you have the covariance.</p>
+      <p data-who="Trader">So positive covariance means they move together.</p>
+      <p data-who="Quant">Yes. But its size depends on units. Percent or basis points give wildly different numbers for the same relationship. So you divide by both standard deviations. That squeezes it onto a ruler from minus one to plus one. That is the correlation.</p>
+      <p data-who="Trader">And regression?</p>
+      <p data-who="Quant">Regression draws the one straight line that best fits the cloud of points. Best means the smallest total of squared vertical gaps. And the slope comes out beautifully simple: the covariance, divided by the variance of the thing on the bottom axis.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Five points that roughly follow y equals two x. The covariance is three point nine eight. The variance of x is two. So the slope is one point nine nine, almost exactly two. The correlation is about zero point nine nine nine.</p>
+      <p data-who="Trader">So a high correlation means a strong relationship.</p>
+      <p data-who="Quant">A strong straight-line relationship. Take y equals x squared, for x from minus five to five. y is completely fixed by x. Yet the best straight line is flat, and the correlation is zero. Always look at the scatter, not just the number.</p>
+      <p data-who="Trader">And if two things are highly correlated, one must be driving the other?</p>
+      <p data-who="Quant">No. Ice cream sales and drownings rise together. Neither causes the other. Warm weather drives both. In markets, two currencies can move together because both follow the dollar, or just by chance in the window you looked at.</p>
+      <p data-who="Trader">Where did traders start using all this?</p>
+      <p data-who="Quant">William Sharpe, in the early nineteen sixties, made a stock's beta a regression slope against the market. In nineteen seventy-nine, Louis Ederington used the same slope as the hedge ratio for the new financial futures.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">The slope is how much one thing moves per unit of the other. Correlation is how tightly it sticks to a straight line. Neither tells you why, or whether it will last.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -141,6 +211,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">From paired deviations to the regression line, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{(x_i-\bar x)(y_i-\bar y)} \]</div>
+      <p>Multiply each pair of deviations. Same side of the mean gives a positive product. In the worked example: \(7.84,\ 2.12,\ 0,\ 1.78,\ 8.16\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \widehat{\mathrm{Cov}}(X,Y) = \color{#fbbf24}{\frac{1}{n}\sum_{i=1}^{n}}(x_i-\bar{x})(y_i-\bar{y}) \]</div>
+      <p>Average the products: \(19.9/5 = 3.98\). Positive, so the two tend to move together. Its size depends on the units.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ r = \frac{\mathrm{Cov}(X,Y)}{\color{#fbbf24}{\sigma_X\,\sigma_Y}} \]</div>
+      <p>Divide by both standard deviations to cancel the units: \(3.98/(1.4142 \times 2.8181) \approx 0.9986\), on a ruler from \(-1\) to \(+1\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \hat\beta = \frac{\mathrm{Cov}(X,Y)}{\color{#fbbf24}{\mathrm{Var}(X)}} \]</div>
+      <p>Divide by the variance of \(X\) alone instead, and you get the least-squares slope: \(3.98/2 = 1.99\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\hat y = \hat\alpha + \hat\beta x}, \qquad \hat\alpha = \bar y - \hat\beta\,\bar x \]</div>
+      <p>The line runs through the center of the data: \(\hat\alpha = 6.02 - 1.99 \times 3 = 0.05\), so \(\hat y = 0.05 + 1.99x\).</p>
+    </div>
+  </div>
   <p>
     Everything here builds on the variance and expectation machinery from the
     Probability &amp; Random Variables primer. The order is: covariance, then
@@ -513,6 +607,10 @@
       Edit any \(y\) value and the correlation, OLS slope/intercept, and
       R&sup2; all recalculate instantly from the same formulas derived above.
     </p>
+    <div class="tl-predict" data-answer="3.98" data-tol="0.2" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The slope is \(\beta = 1.99\) and \(r \approx 0.999\). Now double every \(y\) value: 4.2, 7.8, 12.4, 15.6, 20.2. What will \(\beta\) be, and will \(r\) change? Lock in your guess for \(\beta\), then type the doubled values into the fields below.</div>
+      <div class="tl-predict-reveal"><p><strong>3.98</strong>, exactly twice 1.99. The covariance doubles while \(\mathrm{Var}(x)\) stays at 2, so the slope doubles. But \(r\) stays at 0.999, because correlation also divides by \(\sigma_y\), which doubled too. The slope carries units; \(r\) does not. Now try changing just one value, say \(y\) at \(x = 5\) to 4, and watch one bad point drag the line.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>y at x=1</span></div>
@@ -544,6 +642,12 @@
     </div>
     <button type="button" id="pcr-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
+
+  <!-- WB:primer_correlation_regression:START -->
+  <div class="wb" id="wb-primer_correlation_regression" data-title="From "move together" to the best-fit line, and two traps">
+    <script type="application/json">{"w":600,"h":862,"intro":"The lesson's five points, taken from \"do they move together?\" to the best-fit line, and then the two ways a correlation misleads. Press play, or step through.","steps":[{"cap":"Take the lesson's five pairs: x = 1 to 5, and y = 2.1, 3.9, 6.2, 7.8, 10.1. Roughly y = 2x, with a little noise. Do they move together?","do":[{"chart":"sc","x":10,"y":10,"w":370,"h":290,"title":"Five paired observations","xd":[0,6],"yd":[0,11.5],"yt":[[0,"0"],[5,"5"],[10,"10"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"pl":40,"pr":14},{"dot":"p0","chart":"sc","at":[1,2.1],"text":"","tone":"blue","r":6},{"dot":"p1","chart":"sc","at":[2,3.9],"text":"","tone":"blue","r":6},{"dot":"p2","chart":"sc","at":[3,6.2],"text":"","tone":"blue","r":6},{"dot":"p3","chart":"sc","at":[4,7.8],"text":"","tone":"blue","r":6},{"dot":"p4","chart":"sc","at":[5,10.1],"text":"","tone":"blue","r":6}]},{"cap":"Mark the averages: x̄ = 3 and ȳ = 6.02. They split the picture into four corners around the center of the data.","do":[{"series":"mx","chart":"sc","pts":[[3,0.2],[3,11.2]],"tone":null,"dash":true,"label":"x̄ = 3","lat":[3,0.2],"ldx":8,"ldy":-10,"lanchor":"start"},{"series":"my","chart":"sc","pts":[[0.1,6.02],[5.9,6.02]],"tone":null,"dash":true,"label":"ȳ = 6.02","lat":[0.1,6.02],"ldx":4,"ldy":-12,"lanchor":"start"}]},{"cap":"For each point, multiply its distance from x̄ by its distance from ȳ. Both above, or both below, gives a positive product. Here every product is positive or zero: 7.84, 2.12, 0, 1.78 and 8.16.","do":[{"gap":"q1","chart":"sc","top":[[3,11.2],[5.9,11.2]],"bot":[[3,6.02],[5.9,6.02]],"tone":"green","op":0.13},{"gap":"q3","chart":"sc","top":[[0.1,6.02],[3,6.02]],"bot":[[0.1,0.2],[3,0.2]],"tone":"green","op":0.13},{"chart":"pr","x":10,"y":316,"w":280,"h":214,"title":"Deviation products","xd":[0.4,5.6],"yd":[-1,10],"yt":[[0,"0"],[8,"8"]],"xt":[[1,"x=1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"zero":true,"pl":34,"pr":10},{"bars":"pb","chart":"pr","data":[[1,7.84,"7.84","green"],[2,2.12,"2.12","green"],[3,0,"0","green"],[4,1.78,"1.78","green"],[5,8.16,"8.16","green"]],"bw":30,"ms":1100}]},{"cap":"Add them up and average: 19.9 ÷ 5 = 3.98. That is the covariance. Positive, so x and y move together. But its size depends on the units you measure in.","do":[{"box":"cov","x":392,"y":14,"w":198,"h":62,"text":"Cov = 19.9 ÷ 5","tone":"blue","sub":"= 3.98","size":18}]},{"cap":"Divide by both standard deviations, 1.41 for x and 2.82 for y, and the units cancel. The result, r ≈ 0.999, lives on a ruler from −1 to +1. That is the correlation.","do":[{"box":"r","x":392,"y":86,"w":198,"h":62,"text":"r = Cov ÷ (σx σy)","tone":"purple","sub":"≈ 0.999","size":18}]},{"cap":"Now the best straight line. Divide the covariance by the variance of x alone: 3.98 ÷ 2 = 1.99. That is the least-squares slope. The line runs through the center, so the intercept is 6.02 − 1.99 × 3 = 0.05.","do":[{"series":"fit","chart":"sc","pts":[[0.3,0.647],[5.6,11.194]],"tone":"green","ms":1000},{"box":"fitb","x":392,"y":158,"w":198,"h":62,"text":"slope = Cov ÷ Var(x)","tone":"green","sub":"3.98 ÷ 2 = 1.99","size":18}]},{"cap":"The gaps from each point to the line are the residuals: +0.06, −0.13, +0.18, −0.21, +0.10. They sum to zero. Squared and added, they make 0.107, against 39.708 of total spread in y. So R² = 1 − 0.107 ÷ 39.708 ≈ 0.997, which is exactly r².","do":[{"chart":"rs","x":310,"y":316,"w":280,"h":214,"title":"Residuals (y minus the line)","xd":[0.4,5.6],"yd":[-0.3,0.3],"yt":[[0.2,"+0.2"],[-0.2,"−0.2"]],"xt":[[1,"x=1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"zero":true,"pl":44,"pr":10},{"bars":"rb","chart":"rs","data":[[1,0.06,"+0.06"],[2,-0.13,"-0.13"],[3,0.18,"+0.18"],[4,-0.21,"-0.21"],[5,0.1,"+0.10"]],"bw":30,"ms":1000},{"box":"r2","x":392,"y":230,"w":198,"h":62,"text":"R² = 1 − SSR ÷ SST","tone":"amber","sub":"≈ 0.997 = r²","size":18}]},{"cap":"Trap one: correlation only sees straight lines. Here y = x², for x from −5 to 5. y is completely fixed by x, yet the best straight line is flat and r = 0. Always look at the scatter.","do":[{"chart":"sq","x":10,"y":546,"w":280,"h":216,"title":"y = x²: perfectly linked","xd":[-5.6,5.6],"yd":[0,27],"yt":[],"xt":[[-5,"−5"],[0,"0"],[5,"5"]],"pl":14,"pr":14},{"series":"pq","chart":"sq","pts":[[-5.2,27.040000000000003],[-4.8,23.04],[-4.4,19.360000000000003],[-4.0,16.0],[-3.6,12.96],[-3.2,10.240000000000002],[-2.8,7.839999999999999],[-2.4,5.76],[-2.0,4.0],[-1.6,2.5600000000000005],[-1.2,1.44],[-0.8,0.6400000000000001],[-0.4,0.16000000000000003],[0.0,0.0],[0.4,0.16000000000000003],[0.8,0.6400000000000001],[1.2,1.44],[1.6,2.5600000000000005],[2.0,4.0],[2.4,5.76],[2.8,7.839999999999999],[3.2,10.240000000000002],[3.6,12.96],[4.0,16.0],[4.4,19.360000000000003],[4.8,23.04],[5.2,27.040000000000003]],"tone":null,"dash":true,"ms":800},{"dot":"q0","chart":"sq","at":[-5,25],"text":"","tone":"blue"},{"dot":"q1","chart":"sq","at":[-4,16],"text":"","tone":"blue"},{"dot":"q2","chart":"sq","at":[-3,9],"text":"","tone":"blue"},{"dot":"q3","chart":"sq","at":[-2,4],"text":"","tone":"blue"},{"dot":"q4","chart":"sq","at":[-1,1],"text":"","tone":"blue"},{"dot":"q5","chart":"sq","at":[0,0],"text":"","tone":"blue"},{"dot":"q6","chart":"sq","at":[1,1],"text":"","tone":"blue"},{"dot":"q7","chart":"sq","at":[2,4],"text":"","tone":"blue"},{"dot":"q8","chart":"sq","at":[3,9],"text":"","tone":"blue"},{"dot":"q9","chart":"sq","at":[4,16],"text":"","tone":"blue"},{"dot":"q10","chart":"sq","at":[5,25],"text":"","tone":"blue"},{"series":"flat","chart":"sq","pts":[[-5.4,10],[5.4,10]],"tone":"amber","ms":600,"label":"r = 0","lat":[0,10],"ldx":0,"ldy":-16}]},{"cap":"Trap two: correlation is not causation. Ice cream sales and drownings rise together, but neither causes the other. Warm weather drives both. In markets, two currencies can move together because both follow the dollar.","do":[{"box":"sun","x":310,"y":620,"w":120,"h":64,"text":"warm\nweather","tone":"amber","size":19},{"box":"ice","x":470,"y":548,"w":120,"h":64,"text":"ice cream\nsales","tone":"blue","size":18},{"box":"drown","x":470,"y":690,"w":120,"h":64,"text":"drownings","tone":"blue","size":18},{"arrow":["sun","ice"],"tone":"amber"},{"arrow":["sun","drown"],"tone":"amber"},{"note":"nc","x":530,"y":645,"text":"r high,\nno cause","size":17,"anchor":"middle","tone":"red"}]},{"cap":"On a desk, the slope is the working number. Sharpe (1963–64) made a stock's beta a regression slope against the market. Ederington (1979) used the same slope as the hedge ratio for financial futures. What is left over is the alpha, or the spread.","do":[{"box":"beta","x":10,"y":778,"w":580,"h":74,"text":"beta and hedge ratio = Cov ÷ Var\nSharpe 1963–64 · Ederington 1979","tone":"green","size":19}]}]}</script>
+  </div>
+  <!-- WB:primer_correlation_regression:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -694,6 +798,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2015-01-14">
+    <div class="tl-drill-label">Scenario drill · 14 January 2015</div>
+    <h3>A near-perfect hedge ratio, built on a policy</h3>
+    <p>Since September 2011 the Swiss National Bank has held EUR/CHF at a floor of 1.20. Because the franc is tied to the euro, USD/CHF and EUR/USD have moved almost exactly opposite each other for three years. You are long EUR/USD and hedge it with USD/CHF, using a regression slope fitted over that window. The fit is superb: the correlation is close to minus one. What does the regression tell you about tomorrow?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">With a correlation this close to minus one over three years, the hedge is near-perfect and will stay that way.<div class="tl-drill-why">A correlation describes the window it was measured in. This one exists because of a policy, the floor, not because of anything permanent in the two currencies. The number cannot tell you whether the cause will last.</div></li>
+      <li data-verdict="good">The lockstep comes from the floor, not from nature. Treat the slope as a description of the past window and size the trade as if the hedge could fail.<div class="tl-drill-why">This is the lesson's trap box in action: a high correlation proves only that two things moved together over the sample, not that the relationship survives into the next window. Ask what is causing the correlation, and what happens if it goes.</div></li>
+      <li data-verdict="ok">Re-fit the slope over a longer window that includes the years before the floor.<div class="tl-drill-why">Mixing regimes gives a different, less flattering slope, which is a useful warning. But it is still a summary of the past. It does not tell you what happens on the day the floor goes.</div></li>
+      <li data-verdict="bad">Increase the position. The hedge removes almost all the risk.<div class="tl-drill-why">A hedge is only as good as the relationship behind it. Leaning harder on a relationship that a single policy decision could end is exactly backwards.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> On Thursday 15 January 2015 the Swiss National Bank scrapped the 1.20 floor without warning. Within minutes the franc surged against both the euro and the dollar, and EUR/CHF traded far below 1.10 that day. The lockstep the regression had measured for three years broke in a morning. A slope fitted over a window describes that window; it is not a law.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -804,6 +921,26 @@
     <li>Francis Anscombe, <em>"Graphs in Statistical Analysis,"</em> The American Statistician, 1973 — the origin of "Anscombe's quartet," four datasets with nearly identical means, variances, correlations, and regression lines despite looking completely different when plotted; the canonical illustration of why a scatter plot, not just the summary statistics, always belongs in the analysis.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-stats-normal.html">Descriptive Statistics &amp; the Normal Distribution</a> <span>· mean, variance and σ for one series</span></li>
+        <li><a href="primer-probability.html">Probability &amp; Random Variables</a> <span>· expectation, the average the formulas use</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="cointegration.html">Cointegration &amp; Statistical Arbitrage</a> <span>· a regression on price levels, and when it holds</span></li>
+        <li><a href="kalman-filter.html">The Kalman Filter &amp; Adaptive Relationships</a> <span>· a hedge ratio that updates as it drifts</span></li>
+        <li><a href="regression-diagnostics.html">Regression Diagnostics: Durbin-Watson, Breusch-Pagan &amp; Jarque-Bera</a> <span>· check the errors before trusting a p-value</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every beta, hedge ratio and "alpha" you will see is a regression slope or what is left after one, and knowing what a correlation cannot tell you keeps you out of hedges that break.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="primer-probability.html">← Probability &amp; Random Variables</a>
@@ -975,9 +1112,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

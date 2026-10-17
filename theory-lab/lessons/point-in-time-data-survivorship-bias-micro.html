@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Point-in-Time Data &amp; Survivorship Bias — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -131,7 +132,19 @@
       </div>
     </section>
 
+    <!-- WB:point_in_time_data_survivorship_bias-deck:START -->
     <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Vintages and survivors, drawn step by step</h2>
+      <!-- WB:point_in_time_data_survivorship_bias:START -->
+      <div class="wb" data-title="Vintages and survivors, drawn step by step">
+        <script type="application/json">{"w":600,"h":775,"intro":"One March GDP figure and three answers, then a hundred funds and the twenty nobody remembers. Press play, or step through.","steps":[{"cap":"A statistics office will publish a figure for March GDP. On 31 March the month is over, but the number does not exist yet.","do":[{"icon":"stat","name":"govt","x":60,"y":6,"s":0.7,"tone":"blue","label":"statistics office","lsize":17},{"line":"tl","points":[[30,170],[575,170]],"tone":null,"width":3,"ms":900},{"line":"t0","points":[[40.0,160],[40.0,180]],"width":3,"ms":200},{"note":"d0","x":48.0,"y":196,"text":"Mar 31","size":17,"anchor":"middle"}]},{"cap":"28 April: the first print. March GDP is 1.9%. Two kinds of store record it: one keeps a single current value, the other keeps every dated version.","do":[{"line":"t1","points":[[202.4,160],[202.4,180]],"width":3,"ms":200},{"chip":"v1","x":202.4,"y":136,"text":"1.9%","tone":"blue"},{"note":"d1","x":202.4,"y":196,"text":"Apr 28","size":17,"anchor":"middle","tone":"blue"},{"box":"over","x":20,"y":262,"w":260,"h":80,"text":"current-value table","tone":"red","sub":"March: 1.9%","size":19},{"box":"snap","x":320,"y":262,"w":260,"h":80,"text":"dated snapshot store","tone":"green","sub":"1.9 (Apr 28)","size":19}]},{"cap":"First, a test. A backtest asks: what was March GDP as of 15 April? The honest answer is nothing. The month had ended, but the figure was not published until 28 April.","do":[{"chip":"q1","x":127.0,"y":230,"text":"as of Apr 15: none","tone":"red"}]},{"cap":"26 May: the first revision. March GDP is now 1.6%. The current-value table overwrites 1.9 in place, so the first print is gone. The snapshot store adds a new dated record.","do":[{"hide":"q1"},{"line":"t2","points":[[364.8,160],[364.8,180]],"width":3,"ms":200},{"chip":"v2","x":364.8,"y":136,"text":"1.6%","tone":"amber"},{"note":"d2","x":364.8,"y":196,"text":"May 26","size":17,"anchor":"middle","tone":"amber"},{"sub":"over","text":"March: 1.6%"},{"pulse":"over"},{"sub":"snap","text":"1.9 · 1.6"}]},{"cap":"25 June: the second revision, 1.4%. Three different numbers, all called March GDP. The table now only knows the last one.","do":[{"line":"t3","points":[[538.8,160],[538.8,180]],"width":3,"ms":200},{"chip":"v3","x":538.8,"y":136,"text":"1.4%","tone":"green"},{"note":"d3","x":528.8,"y":196,"text":"Jun 25","size":17,"anchor":"middle","tone":"green"},{"sub":"over","text":"March: 1.4%"},{"pulse":"over"},{"sub":"snap","text":"1.9 · 1.6 · 1.4"}]},{"cap":"Now a backtest asks for March GDP as of 30 May. The snapshot store returns 1.6%, the last version published by then. The current-value table returns 1.4%, a number nobody had until 25 June. That is lookahead hiding in an ordinary-looking history.","do":[{"chip":"q2","x":398.0,"y":230,"text":"as of May 30?","tone":"red"},{"note":"a1","x":150,"y":364,"text":"says 1.4%: from the future","size":18,"anchor":"middle","tone":"red"},{"note":"a2","x":450,"y":364,"text":"says 1.6%: correct","size":18,"anchor":"middle","tone":"green"},{"cross":"over"}]},{"cap":"The second trap is about which rows exist at all. A hundred funds start a decade. Each square here is ten funds.","do":[{"box":"f0","x":20,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f1","x":76,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f2","x":132,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f3","x":188,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f4","x":244,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f5","x":300,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f6","x":356,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f7","x":412,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f8","x":468,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17},{"box":"f9","x":524,"y":404,"w":46,"h":40,"text":"10","tone":"blue","size":17}]},{"cap":"Twenty of them do so badly they are closed or merged away, averaging −15% a year before they fold. They vanish from any list of funds that are open today.","do":[{"cross":"f8"},{"cross":"f9"},{"dim":"f8"},{"dim":"f9"},{"note":"gone","x":512,"y":470,"text":"20 closed","size":18,"anchor":"middle","tone":"red"}]},{"cap":"A database of funds open today can only average the 80 survivors: 9% a year. No single number in it is wrong.","do":[{"chart":"avg","x":20,"y":488,"w":340,"h":240,"title":"Average return, % a year","xd":[0.4,3.6],"yd":[-23,14],"yt":[[-15,"−15"],[0,"0"],[9,"9"]],"xt":[[1,"survivors"],[2,"all 100"],[3,"closed"]],"zero":true,"pl":44,"pt":48},{"bars":"b1","chart":"avg","data":[[1,9,"9%","amber"]],"bw":48,"ms":900}]},{"cap":"Put the 20 back. 80 × 9 minus 20 × 15 is 720 − 300 = 420, spread over 100 funds: 4.2%. The survivors-only figure is more than double the truth.","do":[{"bars":"b2","chart":"avg","data":[[3,-15,"−15%","red"]],"bw":48,"ms":900},{"bars":"b3","chart":"avg","data":[[2,4.2,"4.2%","green"]],"bw":48,"ms":900}]},{"cap":"It can do worse than shift an average. In 1992 Brown, Goetzmann, Ibbotson and Ross simulated managers with no skill at all, closed the funds whose results fell far enough, and the standard test then found winners kept winning. The filter made the pattern.","do":[{"hide":"gone"},{"box":"hot","x":378,"y":496,"w":202,"h":160,"text":"1992:\nno-skill managers\n+ a closing rule\n= \"hot hands\"","tone":"red","size":18}]},{"cap":"Two rules follow. Key every query to the date a number was published, and keep the dead in the universe.","do":[{"note":"end","x":300,"y":756,"text":"ask what was known on the day, and who was still in the room","size":18,"anchor":"middle","tone":"amber"}]}]}</script>
+      </div>
+      <!-- WB:point_in_time_data_survivorship_bias:END -->
+    </section>
+    <!-- WB:point_in_time_data_survivorship_bias-deck:END -->
+
+    <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Two ways to build a historical basket — only one tells the truth</h2>
       <p class="sl-sub">Same 8-instrument basket, formed 10 years ago. Two of them didn't make it.</p>
@@ -159,7 +172,7 @@
       <p class="sl-p">A point-in-time universe is genuinely harder and more expensive to build and maintain than a "current universe, backfilled" one — it has to track membership <em>as of each historical date</em>, not just today's roster. That extra cost is the entire difference between the two panels above.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The gap compounds the further back you look</h2>
       <p class="sl-sub">Same basket, cumulative return over 10 years, computed two ways.</p>
@@ -182,7 +195,7 @@
       <p class="sl-p">Both lines start at the same point, because at year 0 nothing has failed yet — there's nothing to exclude. Every year that passes gives another instrument the chance to fail and drop out of "what's active today," so the survivors-only line's overstatement keeps compounding. The gap isn't a rounding error — it's nearly triple.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Turn up the failure rate</h2>
       <p class="sl-sub">Survivors always average +9%/yr. Drag the slider to see how much of the basket eventually failed, at −15%/yr before folding.</p>
@@ -205,7 +218,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Compute it yourself: naive vs. true average</h2>
       <p class="sl-sub">Enter a survivor count/return and a failure count/return. Blank or invalid counts show "—" instead of breaking.</p>
@@ -236,7 +249,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">What's actually built here, checked against the current code</h2>
       <p class="sl-sub">This deck's claims about this repo specifically — not about the industry generally — verified against the source, on this date.</p>
@@ -251,7 +264,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11 · It actually happened</div>
       <h2 class="sl-h2">1992: persistence with no skill in it</h2>
       <div class="sl-callout amber">
@@ -271,7 +284,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <!-- DESK:START -->
@@ -286,7 +299,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -337,7 +350,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -469,5 +482,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

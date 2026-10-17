@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Execution Algorithms — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -217,7 +218,19 @@
       <p class="sl-p">Trading more aggressively up front — exactly what the earlier Almgren-Chriss lesson's optimal trajectory does under higher risk-aversion — exists specifically to shrink the gap between the arrival price and the realized execution price: less exposure to drift while the order is still open and to opportunity cost, at the cost of more market impact (delay cost, incurred before trading starts, is untouched).</p>
     </section>
 
+    <!-- WB:execution_algorithms-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Slice it, score it: TWAP, VWAP, POV and the shortfall</h2>
+      <!-- WB:execution_algorithms:START -->
+      <div class="wb" data-title="Slice it, score it: TWAP, VWAP, POV and the shortfall">
+        <script type="application/json">{"w":600,"h":866,"intro":"One order, three ways to slice it, one honest way to score it, and the day a slicing rule fed on itself. The lesson's own numbers, step by step.","steps":[{"cap":"A portfolio manager decides to buy 40,000 shares. Send it all at once and you push the price up against yourself. Spread it out and the price can drift away while you wait. Every schedule here answers one question: spread it how?","do":[{"icon":"pm","name":"person","x":50,"y":10,"s":0.7,"tone":"blue","label":"portfolio manager","lsize":16},{"chip":"order","x":160,"y":46,"text":"buy 40,000","tone":"blue"},{"move":"order","x":236,"y":46,"ms":900},{"note":"q","x":446,"y":46,"text":"all at once, or spread out?","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"The market's own volume isn't flat. A typical liquid stock trades heavily at the open and close and lightly at midday: here 35%, 15%, 15% and 35% of the day. That is the U shape.","do":[{"chart":"vol","x":10,"y":120,"w":280,"h":260,"title":"Market volume, % of day","xd":[0.4,4.6],"yd":[0,42],"yt":[[0,"0"],[20,"20%"],[40,"40%"]],"xt":[[1,"Open"],[2,"Mid"],[3,"Mid"],[4,"Close"]],"pl":50},{"bars":"volb","chart":"vol","data":[[1,35.0,"35%","blue"],[2,15.0,"15%","blue"],[3,15.0,"15%","blue"],[4,35.0,"35%","blue"]],"bw":34,"ms":1000}]},{"cap":"TWAP slices by the clock: 40,000 ÷ 4 = 10,000 shares in every bucket. Simple and easy to check, but at midday 10,000 is a much bigger slice of a thin market than at the open.","do":[{"chart":"sched","x":310,"y":120,"w":280,"h":260,"title":"Your shares per bucket","xd":[0.4,4.6],"yd":[0,16500],"yt":[[0,"0"],[10000,"10k"]],"xt":[[1,"Open"],[2,"Mid"],[3,"Mid"],[4,"Close"]],"pl":50},{"series":"twap","chart":"sched","pts":[[0.5,10000],[4.5,10000]],"tone":"amber","dash":true,"ms":700,"label":"TWAP","lat":[2.5,10000],"ldy":-14}]},{"cap":"VWAP follows the volume curve instead: 40,000 × 35% = 14,000 at the open, 6,000 in each midday bucket and 14,000 at the close. Your order is never an outsized part of a quiet stretch.","do":[{"bars":"vwb","chart":"sched","data":[[1,14000,"14k","green"],[2,6000,"6k","green"],[3,6000,"6k","green"],[4,14000,"14k","green"]],"bw":34,"ms":1100}]},{"cap":"POV drops the schedule altogether and trades a fixed share of the volume that actually happens, say 10%. A busy market speeds it up and a quiet one slows it down, so you no longer know when you will finish.","do":[{"box":"pov","x":40,"y":398,"w":520,"h":66,"text":"POV: trade 10% of whatever volume happens","tone":"purple","size":19}]},{"cap":"Afterwards, score it with Implementation Shortfall. A separate order: 10,000 shares, decided at $50.00, but trading only began at $50.05. That drift, $0.05 on the 9,000 shares that filled, is delay cost: $450.","do":[{"chart":"is","x":10,"y":482,"w":580,"h":280,"title":"Implementation Shortfall, $","xd":[0.4,4.6],"yd":[0,1750],"yt":[[0,"$0"],[500,"500"],[1000,"1,000"],[1500,"1,500"]],"xt":[[1,"delay"],[2,"impact"],[3,"unfilled"],[4,"total"]],"pl":62},{"bars":"isd","chart":"is","data":[[1,450,"$450","blue"]],"bw":60,"ms":800}]},{"cap":"The order filled in two clips, 6,000 at $50.10 and 3,000 at $50.20, an average of about $50.1333. The gap above the $50.05 start is your own footprint: about $0.0833 × 9,000 = $750 of market impact.","do":[{"bars":"isi","chart":"is","data":[[2,750,"$750","amber"]],"bw":60,"ms":800}]},{"cap":"1,000 shares never filled, and the stock closed at $50.30. Charged against the $50.00 decision price, that is $0.30 × 1,000 = $300 of opportunity cost: the price of not finishing.","do":[{"bars":"iso","chart":"is","data":[[3,300,"$300","purple"]],"bw":60,"ms":800}]},{"cap":"Total: $450 + $750 + $300 = $1,500, or 30 basis points of a $500,000 order. One headline number would hide three different causes: hesitation, footprint and giving up.","do":[{"bars":"ist","chart":"is","data":[[4,1500,"$1,500","red"]],"bw":60,"ms":900},{"box":"tot","x":40,"y":780,"w":520,"h":66,"text":"$1,500 = 30 bp of $500,000","tone":"red","size":20}]},{"cap":"Now a real POV order. 6 May 2010: a fund complex hedges by selling 75,000 E-mini contracts, about $4.1 billion, with an algorithm set to sell 9% of the previous minute's volume, without regard to price or time.","do":[{"hide":"pm"},{"hide":"order"},{"hide":"q"},{"hide":"vol"},{"hide":"volb"},{"hide":"sched"},{"hide":"twap"},{"hide":"vwb"},{"hide":"pov"},{"hide":"is"},{"hide":"isd"},{"hide":"isi"},{"hide":"iso"},{"hide":"ist"},{"hide":"tot"},{"icon":"fund","name":"bank","x":40,"y":10,"s":0.7,"tone":"red","label":"fund, hedging","sym":"$","lsize":17},{"box":"algo","x":200,"y":18,"w":360,"h":66,"text":"POV: sell 9% of last minute's\nvolume, no price or time limit","tone":"red","size":18}]},{"cap":"Intermediaries buy the first contracts, then pass them among themselves: more than 27,000 in 14 seconds for a net change of about 200. That volume tells the algorithm to sell faster, which feeds more contracts into the loop.","do":[{"box":"vol2","x":200,"y":196,"w":360,"h":66,"text":"volume soars: 27,000+ contracts\nin 14 s, net change ≈ 200","tone":"amber","size":18},{"arrow":["algo","vol2"],"label":"sells into","tone":"red","bend":-50},{"arrow":["vol2","algo"],"label":"sell faster","tone":"amber","bend":-50,"id":"loop"},{"icon":"h1","name":"crowd","x":40,"y":170,"s":0.66,"tone":"amber","label":"fast traders","lsize":17}]},{"cap":"The 75,000 contracts went through in about 20 minutes. A similar sale before had taken more than five hours. Volume is not liquidity: E-mini buy-side depth fell below 1% of the morning's. A price limit and a participation cap stop that loop.","do":[{"chart":"mins","x":10,"y":320,"w":580,"h":260,"title":"Time to sell the same-size order, minutes","xd":[0.4,2.6],"yd":[0,360],"yt":[[0,"0"],[120,"120"],[240,"240"]],"xt":[[1,"6 May 2010, POV"],[2,"earlier sale"]],"pl":56},{"bars":"minb","chart":"mins","data":[[1,20,"≈ 20 min","red"],[2,300,"more than 5 hours","blue"]],"bw":90,"ms":1100},{"box":"lim","x":40,"y":600,"w":520,"h":66,"text":"volume ≠ liquidity · give POV a price limit","tone":"green","size":19}]}]}</script>
+      </div>
+      <!-- WB:execution_algorithms:END -->
+    </section>
+    <!-- WB:execution_algorithms-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">How aggressive should the front-load be?</h2>
       <p class="sl-sub">Drag the slider. At 0% the schedule is flat — TWAP-like. At 100% it front-loads hard, chasing the arrival price before it can drift.</p>
@@ -249,7 +262,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Which one you pick depends on what you're optimizing</h2>
       <div class="sl-icard-grid">
@@ -277,7 +290,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this reasoning goes wrong — and what actually runs here</h2>
       <div class="sl-icard-grid">
@@ -293,7 +306,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · It actually happened</div>
       <h2 class="sl-h2">6 May 2010: nine percent of the volume, at any price</h2>
       <div class="sl-callout amber">
@@ -313,7 +326,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and the desk's verdict<!-- DESK:END --></h2>
       <div class="sl-callout purple">
@@ -328,7 +341,7 @@
       <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -370,7 +383,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -534,5 +547,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

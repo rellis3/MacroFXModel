@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Limits, Integrals &amp; Annuity Factors — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -41,6 +42,57 @@
       <li><strong>How it reached trading:</strong> de Witt priced Dutch annuities as sums of discounted payments in 1671, and the same annuity factor now sets par swap rates, swap PV01s and level mortgage payments.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 226" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A rising curve of the annuity factor at a 5% yield against the number of yearly $1 payments, from 0 to 80 years. It passes 4.33 at 5 years, 12.46 at 20 years, 17.16 at 40 years and 19.60 at 80 years, climbing towards a dashed horizontal line at 20, the perpetuity value one over the yield, without ever crossing it.">
+      <line class="tlp-line" x1="60" y1="200" x2="570" y2="200"/>
+      <line class="tlp-line" x1="60" y1="200" x2="60" y2="40"/>
+      <line class="tlp-line green dash" x1="60" y1="50" x2="570" y2="50"/>
+      <text class="tlp-green" x="566" y="40" text-anchor="end" font-size="14" font-weight="700">perpetuity limit: 1 ÷ 0.05 = 20</text>
+      <text class="tlp-text3" x="66" y="28" font-size="12">value today of $1 a year, at 5%</text>
+      <polyline class="tlp-line purple thick" points="60.0,200.0 63.1,196.4 66.2,192.9 69.4,189.4 72.5,186.1 75.6,182.8 78.8,179.6 81.9,176.5 85.0,173.4 88.1,170.4 91.2,167.5 94.4,164.7 97.5,161.9 100.6,159.2 103.8,156.6 106.9,154.0 110.0,151.5 113.1,149.1 116.2,146.7 119.4,144.4 122.5,142.1 125.6,139.9 128.8,137.7 131.9,135.6 135.0,133.5 138.1,131.5 141.2,129.5 144.4,127.6 147.5,125.8 150.6,123.9 153.8,122.2 156.9,120.4 160.0,118.7 163.1,117.1 166.2,115.4 169.4,113.9 172.5,112.3 175.6,110.8 178.8,109.4 181.9,107.9 185.0,106.5 188.1,105.2 191.2,103.8 194.4,102.5 197.5,101.3 200.6,100.0 203.8,98.8 206.9,97.7 210.0,96.5 213.1,95.4 216.2,94.3 219.4,93.2 222.5,92.2 225.6,91.2 228.8,90.2 231.9,89.2 235.0,88.3 238.1,87.3 241.2,86.4 244.4,85.6 247.5,84.7 250.6,83.9 253.8,83.1 256.9,82.3 260.0,81.5 263.1,80.7 266.2,80.0 269.4,79.3 272.5,78.6 275.6,77.9 278.8,77.2 281.9,76.5 285.0,75.9 288.1,75.3 291.2,74.7 294.4,74.1 297.5,73.5 300.6,72.9 303.8,72.4 306.9,71.8 310.0,71.3 313.1,70.8 316.2,70.3 319.4,69.8 322.5,69.3 325.6,68.9 328.8,68.4 331.9,68.0 335.0,67.5 338.1,67.1 341.2,66.7 344.4,66.3 347.5,65.9 350.6,65.5 353.8,65.1 356.9,64.8 360.0,64.4 363.1,64.1 366.2,63.7 369.4,63.4 372.5,63.1 375.6,62.8 378.8,62.5 381.9,62.2 385.0,61.9 388.1,61.6 391.2,61.3 394.4,61.0 397.5,60.8 400.6,60.5 403.8,60.2 406.9,60.0 410.0,59.8 413.1,59.5 416.2,59.3 419.4,59.1 422.5,58.9 425.6,58.6 428.8,58.4 431.9,58.2 435.0,58.0 438.1,57.8 441.2,57.6 444.4,57.5 447.5,57.3 450.6,57.1 453.8,56.9 456.9,56.8 460.0,56.6 463.1,56.4 466.2,56.3 469.4,56.1 472.5,56.0 475.6,55.8 478.8,55.7 481.9,55.6 485.0,55.4 488.1,55.3 491.2,55.2 494.4,55.1 497.5,54.9 500.6,54.8 503.8,54.7 506.9,54.6 510.0,54.5 513.1,54.4 516.2,54.3 519.4,54.2 522.5,54.1 525.6,54.0 528.8,53.9 531.9,53.8 535.0,53.7 538.1,53.6 541.2,53.5 544.4,53.4 547.5,53.3 550.6,53.3 553.8,53.2 556.9,53.1 560.0,53.0"/>
+      <circle class="tlp-blue" cx="91.2" cy="167.5" r="5"/>
+      <circle class="tlp-blue" cx="185.0" cy="106.5" r="5"/>
+      <circle class="tlp-blue" cx="310.0" cy="71.3" r="5"/>
+      <circle class="tlp-green" cx="560.0" cy="53.0" r="6"/>
+      <text class="tlp-text" x="100" y="186" font-size="13" font-weight="700">5 yrs: 4.33</text>
+      <text class="tlp-text" x="195" y="126" font-size="13" font-weight="700">20 yrs: 12.46</text>
+      <text class="tlp-text" x="318" y="93" font-size="13" font-weight="700">40 yrs: 17.16</text>
+      <text class="tlp-text" x="556" y="76" text-anchor="end" font-size="13" font-weight="700">80 yrs: 19.60</text>
+      <text class="tlp-text3" x="52" y="204" text-anchor="end" font-size="12">0</text>
+      <text class="tlp-text3" x="52" y="54" text-anchor="end" font-size="12">20</text>
+      <text class="tlp-text3" x="566" y="218" text-anchor="end" font-size="12">number of payments, n →</text>
+    </svg>
+    <figcaption>Each extra year adds a smaller discounted dollar, so the sum climbs ever more slowly towards one over the yield. That approach without arrival is a limit, and the same idea, applied to a slope instead of a sum, gives duration.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">A lesson on limits and integrals. I trade rates. Why should I care?</p>
+      <p data-who="Quant">Because the numbers on a rates risk screen are these ideas wearing trading names. Duration is a derivative. A perpetuity is a limit. Continuous discounting is an integral.</p>
+      <p data-who="Trader">Start with the limit.</p>
+      <p data-who="Quant">A limit is where something is heading as you push an input closer and closer to a target, even if it never arrives. Walk half the remaining distance to a door, again and again. You never touch it, but you get as close as anyone likes.</p>
+      <p data-who="Trader">And the derivative?</p>
+      <p data-who="Quant">Shrink the gap between two yields towards zero and watch the average price change per unit of yield settle down. Where it settles is the slope of the price curve. Flip the sign and divide by the price, and you have modified duration.</p>
+      <p data-who="Trader">Give me a number.</p>
+      <p data-who="Quant">Take one dollar a year for five years, at four percent. Add up the five discount factors and you get about four dollars forty-five. Its modified duration comes out at about two point eight one years. Bump the yield ten basis points each way, reprice, and you get the same answer to four decimal places.</p>
+      <p data-who="Trader">So the formula and the bump agree.</p>
+      <p data-who="Quant">They have to. The bump is the same limit with a small gap instead of an infinitely small one. That is how desks get duration for callable bonds that have no clean formula: bump the curve, reprice, divide.</p>
+      <p data-who="Trader">Where does the annuity factor itself come from?</p>
+      <p data-who="Quant">It is a geometric series. Each payment is worth the one before it, divided by one plus the yield. Multiply the whole sum by one plus the yield, subtract the original, and almost everything cancels. What is left is one minus the last discount factor, divided by the yield.</p>
+      <p data-who="Trader">And the perpetuity?</p>
+      <p data-who="Quant">Let the payments run forever. The last discount factor shrinks to nothing, so the value heads to one over the yield. At five percent, a dollar a year forever is worth twenty dollars today. Eighty years of payments already gets you to nineteen sixty.</p>
+      <p data-who="Trader">That sounds like old maths.</p>
+      <p data-who="Quant">Very old. Johan de Witt valued Dutch government life annuities as sums of discounted payments in 1671. The same sum now sets par swap rates and a swap's sensitivity to its fixed rate.</p>
+      <p data-who="Trader">Any trap?</p>
+      <p data-who="Quant">Duration is a straight-line approximation. For a small move it is accurate. For a big move the price curve bends away from it, and you need convexity.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">Duration is a derivative, a perpetuity is a limit, and the annuity factor is a geometric series you can derive in three lines.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -144,6 +196,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">The annuity factor and its perpetuity limit, one step at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ A(n,y) = \color{#fbbf24}{x + x^2 + \cdots + x^n}, \qquad x = (1+y)^{-1} \]</div>
+      <p>Start with the definition: the present value of $1 a period for \(n\) periods is the sum of \(n\) discount factors. Each one is the last, divided by \(1+y\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ (1+y)A = \color{#fbbf24}{1} + x + x^2 + \cdots + x^{n-1} \]</div>
+      <p>Multiply the whole sum by \(1+y\). Every power of \(x\) drops by one, and a new leading 1 appears.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ (1+y)A - A = 1 - \color{#fbbf24}{x^n} \]</div>
+      <p>Subtract the original sum. Every middle term cancels, leaving only the 1 at the front and the last term \(x^n\) at the back.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{y}A = 1-(1+y)^{-n} \quad\Longrightarrow\quad A(n,y) = \frac{1-(1+y)^{-n}}{y} \]</div>
+      <p>The left side is just \(yA\). Divide by \(y\) and you have the closed form. At \(n=5\), \(y=4\%\): \(A = 0.17807/0.04 \approx 4.4518\), the same as adding the five discount factors by hand.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \lim_{n\to\infty} \frac{1-(1+y)^{-n}}{y} = \color{#10b981}{\frac{1}{y}} \]</div>
+      <p>Let the payments run forever. For \(y&gt;0\), \((1+y)^{-n}\) shrinks to zero, so a perpetuity is worth \(1/y\): 20 at a 5% yield, 25 at 4%.</p>
+    </div>
+  </div>
 
   <h3>What a limit formally captures</h3>
   <p>
@@ -565,6 +641,10 @@
       either input and both the annuity factor and its modified/Macaulay
       duration recalculate instantly from the closed forms derived above.
     </p>
+    <div class="tl-predict" data-answer="24.99" data-tol="1" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> At \(y = 4\%\), five years of $1 payments are worth 4.4518 today. Keep the yield at 4% and stretch the stream to \(n = 200\) years. What is the annuity factor now? Lock in a guess, then type 200 into the periods field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 24.99.</strong> \((1.04)^{-200}\) is only about 0.0004, so \(A \approx (1 - 0.0004)/0.04 \approx 24.99\). Forty times as many payments, but not even six times the value, because the far payments are worth almost nothing today. The sum is closing in on the perpetuity limit \(1/0.04 = 25\). Now try \(n = 1000\) and watch it settle on 25.0000.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Periods \(n\)</span></div>
@@ -625,6 +705,12 @@
       <p>Imagine you're holding a seesaw that's about to tip one way, and you have a second, smaller seesaw you can load up to balance it. DV01 tells you exactly how heavy each side tips for a tiny nudge. Once you know that number for both seesaws, balancing them isn't a guess — it's just dividing one number by the other to find out how many small seesaws it takes to cancel the big one.</p>
     </div>
   </div>
+
+  <!-- WB:limits_integrals_annuity_factors:START -->
+  <div class="wb" id="wb-limits_integrals_annuity_factors" data-title="From a stream of dollars to a limit and a duration">
+    <script type="application/json">{"w":600,"h":770,"intro":"One dollar a year for five years, at 4%. Watch it become one number, then a limit, then a duration. Press play, or step through.","steps":[{"cap":"Start with a stream: $1 at the end of each of the next five years. The yield is 4%. What is the whole stream worth today?","do":[{"icon":"c1","name":"coin","x":18,"y":8,"s":0.44,"tone":"amber","label":"yr 1","sym":"$","lsize":16},{"icon":"c2","name":"coin","x":90,"y":8,"s":0.44,"tone":"amber","label":"yr 2","sym":"$","lsize":16},{"icon":"c3","name":"coin","x":162,"y":8,"s":0.44,"tone":"amber","label":"yr 3","sym":"$","lsize":16},{"icon":"c4","name":"coin","x":234,"y":8,"s":0.44,"tone":"amber","label":"yr 4","sym":"$","lsize":16},{"icon":"c5","name":"coin","x":306,"y":8,"s":0.44,"tone":"amber","label":"yr 5","sym":"$","lsize":16}]},{"cap":"Bring each dollar back to today by dividing by 1.04 once for every year you wait. Year 1 is worth 0.9615, year 5 only 0.8219. Each bar is the one before, divided by 1.04: a geometric series.","do":[{"chart":"df","x":10,"y":92,"w":360,"h":228,"title":"Each $1, worth today","xd":[0.4,5.6],"yd":[0,1.18],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5"]],"pl":40,"pr":12},{"bars":"dfb","chart":"df","data":[[1,0.9615,"0.96","blue"],[2,0.9246,"0.92","blue"],[3,0.889,"0.89","blue"],[4,0.8548,"0.85","blue"],[5,0.8219,"0.82","blue"]],"bw":34,"ms":1300}]},{"cap":"Add the five bars: 0.9615 + 0.9246 + 0.8890 + 0.8548 + 0.8219 = 4.4518. That one number is the annuity factor. Multiply any level payment by it to get its value today.","do":[{"box":"A","x":388,"y":112,"w":202,"h":92,"text":"annuity factor\nA(5, 4%)","tone":"purple","sub":"0","size":18},{"count":"A","from":0,"to":4.4518,"dp":4,"ms":1300}]},{"cap":"No need to add terms one by one. Multiply the series by 1.04, subtract the original, and every middle term cancels: A = (1 − 1.04⁻⁵) ÷ 0.04 = 4.4518. Same number, in three lines of algebra.","do":[{"note":"cf","x":489,"y":238,"text":"A = (1 − 1.04⁻⁵) ÷ 0.04","size":18,"anchor":"middle","tone":"purple"},{"note":"cf2","x":489,"y":270,"text":"= 0.17807 ÷ 0.04","size":18,"anchor":"middle","tone":"purple"}]},{"cap":"Now let the stream run longer at the same 4%. Ten years is worth 8.11, twenty years 13.59, fifty years 21.48. Each extra year adds a smaller discounted dollar.","do":[{"chart":"perp","x":10,"y":334,"w":580,"h":196,"title":"Value of $1 a year, n years, at 4%","xd":[0,150],"yd":[0,28],"yt":[[0,"0"],[25,"25"]],"xt":[[0,"0"],[50,"50"],[100,"100"],[150,"150"]],"pl":40,"pr":16},{"series":"pc","chart":"perp","pts":[[1,0.962],[2,1.886],[3,2.775],[4,3.63],[5,4.452],[6,5.242],[7,6.002],[8,6.733],[9,7.435],[10,8.111],[11,8.76],[12,9.385],[13,9.986],[14,10.563],[15,11.118],[16,11.652],[17,12.166],[18,12.659],[19,13.134],[20,13.59],[21,14.029],[22,14.451],[23,14.857],[24,15.247],[25,15.622],[26,15.983],[27,16.33],[28,16.663],[29,16.984],[30,17.292],[31,17.588],[32,17.874],[33,18.148],[34,18.411],[35,18.665],[36,18.908],[37,19.143],[38,19.368],[39,19.584],[40,19.793],[41,19.993],[42,20.186],[43,20.371],[44,20.549],[45,20.72],[46,20.885],[47,21.043],[48,21.195],[49,21.341],[50,21.482],[51,21.617],[52,21.748],[53,21.873],[54,21.993],[55,22.109],[56,22.22],[57,22.327],[58,22.43],[59,22.528],[60,22.623],[61,22.715],[62,22.803],[63,22.887],[64,22.969],[65,23.047],[66,23.122],[67,23.194],[68,23.264],[69,23.33],[70,23.395],[71,23.456],[72,23.516],[73,23.573],[74,23.628],[75,23.68],[76,23.731],[77,23.78],[78,23.827],[79,23.872],[80,23.915],[81,23.957],[82,23.997],[83,24.036],[84,24.073],[85,24.109],[86,24.143],[87,24.176],[88,24.207],[89,24.238],[90,24.267],[91,24.295],[92,24.323],[93,24.349],[94,24.374],[95,24.398],[96,24.421],[97,24.443],[98,24.465],[99,24.485],[100,24.505],[101,24.524],[102,24.542],[103,24.56],[104,24.577],[105,24.593],[106,24.609],[107,24.624],[108,24.638],[109,24.652],[110,24.666],[111,24.678],[112,24.691],[113,24.703],[114,24.714],[115,24.725],[116,24.736],[117,24.746],[118,24.756],[119,24.765],[120,24.774],[121,24.783],[122,24.791],[123,24.799],[124,24.807],[125,24.814],[126,24.821],[127,24.828],[128,24.835],[129,24.841],[130,24.847],[131,24.853],[132,24.859],[133,24.864],[134,24.87],[135,24.875],[136,24.879],[137,24.884],[138,24.888],[139,24.893],[140,24.897],[141,24.901],[142,24.905],[143,24.908],[144,24.912],[145,24.915],[146,24.919],[147,24.922],[148,24.925],[149,24.928],[150,24.93]],"tone":"purple","ms":1800},{"dot":"p10","chart":"perp","at":[10,8.111],"text":"10 yrs: 8.11","tone":"blue","dx":8,"dy":4,"anchor":"start"},{"dot":"p50","chart":"perp","at":[50,21.482],"text":"50 yrs: 21.48","tone":"blue","dx":4,"dy":22,"anchor":"start"}]},{"cap":"Push n towards infinity and (1.04)⁻ⁿ shrinks to zero, so the value closes in on 1 ÷ 0.04 = 25, the value of $1 a year forever. 150 years already gives 24.93. It never crosses 25: that approach without arrival is a limit.","do":[{"series":"pl","chart":"perp","pts":[[0,25],[150,25]],"tone":"green","dash":true,"ms":700,"label":"perpetuity 1/y = 25","lat":[150,25],"ldx":-4,"ldy":-14,"lanchor":"end"},{"dot":"p150","chart":"perp","at":[150,24.93],"text":"","tone":"green"}]},{"cap":"Now hold the five years fixed and move the yield instead. The value falls as the yield rises, along a gently curved line. At 4% it is 4.4518.","do":[{"chart":"py","x":10,"y":546,"w":580,"h":214,"title":"A(5, y) as the yield moves","xd":[0.03,0.1],"yd":[3.65,4.62],"yt":[[4,"4.0"],[4.5,"4.5"]],"xt":[[0.04,"4%"],[0.06,"6%"],[0.08,"8%"],[0.1,"10%"]],"pl":48,"pr":16},{"series":"pyc","chart":"py","pts":[[0.03,4.5797],[0.035,4.5151],[0.04,4.4518],[0.045,4.39],[0.05,4.3295],[0.055,4.2703],[0.06,4.2124],[0.065,4.1557],[0.07,4.1002],[0.075,4.0459],[0.08,3.9927],[0.085,3.9406],[0.09,3.8897],[0.095,3.8397],[0.1,3.7908]],"tone":"chalk","ms":1400},{"dot":"y4","chart":"py","at":[0.04,4.4518],"text":"4.45 at 4%","tone":"amber","dx":8,"dy":-16,"anchor":"start"}]},{"cap":"Join 4% to 8%, a 400 basis-point gap, with a straight line. Its slope, −11.48, is the average fall in value per unit of yield over that gap. Honest, but not yet the derivative.","do":[{"series":"sec","chart":"py","pts":[[0.03,4.5666],[0.1,3.7632]],"tone":"blue","ms":900},{"dot":"y8","chart":"py","at":[0.08,3.9927],"text":"secant: −11.48","tone":"blue","dx":-8,"dy":-20,"anchor":"end"}]},{"cap":"Shrink the gap. As it heads to zero the line rotates onto the tangent, whose slope is the exact derivative: −12.51. Bump ±10bp and reprice, and you already get −12.506.","do":[{"dim":"sec"},{"dim":"y8"},{"series":"tan","chart":"py","pts":[[0.03,4.5769],[0.1,3.7015]],"tone":"purple","dash":true,"ms":800},{"note":"tl","x":330,"y":724,"text":"tangent: −12.51","size":18,"anchor":"middle","tone":"purple"}]},{"cap":"Divide by the value and flip the sign: 12.506 ÷ 4.4518 = 2.809 years. That is modified duration: not a separate formula, just this annuity, differentiated.","do":[{"box":"D","x":388,"y":240,"w":202,"h":76,"text":"modified duration","tone":"green","sub":"0","size":18},{"hide":"cf"},{"hide":"cf2"},{"count":"D","from":0,"to":2.809,"dp":3,"suf":" years","ms":1200}]},{"cap":"Desks put it to work as DV01. A $10 million short in a note with duration 8.50 moves $8,500 per basis point. At an illustrative $85 per futures contract, buy 100 contracts to go flat.","do":[{"box":"dv","x":388,"y":112,"w":202,"h":92,"text":"DV01 hedge","tone":"amber","sub":"8,500 ÷ 85 = 100","size":18},{"hide":"A"}]},{"cap":"One caution: the tangent is straight and the curve is not. Far from 4% the two pull apart, so a duration hedge is exact only for small moves. The bend that duration ignores is convexity.","do":[{"pulse":"tan"},{"pulse":"pyc"}]}]}</script>
+  </div>
+  <!-- WB:limits_integrals_annuity_factors:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -697,6 +783,19 @@
       silently produces a wrong number by a factor of \((1+y/m)\), usually
       small but never exactly zero.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative trading day</div>
+    <h3>You have just sold $10 million of 10-year notes</h3>
+    <p>You make markets in 10-year Treasury notes and have just sold $10,000,000 face of a note priced near par, with a modified duration of 8.50 years. That is a DV01 of $8,500 per basis point. The 10-year future you hedge with has a DV01 of about $85 per contract. You want to go home flat on rates. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Sell 100 futures, so both positions match.<div class="tl-drill-why">Selling futures adds a second short. A 1bp fall in yield would now cost about $17,000 instead of nothing. A short bond is hedged with a position that gains when yields fall, which is a long future.</div></li>
+      <li data-verdict="good">Buy 100 futures: $8,500 ÷ $85 per contract.<div class="tl-drill-why">The hedge ratio is one derivative divided by another. If yields rise 1bp the short note gains $8,500 and the futures lose $8,500. If yields fall, the reverse. Net roughly flat either way.</div></li>
+      <li data-verdict="ok">Buy 50 futures now and the rest only if yields start to fall.<div class="tl-drill-why">Half a hedge leaves about $4,250 per basis point open. That can be a deliberate view, but it is not going home flat, which is what you said you wanted.</div></li>
+      <li data-verdict="bad">Buy 85 futures, one for each dollar of the contract's DV01.<div class="tl-drill-why">That confuses the divisor with the answer. The number of contracts is your DV01 divided by theirs, not the contract's DV01 itself. At 85 contracts you would still have $1,275 per basis point open.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the lesson shows.</strong> This is an illustrative situation using the lesson's own numbers, not a dated event, and the $85 futures DV01 is itself an illustrative figure: real desks compute it from the cheapest-to-deliver bond. 100 contracts neutralise the first-order exposure. Because duration is a local slope, the hedge is only exact for small moves: after a large move both DV01s change, and the curvature that duration ignores is the subject of convexity.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -820,6 +919,26 @@
     <li>This Theory Lab's own <a href="calculus-for-finance.html">Calculus for Finance</a>, <a href="bond-pricing-ytm.html">Bond Pricing &amp; Yield to Maturity</a>, and <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a> lessons — the prerequisite this page builds on, and the two places its annuity-factor and duration derivations are used without being re-derived.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="calculus-for-finance.html">Calculus for Finance: Derivatives, Integrals &amp; Taylor Series</a> <span>· the derivative this lesson pushes into duration</span></li>
+        <li><a href="time-value-of-money.html">Time Value of Money</a> <span>· discount factors and continuous compounding</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="bond-pricing-ytm.html">Bond Pricing &amp; Yield to Maturity</a> <span>· the price formula this lesson differentiates</span></li>
+        <li><a href="duration-convexity.html">Duration &amp; Convexity</a> <span>· the curvature a duration hedge misses</span></li>
+        <li><a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a> <span>· the annuity factor at work in swap pricing</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> duration, DV01, PV01 and par swap rates are all this lesson's maths, so knowing where they come from tells you when they stop being accurate.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="calculus-for-finance.html">← Calculus for Finance</a>
@@ -978,9 +1097,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

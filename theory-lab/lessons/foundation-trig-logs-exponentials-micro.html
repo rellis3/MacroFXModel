@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Trigonometry, Logarithms &amp; Exponentials — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -298,7 +299,19 @@
       </div>
     </section>
 
+    <!-- WB:foundation_trig_logs_exponentials-deck:START -->
     <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Circles, compounding and returns that add up</h2>
+      <!-- WB:foundation_trig_logs_exponentials:START -->
+      <div class="wb" data-title="Circles, compounding and returns that add up">
+        <script type="application/json">{"w":600,"h":760,"intro":"A point walking round a circle, money growing every instant, and returns that finally add up. Real numbers from the lesson. Press play, or step through.","steps":[{"cap":"Picture a circle of radius 1. A point starts at the 3 o'clock position and walks anticlockwise round the rim.","do":[{"chart":"ci","x":10,"y":10,"w":240,"h":250,"title":"The unit circle","xd":[-1.35,1.35],"yd":[-1.35,1.35],"yt":[[-1,"−1"],[1,"1"]],"xt":[[-1,"−1"],[1,"1"]],"zero":true,"pl":30,"pr":8},{"series":"rim","chart":"ci","pts":[[1.0,0.0],[0.9945,0.1045],[0.9781,0.2079],[0.9511,0.309],[0.9135,0.4067],[0.866,0.5],[0.809,0.5878],[0.7431,0.6691],[0.6691,0.7431],[0.5878,0.809],[0.5,0.866],[0.4067,0.9135],[0.309,0.9511],[0.2079,0.9781],[0.1045,0.9945],[0.0,1.0],[-0.1045,0.9945],[-0.2079,0.9781],[-0.309,0.9511],[-0.4067,0.9135],[-0.5,0.866],[-0.5878,0.809],[-0.6691,0.7431],[-0.7431,0.6691],[-0.809,0.5878],[-0.866,0.5],[-0.9135,0.4067],[-0.9511,0.309],[-0.9781,0.2079],[-0.9945,0.1045],[-1.0,0.0],[-0.9945,-0.1045],[-0.9781,-0.2079],[-0.9511,-0.309],[-0.9135,-0.4067],[-0.866,-0.5],[-0.809,-0.5878],[-0.7431,-0.6691],[-0.6691,-0.7431],[-0.5878,-0.809],[-0.5,-0.866],[-0.4067,-0.9135],[-0.309,-0.9511],[-0.2079,-0.9781],[-0.1045,-0.9945],[-0.0,-1.0],[0.1045,-0.9945],[0.2079,-0.9781],[0.309,-0.9511],[0.4067,-0.9135],[0.5,-0.866],[0.5878,-0.809],[0.6691,-0.7431],[0.7431,-0.6691],[0.809,-0.5878],[0.866,-0.5],[0.9135,-0.4067],[0.9511,-0.309],[0.9781,-0.2079],[0.9945,-0.1045],[1.0,-0.0]],"tone":"blue","ms":1400},{"dot":"st","chart":"ci","at":[1,0],"text":"","tone":"blue"}]},{"cap":"Walk 30° round. The point's height above the centre is the sine: sin 30° = 0.5. Its sideways distance is the cosine, about 0.866.","do":[{"series":"rad","chart":"ci","pts":[[0,0],[0.866,0.5]],"tone":"amber","ms":600},{"series":"ht","chart":"ci","pts":[[0.866,0.5],[0.866,0]],"tone":"purple","dash":true,"ms":500},{"dot":"p30","chart":"ci","at":[0.866,0.5],"text":"0.5","tone":"purple","dx":10,"dy":-10,"anchor":"start"}]},{"cap":"Keep walking and plot the height against how far you have walked. The height rises to 1 at 90°, falls back to 0 at 180°, reaches −1 at 270° and returns to 0 at 360°. That wave is the sine.","do":[{"chart":"wv","x":262,"y":10,"w":328,"h":250,"title":"Height as you walk","xd":[0,12.9],"yd":[-1.35,1.35],"yt":[[-1,"−1"],[0,"0"],[1,"1"]],"xt":[[0,"0"],[3.1416,"180°"],[6.2832,"360°"],[9.4248,"540°"],[12.566,"720°"]],"zero":true,"pl":34,"pr":10},{"series":"l1","chart":"wv","pts":[[0.0,0.0],[0.3142,0.309],[0.6283,0.5878],[0.9425,0.809],[1.2566,0.9511],[1.5708,1.0],[1.885,0.9511],[2.1991,0.809],[2.5133,0.5878],[2.8274,0.309],[3.1416,0.0],[3.4558,-0.309],[3.7699,-0.5878],[4.0841,-0.809],[4.3982,-0.9511],[4.7124,-1.0],[5.0265,-0.9511],[5.3407,-0.809],[5.6549,-0.5878],[5.969,-0.309],[6.2832,-0.0]],"tone":"purple","ms":1600},{"dot":"w30","chart":"wv","at":[0.5235987755982988,0.5],"text":"","tone":"purple"}]},{"cap":"Walk a second lap and the wave repeats exactly, because the circle is the same every time round. That is why anything that cycles, like a season or a daily rhythm, is described with sine and cosine.","do":[{"series":"l2","chart":"wv","pts":[[6.2832,-0.0],[6.5973,0.309],[6.9115,0.5878],[7.2257,0.809],[7.5398,0.9511],[7.854,1.0],[8.1681,0.9511],[8.4823,0.809],[8.7965,0.5878],[9.1106,0.309],[9.4248,0.0],[9.7389,-0.309],[10.0531,-0.5878],[10.3673,-0.809],[10.6814,-0.9511],[10.9956,-1.0],[11.3097,-0.9511],[11.6239,-0.809],[11.9381,-0.5878],[12.2522,-0.309],[12.5664,-0.0]],"tone":"purple","dash":true,"ms":1400}]},{"cap":"A different question: money growing. $100 at 8% a year for 10 years, with interest added once a year, grows to $215.89.","do":[{"chart":"gr","x":10,"y":272,"w":580,"h":230,"title":"$100 at 8% for 10 years, by how often interest is added","xd":[0.4,5.6],"yd":[0,260],"yt":[[0,"0"],[100,"100"],[200,"200"]],"xt":[[1,"yearly"],[2,"quarterly"],[3,"monthly"],[4,"daily"],[5,"every instant"]],"pl":50},{"bars":"g1","chart":"gr","data":[[1,215.89,"215.89","blue"]],"bw":60,"ms":900}]},{"cap":"Add interest more often and you earn a little more each time: $220.80 quarterly, $221.96 monthly, $222.53 daily. The extra keeps shrinking.","do":[{"bars":"g2","chart":"gr","data":[[2,220.8,"220.80","blue"],[3,221.96,"221.96","blue"],[4,222.53,"222.53","blue"]],"bw":60,"ms":1100}]},{"cap":"Push it to every instant and the total settles on $222.55: that is 100 × e^0.8. The number e, about 2.718, is what growth settles on when it compounds every instant. Jacob Bernoulli found it in 1683 with this exact money puzzle.","do":[{"bars":"g3","chart":"gr","data":[[5,222.55,"222.55","green"]],"bw":60,"ms":900}]},{"cap":"The natural log, ln, runs growth backwards. Which continuous rate grows money as much as 5% paid once a year? ln(1.05) = 4.879%. Slightly smaller, because it compounds every instant.","do":[{"hide":"ci"},{"hide":"rim"},{"hide":"st"},{"hide":"rad"},{"hide":"ht"},{"hide":"p30"},{"hide":"wv"},{"hide":"l1"},{"hide":"l2"},{"hide":"w30"},{"box":"ln","x":10,"y":40,"w":580,"h":90,"text":"5% once a year  =  ln(1.05) = 4.879% every instant","tone":"purple","size":21}]},{"cap":"Now returns. Prices over four days: 100, 102, 101, 104, 103. Each day's log-return is ln(today ÷ yesterday): +1.98%, −0.99%, +2.93%, −0.97% (as hundredths of a log).","do":[{"chart":"lg","x":10,"y":514,"w":580,"h":236,"title":"Daily log-returns (×100), and their running total","xd":[0.4,5.6],"yd":[-2.4,5.2],"yt":[[-1,"−1"],[0,"0"],[2,"2"],[4,"4"]],"xt":[[1,"day 1"],[2,"day 2"],[3,"day 3"],[4,"day 4"]],"zero":true,"pl":44},{"bars":"lrb","chart":"lg","data":[[1,1.98,"+1.98","green"],[2,-0.99,"-0.99","red"],[3,2.93,"+2.93","green"],[4,-0.97,"-0.97","red"]],"bw":50,"ms":1200}]},{"cap":"Add them up day by day, like stacking blocks. After four days the running total is 2.96. And ln(103 ÷ 100) = 2.96 too, exactly the same. Logs turn multiplying into adding.","do":[{"series":"cum","chart":"lg","pts":[[1.5,1.98],[2.5,0.995],[3.5,3.922],[4.5,2.956]],"tone":"amber","ms":1200},{"dot":"ce","chart":"lg","at":[4.5,2.956],"text":"total 2.96 = ln 1.03","tone":"amber","dx":0,"dy":26,"anchor":"middle"}]},{"cap":"Simple percentages don't add like that. Up 50% then down 50% is not 0%: $100 becomes $150, then $75, a 25% loss. In logs: ln 1.5 + ln 0.5 = −0.288, and e^−0.288 − 1 = −25%.","do":[{"box":"trap","x":10,"y":146,"w":580,"h":90,"text":"+50% then −50%: $100 → $150 → $75\nnot 0%, but −25%","tone":"red","size":20}]}]}</script>
+      </div>
+      <!-- WB:foundation_trig_logs_exponentials:END -->
+    </section>
+    <!-- WB:foundation_trig_logs_exponentials-deck:END -->
+
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Two colleagues, one month, two different numbers</h2>
       <p class="sl-sub">A trader wants a month's performance from 21 daily returns. Two colleagues compute it two different ways.</p>
@@ -323,7 +336,7 @@
       <p class="sl-p">Colleague A's mistake is silently ignoring that gains and losses compound multiplicatively, not additively — the same "+50% then −50% is a real loss, not a wash" trap from the returns primer elsewhere in this curriculum. Colleague B's extra step, converting back at the very end with e^(·) − 1, is just the inverse of how log-returns were defined in the first place.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Why desks actually work this way</h2>
       <div class="sl-icard-grid">
@@ -334,7 +347,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">The mistakes worth knowing before you make them</h2>
       <p class="sl-sub">Same underlying math, two very different outcomes depending on whether the habit is in place.</p>
@@ -364,7 +377,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -415,7 +428,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -521,5 +534,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

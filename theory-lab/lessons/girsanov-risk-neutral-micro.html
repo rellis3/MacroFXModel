@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Girsanov's Theorem &amp; the Risk-Neutral Measure — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -226,7 +227,19 @@
       </div>
     </section>
 
+    <!-- WB:girsanov_risk_neutral-deck:START -->
     <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Girsanov: same paths, new odds, one price</h2>
+      <!-- WB:girsanov_risk_neutral:START -->
+      <div class="wb" data-title="Girsanov: same paths, new odds, one price">
+        <script type="application/json">{"w":600,"h":700,"intro":"Why an option's price never asks where you think the stock is going. One small tree first, then the same idea for a whole price path. Press play, or step through.","steps":[{"cap":"Meet the stock: 100 today. In one year it goes up to 120 or down to 90. Cash pays 5%. A call with strike 100 pays 20 if the stock goes up and nothing if it goes down.","do":[{"box":"now","x":20,"y":80,"w":130,"h":70,"text":"stock\n100","tone":"blue","size":20},{"box":"up","x":230,"y":12,"w":140,"h":70,"text":"up: 120","tone":"green","sub":"call pays 20","size":19},{"box":"dn","x":230,"y":150,"w":140,"h":70,"text":"down: 90","tone":"red","sub":"call pays 0","size":19},{"arrow":["now","up"]},{"arrow":["now","dn"]}]},{"cap":"Say you think the up move is 70% likely (an illustrative view). Average the payoff with your odds and discount at 5%: 0.7 × 20 ÷ e^0.05 = 13.32. Is that the price?","do":[{"box":"view","x":410,"y":12,"w":180,"h":80,"text":"your odds: 70% up","tone":"amber","sub":"price 13.32?","size":18}]},{"cap":"No. You can copy the call without it: buy two thirds of a share and borrow 57.07. If the stock goes up you hold 80 and repay 60: a profit of 20. If it goes down you hold 60 and repay 60: nothing. Exactly the call's payoffs.","do":[{"box":"copy","x":410,"y":110,"w":180,"h":118,"text":"copy it:\n⅔ share − 57.07","tone":"green","sub":"costs 9.59","size":18},{"arrow":["copy","up"],"dash":true},{"arrow":["copy","dn"],"dash":true}]},{"cap":"The copy costs ⅔ × 100 − 57.07 = 9.59 today. So the call must cost 9.59. Sell it for 13.32 and anyone can sell you the call, buy the copy, and pocket the gap with no risk.","do":[{"cross":"view"},{"pulse":"copy"}]},{"cap":"Which odds give 9.59? Only q = (e^0.05 − 0.9) ÷ (1.2 − 0.9) = 0.504. Under those odds the stock grows on average at exactly 5%, the cash rate. That is the risk-neutral probability.","do":[{"note":"q","x":300,"y":248,"text":"risk-neutral odds:  q = (e^0.05 − 0.9) ÷ 0.3 = 0.504","size":18,"anchor":"middle","tone":"green"}]},{"cap":"Price = 0.504 × 20 ÷ e^0.05 = 9.59. Your 70% appears nowhere. The price needs the possible moves and the cash rate, never a forecast.","do":[{"hide":"q"},{"note":"q2","x":300,"y":248,"text":"price = 0.504 × 20 ÷ e^0.05 = 9.59   (70% never used)","size":18,"anchor":"middle","tone":"green"}]},{"cap":"Now a real stock with a whole path of moves: real-world drift 9%, volatility 20%, cash 5%. Here is the spread of its price in one year under the real-world odds. Its average is 109.4.","do":[{"chart":"dens","x":10,"y":290,"w":580,"h":270,"title":"Price in one year, from 100 today","xd":[60,170],"yd":[0,2.2],"yt":[],"xt":[[80,"80"],[100,"100"],[120,"120"],[140,"140"],[160,"160"]],"pl":20,"pr":20},{"series":"p","chart":"dens","pts":[[60,0.049],[62,0.075],[64,0.111],[66,0.159],[68,0.219],[70,0.293],[72,0.381],[74,0.482],[76,0.596],[78,0.72],[80,0.852],[82,0.988],[84,1.126],[86,1.261],[88,1.39],[90,1.509],[92,1.616],[94,1.707],[96,1.782],[98,1.839],[100,1.876],[102,1.895],[104,1.895],[106,1.879],[108,1.846],[110,1.799],[112,1.74],[114,1.67],[116,1.592],[118,1.508],[120,1.42],[122,1.329],[124,1.236],[126,1.144],[128,1.054],[130,0.966],[132,0.882],[134,0.801],[136,0.725],[138,0.653],[140,0.587],[142,0.525],[144,0.468],[146,0.416],[148,0.369],[150,0.326],[152,0.287],[154,0.252],[156,0.221],[158,0.193],[160,0.169],[162,0.147],[164,0.128],[166,0.111],[168,0.096],[170,0.083]],"tone":"blue","ms":1400,"label":"real world ℙ","lat":[140,0.5865097315074597],"ldx":6,"ldy":-16,"lanchor":"start"},{"dot":"mp","chart":"dens","at":[109.4,1.814],"text":"avg 109.4","tone":"blue","dx":14,"dy":-12,"anchor":"start"}]},{"cap":"Girsanov reweights the same paths: high ones a little less likely, low ones a little more, until the average grows at 5%. The shift is θ = (9% − 5%) ÷ 20% = 0.2, the market price of risk.","do":[{"series":"q","chart":"dens","pts":[[60,0.086],[62,0.128],[64,0.183],[66,0.253],[68,0.338],[70,0.44],[72,0.556],[74,0.685],[76,0.824],[78,0.97],[80,1.119],[82,1.267],[84,1.409],[86,1.541],[88,1.66],[90,1.763],[92,1.846],[94,1.91],[96,1.952],[98,1.972],[100,1.972],[102,1.953],[104,1.916],[106,1.863],[108,1.797],[110,1.719],[112,1.633],[114,1.54],[116,1.443],[118,1.344],[120,1.244],[122,1.145],[124,1.048],[126,0.955],[128,0.866],[130,0.781],[132,0.702],[134,0.628],[136,0.56],[138,0.498],[140,0.44],[142,0.389],[144,0.342],[146,0.3],[148,0.262],[150,0.228],[152,0.199],[154,0.172],[156,0.149],[158,0.129],[160,0.111],[162,0.095],[164,0.082],[166,0.07],[168,0.06],[170,0.051]],"tone":"green","ms":1400,"label":"risk-neutral ℚ","lat":[92,1.8463092060049031],"ldx":-12,"ldy":0,"lanchor":"end"},{"dot":"mq","chart":"dens","at":[105.1,1.888],"text":"avg 105.1","tone":"green","dx":0,"dy":36,"anchor":"middle"}]},{"cap":"Look at what did not move: the shape and the width. Volatility is 20% under both. No path is added or removed. Only the odds on each path change, so the center slides from 109.4 to 105.1.","do":[{"pulse":"p"},{"pulse":"q"}]},{"cap":"Under the green odds the price in today's money has no drift left: a fair game, a martingale. No arbitrage forces every derivative to be a fair game under the same odds, so its price is the discounted green average.","do":[{"box":"qbox","x":10,"y":580,"w":285,"h":108,"text":"ℚ: price and hedge\ndrift = cash rate 5%","tone":"green","size":19}]},{"cap":"The blue odds still matter, just for different jobs: your view, stress tests and how bad things could get. Price with ℚ, forecast with ℙ, and never mix the two in one number.","do":[{"box":"pbox","x":305,"y":580,"w":285,"h":108,"text":"ℙ: forecast and risk\ndrift = your 9%","tone":"blue","size":19}]}]}</script>
+      </div>
+      <!-- WB:girsanov_risk_neutral:END -->
+    </section>
+    <!-- WB:girsanov_risk_neutral-deck:END -->
+
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">N(d₂) is real. The measure is the fiction.</h2>
       <p class="sl-sub">Under ℚ, ln S<sub>T</sub> is normal with mean ln S₀ + (r − σ²/2)T — same lognormal shape as under ℙ, centered on r instead of μ.</p>
@@ -241,7 +254,7 @@
       <div class="sl-quote"><strong>A bullish view is a separate bet, never a pricing input.</strong> A trader convinced EUR/USD will outrun the rate differential still prices and hedges the option under ℚ. Their view gets expressed by buying spot, or by an intentionally un-hedged option — not by quietly swapping μ in for r inside the pricing formula. Doing that produces a price too high and a hedge ratio that's systematically wrong.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How a derivatives desk actually uses this</h2>
       <div class="sl-icard-grid">
@@ -256,7 +269,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where "risk-neutral" gets misread</h2>
       <div class="sl-compare">
@@ -285,7 +298,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -336,7 +349,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -500,5 +513,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

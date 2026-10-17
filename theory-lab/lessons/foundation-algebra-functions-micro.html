@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Algebra &amp; Functions — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -187,7 +188,19 @@
       <p class="sl-p">Composition is what happens whenever one model's output feeds straight into another — a volatility figure into a pricing formula into a P&amp;L calculation. Reading which function is innermost, applied first, versus outermost, applied last, is exactly the skill needed to correctly read a nested formula several layers deep. An inverse runs a formula backwards — <strong>"implied volatility" is, quite literally, an inverse function</strong>: recovering the input that would have produced an observed market price.</p>
     </section>
 
+    <!-- WB:foundation_algebra_functions-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Balance scales, machines, and running a formula backwards</h2>
+      <!-- WB:foundation_algebra_functions:START -->
+      <div class="wb" data-title="Balance scales, machines, and running a formula backwards">
+        <script type="application/json">{"w":600,"h":710,"intro":"A balance scale, a machine, and a formula run backwards. Gentle steps, real numbers from the lesson. Press play, or step through.","steps":[{"cap":"An equation is a balance scale that is level. On the left: two bags of the same unknown weight x, plus 3. On the right: 11. Both sides weigh the same.","do":[{"box":"L","x":30,"y":30,"w":220,"h":80,"text":"left pan","tone":"blue","sub":"2x + 3","size":20},{"note":"eq","x":300,"y":80,"text":"=","size":34,"anchor":"middle"},{"box":"R","x":350,"y":30,"w":220,"h":80,"text":"right pan","tone":"amber","sub":"11","size":20}]},{"cap":"The one rule: do the same thing to both sides, and the scale stays level. Take 3 off both sides. Now 2x balances 8.","do":[{"sub":"L","text":"2x"},{"sub":"R","text":"8"},{"pulse":"L"},{"pulse":"R"},{"note":"m1","x":300,"y":150,"text":"take 3 off both sides","size":20,"anchor":"middle","tone":"purple"}]},{"cap":"Now halve both sides. One x balances 4. That is all \"solving for x\" means: peel away everything that isn't x, evenly, until x stands alone.","do":[{"sub":"L","text":"x"},{"sub":"R","text":"4"},{"pulse":"L"},{"pulse":"R"},{"hide":"m1"},{"note":"m2","x":300,"y":150,"text":"halve both sides: x = 4","size":20,"anchor":"middle","tone":"green"}]},{"cap":"A function is a different thing: a machine. This one, f(x) = x² + 1, squares whatever you feed it and adds 1. Feed it 3 and out comes 10.","do":[{"hide":"L"},{"hide":"R"},{"hide":"eq"},{"hide":"m2"},{"box":"f","x":200,"y":30,"w":200,"h":90,"text":"machine f","tone":"purple","sub":"x² + 1","size":20},{"chip":"in3","x":80,"y":75,"text":"3","tone":"blue"},{"move":"in3","x":170,"y":75,"ms":900},{"chip":"out10","x":470,"y":75,"text":"10","tone":"green"}]},{"cap":"Feed it −1 and out comes 2, because (−1)² + 1 = 2. One input always gives exactly one output. On a graph, every input becomes a point.","do":[{"hide":"in3"},{"hide":"out10"},{"chip":"inm1","x":80,"y":75,"text":"−1","tone":"blue"},{"move":"inm1","x":170,"y":75,"ms":900},{"chip":"out2","x":470,"y":75,"text":"2","tone":"green"},{"chart":"fx","x":10,"y":214,"w":580,"h":236,"title":"Two machines on one graph","xd":[-3.2,4.4],"yd":[-1.5,11],"yt":[[0,"0"],[5,"5"],[10,"10"]],"xt":[[-3,"−3"],[-1,"−1"],[0,"0"],[1,"1"],[3,"3"]],"zero":true,"pl":44,"pr":24},{"series":"par","chart":"fx","pts":[[-3.0,10.0],[-2.8,8.84],[-2.6,7.76],[-2.4,6.76],[-2.2,5.84],[-2.0,5.0],[-1.8,4.24],[-1.6,3.56],[-1.4,2.96],[-1.2,2.44],[-1.0,2.0],[-0.8,1.64],[-0.6,1.36],[-0.4,1.16],[-0.2,1.04],[0.0,1.0],[0.2,1.04],[0.4,1.16],[0.6,1.36],[0.8,1.64],[1.0,2.0],[1.2,2.44],[1.4,2.96],[1.6,3.56],[1.8,4.24],[2.0,5.0],[2.2,5.84],[2.4,6.76],[2.6,7.76],[2.8,8.84],[3.0,10.0]],"tone":"purple","ms":1400},{"dot":"p3","chart":"fx","at":[3,10],"text":"f(3) = 10","tone":"purple","dx":12,"dy":5,"anchor":"start"},{"dot":"pm1","chart":"fx","at":[-1,2],"text":"f(−1) = 2","tone":"purple","dx":-12,"dy":5,"anchor":"end"}]},{"cap":"A straight line is the simplest machine: y = 2x + 3. It climbs by the same amount, 2, every time x moves by 1. That fixed step is the slope. The curve's step keeps changing: that is what curving means.","do":[{"series":"lin","chart":"fx","pts":[[-2.25,-1.5],[3,9]],"tone":"blue","ms":1000},{"series":"st1","chart":"fx","pts":[[1,5],[2,5],[2,7]],"tone":"amber","dash":true,"ms":600},{"note":"stl","chart":"fx","at":[2,6],"text":"up 2","tone":"amber","size":16,"anchor":"start","dx":8,"dy":0}]},{"cap":"Running a machine backwards is its inverse. \"Double it, add 3\" turns 4 into 11. The undo machine takes away 3, then halves: 11 back to 4. Last step undone first.","do":[{"hide":"inm1"},{"hide":"out2"},{"hide":"f"},{"box":"fw","x":10,"y":20,"w":280,"h":70,"text":"forward: × 2, then + 3","tone":"purple","sub":"4 → 11","size":19},{"box":"bk","x":310,"y":20,"w":280,"h":70,"text":"undo: − 3, then ÷ 2","tone":"green","sub":"11 → 4","size":19},{"arrow":["fw","bk"],"tone":"green","bend":-30,"id":"fwbk"}]},{"cap":"Now a real formula. $1,000 earning 5% a year grows by multiplying by 1.05 each year: $1,050, $1,102.50, and after 5 years $1,276.28. That is FV = P(1 + r)ⁿ.","do":[{"chart":"gr","x":10,"y":464,"w":580,"h":236,"title":"Growing at 5% a year ($)","xd":[-0.6,5.6],"yd":[0,1500],"yt":[[0,"0"],[1000,"1,000"]],"xt":[[0,"start"],[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5 yrs"]],"pl":58},{"bars":"gb","chart":"gr","data":[[0,1000.0,"1,000","blue"],[1,1050.0,"1,050","blue"],[2,1102.5,"1,102.50","blue"],[3,1157.63,"1,157.63","blue"],[4,1215.51,"1,215.51","blue"],[5,1276.28,"1,276.28","amber"]],"bw":52,"ms":1400}]},{"cap":"But often you know the start and the end, and want the rate. Run it backwards. Undo \"times $1,000\" first: 1,276.28 ÷ 1,000 = 1.27628.","do":[{"hide":"fw"},{"hide":"bk"},{"hide":"fwbk"},{"box":"b1","x":10,"y":110,"w":180,"h":84,"text":"÷ P","tone":"purple","sub":"1.27628","size":20}]},{"cap":"Next undo \"to the power 5\": take the fifth root. 1.27628 becomes 1.05, because 1.05 times itself five times is 1.27628.","do":[{"box":"b2","x":210,"y":110,"w":180,"h":84,"text":"fifth root","tone":"purple","sub":"1.05","size":20},{"arrow":["b1","b2"]}]},{"cap":"Last, undo \"1 +\": take away 1. The rate is 0.05, or 5% a year. Check it forwards: $1,000 × 1.05⁵ = $1,276.28. Same rule as the scale, on a bigger formula.","do":[{"box":"b3","x":410,"y":110,"w":180,"h":84,"text":"− 1","tone":"green","sub":"r = 5%","size":20},{"arrow":["b2","b3"]},{"pulse":"b3"}]}]}</script>
+      </div>
+      <!-- WB:foundation_algebra_functions:END -->
+    </section>
+    <!-- WB:foundation_algebra_functions-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Solving a leverage formula backwards</h2>
       <p class="sl-sub">A trader wants 10,000 units of exposure at $1.20, using 20:1 leverage. How much equity does that need?</p>
@@ -211,7 +224,7 @@
       <p class="sl-p">The formula everyone starts from computes position size <em>from</em> equity: position size = equity × leverage ÷ price. But the question on the desk runs the other way — how much equity does a specific position actually require? Rearrange for equity by multiplying both sides by price, then dividing by leverage: equity = (position size × price) ÷ leverage = (10,000 × 1.20) ÷ 20 = <strong>$600</strong>.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Nobody "does algebra" — but everyone runs formulas backwards</h2>
       <div class="sl-icard-grid">
@@ -223,7 +236,7 @@
       <div class="sl-quote">Quant and desk-analyst interviews frequently test precisely this skill directly, because it's the daily mechanical work underneath far fancier-sounding tasks like calibration or implied-volatility surface construction. None of it is new math — it's this page, applied to longer formulas.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Guessing vs. the rule</h2>
       <p class="sl-sub">The same rearranging problem, approached two ways.</p>
@@ -254,7 +267,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -296,7 +309,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -418,5 +431,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

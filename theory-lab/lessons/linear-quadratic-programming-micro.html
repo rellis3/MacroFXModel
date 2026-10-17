@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Linear &amp; Quadratic Programming — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -199,7 +200,19 @@
       <p class="sl-p">A real QP solver doesn't clip after the fact — it searches only among points that satisfy every constraint simultaneously from the start (an active-set method repeatedly guesses which constraints bind, solves the resulting equality system, and checks the guess was self-consistent). The heuristic above is a useful gut-check, not a substitute.</p>
     </section>
 
+    <!-- WB:linear_quadratic_programming-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Corners for a ramp, walls for a bowl</h2>
+      <!-- WB:linear_quadratic_programming:START -->
+      <div class="wb" data-title="Corners for a ramp, walls for a bowl">
+        <script type="application/json">{"w":600,"h":720,"intro":"A linear program: flat walls and a ramp, so the best point is a corner. Then a quadratic program: the same walls around a bowl. The lesson's own numbers. Press play, or step through.","steps":[{"cap":"A desk splits risk capital between Strategy A (x units) and Strategy B (y units). Each unit of A is expected to earn 3 and each unit of B 5, in $ thousands. The goal: make Z = 3x + 5y as big as possible.","do":[{"chart":"lp","x":10,"y":10,"w":380,"h":300,"title":"Units of A (across) and B (up)","xd":[0,5],"yd":[0,7],"yt":[[0,"0"],[3,"3"],[6,"6"]],"xt":[[0,"0"],[2,"2"],[4,"4"]]},{"box":"obj","x":400,"y":10,"w":190,"h":64,"text":"maximize","tone":"purple","sub":"Z = 3x + 5y","size":19}]},{"cap":"Three flat rules. A's capacity: x ≤ 4. B's capacity: y ≤ 6. A shared margin budget: 3x + 2y ≤ 18. Each rule is a straight wall.","do":[{"series":"wx","chart":"lp","pts":[[4,0],[4,7]],"tone":"blue","ms":500},{"series":"wy","chart":"lp","pts":[[0,6],[5,6]],"tone":"blue","ms":500},{"series":"wm","chart":"lp","pts":[[1.3333333333333333,7],[5,1.5]],"tone":"amber","ms":600},{"box":"r1","x":400,"y":92,"w":190,"h":52,"text":"x ≤ 4","tone":"blue","size":19},{"box":"r2","x":400,"y":156,"w":190,"h":52,"text":"y ≤ 6","tone":"blue","size":19},{"box":"r3","x":400,"y":220,"w":190,"h":52,"text":"3x + 2y ≤ 18","tone":"amber","size":19}]},{"cap":"Inside all three walls, with x and y not negative, is the set of allowed plans: a pentagon with five corners.","do":[{"gap":"feas","chart":"lp","top":[[0,6],[2,6],[4,3],[4,0]],"bot":[[0,0],[4,0]],"tone":"blue","op":0.2},{"dot":"v0","chart":"lp","at":[0,0],"text":"","tone":null},{"dot":"v1","chart":"lp","at":[4,0],"text":"","tone":null},{"dot":"v2","chart":"lp","at":[4,3],"text":"","tone":null},{"dot":"v3","chart":"lp","at":[2,6],"text":"","tone":null},{"dot":"v4","chart":"lp","at":[0,6],"text":"","tone":null}]},{"cap":"Every point on the line 3x + 5y = 20 earns the same 20. This line cuts through the middle, so you can slide it up and earn more. Z rises at a steady rate, so you only stop when you hit a corner.","do":[{"series":"z20","chart":"lp","pts":[[0,4],[5,1]],"tone":"purple","dash":true,"ms":600,"label":"Z = 20","lat":[0.15,4],"ldx":4,"ldy":-14,"lanchor":"start"}]},{"cap":"The simplex method walks corner to corner. Start at (0,0), where Z = 0. Its neighbours are (4,0) with Z = 12 and (0,6) with Z = 30. Step to the better one.","do":[{"dim":"z20"},{"chip":"sx","x":86,"y":262,"text":"Z = 0","tone":"green"},{"dot":"n1","chart":"lp","at":[4,0],"text":"12","tone":"chalk","dy":-16},{"move":"sx","x":86,"y":100,"ms":1100},{"sub":"obj","text":"(0,6): Z = 30"}]},{"cap":"From (0,6) the next corner along the edge is (2,6), where Z = 36. From there both neighbours are worse: (0,6) at 30 and (4,3) at 27. The walk stops. Best plan: 2 units of A and 6 of B, $36,000.","do":[{"move":"sx","x":211,"y":100,"ms":900},{"dot":"n2","chart":"lp","at":[4,3],"text":"27","tone":"chalk","dx":14,"dy":0,"anchor":"start"},{"dot":"best","chart":"lp","at":[2,6],"text":"36","tone":"green","dy":-16},{"sub":"obj","text":"(2,6): Z = 36"}]},{"cap":"The line 3x + 5y = 36 just touches the pentagon at (2,6). B's cap and the margin budget bind there. A's cap has slack, so it shapes nothing.","do":[{"hide":"sx"},{"series":"z36","chart":"lp","pts":[[0.3333333333333333,7],[5,4.2]],"tone":"green","dash":true,"ms":600},{"pulse":"r2"},{"pulse":"r3"},{"dim":"r1"}]},{"cap":"A quadratic program swaps the ramp for a bowl. Two assets whose weights sum to 100%, with variances 2 and 5 and covariance 3. Variance along that line is a bowl, and its bottom is at 200% in asset 1, shorting asset 2 by 100%.","do":[{"chart":"qp","x":10,"y":330,"w":580,"h":250,"title":"Portfolio variance vs weight in asset 1","xd":[-0.2,3.2],"yd":[0,6],"yt":[[1,"1"],[3,"3"],[5,"5"]],"xt":[[0,"0%"],[0.6,"60%"],[1,"100%"],[2,"200%"],[3,"300%"]],"pl":44},{"series":"bw","chart":"qp","pts":[[-0.2,5.84],[-0.1,5.41],[0.0,5.0],[0.1,4.61],[0.2,4.24],[0.3,3.89],[0.4,3.56],[0.5,3.25],[0.6,2.96],[0.7,2.69],[0.8,2.44],[0.9,2.21],[1.0,2.0],[1.1,1.81],[1.2,1.64],[1.3,1.49],[1.4,1.36],[1.5,1.25],[1.6,1.16],[1.7,1.09],[1.8,1.04],[1.9,1.01],[2.0,1.0],[2.1,1.01],[2.2,1.04],[2.3,1.09],[2.4,1.16],[2.5,1.25],[2.6,1.36],[2.7,1.49],[2.8,1.64],[2.9,1.81],[3.0,2.0],[3.1,2.21],[3.2,2.44]],"tone":"purple","ms":1100},{"dot":"b0","chart":"qp","at":[2,1],"text":"bottom: 200%","tone":"red","dy":-18}]},{"cap":"Add no shorting: asset 1 must sit between 0% and 100% (shaded). The bowl's bottom is outside, so the answer snaps to the nearest wall: 100% in asset 1, 0% in asset 2, variance 2.","do":[{"gap":"ns","chart":"qp","top":[[0,5.8],[1,5.8]],"bot":[[0,0.1],[1,0.1]],"tone":"blue","op":0.16},{"dot":"b1","chart":"qp","at":[1,2],"text":"100%","tone":"blue","dx":12,"dy":-6,"anchor":"start"}]},{"cap":"Now add a 60% cap on each asset, so asset 1 sits between 40% and 60%. The answer snaps again, to 60% and 40%. Same bowl every time; the walls decided. A solver cannot know which walls bind until it has solved, so there is no single formula to plug into.","do":[{"dim":"b1"},{"dim":"ns"},{"gap":"cap","chart":"qp","top":[[0.4,5.8],[0.6,5.8]],"bot":[[0.4,0.1],[0.6,0.1]],"tone":"green","op":0.3},{"dot":"b2","chart":"qp","at":[0.6,2.96],"text":"60%","tone":"green","dx":12,"dy":-6,"anchor":"start"}]},{"cap":"And the tempting shortcut fails. Clip a 65% weight to a 50% cap, leave the other asset at 35%, then rescale both to sum to 100%: asset 1 becomes 50 ÷ 85 = 58.8%, back over the cap. A QP solver only searches plans that obey every rule at once.","do":[{"icon":"warn","name":"warn","x":14,"y":596,"s":0.6,"tone":"red"},{"box":"clip","x":90,"y":594,"w":500,"h":70,"text":"clip 65% → 50%, rescale","tone":"red","sub":"50 ÷ 85 = 58.8% > 50% cap","size":19},{"box":"solve","x":90,"y":674,"w":500,"h":40,"text":"hand the walls to a QP solver","tone":"green","size":18}]}]}</script>
+      </div>
+      <!-- WB:linear_quadratic_programming:END -->
+    </section>
+    <!-- WB:linear_quadratic_programming-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Vertex-hopping vs. cutting through the middle</h2>
       <p class="sl-sub">Two different algorithms, because LPs and QPs need to search different places.</p>
@@ -226,7 +239,7 @@
       <div class="sl-quote">Simplex remains highly competitive and is often preferred when a "warm start" from a nearby previous solution is available — resuming close to the new optimal vertex beats restarting an interior-point search from scratch. That's exactly the situation a fund re-solving a similar portfolio problem every night finds itself in.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Nobody hand-rolls simplex on a trading desk</h2>
       <div class="sl-icard-grid">
@@ -240,7 +253,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this actually goes wrong</h2>
       <div class="sl-compare">
@@ -263,7 +276,7 @@
     </section>
 
     <!-- DESK:START -->
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this repo actually stands</h2>
       <p class="sl-sub">The full lesson's status line reads "CONCEPT — not built or tested in this repo." Checked against the current code, not just repeated.</p>
@@ -275,7 +288,7 @@
     </section>
     <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -326,7 +339,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -485,5 +498,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

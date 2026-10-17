@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bootstrapping the Yield Curve — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -190,7 +191,19 @@
       <p class="sl-p">Because this curve slopes upward, the implied forward (≈4.02%) sits <em>above</em> both z₁ and z₂ — the zero curve is embedding an expectation that short rates run higher down the road.</p>
     </section>
 
+    <!-- WB:yield_curve_construction-deck:START -->
     <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Bootstrapping a curve, one maturity at a time</h2>
+      <!-- WB:yield_curve_construction:START -->
+      <div class="wb" data-title="Bootstrapping a curve, one maturity at a time">
+        <script type="application/json">{"w":600,"h":796,"intro":"Three bond prices in, one rate per maturity out, solved from the short end outward. Then the forward rates hiding inside, and the month the inputs stopped agreeing. Press play, or step through.","steps":[{"cap":"Three bonds, each priced at par: 100 for 100 of face, annual coupons. A 1-year at 3.00%, a 2-year at 3.50%, a 3-year at 4.00%. Each is a bundle of payments on different dates.","do":[{"note":"h1","x":270,"y":22,"text":"year 1","size":18,"anchor":"middle"},{"note":"h2","x":395,"y":22,"text":"year 2","size":18,"anchor":"middle"},{"note":"h3","x":520,"y":22,"text":"year 3","size":18,"anchor":"middle"},{"box":"b1","x":10,"y":40,"w":170,"h":52,"text":"1y bond · 3.00%","tone":"blue","size":18},{"box":"b2","x":10,"y":110,"w":170,"h":52,"text":"2y bond · 3.50%","tone":"blue","size":18},{"box":"b3","x":10,"y":180,"w":170,"h":52,"text":"3y bond · 4.00%","tone":"blue","size":18},{"chip":"c11","x":270,"y":66,"text":"103","tone":"blue"},{"chip":"c21","x":270,"y":136,"text":"3.50","tone":"blue"},{"chip":"c22","x":395,"y":136,"text":"103.50","tone":"blue"},{"chip":"c31","x":270,"y":206,"text":"4","tone":"blue"},{"chip":"c32","x":395,"y":206,"text":"4","tone":"blue"},{"chip":"c33","x":520,"y":206,"text":"104","tone":"blue"}]},{"cap":"Start at the short end. The 1-year bond has one payment, 103 in a year, and costs 100. One equation, one unknown: the 1-year zero rate is 3.00%.","do":[{"pulse":"c11"},{"note":"calc","x":300,"y":280,"text":"100 = 103 ÷ (1 + z₁)   →   z₁ = 3.00%","size":20,"anchor":"middle","tone":"green"},{"note":"z1","x":455,"y":72,"text":"z₁ = 3.00%","size":19,"anchor":"middle","tone":"green"}]},{"cap":"The 2-year bond pays 3.50 in year 1. You already know the 1-year rate, so discount it: 3.50 ÷ 1.03 = 3.40. Subtract that from the price: 96.60 must be what the year-2 payment is worth today.","do":[{"hide":"calc"},{"pulse":"c21"},{"note":"calc2","x":300,"y":280,"text":"100 − 3.50 ÷ 1.03 = 96.60","size":20,"anchor":"middle","tone":"amber"}]},{"cap":"So 103.50 in two years is worth 96.60 today. Solve for the one unknown left: the 2-year zero rate is about 3.51%, a touch above the bond's own 3.50% yield.","do":[{"hide":"calc2"},{"pulse":"c22"},{"note":"calc3","x":300,"y":280,"text":"96.60 = 103.50 ÷ (1 + z₂)²   →   z₂ ≈ 3.51%","size":20,"anchor":"middle","tone":"green"},{"note":"z2","x":530,"y":142,"text":"z₂ = 3.51%","size":19,"anchor":"middle","tone":"green"}]},{"cap":"Same move again. Discount the 3-year bond's first two coupons at the rates already solved: 7.62 in all. That leaves 92.38 for the 104 in year 3, so the 3-year zero rate is about 4.03%.","do":[{"hide":"calc3"},{"pulse":"c31"},{"pulse":"c32"},{"note":"calc4","x":300,"y":280,"text":"100 − 7.62 = 92.38 = 104 ÷ (1 + z₃)³   →   z₃ ≈ 4.03%","size":18,"anchor":"middle","tone":"green"},{"note":"z3","x":520,"y":242,"text":"z₃ = 4.03%","size":19,"anchor":"middle","tone":"green"}]},{"cap":"Plot what you solved. The zero curve sits just above the par yields you started from: 3.00, 3.51, 4.03 against 3.00, 3.50, 4.00. Close, but not the same numbers.","do":[{"chart":"yc","x":10,"y":300,"w":580,"h":250,"title":"Rates by maturity (%)","xd":[0.5,3.5],"yd":[2.5,5.6],"yt":[[3,"3"],[4,"4"],[5,"5"]],"xt":[[1,"1y"],[2,"2y"],[3,"3y"]]},{"series":"par","chart":"yc","pts":[[1,3.0],[2,3.5],[3,4.0]],"tone":null,"dash":true,"ms":500,"label":"par (dashed)","lat":[2.5,3.75],"ldx":0,"ldy":24,"lanchor":"middle","lsize":16},{"series":"zero","chart":"yc","pts":[[1,3.0],[2,3.51],[3,4.03]],"tone":"blue","ms":1000,"label":"zero","lat":[3,4.03],"ldx":10,"ldy":-8,"lanchor":"start","lsize":16},{"dot":"dz1","chart":"yc","at":[1,3.0],"text":"3.00","tone":"blue","dy":18},{"dot":"dz2","chart":"yc","at":[2,3.51],"text":"3.51","tone":"blue","dy":18},{"dot":"dz3","chart":"yc","at":[3,4.03],"text":"4.03","tone":"blue","dy":20}]},{"cap":"Now the forwards. Investing for two years at 3.51% must pay the same as one year at 3.00% then a 1-year rate locked in today. That pins the 1-year rate starting in a year at 4.02%.","do":[{"note":"fid","x":300,"y":580,"text":"(1 + z₂)² = (1 + z₁)(1 + f₁,₂)   →   f₁,₂ ≈ 4.02%","size":19,"anchor":"middle","tone":"amber"},{"series":"fwd","chart":"yc","pts":[[1,3.0],[2,4.02],[3,5.07]],"tone":"amber","ms":1100,"label":"forward","lat":[3,5.07],"ldx":10,"ldy":0,"lanchor":"start","lsize":16},{"dot":"df2","chart":"yc","at":[2,4.02],"text":"4.02","tone":"amber","dy":-16},{"dot":"df3","chart":"yc","at":[3,5.07],"text":"5.07","tone":"amber","dx":-12,"dy":-4,"anchor":"end"}]},{"cap":"The curve slopes up, so every forward sits above the spot rate for that horizon: 4.02% and 5.07%. That is an arbitrage identity, not a forecast of where rates will go.","do":[{"pulse":"fwd"},{"note":"notf","x":300,"y":612,"text":"forwards above spot = an upward slope, not a prophecy","size":18,"anchor":"middle","tone":"amber"}]},{"cap":"All of this assumes every bond sits on one curve. In March 2020, in the dash for cash, foreign holders, funds meeting redemptions and levered basis traders all sold Treasuries at once, and dealers ran out of balance sheet.","do":[{"hide":"fid"},{"hide":"notf"},{"icon":"dealer","name":"bank","x":250,"y":628,"s":0.62,"tone":"red","label":"dealers: full","sym":"$","lsize":16},{"icon":"on","name":"scroll","x":40,"y":630,"s":0.6,"tone":"blue","label":"on-the-run","lsize":16},{"icon":"off","name":"scroll","x":480,"y":630,"s":0.6,"tone":"red","label":"off-the-run","lsize":16}]},{"cap":"Older off-the-run bonds cheapened against on-the-run bonds of almost the same maturity. Near-identical cash flows, two different prices: the zero rates you solve now depend on which bonds you feed in.","do":[{"arrow":["on","off"],"label":"same cash flows, different curve","tone":"red","bend":-40,"dash":true,"size":16},{"pulse":"off"}]},{"cap":"The Fed cut to near zero on 15 March and bought Treasuries, without limit from 23 March, then freed dealer balance sheet on 1 April. Functioning came back over the following weeks, and the bonds lined up on one curve again.","do":[{"note":"fed","x":300,"y":750,"text":"Fed buys without limit (23 Mar)","size":18,"anchor":"middle","tone":"green"},{"note":"fed2","x":300,"y":776,"text":"leverage rule eased (1 Apr) → one curve again","size":18,"anchor":"middle","tone":"green"}]}]}</script>
+      </div>
+      <!-- WB:yield_curve_construction:END -->
+    </section>
+    <!-- WB:yield_curve_construction-deck:END -->
+
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Solve the second zero rate yourself</h2>
       <p class="sl-sub">Given a known 1-year zero rate and a 2-year par bond's coupon and price, isolate z₂ — the exact move from step 2 above.</p>
@@ -216,7 +229,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How a rates desk actually uses this</h2>
       <div class="sl-icard-grid">
@@ -227,7 +240,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this goes wrong in practice</h2>
       <div class="sl-callout amber">
@@ -238,7 +251,7 @@
       <!-- DESK:START --><div class="sl-note">Verified against this repo's current source (Sept 2026): a yield-curve <em>slope</em> engine exists in production (comparing published 2yr/10yr par yields as a macro signal) — but no bootstrapping routine or bootstrapped zero/discount curve exists anywhere in this codebase. This lesson's algorithm remains conceptual here, not implemented in production.</div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12 · It actually happened</div>
       <h2 class="sl-h2">March 2020: near-identical bonds stop agreeing</h2>
       <div class="sl-callout amber">
@@ -258,7 +271,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13<!-- DESK:START --> · Tested here<!-- DESK:END --></div>
       <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and the verdict<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: an inverted curve warns of recession, so expect weaker risk assets.</p>
@@ -271,7 +284,7 @@
       <div class="sl-quote">The bootstrap assumes the law of one price: two bonds with the same cash flows are worth the same. Arbitrage enforces that, and arbitrage needs balance sheet. In March 2020 dealers had none to spare, so "the" zero curve stopped being unique.</div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
+    <section class="sl-slide" data-slide="16">
       <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -321,7 +334,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="16">
+    <section class="sl-slide" data-slide="17">
       <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -460,5 +473,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

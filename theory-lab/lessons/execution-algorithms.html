@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Execution Algorithms: TWAP, VWAP, POV, IS — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,66 @@
       <li><strong>Real-world episode:</strong> the 6 May 2010 Flash Crash began with a POV algorithm. It sold 75,000 E-mini contracts at 9% of the previous minute's volume, with no price or time limit. Intermediaries passing contracts back and forth inflated the volume, so the algorithm sold faster, and an order that had taken more than five hours before was done in about 20 minutes.<!-- DESK:START --> On this desk, the cost no schedule can remove, the spread, is <strong>Validated</strong> as decisive (<code>execution-gate</code>): above spread/ATR 0.15, zero of 30 strategy × timeframe cells were profitable.<!-- DESK:END --></li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left: the lesson's 40,000-share order sliced two ways across four intraday buckets. TWAP is a flat dashed line at 10,000 shares per bucket. VWAP bars follow the U-shaped volume curve: 14,000 at the open, 6,000 in each midday bucket and 14,000 at the close. Right: an Implementation Shortfall bar for the lesson's 10,000-share example, stacked from $450 of delay, $750 of market impact and $300 of opportunity cost on the unfilled shares, $1,500 in total, or 30 basis points of a $500,000 order.">
+      <text class="tlp-green" x="40" y="18" font-size="13" font-weight="700">VWAP bars follow the volume curve</text>
+      <line class="tlp-line" x1="40" y1="190" x2="356" y2="190"/>
+      <rect class="tlp-green" x="60" y="50" width="40" height="140" opacity=".6"/>
+      <rect class="tlp-green" x="140" y="130" width="40" height="60" opacity=".6"/>
+      <rect class="tlp-green" x="220" y="130" width="40" height="60" opacity=".6"/>
+      <rect class="tlp-green" x="300" y="50" width="40" height="140" opacity=".6"/>
+      <line class="tlp-line blue thick dash" x1="44" y1="90" x2="352" y2="90"/>
+      <text class="tlp-blue" x="200" y="80" text-anchor="middle" font-size="13" font-weight="700">TWAP: flat 10,000</text>
+      <text class="tlp-green" x="80" y="44" text-anchor="middle" font-size="13" font-weight="700">14,000</text>
+      <text class="tlp-green" x="160" y="124" text-anchor="middle" font-size="13" font-weight="700">6,000</text>
+      <text class="tlp-green" x="240" y="124" text-anchor="middle" font-size="13" font-weight="700">6,000</text>
+      <text class="tlp-green" x="320" y="44" text-anchor="middle" font-size="13" font-weight="700">14,000</text>
+      <text class="tlp-text3" x="80" y="208" text-anchor="middle" font-size="12">Open</text>
+      <text class="tlp-text3" x="160" y="208" text-anchor="middle" font-size="12">Midday</text>
+      <text class="tlp-text3" x="240" y="208" text-anchor="middle" font-size="12">Midday</text>
+      <text class="tlp-text3" x="320" y="208" text-anchor="middle" font-size="12">Close</text>
+      <text class="tlp-text3" x="198" y="226" text-anchor="middle" font-size="12">one 40,000-share order, four buckets</text>
+      <line class="tlp-line dash" x1="380" y1="10" x2="380" y2="222"/>
+      <text class="tlp-text2" x="400" y="18" font-size="13" font-weight="700">then score it</text>
+      <text class="tlp-text" x="430" y="33" text-anchor="middle" font-size="15" font-weight="700">$1,500</text>
+      <rect class="tlp-purple" x="410" y="40" width="40" height="30" opacity=".7"/>
+      <rect class="tlp-amber" x="410" y="70" width="40" height="75" opacity=".7"/>
+      <rect class="tlp-blue" x="410" y="145" width="40" height="45" opacity=".7"/>
+      <line class="tlp-line" x1="400" y1="190" x2="460" y2="190"/>
+      <text class="tlp-purple" x="460" y="60" font-size="13" font-weight="700">unfilled $300</text>
+      <text class="tlp-amber" x="460" y="112" font-size="13" font-weight="700">impact $750</text>
+      <text class="tlp-blue" x="460" y="172" font-size="13" font-weight="700">delay $450</text>
+      <text class="tlp-text3" x="400" y="208" font-size="12">= 30 bp of $500,000</text>
+    </svg>
+    <figcaption>Left: the same 40,000 shares sliced two ways. TWAP trades a flat 10,000 in every bucket, while VWAP leans into the busy open and close. Right: Implementation Shortfall scores any schedule after the fact, splitting the lesson's $1,500 cost into three different causes.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My portfolio manager wants forty thousand shares bought today. Why not just send one big order?</p>
+      <p data-who="Quant">Because you'd push the price up against yourself all at once. So you spread it out. The question is how.</p>
+      <p data-who="Trader">Evenly seems fair. Ten thousand shares in each quarter of the day.</p>
+      <p data-who="Quant">That's TWAP, slicing by the clock. Simple, and anyone can check it. The flaw is that the market doesn't trade evenly. Volume is heavy at the open and the close and thin at lunchtime, so your midday slices are a big share of a thin market.</p>
+      <p data-who="Trader">So follow the volume instead.</p>
+      <p data-who="Quant">That's VWAP. If thirty-five percent of a normal day trades in the first bucket, you do thirty-five percent of your order there: fourteen thousand shares. Six thousand in each midday bucket, fourteen thousand at the close. You're never an outsized part of a quiet stretch.</p>
+      <p data-who="Trader">And if today isn't a normal day?</p>
+      <p data-who="Quant">Then you use POV. Forget the schedule and trade a fixed share of whatever volume actually happens, say ten percent. Busy market, you speed up. Quiet market, you slow down. The catch is you don't know when you'll finish.</p>
+      <p data-who="Trader">How do I know afterwards if I did well?</p>
+      <p data-who="Quant">Implementation Shortfall. Say the decision was made at fifty dollars. By the time you started, the price was fifty dollars and five cents. You filled nine thousand shares at about fifty dollars thirteen, and a thousand never filled before the close at fifty dollars thirty.</p>
+      <p data-who="Trader">So what did that cost?</p>
+      <p data-who="Quant">Four hundred and fifty dollars of delay, the drift before you started. Seven hundred and fifty of impact, your own footprint. Three hundred of opportunity cost on the shares you never got. Fifteen hundred dollars in all, thirty basis points, and each piece points at a different fix.</p>
+      <p data-who="Trader">Has a schedule ever gone badly wrong?</p>
+      <p data-who="Quant">The Flash Crash, sixth of May, twenty ten. A fund hedging with seventy-five thousand E-mini futures used a POV rule: nine percent of the last minute's volume, with no limit on price or time.</p>
+      <p data-who="Trader">That sounds patient.</p>
+      <p data-who="Quant">It wasn't. Fast traders passed the contracts back and forth, so volume soared, so the algorithm sold faster. The whole order went in about twenty minutes. A similar sale before had taken more than five hours.</p>
+      <p data-who="Trader">So the volume it was following was partly its own selling.</p>
+      <p data-who="Quant">Exactly. Volume isn't liquidity. Pick the schedule for your urgency and your footprint, give it a price limit, and score it honestly with the shortfall afterwards.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -127,6 +188,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where Implementation Shortfall comes from, one cost at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{IS} = \color{#fbbf24}{(P_{\text{start}} - P_{\text{decision}})\cdot X_{\text{filled}}} \]</div>
+      <p>Start with delay: the drift between the decision and the first trade, charged on the shares that filled. In the worked example, \(0.05 \times 9{,}000 = \$450\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{IS} = (P_{\text{start}} - P_{\text{decision}})\cdot X_{\text{filled}} + \color{#fbbf24}{(\bar{P}_{\text{exec}} - P_{\text{start}})\cdot X_{\text{filled}}} \]</div>
+      <p>Add market impact: how far your own trading pushed the average fill above where you started. Here about \(0.0833 \times 9{,}000 = \$750\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{IS} = \color{#fbbf24}{(\bar{P}_{\text{exec}} - P_{\text{decision}})\cdot X_{\text{filled}}} \]</div>
+      <p>The start price cancels. Delay plus impact is simply what you paid on the filled shares above the decision price. The split tells you why; the total does not depend on it.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{IS} = (\bar{P}_{\text{exec}} - P_{\text{decision}})\cdot X_{\text{filled}} + \color{#fbbf24}{(P_{\text{cancel}} - P_{\text{decision}})\cdot X_{\text{unfilled}}} \]</div>
+      <p>Add opportunity cost: the shares you never got, valued where the price ended against the decision price. Here \(0.30 \times 1{,}000 = \$300\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{\text{IS} = (\bar{P}_{\text{exec}} - P_{\text{decision}})\cdot X_{\text{filled}} + (P_{\text{cancel}} - P_{\text{decision}})\cdot X_{\text{unfilled}}} \]</div>
+      <p>The whole scorecard. On the worked example, \(\$450 + \$750 + \$300 = \$1{,}500\), or 30 basis points of a \$500,000 order.</p>
+    </div>
+  </div>
   <p>
     Three scheduling rules first, in increasing order of sophistication, then
     the Implementation Shortfall accounting framework used to judge any of
@@ -509,6 +594,15 @@
       and the delay, impact, opportunity, and total shortfall recalculate
       instantly.
     </p>
+    <div class="tl-predict">
+      <div class="tl-predict-q"><strong>Predict first.</strong> The worked order lost \$450 to delay because the price drifted from \$50.00 to \$50.05 before trading began. Suppose the desk had started at \$50.00 instead, with the same fill prices and the same close. What happens to the total shortfall? Pick one, then type 50.00 into the start price below to check.</div>
+      <ul class="tl-predict-options">
+        <li>It falls by the \$450 of delay, to \$1,050.</li>
+        <li data-correct>It stays at \$1,500. The \$450 moves from delay into impact.</li>
+        <li>It rises, because impact gets bigger.</li>
+      </ul>
+      <div class="tl-predict-reveal"><p><strong>It stays at \$1,500.</strong> The total only compares the decision price with what you paid and where the unfilled shares ended. The start price just decides how the filled-share cost is split: delay drops to \$0 and impact grows to \((50.1333 - 50.00) \times 9{,}000 \approx \$1{,}200\). Now set the cancel price to 50.00 and watch the \$300 of opportunity cost disappear.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Decision price \(P_{\text{decision}}\)</span></div>
@@ -565,6 +659,12 @@
     </svg>
     <div class="tl-chart-caption">Illustrative positioning, not a precise optimization. High urgency (fear the price runs away before you finish) with low impact concern favors trading fast and aggressive, closer to Almgren-Chriss's high-risk-aversion (front-loaded) end. High impact concern with low urgency favors a patient, footprint-minimizing VWAP-style schedule, closer to Almgren-Chriss's low-risk-aversion (near-even) end. POV sits in between as a genuinely adaptive middle path, and plain TWAP is the simple default when neither concern is pressing enough to justify anything more sophisticated.</div>
   </div>
+
+  <!-- WB:execution_algorithms:START -->
+  <div class="wb" id="wb-execution_algorithms" data-title="Slice it, score it: TWAP, VWAP, POV and the shortfall">
+    <script type="application/json">{"w":600,"h":866,"intro":"One order, three ways to slice it, one honest way to score it, and the day a slicing rule fed on itself. The lesson's own numbers, step by step.","steps":[{"cap":"A portfolio manager decides to buy 40,000 shares. Send it all at once and you push the price up against yourself. Spread it out and the price can drift away while you wait. Every schedule here answers one question: spread it how?","do":[{"icon":"pm","name":"person","x":50,"y":10,"s":0.7,"tone":"blue","label":"portfolio manager","lsize":16},{"chip":"order","x":160,"y":46,"text":"buy 40,000","tone":"blue"},{"move":"order","x":236,"y":46,"ms":900},{"note":"q","x":446,"y":46,"text":"all at once, or spread out?","size":19,"anchor":"middle","tone":"amber"}]},{"cap":"The market's own volume isn't flat. A typical liquid stock trades heavily at the open and close and lightly at midday: here 35%, 15%, 15% and 35% of the day. That is the U shape.","do":[{"chart":"vol","x":10,"y":120,"w":280,"h":260,"title":"Market volume, % of day","xd":[0.4,4.6],"yd":[0,42],"yt":[[0,"0"],[20,"20%"],[40,"40%"]],"xt":[[1,"Open"],[2,"Mid"],[3,"Mid"],[4,"Close"]],"pl":50},{"bars":"volb","chart":"vol","data":[[1,35.0,"35%","blue"],[2,15.0,"15%","blue"],[3,15.0,"15%","blue"],[4,35.0,"35%","blue"]],"bw":34,"ms":1000}]},{"cap":"TWAP slices by the clock: 40,000 ÷ 4 = 10,000 shares in every bucket. Simple and easy to check, but at midday 10,000 is a much bigger slice of a thin market than at the open.","do":[{"chart":"sched","x":310,"y":120,"w":280,"h":260,"title":"Your shares per bucket","xd":[0.4,4.6],"yd":[0,16500],"yt":[[0,"0"],[10000,"10k"]],"xt":[[1,"Open"],[2,"Mid"],[3,"Mid"],[4,"Close"]],"pl":50},{"series":"twap","chart":"sched","pts":[[0.5,10000],[4.5,10000]],"tone":"amber","dash":true,"ms":700,"label":"TWAP","lat":[2.5,10000],"ldy":-14}]},{"cap":"VWAP follows the volume curve instead: 40,000 × 35% = 14,000 at the open, 6,000 in each midday bucket and 14,000 at the close. Your order is never an outsized part of a quiet stretch.","do":[{"bars":"vwb","chart":"sched","data":[[1,14000,"14k","green"],[2,6000,"6k","green"],[3,6000,"6k","green"],[4,14000,"14k","green"]],"bw":34,"ms":1100}]},{"cap":"POV drops the schedule altogether and trades a fixed share of the volume that actually happens, say 10%. A busy market speeds it up and a quiet one slows it down, so you no longer know when you will finish.","do":[{"box":"pov","x":40,"y":398,"w":520,"h":66,"text":"POV: trade 10% of whatever volume happens","tone":"purple","size":19}]},{"cap":"Afterwards, score it with Implementation Shortfall. A separate order: 10,000 shares, decided at $50.00, but trading only began at $50.05. That drift, $0.05 on the 9,000 shares that filled, is delay cost: $450.","do":[{"chart":"is","x":10,"y":482,"w":580,"h":280,"title":"Implementation Shortfall, $","xd":[0.4,4.6],"yd":[0,1750],"yt":[[0,"$0"],[500,"500"],[1000,"1,000"],[1500,"1,500"]],"xt":[[1,"delay"],[2,"impact"],[3,"unfilled"],[4,"total"]],"pl":62},{"bars":"isd","chart":"is","data":[[1,450,"$450","blue"]],"bw":60,"ms":800}]},{"cap":"The order filled in two clips, 6,000 at $50.10 and 3,000 at $50.20, an average of about $50.1333. The gap above the $50.05 start is your own footprint: about $0.0833 × 9,000 = $750 of market impact.","do":[{"bars":"isi","chart":"is","data":[[2,750,"$750","amber"]],"bw":60,"ms":800}]},{"cap":"1,000 shares never filled, and the stock closed at $50.30. Charged against the $50.00 decision price, that is $0.30 × 1,000 = $300 of opportunity cost: the price of not finishing.","do":[{"bars":"iso","chart":"is","data":[[3,300,"$300","purple"]],"bw":60,"ms":800}]},{"cap":"Total: $450 + $750 + $300 = $1,500, or 30 basis points of a $500,000 order. One headline number would hide three different causes: hesitation, footprint and giving up.","do":[{"bars":"ist","chart":"is","data":[[4,1500,"$1,500","red"]],"bw":60,"ms":900},{"box":"tot","x":40,"y":780,"w":520,"h":66,"text":"$1,500 = 30 bp of $500,000","tone":"red","size":20}]},{"cap":"Now a real POV order. 6 May 2010: a fund complex hedges by selling 75,000 E-mini contracts, about $4.1 billion, with an algorithm set to sell 9% of the previous minute's volume, without regard to price or time.","do":[{"hide":"pm"},{"hide":"order"},{"hide":"q"},{"hide":"vol"},{"hide":"volb"},{"hide":"sched"},{"hide":"twap"},{"hide":"vwb"},{"hide":"pov"},{"hide":"is"},{"hide":"isd"},{"hide":"isi"},{"hide":"iso"},{"hide":"ist"},{"hide":"tot"},{"icon":"fund","name":"bank","x":40,"y":10,"s":0.7,"tone":"red","label":"fund, hedging","sym":"$","lsize":17},{"box":"algo","x":200,"y":18,"w":360,"h":66,"text":"POV: sell 9% of last minute's\nvolume, no price or time limit","tone":"red","size":18}]},{"cap":"Intermediaries buy the first contracts, then pass them among themselves: more than 27,000 in 14 seconds for a net change of about 200. That volume tells the algorithm to sell faster, which feeds more contracts into the loop.","do":[{"box":"vol2","x":200,"y":196,"w":360,"h":66,"text":"volume soars: 27,000+ contracts\nin 14 s, net change ≈ 200","tone":"amber","size":18},{"arrow":["algo","vol2"],"label":"sells into","tone":"red","bend":-50},{"arrow":["vol2","algo"],"label":"sell faster","tone":"amber","bend":-50,"id":"loop"},{"icon":"h1","name":"crowd","x":40,"y":170,"s":0.66,"tone":"amber","label":"fast traders","lsize":17}]},{"cap":"The 75,000 contracts went through in about 20 minutes. A similar sale before had taken more than five hours. Volume is not liquidity: E-mini buy-side depth fell below 1% of the morning's. A price limit and a participation cap stop that loop.","do":[{"chart":"mins","x":10,"y":320,"w":580,"h":260,"title":"Time to sell the same-size order, minutes","xd":[0.4,2.6],"yd":[0,360],"yt":[[0,"0"],[120,"120"],[240,"240"]],"xt":[[1,"6 May 2010, POV"],[2,"earlier sale"]],"pl":56},{"bars":"minb","chart":"mins","data":[[1,20,"≈ 20 min","red"],[2,300,"more than 5 hours","blue"]],"bw":90,"ms":1100},{"box":"lim","x":40,"y":600,"w":520,"h":66,"text":"volume ≠ liquidity · give POV a price limit","tone":"green","size":19}]}]}</script>
+  </div>
+  <!-- WB:execution_algorithms:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: a POV order in the Flash Crash</h2>
@@ -724,6 +824,19 @@
     </p>
   </div>
 
+  <div class="tl-drill" data-date="2010-05-06">
+    <div class="tl-drill-label">Scenario drill · 6 May 2010</div>
+    <h3>A $4.1 billion hedge into a falling market</h3>
+    <p>It is the afternoon of 6 May 2010. US markets are already falling on European debt worries. You execute for a large fund complex that has decided to hedge an equity position by selling 75,000 E-mini S&amp;P 500 futures, about \$4.1 billion. How do you work the order?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Send it as one market order and get it done.<div class="tl-drill-why">This is maximum footprint. A \$4.1 billion sale in one go walks straight through the book in a nervous market, and you pay the whole impact cost at once. It is the problem every schedule in this lesson exists to avoid.</div></li>
+      <li data-verdict="bad">POV at 9% of the previous minute's volume, with no price or time limit.<div class="tl-drill-why">It sounds patient, but it is only as patient as the market's volume. If intermediaries start passing your contracts back and forth, the volume you are following is partly your own selling, and the rule speeds up exactly when depth is vanishing.</div></li>
+      <li data-verdict="good">Work it patiently over hours, taking price, time and volume into account: a participation cap and a price limit, with a person watching.<div class="tl-drill-why">On the urgency-versus-impact chart this trade sits in high impact concern, where a patient, footprint-minimizing schedule belongs. The price limit and cap stop the order from feeding on its own volume. The same trader had sold a similar order this way before.</div></li>
+      <li data-verdict="ok">A VWAP schedule over the rest of the day, following the usual volume curve.<div class="tl-drill-why">Patient and footprint-aware, which is the right instinct. But a pre-committed schedule with no price limit still sells into any air pocket, and today's volume is unlikely to look like a normal day's.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What happened.</strong> According to the joint SEC/CFTC staff report, the order went to an algorithm set to sell 9% of the previous minute's volume "without regard to price or time." High-frequency traders and other intermediaries bought the first contracts and then traded them among themselves: more than 27,000 contracts in 14 seconds for a net change of about 200. The rising volume made the algorithm sell faster, and the 75,000 contracts went through in about 20 minutes. A similar sale before, worked with a mix of manual and automated execution, had taken more than five hours. E-mini buy-side depth fell to less than 1% of its morning level, the contract fell more than 5% in about four and a half minutes, and an automatic five-second pause let buyers come back.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -836,6 +949,27 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a> <span>· why slicing an order pays at all</span></li>
+        <li><a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a> <span>· what each child order actually eats</span></li>
+        <li><a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp; VPIN</a> <span>· the volume clock and the 6 May 2010 tape</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="overconfidence-overtrading.html">Overconfidence and the Cost of Trading Too Much</a> <span>· how trading costs quietly eat an edge</span></li>
+        <li><a href="research-pipeline-hypothesis-to-backtest.html">The Research Pipeline: Hypothesis to Honest Backtest</a> <span>· putting honest costs into a backtest</span></li>
+        <!-- DESK:START --><li><a href="institutional-obizhaeva-wang-impact.html">Obizhaeva-Wang Transient Price Impact</a> <span>· impact that fades between slices</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every trade idea is paid for in execution, and the shortfall split tells you whether you lost to hesitation, to your own footprint, or to giving up.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="vpin-order-flow-toxicity.html">← Order Flow Toxicity &amp; VPIN</a>
     <a href="../hub.html">Theory Lab hub</a>
@@ -931,10 +1065,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

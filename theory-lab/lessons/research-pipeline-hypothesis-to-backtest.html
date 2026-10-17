@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Research Pipeline: Hypothesis to Honest Backtest — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -40,6 +41,78 @@
       <li><strong>Real-world episode:</strong> large NHLBI clinical trials went from 57% reporting a benefit (17 of 30) to 8% (2 of 25) once outcomes were registered in advance<!-- DESK:START -->; and this desk's funding-stress pre-registration, whose written prior (a drawn Standing Repo Facility precedes wider ranges) lost: S&amp;P 500 −0.561 ATR, a calmer week, banked as a null against the expectation<!-- DESK:END -->.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five boxes in a row, the research pipeline in order, with the lesson's worked example: 1, a mechanism written down first; 2, a zero-parameter rule with Sharpe 0.35; 3, two filters added and counted, Sharpe 0.52 then 0.61 over N equals 3 trials; 4, out of sample with costs, 0.40 on 34 trades; 5, a bar of 0.30 set before the test, so the verdict is a pass. A red dashed loop from the verdict back to the start marks the trap of trying new variants on the same data. Below, large NHLBI clinical trials: 17 of 30 (57%) reported a benefit before outcomes had to be registered in advance, 2 of 25 (8%) after.">
+      <rect class="tlp-box blue" x="10" y="20" width="104" height="56" rx="6"/>
+      <text class="tlp-text" x="62" y="43" text-anchor="middle" font-size="13" font-weight="700">1 · Mechanism</text>
+      <text class="tlp-blue" x="62" y="62" text-anchor="middle" font-size="12" font-weight="700">the why, first</text>
+      <text class="tlp-text3" x="62" y="94" text-anchor="middle" font-size="12">written down</text>
+      <rect class="tlp-box purple" x="128" y="20" width="104" height="56" rx="6"/>
+      <text class="tlp-text" x="180" y="43" text-anchor="middle" font-size="13" font-weight="700">2 · Minimal</text>
+      <text class="tlp-purple" x="180" y="62" text-anchor="middle" font-size="12" font-weight="700">Sharpe 0.35</text>
+      <text class="tlp-text3" x="180" y="94" text-anchor="middle" font-size="12">zero parameters</text>
+      <rect class="tlp-box amber" x="246" y="20" width="104" height="56" rx="6"/>
+      <text class="tlp-text" x="298" y="43" text-anchor="middle" font-size="13" font-weight="700">3 · Add, count</text>
+      <text class="tlp-amber" x="298" y="62" text-anchor="middle" font-size="12" font-weight="700">0.52 → 0.61</text>
+      <text class="tlp-text3" x="298" y="94" text-anchor="middle" font-size="12">N = 3 trials</text>
+      <rect class="tlp-box green" x="364" y="20" width="104" height="56" rx="6"/>
+      <text class="tlp-text" x="416" y="43" text-anchor="middle" font-size="13" font-weight="700">4 · OOS test</text>
+      <text class="tlp-green" x="416" y="62" text-anchor="middle" font-size="12" font-weight="700">0.40 on 34</text>
+      <text class="tlp-text3" x="416" y="94" text-anchor="middle" font-size="12">costs in, purged</text>
+      <rect class="tlp-box blue" x="482" y="20" width="104" height="56" rx="6"/>
+      <text class="tlp-text" x="534" y="43" text-anchor="middle" font-size="13" font-weight="700">5 · Verdict</text>
+      <text class="tlp-blue" x="534" y="62" text-anchor="middle" font-size="12" font-weight="700">bar 0.30: pass</text>
+      <text class="tlp-text3" x="534" y="94" text-anchor="middle" font-size="12">bar set before 4</text>
+      <line class="tlp-line" x1="114" y1="48" x2="124" y2="48"/>
+      <polygon class="tlp-arrow" points="127.0,48.0 120.0,52.0 120.0,44.0"/>
+      <line class="tlp-line" x1="232" y1="48" x2="242" y2="48"/>
+      <polygon class="tlp-arrow" points="245.0,48.0 238.0,52.0 238.0,44.0"/>
+      <line class="tlp-line" x1="350" y1="48" x2="360" y2="48"/>
+      <polygon class="tlp-arrow" points="363.0,48.0 356.0,52.0 356.0,44.0"/>
+      <line class="tlp-line" x1="468" y1="48" x2="478" y2="48"/>
+      <polygon class="tlp-arrow" points="481.0,48.0 474.0,52.0 474.0,44.0"/>
+      <path class="tlp-line red dash" d="M534,104 C534,140 14,140 14,86"/>
+      <polygon class="tlp-red" points="14.0,79.0 19.0,88.0 9.0,88.0"/>
+      <text class="tlp-red" x="298" y="152" text-anchor="middle" font-size="13" font-weight="700">the trap: back to new variants on the same data</text>
+      <text class="tlp-text3" x="10" y="182" font-size="12">Large NHLBI clinical trials reporting a benefit:</text>
+      <text class="tlp-text2" x="150" y="204" text-anchor="end" font-size="13">before registration</text>
+      <rect class="tlp-green" x="160" y="192" width="193.8" height="16" rx="3"/>
+      <text class="tlp-green" x="362" y="205" font-size="13" font-weight="700">17 of 30 · 57%</text>
+      <text class="tlp-text2" x="150" y="228" text-anchor="end" font-size="13">after (from 2000)</text>
+      <rect class="tlp-red" x="160" y="216" width="27.2" height="16" rx="3"/>
+      <text class="tlp-red" x="196" y="229" font-size="13" font-weight="700">2 of 25 · 8%</text>
+    </svg>
+    <figcaption>The order is the safeguard. Write the mechanism and the pass bar down before the data can answer, count every variant you try, and a null result stays visible. When trials had to declare their outcome in advance, reported successes fell from 57% to 8%.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I've got a moving-average crossover with a Sharpe of one point four. Can we trade it?</p>
+      <p data-who="Quant">How did you get there?</p>
+      <p data-who="Trader">The first version was flat. So was the second. Then I added a volatility filter, a day-of-week filter, a stop. By the eighth tweak it looked great.</p>
+      <p data-who="Quant">Then you have tried eight things and reported the best one. Give anyone a big enough bag of keys and one of them will turn the lock. That doesn't mean it was cut for that lock.</p>
+      <p data-who="Trader">So what should I have done?</p>
+      <p data-who="Quant">Five stages, in order. First, the mechanism. Say why the effect should exist before you look at any data. A pattern you noticed on a chart is not a reason.</p>
+      <p data-who="Trader">Give me one that is.</p>
+      <p data-who="Quant">The lesson's example. Money tends to flow towards the currency with the higher policy rate. So the plainest rule is: be long the higher-rate currency whenever the gap is positive. No lookback, no threshold, nothing to tune.</p>
+      <p data-who="Trader">And that's stage two.</p>
+      <p data-who="Quant">Right. Measure it with costs and write the number down. Say it gives a Sharpe of point three five. Modest, but honest, because there was nothing in it to fit to noise.</p>
+      <p data-who="Trader">Then I can start adding filters.</p>
+      <p data-who="Quant">One at a time, and count them. A fifty basis point filter takes it to point five two. A volatility filter takes it to point six one. That's three trials, and every discarded attempt counts too.</p>
+      <p data-who="Trader">Then the out-of-sample test.</p>
+      <p data-who="Quant">But first, stage five: write down what passing means. Say a Sharpe above point three on at least thirty trades. Then run the test on data the tuning never saw, with real costs. It comes back at point four on thirty-four trades. Supported, and nobody moved the goalposts.</p>
+      <p data-who="Trader">Does writing it down first really change anything?</p>
+      <p data-who="Quant">Ask medicine. Large heart and lung trials funded by the American government had to register their main outcome in advance from 2000. Before that, seventeen of thirty reported a benefit. After it, two of twenty-five. Fifty-seven percent fell to eight.</p>
+      <p data-who="Trader">Because they couldn't pick the outcome after seeing the data.</p>
+      <p data-who="Quant">Exactly. And the same goes for you. If you only decide after the test that point two seven is "pretty good for currencies", you've turned a null into a maybe.</p>
+      <p data-who="Trader">So the one-line version?</p>
+      <p data-who="Quant">The order is the safeguard: mechanism, plain test, counted tweaks, a bar written first, then the honest out-of-sample number.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -89,6 +162,31 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The five stages, in order</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the rule build</div>
+    <div class="tl-eqbuild-title">The worked example's numbers, one stage at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ SR_{\text{baseline}} = \color{#fbbf24}{0.35} \]</div>
+      <p>Stage 2: the bare rule, long the higher-rate currency, with zero parameters and costs included. Trial 1, recorded before anything is added.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ SR_{\text{IS}}:\ 0.35 \to \color{#fbbf24}{0.52} \]</div>
+      <p>Stage 3: add one filter, trade only when the gap exceeds 50bp. Trial 2, logged.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ SR_{\text{IS}}:\ 0.35 \to 0.52 \to 0.61,\quad \color{#fbbf24}{N = 3} \]</div>
+      <p>Add a volatility filter: trial 3. The running count \(N\) is what a multiple-testing correction will need later.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \text{pass} \iff \color{#fbbf24}{SR_{\text{OOS}} > 0.30 \ \text{and}\ n \ge 30} \]</div>
+      <p>Stage 5 comes before Stage 4 runs: write the bar down while the out-of-sample number does not yet exist.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ SR_{\text{OOS}} = 0.40,\ n = 34 \;\Rightarrow\; \color{#10b981}{\text{supported}} \]</div>
+      <p>Stage 4 on untouched data, with real costs and a purged split. Lower than the in-sample 0.61, as usual, but it clears a bar that was fixed in advance.</p>
+    </div>
+  </div>
+
   <p>
   The pipeline has five stages. Each one exists to close a specific way the previous stages can
   quietly mislead. Doing them out of order — especially skipping straight to "add complexity" before
@@ -290,6 +388,15 @@
     <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
     <h3>Running the pipeline on a rate-differential FX hypothesis, stage by stage</h3>
+    <div class="tl-predict">
+      <div class="tl-predict-q"><strong>Predict first.</strong> In the example below, the bar written in advance is an out-of-sample Sharpe above 0.30 on at least 30 trades. Suppose the test came back at 0.27 on 34 trades instead of 0.40. What is the honest verdict?</div>
+      <ul class="tl-predict-options">
+        <li>Supported: 0.27 is close to 0.30 and decent for currencies.</li>
+        <li data-correct>Not supported, recorded as a null.</li>
+        <li>Promising: add one more filter and rerun on the same holdout.</li>
+      </ul>
+      <div class="tl-predict-reveal"><p><strong>Not supported.</strong> 0.27 is below the 0.30 bar, and the bar was fixed before the number existed, so the verdict is fixed too. Calling it "close" or tuning it on the same holdout is exactly the re-narration Stage 5 exists to stop. Read the Stage 5 paragraph at the end of this example to see the rule written out.</p></div>
+    </div>
     <p>
     <strong>Stage 1 — hypothesis.</strong> The mechanism: when a country's central bank policy rate
     sits meaningfully above a peer's, capital tends to flow toward the higher-yielding currency over
@@ -363,6 +470,12 @@
     disguising itself as signal.
     </p>
   </div>
+
+  <!-- WB:research_pipeline_hypothesis_to_backtest:START -->
+  <div class="wb" id="wb-research_pipeline_hypothesis_to_backtest" data-title="The five stages, run in order and out of order">
+    <script type="application/json">{"w":600,"h":620,"intro":"One idea run through the five stages in order, using the lesson's worked example, then the same effort run in the wrong order. Press play, or step through.","steps":[{"cap":"Stage 1: the mechanism, written down before any data is pulled. Money tends to flow towards the currency with the higher policy rate. That is a reason, not a pattern read off a chart.","do":[{"icon":"you","name":"person","x":16,"y":10,"s":0.7,"tone":"blue","label":"researcher","lsize":16},{"box":"mech","x":120,"y":18,"w":300,"h":78,"text":"higher policy rate\n→ capital flows in","tone":"blue","size":19}]},{"cap":"Stage 2: the plainest rule. Be long the higher-rate currency whenever the gap is positive. No lookback, no threshold, nothing to tune. With costs in, it scores a Sharpe of 0.35. Recorded as trial 1.","do":[{"chart":"ch","x":10,"y":300,"w":580,"h":300,"title":"Sharpe ratio, trial by trial","xd":[0.4,5.2],"yd":[0,0.8],"yt":[[0,"0"],[0.2,"0.2"],[0.4,"0.4"],[0.6,"0.6"]],"xt":[[1,"plain"],[2,"+50bp"],[3,"+vol"],[4.0,"OOS"]],"pl":50,"pr":16},{"bars":"b1","chart":"ch","data":[[1,0.35,"0.35","purple"]],"bw":60,"ms":900},{"box":"n","x":450,"y":18,"w":135,"h":78,"text":"trials","tone":"amber","sub":"1","size":19}]},{"cap":"Stage 3: add one filter at a time, and count. Trade only when the gap is above 50bp: 0.52. That is trial 2.","do":[{"bars":"b2","chart":"ch","data":[[2,0.52,"0.52","amber"]],"bw":60,"ms":900},{"sub":"n","text":"2"},{"pulse":"n"}]},{"cap":"Skip the most volatile tenth of days: 0.61. Trial 3. Every attempt is logged, including the ones thrown away, because the count N feeds the multiple-testing correction later.","do":[{"bars":"b3","chart":"ch","data":[[3,0.61,"0.61","amber"]],"bw":60,"ms":900},{"sub":"n","text":"3"},{"pulse":"n"}]},{"cap":"Stage 5 comes first: before the out-of-sample test runs, write down what passing means. An out-of-sample Sharpe above 0.30, on at least 30 trades. Sealed.","do":[{"icon":"seal","name":"scroll","x":128,"y":120,"s":0.7,"tone":"green","label":"bar: > 0.30, ≥ 30 trades","lsize":16},{"series":"bar","chart":"ch","pts":[[0.6,0.3],[5.15,0.3]],"tone":"green","dash":true,"ms":700,"label":"bar 0.30","lat":[5.15,0.3],"ldx":-4,"ldy":-14,"lanchor":"end","lsize":16}]},{"cap":"Stage 4: the final rule meets data the tuning never touched, with real costs and a purged split. It scores 0.40 on 34 trades. Lower than 0.61 in-sample, as usual.","do":[{"bars":"oos","chart":"ch","data":[[4.0,0.4,"0.40","green"]],"bw":60,"ms":900}]},{"cap":"0.40 clears the 0.30 bar, with 34 trades against a minimum of 30. Supported. And because the bar was sealed first, nobody moved the goalposts to where the ball landed.","do":[{"box":"ver","x":330,"y":140,"w":255,"h":72,"text":"verdict: supported","tone":"green","sub":"0.40 on 34 > 0.30 on 30","size":18}]},{"cap":"Now the same effort in the wrong order. A crossover that \"looked right\" a few times. No mechanism. Backtest it: flat. Shorten the fast average: still flat.","do":[{"hide":"you"},{"hide":"mech"},{"hide":"n"},{"hide":"seal"},{"hide":"ch"},{"hide":"b1"},{"hide":"b2"},{"hide":"b3"},{"hide":"bar"},{"hide":"oos"},{"hide":"ver"},{"chip":"t1","x":70,"y":40,"text":"1: flat","tone":"red"},{"chip":"t2","x":190,"y":40,"text":"2: flat","tone":"red"}]},{"cap":"Then a volatility filter, a day-of-week filter, an ATR stop, and more. By the eighth tweak the write-up says \"a crossover strategy with a Sharpe of 1.4\". Nobody counted the trials, and no bar was set.","do":[{"chip":"t3","x":330,"y":40,"text":"3: + vol","tone":"amber"},{"chip":"t4","x":470,"y":40,"text":"4: + day","tone":"amber"},{"chip":"t5","x":70,"y":96,"text":"5: + stop","tone":"amber"},{"chip":"t6","x":190,"y":96,"text":"6 · 7 …","tone":"amber"},{"chip":"t8","x":360,"y":96,"text":"8: \"Sharpe 1.4\"","tone":"green"},{"note":"nobar","x":300,"y":160,"text":"no mechanism · N uncounted · no bar","size":20,"anchor":"middle","tone":"red"}]},{"cap":"Does writing the bar first matter? Medicine tested it. Large NHLBI clinical trials published before 2000: 17 of 30, or 57%, reported a benefit on their main outcome.","do":[{"hide":"t1"},{"hide":"t2"},{"hide":"t3"},{"hide":"t4"},{"hide":"t5"},{"hide":"t6"},{"hide":"t8"},{"hide":"nobar"},{"chart":"med","x":10,"y":300,"w":580,"h":300,"title":"NHLBI trials reporting a benefit (%)","xd":[0.4,2.6],"yd":[0,70],"yt":[[0,"0"],[20,"20"],[40,"40"],[60,"60"]],"xt":[[1,"before 2000"],[2,"after"]],"pl":50,"pr":16},{"bars":"m1","chart":"med","data":[[1,57,"17 of 30 · 57%","green"]],"bw":90,"ms":1000}]},{"cap":"From 2000, such trials had to register their main outcome in advance. Of the 25 published after: 2, or 8%. Researchers could no longer pick, after seeing the data, which outcome counted.","do":[{"bars":"m2","chart":"med","data":[[2,8,"2 of 25 · 8%","red"]],"bw":90,"ms":1000},{"note":"reg","x":300,"y":120,"text":"outcome declared first → 57% falls to 8%","size":20,"anchor":"middle","tone":"amber"}]},{"cap":"The order is the safeguard. Mechanism, plain test, counted tweaks, a bar sealed before the test, then the honest out-of-sample number. Get the order right and a null stays a null.","do":[{"note":"rule","x":300,"y":190,"text":"the order is the safeguard","size":22,"anchor":"middle","tone":"green"}]}]}</script>
+  </div>
+  <!-- WB:research_pipeline_hypothesis_to_backtest:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: a prior written down, and beaten</h2>
@@ -547,6 +660,19 @@
     </ul>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative research afternoon</div>
+    <h3>The out-of-sample number comes back just under the bar</h3>
+    <p>You followed the pipeline. The mechanism was written down, the zero-parameter baseline recorded, three trials logged, and the bar fixed in advance: an out-of-sample Sharpe above 0.30 on at least 30 trades. The test comes back at 0.27 on 31 trades. A colleague says 0.27 is respectable for currencies, and suggests adding a volatility filter and rerunning on the same holdout. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Call it supported. 0.27 is close enough, and decent for this asset class.<div class="tl-drill-why">The bar was 0.30 and it was written down first. Deciding after the fact that a lower number counts is moving the goalposts to where the ball landed. That is the one thing pre-registration exists to prevent.</div></li>
+      <li data-verdict="bad">Add the volatility filter and rerun on the same holdout until it clears 0.30.<div class="tl-drill-why">The holdout has now been used to choose the rule, so it is no longer out of sample. This is the red loop in the pipeline diagram: a quiet return to Stage 3 using the test data as a second round of tuning.</div></li>
+      <li data-verdict="good">Bank it as not supported, exactly as written. If the filter has its own mechanism, log it as trial 4 and test it on data the holdout never touched.<div class="tl-drill-why">The verdict stays a visible null. A new idea is a new hypothesis, with its trial counted and its own untouched test data, so nothing leaks from this result into the next one.</div></li>
+      <li data-verdict="ok">Bank it as not supported, then drop the project without writing it up.<div class="tl-drill-why">The verdict is honest, but an unrecorded null is a hidden trial. Anyone who later tests a similar idea will undercount how many variations have been tried, and their multiple-testing correction will be too generous.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What this teaches.</strong> This drill is illustrative, not a real episode. The discipline is real, though: when large NHLBI clinical trials had to declare their main outcome in advance from 2000, the share reporting a benefit fell from 17 of 30 (57%) to 2 of 25 (8%). Writing the bar down first is what lets a null stay a null.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -647,6 +773,26 @@
   </ul>
   </details>
 
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere Effect</a> <span>· why the best of many tries looks good by chance</span></li>
+        <li><a href="sharpe-family-deflated.html">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a> <span>· the bar a best-of-N Sharpe has to clear</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> <span>· how to make Stage 4's split truly leak-free</span></li>
+        <li><a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> <span>· the leaks that hide inside the features themselves</span></li>
+        <!-- DESK:START --><li><a href="action-edge-after-costs.html">Does the Edge Survive Costs?</a> <span>· the cost check every Stage 4 needs</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> almost every backtest that fails live was built in the wrong order, and this order is the cheapest protection you have.</p>
+  </nav>
+
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
     <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility →</a>
@@ -676,10 +822,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/verdicts.js" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

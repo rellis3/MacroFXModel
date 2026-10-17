@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Combining Signals That Disagree — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 <style>
   .cs-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
@@ -147,7 +148,19 @@
       <div class="sl-quote">Even an excellent combined IC of 0.10 at a two-standard-deviation reading gives a 58% chance of the right direction. Small edges are the normal case.</div>
     </section>
 
+    <!-- WB:action_combining_signals-deck:START -->
     <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Combining signals that disagree, drawn step by step</h2>
+      <!-- WB:action_combining_signals:START -->
+      <div class="wb" data-title="Combining signals that disagree, drawn step by step">
+        <script type="application/json">{"w":600,"h":800,"intro":"Five readings on EUR/USD: three say long, two say short. Count them honestly and see what they really add up to. Press play, or step through.","steps":[{"cap":"Your screen for a one-month EUR/USD view: five signals, each scored in its own standard deviations. Momentum +1.2, the moving-average cross +1.0, a breakout +1.5, the yield spread −1.0, positioning −0.5.","do":[{"chart":"sc","x":10,"y":10,"w":580,"h":230,"title":"Today's scores","xd":[0.4,5.6],"yd":[-1.9,2.9],"yt":[[2,"+2"],[1,"+1"],[0,"0"],[-1,"−1"]],"xt":[[1,"mom"],[2,"cross"],[3,"break"],[4,"rates"],[5,"posit."]],"zero":true,"pl":46,"pr":12},{"bars":"scb","chart":"sc","data":[[1,1.2,"+1.2","green"],[2,1.0,"+1.0","green"],[3,1.5,"+1.5","green"],[4,-1.0,"−1.0","red"],[5,-0.5,"−0.5","red"]],"bw":46,"ms":1200}]},{"cap":"Count the votes: three long, two short. The vote says long. Adding the scores says long too: +2.2.","do":[{"note":"vote","x":470,"y":58,"text":"3 vs 2 → LONG?","size":20,"anchor":"middle","tone":"amber"}]},{"cap":"But the three long votes all measure one thing: trend. They move together with a correlation of 0.8. Like three friends who read the same newspaper, they are one opinion said three times.","do":[{"line":"fam","points":[[93,68],[93,62],[340,62],[340,68]],"tone":"amber","width":3,"ms":600},{"note":"famt","x":216,"y":50,"text":"trend family: one input","size":18,"anchor":"middle","tone":"amber"}]},{"cap":"How many opinions is that? N ÷ (1 + (N − 1) × ρ). Three trend signals at 0.8 are worth 3 ÷ 2.6 = 1.15. Ten of them would be worth only 1.22, and no number of them passes 1 ÷ 0.8 = 1.25.","do":[{"chart":"ne","x":10,"y":258,"w":280,"h":220,"title":"worth, at ρ = 0.8","xd":[1,10],"yd":[0,10],"yt":[[1,"1"],[5,"5"],[10,"10"]],"xt":[[1,"1"],[5,"5"],[10,"10"]],"pl":40,"pr":14},{"series":"diag","chart":"ne","pts":[[1,1],[10,10]],"tone":null,"dash":true,"ms":500,"label":"if independent","lat":[7,7],"ldx":-8,"ldy":-6,"lanchor":"end","lsize":14},{"series":"neff","chart":"ne","pts":[[1,1.0],[2,1.111],[3,1.154],[4,1.176],[5,1.19],[6,1.2],[7,1.207],[8,1.212],[9,1.216],[10,1.22]],"tone":"purple","ms":1200},{"dot":"n3","chart":"ne","at":[3,1.154],"text":"1.15","tone":"amber","dy":-16}]},{"cap":"Next, track records. Each signal's past correlation with the returns that followed, its IC, is small: 0.04 for each trend signal, 0.08 for rates, 0.06 for positioning. But positioning rests on only 50 observations, the rest on 400.","do":[{"box":"rec","x":305,"y":258,"w":285,"h":104,"text":"IC: trend 0.04 (n 400)\nrates 0.08 (n 400)\npositioning 0.06 (n 50)","tone":"blue","size":17}]},{"cap":"Shrink every record by its length. With 400 observations you keep half the measured IC; with 50, about a ninth. Shrunk: trend 0.020 each, rates 0.040, positioning 0.0067. A signal with no record would get nothing.","do":[{"box":"shr","x":305,"y":374,"w":285,"h":104,"text":"keep: n 400 → 50%\nn 50 → 11%","tone":"purple","size":18}]},{"cap":"Now combine with weights that undo the double-counting. The trend family shares one signal's worth of weight: each gets 0.020 ÷ 2.6 = 0.0077. Rates gets 0.040, positioning 0.0067.","do":[{"chart":"ct","x":10,"y":496,"w":360,"h":230,"title":"Pull on the forecast (×1,000)","xd":[0.4,3.6],"yd":[-60,36],"yt":[[25,"+25"],[0,"0"],[-25,"−25"]],"xt":[[1,"trend ×3"],[2,"rates"],[3,"positioning"]],"zero":true,"pl":50,"pr":12}]},{"cap":"Weight times score. The whole trend family pulls long: 0.0077 × (1.2 + 1.0 + 1.5) = +0.0285. Rates pulls short: −0.040. Positioning adds −0.0033. They nearly cancel: F = −0.0149.","do":[{"bars":"ctb","chart":"ct","data":[[1,28.5,"+28.5","green"],[2,-40.0,"−40.0","red"],[3,-3.3,"−3.3","red"]],"bw":50,"ms":1300}]},{"cap":"In its own standard deviations that is z = −0.32. The chance the direction is right is 50.6%, a faint lean short. Under the written rule, |z| under 1 means no trade. The honest output is \"no view\".","do":[{"cross":"vote"},{"box":"nv","x":385,"y":496,"w":205,"h":110,"text":"z = −0.32\n50.6% → NO VIEW","tone":"amber","size":19}]},{"cap":"What would make this a trade? Independent agreement. If the yield spread read +1.0 instead, the same arithmetic gives z = +1.42, an expected move of +0.13% and a 52.6% chance of being right: a modest, legitimate long.","do":[{"box":"flip","x":385,"y":616,"w":205,"h":110,"text":"rates +1.0?\nz = +1.42 → small long","tone":"green","size":18}]},{"cap":"It happened at scale in August 2007. Many quant equity funds, each sure its blend of signals was its own, lost heavily within a few days while the market barely moved. Their \"independent\" signals had become one crowded position.","do":[{"note":"quake","x":300,"y":760,"text":"Aug 2007: many signals, one crowded trade","size":19,"anchor":"middle","tone":"red"}]},{"cap":"The habit: count families, not indicators. Trust each record only as much as its length deserves. And write the no-view rule before you look at today's screen.","do":[{"pulse":"nv"},{"pulse":"famt"}]}]}</script>
+      </div>
+      <!-- WB:action_combining_signals:END -->
+    </section>
+    <!-- WB:action_combining_signals-deck:END -->
+
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Where combining sits in the decision</h2>
       <div class="sl-chain">
@@ -163,7 +176,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9 · It actually happened</div>
       <h2 class="sl-h2">August 2007: many signals, one position</h2>
       <p class="sl-p">In the week of 6 August 2007, many quantitative equity funds — each running its own blend of value, momentum and quality signals — took unusually large losses in a few days, while the broad market moved comparatively little.</p>
@@ -171,14 +184,14 @@
       <div class="sl-callout amber"><div class="sl-callout-label">Same pattern, 1998</div><p>LTCM's many "separate" relative-value trades all widened together after Russia's default. In September 1998 the New York Fed organised a recapitalisation of about $3.6 billion by a group of banks. Diversification that is counted, not measured, disappears when you need it.</p></div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10 · The desk's verdict</div>
       <h2 class="sl-h2">What was tested here</h2>
       <div class="sl-stamp null" data-evidence="macro-confluence-baa-credit" data-evidence-date="2026-10-03"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>"When three macro domains agree, direction follows."</strong> Liquidity, curve and credit all +1 or all −1, 39 and 38 episodes 2009–2026: no forward edge on EUR/USD, the S&amp;P 500 or gold. The one cell that looked real (EUR/USD −0.616% over 20 days) pointed the same way after <em>negative</em> confluence too — drift, not prediction.</span></div>
       <div class="sl-stamp validated" data-evidence="multi-spread-sleeve" data-evidence-date="2026-09-20"><span class="sl-stamp-tag">Desk test: held up</span><span><strong>Two genuinely different signals, combined.</strong> 2-year and 10-year yield-spread legs: 15.7% trade overlap, 0.300 return correlation. Combined Sharpe 1.15 beat each leg (1.02, 0.81) — close to the formula's (S₁+S₂)/√(2(1+ρ)) ≈ 1.13. <em>Backtest evidence; not forward-proven.</em></span></div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11 · Template</div>
       <h2 class="sl-h2">The signal-combination card</h2>
       <div class="sl-icard-grid">
@@ -189,7 +202,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -227,7 +240,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -360,5 +373,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

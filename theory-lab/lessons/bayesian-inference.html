@@ -43,6 +43,56 @@
     </ul>
   </div>
 
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A bar of 1,000 days split into 200 trend days and 800 reversion days. Below it, the days an 80% accurate classifier flags: 160 real trend days under the trend segment and 160 false alarms under the reversion segment, the same size. Of the 320 flagged days only 160 are real, so a 20% prior becomes a 50% posterior, not 80%.">
+      <text class="tlp-text" x="40" y="24" font-size="14" font-weight="700">1,000 days</text>
+      <rect class="tlp-box purple" x="40" y="34" width="104" height="34" rx="4"/>
+      <rect class="tlp-box" x="144" y="34" width="416" height="34" rx="4"/>
+      <text class="tlp-purple" x="92" y="56" text-anchor="middle" font-size="13" font-weight="700">200 trend</text>
+      <text class="tlp-text2" x="352" y="56" text-anchor="middle" font-size="13">800 reversion days</text>
+      <text class="tlp-text" x="40" y="104" font-size="14" font-weight="700">days the 80%-accurate classifier flags</text>
+      <rect class="tlp-box green" x="40" y="114" width="83.2" height="34" rx="4"/>
+      <rect class="tlp-box red" x="144" y="114" width="83.2" height="34" rx="4"/>
+      <text class="tlp-green" x="81.6" y="136" text-anchor="middle" font-size="13" font-weight="700">160 real</text>
+      <text class="tlp-red" x="185.6" y="136" text-anchor="middle" font-size="13" font-weight="700">160 false</text>
+      <text class="tlp-text2" x="250" y="128" font-size="13">80% of 200 = 160 · 20% of 800 = 160</text>
+      <text class="tlp-text2" x="250" y="146" font-size="13">320 flags, only half of them real</text>
+      <text class="tlp-purple" x="40" y="196" font-size="15" font-weight="700">prior 20%</text>
+      <line class="tlp-line thick" x1="128" y1="191" x2="200" y2="191"/>
+      <polygon class="tlp-arrow" points="210,191 198,185 198,197"/>
+      <text class="tlp-green" x="220" y="196" font-size="15" font-weight="700">posterior 50%</text>
+      <text class="tlp-red" x="350" y="196" font-size="15" font-weight="700">not the quoted 80%</text>
+      <text class="tlp-text3" x="40" y="222" font-size="12">Bayes factor 4: real evidence, but it moves the belief rather than settling it</text>
+    </svg>
+    <figcaption>Trend days are rare, so the false alarms from the big pool of reversion days catch up with the true alarms from the small pool. The flag lifts your belief from 20% to a coin flip.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">My regime classifier is eighty percent accurate, and it just flagged today as a trend day. So I'm eighty percent sure, right?</p>
+      <p data-who="Quant">That is the most common mistake in this whole subject. Eighty percent is how often it fires on real trend days. You want something else: how often a flag means a real trend day.</p>
+      <p data-who="Trader">Aren't those the same thing?</p>
+      <p data-who="Quant">Only if trend days are as common as everything else. Say only twenty percent of days are trend days. Picture a thousand days. Two hundred are trend days, eight hundred are not.</p>
+      <p data-who="Trader">OK.</p>
+      <p data-who="Quant">The classifier catches eighty percent of the two hundred: one hundred and sixty real flags. But it also fires wrongly on twenty percent of the eight hundred quiet days. That is another one hundred and sixty.</p>
+      <p data-who="Trader">So three hundred and twenty flags, and only half of them are real.</p>
+      <p data-who="Quant">Exactly. Given the flag, the chance today is a trend day is fifty percent. A coin flip, not eighty. That gap is the base-rate fallacy.</p>
+      <p data-who="Trader">So the classifier is useless?</p>
+      <p data-who="Quant">No. It moved you from twenty percent to fifty. The flag is four times more likely on a trend day than on a quiet one. That ratio, the Bayes factor, is what the evidence is worth on its own. Four counts as substantial. Real, but not decisive.</p>
+      <p data-who="Trader">And this is just Bayes' theorem?</p>
+      <p data-who="Quant">Yes, and it is not a separate law. It falls out of the definition of conditional probability, written two ways. Your updated belief equals your starting belief times how strongly the evidence points, divided by how often you would see that evidence anyway.</p>
+      <p data-who="Trader">What happens when the next signal comes in?</p>
+      <p data-who="Quant">Today's answer becomes tomorrow's starting point, and you update again. Just be careful that the second signal is not the first one in disguise. Two signals reading the same thing get counted twice.</p>
+      <p data-who="Trader">Does anyone use this for real money?</p>
+      <p data-who="Quant">Fischer Black and Robert Litterman did, at Goldman Sachs in the early nineteen nineties. They took the market's own weights as the prior and a manager's views as evidence. No view, you hold the market. A strong view, you tilt towards it.</p>
+      <p data-who="Trader">So what's the habit?</p>
+      <p data-who="Quant">Before you trust any signal, ask how rare the thing it claims to detect really is.</p>
+    </div>
+  </section>
+
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
@@ -118,6 +168,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Bayes' theorem from one definition, then the classifier's real hit rate</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P(H \mid E) = \frac{\color{#fbbf24}{P(H \cap E)}}{P(E)} \]</div>
+      <p>The definition of conditional probability: of all the times \(E\) happens, what fraction also have \(H\)?</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P(H \mid E) = \frac{\color{#fbbf24}{P(E \mid H)\,P(H)}}{P(E)} \]</div>
+      <p>"\(H\) and \(E\)" is the same event as "\(E\) and \(H\)", so the top can be written the other way round. That is Bayes' theorem: derived, not assumed.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P(H \mid E) = \frac{P(E \mid H)\,P(H)}{P(E \mid H)\,P(H) + \color{#fbbf24}{P(E \mid \lnot H)\,P(\lnot H)}} \]</div>
+      <p>Expand the bottom over both ways the evidence can appear. The new term is the false alarms, the part intuition forgets.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ P(H \mid E) = \frac{0.80 \times 0.20}{0.80 \times 0.20 + 0.20 \times 0.80} = \color{#10b981}{\frac{0.16}{0.32} = 0.50} \]</div>
+      <p>Plug in the classifier: 80% accurate, trend days 20% of the time. The flag lifts the belief from 20% to 50%, not to 80%.</p>
+    </div>
+  </div>
   <p>
     Everything here is built from one definition: the definition of
     <strong>conditional probability</strong>. Nothing is assumed beyond that —
@@ -376,6 +446,10 @@
       positive rate, or the false positive rate, and \(P(E)\), the posterior
       \(P(H\mid E)\), and the Bayes factor \(K\) all recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="17.4" data-tol="3" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Same 80%-accurate classifier, but in a quieter market where only 5% of days are trend days. The flag fires. What is the chance today really is a trend day? Lock in a guess, then type 5 into the prior field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 17.4%.</strong> True flags: \(0.80 \times 0.05 = 0.04\). False flags: \(0.20 \times 0.95 = 0.19\). So \(P(H\mid E) = 0.04/0.23 \approx 17.4\%\). The classifier and its Bayes factor of 4 have not changed at all; only the prior did, and now more than four in five flags are false alarms. Now set the prior to 50% and watch the posterior land exactly on 80%.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Prior \(P(H)\) (%)</span></div>
@@ -632,6 +706,19 @@
     </p>
   </div>
 
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative morning</div>
+    <h3>The trend-day flag has just fired</h3>
+    <p>Your regime classifier, validated at 80% accuracy on both trend days and reversion days, has flagged today as a trend day. In this market only about 20% of days are trend days. You are deciding how to trade the session. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Trade it as an 80% trend day and size up.<div class="tl-drill-why">80% is \(P(E\mid H)\), how often the flag fires on real trend days. What you need is \(P(H\mid E)\), and with a 20% base rate that is only 50%. Sizing on 80% badly overstates your edge.</div></li>
+      <li data-verdict="good">Treat it as roughly a coin flip, 50%, and look for independent evidence before leaning harder.<div class="tl-drill-why">This is the posterior: 160 real flags against 160 false ones out of every 1,000 days. The flag moved you from 20% to 50%, a Bayes factor of 4. A second, genuinely independent signal could move you further.</div></li>
+      <li data-verdict="ok">Ignore the flag. The classifier is no better than a coin.<div class="tl-drill-why">Too harsh. Going from 20% to 50% is real evidence. Throwing it away wastes information. The flag should change your belief, just not as far as the headline number suggests.</div></li>
+      <li data-verdict="bad">Check a second indicator built from the same daily pivots. If it agrees, treat the day as a near-certain trend day.<div class="tl-drill-why">Two signals reading the same thing are one piece of evidence counted twice. Chaining them as if independent inflates the posterior beyond what the evidence supports.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What the arithmetic says.</strong> This is an illustrative situation built on the lesson's worked example, not a dated event. Out of 1,000 days, 200 are trend days and the classifier flags 160 of them; it also flags 160 of the 800 reversion days. Of 320 flags, 160 are real: a 50% posterior. If trend days were 50% of days, the same classifier would be right 80% of the time when it fires.</p></div>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -742,6 +829,26 @@
     <li>Harold Jeffreys, <em>Theory of Probability</em>, 3rd ed., Oxford University Press, 1961 — origin of the Bayes-factor interpretation scale referenced above.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-probability.html">Probability &amp; Random Variables</a> <span>· conditional probability, the one definition this lesson needs</span></li>
+        <li><a href="emh.html">The Efficient Market Hypothesis</a> <span>· why your prior on any new edge should be low</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="multiple-testing.html">Multiple Testing &amp; the Look-Elsewhere Effect</a> <span>· the base-rate problem when you test many ideas</span></li>
+        <li><a href="bayesian-conjugate-priors.html">Conjugate Priors &amp; Bayesian Updating in Practice</a> <span>· updating a hit rate trade by trade</span></li>
+        <!-- DESK:START --><li><a href="action-base-rates.html">Base Rates First</a> <span>· putting the prior first in a real call</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every signal you trade is evidence, not an answer, and how far it should move you depends on how rare the thing it claims to see really is.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="emh.html">← Efficient Market Hypothesis</a>
@@ -871,7 +978,8 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>

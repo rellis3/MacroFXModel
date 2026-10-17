@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Trigonometry, Logarithms &amp; Exponentials — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -42,6 +43,60 @@
       <li><strong>How it reached trading:</strong> Osborne (1959) argued that log prices, not prices, follow a random walk, and from Black–Scholes–Merton (1973) on, log returns and continuous compounding \(e^{-rT}\) became the desk standard.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four arrows laid end to end on a number line, one for each day's log-return in the lesson's price series 100, 102, 101, 104, 103. Day one moves right by 0.0198, day two back left by 0.0099, day three right by 0.0293, and day four back left by 0.0097. The last arrow ends at 0.0296, which is exactly the natural log of 103 over 100, the four-day total. Underneath, a reminder that simple percentage returns do not add this way: up 50% then down 50% leaves you down 25%.">
+      <text class="tlp-text2" x="20" y="24" font-size="13">Four daily log-returns, laid end to end (prices 100 → 102 → 101 → 104 → 103):</text>
+      <line class="tlp-line green thick" x1="40" y1="50" x2="261" y2="50"/><polygon class="tlp-green" points="268.8,50 259.8,44.5 259.8,55.5"/>
+      <line class="tlp-line red thick" x1="268.8" y1="72" x2="163" y2="72"/><polygon class="tlp-red" points="155,72 164,66.5 164,77.5"/>
+      <line class="tlp-line green thick" x1="155" y1="94" x2="485" y2="94"/><polygon class="tlp-green" points="493.2,94 484.2,88.5 484.2,99.5"/>
+      <line class="tlp-line red thick" x1="493.2" y1="116" x2="390" y2="116"/><polygon class="tlp-red" points="381.6,116 390.6,110.5 390.6,121.5"/>
+      <text class="tlp-green" x="154.4" y="44" text-anchor="middle" font-size="12" font-weight="700">day 1: +0.0198</text>
+      <text class="tlp-red" x="211.9" y="66" text-anchor="middle" font-size="12" font-weight="700">day 2: −0.0099</text>
+      <text class="tlp-green" x="324" y="88" text-anchor="middle" font-size="12" font-weight="700">day 3: +0.0293</text>
+      <text class="tlp-red" x="437.4" y="110" text-anchor="middle" font-size="12" font-weight="700">day 4: −0.0097</text>
+      <line class="tlp-line" x1="30" y1="150" x2="570" y2="150"/>
+      <line class="tlp-line dash" x1="40" y1="50" x2="40" y2="150"/>
+      <line class="tlp-line green dash" x1="381.6" y1="116" x2="381.6" y2="150"/>
+      <circle class="tlp-green" cx="381.6" cy="150" r="6"/>
+      <text class="tlp-text3" x="40" y="168" text-anchor="middle" font-size="12">0</text>
+      <text class="tlp-text3" x="155.6" y="168" text-anchor="middle" font-size="12">0.01</text>
+      <text class="tlp-text3" x="271.1" y="168" text-anchor="middle" font-size="12">0.02</text>
+      <text class="tlp-text3" x="386.7" y="168" text-anchor="middle" font-size="12">0.03</text>
+      <text class="tlp-text3" x="502.2" y="168" text-anchor="middle" font-size="12">0.04</text>
+      <text class="tlp-green" x="300" y="196" text-anchor="middle" font-size="14" font-weight="700">Sum = 0.0296 = ln(103 ÷ 100): exactly the four-day total</text>
+      <text class="tlp-amber" x="300" y="224" text-anchor="middle" font-size="13" font-weight="700">Simple returns don't add: up 50% then down 50% leaves you down 25%</text>
+    </svg>
+    <figcaption>Logs turn multiplying into adding. Lay the daily log-returns end to end and you land exactly on the whole period's log-return, with no compounding correction needed.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">Here's something that bugs me. A stock goes up fifty percent, then down fifty percent. Surely I'm back where I started?</p>
+      <p data-who="Quant">Try it with money. Start with a hundred dollars. Up fifty percent is a hundred and fifty. Down fifty percent of that is seventy-five.</p>
+      <p data-who="Trader">So I'm down a quarter. That feels wrong.</p>
+      <p data-who="Quant">It feels wrong because percentages don't add. Each one is a percentage of a different amount, so they multiply. Fifty percent of a bigger number is a bigger loss.</p>
+      <p data-who="Trader">So how do people add up returns properly?</p>
+      <p data-who="Quant">With logarithms. A log is a way of asking how much growth it took to get from one number to another. And logs have one lovely trick: they turn multiplying into adding.</p>
+      <p data-who="Trader">Show me with real numbers.</p>
+      <p data-who="Quant">Take a price over four days: a hundred, then a hundred and two, a hundred and one, a hundred and four, and finally a hundred and three. Work out the log return for each day. Add the four together and you get about three hundredths. Now take the log of the whole move, a hundred and three over a hundred. It is the same three hundredths, to six decimal places.</p>
+      <p data-who="Trader">So I can just stack the days like building blocks.</p>
+      <p data-who="Quant">Exactly. That is why most return series are stored as log returns.</p>
+      <p data-who="Trader">Where does the number e come in? People write it everywhere.</p>
+      <p data-who="Quant">It came from a money puzzle. In sixteen eighty-three Jacob Bernoulli asked what happens if a bank credits interest more and more often: yearly, monthly, daily, every instant. You earn a little more each time, but the extra shrinks, and the total settles on a number near two point seven one eight. That is e.</p>
+      <p data-who="Trader">And that's continuous compounding.</p>
+      <p data-who="Quant">Yes. One small surprise: a five percent rate paid once a year matches a continuous rate of only about four point eight eight percent. Compounding every instant needs a slightly smaller number to grow the same amount.</p>
+      <p data-who="Trader">And the sine and cosine part?</p>
+      <p data-who="Quant">Picture a point walking round a circle. Its height goes up and down in a smooth wave that repeats every lap. Anything that cycles, like a season or a daily rhythm, gets described with those waves.</p>
+      <p data-who="Trader">When did markets start thinking in logs?</p>
+      <p data-who="Quant">In nineteen fifty-nine a physicist, Osborne, argued that the log of a price, not the price, wanders like a random walk. The famous option pricing model of nineteen seventy-three was built the same way.</p>
+      <p data-who="Trader">So, one line?</p>
+      <p data-who="Quant">Percentages multiply, logs add. Convert to logs, add up the days, and convert back at the end.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -135,6 +190,30 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Why log-returns add up, one step at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ r_1 = \color{#fbbf24}{\ln\!\left(\frac{P_1}{P_0}\right)} \]</div>
+      <p>Start with one day. The log-return is the natural log of the price ratio. From 100 to 102 that is \(\ln(1.02) = 0.019803\).</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \ln\!\left(\frac{P_2}{P_0}\right) = \ln\!\left(\color{#fbbf24}{\frac{P_2}{P_1}\cdot\frac{P_1}{P_0}}\right) \]</div>
+      <p>Now two days. The whole move is the second day's ratio times the first day's ratio. That is plain algebra: the \(P_1\) on top and the \(P_1\) underneath cancel.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \ln\!\left(\frac{P_2}{P_0}\right) = \color{#fbbf24}{\ln\!\left(\frac{P_2}{P_1}\right) + \ln\!\left(\frac{P_1}{P_0}\right)} \]</div>
+      <p>Apply the product rule, \(\ln(ab) = \ln a + \ln b\). The log of a product becomes a sum of logs.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \ln\!\left(\frac{P_2}{P_0}\right) = \color{#10b981}{r_2 + r_1} \]</div>
+      <p>So the two-day log-return is just the two daily log-returns added together. The same works for any number of days.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ 0.019803 - 0.009852 + 0.029270 - 0.009662 = \color{#10b981}{0.029559 = \ln(1.03)} \]</div>
+      <p>Check it on the four-day series 100, 102, 101, 104, 103. The four daily log-returns add up to exactly the log of 103 over 100.</p>
+    </div>
+  </div>
 
   <h3>The unit circle, sine, and cosine</h3>
   <p>
@@ -456,6 +535,10 @@
       stay equal, however \(t\) is changed, exactly because \(r_c\) was
       defined to make them match.
     </p>
+    <div class="tl-predict" data-answer="9.53" data-tol="0.3" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> A 5% simple rate matches a continuous rate of 4.879%. What continuous rate matches a 10% simple rate? A hint: it will be a little under 10%. Lock in a guess, then type 10 into the rate box below to check.</div>
+      <div class="tl-predict-reveal"><p><strong>About 9.53%.</strong> The continuous rate is \(\ln(1.10) = 0.09531\). Because continuous compounding adds interest every instant, it needs a slightly smaller rate to grow money as much as 10% paid once a year. The gap grows with the rate: about 0.12 points at 5%, about 0.47 points at 10%. Try 50% next and see the gap widen.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Simple annual rate \(R\) (%)</span></div>
@@ -500,6 +583,12 @@
       log-returns were defined in the first place.
     </p>
   </div>
+
+  <!-- WB:foundation_trig_logs_exponentials:START -->
+  <div class="wb" id="wb-foundation_trig_logs_exponentials" data-title="Circles, compounding and returns that add up">
+    <script type="application/json">{"w":600,"h":760,"intro":"A point walking round a circle, money growing every instant, and returns that finally add up. Real numbers from the lesson. Press play, or step through.","steps":[{"cap":"Picture a circle of radius 1. A point starts at the 3 o'clock position and walks anticlockwise round the rim.","do":[{"chart":"ci","x":10,"y":10,"w":240,"h":250,"title":"The unit circle","xd":[-1.35,1.35],"yd":[-1.35,1.35],"yt":[[-1,"−1"],[1,"1"]],"xt":[[-1,"−1"],[1,"1"]],"zero":true,"pl":30,"pr":8},{"series":"rim","chart":"ci","pts":[[1.0,0.0],[0.9945,0.1045],[0.9781,0.2079],[0.9511,0.309],[0.9135,0.4067],[0.866,0.5],[0.809,0.5878],[0.7431,0.6691],[0.6691,0.7431],[0.5878,0.809],[0.5,0.866],[0.4067,0.9135],[0.309,0.9511],[0.2079,0.9781],[0.1045,0.9945],[0.0,1.0],[-0.1045,0.9945],[-0.2079,0.9781],[-0.309,0.9511],[-0.4067,0.9135],[-0.5,0.866],[-0.5878,0.809],[-0.6691,0.7431],[-0.7431,0.6691],[-0.809,0.5878],[-0.866,0.5],[-0.9135,0.4067],[-0.9511,0.309],[-0.9781,0.2079],[-0.9945,0.1045],[-1.0,0.0],[-0.9945,-0.1045],[-0.9781,-0.2079],[-0.9511,-0.309],[-0.9135,-0.4067],[-0.866,-0.5],[-0.809,-0.5878],[-0.7431,-0.6691],[-0.6691,-0.7431],[-0.5878,-0.809],[-0.5,-0.866],[-0.4067,-0.9135],[-0.309,-0.9511],[-0.2079,-0.9781],[-0.1045,-0.9945],[-0.0,-1.0],[0.1045,-0.9945],[0.2079,-0.9781],[0.309,-0.9511],[0.4067,-0.9135],[0.5,-0.866],[0.5878,-0.809],[0.6691,-0.7431],[0.7431,-0.6691],[0.809,-0.5878],[0.866,-0.5],[0.9135,-0.4067],[0.9511,-0.309],[0.9781,-0.2079],[0.9945,-0.1045],[1.0,-0.0]],"tone":"blue","ms":1400},{"dot":"st","chart":"ci","at":[1,0],"text":"","tone":"blue"}]},{"cap":"Walk 30° round. The point's height above the centre is the sine: sin 30° = 0.5. Its sideways distance is the cosine, about 0.866.","do":[{"series":"rad","chart":"ci","pts":[[0,0],[0.866,0.5]],"tone":"amber","ms":600},{"series":"ht","chart":"ci","pts":[[0.866,0.5],[0.866,0]],"tone":"purple","dash":true,"ms":500},{"dot":"p30","chart":"ci","at":[0.866,0.5],"text":"0.5","tone":"purple","dx":10,"dy":-10,"anchor":"start"}]},{"cap":"Keep walking and plot the height against how far you have walked. The height rises to 1 at 90°, falls back to 0 at 180°, reaches −1 at 270° and returns to 0 at 360°. That wave is the sine.","do":[{"chart":"wv","x":262,"y":10,"w":328,"h":250,"title":"Height as you walk","xd":[0,12.9],"yd":[-1.35,1.35],"yt":[[-1,"−1"],[0,"0"],[1,"1"]],"xt":[[0,"0"],[3.1416,"180°"],[6.2832,"360°"],[9.4248,"540°"],[12.566,"720°"]],"zero":true,"pl":34,"pr":10},{"series":"l1","chart":"wv","pts":[[0.0,0.0],[0.3142,0.309],[0.6283,0.5878],[0.9425,0.809],[1.2566,0.9511],[1.5708,1.0],[1.885,0.9511],[2.1991,0.809],[2.5133,0.5878],[2.8274,0.309],[3.1416,0.0],[3.4558,-0.309],[3.7699,-0.5878],[4.0841,-0.809],[4.3982,-0.9511],[4.7124,-1.0],[5.0265,-0.9511],[5.3407,-0.809],[5.6549,-0.5878],[5.969,-0.309],[6.2832,-0.0]],"tone":"purple","ms":1600},{"dot":"w30","chart":"wv","at":[0.5235987755982988,0.5],"text":"","tone":"purple"}]},{"cap":"Walk a second lap and the wave repeats exactly, because the circle is the same every time round. That is why anything that cycles, like a season or a daily rhythm, is described with sine and cosine.","do":[{"series":"l2","chart":"wv","pts":[[6.2832,-0.0],[6.5973,0.309],[6.9115,0.5878],[7.2257,0.809],[7.5398,0.9511],[7.854,1.0],[8.1681,0.9511],[8.4823,0.809],[8.7965,0.5878],[9.1106,0.309],[9.4248,0.0],[9.7389,-0.309],[10.0531,-0.5878],[10.3673,-0.809],[10.6814,-0.9511],[10.9956,-1.0],[11.3097,-0.9511],[11.6239,-0.809],[11.9381,-0.5878],[12.2522,-0.309],[12.5664,-0.0]],"tone":"purple","dash":true,"ms":1400}]},{"cap":"A different question: money growing. $100 at 8% a year for 10 years, with interest added once a year, grows to $215.89.","do":[{"chart":"gr","x":10,"y":272,"w":580,"h":230,"title":"$100 at 8% for 10 years, by how often interest is added","xd":[0.4,5.6],"yd":[0,260],"yt":[[0,"0"],[100,"100"],[200,"200"]],"xt":[[1,"yearly"],[2,"quarterly"],[3,"monthly"],[4,"daily"],[5,"every instant"]],"pl":50},{"bars":"g1","chart":"gr","data":[[1,215.89,"215.89","blue"]],"bw":60,"ms":900}]},{"cap":"Add interest more often and you earn a little more each time: $220.80 quarterly, $221.96 monthly, $222.53 daily. The extra keeps shrinking.","do":[{"bars":"g2","chart":"gr","data":[[2,220.8,"220.80","blue"],[3,221.96,"221.96","blue"],[4,222.53,"222.53","blue"]],"bw":60,"ms":1100}]},{"cap":"Push it to every instant and the total settles on $222.55: that is 100 × e^0.8. The number e, about 2.718, is what growth settles on when it compounds every instant. Jacob Bernoulli found it in 1683 with this exact money puzzle.","do":[{"bars":"g3","chart":"gr","data":[[5,222.55,"222.55","green"]],"bw":60,"ms":900}]},{"cap":"The natural log, ln, runs growth backwards. Which continuous rate grows money as much as 5% paid once a year? ln(1.05) = 4.879%. Slightly smaller, because it compounds every instant.","do":[{"hide":"ci"},{"hide":"rim"},{"hide":"st"},{"hide":"rad"},{"hide":"ht"},{"hide":"p30"},{"hide":"wv"},{"hide":"l1"},{"hide":"l2"},{"hide":"w30"},{"box":"ln","x":10,"y":40,"w":580,"h":90,"text":"5% once a year  =  ln(1.05) = 4.879% every instant","tone":"purple","size":21}]},{"cap":"Now returns. Prices over four days: 100, 102, 101, 104, 103. Each day's log-return is ln(today ÷ yesterday): +1.98%, −0.99%, +2.93%, −0.97% (as hundredths of a log).","do":[{"chart":"lg","x":10,"y":514,"w":580,"h":236,"title":"Daily log-returns (×100), and their running total","xd":[0.4,5.6],"yd":[-2.4,5.2],"yt":[[-1,"−1"],[0,"0"],[2,"2"],[4,"4"]],"xt":[[1,"day 1"],[2,"day 2"],[3,"day 3"],[4,"day 4"]],"zero":true,"pl":44},{"bars":"lrb","chart":"lg","data":[[1,1.98,"+1.98","green"],[2,-0.99,"-0.99","red"],[3,2.93,"+2.93","green"],[4,-0.97,"-0.97","red"]],"bw":50,"ms":1200}]},{"cap":"Add them up day by day, like stacking blocks. After four days the running total is 2.96. And ln(103 ÷ 100) = 2.96 too, exactly the same. Logs turn multiplying into adding.","do":[{"series":"cum","chart":"lg","pts":[[1.5,1.98],[2.5,0.995],[3.5,3.922],[4.5,2.956]],"tone":"amber","ms":1200},{"dot":"ce","chart":"lg","at":[4.5,2.956],"text":"total 2.96 = ln 1.03","tone":"amber","dx":0,"dy":26,"anchor":"middle"}]},{"cap":"Simple percentages don't add like that. Up 50% then down 50% is not 0%: $100 becomes $150, then $75, a 25% loss. In logs: ln 1.5 + ln 0.5 = −0.288, and e^−0.288 − 1 = −25%.","do":[{"box":"trap","x":10,"y":146,"w":580,"h":90,"text":"+50% then −50%: $100 → $150 → $75\nnot 0%, but −25%","tone":"red","size":20}]}]}</script>
+  </div>
+  <!-- WB:foundation_trig_logs_exponentials:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -567,6 +656,18 @@
       it were the other, without converting, understates or overstates the
       true growth.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative fund report</div>
+    <h3>"Up 50%, then down 50%. So we broke even?"</h3>
+    <p>A small fund made +50% in its first year and −50% in its second. A colleague drafts the report: "Two years, average return 0%, so investors are back where they started." You are asked to check the two-year return. What do you write?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">0%. Add +50% and −50%.<div class="tl-drill-why">Simple returns don't add. The −50% is a percentage of a bigger amount than the +50% was, so the loss is bigger than the gain.</div></li>
+      <li data-verdict="good">Down 25%. Chain the years properly: 1.5 × 0.5 = 0.75, or add the log-returns, ln 1.5 + ln 0.5 = −0.288, and convert back, e<sup>−0.288</sup> − 1 = −25%.<div class="tl-drill-why">Both routes give the same exact answer. \$100 became \$150, then \$75. Log-returns can be added; simple returns have to be multiplied.</div></li>
+      <li data-verdict="ok">Add the simple returns anyway, because over small moves the error is tiny.<div class="tl-drill-why">That shortcut is close for small daily moves, which is why it survives. With moves of 50% it is badly wrong: it says 0% when the truth is −25%.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>How it works out.</strong> This is an illustrative report, not a real fund. \$100 grows to \$150 and then falls to \$75, a loss of 25% over the two years. The bigger the swings, the further simple-return arithmetic drifts from the truth. Log-returns add exactly, whatever the size of the moves.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -641,6 +742,26 @@
     <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson (any recent edition) — the standard quantitative-finance reference for continuous compounding and log-return conventions as used in pricing models.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="foundation-algebra-functions.html">Algebra &amp; Functions Refresher</a> <span>· inverse functions, the idea behind ln</span></li>
+        <li><a href="time-value-of-money.html">Time Value of Money</a> <span>· compound interest, the money question behind e</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="foundation-complex-numbers.html">Complex Numbers</a> <span>· where e and the circle meet in one formula</span></li>
+        <li><a href="primer-returns-compounding.html">Returns, Log-Returns &amp; Compounding</a> <span>· log-returns put to work on real return series</span></li>
+        <li><a href="fourier-analysis-frequency-domain.html">Fourier Analysis &amp; the Frequency Domain</a> <span>· sine and cosine waves used to find cycles</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> percentage returns quietly mislead when you add them up, and logs are how every return series and pricing model avoids that error.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="foundation-algebra-functions.html">← Algebra &amp; Functions Refresher</a>
@@ -768,10 +889,12 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>
 </content>

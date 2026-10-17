@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hierarchical Bayesian Models &amp; Partial Pooling — Visual Guide — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/deck.css">
 </head>
 <body>
@@ -180,7 +181,19 @@
       </div>
     </section>
 
+    <!-- WB:hierarchical_bayesian_models-deck:START -->
     <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">▶ Watch it</div>
+      <h2 class="sl-h2">Partial pooling: pull each estimate by how little data it has</h2>
+      <!-- WB:hierarchical_bayesian_models:START -->
+      <div class="wb" data-title="Partial pooling: pull each estimate by how little data it has">
+        <script type="application/json">{"w":600,"h":770,"intro":"Five strategies with very different track records, and one rule for how far to trust each. The lesson's own numbers. Press play, or step through.","steps":[{"cap":"Five strategies, five raw Sharpe ratios, each from its own trades alone. A shows 2.10, but on only 5 trades. B shows 0.85 on 50 trades.","do":[{"chart":"sh","x":10,"y":10,"w":580,"h":330,"title":"Sharpe estimate, by strategy (trades)","xd":[0.4,5.6],"yd":[-1,2.6],"yt":[[-0.5,"−0.5"],[0,"0"],[1,"1.0"],[2,"2.0"]],"xt":[[1,"A (5)"],[2,"E (6)"],[3,"C (8)"],[4,"D (40)"],[5,"B (50)"]],"pl":56,"pr":16,"zero":true},{"dot":"rA","chart":"sh","at":[1,2.1],"text":"2.10","tone":"purple","dx":-14,"dy":0,"anchor":"end"},{"dot":"rE","chart":"sh","at":[2,1.9],"text":"1.90","tone":"purple","dx":-14,"dy":0,"anchor":"end"},{"dot":"rC","chart":"sh","at":[3,-0.6],"text":"-0.60","tone":"purple","dx":-14,"dy":0,"anchor":"end"},{"dot":"rD","chart":"sh","at":[4,0.75],"text":"0.75","tone":"purple","dx":0,"dy":-20,"anchor":"middle"},{"dot":"rB","chart":"sh","at":[5,0.85],"text":"0.85","tone":"purple","dx":0,"dy":-20,"anchor":"middle"}]},{"cap":"Option one, complete pooling: assume they are all the same and use one grand mean, 0.70, for everyone. It throws away the real differences that D and B have earned.","do":[{"series":"mu","chart":"sh","pts":[[0.4,0.7],[5.6,0.7]],"tone":"green","dash":true,"ms":700,"label":"grand mean 0.70","lat":[0.4,0.7],"ldx":8,"ldy":-16,"lanchor":"start"}]},{"cap":"Option two, no pooling: trust each raw number on its own. A's 2.10 from five trades is a rookie batting .750 after four at-bats. Mostly noise.","do":[{"pulse":"rA"},{"pulse":"rE"},{"pulse":"rC"}]},{"cap":"Partial pooling sets a trust dial for each strategy: B = τ² ÷ (τ² + σ²/n). Here τ² = 0.25 is how much strategies truly differ and σ²/n is each one's own sampling noise, which shrinks as trades pile up.","do":[{"box":"dial","x":10,"y":356,"w":580,"h":70,"text":"trust dial  B = τ² ÷ (τ² + σ²/n)","tone":"amber","size":21}]},{"cap":"The dials: 0.556 for A on 5 trades, 0.600 for E, 0.667 for C, 0.909 for D and 0.926 for B on 50 trades. More trades, more trust in the strategy's own number.","do":[{"chart":"bc","x":10,"y":440,"w":580,"h":190,"title":"Trust dial B, by strategy","xd":[0.4,5.6],"yd":[0,1.15],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[1,"A (5)"],[2,"E (6)"],[3,"C (8)"],[4,"D (40)"],[5,"B (50)"]],"pl":56,"pr":16},{"bars":"bb","chart":"bc","data":[[1,0.556,"0.556","amber"],[2,0.6,"0.600","amber"],[3,0.667,"0.667","amber"],[4,0.909,"0.909","green"],[5,0.926,"0.926","green"]],"bw":56,"ms":1200}]},{"cap":"Now pull each raw number toward 0.70 by its dial. A: 0.556 × 2.10 + 0.444 × 0.70 = 1.48. Its flashy 2.10 drops hard, because five trades earn little trust.","do":[{"series":"aA","chart":"sh","pts":[[1,2.1],[1,1.478]],"tone":"amber","ms":700,"width":2.4},{"dot":"sA","chart":"sh","at":[1,1.478],"text":"1.48","tone":"blue","dx":14,"dy":0,"anchor":"start"}]},{"cap":"E falls from 1.90 to 1.42. And C's ugly −0.60 is pulled up, to −0.17. A small sample is untrustworthy in either direction.","do":[{"series":"aE","chart":"sh","pts":[[2,1.9],[2,1.42]],"tone":"amber","ms":700,"width":2.4},{"dot":"sE","chart":"sh","at":[2,1.42],"text":"1.42","tone":"blue","dx":14,"dy":0,"anchor":"start"},{"series":"aC","chart":"sh","pts":[[3,-0.6],[3,-0.167]],"tone":"amber","ms":700,"width":2.4},{"dot":"sC","chart":"sh","at":[3,-0.167],"text":"-0.17","tone":"blue","dx":14,"dy":0,"anchor":"start"}]},{"cap":"D and B barely move: 0.75 stays at 0.75 and 0.85 becomes 0.84. With 40 and 50 trades they have earned the trust, so the grand mean adds little.","do":[{"series":"aD","chart":"sh","pts":[[4,0.75],[4,0.745]],"tone":"green","ms":700,"width":2.4},{"dot":"sD","chart":"sh","at":[4,0.745],"text":"→ 0.75","tone":"blue","dx":0,"dy":26,"anchor":"middle"},{"series":"aB","chart":"sh","pts":[[5,0.85],[5,0.839]],"tone":"green","ms":700,"width":2.4},{"dot":"sB","chart":"sh","at":[5,0.839],"text":"→ 0.84","tone":"blue","dx":0,"dy":26,"anchor":"middle"}]},{"cap":"The two extremes are just the ends of the dial. Set τ² to zero and every dial is 0: everyone gets 0.70. Let τ² grow without limit and every dial is 1: everyone keeps the raw number.","do":[{"box":"ends","x":10,"y":644,"w":285,"h":116,"text":"τ² → 0: complete pooling\nτ² → ∞: no pooling","tone":"blue","size":18}]},{"cap":"James and Stein proved that shrinking three or more estimates toward a common target lowers total squared error. But only pool groups that really belong together, and a shrunk number is still not a validated forecast.","do":[{"box":"js","x":305,"y":644,"w":285,"h":116,"text":"shrink 3+ estimates →\nlower total error\nif they belong together","tone":"green","size":18}]}]}</script>
+      </div>
+      <!-- WB:hierarchical_bayesian_models:END -->
+    </section>
+    <!-- WB:hierarchical_bayesian_models-deck:END -->
+
+    <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Watching the pull toward the mean</h2>
       <p class="sl-sub">Each strategy's raw estimate (hollow) versus its shrunk estimate (filled) — the arrow is the pull that partial pooling applies.</p>
@@ -242,7 +255,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
+    <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">More data, less shrinkage</h2>
       <p class="sl-sub">Same strategy, same raw Sharpe of 2.10 — drag its trade count up and watch the shrunk estimate climb back toward the raw number.</p>
@@ -267,7 +280,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Compute your own shrinkage estimate</h2>
       <p class="sl-sub">Starts on Strategy A's numbers from Section 1. Change any field — the shrinkage weight and the pooled estimate recompute instantly.</p>
@@ -294,7 +307,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">A surprising, provable result — and where practitioners use it</h2>
       <div class="sl-quote">James &amp; Stein (1961) proved something genuinely counterintuitive: shrinking three or more group estimates toward a common target achieves strictly lower <em>total</em> error than trusting every group's own raw average — <strong>even when the groups have nothing to do with each other in reality</strong>. It's not a claim the groups are secretly related; it's a mathematical fact about squared-error loss once three or more parameters are estimated at once, made famous by Efron &amp; Morris using baseball batting averages.</div>
@@ -305,7 +318,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
+    <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where partial pooling quietly goes wrong</h2>
       <div class="sl-callout amber">
@@ -321,7 +334,7 @@
       </div><!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
@@ -372,7 +385,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
+    <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
@@ -495,5 +508,6 @@
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

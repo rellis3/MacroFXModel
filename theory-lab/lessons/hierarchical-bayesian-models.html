@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hierarchical Bayesian Models &amp; Partial Pooling — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -39,6 +40,69 @@
       <li>How it reached trading: Vasicek's 1973 beta shrinkage and Jorion's 1986 Bayes-Stein expected returns brought pooling into finance; hierarchical models now rate many short, noisy track records at once.</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five strategies' Sharpe estimates before and after partial pooling toward a grand mean of 0.70. Strategy A, 5 trades, moves from 2.10 to 1.48. E, 6 trades, from 1.90 to 1.42. C, 8 trades, rises from minus 0.60 to minus 0.17. D, 40 trades, and B, 50 trades, barely move: 0.75 to 0.75 and 0.85 to 0.84.">
+      <circle cx="150" cy="22" r="6" fill="none" stroke="var(--purple)" stroke-width="2.2"/>
+      <text class="tlp-text2" x="162" y="27" font-size="13">raw Sharpe, own data only</text>
+      <circle class="tlp-blue" cx="345" cy="22" r="5.5"/>
+      <text class="tlp-text2" x="357" y="27" font-size="13">partially pooled</text>
+      <text class="tlp-text3" x="590" y="48" text-anchor="end" font-size="12">raw → pooled</text>
+      <line class="tlp-line green dash" x1="299.7" y1="42" x2="299.7" y2="212"/>
+      <line class="tlp-line" x1="140" y1="212" x2="470" y2="212"/>
+      <text class="tlp-text" x="14" y="67" font-size="13" font-weight="700">A</text><text class="tlp-text2" x="30" y="67" font-size="13">· 5 trades</text>
+      <line class="tlp-line amber" x1="441.7" y1="62" x2="394.5" y2="62"/><polygon class="tlp-amber" points="388.5,62 395.5,57.5 395.5,66.5"/>
+      <circle cx="448.7" cy="62" r="6" fill="none" stroke="var(--purple)" stroke-width="2.2"/><circle class="tlp-blue" cx="382.5" cy="62" r="5.5"/>
+      <text class="tlp-text2" x="590" y="67" text-anchor="end" font-size="13">2.10 → <tspan class="tlp-blue" font-weight="700">1.48</tspan></text>
+      <text class="tlp-text" x="14" y="101" font-size="13" font-weight="700">E</text><text class="tlp-text2" x="30" y="101" font-size="13">· 6 trades</text>
+      <line class="tlp-line amber" x1="420.4" y1="96" x2="388.3" y2="96"/><polygon class="tlp-amber" points="382.3,96 389.3,91.5 389.3,100.5"/>
+      <circle cx="427.4" cy="96" r="6" fill="none" stroke="var(--purple)" stroke-width="2.2"/><circle class="tlp-blue" cx="376.3" cy="96" r="5.5"/>
+      <text class="tlp-text2" x="590" y="101" text-anchor="end" font-size="13">1.90 → <tspan class="tlp-blue" font-weight="700">1.42</tspan></text>
+      <text class="tlp-text" x="14" y="135" font-size="13" font-weight="700">C</text><text class="tlp-text2" x="30" y="135" font-size="13">· 8 trades</text>
+      <line class="tlp-line amber" x1="168.3" y1="130" x2="195.4" y2="130"/><polygon class="tlp-amber" points="201.4,130 194.4,125.5 194.4,134.5"/>
+      <circle cx="161.3" cy="130" r="6" fill="none" stroke="var(--purple)" stroke-width="2.2"/><circle class="tlp-blue" cx="207.4" cy="130" r="5.5"/>
+      <text class="tlp-text2" x="590" y="135" text-anchor="end" font-size="13">-0.60 → <tspan class="tlp-blue" font-weight="700">-0.17</tspan></text>
+      <text class="tlp-text" x="14" y="169" font-size="13" font-weight="700">D</text><text class="tlp-text2" x="30" y="169" font-size="13">· 40 trades</text>
+      <circle cx="305.0" cy="164" r="6" fill="none" stroke="var(--purple)" stroke-width="2.2"/><circle class="tlp-blue" cx="304.5" cy="164" r="5.5"/>
+      <text class="tlp-text2" x="590" y="169" text-anchor="end" font-size="13">0.75 → <tspan class="tlp-blue" font-weight="700">0.75</tspan></text>
+      <text class="tlp-text" x="14" y="203" font-size="13" font-weight="700">B</text><text class="tlp-text2" x="30" y="203" font-size="13">· 50 trades</text>
+      <circle cx="315.6" cy="198" r="6" fill="none" stroke="var(--purple)" stroke-width="2.2"/><circle class="tlp-blue" cx="314.5" cy="198" r="5.5"/>
+      <text class="tlp-text2" x="590" y="203" text-anchor="end" font-size="13">0.85 → <tspan class="tlp-blue" font-weight="700">0.84</tspan></text>
+      <text class="tlp-text3" x="171.9" y="228" text-anchor="middle" font-size="12">-0.5</text><text class="tlp-text3" x="225.2" y="228" text-anchor="middle" font-size="12">0</text><text class="tlp-text3" x="278.4" y="228" text-anchor="middle" font-size="12">0.5</text><text class="tlp-text3" x="331.6" y="228" text-anchor="middle" font-size="12">1</text><text class="tlp-text3" x="384.8" y="228" text-anchor="middle" font-size="12">1.5</text><text class="tlp-text3" x="438.1" y="228" text-anchor="middle" font-size="12">2</text>
+      <text class="tlp-green" x="299.7" y="246" text-anchor="middle" font-size="13" font-weight="700">grand mean μ = 0.70</text>
+    </svg>
+    <figcaption>Each strategy is pulled toward the grand mean by an amount set by how little data it has. The three small samples move a lot, in both directions. The two with 40 and 50 trades barely move: they have earned the trust.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I run five strategies. The newest one has a Sharpe of two point one. Shouldn't it get the most capital?</p>
+      <p data-who="Quant">How many trades is that built on?</p>
+      <p data-who="Trader">Five.</p>
+      <p data-who="Quant">Then it's a rookie hitting seven-fifty after four at-bats. Nobody believes the rookie is really a seven-fifty hitter. The number is mostly noise.</p>
+      <p data-who="Trader">So I should ignore it and use the average across all five?</p>
+      <p data-who="Quant">That's the other mistake. Using one shared number throws away real differences that the strategies with long records have earned. There are three choices: trust each number alone, lump them all together, or do something in between.</p>
+      <p data-who="Trader">And in between is the hierarchical model.</p>
+      <p data-who="Quant">Right. Each strategy gets its own true edge, but those edges are assumed to come from a shared family. So a noisy estimate can borrow strength from the rest of the group.</p>
+      <p data-who="Trader">How much does it borrow?</p>
+      <p data-who="Quant">It's set by a trust dial between zero and one. The more trades a strategy has, the more its own number is trusted. In the lesson's numbers, five trades gives a dial of about fifty-six percent.</p>
+      <p data-who="Trader">So my two point one becomes what?</p>
+      <p data-who="Quant">Fifty-six percent of two point one, plus forty-four percent of the group average, which is point seven. That's about one point four eight. Still the best of the five, but not by a mile.</p>
+      <p data-who="Trader">And the strategy with fifty trades?</p>
+      <p data-who="Quant">Its dial is about ninety-three percent. Point eight five becomes about point eight four. It barely moves, because it has real evidence behind it.</p>
+      <p data-who="Trader">Does this work for bad numbers too?</p>
+      <p data-who="Quant">Yes. The strategy at minus point six on eight trades gets pulled up to about minus point one seven. A small, unlucky sample is untrustworthy in either direction.</p>
+      <p data-who="Trader">Has finance actually used this?</p>
+      <p data-who="Quant">For decades. Vasicek shrank stock betas toward the cross-sectional average in nineteen seventy-three, and Jorion shrank expected returns in nineteen eighty-six. And James and Stein proved that shrinking three or more estimates together lowers total error.</p>
+      <p data-who="Trader">What's the catch?</p>
+      <p data-who="Quant">The strategies have to belong together. Shrink a carry strategy toward four unrelated momentum ones and you can make things worse. And a shrunk number is a better estimate, not a validated forecast.</p>
+      <p data-who="Trader">One line?</p>
+      <p data-who="Quant">Pull every noisy estimate toward the group, by exactly as much as it lacks data.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -116,6 +180,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Where the partial-pooling estimate comes from, one term at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \hat\theta_j = \color{#fbbf24}{\bar{y}_j} \]</div>
+      <p>Start with no pooling: each group's estimate is its own raw sample mean, however few observations sit behind it.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \hat\theta_j = \color{#fbbf24}{B_j}\,\bar{y}_j + \color{#fbbf24}{(1-B_j)\,\mu} \]</div>
+      <p>Blend it with the grand mean \(\mu\). The weight \(B_j\) is a trust dial: 1 is no pooling, 0 is complete pooling.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \hat\theta_j = B_j\,\bar{y}_j + (1-B_j)\,\mu, \qquad B_j = \frac{\tau^2}{\tau^2 + \color{#fbbf24}{\sigma^2/n_j}} \]</div>
+      <p>Set the dial by precision. \(\sigma^2/n_j\) is the group's own sampling noise, which shrinks as its sample grows; \(\tau^2\) is how much groups truly differ.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \hat\theta_A = \color{#10b981}{0.556\,(2.10) + 0.444\,(0.70) = 1.478} \]</div>
+      <p>Strategy A, with 5 trades, \(\tau^2 = 0.25\) and \(\sigma^2 = 1\): \(B_A = 0.25/0.45 = 0.556\). Its flashy 2.10 is pulled down to 1.478.</p>
+    </div>
+  </div>
   <p>
     Suppose there are \(J\) groups (strategies, pairs, analysts), and group
     \(j\) has \(n_j\) individual observations \(y_{1j},\dots,y_{n_j j}\)
@@ -351,6 +435,10 @@
       Change any field and the shrinkage weight \(B_j\) and the partially
       pooled estimate \(\hat\theta_j\) recalculate instantly.
     </p>
+    <div class="tl-predict" data-answer="1.996" data-tol="0.06" data-unit="">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Strategy A's raw Sharpe of 2.10 came from 5 trades and shrank to 1.478. Suppose the same 2.10 had come from 50 trades instead. What would the partially pooled estimate be? Lock in a guess, then type 50 into the trade-count field below to check it.</div>
+      <div class="tl-predict-reveal"><p><strong>About 1.996.</strong> With 50 trades, \(B = 0.25/(0.25 + 1/50) = 0.926\), so \(\hat\theta = 0.926(2.10) + 0.074(0.70) = 1.996\). Same raw number, ten times the evidence, and almost no shrinkage. The data has earned the trust. Now try 2 trades and watch the estimate fall to about 1.17.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Trade count \(n_j\)</span></div>
@@ -407,6 +495,12 @@
       sample before being trusted with real capital.
     </p>
   </div>
+
+  <!-- WB:hierarchical_bayesian_models:START -->
+  <div class="wb" id="wb-hierarchical_bayesian_models" data-title="Partial pooling: pull each estimate by how little data it has">
+    <script type="application/json">{"w":600,"h":770,"intro":"Five strategies with very different track records, and one rule for how far to trust each. The lesson's own numbers. Press play, or step through.","steps":[{"cap":"Five strategies, five raw Sharpe ratios, each from its own trades alone. A shows 2.10, but on only 5 trades. B shows 0.85 on 50 trades.","do":[{"chart":"sh","x":10,"y":10,"w":580,"h":330,"title":"Sharpe estimate, by strategy (trades)","xd":[0.4,5.6],"yd":[-1,2.6],"yt":[[-0.5,"−0.5"],[0,"0"],[1,"1.0"],[2,"2.0"]],"xt":[[1,"A (5)"],[2,"E (6)"],[3,"C (8)"],[4,"D (40)"],[5,"B (50)"]],"pl":56,"pr":16,"zero":true},{"dot":"rA","chart":"sh","at":[1,2.1],"text":"2.10","tone":"purple","dx":-14,"dy":0,"anchor":"end"},{"dot":"rE","chart":"sh","at":[2,1.9],"text":"1.90","tone":"purple","dx":-14,"dy":0,"anchor":"end"},{"dot":"rC","chart":"sh","at":[3,-0.6],"text":"-0.60","tone":"purple","dx":-14,"dy":0,"anchor":"end"},{"dot":"rD","chart":"sh","at":[4,0.75],"text":"0.75","tone":"purple","dx":0,"dy":-20,"anchor":"middle"},{"dot":"rB","chart":"sh","at":[5,0.85],"text":"0.85","tone":"purple","dx":0,"dy":-20,"anchor":"middle"}]},{"cap":"Option one, complete pooling: assume they are all the same and use one grand mean, 0.70, for everyone. It throws away the real differences that D and B have earned.","do":[{"series":"mu","chart":"sh","pts":[[0.4,0.7],[5.6,0.7]],"tone":"green","dash":true,"ms":700,"label":"grand mean 0.70","lat":[0.4,0.7],"ldx":8,"ldy":-16,"lanchor":"start"}]},{"cap":"Option two, no pooling: trust each raw number on its own. A's 2.10 from five trades is a rookie batting .750 after four at-bats. Mostly noise.","do":[{"pulse":"rA"},{"pulse":"rE"},{"pulse":"rC"}]},{"cap":"Partial pooling sets a trust dial for each strategy: B = τ² ÷ (τ² + σ²/n). Here τ² = 0.25 is how much strategies truly differ and σ²/n is each one's own sampling noise, which shrinks as trades pile up.","do":[{"box":"dial","x":10,"y":356,"w":580,"h":70,"text":"trust dial  B = τ² ÷ (τ² + σ²/n)","tone":"amber","size":21}]},{"cap":"The dials: 0.556 for A on 5 trades, 0.600 for E, 0.667 for C, 0.909 for D and 0.926 for B on 50 trades. More trades, more trust in the strategy's own number.","do":[{"chart":"bc","x":10,"y":440,"w":580,"h":190,"title":"Trust dial B, by strategy","xd":[0.4,5.6],"yd":[0,1.15],"yt":[[0,"0"],[0.5,"0.5"],[1,"1"]],"xt":[[1,"A (5)"],[2,"E (6)"],[3,"C (8)"],[4,"D (40)"],[5,"B (50)"]],"pl":56,"pr":16},{"bars":"bb","chart":"bc","data":[[1,0.556,"0.556","amber"],[2,0.6,"0.600","amber"],[3,0.667,"0.667","amber"],[4,0.909,"0.909","green"],[5,0.926,"0.926","green"]],"bw":56,"ms":1200}]},{"cap":"Now pull each raw number toward 0.70 by its dial. A: 0.556 × 2.10 + 0.444 × 0.70 = 1.48. Its flashy 2.10 drops hard, because five trades earn little trust.","do":[{"series":"aA","chart":"sh","pts":[[1,2.1],[1,1.478]],"tone":"amber","ms":700,"width":2.4},{"dot":"sA","chart":"sh","at":[1,1.478],"text":"1.48","tone":"blue","dx":14,"dy":0,"anchor":"start"}]},{"cap":"E falls from 1.90 to 1.42. And C's ugly −0.60 is pulled up, to −0.17. A small sample is untrustworthy in either direction.","do":[{"series":"aE","chart":"sh","pts":[[2,1.9],[2,1.42]],"tone":"amber","ms":700,"width":2.4},{"dot":"sE","chart":"sh","at":[2,1.42],"text":"1.42","tone":"blue","dx":14,"dy":0,"anchor":"start"},{"series":"aC","chart":"sh","pts":[[3,-0.6],[3,-0.167]],"tone":"amber","ms":700,"width":2.4},{"dot":"sC","chart":"sh","at":[3,-0.167],"text":"-0.17","tone":"blue","dx":14,"dy":0,"anchor":"start"}]},{"cap":"D and B barely move: 0.75 stays at 0.75 and 0.85 becomes 0.84. With 40 and 50 trades they have earned the trust, so the grand mean adds little.","do":[{"series":"aD","chart":"sh","pts":[[4,0.75],[4,0.745]],"tone":"green","ms":700,"width":2.4},{"dot":"sD","chart":"sh","at":[4,0.745],"text":"→ 0.75","tone":"blue","dx":0,"dy":26,"anchor":"middle"},{"series":"aB","chart":"sh","pts":[[5,0.85],[5,0.839]],"tone":"green","ms":700,"width":2.4},{"dot":"sB","chart":"sh","at":[5,0.839],"text":"→ 0.84","tone":"blue","dx":0,"dy":26,"anchor":"middle"}]},{"cap":"The two extremes are just the ends of the dial. Set τ² to zero and every dial is 0: everyone gets 0.70. Let τ² grow without limit and every dial is 1: everyone keeps the raw number.","do":[{"box":"ends","x":10,"y":644,"w":285,"h":116,"text":"τ² → 0: complete pooling\nτ² → ∞: no pooling","tone":"blue","size":18}]},{"cap":"James and Stein proved that shrinking three or more estimates toward a common target lowers total squared error. But only pool groups that really belong together, and a shrunk number is still not a validated forecast.","do":[{"box":"js","x":305,"y":644,"w":285,"h":116,"text":"shrink 3+ estimates →\nlower total error\nif they belong together","tone":"green","size":18}]}]}</script>
+  </div>
+  <!-- WB:hierarchical_bayesian_models:END -->
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -485,6 +579,19 @@
       groups, or totally unrelated groups); the estimated, finite \(\tau^2\)
       in a real hierarchical fit is doing real modeling work, not avoiding it.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative allocation meeting</div>
+    <h3>The newest strategy looks like the best one</h3>
+    <p>You size five sub-strategies in proportion to their expected Sharpe. They are the lesson's five: A has a raw Sharpe of 2.10 on 5 trades, E has 1.90 on 6, C has −0.60 on 8, D has 0.75 on 40, and B has 0.85 on 50. A colleague proposes giving A the largest allocation and cutting C to zero. What do you do?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="bad">Agree. A has the highest Sharpe and C is losing money.<div class="tl-drill-why">That is no pooling: five trades taken at face value. A small sample is untrustworthy in either direction, so both A's 2.10 and C's −0.60 are mostly noise.</div></li>
+      <li data-verdict="bad">Give all five the same allocation, since the average Sharpe across them is the only reliable number.<div class="tl-drill-why">That is complete pooling. It throws away the real, hard-earned differences that D and B show on 40 and 50 trades.</div></li>
+      <li data-verdict="good">Size on the partially pooled estimates: about 1.48 for A, 1.42 for E, −0.17 for C, 0.75 for D and 0.84 for B, and let A earn a bigger share as its trades accumulate.<div class="tl-drill-why">Each estimate is pulled toward the grand mean by exactly as much as its sample is small. A still ranks first, but not by the margin its five trades suggest.</div></li>
+      <li data-verdict="ok">Wait until every strategy has 50 trades before allocating anything.<div class="tl-drill-why">Safe, but it wastes the information you have. The shrinkage weight already discounts small samples by the right amount.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>What to take from it.</strong> This is an illustrative situation built on the lesson's worked example, not a historical event. The pooled numbers check out in the calculator above. Two cautions from the lesson still apply: pooling assumes the five strategies genuinely belong in one group, and a shrunk Sharpe is a better point estimate, not proof the edge will hold out of sample.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -573,6 +680,26 @@
     <li>Bradley Efron &amp; Carl Morris, <em>"Stein's Paradox in Statistics"</em>, Scientific American, 1977 — the accessible, widely cited popularization using baseball batting averages, and Efron &amp; Morris, <em>"Data Analysis Using Stein's Estimator and its Generalizations"</em>, Journal of the American Statistical Association, 1975, for the original analysis.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="bayesian-conjugate-priors.html">Conjugate Priors &amp; Bayesian Updating in Practice</a> <span>· the precision-weighted average this reuses</span></li>
+        <li><a href="sharpe-family-deflated.html">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a> <span>· why one short track record misleads</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="hamiltonian-monte-carlo-nuts.html">Hamiltonian Monte Carlo &amp; NUTS</a> <span>· the sampler that fits real hierarchical models</span></li>
+        <li><a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a> <span>· shrinking views before you allocate</span></li>
+        <!-- DESK:START --><li><a href="institutional-ledoit-wolf-shrinkage.html">Ledoit-Wolf Covariance Shrinkage</a> <span>· the same pull, applied to a covariance matrix</span></li><!-- DESK:END -->
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> the strategy, pair or manager with the flashiest short record is usually the luckiest one, and partial pooling stops you sizing up on luck.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="mcmc-metropolis-gibbs.html">← MCMC: Metropolis-Hastings &amp; Gibbs Sampling</a>
@@ -687,9 +814,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>

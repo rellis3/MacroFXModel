@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Algebra &amp; Functions Refresher — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/whiteboard.css">
 <link rel="stylesheet" href="../assets/theory.css">
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -41,6 +42,72 @@
       <li><strong>How it reached trading:</strong> markets quote prices, but traders compare yields and implied volatilities, and getting from one to the other means solving a pricing formula backwards, which is this lesson's algebra (implied volatility entered the literature with Latané and Rendleman in 1976).</li>
     </ul>
   </div>
+
+  <figure class="tl-picture">
+    <div class="tl-picture-label">The whole idea in one picture</div>
+    <svg viewBox="0 0 600 226" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two rows of boxes. The top row is the machine f of x equals 2x plus 3 running forward: 4, times 2, gives 8, plus 3, gives 11. The bottom row runs the other way to undo it: start from 11, take away 3 to get 8, divide by 2 to get back to 4. Dashed lines join each step to the step that undoes it: minus 3 undoes plus 3, and divide by 2 undoes times 2.">
+      <text class="tlp-purple" x="20" y="24" font-size="14" font-weight="700">Forward: the machine f(x) = 2x + 3</text>
+      <rect class="tlp-box blue" x="20" y="40" width="80" height="44" rx="8"/>
+      <rect class="tlp-box purple" x="140" y="40" width="80" height="44" rx="8"/>
+      <rect class="tlp-box" x="260" y="40" width="80" height="44" rx="8"/>
+      <rect class="tlp-box purple" x="380" y="40" width="80" height="44" rx="8"/>
+      <rect class="tlp-box amber" x="500" y="40" width="80" height="44" rx="8"/>
+      <text class="tlp-blue" x="60" y="67" text-anchor="middle" font-size="15" font-weight="700">x = 4</text>
+      <text class="tlp-purple" x="180" y="67" text-anchor="middle" font-size="15" font-weight="700">× 2</text>
+      <text class="tlp-text" x="300" y="67" text-anchor="middle" font-size="15" font-weight="700">8</text>
+      <text class="tlp-purple" x="420" y="67" text-anchor="middle" font-size="15" font-weight="700">+ 3</text>
+      <text class="tlp-amber" x="540" y="67" text-anchor="middle" font-size="15" font-weight="700">11</text>
+      <line class="tlp-line purple" x1="100" y1="62" x2="134" y2="62"/><polygon class="tlp-purple" points="140,62 131,57 131,67"/>
+      <line class="tlp-line purple" x1="220" y1="62" x2="254" y2="62"/><polygon class="tlp-purple" points="260,62 251,57 251,67"/>
+      <line class="tlp-line purple" x1="340" y1="62" x2="374" y2="62"/><polygon class="tlp-purple" points="380,62 371,57 371,67"/>
+      <line class="tlp-line purple" x1="460" y1="62" x2="494" y2="62"/><polygon class="tlp-purple" points="500,62 491,57 491,67"/>
+      <line class="tlp-line dash" x1="180" y1="84" x2="180" y2="146"/>
+      <line class="tlp-line dash" x1="420" y1="84" x2="420" y2="146"/>
+      <text class="tlp-text3" x="188" y="120" font-size="12">undoes</text>
+      <text class="tlp-text3" x="428" y="120" font-size="12">undoes</text>
+      <rect class="tlp-box green" x="20" y="146" width="80" height="44" rx="8"/>
+      <rect class="tlp-box green" x="140" y="146" width="80" height="44" rx="8"/>
+      <rect class="tlp-box" x="260" y="146" width="80" height="44" rx="8"/>
+      <rect class="tlp-box green" x="380" y="146" width="80" height="44" rx="8"/>
+      <rect class="tlp-box amber" x="500" y="146" width="80" height="44" rx="8"/>
+      <text class="tlp-green" x="60" y="173" text-anchor="middle" font-size="15" font-weight="700">4</text>
+      <text class="tlp-green" x="180" y="173" text-anchor="middle" font-size="15" font-weight="700">÷ 2</text>
+      <text class="tlp-text" x="300" y="173" text-anchor="middle" font-size="15" font-weight="700">8</text>
+      <text class="tlp-green" x="420" y="173" text-anchor="middle" font-size="15" font-weight="700">− 3</text>
+      <text class="tlp-amber" x="540" y="173" text-anchor="middle" font-size="15" font-weight="700">11</text>
+      <line class="tlp-line green" x1="500" y1="168" x2="466" y2="168"/><polygon class="tlp-green" points="460,168 469,163 469,173"/>
+      <line class="tlp-line green" x1="380" y1="168" x2="346" y2="168"/><polygon class="tlp-green" points="340,168 349,163 349,173"/>
+      <line class="tlp-line green" x1="260" y1="168" x2="226" y2="168"/><polygon class="tlp-green" points="220,168 229,163 229,173"/>
+      <line class="tlp-line green" x1="140" y1="168" x2="106" y2="168"/><polygon class="tlp-green" points="100,168 109,163 109,173"/>
+      <text class="tlp-green" x="20" y="214" font-size="14" font-weight="700">Undo, in reverse order: last step first</text>
+    </svg>
+    <figcaption>Solving 2x + 3 = 11 is the bottom row: undo the last step first, doing the same thing to both sides. Written as a machine of its own, the bottom row is the inverse function, (x − 3) ÷ 2.</figcaption>
+  </figure>
+
+  <section class="tl-listen" data-minutes="4">
+    <div class="tl-listen-head">🎧 Listen · the four-minute version</div>
+    <p class="tl-listen-intro">A trader and a quant talk the lesson through. No symbols, just the idea and one worked number, so it works on a walk or a commute.</p>
+    <div class="tl-listen-script">
+      <p data-who="Trader">I'll be honest. My school maths is rusty. When a lesson says "solve for x", I tense up.</p>
+      <p data-who="Quant">Then let's make it small. Picture a balance scale, perfectly level. On one side, two bags of the same unknown weight plus three kilos. On the other side, eleven kilos.</p>
+      <p data-who="Trader">And I want to know what one bag weighs.</p>
+      <p data-who="Quant">Right. The only rule is this: whatever you do to one side, do to the other, and the scale stays level. So take three kilos off both sides. Now two bags balance eight kilos.</p>
+      <p data-who="Trader">So one bag is four.</p>
+      <p data-who="Quant">That's it. You halved both sides. That is all "solving for x" ever means: keep the scale level while you peel away everything that isn't the unknown.</p>
+      <p data-who="Trader">Why did we take the three off first, and not halve first?</p>
+      <p data-who="Quant">Because you undo things in reverse order. To build that side, someone doubled the bag and then added three. So you take away the three first, then halve. Like taking off your shoes before your socks.</p>
+      <p data-who="Trader">OK. And what's a function? People say it like it's different.</p>
+      <p data-who="Quant">It is different. A function is a machine. You put a number in, it does the same thing every time, and one number comes out. The "double it and add three" machine turns four into eleven. It isn't asking you to solve anything. It is just waiting for an input.</p>
+      <p data-who="Trader">And running the machine backwards?</p>
+      <p data-who="Quant">That is the inverse. Take away three, then halve, and eleven comes back to four. Running a machine backwards and solving an equation are the same move.</p>
+      <p data-who="Trader">Where does a trader actually need that?</p>
+      <p data-who="Quant">All the time. Markets quote prices, but traders compare yields and volatilities, and those are hidden inside the price. In nineteen seventy-six two researchers, Latané and Rendleman, took the new option pricing formula and ran it backwards, to get the volatility out of the price. Today options are quoted that way.</p>
+      <p data-who="Trader">And this is old?</p>
+      <p data-who="Quant">Very old. The name algebra comes from a handbook written in Baghdad around eight twenty by al-Khwarizmi, partly for trade. Its title talks about restoring and balancing, which is exactly the scale we just used.</p>
+      <p data-who="Trader">So what do I take away?</p>
+      <p data-who="Quant">Keep the scale level, undo the last step first, and remember that a formula is a machine you can also run backwards.</p>
+    </div>
+  </section>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
@@ -131,6 +198,26 @@
 
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
+  <div class="tl-eqbuild">
+    <div class="tl-eqbuild-label">Watch the formula build</div>
+    <div class="tl-eqbuild-title">Solving the compound-interest formula for the rate, one move at a time</div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ FV = P\,\color{#fbbf24}{(1+r)^n} \]</div>
+      <p>Start with the formula as written. The rate \(r\) is buried inside a bracket, and the bracket is raised to a power. We want \(r\) on its own.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\frac{FV}{P}} = (1+r)^n \]</div>
+      <p>The last thing done to the bracket was "multiply by \(P\)", so undo that first: divide both sides by \(P\). With \$1,000 growing to \$1,276.28, the left side is 1.27628.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#fbbf24}{\left(\frac{FV}{P}\right)^{1/n}} = 1+r \]</div>
+      <p>Next, undo the power. Raising both sides to the power \(1/n\) takes the \(n\)th root. Over 5 years, the fifth root of 1.27628 is 1.05.</p>
+    </div>
+    <div class="tl-eqbuild-step">
+      <div class="tl-math">\[ \color{#10b981}{r = \left(\frac{FV}{P}\right)^{1/n} - 1 = 1.05 - 1 = 5\%} \]</div>
+      <p>Finally, take 1 from both sides. The rate is 5% a year. Every move was "do the same to both sides", working from the outside in.</p>
+    </div>
+  </div>
 
   <h3>Manipulating expressions and equations</h3>
   <p>
@@ -483,6 +570,10 @@
       the growth factor and the implied rate \(r\) — recalculates instantly
       from the same rearranged formula, \(r = (FV/P)^{1/n} - 1\).
     </p>
+    <div class="tl-predict" data-answer="10" data-tol="1" data-unit="%">
+      <div class="tl-predict-q"><strong>Predict first.</strong> Keep \$1,000 and 5 years, but say the money grows to \$1,610.51. What yearly rate is that? A hint: 1.1 × 1.1 × 1.1 × 1.1 × 1.1 = 1.61051. Lock in a guess, then type 1610.51 into the future value box below to check.</div>
+      <div class="tl-predict-reveal"><p><strong>10%.</strong> The growth factor is 1,610.51 ÷ 1,000 = 1.61051. Its fifth root is 1.1, because 1.1 multiplied by itself five times gives 1.61051. Take away 1 and the rate is 0.10, or 10%. Now try a future value below \$1,000 and see the rate turn negative.</p></div>
+    </div>
     <div class="tl-controls">
       <div class="tl-control">
         <div class="tl-control-head"><span>Principal \(P\) ($)</span></div>
@@ -547,6 +638,12 @@
     </p>
   </div>
 
+  <!-- WB:foundation_algebra_functions:START -->
+  <div class="wb" id="wb-foundation_algebra_functions" data-title="Balance scales, machines, and running a formula backwards">
+    <script type="application/json">{"w":600,"h":710,"intro":"A balance scale, a machine, and a formula run backwards. Gentle steps, real numbers from the lesson. Press play, or step through.","steps":[{"cap":"An equation is a balance scale that is level. On the left: two bags of the same unknown weight x, plus 3. On the right: 11. Both sides weigh the same.","do":[{"box":"L","x":30,"y":30,"w":220,"h":80,"text":"left pan","tone":"blue","sub":"2x + 3","size":20},{"note":"eq","x":300,"y":80,"text":"=","size":34,"anchor":"middle"},{"box":"R","x":350,"y":30,"w":220,"h":80,"text":"right pan","tone":"amber","sub":"11","size":20}]},{"cap":"The one rule: do the same thing to both sides, and the scale stays level. Take 3 off both sides. Now 2x balances 8.","do":[{"sub":"L","text":"2x"},{"sub":"R","text":"8"},{"pulse":"L"},{"pulse":"R"},{"note":"m1","x":300,"y":150,"text":"take 3 off both sides","size":20,"anchor":"middle","tone":"purple"}]},{"cap":"Now halve both sides. One x balances 4. That is all \"solving for x\" means: peel away everything that isn't x, evenly, until x stands alone.","do":[{"sub":"L","text":"x"},{"sub":"R","text":"4"},{"pulse":"L"},{"pulse":"R"},{"hide":"m1"},{"note":"m2","x":300,"y":150,"text":"halve both sides: x = 4","size":20,"anchor":"middle","tone":"green"}]},{"cap":"A function is a different thing: a machine. This one, f(x) = x² + 1, squares whatever you feed it and adds 1. Feed it 3 and out comes 10.","do":[{"hide":"L"},{"hide":"R"},{"hide":"eq"},{"hide":"m2"},{"box":"f","x":200,"y":30,"w":200,"h":90,"text":"machine f","tone":"purple","sub":"x² + 1","size":20},{"chip":"in3","x":80,"y":75,"text":"3","tone":"blue"},{"move":"in3","x":170,"y":75,"ms":900},{"chip":"out10","x":470,"y":75,"text":"10","tone":"green"}]},{"cap":"Feed it −1 and out comes 2, because (−1)² + 1 = 2. One input always gives exactly one output. On a graph, every input becomes a point.","do":[{"hide":"in3"},{"hide":"out10"},{"chip":"inm1","x":80,"y":75,"text":"−1","tone":"blue"},{"move":"inm1","x":170,"y":75,"ms":900},{"chip":"out2","x":470,"y":75,"text":"2","tone":"green"},{"chart":"fx","x":10,"y":214,"w":580,"h":236,"title":"Two machines on one graph","xd":[-3.2,4.4],"yd":[-1.5,11],"yt":[[0,"0"],[5,"5"],[10,"10"]],"xt":[[-3,"−3"],[-1,"−1"],[0,"0"],[1,"1"],[3,"3"]],"zero":true,"pl":44,"pr":24},{"series":"par","chart":"fx","pts":[[-3.0,10.0],[-2.8,8.84],[-2.6,7.76],[-2.4,6.76],[-2.2,5.84],[-2.0,5.0],[-1.8,4.24],[-1.6,3.56],[-1.4,2.96],[-1.2,2.44],[-1.0,2.0],[-0.8,1.64],[-0.6,1.36],[-0.4,1.16],[-0.2,1.04],[0.0,1.0],[0.2,1.04],[0.4,1.16],[0.6,1.36],[0.8,1.64],[1.0,2.0],[1.2,2.44],[1.4,2.96],[1.6,3.56],[1.8,4.24],[2.0,5.0],[2.2,5.84],[2.4,6.76],[2.6,7.76],[2.8,8.84],[3.0,10.0]],"tone":"purple","ms":1400},{"dot":"p3","chart":"fx","at":[3,10],"text":"f(3) = 10","tone":"purple","dx":12,"dy":5,"anchor":"start"},{"dot":"pm1","chart":"fx","at":[-1,2],"text":"f(−1) = 2","tone":"purple","dx":-12,"dy":5,"anchor":"end"}]},{"cap":"A straight line is the simplest machine: y = 2x + 3. It climbs by the same amount, 2, every time x moves by 1. That fixed step is the slope. The curve's step keeps changing: that is what curving means.","do":[{"series":"lin","chart":"fx","pts":[[-2.25,-1.5],[3,9]],"tone":"blue","ms":1000},{"series":"st1","chart":"fx","pts":[[1,5],[2,5],[2,7]],"tone":"amber","dash":true,"ms":600},{"note":"stl","chart":"fx","at":[2,6],"text":"up 2","tone":"amber","size":16,"anchor":"start","dx":8,"dy":0}]},{"cap":"Running a machine backwards is its inverse. \"Double it, add 3\" turns 4 into 11. The undo machine takes away 3, then halves: 11 back to 4. Last step undone first.","do":[{"hide":"inm1"},{"hide":"out2"},{"hide":"f"},{"box":"fw","x":10,"y":20,"w":280,"h":70,"text":"forward: × 2, then + 3","tone":"purple","sub":"4 → 11","size":19},{"box":"bk","x":310,"y":20,"w":280,"h":70,"text":"undo: − 3, then ÷ 2","tone":"green","sub":"11 → 4","size":19},{"arrow":["fw","bk"],"tone":"green","bend":-30,"id":"fwbk"}]},{"cap":"Now a real formula. $1,000 earning 5% a year grows by multiplying by 1.05 each year: $1,050, $1,102.50, and after 5 years $1,276.28. That is FV = P(1 + r)ⁿ.","do":[{"chart":"gr","x":10,"y":464,"w":580,"h":236,"title":"Growing at 5% a year ($)","xd":[-0.6,5.6],"yd":[0,1500],"yt":[[0,"0"],[1000,"1,000"]],"xt":[[0,"start"],[1,"1"],[2,"2"],[3,"3"],[4,"4"],[5,"5 yrs"]],"pl":58},{"bars":"gb","chart":"gr","data":[[0,1000.0,"1,000","blue"],[1,1050.0,"1,050","blue"],[2,1102.5,"1,102.50","blue"],[3,1157.63,"1,157.63","blue"],[4,1215.51,"1,215.51","blue"],[5,1276.28,"1,276.28","amber"]],"bw":52,"ms":1400}]},{"cap":"But often you know the start and the end, and want the rate. Run it backwards. Undo \"times $1,000\" first: 1,276.28 ÷ 1,000 = 1.27628.","do":[{"hide":"fw"},{"hide":"bk"},{"hide":"fwbk"},{"box":"b1","x":10,"y":110,"w":180,"h":84,"text":"÷ P","tone":"purple","sub":"1.27628","size":20}]},{"cap":"Next undo \"to the power 5\": take the fifth root. 1.27628 becomes 1.05, because 1.05 times itself five times is 1.27628.","do":[{"box":"b2","x":210,"y":110,"w":180,"h":84,"text":"fifth root","tone":"purple","sub":"1.05","size":20},{"arrow":["b1","b2"]}]},{"cap":"Last, undo \"1 +\": take away 1. The rate is 0.05, or 5% a year. Check it forwards: $1,000 × 1.05⁵ = $1,276.28. Same rule as the scale, on a bigger formula.","do":[{"box":"b3","x":410,"y":110,"w":180,"h":84,"text":"− 1","tone":"green","sub":"r = 5%","size":20},{"arrow":["b2","b3"]},{"pulse":"b3"}]}]}</script>
+  </div>
+  <!-- WB:foundation_algebra_functions:END -->
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -605,6 +702,19 @@
       function outward, and don't assume a nested formula can be read in
       either order.
     </p>
+  </div>
+
+  <div class="tl-drill">
+    <div class="tl-drill-label">Scenario drill · an illustrative account check</div>
+    <h3>How much of your own money does the position need?</h3>
+    <p>You want a position of 10,000 units of an instrument priced at \$1.20. Your broker allows 20:1 leverage, so each \$1 of your own money controls \$20 of position. How much equity do you need in the account?</p>
+    <ol class="tl-drill-options">
+      <li data-verdict="good">\$600.<div class="tl-drill-why">The position is worth 10,000 × \$1.20 = \$12,000. Leverage lets each \$1 control \$20, so divide: \$12,000 ÷ 20 = \$600. Check by running it forwards: \$600 × 20 ÷ \$1.20 = 10,000 units.</div></li>
+      <li data-verdict="ok">\$12,000, to be safe.<div class="tl-drill-why">That is the full value of the position, with no leverage at all. It is a careful choice, but it answers a different question from the one asked.</div></li>
+      <li data-verdict="bad">\$240,000.<div class="tl-drill-why">This multiplies by the leverage instead of dividing. Leverage means you need less of your own money, not more. Undo "times 20" with "divide by 20".</div></li>
+      <li data-verdict="bad">\$500.<div class="tl-drill-why">This is 10,000 ÷ 20. It forgets the price, so it treats each unit as costing \$1 instead of \$1.20.</div></li>
+    </ol>
+    <div class="tl-drill-outcome"><p><strong>How it works out.</strong> This is an illustrative example using the numbers from this lesson's trading scenario, not a real account. The answer is \$600. The safe habit is the one from the whole lesson: after solving, put your answer back into the original formula and check it gives the number you started with.</p></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -676,6 +786,26 @@
     <li>Khan Academy, "Algebra basics" and "Functions" course sequences (khanacademy.org) — free, self-paced practice problems for every technique on this page, useful for repetition beyond what a single lesson can provide.</li>
   </ul>
   </details>
+
+  <nav class="tl-fits" aria-label="Where this lesson fits">
+    <div class="tl-fits-label">Where this fits</div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read first</div>
+      <ul>
+        <li><a href="primer-stats-normal.html">Descriptive Statistics &amp; the Normal Distribution</a> <span>· a gentle start with averages and charts, no algebra needed</span></li>
+        <li><a href="primer-returns-compounding.html">Returns, Log-Returns &amp; Compounding</a> <span>· where the compound-interest formula comes from</span></li>
+      </ul>
+    </div>
+    <div class="tl-fits-col">
+      <div class="tl-fits-k">Read next</div>
+      <ul>
+        <li><a href="foundation-trig-logs-exponentials.html">Trigonometry, Logarithms &amp; Exponentials</a> <span>· the undo buttons for powers and growth</span></li>
+        <li><a href="calculus-for-finance.html">Calculus for Finance: Derivatives, Integrals &amp; Taylor Series</a> <span>· slope and curving, made exact</span></li>
+        <li><a href="bond-pricing-ytm.html">Bond Pricing &amp; Yield to Maturity</a> <span>· a pricing formula solved backwards for its yield</span></li>
+      </ul>
+    </div>
+    <p class="tl-fits-why"><strong>Why you'd care:</strong> every yield, implied volatility and position size you read is a formula run backwards, and this is the move that does it.</p>
+  </nav>
 
   <div class="tl-footer-nav">
     <a href="../hub.html">← Theory Lab hub</a>
@@ -784,9 +914,11 @@
 })();
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
-<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/tts.js?v=6" defer></script>
+<script src="../assets/vark.js?v=1" defer></script>
 <script src="../assets/paths-data.js" defer></script>
 <!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
 <script src="../assets/paths.js" defer></script>
+<script src="../assets/whiteboard.js" defer></script>
 </body>
 </html>
