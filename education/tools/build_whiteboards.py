@@ -146,7 +146,15 @@ no_index = len(args) != len(sys.argv[1:])
 only = set(args)
 boards = []
 for mod in sorted(m.name for m in pkgutil.iter_modules(whiteboards.__path__) if not m.name.startswith('_')):
-    B = importlib.import_module('whiteboards.' + mod).BOARD
+    try:
+        B = importlib.import_module('whiteboards.' + mod).BOARD
+    except Exception as e:
+        # A scene that fails to load must not stop the others from building. It still
+        # fails loudly when it is the one being built, or on a full (index) run.
+        if mod in only or not no_index:
+            raise
+        print(f'skip {mod}: {type(e).__name__}: {e}', file=sys.stderr)
+        continue
     boards.append(B)
     if not only or B['name'] in only:
         build(B)
