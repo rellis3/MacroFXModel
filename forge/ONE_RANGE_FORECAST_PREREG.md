@@ -108,8 +108,10 @@ session has none of them).
 ## Results (2026-10-18, run on the owner's laptop after this file was merged in PR #1542)
 
 The run finished all folds, then crashed printing "→" to a Windows console; rerun with `PYTHONIOENCODING=utf-8`
-(computation unchanged; the script now sets UTF-8 itself). The raw `analysis/output/one_forecast/` files stay on the
-laptop (not committed); numbers below are from that run's report.
+(computation unchanged; the script now sets UTF-8 itself). Raw output committed from the laptop:
+`analysis/output/one_forecast/RESULTS.md` and `results.json` (0500c0d5). By instrument, Q1: DOW 0.993, NQ 0.989,
+SPX500 0.984, US2000 1.005; diagnostic SIX ÷ SI-US 0.9910 [0.9855, 0.9963] (so the small gain is the flags, not the
+fitting pool — still under the bar).
 
 | test | rows | ratio [95%] | verdict |
 |---|---|---|---|
