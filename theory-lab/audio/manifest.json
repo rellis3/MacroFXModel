@@ -882,5 +882,33 @@
 "Quant": "bf_emma",
 "Trader": "bm_george"
 }
+},
+"covered-call-equals-short-put": {
+"hash": "81abd8fa",
+"seconds": 127.0,
+"starts": [
+0.0,
+7.45,
+13.76,
+18.52,
+27.0,
+28.63,
+39.82,
+42.45,
+55.47,
+58.23,
+69.46,
+72.76,
+81.73,
+84.46,
+102.09,
+104.81,
+118.11,
+120.38
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
 }
 }
