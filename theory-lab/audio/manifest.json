@@ -4438,5 +4438,63 @@
 "Quant": "bf_emma",
 "Trader": "bm_george"
 }
+},
+"rehypothecation-collateral-chains": {
+"hash": "6d9e6c36",
+"seconds": 121.7,
+"starts": [
+0.0,
+5.04,
+15.08,
+17.31,
+23.63,
+24.98,
+35.93,
+38.01,
+49.09,
+51.75,
+60.8,
+63.58,
+78.61,
+81.14,
+94.2,
+96.28,
+111.67,
+113.94
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
+},
+"research-pipeline-hypothesis-to-backtest": {
+"hash": "51d7792a",
+"seconds": 137.2,
+"starts": [
+0.0,
+5.43,
+7.06,
+17.35,
+26.19,
+28.25,
+37.73,
+39.66,
+52.7,
+54.65,
+63.38,
+66.27,
+77.91,
+80.28,
+95.89,
+99.5,
+114.87,
+118.76,
+127.58,
+129.85
+],
+"voices": {
+"Quant": "bf_emma",
+"Trader": "bm_george"
+}
 }
 }
