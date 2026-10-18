@@ -36,7 +36,7 @@ Every live input, by family, with the job the evidence allows it.
 | equity stress | all six indices down | L | range | validated (breadth-all-down) | **not computed live** |
 | positioning | net GEX sign, NQ (`/api/oi-levels`) | L | range (NQ only) | validated (gex-range) | long gamma (spot above flip) |
 | events | calendar × Event Response Book | L | range | validated (event-impact-map, surprise-size) | nothing due in 24h |
-| rates RV | 2Y spread z (`/api/yield-spread/plan`) | L | **direction, weeks** | confirmed (ys-long-confirm) | inactive: max \|z\| 1.15 |
+| rates RV | 2Y spread z (`/api/yield-spread/plan`) | L | ~~direction, weeks~~ nothing (2026-10-18) | ~~confirmed~~ **null**: yield-spread-sleeve deflated 2026-10-17 (point-in-time OOS Sharpe 0.09, p 0.91); registry tier set to null 2026-10-18 | shown, weight 0 |
 | events | post-FOMC 5-session USD drift | L | **direction, 5 sessions** | validated (n=81) | outside window |
 | macro state | regime → FX 20d (`/api/macro-regime-fx`) | G | direction | descriptive: OOS hit 64–93% but **n_eff = 6** | shown, weight ≈ 0.03 |
 | macro state | macro scorecard (`/api/macro-scorecard`) | G | state only | null (macro-direction) | 2 stale dims (GBP rateDiff 285d) |

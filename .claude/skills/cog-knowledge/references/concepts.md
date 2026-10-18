@@ -70,3 +70,5 @@ and imported into TradingView. Not reconstructed (see verdicts). Notes:
 
 Asked to choose from an MAE stop table, C.OG answered "none of the above". He picks the stop from a noise threshold per
 look-back horizon (2 weeks to 12 months). The stop-distance sweep for this is **not built yet**.
+
+- **Dealer hedging map** (2026-10-18): C.OG's ES strike chart (OI by strike, zero gamma, IV-shift fans, hedging line). Ours: `oi-dashboard-v2.html` 05c, `js/hedgingScenario.js` (re-prices the whole book per price × IV shift; hedge = futures dealers must trade to stay flat). Mechanics, not a validated signal; see `education/cog-snippets.md` §2.

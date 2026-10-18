@@ -22765,6 +22765,107 @@ async function _cboeSnapshotTick() {
 }
 svcInterval('cboeSnapshot', () => _cboeSnapshotTick().catch(e => console.error('[cboe-snapshot]', e.message)), 30 * 60_000);
 
+// Full-chain archive: once per US trading day, after the close, EVERY contract of each Cboe
+// index chain (strike/expiry in the OCC symbol, bid/ask, IV, OI, volume, greeks, theo, last)
+// goes to its own permanent key `cboe_raw_<SYM>_<YYYY-MM-DD>`. cboe_snap_v1 above keeps only
+// summary levels; this is the history a dealer-positioning test needs and no free source
+// sells back later. Stored as gzip+base64 column arrays (SPX ≈ 1.2 MB, NDX ≈ 0.6 MB a day).
+// The date is the chain's own last_trade_time date (ET), so a weekend or holiday fetch
+// returns the last session and finds its key already written. open_interest in this feed
+// is the start-of-day (prior-close OCC) figure; prices/IV/greeks are at the delayed close.
+const _CBOE_RAW_FIELDS = ['option', 'bid', 'ask', 'iv', 'open_interest', 'volume', 'delta', 'gamma', 'vega', 'theta',
+  'rho', 'theo', 'last_trade_price', 'last_trade_time', 'open', 'high', 'low', 'prev_day_close'];
+const _cboeRawDone = new Set();
+const _nyParts = d => Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false,
+  weekday: 'short', hour: '2-digit', minute: '2-digit' }).formatToParts(d).map(p => [p.type, p.value]));
+async function _cboeRawArchiveTick({ force = false } = {}) {
+  const ny = _nyParts(new Date());
+  const mins = (+ny.hour % 24) * 60 + (+ny.minute);
+  if (!force && (ny.weekday === 'Sat' || ny.weekday === 'Sun' || mins < 16 * 60 + 25)) return { skipped: 'before close' };
+  const out = {};
+  for (const pair of Object.keys(_CBOE_PAIRS)) {
+    const sym = _CBOE_PAIRS[pair].sym;
+    try {
+      const r = await fetch(_cboeUrl(sym), { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' },
+        redirect: 'follow', signal: AbortSignal.timeout(45_000) });
+      if (!r.ok) throw new Error(`Cboe ${r.status}`);
+      const j = await r.json();
+      const d = j?.data;
+      if (!Array.isArray(d?.options) || !d.options.length) throw new Error('empty chain');
+      const day = String(d.last_trade_time || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error('no last_trade_time');
+      const key = `cboe_raw_${sym.replace(/^_/, '')}_${day}`;
+      if (_cboeRawDone.has(key)) { out[sym] = { key, status: 'done' }; continue; }
+      if (await kv.get(key)) { _cboeRawDone.add(key); out[sym] = { key, status: 'exists' }; continue; }
+      const rows = d.options.map(o => _CBOE_RAW_FIELDS.map(f => o[f] ?? null));
+      const { options, ...underlying } = d;
+      const gz = (await import('node:zlib')).gzipSync(Buffer.from(JSON.stringify(rows)), { level: 9 }).toString('base64');
+      await kv.put(key, JSON.stringify({ data: { v: 1, sym, day, cboeTimestamp: j.timestamp ?? null, fetchedAt: Date.now(),
+        underlying, fields: _CBOE_RAW_FIELDS, n: rows.length, enc: 'gzip+base64:json-rows', rows: gz }, timestamp: Date.now() }));
+      _cboeRawDone.add(key);
+      out[sym] = { key, status: 'written', n: rows.length, bytes: gz.length };
+    } catch (e) { out[sym] = { status: 'error', error: e.message }; console.error('[cboe-raw]', sym, e.message); }
+  }
+  return out;
+}
+svcInterval('cboeRawArchive', () => _cboeRawArchiveTick().catch(e => console.error('[cboe-raw]', e.message)), 30 * 60_000);
+
+// GET /api/cboe-raw                      -> archived days per index
+// GET /api/cboe-raw?sym=SPX&date=YYYY-MM-DD -> that day's full chain, decoded ({fields, rows})
+// POST /api/cboe-raw/capture             -> run the archive now (ignores the after-close gate)
+app.get('/api/cboe-raw', async (req, res) => {
+  try {
+    const sym = String(req.query.sym || '').toUpperCase().replace(/^_/, '');
+    const date = String(req.query.date || '');
+    if (!sym || !date) {
+      const keys = (await kv.keys('cboe_raw_')).filter(k => /^cboe_raw_[A-Z]+_\d{4}-\d{2}-\d{2}$/.test(k)).sort();
+      const by = {};
+      for (const k of keys) { const [, , s, d] = k.split('_'); (by[s] = by[s] || []).push(d); }
+      return res.json({ ok: true, days: by });
+    }
+    const raw = await kv.get(`cboe_raw_${sym}_${date}`);
+    if (!raw) return res.status(404).json({ ok: false, error: `no archive for ${sym} ${date}` });
+    const rec = JSON.parse(raw).data;
+    const rows = JSON.parse((await import('node:zlib')).gunzipSync(Buffer.from(rec.rows, 'base64')).toString());
+    res.json({ ok: true, ...rec, rows });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/cboe-raw/capture', async (req, res) => {
+  try { res.json({ ok: true, result: await _cboeRawArchiveTick({ force: true }) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Per-contract book for the dealer-hedging map (oi-dashboard-v2.html, js/hedgingScenario.js):
+// every contract within ±window of spot and ≤ maxDte trading days, with Cboe's own IV, so the
+// scenario engine can re-price the book on the real smile. Cash-index prices; cfdOffset
+// (CFD − cash, null when unknown) is returned for the page to shift levels onto the CFD.
+const _cboeBookCache = new Map();   // sym -> { at, j }
+app.get('/api/cboe-contracts', async (req, res) => {
+  const pair = String(req.query.pair || '');
+  const cfg = _CBOE_PAIRS[pair];
+  if (!cfg || cfg.scale !== 1) return res.status(400).json({ ok: false, error: `no per-contract Cboe book for ${pair}`, pairs: Object.keys(_CBOE_PAIRS).filter(p => _CBOE_PAIRS[p].scale === 1) });
+  const window = Math.min(0.25, Math.max(0.01, +req.query.window || 0.08));
+  const maxDte = Math.min(400, Math.max(0, +req.query.maxDte || 45));
+  try {
+    let hit = _cboeBookCache.get(cfg.sym);
+    if (!hit || Date.now() - hit.at > _CBOE_TTL_MS) {
+      const r = await fetch(_cboeUrl(cfg.sym), { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' },
+        redirect: 'follow', signal: AbortSignal.timeout(30_000) });
+      if (!r.ok) throw new Error(`Cboe ${r.status}`);
+      hit = { at: Date.now(), j: _parseCboeChain(await r.json()) };
+      if (!hit.j) throw new Error('Cboe chain empty or unparseable');
+      _cboeBookCache.set(cfg.sym, hit);
+    }
+    const { spot, asOfMs, contracts } = hit.j;
+    const lo = spot * (1 - window), hi = spot * (1 + window);
+    const rows = contracts.filter(c => c.oi > 0 && c.iv > 0 && c.K >= lo && c.K <= hi && c.dte <= maxDte)
+      .map(c => [c.K, +c.T.toFixed(6), c.cp, c.oi, +c.iv.toFixed(4), c.dte]);
+    const cfdOffset = await _cboeCfdOffset(pair, asOfMs, spot);
+    res.json({ ok: true, pair, index: cfg.label, fut: cfg.fut, optMult: 100, spot, asOfMs, cfdOffset,
+      fields: ['K', 'T', 'cp', 'oi', 'iv', 'dte'], rows, fetchedAt: hit.at });
+  } catch (e) { res.status(502).json({ ok: false, pair, error: e.message }); }
+});
+
 app.get('/api/cboe-snapshots', async (req, res) => {
   try {
     const raw = await kv.get(_CBOE_SNAP_KEY);

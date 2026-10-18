@@ -440,6 +440,9 @@ function isCfKey(key) {
   // oi_raw_YYYY-MM-DD - the per-day raw OI capture (ladder + IV boxes). One key per
   // day so no single value approaches CF KV's 25MB ceiling; see _snapshotOIHistory.
   if (key.startsWith('oi_raw_')) return true;
+  // cboe_raw_<SYM>_YYYY-MM-DD - the per-day full Cboe index-options chain (server.js
+  // _cboeRawArchiveTick). Cboe serves no chain history, so a missed day is gone. Permanent.
+  if (key.startsWith('cboe_raw_')) return true;
   // gold_etf_flow_history — the self-collected daily GLD+IAU combined-AUM
   // series (server.js's _goldEtfFlowSeries). No vendor-hosted history is
   // fetched, only today's snapshot, so a missed day cannot be recovered

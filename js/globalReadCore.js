@@ -50,9 +50,12 @@ export const RHO_SAME = 0.5, RHO_CROSS = 0.15;
 // ic is a correlation-scale measure of predictive value at the stated horizon.
 // For hit-rate evidence, ic ≈ 2·(hit − 0.5).
 export const REGISTRY = [
-  // direction — the only two with banked out-of-sample evidence
+  // direction — post-FOMC drift is now the only one with banked out-of-sample evidence.
+  // The 2Y sleeve was 'confirmed' until 2026-10-17, when the evidence book deflated it to
+  // context: the banked result needed a +2-day lag on GS2, which FRED first publishes a
+  // median 32 days late; on point-in-time data OOS Sharpe 0.09, PF 1.08, p 0.91.
   { id: 'yield-spread', label: '2Y yield-spread sleeve', family: 'rates-rv', question: 'direction', timing: 'leading', horizon: 'weeks',
-    tier: 'confirmed', ic: 0.26, n: 868, evidence: 'yield-spread-sleeve + ys-long-confirm (1976-2014, PF 1.28)' },
+    tier: 'null', ic: 0, n: 150, evidence: 'yield-spread-sleeve deflated 2026-10-17 (point-in-time OOS Sharpe 0.09, p 0.91); ys-long-confirm context' },
   { id: 'post-fomc', label: 'Post-FOMC USD drift', family: 'events', question: 'direction', timing: 'leading', horizon: '5 sessions',
     tier: 'validated', ic: 0.30, n: 81, evidence: 'post-fomc-usd-drift (65% positive, n=81, not yet forward-proven)' },
   // direction — descriptive: measured, but never pre-registered; overlapping windows

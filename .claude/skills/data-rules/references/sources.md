@@ -36,6 +36,9 @@ the user if it doesn't rather than silently switching source.
 - CBOE: `analysis/surfaces/cboe/` (GVZ `DATE,GVZ`; VIX, VIX1D, VIX3M, VIX6M, VIX9D, VXN `DATE,OPEN,HIGH,LOW,CLOSE`).
   Dates are **MM/DD/YYYY**. Ended 10/02/2026 at last check.
 - Live: QuikStrike capture. GVZ is also fetched from FRED in the HAR-IV shadow.
+- **Cboe full chains (2026-10-19 →)**: KV `cboe_raw_<SPX|NDX|RUT|DJX>_<YYYY-MM-DD>`, every contract once a day after the
+  close (server.js `_cboeRawArchiveTick`, flag `cboeRawArchive`). Read via `/api/cboe-raw?sym=SPX&date=`. `open_interest`
+  is the start-of-day (prior-close) figure; prices/IV/greeks are the 15-min-delayed close. No history before the first capture.
 
 ## Economic calendar
 
@@ -44,6 +47,12 @@ the user if it doesn't rather than silently switching source.
 - `forge/ff_calendar.py`: repaired ForexFactory history, 2007 → **2025-04-07**, different taxonomy (e.g. Building Permits
   is Major in the csv and Low in FF). Live ladder multipliers were fitted on FF.
 - Live: ForexFactory feed (`js/econCalendar.js`).
+- **Continuation (2026-07-03 →)**: `calendar_events_nasdaq.csv` (root), Nasdaq's free economic-events API via
+  `scripts/calendar/fetch_nasdaq_calendar.py`, all countries, UTC times, extra columns `source,impact_src,status`.
+  Refreshed twice a week by `.github/workflows/calendar-refresh.yml` (7 days ahead as `scheduled` rows). **Different
+  event names** ("Nonfarm Payrolls", not "Payroll Jobs Growth") and keyword-assigned impact (`impact_src=keyword`).
+  Load both with `load_calendar()` from that script; never match a literal event name across the 2026-07-02 seam.
+  The old file has ~46k exact duplicate rows (faults-log #11).
 - After coverage ends, tags are unknown. Exclude them (`forge/vol.py` `tag_column(covered=...)`) and pass `end=` to
   `load_daily`.
 

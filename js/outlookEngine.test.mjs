@@ -27,7 +27,7 @@ console.log('[computeOutlook — every leg agrees bullish -> BULLISH, high confi
   ok('bias BULLISH', r.bias === 'BULLISH', r.biasScore);
   ok('biasScore positive', r.biasScore > 0);
   ok('all 3 directional legs agree', r.agree === 3 && r.total === 3, `${r.agree}/${r.total}`);
-  ok('yield-spread driver tagged VALIDATED', r.drivers.find(d => d.name === 'yieldSpread')?.status === 'VALIDATED');
+  ok('yield-spread driver tagged CONTEXT (deflated 2026-10-17)', r.drivers.find(d => d.name === 'yieldSpread')?.status === 'CONTEXT');
   ok('composite driver tagged CONTEXT', r.drivers.find(d => d.name === 'composite')?.status === 'CONTEXT');
   ok('confidence high (agreement + validated bonus)', r.confidence >= 70, r.confidence);
 }

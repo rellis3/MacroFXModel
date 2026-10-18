@@ -1,0 +1,36 @@
+# Weekly economic-calendar refresh: extends calendar_events_nasdaq.csv (the continuation of
+# calendar_events.csv, which stops at 2026-07-02) with last week's released prints and the
+# coming week's schedule, then commits the file if it changed. Source: Nasdaq's free
+# economic-events API (scripts/calendar/fetch_nasdaq_calendar.py). If Nasdaq ever blocks
+# GitHub's runners, the same script runs from the laptop: python scripts/calendar/fetch_nasdaq_calendar.py
+name: Calendar refresh
+
+on:
+  schedule:
+    - cron: '17 6 * * 0'      # Sundays 06:17 UTC: the week's actuals are in, next week is listed
+    - cron: '17 6 * * 3'      # Wednesdays too, so a late revision or a newly listed event is not a week stale
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Fetch (resumes 3 days before the last released day; 7 days ahead)
+        run: python -u scripts/calendar/fetch_nasdaq_calendar.py --ahead 7
+      - name: Commit if changed
+        run: |
+          git config user.name "calendar-refresh"
+          git config user.email "calendar-refresh@users.noreply.github.com"
+          git add calendar_events_nasdaq.csv
+          git diff --cached --quiet && { echo "no change"; exit 0; }
+          git commit -m "calendar: weekly refresh $(date -u +%F)"
+          git push
