@@ -58,7 +58,7 @@ pre-registration. If the user asks for one of these, tell them the prior verdict
 |---|---|
 | `references/verdicts.md` | proposing, running or summarising any cog test; answering "did X work?" |
 | `references/concepts.md` | you need the terminology: COG constants, σ gap, COG bands, gates, setups A/B/C, the blue line |
-| `references/research-protocol.md` | running a new test: the pre-registration template, verdict rules, hard-won backtest rules, forward-log scoring |
+| `references/research-protocol.md` | running a new cog test: COG-specific prereg additions, hard-won backtest rules, forward-log scoring, decisions (the general protocol is the `research-protocol` skill) |
 | `references/lessons-and-snippets.md` | adding a cog lesson, a course-notes conversion, a snippet, or a forward-log row |
 | `references/code-map.md` | finding the pages, APIs, JS bricks, Python scripts and the cog-standalone service |
 | `references/open-questions.md` | asked "what's next?" or "what don't we know?"; also the known inconsistencies in the cog files |

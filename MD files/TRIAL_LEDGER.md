@@ -4,22 +4,22 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-10-07.
+Generated 2026-10-18.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **115** |
-| validated | 35 |
-| null | 77 |
-| underpowered | 3 |
-| context (base rates, descriptions: not counted as tests) | 25 |
-| pre-registrations with no banked verdict (below) | 7 |
+| claims tested (validated + null + underpowered) | **130** |
+| validated | 32 |
+| null | 96 |
+| underpowered | 2 |
+| context (base rates, descriptions: not counted as tests) | 32 |
+| pre-registrations with no banked verdict (below) | 37 |
 
-**What the count says (Lesson 02 §05).** If none of the 115 claims were real, tests at the usual 5% size would still pass
-about **5.8** of them by luck. 35 passed, so most passes are unlikely to be luck alone, but
-**roughly 6 of the 35 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 130 claims were real, tests at the usual 5% size would still pass
+about **6.5** of them by luck. 32 passed, so most passes are unlikely to be luck alone, but
+**roughly 7 of the 32 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -27,12 +27,13 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 
 | date | id | domain | verdict | write-up |
 |---|---|---|---|---|
-| 2026-07-17 | yield-spread-sleeve | macro | validated | MD files/YIELD_SPREAD_STRATEGY.md |
+| 2026-07-17 | yield-spread-sleeve | macro | context | MD files/YIELD_SPREAD_STRATEGY.md |
 | 2026-07-20 | trend-following-fx | price | null | MD files/CROSS_ASSET_TREND_DESIGN.md · memory project_trend_following_status |
 | 2026-07-25 | conviction-vote | execution | null | memory project_backtest_entry_quality |
 | 2026-07-28 | qmr-direction-vs-geometry | price | null | MD files/PREREGISTERED_EVALUATIONS.md#5b |
 | 2026-08-20 | cb-tone-direction | events | null | MD files/CB_SENTIMENT_PRICE_TEST.md |
 | 2026-08-20 | post-fomc-usd-drift | events | validated | MD files/POST_FOMC_DRIFT_TEST.md |
+| 2026-08-22 | cot-positioning-factor | positioning | null | MD files/COT_POSITIONING_FACTOR_TEST.md |
 | 2026-08-23 | yields-to-fx-direction | macro | null | memory: project_yield_asset_coupling |
 | 2026-08-28 | swing-structure-vwap | price | context | MD files/VMC_TRIPLE_TF_FINDINGS.md · memory project_vmc_research_verdict |
 | 2026-08-30 | reversal-hour | price | validated | memory project_reversal_hour_window |
@@ -78,7 +79,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-09-19 | nowcast-gap-gdp | events | context | MD files/NOWCAST_TESTS.md#N2 |
 | 2026-09-19 | spread-leads-fx-hours | macro | null | MD files/LEAD_LAG_TESTS.md#L1 |
 | 2026-09-20 | analogue-weeks | macro | null | MD files/WEEK_MAP.md#W1 |
-| 2026-09-20 | multi-spread-sleeve | macro | validated | MD files/MULTI_SPREAD_SLEEVE.md |
+| 2026-09-20 | multi-spread-sleeve | macro | context | MD files/MULTI_SPREAD_SLEEVE.md |
 | 2026-09-20 | nonus-yield-gap-direction | macro | null | MD files/NONUS_YIELDS.md |
 | 2026-09-20 | nonus-yield-gap-label | macro | context | MD files/NONUS_YIELDS.md |
 | 2026-09-20 | nonus-yield-gap-range | macro | null | MD files/NONUS_YIELDS.md |
@@ -90,7 +91,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-09-21 | crack-inflation-channel | macro | context | MD files/CRACK_SPREAD.md |
 | 2026-09-21 | fear-gold | macro | null | MD files/FOUR_GOLDS.md#G1 |
 | 2026-09-21 | which-gold | macro | context | MD files/FOUR_GOLDS.md#G2 |
-| 2026-09-22 | spread-sleeve-factor-audit | macro | validated | MD files/MVE_BOOK_FACTOR_AUDIT.md |
+| 2026-09-22 | spread-sleeve-factor-audit | macro | context | MD files/MVE_BOOK_FACTOR_AUDIT.md |
 | 2026-09-23 | breadth-narrowing | price | null | MD files/BREADTH_NARROWING_PREREG.md |
 | 2026-09-23 | daily-band-fade | price | null | MD files/BAND_FADE_DAILY.md |
 | 2026-09-23 | dispersion-crowded-week | volatility | null | MD files/DISPERSION.md#D1 |
@@ -130,7 +131,6 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-04 | exhaustion-schedule | volatility | null | forge/EXHAUSTION_SCHEDULE_PREREG.md |
 | 2026-10-04 | vol-curve-front | volatility | validated | forge/VOL_CURVE_FRONT_PREREG.md |
 | 2026-10-04 | yield-slope-magnitude | macro | null | MD files/YIELD_SLOPE_MAGNITUDE_PREREG.md |
-| 2026-10-05 | breadth-tilt-semis | price | underpowered | MD files/BREADTH_TILT_SEMIS_PREREG.md |
 | 2026-10-05 | combined-range | volatility | validated | forge/COMBINED_RANGE_PREREG.md |
 | 2026-10-05 | cross-iv | volatility | validated | forge/CROSS_IV_PREREG.md |
 | 2026-10-05 | event-layer | events | null | forge/EVENT_LAYER_PREREG.md |
@@ -163,19 +163,71 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-07 | meta-label-long | volatility | null | forge/META_LABEL_LONG_PREREG.md |
 | 2026-10-07 | meta-label-proper | volatility | null | forge/META_LABEL_PROPER_PREREG.md |
 | 2026-10-07 | ys-long-breadth | macro | null | forge/YS_LONG_CONFIRM_PREREG.md |
-| 2026-10-07 | ys-long-confirm | macro | validated | forge/YS_LONG_CONFIRM_PREREG.md |
+| 2026-10-07 | ys-long-confirm | macro | context | forge/YS_LONG_CONFIRM_PREREG.md |
 | 2026-10-08 | direction-vote-at-lines | price | context | forge/DIRECTION_VOTE_PREREG.md |
+| 2026-10-08 | extreme-in-probability | volatility | validated | forge/LIVE_RANGE_SHADOW_PREREG.md |
+| 2026-10-08 | live-range-break-linestate | price | null | forge/LIVE_RANGE_SHADOW_PREREG.md |
 | 2026-10-08 | policy-direction-at-lines | macro | null | forge/POLICY_DIRECTION_PREREG.md |
+| 2026-10-08 | rate-diff-xsmom | macro | null | forge/RATE_XSMOM_PREREG.md |
 | 2026-10-08 | rates-residual-catchup | macro | null | forge/RATES_RESIDUAL_PREREG.md |
+| 2026-10-08 | stir-curve-map | macro | context | analysis/output/stir_maturity_map/RESULTS.md |
+| 2026-10-08 | stir-residual-catchup | macro | null | forge/STIR_RESIDUAL_PREREG.md |
+| 2026-10-08 | stir-wide-scan | macro | null | forge/STIR_WIDE_SCAN_PROTOCOL.md |
+| 2026-10-09 | rate-diff-nq-leadlag | macro | null | analysis/output/rate_diff_nq/REPORT.md |
+| 2026-10-10 | stir-composite-nq | macro | null | forge/STIR_COMPOSITE_NQ_PREREG.md |
+| 2026-10-11 | rate-curve-structure | macro | null | forge/RATE_CURVE_STRUCTURE_PREREG.md |
+| 2026-10-13 | vol-asia-fib-confluence | price | null | forge/VOL_ASIA_FIB_CONFLUENCE_PREREG.md |
+| 2026-10-14 | cog-exact-pair-lead | macro | null | forge/COG_EXACT_PAIR_LEAD_PREREG.md |
+| 2026-10-14 | cog-trend-state | macro | null | forge/COG_TREND_STATE_PREREG.md |
+| 2026-10-14 | cog-video-claims | macro | null | forge/COG_VIDEO_CLAIMS_PREREG.md |
+| 2026-10-15 | cog-pinned-history | macro | null | forge/COG_PINNED_HISTORY_CONFIRM_PREREG.md |
+| 2026-10-16 | breadth-tilt-semis | price | null | MD files/BREADTH_TILT_SEMIS_PREREG.md |
+| 2026-10-16 | cog-matched-pairs | macro | null | analysis/output/cog_video_0918/MATCHED_PAIRS_RESULTS.md |
+| 2026-10-16 | cog-rate-futures-other-tests | macro | null | analysis/output/cog_video_0918/MEETING_PATH.md |
+| 2026-10-16 | cog-turn-sequence-model | macro | null | analysis/output/cog_video_0918/SEQUENCE_EVENTS.md |
+| 2026-10-17 | rates-vol-news-timing | volatility | null | analysis/output/cog_video_0918/CROSS_ASSET_ADDENDUM_B_RESULTS.md |
+| 2026-10-18 | rates-follow-through-regimes | macro | context | analysis/output/dynlead/EPISODES_RESULTS.md |
+| 2026-10-18 | rates-spread-asset-lead | macro | null | analysis/output/dynlead/DYNAMIC_LEAD_RESULTS.md |
+| 2026-10-18 | us-leg-same-day-link | macro | context | analysis/output/cog_video_0918/CROSS_ASSET_STAGE1.md |
 
 ## Pre-registered, but no banked verdict
 
 These were designed as tests but never reached the Evidence Book. Each is either still to run, or ran and was not banked (the second is the failure Lesson 02 warns about: a search that forgets its misses looks better than it is). Bank or close each one.
 
 - `MD files/LEAN_TRADE_RULE_PREREG.md`: LEAN-TRADE-RULE — the lean traded as a real trade, with a stop
+- `MD files/POSITIONING_INTO_RELEASE_PREREG.md`: Crowded FX positioning into a scheduled release — pre-registration
+- `forge/COG_CROSS_ASSET_PREREG.md`: COG-CROSS-ASSET: does the SOFR-Euribor / SOFR-ESTR information relate to, or lead, gold, EURUSD, USDJPY, the R
+- `forge/COG_DYNAMIC_LEAD_PREREG.md`: COG-DYNAMIC-LEAD: do yield and futures spreads begin moving first, in identifiable periods, and does FX (or go
+- `forge/COG_EVENT_FEATURES_PREREG.md`: COG-EVENT-FEATURES: do the slope, speed, persistence, magnitude and variability of the SOFR-Euribor series add
+- `forge/COG_INDICATOR_OPTIONS_PREREG.md`: COG-INDICATOR-OPTIONS: do the settings in C.OG's indicator hide a forecasting read?
+- `forge/COG_LEGS_SESSION_PREREG.md`: COG-LEGS-SESSION: does what each leg does in the European morning say anything about Nasdaq's US session?
+- `forge/COG_MATCHED_PAIRS_PREREG.md`: COG-MATCHED-PAIRS: do better-matched SOFR and euro legs (same reference period, SOFR vs ESTR) carry what C.OG'
+- `forge/COG_MEETING_PATH_PREREG.md`: COG-MEETING-PATH: does the near-term priced Fed path (30-day fed funds strip) give notice of Nasdaq moves?
+- `forge/COG_SEQUENCE_EVENTS_PREREG.md`: COG-SEQUENCE-EVENTS: an interpretable test of the sequence "direction change, then confirmation / confluence, 
+- `forge/COG_SHAPE_AGNOSTIC_PREREG.md`: COG-SHAPE-AGNOSTIC: does ANY repeatable shape in the SOFR-Euribor line (turn, confirmation, second move, diver
+- `forge/COG_TURN_EVENTS_PREREG.md`: COG-TURN-EVENTS: do SOFR-Euribor turning points carry information about Nasdaq's next turn, breakout or move?
 - `forge/CONFIDENCE_PREREG.md`: Layer 6 — CONFIDENCE (meta-labelling): can today's conditions sharpen layer 5's probabilities?
+- `forge/DE2Y_NQ_15M_LEAD_PREREG.md`: DE2Y-NQ-15M-LEAD: does a German 2-year yield move lead Nasdaq by one 15-minute bar? (one confirmation test)
+- `forge/DISTRIBUTION_FORECAST_PREREG.md`: Conditional distribution forecast for today's range, and for each remaining hour
+- `forge/FED_PATH_LEAD_PREREG.md`: FED-PATH-LEAD: does the Fed-path slope lead EURUSD / AUD / silver / DAX? (one confirmation test)
+- `forge/FUTURES_COST_RESCORE_PREREG.md`: Futures-cost re-score of the line-touch fade (registered 2026-10-11, before the re-score is computed)
+- `forge/FUTURES_VOL_PREREG.md`: Futures volatility forecast — does intraday futures data beat the incumbent HAR? (shadow study)
+- `forge/FX_FACTOR_STACK_PREREG.md`: Cross-sectional FX factor stack at one to three months
+- `forge/HARNESS_REGISTRY_PREREG.md`: Unified study harness, and deflating the registry it will re-score
+- `forge/IEP_TIME_PREREG.md`: IEP-TIME: time of day, trading session and day of week in band attainment, first touch and consolidation
+- `forge/INTRADAY_EXTREME_PATHS_PREREG.md`: INTRADAY-EXTREME-PATHS: after a dynamic intraday extreme, what is the probability of continuation, meaningful 
+- `forge/LEVEL_P2_PREREG.md`: Level engine, Phase 2: reach, which-first, time-to-reach (registered 2026-10-10, before any Phase 2 outcome is
+- `forge/LEVEL_SCENARIO_SHADOW_PREREG.md`: S3 shadow: level scenarios, live reach / which-first / time (registered 2026-10-11, before any live session is
+- `forge/LINE_REACTION_PREREG.md`: LINE-REACTION: how price approaches the chosen forecast's lines, and what it does next
+- `forge/LINE_TOUCH_ADAPTIVE_STOP_PREREG.md`: Pre-registration: stop sized to the context of the moment (time of day, current volatility)
+- `forge/LINE_TOUCH_COST_PREREG.md`: Pre-registration: the line-touch fade with a per-instrument cost and a stop sized to it
+- `forge/LINE_TOUCH_WIDE_SCAN_PREREG.md`: Pre-registration: wide scan of candle shape / position / time / regime at the forecast lines
 - `forge/REMAINING_TRAVEL_PREREG.md`: Layer 5 — REMAINING TRAVEL: from here, with the time left, how far can price still go?
 - `forge/SIGNAL_JOURNAL_PREREG.md`: Signal Journal — live alerts with stated odds, tracked forward (Lesson 01 card 10, Lesson 16)
 - `forge/STABILITY_AND_HOLDOUT_PREREG.md`: STEP D — Parameter stability + the sealed holdout (Lesson 01 cards 07 and 03)
 - `forge/STOP_RISK_PREREG.md`: Layer 7 — STOP RISK MAP: how often does a stop fill worse than its price, and by how much?
+- `forge/VF3_SHADOW_P1_PREREG.md`: VF3 shadow S1: time-aware intraday probabilities, prospective evaluation (registered 2026-10-10)
+- `forge/VF3_STAGE_C_PREREG.md`: Vol Forecast V3, Stage C: registered experiments (2026-10-10, before any Stage C outcome is computed)
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
+- `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?
+- `oi_research_book/RIPPLE_BOOK_PREREG.md`: Pre-registration — does the gamma-weighted full book (the "ripple") read the tape better than the book the bot
