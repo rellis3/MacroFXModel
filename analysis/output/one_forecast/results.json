@@ -1,0 +1,159 @@
+{
+ "prereg": "forge/ONE_RANGE_FORECAST_PREREG.md",
+ "audit": {
+  "vix_inv": "9,926/9,926 US-index rows",
+  "front_dear": "9,926/9,926 US-index rows",
+  "front_calm": "9,926/9,926 US-index rows",
+  "all_down": "9,926/9,926 US-index rows",
+  "nq_dw": "9,926/9,926 US-index rows",
+  "gex_short": "1,483/2,481 NQ rows"
+ },
+ "q1": {
+  "rows": 5972,
+  "dates": 1493,
+  "ratio": [
+   0.9926,
+   0.9874,
+   0.9978
+  ],
+  "by_inst": {
+   "DOW": 0.9932,
+   "NQ": 0.9891,
+   "SPX500": 0.9838,
+   "US2000": 1.005
+  },
+  "regime": {
+   "SIX": {
+    "quiet": 0.2741,
+    "normal": 0.2505,
+    "busy": 0.2428
+   },
+   "SI": {
+    "quiet": 0.2769,
+    "normal": 0.2526,
+    "busy": 0.2554
+   }
+  },
+  "regime_miss": {
+   "SIX": 0.0241,
+   "SI": 0.0269
+  }
+ },
+ "q1_diag_six_vs_sius": {
+  "rows": 5972,
+  "dates": 1493,
+  "ratio": [
+   0.991,
+   0.9855,
+   0.9963
+  ],
+  "by_inst": {
+   "DOW": 0.9944,
+   "NQ": 0.9883,
+   "SPX500": 0.982,
+   "US2000": 1.0
+  },
+  "regime": {
+   "SIX": {
+    "quiet": 0.2741,
+    "normal": 0.2505,
+    "busy": 0.2428
+   },
+   "SIUS": {
+    "quiet": 0.2965,
+    "normal": 0.263,
+    "busy": 0.2554
+   }
+  },
+  "regime_miss": {
+   "SIX": 0.0241,
+   "SIUS": 0.0465
+  }
+ },
+ "q1_verdict": "FAIL",
+ "q2": {
+  "rows": 994,
+  "dates": 994,
+  "ratio": [
+   1.0019,
+   0.9972,
+   1.0075
+  ],
+  "by_inst": {
+   "NQ": 1.0019
+  },
+  "regime": {
+   "NQ_SIG": {
+    "quiet": 0.3613,
+    "normal": 0.3015,
+    "busy": 0.2756
+   },
+   "NQ_SI": {
+    "quiet": 0.3557,
+    "normal": 0.2862,
+    "busy": 0.2596
+   }
+  },
+  "regime_miss": {
+   "NQ_SIG": 0.1113,
+   "NQ_SI": 0.1057
+  }
+ },
+ "q2_descriptive_d1_lag": {
+  "rows": 994,
+  "dates": 994,
+  "ratio": [
+   1.0036,
+   0.9985,
+   1.0094
+  ],
+  "by_inst": {
+   "NQ": 1.0036
+  },
+  "regime": {
+   "NQ_SIG1": {
+    "quiet": 0.3641,
+    "normal": 0.2985,
+    "busy": 0.2756
+   },
+   "NQ_SI": {
+    "quiet": 0.3557,
+    "normal": 0.2862,
+    "busy": 0.2596
+   }
+  },
+  "regime_miss": {
+   "NQ_SIG1": 0.1141,
+   "NQ_SI": 0.1057
+  }
+ },
+ "q2_verdict": "FAIL",
+ "sign_agreement_by_fold": {
+  "SIX": {
+   "vix_inv": "6/6",
+   "front_dear": "6/6",
+   "front_calm": "6/6",
+   "all_down": "6/6",
+   "nq_dw": "6/6"
+  },
+  "NQ_SIG": {
+   "gex_short": "4/4"
+  },
+  "NQ_SIX": {
+   "vix_inv": "1/4",
+   "front_dear": "4/4",
+   "front_calm": "4/4",
+   "all_down": "1/4",
+   "nq_dw": "4/4"
+  },
+  "NQ_SIXG": {
+   "vix_inv": "2/4",
+   "front_dear": "4/4",
+   "front_calm": "4/4",
+   "all_down": "2/4",
+   "nq_dw": "4/4",
+   "gex_short": "4/4"
+  }
+ },
+ "decision": "SI/S"
+}
