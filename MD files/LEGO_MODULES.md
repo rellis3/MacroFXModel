@@ -8236,3 +8236,23 @@ unit sentinel in each direction).
 **Still wrong, held for the owner:** `js/macro.js` `computeT1_Equity` (index.html equity T1 tile) computes in mixed units, so its score sits at ±3; it feeds the Bayesian score that index.html writes to `ai_decision_meta_*`, which the server merges into live level state, so changing it is a live-input change. Fix is one line: `netLiquidityBn(walcl, tga, rrp)`.
 **Correct and left alone:** `cog-replication/engine/cogShadow.js` (caller converts RRP ×1000 to millions) and
 `cog-replication/test_g1_direction.py`. Results banked on the wrong series are listed in `plans/DATA_SPEC.md` §5 #8.
+
+
+### 1bk. Setup Watch — the educator-claim register as desk-watch triggers (2026-10-18)
+
+Built because every Crown clip in `CROWN_WATCH.md` ended at a verdict and nothing watched the
+setup live. Rides the existing desk-watch tick, transition rule, Telegram, `desk_watch_v1`
+store and fire log — a third trigger `kind` (`claim`), not a second pipeline. Pure,
+no-network, covered by `js/claimWatch.test.mjs` (register integrity, every detector live and
+quiet by construction, approaching, outcome scoring at horizon) and the extended
+`js/deskWatch.test.mjs` (claims appear only when the drill bundle is supplied; approaching is
+reported once; Telegram tags ◌ / ⏳ and the eye line). Design: `MD files/CLAIM_WATCH.md`.
+
+| Brick | File | Owns | Consumers |
+| --- | --- | --- | --- |
+| **Setup Watch register** | `js/claimWatch.js` | `CLAIMS` (claim, verdict, rule-as-tested, lookFor, pre-registered outcome + base), `evaluateClaims({bundle, crack})` → desk-watch triggers with `stage`, `scoreClaimFires(log, {bundle, series})`, `joined`, `APPROACH_AT` | `js/deskWatch.js` (`evaluateTriggers` appends claims when `drill`/`crack` inputs are present), `server.js` (`_watchInputs` → drill bundle + crack series; `_deskWatchTick` scoring; `/api/claim-watch`), `claim-watch.html` (imports `CLAIMS` for the static view) |
+
+Reuses `js/marketScan.js`'s `scoreSeries` + the `eqwt` BOARD spec for the equal-weight
+spread, so the board, the B1 study and the watch share one z-score. **Known deliberate
+difference:** the rotation detector uses a rolling three-year 90th percentile where S8 used
+the full-sample one (knowable-at-the-time), stated in `CLAIM_WATCH.md`.

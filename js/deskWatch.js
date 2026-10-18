@@ -9,6 +9,12 @@
  *                 inverts, a chain link breaks, stocks and bonds fall together,
  *                 credit crosses a level). Stamped ~ context; it says what
  *                 changed, never what happens next.
+ *   'claim'     — an educator's setup this desk has TESTED (js/claimWatch.js, the
+ *                 Crown register). Fires when the configuration he says to act on is
+ *                 occurring; the verdict and "what to look for" travel with it.
+ *                 Stamped ◌. Most are tested null — a live one is a lesson, not a
+ *                 signal. The only kind with a `stage`: idle / approaching / live,
+ *                 so the owner can watch a setup ARRIVE (2026-10-18).
  *
  * The server keeps the previous state and only speaks on a TRANSITION (a
  * condition starting or stopping), never on a repeat. Nothing here emits a
@@ -26,8 +32,12 @@
  *   vwapStretch { GOLD:{z,side,band,session,price,vwap}, EURUSD, GBPUSD, USDJPY }
  *             live session-VWAP-stretch reading (js/vwapStretchCore.js); an
  *             instrument missing/null silently disables that one trigger
+ *   drill     the drill bundle (/api/drill-series: { dates, series }) — feeds the claim register
+ *   crack     /api/crack `series` ([{date, value, wti}]) — feeds the crack-disagreement claim
  *   now       epoch ms
  */
+
+import { evaluateClaims } from './claimWatch.js';
 
 const _last = a => Array.isArray(a) && a.length ? a[a.length - 1] : null;
 const _nth = (a, k) => Array.isArray(a) && a.length > k ? a[a.length - 1 - k] : null;
@@ -93,7 +103,7 @@ import { eventImpact } from './eventImpactMap.js';
  * `detail` is the plain-words message body used when the trigger starts firing.
  */
 export function evaluateTriggers(inp = {}) {
-  const { fred = {}, hist = {}, series = {}, chain = [], stockBond = null, events = [], fomcDates = [], vwapStretch = {}, now = Date.now() } = inp;
+  const { fred = {}, hist = {}, series = {}, chain = [], stockBond = null, events = [], fomcDates = [], vwapStretch = {}, drill = null, crack = null, now = Date.now() } = inp;
   const out = [];
   const push = t => out.push({ firing: false, instruments: [], evidenceId: null, ...t });
   const atrBy = atrTable(series);
@@ -220,6 +230,10 @@ export function evaluateTriggers(inp = {}) {
         ? `${label} is ${s.z >= 0 ? '+' : ''}${s.z.toFixed(1)}σ from today's session VWAP (${s.session} session) — a ${s.band}σ+ stretch, σ frozen at session open from the trailing 20 sessions. Tested here (GOLD_VWAP_FIXED_SIGMA_FINDINGS.md §7): ${rate}. Stretches made during NY tend to stick; Asia/London stretches snap back more. Context, not a signal — no VWAP-anchored entry built on this book has ever passed after costs (CROWN_WATCH.md, 2026-09-19).`
         : `${label} is back inside 2σ of session VWAP.` });
   }
+  // ── claim: the Crown register (js/claimWatch.js) ───────────────────────────
+  // Only when the drill bundle / crack series are supplied: a missing input disables the
+  // claim triggers rather than clearing them, same as every other input here.
+  if (drill || crack) for (const t of evaluateClaims({ bundle: drill, crack })) out.push({ since: null, ...t });
   return out;
 }
 // Cross-instrument-replicated in the same study (§7c); FX pairs read stronger
@@ -234,25 +248,31 @@ const VWAP_STRETCH_BASE_RATE = {
 /** Transitions between two evaluated lists: what started, what stopped. */
 export function diffStates(prev = [], curr = []) {
   const byId = new Map((prev ?? []).map(t => [t.id, t]));
-  const started = [], stopped = [];
+  const started = [], stopped = [], approaching = [];
   for (const t of curr) {
     const p = byId.get(t.id);
     if (t.firing && !(p && p.firing)) started.push(t);
     if (!t.firing && p && p.firing) stopped.push(t);
+    // 'approaching' is a stage only claim triggers carry: say it once, when the reading
+    // first crosses APPROACH_AT from idle (or from a cleared fire), never on a repeat
+    if (!t.firing && t.stage === 'approaching' && !(p && (p.stage === 'approaching' || p.firing))) approaching.push(t);
   }
-  return { started, stopped };
+  return { started, stopped, approaching };
 }
 
 const _esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 /** One Telegram message (HTML) for a set of transitions. Empty string when nothing changed. */
-export function formatTelegram({ started = [], stopped = [] }, when = new Date()) {
-  if (!started.length && !stopped.length) return '';
+export function formatTelegram({ started = [], stopped = [], approaching = [] }, when = new Date()) {
+  if (!started.length && !stopped.length && !approaching.length) return '';
   const stamp = when.toISOString().slice(11, 16) + ' UTC';
-  const tag = t => t.kind === 'tested' ? '✓' : '~';
+  const tag = t => t.kind === 'tested' ? '✓' : t.kind === 'claim' ? '◌' : '~';
+  const look = t => t.kind === 'claim' && t.lookFor ? `\n👁 <i>${_esc(t.lookFor)}</i>` : '';
   const lines = [`<b>Desk watch · ${stamp}</b>`];
-  for (const t of started) lines.push(`\n${tag(t)} <b>${_esc(t.label)}</b>\n${_esc(t.detail)}${t.expect?.length ? `\n<i>${_esc(expectText(t.expect))}</i>` : ''}`);
+  for (const t of started) lines.push(`\n${tag(t)} <b>${_esc(t.label)}</b>\n${_esc(t.detail)}${t.expect?.length ? `\n<i>${_esc(expectText(t.expect))}</i>` : ''}${look(t)}`);
+  for (const t of approaching) lines.push(`\n⏳ <b>${_esc(t.label)} — approaching</b>\n${_esc(t.detail)}${look(t)}`);
   for (const t of stopped) lines.push(`\n· <b>${_esc(t.label)} — cleared</b>\n${_esc(t.detail)}`);
   if (started.length >= 2) lines.push(`\n<i>${started.length} conditions started in the same pass — read them together; that is the domino the chain panel is for.</i>`);
-  lines.push(`\n<i>✓ tested on this desk (range, never direction) · ~ described state</i>`);
+  const anyClaim = [...started, ...approaching].some(t => t.kind === 'claim');
+  lines.push(`\n<i>✓ tested on this desk (range, never direction) · ~ described state${anyClaim ? ' · ◌ an educator’s setup, tested here — the verdict travels with it; ⏳ most of the way to its threshold' : ''}</i>`);
   return lines.join('\n').slice(0, 4000);
 }

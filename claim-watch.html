@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup Watch</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;
+    --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --bull:#10b981;--amber:#d29922;--blue:#4f7df0;--red:#f85149;--violet:#a78bfa;
+    --bull-bg:rgba(16,185,129,.12);--amber-bg:rgba(210,153,34,.12);--blue-bg:rgba(79,125,240,.12);--violet-bg:rgba(167,139,250,.12)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
+  a{color:var(--blue);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:17px;font-weight:700} .hdr .spacer{flex:1} .hdr .stamp{font-size:10.5px;color:var(--text3)}
+  .hbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+  .hbtn.on{color:var(--text);border-color:var(--text3)}
+  .wrap{max-width:1040px;margin:0 auto;padding:16px 18px}
+  .intro{color:var(--text2);font-size:12.5px;line-height:1.65;margin-bottom:14px}
+  .intro b{color:var(--text)}
+  .tally{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .tally span{font-size:11px;padding:3px 9px;border-radius:999px;border:1px solid var(--border);color:var(--text2)} .tally b{color:var(--text)}
+  .card{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+  .card.live{border-left-color:var(--bull)} .card.approaching{border-left-color:var(--amber)} .card.idle{border-left-color:var(--border)} .card.unwired{border-left-color:var(--text3);opacity:.85}
+  .top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+  .st{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;padding:2px 7px;border-radius:4px;background:var(--card2);color:var(--text3)}
+  .st.live{background:var(--bull-bg);color:var(--bull)} .st.approaching{background:var(--amber-bg);color:var(--amber)} .st.unwired{color:var(--text3)}
+  .lbl{font-size:14px;font-weight:700;line-height:1.4}
+  .meta{font-size:10.5px;color:var(--text3)}
+  .gauge{margin:8px 0 6px;display:flex;align-items:center;gap:10px}
+  .bar{flex:1;height:8px;border-radius:999px;background:var(--card2);position:relative;overflow:hidden}
+  .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--text3)}
+  .bar.live i{background:var(--bull)} .bar.approaching i{background:var(--amber)}
+  .bar b{position:absolute;top:-2px;bottom:-2px;left:75%;width:1px;background:var(--text3);opacity:.7}
+  .gauge span{font-size:11px;color:var(--text2);white-space:nowrap} .gauge span b{color:var(--text)}
+  .reading{font-size:12.5px;color:var(--text2);line-height:1.6}
+  .block{margin-top:8px;font-size:12.5px;line-height:1.6;color:var(--text2);padding:7px 10px;border-radius:6px;background:var(--card2)}
+  .block b{color:var(--text)} .block.quote{border-left:3px solid var(--violet);font-style:italic} .block.verdict{border-left:3px solid var(--blue)} .block.look{border-left:3px solid var(--bull)}
+  .rule{font-size:11.5px;color:var(--text3);margin-top:6px;line-height:1.55}
+  .rec{margin-top:8px;font-size:11.5px;color:var(--text2);line-height:1.6}
+  .rec table{border-collapse:collapse;margin-top:4px;font-size:11px;width:100%} .rec th{text-align:left;color:var(--text3);font-weight:600;padding:2px 8px 2px 0} .rec td{padding:2px 8px 2px 0;color:var(--text2);border-top:1px solid var(--border);vertical-align:top} .rec td b{color:var(--text)}
+  .note{color:var(--text3);font-size:11px;line-height:1.55;margin-top:14px}
+  .note code{color:var(--text2)}
+  @media (max-width:560px){.wrap{padding:12px}}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>👁 Setup Watch</h1>
+  <span class="stamp" id="stamp">the educator setups this desk has tested, watched live</span>
+  <span class="spacer"></span>
+  <button class="hbtn on" data-f="all" onclick="setFilter('all')">All</button>
+  <button class="hbtn" data-f="live" onclick="setFilter('live')">● live</button>
+  <button class="hbtn" data-f="approaching" onclick="setFilter('approaching')">⏳ approaching</button>
+  <button class="hbtn" data-f="idle" onclick="setFilter('idle')">idle</button>
+  <span class="stamp">·</span>
+  <button class="hbtn on" data-g="all" onclick="setGroup('all')">all</button>
+  <button class="hbtn" data-g="breadth" onclick="setGroup('breadth')">breadth</button>
+  <button class="hbtn" data-g="dispersion" onclick="setGroup('dispersion')">dispersion</button>
+  <button class="hbtn" data-g="gold" onclick="setGroup('gold')">gold</button>
+  <button class="hbtn" data-g="energy" onclick="setGroup('energy')">energy</button>
+</div>
+<div class="wrap">
+  <div class="intro">Each card is a setup an educator (Nicholas Crown, so far) says to act on, with its firing condition frozen from the pre-registration this desk tested it under. The gauge is how far today's reading is along the way to that condition; past the mark it is <b>approaching</b>, at the line it is <b>live</b>. When a setup goes live or starts approaching, the desk-watch Telegram says so once, with the verdict and <b>what to look for</b> attached. Every fire is then scored on the outcome the study pre-registered, at the horizon the study used, and shown here against the number history gave. <b>Most of these are tested null.</b> A live setup is a lesson on the tape, not a signal; nothing here says which way anything goes.</div>
+  <div class="tally" id="tally"></div>
+  <div id="cards"></div>
+  <div class="note">Register, detectors and scorer: <code>js/claimWatch.js</code> (the rules are the studies' own: <code>BREADTH_NARROWING_PREREG.md</code>, <code>BREADTH_TILT_SEMIS_PREREG.md</code>, <code>DISPERSION.md</code>, <code>FOUR_GOLDS.md</code>, <code>MARKET_SENSE_TESTS.md</code> S8, <code>CRACK_SPREAD.md</code>). The watch is <code>js/deskWatch.js</code> on the 15-minute tick; the clips themselves are in <code>MD files/CROWN_WATCH.md</code>. Design note: <code>MD files/CLAIM_WATCH.md</code>.</div>
+</div>
+<script type="module">
+  import { CLAIMS as REGISTER, APPROACH_AT } from './js/claimWatch.js';
+  const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  let data = null, filter = 'all', group = 'all';
+  window.setFilter = f => { filter = f; document.querySelectorAll('.hbtn[data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === f)); render(); };
+  window.setGroup = g => { group = g; document.querySelectorAll('.hbtn[data-g]').forEach(b => b.classList.toggle('on', b.dataset.g === g)); render(); };
+  const ago = iso => { const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 60 ? `${m}m` : m < 48 * 60 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
+  const day = iso => String(iso ?? '').slice(0, 10);
+  const num = (v, dp = 2) => v == null || !Number.isFinite(+v) ? '?' : `${+v > 0 ? '+' : ''}${(+v).toFixed(dp)}`;
+  const outcomeCell = (c, f, h) => {
+    const o = f.outcomes?.[h];
+    if (o == null) { const elapsed = Math.round((Date.now() - Date.parse(f.at)) / 864e5); return `<span style="color:var(--text3)">${elapsed < h * 1.5 ? `open (${h} sessions not yet elapsed)` : 'unscored'}</span>`; }
+    if (typeof o === 'object') return Object.entries(o).map(([k, v]) => `${k} <b>${(+v).toFixed(2)}×</b>`).join(' · ');
+    return `<b>${num(o)}${c.outcome.unit === '%' ? '%' : ''}</b>`;
+  };
+  function render() {
+    const claims = data?.claims ?? REGISTER, states = data?.states ?? [], log = data?.log ?? [];
+    const stateOf = id => states.find(t => t.id === id) ?? null;
+    const stageOf = id => { const s = stateOf(id); return !s ? 'unwired' : s.firing ? 'live' : (s.stage ?? 'idle'); };
+    const order = { live: 0, approaching: 1, idle: 2, unwired: 3 };
+    const list = claims.filter(c => (group === 'all' || c.group === group) && (filter === 'all' || stageOf(c.id) === filter))
+      .sort((a, b) => (order[stageOf(a.id)] - order[stageOf(b.id)]) || ((stateOf(b.id)?.value?.progress ?? -1) - (stateOf(a.id)?.value?.progress ?? -1)));
+    const n = st => claims.filter(c => stageOf(c.id) === st).length;
+    document.getElementById('tally').innerHTML = `<span><b>${claims.length}</b> setups</span><span>● live <b>${n('live')}</b></span><span>⏳ approaching <b>${n('approaching')}</b></span><span>idle <b>${n('idle')}</b></span>${n('unwired') ? `<span>not fed this pass <b>${n('unwired')}</b></span>` : ''}<span>fires on record <b>${log.filter(f => f.event === 'started').length}</b></span>`;
+    document.getElementById('cards').innerHTML = list.map(c => {
+      const s = stateOf(c.id), st = stageOf(c.id), v = s?.value ?? {};
+      const prog = Math.max(0, Math.min(1, +(v.progress ?? 0)));
+      const reading = s ? s.detail.split(/ (?=Crown’s claim:)/)[0].replace(/ The setup is LIVE\.| Approaching —[^.]*\./, '') : 'Not fed this pass — the drill bundle or crack series was unavailable, so this setup is unmeasured (not clear).';
+      const fires = log.filter(f => f.claimId === c.id && f.event === 'started'), near = log.filter(f => f.claimId === c.id && f.event === 'approaching');
+      const H = c.outcome.horizons;
+      const record = fires.length
+        ? `<table><tr><th>fired</th><th>reading</th>${H.map(h => `<th>after ${h} sessions</th>`).join('')}</tr>${fires.map(f => `<tr><td>${day(f.at)}</td><td>${num(f.value?.reading)}</td>${H.map(h => `<td>${outcomeCell(c, f, h)}</td>`).join('')}</tr>`).join('')}</table>
+           <div style="margin-top:4px"><b>Read against:</b> ${H.map(h => `${h}s — ${esc(c.outcome.base[h])}`).join(' · ')}. ${esc(c.outcome.read)}</div>`
+        : `Nothing has fired since this was written down${near.length ? `; approached ${near.length}× without firing (last ${day(near[0].at)})` : ''}. The first fire will appear here with its ${H.join('- and ')}-session outcome against: ${H.map(h => `${h}s — ${esc(c.outcome.base[h])}`).join(' · ')}.`;
+      return `<div class="card ${st}">
+        <div class="top"><span class="st ${st}">${st === 'live' ? '● live' : st === 'approaching' ? '⏳ approaching' : st === 'idle' ? 'idle' : 'unmeasured'}</span><span class="lbl">${esc(c.label)}</span></div>
+        <div class="meta">${esc(c.source)} · ledger <a href="evidence.html">${esc(c.evidenceId)}</a>${s?.since ? ` · live since ${ago(s.since)} ago` : ''}${v.asOf ? ` · data to ${esc(v.asOf)}` : ''}</div>
+        <div class="gauge"><div class="bar ${st}"><i style="width:${Math.round(prog * 100)}%"></i><b title="approaching from ${Math.round(APPROACH_AT * 100)}%"></b></div><span>${Math.round(prog * 100)}% of the way${v.threshold != null ? ` · reading <b>${num(v.reading)}</b> vs threshold <b>${num(v.threshold)}</b>` : ''}</span></div>
+        <div class="reading">${esc(reading)}</div>
+        <div class="block quote">“${esc(c.claim.replace(/^“|”$/g, ''))}”</div>
+        <div class="block verdict"><b>This desk:</b> ${esc(c.verdict)}</div>
+        <div class="block look"><b>What to look for:</b> ${esc(c.lookFor)}</div>
+        <div class="rule"><b>The rule, as tested:</b> ${esc(c.rule)}</div>
+        <div class="rec"><b>Forward record</b> — ${record}</div>
+      </div>`;
+    }).join('') || '<div class="note">Nothing matches this filter.</div>';
+    document.getElementById('stamp').textContent = data?.updatedAt ? `watch updated ${ago(data.updatedAt)} ago${data.drill?.to ? ` · bundle to ${data.drill.to}` : ''} · ${claims.length} setups` : `${REGISTER.length} setups · watch not reachable from here (static view)`;
+  }
+  render();
+  fetch('/api/claim-watch').then(r => r.json()).then(j => { if (j?.ok) { data = j; render(); } }).catch(() => {});
+</script>
+</body>
+</html>

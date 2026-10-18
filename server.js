@@ -192,6 +192,7 @@ import { plannedInWindow } from './js/endOfDay.js';
 import { buildGlobalRead as _buildGlobalRead, recordRow as _grRecordRow, snapshotRow as _grSnapshotRow, attachRealised as _grAttachRealised, scoreRecord as _grScoreRecord } from './js/globalReadCore.js';
 import { assembleGlobalReadInput as _grAssemble, GLOBAL_READ_ENDPOINTS as _GR_ENDPOINTS } from './js/globalReadInputs.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
+import { scoreClaimFires as _scoreClaimFires, CLAIMS as _WATCH_CLAIMS } from './js/claimWatch.js';   // the Crown setup register — rides the desk-watch tick, log and Telegram
 import { ratesRegimeRead as _ratesRegimeRead, alertText as _ratesRegimeAlert, attributionLine as _ratesRegimeAttrib } from './js/ratesRegime.js';
 import { sliceDays as _cogSlice, toBars as _cogBars, exportText as _cogExport, mergeSeries as _cogMerge } from './js/cogLine.js';
 import { cogLineRead as _cogRead } from './js/cogLineRead.js';   // live trend read for the C.OG line card (js/cogLineRead.js)   // C.OG rate-spread line: analysis/output/cog_line/cog_line_15m.json
@@ -4201,7 +4202,8 @@ async function _watchInputs() {
     }
   } catch { vals.funding = null; }
   const _local = async p => { try { const r = await fetch(`http://127.0.0.1:${PORT}/api/${p}`, { signal: AbortSignal.timeout(30_000) }); return r.ok ? await r.json() : null; } catch { return null; } };
-  try { const cr = await _local('crack'); if (Array.isArray(cr?.series) && cr.series.length) vals.crack = _chainNodeDelta(cr.series, _CHAIN_NODES.crack); } catch { /* unmeasured */ }
+  let crackSeries = null;
+  try { const cr = await _local('crack'); if (Array.isArray(cr?.series) && cr.series.length) { crackSeries = cr.series; vals.crack = _chainNodeDelta(cr.series, _CHAIN_NODES.crack); } } catch { /* unmeasured */ }
   try {
     const iy = (await _local('intl-yields'))?.series, ustBy = new Map((hist.us10y ?? []).map(p => [p.date, p.value]));
     for (const [node, key] of [['giltgap', 'gb10y'], ['bundgap', 'de10y'], ['jgbgap', 'jp10y']]) {
@@ -4217,7 +4219,13 @@ async function _watchInputs() {
   const fomcDates = _fomcAllMeetings().map(m => m.date);
   let vwapStretch = {}; try { vwapStretch = await _fetchVwapStretchInputs(Date.now()); } catch (e) { console.warn(`[desk-watch] vwap-stretch: ${e.message}`); }
   if (!Object.keys(vwapStretch).length) console.warn('[desk-watch] vwap-stretch: no pair has inputs (frozen sigma missing or no bars) -- its triggers are off this pass');
-  return { fred, hist, series, chain, stockBond, events, fomcDates, vwapStretch, now: Date.now() };
+  // The Crown setup register (js/claimWatch.js) reads the drill bundle -- six years of
+  // rsp/spy/smh/dspx/vix/nq/r2k daily closes already held in memory for the drill and
+  // the Market View, refreshed every 24h. Reading it costs nothing; if a deploy has not
+  // built it yet, build it once here rather than leave the claim triggers dark all day.
+  let drill = _drillBundle.data;
+  if (!drill) { try { await _refreshDrillBundle(); drill = _drillBundle.data; } catch (e) { console.warn(`[desk-watch] drill bundle: ${e.message}`); } }
+  return { fred, hist, series, chain, stockBond, events, fomcDates, vwapStretch, drill, crack: crackSeries, now: Date.now() };
 }
 // Score fires that are five sessions old: the realised range over the five
 // sessions after the fire, in ATR14 at the fire, on the trigger's instruments.
@@ -4257,21 +4265,27 @@ async function _deskWatchTick(opts = {}) {
       } }
     const nowIso = new Date().toISOString();
     for (const t of states) { const p = prevById.get(t.id); t.since = t.firing ? (p?.firing && p.since ? p.since : nowIso) : null; }
-    const { started, stopped } = _diffStates(store.states, states);
-    for (const t of started) store.log.unshift({ id: t.id, kind: t.kind, label: t.label, at: nowIso, event: 'started', detail: t.detail, evidenceId: t.evidenceId ?? null, instruments: t.instruments ?? [], value: t.value ?? null });
+    const { started, stopped, approaching } = _diffStates(store.states, states);
+    for (const t of started) store.log.unshift({ id: t.id, kind: t.kind, label: t.label, at: nowIso, event: 'started', detail: t.detail, evidenceId: t.evidenceId ?? null, instruments: t.instruments ?? [], value: t.value ?? null, ...(t.kind === 'claim' ? { claimId: t.claimId, stage: t.stage } : {}) });
+    // a claim setup most of the way to its threshold: logged so the Setup Watch page can show
+    // "approached on ..., never fired" -- never scored (only 'started' fires carry an outcome)
+    for (const t of approaching) store.log.unshift({ id: t.id, kind: t.kind, label: t.label, at: nowIso, event: 'approaching', detail: t.detail, evidenceId: t.evidenceId ?? null, instruments: [], value: t.value ?? null, claimId: t.claimId, stage: t.stage });
     for (const t of stopped) store.log.unshift({ id: t.id, kind: t.kind, label: t.label, at: nowIso, event: 'cleared', detail: t.detail, evidenceId: t.evidenceId ?? null, instruments: [], value: t.value ?? null });
     store.log = store.log.slice(0, _WATCH_LOG_MAX);
     _scoreWatchLog(store.log, inputs.series);
+    // claim fires are scored on their OWN pre-registered outcome (RSP/SPY change, SMH-SPY,
+    // range ratio, gold return ...) at the horizons the study used, not the generic range5
+    try { _scoreClaimFires(store.log, { bundle: inputs.drill, series: inputs.series }); } catch (e) { console.warn(`[desk-watch] claim scoring: ${e.message}`); }
     // First pass after deploy: everything already firing counts as "started"; say so once, quietly, and do not page for it.
     const firstPass = store.states.length === 0;
     let sent = false;
-    if (!firstPass && (started.length || stopped.length) && !opts.silent) {
-      const msg = _formatWatchTelegram({ started, stopped });
+    if (!firstPass && (started.length || stopped.length || approaching.length) && !opts.silent) {
+      const msg = _formatWatchTelegram({ started, stopped, approaching });
       if (msg && state.tg?.token && state.tg?.chatId) sent = await sendTelegram(state.tg.token, state.tg.chatId, msg);
     }
     await kv.put(_WATCH_KV, JSON.stringify({ states, log: store.log, updatedAt: nowIso }));
-    _watchLast = { at: Date.now(), states, started: started.map(t => t.id), stopped: stopped.map(t => t.id), sent, firstPass, error: null };
-    if (started.length || stopped.length) console.log(`[desk-watch] started ${started.map(t => t.id).join(',') || '-'} · cleared ${stopped.map(t => t.id).join(',') || '-'} · telegram ${sent ? 'sent' : firstPass ? 'skipped (first pass)' : 'not sent'}`);
+    _watchLast = { at: Date.now(), states, started: started.map(t => t.id), stopped: stopped.map(t => t.id), approaching: approaching.map(t => t.id), sent, firstPass, error: null };
+    if (started.length || stopped.length || approaching.length) console.log(`[desk-watch] started ${started.map(t => t.id).join(',') || '-'} · approaching ${approaching.map(t => t.id).join(',') || '-'} · cleared ${stopped.map(t => t.id).join(',') || '-'} · telegram ${sent ? 'sent' : firstPass ? 'skipped (first pass)' : 'not sent'}`);
     return _watchLast;
   } catch (e) {
     _watchLast = { ..._watchLast, error: e.message };
@@ -4279,6 +4293,18 @@ async function _deskWatchTick(opts = {}) {
     return _watchLast;
   } finally { _watchRunning = false; }
 }
+// Setup Watch (claim-watch.html): the Crown register's live readings and its own forward
+// record, cut from the same desk_watch_v1 store -- no second pipeline, no second clock.
+app.get('/api/claim-watch', async (_req, res) => {
+  try {
+    const store = await _loadWatchStore();
+    const states = (store?.states ?? []).filter(t => t.kind === 'claim');
+    const log = (store?.log ?? []).filter(f => f.kind === 'claim');
+    res.json({ ok: true, claims: _WATCH_CLAIMS.map(({ id, evidenceId, group, label, source, claim, verdict, rule, lookFor, instruments, outcome }) => ({ id, evidenceId, group, label, source, claim, verdict, rule, lookFor, instruments, outcome })),
+      states, log, updatedAt: store?.updatedAt ?? null, lastTick: _watchLast.at ? new Date(_watchLast.at).toISOString() : null, error: _watchLast.error ?? null,
+      drill: _drillBundle.data ? { to: _drillBundle.data.to, at: new Date(_drillBundle.at).toISOString() } : null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.get('/api/desk-watch', async (_req, res) => {
   try {
     const store = await _loadWatchStore();
