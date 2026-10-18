@@ -142,6 +142,8 @@ Lessons 11–16 are the validation module. When each lesson lands, its check rep
 | L05 §05 | Macro in the data; few regimes per record | validation | regime checks done per study; year-to-year flips seen (late-day reversal 2025-26, persistence over-reaction by year) | report regime count with each result |
 | L05 §06 | Data quality: bad prints, immutable store, hashes | 1 | DATA_SPEC + data_integrity.mjs + feature manifest exist; **no bad-print screen on M1; dataset hashes only for the lockbox (forge/lockbox_manifest.json), not in ordinary results records** | add a flag-only spike screen and record a data hash in each prereg result |
 
+**Forecast Line Backtest (2026-10-18):** `forecast-line-backtest.html` + `scripts/backtest/build_line_backtest.py`: the chosen lines point-in-time for every day 2020-08 → 2026-08 (34 instruments), rule trades checked on 1-minute bars after costs, equity, by-year, line calibration, day browser with each layer's output. The place each new lesson's check is added. First read (exploratory, not a new registration): rule A, the registered rich-day break adapted to the chosen lines, 0.2σ stop / 5R: +0.27R gross, +0.16R net over 2,057 trades on 11 instruments, 6 of 7 years positive; fade/continue references B/C gross ≈ 0, net negative.
+
 Side study handed off 2026-10-06: Live Range moving lines across history + jump-through risk (plans/LIVE_RANGE_HISTORY_BRIEF.md).
 Parallel work: layers 1, 4 and 5 (DATA_SPEC, PATH MAP, remaining travel) are being built in another session; check
 `git log -- plans/` before touching them.

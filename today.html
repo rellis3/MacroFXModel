@@ -9491,6 +9491,7 @@ function booksCardHtml() {
     const g = _lsReads?.global, c = g?.tags?.counts, cr = g?.crossAsset;
     row('daily-read.html', '📰', 'Daily Read', c ? `lines: <b>${c.continue ?? 0}</b> CONTINUE · ${c.fair ?? 0} FAIR · <b>${c.exhaust ?? 0}</b> EXHAUST` : 'tomorrow\'s lines tagged, yesterday scored, one lesson', 'are the lines too tight or too wide today — implied vol vs the lines\' own σ, scored every night');
     row('surface-lab.html', '🧊', 'Surface Lab', cr ? `one trade = <b>${Math.round(cr.pc1 * 100)}%</b> of cross-asset movement · curve ${esc0(g.rates?.regime ?? '–')}` : 'FX as one trade, persistence, vol time, the curve', 'live 3D surfaces in COG\'s style: whole systems at once, rebuilt every 12 h');
+    row('forecast-line-backtest.html', '🧪', 'Forecast Line Backtest', 'the chosen lines and rule trades, day by day since 2020', 'point-in-time lines, every trade checked on 1-minute bars; grows with each lesson');
     row('level-scenarios.html', '🎯', 'Level Scenarios', 'reach chance, which-first and timing for every level, live', 'calibrated reach model (Phase 2): where a level is, not what it is; after the touch is ~50/50');
     row('paper-record.html', '📒', 'Rich-Vol Break Record', 'the one rule that passed, forward-tested', 'every break logged with its context (tag, persistence, dollar share) to test what helps');
     row('exhaustion-surface.html', '🧱', 'Exhaustion research', 'why fade vs continue is decided before the open', 'the line-calibration surface: lines too tight on rich-option days, too wide on cheap ones');

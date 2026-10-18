@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forecast Line Backtest</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+#bApp { padding: 0 24px 48px; width: 100%; box-sizing: border-box; max-width: 1400px; margin: 0 auto; }
+.b-h { display: flex; align-items: center; gap: 14px; padding: 16px 0 10px; border-bottom: 1.5px solid var(--border); flex-wrap: wrap; }
+.b-title { font-size: 17px; font-weight: 700; color: var(--text); } .b-sub { font-size: 10.5px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.b-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; padding: 12px 0; }
+.b-controls label { display: flex; flex-direction: column; gap: 3px; font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .06em; }
+.b-controls select { background: var(--s1); color: var(--text); border: 1.5px solid var(--border); border-radius: 8px; padding: 5px 8px; font-size: 12px; font-family: 'DM Sans', sans-serif; }
+.b-note { margin: 8px 0 12px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--s1); font-size: 11.5px; color: var(--text2); line-height: 1.55; }
+.b-note b { color: var(--text); }
+.b-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 12px; }
+@media (max-width: 1000px) { .b-grid { grid-template-columns: 1fr; } #bApp { padding: 0 12px 48px; } }
+.b-card { background: var(--s1); border: 1.5px solid var(--border); border-radius: 14px; padding: 12px 14px; min-width: 0; }
+.b-card h3 { margin: 0 0 8px; font-size: 13px; color: var(--text); font-weight: 700; }
+.b-card .k { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .06em; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; margin-top: 8px; }
+.stat { border: 1px solid var(--border); border-radius: 10px; padding: 7px 9px; }
+.stat .v { font-size: 16px; font-weight: 700; color: var(--text); font-family: 'DM Mono', monospace; }
+.pos { color: var(--green) !important; } .neg { color: var(--red) !important; } .muted { color: var(--text3); }
+table.t { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+table.t th, table.t td { padding: 4px 6px; border-bottom: 1px solid var(--border); text-align: right; font-family: 'DM Mono', monospace; color: var(--text2); white-space: nowrap; }
+table.t th { color: var(--text3); font-weight: 500; font-size: 10.5px; position: sticky; top: 0; background: var(--s1); }
+table.t td:first-child, table.t th:first-child { text-align: left; }
+.scroll { max-height: 360px; overflow: auto; }
+tr.click { cursor: pointer; } tr.click:hover td { background: var(--s2); } tr.sel td { background: color-mix(in srgb, var(--blue) 16%, transparent); }
+#eq, #day { width: 100%; height: 300px; } #day { height: 420px; }
+.layer { display: grid; grid-template-columns: 150px 1fr; gap: 4px 10px; font-size: 11.5px; }
+.layer div:nth-child(odd) { color: var(--text3); font-family: 'DM Mono', monospace; font-size: 10.5px; }
+.layer div:nth-child(even) { color: var(--text); }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 10px; font-family: 'DM Mono', monospace; border: 1px solid var(--border); color: var(--text2); }
+</style>
+</head>
+<body class="dark">
+<div id="bApp">
+  <div class="b-h">
+    <div><div class="b-title">Forecast Line Backtest</div>
+      <div class="b-sub">the v3 chosen forecast (persistence + implied vol) · point-in-time 2020-08 → 2026-08 · every trade checked on 1-minute bars · read-only</div></div>
+  </div>
+  <div class="b-controls">
+    <label>Instrument<select id="cInst"></select></label>
+    <label>Rule<select id="cRule">
+      <option value="A">A · rich-day break (the rule that passed)</option>
+      <option value="B">B · fade the first p75 touch</option>
+      <option value="C">C · continue the first p50 touch</option>
+    </select></label>
+    <label>Stop behind the line<select id="cStop"></select></label>
+    <label>Target<select id="cTgt"></select></label>
+    <label>Costs<select id="cCost"><option value="2">2× spread table</option><option value="1">1× spread table</option><option value="0">none (gross)</option></select></label>
+    <label>Period<select id="cPer"><option value="all">2020-08 → 2026-08</option></select></label>
+  </div>
+  <div class="b-note" id="ruleNote"></div>
+  <div class="b-grid">
+    <div class="b-card"><h3>Results <span class="muted" id="resSub"></span></h3>
+      <div id="eq"></div>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="b-card"><h3>By year</h3><div class="scroll" style="max-height:420px"><table class="t" id="years"></table></div></div>
+  </div>
+  <div class="b-grid" style="margin-top:12px">
+    <div class="b-card"><h3>Day <span class="muted" id="daySub">— pick a day from the list</span></h3><div id="day"></div></div>
+    <div class="b-card"><h3>What each layer said that day</h3><div class="layer" id="layers"><div>—</div><div class="muted">pick a day</div></div></div>
+  </div>
+  <div class="b-grid" style="margin-top:12px">
+    <div class="b-card"><h3>Days <select id="cDays" style="font-size:11px;margin-left:8px;background:var(--s1);color:var(--text);border:1px solid var(--border);border-radius:6px">
+        <option value="trades">with a trade (this rule)</option><option value="rich">rich-vol days</option><option value="all">all days</option></select></h3>
+      <div class="scroll"><table class="t" id="days"></table></div></div>
+    <div class="b-card"><h3>Line calibration <span class="muted">— how often each line was reached vs what it claims</span></h3><table class="t" id="calib"></table></div>
+  </div>
+  <div class="b-card" style="margin-top:12px"><h3>Lessons in this backtest <span class="muted">— grows as lessons arrive (5 of 17)</span></h3><table class="t" id="lessons"></table></div>
+</div>
+<script type="module">
+import { HOW_MUCH } from './js/howMuchParams.js';
+const $ = id => document.getElementById(id);
+const DATA = {}; let cur = null, eqChart = null, dayChart = null, selDay = null;
+const RULES = {
+  A: 'On a day when implied vol ÷ 20-day realised vol is at or above the rule\'s threshold (FX/gold 1.182, US indices 1.53), the first 1-minute close at least 0.05σ through an O→H or O→L p50/p75 line between 00:00 and 10:00 London; enter at the next minute\'s open in the break direction. <b>This is the one rule that passed its registered test</b> (forge/BREAK_IVRV_PREREG.md, paper-record.html), here <b>adapted to the chosen lines</b> (the original used the older v4 line set) and only on the 11 instruments it was registered on. Its rich threshold was set on 2020–22, so those years are in-sample for it.',
+  B: 'At the close of the minute that first touches the O→H or O→L p75 line, enter against the move. A reference rule: every registered test of fading the lines has been close to a coin flip.',
+  C: 'At the close of the minute that first touches the O→H or O→L p50 line, enter with the move. A reference rule: continuation at the lines has also tested close to a coin flip.',
+};
+const TGT_LABEL = { '1': '1R', '2': '2R', '5': '5R', '10': '10R', 'L': 'next line' };
+const fmt = (v, d = 2) => v == null || !Number.isFinite(v) ? '—' : v.toFixed(d);
+const sgn = v => v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+const dp = s => /JPY/.test(s) ? 3 : s === 'GOLD' ? 2 : ['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'].includes(s) ? 1 : 5;
+const londonOffsetMin = d => { const t = new Date(d + 'T12:00:00Z'); const h = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }).format(t); return (h - 12) * 60; };
+const epochOf = (d, min) => Date.parse(d + 'T00:00:00Z') / 1000 + (min - londonOffsetMin(d)) * 60;
+const hhmm = m => m == null ? '—' : `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+const classOf = s => ({ GOLD: 'gold', NQ: 'indices', SPX500: 'indices', US30: 'indices', US2000: 'indices', DE30: 'indices', UK100: 'indices' }[s]
+  ?? (['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'USDJPY'].includes(s) ? 'fx_majors' : 'fx_crosses'));
+
+async function load(sym) {
+  if (!DATA[sym]) {
+    const r = await fetch(`./backtest-data/line-backtest/${sym}.json.gz`);
+    if (!r.ok) throw new Error(`no backtest data for ${sym}`);
+    const buf = new Uint8Array(await r.arrayBuffer());
+    const gz = buf[0] === 0x1f && buf[1] === 0x8b;      // gunzip unless something already decoded it in transit
+    DATA[sym] = gz ? await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).json() : JSON.parse(new TextDecoder().decode(buf));
+  }
+  return DATA[sym];
+}
+function trades() {
+  const r = cur, rule = $('cRule').value, s = +$('cStop').value, t = $('cTgt').value, mult = +$('cCost').value, per = $('cPer').value;
+  const j = r.stops.indexOf(s) * r.targets.length + r.targets.indexOf(t);
+  const byDay = Object.fromEntries(r.days.map(d => [d.d, d]));
+  const out = [];
+  for (const x of r.trades[rule] ?? []) {
+    if (per !== 'all' && !x.d.startsWith(per)) continue;
+    const g = x.g[j]; if (!g) continue;
+    const day = byDay[x.d], unit = day.o * day.sig / 100, stop = day.L[x.line] - x.side * s * unit, risk = Math.abs(x.ep - stop);
+    const cost = risk > 0 ? mult * r.spread / risk : 0;
+    out.push({ ...x, R: g[0] / 1000, exit: g[1], cost, net: g[0] / 1000 - cost, stop, risk, tgt: t === 'L' ? null : x.ep + x.side * (+t) * risk });
+  }
+  return out;
+}
+function weekKey(d) { const t = new Date(d + 'T12:00:00Z'); const day = (t.getUTCDay() + 6) % 7; t.setUTCDate(t.getUTCDate() - day); return t.toISOString().slice(0, 10); }
+function stats(T) {
+  const n = T.length; if (!n) return null;
+  const net = T.map(x => x.net), mean = net.reduce((a, b) => a + b, 0) / n;
+  const wk = {}; for (const x of T) wk[weekKey(x.d)] = (wk[weekKey(x.d)] ?? 0) + x.net;
+  const first = new Date(cur.days[0].d), last = new Date(cur.days.at(-1).d), nWeeks = Math.max(1, Math.round((last - first) / 6048e5));
+  const w = []; for (let k = 0, t0 = new Date(weekKey(cur.days[0].d) + 'T12:00:00Z'); k < nWeeks; k++) { const key = new Date(t0.getTime() + k * 6048e5).toISOString().slice(0, 10); w.push(wk[key] ?? 0); }
+  const wm = w.reduce((a, b) => a + b, 0) / w.length, wsd = Math.sqrt(w.reduce((a, b) => a + (b - wm) ** 2, 0) / (w.length - 1));
+  const Sw = wsd > 0 ? wm / wsd : 0, S = Sw * Math.sqrt(52), seS = Math.sqrt((1 + Sw * Sw / 2) / w.length) * Math.sqrt(52);
+  let eq = 0, peak = 0, dd = 0; for (const x of T) { eq += x.net; peak = Math.max(peak, eq); dd = Math.min(dd, eq - peak); }
+  return { n, perWeek: n / nWeeks, win: T.filter(x => x.net > 0).length / n, gross: T.reduce((a, x) => a + x.R, 0) / n, cost: T.reduce((a, x) => a + x.cost, 0) / n, mean, total: eq, S, seS, dd };
+}
+function render() {
+  const T = trades(), st = stats(T), rule = $('cRule').value;
+  $('ruleNote').innerHTML = `<b>Rule ${rule}.</b> ${RULES[rule]} Stop ${$('cStop').value}σ behind the line; target ${TGT_LABEL[$('cTgt').value]}; otherwise out at the last minute before 22:00 London. When a stop and a target fall inside the same minute, the stop is taken. Costs: ${$('cCost').value}× the repo spread table${cur.spread_assumed ? ' (this instrument\'s spread is assumed, not measured)' : ''}, charged once per round trip.
+    <br><span class="muted">Evidence status: 2025-09 → 2026-08 was already used as a test year by the forecast work; everything after 2026-08-20 is the sealed holdout and is not in this page. ${3 * cur.stops.length * cur.targets.length} rule × stop × target settings are offered here: picking the best of them after looking is a search, and its result must be discounted (Lesson 02; Lesson 04 §03).</span>`;
+  $('resSub').textContent = st ? `— ${cur.inst} · rule ${rule} · ${st.n} trades` : `— no trades for this rule on ${cur.inst}`;
+  $('stats').innerHTML = st ? [
+    ['Trades', st.n, ''], ['Per week', fmt(st.perWeek, 2), ''], ['Win rate', fmt(st.win * 100, 1) + '%', ''],
+    ['Gross R / trade', fmt(st.gross, 3), sgn(st.gross)], ['Cost R / trade', fmt(st.cost, 3), ''], ['Net R / trade', fmt(st.mean, 3), sgn(st.mean)],
+    ['Total net R', fmt(st.total, 1), sgn(st.total)], ['Sharpe (annual, weekly)', `${fmt(st.S, 2)} ± ${fmt(1.96 * st.seS, 2)}`, sgn(st.S)], ['Worst drawdown R', fmt(st.dd, 1), 'neg'],
+  ].map(([k, v, c]) => `<div class="stat"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join('') : '<div class="muted">No trades.</div>';
+  // equity curve
+  if (!eqChart) eqChart = LightweightCharts.createChart($('eq'), { layout: { background: { color: 'transparent' }, textColor: '#94a3b8' }, grid: { vertLines: { visible: false }, horzLines: { color: 'rgba(148,163,184,.12)' } }, rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false } });
+  eqChart.timeScale().fitContent();
+  for (const s of eqChart._series ?? []) eqChart.removeSeries(s);
+  eqChart._series = [];
+  const byDate = {}; for (const x of T) byDate[x.d] = (byDate[x.d] ?? 0) + x.net;
+  let eq = 0; const pts = Object.keys(byDate).sort().map(d => ({ time: d, value: +(eq += byDate[d]).toFixed(3) }));
+  const s1 = eqChart.addAreaSeries({ lineColor: '#10b981', topColor: 'rgba(16,185,129,.25)', bottomColor: 'rgba(16,185,129,0)', lineWidth: 2 }); s1.setData(pts); eqChart._series.push(s1);
+  eqChart.timeScale().fitContent();
+  // by year
+  const yrs = {}; for (const x of T) (yrs[x.d.slice(0, 4)] ??= []).push(x);
+  $('years').innerHTML = '<tr><th>Year</th><th>Trades</th><th>Win %</th><th>Gross R</th><th>Net R / trade</th><th>Total net R</th></tr>' +
+    Object.keys(yrs).sort().map(y => { const a = yrs[y], n = a.length, net = a.reduce((s, x) => s + x.net, 0); const gr = a.reduce((s, x) => s + x.R, 0) / n;
+      return `<tr><td>${y}${y === '2020' || y === '2021' || y === '2022' ? (rule === 'A' ? ' <span class="pill">in-sample</span>' : '') : ''}${y === '2026' ? ' <span class="pill">part test year</span>' : ''}</td><td>${n}</td><td>${fmt(a.filter(x => x.net > 0).length / n * 100, 1)}</td><td class="${sgn(gr)}">${fmt(gr, 3)}</td><td class="${sgn(net / n)}">${fmt(net / n, 3)}</td><td class="${sgn(net)}">${fmt(net, 1)}</td></tr>`; }).join('');
+  renderDays(T); renderCalib();
+  if (selDay) showDay(selDay, T);
+}
+function renderDays(T) {
+  const mode = $('cDays').value, tb = {}; for (const x of T) (tb[x.d] ??= []).push(x);
+  const days = cur.days.filter(d => mode === 'all' || (mode === 'rich' ? d.rich : tb[d.d])).slice().reverse();
+  $('days').innerHTML = '<tr><th>Date</th><th>Range used</th><th>High @</th><th>Low @</th><th>IV÷RV</th><th>Event</th><th>Trades</th><th>Net R</th></tr>' + days.map(d => {
+    const a = tb[d.d] ?? [], net = a.reduce((s, x) => s + x.net, 0), used = (d.h - d.l) / d.hl.p50;
+    return `<tr class="click${d.d === selDay ? ' sel' : ''}" data-d="${d.d}"><td>${d.d} ${d.wd}</td><td>${fmt(used * 100, 0)}% of p50</td><td>${hhmm(d.th)}</td><td>${hhmm(d.tl)}</td><td>${d.ratio == null ? '—' : fmt(d.ratio, 2) + (d.rich ? ' ●' : '')}</td><td>${d.ev === 'unknown' ? '—' : d.ev}</td><td>${a.length || ''}</td><td class="${sgn(net)}">${a.length ? fmt(net, 2) : ''}</td></tr>`; }).join('');
+  for (const tr of $('days').querySelectorAll('tr.click')) tr.onclick = () => { selDay = tr.dataset.d; renderDays(T); showDay(selDay, T); };
+}
+function renderCalib() {
+  const per = $('cPer').value, D = cur.days.filter(d => per === 'all' || d.d.startsWith(per));
+  const rows = [['O→H p50', 'oh_p50', 50], ['O→H p75', 'oh_p75', 25], ['O→H p90', 'oh_p90', 10], ['O→L p50', 'ol_p50', 50], ['O→L p75', 'ol_p75', 25], ['O→L p90', 'ol_p90', 10]];
+  const hl = [['H−L p50', 'p50', 50], ['H−L p75', 'p75', 25], ['H−L p90', 'p90', 10]];
+  const pct = f => fmt(100 * D.filter(f).length / D.length, 1);
+  $('calib').innerHTML = '<tr><th>Line</th><th>Claims</th><th>Reached</th><th>Gap</th></tr>' +
+    rows.map(([lab, k, tgt]) => { const p = +pct(d => d.ft[k] != null); return `<tr><td>${lab}</td><td>${tgt}%</td><td>${fmt(p, 1)}%</td><td class="${Math.abs(p - tgt) > 3 ? 'neg' : ''}">${fmt(p - tgt, 1)}</td></tr>`; }).join('') +
+    hl.map(([lab, k, tgt]) => { const p = +pct(d => d.h - d.l >= d.hl[k]); return `<tr><td>${lab} exceeded</td><td>${tgt}%</td><td>${fmt(p, 1)}%</td><td class="${Math.abs(p - tgt) > 3 ? 'neg' : ''}">${fmt(p - tgt, 1)}</td></tr>`; }).join('') +
+    `<tr><td colspan="4" class="muted" style="text-align:left;white-space:normal">${D.length} days. A gap beyond ±3 points is marked. These lines are out-of-sample: each day's widths were fitted only on earlier data.</td></tr>`;
+}
+async function showDay(d, T) {
+  const day = cur.days.find(x => x.d === d); if (!day) return;
+  const tds = T.filter(x => x.d === d), P = dp(cur.inst);
+  $('daySub').textContent = `— ${d} ${day.wd} · ${cur.inst}`;
+  const hm = HOW_MUCH.classes?.[classOf(cur.inst)];
+  const unit = day.o * day.sig / 100;
+  $('layers').innerHTML = [
+    ['L3 forecast', `chosen lines: ${day.arm === 'SI' ? 'persistence + implied vol' : 'persistence'} · σ ${fmt(day.sig, 3)}% (${fmt(unit, P)} in price)`],
+    ['L3 regime', day.reg == null ? '—' : `σ vs its usual level: ${day.reg > 0 ? '+' : ''}${fmt(day.reg, 2)} (log)`],
+    ['L3 §03 events', day.ev === 'unknown' ? 'no calendar tag (after coverage)' : day.ev],
+    ['Implied vol', day.iv == null ? 'no IV source' : `IV ${fmt(day.iv, 2)}% · 20-day RV ${fmt(day.rv20, 2)}% · IV÷RV ${fmt(day.ratio, 2)}${day.rich ? ' · <b>rich day</b>' : ''}`],
+    ['L7 how much', hm ? `minimum stop ${hm.long?.min_stop_sigma ?? '—'}σ (${fmt((hm.long?.min_stop_sigma ?? 0) * unit, P)}) · overshoot p90 ${fmt(hm.long?.overshoot_p90_sigma, 2)}σ` : '—'],
+    ['Lines reached', ['oh_p50', 'oh_p75', 'oh_p90', 'ol_p50', 'ol_p75', 'ol_p90'].map(k => `${k.replace('_', ' ')} ${hhmm(day.ft[k])}`).join(' · ')],
+    ['The day', `range ${fmt((day.h - day.l) / day.hl.p50 * 100, 0)}% of the p50 line · high ${hhmm(day.th)} · low ${hhmm(day.tl)}`],
+    ['Jumps (after the day)', day.jump == null ? '—' : `jump share of variance ${fmt(day.jump * 100, 1)}% · overnight gap ${fmt(day.gap, 2)}%`],
+    ['L6 meta-labelling', '<span class="muted">not used: tested twice and failed (forge/META_LABEL_PROPER_PREREG.md)</span>'],
+    ['Dynamic lines', '<span class="muted">Live Range hourly lines: not yet in this backtest</span>'],
+    ['Trades', tds.length ? tds.map(x => `${x.side > 0 ? 'long' : 'short'} ${x.line.replace('_', ' ')} @ ${fmt(x.ep, P)} ${hhmm(x.em)} → ${hhmm(x.exit)} · <span class="${sgn(x.net)}">${fmt(x.net, 2)}R net</span>`).join('<br>') : '<span class="muted">none for this rule</span>'],
+  ].map(([k, v]) => `<div>${k}</div><div>${v}</div>`).join('');
+  if (!dayChart) dayChart = LightweightCharts.createChart($('day'), { layout: { background: { color: 'transparent' }, textColor: '#94a3b8' }, grid: { vertLines: { visible: false }, horzLines: { color: 'rgba(148,163,184,.12)' } },
+    timeScale: { timeVisible: true, secondsVisible: false }, localization: { timeFormatter: t => new Date(t * 1000).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }) } });
+  for (const s of dayChart._series ?? []) dayChart.removeSeries(s);
+  dayChart._series = [];
+  const prev = new Date(Date.parse(d + 'T12:00:00Z') - 864e5).toISOString().slice(0, 10);
+  let bars = [];
+  try {
+    const r = await fetch(`/api/ohlc-range?symbol=${encodeURIComponent(OANDA[cur.inst])}&granularity=M5&from=${prev}&to=${d}`);
+    const j = await r.json(); const lo = epochOf(d, 0), hi = epochOf(d, 22 * 60);
+    bars = (j.values ?? []).map(b => ({ time: b.t ?? Math.floor(Date.parse(b.datetime) / 1000), open: +b.open, high: +b.high, low: +b.low, close: +b.close })).filter(b => b.time >= lo && b.time < hi).sort((a, b) => a.time - b.time);
+  } catch { /* chart shows lines only */ }
+  const cs = dayChart.addCandlestickSeries({ upColor: '#10b981', downColor: '#ef4444', borderVisible: false, wickUpColor: '#10b981', wickDownColor: '#ef4444', priceFormat: { type: 'price', precision: P, minMove: Math.pow(10, -P) } });
+  cs.setData(bars); dayChart._series.push(cs);
+  const line = (price, title, color, style = 2) => cs.createPriceLine({ price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title });
+  line(day.o, 'open', '#94a3b8', 0);
+  for (const [k, c] of [['oh_p50', '#60a5fa'], ['oh_p75', '#f59e0b'], ['oh_p90', '#ef4444'], ['ol_p50', '#60a5fa'], ['ol_p75', '#f59e0b'], ['ol_p90', '#ef4444']]) line(day.L[k], k.replace('_', ' ').toUpperCase(), c);
+  const marks = [];
+  for (const x of tds) {
+    marks.push({ time: epochOf(d, x.em) - (epochOf(d, x.em) % 300), position: x.side > 0 ? 'belowBar' : 'aboveBar', color: x.side > 0 ? '#10b981' : '#ef4444', shape: x.side > 0 ? 'arrowUp' : 'arrowDown', text: `${x.side > 0 ? 'long' : 'short'} ${x.line.replace('_', ' ')}` });
+    marks.push({ time: epochOf(d, x.exit) - (epochOf(d, x.exit) % 300), position: 'inBar', color: x.net > 0 ? '#10b981' : '#ef4444', shape: 'circle', text: `${fmt(x.net, 2)}R` });
+    line(x.stop, 'stop', '#ef4444', 1); if (x.tgt) line(x.tgt, 'target', '#10b981', 1);
+  }
+  marks.sort((a, b) => a.time - b.time); cs.setMarkers(marks);
+  dayChart.timeScale().fitContent();
+  if (!bars.length) $('daySub').textContent += ' · candles unavailable (needs the server\'s OANDA key)';
+}
+const OANDA = { EURUSD: 'EUR_USD', GBPUSD: 'GBP_USD', USDJPY: 'USD_JPY', AUDUSD: 'AUD_USD', USDCAD: 'USD_CAD', USDCHF: 'USD_CHF', NZDUSD: 'NZD_USD',
+  EURJPY: 'EUR_JPY', GBPJPY: 'GBP_JPY', EURGBP: 'EUR_GBP', AUDJPY: 'AUD_JPY', CADJPY: 'CAD_JPY', NZDJPY: 'NZD_JPY', CHFJPY: 'CHF_JPY', EURAUD: 'EUR_AUD',
+  EURCHF: 'EUR_CHF', EURCAD: 'EUR_CAD', EURNZD: 'EUR_NZD', GBPAUD: 'GBP_AUD', GBPCAD: 'GBP_CAD', GBPCHF: 'GBP_CHF', GBPNZD: 'GBP_NZD', AUDCAD: 'AUD_CAD',
+  AUDCHF: 'AUD_CHF', AUDNZD: 'AUD_NZD', CADCHF: 'CAD_CHF', NZDCAD: 'NZD_CAD', GOLD: 'XAU_USD', NQ: 'NAS100_USD', SPX500: 'SPX500_USD', US30: 'US30_USD',
+  US2000: 'US2000_USD', DE30: 'DE30_EUR', UK100: 'UK100_GBP' };
+const LESSONS = [
+  ['01 One path among many', 'A record is one draw: Sharpe shown with its 95% band; results by year; equity as a path, not a number', 'in'],
+  ['02 Research has no timetable', 'The number of settings offered is stated; picking the best after looking must be discounted', 'in'],
+  ['03 A system built in layers', 'Forecast (layer 3) kept separate from the decision rule; the day panel shows each layer\'s output; meta-labelling shown as failed, not used', 'in'],
+  ['03 §03 Jumps', 'Same-minute stop-and-target counted as a stop; jump share and gap shown per day (as outcomes)', 'in'],
+  ['04 Why the logic stays private', 'Costs charged per trade from the spread table; Sharpe standard error √((1+S²/2)/T); decay: watch the by-year column', 'in'],
+  ['05 Data: why futures', 'Point-in-time lines (widths fitted only on earlier data); every trade checked on 1-minute bars; holdout after 2026-08-20 not shown; 1-minute noise checked (no effect on daily σ)', 'in'],
+  ['06 → 17', 'Dependence and regimes (6), walk-forward (7, 14), purged CV (13), significance (11), forward evidence (16), a procedure for any record (17): each will add its check here', 'next'],
+];
+$('lessons').innerHTML = '<tr><th>Lesson</th><th style="text-align:left">What it puts into this backtest</th><th>Status</th></tr>' +
+  LESSONS.map(([a, b, s]) => `<tr><td>${a}</td><td style="text-align:left;white-space:normal">${b}</td><td>${s === 'in' ? '<span class="pill pos">in</span>' : '<span class="pill">to come</span>'}</td></tr>`).join('');
+
+async function init() {
+  const idx = await (await fetch('./backtest-data/line-backtest/index.json')).json();
+  const names = idx.instruments.map(x => x.inst);
+  const order = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'];
+  names.sort((a, b) => ((order.indexOf(a) + 1) || 99) - ((order.indexOf(b) + 1) || 99) || a.localeCompare(b));
+  $('cInst').innerHTML = names.map(n => `<option>${n}</option>`).join('');
+  await pick();
+}
+async function pick() {
+  cur = await load($('cInst').value);
+  $('cStop').innerHTML = cur.stops.map(s => `<option value="${s}" ${s === 0.2 ? 'selected' : ''}>${s}σ</option>`).join('');
+  $('cTgt').innerHTML = cur.targets.map(t => `<option value="${t}" ${t === '5' ? 'selected' : ''}>${TGT_LABEL[t]}</option>`).join('');
+  const yrs = [...new Set(cur.days.map(d => d.d.slice(0, 4)))];
+  $('cPer').innerHTML = `<option value="all">${cur.from} → ${cur.to}</option>` + yrs.map(y => `<option value="${y}">${y}</option>`).join('');
+  selDay = null; render();
+}
+$('cInst').onchange = pick;
+for (const id of ['cRule', 'cStop', 'cTgt', 'cCost', 'cPer']) $(id).onchange = render;
+$('cDays').onchange = () => renderDays(trades());
+init().catch(e => { $('ruleNote').textContent = 'Error: ' + e.message; });
+</script>
+</body>
+</html>
