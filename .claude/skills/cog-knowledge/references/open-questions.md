@@ -24,13 +24,11 @@ When one of these is answered, move it to the right reference file with the date
 
 ## Known inconsistencies in the cog files (as of 2026-10-12)
 
-- All 12 `cog/lessons/*.html` still have `<title>… — Theory Lab — MacroFX</title>`, and their crumbs and footers point
-  to `../../theory-lab/hub.html`, not `cog/hub.html`. They look like they were moved from theory-lab.
 - `cog/lessons/*.html` and `cog/hub.html` have no `<!-- DESK:START/END -->` markers despite many repo mentions. This
   may conflict with the deskStrip rule; check before relying on stripping.
-- `cog/README.md` and `cog/hub.html` link `../CLAUDE.md`; the file is `MD files/CLAUDE.md`.
-- `cog-replication/README.md` is stale. It says the shadow emitter isn't built and there's no OI history, lists an
-  absent `data/` folder, and still calls the work a replication. Use `DECISIONS.md`.
+
+Fixed 2026-10-18: cog lesson titles/crumbs/footers now point to `cog/hub.html`; the hub's CLAUDE.md link; a status
+banner on `cog-replication/README.md`.
 
 Fix these only when asked, or when touching the file anyway, and then remove the line here.
 

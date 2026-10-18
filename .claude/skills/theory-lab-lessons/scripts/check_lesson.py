@@ -17,6 +17,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from urllib.parse import unquote
 
 REPO = os.getcwd()
 ASSETS = os.path.join(REPO, "theory-lab", "assets")
@@ -66,7 +67,7 @@ def check_links(path, s):
     for href in re.findall(r'href="([^"]+)"', s):
         if re.match(r"^(https?:|mailto:|#|javascript:|data:)", href):
             continue
-        target = href.split("#")[0].split("?")[0]
+        target = unquote(href.split("#")[0].split("?")[0])
         if not target:
             continue
         full = os.path.normpath(os.path.join(os.path.dirname(path), target))
