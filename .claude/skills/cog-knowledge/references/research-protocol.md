@@ -64,3 +64,15 @@ results file.
 
 Decisions go in `cog-replication/DECISIONS.md`, newest first, in the form `## YYYY-MM-DD — <headline>` then
 **Decided / Why / Reverses if**.
+
+## Lessons from the rates / Nasdaq / FX work (2026-10-14 to 2026-10-18)
+
+- **A placebo mean far from zero is a design bias, not a result.** Matched controls drawn away from every event were all quiet bars and made event bars look busy (placebo mean +0.069 on a move share). Exclude only the event's own neighbourhood.
+- **Read the registered gates against the verdict code before reading any result.** Two verdict scripts skipped a registered gate (economic, then volatility); both were caught by rereading the registration, not by the numbers.
+- **A volatility win needs a scheduled-news baseline before it is called real.** Rates and the asset both react to scheduled releases; with a release calendar in the baseline the 2-hour volatility gain fell to about zero.
+- **Price a search with a selection-aware placebo.** Rerun the whole pipeline (selection plus out-of-sample scoring) on shifted series; the real count of survivors must beat that distribution.
+- **Tick-stamp convention:** IBKR stamps 1-minute bars by their start; a right-closed 15-minute bar therefore holds one minute that ends after its label. Consistent across series, but it moves 24% of bar values and 28% of turn-confirmation times: report it as a sensitivity.
+- **Sparse legs:** the SOFR / Euribor / ESTR futures are unchanged on 87-89% of minutes (93-96% at 01:00-05:00 UTC, 77-82% at 12:00-16:00 UTC); judge a line reading by whether the legs actually moved.
+- **Same-day is not forward.** Strong, sign-stable same-day links (US leg vs USDJPY, EURUSD, gold) had about 0.025 forward correlation and no surviving lead; use them for attribution only.
+- **Do not fade a sign seen only after the fact.** The confirmed-episode result flipped between periods; only a forward record registered in advance could say anything.
+

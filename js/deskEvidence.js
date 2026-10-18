@@ -1011,6 +1011,55 @@ export const DESK_EVIDENCE = [
     result: 'S6 FAIL on the bar: v>=2 -0.019R [-0.073, +0.034], minus all +0.031 [-0.021, +0.082]. But the ladder is MONOTONE: v>=2 -0.019, v=1 -0.039, v=0 -0.044, v=-1 -0.065, v<=-2 -0.082 (2018+, with gap); without the gap 2016+: -0.013, -0.017, -0.064, -0.076, -0.100. S7a FAIL: the same vote does not predict the London session direction (+0.004 sigma, hit 49.0%, 1,534 days). S7b FAIL: entering at the median line in the vote direction, stop 0.6 sigma, out 22:00: +0.022R [-0.040, +0.088] (gold +0.106R, EURUSD +0.010R).',
     use: 'The components carry real ranking information AT the line (agreement adds) but not about the day, and no geometry tried makes it pay. Context, not a signal: if a line trade is taken, prefer the side most components agree with; never the side they oppose (the v<=-2 rung is the worst trade on the board).',
   },
+  {
+    id: 'us-leg-same-day-link', domain: 'macro', verdict: 'context', date: '2026-10-18', doc: 'analysis/output/cog_video_0918/CROSS_ASSET_STAGE1.md',
+    claim: 'The US front-end rate move (3-month SOFR futures, one leg) is linked to USDJPY, EURUSD and gold in the SAME hour, with a stable sign; for equity indices the sign flips by year',
+    result: 'Correlation of the 1-hour US-leg change with the 1-hour return, in-sample 2024-25 / validation 2025 / out-of-sample 2026 (about 160-250 days each): USDJPY +0.54 / +0.52 / +0.32 (rates up, dollar up vs yen); EURUSD -0.30 / -0.34 / -0.46 (rates up, euro down; R-squared 0.21 out of sample); gold -0.20 / -0.17 / -0.33. Russell, Dow, S&P, DAX: -0.02 to +0.13 / +0.26 to +0.30 / -0.28 to -0.38, i.e. no stable sign. Daily 17:00 New York closes, 2016-2026: same-day median absolute correlation 0.07 to 0.10 across 28 yield spreads x 34 assets.',
+    use: 'ATTRIBUTION, never a forecast: when reviewing USDJPY, EURUSD or gold, a move in the same hour or day can be read against the US front end (how much of it is rate-driven versus not). It does not tell you the next hour or day: the forward link is about 0.025 and did not survive any test (see rates-spread-asset-lead). Only meaningful in hours when the futures actually move: the legs are unchanged on 87-89% of minutes overall. Most informative hours (fewest stale minutes, 12:00-16:00 UTC for SOFR and Euribor, about 77-82% unchanged; ESTR 07:00-16:00 UTC, about 65-75%); least informative 01:00-05:00 UTC (93-96% unchanged). The Euribor and ESTR legs print only to about 20:00 UTC, SOFR about 23 hours.',
+    instruments: ['USDJPY', 'EURUSD', 'GOLD'],
+  },
+  {
+    id: 'rates-spread-asset-lead', domain: 'macro', verdict: 'null', date: '2026-10-18', doc: 'analysis/output/dynlead/DYNAMIC_LEAD_RESULTS.md',
+    claim: 'A yield spread (US, Germany, Japan, UK, 1Y to 30Y, curve slopes) or a SOFR / Euribor / ESTR futures line starts moving first, and FX, gold or an index then follows, in identifiable periods, so that the follow-through can be recognised and acted on',
+    result: 'Five framings, all with a shifted-spread placebo and chronological discovery / validation / out-of-sample: rolling real-time-gated lead (28,560 cells), divergence as catch-up or breakdown (9,384), intraday futures spreads (4,896), daily episodes with an asset-follow confirmation (608), the same on 17 intraday SOFR / Euribor / ESTR lines (896); 34 assets (27 FX pairs, gold, 6 indices). Zero cells survive Discovery after correction; the placebo also finds zero; at zero cost still noise (0.6% of cells at p<0.05, median gross Sharpe -0.22). The relationship state does not persist and mostly anti-persists (trailing state vs next 125 days: +0.02 to -0.07, mostly -0.04 to -0.07; placebo mean about 0, sd 0.012-0.018). Confirmed episodes out of sample: -21 bp against -6.5 bp for random ones.',
+    use: 'Do not narrate "the spread is moving, so the pair will follow" or "the pair is lagging the spread, so it will catch up": tested in five framings on 34 assets and not found. A spread move is a same-day explanation (see us-leg-same-day-link), not a lead.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'USDCAD', 'AUDUSD', 'NZDUSD', 'GOLD', 'SPX500', 'US30', 'US2000', 'NQ', 'DE30', 'UK100'],
+  },
+  {
+    id: 'rates-follow-through-regimes', domain: 'macro', verdict: 'context', date: '2026-10-18', doc: 'analysis/output/dynlead/EPISODES_RESULTS.md',
+    claim: 'When a yield-spread move was confirmed by the asset starting to follow it, the asset kept going for several days in 2016 and 2020 but not in other years',
+    result: 'Daily episodes (spread move of at least 1.5 sd over 5 days; asset followed by at least 0.5 of its typical move within 2 days), signed asset response against a shifted-spread baseline at day 20: 2016 +117 bp, 2020 +314 bp, 2022 +15 bp; 2021 +7 bp; 2017-2019 and 2023 between -34 and -3 bp; every out-of-sample year negative (2024 -40, 2025 -30, 2026 -32 bp). Half of the response had occurred by about day 5 in 2016 and 2020. 223 of 608 specs beat the placebo by 2 sd in Discovery (14 expected); 14 in Validation and 17 out of sample (14 expected). The 60-day coupled state and the confirmation itself did not identify those years in advance.',
+    use: 'History only: follow-through after a confirmed spread move existed in two large macro repricing years and was absent otherwise; it could not be recognised before it paid. Useful as a reminder that these relationships come and go, not as a trigger. Costs were ignored for this reading: the gross picture is the same.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'GOLD', 'SPX500', 'US30'],
+  },
+  {
+    id: 'rates-vol-news-timing', domain: 'volatility', verdict: 'null', date: '2026-10-17', doc: 'analysis/output/cog_video_0918/CROSS_ASSET_ADDENDUM_B_RESULTS.md',
+    claim: 'Activity in the SOFR / Euribor / ESTR lines forecasts the SIZE of the next 2-hour move in EURUSD, the Dow and the Russell beyond the asset own history',
+    result: 'It first looked real: the registered gates passed for EURUSD (three lines), Dow and Russell (rank-IC gain +0.007 to +0.024, beats the shifted-line placebo p95, survives the correction across 105 p-values). With a scheduled-release calendar (08:30 and 10:00 ET releases, FOMC days, minutes since the US open) in the baseline the gain falls to about zero for all 8 gate-passing candidates (out-of-sample CI includes zero); scoring only bars away from releases keeps the gain, so it is not the release minutes themselves but where the clock sits relative to scheduled news.',
+    use: 'Rates activity is a restatement of scheduled-news timing for 2-hour range questions: use the release calendar. Not controlled: ECB, BoE and BoJ dates and unscheduled news.',
+    instruments: ['EURUSD', 'US30', 'US2000', 'USDJPY', 'SPX500', 'NQ'],
+  },
+  {
+    id: 'cog-matched-pairs', domain: 'macro', verdict: 'null', date: '2026-10-16', doc: 'analysis/output/cog_video_0918/MATCHED_PAIRS_RESULTS.md',
+    claim: 'Period-matched SOFR / Euribor / ESTR pairs (Dec26 and Mar27 against Euribor and against ESTR) or any single leg lead Nasdaq better than C.OG pair',
+    result: 'C.OG pair compares SOFR Sep-Dec 2026 with Euribor Mar-Jun 2027 (no overlap of reference periods); four matched pairs (SR3H7-IH7, SR3Z6-IZ6, SR3Z6-ER3Z6, SR3H7-ER3H7) and three legs tested with turn events, interpretable sequence, lead grid and a flexible model: 0 of 33 comparisons survive the correction; no pair beats C.OG pair on the same-hour link (out-of-sample correlation about 0.31 for C.OG pair, about 0.20 for the matched pairs); 4-hour direction rank-IC gain +0.054 to +0.076 beats the placebo, but the net lower bound of the top-5% predictions is -0.10% to -0.20% at 1 bp, and for C.OG pair the top 5% return about 0 gross (+0.0001%). Leg correlations flip sign between 2025 (+0.29) and 2026 (-0.22 to -0.37).',
+    use: 'The pair choice does not matter for forecasting; C.OG pair is the best same-hour Nasdaq proxy of those tried, as description. Intraday rate legs print unchanged on 87-89% of minutes, so a line reading in a quiet hour is a stale quote.',
+    instruments: ['NQ'],
+  },
+  {
+    id: 'cog-turn-sequence-model', domain: 'macro', verdict: 'null', date: '2026-10-16', doc: 'analysis/output/cog_video_0918/SEQUENCE_EVENTS.md',
+    claim: 'A repeatable sequence in the SOFR-Euribor line (direction change, then confirmation or a second push, then Nasdaq follows with a lag) exists, whatever its shape',
+    result: '36 confirmation variants (second push, retest, acceleration) x 3 contexts x 4 horizons: none passes the in-sample screen; in the selection-aware placebo 68% of shifted-line picks scored at least as well out of sample as the real best pick. A same-direction Nasdaq turn follows a line turn within 8 hours about 64% of the time against 61% for a shifted line. A boosted-tree model on the line whole multi-scale path has a small 4-hour rank-IC gain (about +0.06 over a Nasdaq-only model; IC +0.04) that is not concentrated after sequences (+0.004% inside the 32 bars after a confirmed sequence, +0.042% outside), and C.OG pair top 5% of predictions return about 0 gross; the volatility gain is explained by scheduled-news timing.',
+    use: 'The line and Nasdaq turn together within hours (description); nothing about a line turn or its confirmation tells you what Nasdaq does after. Costs were not the reason: gross is also about 0.',
+    instruments: ['NQ'],
+  },
+  {
+    id: 'cog-rate-futures-other-tests', domain: 'macro', verdict: 'null', date: '2026-10-16', doc: 'analysis/output/cog_video_0918/MEETING_PATH.md',
+    claim: 'The 30-day fed funds meeting-month strip, each leg by session, and the indicator options (range position, z-score, EMA slope of the line) carry forward information about Nasdaq',
+    result: 'Fed funds ZQ Nov/Dec/Jan/Mar strip: 0 of 48 cells pass (2 of 48 nominal p<0.05, 2.4 expected by chance) and a null jump-bar test; legs separately, European morning against the US session: 0 of 6 valid cells over 604 days (the Asian cells were untestable as registered); indicator options: 0 of 32 cells (the 5- and 20-day windows are under-powered). Euro-side meeting-path contracts were not testable (no 1-month ESTR; Euribor serial months serve about 10 weeks each).',
+    use: 'None of these adds a forward read; leave the line and the strip as context.',
+    instruments: ['NQ'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -1076,6 +1125,13 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'us-leg-same-day-link':      { n: '3 periods of 160-250 days x 34 assets', note: 'descriptive same-hour correlations; sign stable for USDJPY, EURUSD, gold, unstable for equities' },
+  'rates-spread-asset-lead':   { n: '28,560 + 9,384 + 4,896 + 608 + 896 cells, 34 assets', note: 'zero survivors, shifted-spread placebo equal; minimum detectable effect printed per family' },
+  'rates-follow-through-regimes': { n: '69,726 daily episodes 2016-2026', note: 'descriptive by year; effect only in 2016 and 2020 and not recognisable in advance' },
+  'rates-vol-news-timing':     { n: '8 gate-passing candidates, about 190 days per half', note: 'gain disappears with a scheduled-release calendar in the baseline' },
+  'cog-matched-pairs':         { n: '4 pairs + 3 legs, 33 p-values, about 190 days per half', note: 'family-wise BH 10%; ESTR pairs only 95 in-sample days' },
+  'cog-turn-sequence-model':   { n: '3,152 line turns; 36 specs; 79 model features; about 190 days per half', note: 'selection-aware placebo; walk-forward by quarter' },
+  'cog-rate-futures-other-tests': { n: '48 + 6 + 32 cells over 604 days', note: 'Asian-session leg cells untestable as registered; 5- and 20-day option windows under-powered' },
   'cot-positioning-factor':  { n: '3,576 OOS rows, 8 instruments', note: 'pooled rank-IC -0.0317, p=0.0936 vs a p<0.05 bar; AUD leg +0.004; both known flaws flatter the signal' },
   // Verified by reading the entry on 2026-10-03.
   'gex-range':               { n: '793 NQ days',               note: 'p 0.0008, +0.315 vol-matched, 4/4 specs, 6/6 years, event-day confound closed' },

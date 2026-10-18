@@ -35,3 +35,6 @@ When one of these is answered, move it to the right reference file with the date
 Fix these only when asked, or when touching the file anyway, and then remove the line here.
 
 **2026-10-14 (C.OG, Discord, tier 2):** his chart is two TradingView tabs, Nasdaq on one and "the raw indicator with no smoothing or adjustment" on the other; "you'll be able to match it perfectly". Smoothing = none, forward shift = 0. Unanswered still: his data timeframe, and the exact settings of the Python-built version in the video.
+
+**2026-10-18 (questions drafted for C.OG, not yet answered):** how exactly is "confirmation" defined in his code (the 45-minute wait, a threshold?); which price field, timestamps, contracts and roll handling does his script use for the exported line, and which Nasdaq series; has he measured how often the pattern occurs over the whole history; his pair compares SOFR Sep-Dec 2026 with Euribor Mar-Jun 2027 (no overlapping reference period): deliberate?; what he plans with PCA, residuals and the variance-versus-correlation split.
+
