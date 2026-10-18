@@ -625,9 +625,9 @@
     <span><strong>"When several independent macro domains agree, direction follows."</strong> The desk pre-registered exactly this: Fed net-liquidity momentum, the 10-year-minus-2-year curve regime and investment-grade credit stress all +1 or all −1 on the same day, forward direction on EUR/USD, the S&amp;P 500 and gold. With 39 positive- and 38 negative-confluence episodes from 2009 to 2026, it found nothing. One cell looked real — EUR/USD over 20 days after positive confluence, −0.616% [−1.117, −0.080] — but negative confluence pointed the <em>same</em> way (−0.023%), so the "signal" was EUR/USD's long drift lower, not agreement predicting anything. Agreement is not evidence unless the agreeing signals each carry some.</span>
   </div>
 
-  <div class="tl-verdict validated" data-evidence="multi-spread-sleeve" data-evidence-date="2026-09-20">
-    <span class="tl-verdict-tag">Desk test: held up</span>
-    <span><strong>Two genuinely different signals, combined.</strong> The desk ran its yield-spread mechanism on the 10-year rate differential as well as the 2-year, and checked first that it was a different signal rather than a relabelled one: 15.7% trade overlap and a 0.300 daily-return correlation. The equal-risk combination's Sharpe ratio of 1.15 beat either leg alone (2-year 1.02, 10-year 0.81). This lesson's arithmetic predicts it: for two equal-risk legs, combined Sharpe \(= (S_1+S_2)/\sqrt{2(1+\rho)} = 1.83/\sqrt{2.6} \approx 1.13\). <em>Backtest evidence; not forward-proven.</em></span>
+  <div class="tl-verdict context" data-evidence="multi-spread-sleeve" data-evidence-date="2026-09-20">
+    <span class="tl-verdict-tag">Desk data: base rate</span>
+    <span><strong>Two signals, combined.</strong> The desk ran its yield-spread mechanism on the 10-year rate differential as well as the 2-year and checked first that it was a different signal: 15.7% trade overlap and a 0.300 daily-return correlation. For two equal-risk legs this lesson's arithmetic gives a combined Sharpe of \((S_1+S_2)/\sqrt{2(1+\rho)} = 1.83/\sqrt{2.6} \approx 1.13\), close to the 1.15 the backtest showed. <strong>Correction, 2026-10-17:</strong> this blend uses the 2-year sleeve, which does not hold on point-in-time data (net Sharpe 0.09, not 1.1). The 10-year leg is honest: it reproduces at Sharpe 0.76 and all 12 grid cells are profitable, but after allowing for the 13 cells tried its deflated Sharpe is 0.85 (the bar is 0.95), its out-of-sample p is 0.098 and the grid's overfit probability is 0.81. So the 1.15 below is not evidence the blend works. The ledger files it as context.</span>
   </div>
 
   <div class="tl-solid red">
@@ -707,7 +707,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Shrink every record by its length:</strong> keep \(\tau^2/(\tau^2+1/n)\) of the measured IC — about half at 400 observations, a ninth at 50, nothing at zero.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>"No view" is a written output.</strong> Fix the thresholds — combined z, expected move against cost, combined IC — before looking at today's screen.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Desk test, nothing found:</strong> agreement across three macro domains did not predict forward direction (77 episodes, 2009–2026). The desk's test found no edge in agreement itself; that says nothing against combining signals that each have a record.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Held up, in backtest:</strong> two yield-spread legs correlated 0.30 combined to a Sharpe of 1.15, above either alone — diversification works when the signals really are different. Not forward-proven.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Not confirmed:</strong> two yield-spread legs correlated 0.30 combined to a Sharpe of 1.15 in backtest, above either alone, which is what the diversification arithmetic predicts when signals really are different. But the 2-year leg did not hold on point-in-time data, so the blend is an illustration of the arithmetic, not evidence of an edge.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>
@@ -734,7 +734,7 @@
   </details>
   <details class="tl-quiz">
     <summary>Q6. The desk found that agreement across three macro domains did not predict direction. Does that mean combining signals is useless?</summary>
-    <div class="tl-answer">No. It means that this desk's test of <em>agreement among those three domains</em> found no forward edge in direction over 5 and 20 days. Agreement only adds information if the agreeing signals each carry some; the desk's two yield-spread legs, each with a record and correlated only 0.30, did combine into a better book. The lesson is to combine signals with records, weighted for correlation — not to treat agreement itself as a signal.</div>
+    <div class="tl-answer">No. It means that this desk's test of <em>agreement among those three domains</em> found no forward edge in direction over 5 and 20 days. Agreement only adds information if the agreeing signals each carry some; the desk's two yield-spread legs, correlated only 0.30, combined into a better backtest book, though the 2-year leg did not hold on point-in-time data (see the correction above). The lesson is to combine signals with records, weighted for correlation — not to treat agreement itself as a signal.</div>
   </details>
 
   <details class="tl-section-collapse">
