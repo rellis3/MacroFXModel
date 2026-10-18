@@ -1,0 +1,5 @@
+sample,step1,step2,oos_pass
+real,0.0,0.0,0.0
+placebo mean,0.025,0.0,0.0
+placebo 95th percentile,0.0,0.0,0.0
+placebo max,2.0,0.0,0.0
