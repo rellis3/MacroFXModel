@@ -466,16 +466,9 @@
   </p>
 
   <!-- DESK:START -->
-  <div class="tl-verdict validated" data-evidence="spread-sleeve-factor-audit" data-evidence-date="2026-09-22">
-    <span class="tl-verdict-tag">Desk test: held up</span>
-    <span><strong>spread-sleeve-factor-audit: hedging out the shared currency factors raised the spread sleeves' Sharpe,
-    with a correction pending.</strong> The desk regressed its 2Y/10Y yield-spread FX sleeves on the common factors all
-    six USD pairs share and hedged them out. Neutralising <strong>raised</strong> OOS Sharpe: 2Y 1.02→1.33, 10Y
-    0.58→1.01, combined 0.98→1.36, while cutting OOS vol ~60-65% (2Y 14.1%→5.1%). <strong>~55% of the raw book's risk was
-    factor risk that did not pay.</strong> The caveats are part of the verdict: in-sample is weak for every version, the
-    OOS strength sits in the 2022-24 rate-divergence cycle, and a later correction found the factor-only hedge can leave
-    net USD in the book, so the "relative value, not a dollar bet" reading is treated as unconfirmed until a hedge that
-    also zeroes net USD is run.</span>
+  <div class="tl-verdict context" data-evidence="spread-sleeve-factor-audit" data-evidence-date="2026-09-22">
+    <span class="tl-verdict-tag">Desk data: base rate</span>
+    <span><strong>Hedging out the shared currency factors on the desk's spread sleeves.</strong> The desk regressed its 2Y/10Y yield-spread FX sleeves on the factors all six USD pairs share and hedged them out. On the original backtest, neutralising raised out-of-sample Sharpe (2Y 1.02→1.33, 10Y 0.58→1.01, combined 0.98→1.36) and cut OOS vol by 60-65%; about 55% of the raw book's risk was factor risk that did not pay. The caveats came with it: in-sample is weak for every version, the OOS strength sits in the 2022-24 rate-divergence cycle, and the factor-only hedge can leave net USD in the book, so "relative value, not a dollar bet" is unconfirmed. <strong>Correction, 2026-10-17:</strong> the audit hedged the 2-year and 10-year sleeves' return streams, and the 2-year stream does not hold on point-in-time data (net Sharpe 0.09, not 1.1). The Sharpe figures below therefore inherit that problem, and the audit has not been re-run on honest data. The ledger files it as context.</span>
   </div>
   <!-- DESK:END -->
 <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../correlations.html">Correlation Lab</a> has a Factor Betas tab with each pair's beta to the dollar index, VIX and rates: the exposures to strip out before calling what is left alpha.</div><!-- DESK:END -->
@@ -551,7 +544,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Beta is hedgeable.</strong> Short the market/factor sized to the estimated β and the β terms cancel, leaving (in expectation) just α plus noise — a market-neutral version of the same strategy.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>"Portable alpha" means alpha severed from any one beta.</strong> Once hedged market-neutral, the isolated alpha stream can sit on top of any beta exposure you actually want — or none at all.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This is a repackaging technique, not a source of edge.</strong> It only works once a genuine, statistically real alpha already exists — check the intercept's standard error before trusting it.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The residual can hide betas the regression never saw (2008).</strong> Portable alpha programmes lost on the futures beta leg and on the "alpha" leg at once, because the alpha carried credit and liquidity risk and could not be cashed while margin calls came daily.<!-- DESK:START --> On this desk, hedging out shared currency factors raised the spread sleeves' OOS Sharpe (combined 0.98→1.36), but a pending correction keeps "relative value, not a dollar bet" unconfirmed.<!-- DESK:END --></span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The residual can hide betas the regression never saw (2008).</strong> Portable alpha programmes lost on the futures beta leg and on the "alpha" leg at once, because the alpha carried credit and liquidity risk and could not be cashed while margin calls came daily.<!-- DESK:START --> On this desk, hedging out shared currency factors raised the spread sleeves' OOS Sharpe (combined 0.98→1.36), but a pending correction keeps "relative value, not a dollar bet" unconfirmed, and the 2-year stream it hedged did not hold on point-in-time data.<!-- DESK:END --></span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Hedging isn't free.</strong> Shorting the beta leg carries real financing/borrow costs and slippage, and a hedge sized to a stale, drifted β under- or over-hedges the true current exposure.</span></div>
   </div>
 

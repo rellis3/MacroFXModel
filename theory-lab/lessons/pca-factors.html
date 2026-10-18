@@ -40,7 +40,7 @@
       <li>A component's loadings (the entries of its eigenvector, one per instrument) show which pairs actually make up that shared factor — a large loading means that instrument drives the component; a near-zero loading means it barely participates.</li>
       <!-- DESK:START --><li>This repo is partially built here already: this project already computes the eigenvalues of a correlation matrix (feeding an "effective number of bets" metric in this project's own diversification research), but it deliberately doesn't return the eigenvectors/loadings — the "which instruments drive PC1" piece this lesson covers is not yet built.</li><!-- DESK:END -->
       <li>PCA is a descriptive/risk-visibility tool, not a trading signal by itself — correlation structure (and PC1 dominance) shifts across regimes, famously spiking toward 1 in a crisis, so any rule built on top of it needs its own OOS validation.</li>
-      <li><strong>Real-world episode:</strong> March 2020's dash for cash. Firms and funds sold whatever was liquid to raise dollars, even Treasuries and gold, and almost every currency fell against the dollar at once. The basket collapsed onto one factor just when diversification was needed.<!-- DESK:START --> This desk's PCA audit of its spread sleeves (<code>spread-sleeve-factor-audit</code>) found ~55% of raw risk was unpaid factor risk, with a correction that leaves the relative-value reading unconfirmed.<!-- DESK:END --></li>
+      <li><strong>Real-world episode:</strong> March 2020's dash for cash. Firms and funds sold whatever was liquid to raise dollars, even Treasuries and gold, and almost every currency fell against the dollar at once. The basket collapsed onto one factor just when diversification was needed.<!-- DESK:START --> This desk's PCA audit of its spread sleeves (<code>spread-sleeve-factor-audit</code>) found ~55% of raw risk was unpaid factor risk, with a correction that leaves the relative-value reading unconfirmed; the 2-year stream it rests on did not hold on point-in-time data.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -810,15 +810,9 @@
   </p>
 
   <!-- DESK:START -->
-  <div class="tl-verdict validated" data-evidence="spread-sleeve-factor-audit" data-evidence-date="2026-09-22">
-    <span class="tl-verdict-tag">Desk test: held up</span>
-    <span><strong>spread-sleeve-factor-audit: are the yield-spread sleeves a disguised dollar bet?</strong> Currency-space
-    PCA, K=2 by noise band, a factor-neutral book, costs on every leg including hedges. Neutralising
-    <strong>raised</strong> out-of-sample Sharpe (2Y 1.02→1.33, 10Y 0.58→1.01, combined 0.98→1.36) while cutting OOS vol
-    about 60–65% (2Y 14.1%→5.1%). <strong>About 55% of the raw book's risk was factor risk that did not pay.</strong>
-    Read it with its own caveats: in-sample is weak for every version, the OOS strength sits in the 2022–24
-    rate-divergence cycle, and a <strong>correction dated 2026-09-22</strong> notes the PC-only hedge can leave net USD
-    in the book. Until a hedge that also zeroes net USD is run, the relative-value claim is unconfirmed.</span>
+  <div class="tl-verdict context" data-evidence="spread-sleeve-factor-audit" data-evidence-date="2026-09-22">
+    <span class="tl-verdict-tag">Desk data: base rate</span>
+    <span><strong>Are the yield-spread sleeves a disguised dollar bet?</strong> The desk ran a currency-space PCA (K=2, noise band), built a factor-neutral book with costs on every leg including hedges, and found on the original backtest that neutralising raised out-of-sample Sharpe (2Y 1.02→1.33, 10Y 0.58→1.01, combined 0.98→1.36) while cutting OOS vol about 60-65%; about 55% of the raw book's risk was factor risk that did not pay. Its own caveats: in-sample is weak for every version, the OOS strength sits in the 2022-24 rate-divergence cycle, and the PC-only hedge can leave net USD in the book (correction dated 2026-09-22), so the relative-value claim is unconfirmed. <strong>Correction, 2026-10-17:</strong> the audit hedged the 2-year and 10-year sleeves' return streams, and the 2-year stream does not hold on point-in-time data (net Sharpe 0.09, not 1.1). The Sharpe figures below therefore inherit that problem, and the audit has not been re-run on honest data. The ledger files it as context.</span>
   </div>
   <!-- DESK:END -->
 
@@ -960,7 +954,7 @@
     <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo has eigenvalues, not eigenvectors, yet.</strong> This project's own eigenvalue computation feeds "effective number of bets" but deliberately doesn't return loadings — the "which instruments drive PC1" piece is a documented, unbuilt extension.</span></div><!-- DESK:END -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Factor structure shifts across regimes.</strong> Correlations — and PC1 dominance — famously spike toward 1 in a crisis; a PCA fit on calm markets can describe a very different structure than one fit during stress.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>PCA is descriptive, not causal, and not a forecast.</strong> High loadings tell you co-movement, not why, and don't predict tomorrow's structure — any trading rule built on top still needs its own honest OOS validation.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Diversification measured in calm markets disappears when it's needed.</strong> In March 2020's dash for cash, currencies collapsed onto one dollar factor and even Treasuries and gold were sold.<!-- DESK:START --> On this desk, PCA-neutralising the spread sleeves raised OOS Sharpe and showed ~55% of raw risk was unpaid factor risk, but a 2026-09-22 correction leaves the relative-value reading unconfirmed until net USD is also hedged.<!-- DESK:END --></span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Diversification measured in calm markets disappears when it's needed.</strong> In March 2020's dash for cash, currencies collapsed onto one dollar factor and even Treasuries and gold were sold.<!-- DESK:START --> On this desk, PCA-neutralising the spread sleeves raised OOS Sharpe and showed ~55% of raw risk was unpaid factor risk, but a 2026-09-22 correction leaves the relative-value reading unconfirmed until net USD is also hedged, and the 2-year stream did not hold on point-in-time data.<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

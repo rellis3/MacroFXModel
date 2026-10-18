@@ -792,13 +792,9 @@
   <!-- DESK:END -->
 
   <!-- DESK:START -->
-  <div class="tl-verdict validated" data-evidence="yield-spread-sleeve" data-evidence-date="2026-07-17">
-    <span class="tl-verdict-tag">Desk test: held up</span>
-    <span><strong>yield-spread-sleeve: the contrast case, a spread with an anchor.</strong> The z-scored US-vs-foreign
-    2-year yield spread, which policy rates tie down: out of sample 2015–2025 with honest publication lags,
-    <strong>~109 trades, 63% win, PF 2.2</strong>, daily-MTM Sharpe ~1.1. Entries are rare (~15–25 per pair per year),
-    and this is backtest evidence plus paper trading since 2026-07, not a forward record. What separates it from the null above is an
-    economic anchor that pulls the spread back.</span>
+  <div class="tl-verdict context" data-evidence="yield-spread-sleeve" data-evidence-date="2026-07-17">
+    <span class="tl-verdict-tag">Desk data: base rate</span>
+    <span><strong>The desk's yield-spread sleeve: a spread with an anchor, but not a confirmed edge.</strong> The z-scored US-versus-foreign 2-year yield spread, which policy rates tie down, was first reported at about 109 out-of-sample trades, 63% win, PF 2.2. <strong>Correction, 2026-10-17:</strong> the desk's harness re-ran this sleeve on point-in-time data and it did not hold. Out of sample its net Sharpe was 0.09, profit factor 1.08 and win rate 46% (p = 0.91), not the 1.1, 2.2 and 63% first reported. The earlier result only reproduces if the 2-year yield, a monthly average that FRED publishes about 32 days after its date, is treated as known two days in. The sleeve is not trading, so there is no forward record. The ledger now files it as context, not as a validated edge. An economic anchor that pulls a spread back is a reason to expect mean reversion; it is not evidence of an edge, and here the evidence did not hold up. This is no longer the contrast case to the null above.</span>
   </div>
   <!-- DESK:END -->
   <!-- DESK:START --><div class="tl-desktool">🛠 On the desk: <a href="../../hedge-signals-v2.html">Hedge Signals v2</a> picks pairs by an Engle-Granger test and trades the residual z-score with a half-life stop; its per-pair table shows which pairs pass and what the trades did.</div><!-- DESK:END -->
